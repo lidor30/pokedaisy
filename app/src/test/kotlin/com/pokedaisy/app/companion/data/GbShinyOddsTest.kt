@@ -6,7 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.Random
+import kotlin.random.Random
 
 /**
  * SHINY ODDS on Gold / Silver / Crystal ([ShinyOdds.GbRoller]) over a fake RAM laid out as the games' own. The numbers are

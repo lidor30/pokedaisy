@@ -575,7 +575,7 @@ object ShinyOdds {
      * from the DVs). The foe is decided on once its record reads the same two frames running, and only while wBaseDexNo
      * still holds its species' base data.
      */
-    class GbRoller(private val target: GbTarget, private val random: Random = Random()) : FoeRoller {
+    class GbRoller(private val target: GbTarget, private val random: Random = Random.Default) : FoeRoller {
         private var decided = false
         private var settling: ByteArray? = null
 
