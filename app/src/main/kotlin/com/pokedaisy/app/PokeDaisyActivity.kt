@@ -964,6 +964,8 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.QuickAction.WILD -> companionSettings.wildEncountersSupported
             com.pokedaisy.app.companion.QuickAction.SAVE_STATE, com.pokedaisy.app.companion.QuickAction.LOAD_STATE,
             com.pokedaisy.app.companion.QuickAction.FF -> true
+            // A DS / 3DS game whose touch screen floats in on this layout (the TOUCH SCREEN hotkey's rule).
+            com.pokedaisy.app.companion.QuickAction.TOUCH_SCREEN -> dsFloats.value || n3dsFloats
             // One screen held sideways: the companion's window or side panel (upright, it's always open).
             com.pokedaisy.app.companion.QuickAction.COMPANION -> hudSingleScreen.value && !hudUpright.value
         }
@@ -1028,9 +1030,11 @@ class PokeDaisyActivity : Activity() {
                 com.pokedaisy.app.companion.data.KeyItems.firstIn(snap.items, com.pokedaisy.app.companion.data.KeyItems.BIKES)?.let(::useKeyItem)
             com.pokedaisy.app.companion.QuickAction.ROD ->
                 com.pokedaisy.app.companion.data.KeyItems.firstIn(snap.items, com.pokedaisy.app.companion.data.KeyItems.RODS)?.let(::useKeyItem)
-            com.pokedaisy.app.companion.QuickAction.SAVE_STATE -> if (!coopRefuses()) engine.requestSaveState(engine.currentSlot)
-            com.pokedaisy.app.companion.QuickAction.LOAD_STATE -> if (!coopRefuses()) engine.requestLoadState(engine.currentSlot)
-            com.pokedaisy.app.companion.QuickAction.FF -> engine.toggleFastForward()
+            // The hotkeys' own way (a 3DS game's states and speed are its session's, not the idle engine's).
+            com.pokedaisy.app.companion.QuickAction.SAVE_STATE -> handleHotkey(Hotkeys.Event(Hotkeys.Action.SAVE_STATE, true))
+            com.pokedaisy.app.companion.QuickAction.LOAD_STATE -> handleHotkey(Hotkeys.Event(Hotkeys.Action.LOAD_STATE, true))
+            com.pokedaisy.app.companion.QuickAction.FF -> handleHotkey(Hotkeys.Event(Hotkeys.Action.FF_TOGGLE, true))
+            com.pokedaisy.app.companion.QuickAction.TOUCH_SCREEN -> toggleDsTouch()
             com.pokedaisy.app.companion.QuickAction.COMPANION -> if (::sidePanel.isInitialized) sidePanel.openPanel()
         }
     }
@@ -4508,7 +4512,8 @@ class PokeDaisyActivity : Activity() {
             return com.pokedaisy.app.companion.DsLayouts.arrange(com.pokedaisy.app.companion.DsLayout.SIDE_BY_SIDE, w, h, fill, top, touch)
         }
         val alone = com.pokedaisy.app.companion.DsLayouts.arrange(layout, w, h, fill, top, touch).top
-        val th = (h * N3DS_FLOAT_HEIGHT).toInt()
+        // At most the area's width too (a locked side panel leaves the game a narrow area: the window went under it).
+        val th = minOf(h * N3DS_FLOAT_HEIGHT, w * N3DS_FLOAT_WIDTH / touch).toInt()
         val tw = (th * touch).toInt()
         val x = (w - tw) / 2
         val y = (h - th) / 2
@@ -4581,10 +4586,12 @@ class PokeDaisyActivity : Activity() {
         when (e.action) {
             Hotkeys.Action.SAVE_STATE -> if (e.pressed) n3dsSaveSlot(engine.currentSlot)
             Hotkeys.Action.LOAD_STATE -> if (e.pressed) n3dsLoadSlot(engine.currentSlot)
-            Hotkeys.Action.FF_HOLD -> session.setSpeed(if (e.pressed) N3DS_FF_PERCENT else 100)
+            // Let go: back to the toggle's speed.
+            Hotkeys.Action.FF_HOLD -> session.setSpeed(if (e.pressed || n3dsFfOn) N3DS_FF_PERCENT else 100)
             Hotkeys.Action.FF_TOGGLE -> if (e.pressed) {
                 n3dsFfOn = !n3dsFfOn
                 session.setSpeed(if (n3dsFfOn) N3DS_FF_PERCENT else 100)
+                if (::touchControls.isInitialized) touchControls.ffOn = n3dsFfOn
             }
             Hotkeys.Action.REWIND_HOLD, Hotkeys.Action.SOFT_RESET, Hotkeys.Action.UNDO_SAVE, Hotkeys.Action.UNDO_LOAD,
             Hotkeys.Action.SPEED_CYCLE, Hotkeys.Action.SLOWMO_HOLD, Hotkeys.Action.ZOOM -> Unit
@@ -5113,7 +5120,8 @@ class PokeDaisyActivity : Activity() {
         touchControls.style = style
         touchControls.portrait = touchUpright
         touchControls.gameAspect = if (::stage.isInitialized) stage.aspect else 1.5f
-        if (::engine.isInitialized) touchControls.ffOn = engine.fastForwardToggled
+        if (romIs3ds) touchControls.ffOn = n3dsFfOn
+        else if (::engine.isInitialized) touchControls.ffOn = engine.fastForwardToggled
         touchControls.visibility = if (show) View.VISIBLE else View.GONE
         syncTouchSkin(style, show)
         // UNDER GAME upright: the controls' own strip under the companion (none while they're hidden), so they never lie
@@ -5136,7 +5144,7 @@ class PokeDaisyActivity : Activity() {
         if (!::touchControls.isInitialized || !::view.isInitialized) return
         val off = HashSet<com.pokedaisy.app.companion.TouchButton>()
         if (!view.wide) off += com.pokedaisy.app.companion.TouchButton.ZOOM
-        if (romIsNds) off += com.pokedaisy.app.companion.TouchButton.REWIND
+        if (romIsNds || romIs3ds) off += com.pokedaisy.app.companion.TouchButton.REWIND
         if (romBlocked != null) off += com.pokedaisy.app.companion.TouchButton.QUICK_MENU
         if (touchControls.unavailable != off) touchControls.unavailable = off
     }
@@ -5233,7 +5241,16 @@ class PokeDaisyActivity : Activity() {
     private fun onTouchAction(button: com.pokedaisy.app.companion.TouchButton, down: Boolean) {
         if (!::engine.isInitialized) return
         when (button) {
-            com.pokedaisy.app.companion.TouchButton.FF -> {
+            // A 3DS game: its session's speed, through the hotkeys (held = fast while held, a tap = on / off).
+            com.pokedaisy.app.companion.TouchButton.FF -> if (romIs3ds) {
+                if (down) {
+                    touchFfDownAt = android.os.SystemClock.uptimeMillis()
+                    handleHotkey(Hotkeys.Event(Hotkeys.Action.FF_HOLD, true))
+                } else {
+                    if (android.os.SystemClock.uptimeMillis() - touchFfDownAt < TOUCH_FF_TAP_MS) handleHotkey(Hotkeys.Event(Hotkeys.Action.FF_TOGGLE, true))
+                    handleHotkey(Hotkeys.Event(Hotkeys.Action.FF_HOLD, false))
+                }
+            } else {
                 if (down) {
                     touchFfDownAt = android.os.SystemClock.uptimeMillis()
                     engine.setFastForwardHeld(true)
@@ -6268,6 +6285,8 @@ class PokeDaisyActivity : Activity() {
         private const val DS_SHOT_MS = 1000L
         /** ONE SCREEN: a 3DS game's floating touch screen, as a share of the screen's height. */
         private const val N3DS_FLOAT_HEIGHT = 0.82f
+        /** ... and at most this share of its width. */
+        private const val N3DS_FLOAT_WIDTH = 0.94f
         /** FF in a 3DS game: Azahar's frame limit, percent. */
         private const val N3DS_FF_PERCENT = 300
         /** The overworld's picture over the black between a menu and the field fades out over this once the game is back. */

@@ -206,7 +206,7 @@ class N3dsSession(
         if (!started) return
         Thread {
             val h = width * 3 / 5
-            val px = N3dsNative.screenshot(width, h) ?: return@Thread
+            val px = screenshot(width, h) ?: return@Thread
             runCatching {
                 val bmp = android.graphics.Bitmap.createBitmap(px, width, h, android.graphics.Bitmap.Config.ARGB_8888)
                 dest.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, it) }
@@ -273,7 +273,7 @@ class N3dsSession(
                         N3dsNative.writeMemory(p[1].toLong(16).toInt(), data)
                     }
                     "shot" -> if (p.size == 2) {
-                        val px = N3dsNative.screenshot(320, 240, bottom = true)
+                        val px = screenshot(320, 240, bottom = true)
                         if (px != null) runCatching {
                             val bmp = android.graphics.Bitmap.createBitmap(px, 320, 240, android.graphics.Bitmap.Config.ARGB_8888)
                             File(dir, p[1] + ".png").outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
@@ -376,8 +376,21 @@ class N3dsSession(
         N3dsNative.touch(1, x * w / 320, y * h / 240, N3dsNative.TOUCH_DOWN)
     }
 
+    /** Azahar takes one screenshot at a time (a second one while one is pending gets nothing, and they'd share its
+     * buffer): every taker here goes through this, one after the other, trying again a moment later if the game's
+     * renderer still had one pending. A state's thumbnail once lost to the field picture and was never written. */
+    private val shotLock = Any()
+    private fun screenshot(w: Int, h: Int, bottom: Boolean = false): IntArray? = synchronized(shotLock) {
+        repeat(SHOT_TRIES) { i ->
+            N3dsNative.screenshot(w, h, bottom)?.let { return it }
+            if (!running) return null
+            if (i < SHOT_TRIES - 1) Thread.sleep(SHOT_RETRY_MS)
+        }
+        null
+    }
+
     private fun fieldShot() {
-        val px = N3dsNative.screenshot(FIELD_SHOT_W, FIELD_SHOT_H) ?: return
+        val px = screenshot(FIELD_SHOT_W, FIELD_SHOT_H) ?: return
         val bmp = runCatching { android.graphics.Bitmap.createBitmap(px, FIELD_SHOT_W, FIELD_SHOT_H, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull() ?: return
         ui.post { onFieldShot(bmp) }
     }
@@ -431,6 +444,9 @@ class N3dsSession(
         private const val SCENE_MS = 100L
         /** The field's picture every this many scene reads (a second), at the 3DS's own top-screen size. */
         private const val FIELD_SHOT_EVERY = 10
+        /** [screenshot]'s tries, a frame or so apart. */
+        private const val SHOT_TRIES = 3
+        private const val SHOT_RETRY_MS = 20L
         private const val FIELD_SHOT_W = 400
         private const val FIELD_SHOT_H = 240
     }

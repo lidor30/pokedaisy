@@ -144,6 +144,7 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | `WILD` | Turns `WILD ENCOUNTERS` off, and back on the next time. An `OFF` tag on its corner says they're off. It shows in games where `WILD ENCOUNTERS` works. |
 | `SAVE STATE`, `LOAD STATE` | Saves or loads the current state slot. |
 | `FF` | Turns fast-forward on or off. |
+| `TOUCH SCREEN` | In a DS game on one screen: brings its touch screen up over the game, or closes it, like L2. Handy on a phone, which has no L2. |
 | `COMPANION` | Opens the companion (on a device with one screen). |
 
 Press L3 and the menu stays open: move with the D-pad or the left stick (on the ring, point the stick at an action), press `A` to use it, and `B` (or L3 again) closes it. You can also tap an action on the screen. While the menu is open your buttons work it, not the game, and the game keeps running underneath.

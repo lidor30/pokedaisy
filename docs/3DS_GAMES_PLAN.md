@@ -131,7 +131,16 @@ are checked through this path, then goes.
   thumbnail from Azahar's own screenshot of the next frame (`N3dsNative.screenshot`: a PixelCopy of the surface came
   out see-through, Azahar's frames carry alpha 0). No undo copies yet.
 - Checked on the RP6 (2026-11-15): START / A / B (the device's GAME BUTTONS swap them), L2's window, PARTY, BAG, STATES
-  save / load with thumbnails. Not checked: upright (the RP6 won't rotate from adb), the side panel, the touch controls.
+  save / load with thumbnails. Not checked: upright (the RP6 keeps its picture landscape whatever `wm size` or
+  `wm user-rotation` says: needs a phone).
+- Touch controls and the side panel (2026-11-15, the RP6 with TOUCH CONTROLS ON / COMPANION VIEW side panel): the D-pad
+  walks, X / Y are the 3DS's, X opens the menu window. REWIND is left off the pad (as for DS). The pad's FF and the QUICK
+  MENU's SAVE / LOAD STATE / FF used to call the idle GBA engine (nothing happened): they go through the hotkeys now
+  (`n3dsHotkey`), and a held FF let go returns to the toggle's speed. The QUICK MENU has TOUCH SCREEN (DS and 3DS on one
+  screen, the TOUCH SCREEN hotkey's toggle: a phone has no L2). The side panel slides in; locked, the game keeps its
+  shape beside it and the floating touch window fits the area left (it was 82% of the screen's height, so wider than
+  that area, half under the panel). Azahar takes one screenshot at a time: the thumbnail and the field picture now
+  queue (`N3dsSession.screenshot`), a thumbnail once lost and was never written.
 
 ## Icons: what's known (2026-11-14, not in the app yet)
 
