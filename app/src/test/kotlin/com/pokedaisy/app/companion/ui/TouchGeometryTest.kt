@@ -206,6 +206,20 @@ class TouchGeometryTest {
         assertTrue(p.items.filter { it.button.extra }.all { it.right < p.w / 2 })
     }
 
+    /** A DS battle's menu at the bottom right (its FIGHT / BAG / POKEMON / RUN, a 2400x1080 phone): the controls over it
+     * step aside, every other one stays exactly where it was (a player's report: A, B, Y and START took its taps). */
+    @Test fun dsBattleMenuUncoversItsButtons() {
+        val p = TouchGeometry.place(TouchControlsStyle(), 2400f, 1080f, dp, false, gameAspect = 4f / 3f, ds = true)
+        val l = p.w * 0.72f; val t = p.h * 0.76f
+        val u = p.uncovering(l, t, p.w, p.h)
+        val gone = p.items - u.items.toSet()
+        assertTrue(gone.any { it.button == TouchButton.A } && gone.any { it.button == TouchButton.B })
+        assertTrue(gone.all { it.right > l && it.bottom > t })
+        assertTrue(u.items.none { it.right > l && it.bottom > t && it.left < p.w && it.top < p.h })
+        assertTrue(u.items.all { it in p.items })
+        assertTrue(u.item(TouchButton.DPAD) == p.item(TouchButton.DPAD))
+    }
+
     /** MIRRORED: the D-pad and A / B swap sides, A stays right of B, L / R and SELECT / START keep their own sides. */
     @Test fun mirroredSwapsTheHands() {
         for ((w, h) in listOf(2400f to 1080f, 1920f to 1080f, 1080f to 2400f)) {

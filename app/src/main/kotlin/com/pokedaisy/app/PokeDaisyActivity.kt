@@ -4184,6 +4184,7 @@ class PokeDaisyActivity : Activity() {
                         com.pokedaisy.app.companion.ui.DsBattleMenu(
                             snap, dsBattleMenu, battleInput, coreFrame.value, shown = dsStripShown.value, active = dsStripActive.value,
                             gameFills = dsFill.value, hints = battleHints.value,
+                            onTapArea = { touchControls.coverInWindow(it) },
                         )
                     }
                     // The menu's D-pad: with no plain view focused, Android takes the first press after a touch to leave
