@@ -223,6 +223,8 @@ object GameTitles {
         // PureRed / PureBlue v2.7.6 (Vortyne/pureRGB builds both byte for byte).
         "2e94d09c1e16a57eb079404c030f26fdeeac949d" to "Pokémon PureRed",
         "d419fe244fa17196f7df46ddab47c840e7573652" to "Pokémon PureBlue",
+        // Pokémon Red (Gen II Graphics V2.0 / Reload)
+        "ad1adc824456f593f5bdb4cbfeb0ec12b24abb6d" to "Pokémon Red (Gen II Graphics)",
     )
 
     /** DS carts worth hashing (128 MB each, once per file): the DS games above. */

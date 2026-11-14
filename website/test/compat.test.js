@@ -129,6 +129,7 @@ test('Game Boy: Yellow only', () => {
 
 test('Game Boy: Red and Blue', () => {
   assert.equal(verdict(data, { platform: 'gb', sha1: 'ea9bcae617fdf159b045185467ae58b2e4a48b9a' }).title, 'Pokémon Red');
+  assert.equal(verdict(data, { platform: 'gb', sha1: 'ad1adc824456f593f5bdb4cbfeb0ec12b24abb6d' }).title, 'Pokémon Red (Gen II Graphics)');
   assert.equal(verdict(data, { platform: 'gb', sha1: 'd7037c83e1ae5b39bde3c30787637ba1d4c48ce2' }).title, 'Pokémon Blue');
 });
 

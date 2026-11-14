@@ -137,6 +137,7 @@ object Gen1Art {
         playerColors = intArrayOf(0, 0xFFFFEFFF.toInt(), 0xFFA5D6FF.toInt(), 0xFF181010.toInt()),
     )
     val RED = redBlue(TelemetrySampler.RED_SHA1)
+    val RED_RELOAD = redBlue(TelemetrySampler.RED_RELOAD_SHA1)
     val BLUE = redBlue(TelemetrySampler.BLUE_SHA1)
 
     /**
@@ -196,7 +197,7 @@ object Gen1Art {
         iconSheet2 = 0x0E to 0x64BF,
     )
 
-    private val GAMES = listOf(YELLOW, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, BLUE, PURE_RED, PURE_BLUE, YELLOW_LEGACY)
+    private val GAMES = listOf(YELLOW, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, RED_RELOAD, BLUE, PURE_RED, PURE_BLUE, YELLOW_LEGACY)
 
     private fun off(bank: Int, addr: Int) = if (bank == 0) addr else bank * 0x4000 + (addr - 0x4000)
 
