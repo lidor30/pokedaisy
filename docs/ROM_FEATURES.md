@@ -14,9 +14,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Red / Blue (GB) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
-| Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | ✅ ³⁷ | — | — |
+| Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | ✅ ³⁹ | — | — |
 | Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
-| Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | ✅ ³⁷ | — | — |
+| Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | ✅ ³⁹ | — | — |
 | Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
 | Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
 | Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
@@ -324,7 +324,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
     Quetzal (it colours its Pokémon by personality: several plain ones drew a blue variant, and shiny value 0 drew
     plain with one low half and the shiny colours with another, so its rule is its own), Heart and Soul (no
     gEnemyParty), Emerald Rogue. RetroAchievements
-    pause while it's raised. Gen 1 has no shinies (n/a); Gen 2's are DVs (note 37). The same
+    pause while it's raised. Gen 1 has no shinies (n/a); Gen 2's are DVs (note 39). The same
     retail check (`NativeConfig.shinyBelow`) gives the battle's SHINY marks and shiny icons on PARTY, the summary, the HUD
     and battle: the shared-palette icon recoloured through the species' normal / shiny battle palettes
     (`shinyIconPalette`; gMonShinyPaletteTable 0xDC0 past gMonPaletteTable, every entry's tag checked).
@@ -588,7 +588,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
     French carts, Origin HeartGold, Renegade Platinum and the Redux builds aren't on the list (not checked, or rules of their
     own). Fixtures `platinum_shiny_window`, `heartgold_shiny_window`, `black2_shiny_window` (`DsShinyOddsTest`).
 
-37. SHINY ODDS on Gold / Silver / Crystal (`ShinyOdds.GbRoller`, `GbTarget`; 2026-11-14): Gen 2's shininess is the DVs
+39. SHINY ODDS on Gold / Silver / Crystal (`ShinyOdds.GbRoller`, `GbTarget`; 2026-11-14): Gen 2's shininess is the DVs
     (Defense, Speed, Special 10, Attack 2 / 3 / 6 / 7 / 10 / 11 / 14 / 15), with no OT check, so the foe gets new DVs. pret's
     LoadEnemyMon makes a wild foe after the battle transition, all in one frame (DVs, CalcMonStats with no stat experience, full
     HP, the wEnemyStats copy), and InitBattleDisplay only reads the DVs for the sparkle and the colours after its slide-in.
