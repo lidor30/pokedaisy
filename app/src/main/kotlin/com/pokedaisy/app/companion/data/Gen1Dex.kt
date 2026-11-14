@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.math.roundToInt
+
 /**
  * A Game Boy (Gen 1) game's POKéDEX, read from the cart's own bytes ([rom] - a GB cart
  * is bank-switched, so the bus can't reach most of it): the page (PokedexEntryPointers:
@@ -214,8 +216,8 @@ object Gen1Dex {
             national = dex,
             species = dex,
             category = category,
-            heightDm = if (t.metric) dm else Math.round((feet * 12 + inches) * 2.54 / 10).toInt(),
-            weightHg = if (t.metric) hg else Math.round(lbs10 * 0.45359237).toInt(),
+            heightDm = if (t.metric) dm else ((feet * 12 + inches) * 2.54 / 10).roundToInt(),
+            weightHg = if (t.metric) hg else (lbs10 * 0.45359237).roundToInt(),
             description = desc,
             type1 = u8(rom, s + 6),
             type2 = u8(rom, s + 7),

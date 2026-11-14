@@ -535,7 +535,7 @@ fun useGen5Repel(cfg: Gen5Config, calls: GameCalls, itemId: Int, steps: Int, fie
         out[slot * 4 + 2] = left.toByte()
         out[slot * 4 + 3] = (left shr 8).toByte()
     } else {
-        System.arraycopy(raw, (slot + 1) * 4, out, slot * 4, (size - slot - 1) * 4)
+        raw.copyInto(out, slot * 4, (slot + 1) * 4, size * 4)
         for (i in (size - 1) * 4 until size * 4) out[i] = 0
     }
     if (!calls.write(pocket, out)) return ItemUseOutcome(ItemUseResult.FAILED)

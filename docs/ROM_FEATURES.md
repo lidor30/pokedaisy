@@ -386,9 +386,24 @@ change to any of the places listed under "Where it's decided" updates its rows h
     one a fainted Pokémon forces, outside the command selection, which read as nothing), the bag, the move to forget for a
     new one and the naming screen after a catch all take BattleInput's block, whose first word is the BattleSystem only while
     the battle's own touch screen is up. Anything else there floats the touch screen in (`battleTouch`).
+    Double battles (GitHub #663, Renegade Platinum headless in a two-trainer battle, 2026-11-14): BattleContext's first
+    four bytes are each battler's selection step, and once battler 0 has chosen (14) the player's second, battler 2, has
+    its own (1 its commands, 3 / 4 its moves); the read follows it while BattleSystem.battleType (the word before the
+    BattleContext pointer) has BATTLE_TYPE_DOUBLES. Which foe to hit (steps 5 / 6) has no panel text (BattleInput +0x4D0
+    NULL) and no BATTLE BUTTONS of ours, so it floats the touch screen in. Before, both Pokemon's target choices floated
+    nothing (the player brought them up with L2). A single battle reads as it did. HeartGold's double battles weren't run.
     The new game's naming screen (the player's, the rival's) comes before any FieldSystem, so nothing the field read follows
     runs; it's known by engine A's DISPCNT, 0x00013710, the naming app's in both games and in a battle too
     (`pk_nds_field_screen_touch`, only while the read has nothing else: the title, the menu and Rowan's speech never show it).
+    HeartGold / SoulSilver's script menus on the touch screen (2026-11-14, a player's report: PC anywhere's DEPOSIT / WITHDRAW
+    never came up on one screen): scrcmd's MenuExec (the PC's list, a move tutor's) draws its list on the touch screen while
+    the field's own touch screen task (a SysTask at FieldSystem +0xD8: its data's first byte 3 while a script holds the touch
+    screen) has a sub task in state 7 / 8 (its data's first word; 1 for a text box). That floats it in like the X menu
+    (`pk_nds_field.cpp`'s `fieldScriptMenu`). Struct offsets only: checked headless with the PC job on the player's save in
+    US, Europe rev 10, German, French, Spanish, Italian and Japanese HeartGold, US, German and Japanese SoulSilver and Origin
+    HeartGold (its own save), each 1 / 8 / 1 at the text, the menu and the boxes. Korean wasn't (the save doesn't load
+    there). The yes / no prompt (scrcmd's YesNo) is drawn on the top screen (the main engine's BG3) and needs nothing. The
+    older multichoice (SCRIPTENV_MENU_WINDOW's) and the shops weren't reached.
 27. Black / White's battle panels (no decomp: headless in White's Route 1 wild battle on the player's save, frame by frame):
     client 0 -> btlv_core (+0x54) -> btlv_scd (+0x180) -> btlv_input (+0xB0); the panel's kind at input +0x58 (1 the
     commands, 2 the moves, 4 a prompt), its slide task at input +0x08 (a tap lands only once it's NULL: the moves 10 frames

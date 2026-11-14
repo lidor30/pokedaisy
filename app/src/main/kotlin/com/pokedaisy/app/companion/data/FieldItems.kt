@@ -970,7 +970,7 @@ fun usableItems(fns: FieldItemFns, items: ByteArray): Set<Int> {
     if (p.useFuncs.isEmpty()) return all
     return all.filter { id ->
         val o = id * fns.itemSize + fns.itemFieldUseOff
-        o + 4 <= items.size && (java.nio.ByteBuffer.wrap(items, o, 4).order(java.nio.ByteOrder.LITTLE_ENDIAN).int.toLong() and 0xFFFFFFFEL) in p.useFuncs
+        o + 4 <= items.size && (s32le(items, o).toLong() and 0xFFFFFFFEL) in p.useFuncs
     }.toSet()
 }
 

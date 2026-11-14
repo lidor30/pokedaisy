@@ -408,6 +408,7 @@ struct PkNdsTouchRules {
     PkNdsTouchApp touchOnly[4];
     int offMenuInputState;    // FieldSystem.menuInputState: 0 buttons, 1 touch (the last input on a menu screen)
     PkNdsTouchApp topOnly[2]; // menu screens all on the top screen (their touch screen only a picture): no touch screen
+    int offFieldTouch;        // FieldSystem's touch screen task (a SysTask, 0 = none): see fieldScriptMenu
 };
 
 // HeartGold / SoulSilver's touch-screen-only pages (headless, the player's saves): the party list (its summary is an app of
@@ -422,27 +423,27 @@ static const PkNdsTouchRules TOUCH_RULES[] = {
     { &ORIGIN_HEARTGOLD, 0x0203B3E9, 0x19C, 0x4D0, {
         { 0x02076E9D, 0 },                                      // the party
         { 0x023DE0F9, 0 },                                      // the options
-    }, 0x10C },
+    }, 0x10C, {}, 0xD8 },
     { &HEARTGOLD_US, 0x0203BEF1, 0x19C, 0x4D0, {
         { 0x02078E31, 0 },                                      // the party
         { 0x021E5901, 0 },                                      // the options
         { 0x021E5AA1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
         { 0x021E5A9D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
-    }, 0x10C },
+    }, 0x10C, {}, 0xD8 },
     // German HeartGold / SoulSilver: the US apps, their overlays 0x20 lower (scripts/port_nds_fns.py, checked headless).
     { &HEARTGOLD_DE, 0x0203BEF1, 0x19C, 0x4D0, {
         { 0x02078E31, 0 },                                      // the party
         { 0x021E58E1, 0 },                                      // the options
         { 0x021E5A81, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
         { 0x021E5A7D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
-    }, 0x10C },
+    }, 0x10C, {}, 0xD8 },
     // The French carts: the US apps at their French addresses (the ARM9's the same, the overlays 0x20 higher).
     { &HEARTGOLD_FR, 0x0203BEF1, 0x19C, 0x4D0, {
         { 0x02078E31, 0 },                                      // the party
         { 0x021E5921, 0 },                                      // the options
         { 0x021E5AC1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
         { 0x021E5ABD, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
-    }, 0x10C },
+    }, 0x10C, {}, 0xD8 },
     // Platinum (pret/pokeplatinum, headless on a new game): its X menu is on the top screen (no field task to follow), its
     // battle's touch panels are HeartGold's (BattleSystem.battleSubscreen at 0x19C, its first font OAM at 0x4D0; the
     // command selection's states the same). The party and the options are top-screen pages, their touch screen a picture.
@@ -467,6 +468,25 @@ static int pageIn(const PkNdsTouchApp* apps, int n, uint32_t (*read32)(uint32_t)
         return state < 32 && (a.states >> state & 1);
     }
     return 0;
+}
+
+// HeartGold / SoulSilver: a script's menu on the touch screen (the PC's DEPOSIT / WITHDRAW / MOVE, a move tutor's list:
+// scrcmd's MenuExec). The field's touch screen is a SysTask at FieldSystem +0xD8 (ov01_021F6B00: its data's first byte
+// the mode, 3 while a script holds the touch screen); its data +4 is the script's own SysTask, whose data's first word is
+// its state: 1 a text box, 7 MenuExec's menu being set up, 8 it waiting for a pick (headless: the PC job on the player's
+// save, 0 on the field, 1 / 8 / 1 at its text, its menu and the boxes). Struct offsets, not addresses: the same in
+// every language. A SysTask's data is at +0x10 (sys_task.h).
+static int fieldScriptMenu(const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t fs)
+{
+    if (!t->offFieldTouch) return 0;
+    uint32_t task = read32(fs + t->offFieldTouch);
+    uint32_t data = inMainRam(task) ? read32(task + 0x10) : 0;
+    if (!inMainRam(data) || (read32(data) & 0xFF) != 3) return 0;
+    uint32_t sub = read32(data + 4);
+    uint32_t subData = inMainRam(sub) ? read32(sub + 0x10) : 0;
+    if (!inMainRam(subData)) return 0;
+    uint32_t state = read32(subData);
+    return state == 7 || state == 8;
 }
 
 // [child]'s app is on a page all on the touch screen.
@@ -578,6 +598,7 @@ static const PortTables& ports()
             t.touchOnly[1] = { r.optionsInit, 0 };
             t.touchOnly[2] = { r.dexInit, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) };
             t.offMenuInputState = 0x10C;
+            t.offFieldTouch = 0xD8;
             p.touch4.push_back(t);
         }
         // Platinum's: no X menu task to follow, HeartGold's battle panels, the party and options as top-screen pages.
@@ -692,12 +713,24 @@ static int battleTouch(const PkNdsFieldGame* g, const PkNdsTouchRules* t, uint32
     if (inMainRam(input) && read32(input) != bs) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
     bool panel = inMainRam(input) && inMainRam(read32(input + t->offPanelShown));
     if (inMainRam(ctx) && read32(ctx + g->offCommand) == PK_NDS_BATTLE_SELECTING) {
-        int step = (int) (read32(ctx) & 0xFF);
+        // A byte per battler: in a double (BattleSystem.battleType, the word before its BattleContext: BATTLE_TYPE_DOUBLES
+        // 2) the player's second (battler 2) chooses once the first is done (past the selection: 14) - Renegade Platinum
+        // headless, a two-trainer battle: battler 0 at 1, 6 at its target, then 14 while battler 2 is at 1.
+        uint32_t steps = read32(ctx);
+        int step = (int) (steps & 0xFF);
+        bool doubles = (read32(bs + g->offBattleContext - 4) & 2) != 0;
+        auto choosing = [](int s) { return s <= 10 || s == 15; };
+        int second = (int) ((steps >> 16) & 0xFF);
+        if (doubles && !choosing(step) && choosing(second)) step = second;
+        // Which foe to hit (a double's): no BATTLE BUTTONS of ours for it, and no panel text there (BattleInput +0x4D0 is
+        // NULL), so the touch screen floats in (GitHub #663: it only came up with L2). A single battle passes through
+        // these steps for a few frames after a move is picked: nothing then.
+        if (step == 5 || step == 6) return doubles ? PK_NDS_FIELD_TOUCH : 0;
         // The bag / the party: their own screens, faded in and out (the engine waits the fades out).
         if (step >= 7 && step <= 10) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
         // The commands and the moves (1 - 4), the steps between them (0 - 2: back from the moves goes through the
-        // command init, its panel still drawn) and a target (5 / 6), a message's wait (15): the battle buttons' own.
-        if (step <= 6 || step == 15) return panel ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
+        // command init, its panel still drawn), a message's wait (15): the battle buttons' own.
+        if (step <= 4 || step == 15) return panel ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
     }
     return panel ? PK_NDS_FIELD_TOUCH : 0;
 }
@@ -986,6 +1019,9 @@ int pk_nds_field_state(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), vo
     }
     // The X menu (HeartGold / SoulSilver: on the touch screen): its field task.
     if (touch && touch->startMenuTask && inMainRam(task) && read32(task + 4) == touch->startMenuTask) bits |= PK_NDS_FIELD_TOUCH;
+    // A script's menu on the touch screen (the PC's, a move tutor's): it floats in like the X menu (a player's report:
+    // PC anywhere's DEPOSIT / WITHDRAW never came up on one screen).
+    else if (touch && task && running && fieldScriptMenu(touch, read32, fs)) bits |= PK_NDS_FIELD_TOUCH;
     // WILD ENCOUNTERS: the current map's rates, held at 0 while it's off.
     uint32_t data = read32(fs + g->offMapHeaderData);
     uint32_t loc = read32(fs + g->offLocation);

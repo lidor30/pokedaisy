@@ -40,7 +40,7 @@ object RetailEngine {
             val top = votes.maxByOrNull { it.value }
             if (top == null || top.value < needed(sites.size) || top.key != addr.toInt()) {
                 ramOk = false
-                why += "RAM %08X: %d of %d".format(addr, votes[addr.toInt()] ?: 0, sites.size)
+                why += "RAM ${addr.hex(8, upper = true)}: ${votes[addr.toInt()] ?: 0} of ${sites.size}"
             }
         }
         if (!ramOk) return Proof(build, ramProven = false, wideRow = null, why = why)
@@ -57,7 +57,7 @@ object RetailEngine {
                 slot in build.optionalSlots -> row[slot] = 0
                 else -> {
                     rowOk = false
-                    why += "ROM slot %d (%08X): %d of %d".format(slot, build.row[slot], top?.value ?: 0, sites.size)
+                    why += "ROM slot $slot (${build.row[slot].hex(8, upper = true)}): ${top?.value ?: 0} of ${sites.size}"
                 }
             }
         }

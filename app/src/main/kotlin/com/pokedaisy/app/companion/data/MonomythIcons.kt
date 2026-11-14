@@ -41,8 +41,8 @@ internal object MonomythIcons {
         val streams = dict + dictTiles * 32
         val table = streams + frame * 6
         val data = (streams + frames * 6 + 3) and 3.inv()
-        val out = java.io.ByteArrayOutputStream(FRAME_BYTES)
-        fun put32(w: Long) { for (k in 0 until 4) out.write(((w shr (8 * k)) and 0xFF).toInt()) }
+        val out = okio.Buffer()
+        fun put32(w: Long) { for (k in 0 until 4) out.writeByte(((w shr (8 * k)) and 0xFF).toInt()) }
         // Word, halfword and byte streams: the frame's own, or a record's for one tile.
         class Streams(var w: Int, var h: Int, var b: Int)
         val main = Streams(data + u16(table + 4) * 4, data + u16(table + 2) * 2, data + u16(table))
@@ -83,7 +83,7 @@ internal object MonomythIcons {
             }
         }
         // Only the first 16 tiles are the 32x32 frame (a 64-tile code's are more than an icon needs).
-        return out.toByteArray().copyOf(FRAME_BYTES)
+        return out.readByteArray().copyOf(FRAME_BYTES)
     }
 
     private const val FRAME_BYTES = 512

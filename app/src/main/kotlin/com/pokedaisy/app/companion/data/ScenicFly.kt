@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import java.util.PriorityQueue
 import kotlin.math.abs
 
 /**
@@ -232,7 +231,7 @@ object ScenicFly {
             val gy = goal / w
             val cost = IntArray(w * h) { Int.MAX_VALUE }
             val from = IntArray(w * h) { -1 }
-            val open = PriorityQueue<Long>(compareBy { it shr 32 })
+            val open = LongHeap()
             cost[start] = 0
             open += start.toLong()
             while (open.isNotEmpty()) {
@@ -322,4 +321,47 @@ object ScenicFly {
     private const val ROM_END = 0x0A000000L
     /** pk_flight.c's route buffer. */
     const val MAX_STEPS = 4096
+}
+
+/** A min-heap of longs ordered by their high 32 bits: java.util.PriorityQueue's own sift up / sift down, so equal
+ * keys come out in the order they did there and the A* above picks the same path. */
+internal class LongHeap {
+    private var a = LongArray(64)
+    private var size = 0
+
+    fun isNotEmpty() = size > 0
+
+    operator fun plusAssign(x: Long) {
+        if (size == a.size) a = a.copyOf(size * 2)
+        var k = size++
+        while (k > 0) {
+            val parent = (k - 1) ushr 1
+            val e = a[parent]
+            if ((x shr 32) >= (e shr 32)) break
+            a[k] = e
+            k = parent
+        }
+        a[k] = x
+    }
+
+    fun poll(): Long {
+        val result = a[0]
+        val n = --size
+        if (n > 0) {
+            val x = a[n]
+            var k = 0
+            val half = n ushr 1
+            while (k < half) {
+                var child = 2 * k + 1
+                var c = a[child]
+                val right = child + 1
+                if (right < n && (c shr 32) > (a[right] shr 32)) { child = right; c = a[child] }
+                if ((x shr 32) <= (c shr 32)) break
+                a[k] = c
+                k = child
+            }
+            a[k] = x
+        }
+        return result
+    }
 }

@@ -1,10 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.io.RandomAccessFile
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.channels.FileChannel
 
 /**
  * WILD ENCOUNTERS (SETTINGS > CONTROLS, GitHub #43): the game's own switch for random encounters,
@@ -53,18 +49,16 @@ object WildEncounters {
         val key = "${rom.path}:${rom.length()}:${rom.lastModified()}"
         synchronized(cache) { cache[key]?.let { return it } }
         val found = runCatching {
-            RandomAccessFile(rom, "r").use { f ->
-                find(f.channel.map(FileChannel.MapMode.READ_ONLY, 0, f.length()).order(ByteOrder.LITTLE_ENDIAN))
-            }
+            withMappedRom(rom) { find(it) }
         }.getOrDefault(0L)
         synchronized(cache) { cache[key] = found }
         return found
     }
 
-    fun find(rom: ByteBuffer): Long {
-        val b = rom.duplicate().order(ByteOrder.LITTLE_ENDIAN)
+    fun find(rom: LittleEndianReader): Long {
+        val b = rom
         val size = b.limit()
-        val bpre = size >= 0xB0 && String(ByteArray(3) { b.get(0xAC + it) }, Charsets.ISO_8859_1) == "BPR"
+        val bpre = size >= 0xB0 && asciiString(ByteArray(3) { b.get(0xAC + it) }) == "BPR"
         var cfru = false
         val gcc = HashSet<Long>()
         var o = 0
@@ -92,7 +86,7 @@ object WildEncounters {
      * player's coordinates first: nine lines), 0xFFFF (HEADER_NONE) loaded within three after it and compared with the
      * result. The switch, or null.
      */
-    private fun gccRead(b: ByteBuffer, o: Int): Long? {
+    private fun gccRead(b: LittleEndianReader, o: Int): Long? {
         val switch = pool(b, o) ?: return null
         if (switch !in 0x02000000L until 0x02040000L || o + 2 * 28 > b.limit()) return null
         val ra = (u16(b, o) shr 8) and 7
@@ -111,7 +105,7 @@ object WildEncounters {
         return if (cmp2) switch else null
     }
 
-    private fun cfruRead(b: ByteBuffer, o: Int): Boolean {
+    private fun cfruRead(b: LittleEndianReader, o: Int): Boolean {
         val r = (u16(b, o) shr 8) and 7
         if (o + 10 > b.limit()) return false
         val next = IntArray(4) { u16(b, o + 2 + 2 * it) }
@@ -121,7 +115,7 @@ object WildEncounters {
         return (ld + 1 until next.size).any { next[it] == 0x2800 or (d shl 8) or 1 }
     }
 
-    private fun matchAt(b: ByteBuffer, start: Int, shape: IntArray): Long? {
+    private fun matchAt(b: LittleEndianReader, start: Int, shape: IntArray): Long? {
         if (start < 0 || start + 2 * shape.size > b.limit()) return null
         var switch = 0L
         for ((i, want) in shape.withIndex()) {
@@ -143,10 +137,10 @@ object WildEncounters {
         return switch
     }
 
-    private fun u16(b: ByteBuffer, o: Int) = b.getShort(o).toInt() and 0xFFFF
+    private fun u16(b: LittleEndianReader, o: Int) = b.getShort(o).toInt() and 0xFFFF
 
     /** The word an `ldr rX, [pc, #imm]` at [o] loads. */
-    private fun pool(b: ByteBuffer, o: Int): Long? {
+    private fun pool(b: LittleEndianReader, o: Int): Long? {
         val at = ((o + 4) and 3.inv()) + (u16(b, o) and 0xFF) * 4
         return if (at + 4 <= b.limit()) b.getInt(at).toLong() and 0xFFFFFFFFL else null
     }

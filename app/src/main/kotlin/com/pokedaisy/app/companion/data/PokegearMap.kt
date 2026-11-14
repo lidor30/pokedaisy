@@ -41,7 +41,7 @@ object PokegearMap {
         val (packed, flags) = state ?: return null
         val skin = (packed shr 2).coerceIn(0, SKINS - 1)
         val unlock = packed and 3
-        val name = "hgss_pokegear_${skin}_${unlock}_${java.lang.Long.toHexString(flags)}"
+        val name = "hgss_pokegear_${skin}_${unlock}_${flags.toULong().toString(16)}"
         val out = File(d, "regionmap/$name.png")
         if (out.isFile) return name
         val tiles = File(d, TILES).takeIf { it.isFile }?.readBytes() ?: return null

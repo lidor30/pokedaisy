@@ -1,7 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
  * Gen 3 raw Pokémon-structure decoding, shared by every native-RAM reader
@@ -26,10 +24,10 @@ internal val gen3SubstructOrder = arrayOf(
 )
 
 private fun u32(b: ByteArray, off: Int): Long =
-    (ByteBuffer.wrap(b, off, 4).order(ByteOrder.LITTLE_ENDIAN).int.toLong()) and 0xFFFFFFFFL
+    s32le(b, off).toLong() and 0xFFFFFFFFL
 
 private fun u16(b: ByteArray, off: Int): Int =
-    (ByteBuffer.wrap(b, off, 2).order(ByteOrder.LITTLE_ENDIAN).short.toInt()) and 0xFFFF
+    (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
 
 /**
  * Where struct Pokemon keeps the party-only fields after the BoxPokemon, and

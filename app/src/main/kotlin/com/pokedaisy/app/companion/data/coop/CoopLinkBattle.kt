@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data.coop
 
+import com.pokedaisy.app.companion.data.hex
+
 
 /**
  * The game side of a link battle, mirroring the native bridge (`pkCoopLink*`, `pkCoopStory*`). Emu thread only.
@@ -304,7 +306,7 @@ class CoopLinkBattle(
             val why = (r[i].toInt() and 0xFF) or ((r[i + 1].toInt() and 0xFF) shl 8)
             val len = (r[i + 4].toInt() and 0xFF) or ((r[i + 5].toInt() and 0xFF) shl 8)
             val end = minOf(r.size, i + 6 + len)
-            val hex = (i + 6 until end).joinToString("") { "%02x".format(r[it].toInt() and 0xFF) }
+            val hex = (i + 6 until end).joinToString("") { (r[it].toInt() and 0xFF).hex(2) }
             out.add("check=$why ${if (r[i + 2].toInt() == 1) "give" else "take"} kind=${r[i + 3].toInt() and 0xFF} size=$len bytes=$hex")
             i = end
         }

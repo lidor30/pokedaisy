@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data.coop
 
+import com.pokedaisy.app.companion.data.hex
 import java.io.File
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -73,7 +74,7 @@ class FileCatchStore(private val file: File, private val io: Executor = defaultI
     private fun write() {
         val sb = StringBuilder()
         for (k in keys) {
-            for ((id, mon) in mem.pending(k)) sb.append("P ").append(k).append(' ').append(id).append(' ').append(mon.joinToString("") { "%02x".format(it) }).append('\n')
+            for ((id, mon) in mem.pending(k)) sb.append("P ").append(k).append(' ').append(id).append(' ').append(mon.hex()).append('\n')
             for (t in mem.given(k).toList().takeLast(MAX_GIVEN)) sb.append("G ").append(k).append(' ').append(t).append('\n')
         }
         latest = sb.toString()
