@@ -156,6 +156,9 @@ int main(int argc,char** argv){
   auto unovaView=[&]{return ds_read_battle(black,read32,pk_nds_field_state(black,read32,nullptr,0));};
   const auto blackActions=unovaView();
   assert(blackActions.panel==DsBattlePanel::Actions && blackActions.species==381 && blackActions.gen5);
+  // The battler's party slot names it: the prompt's nickname comes from that save record.
+  assert(blackActions.partySlot>=0 && blackActions.partySlot<int(blackSave.party.size()) &&
+         blackSave.party[blackActions.partySlot].species==381);
   DsBattleStrip unovaStrip;
   unovaStrip.select(blackActions,0,0,true,false);
   auto tap=unovaStrip.tick();

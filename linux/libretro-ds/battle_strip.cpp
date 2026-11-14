@@ -104,6 +104,10 @@ DsBattleView read_gen5(const PkNdsFieldGame* game,uint32_t (*read32)(uint32_t)) 
   result.species=read32(mon+0x0c)&0xffff;
   if(result.species<1 || result.species>=int(std::size(unovaSpecies)))return {};
   result.panel=panel==1?DsBattlePanel::Actions:DsBattlePanel::Moves;
+  // BTL_POKEPARAM's id (Gen5Reader's GEN5_POKE_ID): the place in the party it came from, the player's 0 to 5. A
+  // switch reorders the battle's own array, not this.
+  const auto id=(read32(mon+0x18)>>8)&0xff;
+  if(id<6)result.partySlot=int(id);
   for(int slot=0;slot<4;++slot){
     const auto offset=0x104+slot*14;
     const auto id=(read32(mon+(offset&~3u))>>((offset&3)*8))&0xffff;
