@@ -771,6 +771,7 @@ void present_frame(const void* data) {
     const bool mini=shell.settings.hudSize!=PD_HUD_LARGE;
     const bool pip=arrangement.touch.w>0 && arrangement.touch.x>top.x && arrangement.touch.x<top.x+top.w;
     const int hudRight=pip?(arrangement.touch.x-top.x)*256/top.w:256;
+    // Inputs outside the key (icon art loaded late, the snapshot) catch up at refresh(), every 12 frames.
     HudLayerKey key;
     // Whole objects, padding too (memcmp below): the settings are one object, never copied member by member.
     std::memset(&key,0,sizeof key);

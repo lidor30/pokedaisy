@@ -89,7 +89,13 @@ if(BUILD_TESTING)
   set_tests_properties(ds-diagnostic-generate PROPERTIES FIXTURES_SETUP diagnostic)
   file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/validation)
   add_test(NAME ds-libretro-contract COMMAND ds-libretro-host $<TARGET_FILE:pokedaisy_ds_libretro> ${DIAGNOSTIC} ${CMAKE_CURRENT_BINARY_DIR}/validation)
-  set_tests_properties(ds-libretro-contract PROPERTIES FIXTURES_REQUIRED diagnostic TIMEOUT 90)
+  set_tests_properties(ds-libretro-contract PROPERTIES FIXTURES_REQUIRED diagnostic TIMEOUT 90
+    ENVIRONMENT PD_EXPECT_ENHANCED=1 PASS_REGULAR_EXPRESSION "PASS .*format=1 enhanced=1")
+  # The same over a frontend that takes RGB565 alone (the core's fallback).
+  file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/validation-565)
+  add_test(NAME ds-libretro-contract-565 COMMAND ds-libretro-host $<TARGET_FILE:pokedaisy_ds_libretro> ${DIAGNOSTIC} ${CMAKE_CURRENT_BINARY_DIR}/validation-565)
+  set_tests_properties(ds-libretro-contract-565 PROPERTIES FIXTURES_REQUIRED diagnostic TIMEOUT 90
+    ENVIRONMENT "PD_EXPECT_ENHANCED=1;PD_ONLY565=1" PASS_REGULAR_EXPRESSION "PASS .*format=2 enhanced=1")
   add_executable(ds-companion-fixture test/fixture.cpp)
   add_executable(ds-shared-default-ui ${ROOT}/3ds/test/host_display_test.c)
   add_executable(ds-battle-strip-test test/battle_strip.cpp)
