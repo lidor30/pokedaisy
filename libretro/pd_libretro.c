@@ -1430,6 +1430,16 @@ static int hud_hit_at(int x, int y) {
   return -1;
 }
 
+/* Field frames in a row: the HUD comes up after 20. Also counted on a frame the frontend hides, so the HUD shows on the
+ * same frame with and without fast-forward's skipped frames. */
+static void hud_field_tick(void) {
+  const bool field = PD_BE_IS_GB()
+                         ? wideSupported && pk_wide_scene() == PK_WIDE_SCENE_FIELD && !snap.inBattle && flyStage == 0
+                         : (fieldFlags & PK_FIELD_KNOWN) && !(fieldFlags & (PK_FIELD_LOCKED | PK_FIELD_BATTLE)) &&
+                               (!wideSupported || pk_wide_scene() == PK_WIDE_SCENE_FIELD) && flyStage == 0;
+  hudFieldFrames = field ? hudFieldFrames + 1 : 0;
+}
+
 RETRO_API void retro_run(void) {
   if (!haveGame) {
     mgba_retro_run();
@@ -2127,6 +2137,18 @@ RETRO_API void retro_run(void) {
   }
 
 
+  // A frame the frontend will not show (video bit clear, as diatom's fast-forward skip asks): the game and the layer's
+  // logic ran, the drawing is left out. Only the video bit counts: a fast-forward flag alone still shows its frames.
+  int av = 3;
+  const bool hidden = realEnv && realEnv(RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE, &av) && !(av & 1);
+  if (hidden) {
+    if (!companion && !(quickOpen && ovPixels))
+      hud_field_tick(); // as the game's own draw below would
+    realVideo(NULL, (unsigned)CW, (unsigned)CH, (size_t)CW * 2);
+    PF_SKIPPED();
+    pf_frame();
+    return;
+  }
   if (repeat) {
     repeatedFrame = true;
     realVideo(NULL, (unsigned)CW, (unsigned)CH, (size_t)CW * 2);
@@ -2189,11 +2211,8 @@ RETRO_API void retro_run(void) {
       draw_game_fast();
     else
       draw_game();
-    bool gb = PD_BE_IS_GB();
-    bool field = gb ? wideSupported && pk_wide_scene() == PK_WIDE_SCENE_FIELD && !snap.inBattle && flyStage == 0
-                    : (fieldFlags & PK_FIELD_KNOWN) && !(fieldFlags & (PK_FIELD_LOCKED | PK_FIELD_BATTLE)) &&
-                          (!wideSupported || pk_wide_scene() == PK_WIDE_SCENE_FIELD) && flyStage == 0;
-    hudFieldFrames = field ? hudFieldFrames + 1 : 0;
+    const bool gb = PD_BE_IS_GB();
+    hud_field_tick();
     if (settings.hud && game.cfg && host.hasHud && hudFieldFrames >= 20) {
       int steps = polishedActions ? polished_byte(PD_PC_REPEL_STEPS) : gb ? 0 : repel_steps(core, game.cfg);
       if (steps <= 0)
