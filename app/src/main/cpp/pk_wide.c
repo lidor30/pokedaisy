@@ -3255,7 +3255,8 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
     int sy = edgeT + margin, sx1 = 240 - edgeR - margin, sx = sx1 - SIGN_W;
     int c0 = sx / 8, c1 = (sx1 - 1) / 8, r0 = sy / 8, r1 = (sy + signH - 1) / 8;
     int cols = c1 - c0 + 1, rows = r1 - r0 + 1, need = cols * rows;
-    bool arrow = margin >= 1 && c0 >= split && c1 <= 28 && r0 >= 1 && r1 <= 4 && need <= MENU_SIGN_TILES;
+    // Col 29 too: a box with no right edge (Recharged Emerald's band runs the screen's width) - the cells' check below.
+    bool arrow = margin >= 1 && c0 >= split && c1 <= 29 && r0 >= 1 && r1 <= 4 && need <= MENU_SIGN_TILES;
     // Its cells keep what they show (a frame piece: Emerald's border runs into the cell left of its edge cell), copied
     // into the borrowed tiles under the sign; only the frame's own cells and the plain inside, never the prompt's text.
     for (int row = r0; arrow && row <= r1; row++)
@@ -3289,10 +3290,12 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
         counts[paper] = 0;
         for (int i = 0; i < 16; i++) if (counts[i] && (ink < 0 || counts[i] > counts[ink])) ink = i;
         for (int i = 0; i < 16; i++) if (counts[i] && i != ink && (shade < 0 || counts[i] > counts[shade])) shade = i;
-        if (!(ink >= 0 && shade >= 0)) { arrow = false; menuSignWhy = 4; }
+        // Text with no shadow colour (Ghost Grey's white on black): the ink alone.
+        if (ink < 0) { arrow = false; menuSignWhy = 4; }
+        else if (shade < 0) shade = ink;
         // Which is the shadow: it sits right of and below the ink, so more of its pixels have the other on their left.
         int inkFirst = 0;
-        for (int c = 1; arrow && c < split; c++)
+        for (int c = 1; arrow && shade != ink && c < split; c++)
             for (int row = 1; row < 5; row++) {
                 const uint8_t* tp = vram + charOff + (ask[row * 32 + c] & 0x3FF) * 32;
                 for (int y = 0; y < 8; y++)

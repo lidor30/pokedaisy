@@ -1298,7 +1298,8 @@ so the cells under it are copied into the borrowed message-window tiles first). 
 shape, no per-game address; gBattleTypeFlags keeps doubles' and the Safari Zone's menus. Gate: `battleMenuHideSupported` (BPR /
 BPG / BPE running as FireRed / Emerald with battle input and known action / move cursors), the companion showing on the other screen.
 The sign lights the bottom screen (SWAP SCREENS is for putting the game on top). Ruby / Sapphire left out: their cursor is drawn apart. mgba_dump
-`battlemenu`. The player's buttons follow the companion (the user's call, after a Thor try: the D-pad moved the unseen 2 x 2): on the
+`battlemenu`; every covered game swept headless 2026-11-15 (ROM_FEATURES' note: Recharged Emerald's band box has no right edge,
+Ghost Grey's text no shadow colour). The player's buttons follow the companion (the user's call, after a Thor try: the D-pad moved the unseen 2 x 2): on the
 hidden action menu (`pkBattleMenuHidden` 160) the D-pad is taken (`battleSteerTakes` / `steerMotion`) and moves gActionSelectionCursor
 round the companion's layout, FIGHT over BAG / RUN / POKéMON (`HiddenMenuSteer`, written on the next frame, the companion's click);
 A / B stay the game's. `BattleInput.menuOnCompanion`: the buttons light the game's cursor from the start (both BATTLE STYLEs) and

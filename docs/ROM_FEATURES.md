@@ -630,7 +630,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
   (a BPR / BPG / BPE header running as FireRed / Emerald with the battle buttons' addresses and the one-press picks' cursors:
   the D-pad steers the hidden action menu by writing gActionSelectionCursor, `HiddenMenuSteer`), the menus found on screen by
   `pk_wide.c`'s `menuHideBegin` (no address of its own; gBattleTypeFlags keeps doubles' and the Safari Zone's). Checked
-  headless on English FireRed rev 1 and Emerald (mgba_dump `battlemenu`). Ruby / Sapphire are left out: their cursor is
+  headless on English FireRed rev 1 and Emerald (mgba_dump `battlemenu`), then (2026-11-15) a wild battle in every covered
+  game, both menus hidden with the sign drawn (`battlemenuinfo`): FireRed rev 0 / 1, LeafGreen rev 0 / 1, Emerald, German / Spanish /
+  French / Italian Emerald, Spanish FireRed / LeafGreen, Emerald Kaizo, Emerald Legacy, randomized FireRed rev 0 / 1 and Emerald,
+  Modern Emerald, Recharged Emerald (three builds: its message box is a band with no right edge), Rocket Edition, Ash Gray and its
+  fork, Ghost Grey v1.0.1 / v1.0.4 (white on black text with no shadow colour), Let's Go Pikachu / Eevee. Ruby / Sapphire are left out: their cursor is
   drawn apart and stayed over the empty box.
 - **One-press picks**: `NativeConfig.actionCursor` / `moveCursor`, handed out only for a hash-verified ROM
   (`TelemetrySampler.knownCursorAddrs`; a randomized retail ROM's masked hash counts, `RandomizedRetail`), or for a hack
