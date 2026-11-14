@@ -93,10 +93,16 @@ class Gen3SaveData(
             if (p.mon.species !in 1..MAX_SPECIES) return "party Pokémon ${i + 1} has species ${p.mon.species}"
             if (!p.mon.isEgg && p.level !in 1..100) return "party Pokémon ${i + 1} is level ${p.level}"
         }
-        // The game zeroes the slots past the count (ZeroMonData): anything there is another layout's data.
+        // The game empties the slots past the count (ZeroMonData): zeroes, but the mail field (+0x55) MAIL_NONE, 0xFF -
+        // every slot a party ever shrank from (the check wanted all zeroes and refused a player's Emerald save, Discord
+        // 2026-11-11). Anything else there is another layout's data.
         for (i in count until PARTY_SIZE) {
             val off = format.partyOff + i * PARTY_MON_SIZE
-            if ((off until off + PARTY_MON_SIZE).any { saveBlock1[it].toInt() != 0 }) return "party slot ${i + 1} isn't empty"
+            val empty = (0 until PARTY_MON_SIZE).all { b ->
+                val v = saveBlock1[off + b].toInt() and 0xFF
+                v == 0 || b == MAIL_OFF && v == MAIL_NONE
+            }
+            if (!empty) return "party slot ${i + 1} holds data past the party"
         }
         if (currentBox >= BOXES) return "current box ${currentBox + 1}"
         val records = (0 until BOXES * BOX_SLOTS).map { mon(BoxSlot(it / BOX_SLOTS, it % BOX_SLOTS)) }
@@ -110,6 +116,9 @@ class Gen3SaveData(
     companion object {
         const val PARTY_SIZE = 6
         const val PARTY_MON_SIZE = 100
+        /** struct Pokemon's mail (pokemon.h), and MAIL_NONE: what ZeroMonData leaves there. */
+        const val MAIL_OFF = 0x55
+        const val MAIL_NONE = 0xFF
         const val BOXES = 14
         const val BOX_SLOTS = 30
         const val BOX_NAMES_OFF = 4 + BOXES * BOX_SLOTS * Gen3BoxMon.SIZE   // 0x8344

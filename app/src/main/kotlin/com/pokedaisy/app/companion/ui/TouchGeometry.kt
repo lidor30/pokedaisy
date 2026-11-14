@@ -37,6 +37,11 @@ object TouchGeometry {
     /** Everything placed in a [w]x[h] area: the items, and the [preset] they came from (SIDES may fall back to CLASSIC). */
     data class Placed(val w: Float, val h: Float, val items: List<Item>, val preset: TouchPreset, val dp: Float) {
         fun item(b: TouchButton) = items.firstOrNull { it.button == b }
+
+        /** These less the controls over the box [l, t, r, b) (px): something of the game's to tap is there (a DS battle's
+         * menu), so they step aside; the rest keep their places. */
+        fun uncovering(l: Float, t: Float, r: Float, b: Float): Placed =
+            copy(items = items.filterNot { it.left < r && it.right > l && it.top < b && it.bottom > t })
     }
 
     /** The room kept from the area's edges (dp). */
