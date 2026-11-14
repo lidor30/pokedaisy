@@ -3609,6 +3609,14 @@ NDK `28.2.13676358` and CMake `3.22.1` (both installable via `sdkmanager`).
 `make help` lists the other workflows (install, Paparazzi shots, ui-preview,
 headless captures).
 
+**The dev app** (`./gradlew :app:installDev`, or `make install-dev` / `make run-dev`): a debug build under its own
+package id, `com.pokedaisy.app.dev`, named "PokeDaisy Dev" with an orange icon, so it installs beside the release app
+instead of over it (a debug build can't replace a release one: different signing keys). It has its own data
+(`Android/data/com.pokedaisy.app.dev/`: imported ROMs, saves, states, settings, sign-ins) and starts with first-time
+setup. Linked ROMs and saves folders are shared, so the same game played in both apps writes the same save file, as with
+RetroArch. No crash reports (`BuildConfig.CRASHLYTICS` false: google-services.json has no client for its id). The
+adb-driven scripts (`scripts/roms.conf`, `run-as`) still name the release id.
+
 The generator scripts under `scripts/` and ui-preview's ROM-art rendering read
 built pret decomp checkouts (`pokefirered/`, `pokeemerald/`, `pokeruby/`,
 `pokehns/`, each built at its pinned commit) from the directory in the
