@@ -104,9 +104,17 @@ DsPen ds_pen(const DsArrangement& a,int x,int y){
   return {true,std::clamp((x-a.touch.x)*256/a.touch.w,0,255),std::clamp((y-a.touch.y)*192/a.touch.h,0,191)};
 }
 void ds_compose(uint32_t* out,const DsArrangement& a,const uint32_t* top,const uint32_t* bottom,const uint32_t* field,
-                void (*overlay)(uint32_t*)){
+                void (*overlay)(uint32_t*),DsBackdrop* kept,unsigned fieldRevision){
   auto blit=[&](const uint32_t* src,const DsRect& r){
     if(r.w<=0||r.h<=0)return;
+    // A screen at its own size, whole inside the frame (side by side, stacked): rows copied, no scaling maths.
+    if(r.w==256&&r.h==192&&r.x>=0&&r.y>=0&&r.x<=256&&r.y<=192){
+      for(int y=0;y<192;++y){
+        uint32_t* to=out+(r.y+y)*512+r.x;const uint32_t* from=src+y*256;
+        for(int x=0;x<256;++x)to[x]=from[x]&0xffffff;
+      }
+      return;
+    }
     // Whole scales and shrunk windows copy pixels. A popup between whole scales (352x264 is 1.375x) is area-weighted:
     // each output pixel takes the DS pixels it covers by how much, so a DS pixel is a solid block with at most a
     // one-pixel blend at its edge. Nearest-neighbour there doubled some rows and columns and not others: uneven strokes.
@@ -149,6 +157,23 @@ void ds_compose(uint32_t* out,const DsArrangement& a,const uint32_t* top,const u
       }
     }
   };
+  // The cached field held while a native app loads (both screens black between its fade out and in): dimmed as the
+  // popup that follows dims it, so the game's fade to black isn't undone by a bright frozen field, and the popup
+  // arrives over the backdrop it keeps.
+  const bool waiting=a.useField&&field&&a.top.w<=0&&a.touch.w<=0&&!a.modal&&!a.floating;
+  // Over the held field nothing but the screens changes from frame to frame (not under a battle strip, drawn each
+  // frame, nor where a frame is drawn after the top screen's blit).
+  const bool still=kept&&a.useField&&field&&!overlay&&(a.modal||a.floating||waiting)&&
+    !(!a.floating&&a.touch.w>0&&a.top.w==512);
+  if(still&&kept->held&&kept->field==fieldRevision){
+    auto same=[](const DsRect& p,const DsRect& q){return p.x==q.x&&p.y==q.y&&p.w==q.w&&p.h==q.h;};
+    if(same(kept->a.top,a.top)&&same(kept->a.touch,a.touch)&&kept->a.floating==a.floating&&kept->a.modal==a.modal){
+      if(!a.floating)blit(top,a.top);
+      blit(bottom,a.touch);
+      return;
+    }
+  }
+  if(kept){kept->held=still;kept->a=a;kept->field=fieldRevision;}
   const uint32_t* background=a.useField&&field?field:top;
   // A small box blur for exposed margins; field-backed modal scenes stay sharp.
   const bool fullTop=a.top.x==0&&a.top.y==0&&a.top.w==512&&a.top.h==384&&!a.modal&&!a.useField;
@@ -187,10 +212,6 @@ void ds_compose(uint32_t* out,const DsArrangement& a,const uint32_t* top,const u
     pd_round_rect(&c,r.x-5,r.y-5,r.w+10,r.h+10,3,0x303840);
     pd_round_rect(&c,r.x-3,r.y-3,r.w+6,r.h+6,2,0xf8f8f8);
   };
-  // The cached field held while a native app loads (both screens black between its fade out and in): dimmed as the
-  // popup that follows dims it, so the game's fade to black isn't undone by a bright frozen field, and the popup
-  // arrives over the backdrop it keeps.
-  const bool waiting=a.useField&&field&&a.top.w<=0&&a.touch.w<=0&&!a.modal&&!a.floating;
   if(waiting)pd_dim(&c,110);
   if(a.modal){pd_dim(&c,110);frame({a.top.x,a.top.y,a.top.w+a.touch.w,a.top.h});}
   if(!a.floating&&!fullTop)blit(top,a.top);
