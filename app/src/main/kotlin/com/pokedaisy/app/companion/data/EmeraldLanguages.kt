@@ -97,7 +97,7 @@ private val EMERALD_LEGACY by lazy {
 /** Emerald Legacy is running ([LEGACY_TEXT]): its own species past 411, egg, move stats and guide. */
 val emeraldLegacy: Boolean get() = romGameCode == LEGACY_TEXT
 
-private val portTexts = java.util.concurrent.ConcurrentHashMap<String, GameText>()
+private val portTexts = LockedMap<String, GameText>()
 
 /** The names of the game with [code] ("BPED", "AXVF", [UNBOUND_FR_TEXT]); null for English and every game without its own. */
 fun gameText(code: String): GameText? = when (code) {

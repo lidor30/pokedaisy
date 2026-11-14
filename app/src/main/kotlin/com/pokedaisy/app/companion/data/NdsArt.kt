@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
 import okio.FileHandle
 import okio.Path
 
@@ -127,7 +128,7 @@ object NdsArt {
         OriginHeartGold.data = null
         RenegadePlatinum.data = null
         Black2Redux.data = null
-        Thread({
+        background("pokedaisy-nds-art") {
             // The names first (a few text banks): the companion's first samples use them.
             runCatching { names = readNames(rom) }.onFailure { android.util.Log.w("pokedaisy", "NdsArt: names failed", it) }
             runCatching { OriginHeartGold.data = if (OriginHeartGold.matches(rom)) readOrigin(rom) else null }
@@ -147,7 +148,7 @@ object NdsArt {
                 dir = RomArt.dir(filesDir)
                 if (extractTo(rom, RomArt.dir(filesDir))) RomArt.announce()
             }.onFailure { android.util.Log.w("pokedaisy", "NdsArt: failed", it) }
-        }, "pokedaisy-nds-art").apply { isDaemon = true; start() }
+        }
     }
 
     /** Carts on Platinum's files: USA rev 1, France rev 0, the Platinum language ports. */

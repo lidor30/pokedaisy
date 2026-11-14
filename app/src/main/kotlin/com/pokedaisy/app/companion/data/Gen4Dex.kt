@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import okio.Path
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -73,6 +76,7 @@ val POKEDEX_ORIGIN = POKEDEX_HEARTGOLD.copy(
 val PokedexTables.cartDex: Boolean get() = gameBoy || gen4 != null
 
 object Gen4Dex {
+    private val lock = SynchronizedObject()
     /** One cart's pages and the rest of each species' row, as NdsArt wrote them. */
     internal class Pages(
         val entries: Map<Int, DexEntry>,
@@ -115,7 +119,7 @@ object Gen4Dex {
         val f = dir / t.pages
         if (!f.isFile) return null
         val key = f.toString() to f.lastModified
-        if (pagesFor != key) synchronized(this) {
+        if (pagesFor != key) synchronized(lock) {
             if (pagesFor != key) {
                 pages = runCatching { parse(f.readLines(), t.lastSpecies, t.gen5, t.origin) }.getOrNull()
                 pagesFor = key

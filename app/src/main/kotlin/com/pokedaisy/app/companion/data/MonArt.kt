@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
 import okio.Path
 
 /**

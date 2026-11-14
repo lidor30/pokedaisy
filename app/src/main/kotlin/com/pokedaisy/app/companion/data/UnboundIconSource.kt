@@ -1,7 +1,9 @@
 package com.pokedaisy.app.companion.data
 
 import android.graphics.Bitmap
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /**
  * Serves Pokémon Unbound party-icon sprites by pulling them out of the running
@@ -18,9 +20,9 @@ object UnboundIconSource {
     private const val PAL_BYTES = 32
     private const val ITEM_TILE_BYTES = 3 * 3 * 32 // 288
 
-    private val monCache = ConcurrentHashMap<Int, Bitmap>()
-    private val itemCache = ConcurrentHashMap<Int, Bitmap>()
-    private val lock = Any()
+    private val monCache = LockedMap<Int, Bitmap>()
+    private val itemCache = LockedMap<Int, Bitmap>()
+    private val lock = SynchronizedObject()
 
     /** Party icon for [species], or null if unavailable (retries later). */
     /** Swappable so tests / previews can read a ROM file instead of the core. */
@@ -35,7 +37,7 @@ object UnboundIconSource {
     /** Bag icon for [itemId], or null if unavailable. */
     fun getItem(itemId: Int): Bitmap? = cached(itemCache, itemId) { fetchItem(itemId) }
 
-    private inline fun cached(cache: ConcurrentHashMap<Int, Bitmap>, key: Int, fetch: () -> Bitmap?): Bitmap? {
+    private inline fun cached(cache: LockedMap<Int, Bitmap>, key: Int, fetch: () -> Bitmap?): Bitmap? {
         if (key <= 0) return null
         cache[key]?.let { return it }
         synchronized(lock) {

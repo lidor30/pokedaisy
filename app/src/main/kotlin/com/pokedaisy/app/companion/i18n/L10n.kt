@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.util.Locale
+import kotlin.concurrent.Volatile
 
 /**
  * The app's own text in nine languages. Game data (Pokémon / move / item / type

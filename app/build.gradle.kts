@@ -221,7 +221,7 @@ val licensesAsset by tasks.registering {
         "Galmuri - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-Galmuri.txt",
         "Atkinson Hyperlegible - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-AtkinsonHyperlegible.txt",
         "PokeAPI data - BSD 3-Clause" to "third_party/licenses/PokeAPI-BSD-3-Clause.txt",
-        "AndroidX, Jetpack Compose, Kotlin, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
+        "AndroidX, Jetpack Compose, Kotlin, kotlinx.atomicfu, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
         "Apache Commons - NOTICE" to "third_party/licenses/Apache-Commons-NOTICE.txt",
         "XZ for Java - BSD Zero Clause" to "third_party/licenses/XZ-Java-0BSD.txt",
         "Bouncy Castle (co-op) - MIT" to "third_party/licenses/BouncyCastle-MIT.txt",
@@ -338,5 +338,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Byte buffers, files and hashes in the data code shared with the iPad app (okio is Kotlin Multiplatform).
     implementation("com.squareup.okio:okio:3.10.2")
+    // Locks in the data code shared with the iPad app (atomicfu is Kotlin Multiplatform; the coroutines are above).
+    implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
 }
 

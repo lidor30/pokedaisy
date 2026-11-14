@@ -566,12 +566,12 @@ object Gen2Art {
 
     /** In the background, once per ROM file: a Game Boy Color cart is 2 MB. */
     fun prefetch(filesDir: Path, rom: Path) {
-        Thread({
+        background("pokedaisy-gen2-art") {
             runCatching {
                 val wrote = extractTo(readRomFile(rom), RomArt.dir(filesDir))
                 if (wrote.isNotEmpty()) RomArt.announce()
             }.onFailure { android.util.Log.w("pokedaisy", "Gen2Art: failed", it) }
-        }, "pokedaisy-gen2-art").apply { isDaemon = true; start() }
+        }
     }
 
 }

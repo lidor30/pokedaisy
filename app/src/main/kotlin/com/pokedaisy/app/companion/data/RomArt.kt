@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import okio.Path
@@ -57,7 +58,7 @@ object RomArt {
         val marker = dir / "scanned/v$SCAN_VERSION-$romKey"
         if (marker.isFile || running || OUTPUTS.all { (dir / it).isFile }) return
         running = true
-        Thread({
+        background("pokedaisy-rom-art") {
             try {
                 val t0 = System.nanoTime()
                 val wrote = extractTo(readRomFile(rom), dir)
@@ -69,7 +70,7 @@ object RomArt {
             } finally {
                 running = false
             }
-        }, "pokedaisy-rom-art").apply { isDaemon = true; start() }
+        }
     }
 
     /** Writes every art file [rom] can supply that [dir] doesn't have yet; returns their paths. */

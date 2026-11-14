@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import okio.Path
 
 /**
@@ -541,6 +544,7 @@ data class BestEffortReport(
  * stricter checks look at it again. [dir] is set by the activities before anything reads it.
  */
 object BestEffortStore {
+    private val lock = SynchronizedObject()
     /** AUTO: best effort chose it. PICKED: the player did (WHICH GAME IS THIS?). NONE: the player said
      * none of them - the ROM stays NOT SUPPORTED, no picker until they ask for it. */
     enum class Source { AUTO, PICKED, NONE }
@@ -555,16 +559,17 @@ object BestEffortStore {
 
     private fun file() = dir?.let { it / "best-effort.tsv" }
 
-    @Synchronized
     private fun rows(): Map<String, Entry> = runCatching {
-        file()?.takeIf { it.isFile }?.readLines().orEmpty().mapNotNull { line ->
-            val p = line.split('\t')
-            if (p.size < 3) return@mapNotNull null
-            val source = p.getOrNull(4)?.let { n -> Source.entries.firstOrNull { it.name == n } } ?: Source.AUTO
-            if (source != Source.NONE && BestEffort.candidate(p[1]) == null) return@mapNotNull null
-            val off = p.getOrNull(3).orEmpty().split(',').mapNotNull { n -> BestEffort.Part.entries.firstOrNull { it.name == n } }.toSet()
-            p[0] to Entry(p[0], p[1], p[2] == "FULL", off, source, verified = p.size >= 6 && p[5] == "1")
-        }.toMap()
+        synchronized(lock) {
+            file()?.takeIf { it.isFile }?.readLines().orEmpty().mapNotNull { line ->
+                val p = line.split('\t')
+                if (p.size < 3) return@mapNotNull null
+                val source = p.getOrNull(4)?.let { n -> Source.entries.firstOrNull { it.name == n } } ?: Source.AUTO
+                if (source != Source.NONE && BestEffort.candidate(p[1]) == null) return@mapNotNull null
+                val off = p.getOrNull(3).orEmpty().split(',').mapNotNull { n -> BestEffort.Part.entries.firstOrNull { it.name == n } }.toSet()
+                p[0] to Entry(p[0], p[1], p[2] == "FULL", off, source, verified = p.size >= 6 && p[5] == "1")
+            }.toMap()
+        }
     }.getOrDefault(emptyMap())
 
     /** Every ROM's kept match (not the ones the player said NONE OF THESE to). */
@@ -577,19 +582,19 @@ object BestEffortStore {
 
     fun save(sha1: String, m: BestEffort.Match, source: Source = Source.AUTO, verified: Boolean = true) {
         val k = sha1.lowercase()
-        synchronized(this) { write(rows() + (k to Entry(k, m.candidate.id, m.full, m.off, source, verified))) }
+        synchronized(lock) { write(rows() + (k to Entry(k, m.candidate.id, m.full, m.off, source, verified))) }
         onChanged?.invoke(sha1)
     }
 
     /** NONE OF THESE: no match, and no asking again until the player opens the picker. */
     fun decline(sha1: String) {
         val k = sha1.lowercase()
-        synchronized(this) { write(rows() + (k to Entry(k, "-", false, emptySet(), Source.NONE, true))) }
+        synchronized(lock) { write(rows() + (k to Entry(k, "-", false, emptySet(), Source.NONE, true))) }
         onChanged?.invoke(sha1)
     }
 
     fun forget(sha1: String) {
-        synchronized(this) { write(rows() - sha1.lowercase()) }
+        synchronized(lock) { write(rows() - sha1.lowercase()) }
         onChanged?.invoke(sha1)
     }
 

@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+
 /**
  * Games PokéDaisy won't read, at their makers' request: the companion shows [reason] (and [action], a link) in place of
  * every tab but SETTINGS, and no BEST EFFORT guess or game picker is offered. The game itself still plays.

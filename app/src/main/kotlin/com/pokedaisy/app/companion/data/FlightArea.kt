@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import okio.Path
 
 /**
@@ -157,6 +160,7 @@ object FlightArea {
 
     /** One save's seen maps, kept in [file] (a line per map, `group.num`). */
     class SeenMaps(private val file: Path) {
+        private val lock = SynchronizedObject()
         private val ids = HashSet<Int>()
         /** The save's flags were read into it ([seed]) this run. */
         var seeded = false
@@ -170,21 +174,21 @@ object FlightArea {
             }
         }
 
-        val maps: Set<Int> get() = synchronized(ids) { ids.toSet() }
+        val maps: Set<Int> get() = synchronized(lock) { ids.toSet() }
 
-        operator fun contains(id: Int) = synchronized(ids) { id in ids }
+        operator fun contains(id: Int) = synchronized(lock) { id in ids }
 
         /** Adds [more]; true when any was new (then written). */
         fun addAll(more: Collection<Int>): Boolean {
-            val added = synchronized(ids) { ids.addAll(more) }
+            val added = synchronized(lock) { ids.addAll(more) }
             if (added) runCatching {
-                val text = synchronized(ids) { ids.sorted().joinToString("\n") { "${it shr 8}.${it and 0xFF}" } }
+                val text = synchronized(lock) { ids.sorted().joinToString("\n") { "${it shr 8}.${it and 0xFF}" } }
                 file.writeTextAtomically(text)
             }
             return added
         }
 
-        val size: Int get() = synchronized(ids) { ids.size }
+        val size: Int get() = synchronized(lock) { ids.size }
 
         companion object {
             /** [dir]/flight-area/<rom crc>-<save key>.txt. */

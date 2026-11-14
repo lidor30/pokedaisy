@@ -166,7 +166,7 @@ object TrainerCardArt {
         return Art(style, d)
     }
 
-    private val loaded = java.util.concurrent.ConcurrentHashMap<CardStyle, Art>()
+    private val loaded = LockedMap<CardStyle, Art>()
 
     /** [style]'s card from the cached blobs under [dir] ([RomArt.dir]); kept for [cached]. */
     fun load(dir: Path, style: CardStyle): Art? =

@@ -1,7 +1,9 @@
 package com.pokedaisy.app.companion.data
 
 import android.graphics.Bitmap
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /**
  * Party / bag icons pulled straight out of the running FireRed/Emerald ROM,
@@ -51,10 +53,10 @@ object DecompIconSource {
     var reader: MemoryReader = InProcessReader
 
 
-    private val monCache = ConcurrentHashMap<Int, Bitmap>()
-    private val itemCache = ConcurrentHashMap<Int, Bitmap>()
-    private val missing = java.util.Collections.newSetFromMap(ConcurrentHashMap<Long, Boolean>())
-    private val lock = Any()
+    private val monCache = LockedMap<Int, Bitmap>()
+    private val itemCache = LockedMap<Int, Bitmap>()
+    private val missing = LockedMap<Long, Unit>()
+    private val lock = SynchronizedObject()
     @Volatile private var loggedOnce = false
 
     /** An already-decoded icon (no ROM read), or null. */
@@ -72,7 +74,7 @@ object DecompIconSource {
     fun peekItem(itemId: Int): Bitmap? = if (tables.itemPresent) itemCache[1_000_000 + itemId] else null
     fun getItem(itemId: Int): Bitmap? = cached(itemCache, 1_000_000 + itemId, tables.itemPresent) { fetchItem(itemId) }
 
-    private inline fun cached(cache: ConcurrentHashMap<Int, Bitmap>, key: Int, gate: Boolean, fetch: () -> Bitmap?): Bitmap? {
+    private inline fun cached(cache: LockedMap<Int, Bitmap>, key: Int, gate: Boolean, fetch: () -> Bitmap?): Bitmap? {
         if (key <= 0 || !gate) return null
         cache[key]?.let { return it }
         val sig = tables.monIconTable * 31 + key
@@ -83,7 +85,7 @@ object DecompIconSource {
             val bmp = try { fetch() } catch (e: Exception) {
                 android.util.Log.w("pokedaisy", "DecompIcon fetch $key failed", e); return null
             }
-            if (bmp == null) { missing.add(sig); return null }
+            if (bmp == null) { missing[sig] = Unit; return null }
             if (!loggedOnce) {
                 loggedOnce = true
                 android.util.Log.i("pokedaisy", "DecompIcon: first sprite decoded ${bmp.width}x${bmp.height} from tables=$tables")

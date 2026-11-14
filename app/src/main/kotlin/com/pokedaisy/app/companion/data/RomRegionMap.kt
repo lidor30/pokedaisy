@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
 import okio.FileHandle
 import okio.Path
 
@@ -69,14 +70,14 @@ object RomRegionMap {
     /** Reads [rom] in the background and publishes its map as [current]. */
     fun load(filesDir: Path, romKey: String, rom: Path) {
         current = null
-        Thread({
+        background("pokedaisy-region-map") {
             try {
-                current = loadNow(filesDir, romKey, rom) ?: return@Thread
+                current = loadNow(filesDir, romKey, rom) ?: return@background
                 RomArt.announce()
             } catch (t: Throwable) {
                 android.util.Log.w("pokedaisy", "RomRegionMap: read failed", t)
             }
-        }, "pokedaisy-region-map").apply { isDaemon = true; start() }
+        }
     }
 
     /** [read] [rom], writing its screens (once per [romKey]) where [RomArt]'s art goes. */

@@ -1,7 +1,9 @@
 package com.pokedaisy.app.companion.data
 
 import android.graphics.Bitmap
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /** Which memory a game's seen / caught arrays are offsets into. */
 enum class DexFlagBlock { SAVE_BLOCK_1, SAVE_BLOCK_2, FIXED }
@@ -1536,14 +1538,15 @@ data class DexEntry(
  * [reader] is swappable so tests and previews can read a ROM file instead.
  */
 object PokedexSource {
+    private val lock = SynchronizedObject()
     @Volatile
     var reader: MemoryReader = InProcessReader
 
-    private val entries = ConcurrentHashMap<Int, DexEntry>()
-    private val sprites = ConcurrentHashMap<Int, Bitmap>()
-    private val footprints = ConcurrentHashMap<Int, Bitmap>()
-    private val baseStats = ConcurrentHashMap<Int, IntArray>()
-    private val growthRates = ConcurrentHashMap<Int, Int>()
+    private val entries = LockedMap<Int, DexEntry>()
+    private val sprites = LockedMap<Int, Bitmap>()
+    private val footprints = LockedMap<Int, Bitmap>()
+    private val baseStats = LockedMap<Int, IntArray>()
+    private val growthRates = LockedMap<Int, Int>()
     @Volatile private var nationalToSpecies: IntArray? = null
     @Volatile private var speciesToNational: IntArray? = null
     @Volatile private var regional: IntArray? = null
@@ -1551,7 +1554,7 @@ object PokedexSource {
 
     private fun sync(t: PokedexTables) {
         if (cachedFor == t) return
-        synchronized(this) {
+        synchronized(lock) {
             if (cachedFor == t) return
             entries.clear(); sprites.clear(); footprints.clear(); baseStats.clear(); growthRates.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
             cachedFor = t
@@ -1594,7 +1597,7 @@ object PokedexSource {
      * (Glazed runs on Emerald's PokedexTables) - Emerald then Glazed in one session kept Emerald's.
      */
     fun romChanged() {
-        synchronized(this) { cachedFor = null }
+        synchronized(lock) { cachedFor = null }
         DexDetails.romChanged()
         GuideRomSource.romChanged()
         EvolutionSource.romChanged()
@@ -1761,7 +1764,7 @@ object PokedexSource {
         }.getOrNull()?.also { footprints[species] = it }
     }
 
-    private val abilityNames = ConcurrentHashMap<Pair<PokedexTables, Int>, String>()
+    private val abilityNames = LockedMap<Pair<PokedexTables, Int>, String>()
 
     /** Ability [id]'s name in the running game (battle INFO's FOE DETAILS); null = no table / unreadable. */
     fun cachedAbilityName(t: PokedexTables, id: Int): String? = abilityNames[t to id]

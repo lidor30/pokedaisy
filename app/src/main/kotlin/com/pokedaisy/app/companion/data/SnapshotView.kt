@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
 import com.pokedaisy.app.companion.i18n.tr
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 data class MoveVsFoe(val vsName: String, val label: String, val pct: Int)
 data class MoveView(val name: String, val type: String, val pp: Int, val power: Int, val vs: List<MoveVsFoe> = emptyList(), val id: Int = 0)
@@ -404,7 +406,7 @@ fun dexHoldings(party: List<MonView>, boxes: BoxesView?): Map<Int, Int>? {
 // The last boxes turned into views: the reader hands back the same PcBoxes while the storage is unchanged.
 private var lastBoxes: Pair<PcBoxes, BoxesView>? = null
 
-private fun boxesView(b: PcBoxes): BoxesView = synchronized(PcBoxes::class) {
+private fun boxesView(b: PcBoxes): BoxesView = synchronized(pcBoxesLock) {
     lastBoxes?.takeIf { it.first === b }?.let { return it.second }
     BoxesView(b.currentBox, b.boxes.map { box -> BoxView(box.name, box.wallpaper, box.mons.map { it?.let(::partyMonView) }) })
         .also { lastBoxes = b to it }

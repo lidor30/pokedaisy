@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /*
  * The DEX page's EVOLVE / AREA / MOVES sections, read from the ROM the way the
@@ -172,11 +174,12 @@ private const val MAX_FAMILY_LINKS = 24
  * is cached for the process (keyed by the game's tables, dropped when they change).
  */
 object DexDetails {
+    private val lock = SynchronizedObject()
     @Volatile private var evoFor: PokedexTables? = null
     @Volatile private var evoTable: Map<Int, List<EvoLink>>? = null
     @Volatile private var parents: Map<Int, List<EvoLink>>? = null
-    private val levelUp = ConcurrentHashMap<Int, List<LevelMove>>()
-    private val teach = ConcurrentHashMap<Int, List<TeachMove>>()
+    private val levelUp = LockedMap<Int, List<LevelMove>>()
+    private val teach = LockedMap<Int, List<TeachMove>>()
     @Volatile private var tmhm: List<Int>? = null
     @Volatile private var movesFor: Pair<PokedexTables, GuideTables?>? = null
     @Volatile private var tmhmOk: Boolean? = null
@@ -187,7 +190,7 @@ object DexDetails {
 
     /** [PokedexSource.romChanged]: every cache here starts over on the next read. */
     fun romChanged() {
-        synchronized(this) { evoFor = null; movesFor = null; spotsFor = null }
+        synchronized(lock) { evoFor = null; movesFor = null; spotsFor = null }
         MapSections.romChanged()
     }
 
@@ -207,7 +210,7 @@ object DexDetails {
     /** Every species' outgoing links, read once per ROM; null if [t] has no table or it doesn't check out. */
     fun evolutions(t: PokedexTables): Map<Int, List<EvoLink>>? {
         if (evoFor == t) return evoTable
-        synchronized(this) {
+        synchronized(lock) {
             if (evoFor == t) return evoTable
             val table = runCatching { t.gen4?.let { Gen4Dex.evolutions(it) } ?: readEvolutions(t) }
                 .onFailure { android.util.Log.w("pokedaisy", "evolutions failed", it) }
@@ -496,7 +499,7 @@ object DexDetails {
     private fun syncMoves(t: PokedexTables, g: GuideTables?) {
         val key = t to g
         if (movesFor == key) return
-        synchronized(this) {
+        synchronized(lock) {
             if (movesFor == key) return
             levelUp.clear(); teach.clear(); tmhmOk = null; tmhm = null
             movesFor = key
@@ -630,7 +633,7 @@ object DexDetails {
     private fun index(g: GuideTables): Map<Int, List<CatchSpot>>? {
         val seed = GuideRandomizer.wildSeed
         if (spotsFor == g && spotsSeed == seed) return spots
-        synchronized(this) {
+        synchronized(lock) {
             if (spotsFor == g && spotsSeed == seed) return spots
             val built = runCatching { buildIndex(g) }
                 .onFailure { android.util.Log.w("pokedaisy", "wild index failed", it) }
@@ -703,6 +706,7 @@ object DexDetails {
  * port that copied English's address).
  */
 object MapSections {
+    private val lock = SynchronizedObject()
     @Volatile private var cachedFor: GuideTables? = null
     @Volatile private var groups: Long = 0
 
@@ -730,12 +734,12 @@ object MapSections {
     }
 
     fun romChanged() {
-        synchronized(this) { cachedFor = null }
+        synchronized(lock) { cachedFor = null }
     }
 
     private fun groupsFor(g: GuideTables): Long {
         if (cachedFor == g) return groups
-        synchronized(this) {
+        synchronized(lock) {
             if (cachedFor == g) return groups
             val keys = GuideRomSource.wildMapKeys(g)
             // Every wild map (SoulGold keeps a few headers for maps it dropped: 9 in 10 will do).

@@ -1,12 +1,13 @@
 package com.pokedaisy.app.companion.data.coop
 
+import com.pokedaisy.app.companion.data.SerialQueue
 import com.pokedaisy.app.companion.data.hex
 import com.pokedaisy.app.companion.data.isFile
 import com.pokedaisy.app.companion.data.readLines
 import com.pokedaisy.app.companion.data.writeTextAtomically
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import okio.Path
-import java.util.concurrent.Executor
-import java.util.concurrent.Executors
 
 /**
  * The partner's catches that are still on their way (the host's side) and the ones already given (the partner's side), so a
@@ -49,14 +50,15 @@ class MemoryCatchStore : CoopCatchStore {
  * All file IO runs on [io] (the file is read once in the background, and every change is written there as a snapshot, the newest
  * one winning), never on the caller's thread: the flow calls this on the emu thread, between frames.
  */
-class FileCatchStore(private val file: Path, private val io: Executor = defaultIo) : CoopCatchStore {
+class FileCatchStore(private val file: Path, private val io: (() -> Unit) -> Unit = defaultIo::post) : CoopCatchStore {
+    private val lock = SynchronizedObject()
     private val mem = MemoryCatchStore()
     private val keys = LinkedHashSet<String>()
     private var loaded = false
     private var latest = ""
     private var writeQueued = false
 
-    init { io.execute { synchronized(this) { load() } } }
+    init { io { synchronized(lock) { load() } } }
 
     private fun load() {
         if (loaded) return
@@ -81,11 +83,11 @@ class FileCatchStore(private val file: Path, private val io: Executor = defaultI
             for (t in mem.given(k).toList().takeLast(MAX_GIVEN)) sb.append("G ").append(k).append(' ').append(t).append('\n')
         }
         latest = sb.toString()
-        if (!writeQueued) { writeQueued = true; io.execute { flushLatest() } }
+        if (!writeQueued) { writeQueued = true; io { flushLatest() } }
     }
 
     private fun flushLatest() {
-        val text = synchronized(this) { writeQueued = false; latest }
+        val text = synchronized(lock) { writeQueued = false; latest }
         try {
             file.writeTextAtomically(text)
         } catch (e: okio.IOException) { /* kept in memory; written with the next change */ }
@@ -94,15 +96,15 @@ class FileCatchStore(private val file: Path, private val io: Executor = defaultI
     private fun hex(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
     private fun safe(key: String) = key.replace(' ', '_')
 
-    @Synchronized override fun pending(key: String): List<Pair<Int, ByteArray>> { load(); return mem.pending(safe(key)) }
-    @Synchronized override fun addPending(key: String, battleId: Int, mon: ByteArray) { load(); mem.addPending(safe(key), battleId, mon); keys += safe(key); write() }
-    @Synchronized override fun removePending(key: String, battleId: Int) { load(); mem.removePending(safe(key), battleId); write() }
-    @Synchronized override fun given(key: String): Set<String> { load(); return mem.given(safe(key)) }
-    @Synchronized override fun addGiven(key: String, token: String) { load(); mem.addGiven(safe(key), token); keys += safe(key); write() }
+    override fun pending(key: String): List<Pair<Int, ByteArray>> = synchronized(lock) { load(); mem.pending(safe(key)) }
+    override fun addPending(key: String, battleId: Int, mon: ByteArray) = synchronized(lock) { load(); mem.addPending(safe(key), battleId, mon); keys += safe(key); write() }
+    override fun removePending(key: String, battleId: Int) = synchronized(lock) { load(); mem.removePending(safe(key), battleId); write() }
+    override fun given(key: String): Set<String> = synchronized(lock) { load(); mem.given(safe(key)) }
+    override fun addGiven(key: String, token: String) = synchronized(lock) { load(); mem.addGiven(safe(key), token); keys += safe(key); write() }
 
     companion object {
         private const val MAX_GIVEN = 50
         /** One background thread for every store: the files are tiny, the order of writes is the order of changes. */
-        val defaultIo: Executor by lazy { Executors.newSingleThreadExecutor { r -> Thread(r, "pokedaisy-coop-catches").apply { isDaemon = true } } }
+        val defaultIo by lazy { SerialQueue("pokedaisy-coop-catches") }
     }
 }

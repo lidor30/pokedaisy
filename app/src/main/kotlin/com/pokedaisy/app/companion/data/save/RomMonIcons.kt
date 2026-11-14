@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion.data.save
 
 import android.graphics.Bitmap
 import com.pokedaisy.app.companion.data.IconTables
+import com.pokedaisy.app.companion.data.LockedMap
 import com.pokedaisy.app.companion.data.NATIVE_EMERALD_RETAIL
 import com.pokedaisy.app.companion.data.NATIVE_FIRERED_REV0
 import com.pokedaisy.app.companion.data.NATIVE_FIRERED_REV1
@@ -11,7 +12,6 @@ import com.pokedaisy.app.companion.data.readFully
 import com.pokedaisy.app.companion.data.withRomFile
 import okio.FileHandle
 import okio.Path
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Party icons for PC BOXES / TRADE, read from the player's own ROM *file* - nothing is bundled, and no game is
@@ -22,8 +22,8 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class RomMonIcons private constructor(private val rom: Path, private val tables: IconTables) {
 
-    private val cache = ConcurrentHashMap<Int, Bitmap>()
-    private val missing = ConcurrentHashMap.newKeySet<Int>()
+    private val cache = LockedMap<Int, Bitmap>()
+    private val missing = LockedMap<Int, Unit>()
 
     /** An icon already decoded, without touching the file. */
     fun peek(species: Int): Bitmap? = cache[species]
@@ -33,7 +33,7 @@ class RomMonIcons private constructor(private val rom: Path, private val tables:
         if (species <= 0 || species in missing) return null
         cache[species]?.let { return it }
         val bmp = runCatching { withRomFile(rom) { f -> decodeMonIcon(tables, species) { a, n -> read(f, a, n) } } }.getOrNull()
-        if (bmp == null) missing += species else cache[species] = bmp
+        if (bmp == null) missing[species] = Unit else cache[species] = bmp
         return bmp
     }
 

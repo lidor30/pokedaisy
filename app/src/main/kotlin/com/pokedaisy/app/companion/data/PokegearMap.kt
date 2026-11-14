@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import okio.Path
 
 /**
@@ -14,6 +17,7 @@ import okio.Path
  * once into rom-art's regionmap/ ([image]); the Sinjoh Ruins / S.S. Aqua pieces (shown only while there) are left out.
  */
 object PokegearMap {
+    private val lock = SynchronizedObject()
     const val TILES = "nds/heartgold/pgmap_tiles.bin"
     const val TILEMAP = "nds/heartgold/pgmap_map.bin"
     fun palette(skin: Int) = "nds/heartgold/pgmap_pal_$skin.bin"
@@ -35,21 +39,22 @@ object PokegearMap {
 
     /** The picture's name under regionmap/ for the current [state], written first if it isn't there; null without the
      * cart's pieces or a state yet. */
-    @Synchronized
     fun image(): String? {
-        val d = dir ?: return null
-        val (packed, flags) = state ?: return null
-        val skin = (packed shr 2).coerceIn(0, SKINS - 1)
-        val unlock = packed and 3
-        val name = "hgss_pokegear_${skin}_${unlock}_${flags.toULong().toString(16)}"
-        val out = d / "regionmap/$name.png"
-        if (out.isFile) return name
-        val tiles = (d / TILES).takeIf { it.isFile }?.readBytes() ?: return null
-        val tilemap = (d / TILEMAP).takeIf { it.isFile }?.readBytes() ?: return null
-        val pal = (d / palette(skin)).takeIf { it.isFile }?.readBytes() ?: return null
-        val img = compose(tiles, tilemap, pal, unlock) { flag -> flypointSet(flags, flag) }
-        out.writeAtomically(img.png())
-        return name
+        synchronized(lock) {
+            val d = dir ?: return null
+            val (packed, flags) = state ?: return null
+            val skin = (packed shr 2).coerceIn(0, SKINS - 1)
+            val unlock = packed and 3
+            val name = "hgss_pokegear_${skin}_${unlock}_${flags.toULong().toString(16)}"
+            val out = d / "regionmap/$name.png"
+            if (out.isFile) return name
+            val tiles = (d / TILES).takeIf { it.isFile }?.readBytes() ?: return null
+            val tilemap = (d / TILEMAP).takeIf { it.isFile }?.readBytes() ?: return null
+            val pal = (d / palette(skin)).takeIf { it.isFile }?.readBytes() ?: return null
+            val img = compose(tiles, tilemap, pal, unlock) { flag -> flypointSet(flags, flag) }
+            out.writeAtomically(img.png())
+            return name
+        }
     }
 
     /** Flag [flag] (an event flag number from FLAG_SYS_FLYPOINT_PALLET on) in the flypoint bits [flags]. */

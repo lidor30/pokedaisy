@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import okio.Path
 
 /**
@@ -53,15 +55,17 @@ object ReusableTms {
 
     private val cache = HashMap<String, List<Site>>()
 
+    private val lock = SynchronizedObject()
+
     /** The sites in [rom], all or none. Reads the file (a window at a time, ~100 ms for 32 MB): call it off the UI thread; cached
      * per file. */
     fun find(rom: Path): List<Site> {
         val key = fileKey(rom)
-        synchronized(cache) { cache[key]?.let { return it } }
+        synchronized(lock) { cache[key]?.let { return it } }
         val found = runCatching {
             withRomFile(rom) { find(FileLittleEndian(it)) }
         }.getOrDefault(emptyList())
-        synchronized(cache) { cache[key] = found }
+        synchronized(lock) { cache[key] = found }
         return found
     }
 

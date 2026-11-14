@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
 import okio.Path
 
 /**
@@ -29,13 +30,13 @@ object RegionMapWatch {
     /** Scans [rom] in the background for its map pointers. */
     fun load(rom: Path) {
         watches = emptyList()
-        Thread({
+        background("pokedaisy-map-watch") {
             try {
                 watches = withRomFile(rom) { f -> find(f.readFully(0, minOf(f.size(), SCAN_END.toLong()).toInt())) }
             } catch (t: Throwable) {
                 android.util.Log.w("pokedaisy", "RegionMapWatch: scan failed", t)
             }
-        }, "pokedaisy-map-watch").apply { isDaemon = true; start() }
+        }
     }
 
     /** True while any of this ROM's map screens is open. */

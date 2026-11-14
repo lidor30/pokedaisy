@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
 import com.pokedaisy.app.MgbaCore
+import kotlin.concurrent.Volatile
+import kotlinx.coroutines.channels.Channel
 
 /** Told once per game when the Poller has decided what it is (a GameKind's name, and a BEST EFFORT match's title):
  * crash reports name it (CrashReports.gameIdentified, set up in PokeDaisyApp). */
@@ -117,16 +119,16 @@ class TelemetrySampler {
         object Keep : PickAnswer
         object Seen : PickAnswer
     }
-    private val answers = java.util.concurrent.ConcurrentLinkedQueue<PickAnswer>()
+    private val answers = Channel<PickAnswer>(Channel.UNLIMITED)
 
     /** WHICH GAME IS THIS?: read the ROM as candidate [id] ([BestEffort.candidate]). */
-    fun pickGame(id: String) { answers += PickAnswer.Pick(id) }
+    fun pickGame(id: String) { answers.trySend(PickAnswer.Pick(id)) }
     /** NONE OF THESE: no game - NOT SUPPORTED, until the player opens the picker again. */
-    fun pickNone() { answers += PickAnswer.None }
+    fun pickNone() { answers.trySend(PickAnswer.None) }
     /** KEEP: the doubted match stays, as the player's own pick. */
-    fun keepGame() { answers += PickAnswer.Keep }
+    fun keepGame() { answers.trySend(PickAnswer.Keep) }
     /** The match notice was seen. */
-    fun bestEffortSeen() { answers += PickAnswer.Seen }
+    fun bestEffortSeen() { answers.trySend(PickAnswer.Seen) }
 
     /** [label]: the ROM isn't one detect() knows. A match kept for it ([BestEffortStore]) reads it anyway. */
     private fun unsupportedRom(reader: MemoryReader, code: String, size: Long, hash: String?, label: String) {
@@ -193,7 +195,7 @@ class TelemetrySampler {
 
     private fun takeAnswers(reader: MemoryReader) {
         while (true) {
-            when (val a = answers.poll() ?: return) {
+            when (val a = answers.tryReceive().getOrNull() ?: return) {
                 is PickAnswer.Pick -> {
                     val c = BestEffort.candidate(a.id) ?: continue
                     val code = beCode ?: continue

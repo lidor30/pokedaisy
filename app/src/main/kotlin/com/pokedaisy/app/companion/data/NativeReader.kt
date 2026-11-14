@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.data
 
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+
 
 /**
  * Rebuilds a Telemetry snapshot by polling a Gen 3 game's own RAM globals: how
@@ -421,7 +424,7 @@ private var bagValid = false
  * next throttled refresh. */
 internal fun resetNativeBagCache() {
     bagTick = 0; lastBag = emptyList(); bagValid = false
-    synchronized(PcBoxes::class) { lastStorageRaw = null; lastStorage = null }
+    synchronized(pcBoxesLock) { lastStorageRaw = null; lastStorage = null }
 }
 
 fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
@@ -664,8 +667,9 @@ val GS_CHRONICLES_PC_STORAGE = cfruPcStorage(0x09D10BE3L, 0x09D13854L)
 
 // CFRU's gExperienceTables as read from the ROM (levels 0..100 of each row), by address.
 private val cfruExpTableCache = HashMap<Long, Array<IntArray>>()
+private val cfruExpTableLock = SynchronizedObject()
 
-private fun cfruExpTables(c: MemoryReader, at: Long): Array<IntArray>? = synchronized(cfruExpTableCache) {
+private fun cfruExpTables(c: MemoryReader, at: Long): Array<IntArray>? = synchronized(cfruExpTableLock) {
     cfruExpTableCache[at] ?: runCatching {
         Array(6) { r -> c.readCoreMemory(at + r * 256L * 4, 101 * 4).let { b -> IntArray(101) { u32le(b, 4 * it).toInt() } } }
             // A real table climbs from 0: anything else (no ROM on the bus) falls back to vanilla's.
@@ -675,6 +679,8 @@ private fun cfruExpTables(c: MemoryReader, at: Long): Array<IntArray>? = synchro
 
 // The last storage read and what it decoded to: the boxes only change while the player is at a PC, so a sample whose
 // bytes are the same hands back the same object (the BOXES tab then has nothing to redraw).
+/** Guards [lastStorageRaw] / [lastStorage] (SnapshotView's box views too). */
+internal val pcBoxesLock = SynchronizedObject()
 private var lastStorageRaw: ByteArray? = null
 private var lastStorage: PcBoxes? = null
 
@@ -704,7 +710,7 @@ internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatc
     val raw = ByteArray(layout.size + (cfru?.extraBoxes?.size ?: 0) * boxBytes)
     c.readInto(at, raw, 0, layout.size)
     cfru?.extraBoxes?.forEachIndexed { i, a -> c.readInto(a, raw, layout.size + i * boxBytes, boxBytes) }
-    synchronized(PcBoxes::class) {
+    synchronized(pcBoxesLock) {
         if (raw.contentEquals(lastStorageRaw)) lastStorage?.let { return it }
     }
     val dex = cfg.pokedex
@@ -744,7 +750,7 @@ internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatc
         )
     }
     PcBoxes(currentBox = (raw[0].toInt() and 0xFF).coerceIn(0, layout.boxes - 1), boxes = boxes).also {
-        synchronized(PcBoxes::class) { lastStorageRaw = raw; lastStorage = it }
+        synchronized(pcBoxesLock) { lastStorageRaw = raw; lastStorage = it }
     }
 }.getOrNull()
 

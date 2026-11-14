@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import com.pokedaisy.app.companion.i18n.tr
+import kotlin.concurrent.Volatile
 
 /** One row of the ROM's evolution table: [method] (EVO_*), its [param], the [target] species. */
 data class Evolution(val method: Int, val param: Int, val target: Int)
