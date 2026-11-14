@@ -340,6 +340,9 @@ private const val MAP_HEADER_REGION_MAPSEC_OFF = 0x14L
 private const val OBJECT_EVENT_FACING_OFF = 0x18L
 private const val BATTLE_TYPE_DOUBLE = 0x0001
 private const val BATTLE_TYPE_TRAINER = 0x0008
+/** FireRed / LeafGreen's BATTLE_TYPE_OLD_MAN_TUTORIAL, Emerald and Ruby / Sapphire's BATTLE_TYPE_WALLY_TUTORIAL (pret's
+ * constants/battle.h): the catching lesson, someone else's Pokémon. Read only where the game runs as one of those. */
+private const val BATTLE_TYPE_CATCH_TUTORIAL = 0x0200
 private const val BAG_POCKET_STRIDE = 8
 private const val BAG_POCKET_SLOTS = 255 // a pocket's u8 capacity (SoulGold's Items pocket holds 150)
 private const val BAG_MAX_ITEMS = 300
@@ -442,6 +445,7 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
     var isDouble = false
     var isTrainer = false
     var trainerRead = false
+    var tutorial = false
     var foeBattler = -1
     // Which battler is at each position, so gBattlerPartyIndexes can be read by position.
     val battlerAt = IntArray(4) { -1 }
@@ -454,6 +458,8 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
                 isDouble = (u32le(it, 0).toInt() and BATTLE_TYPE_DOUBLE) != 0
                 isTrainer = (u32le(it, 0).toInt() and BATTLE_TYPE_TRAINER) != 0
                 trainerRead = cfg.battleTypeFlags != 0L
+                tutorial = (u32le(it, 0).toInt() and BATTLE_TYPE_CATCH_TUTORIAL) != 0 &&
+                    (activeGame == GameKind.FIRERED || activeGame == GameKind.EMERALD)
             }
         val nRaw = runCatching { client.readCoreMemory(cfg.battlersCount, 1) }.getOrNull()
         val posRaw = runCatching { client.readCoreMemory(cfg.battlerPositions, 4) }.getOrNull()
@@ -562,7 +568,9 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         guideTables = cfg.guideTables,
         enemyParty = enemyParty,
         battleFoes = battleFoes,
-        isTrainerBattle = if (inBattle && trainerRead) isTrainer else null,
+        // The catching lesson (Viridian's old man, Wally on Route 102) is no encounter of the player's: not judged
+        // (GitHub #829: LeafGreen's WEEDLE was counted).
+        isTrainerBattle = if (inBattle && trainerRead && !tutorial) isTrainer else null,
         enemyActive = enemyActive,
         enemyNext = enemyNext,
         battlerPartySlots = battlerPartySlots,
