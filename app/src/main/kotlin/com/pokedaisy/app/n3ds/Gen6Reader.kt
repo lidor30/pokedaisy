@@ -28,9 +28,10 @@ object Gen6Reader {
         val pockets: List<Pocket>,
         /** The static module's (CRS) header: the loaded modules' chain starts there ([N3dsNative.modules]). */
         val staticModule: Int = 0,
-        /** The field's lower-screen object (heap, the same address on every boot seen, headless and on the RP6): +0 is
-         * 0x20, +4 a pointer while the field is up, +0x10 its flags: 0x3D1, 0x3D3 with the X menu open ([sceneOf]). */
-        val fieldObject: Int = 0,
+        /** The field's X menu ([sceneOf]): a pointer, set while the menu is open, and at +0x24 a byte that's 1 then;
+         * both 0 on the field, in dialogue, through doors. Mapped while the field module is loaded. Found on the RP6
+         * and headless, two saves (2026-11-15). */
+        val fieldMenu: Int = 0,
     )
 
     class Pocket(val offset: Int, val capacity: Int, val companionPocket: Int)
@@ -51,7 +52,7 @@ object Gen6Reader {
             Pocket(0xE68, 64, com.pokedaisy.app.companion.data.POCKET_BERRIES),
         ),
         staticModule = 0x012B6000,
-        fieldObject = 0x08D033F0,
+        fieldMenu = 0x08603714,
     )
 
     /** What the game's two screens show, for where the touch screen goes ([sceneOf]). */
@@ -64,27 +65,25 @@ object Gen6Reader {
         SCREEN,
     }
 
-    /** The field object's flags once the field is up ([sceneOf]). */
-    private const val FIELD_UP = 0x3D0
-
     /** The modules that are the title and the start menu, and the field's: a screen is any other. */
     private val NOT_SCREENS = setOf("DllTitle", "DllBackGround", "DllSequence", "DllStartMenu")
 
+    /** What [sceneOf] reads at [Config.fieldMenu]. */
+    const val FIELD_MENU_BYTES = 0x28
+
     /**
-     * The scene from the loaded modules ([N3dsNative.modules], one name a line) and the field object's 0x20 bytes;
-     * null while it can't tell (between two screens no module is loaded; the title): the last one stands.
+     * The scene from the loaded modules ([N3dsNative.modules], one name a line) and [Config.fieldMenu]'s
+     * [FIELD_MENU_BYTES]; null while it can't tell (between two screens no module is loaded; the title): the last
+     * one stands. (The field's lower-screen object's flags, tried first, also read as the menu in dialogue and on
+     * every door.)
      */
-    fun sceneOf(modules: String, fieldObject: ByteArray?): Scene? {
+    fun sceneOf(modules: String, fieldMenu: ByteArray?): Scene? {
         val names = modules.split('\n').filter { it.isNotEmpty() }
         if (names.isEmpty()) return null
         if ("DllField" in names) {
-            if (fieldObject == null || fieldObject.size < 0x14) return Scene.FIELD
-            val b = ByteBuffer.wrap(fieldObject).order(ByteOrder.LITTLE_ENDIAN)
-            // The object's own size word first: something else at that address reads as the field.
-            if (b.getInt(0) != 0x20) return Scene.FIELD
-            // 0x3D1 on the field, 0x3D3 with the X menu; 0x153 / 0xD3 while the field loads (bit 1 set already).
-            val flags = b.getInt(0x10)
-            return if (flags and FIELD_UP == FIELD_UP && flags and 2 != 0 && b.getInt(4) != 0) Scene.MENU else Scene.FIELD
+            if (fieldMenu == null || fieldMenu.size < FIELD_MENU_BYTES) return Scene.FIELD
+            val open = ByteBuffer.wrap(fieldMenu).order(ByteOrder.LITTLE_ENDIAN).getInt(0) != 0 && fieldMenu[0x24].toInt() == 1
+            return if (open) Scene.MENU else Scene.FIELD
         }
         return if (names.all { it in NOT_SCREENS }) null else Scene.SCREEN
     }

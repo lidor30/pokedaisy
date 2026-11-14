@@ -104,13 +104,17 @@ are checked through this path, then goes.
   surface showed at the stage's top left. L2 / TOUCH bring it in, a tap on the dim sends it away.
 - The touch screen by itself (ONE SCREEN, 2026-11-15): `N3dsSession`'s scene thread reads, ten times a second, the
   modules the game has loaded (`N3dsNative.modules`: the CRO chain from the static module's header at 0x012B6000, each
-  header's name at +0x84 and next at +0x88) and the field's lower-screen object (0x08D033F0, the same heap address on
-  every boot seen, headless and on the RP6). `Gen6Reader.sceneOf`: `DllField` with the object's flags 0x3D3 = the X menu
-  (the touch screen floats in; 0x3D1 the field, 0x153 / 0xD3 while it loads); no `DllField` = a screen of the game's own
+  header's name at +0x84 and next at +0x88) and the field's X menu (`Gen6Reader.Config.fieldMenu`, 0x08603714: a
+  pointer set while the menu is open and a byte at +0x24 that's 1 then; checked on two saves, headless and on the RP6).
+  `Gen6Reader.sceneOf`: `DllField` with the menu open = MENU (the touch screen floats in); no `DllField` = a screen of the game's own
   (`DllPokeList` for the party and the bag, a battle...): both screens side by side, framed over a picture of the field
   (Azahar's screenshot once a second while on the field); the title's modules and the empty moments between screens keep
   the last scene. A change counts on two reads in a row. A window the player opened (L2) stays until they close it.
-  Checked on the RP6: menu, party, bag, back. Not seen yet: a battle, a dialogue, the PSS's own screens.
+  Checked on the RP6: menu, party, bag, back, dialogue, doors, a wild battle (side by side: the battle's modules are
+  `DllBattle`, `DllBackGround`). The field object's flags tried first (0x08D033F0 +0x10: 0x3D1 / 0x3D3) also read as
+  the menu in dialogue and on every door and map change (the window popped in as the player walked): not the menu.
+  Test saves: the Citra saves in ~/Downloads/XY Citra Saves (early story, post game); on the RP6, slot 9 = Route 2's
+  grass, slot 8 = a wild battle at its command menu (2026-11-15).
 - Two displays: the touch surface moves into the bottom display's `NdsBottomHost` (`screen`), the companion behind its
   COMPANION switch, as for a DS game; hidden by translationX there too. Not checked on the Thor yet.
 - Companion: `GameKind.POKEMON_X`, the snapshot published through `TelemetryStore.publish`, the bar limited to PARTY,

@@ -124,30 +124,24 @@ class Gen6Test {
         }
     }
 
-    /** The field object's 0x20 bytes as the RP6 read them (+0x10 the flags, +4 the pointer that goes with an app). */
-    private fun fieldObject(flags: Int, pointer: Int = 0x082AA72C, size: Int = 0x20): ByteArray =
-        ByteBuffer.allocate(0x20).order(ByteOrder.LITTLE_ENDIAN).apply {
-            putInt(0, size)
-            putInt(4, pointer)
-            putInt(8, 0x01010010)
-            putInt(0x10, flags)
+    /** [Gen6Reader.Config.fieldMenu]'s bytes as the RP6 read them: the menu's pointer and the byte at +0x24. */
+    private fun fieldMenu(pointer: Int, flag: Int): ByteArray =
+        ByteBuffer.allocate(Gen6Reader.FIELD_MENU_BYTES).order(ByteOrder.LITTLE_ENDIAN).apply {
+            putInt(0, pointer)
+            put(0x24, flag.toByte())
         }.array()
 
     @Test
-    fun sceneFromModulesAndTheFieldObject() {
-        val s = Gen6Reader.Scene.values()
-        fun scene(modules: String, obj: ByteArray?) = Gen6Reader.sceneOf(modules, obj)
-        // The field and its X menu (the flags seen on the RP6, 2026-11-15).
-        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField\nDllUSC02", fieldObject(0x3D1)))
-        assertEquals(Gen6Reader.Scene.MENU, scene("DllField\nDllUSC02", fieldObject(0x3D3)))
-        assertEquals(Gen6Reader.Scene.MENU, scene("DllField\nDllUSC02\nDllPssMessageWindow", fieldObject(0x3D3)))
-        // The field loading (the menu's bit set already): not the menu.
-        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField\nDllUSC02", fieldObject(0x153)))
-        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldObject(0xD3)))
-        // On its way to an app: the field's pointer gone.
-        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldObject(0x102, pointer = 0)))
-        // Something else at that address: the field.
-        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldObject(0x3D3, size = 0x40)))
+    fun sceneFromModulesAndTheFieldMenu() {
+        fun scene(modules: String, menu: ByteArray?) = Gen6Reader.sceneOf(modules, menu)
+        // The field (also in dialogue and through doors: both 0) and its X menu (2026-11-15, two saves).
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField\nDllUSC02", fieldMenu(0, 0)))
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField\nDllPssMessageWindow", fieldMenu(0, 0)))
+        assertEquals(Gen6Reader.Scene.MENU, scene("DllField\nDllUSC02", fieldMenu(0x086511A4, 1)))
+        assertEquals(Gen6Reader.Scene.MENU, scene("DllField", fieldMenu(0x0862C97C, 1)))
+        // Half of it isn't the menu.
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldMenu(0x086511A4, 0)))
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldMenu(0, 1)))
         assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", null))
         // A screen of the game's own.
         assertEquals(Gen6Reader.Scene.SCREEN, scene("DllPokeList", null))
@@ -155,6 +149,5 @@ class Gen6Test {
         assertNull(scene("", null))
         assertNull(scene("DllTitle\nDllBackGround\nDllSequence", null))
         assertNull(scene("DllStartMenu", null))
-        assertEquals(3, s.size)
     }
 }

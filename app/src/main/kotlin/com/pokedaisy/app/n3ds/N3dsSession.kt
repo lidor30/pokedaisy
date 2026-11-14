@@ -227,7 +227,7 @@ class N3dsSession(
     private val scenes = Thread({
         val config = Gen6Reader.configFor(titleId)
         var lastModules: String? = null
-        // A change counts once two reads in a row agree: the field's flags pass through the menu's while it loads.
+        // A change counts once two reads in a row agree (between two screens the modules come and go).
         var seen: Gen6Reader.Scene? = null
         var pass = 0
         while (running && config != null && config.staticModule != 0) {
@@ -235,8 +235,8 @@ class N3dsSession(
                 val modules = N3dsNative.modules(config.staticModule)
                 if (modules != null) {
                     if (modules != lastModules) { Log.d(TAG, "modules: ${modules.replace('\n', ',')}"); lastModules = modules }
-                    val obj = if ("DllField" in modules) N3dsNative.readMemory(intArrayOf(config.fieldObject, 0x20)) else null
-                    val now = Gen6Reader.sceneOf(modules, obj)
+                    val menu = if ("DllField" in modules) N3dsNative.readMemory(intArrayOf(config.fieldMenu, Gen6Reader.FIELD_MENU_BYTES)) else null
+                    val now = Gen6Reader.sceneOf(modules, menu)
                     if (now != null && now != scene && now == seen) {
                         scene = now
                         Log.i(TAG, "scene: $now")
