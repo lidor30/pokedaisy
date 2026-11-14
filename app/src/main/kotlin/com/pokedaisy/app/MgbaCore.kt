@@ -125,6 +125,19 @@ object MgbaCore {
     /** FOLLOWER: drawn from the next frame on, or not (off, it reappears only once the player steps). Emu thread. */
     external fun pkFollowerShow(on: Boolean)
 
+    /** HIDE BATTLE MENU: the battle's FIGHT / BAG and move menus left off the frames drawn ([mode] 1 = the two-screens sign at
+     * the text box's bottom right lighting the bottom screen, 2 = the top one, 0 = shown), in the renderer only; [battleTypeFlags] =
+     * gBattleTypeFlags' address (0 = unknown), whose double / Safari bits keep the menus. GBA only. Emu thread. */
+    external fun pkBattleMenuHide(mode: Int, battleTypeFlags: Int)
+
+    /** Which battle menu HIDE BATTLE MENU left off the last frame drawn: 160 = the action menu, 320 = the moves, 0 = none
+     * (off, no battle menu up, a double battle / the Safari Zone, a shape it didn't know). Emu thread. */
+    external fun pkBattleMenuHidden(): Int
+
+    /** Why the menu hidden on the last frame had no two-screens sign (0 = it had one): 1 no room in the box, 2 too few free
+     * tiles, 3 its tiles in use on screen, 4 the text's colours not found. For debug logs. Emu thread. */
+    external fun pkBattleMenuSignWhy(): Int
+
     /** Co-op presence: the player this frame - valid, map group, map num, fine x, fine y (object-event coords x 16 +
      * the step's pixels), facing (DIR_*), mode (PresenceMode), step count (pk_wide.h's PK_PARTNER_SELF_*); null = not a
      * GBA game the field reads know. Emu thread, once a frame (the step's progress needs every frame). */

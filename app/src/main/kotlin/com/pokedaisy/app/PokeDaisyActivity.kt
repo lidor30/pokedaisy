@@ -381,6 +381,7 @@ class PokeDaisyActivity : Activity() {
      * so the player sees it play out; FIGHT keeps it open, for the move list in it. */
     private val battleInput = object : com.pokedaisy.app.companion.BattleInput {
         override val menuCursor get() = if (::engine.isInitialized) engine.battleMenuCursor else -1
+        override val menuOnCompanion get() = ::engine.isInitialized && engine.battleMenuHide != 0
         override val busy get() = if (::engine.isInitialized) engine.battleInputBusy else false
         override val gameSilent get() = ::engine.isInitialized && engine.gameAudioPaused
         override fun selectAction(actionIndex: Int) {
@@ -1514,6 +1515,28 @@ class PokeDaisyActivity : Activity() {
     }
 
     /** DAY AND NIGHT works here: a GBA game (not a Game Boy or DS one) that doesn't change with the time itself. */
+    /** HIDE BATTLE MENU works in this game: FireRed, LeafGreen or Emerald's engine (their text box, pk_wide.c's
+     * menuHideBegin; not Ruby / Sapphire's, whose cursor is drawn apart and stayed over the empty box) whose battles the
+     * companion's buttons can steer (the battle input read). */
+    private fun battleMenuHideSupported() = !romIsGameBoy && !romIsNds && romBlocked == null && ::engine.isInitialized &&
+        (romCode.startsWith("BPR") || romCode.startsWith("BPG") || romCode.startsWith("BPE")) &&
+        com.pokedaisy.app.companion.data.activeGame.let {
+            it == com.pokedaisy.app.companion.data.GameKind.FIRERED || it == com.pokedaisy.app.companion.data.GameKind.EMERALD
+        } && com.pokedaisy.app.companion.data.activeNativeConfig?.hasBattleInputAddrs == true &&
+        // The D-pad steers the hidden menu by its cursor (battleSteerTakes): without the cursor's address it would move an
+        // unseen 2 x 2 under the companion's differently shaped buttons.
+        engine.battleCursorAddrs?.menus == BattleInputController.MenuCells.GEN3
+
+    /** HIDE BATTLE MENU to the engine: only with the companion on the other screen, where its battle buttons are. The sign
+     * lights the bottom screen: SWAP SCREENS is there to put the game on top (a device whose main display is its bottom one). */
+    private fun syncBattleMenuHide() {
+        if (!::engine.isInitialized) return
+        val on = Prefs(this).hideBattleMenu && battleMenuHideSupported() && !debugMirror && !companionClosed &&
+            !companionOverGame.value && presentation?.isShowing == true
+        engine.battleTypeFlagsAddr = com.pokedaisy.app.companion.data.activeNativeConfig?.battleTypeFlags ?: 0L
+        engine.battleMenuHide = if (on) 1 else 0
+    }
+
     private fun dayNightSupported() = !romIsGameBoy && !romIsNds && romBlocked == null && ::engine.isInitialized &&
         com.pokedaisy.app.companion.data.activeGame !in com.pokedaisy.app.companion.data.DayNight.OWN_DAY_NIGHT
     /** The game running is a DS cart (melonDS): two screens, touch, X / Y ([loadRom]). */
@@ -1958,6 +1981,11 @@ class PokeDaisyActivity : Activity() {
             Prefs(this@PokeDaisyActivity).fieldHud = on
             runOnUiThread { syncGameScreen() }
         }
+        override val hideBattleMenu get() = if (secondScreen() != null && battleMenuHideSupported()) Prefs(this@PokeDaisyActivity).hideBattleMenu else null
+        override fun setHideBattleMenu(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).hideBattleMenu = on
+            syncBattleMenuHide()
+        }
         override val battleButtons get() = Prefs(this@PokeDaisyActivity).battleButtons
         override fun setBattleButtons(on: Boolean) {
             Prefs(this@PokeDaisyActivity).battleButtons = on
@@ -2273,6 +2301,8 @@ class PokeDaisyActivity : Activity() {
         // DAY AND NIGHT: the tint the engine eases to on the field - the clock's, outdoors, while the row is on.
         lookGender.launch {
             while (true) {
+                // HIDE BATTLE MENU follows the game being detected, the companion closed / reopened, a second screen.
+                syncBattleMenuHide()
                 if (::engine.isInitialized) {
                     val snap = telemetry.snapshot.value
                     engine.dayNightTint = if (Prefs(this@PokeDaisyActivity).dayNight && dayNightSupported() &&
@@ -4808,6 +4838,7 @@ class PokeDaisyActivity : Activity() {
         quickMenuTakes(event)?.let { return it }
         dsBattleTakes(event)?.let { return it }
         if (hotkeyTakes(event.keyCode, down)) return true
+        battleSteerTakes(event)?.let { return it }
         if (input.onKey(event.keyCode, down)) {
             if (down && !physicalPadUsed && event.device?.isVirtual == false) {
                 physicalPadUsed = true
@@ -5019,6 +5050,59 @@ class PokeDaisyActivity : Activity() {
         return true
     }
 
+    // --- HIDE BATTLE MENU: the D-pad on the companion's battle buttons ---------------------------------
+
+    /** D-pad keys a press of which [battleSteerTakes] took: their releases stay away from the game too. */
+    private val steerHeld = HashSet<Int>()
+    /** The stick / hat directions while it steers ([steerMotion]), so a new one is a press. */
+    private var steerHat = 0
+
+    /**
+     * HIDE BATTLE MENU with the game on its action menu (off its screen, the companion's buttons standing in): the D-pad
+     * moves the cursor round those buttons as the bottom screen lays them out, FIGHT over BAG / RUN / POKéMON
+     * ([EmulatorEngine.steerBattleMenu]), not round the game's unseen 2 x 2. A and B stay the game's own, so they act on the
+     * button the companion lights. Null = not its business (another key, or the menu isn't hidden there).
+     */
+    private fun battleSteerTakes(event: KeyEvent): Boolean? {
+        val code = event.keyCode
+        if (event.action != KeyEvent.ACTION_DOWN) return if (steerHeld.remove(code)) true else null
+        val dir = (input.buttonFor(code) ?: return null) and DPAD_KEYS
+        if (dir == 0) return null
+        // A held direction's repeats: no more steps (the game moves its cursor once a press too).
+        if (event.repeatCount > 0) return if (code in steerHeld) true else null
+        if (!steerPress(dir)) return null
+        steerHeld.add(code)
+        return true
+    }
+
+    /** A joystick's D-pad hat / stick while the hidden action menu is up: each direction that comes on is a press
+     * ([battleSteerTakes]); centred, it's let go in the game too, so nothing stays held there. */
+    private fun steerMotion(event: MotionEvent): Boolean {
+        val bits = (GbaInput.motionBits(event) ?: return false) and DPAD_KEYS
+        if (!::engine.isInitialized || engine.battleMenuHidden != BATTLE_MENU_ACTIONS) {
+            steerHat = 0
+            return false
+        }
+        val pressed = bits and steerHat.inv()
+        steerHat = bits
+        if (bits == 0) {
+            input.onMotion(event)
+            return true
+        }
+        if (pressed != 0) steerPress(pressed)
+        return true
+    }
+
+    /** One D-pad press for the hidden action menu: taken (with the companion's click when the cursor moves - the game
+     * hears no press, so plays no sound of its own) or not. */
+    private fun steerPress(dir: Int): Boolean {
+        if (!::engine.isInitialized) return false
+        val from = engine.battleMenuCursor
+        if (!engine.steerBattleMenu(dir)) return false
+        if (from >= 0 && HiddenMenuSteer.next(from, dir) != from) playClick()
+        return true
+    }
+
     /** A DS battle's Gen 3 menu is up ([dsBattleMenu]): the D-pad, A and B are its, kept from the game until let go. */
     private fun dsBattleTakes(event: KeyEvent): Boolean? {
         val code = event.keyCode
@@ -5195,6 +5279,7 @@ class PokeDaisyActivity : Activity() {
             if (GbaInput.motionBits(event)?.let { it != 0 } == true) return true
             quickStickHold = false
         }
+        if (steerMotion(event)) return true
         if (GbaInput.motionBits(event)?.let { it != 0 } == true) letHeldBackThrough()
         if (input.onMotion(event)) return true
         return super.onGenericMotionEvent(event)
@@ -5654,6 +5739,11 @@ class PokeDaisyActivity : Activity() {
     }
 
     companion object {
+        /** The GBA D-pad's key bits. */
+        private const val DPAD_KEYS = MgbaCore.Key.UP or MgbaCore.Key.DOWN or MgbaCore.Key.LEFT or MgbaCore.Key.RIGHT
+        /** [EmulatorEngine.battleMenuHidden] with the action menu (FIGHT / BAG / POKéMON / RUN) off the screen. */
+        private const val BATTLE_MENU_ACTIONS = 160
+
         /** Retail English Emerald (BPEE): the only game co-op presence runs on. */
         private const val RETAIL_EMERALD_SHA1 = "f3ae088181bf583e55daf962a92bb46f4f1d07b7"
         /** Games whose Pokémon follow the player already: FOLLOWER isn't offered there. */

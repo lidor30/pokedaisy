@@ -1042,7 +1042,8 @@ waiting on A left the player stuck. Watches expire after 300 frames; a 1200-fram
 **Faster picks (GitHub #33)**: FIGHT / BAG / RUN / a move used to walk blind - LEFT, UP, then RIGHT / DOWN, A, 20 frames
 after each direction (Unbound's move screen drops presses during its cursor fade): 46-90 frames a tap. Where the menus'
 cursors are known (`NativeConfig.actionCursor` / `moveCursor`: gActionSelectionCursor / gMoveSelectionCursor, a cell per
-battler; FireRed rev 1, retail / European Emerald; zeroed on JA Emerald and LeafGreen) a pick is a closed loop
+battler; FireRed rev 1, retail / European Emerald; zeroed on JA Emerald; retail English FireRed rev 0 / LeafGreen get them from
+`*_retail` configs, picked on a retail hash only) a pick is a closed loop
 (`drivePickLocked`): read the cursor, press only toward the cell (a dropped press is pressed again), A once there - the move
 already highlighted is one press. Since 2026-10-13 a pick **writes** the cell into the cursor (`BattleInputController.writer`, MgbaCore.pkWriteBytes,
 read back) and presses A once: the game reads the cursor on A and draws it from there the next time the menu opens (headless on
@@ -1282,6 +1283,27 @@ slide in from the right over a fading dim (`movesIn` / `partyIn`; snapped in Pap
 `BattleList`; the side panel's edge tab steps aside meanwhile);
 RUN = `selectAction(3)`, wild battles only. `FittedGbaText` narrows a label's letters (3 tall, 3 / 2 / 1.5 / 1 wide) before it
 shrinks - measure both ways, layoutlib's measurer ignores scaleX. `BattleButtonsScreenshotTest` (+ 1:1 close-ups, a 20:9 phone).
+**HIDE BATTLE MENU** (SCREEN group on both screens, two screens only, `Prefs.hideBattleMenu` ON, NEW tag; players' request,
+2026-11-14): the GBA battle's FIGHT / BAG and move menus left off the game's screen while the companion's battle buttons pick.
+`pk_wide.c`'s `menuHideBegin` / `menuHideEnd` swap BG0's tilemap cells at line 0 and put them back after line 159 (the follower's
+way: the game, VRAM and states never see it): the prompt layout (BG0VOFS 160) / move layout (320) redrawn as the message box's
+frame round the prompt, a two-screens sign at its right like HeartGold's (the user's pick over a bobbing arrow): two flat 18 x 11
+screens with corners rounded over two pixels (three made them pills, the user's call), softened toward the box as if seen through:
+the outline the palette's colour nearest half the ink, half the paper, the step's notches smoothed inside and out (the user's call:
+lighter in-between pixels) by palette entries no tile on screen uses this frame (`menuFreeEntries`), set to the mixes in the renderer
+only and put back after line 159 (`menuPalIdx`; palette RAM never changes), the companion's
+screen lit in the frame's hue nearest the paper (FireRed's darker gold, Emerald's dusty red), the same margin from the box's right, top and bottom edges (measured in the frame's tiles; Emerald's border spans two cells,
+so the cells under it are copied into the borrowed message-window tiles first). Debug builds log why a hidden menu had no sign
+(`pkBattleMenuSignWhy`; mgba_dump `battlemenuinfo`). Found by
+shape, no per-game address; gBattleTypeFlags keeps doubles' and the Safari Zone's menus. Gate: `battleMenuHideSupported` (BPR /
+BPG / BPE running as FireRed / Emerald with battle input and known action / move cursors), the companion showing on the other screen.
+The sign lights the bottom screen (SWAP SCREENS is for putting the game on top). Ruby / Sapphire left out: their cursor is drawn apart. mgba_dump
+`battlemenu`; every covered game swept headless 2026-11-15 (ROM_FEATURES' note: Recharged Emerald's band box has no right edge,
+Ghost Grey's text no shadow colour). The player's buttons follow the companion (the user's call, after a Thor try: the D-pad moved the unseen 2 x 2): on the
+hidden action menu (`pkBattleMenuHidden` 160) the D-pad is taken (`battleSteerTakes` / `steerMotion`) and moves gActionSelectionCursor
+round the companion's layout, FIGHT over BAG / RUN / POKéMON (`HiddenMenuSteer`, written on the next frame, the companion's click);
+A / B stay the game's. `BattleInput.menuOnCompanion`: the buttons light the game's cursor from the start (both BATTLE STYLEs) and
+FIGHT / POKéMON press the game's own, so the game is always on the menu shown; the moves' 2 x 2 is the game's own D-pad.
 **BATTLE STYLE** (companion SETTINGS > COMPANION, `Prefs.battleStyle`, GEN 4 default / GEN 5, NEW tag; asked once on the Library,
 `BattleStyleIntro`): GEN 5 (`BattleControlsGen5.kt`) is Black / White's battle touch screen redrawn - colours sampled and shapes measured
 off headless frames of the player's Black (nds_dump, the Battle Subway's first battle: command menu, moves, party), never their art (its

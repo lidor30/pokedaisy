@@ -19,6 +19,12 @@ interface BattleInput {
     /** The game's cursor in the open battle menu (the same numbers as [selectAction] / [selectMove]); -1 unknown. */
     val menuCursor: Int get() = -1
 
+    /** HIDE BATTLE MENU is on: the game's own battle menus are off its screen and the companion's buttons are the menu. So
+     * they show the game's cursor ([menuCursor]) from the moment it opens - the D-pad steers it round them - and FIGHT /
+     * POKéMON press the game's own (its moves, its party screen) rather than opening ours over its action menu, so the
+     * game is always on the menu the buttons show. */
+    val menuOnCompanion: Boolean get() = false
+
     /** actionIndex: 0=FIGHT, 1=BAG, 2=POKEMON, 3=RUN. */
     fun selectAction(actionIndex: Int)
 

@@ -342,6 +342,11 @@ interface CompanionSettings {
     val fieldHud: Boolean get() = true
     fun setFieldHud(on: Boolean) {}
 
+    /** SETTINGS > HIDE BATTLE MENU: two screens, the game's own battle menus off its screen - see
+     * [com.pokedaisy.app.Prefs.hideBattleMenu]. Null = no row (one screen, or a game it doesn't work in). */
+    val hideBattleMenu: Boolean? get() = null
+    fun setHideBattleMenu(on: Boolean) {}
+
     /** SETTINGS > BATTLE BUTTONS: one screen, FIGHT, POKéMON and RUN beside a battle - see [Prefs.battleButtons]. */
     val battleButtons: Boolean get() = true
     fun setBattleButtons(on: Boolean) {}

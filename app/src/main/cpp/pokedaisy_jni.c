@@ -340,6 +340,25 @@ Java_com_pokedaisy_app_MgbaCore_pkSetTint(JNIEnv* env, jobject thiz, jint r, jin
     if (g.core && pk_is_gba(g.core)) pk_tint_set(g.core, r, gr, b);
 }
 
+// HIDE BATTLE MENU: the battle's FIGHT / BAG and move menus off the frames drawn (1 = the arrow down, 2 = up, 0 = shown);
+// [battleTypeFlags] gBattleTypeFlags' address, 0 = unknown. Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkBattleMenuHide(JNIEnv* env, jobject thiz, jint mode, jint battleTypeFlags) {
+    if (g.core && pk_is_gba(g.core)) pk_battle_menu_hide(g.core, mode, (uint32_t) battleTypeFlags);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkBattleMenuHidden(JNIEnv* env, jobject thiz) {
+    (void) env; (void) thiz;
+    return g.core && pk_is_gba(g.core) ? pk_battle_menu_hidden() : 0;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkBattleMenuSignWhy(JNIEnv* env, jobject thiz) {
+    (void) env; (void) thiz;
+    return g.core && pk_is_gba(g.core) ? pk_battle_menu_sign_why() : 0;
+}
+
 // SCENE SPEEDS' TEXT / AUTO-RUN / RUN INDOORS / WILD ENCOUNTERS: whether the field reads know the ROM with this CRC32.
 // Any thread, no core needed.
 JNIEXPORT jboolean JNICALL

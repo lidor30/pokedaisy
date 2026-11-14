@@ -447,6 +447,13 @@ class TelemetrySampler {
                     val hash = runCatching { romHash(reader, size) }.getOrNull()
                     val retail = hash in ShinyOdds.RETAIL_SHA1S
                     retailRom = retail
+                    // Retail LeafGreen's battle cursors: on its own configs, checked on the retail carts only.
+                    val cfg = when {
+                        !retail -> cfg
+                        cfg === NATIVE_LEAFGREEN_REV0 -> NATIVE_LEAFGREEN_REV0_RETAIL
+                        cfg === NATIVE_LEAFGREEN_REV1 -> NATIVE_LEAFGREEN_REV1_RETAIL
+                        else -> cfg
+                    }
                     nativeCfg = withCheckedTables(reader, cfg).let { if (retail) it.copy(shinyBelow = 8) else it.copy(pokemonStoragePtr = 0) }
                     ramVerified = true
                 }
@@ -679,8 +686,8 @@ class TelemetrySampler {
         val cfg = when {
             emerald -> NATIVE_EMERALD_RETAIL
             rev >= 1 -> NATIVE_FIRERED_REV1
-            // NATIVE_FIRERED_REV0 is the hacks' base too: only retail gets the card.
-            else -> NATIVE_FIRERED_REV0.copy(trainerCard = TRAINER_CARD_FIRERED)
+            // NATIVE_FIRERED_REV0 is the hacks' base too: only retail gets the card and the battle cursors.
+            else -> NATIVE_FIRERED_REV0_RETAIL
         }
         // The SHINY marks: retail's shiny check (8 of 65536), on this copy only - a randomizer leaves it be. BOXES:
         // gPokemonStoragePtr, right after gSaveBlock2Ptr (FireRed 0x03005010 in both revisions, Emerald 0x03005D94; read
