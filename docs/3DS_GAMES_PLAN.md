@@ -67,8 +67,10 @@ the save's format file and the backup was taken. Gotchas met on the way: Azahar'
 class (`N3dsAndroidUtils`, every method with its exact signature, or CheckJNI aborts) and reads every path relative to
 the user folder it returns, unless the path starts with "!" (the cart's); `LaunchActivity` hands a `.3ds` to the 3DS
 screen too (in place, never copied), which is how to start it from adb: `am start -n com.pokedaisy.app/.LaunchActivity
---es rom '<path>'`. Not yet: the Thor's two screens, a higher resolution, the library's 3DS tag (it says GBA), sound
-checked by ear.
+--es rom '<path>'`. On the Thor (same day): the top screen alone fills the top display (5:3, 1800 x 1080), the touch
+screen alone the bottom one (black only during the title's intro), a touch there works, 100% speed (gpu 1.3 ms a frame at
+3x). Screenshots of one display: `screencap -p -d <physical id>` (`dumpsys display`'s uniqueId numbers), not the
+display id. Sound (cubeb) is right on the Thor, by ear.
 
 ## Pokemon X, first findings (n3ds_dump, 2026-11-14)
 
