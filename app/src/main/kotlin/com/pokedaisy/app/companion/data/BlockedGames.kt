@@ -65,5 +65,5 @@ object BlockedGames {
     fun mayList(size: Long): Boolean = ALL.any { size in it.sizes }
 
     /** Changes whenever the list or [enforced] does: the library's cached verdicts are read again ([com.pokedaisy.app.RomFolder]). */
-    val stamp: String get() = Integer.toHexString(ALL.flatMap { it.sha1s }.sorted().hashCode()) + if (enforced) "" else "-open"
+    val stamp: String get() = ALL.flatMap { it.sha1s }.sorted().hashCode().toUInt().toString(16) + if (enforced) "" else "-open"
 }

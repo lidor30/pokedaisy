@@ -87,7 +87,7 @@ object RegionMapWatch {
         fun u32(i: Int) = (rom[i].toLong() and 0xFF) or ((rom[i + 1].toLong() and 0xFF) shl 8) or
             ((rom[i + 2].toLong() and 0xFF) shl 16) or ((rom[i + 3].toLong() and 0xFF) shl 24)
         val end = minOf(rom.size, SCAN_END) - 8
-        return when (String(rom, 0xAC, 4, Charsets.US_ASCII)) {
+        return when (asciiString(rom, 0xAC, 4)) {
             // the other-language FireRed / LeafGreen too: the pattern finds their own pointer (and
             // Ultra Violet's, FireRed 1.0 under its own code)
             "BPRE", "BPGE", "BPRD", "BPRF", "BPRI", "BPRS", "BPGF", "BPGI", "BPGS", "PUVV" -> {
@@ -103,7 +103,7 @@ object RegionMapWatch {
                 seen.filterValues { it >= 3 }.keys.map { Watch(it) }
             }
             "BPEE", "BPES", "BPED", "BPEF", "BPEI", "BPEJ" -> { // the European Emeralds keep English's RAM
-                val ja = String(rom, 0xAC, 4, Charsets.US_ASCII) == "BPEJ"
+                val ja = asciiString(rom, 0xAC, 4) == "BPEJ"
                 // (field map, fly map, PokéNav resources): retail's, or a rebuild's own (Emerald Legacy) - whichever
                 // the ROM's literal pools hold.
                 val candidates = if (ja) listOf(longArrayOf(JA_FIELD_REGION_MAP, JA_FLY_MAP, JA_POKENAV_RESOURCES))

@@ -1,7 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import com.pokedaisy.app.companion.data.save.Gen3BoxMon
-import java.util.Random
+import kotlin.random.Random
 
 /**
  * SHINY ODDS (GAMEPLAY on the companion, `Prefs.shinyOdds`): a wild or legendary Pokémon turns up shiny at the odds the
@@ -309,7 +309,7 @@ object ShinyOdds {
     private fun inRam(addr: Long) = addr in 0x02000000L until 0x02040000L || addr in 0x03000000L until 0x03008000L
 
     /** One game's foes, watched frame by frame (emu thread). */
-    class Roller(private val target: Target, private val random: Random = Random()) : FoeRoller {
+    class Roller(private val target: Target, private val random: Random = Random.Default) : FoeRoller {
         // The personality + OT ID last decided on in each slot: a foe is looked at once, when it first shows up.
         private val seen = LongArray(SLOTS) { -1L }
         // A new foe's record as the last frame left it: the game can be halfway through making it when a frame ends
@@ -433,7 +433,7 @@ object ShinyOdds {
      * wild Pokémon carry, and WURMPLE's branch, its blocks re-shuffled and encrypted again ([gen4WithPersonality]). The
      * Pokémon's own OT ID (a wild one's is the player's) decides shininess, as the game's check does.
      */
-    class DsRoller(private val target: DsTarget, private val random: Random = Random()) : FoeRoller {
+    class DsRoller(private val target: DsTarget, private val random: Random = Random.Default) : FoeRoller {
         // The personality + checksum decided on in each slot: a foe is looked at once.
         private val seen = LongArray(SLOTS) { -1L }
 

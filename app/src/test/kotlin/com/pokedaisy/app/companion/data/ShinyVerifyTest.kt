@@ -4,7 +4,7 @@ import com.pokedaisy.app.companion.data.save.Gen3BoxMon
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
-import java.util.Random
+import kotlin.random.Random
 
 /**
  * The JVM half of scripts/verify_shiny.py (skipped unless it ran): SHINY ODDS on every retail version, from headless dumps.

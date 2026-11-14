@@ -133,7 +133,7 @@ object DecompIconSource {
 internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, rd: (Long, Int) -> ByteArray): Bitmap? {
     val tilesPtr = Gfx.u32(rd(t.monIconTable + species.toLong() * t.monIconStride, 4), 0)
     if (!Gfx.inRom(tilesPtr)) {
-        android.util.Log.w("pokedaisy", "DecompIcon mon $species: tilesPtr %08x not in ROM".format(tilesPtr)); return null
+        android.util.Log.w("pokedaisy", "DecompIcon mon $species: tilesPtr ${tilesPtr.hex(8)} not in ROM"); return null
     }
     val palIdx = rd(t.monIconPaletteIndices + species.toLong() * t.monPalIdxStride, 1)[0].toInt() and t.monPalIdxMask
     val palDataPtr = if (t.monIconPalettes != 0L) {
@@ -143,7 +143,7 @@ internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, 
         Gfx.u32(rd(t.monIconPaletteTable + palIdx.toLong() * MON_PAL_ENTRY_BYTES, MON_PAL_ENTRY_BYTES), 0)
     }
     if (!Gfx.inRom(palDataPtr)) {
-        android.util.Log.w("pokedaisy", "DecompIcon mon $species: palPtr %08x not in ROM (idx=$palIdx)".format(palDataPtr)); return null
+        android.util.Log.w("pokedaisy", "DecompIcon mon $species: palPtr ${palDataPtr.hex(8)} not in ROM (idx=$palIdx)"); return null
     }
     val tiles = if (t.monIconPacked) MonomythIcons.unpack(rd, tilesPtr) ?: return null else rd(tilesPtr, MON_TILE_BYTES)
     var pal = rd(palDataPtr, PAL_BYTES)

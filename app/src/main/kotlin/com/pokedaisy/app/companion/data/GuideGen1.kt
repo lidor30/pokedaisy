@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import com.pokedaisy.app.companion.i18n.tr
+import kotlin.math.roundToInt
 
 /**
  * Yellow's, Red's and Blue's guides: HERE and NEXT BOSS from GuideGen1Gen.kt, which scripts/gen_gen1_guide.py reads out of
@@ -126,12 +127,12 @@ class Gen1World(wildRaw: List<String>, bossRaw: List<String>) : GuideWorld {
             TrainerMon(p[1].toInt(), p[0].toInt(), p[2].toInt(), p.getOrElse(3) { "" }.split(',').filter { it.isNotEmpty() }.map { it.toInt() })
         }
         val team = f[4].takeIf { it.isNotEmpty() }?.substringAfter('=')?.toInt()
-        Line(f[0], f[1], f[2], f[3].split('/').filter { it.isNotEmpty() }.map { Integer.decode(it) }, team, mons)
+        Line(f[0], f[1], f[2], f[3].split('/').filter { it.isNotEmpty() }.map { it.toInt() }, team, mons)
     }.toList()
 
     override fun encounters(group: Int, num: Int, progress: SaveProgress?): MapEncounters {
         fun merge(slots: List<Slot>) = slots.groupBy { it.species }.map { (species, g) ->
-            EncounterSlot(species, g.minOf { it.level }, g.maxOf { it.level }, Math.round(g.sumOf { it.odds }).toInt())
+            EncounterSlot(species, g.minOf { it.level }, g.maxOf { it.level }, (g.sumOf { it.odds }).roundToInt())
         }.sortedByDescending { it.percent }
         val fishes = num in water || num in superRod
         return MapEncounters(

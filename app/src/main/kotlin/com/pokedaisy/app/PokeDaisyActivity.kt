@@ -2161,7 +2161,7 @@ class PokeDaisyActivity : Activity() {
         override fun setFoeDetails(on: Boolean) { Prefs(this@PokeDaisyActivity).foeDetails = on }
         override val battleFocus get() = Prefs(this@PokeDaisyActivity).battleFocus
         override fun setBattleFocus(on: Boolean) { Prefs(this@PokeDaisyActivity).battleFocus = on }
-        override val cheats get() = cheatStore()?.load().orEmpty()
+        override val cheats get() = cheats()
         override val cheatsEnabled get() = Prefs(this@PokeDaisyActivity).cheatsEnabled
         override fun setCheatsEnabled(on: Boolean) {
             if (coopRefuses()) return
@@ -2173,9 +2173,11 @@ class PokeDaisyActivity : Activity() {
             if (coopRefuses()) return
             if (coopCheatsRefuse(on)) return
             val store = cheatStore() ?: return
-            val list = store.load()
+            val list = cheats()
             if (index !in list.indices) return
-            store.save(list.toMutableList().also { it[index] = it[index].copy(enabled = on) })
+            val now = list.toMutableList().also { it[index] = it[index].copy(enabled = on) }
+            store.save(now)
+            cheatCache = romKey to now
             syncCheats()
         }
         override val gameName get() = romBlocked?.title ?: com.pokedaisy.app.companion.data.activeGame.displayName()
@@ -3011,6 +3013,17 @@ class PokeDaisyActivity : Activity() {
     private fun cheatStore(): com.pokedaisy.app.cheats.CheatStore? =
         romKey.takeIf { it.isNotEmpty() }?.let { com.pokedaisy.app.cheats.CheatStore.forCrc(filesDir, it) }
 
+    /** This ROM's cheats as last read, by [romKey]. The companion asks for them while it draws its SETTINGS, and parsing an
+     * imported file each time (RetroArch's Platinum one has 2321 cheats) held the UI thread until the app stopped
+     * answering (GitHub #786). Read again when a game starts: the top screen's Settings may have changed them. */
+    private var cheatCache: Pair<String, List<com.pokedaisy.app.cheats.Cheat>>? = null
+
+    private fun cheats(): List<com.pokedaisy.app.cheats.Cheat> {
+        val key = romKey
+        cheatCache?.takeIf { it.first == key }?.let { return it.second }
+        return cheatStore()?.load().orEmpty().also { cheatCache = key to it }
+    }
+
     /** Hands the engine this ROM's enabled cheats (none with the master switch off); it loads
      * them before the first frame, or on the next one while the game runs. */
     private var coopCheatNoticed = false
@@ -3020,7 +3033,7 @@ class PokeDaisyActivity : Activity() {
         val enabled = Prefs(this).cheatsEnabled
         val coopOn = com.pokedaisy.app.companion.coop.CoopSession.gameOn || coopLock != null
         val text = com.pokedaisy.app.companion.coop.CoopSession.cheatsForEngine(enabled, coopOn) {
-            cheatStore()?.load()?.let(com.pokedaisy.app.cheats.CheatFiles::coreText).orEmpty()
+            com.pokedaisy.app.cheats.CheatFiles.coreText(cheats())
         }
         if (enabled && coopOn) {
             if (!coopCheatNoticed) { coopCheatNoticed = true; showHud(com.pokedaisy.app.companion.i18n.tr("Not while co-op is on.")) }
@@ -3273,7 +3286,7 @@ class PokeDaisyActivity : Activity() {
     private fun coopStart(r: File, save: File) {
         if (!FeatureFlags.coop(this)) return
         val prefs = Prefs(this)
-        val cheatsLoaded = prefs.cheatsEnabled && cheatStore()?.load().orEmpty().any { it.enabled }
+        val cheatsLoaded = prefs.cheatsEnabled && cheats().any { it.enabled }
         val code = romCode
         val rev = romRev
         stopCoopLock()
@@ -3301,6 +3314,7 @@ class PokeDaisyActivity : Activity() {
         val save = SavesLocation.saveFor(this, Prefs(this), r)
         engine.ndsCore = if (dsperate) MgbaCore.NDS_CORE_DSPERATE else MgbaCore.NDS_CORE_MELONDS   // DS CORE (pickDsCore)
         // Cheats may have changed in the library's Settings since the game was last up.
+        cheatCache = null
         syncCheats()
         // Back from sleep: the game held on its frame (onPause) and goes on from it. The state written as it went to
         // sleep is used up, as a resume's is once loaded.
@@ -4170,6 +4184,7 @@ class PokeDaisyActivity : Activity() {
                         com.pokedaisy.app.companion.ui.DsBattleMenu(
                             snap, dsBattleMenu, battleInput, coreFrame.value, shown = dsStripShown.value, active = dsStripActive.value,
                             gameFills = dsFill.value, hints = battleHints.value,
+                            onTapArea = { touchControls.coverInWindow(it) },
                         )
                     }
                     // The menu's D-pad: with no plain view focused, Android takes the first press after a touch to leave

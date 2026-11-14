@@ -2,10 +2,7 @@ package com.pokedaisy.app.companion.data
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.zip.CRC32
 import java.util.zip.Deflater
 
@@ -180,7 +177,7 @@ object RomArt {
     }
 
     /** The 16-byte window hash the generator stored as [RomBlob.head]. */
-    internal fun head(b: ByteBuffer, i: Int): Long = fmix(b.getLong(i) xor fmix(b.getLong(i + 8)))
+    internal fun head(b: LittleEndianReader, i: Int): Long = fmix(b.getLong(i) xor fmix(b.getLong(i + 8)))
 
     /** [RomBlob.pre] of the 8 bytes [a] (little-endian): the scan's per-byte filter. */
     internal fun pre(a: Long): Int = ((a * -0x61c8864680b583ebL) ushr 48).toInt() // 0x9E3779B97F4A7C15
@@ -193,7 +190,7 @@ object RomArt {
         val byHead = RomBlob.entries.groupBy { it.head }
         val filter = LongArray(1 shl 10)
         RomBlob.entries.forEach { filter[it.pre ushr 6] = filter[it.pre ushr 6] or (1L shl it.pre) }
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         val found = HashMap<RomBlob, ByteArray>()
         if (rom.size < 16) return found
         var a = buf.getLong(0) shl 8 // shifted in again below, one byte per offset
@@ -652,7 +649,7 @@ object RomArt {
             }
             // Fed 16 KiB at a time: each deflate() holds a JNI critical lock
             // (stalling GC while the game runs) for as long as its input lasts.
-            val z = ByteArrayOutputStream()
+            val z = okio.Buffer()
             val def = Deflater()
             val chunk = ByteArray(8192)
             var at = 0
@@ -669,22 +666,22 @@ object RomArt {
                 z.write(chunk, 0, def.deflate(chunk))
             }
             def.end()
-            val out = ByteArrayOutputStream()
+            val out = okio.Buffer()
             out.write(byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10))
             // 8-bit depth, colour type 6 (RGBA), deflate, no filter, no interlace.
-            val ihdr = ByteBuffer.allocate(13).putInt(img.width).putInt(img.height).put(byteArrayOf(8, 6, 0, 0, 0)).array()
+            val ihdr = okio.Buffer().writeInt(img.width).writeInt(img.height).write(byteArrayOf(8, 6, 0, 0, 0)).readByteArray()
             chunk(out, "IHDR", ihdr)
-            chunk(out, "IDAT", z.toByteArray())
+            chunk(out, "IDAT", z.readByteArray())
             chunk(out, "IEND", ByteArray(0))
-            return out.toByteArray()
+            return out.readByteArray()
         }
 
-        private fun chunk(out: ByteArrayOutputStream, type: String, data: ByteArray) {
-            val t = type.toByteArray(Charsets.US_ASCII)
-            out.write(ByteBuffer.allocate(4).putInt(data.size).array())
+        private fun chunk(out: okio.Buffer, type: String, data: ByteArray) {
+            val t = asciiBytes(type)
+            out.writeInt(data.size)
             out.write(t); out.write(data)
             val crc = CRC32().apply { update(t); update(data) }.value
-            out.write(ByteBuffer.allocate(4).putInt(crc.toInt()).array())
+            out.writeInt(crc.toInt())
         }
     }
 }

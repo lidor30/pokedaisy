@@ -6,7 +6,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.Random
+import kotlin.random.Random
 
 /**
  * SHINY ODDS on the DS ([ShinyOdds.DsRoller]) over the game's own memory in its window: the *_shiny_window fixtures, dumped

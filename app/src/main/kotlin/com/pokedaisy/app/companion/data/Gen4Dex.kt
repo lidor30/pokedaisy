@@ -104,7 +104,7 @@ object Gen4Dex {
         val bits = load(t)?.machines?.get(species) ?: return null
         val moves = t.moves
         return moves.indices.filter { i -> i / 8 < bits.size && (bits[i / 8].toInt() shr (i % 8)) and 1 != 0 }.map { i ->
-            TeachMove(if (i < t.tmCount) "TM%02d".format(i + 1) else "HM%02d".format(i - t.tmCount + 1), moves[i])
+            TeachMove(if (i < t.tmCount) "TM${(i + 1).pad(2)}" else "HM${(i - t.tmCount + 1).pad(2)}", moves[i])
         }
     }
 

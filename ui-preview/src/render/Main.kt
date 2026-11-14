@@ -851,11 +851,14 @@ fun previewCheats() = listOf(
 
 /** [make] on the fake library's first game's CHEATS page (as its library menu opens it),
  * with [previewCheats] saved for it when [seeded]. */
-fun withCheats(seeded: Boolean = true, make: () -> SettingsActivity): androidx.activity.ComponentActivity {
+fun withCheats(seeded: Boolean = true, many: Int = 0, make: () -> SettingsActivity): androidx.activity.ComponentActivity {
     val ctx = android.content.Context()
     val rom = File(ctx.filesDir, "roms/firered-hack.gba")
     val crc = SettingsActivity.cheatCrcOf(rom)!!
-    if (seeded) com.pokedaisy.app.cheats.CheatStore.forCrc(ctx.filesDir, crc).save(previewCheats())
+    // [many]: an imported cheat file's worth (RetroArch's Platinum one has 2321), GitHub #786.
+    val list = if (many > 0) List(many) { i -> com.pokedaisy.app.cheats.Cheat("CODE ${i + 1}", listOf("82025838 %04X".format(i)), enabled = i % 7 == 0) }
+        else previewCheats()
+    if (seeded) com.pokedaisy.app.cheats.CheatStore.forCrc(ctx.filesDir, crc).save(list)
     Prefs(ctx).cheatsEnabled = seeded
     return make().apply { intent.putExtra(SettingsActivity.EXTRA_CHEATS_ROM, rom.absolutePath) }
 }
@@ -3003,6 +3006,7 @@ fun main(args: Array<String>) {
             onNodeWithText("CHEATS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
         Shot("settings-cheats", tw, th, td, activity { withCheats { SettingsActivity() } }),
+        Shot("settings-cheats-many", tw, th, td, activity { withCheats(many = 2400) { SettingsActivity() } }),
         Shot("settings-cheats-remove", tw, th, td, activity { withCheats { SettingsActivity() } }) {
             onNodeWithText("REMOVE").performClick()
             onAllNodesWithText("REMOVE").onFirst().performClick()

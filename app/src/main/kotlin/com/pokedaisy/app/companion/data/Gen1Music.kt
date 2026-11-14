@@ -233,7 +233,7 @@ object Gen1Music {
     fun forSha1(sha1: String): Gen1MusicTables? = GAMES.firstOrNull { it.sha1 == sha1 }
 
     /** The cache key for a song: its bank and id. */
-    fun key(bank: Int, id: Int) = "gb_%02x_%02x".format(bank, id)
+    fun key(bank: Int, id: Int) = "gb_${bank.hex(2)}_${id.hex(2)}"
 
     /** The (bank, id) a [key] names, or null. */
     fun parse(key: String): Pair<Int, Int>? {

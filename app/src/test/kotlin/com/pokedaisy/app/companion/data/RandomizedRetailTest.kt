@@ -171,7 +171,7 @@ class RandomizedRetailTest {
             assertTrue(f.name, fns.pc != null && pcCodeMatches(fns.pc!!, read))
             // WILD ENCOUNTERS' switch and REUSABLE TMS' sites: found by their code, retail's.
             val retailBytes = retail.single { it.code == rom.code && it.rev == rom.rev }.let { bytes(it.name) } ?: continue
-            val buf = { x: ByteArray -> java.nio.ByteBuffer.wrap(x).order(java.nio.ByteOrder.LITTLE_ENDIAN) }
+            val buf = { x: ByteArray -> LittleEndianBytes(x) }
             assertNotEquals(f.name, 0L, WildEncounters.find(buf(b)))
             assertEquals(f.name, WildEncounters.find(buf(retailBytes)), WildEncounters.find(buf(b)))
             assertEquals(f.name, ReusableTms.find(buf(retailBytes)).map { it.at }, ReusableTms.find(buf(b)).map { it.at })

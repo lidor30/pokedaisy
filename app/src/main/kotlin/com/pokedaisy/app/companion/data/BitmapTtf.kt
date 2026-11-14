@@ -1,7 +1,7 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.ByteArrayOutputStream
-import java.io.DataOutputStream
+import okio.Buffer
+import okio.BufferedSink
 
 /**
  * A TrueType font built from 8x8 bitmap glyphs - how a Game Boy game's own font
@@ -25,13 +25,13 @@ object BitmapTtf {
         val advance = advancePx * PX
         // Glyph 0 is .notdef (empty); glyph i + 1 is chars[i].
         val outlines = listOf(IntArray(0)) + chars.map { outline(glyphs.getValue(it), baselineRow) }
-        val glyf = ByteArrayOutputStream()
+        val glyf = Buffer()
         val loca = IntArray(outlines.size + 1)
         var maxPoints = 0
         var maxContours = 0
         var xMin = 0; var yMin = 0; var xMax = 0; var yMax = 0
         outlines.forEachIndexed { i, rects ->
-            loca[i] = glyf.size()
+            loca[i] = glyf.size.toInt()
             if (rects.isNotEmpty()) {
                 val n = rects.size / 4
                 maxContours = maxOf(maxContours, n)
@@ -41,7 +41,7 @@ object BitmapTtf {
                 val gx1 = (0 until n).maxOf { rects[it * 4 + 2] }
                 val gy1 = (0 until n).maxOf { rects[it * 4 + 3] }
                 xMin = minOf(xMin, gx0); yMin = minOf(yMin, gy0); xMax = maxOf(xMax, gx1); yMax = maxOf(yMax, gy1)
-                val d = DataOutputStream(glyf)
+                val d = glyf
                 d.writeShort(n); d.writeShort(gx0); d.writeShort(gy0); d.writeShort(gx1); d.writeShort(gy1)
                 for (c in 0 until n) d.writeShort(c * 4 + 3)          // endPtsOfContours
                 d.writeShort(0)                                       // no instructions
@@ -57,15 +57,15 @@ object BitmapTtf {
                 }
                 for (x in xs) { d.writeShort(x - px); px = x }
                 for (y in ys) { d.writeShort(y - py); py = y }
-                while (glyf.size() % 4 != 0) glyf.write(0)
+                while (glyf.size % 4 != 0L) glyf.writeByte(0)
             }
         }
-        loca[outlines.size] = glyf.size()
+        loca[outlines.size] = glyf.size.toInt()
 
-        val tables = sortedMapOf(
+        val tables = listOf(
             "OS/2" to os2(chars, advance),
             "cmap" to cmap(chars),
-            "glyf" to glyf.toByteArray(),
+            "glyf" to glyf.readByteArray(),
             "head" to head(xMin, yMin, xMax, yMax),
             "hhea" to hhea(advance, outlines.size),
             "hmtx" to bytes { d -> outlines.forEach { r -> d.writeShort(advance); d.writeShort(if (r.isEmpty()) 0 else (0 until r.size / 4).minOf { r[it * 4] }) } },
@@ -76,7 +76,7 @@ object BitmapTtf {
             },
             "name" to name(family),
             "post" to bytes { d -> d.writeInt(0x00030000); d.writeInt(0); d.writeShort(-PX); d.writeShort(PX); d.writeInt(1); repeat(4) { d.writeInt(0) } },
-        )
+        ).sortedBy { it.first }.toMap()   // the table directory in tag order
         return assemble(tables)
     }
 
@@ -96,8 +96,7 @@ object BitmapTtf {
         return out.toIntArray()
     }
 
-    private fun bytes(write: (DataOutputStream) -> Unit): ByteArray =
-        ByteArrayOutputStream().also { write(DataOutputStream(it)) }.toByteArray()
+    private fun bytes(write: (BufferedSink) -> Unit): ByteArray = Buffer().also { write(it) }.readByteArray()
 
     private fun head(xMin: Int, yMin: Int, xMax: Int, yMax: Int) = bytes { d ->
         d.writeInt(0x00010000); d.writeInt(0x00010000); d.writeInt(0)   // version, revision, checkSumAdjustment (set later)
@@ -120,7 +119,7 @@ object BitmapTtf {
         d.writeShort(PX); d.writeShort(PX * 3)                      // strikeout
         d.writeShort(0); repeat(10) { d.writeByte(0) }              // family class, panose
         d.writeInt(1); repeat(3) { d.writeInt(0) }                  // Basic Latin
-        d.writeBytes("NONE"); d.writeShort(0x40)                    // vendor, REGULAR
+        d.writeUtf8("NONE"); d.writeShort(0x40)                    // vendor, REGULAR
         d.writeShort(chars.first().code); d.writeShort(chars.last().code)
         d.writeShort(ASCENT); d.writeShort(DESCENT); d.writeShort(LINE_GAP)
         d.writeShort(ASCENT); d.writeShort(-DESCENT)
@@ -147,7 +146,7 @@ object BitmapTtf {
 
     private fun name(family: String) = bytes { d ->
         val strings = listOf(1 to family, 2 to "Regular", 4 to family, 6 to family.filter { it.isLetterOrDigit() })
-        val data = strings.map { it.second.toByteArray(Charsets.UTF_16BE) }
+        val data = strings.map { utf16beBytes(it.second) }
         d.writeShort(0); d.writeShort(strings.size); d.writeShort(6 + 12 * strings.size)
         var off = 0
         strings.forEachIndexed { i, (id, _) ->
@@ -173,17 +172,16 @@ object BitmapTtf {
         val n = tables.size
         var p = 1; var e = 0
         while (p * 2 <= n) { p *= 2; e++ }
-        val out = ByteArrayOutputStream()
-        val d = DataOutputStream(out)
+        val d = Buffer()
         d.writeInt(0x00010000); d.writeShort(n); d.writeShort(p * 16); d.writeShort(e); d.writeShort(n * 16 - p * 16)
         var offset = 12 + 16 * n
         val padded = tables.mapValues { (_, b) -> b.copyOf((b.size + 3) / 4 * 4) }
         for ((tag, b) in tables) {
-            d.writeBytes(tag); d.writeInt(checksum(b).toInt()); d.writeInt(offset); d.writeInt(b.size)
+            d.writeUtf8(tag); d.writeInt(checksum(b).toInt()); d.writeInt(offset); d.writeInt(b.size)
             offset += padded.getValue(tag).size
         }
         padded.values.forEach { d.write(it) }
-        val font = out.toByteArray()
+        val font = d.readByteArray()
         // head.checkSumAdjustment: 0xB1B0AFBA minus the whole font's checksum.
         val headOff = 12 + 16 * n + tables.keys.takeWhile { it != "head" }.sumOf { padded.getValue(it).size }
         val adj = (0xB1B0AFBAL - checksum(font)) and 0xFFFFFFFFL

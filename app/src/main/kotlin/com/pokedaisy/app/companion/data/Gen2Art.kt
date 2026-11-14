@@ -546,7 +546,7 @@ object Gen2Art {
      * versions and colour builds) share their paths, so starting another of them rebuilds them.
      */
     fun extractTo(rom: ByteArray, dir: File): List<String> {
-        val sha1 = MessageDigest.getInstance("SHA-1").digest(rom).joinToString("") { "%02x".format(it) }
+        val sha1 = MessageDigest.getInstance("SHA-1").digest(rom).hex()
         val t = GAMES.firstOrNull { sha1 in it.sha1s } ?: return emptyList()
         val marker = File(dir, "gen2/${t.name}-built")
         val stamp = "v$VERSION $sha1"

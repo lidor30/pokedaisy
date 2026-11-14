@@ -870,6 +870,13 @@ static void gbObjsOffScreen(const struct GbSnap* s, int ox, int oy) {
         if (onScreen && a[2] == 0xFF && s->text) continue;
         if (gbToggledOff(s, n)) continue;
         int sx0 = 32 + 16 * b[5] - ox, sy0 = 32 + 16 * b[4] - 4 - oy;
+        // Mid-step the map tile is already the step's end (Gen 1 moves it as the step begins, and freezes a sprite that
+        // goes off screen right there): its screen pixels (wSpriteStateData1 +4 Y, +6 X, a byte each, kept as the screen
+        // scrolls, hidden or not) are where the game has it. One leaving at the edge jumped up to a step and back each
+        // frame its OAM came and went (GitHub #675). Taken as the value nearest the tile's; further off (a map just loaded:
+        // zeroes) the tile.
+        int dxp = (int8_t) (uint8_t) (a[6] - sx0), dyp = (int8_t) (uint8_t) (a[4] - sy0);
+        if (dxp >= -16 && dxp <= 16 && dyp >= -16 && dyp <= 16) { sx0 += dxp; sy0 += dyp; }
         if (gbOamHas(sx0, sy0, fromOam)) continue;
         int slot = b[0xE] - 1;
         int face = (a[9] >> 2) & 3, base = slot * 12;
