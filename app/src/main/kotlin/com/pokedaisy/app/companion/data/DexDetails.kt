@@ -213,7 +213,7 @@ object DexDetails {
         synchronized(lock) {
             if (evoFor == t) return evoTable
             val table = runCatching { t.gen4?.let { Gen4Dex.evolutions(it) } ?: readEvolutions(t) }
-                .onFailure { android.util.Log.w("pokedaisy", "evolutions failed", it) }
+                .onFailure { Logs.w("evolutions failed", it) }
                 .getOrNull()
                 ?.takeIf { it.size >= 10 && it.values.flatten().all { l -> l.to in 1 until t.speciesCount } }
             parents = table?.values?.flatten()?.groupBy { it.to }
@@ -518,7 +518,7 @@ object DexDetails {
         syncMoves(t, g)
         levelUp[species]?.let { return it }
         return runCatching { readLevelUp(t, g, species) }
-            .onFailure { android.util.Log.w("pokedaisy", "learnset $species failed", it) }
+            .onFailure { Logs.w("learnset $species failed", it) }
             .getOrNull()?.also { levelUp[species] = it }
     }
 
@@ -560,7 +560,7 @@ object DexDetails {
         teach[species]?.let { return it }
         t.gen4?.let { return Gen4Dex.machines(it, species)?.also { m -> teach[species] = m } }
         return runCatching { readTeachable(t, species) }
-            .onFailure { android.util.Log.w("pokedaisy", "teachable $species failed", it) }
+            .onFailure { Logs.w("teachable $species failed", it) }
             .getOrNull()?.also { teach[species] = it }
     }
 
@@ -636,7 +636,7 @@ object DexDetails {
         synchronized(lock) {
             if (spotsFor == g && spotsSeed == seed) return spots
             val built = runCatching { buildIndex(g) }
-                .onFailure { android.util.Log.w("pokedaisy", "wild index failed", it) }
+                .onFailure { Logs.w("wild index failed", it) }
                 .getOrNull()
             spots = built
             spotsFor = g
@@ -746,7 +746,7 @@ object MapSections {
             fun fits(base: Long) = keys.isNotEmpty() &&
                 keys.count { runCatching { header(g, base, it shr 8, it and 0xFF) }.getOrNull() != null } * 10 >= keys.size * 9
             groups = g.mapGroups.takeIf { it != 0L && runCatching { fits(it) }.getOrDefault(false) }
-                ?: runCatching { scan(g, ::fits) }.onFailure { android.util.Log.w("pokedaisy", "gMapGroups scan failed", it) }.getOrNull()
+                ?: runCatching { scan(g, ::fits) }.onFailure { Logs.w("gMapGroups scan failed", it) }.getOrNull()
                 ?: 0L
             cachedFor = g
             return groups

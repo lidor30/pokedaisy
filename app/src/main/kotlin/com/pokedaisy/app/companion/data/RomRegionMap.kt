@@ -75,7 +75,7 @@ object RomRegionMap {
                 current = loadNow(filesDir, romKey, rom) ?: return@background
                 RomArt.announce()
             } catch (t: Throwable) {
-                android.util.Log.w("pokedaisy", "RomRegionMap: read failed", t)
+                Logs.w("RomRegionMap: read failed", t)
             }
         }
     }

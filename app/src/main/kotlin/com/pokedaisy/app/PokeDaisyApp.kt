@@ -6,6 +6,10 @@ import android.app.Application
 class PokeDaisyApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        // The data code's log lines (companion/data/Logs.kt) go to Android's log.
+        com.pokedaisy.app.companion.data.Logs.sink = com.pokedaisy.app.companion.data.Logs.Sink { tag, warning, message, error ->
+            if (warning) android.util.Log.w(tag, message, error) else android.util.Log.i(tag, message)
+        }
         // The NEW tags' week starts with the first launch of a build that has the feature.
         com.pokedaisy.app.companion.NewFeatures.init(Prefs(this))
         val prefs = Prefs(this)

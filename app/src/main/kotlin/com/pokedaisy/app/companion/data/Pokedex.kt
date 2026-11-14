@@ -1697,7 +1697,7 @@ object PokedexSource {
         // Not cached here: before NdsArt has the cart's pages in, there's nothing yet (Gen4Dex keeps them once read).
         t.gen4?.let { g -> return Gen4Dex.entry(g, national) }
         return runCatching { readEntry(t, national) }
-            .onFailure { android.util.Log.w("pokedaisy", "dex entry $national failed", it) }
+            .onFailure { Logs.w("dex entry $national failed", it) }
             .getOrNull()?.also { entries[national] = it }
     }
 

@@ -83,12 +83,12 @@ object DecompIconSource {
             cache[key]?.let { return it }
             // A read that failed (the core not up yet) isn't a missing icon: the next try may work.
             val bmp = try { fetch() } catch (e: Exception) {
-                android.util.Log.w("pokedaisy", "DecompIcon fetch $key failed", e); return null
+                Logs.w("DecompIcon fetch $key failed", e); return null
             }
             if (bmp == null) { missing[sig] = Unit; return null }
             if (!loggedOnce) {
                 loggedOnce = true
-                android.util.Log.i("pokedaisy", "DecompIcon: first sprite decoded ${bmp.width}x${bmp.height} from tables=$tables")
+                Logs.i("DecompIcon: first sprite decoded ${bmp.width}x${bmp.height} from tables=$tables")
             }
             cache[key] = bmp
             return bmp
@@ -135,7 +135,7 @@ object DecompIconSource {
 internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, rd: (Long, Int) -> ByteArray): Bitmap? {
     val tilesPtr = Gfx.u32(rd(t.monIconTable + species.toLong() * t.monIconStride, 4), 0)
     if (!Gfx.inRom(tilesPtr)) {
-        android.util.Log.w("pokedaisy", "DecompIcon mon $species: tilesPtr ${tilesPtr.hex(8)} not in ROM"); return null
+        Logs.w("DecompIcon mon $species: tilesPtr ${tilesPtr.hex(8)} not in ROM"); return null
     }
     val palIdx = rd(t.monIconPaletteIndices + species.toLong() * t.monPalIdxStride, 1)[0].toInt() and t.monPalIdxMask
     val palDataPtr = if (t.monIconPalettes != 0L) {
@@ -145,7 +145,7 @@ internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, 
         Gfx.u32(rd(t.monIconPaletteTable + palIdx.toLong() * MON_PAL_ENTRY_BYTES, MON_PAL_ENTRY_BYTES), 0)
     }
     if (!Gfx.inRom(palDataPtr)) {
-        android.util.Log.w("pokedaisy", "DecompIcon mon $species: palPtr ${palDataPtr.hex(8)} not in ROM (idx=$palIdx)"); return null
+        Logs.w("DecompIcon mon $species: palPtr ${palDataPtr.hex(8)} not in ROM (idx=$palIdx)"); return null
     }
     val tiles = if (t.monIconPacked) MonomythIcons.unpack(rd, tilesPtr) ?: return null else rd(tilesPtr, MON_TILE_BYTES)
     var pal = rd(palDataPtr, PAL_BYTES)

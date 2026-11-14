@@ -1036,9 +1036,9 @@ fun readNativeBattleInputFast(client: MemoryReader, cfg: NativeConfig): Pair<Int
         val fn0 = u32le(raw, 0) and thumbMask
         if (fn0 != lastLoggedFn0) {
             lastLoggedFn0 = fn0
-            android.util.Log.i(
-                "pokedaisy-battle",
-                "raw battler0 fn=0x${fn0.toString(16)} (wantAction=0x${wantAction.toString(16)} " +
+            Logs.i(
+                tag = "pokedaisy-battle",
+                message = "raw battler0 fn=0x${fn0.toString(16)} (wantAction=0x${wantAction.toString(16)} " +
                     "wantMove=0x${wantMove.toString(16)} wantBag=0x${wantBag.toString(16)} " +
                     "wantParty=0x${wantParty.toString(16)} wantTarget=0x${wantTarget.toString(16)})",
             )

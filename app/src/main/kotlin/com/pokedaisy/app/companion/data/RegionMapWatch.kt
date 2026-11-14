@@ -34,7 +34,7 @@ object RegionMapWatch {
             try {
                 watches = withRomFile(rom) { f -> find(f.readFully(0, minOf(f.size(), SCAN_END.toLong()).toInt())) }
             } catch (t: Throwable) {
-                android.util.Log.w("pokedaisy", "RegionMapWatch: scan failed", t)
+                Logs.w("RegionMapWatch: scan failed", t)
             }
         }
     }

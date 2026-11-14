@@ -378,7 +378,7 @@ object Gen1Art {
             runCatching {
                 val wrote = extractTo(readRomFile(rom), RomArt.dir(filesDir))
                 if (wrote.isNotEmpty()) RomArt.announce()
-            }.onFailure { android.util.Log.w("pokedaisy", "Gen1Art: failed", it) }
+            }.onFailure { Logs.w("Gen1Art: failed", it) }
         }
     }
 }

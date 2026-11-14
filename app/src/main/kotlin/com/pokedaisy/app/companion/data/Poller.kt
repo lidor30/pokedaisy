@@ -207,7 +207,7 @@ class TelemetrySampler {
                     useBestEffort(m)
                     beDeclined = false
                     save(m, BestEffortStore.Source.PICKED, verified = fit?.sure == true)
-                    android.util.Log.i("pokedaisy", "best effort: picked ${c.id} off=${m.off} for sha1=$beSha1")
+                    Logs.i("best effort: picked ${c.id} off=${m.off} for sha1=$beSha1")
                 }
                 PickAnswer.None -> {
                     dropBestEffort()
@@ -228,7 +228,7 @@ class TelemetrySampler {
         val text = beText ?: runCatching {
             val t0 = TimeSource.Monotonic.markNow()
             BestEffort.romText(reader, code, beSize).also {
-                android.util.Log.i("pokedaisy", "best effort: ROM text read in ${t0.elapsedNow().inWholeMilliseconds} ms")
+                Logs.i("best effort: ROM text read in ${t0.elapsedNow().inWholeMilliseconds} ms")
             }
         }.getOrNull()?.also { beText = it } ?: return null
         return BestEffort.evaluate(reader, code, beSize, text).also { beVerdict = it }
@@ -247,7 +247,7 @@ class TelemetrySampler {
         if (beVerdict != null && !unresolved && !unverified) return
         if (beGuess && ++beGuessSamples > GUESS_SAMPLES) {
             // A guess no party ever confirmed (the RAM isn't the guessed game's): the player picks.
-            android.util.Log.i("pokedaisy", "best effort: guess ${beMatch?.candidate?.id} never read a party, asking")
+            Logs.i("best effort: guess ${beMatch?.candidate?.id} never read a party, asking")
             dropBestEffort()
             return
         }
@@ -272,7 +272,7 @@ class TelemetrySampler {
                 beGuess = sure == null
                 beGuessSamples = 0
                 save(m, BestEffortStore.Source.AUTO, verified = sure != null)
-                android.util.Log.i("pokedaisy", "best effort: ${if (sure != null) "sure" else "guess"} ${m.candidate.id} off=${m.off} for sha1=$beSha1")
+                Logs.i("best effort: ${if (sure != null) "sure" else "guess"} ${m.candidate.id} off=${m.off} for sha1=$beSha1")
             }
             !v.sawParty -> {}
             sure != null && sure.candidate.kind == current.candidate.kind -> {
@@ -563,7 +563,7 @@ class TelemetrySampler {
                     // comment on why it can differ from a plain `shasum` on
                     // the file - RTC/GPIO registers mapped into the ROM's
                     // address space), so don't substitute a file-hash here.
-                    android.util.Log.i("pokedaisy", "unrecognized BPRE hack: full sha1=$hash size=$size")
+                    Logs.i("unrecognized BPRE hack: full sha1=$hash size=$size")
                     proveRetailEngine(reader, code)
                 }
             }
@@ -620,7 +620,7 @@ class TelemetrySampler {
                     unsupportedRom(reader, code, size, hash, "unrecognized Emerald-based ROM hack " +
                         "(BPEE, ${size / (1024 * 1024)} MB, sha1 ${hash?.take(12) ?: "unknown"}…) " +
                         "- no known RAM addresses for this build")
-                    android.util.Log.i("pokedaisy", "unrecognized BPEE hack: full sha1=$hash size=$size")
+                    Logs.i("unrecognized BPEE hack: full sha1=$hash size=$size")
                     proveRetailEngine(reader, code)
                 }
             }
@@ -672,7 +672,7 @@ class TelemetrySampler {
         if (!retailHash) {
             unsupportedRom(reader, code, size, smallHash, "unrecognized ${if (emerald) "Emerald" else "FireRed"}-based ROM hack " +
                 "($code, ${size / (1024 * 1024)} MB, sha1 ${smallHash?.take(12) ?: "unknown"}…) - no known RAM addresses for this build")
-            android.util.Log.i("pokedaisy", "unrecognized $code ROM: full sha1=$smallHash size=$size")
+            Logs.i("unrecognized $code ROM: full sha1=$smallHash size=$size")
             proveRetailEngine(reader, code)
             return
         }
@@ -702,7 +702,7 @@ class TelemetrySampler {
         val proof = runCatching {
             RetailEngine.check(code, rev) { off, len -> reader.readCoreMemory(0x08000000L + off, len) }
         }.getOrNull() ?: return
-        android.util.Log.i("pokedaisy", "retail engine: ${proof.build.id} " +
+        Logs.i("retail engine: ${proof.build.id} " +
             if (proof.ramProven) "proven (EXPAND row ${if (proof.wideRow != null) "rebuilt" else "not proven"})" else "not proven: ${proof.why.take(4)}")
         retailEngine = proof.takeIf { it.ramProven }
     }
@@ -717,7 +717,7 @@ class TelemetrySampler {
         val rev = runCatching { reader.readCoreMemory(0x080000BCL, 1)[0].toInt() and 0xFF }.getOrNull()
         randomizedRom = runCatching {
             RandomizedRetail.match(code, rev, size) { off, len -> reader.readCoreMemory(0x08000000L + off, len) }
-        }.getOrNull()?.also { android.util.Log.i("pokedaisy", "$code: retail randomized by Universal Pokemon Randomizer (retail ${it.retailSha1})") }
+        }.getOrNull()?.also { Logs.i("$code: retail randomized by Universal Pokemon Randomizer (retail ${it.retailSha1})") }
         return randomizedRom != null
     }
 
@@ -726,7 +726,7 @@ class TelemetrySampler {
         val rev = runCatching { reader.readCoreMemory(0x080000BCL, 1)[0].toInt() and 0xFF }.getOrNull()
         return runCatching {
             RetailDumps.match(code, rev, size) { off, len -> reader.readCoreMemory(0x08000000L + off, len) }
-        }.getOrNull()?.also { android.util.Log.i("pokedaisy", "$code: a retail dump with its save code patched / end trimmed (retail $it)") } != null
+        }.getOrNull()?.also { Logs.i("$code: a retail dump with its save code patched / end trimmed (retail $it)") } != null
     }
 
     /** No DEX tab, and no HERE / NEXT BOSS guide pages, unless the config's

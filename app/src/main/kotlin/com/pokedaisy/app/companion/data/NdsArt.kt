@@ -130,13 +130,13 @@ object NdsArt {
         Black2Redux.data = null
         background("pokedaisy-nds-art") {
             // The names first (a few text banks): the companion's first samples use them.
-            runCatching { names = readNames(rom) }.onFailure { android.util.Log.w("pokedaisy", "NdsArt: names failed", it) }
+            runCatching { names = readNames(rom) }.onFailure { Logs.w("NdsArt: names failed", it) }
             runCatching { OriginHeartGold.data = if (OriginHeartGold.matches(rom)) readOrigin(rom) else null }
-                .onFailure { android.util.Log.w("pokedaisy", "NdsArt: Origin HeartGold's tables failed", it) }
+                .onFailure { Logs.w("NdsArt: Origin HeartGold's tables failed", it) }
             runCatching { RenegadePlatinum.data = if (RenegadePlatinum.matches(rom)) readRenegade(rom) else null }
-                .onFailure { android.util.Log.w("pokedaisy", "NdsArt: Renegade Platinum's tables failed", it) }
+                .onFailure { Logs.w("NdsArt: Renegade Platinum's tables failed", it) }
             runCatching { Black2Redux.data = if (Black2Redux.matches(rom)) readRedux(rom) else null }
-                .onFailure { android.util.Log.w("pokedaisy", "NdsArt: the Redux hacks' tables failed", it) }
+                .onFailure { Logs.w("NdsArt: the Redux hacks' tables failed", it) }
             names?.let { n ->
                 if (activeGame.isDsGame) {
                     romLanguage = n.language
@@ -147,7 +147,7 @@ object NdsArt {
                 PokegearMap.dir = RomArt.dir(filesDir)
                 dir = RomArt.dir(filesDir)
                 if (extractTo(rom, RomArt.dir(filesDir))) RomArt.announce()
-            }.onFailure { android.util.Log.w("pokedaisy", "NdsArt: failed", it) }
+            }.onFailure { Logs.w("NdsArt: failed", it) }
         }
     }
 

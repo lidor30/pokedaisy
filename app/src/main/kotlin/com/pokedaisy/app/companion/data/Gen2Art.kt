@@ -570,7 +570,7 @@ object Gen2Art {
             runCatching {
                 val wrote = extractTo(readRomFile(rom), RomArt.dir(filesDir))
                 if (wrote.isNotEmpty()) RomArt.announce()
-            }.onFailure { android.util.Log.w("pokedaisy", "Gen2Art: failed", it) }
+            }.onFailure { Logs.w("Gen2Art: failed", it) }
         }
     }
 

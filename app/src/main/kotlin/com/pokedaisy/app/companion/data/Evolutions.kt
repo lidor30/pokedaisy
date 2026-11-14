@@ -83,7 +83,7 @@ object EvolutionSource {
         if (t.evolutions == 0L) return null
         cached(t)?.let { return it }
         val table = runCatching { read(t) }
-            .onFailure { android.util.Log.w("pokedaisy", "evolution table failed", it) }
+            .onFailure { Logs.w("evolution table failed", it) }
             .getOrNull() ?: return null
         cached = t to table
         return table

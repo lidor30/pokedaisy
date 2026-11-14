@@ -64,10 +64,10 @@ object RomArt {
                 val t0 = TimeSource.Monotonic.markNow()
                 val wrote = extractTo(readRomFile(rom), dir)
                 marker.writeText(wrote.joinToString("\n"))
-                android.util.Log.i("pokedaisy", "RomArt: ${wrote.size} new files from ${rom.name} in ${t0.elapsedNow().inWholeMilliseconds} ms")
+                Logs.i("RomArt: ${wrote.size} new files from ${rom.name} in ${t0.elapsedNow().inWholeMilliseconds} ms")
                 if (wrote.isNotEmpty()) _updates.value++
             } catch (t: Throwable) {
-                android.util.Log.w("pokedaisy", "RomArt: scan failed", t)
+                Logs.w("RomArt: scan failed", t)
             } finally {
                 running = false
             }
