@@ -19,6 +19,7 @@ import com.pokedaisy.app.companion.data.readLines
 import com.pokedaisy.app.companion.data.writeText
 import java.io.File
 import okio.Path.Companion.toOkioPath
+import okio.source
 
 /**
  * PLAYER LOOK for the game running ([PlayerLook]): one background pass when a ROM loads scans it (keeping its own
@@ -124,8 +125,8 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
                 val sha1 = java.security.MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(it) }
                 val rev = bytes.getOrNull(0xBC)?.toInt()?.and(0xFF)
                 val retail = GameTitles.isRetail(sha1) || sha1 in PlayerLook.HACKS ||
-                    RetailDumps.matchStream(code, rev, bytes.size.toLong()) { okio.Buffer().write(bytes) } != null ||
-                    com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, rev, bytes.size.toLong()) { okio.Buffer().write(bytes) } != null
+                    RetailDumps.matchStream(code, rev, bytes.size.toLong()) { bytes.inputStream().source() } != null ||
+                    com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, rev, bytes.size.toLong()) { bytes.inputStream().source() } != null
                 if (!retail) {
                     Log.i("pokedaisy", "player look: not a retail cart or a known hack, none offered")
                     android.os.Handler(android.os.Looper.getMainLooper()).post { if (gen == generation) supported.value = false }

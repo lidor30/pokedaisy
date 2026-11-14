@@ -65,8 +65,15 @@ fun Path.copyTo(to: Path) {
 /** The directory's entries, empty when it isn't one (File.listFiles(), never null). */
 fun Path.listFiles(): List<Path> = FileSystem.SYSTEM.listOrNull(this).orEmpty()
 
-/** Deletes a file or an empty directory; quiet when it's gone. */
-fun Path.delete() = FileSystem.SYSTEM.delete(this, mustExist = false)
+/** Deletes a file or an empty directory, as File.delete(): true if it went, false (never a throw) when it was gone or
+ * stayed - okio's delete throws there, and these deletes run where java.io.File's never could (the emu thread's
+ * resume, the UI thread). */
+fun Path.delete(): Boolean = try {
+    FileSystem.SYSTEM.delete(this, mustExist = true)
+    true
+} catch (_: okio.IOException) {
+    false
+}
 
 /** Deletes it and everything under it; quiet when it's gone. */
 fun Path.deleteRecursively() = FileSystem.SYSTEM.deleteRecursively(this, mustExist = false)

@@ -28,7 +28,7 @@ class SerialQueue(name: String) {
     private val jobs = Channel<() -> Unit>(Channel.UNLIMITED)
 
     init {
-        backgroundScope.launch(CoroutineName(name)) { for (job in jobs) runCatching(job) }
+        backgroundScope.launch(CoroutineName(name)) { for (job in jobs) runCatching(job).onFailure { Logs.w("$name: a queued job failed", it) } }
     }
 
     fun post(job: () -> Unit) { jobs.trySend(job) }

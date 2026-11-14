@@ -7,6 +7,10 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
+    // The Compose compiler infers which of these classes are stable (ItemView, LocationView, ...), as it did while
+    // the app compiled them: a class from a module built without it counts as unstable, and a composable taking one
+    // would never skip when a new sample brings an equal copy.
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 val appSrc = rootDir.resolve("app/src/main/kotlin/com/pokedaisy/app/companion")
@@ -79,4 +83,9 @@ tasks.withType<Test> {
         filter { excludeTestsMatching("*BestEffortTest") }
         maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
     }
+}
+
+// -PcomposeReports: the Compose compiler's stability report (build/compose-reports/*-classes.txt).
+if (project.hasProperty("composeReports")) {
+    composeCompiler { reportsDestination = layout.buildDirectory.dir("compose-reports") }
 }

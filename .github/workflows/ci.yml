@@ -79,6 +79,9 @@ jobs:
   # has held for a while.
   ios-shared:
     name: Shared code for iOS
+    # PRs and pushes only: the Release and Nightly workflows call this file too (workflow_call, where github.workflow
+    # is the caller's), and an advisory job mustn't hold back a signed release.
+    if: github.workflow == 'CI'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -105,6 +108,7 @@ jobs:
   # Link and run the portable platform checks too: a successful KLIB compile alone doesn't exercise Native APIs.
   ios-simulator:
     name: Shared code on the iOS simulator
+    if: github.workflow == 'CI'   # as ios-shared
     runs-on: macos-15
     timeout-minutes: 45
     steps:

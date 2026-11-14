@@ -44,7 +44,7 @@ class CacheFilesTest {
         assertEquals(0L, f.length)
         assertEquals(0L, f.lastModified)
         assertEquals(emptyList<okio.Path>(), f.listFiles())
-        f.delete()   // quiet
+        assertFalse(f.delete())   // quiet, false as File's
     }
 
     @Test fun `copy, list and delete`() = inTemp { dir ->
@@ -61,5 +61,17 @@ class CacheFilesTest {
         (dir / "z").mkdirs()
         (dir / "z").mkdirs()   // quiet when it's there
         assertTrue((dir / "z").isDirectory)
+    }
+
+    @Test fun `delete answers as File did and never throws`() = inTemp { dir ->
+        val f = dir / "a"
+        f.writeBytes(byteArrayOf(1))
+        assertTrue(f.delete())
+        assertFalse(f.isFile)
+        assertFalse(f.delete())
+        // A directory with something in it stays: File.delete() said false, okio's delete throws.
+        (dir / "full" / "b").writeBytes(byteArrayOf(2))
+        assertFalse((dir / "full").delete())
+        assertTrue((dir / "full").isDirectory)
     }
 }

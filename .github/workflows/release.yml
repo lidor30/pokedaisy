@@ -74,7 +74,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rom-test-reports
-          path: app/build/reports/tests/
+          path: |
+            app/build/reports/tests/
+            shared/build/reports/tests/
           retention-days: 7
 
   publish:

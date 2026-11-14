@@ -3658,8 +3658,9 @@ build's `appOnlyTests`), which run with the app's. Something the app uses from t
 "Shared code for iOS" job does. The macOS "Shared code on the iOS simulator" job also links and runs the
 portable smoke tests in `shared/src/commonTest`: files, PNGs, background work / locks and a fake emulator.
 Run them locally with `./gradlew :shared:iosSimulatorArm64Test` on an Apple Silicon Mac with Xcode and an iOS simulator.
-For focused JVM tests, use `make test-quick MODULE=shared T='*RomFilesTest'` (`MODULE=app` for app tests).
-A filter must match a test in that module; unfiltered `make test-quick` still runs both modules.
+For focused JVM tests, `make test-quick T='*RomFilesTest'` runs them in the module that has them
+(`scripts/test_module.py`; `MODULE=app` / `MODULE=shared` forces one). A filter that matches no test still fails in
+Gradle; unfiltered `make test-quick` runs both modules.
 ui-preview still compiles the same files straight into its desktop build.
 
 ## ScreenScraper and the dual-screen launcher

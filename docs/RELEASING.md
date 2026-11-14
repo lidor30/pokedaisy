@@ -197,8 +197,9 @@ What it needs:
   and `nds/`, so point
   `POKEDAISY_ROM_DIR` at the `gba/` folder of that same layout.
   Any test whose ROM isn't there still skips rather than fails. Check which ones ran
-  with `make test-roms ROM_DIR=<folder>` and the report at
-  `app/build/reports/tests/testDebugUnitTest/index.html`.
+  with `make test-roms ROM_DIR=<folder>` and the reports at
+  `app/build/reports/tests/testDebugUnitTest/index.html` and `shared/build/reports/tests/testDebugUnitTest/index.html`
+  (most ROM-backed tests are the shared module's).
 
 Set it up once:
 

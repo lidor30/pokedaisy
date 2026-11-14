@@ -57,16 +57,12 @@ gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt, t
 	python3 scripts/gen_gamedata.py
 	python3 scripts/gen_nds_ports.py
 
-# Unfiltered runs cover both modules. Focused runs select one owner so a misspelled filter fails in Gradle.
-# Example: make test-quick MODULE=shared T='*RomFilesTest'
-ifneq ($(strip $(T)),)
-ifeq ($(filter app shared,$(MODULE)),)
-$(error T requires MODULE=app or MODULE=shared)
-endif
-endif
-UNIT_TESTS = $(if $(T),:$(MODULE):testDebugUnitTest --tests '$(T)',:app:testDebugUnitTest :shared:testDebugUnitTest)
+# Unfiltered runs cover both modules. A focused run (T='*FooTest') goes to the module(s) whose tests the filter names
+# (scripts/test_module.py; MODULE=app / MODULE=shared forces one), so a misspelled filter still fails in Gradle.
+MODULE ?= $(if $(strip $(T)),$(shell python3 scripts/test_module.py '$(T)'))
+UNIT_TESTS = $(if $(strip $(T)),$(foreach m,$(MODULE),:$(m):testDebugUnitTest --tests '$(T)'),:app:testDebugUnitTest :shared:testDebugUnitTest)
 
-test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (MODULE=shared T='*FooTest' to pick)
+test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (T='*FooTest' to pick)
 	./gradlew $(UNIT_TESTS) -Pquick
 
 test: ## All JVM unit tests, Paparazzi renders included (CLAUDE.md: agents ask first)

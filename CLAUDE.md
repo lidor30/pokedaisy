@@ -229,8 +229,9 @@ The user runs several agents at once and runs the full suites about once a day, 
   drops the Paparazzi renders (`*ScreenshotTest`: they assert nothing and were 86% of the full run's ~10 min)
   and `BestEffortTest` (26 whole ROMs, ~45 s), and runs the forks side by side. Fixture decodes, ROM-backed
   tests and guards still run. Run it before calling a change done.
-- **While working, run only the tests for what you touched**: `make test-quick MODULE=shared T='*MoneyTest'` (~25 s), or
-  several with `./gradlew :shared:testDebugUnitTest -Pquick --tests '*Foo*' --tests '*Bar*'` (`:app:` for the app's). A test you add or
+- **While working, run only the tests for what you touched**: `make test-quick T='*MoneyTest'` (~25 s; it runs them in
+  the module that has them, `scripts/test_module.py`), or several with `./gradlew :shared:testDebugUnitTest -Pquick --tests '*Foo*'
+  --tests '*Bar*'` (`:app:` for the app's). A test you add or
   change: run it by name. `BestEffortTest` runs by name too if you touch detection / `BestEffort`.
 - **Ask the user before any full run**, and say why: `make test`, `make check`, `make test-roms`, a plain
   `./gradlew :app:testDebugUnitTest :shared:testDebugUnitTest` (no `-Pquick`), every Paparazzi class at once (`recordPaparazziDebug` over
