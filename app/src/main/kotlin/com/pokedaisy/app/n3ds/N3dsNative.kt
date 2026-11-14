@@ -78,7 +78,9 @@ object N3dsNative {
     /** Blocking until the game thread has taken / loaded it. */
     @JvmStatic external fun saveState(path: String): Boolean
     @JvmStatic external fun loadState(path: String): Boolean
-    /** Percent of real time; 0 = flat out. */
+    /** The 3D picture at [factor] x the 3DS's own resolution (0 = the window's size); from the next boot. */
+    @JvmStatic external fun setResolution(factor: Int)
+        /** Percent of real time; 0 = flat out. */
     @JvmStatic external fun setSpeed(percent: Int)
     @JvmStatic external fun frames(): Long
     @JvmStatic external fun gameFps(): Double

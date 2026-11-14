@@ -649,6 +649,7 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "GBA" to Tr(ja = "GBA", fr = "GBA", de = "GBA", it = "GBA", es = "GBA", br = "GBA", pt = "GBA", ko = "GBA"),
     "GAME BOY" to Tr(ja = "ゲームボーイ", fr = "GAME BOY", de = "GAME BOY", it = "GAME BOY", es = "GAME BOY", br = "GAME BOY", pt = "GAME BOY", ko = "게임보이"),
     "DS" to Tr(ja = "DS", fr = "DS", de = "DS", it = "DS", es = "DS", br = "DS", pt = "DS", ko = "DS"),
+    "3DS" to Tr(ja = "3DS", fr = "3DS", de = "3DS", it = "3DS", es = "3DS", br = "3DS", pt = "3DS", ko = "3DS"),
     "CUSTOM" to Tr(ja = "じぶんで", fr = "PERSO", de = "EIGENES", it = "PERSONALE", es = "PROPIO", br = "PERSONAL.", pt = "PERSONAL.", ko = "커스텀"),
     "D-PAD" to Tr(ja = "じゅうじキー", fr = "CROIX", de = "STEUERKREUZ", it = "CROCE", es = "CRUCETA", br = "DIRECIONAL", pt = "DIRECIONAL", ko = "방향키"),
     "START" to Tr(ja = "スタート", fr = "START", de = "START", it = "START", es = "START", br = "START", pt = "START", ko = "START"),

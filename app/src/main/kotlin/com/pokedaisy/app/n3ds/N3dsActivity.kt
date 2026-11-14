@@ -36,6 +36,7 @@ class N3dsActivity : Activity() {
         const val EXTRA_ROM = "rom"
         private const val TAG = "pokedaisy/n3ds"
         private const val FF_PERCENT = 300
+        private const val RESOLUTION = 3
     }
 
     private lateinit var rom: File
@@ -120,6 +121,9 @@ class N3dsActivity : Activity() {
         val user = N3dsSaves.root(this).absolutePath
         gameThread = Thread({
             N3dsNative.init(user)
+            // 3x for now (the RP6 / Thor draw the top screen at 4x): sharp, and cheap on a Snapdragon 8 Gen 2. A setting
+            // later, like DS RESOLUTION.
+            N3dsNative.setResolution(RESOLUTION)
             val result = N3dsNative.run(path)
             Log.i(TAG, "game ended: $result")
             ui.post {

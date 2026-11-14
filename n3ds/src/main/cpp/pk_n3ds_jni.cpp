@@ -384,6 +384,12 @@ JNIEXPORT jboolean JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_loadState(JNIE
     return request(false, fromJava(env, path)) ? JNI_TRUE : JNI_FALSE;
 }
 
+// The 3D picture's resolution, a multiple of the 3DS's own (1 = 400 x 240 on top); 0 = the window's size. Takes effect
+// on the next boot.
+JNIEXPORT void JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_setResolution(JNIEnv*, jclass, jint factor) {
+    Settings::values.resolution_factor = static_cast<u32>(std::clamp(factor, 0, 10));
+}
+
 // Speed in percent of real time; 0 = as fast as it goes.
 JNIEXPORT void JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_setSpeed(JNIEnv*, jclass, jint percent) {
     Settings::values.frame_limit = static_cast<double>(std::max(percent, 0));
