@@ -1868,10 +1868,10 @@ fun dexCategoryLine(t: PokedexTables, category: String): String =
 /** HT as [t]'s game prints it: "2'04"" or, in the European releases, "0,7 m". */
 /** HT / WT for [e] - a Gen 1 page's own feet / inches and pounds when it has them. */
 fun formatDexHeight(t: PokedexTables, e: DexEntry): String =
-    e.heightIn?.let { "%d'%02d\"".format(it / 12, it % 12) } ?: formatDexHeight(t, e.heightDm)
+    e.heightIn?.let { "${it / 12}'${(it % 12).pad(2)}\"" } ?: formatDexHeight(t, e.heightDm)
 
 fun formatDexWeight(t: PokedexTables, e: DexEntry): String =
-    e.weightLbs10?.let { "%d.%d lbs.".format(it / 10, it % 10) } ?: formatDexWeight(t, e.weightHg)
+    e.weightLbs10?.let { "${it / 10}.${it % 10} lbs." } ?: formatDexWeight(t, e.weightHg)
 
 fun formatDexHeight(t: PokedexTables, dm: Int): String =
     if (t.metric) metric(t, dm, "m") else formatDexHeight(dm)
@@ -1889,14 +1889,14 @@ fun formatDexHeight(dm: Int): String {
     if (inches % 10 >= 5) inches += 10
     val feet = inches / 120
     val rest = (inches - feet * 120) / 10
-    return "%d'%02d\"".format(feet, rest)
+    return "$feet'${rest.pad(2)}\""
 }
 
 /** "15.2 lbs.", the game's own rounding (DexScreen_PrintMonWeight). */
 fun formatDexWeight(hg: Int): String {
     var lbs = 100000L * hg / 4536 // hundredths of a pound
     if (lbs % 10 >= 5) lbs += 10
-    return "%d.%d lbs.".format(lbs / 100, (lbs % 100) / 10)
+    return "${lbs / 100}.${(lbs % 100) / 10} lbs."
 }
 
 /** Gen 3 (Western) text: the characters dex entries and ability names use

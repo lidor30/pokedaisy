@@ -34,7 +34,7 @@ object MoveLearning {
     /** "TM06" / "HM01" for a TM item. */
     fun tmLabel(itemId: Int): String {
         val i = itemId - VANILLA_ITEM_TM01
-        return if (i < 50) "TM%02d".format(i + 1) else "HM%02d".format(i - 49)
+        return if (i < 50) "TM${(i + 1).pad(2)}" else "HM${(i - 49).pad(2)}"
     }
 
     /** The move TM / HM item [itemId] teaches; null = not a TM or the table isn't read. */

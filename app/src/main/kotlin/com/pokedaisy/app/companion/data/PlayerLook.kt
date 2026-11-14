@@ -132,7 +132,7 @@ object PlayerLook {
     ) {
         /** mgba_dump's `romblocks` file (headless checks of exactly what the app puts in). */
         fun toText(): String = buildString {
-            for (b in blocks) append("block %08X %08X %s\n".format(0x08000000 + b.off, b.crc, hex(b.data)))
+            for (b in blocks) append("block ${(0x08000000 + b.off).hex(8, upper = true)} ${b.crc.hex(8, upper = true)} ${hex(b.data)}\n")
             for (p in palettes) append("pal ${p.from.joinToString("") { hex(it) }} ${hex(p.to)}\n")
             playerPal?.let { append("playerpal ${hex(it)}\n") }
         }
@@ -658,7 +658,7 @@ object PlayerLook {
         return out.toByteArray()
     }
 
-    private fun hex(b: ByteArray) = b.joinToString("") { "%02X".format(it.toInt() and 0xFF) }
+    private fun hex(b: ByteArray) = b.hex(upper = true)
 }
 
 /**

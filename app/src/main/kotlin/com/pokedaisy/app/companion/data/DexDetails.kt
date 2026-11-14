@@ -579,7 +579,7 @@ object DexDetails {
         val bits = rd(t.tmhmLearnsets + species * 8L, 8)
         val moves = rd(t.tmhmMoves, 58 * 2)
         return (0 until 58).filter { (bits[it / 8].toInt() shr (it % 8)) and 1 != 0 }.map { i ->
-            TeachMove(if (i < 50) "TM%02d".format(i + 1) else "HM%02d".format(i - 49), u16le(moves, i * 2))
+            TeachMove(if (i < 50) "TM${(i + 1).pad(2)}" else "HM${(i - 49).pad(2)}", u16le(moves, i * 2))
         }
     }
 

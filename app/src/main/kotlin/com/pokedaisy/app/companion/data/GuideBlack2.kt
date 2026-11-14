@@ -75,7 +75,7 @@ private fun b2w2Bosses(world: Gen5World): List<Boss> {
 }
 
 private fun hm(n: Int, move: String, answer: String, hint: String, areas: List<String>) =
-    entry("HM%02d %s".format(n, move), answer, hint, Have.Item(B2W2_HM01 + n - 1), areas)
+    entry("HM${n.pad(2)} $move", answer, hint, Have.Item(B2W2_HM01 + n - 1), areas)
 
 internal val GUIDE_BLACK2 = b2w2Guide(BLACK2_WORLD)
 

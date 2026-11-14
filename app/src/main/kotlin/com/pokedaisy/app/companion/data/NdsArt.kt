@@ -333,7 +333,7 @@ object NdsArt {
                     }.joinToString(";")
                 } ?: "",
                 levelUp.joinToString(",") { "${it.first}:${it.second}" },
-                bits.joinToString("") { "%02x".format(it) },
+                bits.hex(),
                 ability(0x1A),
             )
             sb.append(cells.joinToString("\t") { it.replace("\t", " ") }).append('\n')
@@ -783,7 +783,7 @@ object NdsArt {
                     (0 until l.size / 4).asSequence().map { u16(l, it * 4) to u16(l, it * 4 + 2) }
                         .takeWhile { it.first != 0xFFFF }.joinToString(",") { (move, level) -> "$level:$move" }
                 } ?: "",
-                (0x28 until 0x38).joinToString("") { "%02x".format(b(it)) },
+                (0x28 until 0x38).joinToString("") { b(it).hex(2) },
                 ability(0x1A),
             )
             sb.append(cells.joinToString("\t") { it.replace("\t", " ") }).append('\n')
@@ -1135,7 +1135,7 @@ object NdsArt {
                     (0 until l.size / 2).asSequence().map { u16(l, it * 2) }.takeWhile { it != 0xFFFF }
                         .joinToString(",") { "${it shr 9}:${it and 0x1FF}" }
                 } ?: "",
-                if (p.size >= 0x2C) (0x1C until 0x2C).joinToString("") { "%02x".format(b(it)) } else "",
+                if (p.size >= 0x2C) (0x1C until 0x2C).joinToString("") { b(it).hex(2) } else "",
             )
             sb.append(cells.joinToString("\t") { it.replace("\t", " ") }).append('\n')
         }

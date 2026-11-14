@@ -78,7 +78,7 @@ object RetailDumps {
             digest.update(chunk)
             off += len
         }
-        return digest.digest().joinToString("") { "%02x".format(it) }
+        return digest.digest().hex()
     }
 
     /** [len] bytes from [s], or null at its end. */

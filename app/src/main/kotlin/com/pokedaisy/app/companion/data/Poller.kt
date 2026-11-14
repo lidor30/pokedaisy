@@ -805,7 +805,7 @@ class TelemetrySampler {
             digest.update(MgbaCore.pkRomRead(off, len) ?: break)
             off += len
         }
-        val hash = if (off == size && size > 0) digest.digest().joinToString("") { "%02x".format(it) } else null
+        val hash = if (off == size && size > 0) digest.digest().hex() else null
         when {
             GAME_BOY_SUPPORT && hash == RED_SHA1 -> { kind = GameKind.RED; gen1Cfg = GEN1_RED }
             GAME_BOY_SUPPORT && hash == BLUE_SHA1 -> { kind = GameKind.BLUE; gen1Cfg = GEN1_BLUE }
@@ -1366,5 +1366,5 @@ private fun sha1HexChunked(reader: MemoryReader, baseAddr: Long, size: Long): St
         digest.update(chunk)
         off += len
     }
-    return digest.digest().joinToString("") { "%02x".format(it) }
+    return digest.digest().hex()
 }

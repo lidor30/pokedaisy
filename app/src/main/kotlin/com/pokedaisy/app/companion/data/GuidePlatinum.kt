@@ -58,7 +58,7 @@ private val BOSSES_PLATINUM = listOf(
 )
 
 private fun hm(n: Int, move: String, answer: String, hint: String, areas: List<String>) =
-    entry("HM%02d %s".format(n, move), answer, hint, Have.Item(PT_HM01 + n - 1), areas)
+    entry("HM${n.pad(2)} $move", answer, hint, Have.Item(PT_HM01 + n - 1), areas)
 
 internal val GUIDE_PLATINUM = GameGuide(
     verified = false,

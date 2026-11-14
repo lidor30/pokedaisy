@@ -125,6 +125,14 @@ fun activeTypeIdByName(): Map<String, Int> {
     return m
 }
 
+/** [pct] / 100 to two significant digits, as `%.2g` printed it (1.5, 3.0, 0.13, 16). */
+private fun twoDigits(pct: Int): String = when {
+    pct >= 1000 -> ((pct + 50) / 100).toString()
+    pct >= 100 -> ((pct + 5) / 10).let { if (it >= 100) "10" else "${it / 10}.${it % 10}" }
+    pct >= 10 -> "0.${pct.pad(2)}"
+    else -> "0.0${pct}0"
+}
+
 fun formatMultiplier(pct: Int): String = when (pct) {
     0 -> "0x"
     25 -> "¼x" // ¼x
@@ -132,7 +140,7 @@ fun formatMultiplier(pct: Int): String = when (pct) {
     100 -> "1x"
     200 -> "2x"
     400 -> "4x"
-    else -> "%.2gx".format(pct / 100.0)
+    else -> twoDigits(pct) + "x"
 }
 
 private const val STATUS1_SLEEP_MASK = 0x7L

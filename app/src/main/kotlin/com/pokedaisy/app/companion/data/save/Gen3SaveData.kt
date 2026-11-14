@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data.save
 
 import com.pokedaisy.app.companion.data.Gen3Text
+import com.pokedaisy.app.companion.data.pad
 
 /** A PC box position: box 0..13, slot 0..29 (rows of 6, as the game lays them out). */
 data class BoxSlot(val box: Int, val slot: Int)
@@ -37,7 +38,7 @@ class Gen3SaveData(
     val isFemale: Boolean get() = saveBlock2[8].toInt() != 0
     val trainerId: Int get() = u16(saveBlock2, 0x0A)
     val secretId: Int get() = u16(saveBlock2, 0x0C)
-    val playTime: String get() = "%d:%02d".format(u16(saveBlock2, 0x0E), saveBlock2[0x10].toInt() and 0xFF)
+    val playTime: String get() = "${u16(saveBlock2, 0x0E)}:${(saveBlock2[0x10].toInt() and 0xFF).pad(2)}"
 
     val money: Long get() {
         val key = if (format.encryptionKeyOff >= 0) u32(saveBlock2, format.encryptionKeyOff) else 0L
