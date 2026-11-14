@@ -280,6 +280,8 @@ fun CompanionScreen(
         // The launch's saved copy names the ones it had, which wait on LOADING for the live data.
         val cachedTabs = snapshot.cachedTabs.orEmpty()
         val available = COMPANION_TABS.filter { id ->
+            // A 3DS game: what its reader has so far (docs/3DS_GAMES_PLAN.md).
+            if (game == GameKind.POKEMON_X) return@filter id in N3DS_TABS
             when (id) {
                 "DEX" -> dex != null || id in cachedTabs
                 "GUIDE" -> guide != null || id in cachedTabs
@@ -1294,6 +1296,9 @@ private fun BlockedView(
         }
     }
 }
+
+/** The tabs a 3DS game has so far: its party, its bag and Azahar's states. */
+private val N3DS_TABS = setOf("PARTY", "ITEMS", "STATES")
 
 /** The data tabs until the first telemetry arrives: a rocking Poké Ball and
  * "LOADING...". [status] (the reader's own message) only shows up if it

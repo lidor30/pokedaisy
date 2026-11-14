@@ -29,7 +29,9 @@ import kotlin.concurrent.Volatile
 // ROM-extracted tables (*Hns.kt / *Lazarus.kt, scripts/gen_expansion_tables.py).
 enum class GameKind { FIRERED, EMERALD, UNBOUND, GAIA, RADICAL_RED, ODYSSEY, HEART_AND_SOUL, LAZARUS, ROWE, EMERALD_ROGUE, AMETHYST, EMERALD_SEAGLASS, CELIA, TMT2, SOULGOLD, YELLOW, GLAZED, IMPERIUM, QUETZAL, ORANGE_ISLANDS, RECHARGED_YELLOW, MARIOMON, SWORD_SHIELD, GS_CHRONICLES, CRYSTAL, CRYSTAL_CLEAR, PRISM,
     GOLD, SILVER, RED, BLUE, ELITE_REDUX, POLISHED_CRYSTAL, PLATINUM, HEARTGOLD, SOULSILVER, TEAM_ROCKET, BLACK, WHITE, BLACK2, WHITE2,
-    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY }
+    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY,
+    /** A 3DS game (docs/3DS_GAMES_PLAN.md): its companion reads Azahar's memory, PARTY and BAG so far. */
+    POKEMON_X }
 
 /**
  * Games with an auto-run of their own, on by default: holding B walks there, so AUTO-RUN's flip of B walked and B ran
@@ -797,4 +799,5 @@ fun GameKind.displayName(): String = when (this) {
     GameKind.PURE_BLUE -> "Pokémon PureBlue"
     GameKind.YELLOW_LEGACY -> "Pokémon Yellow Legacy"
     GameKind.CRYSTAL_LEGACY -> "Pokémon Crystal Legacy"
+    GameKind.POKEMON_X -> "Pokémon X"
 }

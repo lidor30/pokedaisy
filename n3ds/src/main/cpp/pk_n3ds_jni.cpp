@@ -31,6 +31,7 @@
 #include "core/core.h"
 #include "core/frontend/applets/default_applets.h"
 #include "core/frontend/emu_window.h"
+#include "core/frontend/framebuffer_layout.h"
 #include "core/frontend/input.h"
 #include "core/hle/service/service.h"
 #include "core/loader/loader.h"
@@ -101,6 +102,7 @@ private:
 };
 
 std::mutex surfaceMutex;
+std::condition_variable surfaceCv;         // a surface came (setSurface)
 ANativeWindow* surfaces[2] = {};           // [0] main, [1] second
 std::unique_ptr<PkWindow> windows[2];     // live while a game runs
 
@@ -280,6 +282,7 @@ JNIEXPORT void JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_setSurface(JNIEnv*
     std::scoped_lock lock(surfaceMutex);
     if (surfaces[which]) ANativeWindow_release(surfaces[which]);
     surfaces[which] = surface ? ANativeWindow_fromSurface(env, surface) : nullptr;
+    surfaceCv.notify_all();
     if (windows[which] && windows[which]->SetSurface(surfaces[which])) {
         auto& system = Core::System::GetInstance();
         if (system.IsPoweredOn() && surfaces[which]) system.GPU().Renderer().NotifySurfaceChanged(which == 1);
@@ -294,28 +297,34 @@ JNIEXPORT jint JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_run(JNIEnv* env, j
     auto& system = Core::System::GetInstance();
     stopRun = false;
     paused = false;
-    {
-        std::scoped_lock lock(surfaceMutex);
-        const bool two = surfaces[1] != nullptr;
-        // Two surfaces: the top screen alone on the main one, the touch screen alone on the second. One: both, the way
-        // the app asks (DS LAYOUT's SIDE BY SIDE / LARGE + SMALL / STACKED as Azahar's SideScreen / LargeScreen / Default).
-        Settings::values.layout_option = two ? Settings::LayoutOption::SingleScreen
-                                             : static_cast<Settings::LayoutOption>(std::clamp(oneSurfaceLayout, 0, 3));
-        Settings::values.secondary_display_layout = Settings::SecondaryDisplayLayout::BottomScreenOnly;
-        Settings::values.swap_screen = false;
-        windows[0] = std::make_unique<PkWindow>(surfaces[0], false);
-        windows[1] = two ? std::make_unique<PkWindow>(surfaces[1], true) : nullptr;
+    // The surface lock is held through the boot (as Azahar's own front end does): a surface released meanwhile (the
+    // screen waking, a lock screen closing) would leave Vulkan making its swapchain from a window that's gone. Vulkan
+    // can't make one from no window either: wait for the main one, up to a few seconds.
+    std::unique_lock surfaceLock(surfaceMutex);
+    if (!surfaceCv.wait_for(surfaceLock, std::chrono::seconds(5), [] { return surfaces[0] != nullptr || stopRun; }) ||
+        stopRun) {
+        PKLOG("no surface to draw on: not started");
+        return static_cast<jint>(Core::System::ResultStatus::ErrorNotInitialized);
     }
+    const bool two = surfaces[1] != nullptr;
+    // Two surfaces: the top screen alone on the main one, the touch screen alone on the second. One: both, the way the
+    // app asks (DS LAYOUT's SIDE BY SIDE / LARGE + SMALL / STACKED as Azahar's SideScreen / LargeScreen / Default).
+    Settings::values.layout_option = two ? Settings::LayoutOption::SingleScreen
+                                         : static_cast<Settings::LayoutOption>(std::clamp(oneSurfaceLayout, 0, 3));
+    Settings::values.secondary_display_layout = Settings::SecondaryDisplayLayout::BottomScreenOnly;
+    Settings::values.swap_screen = false;
+    windows[0] = std::make_unique<PkWindow>(surfaces[0], false);
+    windows[1] = two ? std::make_unique<PkWindow>(surfaces[1], true) : nullptr;
     FileUtil::SetCurrentRomPath(path);
     Frontend::RegisterDefaultApplets(system);
     system.ApplySettings();
     const auto status = system.Load(*windows[0], path, windows[1].get());
     if (status != Core::System::ResultStatus::Success) {
         PKLOG("load failed: %d %s", static_cast<int>(status), system.GetStatusDetails().c_str());
-        std::scoped_lock lock(surfaceMutex);
         windows[0].reset(), windows[1].reset();
         return static_cast<jint>(status);
     }
+    surfaceLock.unlock();
     u64 programId = 0;
     system.GetAppLoader().ReadProgramId(programId);
     system.GPU().ApplyPerProgramSettings(programId);
@@ -370,6 +379,7 @@ JNIEXPORT jint JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_run(JNIEnv* env, j
 
 JNIEXPORT void JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_stop(JNIEnv*, jclass) {
     stopRun = true;
+    surfaceCv.notify_all();
     pauseCv.notify_all();
     requestDone.notify_all();
 }
@@ -460,3 +470,48 @@ JNIEXPORT jdouble JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_gameFps(JNIEnv*
 }
 
 } // extern "C"
+
+// ---- Screenshots (a state's thumbnail) ----------------------------------------------------------------------------
+
+// Azahar writes a screenshot into its buffer at the next frame it presents, on the game thread; the buffer stays ours
+// (global) so one that lands after the caller gave up writes into live memory. One at a time, as Azahar allows.
+std::mutex shotMutex;
+std::condition_variable shotCv;
+std::vector<u32> shotBuf;
+bool shotDone = false;
+bool shotInvert = false;
+
+// The top screen of the next frame at [w] x [h] (ARGB, top row first); null without a running game, while another
+// screenshot is still pending, or when no frame came within a second (a paused game). Blocks: never the UI thread.
+extern "C" JNIEXPORT jintArray JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_screenshot(JNIEnv* env, jclass, jint w, jint h) {
+    if (w <= 0 || h <= 0 || w > 4096 || h > 4096) return nullptr;
+    auto& system = Core::System::GetInstance();
+    std::unique_lock lock(shotMutex);
+    {
+        std::scoped_lock r(requestMutex);
+        if (!system.IsPoweredOn() || stopRun || paused) return nullptr;
+        auto& renderer = system.GPU().Renderer();
+        if (renderer.IsScreenshotPending()) return nullptr;
+        shotBuf.assign(static_cast<size_t>(w) * h, 0);
+        shotDone = false;
+        renderer.RequestScreenshot(
+            shotBuf.data(),
+            [](bool invertY) {
+                std::scoped_lock l(shotMutex);
+                shotInvert = invertY;
+                shotDone = true;
+                shotCv.notify_all();
+            },
+            Layout::SingleFrameLayout(static_cast<u32>(w), static_cast<u32>(h), false, false));
+    }
+    if (!shotCv.wait_for(lock, std::chrono::seconds(1), [] { return shotDone; })) return nullptr;
+    std::vector<jint> out(shotBuf.size());
+    for (jint y = 0; y < h; y++) {
+        const size_t from = static_cast<size_t>(shotInvert ? h - 1 - y : y) * w;
+        for (jint x = 0; x < w; x++)
+            out[static_cast<size_t>(y) * w + x] = static_cast<jint>(shotBuf[from + x] | 0xFF000000u);
+    }
+    jintArray result = env->NewIntArray(static_cast<jsize>(out.size()));
+    env->SetIntArrayRegion(result, 0, static_cast<jsize>(out.size()), out.data());
+    return result;
+}

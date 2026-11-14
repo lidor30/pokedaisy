@@ -89,4 +89,7 @@ object N3dsNative {
     @JvmStatic external fun setSpeed(percent: Int)
     @JvmStatic external fun frames(): Long
     @JvmStatic external fun gameFps(): Double
+    /** The top screen of the next frame at [width] x [height], ARGB, top row first; null when there's no frame to take
+     * (no game, paused, another one pending). Blocks up to a second: never on the UI thread. */
+    @JvmStatic external fun screenshot(width: Int, height: Int): IntArray?
 }

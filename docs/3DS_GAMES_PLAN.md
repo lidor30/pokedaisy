@@ -83,9 +83,51 @@ screen on a second display, else a window over the game; a held BACK leaves). `N
 the game's memory between two run loops; `Gen6Reader` decodes the live party (PK6 + the party stats at +0x158, whose
 cipher starts again from the encryption constant) and the bag's five pockets; `Gen6Text` reads the names from the cart's
 RomFS (GARC `a/0/7/<n>` by the save's language, MyStatus +0x2D: 2..8 English, French, Italian, German, Spanish, Korean;
-Japanese 3). They feed the companion's own PartyScreen / ItemsScreen (`N3dsCompanion`); `LocalItemNames` keeps the bag
-and the held-item tag on the cart's names instead of the GBA tables by id. Not yet: icons, summaries, types, the map,
+Japanese 3). They fed the first screen's own PartyScreen / ItemsScreen (`N3dsCompanion`, `LocalItemNames`); in the game screen
+the regular companion shows them (below). Not yet: icons, summaries, types, the map,
 medicine as its own tab.
+
+## In the game screen (2026-11-15)
+
+A 3DS game now plays in the regular game screen (`PokeDaisyActivity`), so it gets the app's own controls, companion,
+HUD messages, hotkeys and DS LAYOUT instead of a screen of its own. `N3dsActivity` stays until the Thor's two screens
+are checked through this path, then goes.
+
+- `load3ds` / `endN3ds` (PokeDaisyActivity): `N3dsSession` (`n3ds/N3dsSession.kt`) owns Azahar's thread, its two
+  SurfaceViews, input, states and the companion's samples. The GL game view stays laid out but invisible and an idle
+  `EmulatorEngine` stands in, so the many `engine` paths keep working; `GameStageLayout.gameCover` puts the top screen's
+  surface exactly over the game's box (5:3, `DsLayouts.N3DS_TOP_ASPECT`).
+- Input: the pump reads `GbaInput` every 4 ms (the player's GAME BUTTONS bindings, the touch controls, the hat) and
+  ticks the held-back START / SELECT taps once a 60 Hz frame (`GbaInput.tapMask`); the left stick is the circle pad.
+- DS LAYOUT: `n3dsArrange` / `syncN3dsStage`. ONE SCREEN keeps the touch surface laid out over the middle at 82% of
+  the height and moves it off the screen (translationX) while hidden: laid out off the screen from the start, its
+  surface showed at the stage's top left. L2 / TOUCH bring it in, a tap on the dim sends it away.
+- Two displays: the touch surface moves into the bottom display's `NdsBottomHost` (`screen`), the companion behind its
+  COMPANION switch, as for a DS game; hidden by translationX there too. Not checked on the Thor yet.
+- Companion: `GameKind.POKEMON_X`, the snapshot published through `TelemetryStore.publish`, the bar limited to PARTY,
+  BAG and STATES (`N3DS_TABS`); the bag's names go through `OwnItemNames` (the cart's, not the GBA tables by id).
+- States: the save / load hotkeys and STATES use `SaveStates`' files under the title id; a save writes a 160 px
+  thumbnail from Azahar's own screenshot of the next frame (`N3dsNative.screenshot`: a PixelCopy of the surface came
+  out see-through, Azahar's frames carry alpha 0). No undo copies yet.
+- Checked on the RP6 (2026-11-15): START / A / B (the device's GAME BUTTONS swap them), L2's window, PARTY, BAG, STATES
+  save / load with thumbnails. Not checked: upright (the RP6 won't rotate from adb), the side panel, the touch controls.
+
+## Icons: what's known (2026-11-14, not in the app yet)
+
+- Party icons: RomFS `a/0/9/3`, a GARC of 945 files, each LZ11-compressed (0x11 header) into a CLIM-footed file. The
+  footer says 40 x 30 RGBA5551 but the data isn't: it's `u16 ?` (2), `u16 n` (colours), n RGBA5551 colours (alpha = bit
+  0: a colour with it clear is transparent, whatever its index), then 4-bit pixels, high nibble first, in 8 x 8 tiles of
+  Morton (Z) order over a 64 x 32 texture (the icon in its top-left 40 x 30). Decoded this way they're right (checked by
+  eye on dozens).
+- The order isn't species order: each species' extra forms come before its plain icon (Mega Venusaur 3, Venusaur 4;
+  Mega X 7, Mega Y 8, Charizard 9), and some species have two identical icons (Clefairy, Clefable, Jigglypuff,
+  Wigglytuff), so 945 files against the 885 that species + forms (personal `a/2/1/8`, 0x40 bytes, form count at +0x20)
+  give. No species-to-icon table was found as u8 / u16 / u32 runs in `.code` (ExeFS, BLZ-compressed) or any `.cro`: the
+  game computes it, or keeps it in another shape. Next: find the rule (the pairs may be gender; the personal data's
+  gender / flags bytes), or read which icon the game loads (its party menu's texture).
+- Item icons are probably `a/0/9/4` (579 files, 30 x 30, same container).
+- The map: the save's Situation block isn't at 0x1E00 in XY (zeros there); the zone data with place-name indexes is one
+  of the GARCs whose entries name places (text file 72), not pinned down yet.
 
 ## Pokemon X, first findings (n3ds_dump, 2026-11-14)
 

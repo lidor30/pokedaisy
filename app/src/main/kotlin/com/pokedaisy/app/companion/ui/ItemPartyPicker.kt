@@ -98,7 +98,7 @@ internal fun HeldItemTag(itemId: Int, modifier: Modifier = Modifier) {
             .drawBehind { drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
             .padding(horizontal = u * 5, vertical = u * 2),
     ) {
-        val ownNames = LocalItemNames.current
+        val ownNames = ownItemNames()
         if (ownNames == null) {
             ItemIcon(spriteAsset("items", itemId), size = m.lineHeight)
             Spacer(Modifier.padding(start = u * 3))

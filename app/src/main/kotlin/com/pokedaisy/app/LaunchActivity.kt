@@ -199,15 +199,6 @@ class LaunchActivity : Activity() {
         val prefs = Prefs(this)
         prefs.lastRomPath = rom.absolutePath
         prefs.pushRecentRom(rom.absolutePath)
-        if (is3ds(rom)) {
-            startActivity(
-                Intent(this, com.pokedaisy.app.n3ds.N3dsActivity::class.java)
-                    .putExtra(com.pokedaisy.app.n3ds.N3dsActivity.EXTRA_ROM, rom.absolutePath)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                Screens.mainDisplayLaunch(this),
-            )
-            return
-        }
         startActivity(
             Intent(this, PokeDaisyActivity::class.java)
                 .putExtra(LibraryActivity.EXTRA_ROM, rom.absolutePath)

@@ -144,6 +144,16 @@ internal fun bagItemName(id: Int): String = gameItemNames(activeGame)?.get(id) ?
  */
 val LocalItemNames = androidx.compose.runtime.staticCompositionLocalOf<((Int) -> String?)?> { null }
 
+/** [LocalItemNames] for screens hosted where nothing provides it (the game screen's companion, its HUD): the running 3DS
+ * game's, set by [com.pokedaisy.app.n3ds.N3dsSession] while it runs; null = none. */
+object OwnItemNames {
+    @Volatile var lookup: ((Int) -> String?)? = null
+}
+
+/** [LocalItemNames], else [OwnItemNames]. */
+@androidx.compose.runtime.Composable
+internal fun ownItemNames(): ((Int) -> String?)? = LocalItemNames.current ?: OwnItemNames.lookup
+
 private fun capsBagLabels(game: GameKind): Boolean =
     gameItemNames(game) != null || game == GameKind.HEART_AND_SOUL || game == GameKind.ORANGE_ISLANDS ||
         (game.isGen2 && game != GameKind.PRISM && game != GameKind.POLISHED_CRYSTAL)   // Prism's and Polished's bags are mixed case
@@ -793,7 +803,7 @@ fun ItemsScreen(
     val actionFocus = remember { FocusRequester() }
     val hgssState = LocalHgssBag.current ?: remember { HgssBagState() }
     val pal = bagPaletteFor(activeGame, hgssState.pocket)
-    val ownNames = LocalItemNames.current
+    val ownNames = ownItemNames()
     val caps = if (ownNames != null) null else gameItemNames(activeGame)
     val shown = items.map { item ->
         val name = caps?.get(item.itemId) ?: item.name
