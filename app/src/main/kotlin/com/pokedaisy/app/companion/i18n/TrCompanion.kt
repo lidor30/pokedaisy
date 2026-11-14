@@ -183,6 +183,7 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     "STAT" to Tr(ja = "のうりょく", fr = "STAT", de = "WERT", it = "STAT", es = "VALOR", br = "STAT", pt = "STAT", ko = "능력치"),
     "IV" to Tr(ja = "こたいち", fr = "IV", de = "DV", it = "IV", es = "IV", br = "IV", pt = "IV", ko = "개체값"),
     "EV" to Tr(ja = "どりょくち", fr = "EV", de = "FP", it = "EV", es = "EV", br = "EV", pt = "EV", ko = "노력치"),
+    "DV" to Tr(ja = "こたいち", fr = "DV", de = "DV", it = "DV", es = "DV", br = "DV", pt = "DV", ko = "개체값"),
     "NATURE" to Tr(ja = "せいかく", fr = "NATURE", de = "WESEN", it = "NATURA", es = "NATURALEZA", br = "NATUREZA", pt = "NATUREZA", ko = "성격"),
     "HIDDEN POWER" to Tr(ja = "めざめるパワー", fr = "PUIS. CACHÉE", de = "KRAFTRESERVE", it = "INTROFORZA", es = "POD. OCULTO", br = "PODER OCULTO", pt = "PODER OCULTO", ko = "잠재파워"),
     "NO STATS FOR THIS ONE" to Tr(ja = "のうりょくの データなし", fr = "PAS DE STATS POUR CELUI-CI", de = "KEINE WERTE FÜR DIESES", it = "NESSUNA STAT. PER QUESTO", es = "SIN STATS PARA ESTE", br = "SEM STATS PARA ESTE", pt = "SEM STATS PARA ESTE", ko = "능력치 정보 없음"),

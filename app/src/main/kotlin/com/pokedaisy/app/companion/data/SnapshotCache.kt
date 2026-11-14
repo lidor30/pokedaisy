@@ -18,8 +18,8 @@ import java.io.File
 object SnapshotCache {
     private const val MAGIC = 0x50445343   // "PDSC"
     // 2: move ids (the move advice reads them). 4: the names' game code and language, nicknames.
-    // 5: the individual's ability slot.
-    private const val VERSION = 5
+    // 5: the individual's ability slot. 6: the stats' kind (Gen 3's IVs / EVs or a Game Boy game's DVs) with it.
+    private const val VERSION = 6
     private const val MAX_BYTES = 256 * 1024
 
     fun fileFor(state: File) = File(state.path + ".companion")
@@ -156,7 +156,7 @@ object SnapshotCache {
         m.exp?.let { writeLong(it.total); writeLong(it.levelStart); writeLong(it.nextLevel) }
         writeLong(m.personality)
         writeBoolean(m.stats != null)
-        m.stats?.let { ints(it.ivs); ints(it.evs); writeInt(it.nature); ints(it.stats); writeInt(it.abilityNum ?: -1) }
+        m.stats?.let { ints(it.ivs); ints(it.evs); writeInt(it.nature); ints(it.stats); writeInt(it.kind.ordinal); writeInt(it.abilityNum ?: -1) }
         writeInt(m.heldItemId)
         nullableUTF(m.nickname)
     }
@@ -171,7 +171,8 @@ object SnapshotCache {
         val weak = matchups(); val resist = matchups(); val immune = matchups()
         val exp = if (readBoolean()) ExpProgress(readLong(), readLong(), readLong()) else null
         val personality = readLong()
-        val stats = if (readBoolean()) MonStats(ints(), ints(), readInt(), ints(), readInt().takeIf { it >= 0 }) else null
+        val stats = if (readBoolean()) MonStats(ints(), ints(), readInt(), ints(), kind = StatKind.values().getOrElse(readInt()) { StatKind.GBA },
+            abilityNum = readInt().takeIf { it >= 0 }) else null
         val held = readInt()
         val nickname = nullableUTF()
         return MonView(

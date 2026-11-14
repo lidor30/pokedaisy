@@ -68,6 +68,17 @@ Tap `MOVES` to go back to the moves.
 
 The stats shown are the ones the game stored, which it only recalculates on a level up. So right after a battle where your Pokémon earned EVs, a stat can read a point lower than it will be after the next level.
 
+### In the Game Boy games
+
+The Game Boy games keep these numbers their own way, and `STATS` shows them as the game does:
+
+- **DVs** take the IVs' place, from 0 to 15. HP's DV isn't stored: the game builds it from the other four, so it follows them.
+- **Stat experience** (the `EXP` column) takes the EVs' place. It runs much higher (up to 65535) and has no cap on the total, so there's no total under it.
+- Red, Blue and Yellow have one `SPECIAL` stat in place of the two special ones. Gold, Silver and Crystal split the stat but keep one DV and one stat experience for both, so those two rows always match.
+- There are no natures, so there's no `NATURE` line, and no `HIDDEN POWER` in Red, Blue and Yellow, where the move doesn't exist. Gold, Silver, Crystal and Crystal Clear show its type and power worked out from the DVs.
+
+Polished Crystal is in between: six DVs (0 to 15), EVs and natures as in the later games.
+
 `STATS` appears for most games. A few, where the numbers can't be read reliably yet, don't have it.
 
 ## LEARN: which moves are worth it

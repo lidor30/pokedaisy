@@ -80,6 +80,10 @@ data class Gen2Config(
     /** The left column of BattleMenu and of BattleMonMenu (SWITCH / STATS / CANCEL). */
     val battleMenuLeft: Int = 0x09,
     val switchMenuLeft: Int = 0x0C,
+    /** wEnemyStats: the foe's five stats before any stat stage (wEnemyMon's carry them: a LEER cuts its Defense to 66%
+     * there); a bus address in C000-CFFF. Crystal and its hacks' C6C1, Gold / Silver's CB9F (each `*_battle` fixture).
+     * -1 = the battle struct's own: Polished Crystal keeps stages out of it (its LEER left the Defense as it was). */
+    val enemyStats: Long = 0xC6C1L,
 )
 
 /** Crystal's Mail (FLOWER_MAIL 0x9E, SURF_MAIL 0xB5 .. MIRAGE_MAIL 0xBD): the party menu marks a mon holding one with Mail's icon. */
@@ -171,6 +175,7 @@ val GEN2_CRYSTAL_LEGACY = GEN2_CRYSTAL.copy(
  * types Crystal's; dex pages, front pics and party icons are read from each version's ROM ([POKEDEX_GOLD] / [POKEDEX_SILVER]).
  */
 val GEN2_GOLD = Gen2Config(
+    enemyStats = 0xCB9FL,
     partyCount = wramx(1, 0xDA22),
     partyMons = wramx(1, 0xDA2A),
     numItems = wramx(1, 0xD5B7),
@@ -266,6 +271,7 @@ val GEN2_PRISM = GEN2_CRYSTAL.copy(
  * key items (their own ids, a 0-terminated list), TMs / HMs (a bit each). Its tables: gen_polished_crystal_tables.py.
  */
 val GEN2_POLISHED_CRYSTAL = GEN2_CRYSTAL.copy(
+    enemyStats = -1,
     partyCount = wramx(1, 0xDCCE),
     partyMons = wramx(1, 0xDCD6),
     numItems = wramx(1, 0xD827),
@@ -355,6 +361,13 @@ fun decodePolishedPartyMon(raw: ByteArray, off: Int, cfg: Gen2Config): Mon? {
         isEgg = egg,
         heldItem = u8(raw, off + 1),
         personality = gbMonKey(id, be16(raw, off + 6), be16(raw, off + 17)),
+        stats = if (egg) null else MonStats(
+            ivs = polishedDvs(u8(raw, off + 17), u8(raw, off + 18), u8(raw, off + 19)),
+            evs = List(6) { u8(raw, off + 11 + it) },
+            nature = polishedNature(u8(raw, off + 20)),
+            stats = List(6) { be16(raw, off + 36 + 2 * it) },
+            kind = StatKind.POLISHED,
+        ),
     )
 }
 
@@ -431,6 +444,44 @@ fun decodeGen2PartyMon(raw: ByteArray, off: Int, cfg: Gen2Config, egg: Boolean =
         isEgg = egg,
         heldItem = u8(raw, off + 1),
         personality = gen2MonKey(raw, off),   // no personality in Gen 2: the switch's key (GbPartySwitch)
+        stats = if (egg) null else gen2Stats(raw, off + 21, statExp = List(5) { be16(raw, off + 11 + 2 * it) }, hpStats = off + 36),
+    )
+}
+
+/** DVs at [dvs], stat experience (HP, Attack, Defense, Speed, Special) and max HP + the five stats at [hpStats]. */
+private fun gen2Stats(raw: ByteArray, dvs: Int, statExp: List<Int>, hpStats: Int) = MonStats(
+    ivs = gbDvs(u8(raw, dvs), u8(raw, dvs + 1)),
+    evs = statExp + statExp[4],
+    nature = NO_NATURE,
+    stats = List(6) { be16(raw, hpStats + 2 * it) },
+    kind = StatKind.GEN2,
+)
+
+/**
+ * The foe a wild battle sends out, as a party Pokémon from its battle_struct (wEnemyMon): its DVs, nature (Polished
+ * Crystal's personality +9) and stats; a wild Pokémon has no stat experience / EVs. [Mon.stats] for battle INFO's STATS.
+ */
+fun gen2WildFoe(raw: ByteArray, cfg: Gen2Config, unmodified: ByteArray? = null): Mon? {
+    val b = (if (cfg.polished) decodePolishedBattleMon(raw) else decodeGen2BattleMon(raw, cfg.speciesCount)) ?: return null
+    // Max HP from the battle struct (no stage touches it), the other five from [unmodified] (wEnemyStats) when there is one.
+    fun stats(maxHp: Int, at: Int): List<Int> =
+        listOf(be16(raw, maxHp)) + List(5) { if (unmodified != null) be16(unmodified, 2 * it) else be16(raw, at + 2 * it) }
+    val stats = if (cfg.polished) MonStats(
+        ivs = polishedDvs(u8(raw, 6), u8(raw, 7), u8(raw, 8)),
+        evs = List(6) { 0 },
+        nature = polishedNature(u8(raw, 9)),
+        stats = stats(21, 23),
+        kind = StatKind.POLISHED,
+    ) else MonStats(
+        ivs = gbDvs(u8(raw, 6), u8(raw, 7)),
+        evs = List(6) { 0 },
+        nature = NO_NATURE,
+        stats = stats(18, 20),
+        kind = StatKind.GEN2,
+    )
+    return Mon(
+        species = b.species, level = b.level, hp = b.hp, maxHp = b.maxHp, status = b.status1, moves = b.moves, pp = b.pp,
+        heldItem = b.item, stats = stats,
     )
 }
 
@@ -590,11 +641,14 @@ fun readGen2Telemetry(r: MemoryReader, cfg: Gen2Config): Telemetry {
     val battleMons = MutableList(4) { EMPTY_BATTLE_MON }
     var enemyParty = emptyList<Mon>()
     var enemyActive = -1
+    var battleFoes = emptyList<Mon>()
     if (inBattle) {
-        fun battler(addr: Long) = if (cfg.polished) decodePolishedBattleMon(r.readCoreMemory(addr, POLISHED_BATTLE_MON_SIZE))
-            else decodeGen2BattleMon(r.readCoreMemory(addr, GEN2_BATTLE_MON_SIZE), cfg.speciesCount)
-        battler(cfg.battleMon)?.let { battleMons[BATTLE_POS_PLAYER_LEFT] = it }
-        battler(cfg.enemyMon)?.let { battleMons[BATTLE_POS_OPPONENT_LEFT] = it }
+        val size = if (cfg.polished) POLISHED_BATTLE_MON_SIZE else GEN2_BATTLE_MON_SIZE
+        fun battler(raw: ByteArray) = if (cfg.polished) decodePolishedBattleMon(raw) else decodeGen2BattleMon(raw, cfg.speciesCount)
+        battler(r.readCoreMemory(cfg.battleMon, size))?.let { battleMons[BATTLE_POS_PLAYER_LEFT] = it }
+        val enemyRaw = r.readCoreMemory(cfg.enemyMon, size)
+        battler(enemyRaw)?.let { battleMons[BATTLE_POS_OPPONENT_LEFT] = it }
+        if (battle == 1) battleFoes = listOfNotNull(gen2WildFoe(enemyRaw, cfg, cfg.enemyStats.takeIf { it >= 0 }?.let { r.readCoreMemory(it, 10) }))
         if (battle == 2) {
             val ot = r.readCoreMemory(cfg.otPartyCount, 1 + PARTY_SIZE)
             val n = u8(ot, 0).coerceAtMost(PARTY_SIZE)
@@ -603,6 +657,7 @@ fun readGen2Telemetry(r: MemoryReader, cfg: Gen2Config): Telemetry {
                 if (cfg.polished) decodePolishedPartyMon(raw, it * GEN2_PARTY_MON_SIZE, cfg) else decodeGen2PartyMon(raw, it * GEN2_PARTY_MON_SIZE, cfg)
             }
             enemyActive = u8(r.readCoreMemory(cfg.curOTMon, 1), 0).takeIf { it < enemyParty.size } ?: -1
+            battleFoes = enemyParty
         }
     }
 
@@ -632,6 +687,7 @@ fun readGen2Telemetry(r: MemoryReader, cfg: Gen2Config): Telemetry {
         items = items,
         enemyParty = enemyParty,
         enemyActive = enemyActive,
+        battleFoes = battleFoes,
         money = ((u8(m, 0).toLong() shl 16) or (u8(m, 1).toLong() shl 8) or u8(m, 2).toLong()),
         playerGender = if (cfg.playerGender < 0) 0 else u8(r.readCoreMemory(cfg.playerGender, 1), 0) and 1,
         pokedex = cfg.pokedex?.let { runCatching { readGen2PokedexState(r, cfg, it) }.getOrNull() },

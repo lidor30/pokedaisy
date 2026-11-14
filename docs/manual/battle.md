@@ -120,7 +120,7 @@ In a trainer's double battle the page shows one foe at a time, the one on the le
 
 ### Foe IVs
 
-The foe's IVs, EVs and nature are hidden by default, since knowing them is a bit of a peek. Turn on `FOE IVS` in SETTINGS and `INFO` gets a `STATS` button: your Pokémon and the foe side by side, each stat with its IV and EV, plus `NATURE` and `HIDDEN POWER`. It's the same view as the [STATS page in a summary](party.md).
+The foe's IVs, EVs and nature are hidden by default, since knowing them is a bit of a peek. Turn on `FOE IVS` in SETTINGS and `INFO` gets a `STATS` button: your Pokémon and the foe side by side, each stat with its IV and EV, plus `NATURE` and `HIDDEN POWER`. It's the same view as the [STATS page in a summary](party.md). In the Game Boy games it shows DVs and stat experience instead ([how they differ](party.md#in-the-game-boy-games)); a wild foe there never has any stat experience.
 
 ## The foe's team
 

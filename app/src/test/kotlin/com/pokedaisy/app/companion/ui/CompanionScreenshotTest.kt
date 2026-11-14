@@ -396,6 +396,68 @@ open class CompanionScreenshotTest {
         AppTheme { MonDetailScreen(SampleCompanion.snapshot.party, 0, {}, {}, initialShowStats = true) }
     }
 
+    /** A Game Boy game's font, size and width over [content], as CompanionScreen provides them. */
+    @androidx.compose.runtime.Composable
+    private fun InGameFont(game: GameKind, content: @androidx.compose.runtime.Composable () -> Unit) =
+        androidx.compose.runtime.CompositionLocalProvider(
+            com.pokedaisy.app.companion.ui.theme.LocalGameFont provides com.pokedaisy.app.companion.ui.theme.rememberGameFont(game),
+            com.pokedaisy.app.companion.ui.theme.LocalGameTextScale provides com.pokedaisy.app.companion.ui.theme.gameTextScale(game),
+            com.pokedaisy.app.companion.ui.theme.LocalGameFontWidth provides com.pokedaisy.app.companion.ui.theme.gameFontWidth(game),
+            content = content,
+        )
+
+    /**
+     * A Game Boy fixture's party / foes as the companion shows them, with the game's look ([OptionColors.inGame]) and its font
+     * and icons rebuilt from [romFile] (the gb / gbc folders beside the GBA ROMs; Pixel Operator without it).
+     */
+    private fun gbSnapshot(game: GameKind, romFile: String, read: () -> com.pokedaisy.app.companion.data.Telemetry): SnapshotView {
+        activeGame = game
+        romLanguage = 'E'
+        romGameCode = ""
+        OptionColors.inGame = true
+        val rom = listOf("gb", "gbc").map { java.io.File(java.io.File(RETAIL_ROM_DIR).parentFile, "$it/$romFile") }.firstOrNull { it.isFile }
+        if (rom != null) {
+            if (game == GameKind.YELLOW) com.pokedaisy.app.companion.data.Gen1Art.extractTo(rom.readBytes(), RomArt.dirOverride!!)
+            else com.pokedaisy.app.companion.data.Gen2Art.extractTo(rom.readBytes(), RomArt.dirOverride!!)
+        }
+        val v = buildSnapshotView(read()).copy(game = game)
+        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(paparazzi.context, it) } }
+        return v
+    }
+
+    /** STATS in Yellow, its own font: DVs and stat experience, one SPECIAL, no nature or Hidden Power. */
+    @Test
+    fun partyDetailStatsGen1() {
+        val v = gbSnapshot(GameKind.YELLOW, "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb") {
+            com.pokedaisy.app.companion.data.readGen1Telemetry(FixtureMemoryReader.load("yellow"), com.pokedaisy.app.companion.data.GEN1_YELLOW)
+        }
+        try {
+            snapshot { AppTheme { InGameFont(GameKind.YELLOW) { MonDetailScreen(v.party, 0, {}, {}, initialShowStats = true) } } }
+        } finally { OptionColors.inGame = false }
+    }
+
+    /** STATS in Gold, its own font: four DVs, stat experience, SP. ATK / SP. DEF sharing one DV, Hidden Power from the DVs. */
+    @Test
+    fun partyDetailStatsGen2() {
+        val v = gbSnapshot(GameKind.GOLD, "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc") {
+            com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load("gold"), com.pokedaisy.app.companion.data.GEN2_GOLD)
+        }
+        try {
+            snapshot { AppTheme { InGameFont(GameKind.GOLD) { MonDetailScreen(v.party, 0, {}, {}, initialShowStats = true) } } }
+        } finally { OptionColors.inGame = false }
+    }
+
+    /** Battle INFO's STATS in Crystal, its own font: the party CHIKORITA beside the wild SENTRET (no stat experience). */
+    @Test
+    fun battleStatsGen2() {
+        val v = gbSnapshot(GameKind.CRYSTAL, "Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc") {
+            com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load("crystal_battle"), com.pokedaisy.app.companion.data.GEN2_CRYSTAL)
+        }
+        try {
+            snapshot { AppTheme { InGameFont(GameKind.CRYSTAL) { BattleStatsScreen(v.battlePlayer, v.battleOpponent, "WILD", onBack = {}) } } }
+        } finally { OptionColors.inGame = false }
+    }
+
     /** TAKE (FieldItems.kt): CHARMANDER holds a LEFTOVERS, so the summary's bottom row has TAKE with its icon... */
     /** SWITCH: the party in the summary's place, the Pokémon being moved selected. */
     @Test fun partyDetailSwitch() = snapshot {
