@@ -17,6 +17,8 @@ data class MonStats(
      * from [MONOMYTH_NATURE_BASE] on. */
     val nature: Int,
     val stats: List<Int>,
+    /** Gen 3's aptitude bit (the IV word's top bit): 0 = the species' first ability, 1 = its second; null = not read. */
+    val abilityNum: Int? = null,
 )
 
 const val STAT_HP = 0

@@ -1395,6 +1395,7 @@ private fun HudSummaryPanel(
                     MonDetailScreen(
                         snapshot.party, index.coerceIn(0, (snapshot.party.size - 1).coerceAtLeast(0)),
                         onIndexChange = onIndex, onBack = onClose, learn = learn, itemUse = itemUse,
+                        dexTables = snapshot.pokedex?.tables,
                     )
                 }
             }

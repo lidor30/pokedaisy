@@ -25,7 +25,7 @@ The window beside the box shows one Pokémon's picture, its name, its kind, its 
 
 ## A Pokémon's summary
 
-Tap a Pokémon to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs and nature. The column down the right side holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
+Tap a Pokémon to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs, nature and ability. The column down the right side holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
 
 A Pokémon in a box keeps no stats of its own, so the companion works them out the way the game does when you take it out. A Pokémon in a box is always at full HP.
 
