@@ -1,8 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
  * INSTANT TEXT (SETTINGS > GAMEPLAY, GitHub #111): a text box's words appear at once, whatever the game's own text speed,
@@ -92,11 +90,11 @@ object InstantText {
                 if (n < 0) break
                 got += n
             }
-            find(ByteBuffer.wrap(head, 0, got).order(ByteOrder.LITTLE_ENDIAN))
+            find(LittleEndianBytes(head, got))
         }
     }.getOrNull()
 
-    fun find(rom: ByteBuffer): Patch? {
+    fun find(rom: LittleEndianReader): Patch? {
         val font = matches(rom, FONT)
         val print = matches(rom, RS_PRINT)
         val delay = matches(rom, RS_DELAY)
@@ -107,7 +105,7 @@ object InstantText {
         }
     }
 
-    private fun matches(rom: ByteBuffer, sig: IntArray): List<Int> {
+    private fun matches(rom: LittleEndianReader, sig: IntArray): List<Int> {
         val out = ArrayList<Int>()
         val end = minOf(rom.limit(), SEARCH) - sig.size - 4
         var o = 0
@@ -127,7 +125,7 @@ object InstantText {
         return out
     }
 
-    private fun fontPatch(rom: ByteBuffer, at: Int): Patch? {
+    private fun fontPatch(rom: LittleEndianReader, at: Int): Patch? {
         if (at % 4 != 0) return null   // FONT_CODE's `ldr` counts on it
         val code = FONT_CODE.copyOf()
         bl(at + NEW_CALL, blTarget(rom, at + FONT_CALL)).copyInto(code, NEW_CALL)
@@ -137,13 +135,13 @@ object InstantText {
         return Patch(writes)
     }
 
-    private fun rubyPatch(rom: ByteBuffer, print: Int, delay: Int): Patch {
+    private fun rubyPatch(rom: LittleEndianReader, print: Int, delay: Int): Patch {
         val branch = 0xE000 or (((print - (delay + 4)) shr 1) and 0x7FF)
         return Patch(listOf(Write(ROM_BASE + delay, ByteArray(2) { rom.get(delay + it) }, bytes(branch and 0xFF, branch shr 8))))
     }
 
     /** Where the `bl` at [at] goes (a ROM offset). */
-    private fun blTarget(rom: ByteBuffer, at: Int): Int {
+    private fun blTarget(rom: LittleEndianReader, at: Int): Int {
         val h1 = (rom.get(at).toInt() and 0xFF) or ((rom.get(at + 1).toInt() and 0xFF) shl 8)
         val h2 = (rom.get(at + 2).toInt() and 0xFF) or ((rom.get(at + 3).toInt() and 0xFF) shl 8)
         var hi = h1 and 0x7FF

@@ -39,18 +39,20 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.pokedaisy.app.companion.BattleInput
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_BAG_OPEN
-import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
+import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import com.pokedaisy.app.companion.data.GameKind
 import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.data.SnapshotView
@@ -165,7 +167,12 @@ fun DsBattleMenu(
     gameFills: Boolean = false,
     /** BATTLE HINTS / BATTLE INFO: the moves' multipliers. */
     hints: Boolean = true,
+    /** Where its buttons take taps now, in window px (null: nowhere): the touch controls' buttons over them step aside
+     * (on a phone A, B, Y and START sat on BAG, RUN and POKEMON, and took the taps). */
+    onTapArea: (androidx.compose.ui.geometry.Rect?) -> Unit = {},
 ) {
+    val reportArea by androidx.compose.runtime.rememberUpdatedState(onTapArea)
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { reportArea(null) } }
     val input = snapshot.battleInputState
     val busy = rememberBattleInputBusy(battleInput)
     val mode = when {
@@ -208,6 +215,9 @@ fun DsBattleMenu(
         else if (!holding) { if (!leaving) kotlinx.coroutines.delay(HOLD_MS); held.intValue = 0 }
     }
     val shownMode = if (leaving) 0 else if (mode != 0) mode else if (shown && picture != null) held.intValue else 0
+    // Its buttons take taps only while its menu is up (not held under the floating window, whose keys they are then).
+    val tapping = mode != 0 && !leaving && shownMode != 0 && picture != null
+    if (!tapping) SideEffect { reportArea(null) }
     if (shownMode == 0 || picture == null) return
     val idle = busy || mode == 0
     val look = DsLook.of(snapshot.game)
@@ -250,9 +260,10 @@ fun DsBattleMenu(
             )
         }
         @Composable
-        fun Area(l: Float, r: Float, content: @Composable () -> Unit) {
+        fun Area(l: Float, r: Float, taps: Boolean = false, content: @Composable () -> Unit) {
             with(density) {
-                Box(Modifier.offset(x = l.toDp(), y = textTop.toDp()).size((r - l).toDp(), (bottom - textTop - ds).toDp())) { content() }
+                val track = if (taps && tapping) Modifier.onGloballyPositioned { reportArea(it.boundsInWindow()) } else Modifier
+                Box(Modifier.offset(x = l.toDp(), y = textTop.toDp()).size((r - l).toDp(), (bottom - textTop - ds).toDp()).then(track)) { content() }
             }
         }
         if (shownMode == 1) {
@@ -265,7 +276,7 @@ fun DsBattleMenu(
                     else -> DsMessageWindow(tr("What will {0} do?", battler), m, ds, silver = look == DsLook.SOULSILVER)
                 }
             }
-            Area(buttonsL, boxW - gap) {
+            Area(buttonsL, boxW - gap, taps = true) {
                 Grid(look, state.actionCursor, u, step) { i, on ->
                     val enabled = state.actionEnabled(i) && !idle
                     DsActionButton(look, i, enabled, m, u, Modifier.fillMaxSize()) {
@@ -276,7 +287,7 @@ fun DsBattleMenu(
             }
         } else {
             // The moves across the strip, as Gen 3's take the text box; HeartGold's cards. BACK for a finger at the end.
-            Area(gap, boxW - gap) {
+            Area(gap, boxW - gap, taps = true) {
                 Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(u * 3)) {
                     // (Over the game's band, the gaps between the cards in its colour: its message stays under them.)
                     Box(Modifier.weight(1f).fillMaxHeight().then(if (glass) Modifier.background(B2_BAND) else Modifier)) {

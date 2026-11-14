@@ -1,8 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.ByteArrayOutputStream
-import java.io.DataInputStream
-import java.io.DataOutputStream
+import okio.Buffer
+import okio.BufferedSink
+import okio.BufferedSource
 import java.io.File
 
 /**
@@ -65,15 +65,15 @@ object SnapshotCache {
     }
 
     fun encode(v: SnapshotView): ByteArray {
-        val bytes = ByteArrayOutputStream()
-        DataOutputStream(bytes).use { o ->
+        val bytes = Buffer()
+        bytes.let { o ->
             o.writeInt(MAGIC)
             o.writeInt(VERSION)
-            o.writeUTF(v.game!!.name)
-            o.writeUTF(v.textCode)
+            o.writeModifiedUtf8(v.game!!.name)
+            o.writeModifiedUtf8(v.textCode)
             o.writeChar(v.textLanguage.code)
             o.writeLong(v.frameCounter)
-            o.writeUTF(v.facingDirection)
+            o.writeModifiedUtf8(v.facingDirection)
             o.writeInt(v.x); o.writeInt(v.y)
             o.writeInt(v.mapGroup); o.writeInt(v.mapNum)
             o.writeInt(v.regionMapSectionId)
@@ -81,42 +81,42 @@ object SnapshotCache {
             o.writeInt(v.playerGender)
             o.writeBoolean(v.money != null); o.writeLong(v.money ?: 0)
             v.location.let {
-                o.writeUTF(it.mapSecName); o.nullableUTF(it.regionMapAsset)
+                o.writeModifiedUtf8(it.mapSecName); o.nullableUTF(it.regionMapAsset)
                 o.writeInt(it.highlightX); o.writeInt(it.highlightY); o.writeInt(it.highlightW); o.writeInt(it.highlightH)
             }
             o.writeInt(v.party.size)
             v.party.forEach { o.mon(it) }
             o.writeInt(v.items.size)
             v.items.forEach {
-                o.writeInt(it.itemId); o.writeUTF(it.name); o.writeInt(it.quantity); o.nullableUTF(it.iconAsset)
-                o.writeInt(it.pocket); o.writeUTF(it.description)
+                o.writeInt(it.itemId); o.writeModifiedUtf8(it.name); o.writeInt(it.quantity); o.nullableUTF(it.iconAsset)
+                o.writeInt(it.pocket); o.writeModifiedUtf8(it.description)
             }
             val tabs = dataTabs(v)
             o.writeInt(tabs.size)
-            tabs.forEach { o.writeUTF(it) }
+            tabs.forEach { o.writeModifiedUtf8(it) }
         }
-        return bytes.toByteArray()
+        return bytes.readByteArray()
     }
 
-    fun decode(bytes: ByteArray): SnapshotView? = DataInputStream(bytes.inputStream()).use { i ->
+    fun decode(bytes: ByteArray): SnapshotView? = Buffer().write(bytes).let { i ->
         if (i.readInt() != MAGIC || i.readInt() != VERSION) return null
-        val game = GameKind.valueOf(i.readUTF())
-        val textCode = i.readUTF()
+        val game = GameKind.valueOf(i.readModifiedUtf8())
+        val textCode = i.readModifiedUtf8()
         val textLanguage = i.readChar()
         val frameCounter = i.readLong()
-        val facing = i.readUTF()
+        val facing = i.readModifiedUtf8()
         val x = i.readInt(); val y = i.readInt()
         val mapGroup = i.readInt(); val mapNum = i.readInt()
         val mapSec = i.readInt()
         val mapWidth = i.readInt(); val mapHeight = i.readInt(); val mapType = i.readInt()
         val gender = i.readInt()
         val money = i.readBoolean().let { has -> i.readLong().takeIf { has } }
-        val location = LocationView(i.readUTF(), i.nullableUTF(), i.readInt(), i.readInt(), i.readInt(), i.readInt())
+        val location = LocationView(i.readModifiedUtf8(), i.nullableUTF(), i.readInt(), i.readInt(), i.readInt(), i.readInt())
         val party = List(i.count(PARTY_SIZE)) { i.mon() }
         val items = List(i.count(4096)) {
-            ItemView(i.readInt(), i.readUTF(), i.readInt(), i.nullableUTF(), i.readInt(), i.readUTF())
+            ItemView(i.readInt(), i.readModifiedUtf8(), i.readInt(), i.nullableUTF(), i.readInt(), i.readModifiedUtf8())
         }
-        val tabs = List(i.count(16)) { i.readUTF() }.toSet()
+        val tabs = List(i.count(16)) { i.readModifiedUtf8() }.toSet()
         SnapshotView(
             connected = true, game = game, textCode = textCode, textLanguage = textLanguage, frameCounter = frameCounter, facingDirection = facing,
             x = x, y = y, mapGroup = mapGroup, mapNum = mapNum, regionMapSectionId = mapSec,
@@ -125,32 +125,32 @@ object SnapshotCache {
         )
     }
 
-    private fun DataOutputStream.nullableUTF(s: String?) {
+    private fun BufferedSink.nullableUTF(s: String?) {
         writeBoolean(s != null)
-        if (s != null) writeUTF(s)
+        if (s != null) writeModifiedUtf8(s)
     }
 
-    private fun DataInputStream.nullableUTF(): String? = if (readBoolean()) readUTF() else null
+    private fun BufferedSource.nullableUTF(): String? = if (readBoolean()) readModifiedUtf8() else null
 
-    private fun DataInputStream.count(max: Int): Int = readInt().also { require(it in 0..max) }
+    private fun BufferedSource.count(max: Int): Int = readInt().also { require(it in 0..max) }
 
-    private fun DataOutputStream.ints(l: List<Int>) { writeInt(l.size); l.forEach { writeInt(it) } }
-    private fun DataInputStream.ints(): List<Int> = List(count(16)) { readInt() }
+    private fun BufferedSink.ints(l: List<Int>) { writeInt(l.size); l.forEach { writeInt(it) } }
+    private fun BufferedSource.ints(): List<Int> = List(count(16)) { readInt() }
 
-    private fun DataOutputStream.matchups(l: List<TypeMatchup>) {
+    private fun BufferedSink.matchups(l: List<TypeMatchup>) {
         writeInt(l.size)
-        l.forEach { writeUTF(it.type); writeUTF(it.label); writeInt(it.pct) }
+        l.forEach { writeModifiedUtf8(it.type); writeModifiedUtf8(it.label); writeInt(it.pct) }
     }
-    private fun DataInputStream.matchups(): List<TypeMatchup> = List(count(64)) { TypeMatchup(readUTF(), readUTF(), readInt()) }
+    private fun BufferedSource.matchups(): List<TypeMatchup> = List(count(64)) { TypeMatchup(readModifiedUtf8(), readModifiedUtf8(), readInt()) }
 
-    private fun DataOutputStream.mon(m: MonView) {
-        writeInt(m.species); writeUTF(m.name); writeInt(m.level); writeInt(m.hp); writeInt(m.maxHp)
-        writeUTF(m.status)
-        writeInt(m.types.size); m.types.forEach { writeUTF(it) }
+    private fun BufferedSink.mon(m: MonView) {
+        writeInt(m.species); writeModifiedUtf8(m.name); writeInt(m.level); writeInt(m.hp); writeInt(m.maxHp)
+        writeModifiedUtf8(m.status)
+        writeInt(m.types.size); m.types.forEach { writeModifiedUtf8(it) }
         nullableUTF(m.iconAsset)
         writeInt(m.genderSymbol); writeBoolean(m.isEgg)
         writeInt(m.moves.size)
-        m.moves.forEach { writeUTF(it.name); writeUTF(it.type); writeInt(it.pp); writeInt(it.power); writeInt(it.id) }
+        m.moves.forEach { writeModifiedUtf8(it.name); writeModifiedUtf8(it.type); writeInt(it.pp); writeInt(it.power); writeInt(it.id) }
         matchups(m.weaknesses); matchups(m.resistances); matchups(m.immunities)
         writeBoolean(m.exp != null)
         m.exp?.let { writeLong(it.total); writeLong(it.levelStart); writeLong(it.nextLevel) }
@@ -161,13 +161,13 @@ object SnapshotCache {
         nullableUTF(m.nickname)
     }
 
-    private fun DataInputStream.mon(): MonView {
-        val species = readInt(); val name = readUTF(); val level = readInt(); val hp = readInt(); val maxHp = readInt()
-        val status = readUTF()
-        val types = List(count(4)) { readUTF() }
+    private fun BufferedSource.mon(): MonView {
+        val species = readInt(); val name = readModifiedUtf8(); val level = readInt(); val hp = readInt(); val maxHp = readInt()
+        val status = readModifiedUtf8()
+        val types = List(count(4)) { readModifiedUtf8() }
         val icon = nullableUTF()
         val gender = readInt(); val egg = readBoolean()
-        val moves = List(count(8)) { MoveView(readUTF(), readUTF(), readInt(), readInt(), id = readInt()) }
+        val moves = List(count(8)) { MoveView(readModifiedUtf8(), readModifiedUtf8(), readInt(), readInt(), id = readInt()) }
         val weak = matchups(); val resist = matchups(); val immune = matchups()
         val exp = if (readBoolean()) ExpProgress(readLong(), readLong(), readLong()) else null
         val personality = readLong()
@@ -179,4 +179,10 @@ object SnapshotCache {
             weak, resist, immune, exp, personality, stats, heldItemId = held, nickname = nickname,
         )
     }
+
+    // DataOutputStream's encodings, so a file from before still reads.
+    private fun BufferedSink.writeBoolean(b: Boolean) = writeByte(if (b) 1 else 0)
+    private fun BufferedSource.readBoolean(): Boolean = readByte() != 0.toByte()
+    private fun BufferedSink.writeChar(c: Int) = writeShort(c)
+    private fun BufferedSource.readChar(): Char = readShort().toInt().toChar()
 }

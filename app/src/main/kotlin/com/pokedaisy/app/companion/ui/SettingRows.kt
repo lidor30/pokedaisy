@@ -446,35 +446,50 @@ private fun GroupedRowsList(
     val rowHeight = m.rowHeight * 1.2f / gameScale
     val subtitleLine = if (gameScale == 1f) m.lineHeight else subtitleMetrics(m).lineHeight + m.u * 2
     fun heightOf(row: SettingRow) = if (row.subtitle != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA
-    Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
-        rows.forEachIndexed { i, row ->
-            if (row.header && row.featured) {
-                val track = if (tops == null) Modifier else Modifier.onGloballyPositioned { tops[i] = it.positionInParent().y.toInt() }
-                FeaturedTitle(row, m, top = if (i == 0) 1 else 6, modifier = track)
-            } else if (row.header) {
-                val track = if (tops == null) Modifier else Modifier.onGloballyPositioned { tops[i] = it.positionInParent().y.toInt() }
-                GroupTitleLine(row.label, m, first = i == 0, modifier = track)
-            } else {
-                OptionLine(
-                    row.label, row.value, selected = i == cursor, m,
-                    modifier = (if (i == reveal) Modifier.revealOnce(onRevealed) else Modifier)
-                        .then(if (i == firstRow && firstRowFocus != null) Modifier.focusRequester(firstRowFocus) else Modifier)
-                        // The companion's window: the D-pad starts on the cursor row.
-                        .focusStart(i == cursor),
-                    // A one-line row's letters sit low in their line (room above the capitals, none under): a little more
-                    // under them, so the space below matches the space above.
-                    height = heightOf(row),
-                    bottomPadding = if (row.subtitle != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
-                    divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
-                    valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = row.labelWeight ?: labelWeight,
-                    chevron = row.opensPage, slider = row.slider,
-                    onFocus = onFocused?.let { f -> { f(i) } },
-                ) { onClick(i) }
-            }
+    @Composable fun RowAt(i: Int, row: SettingRow) {
+        if (row.header && row.featured) {
+            val track = if (tops == null) Modifier else Modifier.onGloballyPositioned { tops[i] = it.positionInParent().y.toInt() }
+            FeaturedTitle(row, m, top = if (i == 0) 1 else 6, modifier = track)
+        } else if (row.header) {
+            val track = if (tops == null) Modifier else Modifier.onGloballyPositioned { tops[i] = it.positionInParent().y.toInt() }
+            GroupTitleLine(row.label, m, first = i == 0, modifier = track)
+        } else {
+            OptionLine(
+                row.label, row.value, selected = i == cursor, m,
+                modifier = (if (i == reveal) Modifier.revealOnce(onRevealed) else Modifier)
+                    .then(if (i == firstRow && firstRowFocus != null) Modifier.focusRequester(firstRowFocus) else Modifier)
+                    // The companion's window: the D-pad starts on the cursor row.
+                    .focusStart(i == cursor),
+                // A one-line row's letters sit low in their line (room above the capitals, none under): a little more
+                // under them, so the space below matches the space above.
+                height = heightOf(row),
+                bottomPadding = if (row.subtitle != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
+                divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
+                valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = row.labelWeight ?: labelWeight,
+                chevron = row.opensPage, slider = row.slider,
+                onFocus = onFocused?.let { f -> { f(i) } },
+            ) { onClick(i) }
         }
+    }
+    // A list of hundreds (an imported cheat file: RetroArch's Platinum one has 2321) is composed only where it's on
+    // screen: all of them at once held the UI thread for seconds, and the app stopped answering (GitHub #786). Its
+    // scroll position isn't [scroll]'s, which only SETTINGS' home pages (far shorter) keep.
+    if (rows.size > LAZY_ROWS && tops == null) {
+        val lazy = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = cursor.coerceIn(0, rows.size - 1))
+        androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize(), state = lazy) {
+            items(rows.size) { i -> RowAt(i, rows[i]) }
+            item { footer() }
+        }
+        return
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+        rows.forEachIndexed { i, row -> RowAt(i, row) }
         footer()
     }
 }
+
+/** Past this many rows a [GroupedRows] list is lazy. */
+private const val LAZY_ROWS = 100
 
 /** A group's title in a settings list ([groupTitle]'s look, for lists built row by row: GAME BUTTONS). [first] = the
  * list's top line, with less room above it. */

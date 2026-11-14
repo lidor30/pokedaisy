@@ -1,8 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
  * PLAYER LOOK's Pokémon and the FOLLOWER: each species' overworld sprite (a following Pokémon's: 32x32, two frames each
@@ -53,7 +51,7 @@ object MonArt {
     private class Reader(val source: Source, val mon: (Int) -> Raw?)
 
     private class Rom(val b: ByteArray) {
-        val buf: ByteBuffer = ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(b)
         fun ok(o: Int, n: Int = 4) = o >= 0 && o + n <= b.size
         fun u16(o: Int) = if (ok(o, 2)) buf.getShort(o).toInt() and 0xFFFF else -1
         fun s16(o: Int) = if (ok(o, 2)) buf.getShort(o).toInt() else -1
@@ -133,7 +131,7 @@ object MonArt {
         for (i in 0 until 600) {
             val name = r.ptr(symAt + i * 8) ?: break
             val end = (name until minOf(r.b.size, name + 64)).firstOrNull { r.b[it] == 0.toByte() } ?: break
-            syms[String(r.b, name, end - name, Charsets.US_ASCII)] = r.u32(symAt + i * 8 + 4) - 0x08000000
+            syms[asciiString(r.b, name, end - name)] = r.u32(symAt + i * 8 + 4) - 0x08000000
         }
         val fronts = syms["gMonFrontPicTable"] ?: return null
         val backs = syms["gMonBackPicTable"] ?: return null
@@ -165,7 +163,7 @@ object MonArt {
             val frames = ByteArray(6 * size)
             for (i in 0 until 6) {
                 val at = r.ptr(images + 8 * (3 + i))?.takeIf { r.u16(images + 8 * (3 + i) + 4) == size && r.ok(it, size) } ?: return@Reader null
-                System.arraycopy(r.b, at, frames, i * size, size)
+                r.b.copyInto(frames, i * size, at, at + size)
             }
             val owPal = palByTag[r.u16(rec + 2)]?.takeIf { r.ok(it, 32) }?.let { r.b.copyOfRange(it, it + 32) } ?: return@Reader null
             Raw(
@@ -241,7 +239,7 @@ object MonArt {
         val out = ByteArray(FRAMES)
         for (f in 0 until 6) for (ty in 0 until 8) for (tx in 0 until 8) {
             val src = f * 2048 + (ty * 8 + tx) * 32
-            if (tx in 2..5 && ty in 4..7) System.arraycopy(frames, src, out, f * 512 + ((ty - 4) * 4 + tx - 2) * 32, 32)
+            if (tx in 2..5 && ty in 4..7) frames.copyInto(out, f * 512 + ((ty - 4) * 4 + tx - 2) * 32, src, src + 32)
             else if ((0 until 32).any { frames[src + it] != 0.toByte() }) return null
         }
         return out

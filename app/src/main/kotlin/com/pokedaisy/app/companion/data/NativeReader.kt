@@ -1,7 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
  * Rebuilds a Telemetry snapshot by polling a Gen 3 game's own RAM globals: how
@@ -317,7 +315,7 @@ const val RECHARGED_YELLOW_ITEMS = 409
  * 0x3D94 (FireRed's 0x3D68) - for code that runs before detection on the ROM file alone (the music
  * renderer, [RegionMapWatch]). */
 fun isRechargedYellowRom(head: ByteArray): Boolean = head.size >= GF_HEADER_SB1_SIZE + 4 &&
-    String(head, 0xAC, 3, Charsets.US_ASCII) == "BPR" && u32le(head, GF_HEADER_SB1_SIZE) == RECHARGED_YELLOW_SB1_SIZE
+    asciiString(head, 0xAC, 3) == "BPR" && u32le(head, GF_HEADER_SB1_SIZE) == RECHARGED_YELLOW_SB1_SIZE
 
 private const val GF_HEADER_SB1_SIZE = 0x18C // struct GFRomHeader.saveBlock1Size
 private const val RECHARGED_YELLOW_SB1_SIZE = 0x3D94L
@@ -340,6 +338,9 @@ private const val MAP_HEADER_REGION_MAPSEC_OFF = 0x14L
 private const val OBJECT_EVENT_FACING_OFF = 0x18L
 private const val BATTLE_TYPE_DOUBLE = 0x0001
 private const val BATTLE_TYPE_TRAINER = 0x0008
+/** FireRed / LeafGreen's BATTLE_TYPE_OLD_MAN_TUTORIAL, Emerald and Ruby / Sapphire's BATTLE_TYPE_WALLY_TUTORIAL (pret's
+ * constants/battle.h): the catching lesson, someone else's Pokémon. Read only where the game runs as one of those. */
+private const val BATTLE_TYPE_CATCH_TUTORIAL = 0x0200
 private const val BAG_POCKET_STRIDE = 8
 private const val BAG_POCKET_SLOTS = 255 // a pocket's u8 capacity (SoulGold's Items pocket holds 150)
 private const val BAG_MAX_ITEMS = 300
@@ -352,10 +353,10 @@ internal fun saveBlock2(c: MemoryReader, cfg: NativeConfig): Long =
     if (cfg.staticSaveBlocks) cfg.saveBlock2Ptr else u32le(c.readCoreMemory(cfg.saveBlock2Ptr, 4), 0)
 
 internal fun u16le(b: ByteArray, off: Int) =
-    ByteBuffer.wrap(b, off, 2).order(ByteOrder.LITTLE_ENDIAN).short.toInt() and 0xFFFF
+    (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
 
 internal fun u32le(b: ByteArray, off: Int) =
-    (ByteBuffer.wrap(b, off, 4).order(ByteOrder.LITTLE_ENDIAN).int.toLong()) and 0xFFFFFFFFL
+    s32le(b, off).toLong() and 0xFFFFFFFFL
 
 private const val BAG_REFRESH_EVERY = 6
 
@@ -442,6 +443,7 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
     var isDouble = false
     var isTrainer = false
     var trainerRead = false
+    var tutorial = false
     var foeBattler = -1
     // Which battler is at each position, so gBattlerPartyIndexes can be read by position.
     val battlerAt = IntArray(4) { -1 }
@@ -454,6 +456,8 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
                 isDouble = (u32le(it, 0).toInt() and BATTLE_TYPE_DOUBLE) != 0
                 isTrainer = (u32le(it, 0).toInt() and BATTLE_TYPE_TRAINER) != 0
                 trainerRead = cfg.battleTypeFlags != 0L
+                tutorial = (u32le(it, 0).toInt() and BATTLE_TYPE_CATCH_TUTORIAL) != 0 &&
+                    (activeGame == GameKind.FIRERED || activeGame == GameKind.EMERALD)
             }
         val nRaw = runCatching { client.readCoreMemory(cfg.battlersCount, 1) }.getOrNull()
         val posRaw = runCatching { client.readCoreMemory(cfg.battlerPositions, 4) }.getOrNull()
@@ -562,7 +566,9 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         guideTables = cfg.guideTables,
         enemyParty = enemyParty,
         battleFoes = battleFoes,
-        isTrainerBattle = if (inBattle && trainerRead) isTrainer else null,
+        // The catching lesson (Viridian's old man, Wally on Route 102) is no encounter of the player's: not judged
+        // (GitHub #829: LeafGreen's WEEDLE was counted).
+        isTrainerBattle = if (inBattle && trainerRead && !tutorial) isTrainer else null,
         enemyActive = enemyActive,
         enemyNext = enemyNext,
         battlerPartySlots = battlerPartySlots,

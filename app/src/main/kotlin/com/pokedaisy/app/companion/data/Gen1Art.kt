@@ -356,7 +356,7 @@ object Gen1Art {
 
     /** Writes [rom]'s art into [dir] if it's a known Gen 1 cart (once per [VERSION]); returns the paths written. */
     fun extractTo(rom: ByteArray, dir: File): List<String> {
-        val sha1 = MessageDigest.getInstance("SHA-1").digest(rom).joinToString("") { "%02x".format(it) }
+        val sha1 = MessageDigest.getInstance("SHA-1").digest(rom).hex()
         val t = GAMES.firstOrNull { it.sha1 == sha1 } ?: return emptyList()
         val marker = File(dir, "gen1/scanned-v$VERSION-${sha1.take(12)}")
         if (marker.isFile) return emptyList()

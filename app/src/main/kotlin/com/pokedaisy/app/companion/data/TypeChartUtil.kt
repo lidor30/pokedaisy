@@ -27,8 +27,13 @@ fun typeMultiplierPct(atkType: Int, defType1: Int, defType2: Int): Int {
 }
 
 /** A move's name with its case, accents and punctuation gone, for [moveMultiplierPct]'s lists. */
-private fun moveKey(name: String): String =
-    java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD).uppercase().filter { it in 'A'..'Z' }
+internal fun moveKey(name: String): String =
+    name.map { c -> ACCENTED.indexOf(c).let { if (it < 0) c else UNACCENTED[it] } }.joinToString("").uppercase().filter { it in 'A'..'Z' }
+
+/** The Latin letters (U+00C0..U+024F) that are a plain letter plus accents, and that letter: what Unicode's NFD
+ * decomposition keeps of them once the accents are dropped. */
+private const val ACCENTED = "ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝàáâãäåçèéêëìíîïñòóôõöùúûüýÿĀāĂăĄąĆćĈĉĊċČčĎďĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĨĩĪīĬĭĮįİĴĵĶķĹĺĻļĽľŃńŅņŇňŌōŎŏŐőŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžƠơƯưǍǎǏǐǑǒǓǔǕǖǗǘǙǚǛǜǞǟǠǡǦǧǨǩǪǫǬǭǰǴǵǸǹǺǻȀȁȂȃȄȅȆȇȈȉȊȋȌȍȎȏȐȑȒȓȔȕȖȗȘșȚțȞȟȦȧȨȩȪȫȬȭȮȯȰȱȲȳ"
+private const val UNACCENTED = "AAAAAACEEEEIIIINOOOOOUUUUYaaaaaaceeeeiiiinooooouuuuyyAaAaAaCcCcCcCcDdEeEeEeEeEeGgGgGgGgHhIiIiIiIiIJjKkLlLlLlNnNnNnOoOoOoRrRrRrSsSsSsSsTtTtUuUuUuUuUuUuWwYyYZzZzZzOoUuAaIiOoUuUuUuUuUuAaAaGgKkOoOojGgNnAaAaAaEeEeIiIiOoOoRrRrUuUuSsTtHhAaEeOoOoOoOoYy"
 
 // As the games spell them: Unbound FR cuts its name short, Team Rocket Edition 2026's ROM has "Lioflización".
 private val FREEZE_DRY = setOf("FREEZEDRY", "LYOPHILISAT", "LYOPHILISATION", "LIOFILIZACION", "LIOFLIZACION")
@@ -120,6 +125,14 @@ fun activeTypeIdByName(): Map<String, Int> {
     return m
 }
 
+/** [pct] / 100 to two significant digits, as `%.2g` printed it (1.5, 3.0, 0.13, 16). */
+private fun twoDigits(pct: Int): String = when {
+    pct >= 1000 -> ((pct + 50) / 100).toString()
+    pct >= 100 -> ((pct + 5) / 10).let { if (it >= 100) "10" else "${it / 10}.${it % 10}" }
+    pct >= 10 -> "0.${pct.pad(2)}"
+    else -> "0.0${pct}0"
+}
+
 fun formatMultiplier(pct: Int): String = when (pct) {
     0 -> "0x"
     25 -> "¼x" // ¼x
@@ -127,7 +140,7 @@ fun formatMultiplier(pct: Int): String = when (pct) {
     100 -> "1x"
     200 -> "2x"
     400 -> "4x"
-    else -> "%.2gx".format(pct / 100.0)
+    else -> twoDigits(pct) + "x"
 }
 
 private const val STATUS1_SLEEP_MASK = 0x7L

@@ -1,10 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.io.RandomAccessFile
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.channels.FileChannel
 
 /**
  * REUSABLE TMS (SETTINGS > GAMEPLAY, GitHub #135): a TM stays in the bag after it teaches a move, as an HM does.
@@ -63,17 +59,15 @@ object ReusableTms {
         val key = "${rom.path}:${rom.length()}:${rom.lastModified()}"
         synchronized(cache) { cache[key]?.let { return it } }
         val found = runCatching {
-            RandomAccessFile(rom, "r").use { f ->
-                find(f.channel.map(FileChannel.MapMode.READ_ONLY, 0, f.length()).order(ByteOrder.LITTLE_ENDIAN))
-            }
+            withMappedRom(rom) { find(it) }
         }.getOrDefault(emptyList())
         synchronized(cache) { cache[key] = found }
         return found
     }
 
-    fun find(rom: ByteBuffer): List<Site> {
+    fun find(rom: LittleEndianReader): List<Site> {
         if (rom.limit() < 0xC0) return emptyList()
-        val code = String(ByteArray(4) { rom.get(0xAC + it) }, Charsets.US_ASCII)
+        val code = asciiString(ByteArray(4) { rom.get(0xAC + it) })
         val want = expectedSites(code)
         if (want == 0) return emptyList()
         val sites = ArrayList<Site>()

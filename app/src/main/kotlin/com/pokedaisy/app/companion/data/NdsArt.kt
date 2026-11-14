@@ -164,7 +164,7 @@ object NdsArt {
     /** Writes [rom]'s icons into [dir] if it's a cart this knows and they aren't there yet; true when it wrote any. */
     fun extractTo(rom: File, dir: File): Boolean = RandomAccessFile(rom, "r").use { f ->
         val header = f.read(0, 0x200)
-        val code = String(header, 0x0C, 4, Charsets.US_ASCII)
+        val code = asciiString(header, 0x0C, 4)
         val rev = header[0x1E].toInt() and 0xFF
         val platinum = isPlatinum(code, rev)
         val heartGold = isHgss(code, rev)
@@ -333,12 +333,12 @@ object NdsArt {
                     }.joinToString(";")
                 } ?: "",
                 levelUp.joinToString(",") { "${it.first}:${it.second}" },
-                bits.joinToString("") { "%02x".format(it) },
+                bits.hex(),
                 ability(0x1A),
             )
             sb.append(cells.joinToString("\t") { it.replace("\t", " ") }).append('\n')
         }
-        write(dir, ORIGIN_DEX, sb.toString().toByteArray())
+        write(dir, ORIGIN_DEX, sb.toString().encodeToByteArray())
         val pics = Narc(file(f, header, "/data/pokepic_m.narc") ?: return)
         for (species in 1..OriginHeartGold.LAST_NATIONAL) {
             val pal = palettes(pics.member(species * 8 + 1)).firstOrNull() ?: continue
@@ -546,7 +546,7 @@ object NdsArt {
         for (screen in intArrayOf(22, 24)) drawScreen(img, narc.member(screen) ?: return, tiles, mapPal)   // MAIN_3, then MAIN_2
         val (l, t, r, b) = PLATINUM_MAP_CROP.toList()
         val crop = RomArt.Image(r - l, b - t)
-        for (y in 0 until crop.height) System.arraycopy(img.argb, (t + y) * 256 + l, crop.argb, y * crop.width, crop.width)
+        for (y in 0 until crop.height) ((t + y) * 256 + l).let { img.argb.copyInto(crop.argb, y * crop.width, it, it + crop.width) }
         write(dir, "regionmap/$PLATINUM_MAP.png", crop.png())
         val blockTiles = ncgrData(narc.member(16)) ?: return
         val blocks = ncerCells(narc.member(17) ?: return)
@@ -783,12 +783,12 @@ object NdsArt {
                     (0 until l.size / 4).asSequence().map { u16(l, it * 4) to u16(l, it * 4 + 2) }
                         .takeWhile { it.first != 0xFFFF }.joinToString(",") { (move, level) -> "$level:$move" }
                 } ?: "",
-                (0x28 until 0x38).joinToString("") { "%02x".format(b(it)) },
+                (0x28 until 0x38).joinToString("") { b(it).hex(2) },
                 ability(0x1A),
             )
             sb.append(cells.joinToString("\t") { it.replace("\t", " ") }).append('\n')
         }
-        write(dir, files.dex, sb.toString().toByteArray())
+        write(dir, files.dex, sb.toString().encodeToByteArray())
         val pics = Narc(file(f, header, "/a/0/0/4") ?: return)
         for (species in 1..649) {
             val pal = palettes(pics.member(species * 20 + 18)).firstOrNull() ?: continue
@@ -985,7 +985,7 @@ object NdsArt {
         if (r <= l || b <= t) return
         for ((pocket, open, img) in drawn) {
             val crop = RomArt.Image(r - l, b - t)
-            for (y in 0 until crop.height) System.arraycopy(img.argb, (t + y) * 64 + l, crop.argb, y * crop.width, crop.width)
+            for (y in 0 until crop.height) ((t + y) * 64 + l).let { img.argb.copyInto(crop.argb, y * crop.width, it, it + crop.width) }
             write(dir, "${heartGoldPocket(pocket, open)}.png", crop.png())
         }
     }
@@ -1019,7 +1019,7 @@ object NdsArt {
     /** [rom]'s own names ([Names]), or null for a cart this doesn't read. */
     fun readNames(rom: File): Names? = RandomAccessFile(rom, "r").use { f ->
         val header = f.read(0, 0x200)
-        val code = String(header, 0x0C, 4, Charsets.US_ASCII)
+        val code = asciiString(header, 0x0C, 4)
         val rev = header[0x1E].toInt() and 0xFF
         val sequel = (code == "IREO" || code == "IRDO") && rev == 0 || portIs(code, rev, GameKind.BLACK2, GameKind.WHITE2)
         if (code in setOf("IRBO", "IRAO", "IRBF", "IRAF") && rev == 0 || portIs(code, rev, GameKind.BLACK, GameKind.WHITE) || sequel) {
@@ -1135,11 +1135,11 @@ object NdsArt {
                     (0 until l.size / 2).asSequence().map { u16(l, it * 2) }.takeWhile { it != 0xFFFF }
                         .joinToString(",") { "${it shr 9}:${it and 0x1FF}" }
                 } ?: "",
-                if (p.size >= 0x2C) (0x1C until 0x2C).joinToString("") { "%02x".format(b(it)) } else "",
+                if (p.size >= 0x2C) (0x1C until 0x2C).joinToString("") { b(it).hex(2) } else "",
             )
             sb.append(cells.joinToString("\t") { it.replace("\t", " ") }).append('\n')
         }
-        write(dir, d.pages, sb.toString().toByteArray())
+        write(dir, d.pages, sb.toString().encodeToByteArray())
         val pics = Narc(file(f, header, d.pics) ?: return)
         for (species in 1..493) {
             val pal = palettes(pics.member(species * 6 + 4)).firstOrNull() ?: continue
@@ -1197,7 +1197,7 @@ object NdsArt {
                 if (len == 0) break
                 val isDir = len and 0x80 != 0
                 val n = len and 0x7F
-                val entryName = String(fnt, p, n, Charsets.US_ASCII)
+                val entryName = asciiString(fnt, p, n)
                 p += n
                 if (isDir) {
                     val sub = u16(fnt, p)
@@ -1226,7 +1226,7 @@ object NdsArt {
         private val base: Int
 
         init {
-            require(String(d, 0, 4, Charsets.US_ASCII) == "NARC") { "not a NARC" }
+            require(asciiString(d, 0, 4) == "NARC") { "not a NARC" }
             var o = u16(d, 0x0C)
             fat = o + 12
             count = u16(d, o + 8)
@@ -1284,7 +1284,7 @@ object NdsArt {
     }
 
     private fun indexOf(b: ByteArray, magic: String): Int? {
-        val m = magic.toByteArray(Charsets.US_ASCII)
+        val m = asciiBytes(magic)
         outer@ for (i in 0..b.size - m.size) {
             for (j in m.indices) if (b[i + j] != m[j]) continue@outer
             return i

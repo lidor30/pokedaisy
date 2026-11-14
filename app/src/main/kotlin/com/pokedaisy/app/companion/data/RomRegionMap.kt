@@ -113,7 +113,7 @@ object RomRegionMap {
         // Rev 1 has its code elsewhere. Anything else is taken as rev 0's code - Unbound's French
         // translation left its revision byte at 0x9E - and the literal pools below must still
         // land on data of the right shape.
-        if (header.size < 0x11 || String(header, 0, 4, Charsets.US_ASCII) != "BPRE" || header[0x10].toInt() == 1) return null
+        if (header.size < 0x11 || asciiString(header, 0, 4) != "BPRE" || header[0x10].toInt() == 1) return null
 
         fun u16(b: ByteArray, i: Int) = (b[i].toInt() and 0xFF) or ((b[i + 1].toInt() and 0xFF) shl 8)
         fun ptr(at: Int): Int? {
@@ -150,7 +150,7 @@ object RomRegionMap {
         val images = screens.mapIndexed { i, img ->
             val (left, top, right, bottom) = crops[i]
             RomArt.Image((right - left) * 8, (bottom - top) * 8).also { out ->
-                for (y in 0 until out.height) System.arraycopy(img.argb, (top * 8 + y) * 240 + left * 8, out.argb, y * out.width, out.width)
+                for (y in 0 until out.height) ((top * 8 + y) * 240 + left * 8).let { img.argb.copyInto(out.argb, y * out.width, it, it + out.width) }
             }
         }
 

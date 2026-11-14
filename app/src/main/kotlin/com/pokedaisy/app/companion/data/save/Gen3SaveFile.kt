@@ -178,7 +178,7 @@ class Gen3SaveFile private constructor(
                 in 1..4 -> saveBlock1 to (id - 1) * DATA
                 else -> storage to (id - 5) * DATA
             }
-            System.arraycopy(block, start, out, base, size)
+            block.copyInto(out, base, start, start + size)
             putU16(out, base + ID_OFF, id)
             putU16(out, base + CHECKSUM_OFF, checksum(out, base, size))
             putU32(out, base + SIGNATURE_OFF, SIGNATURE)
@@ -245,9 +245,9 @@ class Gen3SaveFile private constructor(
                 val base = s.sectorBase[id]
                 val size = format.chunkSize(id)
                 when (id) {
-                    0 -> System.arraycopy(bytes, base, sb2, 0, size)
-                    in 1..4 -> System.arraycopy(bytes, base, sb1, (id - 1) * DATA, size)
-                    else -> System.arraycopy(bytes, base, storage, (id - 5) * DATA, size)
+                    0 -> bytes.copyInto(sb2, 0, base, base + size)
+                    in 1..4 -> bytes.copyInto(sb1, (id - 1) * DATA, base, base + size)
+                    else -> bytes.copyInto(storage, (id - 5) * DATA, base, base + size)
                 }
             }
             val rotation = (s.sectorBase[0] / SECTOR) % SECTORS_PER_SLOT

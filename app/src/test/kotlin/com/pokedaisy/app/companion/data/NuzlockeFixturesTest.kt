@@ -49,6 +49,26 @@ class NuzlockeFixturesTest {
     // against a Lv0 foe; Celia's battlers don't decode (its BATTLE tab shows the same).
     private val noFoe = setOf("unbound_battle", "celia_battle")
 
+    /** The catching lesson (FireRed's old man, Emerald's Wally: gBattleTypeFlags' 0x200) is no encounter of the player's
+     * (GitHub #829: LeafGreen's tutorial WEEDLE was counted). A wild battle with that flag set reads as not judged. */
+    @Test
+    fun theCatchingTutorialIsNoEncounter() {
+        val was = activeGame
+        try {
+            for ((game, name, cfg) in listOf(Triple(GameKind.EMERALD, "emerald_fr_battle", NATIVE_EMERALD_FR), Triple(GameKind.EMERALD, "sapphire_rev1_battle", NATIVE_SAPPHIRE))) {
+                activeGame = game
+                val base = FixtureMemoryReader.load(name)
+                assertEquals(name, false, readNativeTelemetry(base, cfg).isTrainerBattle)
+                val tutorial = object : MemoryReader by base {
+                    override fun readCoreMemory(addr: Long, size: Int): ByteArray = base.readCoreMemory(addr, size).also {
+                        if (addr == cfg.battleTypeFlags) it[1] = (it[1].toInt() or 0x02).toByte()
+                    }
+                }
+                assertEquals(name, null, readNativeTelemetry(tutorial, cfg).isTrainerBattle)
+            }
+        } finally { activeGame = was }
+    }
+
     @Test
     fun everyCaptureGivesTheTrackerWhatItReads() {
         for ((name, cfg) in fixtures) {

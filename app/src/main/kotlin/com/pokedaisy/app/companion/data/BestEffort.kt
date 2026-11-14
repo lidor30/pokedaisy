@@ -209,7 +209,7 @@ object BestEffort {
         val covers get() = coversBy.filterNotNull().minOrNull() ?: 0.0
         /** Its species sit at their own ids in the ROM, and the ROM has none past its own. */
         val speciesHold get() = species != null && species.agrees >= SPECIES_AGREES_MIN && !moreSpecies
-        override fun toString() = "inRom=${"%.2f".format(inRom)} covers=${coversBy.map { it?.let { "%.2f".format(it) } }} map=${mapInRom?.let { "%.2f".format(it) }} sp=$species mv=$moves it=$items ms=$map more=$moreSpecies"
+        override fun toString() = "inRom=${inRom.fixed(2)} covers=${coversBy.map { it?.fixed(2) }} map=${mapInRom?.fixed(2)} sp=$species mv=$moves it=$items ms=$map more=$moreSpecies"
     }
 
     /** [names] answers single names, [of] each config's [TextFit]. */
@@ -347,7 +347,7 @@ object BestEffort {
             Globals.set(c)
             return listOf("species", "moves", "items", "map").zip(tableEntries(c).map { it.values } + listOf(emptyList<String>())).joinToString("\n") { (label, list) ->
                 val (sh, n) = share(list)
-                "      $label ${"%.2f".format(sh)} of $n, missing: " + list.filter { names.has(it) == false }.take(12).joinToString(" | ")
+                "      $label ${sh.fixed(2)} of $n, missing: " + list.filter { names.has(it) == false }.take(12).joinToString(" | ")
             }
         } finally {
             Globals.restore(saved)

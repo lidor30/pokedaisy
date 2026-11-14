@@ -67,7 +67,7 @@ object Black2Redux {
 
     /** Which of the two [read] is: [CODE_BLACK2] / [CODE_WHITE2], or null for anything else. */
     fun which(read: (Long, Int) -> ByteArray?): String? {
-        val code = read(0x0C, 4)?.takeIf { it.size == 4 }?.let { String(it, Charsets.US_ASCII) } ?: return null
+        val code = read(0x0C, 4)?.takeIf { it.size == 4 }?.let { asciiString(it) } ?: return null
         val sig = when (code) {
             CODE_BLACK2 -> SIG_BLACK2
             CODE_WHITE2 -> SIG_WHITE2

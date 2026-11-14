@@ -235,6 +235,25 @@ class Gen3SaveFileTest {
         assertEquals(100, Gen3BoxMon.levelFor(1, 10_000_000))
     }
 
+    /** The slots a party shrank from hold ZeroMonData's record: zeroes but the mail field, MAIL_NONE (0xFF) - every real
+     * save whose party ever got smaller (a player's Emerald save was refused). Anything else there still refuses it. */
+    @Test
+    fun aPartySlotEmptiedByTheGameIsAccepted() {
+        val f = Gen3SaveFormat.EMERALD
+        val (s2, s1, st) = SyntheticSave.blocks(f)
+        s1[f.partyCountOff] = 1
+        for (i in 1 until 6) {
+            for (b in 0 until 100) s1[f.partyOff + i * 100 + b] = 0
+            s1[f.partyOff + i * 100 + 0x55] = 0xFF.toByte()
+        }
+        val emptied = parse(SyntheticSave.file(f, SyntheticSave.Slot(3, 0, s2, s1, st), null), f)
+        assertNull(Gen3SaveData(emptied).mismatch())
+        assertEquals(1, Gen3SaveData(emptied).party.size)
+        s1[f.partyOff + 2 * 100 + 0x56] = 0x0A
+        val other = parse(SyntheticSave.file(f, SyntheticSave.Slot(3, 0, s2, s1, st), null), f)
+        assertNotNull(Gen3SaveData(other).mismatch())
+    }
+
     @Test
     fun anotherGamesLayoutIsNoticed() {
         // An Emerald save read as FireRed: the party sits elsewhere, so the check refuses it.

@@ -153,7 +153,7 @@ object FlightArea {
         val b = read(sb2, 14)
         val key = b.copyOfRange(0, 9) + b.copyOfRange(10, 14)
         if (key.all { it == 0.toByte() } || key.all { it == 0xFF.toByte() }) return null
-        return "%08x".format(CRC32().apply { update(key) }.value)
+        return CRC32().apply { update(key) }.value.hex(8)
     }
 
     /** One save's seen maps, kept in [file] (a line per map, `group.num`). */

@@ -111,14 +111,20 @@ object RomFolder {
      * would only look through the same files twice. */
     fun coveredBy(folders: List<String>, path: String): String? {
         val p = File(path).absolutePath
-        return folders.firstOrNull { p == it || under(p, it) }
+        val c = canonical(p)
+        return folders.firstOrNull { p == it || under(p, it) || canonical(it).let { f -> c == f || under(c, f) } }
     }
 
     /** [folders] with [path] linked too (not [coveredBy] one of them): the folders inside it go, it covers them now. */
     fun withFolder(folders: List<String>, path: String): List<String> {
         val p = File(path).absolutePath
-        return folders.filterNot { under(it, p) } + p
+        val c = canonical(p)
+        return folders.filterNot { under(it, p) || under(canonical(it), c) } + p
     }
+
+    /** [path] with links resolved (/sdcard is /storage/emulated/0): two linked folders that are one folder under two names
+     * listed every ROM twice (a player's report after updating from 1.3, Discord 2026-11-14). */
+    internal fun canonical(path: String): String = runCatching { File(path).canonicalPath }.getOrDefault(File(path).absolutePath)
 
     /** What a [scan] saw: the supported ROMs it found that the previous one didn't
      * have, how many ROM files it looked at and how many of those are supported;
@@ -148,7 +154,7 @@ object RomFolder {
                         f.length() in 0x200L..maxBytes(f)
                 }
                 .toList()
-        }.distinctBy { it.absolutePath }
+        }.distinctBy { canonical(it.path) }   // one file reached through two linked names: listed once
         val old = load(context)
         val fresh = LinkedHashMap<String, Entry>()
         candidates.forEachIndexed { i, f ->
