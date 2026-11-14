@@ -623,6 +623,12 @@ change to any of the places listed under "Where it's decided" updates its rows h
   picks walked and written headless on English Sapphire rev 1 (`sapphire_rev1_battle`), German Sapphire rev 1 and
   Japanese Sapphire rev 1; the other ports' cursors are mapped through the literal pools (English's RAM in the Western
   ones). No POKéMON switch there: R / S's party menu keeps its cursor in a sprite's data, not in a gPartyMenu.
+- **Hide battle menu** (two screens; not a column: it follows the battle buttons): `PokeDaisyActivity.battleMenuHideSupported`
+  (a BPR / BPG / BPE header running as FireRed / Emerald with the battle buttons' addresses and the one-press picks' cursors:
+  the D-pad steers the hidden action menu by writing gActionSelectionCursor, `HiddenMenuSteer`), the menus found on screen by
+  `pk_wide.c`'s `menuHideBegin` (no address of its own; gBattleTypeFlags keeps doubles' and the Safari Zone's). Checked
+  headless on English FireRed rev 1 and Emerald (mgba_dump `battlemenu`). Ruby / Sapphire are left out: their cursor is
+  drawn apart and stayed over the empty box.
 - **One-press picks**: `NativeConfig.actionCursor` / `moveCursor`, handed out only for a hash-verified ROM
   (`TelemetrySampler.knownCursorAddrs`; a randomized retail ROM's masked hash counts, `RandomizedRetail`), or for a hack
   whose code proves retail's engine (`RetailEngine`, note 30). Configs made with `.copy()` inherit them: zero them where the RAM moved.

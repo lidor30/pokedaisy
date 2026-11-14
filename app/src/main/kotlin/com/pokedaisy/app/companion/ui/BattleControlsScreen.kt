@@ -133,6 +133,7 @@ fun BattleControlsScreen(
     }
     val movesKnown = activeMon?.moves?.isNotEmpty() == true
     val canSwitch = battleInput?.canSwitch == true
+    val menuOnCompanion = battleInput?.menuOnCompanion == true
     // The POKéMON pane is the party screen, full height: no strips or INFO / SUGGESTIONS over it.
     val picking = (battleInputState == BATTLE_INPUT_ACTION_SELECT && choosingMon) ||
         (battleInputState == BATTLE_INPUT_PARTY_OPEN && canSwitch)
@@ -209,8 +210,9 @@ fun BattleControlsScreen(
                             )
                             if (opened < 1f) ActionButtons(
                                 activeMon, battleInput, busy, showHints, oneTapMoves,
-                                onFight = if (movesKnown) ({ choosingMove = true }) else null,
-                                onPokemon = if (canSwitch) ({ choosingMon = true }) else null,
+                                // HIDE BATTLE MENU: the game's own FIGHT / POKéMON, so the D-pad, A and B act on what's shown.
+                                onFight = if (movesKnown && !menuOnCompanion) ({ choosingMove = true }) else null,
+                                onPokemon = if (canSwitch && !menuOnCompanion) ({ choosingMon = true }) else null,
                                 modifier = Modifier.fillMaxSize(), out = opened,
                             )
                             // No taps while they slide: a disabled button would dim on its way out.
@@ -259,7 +261,8 @@ fun BattleControlsScreen(
 private const val MENU_SLIDE_MS = 280
 
 /** The game's cursor in the battle menu on screen, for a button to show where it is - once the player has moved it (a
- * ring on FIGHT every turn would say nothing). -1 till then. Polled like [rememberBattleInputBusy]. */
+ * ring on FIGHT every turn would say nothing), or at once while the game's menu is hidden ([BattleInput.menuOnCompanion]).
+ * -1 till then. Polled like [rememberBattleInputBusy]. */
 @Composable
 internal fun rememberBattleCursor(battleInput: BattleInput?): Int {
     var shown by remember(battleInput) { mutableStateOf(-1) }
@@ -269,7 +272,8 @@ internal fun rememberBattleCursor(battleInput: BattleInput?): Int {
             androidx.compose.runtime.withFrameMillis { }
             val now = battleInput.menuCursor
             if (first < 0) first = now
-            if (now >= 0 && (shown >= 0 || now != first)) shown = now
+            // The game's menu off its screen: these buttons are the menu, so its cursor shows from the start.
+            if (now >= 0 && (shown >= 0 || now != first || battleInput.menuOnCompanion)) shown = now
         }
     }
     return shown
@@ -487,7 +491,8 @@ internal fun MoveGrid(
 ) {
     CompanionBackHandler(enabled = battleInput != null && !busy) { onCancel?.invoke() ?: battleInput?.back() }
     if (gen1Buttons) return Gen1MoveList(moves, battleInput, busy, showHints, modifier, onCancel)
-    val cursor = rememberBattleCursor(battleInput).takeIf { !busy } ?: -1
+    // Opened by us ([onCancel]), the game is still on its action menu: its cursor is an action's, not a move's.
+    val cursor = rememberBattleCursor(battleInput).takeIf { !busy && onCancel == null } ?: -1
     Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for (row in 0..1) {
             Row(

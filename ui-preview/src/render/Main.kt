@@ -333,8 +333,11 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     private var onCompanion = true
     override val companionShaders get() = onCompanion
     override fun setCompanionShaders(on: Boolean) { onCompanion = on }
-    // The Thor: SWAP SCREENS shows.
+    // The Thor: SWAP SCREENS shows, and HIDE BATTLE MENU (on, its default) in FireRed / Emerald.
     override val hasSecondScreen = true
+    private var hideMenu = true
+    override val hideBattleMenu get() = hideMenu
+    override fun setHideBattleMenu(on: Boolean) { hideMenu = on }
     private var swap = false
     override val swapScreens get() = swap
     override fun setSwapScreens(on: Boolean) { swap = on }
@@ -1560,6 +1563,7 @@ fun main(args: Array<String>) {
         Shot("$g-settings-flystyle", bw, bh, bd, companion("SETTINGS", settingsRow = "FLY STYLE")),
         Shot("$g-settings-rideon", bw, bh, bd, companion("SETTINGS", settingsRow = "RIDE ON")),
         Shot("$g-settings-battleview", bw, bh, bd, companion("SETTINGS", settingsRow = "BATTLE VIEW")),
+        Shot("$g-settings-hidemenu", bw, bh, bd, companion("SETTINGS", settingsRow = "HIDE BATTLE MENU")),
         Shot("$g-settings-battery-low", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(9, charging = false))),
         Shot("$g-settings-battery-charging", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(100, charging = true))),
         Shot("$g-card", bw, bh, bd, companion("CARD", snap = ::card)),
@@ -2441,6 +2445,7 @@ fun main(args: Array<String>) {
         Shot("settings-speed", tw, th, td, activity { SettingsActivity() }) {
             onNodeWithText("SPEED OPTIONS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
+        Shot("settings-hide-battle-menu", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("HIDE BATTLE MENU").performScrollTo() },
         Shot("settings-display", tw, th, td, activity { SettingsActivity() }) {
             onNodeWithText("DISPLAY OPTIONS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },

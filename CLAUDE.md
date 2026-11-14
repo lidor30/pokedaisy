@@ -1282,6 +1282,19 @@ slide in from the right over a fading dim (`movesIn` / `partyIn`; snapped in Pap
 `BattleList`; the side panel's edge tab steps aside meanwhile);
 RUN = `selectAction(3)`, wild battles only. `FittedGbaText` narrows a label's letters (3 tall, 3 / 2 / 1.5 / 1 wide) before it
 shrinks - measure both ways, layoutlib's measurer ignores scaleX. `BattleButtonsScreenshotTest` (+ 1:1 close-ups, a 20:9 phone).
+**HIDE BATTLE MENU** (SCREEN group on both screens, two screens only, `Prefs.hideBattleMenu` ON, NEW tag; players' request,
+2026-11-14): the GBA battle's FIGHT / BAG and move menus left off the game's screen while the companion's battle buttons pick.
+`pk_wide.c`'s `menuHideBegin` / `menuHideEnd` swap BG0's tilemap cells at line 0 and put them back after line 159 (the follower's
+way: the game, VRAM and states never see it): the prompt layout (BG0VOFS 160) / move layout (320) redrawn as the message box's
+frame round the prompt, a bobbing arrow at its bottom right in the text's colours (four message-window tiles borrowed). Found by
+shape, no per-game address; gBattleTypeFlags keeps doubles' and the Safari Zone's menus. Gate: `battleMenuHideSupported` (BPR /
+BPG / BPE running as FireRed / Emerald with battle input and known action / move cursors), the companion showing on the other screen.
+The arrow points down (SWAP SCREENS is for putting the game on top). Ruby / Sapphire left out: their cursor is drawn apart. mgba_dump
+`battlemenu`. The player's buttons follow the companion (the user's call, after a Thor try: the D-pad moved the unseen 2 x 2): on the
+hidden action menu (`pkBattleMenuHidden` 160) the D-pad is taken (`battleSteerTakes` / `steerMotion`) and moves gActionSelectionCursor
+round the companion's layout, FIGHT over BAG / RUN / POKéMON (`HiddenMenuSteer`, written on the next frame, the companion's click);
+A / B stay the game's. `BattleInput.menuOnCompanion`: the buttons light the game's cursor from the start (both BATTLE STYLEs) and
+FIGHT / POKéMON press the game's own, so the game is always on the menu shown; the moves' 2 x 2 is the game's own D-pad.
 **BATTLE STYLE** (companion SETTINGS > COMPANION, `Prefs.battleStyle`, GEN 4 default / GEN 5, NEW tag; asked once on the Library,
 `BattleStyleIntro`): GEN 5 (`BattleControlsGen5.kt`) is Black / White's battle touch screen redrawn - colours sampled and shapes measured
 off headless frames of the player's Black (nds_dump, the Battle Subway's first battle: command menu, moves, party), never their art (its

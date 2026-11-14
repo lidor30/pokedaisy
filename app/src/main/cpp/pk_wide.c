@@ -795,6 +795,10 @@ static bool vramTorn, vramTornLast;
 static void (*origWriteVRAM)(struct GBAVideoRenderer*, uint32_t);
 static void followWrote(uint32_t address);
 static void partnerWrote(uint32_t address);
+static void menuWrote(uint32_t address);
+// HIDE BATTLE MENU (menuHideBegin): 0 = off, 1 = hidden with the arrow down, 2 = up; gBattleTypeFlags (EWRAM), 0 = not read.
+static int menuHideMode;
+static uint32_t menuHideTypeFlags;
 #ifdef PK_WIDE_CACHE
 static uint32_t tileWritten[2][2048 / 32];   // BG VRAM's 32-byte tiles written since the margin cache last looked: the
 static int tileSide;                         // game's side, and the one being looked at (the drawing may be on another thread)
@@ -821,6 +825,7 @@ static void hookWriteVRAM(struct GBAVideoRenderer* r, uint32_t address) {
 #endif
     followWrote(address);
     partnerWrote(address);
+    menuWrote(address);
     origWriteVRAM(r, address);
 }
 
@@ -955,6 +960,8 @@ void pk_wide_extras_reset(void) {
     followOam = followSlot = -1;
     tintR = tintG = tintB = 256;
     tintShown = false;
+    menuHideMode = 0;
+    menuHideTypeFlags = 0;
 }
 
 static void followBegin(struct GBAVideoRenderer* r);
@@ -1037,6 +1044,9 @@ void pk_wide_lines(int on) {
 // pk_wide_later: the cached view's drawing, running beside the next frame until that frame's lines start to be recorded.
 static void (*laterJoin)(void);
 
+static void menuHideBegin(struct GBAVideoRenderer* r);
+static void menuHideEnd(struct GBAVideoRenderer* r);
+
 static void hookDrawScanline(struct GBAVideoRenderer* r, int y) {
     if (y == 0) {
         if (laterJoin) laterJoin();
@@ -1072,9 +1082,9 @@ static void hookDrawScanline(struct GBAVideoRenderer* r, int y) {
         }
         lineOamOf[y] = (uint8_t) (lineOamN - 1);
     }
-    if (y == 0) { followBegin(r); rideBegin(r); partnerBegin(r); flyBegin(r); }
+    if (y == 0) { followBegin(r); rideBegin(r); partnerBegin(r); flyBegin(r); menuHideBegin(r); }
     origDrawScanline(r, y);
-    if (y == PK_WIDE_H - 1) { flyEnd(r); partnerEnd(r); rideEnd(r); followEnd(r); }
+    if (y == PK_WIDE_H - 1) { menuHideEnd(r); flyEnd(r); partnerEnd(r); rideEnd(r); followEnd(r); }
 }
 
 static void hookScanlines(struct GBA* gba) {
@@ -3019,6 +3029,207 @@ static void followEnd(struct GBAVideoRenderer* r) {
 }
 
 static bool onBike(void);
+
+// HIDE BATTLE MENU (two screens: the companion's battle buttons do the choosing). The Gen 3 battle's BG0 is 32x64 tiles
+// holding three text box layouts one under the other, picked by BG0VOFS: 0 = the message box (rows 14-19), 160 = "What
+// will X do?" + the FIGHT / BAG menu box (rows 34-39), 320 = the move names + the PP box (rows 54-59). While each frame
+// is drawn the menu's cells are swapped for the message box's own frame, its inside left blank, so the prompt's box runs
+// the whole width; in the move menu the whole layout is that prompt box (its window still holds the text). At the box's
+// bottom right a bobbing arrow points at the companion's screen (down, or up when the screens are swapped), drawn in the
+// text's colours into four of the message window's tiles (not on screen while the menus are up). Taken out after the
+// last line like the follower (cells and pixels the game wrote meanwhile kept): VRAM, the game and states never see it.
+// Found by shape alone, no per-game address: both layouts' left parts equal, a box beside the prompt, the frame's
+// 15-tile set (corner T .. T + 14, T + 6 its plain inside) - FireRed's and Emerald's alike. Only the battle type is read
+// from the game (its address passed in): a double battle or the Safari Zone keeps its menus.
+static int menuHideRow = -1;              // the first tilemap row swapped this frame, -1 = none
+static uint16_t menuHideSaved[6][30];
+static uint8_t menuHideDirty[6][30];
+static uint32_t menuHideMap;               // the tilemap's VRAM byte offset
+static uint32_t menuArrowAt[4];            // the arrow's four tiles' VRAM byte offsets, 0 = not drawn
+static uint8_t menuArrowSaved[4][32];
+static uint8_t menuArrowDirty[4][16];
+static unsigned menuHideFrames;
+
+static void menuWrote(uint32_t address) {
+    if (menuHideRow < 0) return;
+    for (int k = 0; k < 4; k++)
+        if (menuArrowAt[k] && address >= menuArrowAt[k] && address < menuArrowAt[k] + 32) menuArrowDirty[k][(address - menuArrowAt[k]) >> 1] = 1;
+    if (address < menuHideMap + (uint32_t) menuHideRow * 64) return;
+    uint32_t k = (address - menuHideMap - (uint32_t) menuHideRow * 64) >> 1;
+    if (k < 6 * 32 && (k & 31) < 30) menuHideDirty[k >> 5][k & 31] = 1;
+}
+
+/** The arrow's 16x16 pixels (colour indices: [ink] on [shade] over [paper]), bobbing 0-2 px like the game's own. */
+static void menuArrowPixels(uint8_t px[16][16], int ink, int shade, int paper, bool up, unsigned frame) {
+    memset(px, paper, 16 * 16);
+    static const int bobs[4] = { 0, 1, 2, 1 };
+    int bob = bobs[(frame >> 3) & 3];
+    for (int pass = 0; pass < 2; pass++) {
+        int off = pass == 0 ? 1 : 0, colour = pass == 0 ? shade : ink;
+        for (int r = 0; r < 5; r++) {
+            int w = up ? 1 + 2 * r : 9 - 2 * r;
+            int y = (up ? 6 - bob : 6 + bob) + r + off, x0 = 3 + (9 - w) / 2 + off;
+            for (int x = x0; x < x0 + w; x++) if (y >= 0 && y < 16 && x < 16) px[y][x] = (uint8_t) colour;
+        }
+    }
+}
+
+/** Which battle menu the last frame hid: BG0VOFS 160 (the action menu) or 320 (the moves), 0 none. */
+static volatile int menuHidden;
+
+static void menuHideBegin(struct GBAVideoRenderer* r) {
+    menuHideRow = -1;
+    menuHidden = 0;
+    memset(menuArrowAt, 0, sizeof(menuArrowAt));
+    if (!menuHideMode || !hookGba) return;
+    menuHideFrames++;
+    // A double battle or the Safari Zone keeps its menu: the companion has no buttons for them.
+    if (menuHideTypeFlags >> 24 == 2) {
+        const uint8_t* f = (const uint8_t*) hookGba->memory.wram + (menuHideTypeFlags & 0x3FFFC);
+        if (f[0] & (1 << 0 | 1 << 7)) return;   // BATTLE_TYPE_DOUBLE, BATTLE_TYPE_SAFARI (FireRed's and Emerald's)
+    }
+    const uint16_t* io = hookGba->memory.io;
+    uint16_t dispcnt = io[0], cnt = io[0x08 >> 1];
+    if ((dispcnt & 7) != 0 || !(dispcnt & 0x100) || (cnt >> 14) != 2) return;   // mode 0, BG0 on, 256 x 512
+    if ((io[0x10 >> 1] & 0x1FF) != 0) return;
+    int vofs = io[0x12 >> 1] & 0x1FF;
+    if (vofs != 160 && vofs != 320) return;
+    uint32_t mapOff = ((cnt >> 8) & 31) * 0x800u, charOff = ((cnt >> 2) & 3) * 0x4000u;
+    uint8_t* vram = (uint8_t*) hookGba->video.vram;
+    uint16_t* map = (uint16_t*) (vram + mapOff);
+    const uint16_t* msg = map + 14 * 32;
+    const uint16_t* ask = map + 34 * 32;
+    int T = msg[0] & 0x3FF;
+    uint16_t pal = msg[0] & 0xF000;
+    if ((msg[29] & 0x3FF) != T + 4 || (msg[32] & 0x3FF) != T + 5 || (msg[5 * 32] & 0x3FF) != T + 10
+        || (msg[5 * 32 + 29] & 0x3FF) != T + 14) return;
+    int split = 0;
+    while (split < 30 && ask[split] == msg[split]) split++;
+    if (split < 8 || split > 24) return;
+    for (int row = 0; row < 6; row++) {
+        if (ask[row * 32] != msg[row * 32]) return;
+        if ((row == 0 || row == 5) && memcmp(ask + row * 32, msg + row * 32, (size_t) split * 2)) return;
+    }
+    // T + 6 must be plain: one colour all over (the inside of the box).
+    const uint8_t* fill = vram + charOff + (T + 6) * 32;
+    for (int i = 1; i < 32; i++) if (fill[i] != fill[0] || ((fill[0] ^ (fill[0] >> 4)) & 15)) return;
+    int paper = fill[0] & 15;
+    uint16_t want[6][30];
+    for (int row = 0; row < 6; row++) {
+        for (int c = 0; c < 30; c++) {
+            if (c < split) { want[row][c] = ask[row * 32 + c]; continue; }
+            uint16_t src = msg[row * 32 + c];
+            int t = src & 0x3FF;
+            want[row][c] = t >= T && t <= T + 14 ? src : (uint16_t) (pal | (T + 6));
+        }
+    }
+    // The arrow's tiles: the message window's last four on its bottom line, used nowhere on screen now. Its colours: the
+    // prompt text's ink and shadow (the two most used after the paper in the prompt window's tiles).
+    int at = vofs == 160 ? 34 : 54;
+    int arrowTiles[4], n = 0;
+    for (int c = 28; c >= split && n < 4; c--) {
+        int t = msg[4 * 32 + c] & 0x3FF;
+        if (t < T || t > T + 14) arrowTiles[n++] = t;
+    }
+    bool arrow = n == 4;
+    for (int row = vofs / 8; arrow && row < vofs / 8 + 20; row++)
+        for (int c = 0; c < 30 && arrow; c++) {
+            int t = (row >= at && row < at + 6 ? want[row - at][c] : map[row * 32 + c]) & 0x3FF;
+            for (int k = 0; k < 4; k++) if (t == arrowTiles[k]) arrow = false;
+        }
+    int ink = -1, shade = -1;
+    if (arrow) {
+        int counts[16] = { 0 };
+        for (int c = 1; c < split; c++)
+            for (int row = 1; row < 5; row++) {
+                const uint8_t* tp = vram + charOff + (ask[row * 32 + c] & 0x3FF) * 32;
+                for (int i = 0; i < 32; i++) { counts[tp[i] & 15]++; counts[tp[i] >> 4]++; }
+            }
+        counts[paper] = 0;
+        for (int i = 0; i < 16; i++) if (counts[i] && (ink < 0 || counts[i] > counts[ink])) ink = i;
+        for (int i = 0; i < 16; i++) if (counts[i] && i != ink && (shade < 0 || counts[i] > counts[shade])) shade = i;
+        arrow = ink >= 0 && shade >= 0;
+        // Which is the shadow: it sits right of and below the ink, so more of its pixels have the other on their left.
+        int inkFirst = 0;
+        for (int c = 1; arrow && c < split; c++)
+            for (int row = 1; row < 5; row++) {
+                const uint8_t* tp = vram + charOff + (ask[row * 32 + c] & 0x3FF) * 32;
+                for (int y = 0; y < 8; y++)
+                    for (int x = 0; x < 7; x++) {
+                        int a = (tp[y * 4 + x / 2] >> (4 * (x & 1))) & 15, b = (tp[y * 4 + (x + 1) / 2] >> (4 * ((x + 1) & 1))) & 15;
+                        if (a == ink && b == shade) inkFirst++;
+                        else if (a == shade && b == ink) inkFirst--;
+                    }
+            }
+        if (inkFirst < 0) { int t = ink; ink = shade; shade = t; }
+    }
+    if (arrow) {
+        // Bottom right of the box: the last two columns inside it, its last two text rows.
+        uint8_t px[16][16];
+        menuArrowPixels(px, ink, shade, paper, menuHideMode == 2, menuHideFrames);
+        memset(menuArrowDirty, 0, sizeof(menuArrowDirty));
+        for (int k = 0; k < 4; k++) {
+            int tx = k & 1, ty = k >> 1, tile = arrowTiles[3 - k];
+            uint32_t off = charOff + (uint32_t) tile * 32;
+            memcpy(menuArrowSaved[k], vram + off, 32);
+            for (int y = 0; y < 8; y++)
+                for (int x = 0; x < 8; x += 2)
+                    vram[off + y * 4 + x / 2] = (uint8_t) (px[ty * 8 + y][tx * 8 + x] | px[ty * 8 + y][tx * 8 + x + 1] << 4);
+            for (int i = 0; i < 32; i += 2) origWriteVRAM(r, off + (uint32_t) i);
+            menuArrowAt[k] = off;
+            want[3 + ty][27 + tx] = (uint16_t) (pal | tile);
+        }
+    }
+    menuHideMap = mapOff;
+    memset(menuHideDirty, 0, sizeof(menuHideDirty));
+    for (int row = 0; row < 6; row++) {
+        uint16_t* dst = map + (at + row) * 32;
+        memcpy(menuHideSaved[row], dst, sizeof(menuHideSaved[0]));
+        for (int c = 0; c < 30; c++) {
+            if (dst[c] == want[row][c]) continue;
+            dst[c] = want[row][c];
+            origWriteVRAM(r, mapOff + (uint32_t) ((at + row) * 32 + c) * 2);
+        }
+    }
+    menuHideRow = at;
+    menuHidden = vofs;
+}
+
+static void menuHideEnd(struct GBAVideoRenderer* r) {
+    if (menuHideRow < 0 || !hookGba) return;
+    uint8_t* vram = (uint8_t*) hookGba->video.vram;
+    uint16_t* map = (uint16_t*) (vram + menuHideMap);
+    for (int row = 0; row < 6; row++) {
+        uint16_t* dst = map + (menuHideRow + row) * 32;
+        for (int c = 0; c < 30; c++) {
+            if (menuHideDirty[row][c] || dst[c] == menuHideSaved[row][c]) continue;
+            dst[c] = menuHideSaved[row][c];
+            origWriteVRAM(r, menuHideMap + (uint32_t) ((menuHideRow + row) * 32 + c) * 2);
+        }
+    }
+    for (int k = 0; k < 4; k++) {
+        if (!menuArrowAt[k]) continue;
+        for (int i = 0; i < 16; i++) {
+            if (menuArrowDirty[k][i]) continue;
+            memcpy(vram + menuArrowAt[k] + i * 2, menuArrowSaved[k] + i * 2, 2);
+            origWriteVRAM(r, menuArrowAt[k] + (uint32_t) i * 2);
+        }
+        menuArrowAt[k] = 0;
+    }
+    menuHideRow = -1;
+}
+
+int pk_battle_menu_hidden(void) {
+    return menuHideMode ? menuHidden : 0;
+}
+
+void pk_battle_menu_hide(struct mCore* core, int mode, uint32_t battleTypeFlags) {
+    if (!core || core->platform(core) != mPLATFORM_GBA) return;
+    menuHideMode = mode == 1 || mode == 2 ? mode : 0;
+    if (!menuHideMode) menuHidden = 0;
+    menuHideTypeFlags = battleTypeFlags;
+    hookScanlines((struct GBA*) core->board);
+}
 
 /** Line 0 (after followBegin): RIDE ON's vehicle into the hardware behind the player, the game's bytes saved first. */
 static void rideBegin(struct GBAVideoRenderer* r) {

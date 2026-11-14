@@ -131,6 +131,40 @@ class BattleInputController(
     @Volatile
     var cursorAddrs: CursorAddrs? = null
 
+    /**
+     * HIDE BATTLE MENU's D-pad (two screens): the game's action menu is off its screen and the companion's buttons stand in
+     * for it, FIGHT over BAG / RUN / POKéMON - not the game's 2 x 2. A direction ([steerAction], from the UI thread) moves
+     * the game's cursor round them as they're laid out there ([HiddenMenuSteer]), written straight into
+     * gActionSelectionCursor on the next frame: the game reads it on A, which stays the player's own, and the companion
+     * lights that button ([menuCursor]). The moves need none of it: the game's grid and the companion's are both 2 x 2.
+     */
+    @Volatile
+    private var steerKey = 0
+
+    /** Whether [steerAction] can move the action menu's cursor now: the menu is up, its cursor known and writable, no pick
+     * of ours steering it. */
+    val canSteerAction: Boolean
+        get() = gameState == BATTLE_INPUT_ACTION_SELECT && writer != null && cursorAddrs?.menus == MenuCells.GEN3 &&
+            menuCursor in 0..3 && pickCell < 0
+
+    /** A D-pad press ([MgbaCore.Key] bits) for the action menu's cursor, applied on the next frame ([tick]). */
+    fun steerAction(key: Int) {
+        steerKey = key
+    }
+
+    private fun steerLocked() {
+        val key = steerKey
+        if (key == 0) return
+        steerKey = 0
+        if (lastKnownState != BATTLE_INPUT_ACTION_SELECT || pickCell >= 0 || queue.isNotEmpty() || framesLeft > 0) return
+        val addrs = cursorAddrs?.takeIf { it.menus == MenuCells.GEN3 } ?: return
+        val write = writer ?: return
+        val addr = addrs.action + lastBattler
+        val cur = runCatching { reader.readCoreMemory(addr, 1)[0].toInt() and 0xFF }.getOrNull()?.takeIf { it in 0..3 } ?: return
+        val next = HiddenMenuSteer.next(cur, key)
+        if (next != cur && !runCatching { write(addr, byteArrayOf(next.toByte())) }.getOrDefault(false)) log("steer to $next didn't write")
+    }
+
     /** The open menu's cursor, read each frame ([BattleInput.menuCursor]); -1 = no such menu, or a game whose cursor isn't known. */
     @Volatile
     var menuCursor = -1
@@ -268,6 +302,7 @@ class BattleInputController(
     /** Call once per real emulated frame, before MgbaCore.pkSetKeys. */
     fun tick() {
         val (bitsToSend, exclusive) = synchronized(lock) {
+            steerLocked()
             readMenuCursorLocked()
             if (gbPickCell >= 0) gbPickFrames++
             // The closed-loop steps (party cursor, RUN's B) queue their next
@@ -960,5 +995,20 @@ class BattleInputController(
         MgbaCore.Key.UP -> "UP"
         MgbaCore.Key.DOWN -> "DOWN"
         else -> "?$bit"
+    }
+}
+
+/**
+ * HIDE BATTLE MENU's D-pad on the companion's action buttons - FIGHT on top, BAG / RUN / POKéMON left to right under it
+ * (both battle styles) - in the game's cursor cells: 0 FIGHT, 1 BAG, 2 POKéMON, 3 RUN. UP goes to FIGHT, DOWN from FIGHT to
+ * RUN under it; LEFT / RIGHT walk the bottom row, and from FIGHT reach its ends. Nothing wraps.
+ */
+object HiddenMenuSteer {
+    fun next(cell: Int, key: Int): Int = when {
+        key and MgbaCore.Key.UP != 0 -> 0
+        key and MgbaCore.Key.DOWN != 0 -> if (cell == 0) 3 else cell
+        key and MgbaCore.Key.LEFT != 0 -> when (cell) { 0, 3 -> 1; 2 -> 3; else -> cell }
+        key and MgbaCore.Key.RIGHT != 0 -> when (cell) { 0, 3 -> 2; 1 -> 3; else -> cell }
+        else -> cell
     }
 }

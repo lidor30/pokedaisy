@@ -117,6 +117,10 @@ internal fun Gen5BattleControls(
     }
     val movesKnown = activeMon?.moves?.isNotEmpty() == true
     val canSwitch = battleInput?.canSwitch == true
+    // HIDE BATTLE MENU: these buttons are the game's menu - its cursor shows on them from the start, and FIGHT / POKéMON
+    // press the game's own, so the D-pad, A and B act on what's shown.
+    val menuOnCompanion = battleInput?.menuOnCompanion == true
+    val gameCursor = rememberBattleCursor(battleInput)
     val picking = (battleInputState == BATTLE_INPUT_ACTION_SELECT && choosingMon) ||
         (battleInputState == BATTLE_INPUT_PARTY_OPEN && canSwitch)
     val page = when {
@@ -130,6 +134,9 @@ internal fun Gen5BattleControls(
     }
     val live = battleInput != null
     val enabled = live && !busy
+    // The game's cursor on these buttons, only while they're its menu, and only on the menu it's really on.
+    val actionCursor = if (menuOnCompanion && !busy && battleInputState == BATTLE_INPUT_ACTION_SELECT) gameCursor else -1
+    val moveCursor = if (menuOnCompanion && !busy && battleInputState == BATTLE_INPUT_MOVE_SELECT) gameCursor else -1
     // FIGHT grows the band's lens into the move plates' field, as the game does.
     val open by animateFloatAsState(if (page == Gen5Page.MOVES || page == Gen5Page.ONE_TAP) 1f else 0f, tween(200), label = "gen5-open")
     val dark by animateFloatAsState(if (page == Gen5Page.WAIT || page == Gen5Page.BACK) 1f else 0f, tween(240), label = "gen5-dark")
@@ -161,11 +168,12 @@ internal fun Gen5BattleControls(
                             // FIGHT!: the lens itself is the button (its hit box the lens's middle).
                             Gen5Button(
                                 g, Rect(g.x(48f), g.lensTop(0.5f) , g.w - g.x(48f), g.lensBottom(0.5f)),
-                                enabled = enabled, pressesGame = !movesKnown, focusFirst = true,
+                                enabled = enabled, pressesGame = !movesKnown || menuOnCompanion, focusFirst = true,
+                                highlighted = actionCursor == 0,
                                 // Black's cursor on FIGHT! frames the panel above the plates, edge to edge (headless).
                                 cursor = Rect(g.x(2f), g.y(9f), g.x(253f), g.y(127f)),
                                 onPress = { fightLit = it },
-                                onClick = { if (movesKnown) choosingMove = true else battleInput?.selectAction(0) },
+                                onClick = { if (movesKnown && !menuOnCompanion) choosingMove = true else battleInput?.selectAction(0) },
                             ) {
                                 Gen5Label(tr("FIGHT") + "!", G5FightRed, G5FightRed, Color.Black, g.fightFont)
                             }
@@ -175,9 +183,9 @@ internal fun Gen5BattleControls(
                             PartyBalls(g, party, centreY = 108f, small = false)
                         }
                         ActionDiscs(
-                            g, live, enabled, canSwitch,
-                            onPokemon = { if (canSwitch) choosingMon = true else battleInput?.selectAction(2) },
-                            pokemonPressesGame = !canSwitch,
+                            g, live, enabled, canSwitch, actionCursor,
+                            onPokemon = { if (canSwitch && !menuOnCompanion) choosingMon = true else battleInput?.selectAction(2) },
+                            pokemonPressesGame = !canSwitch || menuOnCompanion,
                             onBag = { battleInput?.selectAction(1) },
                             onRun = { battleInput?.selectAction(3) },
                         )
@@ -186,7 +194,7 @@ internal fun Gen5BattleControls(
                     Gen5Page.MOVES -> {
                         val cancel: (() -> Unit)? = if (battleInputState == BATTLE_INPUT_ACTION_SELECT) ({ choosingMove = false }) else null
                         CompanionBackHandler(enabled = enabled) { cancel?.invoke() ?: battleInput?.back() }
-                        MovePlates(g, activeMon, battleInput, busy, showHints, top = 5f, height = 112f)
+                        MovePlates(g, activeMon, battleInput, busy, showHints, top = 5f, height = 112f, cursor = moveCursor)
                         PartyBalls(g, party, centreY = 126f, small = false)
                         BackDisc(g, enabled, pressesGame = cancel == null) { cancel?.invoke() ?: battleInput?.back() }
                     }
@@ -484,6 +492,8 @@ private fun Gen5Button(
     enabled: Boolean,
     pressesGame: Boolean,
     focusFirst: Boolean = false,
+    /** The game's cursor is on it (HIDE BATTLE MENU: these buttons are the game's menu): its key cursor, as on focus. */
+    highlighted: Boolean = false,
     /** Where the game's cursor sits, in the tab's pixels, when it isn't round [rect] (FIGHT!'s frames the whole panel). */
     cursor: Rect? = null,
     onPress: (Boolean) -> Unit = {},
@@ -498,7 +508,8 @@ private fun Gen5Button(
     val focused by interaction.collectIsFocusedAsState()
     LaunchedEffect(pressed) { onPress(pressed) }
     // Black / White's own key cursor, breathing out and back like the game's.
-    val pulse = if (focused) rememberDsCursorPulse(2) else 0f
+    val lit = focused || highlighted
+    val pulse = if (lit) rememberDsCursorPulse(2) else 0f
     val density = LocalDensity.current
     Box(
         Modifier
@@ -508,7 +519,7 @@ private fun Gen5Button(
             .drawWithContent {
                 draw?.invoke(this, pressed)
                 drawContent()
-                if (focused) {
+                if (lit) {
                     val c = cursor ?: rect
                     translate(c.left - rect.left, c.top - rect.top) { drawUnovaCursor(g.d, pulse, c.size) }
                 }
@@ -568,16 +579,18 @@ private fun ActionDiscs(
     live: Boolean,
     enabled: Boolean,
     canSwitch: Boolean,
+    /** The game's action cursor shown on them ([Gen5Button]'s highlighted): 1 BAG, 3 RUN, 2 POKéMON; -1 none. */
+    cursor: Int,
     onPokemon: () -> Unit,
     pokemonPressesGame: Boolean,
     onBag: () -> Unit,
     onRun: () -> Unit,
 ) {
-    Disc(g, cxDs = 39.5f, cyDs = 154f, bar = -1, label = tr("BAG"), colors = BagColors, available = live, enabled = enabled, pressesGame = true, onClick = onBag)
-    Disc(g, cxDs = 127.5f, cyDs = 170f, bar = 0, label = tr("RUN"), colors = RunColors, available = live, enabled = enabled, pressesGame = true, cursorTop = 138f, onClick = onRun)
+    Disc(g, cxDs = 39.5f, cyDs = 154f, bar = -1, label = tr("BAG"), colors = BagColors, available = live, enabled = enabled, pressesGame = true, highlighted = cursor == 1, onClick = onBag)
+    Disc(g, cxDs = 127.5f, cyDs = 170f, bar = 0, label = tr("RUN"), colors = RunColors, available = live, enabled = enabled, pressesGame = true, highlighted = cursor == 3, cursorTop = 138f, onClick = onRun)
     Disc(
         g, cxDs = 215.5f, cyDs = 154f, bar = 1, label = tr("POKéMON"), colors = MonColors,
-        available = live, enabled = enabled, pressesGame = pokemonPressesGame, onClick = onPokemon,
+        available = live, enabled = enabled, pressesGame = pokemonPressesGame, highlighted = cursor == 2, onClick = onPokemon,
     )
 }
 
@@ -601,6 +614,7 @@ private fun Disc(
     available: Boolean,
     enabled: Boolean,
     pressesGame: Boolean,
+    highlighted: Boolean = false,
     radius: Float = 38f,
     /** The game's cursor box's top (this screen's game pixels): Black's sits 24 above a side plate's centre, RUN's 32. */
     cursorTop: Float = cyDs - 24f,
@@ -619,7 +633,7 @@ private fun Disc(
     val rect = Rect(left, top, right, g.h)
     val barTop = top + g.snap(0.63f * r)
     Gen5Button(
-        g, rect, enabled = enabled && available, pressesGame = pressesGame,
+        g, rect, enabled = enabled && available, pressesGame = pressesGame, highlighted = highlighted,
         // The game's cursor box: 36.5 left of the centre to 37.5 right, down to 2 above the screen's bottom.
         cursor = Rect(cx - g.len(radius - 1.5f), g.y(cursorTop), cx + g.len(radius - 0.5f), g.y(174f)),
         draw = { pressed ->
@@ -737,7 +751,11 @@ private fun PartyBalls(g: G5, party: List<MonView>, centreY: Float, small: Boole
 /** The four move plates, two by two from game row [top] (the field's), each its type's colour round the charcoal:
  * the name, the type and PP, then (ours) the power and, with BATTLE HINTS, the verdict. */
 @Composable
-private fun MovePlates(g: G5, activeMon: MonView?, battleInput: BattleInput?, busy: Boolean, showHints: Boolean, top: Float, height: Float) {
+private fun MovePlates(
+    g: G5, activeMon: MonView?, battleInput: BattleInput?, busy: Boolean, showHints: Boolean, top: Float, height: Float,
+    /** The game's move cursor shown on them (HIDE BATTLE MENU); -1 none. */
+    cursor: Int = -1,
+) {
     val plateW = (g.w - 3 * g.len(1.5f)) / 2
     val rowH = (g.y(top + height) - g.y(top)) / 2
     for (i in 0 until 4) {
@@ -745,12 +763,12 @@ private fun MovePlates(g: G5, activeMon: MonView?, battleInput: BattleInput?, bu
         val row = i / 2
         val l = g.snap(g.len(1.5f) + col * (plateW + g.len(1.5f)))
         val t = g.snap(g.y(top) + row * rowH)
-        MovePlate(g, Rect(l, t, l + g.snap(plateW), t + g.snap(rowH)), activeMon?.moves?.getOrNull(i), battleInput, i, busy, showHints)
+        MovePlate(g, Rect(l, t, l + g.snap(plateW), t + g.snap(rowH)), activeMon?.moves?.getOrNull(i), battleInput, i, busy, showHints, cursor == i)
     }
 }
 
 @Composable
-private fun MovePlate(g: G5, rect: Rect, mv: MoveView?, battleInput: BattleInput?, index: Int, busy: Boolean, showHints: Boolean) {
+private fun MovePlate(g: G5, rect: Rect, mv: MoveView?, battleInput: BattleInput?, index: Int, busy: Boolean, showHints: Boolean, highlighted: Boolean = false) {
     val d = g.d
     val usable = mv != null && mv.pp > 0
     val type = mv?.let { AppColors.typeColors[it.type] } ?: EmptyRim
@@ -758,7 +776,7 @@ private fun MovePlate(g: G5, rect: Rect, mv: MoveView?, battleInput: BattleInput
     val small = g5Metrics(g, 0.75f)
     Box(Modifier.fillMaxSize().alpha(if (mv == null || usable) 1f else 0.5f)) {
         Gen5Button(
-            g, rect, enabled = usable && battleInput != null && !busy, pressesGame = true, focusFirst = index == 0,
+            g, rect, enabled = usable && battleInput != null && !busy, pressesGame = true, focusFirst = index == 0, highlighted = highlighted,
             draw = { pressed ->
                 val w = size.width
                 val h = size.height

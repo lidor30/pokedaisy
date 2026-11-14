@@ -16,6 +16,9 @@ object NewFeatures {
     /** SETTINGS > BATTLE BUTTONS (companion.ui.BattleButtons). */
     const val BATTLE_BUTTONS = "battle_buttons"
 
+    /** SETTINGS > HIDE BATTLE MENU: two screens, the game's own battle menus off its screen (pk_wide.c's menuHideBegin). */
+    const val HIDE_BATTLE_MENU = "hide_battle_menu"
+
     /** HOTKEYS > RESTART GAME and CLOSE APP (Hotkeys.Action.badge). */
     const val GAME_HOTKEYS = "game_hotkeys"
 
@@ -196,7 +199,7 @@ object NewFeatures {
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
-        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS,
+        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU,
     )
 
     private const val DAYS = 7
