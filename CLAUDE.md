@@ -913,6 +913,10 @@ trainer pic) wears the look's `counterpart`, built in the same patch (`build(riv
 needs Emerald's frame routines swapped for `scripts/text_look_dialogue.s` (assembled bytes in `TextLook.DIALOGUE_CODE`).
 FOLLOWER (same group): the party lead walks behind the player as one more hardware sprite put in at line 0 and taken
 out after line 159 (pk_wide.c `followBegin` / `followEnd`: OBJ tiles 1008-1023, a free OAM entry and palette slot).
+SPRITE PACK (library > TOOLS, NEW tag; `SpritePack.kt`, `SpritePackFlow.kt`, docs/DEVELOPMENT.md's "Sprite packs"): those
+looks' graphics loaded from one zip instead of the other games' ROMs, made only by `make sprite-pack` from ROMs the maker has
+(never in the repo, never linked); a file goes in only where its size and CRC32 are a known graphic's (`LookBlob`, `TextBlob`,
+`MonArtSigsGen.kt` from `make sprite-pack-sigs`).
 DAY AND NIGHT (`DayNight.kt`, same group, any GBA game): the renderer's BG palettes 0-12 + OBJ tinted at line 0 through
 `writePalette` (pk_wide.c `tintPalettes`, palette RAM untouched; text windows 13-15 kept), eased by the engine on the field.
 **QoL batch 2**: PC anywhere on every language + FireRed rev 0 + Ruby / Sapphire (`port_field_items.py` maps PcFns, each

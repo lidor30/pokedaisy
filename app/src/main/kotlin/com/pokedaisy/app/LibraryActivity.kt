@@ -191,6 +191,12 @@ class LibraryActivity : ComponentActivity() {
         uri?.let { patcher.start(it) }
     }
 
+    /** TOOLS > SPRITE PACK: the makeover's graphics from a pack file (internal for ui-preview). */
+    internal val spritePack by lazy { SpritePackFlow(this) }
+    private val pickSpritePack = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { spritePack.start(it) }
+    }
+
     /** LOAD SAVE: the save file picked for a game, waiting on its confirm (internal for ui-preview). */
     internal class PendingSaveLoad(val rom: File, val bytes: ByteArray, val fileName: String)
     internal var saveLoad by mutableStateOf<PendingSaveLoad?>(null)
@@ -478,6 +484,9 @@ class LibraryActivity : ComponentActivity() {
             },
             com.pokedaisy.app.companion.ui.LibraryTool("TRADE", "TRADE SAVES", "Move Pokémon between your games' saves", nf.badge(nf.SAVE_TRADE)) {
                 startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_TRADE, true))
+            },
+            com.pokedaisy.app.companion.ui.LibraryTool("SPRITES", "SPRITE PACK", "Load other games' looks for MAKEOVER", nf.badge(nf.SPRITE_PACK)) {
+                pickSpritePack.launch(arrayOf("*/*"))
             },
         )
     }
@@ -817,6 +826,8 @@ class LibraryActivity : ComponentActivity() {
                 onPlay = ::play,
                 onAskSupport = { rom -> Thread({ val url = RomSupportRequest.url(rom); runOnUiThread { openUrl(url) } }, "pokedaisy-support-url").start() },
             )
+
+            SpritePackWindow(spritePack, m, small)
 
             UpdateDialog(updates, m, small)
 
@@ -1941,7 +1952,7 @@ class LibraryActivity : ComponentActivity() {
     /** Every window over the main screen (pass keys to them, not the launcher). */
     private val libraryDialogOpen
         get() = searching || pickingSort || addMenu || renaming != null || deleting != null || gameInfo != null || coverPickerFor != null ||
-            pendingImport != null || patcher.step != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
+            pendingImport != null || patcher.step != null || spritePack.step != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
             (expandIntro && !crashAsk) || battleStyleIntroShown || ssIntroShown || whatsNewShown || supportShown || seasonalShown
 
     /** BACK for the library's windows (OptionOverlay & co.): the newest open one closes. */

@@ -17,7 +17,7 @@ val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appIncludes = listOf(
     "companion/ui/**", "SettingsActivity.kt", "CoopSettingsPages.kt", "LibraryActivity.kt", "SavesLocation.kt",
     "CoverArtSync.kt", "CoverSync.kt", "DocsApi.kt", "DocsSearch.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSaves.kt", "RzipSave.kt", "SaveBackups.kt", "GameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt",
-    "BpsPatch.kt", "RomPatcher.kt", "RomPatchFlow.kt", "RomCrcs.kt",
+    "BpsPatch.kt", "RomPatcher.kt", "RomPatchFlow.kt", "RomCrcs.kt", "SpritePackFlow.kt",
     "ScreenScraperClient.kt", "ScreenScraperUi.kt", "GameMedia.kt", "LauncherScreen.kt",
     "achievements/**", "overlay/Overlays.kt", "overlay/OverlayLabels.kt",
 )
@@ -61,6 +61,20 @@ tasks.register<JavaExec>("gameExport") {
     mainClass.set("render.GameExportKt")
     args = listOf((project.findProperty("roms") as String?) ?: "", (project.findProperty("out") as String?) ?: "")
     workingDir = rootDir.resolve("../app/src/main/assets")
+    maxHeapSize = "3g"
+    systemProperty("java.awt.headless", "true")
+}
+
+// SPRITE PACK: the makeover's graphics from your own ROMs (src/render/SpritePackTool.kt; `make sprite-pack`).
+tasks.register<JavaExec>("spritePack") {
+    description = "-Pmode=pack|sigs -Proms=<folder of your ROMs> -Pout=<file>: a sprite pack zip, or the follower Pokémon's CRC table."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("render.SpritePackToolKt")
+    args = listOf(
+        (project.findProperty("mode") as String?) ?: "pack",
+        (project.findProperty("roms") as String?) ?: "",
+        (project.findProperty("out") as String?) ?: "",
+    )
     maxHeapSize = "3g"
     systemProperty("java.awt.headless", "true")
 }

@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.GbaControls
 import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.LibraryActivity
+import com.pokedaisy.app.SpritePackFlow
 import com.pokedaisy.app.Prefs
 import com.pokedaisy.app.SettingsActivity
 import com.pokedaisy.app.overlay.BuiltInFrames
@@ -2606,6 +2607,16 @@ fun main(args: Array<String>) {
         Shot("library-patch-not-found-unknown", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("unknown") } }),
         Shot("library-patch-looking", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("looking") } }),
         Shot("library-patch-failed", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("failed") } }),
+        // TOOLS > SPRITE PACK's window: loaded (everything new, some refused), nothing new, and a file that isn't one.
+        Shot("library-sprite-pack-done", tw, th, td, activity { LibraryActivity().apply { spritePack.step = SpritePackFlow.Step.Done(
+            com.pokedaisy.app.companion.data.SpritePack.Result("2026-11-15", com.pokedaisy.app.companion.data.LookChar.entries,
+                com.pokedaisy.app.companion.data.TextLook.STYLES, 386, added = 1676, kept = 0, refused = 2)) } }),
+        Shot("library-sprite-pack-nothing-new", tw, th, td, activity { LibraryActivity().apply { spritePack.step = SpritePackFlow.Step.Done(
+            com.pokedaisy.app.companion.data.SpritePack.Result("2026-11-15", emptyList(), emptyList(), 0, added = 0, kept = 1676, refused = 0)) } }),
+        Shot("library-sprite-pack-failed", tw, th, td, activity { LibraryActivity().apply { spritePack.step = SpritePackFlow.Step.Failed("This file isn't a sprite pack.") } }),
+        Shot("library-sprite-pack-phone", 1080, 2400, 2.625f, activity { LibraryActivity().apply { spritePack.step = SpritePackFlow.Step.Done(
+            com.pokedaisy.app.companion.data.SpritePack.Result("2026-11-15", com.pokedaisy.app.companion.data.LookChar.entries,
+                com.pokedaisy.app.companion.data.TextLook.STYLES, 386, added = 1676, kept = 0, refused = 2)) } }),
         // REPLACE COVER: a known game's icons, a search's game list, and no API key.
         Shot("library-cover-picker", tw, th, td, activity {
             LibraryActivity().apply { coverPickerFor = File("firered-hack.gba"); coverSourceOverride = FakeCoverSource(known = true) }
