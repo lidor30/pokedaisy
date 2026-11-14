@@ -16,7 +16,9 @@ import okio.Path.Companion.toOkioPath
 class NdsArtWhiteTest {
     private val nds = File(File(RETAIL_ROM_DIR).parentFile, "nds")
     private val black = File(nds, "Pokemon - Black Version (USA, Europe) (NDSi Enhanced).nds")
-    private val white = File(nds, "Pokemon - White Version (USA, Europe) (NDSi Enhanced).nds")
+    // The clean dump (sha1 bc696a0d, the fixtures'), else the [b] one some sets carry under that name.
+    private val white = listOf("", " [b]").map { File(nds, "Pokemon - White Version (USA, Europe) (NDSi Enhanced)$it.nds") }
+        .firstOrNull { it.isFile } ?: File(nds, "Pokemon - White Version (USA, Europe) (NDSi Enhanced).nds")
 
     @Test
     fun `White's art is Black's, its DEX descriptions its own`() {
