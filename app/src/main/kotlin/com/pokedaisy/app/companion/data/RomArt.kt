@@ -2,8 +2,8 @@ package com.pokedaisy.app.companion.data
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.io.File
 import okio.Path
+import okio.Path.Companion.toPath
 import okio.Deflater
 import okio.DeflaterSink
 
@@ -40,28 +40,27 @@ object RomArt {
 
     /** Swappable so tests / previews can keep the art elsewhere (Paparazzi has no filesDir). */
     @Volatile
-    var dirOverride: File? = null
+    var dirOverride: Path? = null
 
     /** Where the art lives: [DIR] under the app's filesDir. */
-    fun dir(filesDir: File?): File = dirOverride ?: File(filesDir, DIR)
+    fun dir(filesDir: Path?): Path = dirOverride ?: filesDir?.div(DIR) ?: DIR.toPath()
 
     /** The cached file for an art [path], or null if no ROM has supplied it yet. */
-    fun file(filesDir: File?, path: String): File? = File(dir(filesDir), path).takeIf { it.isFile }
+    fun file(filesDir: Path?, path: String): Path? = (dir(filesDir) / path).takeIf { it.isFile }
 
     /**
      * Scans [rom] in the background unless a ROM with this [romKey] was
      * already scanned, or every file is already cached. A few hundred ms, once.
      */
-    fun prefetch(filesDir: File, romKey: String, rom: Path) {
+    fun prefetch(filesDir: Path, romKey: String, rom: Path) {
         val dir = dir(filesDir)
-        val marker = File(dir, "scanned/v$SCAN_VERSION-$romKey")
-        if (marker.isFile || running || OUTPUTS.all { File(dir, it).isFile }) return
+        val marker = dir / "scanned/v$SCAN_VERSION-$romKey"
+        if (marker.isFile || running || OUTPUTS.all { (dir / it).isFile }) return
         running = true
         Thread({
             try {
                 val t0 = System.nanoTime()
                 val wrote = extractTo(readRomFile(rom), dir)
-                marker.parentFile?.mkdirs()
                 marker.writeText(wrote.joinToString("\n"))
                 android.util.Log.i("pokedaisy", "RomArt: ${wrote.size} new files from ${rom.name} in ${(System.nanoTime() - t0) / 1_000_000} ms")
                 if (wrote.isNotEmpty()) _updates.value++
@@ -74,19 +73,15 @@ object RomArt {
     }
 
     /** Writes every art file [rom] can supply that [dir] doesn't have yet; returns their paths. */
-    fun extractTo(rom: ByteArray, dir: File): List<String> {
-        val wanted = OUTPUTS.filter { !File(dir, it).isFile }
+    fun extractTo(rom: ByteArray, dir: Path): List<String> {
+        val wanted = OUTPUTS.filter { !(dir / it).isFile }
         if (wanted.isEmpty()) return emptyList()
         val found = find(rom)
         val images = compose(found)
         val raw = raw(found)
         return wanted.mapNotNull { path ->
             val bytes = images[path]?.png() ?: raw[path] ?: return@mapNotNull null
-            val f = File(dir, path)
-            f.parentFile?.mkdirs()
-            val tmp = File(f.parentFile, f.name + ".tmp")
-            tmp.writeBytes(bytes)
-            tmp.renameTo(f)
+            (dir / path).writeAtomically(bytes)
             path
         }
     }

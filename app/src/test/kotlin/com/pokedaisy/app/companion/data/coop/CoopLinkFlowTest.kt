@@ -8,6 +8,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import okio.Path.Companion.toOkioPath
 
 /** The game's own calls a finished joined battle makes, logged. */
 private class FlowCore : CoopCore {
@@ -907,18 +908,18 @@ class CoopLinkFlowTest {
     @Test fun catchStoreFileSurvivesARestartAndIsAtomic() {
         val dir = java.nio.file.Files.createTempDirectory("catches").toFile()
         val file = java.io.File(dir, "c.txt")
-        val a = FileCatchStore(file) { it.run() }
+        val a = FileCatchStore(file.toOkioPath()) { it.run() }
         a.addPending("k 1", 5, caughtMon)
         a.addGiven("k 1", "5:1")
-        val b = FileCatchStore(file) { it.run() }
+        val b = FileCatchStore(file.toOkioPath()) { it.run() }
         assertEquals(1, b.pending("k 1").size); assertEquals(5, b.pending("k 1")[0].first)
         assertTrue(b.pending("k 1")[0].second.contentEquals(caughtMon))
         assertTrue("5:1" in b.given("k 1"))
         b.removePending("k 1", 5)
-        assertTrue(FileCatchStore(file) { it.run() }.pending("k 1").isEmpty())
+        assertTrue(FileCatchStore(file.toOkioPath()) { it.run() }.pending("k 1").isEmpty())
         assertFalse("no temp file left behind", java.io.File(dir, "c.txt.tmp").exists())
         file.writeText("garbage\nP only two\nP k 3 zz\n")
-        assertTrue(FileCatchStore(file) { it.run() }.pending("k").isEmpty())
+        assertTrue(FileCatchStore(file.toOkioPath()) { it.run() }.pending("k").isEmpty())
         dir.deleteRecursively()
     }
 

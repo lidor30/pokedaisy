@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import okio.Path
 
 /**
  * FLIGHT AREA (SETTINGS > GAMEPLAY, [com.pokedaisy.app.companion.FlightAreaMode]): FREE FLIGHT and the scenic FLY cross only
@@ -156,7 +156,7 @@ object FlightArea {
     }
 
     /** One save's seen maps, kept in [file] (a line per map, `group.num`). */
-    class SeenMaps(private val file: File) {
+    class SeenMaps(private val file: Path) {
         private val ids = HashSet<Int>()
         /** The save's flags were read into it ([seed]) this run. */
         var seeded = false
@@ -178,11 +178,8 @@ object FlightArea {
         fun addAll(more: Collection<Int>): Boolean {
             val added = synchronized(ids) { ids.addAll(more) }
             if (added) runCatching {
-                file.parentFile?.mkdirs()
                 val text = synchronized(ids) { ids.sorted().joinToString("\n") { "${it shr 8}.${it and 0xFF}" } }
-                val tmp = File(file.path + ".tmp")
-                tmp.writeText(text)
-                tmp.renameTo(file)
+                file.writeTextAtomically(text)
             }
             return added
         }
@@ -191,7 +188,7 @@ object FlightArea {
 
         companion object {
             /** [dir]/flight-area/<rom crc>-<save key>.txt. */
-            fun of(dir: File, romKey: String, key: String) = SeenMaps(File(File(dir, "flight-area"), "$romKey-$key.txt"))
+            fun of(dir: Path, romKey: String, key: String) = SeenMaps(dir / "flight-area" / "$romKey-$key.txt")
         }
     }
 
@@ -200,7 +197,7 @@ object FlightArea {
      * run from the game's own answers (GetMapsecType for its towns, FlagGet for its trainers), the map the player stands on
      * added as they go. Emu thread only, in a field job (the game's functions are called).
      */
-    class Keeper(private val dir: File, private val romKey: String) {
+    class Keeper(private val dir: Path, private val romKey: String) {
         private var key: String? = null
         @Volatile private var seen: SeenMaps? = null
         private var maps: Map<Int, MapInfo>? = null

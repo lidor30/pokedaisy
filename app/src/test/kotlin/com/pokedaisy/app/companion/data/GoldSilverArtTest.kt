@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Gold's and Silver's art and dex pages, rebuilt from the player's own ROMs (skipped without them): the two carts give
@@ -27,10 +28,10 @@ class GoldSilverArtTest {
     fun `Gold and Silver give the same art`() {
         val out = File("build/gen2-art-gold")
         out.deleteRecursively()
-        val wrote = Gen2Art.extractTo(rom(gold), out)
+        val wrote = Gen2Art.extractTo(rom(gold), out.toOkioPath())
         assertTrue(wrote.size > 250)
         val other = File.createTempFile("gen2", "").also { it.delete() }
-        assertEquals(wrote.toSet(), Gen2Art.extractTo(rom(silver), other).toSet())
+        assertEquals(wrote.toSet(), Gen2Art.extractTo(rom(silver), other.toOkioPath()).toSet())
         for (path in wrote) assertTrue(path, File(out, path).readBytes().contentEquals(File(other, path).readBytes()))
         other.deleteRecursively()
     }

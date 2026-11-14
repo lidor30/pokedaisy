@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
 import okio.Path
 
 /**
@@ -545,19 +544,15 @@ object Gen2Art {
      * build's (at this [VERSION]); returns the paths written. A family's builds (Crystal's releases, Crystal Clear's
      * versions and colour builds) share their paths, so starting another of them rebuilds them.
      */
-    fun extractTo(rom: ByteArray, dir: File): List<String> {
+    fun extractTo(rom: ByteArray, dir: Path): List<String> {
         val sha1 = sha1(rom).hex()
         val t = GAMES.firstOrNull { sha1 in it.sha1s } ?: return emptyList()
-        val marker = File(dir, "gen2/${t.name}-built")
+        val marker = dir / "gen2/${t.name}-built"
         val stamp = "v$VERSION $sha1"
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return emptyList()
         val wrote = ArrayList<String>()
         fun write(path: String, bytes: ByteArray) {
-            val out = File(dir, path)
-            out.parentFile?.mkdirs()
-            val tmp = File(out.path + ".tmp")
-            tmp.writeBytes(bytes)
-            tmp.renameTo(out)
+            (dir / path).writeAtomically(bytes)
             wrote += path
         }
         write(t.fontPath, font(rom, t))
@@ -565,13 +560,12 @@ object Gen2Art {
         write(t.holdIconsPath, holdIcons(rom, t).png())
         t.townMapPaths.forEachIndexed { i, path -> townMap(rom, t, i)?.let { write(path, it.png()) } }
         t.playerPaths.forEachIndexed { g, path -> write(path, player(rom, t, g).png()) }
-        marker.parentFile?.mkdirs()
         marker.writeText(stamp)
         return wrote
     }
 
     /** In the background, once per ROM file: a Game Boy Color cart is 2 MB. */
-    fun prefetch(filesDir: File, rom: Path) {
+    fun prefetch(filesDir: Path, rom: Path) {
         Thread({
             runCatching {
                 val wrote = extractTo(readRomFile(rom), RomArt.dir(filesDir))

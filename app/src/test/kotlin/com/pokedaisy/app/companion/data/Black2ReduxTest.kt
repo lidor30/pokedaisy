@@ -161,13 +161,13 @@ class Black2ReduxTest {
         assertNull(guideId(GameKind.BLACK2, null))
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            assertTrue(NdsArt.extractTo(blaze.toOkioPath(), dir))
+            assertTrue(NdsArt.extractTo(blaze.toOkioPath(), dir.toOkioPath()))
             for (id in listOf(1, 35, 184, 649)) assertTrue("$id", File(dir, "${NdsArt.REDUX_ICONS}/$id.png").isFile)
             for (id in listOf(1, 17, 4)) assertTrue("$id", File(dir, "${NdsArt.REDUX_ITEMS}/$id.png").isFile)
             for (id in listOf(1, 35, 649)) assertTrue("$id", File(dir, "${NdsArt.REDUX_FRONT}/$id.png").isFile)
             assertFalse(File(dir, NdsArt.BLACK2_DEX).exists())
-            assertFalse(NdsArt.extractTo(blaze.toOkioPath(), dir))                          // built once
-            NdsArt.dir = dir
+            assertFalse(NdsArt.extractTo(blaze.toOkioPath(), dir.toOkioPath()))                          // built once
+            NdsArt.dir = dir.toOkioPath()
             val clefairy = Gen4Dex.entry(GEN5_DEX_REDUX, 35)!!
             assertEquals(9 to 9, clefairy.type1 to clefairy.type2)
             // The DEX's machines are the cart's: TM45 teaches Power-Up Punch here.

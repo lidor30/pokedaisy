@@ -52,7 +52,7 @@ class NdsArtBlackTest {
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         val out = File("build/nds-art").apply { mkdirs() }
         try {
-            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
             // name -> (width, height, CRC32 of the ARGB pixels)
             val golden = mapOf(
                 "${NdsArt.BLACK_ICONS}/1.png" to Triple(32, 64, 2950989826L),         // BULBASAUR, palette 1
@@ -161,7 +161,7 @@ class NdsArtBlackTest {
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         val out = File("build/nds-art").apply { mkdirs() }
         try {
-            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
             // Checked against the game's own Town Map headless (nds_dump, the user's save): the picture pixel for pixel
             // where no sprite is, each sprite where the game puts it.
             val golden = mapOf(

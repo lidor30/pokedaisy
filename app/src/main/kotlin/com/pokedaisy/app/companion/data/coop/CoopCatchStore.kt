@@ -1,7 +1,10 @@
 package com.pokedaisy.app.companion.data.coop
 
 import com.pokedaisy.app.companion.data.hex
-import java.io.File
+import com.pokedaisy.app.companion.data.isFile
+import com.pokedaisy.app.companion.data.readLines
+import com.pokedaisy.app.companion.data.writeTextAtomically
+import okio.Path
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
@@ -46,7 +49,7 @@ class MemoryCatchStore : CoopCatchStore {
  * All file IO runs on [io] (the file is read once in the background, and every change is written there as a snapshot, the newest
  * one winning), never on the caller's thread: the flow calls this on the emu thread, between frames.
  */
-class FileCatchStore(private val file: File, private val io: Executor = defaultIo) : CoopCatchStore {
+class FileCatchStore(private val file: Path, private val io: Executor = defaultIo) : CoopCatchStore {
     private val mem = MemoryCatchStore()
     private val keys = LinkedHashSet<String>()
     private var loaded = false
@@ -58,7 +61,7 @@ class FileCatchStore(private val file: File, private val io: Executor = defaultI
     private fun load() {
         if (loaded) return
         loaded = true
-        val lines = try { if (file.exists()) file.readLines() else emptyList() } catch (e: java.io.IOException) { emptyList() }
+        val lines = try { if (file.isFile) file.readLines() else emptyList() } catch (e: okio.IOException) { emptyList() }
         for (line in lines) {
             val p = line.split(' ')
             try {
@@ -84,11 +87,8 @@ class FileCatchStore(private val file: File, private val io: Executor = defaultI
     private fun flushLatest() {
         val text = synchronized(this) { writeQueued = false; latest }
         try {
-            file.parentFile?.mkdirs()
-            val tmp = File(file.parentFile, file.name + ".tmp")
-            tmp.writeText(text)
-            if (!tmp.renameTo(file)) { file.delete(); tmp.renameTo(file) }
-        } catch (e: java.io.IOException) { /* kept in memory; written with the next change */ }
+            file.writeTextAtomically(text)
+        } catch (e: okio.IOException) { /* kept in memory; written with the next change */ }
     }
 
     private fun hex(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }

@@ -3,6 +3,7 @@ package com.pokedaisy.app
 import android.content.Context
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * The player's linked ROMs folders ([Prefs.romsFolders]): every ROM in them that the
@@ -222,7 +223,7 @@ object RomFolder {
     /** Where best effort keeps its matches, and the verdicts to drop when one changes. Each activity's onCreate. */
     fun useBestEffortStore(context: Context) {
         val app = context.applicationContext
-        com.pokedaisy.app.companion.data.BestEffortStore.dir = app.filesDir
+        com.pokedaisy.app.companion.data.BestEffortStore.dir = app.filesDir.toOkioPath()
         com.pokedaisy.app.companion.data.BestEffortStore.onChanged = { forgetUnsupported(app) }
     }
 

@@ -24,8 +24,8 @@ class NdsArtWhiteTest {
         val bDir = kotlin.io.path.createTempDirectory("nds-art-b").toFile()
         val wDir = kotlin.io.path.createTempDirectory("nds-art-w").toFile()
         try {
-            assertTrue(NdsArt.extractTo(black.toOkioPath(), bDir))
-            assertTrue(NdsArt.extractTo(white.toOkioPath(), wDir))
+            assertTrue(NdsArt.extractTo(black.toOkioPath(), bDir.toOkioPath()))
+            assertTrue(NdsArt.extractTo(white.toOkioPath(), wDir.toOkioPath()))
             // the art: file for file
             for (path in listOf("${NdsArt.BLACK_ICONS}/495.png", "${NdsArt.BLACK_ITEMS}/17.png", "${NdsArt.BLACK_FRONT}/643.png",
                 "regionmap/${NdsArt.BLACK_MAP}.png", "regionmap/${NdsArt.BLACK_PLAYER}.png")) {
@@ -42,7 +42,7 @@ class NdsArtWhiteTest {
             // the names: White's cart reads as Black's
             assertEquals("Snivy", NdsArt.readNames(white.toOkioPath())?.species(495))
             // a second run on the same cart writes nothing
-            assertEquals(false, NdsArt.extractTo(white.toOkioPath(), wDir))
+            assertEquals(false, NdsArt.extractTo(white.toOkioPath(), wDir.toOkioPath()))
         } finally {
             bDir.deleteRecursively()
             wDir.deleteRecursively()

@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import okio.Path
 
 /**
  * PLAYER LOOK's Pokémon and the FOLLOWER: each species' overworld sprite (a following Pokémon's: 32x32, two frames each
@@ -32,16 +32,16 @@ object MonArt {
     /** A PLAYER LOOK pick that's a Pokémon ("MON:<national number>"), or null. */
     fun monOf(pick: String?): Int? = pick?.takeIf { it.startsWith("MON:") }?.removePrefix("MON:")?.toIntOrNull()
 
-    fun dir(filesDir: File?): File = File(LookArt.dir(filesDir), "mon")
-    private fun dir(filesDir: File?, source: Source) = File(dir(filesDir), source.tag)
-    private fun file(filesDir: File?, source: Source, national: Int) = File(dir(filesDir, source), "$national.bin")
+    fun dir(filesDir: Path?): Path = LookArt.dir(filesDir) / "mon"
+    private fun dir(filesDir: Path?, source: Source) = dir(filesDir) / source.tag
+    private fun file(filesDir: Path?, source: Source, national: Int) = dir(filesDir, source) / "$national.bin"
 
     /** Before the other sources, Heart and Soul's were kept straight in `mon/`: into its own folder. */
-    private fun migrate(filesDir: File?) {
-        val old = dir(filesDir).listFiles { f -> f.isFile && f.name.endsWith(".bin") }.orEmpty()
+    private fun migrate(filesDir: Path?) {
+        val old = dir(filesDir).listFiles().filter { f -> f.isFile && f.name.endsWith(".bin") }
         if (old.isEmpty()) return
         val to = dir(filesDir, Source.HEART_AND_SOUL).apply { mkdirs() }
-        old.forEach { f -> if (!f.renameTo(File(to, f.name))) f.delete() }
+        old.forEach { f -> runCatching { f.moveTo(to / f.name) }.onFailure { f.delete() } }
     }
 
     /** One species' pieces as a source reads them: [frames] six frames of 32x32 or 64x64 (S, S', N, N', W, W'). */
@@ -249,19 +249,17 @@ object MonArt {
     fun find(rom: ByteArray): Boolean = readerOf(rom) != null
 
     /** Every species of [rom] (one of the [Source]s') not kept yet; how many were kept. */
-    fun keep(filesDir: File?, rom: ByteArray): Int {
+    fun keep(filesDir: Path?, rom: ByteArray): Int {
         migrate(filesDir)
         val reader = readerOf(rom) ?: return 0
         val dir = dir(filesDir, reader.source).apply { mkdirs() }
         var kept = 0
         for (n in 1..LAST) {
-            val f = File(dir, "$n.bin")
+            val f = dir / "$n.bin"
             if (f.isFile) continue
             val raw = runCatching { reader.mon(n) }.getOrNull() ?: continue
             val frames = if (raw.width == 32) raw.frames.copyOf(FRAMES) else crop64(raw.frames) ?: continue
-            val tmp = File(f.path + ".tmp")
-            tmp.writeBytes(frames + raw.owPal + raw.front + raw.back + raw.pal)
-            tmp.renameTo(f)
+            f.writeAtomically(frames + raw.owPal + raw.front + raw.back + raw.pal)
             kept++
         }
         if (kept > 0) availableCache = null
@@ -269,7 +267,7 @@ object MonArt {
     }
 
     /** [national]'s art from the first [Source] that has it. */
-    fun load(filesDir: File?, national: Int): Mon? {
+    fun load(filesDir: Path?, national: Int): Mon? {
         migrate(filesDir)
         for (source in Source.entries) {
             val d = file(filesDir, source, national).takeIf { it.isFile }?.readBytes() ?: continue
@@ -282,11 +280,11 @@ object MonArt {
     }
 
     /** The national numbers kept, from any source. */
-    fun available(filesDir: File?): Set<Int> {
-        availableCache?.takeIf { it.first == filesDir?.path }?.let { return it.second }
+    fun available(filesDir: Path?): Set<Int> {
+        availableCache?.takeIf { it.first == filesDir?.toString() }?.let { return it.second }
         migrate(filesDir)
-        val found = Source.entries.flatMap { s -> dir(filesDir, s).list()?.mapNotNull { it.removeSuffix(".bin").toIntOrNull() }.orEmpty() }.toSet()
-        availableCache = filesDir?.path to found
+        val found = Source.entries.flatMap { s -> dir(filesDir, s).listFiles().mapNotNull { it.name.removeSuffix(".bin").toIntOrNull() } }.toSet()
+        availableCache = filesDir?.toString() to found
         return found
     }
 
@@ -295,7 +293,7 @@ object MonArt {
     @Volatile private var availableCache: Pair<String?, Set<Int>>? = null
 
     /** The sources with something kept. */
-    fun sources(filesDir: File?): Set<Source> = Source.entries.filter { dir(filesDir, it).list()?.any { n -> n.endsWith(".bin") } == true }.toSet()
+    fun sources(filesDir: Path?): Set<Source> = Source.entries.filter { dir(filesDir, it).listFiles().any { f -> f.name.endsWith(".bin") } }.toSet()
 
     /**
      * [back] (a 64x64 back picture) moved to stand where the battle draws a Pokémon's back. The player's back picture is
@@ -323,7 +321,7 @@ object MonArt {
     }
 
     /** Its picker frames: standing and stepping south, cropped to the pixels either uses. */
-    fun walk(filesDir: File?, national: Int): List<RomArt.Image>? {
+    fun walk(filesDir: Path?, national: Int): List<RomArt.Image>? {
         val m = load(filesDir, national) ?: return null
         // The picker's walk: stand, step, stand, step (its frames 0 / 1 / 2 as a hero's stand / step / step).
         val frames = listOf(0, 1, 1).map { RomArt.sprite(m.frames.copyOfRange(it * 512, it * 512 + 512), RomArt.palette(m.owPal), 32, 32) }

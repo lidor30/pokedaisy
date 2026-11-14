@@ -9,6 +9,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * BEST EFFORT over the real ROMs + saves: each game, treated as an unknown ROM of its base game,
@@ -222,7 +223,7 @@ class BestEffortTest {
     }
 
     private fun withStore(block: () -> Unit) {
-        BestEffortStore.dir = tmp.root
+        BestEffortStore.dir = tmp.root.toOkioPath()
         try {
             block()
         } finally {

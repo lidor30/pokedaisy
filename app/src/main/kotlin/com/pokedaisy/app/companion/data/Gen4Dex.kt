@@ -1,8 +1,8 @@
 package com.pokedaisy.app.companion.data
 
+import okio.Path
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import java.io.File
 
 /**
  * A DS game's POKéDEX (Platinum, HeartGold / SoulSilver): its pages and front pictures, which [NdsArt] takes from the
@@ -108,13 +108,13 @@ object Gen4Dex {
         }
     }
 
-    private fun pathOf(t: Gen4DexTables): String? = NdsArt.dir?.let { File(it, t.pages).path }
+    private fun pathOf(t: Gen4DexTables): String? = NdsArt.dir?.let { (it / t.pages).toString() }
 
     private fun load(t: Gen4DexTables): Pages? {
         val dir = NdsArt.dir ?: return null
-        val f = File(dir, t.pages)
+        val f = dir / t.pages
         if (!f.isFile) return null
-        val key = f.path to f.lastModified()
+        val key = f.toString() to f.lastModified
         if (pagesFor != key) synchronized(this) {
             if (pagesFor != key) {
                 pages = runCatching { parse(f.readLines(), t.lastSpecies, t.gen5, t.origin) }.getOrNull()
@@ -127,8 +127,8 @@ object Gen4Dex {
     /** The front picture (80 x 80, the dex page shows it whole). */
     fun front(t: Gen4DexTables, species: Int): Bitmap? {
         val dir = NdsArt.dir ?: return null
-        val f = File(dir, "${t.fronts}/$species.png")
-        return if (f.isFile) runCatching { BitmapFactory.decodeFile(f.path) }.getOrNull() else null
+        val f = dir / "${t.fronts}/$species.png"
+        return if (f.isFile) runCatching { BitmapFactory.decodeFile(f.toString()) }.getOrNull() else null
     }
 
     /** NdsArt's lines: species, category, description, height dm, weight hg, the six stats (the page's order), type 1 / 2,

@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
 import okio.FileHandle
 import okio.Path
 
@@ -90,7 +89,7 @@ object NdsArt {
     private const val EGG = 494
 
     /** rom-art's folder, once [prefetch] has run (the DEX reads its pages and pictures from it: [Gen4Dex]). */
-    @Volatile var dir: File? = null
+    @Volatile var dir: Path? = null
 
     /**
      * The running cart's own names, read from its text on every start ([readNames]; null until then, or for a cart this
@@ -123,7 +122,7 @@ object NdsArt {
     @Volatile var names: Names? = null
 
     /** In the background, once per cart build (a marker keeps its header's game code, revision and [VERSION]). */
-    fun prefetch(filesDir: File, rom: Path) {
+    fun prefetch(filesDir: Path, rom: Path) {
         names = null
         OriginHeartGold.data = null
         RenegadePlatinum.data = null
@@ -163,7 +162,7 @@ object NdsArt {
     private fun portIs(code: String, rev: Int, vararg kind: GameKind) = DsPorts.of(code, rev)?.kind in kind
 
     /** Writes [rom]'s icons into [dir] if it's a cart this knows and they aren't there yet; true when it wrote any. */
-    fun extractTo(rom: Path, dir: File): Boolean = withRomFile(rom) { f ->
+    fun extractTo(rom: Path, dir: Path): Boolean = withRomFile(rom) { f ->
         val header = f.read(0, 0x200)
         val code = asciiString(header, 0x0C, 4)
         val rev = header[0x1E].toInt() and 0xFF
@@ -177,7 +176,7 @@ object NdsArt {
         val renegade = platinum && RenegadePlatinum.matches { off, len -> f.read(off, len) }
         val redux = black2 && Black2Redux.matches { off, len -> f.read(off, len) }
         if (!platinum && !heartGold && !black && !black2 && !origin) return false
-        val marker = File(dir, when {
+        val marker = dir / when {
             origin -> "nds/originhg-built"
             renegade -> "nds/renegade-built"
             redux -> "nds/redux-built"
@@ -187,14 +186,13 @@ object NdsArt {
             black -> "nds/black-built"
             platinum -> "nds/platinum-built"
             else -> "nds/heartgold-built"
-        })
+        }
         // The Redux builds share a code and revision but not their species' records (Classic, EVless): the DEX's types
         // and stats are theirs, so the marker keeps a CRC of those too.
         val stamp = "v$VERSION $code $rev" + if (redux) " " + (file(f, header, "/a/0/1/6")?.let { crc32(it) } ?: 0L) else ""
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return false
         if (origin) {
             if (!extractOrigin(f, header, dir)) return false
-            marker.parentFile?.mkdirs()
             marker.writeText(stamp)
             return true
         }
@@ -204,7 +202,6 @@ object NdsArt {
                 // Japanese Black / White: one bank fewer before the moves, so the categories are 257 (the rest as the US carts').
                 .let { if (!black2 && code[3] == 'J') it.copy(category = 257) else it }
             if (!extractGen5(f, header, dir, files)) return false
-            marker.parentFile?.mkdirs()
             marker.writeText(stamp)
             return true
         }
@@ -242,7 +239,6 @@ object NdsArt {
                 else -> if (soulSilver) DEX_SOULSILVER else DEX_HEARTGOLD
             })
         }
-        marker.parentFile?.mkdirs()
         marker.writeText(stamp)
         true
     }
@@ -253,7 +249,7 @@ object NdsArt {
      * table gives ([OriginHeartGold.ICON_PALETTES_OFFSET]); its item icons (`/a/0/1/8`, 2 x item + 2 the icon, + 3 its
      * palette: no index table, checked on its own items); HeartGold's Pokégear and bag buttons, which it kept. No DEX.
      */
-    private fun extractOrigin(f: FileHandle, header: ByteArray, dir: File): Boolean {
+    private fun extractOrigin(f: FileHandle, header: ByteArray, dir: Path): Boolean {
         val narc = Narc(file(f, header, "/data/pokeicon.narc") ?: return false)
         val palettes = palettes(narc.member(0))
         val iconPalettes = f.read(OriginHeartGold.ICON_PALETTES_OFFSET, OriginHeartGold.LAST_SPECIES + 1)
@@ -287,7 +283,7 @@ object NdsArt {
      * `/data/pokepic_m.narc`, eight members a species, the front first (160 x 80, linear, unscrambled: both frames) and its
      * palette next.
      */
-    private fun dexOrigin(f: FileHandle, header: ByteArray, dir: File) {
+    private fun dexOrigin(f: FileHandle, header: ByteArray, dir: Path) {
         val msg = Narc(file(f, header, "/a/0/2/7") ?: return)
         val text = msg.member(791)?.let { Gen4Text.lines(it) } ?: return
         val category = msg.member(803)?.let { Gen4Text.lines(it) } ?: return
@@ -538,7 +534,7 @@ object NdsArt {
      * each fly location's 16x16 block sprite in its three palettes (5 not visited yet, 6 a town's blue, 7 a city's red:
      * fly_locations.c's `5 + palette + isUnlocked`) and the player's two heads (Lucas, Dawn), each in its own palette.
      */
-    private fun townMap(narc: Narc, dir: File) {
+    private fun townMap(narc: Narc, dir: Path) {
         val mapPal = palettes(narc.member(0)).flatMap { it.toList() }.toIntArray()
         val sprPal = palettes(narc.member(2))
         val tiles = ncgrData(narc.member(19)) ?: return
@@ -642,7 +638,7 @@ object NdsArt {
      * [Gen5Files.itemIcons] (the ARM9's pairs by item id). Both generated from the cart, NdsArtBlackTest checks them
      * against it. Then the Town Map ([townMapBlack]) and the DEX ([dexBlack]).
      */
-    private fun extractGen5(f: FileHandle, header: ByteArray, dir: File, files: Gen5Files): Boolean {
+    private fun extractGen5(f: FileHandle, header: ByteArray, dir: Path, files: Gen5Files): Boolean {
         val narc = Narc(file(f, header, "/a/0/0/7") ?: return false)
         val palettes = palettes(narc.member(0))
         for (species in 1..BLACK_EGG) {
@@ -673,7 +669,7 @@ object NdsArt {
      * own Town Map headless (the user's save, arrival flags poked off and on): the picture pixel for pixel, each sprite
      * where the game puts it.
      */
-    private fun townMapBlack(narc: Narc, dir: File, files: Gen5Files) {
+    private fun townMapBlack(narc: Narc, dir: Path, files: Gen5Files) {
         val bgPal = palettes(narc.member(0)).flatMap { it.toList() }.toIntArray()
         val img = RomArt.Image(256, 168)
         img.argb.fill(bgPal.getOrElse(0) { 0xFF000000.toInt() })
@@ -741,7 +737,7 @@ object NdsArt {
      *   in 8 x 8 tiles laid out as four OAM blocks (64 x 64, 32 x 64 right of it, 64 x 32 and 32 x 32 under them); its
      *   palette member species x 20 + 18 (+ 19 the shiny one).
      */
-    private fun dexBlack(f: FileHandle, header: ByteArray, dir: File, files: Gen5Files) {
+    private fun dexBlack(f: FileHandle, header: ByteArray, dir: Path, files: Gen5Files) {
         val msg = Narc(file(f, header, "/a/0/0/2") ?: return)
         val text = msg.member(files.description)?.let { Gen5Text.lines(it) } ?: return
         val category = msg.member(files.category)?.let { Gen5Text.lines(it) } ?: return
@@ -904,12 +900,8 @@ object NdsArt {
         }
     }
 
-    private fun write(dir: File, path: String, bytes: ByteArray) {
-        val out = File(dir, path)
-        out.parentFile?.mkdirs()
-        val tmp = File(out.path + ".tmp")
-        tmp.writeBytes(bytes)
-        tmp.renameTo(out)
+    private fun write(dir: Path, path: String, bytes: ByteArray) {
+        (dir / path).writeAtomically(bytes)
     }
 
     private fun FileHandle.read(off: Long, len: Int): ByteArray = readFully(off, len)
@@ -924,7 +916,7 @@ object NdsArt {
      * the six skins' palettes (20-25) - the player's head on it (cells 2 Ethan / 3 Lyra of member 2 over 1, palette 0) and its
      * cursor (cells 0 / 1).
      */
-    private fun pokegear(narc: Narc, dir: File) {
+    private fun pokegear(narc: Narc, dir: Path) {
         val tiles = ncgrData(narc.member(10)) ?: return
         val nscr = narc.member(11) ?: return
         val o = indexOf(nscr, "NRCS") ?: return
@@ -959,7 +951,7 @@ object NdsArt {
      * are member 48's (BagApp_LoadObjPaletteByPocket), button n in palette n: the second eight for every pocket, the open
      * pocket's own from the first eight. Each written in both, the same size, cropped to what any of them covers.
      */
-    private fun bagPockets(narc: Narc, dir: File) {
+    private fun bagPockets(narc: Narc, dir: Path) {
         val tiles = ncgrData(narc.member(51)) ?: return
         val cells = ncerCells(narc.member(49) ?: return)
         val nanr = narc.member(50) ?: return
@@ -1089,7 +1081,7 @@ object NdsArt {
      *   unscrambled as the game does (pokepic.c's UnscanPokepic_PtHGSS: each u16 XORed with an LCG seeded by the
      *   first), 160 x 80 linear 4bpp, two frames side by side; the palette species x 6 + 4.
      */
-    private fun dex(f: FileHandle, header: ByteArray, dir: File, d: DexFiles) {
+    private fun dex(f: FileHandle, header: ByteArray, dir: Path, d: DexFiles) {
         val msg = Narc(file(f, header, d.msg) ?: return)
         val text = msg.member(d.description)?.let { Gen4Text.lines(it) } ?: return
         val category = msg.member(d.category)?.let { Gen4Text.lines(it) } ?: return

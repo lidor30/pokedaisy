@@ -156,7 +156,7 @@ class FrenchDsTest {
         assertEquals("Bonaugure", n.place(GEN4_PLATINUM_FR.mapPlaceIds.getValue(415)))
         val dir = kotlin.io.path.createTempDirectory("nds-fr").toFile()
         try {
-            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
             assertTrue(File(dir, "${NdsArt.PLATINUM_ICONS}/387.png").isFile)
             val page = File(dir, NdsArt.PLATINUM_DEX).readLines().first().split('\t')
             assertTrue(page[1], page[1].contains("Graine"))
@@ -173,7 +173,7 @@ class FrenchDsTest {
                 assertEquals('F', n.language)
                 assertEquals("BULBIZARRE", n.species(1))
                 assertEquals("Doublonville", n.place(GEN4_HEARTGOLD_FR.mapPlaceIds.getValue(76)))
-                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
+                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
                 File(dir, NdsArt.HEARTGOLD_DEX).readLines()
             }
             assertEquals(493, pages[0].size)
@@ -193,7 +193,7 @@ class FrenchDsTest {
                 val n = NdsArt.readNames(rom.toOkioPath())!!
                 assertEquals('F', n.language)
                 assertEquals("Bulbizarre", n.species(1))
-                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
+                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
                 assertTrue(File(dir, dex).readLines().first().split('\t')[1].contains("Graine"))
             }
         } finally { dir.deleteRecursively() }

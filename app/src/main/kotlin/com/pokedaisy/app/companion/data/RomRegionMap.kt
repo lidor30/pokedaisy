@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
 import okio.FileHandle
 import okio.Path
 
@@ -68,7 +67,7 @@ object RomRegionMap {
     private const val FIRERED_TILES = 0x3EF61C
 
     /** Reads [rom] in the background and publishes its map as [current]. */
-    fun load(filesDir: File, romKey: String, rom: Path) {
+    fun load(filesDir: Path, romKey: String, rom: Path) {
         current = null
         Thread({
             try {
@@ -81,17 +80,13 @@ object RomRegionMap {
     }
 
     /** [read] [rom], writing its screens (once per [romKey]) where [RomArt]'s art goes. */
-    fun loadNow(filesDir: File, romKey: String, rom: Path): Data? {
+    fun loadNow(filesDir: Path, romKey: String, rom: Path): Data? {
         val parsed = withRomFile(rom) { read(FileRom(it)) } ?: return null
-        val dir = File(RomArt.dir(filesDir), "regionmap").apply { mkdirs() }
+        val dir = (RomArt.dir(filesDir) / "regionmap").apply { mkdirs() }
         val names = parsed.images.mapIndexed { i, img ->
             val name = "rom-$romKey-v$VERSION-$i"
-            val f = File(dir, "$name.png")
-            if (!f.isFile) {
-                val tmp = File(dir, "$name.png.tmp")
-                tmp.writeBytes(img.png())
-                tmp.renameTo(f)
-            }
+            val f = dir / "$name.png"
+            if (!f.isFile) f.writeAtomically(img.png())
             name
         }
         return Data(names.toTypedArray(), parsed.sections, parsed.layouts)

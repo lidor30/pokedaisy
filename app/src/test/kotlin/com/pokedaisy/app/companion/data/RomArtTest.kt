@@ -6,6 +6,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
 import java.util.zip.CRC32
+import okio.Path.Companion.toOkioPath
 
 /**
  * [RomArt] rebuilds the FireRed / Emerald art from the ROM. The ROM tests
@@ -214,13 +215,13 @@ class RomArtTest {
         val dir = File("build/rom-art-test").apply { deleteRecursively() }
         val rom = File(RomFileReader.FIRERED_REV1_PATH).takeIf { it.isFile }?.readBytes()
         assumeTrue(rom != null)
-        val first = RomArt.extractTo(rom!!, dir)
+        val first = RomArt.extractTo(rom!!, dir.toOkioPath())
         val raw = RomArt.raw(RomArt.find(rom))
         assertEquals(FIRERED.keys + raw.keys, first.toSet())
         assertTrue(first.filter { it.endsWith(".png") }.all { File(dir, it).readBytes().copyOfRange(1, 4).contentEquals("PNG".toByteArray()) })
         // The trainer card's blobs are kept as they decode.
         raw.forEach { (path, bytes) -> assertTrue(path, File(dir, path).readBytes().contentEquals(bytes)) }
-        assertEquals(emptyList<String>(), RomArt.extractTo(rom, dir))
+        assertEquals(emptyList<String>(), RomArt.extractTo(rom, dir.toOkioPath()))
     }
 
     private companion object {

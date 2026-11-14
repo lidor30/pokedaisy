@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import okio.Path
 
 /**
  * Draws the game's own TRAINER CARD, pixel for pixel, from the player's ROM:
@@ -169,8 +169,8 @@ object TrainerCardArt {
     private val loaded = java.util.concurrent.ConcurrentHashMap<CardStyle, Art>()
 
     /** [style]'s card from the cached blobs under [dir] ([RomArt.dir]); kept for [cached]. */
-    fun load(dir: File, style: CardStyle): Art? =
-        art(style) { b -> File(dir, RomArt.rawPath(b)).takeIf { it.isFile }?.readBytes() }?.also { loaded[style] = it }
+    fun load(dir: Path, style: CardStyle): Art? =
+        art(style) { b -> (dir / RomArt.rawPath(b)).takeIf { it.isFile }?.readBytes() }?.also { loaded[style] = it }
 
     /** The last [load]ed card of [style], so a screen can start drawing it without waiting. */
     fun cached(style: CardStyle): Art? = loaded[style]

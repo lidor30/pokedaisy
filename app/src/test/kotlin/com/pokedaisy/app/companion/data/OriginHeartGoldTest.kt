@@ -150,12 +150,12 @@ class OriginHeartGoldTest {
         assertEquals(Triple(815, false, 130), OriginHeartGold.machine(574))
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
             for (id in listOf(1, 700, 887, 1025, 1028, 1440, NdsArt.ORIGIN_EGG)) assertTrue("$id", File(dir, "${NdsArt.ORIGIN_ICONS}/$id.png").isFile)
             for (id in listOf(1, 17, 780, 790)) assertTrue("$id", File(dir, "${NdsArt.ORIGIN_ITEMS}/$id.png").isFile)
             // The DEX: its pages and fronts for the National Dex's 1025.
             for (id in listOf(1, 700, 1025)) assertTrue("$id", File(dir, "${NdsArt.ORIGIN_FRONT}/$id.png").isFile)
-            NdsArt.dir = dir
+            NdsArt.dir = dir.toOkioPath()
             val sylveon = Gen4Dex.entry(GEN4_DEX_ORIGIN, 700)!!
             assertEquals(Triple("Intertwine", 10, 235), Triple(sylveon.category, sylveon.heightDm, sylveon.weightHg))
             assertEquals(9 to 9, sylveon.type1 to sylveon.type2)

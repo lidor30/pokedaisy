@@ -86,9 +86,9 @@ class FieldHudScreenshotTest {
     fun game() {
         activeGame = GameKind.FIRERED
         OptionColors.inGame = true
-        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it }
+        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it.toOkioPath() }
         for (path in listOf(RomFileReader.FIRERED_REV1_PATH, RomFileReader.EMERALD_PATH)) {
-            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art) }
+            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art.toOkioPath()) }
         }
         RomFileReader.load(RomFileReader.FIRERED_REV1_PATH)?.let { rom ->
             PokedexSource.reader = rom
@@ -268,7 +268,7 @@ class FieldHudScreenshotTest {
     @Test fun cornersBlack() {
         activeGame = GameKind.BLACK
         val rom = java.io.File(java.io.File(com.pokedaisy.app.companion.data.RETAIL_ROM_DIR).parentFile, "nds/Pokemon - Black Version (USA, Europe) (NDSi Enhanced).nds")
-        if (rom.isFile) com.pokedaisy.app.companion.data.NdsArt.extractTo(rom.toOkioPath(), java.io.File("build/rom-art-paparazzi"))
+        if (rom.isFile) com.pokedaisy.app.companion.data.NdsArt.extractTo(rom.toOkioPath(), java.io.File("build/rom-art-paparazzi").toOkioPath())
         shot(
             FieldHudStyle(),
             snap = snapshot.copy(

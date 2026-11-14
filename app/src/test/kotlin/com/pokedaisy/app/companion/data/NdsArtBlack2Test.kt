@@ -23,8 +23,8 @@ class NdsArtBlack2Test {
         val bDir = kotlin.io.path.createTempDirectory("nds-art-b2").toFile()
         val wDir = kotlin.io.path.createTempDirectory("nds-art-w2").toFile()
         try {
-            assertTrue(NdsArt.extractTo(black2.toOkioPath(), bDir))
-            assertTrue(NdsArt.extractTo(white2.toOkioPath(), wDir))
+            assertTrue(NdsArt.extractTo(black2.toOkioPath(), bDir.toOkioPath()))
+            assertTrue(NdsArt.extractTo(white2.toOkioPath(), wDir.toOkioPath()))
             val paths = listOf("${NdsArt.BLACK2_ICONS}/495.png", "${NdsArt.BLACK2_ICONS}/${NdsArt.BLACK_EGG}.png",
                 "${NdsArt.BLACK2_ITEMS}/17.png", "${NdsArt.BLACK2_ITEMS}/627.png", "${NdsArt.BLACK2_FRONT}/643.png",
                 "regionmap/${NdsArt.BLACK2_MAP}.png", "regionmap/${NdsArt.BLACK2_PLAYER}.png",
@@ -51,7 +51,7 @@ class NdsArtBlack2Test {
             assertEquals("Medal Box", names.item(627))
             assertEquals("Medal Box", names.itemsMerged(false)[627])
             assertEquals('E', names.language)
-            assertEquals(false, NdsArt.extractTo(black2.toOkioPath(), bDir))
+            assertEquals(false, NdsArt.extractTo(black2.toOkioPath(), bDir.toOkioPath()))
             val look = File("build/nds-art-black2").apply { deleteRecursively(); mkdirs() }
             File(bDir, "regionmap").copyRecursively(File(look, "regionmap"), overwrite = true)
             for (s in listOf(495, 500, 643, 646)) File(bDir, "${NdsArt.BLACK2_FRONT}/$s.png").copyTo(File(look, "front_$s.png"), true)

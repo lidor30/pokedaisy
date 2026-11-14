@@ -214,8 +214,8 @@ class HeartGoldGermanTest {
                 assertEquals("Tackle", names.move(33))
                 assertEquals("Trank", names.item(17))
                 assertEquals("Dukatia City", names.place(GEN4_HEARTGOLD_DE.mapPlaceIds.getValue(76)))
-                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
-                assertFalse(NdsArt.extractTo(rom.toOkioPath(), dir))
+                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
+                assertFalse(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
                 assertTrue(File(dir, "${NdsArt.HEARTGOLD_ICONS}/152.png").isFile)
                 assertTrue(File(dir, "${NdsArt.HEARTGOLD_ITEMS}/17.png").isFile)
                 assertTrue(File(dir, PokegearMap.TILES).isFile)
@@ -229,9 +229,9 @@ class HeartGoldGermanTest {
                 assertEquals(256, Gen4Dex.parse(lines).regional.size)
             }
             assertNotEquals("SoulSilver must use its own Pokédex pages after HeartGold", pages[0], pages[1])
-            assertTrue("switching back to HeartGold must refresh the shared cache", NdsArt.extractTo(roms[0].toOkioPath(), dir))
+            assertTrue("switching back to HeartGold must refresh the shared cache", NdsArt.extractTo(roms[0].toOkioPath(), dir.toOkioPath()))
             assertEquals("HeartGold must recover its original Pokédex pages", pages[0], File(dir, NdsArt.HEARTGOLD_DEX).readLines())
-            assertFalse("the next HeartGold extraction must hit the cache", NdsArt.extractTo(roms[0].toOkioPath(), dir))
+            assertFalse("the next HeartGold extraction must hit the cache", NdsArt.extractTo(roms[0].toOkioPath(), dir.toOkioPath()))
         } finally { dir.deleteRecursively() }
     }
 }

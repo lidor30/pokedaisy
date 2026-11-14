@@ -131,7 +131,7 @@ class DsPortsTest {
                 assertEquals(p.code, mapOf('D' to "Meisterball", 'J' to "マスターボール", 'K' to "마스터볼").getOrDefault(p.code[3], "Master Ball"), n.item(1))
                 // Each cart's art goes to its own folder here, so one cart's pages never stand for another's.
                 val out = File(dir, "${p.code}-${p.revision}").apply { mkdirs() }
-                assertTrue(p.code, NdsArt.extractTo(rom.toOkioPath(), out))
+                assertTrue(p.code, NdsArt.extractTo(rom.toOkioPath(), out.toOkioPath()))
                 val dex = when (p.kind) {
                     GameKind.PLATINUM -> NdsArt.PLATINUM_DEX
                     GameKind.HEARTGOLD, GameKind.SOULSILVER -> NdsArt.HEARTGOLD_DEX

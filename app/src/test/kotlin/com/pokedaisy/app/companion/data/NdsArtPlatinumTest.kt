@@ -20,7 +20,7 @@ class NdsArtPlatinumTest {
         assumeTrue("no Platinum ROM at $rom", rom.isFile)
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
             val dex = File(dir, NdsArt.PLATINUM_DEX).readLines()
             assertEquals(493, dex.size)
             val bulbasaur = dex.first().split('\t')

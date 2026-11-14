@@ -15,7 +15,10 @@ import com.pokedaisy.app.companion.data.RideVehicle
 import com.pokedaisy.app.companion.data.TextArt
 import com.pokedaisy.app.companion.data.TextBlob
 import com.pokedaisy.app.companion.data.TextLook
+import com.pokedaisy.app.companion.data.readLines
+import com.pokedaisy.app.companion.data.writeText
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * PLAYER LOOK for the game running ([PlayerLook]): one background pass when a ROM loads scans it (keeping its own
@@ -94,7 +97,7 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
             // Pokémon, and the library's) are kept all the same.
             Thread({
                 try {
-                    val filesDir = context.filesDir
+                    val filesDir = context.filesDir.toOkioPath()
                     MonArt.keep(filesDir, rom.readBytes())
                     if (MonArt.sources(filesDir).size < MonArt.Source.entries.size) scanLibrary(rom)
                     android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -111,7 +114,7 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
                 val t0 = System.nanoTime()
                 val bytes = rom.readBytes()
                 val scan = PlayerLook.scan(bytes, TextBlob.entries)
-                val filesDir = context.filesDir
+                val filesDir = context.filesDir.toOkioPath()
                 LookArt.keep(filesDir, scan)
                 TextArt.keep(filesDir, scan)
                 MonArt.keep(filesDir, bytes)
@@ -234,7 +237,7 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
         party = nationals
         monNames = names
         if (keptScan == null) return
-        offeredMons.value = nationals.filter { it in MonArt.available(context.filesDir) }
+        offeredMons.value = nationals.filter { it in MonArt.available(context.filesDir.toOkioPath()) }
         apply()
     }
 
@@ -246,10 +249,10 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
         val gen = generation
         Thread({
             try {
-                val mon = MonArt.load(context.filesDir, n) ?: return@Thread
+                val mon = MonArt.load(context.filesDir.toOkioPath(), n) ?: return@Thread
                 val own = { p: LookPart -> scan.data(me, p) }
                 // The party's other Pokémon: a state made wearing one of them may have loaded its palette.
-                val extra = offeredMons.value.filter { it != n }.mapNotNull { MonArt.load(context.filesDir, it) }.mapNotNull { PlayerLook.wearMon(me, it, own) }
+                val extra = offeredMons.value.filter { it != n }.mapNotNull { MonArt.load(context.filesDir.toOkioPath(), it) }.mapNotNull { PlayerLook.wearMon(me, it, own) }
                 val patch = PlayerLook.buildMon(scan, me, mon, keptKnown, extra)
                 if (patch != null) monPatches[female to n] = patch
                 Log.i("pokedaisy", "player look: ${if (patch == null) "no" else patch.blocks.size} blocks for Pokémon $n")
@@ -266,8 +269,8 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
     /** Heroes, text looks and following Pokémon still missing are looked for in the library's other FireRed / LeafGreen
      * / Ruby / Sapphire / Emerald ROMs (the hacks with following Pokémon carry those game codes), each once. */
     private fun scanLibrary(running: File) {
-        val filesDir = context.filesDir
-        val seenFile = File(LookArt.dir(filesDir), "scanned.txt")
+        val filesDir = context.filesDir.toOkioPath()
+        val seenFile = LookArt.dir(filesDir) / "scanned.txt"
         val seen = runCatching { seenFile.readLines().toMutableSet() }.getOrDefault(mutableSetOf())
         fun done() = LookArt.available(filesDir).size == LookChar.entries.size && TextLook.STYLES.all { TextArt.load(filesDir, it) != null } &&
             MonArt.sources(filesDir).size == MonArt.Source.entries.size
@@ -284,7 +287,7 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
             val mons = MonArt.keep(filesDir, bytes)
             Log.i("pokedaisy", "player look: ${f.name} gave $kept, text $text, $mons Pokémon")
         }
-        runCatching { seenFile.parentFile?.mkdirs(); seenFile.writeText(seen.joinToString("\n")) }
+        runCatching { seenFile.writeText(seen.joinToString("\n")) }
     }
 
     companion object {

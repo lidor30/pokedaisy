@@ -128,12 +128,12 @@ class RenegadePlatinumTest {
         assertEquals(200, activeTypeEffectiveness[9 * 100 + 16])
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
             for (id in listOf(1, 35, 387, 493, 494)) assertTrue("$id", File(dir, "${NdsArt.RENEGADE_ICONS}/$id.png").isFile)
             for (id in listOf(1, 17, 79)) assertTrue("$id", File(dir, "${NdsArt.RENEGADE_ITEMS}/$id.png").isFile)
             for (id in listOf(1, 35, 493)) assertTrue("$id", File(dir, "${NdsArt.RENEGADE_FRONT}/$id.png").isFile)
             assertFalse(File(dir, NdsArt.PLATINUM_DEX).exists())
-            NdsArt.dir = dir
+            NdsArt.dir = dir.toOkioPath()
             val clefairy = Gen4Dex.entry(GEN4_DEX_RENEGADE, 35)!!
             assertEquals(9 to 9, clefairy.type1 to clefairy.type2)
             // The DEX's machines are the cart's: TM57's move is its own.

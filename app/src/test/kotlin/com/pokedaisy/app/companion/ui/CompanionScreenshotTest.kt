@@ -139,13 +139,13 @@ open class CompanionScreenshotTest {
         OptionColors.inGame = true
         RomItemText.use(null) // a retail() shot's game must not leave its descriptions to the next
         // The party menu art, backdrops and region maps come from the ROM too (RomArt).
-        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it }
+        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it.toOkioPath() }
         for (path in listOf(RomFileReader.FIRERED_REV1_PATH, RomFileReader.EMERALD_PATH)) {
-            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art) }
+            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art.toOkioPath()) }
         }
         // The CARD tab draws from these (normally loaded in the background).
-        TrainerCardArt.load(art, CardStyle.KANTO)
-        TrainerCardArt.load(art, CardStyle.HOENN)
+        TrainerCardArt.load(art.toOkioPath(), CardStyle.KANTO)
+        TrainerCardArt.load(art.toOkioPath(), CardStyle.HOENN)
         // The DEX tab's sprites and entries (and every mon icon) come from the
         // ROM: read the retail one when it's on this machine, else they stay blank.
         RomFileReader.load(RomFileReader.FIRERED_REV1_PATH)?.let { rom ->

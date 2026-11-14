@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import okio.Path
 
 /** Whose sprite set a hero has: FireRed / LeafGreen's (same art in both), Emerald's, Ruby / Sapphire's (Emerald's
  * sheets, but the heroes drawn before Emerald's redraw and walking and running in one sheet) or Heart and Soul's (Emerald's
@@ -664,24 +664,23 @@ object PlayerLook {
  * once all its graphics are.
  */
 object LookArt {
-    fun dir(filesDir: File?): File = File(RomArt.dir(filesDir), "look")
+    fun dir(filesDir: Path?): Path = RomArt.dir(filesDir) / "look"
 
     /** Keeps every whole hero [scan] has; returns those newly kept. Each one's region map head goes in too, where
      * [RomArt] keeps it (`regionmap/player_<hero>.png`, for the companion's MAP), if no scan of its game made it. */
-    fun keep(filesDir: File?, scan: PlayerLook.Scan): List<LookChar> = scan.chars.filter { c ->
-        val d = File(dir(filesDir), c.name.lowercase())
+    fun keep(filesDir: Path?, scan: PlayerLook.Scan): List<LookChar> = scan.chars.filter { c ->
+        val d = dir(filesDir) / c.name.lowercase()
         if (has(filesDir, c)) return@filter false
         d.mkdirs()
         LookBlob.entries.filter { it.char == c }.forEach { b ->
             val bytes = scan.data(c, b.part) ?: return@filter false
-            write(File(d, "${b.part.name.lowercase()}.bin"), bytes)
+            write(d / "${b.part.name.lowercase()}.bin", bytes)
         }
-        val head = File(RomArt.dir(filesDir), "regionmap/${c.headArt}.png")
+        val head = RomArt.dir(filesDir) / "regionmap/${c.headArt}.png"
         if (!head.isFile) {
             val gfx = scan.data(c, LookPart.MAP_HEAD)
             val pal = scan.data(c, LookPart.MAP_HEAD_PAL)
             if (gfx != null && pal != null) {
-                head.parentFile?.mkdirs()
                 write(head, RomArt.sprite(gfx, RomArt.palette(pal), 16, 16).png())
                 RomArt.announce()
             }
@@ -689,18 +688,14 @@ object LookArt {
         true
     }
 
-    private fun write(f: File, bytes: ByteArray) {
-        val tmp = File(f.parentFile, f.name + ".tmp")
-        tmp.writeBytes(bytes)
-        tmp.renameTo(f)
-    }
+    private fun write(f: Path, bytes: ByteArray) = f.writeAtomically(bytes)
 
-    fun has(filesDir: File?, c: LookChar): Boolean = LookBlob.entries.filter { it.char == c }.all { file(filesDir, c, it.part).isFile }
+    fun has(filesDir: Path?, c: LookChar): Boolean = LookBlob.entries.filter { it.char == c }.all { file(filesDir, c, it.part).isFile }
 
     /** Heroes whose graphics are all kept. */
-    fun available(filesDir: File?): Set<LookChar> = LookChar.entries.filter { has(filesDir, it) }.toSet()
+    fun available(filesDir: Path?): Set<LookChar> = LookChar.entries.filter { has(filesDir, it) }.toSet()
 
-    fun load(filesDir: File?, c: LookChar): Map<LookPart, ByteArray>? {
+    fun load(filesDir: Path?, c: LookChar): Map<LookPart, ByteArray>? {
         if (!has(filesDir, c)) return null
         return LookBlob.entries.filter { it.char == c }.associate { it.part to file(filesDir, c, it.part).readBytes() }
             .takeIf { m -> LookBlob.entries.filter { it.char == c }.all { b -> m[b.part]?.size == b.size } }
@@ -708,7 +703,7 @@ object LookArt {
 
     /** [c] on the overworld facing down - standing, then its two steps (its own colours, cropped to the pixels they
      * use) - for the picker's tiles; null if not kept. */
-    fun walk(filesDir: File?, c: LookChar): List<RomArt.Image>? {
+    fun walk(filesDir: Path?, c: LookChar): List<RomArt.Image>? {
         val part = when (c.engine) {
             LookEngine.FIRERED -> LookPart.FR_NORMAL
             LookEngine.EMERALD, LookEngine.HEART_AND_SOUL -> LookPart.EM_WALKING
@@ -732,13 +727,13 @@ object LookArt {
     }
 
     /** [c]'s front pic (64x64, 4bpp) and its palette, for the companion's CARD; null if not kept. */
-    fun frontPic(filesDir: File?, c: LookChar): Pair<ByteArray, ByteArray>? {
+    fun frontPic(filesDir: Path?, c: LookChar): Pair<ByteArray, ByteArray>? {
         val pic = file(filesDir, c, LookPart.FRONT).takeIf { it.isFile }?.readBytes() ?: return null
         val pal = file(filesDir, c, LookPart.FRONT_PAL).takeIf { it.isFile }?.readBytes() ?: return null
         return (pic to pal).takeIf { pic.size == 2048 && pal.size == 32 }
     }
 
-    private fun file(filesDir: File?, c: LookChar, part: LookPart) = File(File(dir(filesDir), c.name.lowercase()), "${part.name.lowercase()}.bin")
+    private fun file(filesDir: Path?, c: LookChar, part: LookPart) = dir(filesDir) / c.name.lowercase() / "${part.name.lowercase()}.bin"
 }
 
 /** A graphic found in a ROM by fingerprint (the generated [LookBlob] / [TextBlob] rows): its decoded [size] and

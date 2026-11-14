@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import okio.Path
 
 /**
  * BEST EFFORT for a ROM the companion doesn't know (an unrecognised hash): read the running game
@@ -548,12 +548,12 @@ object BestEffortStore {
     /** [verified]: a party read through it and the names held, or the player kept it over a doubt. */
     class Entry(val sha1: String, val id: String, val full: Boolean, val off: Set<BestEffort.Part>, val source: Source = Source.AUTO, val verified: Boolean = true)
 
-    @Volatile var dir: File? = null
+    @Volatile var dir: Path? = null
     /** Called (any thread) after [save] / [decline] / [forget] with the SHA-1 changed: the library's verdict cache drops it.
      * Always outside this store's lock: it takes RomFolder's, whose [RomFolder.scan] reads this store under it. */
     @Volatile var onChanged: ((String) -> Unit)? = null
 
-    private fun file() = dir?.let { File(it, "best-effort.tsv") }
+    private fun file() = dir?.let { it / "best-effort.tsv" }
 
     @Synchronized
     private fun rows(): Map<String, Entry> = runCatching {
@@ -596,11 +596,9 @@ object BestEffortStore {
     private fun write(entries: Map<String, Entry>) {
         val f = file() ?: return
         runCatching {
-            val tmp = File(f.parentFile, "${f.name}.tmp")
-            tmp.writeText(entries.values.joinToString("") { e ->
+            f.writeTextAtomically(entries.values.joinToString("") { e ->
                 "${e.sha1}\t${e.id}\t${if (e.full) "FULL" else "PARTIAL"}\t${e.off.joinToString(",") { it.name }}\t${e.source.name}\t${if (e.verified) 1 else 0}\n"
             })
-            tmp.renameTo(f)
         }
     }
 

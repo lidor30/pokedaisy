@@ -27,6 +27,7 @@ import com.pokedaisy.app.companion.data.UnboundIconSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
+import okio.Path.Companion.toOkioPath
 
 /**
  * Art images by path, decoded once: what [RomArt] rebuilt from a ROM the
@@ -48,7 +49,7 @@ internal object GameArt {
         val gen = RomArt.updates.value
         if (missing[path] == gen) return null
         val bmp = try {
-            RomArt.file(context.filesDir, path)?.let { f -> BitmapFactory.decodeFile(f.path) }
+            RomArt.file(context.filesDir?.toOkioPath(), path)?.let { f -> BitmapFactory.decodeFile(f.toString()) }
                 ?: context.assets.open(path).use { BitmapFactory.decodeStream(it) }
         } catch (e: Exception) {
             null
