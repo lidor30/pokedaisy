@@ -3,7 +3,7 @@ title: Party and summaries
 summary: Your team at a glance, each Pokémon's full summary, its exact IVs and EVs, and which new moves are worth learning.
 section: companion
 order: 2
-keywords: [team, pokemon, summary, ivs, evs, nature, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade]
+keywords: [team, pokemon, summary, ivs, evs, nature, ability, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade]
 ---
 
 The `PARTY` tab is your team, live. Glance down and you know who's hurt, who's poisoned and who's about to level up, without pausing to open the game's menu.
@@ -55,12 +55,13 @@ The game decides, by its own rules: a Pokémon holding the item that stops evolu
 > [!NOTE]
 > `TRADE EVOS` works in the English FireRed (the later release), LeafGreen and Emerald. In other games it shows `N/A`. To trade for real between two of your games, see [Link play](link-play.md).
 
-## STATS: IVs, EVs and nature
+## STATS: IVs, EVs, nature and ability
 
 Tap `STATS` to swap the moves for the numbers behind them, including the ones the game never shows you:
 
 - Each stat's current value, its **IV** (0 to 31, as a bar that turns gold at a perfect 31) and its **EV**, with totals underneath.
 - `NATURE`, with the stat it raises marked in red and the one it lowers in blue. Monomyth names its own natures, which raise and lower nothing, so none is marked there.
+- `ABILITY`: the ability this individual has. The original Game Boy Advance games record which of its species' two abilities it got; the games that don't leave the row out.
 - `HIDDEN POWER`: the type that move would have for this Pokémon, and its power in FireRed, Emerald and the other original games.
 
 Tap `MOVES` to go back to the moves.
