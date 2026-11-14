@@ -2159,6 +2159,11 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
   The game shows an NPC only once it stands a tile inside the screen, so for the step that brings it in its picture has
   none: on the plain field, a hidden NPC within `GB_EDGE_STEP` of the edge also goes over the picture (`GbObj.over`, GitHub
   #385), or it was cut at the old edge and vanished until the game drew it. `widecheck` still compares the game's picture alone.
+  Mid-step its map tile is already the step's end (Gen 1 moves it as the step begins and freezes a sprite that leaves the
+  screen right there), so a hidden NPC is drawn at its screen pixels (C1x4 / C1x6, the value nearest its tile's; further than
+  a step off, as just after a map loads, the tile): one turning and walking out at the edge jumped up to a step and back each
+  frame its OAM came and went (GitHub #675; Cinnabar headless, frame by frame). Crystal's NPCs past the edge stand at their
+  home spot because the game unloads them there and loads them back at it.
 - **Scenes**: FIELD; TEXT while `wFontLoaded` bit 0 (any text box, the START menu); BATTLE_START from `wIsInBattle`
   while the field still matches (a wild battle sets it before its flashes and wipe); OFF in the battle; MENU for a menu
   screen (party, Pokédex: too few map tiles); FADE on a white / black frame, and for 30 frames after the field on a
