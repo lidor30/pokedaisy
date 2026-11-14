@@ -105,6 +105,7 @@ import com.pokedaisy.app.companion.ui.CompanionScreen
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
+import okio.Path.Companion.toOkioPath
 
 private val scratch = File(System.getProperty("scratch") ?: "build/scratch").apply { mkdirs() }
 
@@ -116,7 +117,7 @@ class FakeSlots : StateSlots {
         // Any 3:2 picture will do for a thumbnail: a party backdrop RomArt rebuilt (romArt()),
         // scaled like a real one (160 wide), else plain stripes.
         val src = sequenceOf("partybg/hns.png", "partybg/firered.png", "partybg/emerald.png")
-            .firstNotNullOfOrNull { RomArt.file(android.content.Context().filesDir, it) }?.let { ImageIO.read(it) }
+            .firstNotNullOfOrNull { RomArt.file(android.content.Context().filesDir.toOkioPath(), it) }?.let { ImageIO.read(it.toFile()) }
             ?: BufferedImage(240, 160, BufferedImage.TYPE_INT_RGB).apply {
                 for (y in 0 until 160) for (x in 0 until 240) setRGB(x, y, if (y / 2 % 2 == 0) 0xB5B5B5 else 0xA5A5A5)
             }
@@ -1279,15 +1280,15 @@ fun romArt() {
     val roms = System.getProperty("artRoms").orEmpty().split(",") + System.getProperty("rom").orEmpty() +
         (if (decomps.isBlank()) emptyList() else
             listOf("pokefirered/pokefirered_rev1.gba", "pokeemerald/pokeemerald.gba").map { File(decomps, it).path })
-    val dir = RomArt.dir(android.content.Context().filesDir)
+    val dir = RomArt.dir(android.content.Context().filesDir.toOkioPath())
     for (f in roms.filter { it.isNotBlank() }.map(::File).filter { it.isFile }.distinct()) {
-        if (RomArt.OUTPUTS.all { File(dir, it).isFile }) break
+        if (RomArt.OUTPUTS.all { dir.resolve(it).toFile().isFile }) break
         val wrote = RomArt.extractTo(f.readBytes(), dir)
         if (wrote.isNotEmpty()) println("rom art: ${wrote.size} files from ${f.name}")
     }
-    RomArt.OUTPUTS.filter { !File(dir, it).isFile }.takeIf { it.isNotEmpty() }?.let { println("rom art missing (no ROM for it): $it") }
+    RomArt.OUTPUTS.filter { !dir.resolve(it).toFile().isFile }.takeIf { it.isNotEmpty() }?.let { println("rom art missing (no ROM for it): $it") }
     // PLAYER LOOK's heroes, kept from the same ROMs (the `*-look` shots wear one).
-    val filesDir = android.content.Context().filesDir
+    val filesDir = android.content.Context().filesDir.toOkioPath()
     // Ruby's build is retail byte for byte: Ruby / Sapphire's two heroes.
     for (f in (roms + File(decomps, "pokeruby/pokeruby_rev1.gba").path).filter { it.isNotBlank() }.map(::File).filter { it.isFile }.distinct()) {
         if (com.pokedaisy.app.companion.data.LookArt.available(filesDir).size == com.pokedaisy.app.companion.data.LookChar.entries.size) break
@@ -1342,21 +1343,21 @@ fun main(args: Array<String>) {
     if (docsMode) installDocsArt() else romArt()
     // A DS game's art from its cart (-PndsRom): icons, item icons, the Pokégear map's pieces.
     System.getProperty("ndsRom").orEmpty().takeIf { it.isNotBlank() }?.let { path ->
-        val dir = RomArt.dir(android.content.Context().filesDir)
+        val dir = RomArt.dir(android.content.Context().filesDir.toOkioPath())
         com.pokedaisy.app.companion.data.PokegearMap.dir = dir
         com.pokedaisy.app.companion.data.NdsArt.dir = dir
-        if (com.pokedaisy.app.companion.data.NdsArt.extractTo(File(path), dir)) println("nds art: from ${File(path).name}")
+        if (com.pokedaisy.app.companion.data.NdsArt.extractTo(File(path).toOkioPath(), dir)) println("nds art: from ${File(path).name}")
         // Its own words (the Poller's NdsArt.prefetch), and Origin HeartGold's tables (it runs as HEARTGOLD).
-        com.pokedaisy.app.companion.data.NdsArt.names = com.pokedaisy.app.companion.data.NdsArt.readNames(File(path))
-        if (com.pokedaisy.app.companion.data.OriginHeartGold.matches(File(path))) {
+        com.pokedaisy.app.companion.data.NdsArt.names = com.pokedaisy.app.companion.data.NdsArt.readNames(File(path).toOkioPath())
+        if (com.pokedaisy.app.companion.data.OriginHeartGold.matches(File(path).toOkioPath())) {
             com.pokedaisy.app.companion.data.originHeartGold = true
-            com.pokedaisy.app.companion.data.OriginHeartGold.data = com.pokedaisy.app.companion.data.NdsArt.readOrigin(File(path))
+            com.pokedaisy.app.companion.data.OriginHeartGold.data = com.pokedaisy.app.companion.data.NdsArt.readOrigin(File(path).toOkioPath())
         }
     }
     // A FireRed-engine hack's own region map (Unbound, Odyssey, ...) from -Prom.
     System.getProperty("rom").orEmpty().takeIf { it.isNotBlank() }?.let { path ->
         val f = File(path)
-        RomRegionMap.current = RomRegionMap.loadNow(android.content.Context().filesDir, "preview-%08x".format(f.name.hashCode()), f)
+        RomRegionMap.current = RomRegionMap.loadNow(android.content.Context().filesDir.toOkioPath(), "preview-%08x".format(f.name.hashCode()), f.toOkioPath())
     }
     val out = File(args.getOrElse(0) { "build/shots" }).apply { mkdirs() }
     val only = args.getOrElse(1) { "" }.split(",").filter { it.isNotBlank() }

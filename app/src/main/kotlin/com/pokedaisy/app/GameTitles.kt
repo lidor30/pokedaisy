@@ -6,6 +6,7 @@ import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
 import com.pokedaisy.app.companion.data.RETAIL_PORT_TITLES
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
+import okio.source
 
 /**
  * The name a game goes by in the library ("Pokémon FireRed") instead of its ROM
@@ -259,7 +260,7 @@ object GameTitles {
     internal fun randomizedTitle(rom: File, code: String?): String? {
         if (code != "BPRE" && code != "BPEE") return null
         val size = RomArchive.romSize(rom)
-        val hit = com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, RomIdentity.revision(rom), size) { RomArchive.open(rom) }
+        val hit = com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, RomIdentity.revision(rom), size) { RomArchive.open(rom).source() }
         return hit?.let { RETAIL[it.retailSha1] }?.let { it + RANDOMIZED }
     }
 

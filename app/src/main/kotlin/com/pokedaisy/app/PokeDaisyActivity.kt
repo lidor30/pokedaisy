@@ -75,6 +75,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.pokedaisy.app.companion.data.isGen2
 import com.pokedaisy.app.companion.data.isGen1
+import com.pokedaisy.app.companion.data.delete
+import okio.Path.Companion.toOkioPath
+import okio.source
 
 /**
  * Phase 1 shell: full-screen GBA emulation with RetroArch-style savestate slots
@@ -365,7 +368,7 @@ class PokeDaisyActivity : Activity() {
                 s.thumbFile(index).delete()
                 s.bakFile(index).delete()
                 s.bakThumbFile(index).delete()
-                com.pokedaisy.app.companion.data.SnapshotCache.fileFor(state).delete()
+                com.pokedaisy.app.companion.data.SnapshotCache.fileFor(state.toOkioPath()).delete()
                 com.pokedaisy.app.achievements.RetroAchievements.progressFile(state).delete()
             }
         }
@@ -1507,7 +1510,7 @@ class PokeDaisyActivity : Activity() {
         val on = Prefs(this).follower && followerSupported()
         val n = followerLead
         engine.follower = if (on && n != null) engine.follower?.takeIf { it.national == n }
-            ?: com.pokedaisy.app.companion.data.MonArt.load(filesDir, n) else null
+            ?: com.pokedaisy.app.companion.data.MonArt.load(filesDir.toOkioPath(), n) else null
     }
 
     /** DAY AND NIGHT works here: a GBA game (not a Game Boy or DS one) that doesn't change with the time itself. */
@@ -1820,7 +1823,7 @@ class PokeDaisyActivity : Activity() {
             lookRunner.apply()
         }
         override val followerSupported get() = followerSupported()
-        override val followerReady get() = com.pokedaisy.app.companion.data.MonArt.available(filesDir).isNotEmpty()
+        override val followerReady get() = com.pokedaisy.app.companion.data.MonArt.available(filesDir.toOkioPath()).isNotEmpty()
         override val follower get() = Prefs(this@PokeDaisyActivity).follower
         override fun setFollower(on: Boolean) {
             Prefs(this@PokeDaisyActivity).follower = on
@@ -2486,7 +2489,7 @@ class PokeDaisyActivity : Activity() {
         romKey = crc
         FeatureFlags.applyBlocked(this)
         romBlocked = com.pokedaisy.app.companion.data.BlockedGames.forCrc(crc)
-        flightArea = com.pokedaisy.app.companion.data.FlightArea.Keeper(filesDir, crc)
+        flightArea = com.pokedaisy.app.companion.data.FlightArea.Keeper(filesDir.toOkioPath(), crc)
         flightAreaAnywhereSent = false
         flightAreaQueued = false
         RetroAchievements.setFlightAnywhere(false)
@@ -2520,19 +2523,19 @@ class PokeDaisyActivity : Activity() {
         if (::portraitPanel.isInitialized) portraitPanel.ds = nds
         val ndsCode = if (nds) RomIdentity.ndsGameCode(r).orEmpty() else ""
         romOrigin = nds && ndsCode == com.pokedaisy.app.companion.data.OriginHeartGold.CODE &&
-            com.pokedaisy.app.companion.data.OriginHeartGold.matches(r)
+            com.pokedaisy.app.companion.data.OriginHeartGold.matches(r.toOkioPath())
         dsWildRates = if (!nds) null else if (romOrigin) {
             // Its tables are read in the background (NdsArt.prefetch); the core may start first, so read them here then.
-            { (com.pokedaisy.app.companion.data.OriginHeartGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readOrigin(r))?.wildRates ?: IntArray(0) }
+            { (com.pokedaisy.app.companion.data.OriginHeartGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readOrigin(r.toOkioPath()))?.wildRates ?: IntArray(0) }
         } else if (ndsCode == com.pokedaisy.app.companion.data.RenegadePlatinum.CODE &&
-            com.pokedaisy.app.companion.data.RenegadePlatinum.matches(r)) {
+            com.pokedaisy.app.companion.data.RenegadePlatinum.matches(r.toOkioPath())) {
             // Renegade Platinum: retail Platinum's header, its own maps' rates (read from its cart, like Origin's).
-            { (com.pokedaisy.app.companion.data.RenegadePlatinum.data ?: com.pokedaisy.app.companion.data.NdsArt.readRenegade(r))?.wildRates ?: IntArray(0) }
+            { (com.pokedaisy.app.companion.data.RenegadePlatinum.data ?: com.pokedaisy.app.companion.data.NdsArt.readRenegade(r.toOkioPath()))?.wildRates ?: IntArray(0) }
         } else if ((ndsCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_BLACK2 ||
                 ndsCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_WHITE2) &&
-            com.pokedaisy.app.companion.data.Black2Redux.matches(r)) {
+            com.pokedaisy.app.companion.data.Black2Redux.matches(r.toOkioPath())) {
             // Blaze Black 2 / Volt White 2 Redux: retail Black 2's / White 2's header, their own zones' rates (from the cart).
-            { (com.pokedaisy.app.companion.data.Black2Redux.data ?: com.pokedaisy.app.companion.data.NdsArt.readRedux(r))?.wildRateWords() ?: IntArray(0) }
+            { (com.pokedaisy.app.companion.data.Black2Redux.data ?: com.pokedaisy.app.companion.data.NdsArt.readRedux(r.toOkioPath()))?.wildRateWords() ?: IntArray(0) }
         } else when (ndsCode) {
             "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
@@ -2571,12 +2574,12 @@ class PokeDaisyActivity : Activity() {
         gbFieldCache = null
         if (::engine.isInitialized) engine.gbField = null
         if (gba && romBlocked == null) Thread({
-            val flag = com.pokedaisy.app.companion.data.WildEncounters.find(r)
+            val flag = com.pokedaisy.app.companion.data.WildEncounters.find(r.toOkioPath())
             Log.i("pokedaisy", "wild encounters: switch %08X".format(flag))
             // REUSABLE TMS: the spots that use a TM up, by their code (none = the row shows N/A).
-            val tms = com.pokedaisy.app.companion.data.ReusableTms.find(r)
+            val tms = com.pokedaisy.app.companion.data.ReusableTms.find(r.toOkioPath())
             Log.i("pokedaisy", "reusable TMs: ${tms.size} site(s)")
-            val text = com.pokedaisy.app.companion.data.InstantText.find(r)
+            val text = com.pokedaisy.app.companion.data.InstantText.find(r.toOkioPath())
             runOnUiThread {
                 if (romData != r) return@runOnUiThread
                 wildFlag = flag
@@ -2593,10 +2596,10 @@ class PokeDaisyActivity : Activity() {
         }
         // FireRed / Emerald party-menu art and region maps come from the ROM
         // itself, once per ROM (see RomArt) - nothing of the game is bundled.
-        if (gba) RomArt.prefetch(filesDir, crc, r) else if (gameBoy) com.pokedaisy.app.companion.data.Gen1Art.prefetch(filesDir, r)
+        if (gba) RomArt.prefetch(filesDir.toOkioPath(), crc, r.toOkioPath()) else if (gameBoy) com.pokedaisy.app.companion.data.Gen1Art.prefetch(filesDir.toOkioPath(), r.toOkioPath())
         // A DS cart's party icons, from its own file system (NdsArt).
-        if (nds) com.pokedaisy.app.companion.data.NdsArt.prefetch(filesDir, r)
-        if (gameBoy) com.pokedaisy.app.companion.data.Gen2Art.prefetch(filesDir, r)   // a Color cart's (Crystal): its own scan
+        if (nds) com.pokedaisy.app.companion.data.NdsArt.prefetch(filesDir.toOkioPath(), r.toOkioPath())
+        if (gameBoy) com.pokedaisy.app.companion.data.Gen2Art.prefetch(filesDir.toOkioPath(), r.toOkioPath())   // a Color cart's (Crystal): its own scan
         // A Game Boy cart's POKéDEX pages are read from its bytes (bank-switched: not on the bus whole); a few MB at most.
         val gbRom = if (gameBoy) runCatching { r.readBytes() }.getOrNull() else null
         com.pokedaisy.app.companion.data.Gen1Dex.rom = gbRom
@@ -2612,9 +2615,9 @@ class PokeDaisyActivity : Activity() {
         }
         // A FireRed-engine hack's own region map (Unbound, Odyssey, ...), read
         // from the ROM on every launch - a few KB of reads (see RomRegionMap).
-        if (gba) RomRegionMap.load(filesDir, crc, r) else RomRegionMap.current = null   // not the last GBA game's
+        if (gba) RomRegionMap.load(filesDir.toOkioPath(), crc, r.toOkioPath()) else RomRegionMap.current = null   // not the last GBA game's
         // SMART FF steps aside while the game's region map or a menu is up (see EmulatorEngine).
-        if (gba) RegionMapWatch.load(r)
+        if (gba) RegionMapWatch.load(r.toOkioPath())
         val (menuField, menuBattle) = Prefs(this).ffMenuCallbacks(crc)
         // The game code and revision: a GBA header's 0xAC / 0xBC, a DS header's 0x0C / 0x1E.
         val header = runCatching {
@@ -2760,7 +2763,7 @@ class PokeDaisyActivity : Activity() {
             // resumes from it shows that at once instead of LOADING (TelemetryStore.showCached).
             onStateSaved = { state ->
                 telemetry.refresh()
-                com.pokedaisy.app.companion.data.SnapshotCache.write(state, telemetry.forState())
+                com.pokedaisy.app.companion.data.SnapshotCache.write(state.toOkioPath(), telemetry.forState())
             }
             onResumeResult = { loaded -> if (!loaded) { telemetry.dropCached(); runOnUiThread { waitForPlay() } } }
             battleStateNow = { telemetry.refreshBattleInputFast()?.second }   // the emu thread, before a RUN follow-up press
@@ -2843,7 +2846,7 @@ class PokeDaisyActivity : Activity() {
                 if (coopBuilding.add(key)) Thread({
                     runCatching {
                         val rom = coopRom ?: r.readBytes().also { coopRom = it }
-                        com.pokedaisy.app.companion.data.coop.PartnerArt.build(dir, rom, female, look)?.let { coopArt[key] = it }
+                        com.pokedaisy.app.companion.data.coop.PartnerArt.build(dir.toOkioPath(), rom, female, look)?.let { coopArt[key] = it }
                     }
                     coopBuilding.remove(key)
                 }, "pokedaisy-partner-art").start()
@@ -3086,7 +3089,7 @@ class PokeDaisyActivity : Activity() {
     @Volatile private var coopPairKeyCache: Pair<com.pokedaisy.app.companion.coop.CoopSaveId, String>? = null
     @Volatile private var coopPairKeyMissAt = -10_000L
 
-    private val catchFile by lazy { com.pokedaisy.app.companion.data.coop.FileCatchStore(File(File(filesDir, "coop"), "catches.txt")) }
+    private val catchFile by lazy { com.pokedaisy.app.companion.data.coop.FileCatchStore(filesDir.toOkioPath() / "coop" / "catches.txt") }
 
     private val coopApp = object : CoopApp {
         override val coopOn get() = FeatureFlags.coop(this@PokeDaisyActivity)
@@ -3199,7 +3202,7 @@ class PokeDaisyActivity : Activity() {
     private fun dropResumeState() {
         states?.resumeFile?.let {
             it.delete()
-            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(it).delete()
+            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(it.toOkioPath()).delete()
             RetroAchievements.progressFile(it).delete()
         }
     }
@@ -3298,7 +3301,7 @@ class PokeDaisyActivity : Activity() {
             }
             val own = RomIdentity.sha1(r)
             val sha1 = if (own == com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1) own
-                else com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, RomArchive.romSize(r)) { RomArchive.open(r) } ?: own
+                else com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, RomArchive.romSize(r)) { RomArchive.open(r).source() } ?: own
             com.pokedaisy.app.companion.coop.CoopSession.startForGame(applicationContext, prefs, sha1, save, cheatsLoaded)
             runOnUiThread { coopAttach(sha1) }   // joined battles + presence: retail English Emerald only
             startCoopLock(sha1, save, cheatsLoaded, gen)
@@ -3322,7 +3325,7 @@ class PokeDaisyActivity : Activity() {
             CoopBattles.resume()   // [pauseGame] ended any joined battle before the sleep: battles may start again
             engine.wake()
             st.resumeFile.delete()
-            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(st.resumeFile).delete()
+            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(st.resumeFile.toOkioPath()).delete()
             RetroAchievements.progressFile(st.resumeFile).delete()
             return true
         }
@@ -3365,14 +3368,14 @@ class PokeDaisyActivity : Activity() {
         st.latestResumeSource()?.let { src ->
             if (src != st.resumeFile) runCatching {
                 src.copyTo(st.resumeFile, overwrite = true)
-                com.pokedaisy.app.companion.data.SnapshotCache.copy(src, st.resumeFile)
+                com.pokedaisy.app.companion.data.SnapshotCache.copy(src.toOkioPath(), st.resumeFile.toOkioPath())
             }
         }
         val resume = st.resumeFile.takeIf { it.isFile && it.length() > 0 }
         // The companion's data as that state left it, until the game's own is read (a few KB).
         // Not over live data (back from HOME: the game was never closed).
         if (resume != null && !telemetry.snapshot.value.hasData) {
-            com.pokedaisy.app.companion.data.SnapshotCache.read(resume)?.let { telemetry.showCached(it) }
+            com.pokedaisy.app.companion.data.SnapshotCache.read(resume.toOkioPath())?.let { telemetry.showCached(it) }
         }
         // Resumed from a state: the player was in the game (a menu included). A boot: the title screen first.
         if (resume != null) nowPlaying() else waitForPlay()
@@ -5571,7 +5574,7 @@ class PokeDaisyActivity : Activity() {
         engine.stop()
         states?.resumeFile?.let {
             if (it.exists()) it.delete()
-            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(it).delete()
+            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(it.toOkioPath()).delete()
         }
         val save = SavesLocation.saveFor(this, Prefs(this), r)
         syncCheats()

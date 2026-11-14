@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.security.MessageDigest
+import okio.Path
 
 /**
  * A Game Boy Pokémon game's own art, rebuilt from the player's ROM on its first
@@ -355,36 +354,31 @@ object Gen1Art {
     }
 
     /** Writes [rom]'s art into [dir] if it's a known Gen 1 cart (once per [VERSION]); returns the paths written. */
-    fun extractTo(rom: ByteArray, dir: File): List<String> {
-        val sha1 = MessageDigest.getInstance("SHA-1").digest(rom).hex()
+    fun extractTo(rom: ByteArray, dir: Path): List<String> {
+        val sha1 = sha1(rom).hex()
         val t = GAMES.firstOrNull { it.sha1 == sha1 } ?: return emptyList()
-        val marker = File(dir, "gen1/scanned-v$VERSION-${sha1.take(12)}")
+        val marker = dir / "gen1/scanned-v$VERSION-${sha1.take(12)}"
         if (marker.isFile) return emptyList()
         val wrote = ArrayList<String>()
         fun write(path: String, bytes: ByteArray) {
-            val out = File(dir, path)
-            out.parentFile?.mkdirs()
-            val tmp = File(out.path + ".tmp")
-            tmp.writeBytes(bytes)
-            tmp.renameTo(out)
+            (dir / path).writeAtomically(bytes)
             wrote += path
         }
         write(t.fontPath, font(rom, t))
         icons(rom, t).forEach { (dex, img) -> write("${t.iconsDir}/$dex.png", img.png()) }
         write(t.townMapPath, townMap(rom, t).png())
         write(t.playerPath, player(rom, t).png())
-        marker.parentFile?.mkdirs()
         marker.writeText(wrote.size.toString())
         return wrote
     }
 
     /** In the background, once per ROM file: a Game Boy cart is at most a few MB. */
-    fun prefetch(filesDir: File, rom: File) {
-        Thread({
+    fun prefetch(filesDir: Path, rom: Path) {
+        background("pokedaisy-gen1-art") {
             runCatching {
-                val wrote = extractTo(rom.readBytes(), RomArt.dir(filesDir))
+                val wrote = extractTo(readRomFile(rom), RomArt.dir(filesDir))
                 if (wrote.isNotEmpty()) RomArt.announce()
-            }.onFailure { android.util.Log.w("pokedaisy", "Gen1Art: failed", it) }
-        }, "pokedaisy-gen1-art").apply { isDaemon = true; start() }
+            }.onFailure { Logs.w("Gen1Art: failed", it) }
+        }
     }
 }

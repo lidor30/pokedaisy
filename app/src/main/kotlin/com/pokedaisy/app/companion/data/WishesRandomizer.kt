@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+
 /**
  * Pokémon Wishes of Tomorrow's randomizer (picked on a new game's RANDOMIZER screen, then fixed for that save). The ROM's
  * tables stay as they are: the game swaps each species as it makes the Pokémon - CreateWildMon (0x0823C050) for every wild

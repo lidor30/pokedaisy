@@ -235,7 +235,7 @@ const val GEN5_NATIONAL_DEX_FLAG = 0x30000
 /** The event flags and vars (the GUIDE's [SaveProgress]), with the badges as [GEN4_BADGE_FLAG] + n, the DS clock's
  * hour as [GEN4_VAR_HOUR], like the Gen 4 games', and [GEN5_NATIONAL_DEX_FLAG]. */
 fun readGen5Progress(
-    r: MemoryReader, cfg: Gen5Config, img: Long, national: Boolean = false, hour: Int = java.time.LocalTime.now().hour,
+    r: MemoryReader, cfg: Gen5Config, img: Long, national: Boolean = false, hour: Int = localNow().hour,
 ): SaveProgress? {
     val flagBytes = cfg.numFlags / 8
     val vars = r.readCoreMemory(img + cfg.varsFlagsOff, cfg.numVars * 2)

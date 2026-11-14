@@ -1,8 +1,9 @@
 package com.pokedaisy.app.companion.data
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import java.io.File
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.Path
 
 /**
  * A DS game's POKéDEX (Platinum, HeartGold / SoulSilver): its pages and front pictures, which [NdsArt] takes from the
@@ -73,8 +74,9 @@ val POKEDEX_ORIGIN = POKEDEX_HEARTGOLD.copy(
 val PokedexTables.cartDex: Boolean get() = gameBoy || gen4 != null
 
 object Gen4Dex {
+    private val lock = SynchronizedObject()
     /** One cart's pages and the rest of each species' row, as NdsArt wrote them. */
-    internal class Pages(
+    class Pages(
         val entries: Map<Int, DexEntry>,
         /** National numbers in the regional Dex's order (Sinnoh's, Johto's). */
         val regional: IntArray,
@@ -108,14 +110,14 @@ object Gen4Dex {
         }
     }
 
-    private fun pathOf(t: Gen4DexTables): String? = NdsArt.dir?.let { File(it, t.pages).path }
+    private fun pathOf(t: Gen4DexTables): String? = NdsArt.dir?.let { (it / t.pages).toString() }
 
     private fun load(t: Gen4DexTables): Pages? {
         val dir = NdsArt.dir ?: return null
-        val f = File(dir, t.pages)
+        val f = dir / t.pages
         if (!f.isFile) return null
-        val key = f.path to f.lastModified()
-        if (pagesFor != key) synchronized(this) {
+        val key = f.toString() to f.lastModified
+        if (pagesFor != key) synchronized(lock) {
             if (pagesFor != key) {
                 pages = runCatching { parse(f.readLines(), t.lastSpecies, t.gen5, t.origin) }.getOrNull()
                 pagesFor = key
@@ -125,17 +127,17 @@ object Gen4Dex {
     }
 
     /** The front picture (80 x 80, the dex page shows it whole). */
-    fun front(t: Gen4DexTables, species: Int): Bitmap? {
+    fun front(t: Gen4DexTables, species: Int): RomArt.Image? {
         val dir = NdsArt.dir ?: return null
-        val f = File(dir, "${t.fronts}/$species.png")
-        return if (f.isFile) runCatching { BitmapFactory.decodeFile(f.path) }.getOrNull() else null
+        val f = dir / "${t.fronts}/$species.png"
+        return if (f.isFile) runCatching { RomArt.Image.decodePng(f.readBytes()) }.getOrNull() else null
     }
 
     /** NdsArt's lines: species, category, description, height dm, weight hg, the six stats (the page's order), type 1 / 2,
      * catch rate, gender ratio, egg groups 1 / 2, abilities 1 / 2; then (a cart read since v8) the regional number, the
      * evolutions, the level-up moves and the TM / HM bits; Black's a hidden ability last. Evolutions to past
      * [lastSpecies] are dropped; [gen5]: their methods are Gen 5's ([gen5EvoReqs]). */
-    internal fun parse(lines: List<String>, lastSpecies: Int = 493, gen5: Boolean = false, origin: Boolean = false): Pages {
+    fun parse(lines: List<String>, lastSpecies: Int = 493, gen5: Boolean = false, origin: Boolean = false): Pages {
         val entries = HashMap<Int, DexEntry>()
         val regional = HashMap<Int, Int>()
         val evolutions = HashMap<Int, List<EvoLink>>()

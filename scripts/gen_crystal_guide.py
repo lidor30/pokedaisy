@@ -1039,7 +1039,7 @@ def main():
           "// RAM, the same in every build: wEventFlags (NUM_EVENTS bits), wTimeOfDay (MORN 0, DAY 1, NITE 2),",
           "// wJohtoBadges (wKantoBadges follows it), wTradeFlags (a bit per NPC trade). WRAM bank 1 (wramx).",
           f"internal const val {P}EVENT_FLAGS = 0x{ram['wEventFlags']:04X}",
-          f"internal const val {P}EVENT_FLAG_BYTES = {(C.v['NUM_EVENTS'] + 7) // 8}",
+          f"{'' if LEGACY else 'internal '}const val {P}EVENT_FLAG_BYTES = {(C.v['NUM_EVENTS'] + 7) // 8}",
           f"internal const val {P}TIME_OF_DAY = 0x{ram['wTimeOfDay']:04X}",
           f"internal const val {P}BADGES = 0x{ram['wJohtoBadges']:04X}",
           f"internal const val {P}TRADE_FLAGS = 0x{ram['wTradeFlags']:04X}",

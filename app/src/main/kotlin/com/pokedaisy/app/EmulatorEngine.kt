@@ -1,6 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.data.SnapshotCache
+import com.pokedaisy.app.companion.data.delete
 import com.pokedaisy.app.companion.i18n.tr
 import android.graphics.Bitmap
 import android.media.AudioFormat
@@ -18,6 +19,7 @@ import com.pokedaisy.app.companion.data.ShopWatch
 import java.io.File
 import java.nio.ByteBuffer
 import kotlin.math.roundToInt
+import okio.Path.Companion.toOkioPath
 
 /**
  * Owns the single emulator thread: run a frame, push its audio, service any
@@ -1004,18 +1006,18 @@ class EmulatorEngine(
                 Log.w("pokedaisy", "resume skipped: the state is the other DS core's")
                 val other = if (dsCore == MgbaCore.NDS_CORE_DSPERATE) MgbaCore.NDS_CORE_MELONDS else MgbaCore.NDS_CORE_DSPERATE
                 resume.renameTo(SaveStates.parkedResume(resume, other))
-                SnapshotCache.fileFor(resume).delete()
+                SnapshotCache.fileFor(resume.toOkioPath()).delete()
                 startNotice = tr("This game was left on the other DS core, so it started from the save file")
             } else if (matches == 0) {
                 Log.w("pokedaisy", "resume skipped: ${save.name} changed since the state was made")
                 resume.renameTo(File(resume.parentFile, "resume.replaced"))
-                SnapshotCache.fileFor(resume).delete()
+                SnapshotCache.fileFor(resume.toOkioPath()).delete()
                 startNotice = tr("Your save changed since you last played here, so the game started from the save file")
             } else {
                 val ok = MgbaCore.pkLoadState(resume.absolutePath)
                 Log.i("pokedaisy", "resume state load: $ok")
                 resume.delete()
-                SnapshotCache.fileFor(resume).delete()
+                SnapshotCache.fileFor(resume.toOkioPath()).delete()
                 if (ok) resumed = resume
             }
             onResumeResult?.invoke(resumed != null)
@@ -2071,7 +2073,7 @@ class EmulatorEngine(
                 val cur = states.stateFile(save)
                 if (cur.isFile) cur.copyTo(states.bakFile(save), overwrite = true)
                 RetroAchievements.progressFile(cur).let { if (it.isFile) it.copyTo(RetroAchievements.progressFile(states.bakFile(save)), overwrite = true) }
-                SnapshotCache.copy(cur, states.bakFile(save))
+                SnapshotCache.copy(cur.toOkioPath(), states.bakFile(save).toOkioPath())
                 states.thumbFile(save).let { if (it.isFile) it.copyTo(states.bakThumbFile(save), overwrite = true) }
             }
             val ok = saveState(states.stateFile(save))
@@ -2103,7 +2105,7 @@ class EmulatorEngine(
                     val bakProgress = RetroAchievements.progressFile(bak)
                     if (bakProgress.isFile) bakProgress.copyTo(cur, overwrite = true) else cur.delete()
                 }
-                SnapshotCache.copy(bak, states.stateFile(slot))
+                SnapshotCache.copy(bak.toOkioPath(), states.stateFile(slot).toOkioPath())
                 states.bakThumbFile(slot).let { if (it.isFile) it.copyTo(states.thumbFile(slot), overwrite = true) }
                 true
             }.getOrDefault(false)

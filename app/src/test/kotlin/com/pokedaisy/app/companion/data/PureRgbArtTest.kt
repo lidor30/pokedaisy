@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * PureRed's and PureBlue's art and dex pages, rebuilt from the player's own ROMs (skipped without them): PureRGB's own
@@ -34,10 +35,10 @@ class PureRgbArtTest {
     fun `the art, in each one's colours`() {
         val out = File("build/gen1-art-pure")
         out.deleteRecursively()
-        val red = Gen1Art.extractTo(rom(pureRed), out)
+        val red = Gen1Art.extractTo(rom(pureRed), out.toOkioPath())
         assertTrue(red.size > 150)
         assertTrue("regionmap/pure_red.png" in red && "regionmap/player_pure_red.png" in red && Gen1Art.PURE_FONT in red)
-        val blue = Gen1Art.extractTo(rom(pureBlue), out)
+        val blue = Gen1Art.extractTo(rom(pureBlue), out.toOkioPath())
         assertTrue("regionmap/pure_blue.png" in blue && "gen1/pure_blue/pokemon/25.png" in blue)
         // The same shapes, other colours.
         val r = Gen1Art.icons(rom(pureRed), Gen1Art.PURE_RED)

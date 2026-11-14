@@ -3,7 +3,7 @@ package com.pokedaisy.app.companion.data
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.i18n.trGuide
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
 
 /**
  * What's around an area, for the GUIDE's HERE page: its items and what its
@@ -29,7 +29,7 @@ data class AreaThing(
     val where: String,
 )
 
-private val areaCache = ConcurrentHashMap<GuideId, Map<Int, List<AreaThing>>>()
+private val areaCache = LockedMap<GuideId, Map<Int, List<AreaThing>>>()
 
 private fun rawAreas(guide: GuideId): List<String> = when (guide) {
     GuideId.FIRERED -> GUIDE_AREAS_FIRERED_RAW

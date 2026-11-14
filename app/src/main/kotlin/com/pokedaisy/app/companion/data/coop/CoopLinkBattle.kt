@@ -1,6 +1,9 @@
 package com.pokedaisy.app.companion.data.coop
 
 import com.pokedaisy.app.companion.data.hex
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 
 /**
@@ -107,7 +110,7 @@ class CoopLinkBattle(
     private var cancelled = false
 
     // One lock for the queue and its counters (any thread adds, the emu thread drains).
-    private val inboxLock = Any()
+    private val inboxLock = SynchronizedObject()
     private val inbox = ArrayDeque<CoopBattleMsg>()
     private var inboxBytes = 0
     /** The battle id whose blocks are kept although this game has not started yet (the other player began first). */

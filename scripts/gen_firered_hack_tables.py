@@ -308,9 +308,11 @@ def block(key, g, base, h, suffix, what):
     gender_hex = "".join("%02x" % (gr.get(i, base["gender"].get(i, 255))) for i in range(species_count))
     # Past FireRed's 412 species its gExperienceTables curve per species (FireRed's own for the rest).
     growth_hex = "".join("%02x" % h["growth"].get(i, 0) for i in range(species_count)) if species_count > SPECIES_COUNT else None
+    # The Android activity compares these two tables by identity across the shared module boundary.
+    visibility = "" if suffix in ("AshGray", "RocketEdition") else "internal "
     body = (
         (f"// {what}\n" if what else "") +
-        f"internal val fireRedHack{suffix}: HackText by lazy {{\n"
+        f"{visibility}val fireRedHack{suffix}: HackText by lazy {{\n"
         f"    HackText(\n"
         f"        species = mapOf(\n" +
         "".join(f"            {i} to {kstr(s)},\n" for i, s in sorted(sp.items())) + "        ),\n"

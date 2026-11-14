@@ -26,6 +26,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import kotlin.math.roundToInt
+import okio.Path.Companion.toOkioPath
 
 /**
  * A phone held upright (PortraitPanel): the game across the top, the companion
@@ -48,9 +49,9 @@ class PortraitScreenshotTest {
     fun game() {
         activeGame = GameKind.FIRERED
         OptionColors.inGame = true
-        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it }
+        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it.toOkioPath() }
         for (path in listOf(RomFileReader.FIRERED_REV1_PATH, RomFileReader.EMERALD_PATH)) {
-            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art) }
+            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art.toOkioPath()) }
         }
         RomFileReader.load(RomFileReader.FIRERED_REV1_PATH)?.let { rom ->
             DecompIconSource.reader = rom
