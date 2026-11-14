@@ -92,4 +92,7 @@ object N3dsNative {
     /** The top screen of the next frame at [width] x [height], ARGB, top row first; null when there's no frame to take
      * (no game, paused, another one pending). Blocks up to a second: never on the UI thread. */
     @JvmStatic external fun screenshot(width: Int, height: Int): IntArray?
+    /** The names of the modules (CROs) loaded after the static one whose header is at [root]: the game's screens (a
+     * Pokemon X field is `DllField`, its party `DllPokeList`). Null without a game; blocks a frame at most. */
+    @JvmStatic external fun modules(root: Int): String?
 }

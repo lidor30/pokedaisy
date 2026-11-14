@@ -24,6 +24,11 @@ object Gen6Reader {
         val bag: Int,
         /** Each pocket: its offset from [bag] and how many entries it holds, with the companion's pocket. */
         val pockets: List<Pocket>,
+        /** The static module's (CRS) header: the loaded modules' chain starts there ([N3dsNative.modules]). */
+        val staticModule: Int = 0,
+        /** The field's lower-screen object (heap, the same address on every boot seen, headless and on the RP6): +0 is
+         * 0x20, +4 a pointer while the field is up, +0x10 its flags: 0x3D1, 0x3D3 with the X menu open ([sceneOf]). */
+        val fieldObject: Int = 0,
     )
 
     class Pocket(val offset: Int, val capacity: Int, val companionPocket: Int)
@@ -42,7 +47,44 @@ object Gen6Reader {
             Pocket(0xD68, 64, com.pokedaisy.app.companion.data.POCKET_MEDICINE),
             Pocket(0xE68, 64, com.pokedaisy.app.companion.data.POCKET_BERRIES),
         ),
+        staticModule = 0x012B6000,
+        fieldObject = 0x08D033F0,
     )
+
+    /** What the game's two screens show, for where the touch screen goes ([sceneOf]). */
+    enum class Scene {
+        /** The field, the touch screen its own (PSS): nothing to touch there that buttons can't do. */
+        FIELD,
+        /** The field's X menu: on the touch screen alone, the top screen still the field. */
+        MENU,
+        /** A screen of its own (party, bag, a battle...): both screens matter. */
+        SCREEN,
+    }
+
+    /** The field object's flags once the field is up ([sceneOf]). */
+    private const val FIELD_UP = 0x3D0
+
+    /** The modules that are the title and the start menu, and the field's: a screen is any other. */
+    private val NOT_SCREENS = setOf("DllTitle", "DllBackGround", "DllSequence", "DllStartMenu")
+
+    /**
+     * The scene from the loaded modules ([N3dsNative.modules], one name a line) and the field object's 0x20 bytes;
+     * null while it can't tell (between two screens no module is loaded; the title): the last one stands.
+     */
+    fun sceneOf(modules: String, fieldObject: ByteArray?): Scene? {
+        val names = modules.split('\n').filter { it.isNotEmpty() }
+        if (names.isEmpty()) return null
+        if ("DllField" in names) {
+            if (fieldObject == null || fieldObject.size < 0x14) return Scene.FIELD
+            val b = ByteBuffer.wrap(fieldObject).order(ByteOrder.LITTLE_ENDIAN)
+            // The object's own size word first: something else at that address reads as the field.
+            if (b.getInt(0) != 0x20) return Scene.FIELD
+            // 0x3D1 on the field, 0x3D3 with the X menu; 0x153 / 0xD3 while the field loads (bit 1 set already).
+            val flags = b.getInt(0x10)
+            return if (flags and FIELD_UP == FIELD_UP && flags and 2 != 0 && b.getInt(4) != 0) Scene.MENU else Scene.FIELD
+        }
+        return if (names.all { it in NOT_SCREENS }) null else Scene.SCREEN
+    }
 
     fun configFor(titleId: Long): Config? = when (titleId) {
         N3dsCart.POKEMON_X_USA -> POKEMON_X_USA

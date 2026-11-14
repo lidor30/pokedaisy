@@ -86,4 +86,38 @@ class Gen6Test {
         assertEquals("Potion", en.items[17])
         assertTrue(en.types.contains("Fairy"))
     }
+
+    /** The field object's 0x20 bytes as the RP6 read them (+0x10 the flags, +4 the pointer that goes with an app). */
+    private fun fieldObject(flags: Int, pointer: Int = 0x082AA72C, size: Int = 0x20): ByteArray =
+        ByteBuffer.allocate(0x20).order(ByteOrder.LITTLE_ENDIAN).apply {
+            putInt(0, size)
+            putInt(4, pointer)
+            putInt(8, 0x01010010)
+            putInt(0x10, flags)
+        }.array()
+
+    @Test
+    fun sceneFromModulesAndTheFieldObject() {
+        val s = Gen6Reader.Scene.values()
+        fun scene(modules: String, obj: ByteArray?) = Gen6Reader.sceneOf(modules, obj)
+        // The field and its X menu (the flags seen on the RP6, 2026-11-15).
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField\nDllUSC02", fieldObject(0x3D1)))
+        assertEquals(Gen6Reader.Scene.MENU, scene("DllField\nDllUSC02", fieldObject(0x3D3)))
+        assertEquals(Gen6Reader.Scene.MENU, scene("DllField\nDllUSC02\nDllPssMessageWindow", fieldObject(0x3D3)))
+        // The field loading (the menu's bit set already): not the menu.
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField\nDllUSC02", fieldObject(0x153)))
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldObject(0xD3)))
+        // On its way to an app: the field's pointer gone.
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldObject(0x102, pointer = 0)))
+        // Something else at that address: the field.
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldObject(0x3D3, size = 0x40)))
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", null))
+        // A screen of the game's own.
+        assertEquals(Gen6Reader.Scene.SCREEN, scene("DllPokeList", null))
+        // Between two screens and on the title: can't tell.
+        assertNull(scene("", null))
+        assertNull(scene("DllTitle\nDllBackGround\nDllSequence", null))
+        assertNull(scene("DllStartMenu", null))
+        assertEquals(3, s.size)
+    }
 }

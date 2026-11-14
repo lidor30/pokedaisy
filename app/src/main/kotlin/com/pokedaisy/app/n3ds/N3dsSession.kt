@@ -34,6 +34,10 @@ class N3dsSession(
     private val onEnded: (Int) -> Unit,
     /** The stage lays [touchView] out now; false = boot with the top surface alone (both screens on it). */
     private val wantsTouchSurface: () -> Boolean = { true },
+    /** The game's scene changed ([scene]), on the UI thread. */
+    private val onScene: (Gen6Reader.Scene) -> Unit = {},
+    /** The top screen in the field, about once a second (the backdrop of the game's own screens), on the UI thread. */
+    private val onFieldShot: (android.graphics.Bitmap) -> Unit = {},
 ) {
     val topView = SurfaceView(context)
     /** Over the top screen when it floats in (ONE SCREEN): drawn above the other surfaces. */
@@ -92,6 +96,7 @@ class N3dsSession(
         }, "pokedaisy-n3ds").also { it.start() }
         pump.start()
         sampler.start()
+        scenes.start()
     }
 
     fun setPaused(p: Boolean) {
@@ -210,6 +215,44 @@ class N3dsSession(
         Thread { val ok = N3dsNative.loadState(file.absolutePath); ui.post { done(ok) } }.start()
     }
 
+    // ---- the game's scene (what its touch screen shows) -----------------------------------------------------------
+
+    /** What the game's screens show now ([Gen6Reader.sceneOf]), read ten times a second; [onScene] hears a change. */
+    @Volatile var scene: Gen6Reader.Scene = Gen6Reader.Scene.FIELD
+        private set
+
+    private val scenes = Thread({
+        val config = Gen6Reader.configFor(titleId)
+        var lastModules: String? = null
+        // A change counts once two reads in a row agree: the field's flags pass through the menu's while it loads.
+        var seen: Gen6Reader.Scene? = null
+        var pass = 0
+        while (running && config != null && config.staticModule != 0) {
+            if (!paused) {
+                val modules = N3dsNative.modules(config.staticModule)
+                if (modules != null) {
+                    if (modules != lastModules) { Log.d(TAG, "modules: ${modules.replace('\n', ',')}"); lastModules = modules }
+                    val obj = if ("DllField" in modules) N3dsNative.readMemory(intArrayOf(config.fieldObject, 0x20)) else null
+                    val now = Gen6Reader.sceneOf(modules, obj)
+                    if (now != null && now != scene && now == seen) {
+                        scene = now
+                        Log.i(TAG, "scene: $now")
+                        ui.post { onScene(now) }
+                    }
+                    seen = now
+                }
+                if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) fieldShot()
+            }
+            try { Thread.sleep(SCENE_MS) } catch (_: InterruptedException) { break }
+        }
+    }, "pokedaisy-n3ds-scene")
+
+    private fun fieldShot() {
+        val px = N3dsNative.screenshot(FIELD_SHOT_W, FIELD_SHOT_H) ?: return
+        val bmp = runCatching { android.graphics.Bitmap.createBitmap(px, FIELD_SHOT_W, FIELD_SHOT_H, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull() ?: return
+        ui.post { onFieldShot(bmp) }
+    }
+
     // ---- the companion's snapshot -------------------------------------------------------------------------------
 
     private val sampler = Thread({
@@ -245,5 +288,10 @@ class N3dsSession(
         private const val ONE_SURFACE_LAYOUT = 0
         private const val STICK_DEAD = 0.12f
         private const val SAMPLE_MS = 1000L
+        private const val SCENE_MS = 100L
+        /** The field's picture every this many scene reads (a second), at the 3DS's own top-screen size. */
+        private const val FIELD_SHOT_EVERY = 10
+        private const val FIELD_SHOT_W = 400
+        private const val FIELD_SHOT_H = 240
     }
 }

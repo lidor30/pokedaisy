@@ -32,6 +32,8 @@
 #include "core/frontend/applets/default_applets.h"
 #include "core/frontend/emu_window.h"
 #include "core/frontend/framebuffer_layout.h"
+#include "core/hle/kernel/process.h"
+#include "core/memory.h"
 #include "core/frontend/input.h"
 #include "core/hle/service/service.h"
 #include "core/loader/loader.h"
@@ -164,9 +166,39 @@ bool initialized = false;
 struct ReadJob {
     std::vector<std::pair<u32, u32>> ranges; // address, length
     std::vector<u8> out;
+    // Non-zero: instead of ranges, the names of the modules (CROs) loaded after this static module (CRS), its header's
+    // "next" chain, joined by '\n' into [modules].
+    u32 moduleRoot = 0;
+    std::string modules;
     bool pending = false, ok = false;
 };
+
+// A module chain's names (see ReadJob::moduleRoot): each CRO header holds its name's address at +0x84 and the next
+// module's at +0x88 once loaded; the CRS's own "next" starts the list. At most 32, every read checked.
+std::string moduleNames(Core::System& system, Kernel::Process& process, u32 root) {
+    auto& mem = system.Memory();
+    const auto valid = [&](u32 a) { return mem.IsValidVirtualAddress(process, a); };
+    std::string out;
+    if (!valid(root + 0x8C) || mem.Read32(root + 0x80) != 0x304F5243) return out; // "CRO0"
+    u32 a = mem.Read32(root + 0x88);
+    for (int n = 0; n < 32 && a != 0 && valid(a + 0x8C); n++) {
+        const u32 name = mem.Read32(a + 0x84);
+        std::string nm;
+        for (u32 i = 0; i < 48 && valid(name + i); i++) {
+            const char c = static_cast<char>(mem.Read8(name + i));
+            if (c < 0x20 || c > 0x7E) break; // the end, or not a name
+
+            nm += c;
+        }
+        if (!out.empty()) out += '\n';
+        out += nm;
+        a = mem.Read32(a + 0x88);
+    }
+    return out;
+}
 ReadJob readJob;
+// One read job at a time: callers (the companion's sampler, the scene probe) queue here, not on readJob itself.
+std::mutex readCallers;
 
 void runReads(Core::System& system) {
     std::unique_lock lock(requestMutex);
@@ -174,6 +206,13 @@ void runReads(Core::System& system) {
     auto process = system.Kernel().GetCurrentProcess();
     readJob.ok = process != nullptr;
     readJob.out.clear();
+    readJob.modules.clear();
+    if (readJob.moduleRoot != 0) {
+        if (process) readJob.modules = moduleNames(system, *process, readJob.moduleRoot);
+        readJob.pending = false;
+        requestDone.notify_all();
+        return;
+    }
     for (const auto& [addr, len] : readJob.ranges) {
         const size_t at = readJob.out.size();
         readJob.out.resize(at + len);
@@ -436,9 +475,11 @@ JNIEXPORT jbyteArray JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_readMemory(J
     env->GetIntArrayRegion(jranges, 0, n, r.data());
     std::vector<u8> out;
     {
+        std::scoped_lock caller(readCallers);
         std::unique_lock lock(requestMutex);
         if (!Core::System::GetInstance().IsPoweredOn() || stopRun) return nullptr;
         readJob.ranges.clear();
+        readJob.moduleRoot = 0;
         for (jsize i = 0; i + 1 < n; i += 2)
             readJob.ranges.emplace_back(static_cast<u32>(r[i]), static_cast<u32>(std::clamp(r[i + 1], 0, 1 << 20)));
         readJob.pending = true;
@@ -514,4 +555,24 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_sc
     jintArray result = env->NewIntArray(static_cast<jsize>(out.size()));
     env->SetIntArrayRegion(result, 0, static_cast<jsize>(out.size()), out.data());
     return result;
+}
+
+// The names of the modules loaded after the static module whose header is at [root] (ReadJob::moduleRoot), one per
+// line; null without a game. Blocks for a frame at most: never the UI thread.
+extern "C" JNIEXPORT jstring JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_modules(JNIEnv* env, jclass, jint root) {
+    std::string out;
+    {
+        std::scoped_lock caller(readCallers);
+        std::unique_lock lock(requestMutex);
+        if (!Core::System::GetInstance().IsPoweredOn() || stopRun) return nullptr;
+        readJob.ranges.clear();
+        readJob.moduleRoot = static_cast<u32>(root);
+        readJob.pending = true;
+        pauseCv.notify_all();
+        requestDone.wait(lock, [] { return !readJob.pending || stopRun; });
+        readJob.moduleRoot = 0;
+        if (readJob.pending || !readJob.ok) return nullptr;
+        out.swap(readJob.modules);
+    }
+    return env->NewStringUTF(out.c_str());
 }
