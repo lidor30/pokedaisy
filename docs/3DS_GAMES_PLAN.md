@@ -141,6 +141,12 @@ are checked through this path, then goes.
   shape beside it and the floating touch window fits the area left (it was 82% of the screen's height, so wider than
   that area, half under the panel). Azahar takes one screenshot at a time: the thumbnail and the field picture now
   queue (`N3dsSession.screenshot`), a thumbnail once lost and was never written.
+- DS LAYOUT's other layouts (2026-11-15, the RP6, stepped with R2 on the field and in a battle): SIDE BY SIDE, LARGE +
+  SMALL, PICTURE IN PICTURE and STACKED place both screens right. LARGE + SMALL / PICTURE IN PICTURE put the touch
+  screen in the bottom-right corner, where the companion's edge tab sat (DS games move it into the HUD, which a 3DS game
+  hasn't got): the tab goes to the top right there (`SidePanel.tabRaised`, `dsCornerTaken`). The battle's corner buttons
+  are ONE SCREEN's alone (PICTURE IN PICTURE has the game's own touch screen in that corner, as DS games keep their strip
+  off there), following a layout changed mid-battle (`syncN3dsStage`).
 
 ## Icons: what's known (2026-11-14, not in the app yet)
 

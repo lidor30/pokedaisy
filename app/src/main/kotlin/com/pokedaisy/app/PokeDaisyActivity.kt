@@ -4470,9 +4470,10 @@ class PokeDaisyActivity : Activity() {
                 if (n3dsFloating.value) { n3dsFloating.value = false; n3ds?.releaseTouch() }
             }
         }
-        // A battle on ONE SCREEN: full size, with the app's strip for its commands (DsBattleMenu) where the touch
-        // screen would float.
-        n3dsBattle.value = scene == com.pokedaisy.app.n3ds.Gen6Reader.Scene.BATTLE && n3dsFloats
+        // A battle on ONE SCREEN: full size, with the app's buttons for its commands (DsBattleMenu) where the touch
+        // screen would float. Not in PICTURE IN PICTURE: the touch screen is in that corner already (as for a DS game).
+        n3dsBattle.value = scene == com.pokedaisy.app.n3ds.Gen6Reader.Scene.BATTLE && n3dsFloats &&
+            Prefs(this).dsLayout == com.pokedaisy.app.companion.DsLayout.ONE_SCREEN
         syncGameScreen()
     }
 
@@ -4541,9 +4542,12 @@ class PokeDaisyActivity : Activity() {
         dsFloats.value = false
         dsPip.value = false
         dsFill.value = false
-        dsCornerTaken.value = false
+        dsCornerTaken.value = on && (layout == com.pokedaisy.app.companion.DsLayout.LARGE_SMALL || layout == com.pokedaisy.app.companion.DsLayout.PICTURE_IN_PICTURE)
         if (::touchControls.isInitialized) touchControls.passMisses = on
         if (!on || layout != com.pokedaisy.app.companion.DsLayout.ONE_SCREEN) n3dsFloating.value = false
+        // The battle's buttons follow a layout changed mid-battle (DS LAYOUT's hotkey) too.
+        n3dsBattle.value = on && layout == com.pokedaisy.app.companion.DsLayout.ONE_SCREEN &&
+            n3ds?.scene == com.pokedaisy.app.n3ds.Gen6Reader.Scene.BATTLE
         n3dsDim.visibility = if (on && n3dsFloating.value) View.VISIBLE else View.GONE
         val hidden = on && layout == com.pokedaisy.app.companion.DsLayout.ONE_SCREEN && !n3dsFloating.value && !n3dsBothScreens
         dsTouchView.translationX = if (hidden) (stage.width.coerceAtLeast(resources.displayMetrics.widthPixels) * 2).toFloat() else 0f
@@ -4893,11 +4897,13 @@ class PokeDaisyActivity : Activity() {
             val panelClosed = ::sidePanel.isInitialized && (sidePanel.closed.value || sidePanel.enabled && sidePanel.windowMode)
             // Read here, so the tab steps aside when the DS battle menu comes up (a read in the SideEffect wouldn't redraw).
             val dsMenuMode = dsBattleMenu.mode
+            val cornerTaken = dsCornerTaken.value
             androidx.compose.runtime.SideEffect {
-                // A DS battle's menu sits in that corner too: the tab goes to the top right meanwhile (GitHub #595).
+                // A DS battle's menu sits in that corner too: the tab goes to the top right meanwhile (GitHub #595). So
+                // does a touch screen there (LARGE + SMALL, PICTURE IN PICTURE) with no HUD to take the tab (a 3DS game).
                 if (::sidePanel.isInitialized) {
                     sidePanel.tabInHud = shown && panelClosed || battlePicking.value
-                    sidePanel.tabRaised = dsMenuMode != 0
+                    sidePanel.tabRaised = dsMenuMode != 0 || cornerTaken
                 }
             }
             // BATTLE BUTTONS: one screen held sideways, a single battle the game's touch input can steer (its state read
