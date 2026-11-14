@@ -113,7 +113,7 @@ object RomRegionMap {
         // Rev 1 has its code elsewhere. Anything else is taken as rev 0's code - Unbound's French
         // translation left its revision byte at 0x9E - and the literal pools below must still
         // land on data of the right shape.
-        if (header.size < 0x11 || String(header, 0, 4, Charsets.US_ASCII) != "BPRE" || header[0x10].toInt() == 1) return null
+        if (header.size < 0x11 || asciiString(header, 0, 4) != "BPRE" || header[0x10].toInt() == 1) return null
 
         fun u16(b: ByteArray, i: Int) = (b[i].toInt() and 0xFF) or ((b[i + 1].toInt() and 0xFF) shl 8)
         fun ptr(at: Int): Int? {

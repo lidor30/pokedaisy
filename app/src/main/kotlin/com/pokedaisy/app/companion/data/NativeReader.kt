@@ -1,7 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
  * Rebuilds a Telemetry snapshot by polling a Gen 3 game's own RAM globals: how
@@ -317,7 +315,7 @@ const val RECHARGED_YELLOW_ITEMS = 409
  * 0x3D94 (FireRed's 0x3D68) - for code that runs before detection on the ROM file alone (the music
  * renderer, [RegionMapWatch]). */
 fun isRechargedYellowRom(head: ByteArray): Boolean = head.size >= GF_HEADER_SB1_SIZE + 4 &&
-    String(head, 0xAC, 3, Charsets.US_ASCII) == "BPR" && u32le(head, GF_HEADER_SB1_SIZE) == RECHARGED_YELLOW_SB1_SIZE
+    asciiString(head, 0xAC, 3) == "BPR" && u32le(head, GF_HEADER_SB1_SIZE) == RECHARGED_YELLOW_SB1_SIZE
 
 private const val GF_HEADER_SB1_SIZE = 0x18C // struct GFRomHeader.saveBlock1Size
 private const val RECHARGED_YELLOW_SB1_SIZE = 0x3D94L
@@ -355,10 +353,10 @@ internal fun saveBlock2(c: MemoryReader, cfg: NativeConfig): Long =
     if (cfg.staticSaveBlocks) cfg.saveBlock2Ptr else u32le(c.readCoreMemory(cfg.saveBlock2Ptr, 4), 0)
 
 internal fun u16le(b: ByteArray, off: Int) =
-    ByteBuffer.wrap(b, off, 2).order(ByteOrder.LITTLE_ENDIAN).short.toInt() and 0xFFFF
+    (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
 
 internal fun u32le(b: ByteArray, off: Int) =
-    (ByteBuffer.wrap(b, off, 4).order(ByteOrder.LITTLE_ENDIAN).int.toLong()) and 0xFFFFFFFFL
+    s32le(b, off).toLong() and 0xFFFFFFFFL
 
 private const val BAG_REFRESH_EVERY = 6
 

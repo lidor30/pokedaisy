@@ -1,8 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.zip.CRC32
 
 /** Whose sprite set a hero has: FireRed / LeafGreen's (same art in both), Emerald's, Ruby / Sapphire's (Emerald's
@@ -166,7 +164,7 @@ object PlayerLook {
      * empty tail. ~0.5 s for 16 MiB: off the UI thread. */
     fun scan(rom: ByteArray, extra: Collection<LookFingerprint> = emptyList()): Scan {
         val hits = Fingerprints.find(rom, LookBlob.entries + extra)
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         // The words pointing at a graphic: palette table entries ({ptr, tag}), picture tables ({ptr, size, tag}),
         // literal pools.
         val targets = LookBlob.entries.flatMap { hits[it].orEmpty() }.distinct().sorted()
@@ -324,10 +322,10 @@ object PlayerLook {
      */
     private fun monRecords(scan: Scan, me: LookChar, frameAt: IntArray, writes: MutableList<Pair<Int, ByteArray>>, tail: Int): Int? {
         val rom = scan.rom
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         fun u16(o: Int) = buf.getShort(o).toInt() and 0xFFFF
         fun u32(o: Int) = buf.getInt(o)
-        fun word(v: Int) = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(v).array()
+        fun word(v: Int) = le32(v)
         val sheets = LookPart.entries.filter { it.w > 0 && it != LookPart.BACK }
         val range = sheets.associateWith { p -> scan.hitsOf(me, p).firstOrNull()?.let { it until it + blob(me, p)!!.size } }
         val running = range[LookPart.EM_RUNNING] ?: range[LookPart.FR_SURF_RUN]
@@ -387,7 +385,7 @@ object PlayerLook {
      * fours: south, north, west, east; the first four stand), the first animation using a frame deciding. */
     private fun facings(rom: ByteArray, anims: Int, n: Int): Array<Pair<Int, Boolean>?> {
         val out = arrayOfNulls<Pair<Int, Boolean>>(n)
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         if (anims < 0 || anims + 4 > rom.size) return out
         for (k in 0 until 40) {
             val p = buf.getInt(anims + k * 4) - 0x08000000
@@ -438,7 +436,7 @@ object PlayerLook {
             if (at + stream.size > rom.size) return
             free = (at + stream.size + 3) and 3.inv()
             writes += at to stream
-            val ptr = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(0x08000000 + at).array()
+            val ptr = le32(0x08000000 + at)
             sites.forEach { writes += it.at to ptr }
         }
 
@@ -648,14 +646,14 @@ object PlayerLook {
 
     /** [data] as a GBA LZ77 stream with no back-references (8 literals after each zero flag byte), padded to 4 bytes. */
     internal fun lzLiteral(data: ByteArray): ByteArray {
-        val out = java.io.ByteArrayOutputStream()
-        out.write(0x10); out.write(data.size and 0xFF); out.write((data.size shr 8) and 0xFF); out.write((data.size shr 16) and 0xFF)
+        val out = okio.Buffer()
+        out.writeByte(0x10).writeByte(data.size and 0xFF).writeByte((data.size shr 8) and 0xFF).writeByte((data.size shr 16) and 0xFF)
         for (i in data.indices step 8) {
-            out.write(0)
+            out.writeByte(0)
             out.write(data, i, minOf(8, data.size - i))
         }
-        while (out.size() % 4 != 0) out.write(0)
-        return out.toByteArray()
+        while (out.size % 4 != 0L) out.writeByte(0)
+        return out.readByteArray()
     }
 
     private fun hex(b: ByteArray) = b.hex(upper = true)
@@ -762,7 +760,7 @@ object Fingerprints {
         val byHead = blobs.groupBy { it.head }
         val filter = LongArray(1 shl 10)
         blobs.forEach { filter[it.pre ushr 6] = filter[it.pre ushr 6] or (1L shl it.pre) }
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         val hits = HashMap<LookFingerprint, MutableList<Int>>()
         if (rom.size >= 16) {
             var a = buf.getLong(0) shl 8

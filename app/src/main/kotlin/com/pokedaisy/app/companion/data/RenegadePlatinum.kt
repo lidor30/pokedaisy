@@ -48,7 +48,7 @@ object RenegadePlatinum {
     /** Whether [read] (cart offset, length) is this build's cart. */
     fun matches(read: (Long, Int) -> ByteArray?): Boolean {
         val code = read(0x0C, 4)?.takeIf { it.size == 4 } ?: return false
-        if (String(code, Charsets.US_ASCII) != CODE) return false
+        if (asciiString(code) != CODE) return false
         if (read(0x1E, 1)?.firstOrNull()?.toInt() != REV) return false
         val w = read(SIG_OFFSET, 4)?.takeIf { it.size == 4 } ?: return false
         return u32le(w, 0) == SIG
