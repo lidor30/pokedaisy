@@ -182,6 +182,8 @@ class PokeDaisyActivity : Activity() {
     private var tmSites: List<com.pokedaisy.app.companion.data.ReusableTms.Site> = emptyList()
     /** INSTANT TEXT: the ROM's patch ([com.pokedaisy.app.companion.data.InstantText]; null = the row shows N/A). */
     private var textPatch: com.pokedaisy.app.companion.data.InstantText.Patch? = null
+    /** The POKéMON CENTER's specials in this ROM ([com.pokedaisy.app.companion.data.PokemonCenter]; null = none). */
+    @Volatile private var centerFound: com.pokedaisy.app.companion.data.PokemonCenter.Found? = null
     /** NO HMS NEEDED: the ROM's patch ([com.pokedaisy.app.companion.data.HmFree]; null = the row shows N/A). */
     private var hmPatch: com.pokedaisy.app.companion.data.HmFree.Patch? = null
 
@@ -757,6 +759,57 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.data.withdrawFromBox(fields, fns, box, slot, boxPersonality, busy, calls)
         }
 
+        override fun center(): com.pokedaisy.app.companion.CenterSupport? {
+            val c = centerFound ?: return null
+            val fns = fieldItemSupport()?.fns?.takeIf { it.pc != null && it.party != null } ?: return null
+            return com.pokedaisy.app.companion.CenterSupport(
+                heal = true, nickname = c.nickname != null, forget = c.forget != null,
+                relearn = c.relearn != null && tmFns() != null && fns.party != null,
+            )
+        }
+
+        private fun onCenter(
+            done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit, screen: Boolean = false,
+            work: (com.pokedaisy.app.companion.data.FieldItemFns, com.pokedaisy.app.companion.data.PokemonCenter.Found,
+                   com.pokedaisy.app.companion.data.GameCalls, Boolean) -> com.pokedaisy.app.companion.data.CenterResult,
+        ) {
+            val c = centerFound ?: return done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
+            val inBattle = telemetry.snapshot.value.inBattle
+            onGame(com.pokedaisy.app.companion.data.CenterResult.FAILED, { r ->
+                // A screen of the game's (naming, the Move Tutor's) is the game's to show: the window over it goes.
+                if (screen && r == com.pokedaisy.app.companion.data.CenterResult.OK) closeCompanionWindow()
+                done(if (inBattle && r == com.pokedaisy.app.companion.data.CenterResult.NOT_NOW) com.pokedaisy.app.companion.data.CenterResult.IN_BATTLE else r)
+            }) { s, calls, busy -> work(s.fns, c, calls, busy) }
+        }
+
+        override fun centerHeal(done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+            onCenter(done) { fns, c, calls, busy -> com.pokedaisy.app.companion.data.centerHeal(fns, c, busy, calls) }
+
+        override fun centerNickname(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+            onCenter(done, screen = true) { fns, c, calls, busy -> com.pokedaisy.app.companion.data.centerNickname(fns, c, slot, personality, busy, calls) }
+
+        override fun centerForget(slot: Int, personality: Long, moveIndex: Int, move: Int, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+            onCenter(done) { fns, c, calls, busy -> com.pokedaisy.app.companion.data.centerForget(fns, c, slot, personality, moveIndex, move, busy, calls) }
+
+        /** The Move Tutor's screen in two steps, like the TM screen's: the checks and the fade, then once it's black the screen. */
+        override fun centerRelearn(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) {
+            val tm = tmFns() ?: return done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
+            onCenter(done, screen = true) { fns, c, calls, busy ->
+                val r = com.pokedaisy.app.companion.data.centerRelearnStart(fns, c, tm, slot, personality, busy, calls)
+                if (r == com.pokedaisy.app.companion.data.CenterResult.OK) {
+                    engine.requestFieldItemJob(false, com.pokedaisy.app.companion.data.TM_FADE_FRAMES) { g, leftField ->
+                        val ok = com.pokedaisy.app.companion.data.centerRelearnFinish(fns, c, tm, slot, personality, g, leftField)
+                        Log.i("pokedaisy", "move relearner for slot $slot: ${when {
+                            ok -> "open"
+                            leftField -> "the game left the field during the fade, not taken"
+                            else -> "failed, field handed back"
+                        }}")
+                    }
+                }
+                r
+            }
+        }
+
         override fun canTradeEvolve() = Prefs(this@PokeDaisyActivity).tradeEvolutions && tradeEvoFns() != null
 
         override fun tradeEvolveTargets(done: (Map<Long, Int>) -> Unit) {
@@ -834,11 +887,13 @@ class PokeDaisyActivity : Activity() {
     private val quickActions = object : com.pokedaisy.app.companion.ui.QuickActions {
         override fun offered(action: com.pokedaisy.app.companion.QuickAction) = when (action) {
             com.pokedaisy.app.companion.QuickAction.PC -> itemUse.canPc()
+            com.pokedaisy.app.companion.QuickAction.HEAL -> itemUse.center()?.heal == true
             com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.canFly()
             com.pokedaisy.app.companion.QuickAction.FLIGHT -> flightSupport() != null
-            // Only while a party Pokémon knows it (the snapshot's moves): the tile isn't there otherwise.
+            // Only while a party Pokémon knows it (the snapshot's moves), or anyone with NO HMS NEEDED: the tile isn't there otherwise.
             com.pokedaisy.app.companion.QuickAction.FLASH -> flashFns() != null && fieldItemSupport()?.fns?.party != null &&
-                telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLASH_MOVE } }
+                (com.pokedaisy.app.companion.data.HmFree.active ||
+                    telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLASH_MOVE } })
             com.pokedaisy.app.companion.QuickAction.REPEL ->
                 dsRepelKnown() ||
                     fieldItemSupport()?.let { s -> s.fns.repelItems.any { s.canUse(it) } } == true
@@ -880,6 +935,10 @@ class PokeDaisyActivity : Activity() {
         when (action) {
             com.pokedaisy.app.companion.QuickAction.PC -> itemUse.openPc { o ->
                 if (o.result != com.pokedaisy.app.companion.data.ItemUseResult.USED) showHud(com.pokedaisy.app.companion.ui.itemUseMessage(o))
+            }
+            com.pokedaisy.app.companion.QuickAction.HEAL -> itemUse.centerHeal { r ->
+                showHud(if (r == com.pokedaisy.app.companion.data.CenterResult.OK) com.pokedaisy.app.companion.i18n.tr("Your POKéMON are fully healed.")
+                else com.pokedaisy.app.companion.ui.centerMessage(r, ""))
             }
             com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.targets { t ->
                 if (t.result == com.pokedaisy.app.companion.data.FlyResult.OK) quickMenu.fly = t
@@ -2615,6 +2674,7 @@ class PokeDaisyActivity : Activity() {
         if (::engine.isInitialized) engine.setInstantText(null, false)
         hmPatch = null
         syncHmFree(false)
+        centerFound = null
         shinyTarget = null
         if (::engine.isInitialized) engine.setShinyTarget(null)
         syncShinyAchievements()
@@ -2630,6 +2690,9 @@ class PokeDaisyActivity : Activity() {
             // NO HMS NEEDED: the field move check and Surf's, by their code (none = the row shows N/A).
             val hm = com.pokedaisy.app.companion.data.HmFree.find(r.toOkioPath())
             Log.i("pokedaisy", "no HMs needed: ${if (hm != null) "found" else "not found"}")
+            // POKéMON CENTER: the nurse's, the Move Tutor's, the Move Deleter's and the Name Rater's specials, by their code.
+            val center = com.pokedaisy.app.companion.data.PokemonCenter.find(r.toOkioPath())
+            Log.i("pokedaisy", "pokemon center: ${center?.let { "heal, nickname ${it.nickname != null}, forget ${it.forget != null}, relearn ${it.relearn != null}" } ?: "not found"}")
             runOnUiThread {
                 if (romData != r) return@runOnUiThread
                 wildFlag = flag
@@ -2640,6 +2703,7 @@ class PokeDaisyActivity : Activity() {
                 if (::engine.isInitialized) engine.setInstantText(text, Prefs(this).instantText)
                 hmPatch = hm
                 syncHmFree()
+                centerFound = center
             }
         }, "wild-encounters").start()
         Prefs(this).let { p ->
