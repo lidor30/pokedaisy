@@ -906,6 +906,12 @@ rule), and PartyHasMonWithSurf's `beq` becomes a `nop` (the A press on water). B
 Pokémon in gSentPokesToOpponent (nothing else reads it), the EXP divided by their count. SPLIT: the engine writes the party's non-egg slots there
 every frame (`ExpShare.mark`, mask from each sample; per frame because the battle's first turn resets it after the intro). FULL EXP: also the two
 `bl __divsi3` after `adds r1, r5` `nop`ed, a game-option patch with the others. Pauses RetroAchievements (`setExpShareActive`, like SHINY ODDS).
+**LEVEL CAP** (2026-11-14, GAMEPLAY on the companion, `Prefs.levelCap` OFF, NEW tag; `LevelCap.kt`): no Pokémon past the top level of
+the first boss NEXT BOSS has ahead (`LevelCap.next`: the guide's bosses and the ROM's trainer table, worked out on the activity's
+`level-cap` thread every 2 s at most). getexp's two `cmp r0, #100` (before the EXP message; before each one-level step of
+Task_GiveExpToMon, which hands the rest back) become `cmp r0, #cap` + `bcc` / `bcs`, a game-option patch re-applied as the cap moves.
+Both it and EXP SHARE take getexp from `ExpShare.getexp`, which wants its address in a command table the code loads: CFRU's hacks keep
+the old getexp but run their own (N/A there). N/A without a NEXT BOSS list (`LevelCap.hasBosses`). Doesn't pause achievements.
 **POKéMON CENTER anywhere** (2026-11-14; the summary's pink CENTER button + the QUICK MENU's HEAL, NEW tag `POKEMON_CENTER`; `PokemonCenter.kt`):
 HEAL THE PARTY / RELEARN A MOVE / FORGET A MOVE / NICKNAME, each the game's own special (HealPlayerParty, the Move Tutor's screen,
 MoveDeleterForgetMove, ChangePokemonNickname) on the summary's Pokémon (gSpecialVar_0x8004), run as a short script at 0x0203FFD8 like PC

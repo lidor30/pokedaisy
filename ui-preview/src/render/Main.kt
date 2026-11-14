@@ -251,6 +251,11 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val expShare get() = expShareMode
     override fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) { expShareMode = mode }
     override val expShareSupported get() = true
+    private var levelCapOn = false
+    override val levelCap get() = levelCapOn
+    override fun setLevelCap(on: Boolean) { levelCapOn = on }
+    override val levelCapSupported get() = true
+    override val levelCapLevel get() = 14
     private var shinyOddsValue = com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
     override val shinyOdds get() = shinyOddsValue
     override fun setShinyOdds(odds: Int) { shinyOddsValue = odds }
@@ -1982,6 +1987,10 @@ fun main(args: Array<String>) {
         // EXP SHARE's pick-list (OFF / SPLIT / FULL EXP, the note on what each does).
         Shot("$g-settings-exp-share", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("EXP SHARE")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // LEVEL CAP turned on: the row shows the cap now (the preview's LV 14).
+        Shot("$g-settings-level-cap", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("LEVEL CAP")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
         Shot("$g-settings-hm-free-on", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)

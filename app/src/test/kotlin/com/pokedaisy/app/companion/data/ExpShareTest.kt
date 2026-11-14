@@ -35,8 +35,10 @@ class ExpShareTest {
 
     @Test
     fun hacks() {
-        File(RETAIL_ROM_DIR + "Pokemon Radical Red (v4.1).gba").takeIf { it.isFile }?.let { assertNotNull(ExpShare.find(it.toOkioPath())) }
-        // Rewrote getexp's divisions / built with gcc: none.
+        // Glazed: retail Emerald's code edited in place.
+        File(RETAIL_ROM_DIR + "Pokemon Glazed (v9.2.0).gba").takeIf { it.isFile }?.let { assertNotNull(ExpShare.find(it.toOkioPath())) }
+        // CFRU keeps the old getexp but runs its own (ExpShare.getexp) / built with gcc: none.
+        File(RETAIL_ROM_DIR + "Pokemon Radical Red (v4.1).gba").takeIf { it.isFile }?.let { assertNull(ExpShare.find(it.toOkioPath())) }
         File(RETAIL_ROM_DIR + "Pokemon Unbound (v2.1.1.1).gba").takeIf { it.isFile }?.let { assertNull(ExpShare.find(it.toOkioPath())) }
         File(RETAIL_ROM_DIR + "Pokemon Lazarus (v2.0).gba").takeIf { it.isFile }?.let { assertNull(ExpShare.find(it.toOkioPath())) }
     }

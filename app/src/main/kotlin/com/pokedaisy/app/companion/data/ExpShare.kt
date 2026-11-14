@@ -20,7 +20,8 @@ import okio.Path
  * EXP anyway.
  *
  * Found by agbcc's build of Cmd_getexp ([find]): FireRed / LeafGreen / Emerald in every language and the hacks on that code.
- * Ruby / Sapphire build it another way, and hacks that rewrote it (Unbound, Odyssey, Let's Go) show N/A. Played headless on
+ * Ruby / Sapphire build it another way, and hacks that rewrote it (Odyssey, Gaia) or run their own (CFRU's: Radical Red,
+ * Unbound, Amethyst, ... - [getexp]) show N/A. Played headless on
  * FireRed rev 1 (a wild battle won three ways, every Pokémon's EXP read before and after).
  */
 object ExpShare {
@@ -62,13 +63,7 @@ object ExpShare {
     }
 
     fun find(rom: LittleEndianReader): Found? {
-        val hits = ArrayList<Int>()
-        var o = 0
-        while (o + GETEXP.size <= rom.limit()) {
-            if (rom.get(o) == 0xF0.toByte() && rom.get(o + 1) == 0xB5.toByte() && matches(rom, o, GETEXP)) hits += o
-            o += 4
-        }
-        val c = hits.singleOrNull() ?: return null
+        val c = getexp(rom) ?: return null
         if (c + BODY > rom.limit()) return null
         val sent = literal(rom, c + SENT_POKES_LDR)
         if (sent !in 0x02000000L..0x0203FFFFL) return null
@@ -88,6 +83,39 @@ object ExpShare {
         }
         return Found(sent, full)
     }
+
+    /**
+     * Where Cmd_getexp starts in [rom] (a ROM offset), only if the game runs it: its address is entry 0x23 (getexp) of a
+     * battle script command table the code loads. CFRU's hacks (Radical Red, Unbound, Amethyst, Sword and Shield, GS
+     * Chronicles) keep the old function but run their own from a new table, and the old table is no longer loaded by
+     * anything: null there. Scans the whole ROM twice (about 50 ms for 32 MB).
+     */
+    internal fun getexp(rom: LittleEndianReader): Int? {
+        val hits = ArrayList<Int>()
+        var o = 0
+        while (o + GETEXP.size <= rom.limit()) {
+            if (rom.get(o) == 0xF0.toByte() && rom.get(o + 1) == 0xB5.toByte() && matches(rom, o, GETEXP)) hits += o
+            o += 4
+        }
+        val c = hits.singleOrNull() ?: return null
+        val fn = (ROM_BASE + c + 1).toInt()
+        val tables = HashSet<Int>()
+        o = 0
+        while (o + 4 <= rom.limit()) {
+            if (rom.getInt(o) == fn && o >= CMD_GETEXP * 4) tables += (ROM_BASE + o - CMD_GETEXP * 4).toInt()
+            o += 4
+        }
+        if (tables.isEmpty()) return null
+        o = 0
+        while (o + 4 <= rom.limit()) {
+            if (rom.getInt(o) in tables) return c
+            o += 4
+        }
+        return null
+    }
+
+    /** getexp's command number (B_SCR_OP_GETEXP) in every Gen 3 game. */
+    private const val CMD_GETEXP = 0x23
 
     /**
      * SPLIT / FULL's every frame: both flanks' bits set to [mask] (the party's slots that aren't eggs) if they aren't already.

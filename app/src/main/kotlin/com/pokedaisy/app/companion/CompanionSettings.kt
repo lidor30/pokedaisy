@@ -87,6 +87,13 @@ interface CompanionSettings {
     val expShare: com.pokedaisy.app.companion.data.ExpShare.Mode get() = com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
     fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) {}
     val expShareSupported: Boolean get() = false
+    /** LEVEL CAP - see [com.pokedaisy.app.Prefs.levelCap]; [levelCapSupported]: the game's getexp is known
+     * ([com.pokedaisy.app.companion.data.LevelCap]); [levelCapLevel]: the cap now (null = none worked out yet, or no
+     * boss left). */
+    val levelCap: Boolean get() = false
+    fun setLevelCap(on: Boolean) {}
+    val levelCapSupported: Boolean get() = false
+    val levelCapLevel: Int? get() = null
     /** NO HMS NEEDED - see [com.pokedaisy.app.Prefs.hmFree]; [hmFreeSupported]: the ROM's field move check is known
      * ([com.pokedaisy.app.companion.data.HmFree]). */
     val hmFree: Boolean get() = false

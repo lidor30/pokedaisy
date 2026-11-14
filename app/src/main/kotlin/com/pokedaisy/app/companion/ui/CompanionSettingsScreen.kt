@@ -667,6 +667,20 @@ private fun homeRows(
                 )
             }
         },
+        // No Pokémon past the next boss's top level (LevelCap.kt: getexp's two level-100 checks patched to the cap); the
+        // value shows the cap now. Two values: a tap flips it.
+        SettingRow(
+            tk("LEVEL CAP"),
+            when {
+                !s.levelCapSupported -> tk("N/A")
+                !s.levelCap -> tk("OFF")
+                else -> s.levelCapLevel?.let { tr("LV {0}", it) } ?: tk("ON")
+            },
+            enabled = s.levelCapSupported, labelBadge = NewFeatures.badge(NewFeatures.LEVEL_CAP),
+            subtitle = "Stops at the next boss's top level",
+        ) {
+            if (s.levelCapSupported) { s.setLevelCap(!s.levelCap); changed() }
+        },
         // A Pokémon that evolves by trading evolves from its summary, through the game's own evolution (TradeEvolution.kt).
         SettingRow(
             tk("TRADE EVOS"), if (s.tradeEvolutionsSupported) onOff(s.tradeEvolutions) else tk("N/A"),

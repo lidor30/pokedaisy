@@ -195,6 +195,45 @@ class PokeDaisyActivity : Activity() {
         runCatching { com.pokedaisy.app.achievements.RetroAchievements.setExpShareActive(mode != com.pokedaisy.app.companion.data.ExpShare.Mode.OFF) }
     }
 
+    /** LEVEL CAP: getexp's level checks ([com.pokedaisy.app.companion.data.LevelCap]; null = the row shows N/A), the cap
+     * now (worked out from the save on [levelCapThread], at most every [LEVEL_CAP_EVERY_MS]) and whether it's on. */
+    @Volatile private var levelCapFound: com.pokedaisy.app.companion.data.LevelCap.Found? = null
+    @Volatile private var levelCapNow: com.pokedaisy.app.companion.data.LevelCap.Cap? = null
+    @Volatile private var levelCapOn = false
+    /** The running game has a NEXT BOSS list to follow (null = not known yet); without one the row shows N/A. */
+    @Volatile private var levelCapBosses: Boolean? = null
+    @Volatile private var levelCapAt = 0L
+    private val levelCapBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val levelCapThread by lazy { java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "level-cap") } }
+
+    /** LEVEL CAP on the engine: the cap now while it's on and known, else none. */
+    private fun syncLevelCap() {
+        levelCapOn = levelCapFound != null && levelCapBosses != false && Prefs(this).levelCap
+        if (::engine.isInitialized) engine.setLevelCap(levelCapFound, if (levelCapOn) levelCapNow?.level ?: 0 else 0)
+    }
+
+    /** A fresh sample: the cap worked out again off the emu thread (the first time reads the bosses' teams from the ROM). */
+    private fun updateLevelCap(snap: com.pokedaisy.app.companion.data.SnapshotView) {
+        if (levelCapFound == null) return
+        if (levelCapBosses == null) com.pokedaisy.app.companion.data.LevelCap.hasBosses(snap)?.let { levelCapBosses = it; syncLevelCap() }
+        if (!levelCapOn || !snap.connected || snap.progress == null) return
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - levelCapAt < LEVEL_CAP_EVERY_MS || !levelCapBusy.compareAndSet(false, true)) return
+        levelCapAt = now
+        levelCapThread.execute {
+            try {
+                val cap = runCatching { com.pokedaisy.app.companion.data.LevelCap.next(snap) }.getOrNull()
+                if (cap != levelCapNow) {
+                    levelCapNow = cap
+                    Log.i("pokedaisy", "level cap: ${cap?.let { "${it.level} (${it.boss})" } ?: "none"}")
+                    syncLevelCap()
+                }
+            } finally {
+                levelCapBusy.set(false)
+            }
+        }
+    }
+
     /** NO HMS NEEDED: the ROM's patch ([com.pokedaisy.app.companion.data.HmFree]; null = the row shows N/A). */
     private var hmPatch: com.pokedaisy.app.companion.data.HmFree.Patch? = null
 
@@ -1882,6 +1921,15 @@ class PokeDaisyActivity : Activity() {
             syncExpShare()
         }
         override val expShareSupported get() = expShareFound != null
+        override val levelCap get() = Prefs(this@PokeDaisyActivity).levelCap
+        override fun setLevelCap(on: Boolean) {
+            if (coopRefuses()) return
+            Prefs(this@PokeDaisyActivity).levelCap = on
+            levelCapAt = 0L
+            syncLevelCap()
+        }
+        override val levelCapSupported get() = levelCapFound != null && levelCapBosses != false
+        override val levelCapLevel get() = levelCapNow?.level
         override val dsResolution get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsResolution else null
         override val dsGpuAvailable get() = GlCaps.gles32(this@PokeDaisyActivity) && MgbaCore.pkNdsGpuSupported() != 0
         override val dsMelonDs get() = !dsperate
@@ -2695,6 +2743,11 @@ class PokeDaisyActivity : Activity() {
         centerFound = null
         expShareFound = null
         syncExpShare()
+        levelCapFound = null
+        levelCapNow = null
+        levelCapBosses = null
+        levelCapAt = 0L
+        syncLevelCap()
         shinyTarget = null
         if (::engine.isInitialized) engine.setShinyTarget(null)
         syncShinyAchievements()
@@ -2713,6 +2766,9 @@ class PokeDaisyActivity : Activity() {
             // POKéMON CENTER: the nurse's, the Move Tutor's, the Move Deleter's and the Name Rater's specials, by their code.
             val expShare = com.pokedaisy.app.companion.data.ExpShare.find(r.toOkioPath())
             Log.i("pokedaisy", "exp share: ${if (expShare != null) "found" else "not found"}")
+            // LEVEL CAP: the same getexp's two level checks.
+            val levelCap = com.pokedaisy.app.companion.data.LevelCap.find(r.toOkioPath())
+            Log.i("pokedaisy", "level cap: ${if (levelCap != null) "found" else "not found"}")
             val center = com.pokedaisy.app.companion.data.PokemonCenter.find(r.toOkioPath())
             Log.i("pokedaisy", "pokemon center: ${center?.let { "heal, nickname ${it.nickname != null}, forget ${it.forget != null}, relearn ${it.relearn != null}" } ?: "not found"}")
             runOnUiThread {
@@ -2728,6 +2784,8 @@ class PokeDaisyActivity : Activity() {
                 centerFound = center
                 expShareFound = expShare
                 syncExpShare()
+                levelCapFound = levelCap
+                syncLevelCap()
             }
         }, "wild-encounters").start()
         Prefs(this).let { p ->
@@ -2861,6 +2919,8 @@ class PokeDaisyActivity : Activity() {
                 }
                 // EXP SHARE: the party slots that aren't eggs, for getexp's bits (ExpShare.mark, every frame).
                 if (snap.connected && snap.party.isNotEmpty()) engine.expShareMask = com.pokedaisy.app.companion.data.ExpShare.maskOf(snap.party)
+                // LEVEL CAP: the next boss's top level, from the save's flags.
+                updateLevelCap(snap)
                 // SMART FF reads the game's own gMain once the game is known (no scan
                 // guesswork), and learns the field's main callback from the player moving.
                 telemetry.knownGMain()?.let { (addr, inBattleOff) -> FfMenuWatch.useKnownGMain(addr, inBattleOff) }
@@ -3064,6 +3124,7 @@ class PokeDaisyActivity : Activity() {
         e.setInstantText(textPatch, p.instantText)
         e.setHmFree(hmPatch, p.hmFree)
         e.setExpShare(expShareFound, if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(p.expShare) else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF)
+        e.setLevelCap(levelCapFound, if (levelCapFound != null && p.levelCap) levelCapNow?.level ?: 0 else 0)
         e.setShinyTarget(shinyTarget)
         e.shinyOdds = shinyOddsPref()
     }
@@ -5897,6 +5958,8 @@ class PokeDaisyActivity : Activity() {
          *  CONTINUE already change it two or three times (Too Many Types 2 fills it in on the title), so a couple of
          *  steps more. */
         private const val PLAY_POSITIONS = 5
+        /** LEVEL CAP: how often a sample may work the cap out again (a badge moves it). */
+        private const val LEVEL_CAP_EVERY_MS = 2000L
         /** How long a NUZLOCKE notice stays on the game screen: long enough to read in a battle's opening. */
         private const val NUZLOCKE_NOTICE_MS = 3500L
 

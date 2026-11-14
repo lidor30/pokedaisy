@@ -185,6 +185,19 @@ class EmulatorEngine(
         if (fullChanged) tmPatchDirty = true
     }
 
+    /** LEVEL CAP: getexp's two level checks ([com.pokedaisy.app.companion.data.LevelCap]; null = not known) and the cap
+     * (1..99; 0 = none: the game's own 100). A new cap is patched in on the next frame boundary, with the other options. */
+    @Volatile private var levelCapFound: com.pokedaisy.app.companion.data.LevelCap.Found? = null
+    @Volatile private var levelCapLevel = 0
+
+    fun setLevelCap(found: com.pokedaisy.app.companion.data.LevelCap.Found?, level: Int) {
+        val l = if (found != null && level in 1..99) level else 0
+        if (found === levelCapFound && l == levelCapLevel) return
+        levelCapFound = found
+        levelCapLevel = l
+        tmPatchDirty = true
+    }
+
     /** NO HMS NEEDED: the ROM's patch ([com.pokedaisy.app.companion.data.HmFree]; null = none known) and whether it's
      * in; with REUSABLE TMS's on the next frame boundary. */
     @Volatile private var hmPatch: com.pokedaisy.app.companion.data.HmFree.Patch? = null
@@ -2031,7 +2044,7 @@ class EmulatorEngine(
         runCatching { RetroAchievements.setCheatsActive(n > 0) }
     }
 
-    /** REUSABLE TMS, INSTANT TEXT and NO HMS NEEDED onto the ROM (emu thread): what's on patched, the rest the file's bytes. */
+    /** REUSABLE TMS, INSTANT TEXT, NO HMS NEEDED, FULL EXP and LEVEL CAP onto the ROM (emu thread): what's on patched, the rest the file's bytes. */
     private fun applyTmPatch() {
         tmPatchDirty = false
         MgbaCore.pkRomUnpatch()
@@ -2065,6 +2078,11 @@ class EmulatorEngine(
         val exp = expShareFound
         option("exp share full", expShareMode == com.pokedaisy.app.companion.data.ExpShare.Mode.FULL && exp != null) {
             exp!!.full.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
+        }
+        val cap = levelCapFound
+        val capLevel = levelCapLevel
+        option("level cap $capLevel", cap != null && capLevel in 1..99) {
+            com.pokedaisy.app.companion.data.LevelCap.writes(cap!!, capLevel).all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
         }
     }
 

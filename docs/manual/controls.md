@@ -3,12 +3,12 @@ title: Controls, hotkeys and touch
 summary: Remap the game's buttons, set up turbo, change or turn off the hotkeys, set up the touch controls or an external controller, and what the BACK button does.
 section: player
 order: 2
-keywords: [flash, dark cave, light up cave, remap, rebind, keybind, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors, hm, hms, hm slave, hidden machine, field moves, no hms, without hms, exp share, exp all, experience, share exp, party exp, grinding, level up faster]
+keywords: [flash, dark cave, light up cave, remap, rebind, keybind, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors, hm, hms, hm slave, hidden machine, field moves, no hms, without hms, exp share, exp all, experience, share exp, party exp, grinding, level up faster, level cap, max level, hard mode, overleveled]
 ---
 
 PokeDaisy works out of the box on handhelds like the AYN Thor: the face buttons, shoulders, START and SELECT are the GBA's, and a few button combinations do emulator things like saving a state. Everything here is about changing that: which button presses what, which shortcuts exist, and what happens when you plug in a controller or play by touch.
 
-The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `WILD ENCOUNTERS`, `SHINY ODDS`, `EXP SHARE` and `NO HMS NEEDED` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
+The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `WILD ENCOUNTERS`, `SHINY ODDS`, `EXP SHARE`, `LEVEL CAP` and `NO HMS NEEDED` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
 
 ## Game buttons
 
@@ -274,7 +274,17 @@ Eggs are left out. The game shows each Pokémon's EXP as it comes, level ups and
 
 While it's on, [achievements](achievements.md) are paused, since some sets reward reaching a level.
 
-It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work (Ruby and Sapphire, and hacks that changed how EXP is paid, like Unbound) the row shows `N/A`.
+It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work (Ruby and Sapphire, and hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
+
+## LEVEL CAP
+
+A level cap keeps your team from outgrowing the story, the way many hard-mode hacks do. Turn on `LEVEL CAP` in the companion's `GAMEPLAY` group and no Pokémon goes past the highest level on the next boss's team: the same boss the guide's [NEXT BOSS](guide.md#next-boss-the-next-gym-leader) page shows. The row says the cap now, like `LV 14`.
+
+A Pokémon at the cap gains nothing from a win until you beat that boss. One that reaches the cap during a win stops there, and the rest of that win's EXP is lost. Beat the boss and the cap moves up to the next one's top level by itself. Once every boss is beaten there's no cap.
+
+Only EXP from battles is capped: items that raise a level and the day care still work. Pair it with `EXP SHARE` to keep the whole team at the cap.
+
+It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work, or the game has no NEXT BOSS page to follow, the row shows `N/A`. Turning it off puts the game back as it was.
 
 ## NO HMS NEEDED
 
