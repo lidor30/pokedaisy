@@ -1042,7 +1042,8 @@ waiting on A left the player stuck. Watches expire after 300 frames; a 1200-fram
 **Faster picks (GitHub #33)**: FIGHT / BAG / RUN / a move used to walk blind - LEFT, UP, then RIGHT / DOWN, A, 20 frames
 after each direction (Unbound's move screen drops presses during its cursor fade): 46-90 frames a tap. Where the menus'
 cursors are known (`NativeConfig.actionCursor` / `moveCursor`: gActionSelectionCursor / gMoveSelectionCursor, a cell per
-battler; FireRed rev 1, retail / European Emerald; zeroed on JA Emerald and LeafGreen) a pick is a closed loop
+battler; FireRed rev 1, retail / European Emerald; zeroed on JA Emerald; retail English FireRed rev 0 / LeafGreen get them from
+`*_retail` configs, picked on a retail hash only) a pick is a closed loop
 (`drivePickLocked`): read the cursor, press only toward the cell (a dropped press is pressed again), A once there - the move
 already highlighted is one press. Since 2026-10-13 a pick **writes** the cell into the cursor (`BattleInputController.writer`, MgbaCore.pkWriteBytes,
 read back) and presses A once: the game reads the cursor on A and draws it from there the next time the menu opens (headless on

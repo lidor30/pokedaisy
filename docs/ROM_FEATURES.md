@@ -23,10 +23,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
 | Polished Crystal (GBC) | 3.2.0 - 3.2.3 (16 builds) | ◐ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
 | FireRed | USA/Europe rev 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
-| FireRed | USA/Europe rev 0 | ✅ | ✅ | — | — | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
+| FireRed | USA/Europe rev 0 | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | FireRed | ES | ✅ | ✅ | ◐ ² | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | FireRed | DE / FR / IT / JP | ✅ | ✅ | — | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
-| LeafGreen | USA/Europe rev 0 and 1 | ✅ | ✅ | — | — | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
+| LeafGreen | USA/Europe rev 0 and 1 | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | LeafGreen | ES / DE / FR / IT / JP | ✅ | ✅ | — | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | Emerald | USA/Europe | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | Emerald | ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
@@ -593,7 +593,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
 - **Battle buttons**: the BATTLE tab's FIGHT / BAG / POKéMON / RUN and the move buttons press the game's own menus
   (`BattleInputController`). Without them the battle panes are information only.
 - **One-press picks**: a FIGHT / move tap writes the menu's cursor and presses A once (GitHub #33). Without it a tap
-  walks the cursor blind, 46-90 frames a tap (the "taps take a while" report).
+  walks the cursor blind, 46-90 frames a tap (the "taps take a while" report). Retail English FireRed rev 0 and LeafGreen
+  rev 0 / 1 (2026-11-14): FireRed rev 1's cursors, checked headless on each retail cart, on configs of their own
+  (`firered_rev0_retail`, `leafgreen_rev*_retail`) the Poller picks on a retail hash only - the bases carry the hacks and
+  the language ports.
 - **POKéMON switch**: the battle POKéMON pane switches the tapped party slot in (the closed loop on gPartyMenu, or on
   a Game Boy game's own party menu).
 - **Field items**: ITEMS' USE (Repels, medicine, PP items) and GIVE / TAKE on a Pokémon (`FieldItems.kt`).
