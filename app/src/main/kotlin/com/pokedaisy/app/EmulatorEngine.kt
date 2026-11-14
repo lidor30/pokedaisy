@@ -171,6 +171,20 @@ class EmulatorEngine(
         tmPatchDirty = true
     }
 
+    /** EXP SHARE: the game's getexp ([com.pokedaisy.app.companion.data.ExpShare]; null = not known), the mode, and the party
+     * slots that aren't eggs ([expShareMask], kept up to date by the activity from each sample). */
+    @Volatile private var expShareFound: com.pokedaisy.app.companion.data.ExpShare.Found? = null
+    @Volatile private var expShareMode = com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
+    @Volatile var expShareMask = 0
+
+    fun setExpShare(found: com.pokedaisy.app.companion.data.ExpShare.Found?, mode: com.pokedaisy.app.companion.data.ExpShare.Mode) {
+        val fullChanged = (expShareMode == com.pokedaisy.app.companion.data.ExpShare.Mode.FULL) != (mode == com.pokedaisy.app.companion.data.ExpShare.Mode.FULL) ||
+            found !== expShareFound
+        expShareFound = found
+        expShareMode = mode
+        if (fullChanged) tmPatchDirty = true
+    }
+
     /** NO HMS NEEDED: the ROM's patch ([com.pokedaisy.app.companion.data.HmFree]; null = none known) and whether it's
      * in; with REUSABLE TMS's on the next frame boundary. */
     @Volatile private var hmPatch: com.pokedaisy.app.companion.data.HmFree.Patch? = null
@@ -1534,6 +1548,10 @@ class EmulatorEngine(
                         if (n > 0) Log.i("pokedaisy", "shiny odds: foe made shiny (1 in $shinyOdds)")
                     }.onFailure { Log.w("pokedaisy", "shiny odds failed", it) }
                 }
+                // EXP SHARE: every party Pokémon that isn't an egg counts as having fought (only getexp reads it).
+                if (gba && expShareMode != com.pokedaisy.app.companion.data.ExpShare.Mode.OFF && expShareMask != 0) expShareFound?.let { f ->
+                    runCatching { com.pokedaisy.app.companion.data.ExpShare.mark(f, expShareMask, InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes) }
+                }
                 if (fieldState and MgbaCore.FIELD_AVATAR != 0) fieldMovesKnown = true
                 val bike = MgbaCore.FIELD_AVATAR or MgbaCore.FIELD_BIKE
                 riding = (fieldState and bike) == bike
@@ -2043,6 +2061,10 @@ class EmulatorEngine(
         val hm = hmPatch
         option("no HMs needed", hmFree && hm != null) {
             hm!!.writes.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
+        }
+        val exp = expShareFound
+        option("exp share full", expShareMode == com.pokedaisy.app.companion.data.ExpShare.Mode.FULL && exp != null) {
+            exp!!.full.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
         }
     }
 

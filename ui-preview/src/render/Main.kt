@@ -247,6 +247,10 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val hmFree get() = hmFreeOn
     override fun setHmFree(on: Boolean) { hmFreeOn = on }
     override val hmFreeSupported get() = true
+    private var expShareMode = com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
+    override val expShare get() = expShareMode
+    override fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) { expShareMode = mode }
+    override val expShareSupported get() = true
     private var shinyOddsValue = com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
     override val shinyOdds get() = shinyOddsValue
     override fun setShinyOdds(odds: Int) { shinyOddsValue = odds }
@@ -1974,6 +1978,10 @@ fun main(args: Array<String>) {
         // NO HMS NEEDED under REUSABLE TMS (OFF), then flipped ON.
         Shot("$g-settings-hm-free", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo()
+        },
+        // EXP SHARE's pick-list (OFF / SPLIT / FULL EXP, the note on what each does).
+        Shot("$g-settings-exp-share", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("EXP SHARE")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
         Shot("$g-settings-hm-free-on", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)

@@ -82,6 +82,11 @@ interface CompanionSettings {
     val reusableTmsSupported: Boolean get() = false
     /** The game's own TMs never run out ([com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN]): the row says so. */
     val reusableTmsBuiltIn: Boolean get() = false
+    /** EXP SHARE - see [com.pokedaisy.app.Prefs.expShare]; [expShareSupported]: the game's getexp is known
+     * ([com.pokedaisy.app.companion.data.ExpShare]). */
+    val expShare: com.pokedaisy.app.companion.data.ExpShare.Mode get() = com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
+    fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) {}
+    val expShareSupported: Boolean get() = false
     /** NO HMS NEEDED - see [com.pokedaisy.app.Prefs.hmFree]; [hmFreeSupported]: the ROM's field move check is known
      * ([com.pokedaisy.app.companion.data.HmFree]). */
     val hmFree: Boolean get() = false

@@ -184,6 +184,17 @@ class PokeDaisyActivity : Activity() {
     private var textPatch: com.pokedaisy.app.companion.data.InstantText.Patch? = null
     /** The POKéMON CENTER's specials in this ROM ([com.pokedaisy.app.companion.data.PokemonCenter]; null = none). */
     @Volatile private var centerFound: com.pokedaisy.app.companion.data.PokemonCenter.Found? = null
+    /** EXP SHARE: the game's getexp ([com.pokedaisy.app.companion.data.ExpShare]; null = the row shows N/A). */
+    private var expShareFound: com.pokedaisy.app.companion.data.ExpShare.Found? = null
+
+    /** EXP SHARE on the engine, and RetroAchievements paused while it's on. */
+    private fun syncExpShare() {
+        val mode = if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(Prefs(this).expShare)
+        else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
+        if (::engine.isInitialized) engine.setExpShare(expShareFound, mode)
+        runCatching { com.pokedaisy.app.achievements.RetroAchievements.setExpShareActive(mode != com.pokedaisy.app.companion.data.ExpShare.Mode.OFF) }
+    }
+
     /** NO HMS NEEDED: the ROM's patch ([com.pokedaisy.app.companion.data.HmFree]; null = the row shows N/A). */
     private var hmPatch: com.pokedaisy.app.companion.data.HmFree.Patch? = null
 
@@ -1864,6 +1875,13 @@ class PokeDaisyActivity : Activity() {
             syncHmFree(on)
         }
         override val hmFreeSupported get() = hmPatch != null
+        override val expShare get() = com.pokedaisy.app.companion.data.ExpShare.Mode.of(Prefs(this@PokeDaisyActivity).expShare)
+        override fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) {
+            if (coopRefuses()) return
+            Prefs(this@PokeDaisyActivity).expShare = mode.id
+            syncExpShare()
+        }
+        override val expShareSupported get() = expShareFound != null
         override val dsResolution get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsResolution else null
         override val dsGpuAvailable get() = GlCaps.gles32(this@PokeDaisyActivity) && MgbaCore.pkNdsGpuSupported() != 0
         override val dsMelonDs get() = !dsperate
@@ -2675,6 +2693,8 @@ class PokeDaisyActivity : Activity() {
         hmPatch = null
         syncHmFree(false)
         centerFound = null
+        expShareFound = null
+        syncExpShare()
         shinyTarget = null
         if (::engine.isInitialized) engine.setShinyTarget(null)
         syncShinyAchievements()
@@ -2691,6 +2711,8 @@ class PokeDaisyActivity : Activity() {
             val hm = com.pokedaisy.app.companion.data.HmFree.find(r.toOkioPath())
             Log.i("pokedaisy", "no HMs needed: ${if (hm != null) "found" else "not found"}")
             // POKéMON CENTER: the nurse's, the Move Tutor's, the Move Deleter's and the Name Rater's specials, by their code.
+            val expShare = com.pokedaisy.app.companion.data.ExpShare.find(r.toOkioPath())
+            Log.i("pokedaisy", "exp share: ${if (expShare != null) "found" else "not found"}")
             val center = com.pokedaisy.app.companion.data.PokemonCenter.find(r.toOkioPath())
             Log.i("pokedaisy", "pokemon center: ${center?.let { "heal, nickname ${it.nickname != null}, forget ${it.forget != null}, relearn ${it.relearn != null}" } ?: "not found"}")
             runOnUiThread {
@@ -2704,6 +2726,8 @@ class PokeDaisyActivity : Activity() {
                 hmPatch = hm
                 syncHmFree()
                 centerFound = center
+                expShareFound = expShare
+                syncExpShare()
             }
         }, "wild-encounters").start()
         Prefs(this).let { p ->
@@ -2835,6 +2859,8 @@ class PokeDaisyActivity : Activity() {
                         nowPlaying()
                     }
                 }
+                // EXP SHARE: the party slots that aren't eggs, for getexp's bits (ExpShare.mark, every frame).
+                if (snap.connected && snap.party.isNotEmpty()) engine.expShareMask = com.pokedaisy.app.companion.data.ExpShare.maskOf(snap.party)
                 // SMART FF reads the game's own gMain once the game is known (no scan
                 // guesswork), and learns the field's main callback from the player moving.
                 telemetry.knownGMain()?.let { (addr, inBattleOff) -> FfMenuWatch.useKnownGMain(addr, inBattleOff) }
@@ -3037,6 +3063,7 @@ class PokeDaisyActivity : Activity() {
         e.setReusableTms(tmSites, p.reusableTms)
         e.setInstantText(textPatch, p.instantText)
         e.setHmFree(hmPatch, p.hmFree)
+        e.setExpShare(expShareFound, if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(p.expShare) else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF)
         e.setShinyTarget(shinyTarget)
         e.shinyOdds = shinyOddsPref()
     }
