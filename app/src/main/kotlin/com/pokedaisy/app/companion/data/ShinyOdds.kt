@@ -500,4 +500,132 @@ object ShinyOdds {
             const val GEN5_KEEP_BITS = (1L shl 16) or (1L shl 31)
         }
     }
+
+    /**
+     * Gold / Silver / Crystal ([GbRoller]): pret's pokegold / pokecrystal RAM, the same in every English release of each
+     * (their builds' .sym files agree; Crystal rev 0, rev 1 and Australia, Gold and Silver). wEnemyMon and its stats, the
+     * unmodified copy the battle keeps (wEnemyStats), wBaseDexNo with wBaseStats right after it and wBaseGender (GetBaseData's
+     * copy: LoadEnemyMon's of the foe, still there through the slide-in), and what says what kind of battle it is.
+     */
+    data class GbTarget(
+        val battleMode: Long, val battleType: Long, val linkMode: Long, val enemyMon: Long, val enemyStats: Long,
+        val baseDexNo: Long, val baseGender: Long,
+    ) : FoeTarget {
+        override fun roller(): FoeRoller = GbRoller(this)
+    }
+
+    val GB_CRYSTAL = GbTarget(
+        battleMode = wramx(1, 0xD22D), battleType = wramx(1, 0xD230), linkMode = 0xC2DCL, enemyMon = wramx(1, 0xD206),
+        enemyStats = 0xC6C1L, baseDexNo = wramx(1, 0xD236), baseGender = wramx(1, 0xD243),
+    )
+    val GB_GOLD_SILVER = GbTarget(
+        battleMode = wramx(1, 0xD116), battleType = wramx(1, 0xD119), linkMode = wramx(1, 0xD042), enemyMon = wramx(1, 0xD0EF),
+        enemyStats = 0xCB9FL, baseDexNo = wramx(1, 0xD120), baseGender = wramx(1, 0xD12D),
+    )
+
+    /** Gen 2's shiny Attack DVs (Defense, Speed and Special 10, the Attack DV one of these): 8 in 65536, as Gen 3's odds. */
+    val GEN2_SHINY_ATK = intArrayOf(2, 3, 6, 7, 10, 11, 14, 15)
+
+    fun gen2Shiny(atkDef: Int, spdSpc: Int): Boolean =
+        spdSpc == 0xAA && atkDef and 0x0F == 0x0A && (atkDef shr 4) in GEN2_SHINY_ATK
+
+    /** GetGender: female when (Attack DV << 4 | Speed DV) is at or under the species' ratio; null = genderless. */
+    fun gen2Female(atkDef: Int, spdSpc: Int, ratio: Int): Boolean? = when (ratio) {
+        0xFF -> null
+        0 -> false
+        0xFE -> true
+        else -> ((atkDef and 0xF0) or (spdSpc shr 4)) <= ratio
+    }
+
+    /** Shiny DVs (atkDef, spdSpc) of the same gender as [atkDef] / [spdSpc]'s, picked at random; null if there are none (a
+     * female of a species mostly male: Gen 2's shiny female starters can't be). */
+    fun gen2ShinyDvs(atkDef: Int, spdSpc: Int, ratio: Int, random: Random): Pair<Int, Int>? {
+        val female = gen2Female(atkDef, spdSpc, ratio)
+        val atks = GEN2_SHINY_ATK.filter { gen2Female((it shl 4) or 0x0A, 0xAA, ratio) == female }
+        if (atks.isEmpty()) return null
+        return ((atks[random.nextInt(atks.size)] shl 4) or 0x0A) to 0xAA
+    }
+
+    /** CalcMonStats with no stat experience (a wild one's): HP, Attack, Defense, Speed, Sp. Atk, Sp. Def from the base
+     * stats in that order (BaseData's) and the DVs - HP's DV from the others' low bits. */
+    fun gen2Stats(base: IntArray, atkDef: Int, spdSpc: Int, level: Int): IntArray {
+        val atk = atkDef shr 4; val def = atkDef and 0xF; val spd = spdSpc shr 4; val spc = spdSpc and 0xF
+        val hp = ((atk and 1) shl 3) or ((def and 1) shl 2) or ((spd and 1) shl 1) or (spc and 1)
+        val dvs = intArrayOf(hp, atk, def, spd, spc, spc)
+        return IntArray(6) { i ->
+            val v = (base[i] + dvs[i]) * 2 * level / 100 + if (i == 0) level + 10 else 5
+            v.coerceAtMost(999)
+        }
+    }
+
+    /**
+     * Gen 2's battle types a foe is made shiny in (pret's BATTLETYPE_*): NORMAL, FISH, CONTEST, TREE, TRAP, FORCEITEM and
+     * Crystal's CELEBI / SUICUNE - not CANLOSE (the rival), DEBUG, TUTORIAL (the catching lesson), ROAMING (the beasts keep
+     * their DVs in a struct of their own, so the next meeting would be plain again) or FORCESHINY (already shiny).
+     */
+    private val GEN2_WILD_TYPES = setOf(0, 4, 6, 8, 9, 10, 11, 12)
+    private const val UNOWN_GEN2 = 201
+
+    /**
+     * A Game Boy game's wild foe: LoadEnemyMon makes it after the battle transition, all in one go (DVs, stats, the copy in
+     * wEnemyStats), and the battle only reads its DVs for the shiny sparkle and its colours once InitBattleDisplay's
+     * slide-in is over, dozens of frames later. In that window a new foe that isn't shiny is given shiny DVs of the same
+     * gender, its stats worked out again from them (HP full, as the game leaves a wild one), in wEnemyMon and wEnemyStats.
+     * Gen 2 has no OT check for shininess: the DVs alone decide, and a caught one keeps them. Not UNOWN (its letter comes
+     * from the DVs). The foe is decided on once its record reads the same two frames running, and only while wBaseDexNo
+     * still holds its species' base data.
+     */
+    class GbRoller(private val target: GbTarget, private val random: Random = Random()) : FoeRoller {
+        private var decided = false
+        private var settling: ByteArray? = null
+
+        override fun tick(odds: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean): Int {
+            val mode = read(target.battleMode, 1)[0].toInt() and 0xFF
+            if (mode != 1) { decided = false; settling = null; return 0 }   // no battle, or a trainer's
+            if (decided) return 0
+            val mon = read(target.enemyMon, MON_BYTES)
+            if (!mon.contentEquals(settling)) { settling = mon; return 0 }
+            decided = true
+            settling = null
+            val chance = rerollChance(odds)
+            if (chance <= 0.0) return 0
+            if (read(target.linkMode, 1)[0].toInt() != 0) return 0
+            if ((read(target.battleType, 1)[0].toInt() and 0xFF) !in GEN2_WILD_TYPES) return 0
+            val species = mon[0].toInt() and 0xFF
+            val level = mon[LEVEL].toInt() and 0xFF
+            val atkDef = mon[DVS].toInt() and 0xFF
+            val spdSpc = mon[DVS + 1].toInt() and 0xFF
+            if (species == 0 || species == UNOWN_GEN2 || level == 0 || gen2Shiny(atkDef, spdSpc)) return 0
+            val baseData = read(target.baseDexNo, 7)
+            if (baseData[0].toInt() and 0xFF != species) return 0
+            val base = IntArray(6) { baseData[it + 1].toInt() and 0xFF }
+            // The game's own stats must be what these base stats and DVs give: else this isn't the foe it seems.
+            val old = gen2Stats(base, atkDef, spdSpc, level)
+            if (!(0 until 6).all { be16(mon, MAX_HP + it * 2) == old[it] }) return 0
+            if (random.nextDouble() >= chance) return 0
+            val ratio = read(target.baseGender, 1)[0].toInt() and 0xFF
+            val (a, s) = gen2ShinyDvs(atkDef, spdSpc, ratio, random) ?: return 0
+            val stats = gen2Stats(base, a, s, level)
+            val block = ByteArray(STATS_END - DVS)
+            block[0] = a.toByte(); block[1] = s.toByte()
+            for (i in 2 until HP - DVS) block[i] = mon[DVS + i]          // PP, happiness, level, status
+            putBe16(block, HP - DVS, stats[0])                          // full HP, as the game left it
+            for (i in 0 until 6) putBe16(block, MAX_HP - DVS + i * 2, stats[i])
+            val copy = ByteArray(10).also { for (i in 0 until 5) putBe16(it, i * 2, stats[i + 1]) }
+            return if (write(target.enemyMon + DVS, block) && write(target.enemyStats, copy)) 1 else 0
+        }
+
+        private companion object {
+            // battle_struct: species, item, 4 moves, DVs (2), PP (4), happiness, level, status (2), HP, max HP, 5 stats.
+            const val DVS = 6
+            const val LEVEL = 13
+            const val HP = 16
+            const val MAX_HP = 18
+            const val STATS_END = 30
+            const val MON_BYTES = 32
+
+            fun be16(b: ByteArray, off: Int) = ((b[off].toInt() and 0xFF) shl 8) or (b[off + 1].toInt() and 0xFF)
+            fun putBe16(b: ByteArray, off: Int, v: Int) { b[off] = (v shr 8).toByte(); b[off + 1] = v.toByte() }
+        }
+    }
 }

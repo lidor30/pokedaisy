@@ -872,9 +872,19 @@ class TelemetrySampler {
      * never a hack on retail's RAM - CFRU's plaintext boxes would be scrambled by a re-encryption. */
     val knownShinyTarget: ShinyOdds.FoeTarget?
         get() = if (kind.isDsGame) dsShinyTarget
+            else if (kind.isGen2) gbShinyTarget
             else (nativeCfg ?: unboundCfg.takeIf { kind == GameKind.UNBOUND })?.takeIf { it.shinyBelow > 0 && beMatch == null }
                 ?.let { ShinyOdds.targetFor(it, fireRedFamily = fireRedEngine, plaintext = romSha1 in ShinyOdds.PLAINTEXT_SHA1S,
                     national = romSha1 in ShinyOdds.NATIONAL_SHA1S) }
+
+    /** Gold / Silver / Crystal's SHINY ODDS ([ShinyOdds.GbRoller]): the English carts, by the config their hash picked (the
+     * German ones and the hacks keep RAM of their own). */
+    private val gbShinyTarget: ShinyOdds.GbTarget?
+        get() = when (gen2Cfg) {
+            GEN2_CRYSTAL -> ShinyOdds.GB_CRYSTAL
+            GEN2_GOLD, GEN2_SILVER -> ShinyOdds.GB_GOLD_SILVER
+            else -> null
+        }
 
     /** A DS cart's SHINY ODDS: one it was checked on ([ShinyOdds.DS_VERIFIED]), the retail engine only (not Origin HeartGold's,
      * nor Renegade Platinum / the Redux builds, whose shiny rules are their own). */

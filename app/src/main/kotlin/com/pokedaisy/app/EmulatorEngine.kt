@@ -1464,8 +1464,9 @@ class EmulatorEngine(
                     else -> 0
                 }
                 // SHINY ODDS: a new wild foe, between the frame it's made and the battle drawing it (a DS game's: between
-                // the battle being handed its setup and copying the parties).
-                if ((gba || nds) && shinyOdds < com.pokedaisy.app.companion.data.ShinyOdds.NORMAL) shinyRoller?.let { r ->
+                // the battle being handed its setup and copying the parties; a Game Boy game's: between LoadEnemyMon and the
+                // battle's colours). The roller is null where it isn't checked.
+                if (shinyOdds < com.pokedaisy.app.companion.data.ShinyOdds.NORMAL) shinyRoller?.let { r ->
                     runCatching {
                         val n = r.tick(shinyOdds, InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes)
                         if (n > 0) Log.i("pokedaisy", "shiny odds: foe made shiny (1 in $shinyOdds)")
