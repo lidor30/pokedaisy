@@ -1605,8 +1605,8 @@ class LibraryActivity : ComponentActivity() {
             launcher.menu = null
             prefs.lastRomPath = rom.absolutePath
             prefs.pushRecentRom(rom.absolutePath)
-            startActivity(Intent(this, com.pokedaisy.app.n3ds.N3dsActivity::class.java)
-                .putExtra(com.pokedaisy.app.n3ds.N3dsActivity.EXTRA_ROM, rom.absolutePath))
+            // By name: the library is also built into ui-preview, which has none of the 3DS screen's Android views.
+            startActivity(Intent().setClassName(packageName, "com.pokedaisy.app.n3ds.N3dsActivity").putExtra("rom", rom.absolutePath))
             return
         }
         // A ROM whose CRC isn't known (or an archive) is read / unpacked first, off the UI thread: the game's window did

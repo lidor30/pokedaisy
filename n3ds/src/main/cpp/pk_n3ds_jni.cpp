@@ -158,6 +158,29 @@ bool requestPending = false;
 
 bool initialized = false;
 
+// Reads of the game's memory, also between two RunLoop calls (the companion's sample: a consistent copy).
+struct ReadJob {
+    std::vector<std::pair<u32, u32>> ranges; // address, length
+    std::vector<u8> out;
+    bool pending = false, ok = false;
+};
+ReadJob readJob;
+
+void runReads(Core::System& system) {
+    std::unique_lock lock(requestMutex);
+    if (!readJob.pending) return;
+    auto process = system.Kernel().GetCurrentProcess();
+    readJob.ok = process != nullptr;
+    readJob.out.clear();
+    for (const auto& [addr, len] : readJob.ranges) {
+        const size_t at = readJob.out.size();
+        readJob.out.resize(at + len);
+        if (process) system.Memory().ReadBlock(*process, addr, readJob.out.data() + at, len);
+    }
+    readJob.pending = false;
+    requestDone.notify_all();
+}
+
 void runRequests(Core::System& system) {
     std::unique_lock lock(requestMutex);
     if (!requestPending) return;
@@ -305,12 +328,13 @@ JNIEXPORT jint JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_run(JNIEnv* env, j
     auto lastPerf = std::chrono::steady_clock::now();
     while (!stopRun) {
         runRequests(system);
+        runReads(system);
         if (paused) {
             std::unique_lock lock(pauseMutex);
             // Polled as well: a request's notify can come between this check and the wait.
             pauseCv.wait_for(lock, std::chrono::milliseconds(50), [] {
                 std::scoped_lock r(requestMutex);
-                return !paused || stopRun || requestPending;
+                return !paused || stopRun || requestPending || readJob.pending;
             });
             continue;
         }
@@ -334,6 +358,7 @@ JNIEXPORT jint JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_run(JNIEnv* env, j
     {
         std::scoped_lock lock(requestMutex);
         requestPending = false;
+        readJob.pending = false;
         requestDone.notify_all();
     }
     system.Shutdown();
@@ -391,6 +416,30 @@ JNIEXPORT jboolean JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_loadState(JNIE
 // on the next boot.
 JNIEXPORT void JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_setResolution(JNIEnv*, jclass, jint factor) {
     Settings::values.resolution_factor = static_cast<u32>(std::clamp(factor, 0, 10));
+}
+
+// The game's memory: ranges as (address, length) pairs, copied one after another between two frames; null without a game.
+// Blocks until the game thread has done it (a frame at most), so never from the UI thread.
+JNIEXPORT jbyteArray JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_readMemory(JNIEnv* env, jclass, jintArray jranges) {
+    const jsize n = env->GetArrayLength(jranges);
+    std::vector<jint> r(n);
+    env->GetIntArrayRegion(jranges, 0, n, r.data());
+    std::vector<u8> out;
+    {
+        std::unique_lock lock(requestMutex);
+        if (!Core::System::GetInstance().IsPoweredOn() || stopRun) return nullptr;
+        readJob.ranges.clear();
+        for (jsize i = 0; i + 1 < n; i += 2)
+            readJob.ranges.emplace_back(static_cast<u32>(r[i]), static_cast<u32>(std::clamp(r[i + 1], 0, 1 << 20)));
+        readJob.pending = true;
+        pauseCv.notify_all();
+        requestDone.wait(lock, [] { return !readJob.pending || stopRun; });
+        if (readJob.pending || !readJob.ok) return nullptr;
+        out.swap(readJob.out);
+    }
+    jbyteArray result = env->NewByteArray(static_cast<jsize>(out.size()));
+    env->SetByteArrayRegion(result, 0, static_cast<jsize>(out.size()), reinterpret_cast<const jbyte*>(out.data()));
+    return result;
 }
 
 // Speed in percent of real time; 0 = as fast as it goes.

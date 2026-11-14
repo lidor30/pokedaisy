@@ -22,6 +22,9 @@ import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import java.io.File
 import kotlin.math.abs
 
@@ -31,7 +34,8 @@ import kotlin.math.abs
  * ONE SCREEN (and PICTURE IN PICTURE, for now) the top screen alone with the touch screen floating in on L2 / TOUCH, the
  * others Azahar's own layouts of both screens.
  * Buttons and the left stick from a controller, touches on either surface. Not the game stage the GBA / DS games use yet:
- * no companion, HUD or settings; test keys: L3 saves a state, R3 loads it, R2 held runs fast.
+ * a first companion (PARTY / BAG, BACK swaps it in and out, a held BACK leaves), no HUD or settings; test keys: L3 saves a
+ * state, R3 loads it, R2 held runs fast.
  */
 class N3dsActivity : Activity() {
     companion object {
@@ -59,6 +63,15 @@ class N3dsActivity : Activity() {
     private var touchButton: TextView? = null
     private var floating = false
 
+    // The companion (PARTY / BAG, N3dsCompanion): over the touch screen on a second display, else a window over the game.
+    private var titleId = 0L
+    private var companionView: androidx.compose.ui.platform.ComposeView? = null
+    private var companionShown = false
+    private val party = androidx.compose.runtime.mutableStateOf(emptyList<com.pokedaisy.app.companion.data.MonView>())
+    private val bag = androidx.compose.runtime.mutableStateOf(emptyList<com.pokedaisy.app.companion.data.ItemView>())
+    private val itemNames = androidx.compose.runtime.mutableStateOf(emptyList<String>())
+    @Volatile private var sampling = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -81,6 +94,7 @@ class N3dsActivity : Activity() {
         if (!N3dsNative.available) return showNotice("3DS games aren't in this build.")
         val header = N3dsCart.header(rom) ?: return showNotice("This isn't a 3DS cart image.")
         if (!header.decrypted) return showNotice("This cart is encrypted. PokeDaisy plays decrypted 3DS carts only.")
+        titleId = header.titleId
         when (val ready = N3dsSaves.prepare(this, header.titleId)) {
             is N3dsSaves.Ready.Refused -> return showNotice(ready.reason)
             N3dsSaves.Ready.Ok -> Unit
@@ -90,6 +104,65 @@ class N3dsActivity : Activity() {
         main.setOnTouchListener { _, e -> touch(0, e); true }
         val second = secondDisplay()
         if (second != null) showOnSecond(second) else if (layout.floats) floatingTouchWindow()
+        if (second == null) companionWindow()
+    }
+
+    private fun companionCompose(context: Context) = androidx.compose.ui.platform.ComposeView(context).apply {
+        setContent {
+            com.pokedaisy.app.companion.ui.N3dsCompanion(party.value, bag.value, { id -> itemNames.value.getOrNull(id) })
+        }
+        visibility = View.GONE
+    }
+
+    private fun hostCompose(root: View) {
+        val owner = com.pokedaisy.app.ComposeHostOwner().apply { create(); resume() }
+        root.setViewTreeLifecycleOwner(owner)
+        root.setViewTreeSavedStateRegistryOwner(owner)
+        root.setViewTreeViewModelStoreOwner(owner)
+    }
+
+    /** One display: the companion as a window over the game, the Thor's bottom screen's shape at 88% of the height. */
+    private fun companionWindow() {
+        hostCompose(root)
+        val view = companionCompose(this)
+        root.addView(view, FrameLayout.LayoutParams(1, 1, Gravity.CENTER))
+        root.addOnLayoutChangeListener { _, l, t, r, b, _, _, _, _ ->
+            val h = ((b - t) * 0.88f).toInt()
+            val w = minOf(h * 1240 / 1080, ((r - l) * 0.95f).toInt())
+            (view.layoutParams as FrameLayout.LayoutParams).let { lp ->
+                if (lp.width != w || lp.height != h) { lp.width = w; lp.height = h; view.layoutParams = lp }
+            }
+        }
+        companionView = view
+    }
+
+    /** BACK: the companion in and out (a hold leaves the game, see onKeyLongPress). */
+    private fun toggleCompanion() {
+        val view = companionView ?: return
+        companionShown = !companionShown
+        view.visibility = if (companionShown) View.VISIBLE else View.GONE
+        if (companionShown) startSampling() else sampling = false
+    }
+
+    // The game's party and bag once a second while the companion shows, read between two frames off the UI thread.
+    private fun startSampling() {
+        if (sampling || gameThread == null) return
+        val config = Gen6Reader.configFor(titleId) ?: return
+        sampling = true
+        Thread({
+            var text: Gen6Text? = null
+            while (sampling && !isFinishing) {
+                val bytes = N3dsNative.readMemory(Gen6Reader.ranges(config))
+                val sample = bytes?.let { Gen6Reader.read(config, it) }
+                if (sample != null) {
+                    if (text == null) text = Gen6Text.load(rom, sample.language)?.also { t -> val names = t.items; ui.post { itemNames.value = names } }
+                    val p = N3dsCompanionData.party(sample, text)
+                    val b = N3dsCompanionData.bag(sample, text)
+                    ui.post { party.value = p; bag.value = b }
+                }
+                Thread.sleep(1000)
+            }
+        }, "pokedaisy-n3ds-sample").start()
     }
 
     private lateinit var root: FrameLayout
@@ -165,7 +238,13 @@ class N3dsActivity : Activity() {
                 val view = SurfaceView(context)
                 view.holder.addCallback(surfaceCallback(1) { secondReady = it })
                 view.setOnTouchListener { _, e -> touch(1, e); true }
-                setContentView(view)
+                val box = FrameLayout(context)
+                box.addView(view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+                val companion = companionCompose(context)
+                box.addView(companion, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+                hostCompose(box)
+                companionView = companion
+                setContentView(box)
                 window?.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
             }
         }
@@ -215,6 +294,7 @@ class N3dsActivity : Activity() {
     }
 
     override fun onDestroy() {
+        sampling = false
         if (N3dsNative.available && gameThread != null) {
             N3dsNative.stop()
             runCatching { gameThread?.join(5000) }
@@ -247,7 +327,13 @@ class N3dsActivity : Activity() {
         if (!N3dsNative.available || gameThread == null) return super.dispatchKeyEvent(event)
         val down = event.action == KeyEvent.ACTION_DOWN
         when (event.keyCode) {
-            KeyEvent.KEYCODE_BACK -> return super.dispatchKeyEvent(event)
+            KeyEvent.KEYCODE_BACK -> {
+                // A tap swaps the companion in / out, a hold (half a second) leaves the game.
+                if (down && event.repeatCount == 0) { backDownAt = event.eventTime; backLeft = false }
+                else if (down && !backLeft && event.eventTime - backDownAt > 500) { backLeft = true; finish() }
+                else if (!down && !backLeft) toggleCompanion()
+                return true
+            }
             KeyEvent.KEYCODE_BUTTON_THUMBL -> { if (down && event.repeatCount == 0) state(save = true); return true }
             KeyEvent.KEYCODE_BUTTON_THUMBR -> { if (down && event.repeatCount == 0) state(save = false); return true }
             KeyEvent.KEYCODE_BUTTON_R2 -> { fastForward(down); return true }
@@ -288,6 +374,8 @@ class N3dsActivity : Activity() {
     }
 
     private var lTriggerHeld = false
+    private var backDownAt = 0L
+    private var backLeft = false
 
     private fun fastForward(on: Boolean) {
         if (on == ffHeld) return

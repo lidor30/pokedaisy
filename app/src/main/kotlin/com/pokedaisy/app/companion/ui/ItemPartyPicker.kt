@@ -98,9 +98,12 @@ internal fun HeldItemTag(itemId: Int, modifier: Modifier = Modifier) {
             .drawBehind { drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
             .padding(horizontal = u * 5, vertical = u * 2),
     ) {
-        ItemIcon(spriteAsset("items", itemId), size = m.lineHeight)
-        Spacer(Modifier.padding(start = u * 3))
-        GbaText(bagItemName(itemId), OptionColors.label, OptionColors.labelShadow, m)
+        val ownNames = LocalItemNames.current
+        if (ownNames == null) {
+            ItemIcon(spriteAsset("items", itemId), size = m.lineHeight)
+            Spacer(Modifier.padding(start = u * 3))
+        }
+        GbaText(ownNames?.invoke(itemId) ?: bagItemName(itemId), OptionColors.label, OptionColors.labelShadow, m)
     }
 }
 

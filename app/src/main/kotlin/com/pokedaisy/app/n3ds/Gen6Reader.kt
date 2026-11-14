@@ -1,0 +1,180 @@
+package com.pokedaisy.app.n3ds
+
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+
+/**
+ * Pokemon X / Y's party and bag, read from the game's memory (docs/3DS_GAMES_PLAN.md, found headless with n3ds_dump on
+ * the player's save and checked on two boots). Addresses are the game process's.
+ *
+ * - The live party: six slots of [Config.partyStride] bytes. Each starts with a Gen 6 Pokemon's 0xE8 bytes (PK6:
+ *   encrypted by an LCRNG seeded with its encryption constant, its four 0x38-byte blocks shuffled by that constant), and
+ *   its 0x1C bytes of party stats (status, level, HP, stats) sit at [Config.partyStatsAt], encrypted by the same cipher
+ *   started again.
+ * - The bag: the save's pockets as the game keeps them (u16 item, u16 count), from [Config.bag].
+ * - MyStatus (the trainer): its language at +0x2D (1 Japanese, 2 English, 3 French, 4 Italian, 5 German, 7 Spanish,
+ *   8 Korean), which picks the text the names come from.
+ */
+object Gen6Reader {
+    class Config(
+        val party: Int,
+        val partyStride: Int,
+        val partyStatsAt: Int,
+        val myStatus: Int,
+        val bag: Int,
+        /** Each pocket: its offset from [bag] and how many entries it holds, with the companion's pocket. */
+        val pockets: List<Pocket>,
+    )
+
+    class Pocket(val offset: Int, val capacity: Int, val companionPocket: Int)
+
+    /** Pokemon X (USA). */
+    val POKEMON_X_USA = Config(
+        party = 0x08CE1CE8,
+        partyStride = 0x1E4,
+        partyStatsAt = 0x158,
+        myStatus = 0x08C79C2C,
+        bag = 0x08C67154,
+        pockets = listOf(
+            Pocket(0x400, 400, com.pokedaisy.app.companion.data.POCKET_ITEMS),
+            Pocket(0xA40, 96, com.pokedaisy.app.companion.data.POCKET_KEY_ITEMS),
+            Pocket(0xBC0, 106, com.pokedaisy.app.companion.data.POCKET_TM_HM),
+            Pocket(0xD68, 64, com.pokedaisy.app.companion.data.POCKET_MEDICINE),
+            Pocket(0xE68, 64, com.pokedaisy.app.companion.data.POCKET_BERRIES),
+        ),
+    )
+
+    fun configFor(titleId: Long): Config? = when (titleId) {
+        N3dsCart.POKEMON_X_USA -> POKEMON_X_USA
+        else -> null
+    }
+
+    /** One party Pokemon, decoded. [species] 0 = an empty slot (never returned). */
+    data class Mon(
+        val encryptionConstant: Long,
+        val species: Int,
+        val form: Int,
+        val heldItem: Int,
+        val ability: Int,
+        val nature: Int,
+        val exp: Long,
+        val nickname: String,
+        val moves: IntArray,
+        val pp: IntArray,
+        val isEgg: Boolean,
+        val shiny: Boolean,
+        val level: Int,
+        val hp: Int,
+        val maxHp: Int,
+        val status: Int,
+        /** Attack, Defense, Speed, Sp. Atk, Sp. Def. */
+        val stats: IntArray,
+    )
+
+    data class Item(val id: Int, val count: Int, val pocket: Int)
+
+    /** The memory [read] needs for [c], as (address, length) pairs: the party, MyStatus and the bag. */
+    fun ranges(c: Config): IntArray = intArrayOf(
+        c.party, c.partyStride * 6,
+        c.myStatus, 0x170,
+        c.bag + 0x400, 0xF68 - 0x400,
+    )
+
+    class Sample(val party: List<Mon>, val language: Int, val bag: List<Item>)
+
+    /** [bytes] is [ranges]' memory, one after another. */
+    fun read(c: Config, bytes: ByteArray): Sample? {
+        val partyLen = c.partyStride * 6
+        if (bytes.size < partyLen + 0x170 + (0xF68 - 0x400)) return null
+        val party = (0 until 6).mapNotNull { slot ->
+            val at = slot * c.partyStride
+            val raw = ByteArray(PARTY_SIZE)
+            System.arraycopy(bytes, at, raw, 0, STORED_SIZE)
+            System.arraycopy(bytes, at + c.partyStatsAt, raw, STORED_SIZE, PARTY_SIZE - STORED_SIZE)
+            decode(raw)
+        }
+        val language = bytes[partyLen + 0x2D].toInt() and 0xFF
+        val bagAt = partyLen + 0x170
+        val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        val bag = c.pockets.flatMap { p ->
+            val out = ArrayList<Item>()
+            for (i in 0 until p.capacity) {
+                val o = bagAt + (p.offset - 0x400) + i * 4
+                val id = b.getShort(o).toInt() and 0xFFFF
+                val count = b.getShort(o + 2).toInt() and 0xFFFF
+                if (id == 0) break
+                out += Item(id, count, p.companionPocket)
+            }
+            out
+        }
+        return Sample(party, language, bag)
+    }
+
+    const val STORED_SIZE = 0xE8
+    const val PARTY_SIZE = 0x104
+
+    private val BLOCK_ORDERS = arrayOf(
+        "ABCD", "ABDC", "ACBD", "ACDB", "ADBC", "ADCB", "BACD", "BADC", "BCAD", "BCDA", "BDAC", "BDCA",
+        "CABD", "CADB", "CBAD", "CBDA", "CDAB", "CDBA", "DABC", "DACB", "DBAC", "DBCA", "DCAB", "DCBA",
+    )
+
+    /** A PK6 (0x104 bytes, party stats included) decrypted and unshuffled; null when empty or its checksum is off. */
+    fun decrypt(raw: ByteArray): ByteArray? {
+        if (raw.size < PARTY_SIZE) return null
+        val b = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
+        val ec = b.getInt(0).toLong() and 0xFFFFFFFFL
+        val out = raw.copyOf(PARTY_SIZE)
+        val o = ByteBuffer.wrap(out).order(ByteOrder.LITTLE_ENDIAN)
+        var seed = ec
+        var i = 8
+        while (i < PARTY_SIZE) {
+            if (i == STORED_SIZE) seed = ec // the party stats: the cipher started again
+            seed = (seed * 0x41C64E6DL + 0x6073L) and 0xFFFFFFFFL
+            o.putShort(i, ((b.getShort(i).toInt() xor (seed ushr 16).toInt()) and 0xFFFF).toShort())
+            i += 2
+        }
+        val order = BLOCK_ORDERS[(((ec ushr 13) and 31) % 24).toInt()]
+        val plain = out.copyOf()
+        for (k in 0 until 4) {
+            val dest = "ABCD".indexOf(order[k])
+            System.arraycopy(out, 8 + 56 * k, plain, 8 + 56 * dest, 56)
+        }
+        val p = ByteBuffer.wrap(plain).order(ByteOrder.LITTLE_ENDIAN)
+        var sum = 0
+        var j = 8
+        while (j < STORED_SIZE) { sum = (sum + (p.getShort(j).toInt() and 0xFFFF)) and 0xFFFF; j += 2 }
+        if (sum != (p.getShort(6).toInt() and 0xFFFF)) return null
+        return plain
+    }
+
+    fun decode(raw: ByteArray): Mon? {
+        val p = decrypt(raw) ?: return null
+        val b = ByteBuffer.wrap(p).order(ByteOrder.LITTLE_ENDIAN)
+        val species = b.getShort(0x08).toInt() and 0xFFFF
+        if (species == 0) return null
+        val nick = String(p, 0x40, 24, Charsets.UTF_16LE).substringBefore('\u0000')
+        val pid = b.getInt(0x18).toLong() and 0xFFFFFFFFL
+        val tid = b.getShort(0x0C).toInt() and 0xFFFF
+        val sid = b.getShort(0x0E).toInt() and 0xFFFF
+        val shiny = ((tid xor sid xor (pid ushr 16).toInt() xor (pid and 0xFFFF).toInt()) and 0xFFFF) < 16
+        return Mon(
+            encryptionConstant = b.getInt(0).toLong() and 0xFFFFFFFFL,
+            species = species,
+            form = (p[0x1D].toInt() and 0xFF) ushr 3,
+            heldItem = b.getShort(0x0A).toInt() and 0xFFFF,
+            ability = p[0x14].toInt() and 0xFF,
+            nature = p[0x1C].toInt() and 0xFF,
+            exp = b.getInt(0x10).toLong() and 0xFFFFFFFFL,
+            nickname = nick,
+            moves = IntArray(4) { b.getShort(0x5A + it * 2).toInt() and 0xFFFF },
+            pp = IntArray(4) { p[0x62 + it].toInt() and 0xFF },
+            isEgg = (b.getInt(0x74) ushr 30) and 1 == 1,
+            shiny = shiny,
+            status = b.getInt(0xE8),
+            level = p[0xEC].toInt() and 0xFF,
+            hp = b.getShort(0xF0).toInt() and 0xFFFF,
+            maxHp = b.getShort(0xF2).toInt() and 0xFFFF,
+            stats = IntArray(5) { b.getShort(0xF4 + it * 2).toInt() and 0xFFFF },
+        )
+    }
+}

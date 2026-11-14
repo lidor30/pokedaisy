@@ -137,6 +137,13 @@ private fun gameItemNames(game: GameKind): Map<Int, String>? = when (game) {
 /** [id]'s name as this game's bag writes it (its own casing and spelling: "EXP. SHARE"). */
 internal fun bagItemName(id: Int): String = gameItemNames(activeGame)?.get(id) ?: itemName(id)
 
+/**
+ * Item names from a game the app's tables don't cover (a 3DS game, read from its cart: n3ds/Gen6Text.kt): set, the bag
+ * keeps the names it's given and the held-item tag asks here, instead of the running GBA / DS game's tables by id (whose
+ * ids mean other items there), and neither draws an item picture from those tables.
+ */
+val LocalItemNames = androidx.compose.runtime.staticCompositionLocalOf<((Int) -> String?)?> { null }
+
 private fun capsBagLabels(game: GameKind): Boolean =
     gameItemNames(game) != null || game == GameKind.HEART_AND_SOUL || game == GameKind.ORANGE_ISLANDS ||
         (game.isGen2 && game != GameKind.PRISM && game != GameKind.POLISHED_CRYSTAL)   // Prism's and Polished's bags are mixed case
@@ -786,10 +793,11 @@ fun ItemsScreen(
     val actionFocus = remember { FocusRequester() }
     val hgssState = LocalHgssBag.current ?: remember { HgssBagState() }
     val pal = bagPaletteFor(activeGame, hgssState.pocket)
-    val caps = gameItemNames(activeGame)
+    val ownNames = LocalItemNames.current
+    val caps = if (ownNames != null) null else gameItemNames(activeGame)
     val shown = items.map { item ->
         val name = caps?.get(item.itemId) ?: item.name
-        item.copy(name = tmMoves[item.itemId]?.let { "$name $it" } ?: name)
+        item.copy(name = (if (ownNames != null) null else tmMoves[item.itemId])?.let { "$name $it" } ?: name)
     }
     val m = rememberGbaTextMetrics()
     val u = m.u

@@ -444,6 +444,18 @@ fun snapshot() = SnapshotView(
     ),
 )
 
+/** The 3DS companion's stand-in party and bag (invented names, no icons: the 3DS reader has none yet). */
+val n3dsParty = listOf("EMBERPUP" to 100, "TIDEFIN" to 100, "LEAFKIT" to 54, "VOLTWING" to 61, "ROCKMOLE" to 12, "MISTFOX" to 100)
+    .mapIndexed { i, (name, lv) ->
+        MonView(species = 650 + i, name = name, level = lv, hp = if (i == 4) 0 else 120 + i * 30, maxHp = 200 + i * 20,
+            status = if (i == 4) "FNT" else if (i == 3) "PAR" else "", types = emptyList(), iconAsset = null, heldItemId = if (i == 1) 17 else 0)
+    }
+val n3dsBag = listOf(
+    ItemView(17, "Potion", 12, null, POCKET_ITEMS), ItemView(4, "Poke Ball", 30, null, POCKET_ITEMS),
+    ItemView(632, "Town Map", 1, null, POCKET_KEY_ITEMS), ItemView(328, "TM01", 1, null, com.pokedaisy.app.companion.data.POCKET_TM_HM),
+    ItemView(149, "Cheri Berry", 3, null, com.pokedaisy.app.companion.data.POCKET_BERRIES),
+)
+
 class Shot(
     val name: String,
     val w: Int,
@@ -2196,6 +2208,12 @@ fun main(args: Array<String>) {
             }
         }),
         Shot("library-list", tw, th, td, activity { LibraryActivity() }),
+        // A 3DS game's first companion (N3dsCompanion: PARTY / BAG, no icons yet) at the Thor's bottom screen.
+        Shot("n3ds-companion-party", bw, bh, bd, { { com.pokedaisy.app.companion.ui.N3dsCompanion(n3dsParty, n3dsBag, { id -> n3dsBag.firstOrNull { it.itemId == id }?.name }) } }),
+        Shot("n3ds-companion-bag", bw, bh, bd, { { com.pokedaisy.app.companion.ui.N3dsCompanion(n3dsParty, n3dsBag, { id -> n3dsBag.firstOrNull { it.itemId == id }?.name }) } }) {
+            onNodeWithText("BAG").performClick()
+            waitForIdle()
+        },
         // The quick views (pills over the games): ALL, FAVORITES, RECENT, one per console the library holds and HACKS,
         // each in its colour; the open one striped like the console's cover art.
         Shot("library-views", tw, th, td, activity { platformLibrary(); LibraryActivity() }),

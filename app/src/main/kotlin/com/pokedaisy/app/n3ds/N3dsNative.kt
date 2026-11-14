@@ -82,6 +82,9 @@ object N3dsNative {
     @JvmStatic external fun loadState(path: String): Boolean
     /** The 3D picture at [factor] x the 3DS's own resolution (0 = the window's size); from the next boot. */
     @JvmStatic external fun setResolution(factor: Int)
+        /** The game's memory: [ranges] as (address, length) pairs, copied one after another between two frames; null without
+     * a game. Blocks for up to a frame: never on the UI thread. */
+    @JvmStatic external fun readMemory(ranges: IntArray): ByteArray?
         /** Percent of real time; 0 = flat out. */
     @JvmStatic external fun setSpeed(percent: Int)
     @JvmStatic external fun frames(): Long

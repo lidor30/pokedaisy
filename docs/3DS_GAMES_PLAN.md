@@ -78,6 +78,15 @@ and sent away by L2 or a TOUCH button (a tap on the dim closes it). Hidden, the 
 removed: Azahar draws to its surface every frame. SIDE BY SIDE / LARGE + SMALL / STACKED are Azahar's SideScreen /
 LargeScreen / Default on the one surface. Not yet: the window coming in by itself when the game wants touch.
 
+PARTY / BAG (2026-11-14, checked on the RP6 with the player's save): BACK swaps the companion in and out (over the touch
+screen on a second display, else a window over the game; a held BACK leaves). `N3dsNative.readMemory` copies ranges of
+the game's memory between two run loops; `Gen6Reader` decodes the live party (PK6 + the party stats at +0x158, whose
+cipher starts again from the encryption constant) and the bag's five pockets; `Gen6Text` reads the names from the cart's
+RomFS (GARC `a/0/7/<n>` by the save's language, MyStatus +0x2D: 2..8 English, French, Italian, German, Spanish, Korean;
+Japanese 3). They feed the companion's own PartyScreen / ItemsScreen (`N3dsCompanion`); `LocalItemNames` keeps the bag
+and the held-item tag on the cart's names instead of the GBA tables by id. Not yet: icons, summaries, types, the map,
+medicine as its own tab.
+
 ## Pokemon X, first findings (n3ds_dump, 2026-11-14)
 
 - Boots with the user's save and plays to the field (Lumiose, the save is Italian: the game follows the save's language).
