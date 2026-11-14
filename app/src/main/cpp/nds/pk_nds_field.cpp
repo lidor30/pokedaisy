@@ -713,12 +713,24 @@ static int battleTouch(const PkNdsFieldGame* g, const PkNdsTouchRules* t, uint32
     if (inMainRam(input) && read32(input) != bs) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
     bool panel = inMainRam(input) && inMainRam(read32(input + t->offPanelShown));
     if (inMainRam(ctx) && read32(ctx + g->offCommand) == PK_NDS_BATTLE_SELECTING) {
-        int step = (int) (read32(ctx) & 0xFF);
+        // A byte per battler: in a double (BattleSystem.battleType, the word before its BattleContext: BATTLE_TYPE_DOUBLES
+        // 2) the player's second (battler 2) chooses once the first is done (past the selection: 14) - Renegade Platinum
+        // headless, a two-trainer battle: battler 0 at 1, 6 at its target, then 14 while battler 2 is at 1.
+        uint32_t steps = read32(ctx);
+        int step = (int) (steps & 0xFF);
+        bool doubles = (read32(bs + g->offBattleContext - 4) & 2) != 0;
+        auto choosing = [](int s) { return s <= 10 || s == 15; };
+        int second = (int) ((steps >> 16) & 0xFF);
+        if (doubles && !choosing(step) && choosing(second)) step = second;
+        // Which foe to hit (a double's): no BATTLE BUTTONS of ours for it, and no panel text there (BattleInput +0x4D0 is
+        // NULL), so the touch screen floats in (GitHub #663: it only came up with L2). A single battle passes through
+        // these steps for a few frames after a move is picked: nothing then.
+        if (step == 5 || step == 6) return doubles ? PK_NDS_FIELD_TOUCH : 0;
         // The bag / the party: their own screens, faded in and out (the engine waits the fades out).
         if (step >= 7 && step <= 10) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
         // The commands and the moves (1 - 4), the steps between them (0 - 2: back from the moves goes through the
-        // command init, its panel still drawn) and a target (5 / 6), a message's wait (15): the battle buttons' own.
-        if (step <= 6 || step == 15) return panel ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
+        // command init, its panel still drawn), a message's wait (15): the battle buttons' own.
+        if (step <= 4 || step == 15) return panel ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
     }
     return panel ? PK_NDS_FIELD_TOUCH : 0;
 }
