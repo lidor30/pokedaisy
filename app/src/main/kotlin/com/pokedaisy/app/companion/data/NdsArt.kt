@@ -546,7 +546,7 @@ object NdsArt {
         for (screen in intArrayOf(22, 24)) drawScreen(img, narc.member(screen) ?: return, tiles, mapPal)   // MAIN_3, then MAIN_2
         val (l, t, r, b) = PLATINUM_MAP_CROP.toList()
         val crop = RomArt.Image(r - l, b - t)
-        for (y in 0 until crop.height) System.arraycopy(img.argb, (t + y) * 256 + l, crop.argb, y * crop.width, crop.width)
+        for (y in 0 until crop.height) ((t + y) * 256 + l).let { img.argb.copyInto(crop.argb, y * crop.width, it, it + crop.width) }
         write(dir, "regionmap/$PLATINUM_MAP.png", crop.png())
         val blockTiles = ncgrData(narc.member(16)) ?: return
         val blocks = ncerCells(narc.member(17) ?: return)
@@ -985,7 +985,7 @@ object NdsArt {
         if (r <= l || b <= t) return
         for ((pocket, open, img) in drawn) {
             val crop = RomArt.Image(r - l, b - t)
-            for (y in 0 until crop.height) System.arraycopy(img.argb, (t + y) * 64 + l, crop.argb, y * crop.width, crop.width)
+            for (y in 0 until crop.height) ((t + y) * 64 + l).let { img.argb.copyInto(crop.argb, y * crop.width, it, it + crop.width) }
             write(dir, "${heartGoldPocket(pocket, open)}.png", crop.png())
         }
     }

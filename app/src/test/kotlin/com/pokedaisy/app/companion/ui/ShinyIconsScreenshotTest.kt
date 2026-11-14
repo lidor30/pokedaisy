@@ -25,7 +25,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.util.Random
+import kotlin.random.Random
 
 /**
  * Shiny icons on retail FireRed, from real data: the `firered_shiny_battle` fixture (a wild PIKACHU SHINY ODDS made shiny,

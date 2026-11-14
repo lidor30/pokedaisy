@@ -169,14 +169,14 @@ object PlayerLook {
         val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
         // The words pointing at a graphic: palette table entries ({ptr, tag}), picture tables ({ptr, size, tag}),
         // literal pools.
-        val targets = LookBlob.entries.flatMap { hits[it].orEmpty() }.toSortedSet().toIntArray()
+        val targets = LookBlob.entries.flatMap { hits[it].orEmpty() }.distinct().sorted()
         val refs = HashMap<Int, MutableList<Ref>>()
         var o = 0
         while (o + 8 <= rom.size) {
             val w = buf.getInt(o)
             if (w ushr 25 == 4) {
                 val off = w - 0x08000000
-                if (java.util.Arrays.binarySearch(targets, off) >= 0) {
+                if (targets.binarySearch(off) >= 0) {
                     refs.getOrPut(off) { ArrayList() } += Ref(o, buf.getShort(o + 4).toInt() and 0xFFFF, buf.getShort(o + 6).toInt() and 0xFFFF)
                 }
             }

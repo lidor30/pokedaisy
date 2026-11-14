@@ -73,7 +73,7 @@ object RetailDumps {
             for (r in ranges) {
                 val a = maxOf(r.first, off) - off
                 val z = minOf(r.last + 1, off + len) - off
-                if (a < z) java.util.Arrays.fill(chunk, a, z, 0)
+                if (a < z) chunk.fill(0, a, z)
             }
             digest.update(chunk)
             off += len

@@ -27,8 +27,13 @@ fun typeMultiplierPct(atkType: Int, defType1: Int, defType2: Int): Int {
 }
 
 /** A move's name with its case, accents and punctuation gone, for [moveMultiplierPct]'s lists. */
-private fun moveKey(name: String): String =
-    java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD).uppercase().filter { it in 'A'..'Z' }
+internal fun moveKey(name: String): String =
+    name.map { c -> ACCENTED.indexOf(c).let { if (it < 0) c else UNACCENTED[it] } }.joinToString("").uppercase().filter { it in 'A'..'Z' }
+
+/** The Latin letters (U+00C0..U+024F) that are a plain letter plus accents, and that letter: what Unicode's NFD
+ * decomposition keeps of them once the accents are dropped. */
+private const val ACCENTED = "ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝàáâãäåçèéêëìíîïñòóôõöùúûüýÿĀāĂăĄąĆćĈĉĊċČčĎďĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĨĩĪīĬĭĮįİĴĵĶķĹĺĻļĽľŃńŅņŇňŌōŎŏŐőŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžƠơƯưǍǎǏǐǑǒǓǔǕǖǗǘǙǚǛǜǞǟǠǡǦǧǨǩǪǫǬǭǰǴǵǸǹǺǻȀȁȂȃȄȅȆȇȈȉȊȋȌȍȎȏȐȑȒȓȔȕȖȗȘșȚțȞȟȦȧȨȩȪȫȬȭȮȯȰȱȲȳ"
+private const val UNACCENTED = "AAAAAACEEEEIIIINOOOOOUUUUYaaaaaaceeeeiiiinooooouuuuyyAaAaAaCcCcCcCcDdEeEeEeEeEeGgGgGgGgHhIiIiIiIiIJjKkLlLlLlNnNnNnOoOoOoRrRrRrSsSsSsSsTtTtUuUuUuUuUuUuWwYyYZzZzZzOoUuAaIiOoUuUuUuUuUuAaAaGgKkOoOojGgNnAaAaAaEeEeIiIiOoOoRrRrUuUuSsTtHhAaEeOoOoOoOoYy"
 
 // As the games spell them: Unbound FR cuts its name short, Team Rocket Edition 2026's ROM has "Lioflización".
 private val FREEZE_DRY = setOf("FREEZEDRY", "LYOPHILISAT", "LYOPHILISATION", "LIOFILIZACION", "LIOFLIZACION")

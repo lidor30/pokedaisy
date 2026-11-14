@@ -161,8 +161,8 @@ class Gen3SaveEditor(val file: Gen3SaveFile) {
         val ao = Gen3SaveData.recordOff(from)
         val bo = Gen3SaveData.recordOff(to)
         val tmp = storage.copyOfRange(ao, ao + Gen3BoxMon.SIZE)
-        System.arraycopy(storage, bo, storage, ao, Gen3BoxMon.SIZE)
-        System.arraycopy(tmp, 0, storage, bo, Gen3BoxMon.SIZE)
+        storage.copyInto(storage, ao, bo, bo + Gen3BoxMon.SIZE)
+        tmp.copyInto(storage, bo, 0, Gen3BoxMon.SIZE)
     }
 
     /** The 80 bytes at [at], as stored. */

@@ -165,7 +165,7 @@ object MonArt {
             val frames = ByteArray(6 * size)
             for (i in 0 until 6) {
                 val at = r.ptr(images + 8 * (3 + i))?.takeIf { r.u16(images + 8 * (3 + i) + 4) == size && r.ok(it, size) } ?: return@Reader null
-                System.arraycopy(r.b, at, frames, i * size, size)
+                r.b.copyInto(frames, i * size, at, at + size)
             }
             val owPal = palByTag[r.u16(rec + 2)]?.takeIf { r.ok(it, 32) }?.let { r.b.copyOfRange(it, it + 32) } ?: return@Reader null
             Raw(
@@ -241,7 +241,7 @@ object MonArt {
         val out = ByteArray(FRAMES)
         for (f in 0 until 6) for (ty in 0 until 8) for (tx in 0 until 8) {
             val src = f * 2048 + (ty * 8 + tx) * 32
-            if (tx in 2..5 && ty in 4..7) System.arraycopy(frames, src, out, f * 512 + ((ty - 4) * 4 + tx - 2) * 32, 32)
+            if (tx in 2..5 && ty in 4..7) frames.copyInto(out, f * 512 + ((ty - 4) * 4 + tx - 2) * 32, src, src + 32)
             else if ((0 until 32).any { frames[src + it] != 0.toByte() }) return null
         }
         return out

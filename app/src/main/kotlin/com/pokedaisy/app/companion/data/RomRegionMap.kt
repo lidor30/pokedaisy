@@ -150,7 +150,7 @@ object RomRegionMap {
         val images = screens.mapIndexed { i, img ->
             val (left, top, right, bottom) = crops[i]
             RomArt.Image((right - left) * 8, (bottom - top) * 8).also { out ->
-                for (y in 0 until out.height) System.arraycopy(img.argb, (top * 8 + y) * 240 + left * 8, out.argb, y * out.width, out.width)
+                for (y in 0 until out.height) ((top * 8 + y) * 240 + left * 8).let { img.argb.copyInto(out.argb, y * out.width, it, it + out.width) }
             }
         }
 

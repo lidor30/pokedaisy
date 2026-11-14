@@ -107,10 +107,10 @@ class RomNames private constructor(private val found: Map<String, IntArray>, pri
             val pats = keys.distinct().filter { it.length >= MIN_LEN }
             if (pats.isEmpty() || size <= 0) return RomNames(emptyMap(), norm())
             val heads = HashMap<Int, MutableList<String>>()
-            val bits = java.util.BitSet(1 shl 24)
+            val bits = LongArray((1 shl 24) / 64) // one bit per head
             for (p in pats) {
                 val h = head(p[0].code, p[1].code, p[2].code)
-                bits.set(h)
+                bits[h ushr 6] = bits[h ushr 6] or (1L shl h)
                 heads.getOrPut(h) { ArrayList(1) } += p
             }
             val maxLen = pats.maxOf { it.length }
@@ -141,7 +141,7 @@ class RomNames private constructor(private val found: Map<String, IntArray>, pri
                     val before = if (i == 0) prev else f[i - 1]
                     if ((!gap[i] && word[before]) || i + MIN_LEN > n) continue
                     val h = head(f[i], f[i + 1], f[i + 2])
-                    if (!bits[h]) continue
+                    if (bits[h ushr 6] and (1L shl h) == 0L) continue
                     for (p in heads.getValue(h)) {
                         val end = i + p.length
                         if (end >= n || f[end] != 0xFF) continue

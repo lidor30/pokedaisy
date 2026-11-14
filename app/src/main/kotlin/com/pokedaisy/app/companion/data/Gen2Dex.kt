@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.math.roundToInt
+
 /**
  * A Game Boy Color (Gen 2) game's POKéDEX and item text, read from the cart's own bytes ([Gen1Dex.rom]:
  * the running Game Boy cart, which PokeDaisyActivity sets for either generation - a cart is
@@ -716,8 +718,8 @@ object Gen2Dex {
                 val height = u16(rom, o)     // feet x 100 + inches
                 lbs10 = u16(rom, o + 2)
                 heightIn = (height / 100) * 12 + height % 100
-                heightDm = Math.round(heightIn * 2.54 / 10).toInt()
-                weightHg = Math.round(lbs10 * 0.45359237).toInt()
+                heightDm = (heightIn * 2.54 / 10).roundToInt()
+                weightHg = (lbs10 * 0.45359237).roundToInt()
                 description = text(rom, o + 4, pages = 2, words = words)
             }
         }
