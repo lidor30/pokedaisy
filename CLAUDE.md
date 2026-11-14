@@ -224,15 +224,16 @@ loading one keeps the battery save in memory (`load_state_keeping_save`), like t
 
 The user runs several agents at once and runs the full suites about once a day, so (the user's rule, 2026-11-01):
 
-- **Everyday check: `make test-quick`** (`./gradlew :app:testDebugUnitTest -Pquick`, about 1 min warm). It
+- **Everyday check: `make test-quick`** (`./gradlew :app:testDebugUnitTest :shared:testDebugUnitTest -Pquick`, about 1 min warm; companion/data and
+  companion/i18n are compiled and tested by `shared/`, docs/DEVELOPMENT.md's "The shared module"). It
   drops the Paparazzi renders (`*ScreenshotTest`: they assert nothing and were 86% of the full run's ~10 min)
   and `BestEffortTest` (26 whole ROMs, ~45 s), and runs the forks side by side. Fixture decodes, ROM-backed
   tests and guards still run. Run it before calling a change done.
-- **While working, run only the tests for what you touched**: `make test-quick T='*MoneyTest'` (~25 s), or
-  several with `./gradlew :app:testDebugUnitTest -Pquick --tests '*Foo*' --tests '*Bar*'`. A test you add or
+- **While working, run only the tests for what you touched**: `make test-quick MODULE=shared T='*MoneyTest'` (~25 s), or
+  several with `./gradlew :shared:testDebugUnitTest -Pquick --tests '*Foo*' --tests '*Bar*'` (`:app:` for the app's). A test you add or
   change: run it by name. `BestEffortTest` runs by name too if you touch detection / `BestEffort`.
 - **Ask the user before any full run**, and say why: `make test`, `make check`, `make test-roms`, a plain
-  `./gradlew :app:testDebugUnitTest` (no `-Pquick`), every Paparazzi class at once (`recordPaparazziDebug` over
+  `./gradlew :app:testDebugUnitTest :shared:testDebugUnitTest` (no `-Pquick`), every Paparazzi class at once (`recordPaparazziDebug` over
   `'*ScreenshotTest'`), and the whole ui-preview suites (`gradle render` with no `-Ponly`, `stress`,
   `docsSearchCheck`, `keyedStateCheck`, `docsShots`, `make docs-shots`). CI runs all of them on every PR, so a
   branch still gets the full check before it merges.

@@ -57,11 +57,20 @@ gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt, t
 	python3 scripts/gen_gamedata.py
 	python3 scripts/gen_nds_ports.py
 
-test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (T='*FooTest' to pick)
-	./gradlew :app:testDebugUnitTest -Pquick $(if $(T),--tests '$(T)')
+# Unfiltered runs cover both modules. Focused runs select one owner so a misspelled filter fails in Gradle.
+# Example: make test-quick MODULE=shared T='*RomFilesTest'
+ifneq ($(strip $(T)),)
+ifeq ($(filter app shared,$(MODULE)),)
+$(error T requires MODULE=app or MODULE=shared)
+endif
+endif
+UNIT_TESTS = $(if $(T),:$(MODULE):testDebugUnitTest --tests '$(T)',:app:testDebugUnitTest :shared:testDebugUnitTest)
+
+test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (MODULE=shared T='*FooTest' to pick)
+	./gradlew $(UNIT_TESTS) -Pquick
 
 test: ## All JVM unit tests, Paparazzi renders included (CLAUDE.md: agents ask first)
-	./gradlew :app:testDebugUnitTest
+	./gradlew $(UNIT_TESTS)
 
 clean: ## gradle clean
 	./gradlew clean
@@ -74,7 +83,7 @@ check: ## Everything a PR must pass: unit tests, translations, game data, ui-pre
 	python3 scripts/gen_nds_ports.py --check
 	python3 scripts/check_melonds_patch.py
 	$(MAKE) -C 3ds test-configs-gen
-	./gradlew :app:testDebugUnitTest :app:assembleDebug
+	./gradlew $(UNIT_TESTS) :app:assembleDebug :shared:compileKotlinIosArm64
 	./gradlew -p ui-preview stress
 	./gradlew -p ui-preview docsSearchCheck
 	./gradlew -p ui-preview keyedStateCheck
@@ -93,7 +102,7 @@ stress: ## Rapid tab switching against memory / time budgets (ui-preview/src/ren
 
 test-roms: ## Unit tests with real ROMs too: ROM_DIR=<folder of your own dumps> (see docs/RELEASING.md)
 	@test -n "$(ROM_DIR)" || { echo "ROM_DIR=<folder with your ROMs> is required"; exit 1; }
-	POKEDAISY_ROM_DIR="$(ROM_DIR)" ./gradlew :app:testDebugUnitTest
+	POKEDAISY_ROM_DIR="$(ROM_DIR)" ./gradlew $(UNIT_TESTS)
 
 ##@ Releasing (docs/RELEASING.md)
 

@@ -422,7 +422,7 @@ private var bagValid = false
 /** Forget the cached bag: it's process-wide, so a newly launched game (or the
  * next game's test) would otherwise show the previous game's bag until the
  * next throttled refresh. */
-internal fun resetNativeBagCache() {
+fun resetNativeBagCache() {
     bagTick = 0; lastBag = emptyList(); bagValid = false
     synchronized(pcBoxesLock) { lastStorageRaw = null; lastStorage = null }
 }

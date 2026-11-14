@@ -46,5 +46,5 @@ object FfMusicKey {
 
     private fun u32(r: MemoryReader, addr: Long): Long = Gfx.u32(r.readCoreMemory(addr, 4), 0)
 
-    internal fun inRam(a: Long) = a in 0x02000000L until 0x02040000L || a in 0x03000000L until 0x03008000L
+    fun inRam(a: Long) = a in 0x02000000L until 0x02040000L || a in 0x03000000L until 0x03008000L
 }

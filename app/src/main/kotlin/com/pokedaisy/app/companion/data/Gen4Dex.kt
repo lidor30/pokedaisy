@@ -76,7 +76,7 @@ val PokedexTables.cartDex: Boolean get() = gameBoy || gen4 != null
 object Gen4Dex {
     private val lock = SynchronizedObject()
     /** One cart's pages and the rest of each species' row, as NdsArt wrote them. */
-    internal class Pages(
+    class Pages(
         val entries: Map<Int, DexEntry>,
         /** National numbers in the regional Dex's order (Sinnoh's, Johto's). */
         val regional: IntArray,
@@ -137,7 +137,7 @@ object Gen4Dex {
      * catch rate, gender ratio, egg groups 1 / 2, abilities 1 / 2; then (a cart read since v8) the regional number, the
      * evolutions, the level-up moves and the TM / HM bits; Black's a hidden ability last. Evolutions to past
      * [lastSpecies] are dropped; [gen5]: their methods are Gen 5's ([gen5EvoReqs]). */
-    internal fun parse(lines: List<String>, lastSpecies: Int = 493, gen5: Boolean = false, origin: Boolean = false): Pages {
+    fun parse(lines: List<String>, lastSpecies: Int = 493, gen5: Boolean = false, origin: Boolean = false): Pages {
         val entries = HashMap<Int, DexEntry>()
         val regional = HashMap<Int, Int>()
         val evolutions = HashMap<Int, List<EvoLink>>()

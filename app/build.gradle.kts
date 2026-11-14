@@ -1,5 +1,6 @@
 import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.Properties
 import java.net.URI
 import java.nio.file.FileSystems
@@ -182,6 +183,9 @@ android {
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/licenses"))
     sourceSets["test"].java.srcDirs("src/test/kotlin", "../server/coop-relay/src/main/kotlin")
 
+    // The shared module's files are compiled there; lint reads them there too.
+    sourceSets["main"].java.filter.exclude("com/pokedaisy/app/companion/data/**", "com/pokedaisy/app/companion/i18n/**")
+
     testOptions {
         unitTests.isIncludeAndroidResources = false
     }
@@ -190,6 +194,20 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
+// companion/data and companion/i18n are compiled by shared/ (Android + iOS), so the app leaves them out of its own
+// compile, and their tests too but those that also use the app's classes (the root build's appOnlyTests).
+@Suppress("UNCHECKED_CAST")
+val appOnlyTests = rootProject.extra["appOnlyTests"] as List<String>
+@Suppress("UNCHECKED_CAST")
+val sharedTestHelpers = rootProject.extra["sharedTestHelpers"] as List<String>
+val sharedDirs = listOf("com/pokedaisy/app/companion/data/", "com/pokedaisy/app/companion/i18n/")
+tasks.withType<KotlinCompile>().configureEach {
+    val tests = name.contains("UnitTest")
+    exclude { e ->
+        !e.isDirectory && sharedDirs.any { e.path.startsWith(it) } && !(tests && e.file.nameWithoutExtension in appOnlyTests + sharedTestHelpers)
     }
 }
 
@@ -221,7 +239,7 @@ val licensesAsset by tasks.registering {
         "Galmuri - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-Galmuri.txt",
         "Atkinson Hyperlegible - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-AtkinsonHyperlegible.txt",
         "PokeAPI data - BSD 3-Clause" to "third_party/licenses/PokeAPI-BSD-3-Clause.txt",
-        "AndroidX, Jetpack Compose, Kotlin, kotlinx.atomicfu, kotlinx-datetime, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
+        "AndroidX, Jetpack Compose / Compose Multiplatform, Kotlin, kotlinx.atomicfu, kotlinx-datetime, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
         "Apache Commons - NOTICE" to "third_party/licenses/Apache-Commons-NOTICE.txt",
         "XZ for Java - BSD Zero Clause" to "third_party/licenses/XZ-Java-0BSD.txt",
         "Bouncy Castle (co-op) - MIT" to "third_party/licenses/BouncyCastle-MIT.txt",
@@ -286,6 +304,8 @@ val jdkHttpServerJar by tasks.registering(Zip::class) {
 }
 
 dependencies {
+    // The companion's data and language code (shared/build.gradle.kts).
+    implementation(project(":shared"))
     implementation("androidx.core:core-ktx:1.13.1")
     // FOLD LAYOUT: a foldable's hinge and posture (WindowInfoTracker's FoldingFeature), for a plain Activity.
     implementation("androidx.window:window:1.3.0")

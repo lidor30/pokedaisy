@@ -115,6 +115,8 @@ The app shows every license below in full under Settings > LICENSES.
   (third_party/licenses/Apache-2.0.txt; their NOTICE files in
   third_party/licenses/Apache-Commons-NOTICE.txt); XZ for Java, BSD Zero
   Clause (third_party/licenses/XZ-Java-0BSD.txt).
+- Compose Multiplatform, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - shared state and locale APIs for the iPad app.
 - kotlinx.atomicfu, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
   (third_party/licenses/Apache-2.0.txt) - multiplatform locks in the companion data code.
 - kotlinx-datetime, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0

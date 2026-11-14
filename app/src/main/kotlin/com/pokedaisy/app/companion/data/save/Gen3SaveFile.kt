@@ -292,9 +292,9 @@ class Gen3SaveFile private constructor(
     }
 }
 
-internal fun u16(b: ByteArray, off: Int): Int = (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
+fun u16(b: ByteArray, off: Int): Int = (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
 
-internal fun u32(b: ByteArray, off: Int): Long =
+fun u32(b: ByteArray, off: Int): Long =
     (u16(b, off).toLong() or (u16(b, off + 2).toLong() shl 16)) and 0xFFFFFFFFL
 
 internal fun putU16(b: ByteArray, off: Int, v: Int) {

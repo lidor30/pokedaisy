@@ -3644,6 +3644,24 @@ built pret decomp checkouts (`pokefirered/`, `pokeemerald/`, `pokeruby/`,
 `DECOMPS` environment variable. Machine-local paths go in an untracked
 `local.mk`, which the Makefile includes (see `local.mk.example`).
 
+### The shared module (`shared/`, for the iPad app)
+
+The companion's data and language code, `app/src/main/kotlin/com/pokedaisy/app/companion/data` and `companion/i18n`,
+is compiled by its own Kotlin Multiplatform module, `shared/` (Android and iOS), in place: the files stay where
+they are, the app depends on `:shared` and leaves those two folders out of its own compile. So nothing in them may use
+`java.*` or `android.*`: plain Kotlin first, then the Kotlin libraries (coroutines, atomicfu, kotlinx-datetime), then
+okio. What differs by platform comes in from outside: the emulator through `EmulatorCore` (the app sets it to
+`MgbaEmulatorCore` in `PokeDaisyApp`), logging through `Logs`' sink. Their tests stay in `app/src/test` too and run as
+`:shared:testDebugUnitTest` (from `app/`, as before), except the few that also use the app's classes (the root
+build's `appOnlyTests`), which run with the app's. Something the app uses from those folders must be public, not
+`internal` (another module now). `./gradlew :shared:compileKotlinIosArm64` compiles it for an iPad, on Linux too; CI's
+"Shared code for iOS" job does. The macOS "Shared code on the iOS simulator" job also links and runs the
+portable smoke tests in `shared/src/commonTest`: files, PNGs, background work / locks and a fake emulator.
+Run them locally with `./gradlew :shared:iosSimulatorArm64Test` on an Apple Silicon Mac with Xcode and an iOS simulator.
+For focused JVM tests, use `make test-quick MODULE=shared T='*RomFilesTest'` (`MODULE=app` for app tests).
+A filter must match a test in that module; unfiltered `make test-quick` still runs both modules.
+ui-preview still compiles the same files straight into its desktop build.
+
 ## ScreenScraper and the dual-screen launcher
 
 Game media (box art, screenshots, title screens, wheel logos, fanart, cartridges, videos and the facts: synopsis,

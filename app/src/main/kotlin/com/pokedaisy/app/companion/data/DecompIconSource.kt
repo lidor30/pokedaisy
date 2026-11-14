@@ -158,7 +158,7 @@ internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, 
  * swapped for the shiny battle palette's colour where its nearest normal battle colour sits. The game never shows shiny
  * icons; these follow the shiny Pokémon's own colours, from the ROM. Null without the tables (or a tag that doesn't match).
  */
-internal fun shinyIconPalette(t: IconTables, species: Int, iconPal: ByteArray, rd: (Long, Int) -> ByteArray): ByteArray? {
+fun shinyIconPalette(t: IconTables, species: Int, iconPal: ByteArray, rd: (Long, Int) -> ByteArray): ByteArray? {
     if (t.battlePalettes == 0L) return null
     fun battlePal(table: Long, tag: Int): IntArray? {
         val entry = rd(table + species * 8L, 8)

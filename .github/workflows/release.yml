@@ -68,7 +68,7 @@ jobs:
         run: |
           test -n "${POKEDAISY_ROM_DIR}" || { echo "::error::POKEDAISY_ROM_DIR isn't set on this runner"; exit 1; }
           test -d "${POKEDAISY_ROM_DIR}" || { echo "::error::${POKEDAISY_ROM_DIR} doesn't exist"; exit 1; }
-          ./gradlew :app:testDebugUnitTest --stacktrace
+          ./gradlew :app:testDebugUnitTest :shared:testDebugUnitTest --stacktrace
       - name: Test reports
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

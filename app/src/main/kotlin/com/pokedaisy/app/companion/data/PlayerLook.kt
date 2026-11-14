@@ -520,7 +520,7 @@ object PlayerLook {
         ByteArray(frame.size) { i -> val b = frame[i].toInt(); (map[b and 15] or (map[(b shr 4) and 15] shl 4)).toByte() }
 
     /** Writes merged into blocks that don't overlap (a later write wins), each with the CRC32 of the file under it. */
-    internal fun merge(rom: ByteArray, writes: List<Pair<Int, ByteArray>>): List<Block> {
+    fun merge(rom: ByteArray, writes: List<Pair<Int, ByteArray>>): List<Block> {
         val spans = writes.map { it.first to it.first + it.second.size }.sortedBy { it.first }
         val merged = ArrayList<IntArray>()
         for ((s, e) in spans) {
