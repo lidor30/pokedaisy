@@ -1178,6 +1178,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   quickSel = 0;
   wideSupported = pk_wide_configure(crc) != 0;   // Polished Crystal 3.2.3 too (pk_wide_gb.c, by its CRC)
   wideReady = false;
+  quickOpen = flyList = repelList = false; // before the canvas: an open menu doubles it (canvas_update)
   canvas_update(false);
   fieldKnown = PD_BE_IS_GBA() && pk_field_configure(crc);
   wildSwitch = fieldKnown ? pk_wild_switch_find(rom, len) : 0;
@@ -1324,6 +1325,7 @@ RETRO_API void retro_unload_game(void) {
   WIDE_CHECK_REPORT();
   CALL_TEST_REPORT();
   wideSupported = wideReady = false;
+  quickOpen = flyList = repelList = false;
   PD_BE_BEFORE_UNLOAD();
   mgba_retro_unload_game();
   free(cvs);
@@ -2138,20 +2140,24 @@ RETRO_API void retro_run(void) {
   }
 
 
-  // A frame the frontend will not show (video bit clear, as diatom's fast-forward skip asks): the game and the layer's
-  // logic ran, the drawing is left out. Only the video bit counts: a fast-forward flag alone still shows its frames.
-  int av = 3;
-  const bool hidden = realEnv && realEnv(RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE, &av) && !(av & 1);
-  if (hidden) {
-    if (!companion && !(quickOpen && ovPixels))
-      hud_field_tick(); // as the game's own draw below would
+  if (repeat) {
+    repeatedFrame = true;
     realVideo(NULL, (unsigned)CW, (unsigned)CH, (size_t)CW * 2);
     PF_SKIPPED();
     pf_frame();
     return;
   }
-  if (repeat) {
-    repeatedFrame = true;
+  // A frame the frontend will not show (video bit clear, as diatom's fast-forward skip asks): the game and the layer's
+  // logic ran, the drawing is left out. Only the video bit counts: a fast-forward flag alone still shows its frames.
+  // A dupe needs what `repeat` needs: a frontend that takes one and a frame sent at this geometry (canvas_update clears
+  // it), else the frame is drawn and sent as usual.
+  int av = 3;
+  const bool hidden = realEnv && realEnv(RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE, &av) && !(av & 1);
+  if (hidden && canDupe && haveGameFrame) {
+    if (!companion && !(quickOpen && ovPixels))
+      hud_field_tick(); // as the game's own draw below would
+    if (messageFrames > 0)
+      messageFrames--; // as present() would: a notice lasts as many game frames hidden or shown
     realVideo(NULL, (unsigned)CW, (unsigned)CH, (size_t)CW * 2);
     PF_SKIPPED();
     pf_frame();
