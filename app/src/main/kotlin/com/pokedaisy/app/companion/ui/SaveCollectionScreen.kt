@@ -69,12 +69,8 @@ class CollectionState {
     /** Whether [item] has a save of its own generation to trade with. */
     fun canTrade(item: SaveCollection.Item): Boolean {
         val all = sides ?: return false
-        // Black / White saves don't trade here yet.
-        if (all[item.source].editor is com.pokedaisy.app.companion.data.save.Gen5SaveEditor) return false
-        val ds = all[item.source].editor is Gen4SaveEditor
-        return all.withIndex().any { (i, s) ->
-            i != item.source && s.editor !is com.pokedaisy.app.companion.data.save.Gen5SaveEditor && (s.editor is Gen4SaveEditor) == ds
-        }
+        val rules = all[item.source].rules
+        return all.withIndex().any { (i, s) -> i != item.source && s.rules == rules }
     }
 
     /** Whether [item] could go through Pal Park: a GBA game's PC Pokémon, and a DS game among the saves. */

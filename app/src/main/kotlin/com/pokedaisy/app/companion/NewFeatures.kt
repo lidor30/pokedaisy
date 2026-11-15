@@ -168,7 +168,7 @@ object NewFeatures {
     const val SAVE_COLLECTION = "save_collection"
     /** TOOLS > POKé TRANSFER: six Pokémon from HeartGold / SoulSilver / Platinum into Black / White and their sequels (save.PokeTransfer). */
     const val POKE_TRANSFER = "poke_transfer"
-    /** The SAVE EDITOR on Black / White and their sequels' saves (save.Gen5SaveEditor): every page, MISSING through Poké Transfer. */
+    /** The SAVE EDITOR on Black / White and their sequels' saves (save.Gen5SaveEditor): every page, MISSING through Poké Transfer, and their trades with each other (save.Gen5Trade). */
     const val SAVE_EDITOR_GEN5 = "save_editor_gen5"
 
     /** SETTINGS > DS LAYOUT: a DS game's two screens on one (companion.DsLayout), its touch screen floating in over the

@@ -2287,7 +2287,7 @@ touches (box names, the 24 boxes, bag 0x18400, party, trainer, the money block, 
 saves (`Gen5Layout.editedBlocks`); the cart gives level-up moves, evolutions, PP, item pockets (bits 7-10 of a/0/2/4's u16 at +8: items, medicine,
 TMs, berries, key) and the regional dex (a/0/1/6 member 668 / 709). Gen 5 keeps the nature in its own byte (any nature, any personality); the
 ability is personality bit 16, a hidden one kept; TMs are one each. MISSING on a Gen 5 save looks at the Gen 4 saves through Poké Transfer
-(`Way.POKE_TRANSFER`, a row opens the transfer with it picked); Gen 5 saves don't trade with each other yet (no TRADE). Checked 2026-11-16: an
+(`Way.POKE_TRANSFER`, a row opens the transfer with it picked); Gen 5 saves trade with each other (`Gen5Trade`, 2026-11-16: the cart's trade evolutions, method 7 = traded for that species, so `TradeRules.evolution` takes the swap's partner; an item Black / White lack refused; a real Black -> Black 2 trade booted, saved in game, every CRC checked). Checked 2026-11-16: an
 edited Black save (money, a level, IVs / EVs, a nature, PC -> party, an item given) booted in nds_dump, shown by the game's own party and trainer
 card, saved in game on top and read back (`Gen5SaveTest`, `POKE_TRANSFER_EDIT_OUT`).
 **REWIND** (Settings, `Prefs.rewind`, off by default; REWIND HOLD hotkey, R on a keyboard): `pk_rewind.c` - mGBA's own

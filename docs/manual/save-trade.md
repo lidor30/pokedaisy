@@ -60,7 +60,7 @@ A held item works like the game's `GIVE` and `TAKE`: the item comes out of the b
 
 `BAG` shows the game's eight pockets, medicine and battle items included, and `ADD ITEM` lists every item your copy of the game puts in that pocket. `TRAINER` has your money and the Pokédex: its counts for the region (Johto or Sinnoh) and the whole National Pokédex, and the same `ADD MINE`, `ALL SEEN` and `ALL CAUGHT`. Until your save has the National Pokédex, marking every Pokémon only marks the region's. These games have no coins or event tickets here, and the play time isn't shown yet.
 
-Black, White, Black 2 and White 2 saves open the same way too, in any language. `POKéMON` has your party and all 24 boxes with the same moves, search, sort, renaming and release, and a Pokémon's page as above. In these games the nature is its own, so changing it changes nothing else. A Pokémon with its hidden ability keeps it. `BAG` shows the game's five pockets, where a TM is never used up, so you have one or none. `TRAINER` shows your money (up to 9,999,999), your play time and the Pokédex: Unova's and the National one. These saves don't trade with each other here yet; they get Pokémon through [Poké Transfer](#transfer-to-black-and-white).
+Black, White, Black 2 and White 2 saves open the same way too, in any language. `POKéMON` has your party and all 24 boxes with the same moves, search, sort, renaming and release, and a Pokémon's page as above. In these games the nature is its own, so changing it changes nothing else. A Pokémon with its hidden ability keeps it. `BAG` shows the game's five pockets, where a TM is never used up, so you have one or none. `TRAINER` shows your money (up to 9,999,999), your play time and the Pokédex: Unova's and the National one. They trade with each other (see [Trade between saves](#trade-between-saves)) and get Pokémon from HeartGold, SoulSilver and Platinum through [Poké Transfer](#transfer-to-black-and-white).
 
 ## On the 3DS
 
@@ -81,6 +81,8 @@ Tap `TOOLS` in the library, then `TRADE SAVES`, and pick the game to trade from 
 Each game shows its party over its boxes. Pick a Pokémon on one side, then a Pokémon or an empty slot on the other, in the party or the PC: a Pokémon for a Pokémon (`TRADE`), or one sent over (`SEND`). An empty party slot puts the Pokémon at the end of that party. `SAVE` writes both saves together.
 
 HeartGold, SoulSilver and Platinum trade with each other (not with the GBA games). Any Pokémon can go, eggs too, except the Spiky-eared Pichu, and one holding mail can only go to the other game's party. A Pokémon holding an item Platinum doesn't have (some of HeartGold and SoulSilver's newer items) can't go to Platinum. What arrives is registered in the Pokédex, as in a real trade.
+
+Black, White, Black 2 and White 2 trade with each other the same way. A Pokémon holding an item Black and White don't have (some of the sequels' newer items) can't go to them. The pair that only evolves when traded for each other evolves when you trade one for the other with `TRADE`, not when one is just sent over.
 
 The games' own trade rules apply. FireRed and LeafGreen only trade with Ruby, Sapphire and Emerald after the island part of their story, a game without its National Pokédex yet only takes Pokémon from its own regional one, and a party has to keep at least one Pokémon that isn't an egg. A Pokémon that evolves when traded evolves when it arrives, as it would with a cable. If you'd rather trade inside the games themselves, see [Link play](link-play.md).
 
@@ -127,7 +129,7 @@ Tap `TOOLS` in the library, then `COLLECTION`, to see every Pokémon in all your
 Tap a Pokémon for what you can do with it:
 
 - `OPEN` opens its game in the save editor, with that Pokémon picked.
-- `TRADE` asks which game to trade with (one of the same generation), then opens the trade with it picked. Black and White saves are listed too, but don't trade here yet.
+- `TRADE` asks which game to trade with (one of the same generation), then opens the trade with it picked. 
 - `PAL PARK` (a GBA game's Pokémon in a box, when you have HeartGold, SoulSilver or Platinum) asks which DS game, then opens Pal Park with it picked.
 
 `BACK` from any of them comes back to the collection, read again, so what you changed shows.
