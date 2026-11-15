@@ -198,6 +198,10 @@ fun CompanionSettingsScreen(
                                 }
                             }
                         }
+                    } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
+                        confirm = Confirm(
+                            tk("RESET GAME BUTTONS?"), tr("Every game button goes back to the key it had at first."), tk("RESET"),
+                        ) { settings.resetGbaControls(); tick++ }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     // Off, the binds stay as they are, greyed out, and every key goes to the game.
                     Page.HOTKEYS -> listOf(
@@ -226,6 +230,10 @@ fun CompanionSettingsScreen(
                                 )
                             }
                         }
+                    } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
+                        confirm = Confirm(
+                            tk("RESET HOTKEYS?"), tr("Every hotkey goes back to the keys it had at first."), tk("RESET"),
+                        ) { settings.resetHotkeys(); tick++ }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.SHADERS -> shaderRows(settings) { tick++ } + SettingRow(tk("CANCEL"), null) { page = Page.DISPLAY }
                     Page.FIELD_HUD -> fieldHudRows(

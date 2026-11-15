@@ -2302,6 +2302,14 @@ class PokeDaisyActivity : Activity() {
             GbaControls.clearBinding(getExternalFilesDir(null) ?: filesDir, btn)
             input.setControls(GbaControls.load(getExternalFilesDir(null) ?: filesDir))
         }
+        override fun resetGbaControls() {
+            GbaControls.resetBindings(getExternalFilesDir(null) ?: filesDir)
+            input.setControls(GbaControls.load(getExternalFilesDir(null) ?: filesDir))
+        }
+        override fun resetHotkeys() {
+            Hotkeys.resetBindings(getExternalFilesDir(null) ?: filesDir)
+            hotkeys = Hotkeys.load(getExternalFilesDir(null) ?: filesDir)
+        }
         override val buttonGroup get() = if (romIsNds) GbaControls.Group.DS else GbaControls.Group.GBA
         override val hotkeysEnabled get() = hotkeysOn
         override fun setHotkeysEnabled(on: Boolean) {
@@ -5287,6 +5295,7 @@ class PokeDaisyActivity : Activity() {
                     core = coreFrame.value,
                     clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
                     onWindow = { battlePicking.value = it },
+                    style = battleStyle.value,
                 )
                 com.pokedaisy.app.companion.ui.QuickMenu(quickMenu, snap, quickActions, quickShown.value, hudStyle.value.look)
                 com.pokedaisy.app.companion.ui.HealedAnimation(healShow.value, hudStyle.value.look) { healShow.value = null }
@@ -5755,6 +5764,7 @@ class PokeDaisyActivity : Activity() {
         // The player's held keys let go in the game (which runs on), and the other way round.
         input.releaseAll()
         bottomHat = 0
+        hatRepeat.stop()
         if (on && ::view.isInitialized) view.camera.let { it.stickX = 0f; it.stickY = 0f }
     }
 
@@ -5808,8 +5818,13 @@ class PokeDaisyActivity : Activity() {
         val pressed = bits and bottomHat.inv()
         bottomHat = bits
         menuKeyFor(pressed)?.let { bottomKeys.key(it) }
+        // Held: it repeats, as a held key does (a hat's axes never do by themselves).
+        hatRepeat.update(bits, pressed) { bit -> if (bottomFocus.value) menuKeyFor(bit)?.let { bottomKeys.key(it, repeat = true) } else hatRepeat.stop() }
         return true
     }
+
+    /** A hat / stick direction held while the buttons steer the companion (the window or the other screen's), repeated. */
+    private val hatRepeat = HatRepeat()
 
     // --- the companion's window (one screen, SidePanel) -----------------------------
 
@@ -5823,6 +5838,7 @@ class PokeDaisyActivity : Activity() {
     private fun onCompanionWindow(open: Boolean) {
         input.releaseAll()
         menuHat = 0
+        hatRepeat.stop()
         if (open) view.camera.let { it.stickX = 0f; it.stickY = 0f }
     }
 
@@ -6030,6 +6046,7 @@ class PokeDaisyActivity : Activity() {
         val pressed = bits and menuHat.inv()
         menuHat = bits
         menuKeyFor(pressed)?.let { sidePanel.menuKey(it) }
+        hatRepeat.update(bits, pressed) { bit -> if (sidePanel.windowOpen) menuKeyFor(bit)?.let { sidePanel.menuKey(it, repeat = true) } else hatRepeat.stop() }
         return true
     }
 

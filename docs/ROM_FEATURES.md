@@ -414,6 +414,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
     same, with btlv_scd at core +0x1C4, btlv_input at scd +0xBC and the opened screen at scd +0xA4 (headless in Black 2's wild
     battle: every button, each move card, the way back; the move panel's 3-frame gap too). White 2's battle wasn't reached
     headless: its structs are Black 2's, its chain from its own GameSystem. Their look is `DsLook.UNOVA2`.
+    Double and triple battles (GitHub #833, Black headless on the player's save, 2026-11-16: the Super Single Train's battle
+    with BATTLE_SETUP_PARAM's rule poked to 1 / 2 before it began): the target choice is panel 3, which read as nothing
+    (the player brought it up with L2); it floats the touch screen in now, for each Pokémon's turn. Any rule but 0 (single)
+    reads as a double (`Gen5Reader`), so a triple's (its SHIFT button) and a rotation's own panels float in instead of
+    BATTLE BUTTONS' strip; a rotation battle wasn't run. Black 2's panels weren't checked in a double.
 28. Let's Go Pikachu / Eevee (FireRed rev 0 edited in place; all four builds share rev 0's RAM, code and tables for these),
     checked headless on Let's Go Pikachu with its new game's save (the `lets_go` fixtures' READMEs): EXPAND by `verify_wide.py`
     on all four (map 440/440, battle 895/895 exact); a written action cell 2 + A opened the party menu and a written move

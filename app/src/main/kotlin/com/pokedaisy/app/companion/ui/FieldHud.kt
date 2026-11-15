@@ -1745,8 +1745,11 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
                                 Spacer(Modifier.width(u * 4))
                             }
                             val lv = if (w.minLevel == w.maxLevel) "${w.minLevel}" else "${w.minLevel}-${w.maxLevel}"
-                            GbaText(tr("Lv{0}", lv), c.muted, c.shadow, small, Modifier.width(u * 34))
-                            Box(Modifier.width(u * 22), contentAlignment = Alignment.CenterEnd) {
+                            // At least these widths, wider when the small text can't be smaller (a screen whose GBA pixel is
+                            // a couple of screen pixels: its font pixel rounds up to the normal text's, GitHub #924): the
+                            // name gives way, never the level or the odds.
+                            GbaText(tr("Lv{0}", lv), c.muted, c.shadow, small, Modifier.widthIn(min = u * 34).padding(start = u * 2))
+                            Box(Modifier.widthIn(min = u * 22).padding(start = u * 3), contentAlignment = Alignment.CenterEnd) {
                                 GbaText("${w.percent}%", c.accent, c.accentShadow, small)
                             }
                         }

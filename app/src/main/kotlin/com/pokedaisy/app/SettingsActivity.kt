@@ -482,6 +482,22 @@ class SettingsActivity : ComponentActivity() {
                 )
             }
 
+            confirmReset?.let { r ->
+                OptionConfirm(
+                    title = if (r == Reset.HOTKEYS) tk("RESET HOTKEYS?") else tk("RESET GAME BUTTONS?"),
+                    message = if (r == Reset.HOTKEYS) tr("Every hotkey goes back to the keys it had at first.")
+                        else tr("Every game button goes back to the key it had at first."),
+                    confirmLabel = tk("RESET"),
+                    m = m,
+                    onDismiss = { confirmReset = null },
+                    onConfirm = {
+                        if (r == Reset.HOTKEYS) Hotkeys.resetBindings(filesRoot) else GbaControls.resetBindings(filesRoot)
+                        confirmReset = null
+                        revision++
+                    },
+                )
+            }
+
             hotkeyClash?.let { c ->
                 OptionConfirm(
                     title = tk("KEY IN USE"),
@@ -1974,6 +1990,20 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }
+            ResetToDefaults(m) { confirmReset = Reset.HOTKEYS }
+        }
+    }
+
+    /** What RESET TO DEFAULTS asks about ([confirmReset]): the hotkeys or the game buttons. */
+    private enum class Reset { HOTKEYS, BUTTONS }
+
+    private var confirmReset by mutableStateOf<Reset?>(null)
+
+    /** A page's RESET TO DEFAULTS, under its list (GitHub discussion #923: a key rebound by mistake, nothing left to fix it with). */
+    @Composable
+    private fun ResetToDefaults(m: GbaTextMetrics, onClick: () -> Unit) {
+        Row(Modifier.fillMaxWidth().padding(top = m.u * 4), horizontalArrangement = Arrangement.End) {
+            OptionButton(tk("RESET TO DEFAULTS"), m, onClick = { capture.cancel(); onClick() })
         }
     }
 
@@ -1998,6 +2028,7 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }
+            ResetToDefaults(m) { confirmReset = Reset.BUTTONS }
         }
     }
 

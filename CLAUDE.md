@@ -811,7 +811,9 @@ step). The cover carries `DsLoader` (three dots; after 160 ms). **Menu transitio
 one-screen DS stage only): from a menu flow's first faded frame (`pkNdsFade`: master brightness, read right after the
 frame and before it's published) until the touch screen has been lit 12 frames with no fade, both screens keep their last
 picture (`NdsBottomFrame.held`, the top's `holdFrame`), the window keeps its layout (the activity latches the flows), shaded
-with the dots (`DsLoader(ball = false)`), and the game runs flat out, muted (at FF's speed with its music while FF is on),
+with the dots (`DsLoader(ball = false)`), and the game runs flat out, muted (at FF's speed with its music while FF is on) - but only once
+the top screen fades or goes dark too (`DsTransitionHold.fast`): a fade of the touch screen alone (Black's X menu, GitHub #840) keeps the
+game's speed and sound behind the held pictures, else the music cut on every menu,
 drawing every 4th frame, keys and taps held back; the held picture then crossfades out. Never in a battle (its own rules).
 `DsTransitionHoldTest` replays HeartGold's and Black 2's real traces (`resources/ds_transitions/`: Black 2's party keeps its
 top screen one colour, so the touch screen decides). Without a hold, a window up when its touch screen goes black stays
@@ -1379,6 +1381,9 @@ ball sprites are ours). Lengths are the game's pixels over the tab (`G5`: 256 x 
 every edge stepped in whole screen pixels of one game pixel, `rowsPath`); the lens / field, discs (`DISC`) and plates (`PLATE`) are profile
 tables from the frames. Edge to edge: CompanionScreen eases its margin away and docks the tab bar on `Gen5Dock` while the controls are up.
 D-pad focus is the game's key cursor (magenta corner brackets). Look at it with `gradle render -Ponly=battle-gen5` beside the game's frames.
+One screen's BATTLE BUTTONS follow it too (2026-11-16, players who picked GEN 4 on one screen saw no change): `BattleButtons(style)` ->
+`Gen5ActionButton` / `Gen5MoveRow` / `Gen5PartyRow` / `Gen5ListCancel` (end of BattleControlsGen5.kt: the same faces, rims and labels, a
+game pixel = the HUD's GBA pixel, laid out as the GEN 4 buttons and lists). `BattleButtonsScreenshotTest`'s `gen5*` renders them.
 **ASPECT** (SETTINGS on either screen, `Prefs.stretchGame`, ORIGINAL default / STRETCH): STRETCH fills
 the top screen - `EmulatorView.stretch` drops the quad's letterbox and `GameStageLayout.stretch` gives the
 game all the space under the status bar. The bottom screen flips it in place; the top-screen Settings opens

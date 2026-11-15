@@ -547,6 +547,9 @@ class EmulatorEngine(
      * back. Emu thread. */
     private val dsHold = DsTransitionHold()
     @Volatile private var dsHeld = false
+    // The hold has seen the top screen fade or go dark ([DsTransitionHold.fast]): flat out and muted. Before that (the touch
+    // screen alone fading: Black's X menu) the game keeps its speed and sound behind the held pictures.
+    @Volatile private var dsHeldFast = false
 
     /** [dsHold]'s, for the UI (the window's frozen picture, its shade and dots). Set on the emu thread. */
     val dsHolding = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -777,7 +780,7 @@ class EmulatorEngine(
         // A DS game going to its next screen behind the held pictures (dsHold): the same, nothing to see or hear - unless
         // FF is on, whose music plays through it (muting it cut the FF music and skipped it ahead): FF's speed then, never
         // SMART's 1x (nothing to steer behind a held picture).
-        if (dsHeld) return if (s > 1f) s else Float.POSITIVE_INFINITY
+        if (dsHeld) return if (s > 1f) s else if (dsHeldFast) Float.POSITIVE_INFINITY else s
         // SMART: menus and the region map's cursor can't be steered sped up -
         // 1x while one is up, and FF (still on) picks up again when it closes.
         // A battle runs fast but where it waits for the player (its menus, bag and party).
@@ -788,6 +791,7 @@ class EmulatorEngine(
     private fun endDsHold() {
         dsHold.release()
         dsHeld = false
+        dsHeldFast = false
         NdsBottomFrame.held = false
         dsHolding.value = false
     }
@@ -797,6 +801,7 @@ class EmulatorEngine(
         val held = dsHold.step(
             MgbaCore.pkNdsFade(), fieldState, dsTouchWanted.value || dsMenuScreen.value || dsMenuApp.value, dsQuickLoads,
         )
+        dsHeldFast = held && dsHold.fast
         if (held == dsHeld) return
         val ran = dsHold.frames
         dsHeld = held
@@ -1740,7 +1745,7 @@ class EmulatorEngine(
                 // only as SPED-UP (which STEADY falls back to only for a song or ROM it can't
                 // render). Slow-mo stays muted.
                 val spedUp = speed > 1f && clip == null && mode != FfMusicMode.OFF && !awaitingClip && !dsMusicOn
-                val wantPaused = rewinding || battleInput.holdFrame || dsHeld && !ffWanted ||
+                val wantPaused = rewinding || battleInput.holdFrame || dsHeldFast && !ffWanted ||
                     !((speed == 1f && clip == null) || spedUp || dsMusicOn)
                 // Refreshes per frame when the display paces 1x; 0 = the timer and blocking audio.
                 // A screen whose ticks don't follow its refresh (VsyncCheck, GitHub #350): the timer and blocking writes,
