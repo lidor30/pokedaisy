@@ -3,10 +3,10 @@ title: Save editor and save trades
 summary: Change a game's Pokémon, party, boxes, bag and Pokédex (HeartGold, SoulSilver and Platinum too), or trade Pokémon between two of your games' saves, straight in the save files.
 section: player
 order: 8
-keywords: [heartgold, soulsilver, platinum, ds save, nds save, save editor, edit save, editor, pc boxes, boxes, trade saves, trade, trading, transfer, move pokemon between games, bag, money, coins, held item, moves, save file, ivs, evs, nature, ability, shiny, gender, level, nickname, rename, friendship, pokedex, event, ticket, mystery gift, release, sort, search, party]
+keywords: [3ds, nintendo 3ds, heartgold, soulsilver, platinum, ds save, nds save, save editor, edit save, editor, pc boxes, boxes, trade saves, trade, trading, transfer, move pokemon between games, bag, money, coins, held item, moves, save file, ivs, evs, nature, ability, shiny, gender, level, nickname, rename, friendship, pokedex, event, ticket, mystery gift, release, sort, search, party]
 ---
 
-PokeDaisy can open a game's save file while the game is closed: you can tidy its PC, change your Pokémon, or move Pokémon between two of your games, the way a trade would. It works with FireRed, LeafGreen, Emerald, Ruby and Sapphire saves (and ROM hacks that kept their save layout), in English and the other Western languages, and with HeartGold, SoulSilver and Platinum saves on the DS (see [On the DS](#on-the-ds)).
+PokeDaisy can open a game's save file while the game is closed: you can tidy its PC, change your Pokémon, or move Pokémon between two of your games, the way a trade would. It works with FireRed, LeafGreen, Emerald, Ruby and Sapphire saves (and ROM hacks that kept their save layout), in English and the other Western languages, and with HeartGold, SoulSilver and Platinum saves on the DS (see [On the DS](#on-the-ds)). The 3DS app has it too (see [On the 3DS](#on-the-3ds)).
 
 Everything the editor offers is something the game itself could have: a nature, a level or a move your Pokémon could really have, never a value the game would never make.
 
@@ -57,6 +57,16 @@ A HeartGold, SoulSilver or Platinum save (Platinum's US cart, and Renegade Plati
 A held item works like the game's `GIVE` and `TAKE`: the item comes out of the bag, and the one it held goes back in. So you can only give an item the bag has, and the bag needs room for the one coming back.
 
 `BAG` shows the game's eight pockets, medicine and battle items included, and `ADD ITEM` lists every item your copy of the game puts in that pocket. `TRAINER` has your money and the Pokédex: its counts for the region (Johto or Sinnoh) and the whole National Pokédex, and the same `ADD MINE`, `ALL SEEN` and `ALL CAUGHT`. Until your save has the National Pokédex, marking every Pokémon only marks the region's. These games have no coins or event tickets here, and the play time isn't shown yet.
+
+## On the 3DS
+
+The 3DS app has the same editor for FireRed, LeafGreen, Emerald, Ruby and Sapphire saves: press **SELECT** in the library until `SAVE EDITOR` and pick a game. Its three pages are tabs along the top of the touch screen (**SELECT** steps through them, or tap one), and the top screen shows the Pokémon, item or trainer under the cursor with the buttons that work there.
+
+- `POKéMON`: **L** and **R** go through your party and the 14 boxes. **A** picks a Pokémon up and puts it down in another place, by the same rules as above. **Y** (or `EDIT`) opens its page: a list where **LEFT** and **RIGHT** change a value step by step (or tap its arrows), and **A** opens a window to pick one (a nature, an item, a move) or to type a number. Names are typed on the 3DS's own keyboard. **L** and **R** on the page go to the next Pokémon. `BOX` renames or sorts the box.
+- `BAG`: **L** and **R** go through the pockets, **A** changes how many you have (0 takes it out), and **Y** adds an item.
+- `TRAINER`: your money and coins, the Pokédex marks and the event tickets.
+
+**X** saves. A copy of the old save goes to `pokedaisy-backups` first. `TRADE SAVES` on the 3DS trades party Pokémon too: **L** and **R** reach the party on each side.
 
 ## Trade between saves
 

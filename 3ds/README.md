@@ -125,16 +125,26 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   the save editor reads it, the rest from `cards/<game>.card`, what the game looked like when it was last left). SETTINGS
   holds the settings that aren't a game's: the library's VIEW and SORT, THEME, DARK MODE, SCREEN, ASPECT, the sound, the
   battle buttons, HUD and FLY STYLE.
-- **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported): a game's
-  save file opened with the game closed, its PC boxes on the touch screen (A picks a Pokémon up and puts it down, L / R the
-  box), MONEY and COINS, SAVE. The top screen shows the Pokémon on the cursor. Written the game's way (the other slot,
-  counter + 1, read back before it's handed out), backed up first and checked again on the SD card before it replaces the
-  file. Retail English / European FireRed, LeafGreen, Ruby, Sapphire and Emerald saves, as in the app; no bag, held items or
-  moves yet (the app's `Gen3Legal` tables).
-- **TRADE SAVES**: two games' saves, PC box to PC box, by the games' own rules (`Gen3Trade`: FireRed / LeafGreen only after the
-  Sevii Islands, no National Dex = no eggs or Pokémon outside the regional dex, Mew / Deoxys from an event only, no mail;
-  trade evolutions, the Pokédex, Ruby / Sapphire's National Dex). A tab per side over its box, a Pokémon (or an empty place)
-  picked on each, Y trades; both saves written or neither. `make test-save` runs `core/pd_save.c` on real saves.
+- **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported, round two
+  included): a game's save file opened with the game closed, the app's three pages as tabs (SELECT steps them). POKéMON: the
+  party and the 14 boxes (L / R), A picks a Pokémon up and puts it down (party <-> PC by the PC's rules: mail, the last one
+  able to battle, a full party), Y / EDIT opens its page - level (never below what it was), nature / gender / shiny / ability
+  (another personality keeping the rest, Unown's letter and Wurmple's branch), friendship, IVs, EVs (510), nickname (its OT
+  only, typed on the console's keyboard: libctru's swkbd through the host's `edit_text`), held item, moves (what it could
+  learn by level, TM / HM or tutor, its pre-evolutions' too), RELEASE - with ◀ / ▶ stepping a value and A a pick-list or a
+  number; BOX renames or sorts the box (Pokédex, level, name). BAG: the five pockets, a stack's count (0 takes it out), ADD
+  ITEM from what the game files there; key items and HMs stay. TRAINER: money, coins, the Pokédex (register what the save
+  holds, all seen / caught, the regional dex until the National one) and the event tickets as their distributions gave them.
+  The top screen shows the Pokémon (its stats with IVs / EVs on its page), the item or the trainer. Every value only one
+  `Gen3Legal` allows (`core/pd_save_tables_gen.c`, `tools/gen_save_tables.py` from the app's generated tables). Written the
+  game's way (the other slot, counter + 1, read back before it's handed out), backed up first and checked again on the SD
+  card before it replaces the file. Retail English / European FireRed, LeafGreen, Ruby, Sapphire and Emerald saves, as in the
+  app (no DS saves: the 3DS can't play them).
+- **TRADE SAVES**: two games' saves, party or PC, by the games' own rules (`Gen3Trade`: FireRed / LeafGreen only after the
+  Sevii Islands, no National Dex = no eggs or Pokémon outside the regional dex, Mew / Deoxys from an event only, no mail, a
+  party keeps one that isn't an egg; trade evolutions, the Pokédex, Ruby / Sapphire's National Dex). A tab per side over its
+  party or a box, a Pokémon (or an empty place) picked on each, Y trades; both saves written or neither. `make test-save`
+  runs `core/pd_save.c` on real saves (every edit, then written and read back).
 - **Battle controls**: FIGHT / BAG / RUN / POKéMON, the moves, the party to send in (BEST / OUT), ONE-TAP MOVES,
   on the GBA games with their handlers known and on every Game Boy game (its 2x2 menu in the cart's own words).
 - **QUICK MENU** (Y): PC, FLY, FLASH (English FireRed, LeafGreen, Emerald, Ruby, Sapphire: the game's own cut-in and light,

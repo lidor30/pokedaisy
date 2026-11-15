@@ -989,6 +989,20 @@ static bool lib_write_saves(void* ctx, int n, const char* const* files, const ui
     return true;
 }
 
+// The console's own keyboard (libctru's swkbd applet) for the save editor's names: OK / CANCEL, never an empty name. The
+// characters are checked by the editor (the games' charset), which says so when one can't be written.
+static bool lib_edit_text(void* ctx, const char* hint, const char* initial, int max, char* out, size_t outLen) {
+    (void) ctx;
+    SwkbdState kb;
+    swkbdInit(&kb, SWKBD_TYPE_NORMAL, 2, max);
+    swkbdSetHintText(&kb, hint);
+    swkbdSetInitialText(&kb, initial);
+    swkbdSetValidation(&kb, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+    out[0] = 0;
+    SwkbdButton pressed = swkbdInputText(&kb, out, outLen);
+    return pressed == SWKBD_BUTTON_CONFIRM && out[0];
+}
+
 // The whole ROM in the arena the games use (no game runs while the library is up).
 static const uint8_t* lib_load_rom(void* ctx, const char* file, size_t* size) {
     (void) ctx;
@@ -1101,7 +1115,7 @@ static bool pick_rom(char* out, size_t outLen) {
     static struct pd_library_host host = {
         .read_rom = lib_read_rom, .read_save = lib_read_save, .write_saves = lib_write_saves, .load_rom = lib_load_rom,
         .read_card = lib_read_card, .settings_changed = lib_settings_changed, .cache_changed = lib_cache_changed,
-        .version = PD_VERSION " (3DS)",
+        .version = PD_VERSION " (3DS)", .edit_text = lib_edit_text,
     };
     int n = list_roms(names);
     pd_library_init(&library, &settings, &host);

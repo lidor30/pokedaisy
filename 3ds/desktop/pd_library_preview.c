@@ -14,6 +14,7 @@
 #include "../core/pd_canvas.h"
 #include "../core/pd_game.h"
 #include "../core/pd_library.h"
+#include "../core/pd_save.h"
 #include "../core/pd_settings.h"
 #include "../core/pd_snapshot.h"
 #include "../core/pd_style.h"
@@ -116,6 +117,16 @@ static bool read_card(void* ctx, const char* file, struct pd_game_card* out) {
     return true;
 }
 
+// The console's keyboard: what the player "typed".
+static bool edit_text(void* ctx, const char* hint, const char* initial, int max, char* out, size_t outLen) {
+    (void) ctx;
+    (void) hint;
+    (void) initial;
+    (void) max;
+    snprintf(out, outLen, "DAISY");
+    return true;
+}
+
 static void settings_changed(void* ctx) { (void) ctx; }
 static void cache_changed(void* ctx) { (void) ctx; }
 
@@ -210,7 +221,7 @@ int main(int argc, char** argv) {
     static struct pd_settings settings;
     pd_settings_defaults(&settings);
     static const struct pd_library_host host = {
-        NULL, read_rom, read_save, write_saves, load_rom, read_card, settings_changed, cache_changed, "1.6.0 (3DS)", NULL,
+        NULL, read_rom, read_save, write_saves, load_rom, read_card, settings_changed, cache_changed, "1.6.0 (3DS)", NULL, edit_text,
     };
     pd_library_init(&lib, &settings, &host);
     lib.batteryPct = 82;   // the 3DS host reads the console's
@@ -288,9 +299,27 @@ int main(int argc, char** argv) {
         lib.picked = -1;
     }
 
-    // SAVE EDITOR on the first game.
+    // SAVE EDITOR on the first game: the box the PC opens on, a Pokémon moved, the party, a Pokémon's page and its
+    // pick-lists, BAG, TRAINER, the box menu, SAVE.
     tap_at(20, 3 + 45 + 20);
     shot("editor-pick");
+    int currentBox = 0;
+    {
+        // Which box the editor opens on: the party is that many L presses away.
+        static uint8_t buf[PD_SAVE_MAX_SIZE];
+        static struct pd_save sv;
+        // The editor's first game: GAMES' first that has a Gen 3 save of a retail layout.
+        const struct pd_library_game* g = &lib.games[lib.list.items[0]];
+        for (int i = 0; i < lib.list.count; i++) {
+            const struct pd_library_game* c = &lib.games[lib.list.items[i]];
+            if (c->console == PD_CONSOLE_GBA && pd_save_layout_for(c->code) && c->size <= 16 * 1024 * 1024) {
+                g = c;
+                break;
+            }
+        }
+        long n = read_save(NULL, g->file, buf, sizeof buf);
+        if (n > 0 && !pd_save_parse(&sv, buf, (size_t) n, pd_save_layout_for(g->code))) currentBox = pd_save_current_box(&sv);
+    }
     keys(PD_LIB_A);
     shot("editor");
     keys(PD_LIB_A); // pick up the first Pokémon
@@ -298,16 +327,45 @@ int main(int argc, char** argv) {
     keys(PD_LIB_RIGHT);
     shot("editor-moving");
     keys(PD_LIB_A);
+    for (int i = 0; i <= currentBox; i++) keys(PD_LIB_L);
+    shot("editor-party");
+    keys(PD_LIB_Y); // the lead's page
+    shot("editor-mon");
     keys(PD_LIB_DOWN);
-    keys(PD_LIB_DOWN);
-    keys(PD_LIB_DOWN);
-    keys(PD_LIB_DOWN);
-    keys(PD_LIB_DOWN); // the buttons
-    keys(PD_LIB_LEFT);
-    keys(PD_LIB_A); // MONEY
-    keys(PD_LIB_UP);
-    shot("editor-money");
+    keys(PD_LIB_RIGHT); // the next nature
+    for (int i = 0; i < 8; i++) keys(PD_LIB_DOWN); // past NICKNAME and ITEM to the first IV
+    keys(PD_LIB_RIGHT);
+    shot("editor-mon-ivs");
     keys(PD_LIB_A);
+    shot("editor-mon-number");
+    keys(PD_LIB_B);
+    for (int i = 0; i < 12; i++) keys(PD_LIB_DOWN); // the IVs, the EVs, then MOVE 1
+    shot("editor-mon-moves");
+    keys(PD_LIB_A);
+    shot("editor-mon-move-pick");
+    keys(PD_LIB_B);
+    keys(PD_LIB_R); // the next Pokémon
+    shot("editor-mon-next");
+    keys(PD_LIB_B);
+    keys(PD_LIB_SELECT);
+    shot("editor-bag");
+    keys(PD_LIB_R); // BALLS
+    keys(PD_LIB_A);
+    shot("editor-bag-number");
+    keys(PD_LIB_B);
+    keys(PD_LIB_Y);
+    shot("editor-bag-add");
+    keys(PD_LIB_B);
+    keys(PD_LIB_SELECT);
+    shot("editor-trainer");
+    for (int i = 0; i < 4; i++) keys(PD_LIB_DOWN);
+    shot("editor-trainer-events");
+    keys(PD_LIB_SELECT); // back to POKéMON
+    keys(PD_LIB_R);      // BOX 1
+    tap_at(178, 225); // BOX
+    shot("editor-box-menu");
+    keys(PD_LIB_A); // RENAME: the keyboard types DAISY
+    shot("editor-box-renamed");
     keys(PD_LIB_X); // SAVE
     shot("editor-save");
     keys(PD_LIB_A);

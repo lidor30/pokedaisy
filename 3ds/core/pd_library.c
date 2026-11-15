@@ -590,6 +590,10 @@ void pd_library_touch(struct pd_library* l, int x, int y, bool down) {
             if (l->dragged) {
                 if (l->page == PD_PAGE_SETTINGS && l->pickRow < 0) l->settingsScroll += l->lastY - y;
                 else if (list) list->scroll += l->lastY - y;
+                else if (l->page == PD_PAGE_EDITOR || l->page == PD_PAGE_TRADE) {
+                    int* sc = lib_saves_scroll(l);
+                    if (sc) *sc += l->lastY - y;
+                }
                 l->lastY = y;
                 l->pressedHit = HIT_NONE;
                 l->dirty = true;
