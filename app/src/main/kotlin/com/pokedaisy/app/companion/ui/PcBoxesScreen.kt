@@ -61,6 +61,8 @@ import com.pokedaisy.app.companion.data.save.SaveEditRefused
 import com.pokedaisy.app.companion.data.speciesNames
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 
 /**
  * The SAVE EDITOR (a game's library menu, or TOOLS): a save file read while the game is closed, in three pages -
@@ -237,6 +239,8 @@ fun PcBoxesScreen(
                             PcBoxesState.Page.TRAINER -> tk("TRAINER")
                         },
                         m, onClick = { state.page = p; state.moving = null; state.notice = null }, emphasis = state.page == p,
+                        // The D-pad's first press lands here when no slot is selected.
+                        modifier = Modifier.focusStart(state.page == p),
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -538,10 +542,14 @@ internal fun MonCell(
 ) {
     val u = m.u
     val noRipple = remember { MutableInteractionSource() }
+    val focused by noRipple.collectIsFocusedAsState()
     val withIcon = icons != null && mon != null && !mon.isBadEgg
     Box(
         modifier
             .padding(u * 0.5f)
+            // The D-pad's cursor: the orange ring, and where it starts (the selected slot) when nothing has it yet.
+            .focusStart(selected)
+            .gbaFocusRing(focused, PixelRoundedShape(u * 2))
             .drawBehind {
                 val r = 2 * u.toPx()
                 when {

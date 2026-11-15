@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.data.save.Gen3SaveData
 import com.pokedaisy.app.companion.data.save.Gen3SaveEditor
@@ -90,6 +91,18 @@ class SaveEditorActivity : ComponentActivity() {
     /** Icons per ROM path, once loaded (absent = none for that ROM). */
     private val icons = mutableStateMapOf<String, MonIconLoader>()
 
+    /** The pop-ups open over the editor (pick-lists, amounts, names, confirms): B / BACK closes the newest. */
+    private val overlays = com.pokedaisy.app.companion.ui.OverlayStack()
+    /** Where the D-pad starts when nothing has the focus (the selected slot, a pop-up's choice). */
+    private val starts = com.pokedaisy.app.companion.ui.FocusStarts()
+    private var composeHasFocus = false
+    /** B / BACK closed a pop-up: its key up is the pop-up's too. */
+    private var backTaken = false
+
+    /** A controller or keyboard steers the editor ([saveEditorKey], SaveEditorKeys.kt). */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean =
+        saveEditorKey(this, event, overlays, starts, composeHasFocus, { backTaken }, { backTaken = it }) ?: super.dispatchKeyEvent(event)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
@@ -100,7 +113,19 @@ class SaveEditorActivity : ComponentActivity() {
         if (path == null && !tradeOnly && !pick) { finish(); return }
         // The editor's text a step smaller everywhere (the user's call: more of the save on screen), like Settings':
         // a font pixel down, so it stays crisp.
-        setContent { AppTheme { com.pokedaisy.app.companion.ui.SaveEditorText { Root() } } }
+        setContent {
+            AppTheme {
+                com.pokedaisy.app.companion.ui.SaveEditorText {
+                    // The D-pad's pop-ups (focus in, out and back, B closes the newest) and where it starts ([FocusStarts]).
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        com.pokedaisy.app.companion.ui.LocalOverlayStack provides overlays,
+                        com.pokedaisy.app.companion.ui.LocalFocusStarts provides starts,
+                    ) {
+                        Box(Modifier.fillMaxSize().onFocusChanged { composeHasFocus = it.hasFocus }) { Root() }
+                    }
+                }
+            }
+        }
         when {
             path != null -> openGame(File(path))
             tradeOnly -> pickFirst()

@@ -32,6 +32,10 @@ import com.pokedaisy.app.companion.data.save.Gen3StatLimits
 import com.pokedaisy.app.companion.data.save.MonRef
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.runtime.getValue
 
 /** The stats in the order the games' summary lists them (HP, ATTACK, DEFENSE, SP. ATK, SP. DEF, SPEED), as indexes into
  * the save's order (HP, Attack, Defense, Speed, Sp. Atk, Sp. Def). */
@@ -69,7 +73,8 @@ internal fun MonPage(state: PcBoxesState, at: MonRef, m: GbaTextMetrics, small: 
     val editable = editableMon(mon)
     val noRipple = remember { MutableInteractionSource() }
     // A page of its own: taps never reach the boxes under it.
-    Box(Modifier.fillMaxSize().clickable(interactionSource = noRipple, indication = null) {}) {
+    // Not a D-pad stop: the page's own controls are.
+    Box(Modifier.fillMaxSize().focusProperties { canFocus = false }.clickable(interactionSource = noRipple, indication = null) {}) {
         AppBackdrop()
         Column(Modifier.fillMaxSize().padding(16.dp)) {
             val where = when (at) {
@@ -233,14 +238,17 @@ private fun androidx.compose.foundation.layout.RowScope.StatCell(text: String, m
         if (onClick != null) {
             // A white key with the number: tap to change it.
             val u = m.u
+            val interaction = remember { MutableInteractionSource() }
+            val focused by interaction.collectIsFocusedAsState()
             Box(
                 Modifier.fillMaxSize()
+                    .gbaFocusRing(focused, PixelRoundedShape(u * 2))
                     .drawBehind {
                         val r = 2 * u.toPx()
                         drawPixelRoundRect(OptionColors.titleFill, radius = r)
                         drawPixelRoundFrame(OptionColors.frameDark, androidx.compose.ui.geometry.Offset.Zero, size, r, u.toPx())
                     }
-                    .soundClickable(onClick = onClick),
+                    .soundClickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = onClick),
                 contentAlignment = Alignment.Center,
             ) { GbaText(text, OptionColors.value, OptionColors.valueShadow, m) }
         } else {

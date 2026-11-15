@@ -992,13 +992,18 @@ fun platformLibrary(view: com.pokedaisy.app.LibraryView = com.pokedaisy.app.Libr
     prefs.libraryView = view.id
 }
 
+/** The SAVE EDITOR's D-pad starts, as SaveEditorActivity provides them (the `pc-boxes-focus` shot). */
+val pcBoxesStarts = com.pokedaisy.app.companion.ui.FocusStarts()
+
 fun pcBoxes(icons: Boolean = false, ds: Boolean = false): () -> (@Composable () -> Unit) = {
     val state = if (ds) pcBoxesDsDemo() else pcBoxesDemo()
     val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
-        com.pokedaisy.app.companion.ui.PcBoxesScreen(
-            state, if (ds) "Pokémon HeartGold" else "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
-            icons = if (icons) demoIcons else null, onTrade = {},
-        )
+        androidx.compose.runtime.CompositionLocalProvider(com.pokedaisy.app.companion.ui.LocalFocusStarts provides pcBoxesStarts) {
+            com.pokedaisy.app.companion.ui.PcBoxesScreen(
+                state, if (ds) "Pokémon HeartGold" else "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
+                icons = if (icons) demoIcons else null, onTrade = {},
+            )
+        }
     } }
     content
 }
@@ -2433,6 +2438,12 @@ fun main(args: Array<String>) {
         // SAVE EDITOR (a game's library menu): the save's party and boxes, then a Pokémon picked, moved and saved.
         Shot("pc-boxes", tw, th, td, pcBoxes()),
         Shot("pc-boxes-selected", tw, th, td, pcBoxes()) { onAllNodesWithText("ABRA")[0].performClick() },
+        // A controller's first D-pad press: the orange cursor ring on the selected slot (SaveEditorActivity's FocusStarts).
+        Shot("pc-boxes-focus", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("ABRA")[0].performClick()
+            waitForIdle()
+            runOnIdle { pcBoxesStarts.focusNewest() }
+        },
         Shot("pc-boxes-moving", tw, th, td, pcBoxes()) {
             onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("MOVE").performClick()
         },
