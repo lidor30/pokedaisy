@@ -101,6 +101,7 @@ private fun wayLine(o: MissingDex.Owned, sources: List<TradeSide>): String {
         MissingDex.Way.PAL_PARK -> tr("{0} · Lv{1} · PAL PARK", game, o.level)
         MissingDex.Way.EVOLVES -> tr("{0} · {1} Lv{2} evolves in the trade", game, monLabel(o.mon), o.level)
         MissingDex.Way.TRADE_BACK -> tr("Your {0} Lv{1} · trade it to {2} and back", monLabel(o.mon), o.level, game)
+        MissingDex.Way.POKE_TRANSFER -> tr("{0} · Lv{1} · POKé TRANSFER", game, o.level)
     }
     return o.blocker?.let { why -> "$game: $why" } ?: how
 }

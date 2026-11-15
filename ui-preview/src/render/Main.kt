@@ -996,15 +996,16 @@ fun platformLibrary(view: com.pokedaisy.app.LibraryView = com.pokedaisy.app.Libr
 val pcBoxesStarts = com.pokedaisy.app.companion.ui.FocusStarts()
 
 fun pcBoxes(
-    icons: Boolean = false, ds: Boolean = false, missing: Boolean = false,
+    icons: Boolean = false, ds: Boolean = false, missing: Boolean = false, black: Boolean = false,
     setup: com.pokedaisy.app.companion.ui.PcBoxesState.() -> Unit = {},
 ): () -> (@Composable () -> Unit) = {
-    val state = (if (ds) pcBoxesDsDemo() else if (missing) missingTargetDemo() else pcBoxesDemo()).apply(setup)
+    val state = (if (black) pcBoxesBlackDemo() else if (ds) pcBoxesDsDemo() else if (missing) missingTargetDemo() else pcBoxesDemo()).apply(setup)
     val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
         androidx.compose.runtime.CompositionLocalProvider(com.pokedaisy.app.companion.ui.LocalFocusStarts provides pcBoxesStarts) {
             com.pokedaisy.app.companion.ui.PcBoxesScreen(
-                state, if (ds) "Pokémon HeartGold" else "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
-                icons = if (icons) demoIcons else null, onTrade = {}, onMissing = { state.missing = missingDemo(state) },
+                state, if (black) "Pokémon Black" else if (ds) "Pokémon HeartGold" else "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
+                icons = if (icons) demoIcons else null, onTrade = if (black) null else ({}),
+                onMissing = { state.missing = if (black) missingBlackDemo(state) else missingDemo(state) },
             )
         }
     } }
@@ -2538,6 +2539,15 @@ fun main(args: Array<String>) {
         Shot("pc-boxes-release", tw, th, td, pcBoxes()) { onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("RELEASE").performClick() },
         // A DS save (HeartGold): its POKéMON page and a Pokémon's page.
         Shot("pc-boxes-ds", tw, th, td, pcBoxes(ds = true)) { onAllNodesWithText("MEGANIUM")[0].performClick() },
+        Shot("pc-boxes-black", tw, th, td, pcBoxes(black = true)) { onAllNodesWithText("SNIVY")[0].performClick() },
+        Shot("pc-boxes-black-page", tw, th, td, pcBoxes(black = true)) {
+            onAllNodesWithText("SNIVY")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+        },
+        Shot("pc-boxes-black-bag", tw, th, td, pcBoxes(black = true)) { onNodeWithText("BAG").performClick() },
+        Shot("pc-boxes-black-trainer", tw, th, td, pcBoxes(black = true)) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-black-missing", tw, th, td, pcBoxes(black = true)) {
+            onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick()
+        },
         Shot("pc-boxes-ds-page", tw, th, td, pcBoxes(ds = true)) {
             onAllNodesWithText("MEGANIUM")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
         },

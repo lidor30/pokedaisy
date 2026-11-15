@@ -1033,9 +1033,10 @@ object NdsArt {
     }
 
     /**
-     * What POKé TRANSFER needs from a Black / White (or Black 2 / White 2) cart ([com.pokedaisy.app.companion.data.save.Gen5GameData]),
-     * or null for another cart: its names ([readNames]), ability names (a/0/0/2 bank 182; the sequels' 374) and each
-     * species' personal record (a/0/1/6, 1..649).
+     * What the SAVE EDITOR and POKé TRANSFER need from a Black / White (or Black 2 / White 2) cart
+     * ([com.pokedaisy.app.companion.data.save.Gen5GameData]), or null for another cart: its names ([readNames]), ability names
+     * (a/0/0/2 bank 182; the sequels' 374), each species' personal record (a/0/1/6, 1..649, and the regional dex's member),
+     * level-up moves (a/0/1/8), evolutions (a/0/1/9), move PP (a/0/2/1) and item pockets (a/0/2/4).
      */
     fun readGen5SaveTables(rom: Path): com.pokedaisy.app.companion.data.save.Gen5GameData? {
         val names = readNames(rom)?.takeIf { it.gen5 } ?: return null
@@ -1045,11 +1046,33 @@ object NdsArt {
             val msg = Narc(file(f, header, "/a/0/0/2") ?: return null)
             val abilities = msg.member(if (names.bw2) 374 else 182)?.let { Gen5Text.lines(it) }.orEmpty()
             val personal = Narc(file(f, header, "/a/0/1/6") ?: return null)
+            val layout = if (names.bw2) com.pokedaisy.app.companion.data.save.Gen5Layout.B2W2 else com.pokedaisy.app.companion.data.save.Gen5Layout.BW
+            val last = com.pokedaisy.app.companion.data.save.Gen5GameData.LAST_SPECIES
+            // Level-up moves: (move, level) u16 pairs to 0xFFFF. Evolutions: seven (method, param, target) u16 triples.
+            val learnsets = file(f, header, "/a/0/1/8")?.let { Narc(it) }
+            val evolutions = file(f, header, "/a/0/1/9")?.let { Narc(it) }
+            val moves = file(f, header, "/a/0/2/1")?.let { Narc(it) }
+            val itemData = file(f, header, "/a/0/2/4")?.let { Narc(it) }
+            val levelUp = (0..last).map { s ->
+                val d = learnsets?.member(s) ?: return@map emptyList()
+                (0 until d.size / 4).map { u16(d, it * 4) to u16(d, it * 4 + 2) }.takeWhile { it.first != 0xFFFF }.map { (m, lv) -> lv to m }
+            }
+            val evos = (0..last).map { s ->
+                val d = evolutions?.member(s) ?: return@map emptyList()
+                (0 until d.size / 6).map { Triple(u16(d, it * 6), u16(d, it * 6 + 2), u16(d, it * 6 + 4)) }.filter { it.first != 0 }
+            }
+            val movePp = IntArray(moves?.size ?: 0) { m -> moves?.member(m)?.takeIf { it.size > 5 }?.let { it[5].toInt() and 0xFF } ?: 0 }
+            // Each item's bag pocket: bits 7-10 of its record's u16 at +8 (0 items, 1 medicine, 2 TMs / HMs, 3 berries, 4 key items).
+            val pockets = IntArray(itemData?.size ?: 0) { i ->
+                if (i == 0) -1 else itemData?.member(i)?.takeIf { it.size >= 10 }?.let { (u16(it, 8) shr 7) and 0xF } ?: -1
+            }
+            val regional = personal.member(layout.regionalMember)?.takeIf { it.size >= (last + 1) * 2 }
+                ?.let { r -> IntArray(last + 1) { s -> u16(r, s * 2).let { v -> if (v == 999) -1 else v } } } ?: IntArray(0)
             com.pokedaisy.app.companion.data.save.Gen5GameData(
                 species = names.species, moveNames = names.moves, items = names.items, abilityNames = abilities,
-                personal = (0..com.pokedaisy.app.companion.data.save.Gen5GameData.LAST_SPECIES).map { personal.member(it) },
+                personal = (0..last).map { personal.member(it) },
                 gameLanguage = when (code[3]) { 'J' -> 1; 'F' -> 3; 'I' -> 4; 'D' -> 5; 'S' -> 7; 'K' -> 8; else -> 2 },
-                layout = if (names.bw2) com.pokedaisy.app.companion.data.save.Gen5Layout.B2W2 else com.pokedaisy.app.companion.data.save.Gen5Layout.BW,
+                layout = layout, levelUp = levelUp, evolutions = evos, movePp = movePp, itemPockets = pockets, regional = regional,
             )
         }
     }

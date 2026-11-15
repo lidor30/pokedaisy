@@ -20,6 +20,23 @@ fun pcBoxesDsDemo(): PcBoxesState = PcBoxesState(
     ),
 )
 
+/** The Black editor's shots: the made-up Black save (SyntheticGen5), names from the app's tables. */
+fun pcBoxesBlackDemo(): PcBoxesState = PcBoxesState(
+    com.pokedaisy.app.companion.data.save.Gen5SaveEditor(
+        (com.pokedaisy.app.companion.data.save.Gen5SaveFile.parse(com.pokedaisy.app.companion.data.save.SyntheticGen5.save())
+            as com.pokedaisy.app.companion.data.save.Gen5SaveFile.Parsed.Ok).save,
+        com.pokedaisy.app.companion.data.save.SyntheticGen5.demoGame(),
+    ),
+)
+
+/** MISSING on the made-up Black save: the made-up HeartGold save's PC (six more in box 1) through Poké Transfer. */
+fun missingBlackDemo(state: PcBoxesState): com.pokedaisy.app.companion.ui.MissingView {
+    val t = transferDemo()
+    val target = TradeSide("Pokémon Black", state.editor, "IRBO")
+    val sides = listOf(TradeSide("Pokémon HeartGold", t.gen4, "IPKE"))
+    return com.pokedaisy.app.companion.ui.MissingView(com.pokedaisy.app.companion.data.save.MissingDex.find(target, sides), sides)
+}
+
 /**
  * Stand-ins for the icons the app reads from the player's ROM (no game art here): a 32x64 sheet whose first frame is
  * a dot in a colour of its own per species, outlined, so the cards' layout shows as it will with real icons.

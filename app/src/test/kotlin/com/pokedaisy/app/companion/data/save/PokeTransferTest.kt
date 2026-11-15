@@ -53,8 +53,8 @@ class PokeTransferTest {
         assertTrue(picks.size >= 6)
         val before = picks.take(6).map { hg.data.mon(it) }
         val to = PokeTransfer.transfer(hg, "HG", picks.take(6), black, "BLACK", today)
-        // The first free places of box 1 (it holds four), in order.
-        assertEquals((4 until 10).map { BoxSlot(0, it) }, to)
+        // The first free places of box 1 (it holds two: the other two are in the party), in order.
+        assertEquals((2 until 8).map { BoxSlot(0, it) }, to)
         val back = Gen5SaveData(black.game, (Gen5SaveFile.parse(black.build()) as Gen5SaveFile.Parsed.Ok).save.data)
         for ((at, was) in to.zip(before)) {
             val now = back.mon(at)
