@@ -2302,6 +2302,14 @@ class PokeDaisyActivity : Activity() {
             GbaControls.clearBinding(getExternalFilesDir(null) ?: filesDir, btn)
             input.setControls(GbaControls.load(getExternalFilesDir(null) ?: filesDir))
         }
+        override fun resetGbaControls() {
+            GbaControls.resetBindings(getExternalFilesDir(null) ?: filesDir)
+            input.setControls(GbaControls.load(getExternalFilesDir(null) ?: filesDir))
+        }
+        override fun resetHotkeys() {
+            Hotkeys.resetBindings(getExternalFilesDir(null) ?: filesDir)
+            hotkeys = Hotkeys.load(getExternalFilesDir(null) ?: filesDir)
+        }
         override val buttonGroup get() = if (romIsNds) GbaControls.Group.DS else GbaControls.Group.GBA
         override val hotkeysEnabled get() = hotkeysOn
         override fun setHotkeysEnabled(on: Boolean) {

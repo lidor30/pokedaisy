@@ -3,7 +3,7 @@ title: Controls, hotkeys and touch
 summary: Remap the game's buttons, set up turbo, change or turn off the hotkeys, set up the touch controls or an external controller, and what the BACK button does.
 section: player
 order: 2
-keywords: [flash, dark cave, light up cave, remap, rebind, keybind, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors, hm, hms, hm slave, hidden machine, field moves, no hms, without hms, exp share, exp all, experience, share exp, party exp, grinding, level up faster, level cap, max level, hard mode, overleveled]
+keywords: [flash, dark cave, light up cave, remap, rebind, keybind, reset controls, reset buttons, default buttons, reset hotkeys, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors, hm, hms, hm slave, hidden machine, field moves, no hms, without hms, exp share, exp all, experience, share exp, party exp, grinding, level up faster, level cap, max level, hard mode, overleveled]
 ---
 
 PokeDaisy works out of the box on handhelds like the AYN Thor: the face buttons, shoulders, START and SELECT are the GBA's, and a few button combinations do emulator things like saving a state. Everything here is about changing that: which button presses what, which shortcuts exist, and what happens when you plug in a controller or play by touch.
@@ -34,6 +34,8 @@ In a game, the companion's `GAME BUTTONS` shows the group for the game you're pl
 To change one, tap its row (it says `PRESS A BUTTON…`) and press the button you want on your device. That works the same on the top screen and on the companion: there, while a row waits, the game's screen shows a window asking for the button and the keys you hold. `CANCEL`, or `BACK`, leaves the button as it was. `TURBO A`, `TURBO B`, the D-pad rows and the GBA and Game Boy rows also get `CLEAR`, which takes them off every button again.
 
 The new button replaces everything that row had, keyboard key included. A button can only do one thing in a game: put it on a new row and it leaves the old one in the same games. `TO COMPANION` is the exception: it shares its button with whatever else is on it.
+
+Got in a muddle, or put `A` somewhere you can't reach? `RESET TO DEFAULTS` at the bottom of the page puts every game button back the way it came, after asking first. You can tap it, so it works even when your buttons don't.
 
 > [!NOTE]
 > Buttons go by Android's names, which follow an Xbox controller's layout. On AYN and Retroid devices, `A` is the bottom face button even where the printed label says something else. If A and B feel swapped, swap them here.
@@ -126,6 +128,8 @@ If you pick exactly the buttons another hotkey already has (the same buttons in 
 ### Turning hotkeys off
 
 The `HOTKEYS` switch at the top of the page turns every hotkey off at once. The bindings stay as they are (greyed out) and every button goes straight to the game. It's handy if a game needs a combination that clashes with a hotkey, and you'd rather not rebind anything.
+
+`RESET TO DEFAULTS` at the bottom of the page puts every hotkey back the way it came, after asking first. The `HOTKEYS` switch stays as you set it.
 
 ## The quick menu
 
