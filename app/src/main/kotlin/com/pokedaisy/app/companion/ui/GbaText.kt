@@ -121,7 +121,8 @@ fun rememberGbaTextMetrics(textScale: Float = 1.25f, wholePixels: Boolean = true
 
 fun gbaTextStyle(font: FontFamily, m: GbaTextMetrics, scaleX: Float = 1f) = TextStyle(
     fontFamily = font,
-    fontSize = m.fontSize,
+    // A skin's font set to Pixel Operator's height (CompanionSkin.fontScale); the line keeps its height.
+    fontSize = CompanionSkins.current.fontScale.let { k -> if (k == 1f) m.fontSize else m.fontSize * k },
     textGeometricTransform = if (scaleX == 1f) null else TextGeometricTransform(scaleX = scaleX),
     lineHeight = m.fontSize,
     platformStyle = PlatformTextStyle(includeFontPadding = false),
@@ -160,8 +161,13 @@ fun GbaText(
             onTextLayout = { laid[0] = it },
             modifier = Modifier.drawBehind {
                 val layout = laid[0] ?: return@drawBehind
-                if (shadow.alpha > 0f) for ((dx, dy) in listOf(k to 0, 0 to k, k to k)) {
-                    drawText(layout, color = shadow, topLeft = Offset((dx + b).toFloat(), dy.toFloat()))
+                if (shadow.alpha > 0f) when (CompanionSkins.current.shadow) {
+                    SkinShadow.PIXEL -> for ((dx, dy) in listOf(k to 0, 0 to k, k to k)) {
+                        drawText(layout, color = shadow, topLeft = Offset((dx + b).toFloat(), dy.toFloat()))
+                    }
+                    // A skin's soft shadow: one copy, half a font pixel down-right.
+                    SkinShadow.SOFT -> drawText(layout, color = shadow.copy(alpha = shadow.alpha * 0.6f), topLeft = Offset(k / 2f + b, k / 2f))
+                    SkinShadow.NONE -> Unit
                 }
                 if (b > 0) drawText(layout, color = color, topLeft = Offset(b.toFloat(), 0f))
             },
@@ -277,6 +283,18 @@ fun twoToneLow(fill: Color): Color = androidx.compose.ui.graphics.lerp(fill, Col
  * corners stay the shape's.
  */
 fun DrawScope.drawTwoTone(top: Color, low: Color, line: Float, paint: DrawScope.(Color) -> Unit) {
+    // A skin's smooth faces (CompanionSkin.gradientFaces): the two colours blended top to bottom, in thin bands.
+    if (CompanionSkins.current.gradientFaces) {
+        val bands = 16
+        val lighter = androidx.compose.ui.graphics.lerp(top, Color.White, 0.35f)
+        for (i in 0 until bands) {
+            val t = i / (bands - 1f)
+            clipRect(top = size.height * i / bands, bottom = size.height * (i + 1) / bands + 1f) {
+                paint(androidx.compose.ui.graphics.lerp(lighter, low, t))
+            }
+        }
+        return
+    }
     val split = size.height * 0.47f
     paint(low)
     clipRect(bottom = split) { paint(top) }

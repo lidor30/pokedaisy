@@ -382,6 +382,19 @@ private val RadicalRedBag = BagPalette(
  * (the tabs: red with white text), the black description bar, a light icon box with a gold
  * edge, the orange pocket arrows (underline) and a flat light-grey backdrop.
  */
+/** Pokemon X: its menus' greens (CompanionSkins.POKEMON_XY): white rows in the dark green rim, white pocket names on the
+ * green tabs, the cursor's orange underline, descriptions on a dark green band; no backdrop of its own (the party's). */
+private val XyBag = BagPalette(
+    panelLayers = listOf(Color(0xFF2B8E26) to 1, Color(0xFF8ED46A) to 2, Color(0xFF5FB043) to 2),
+    tabLayerCount = 2,
+    fill = Color(0xFFF6F7F1), divider = Color(0xFFCFDCC4),
+    text = Color(0xFF353535), textShadow = Color(0x22000000),
+    tabText = Color(0xFFFFFFFF), tabTextShadow = Color(0xFF2B6E26), tabUnderline = Color(0xFFF08A1E),
+    descLayers = listOf(Color(0xFF2B8E26) to 1), descFill = Color(0xFF2E6A28),
+    descText = Color(0xFFFFFFFF), descTextShadow = Color(0xFF1C4418),
+    iconBox = Color(0xFFE6EEDF), iconBoxEdge = Color(0xFF8ED46A),
+)
+
 private val SwordShieldBag = BagPalette(
     panelLayers = listOf(Color(0xFF393939) to 2, Color(0xFFA50018) to 1, Color(0xFFD60021) to 3, Color(0xFF292929) to 2),
     tabLayerCount = 2,
@@ -763,6 +776,7 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.POLISHED_CRYSTAL -> PolishedCrystalBag
     GameKind.MARIOMON -> MariomonBag
     GameKind.MONOMYTH -> MonomythBag
+    GameKind.POKEMON_X -> XyBag
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> hgssBags.getOrElse(hgssPocket) { HeartGoldBag }
     GameKind.PLATINUM -> PlatinumBag
     GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> BlackBag

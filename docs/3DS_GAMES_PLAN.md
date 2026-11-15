@@ -160,6 +160,16 @@ were checked through this path (2026-11-15).
     (212, 145), Lumiose's centre (166, 78), all 360 zones placed).
   - PARTY tab (`XyPartyScreen`, `XyBackdrop` as Pokemon X's party backdrop on every tab): the game's pill slots, two
     columns, the right one set lower, the level on a tab, gender, HP bar and numbers, status tags.
+- The companion in Pokemon X's look (2026-11-15, the user's ask, with DS and some GBA games to follow): a skin system,
+  `CompanionSkin.kt`. A skin changes the companion's shared pieces, so every tab follows: corners (`pixelCornersPath`:
+  smooth arcs instead of GBA-pixel steps), text (`pixelFontFamily`, `gbaTextStyle`'s size, `GbaText`'s shadow), button
+  faces (`drawTwoTone`: a gradient) and colours (`OptionColors`' window / text getters). `CompanionSkins.forGame` picks
+  it (Pokemon X: `POKEMON_XY`, the greens of its party screen, a sans-serif), only while a game is open, like Gen 1's
+  windows; `PIXEL` is the app's own look, unchanged. Pokemon X also gets its bag palette (`XyBag`).
+  `XyCompanionScreenshotTest` renders PARTY / BAG / STATES / SETTINGS.
+- The HUD's minimap (2026-11-15): the Town Map cropped round the player's place (about a third of Kalos across), the pin
+  in the middle, top right; a tap opens the whole map. The HUD's top-screen pixel is capped so six party cells and four
+  buttons fit across the picture (`HUD_ROW_WIDTH`): `XyFieldHud*ScreenshotTest` at 16:9, 4:3 and 640 x 480.
 - START's PSS menu (and its pages, `DllPss*` but its message window) floats the touch screen in as the X menu does:
   `Gen6Reader.FIELD_TOUCH` (headless: START loads DllPssMainMenu beside the field). Checked on the RP6.
 - The right stick turns and tilts the field camera (2026-11-15, the user's ask: a modern game's free camera): the same

@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -95,8 +96,9 @@ fun XyFieldHud(
     if (frame == null || alpha == 0f) return
     val density = LocalDensity.current
     fun dp(px: Float) = with(density) { px.toDp() }
-    // A top-screen pixel, never under what makes the buttons tappable on a small dense screen.
-    val p = maxOf(frame.height / 240f, with(density) { 2.2f * this.density })
+    // A top-screen pixel, never under what makes the buttons tappable on a small dense screen, and never so big that six
+    // party cells and four buttons don't fit across the picture (a 4:3 screen's letterboxed 5:3, a small dense one).
+    val p = minOf(maxOf(frame.height / 240f, with(density) { 2.2f * this.density }), frame.width / HUD_ROW_WIDTH)
     val margin = 5f * p
     fun open(what: XyPanel?) { panel = what; onPanel(what != null); onTap() }
     Box(modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }) {
@@ -126,6 +128,8 @@ fun XyFieldHud(
                 }
             }
         }
+        // The minimap, top right: the Town Map round the player's place, the pin on it; a tap opens the whole map.
+        if (map != null) XyMinimap(map, frame, p) { open(if (panel == XyPanel.MAP) null else XyPanel.MAP) }
         // The buttons, bottom right: WILD, MAP, TOUCH, COMPANION (each where there's something for it).
         val buttons = listOfNotNull(
             if (wild.isNotEmpty()) WILD_BUTTON to { open(if (panel == XyPanel.WILD) null else XyPanel.WILD) } else null,
@@ -137,7 +141,8 @@ fun XyFieldHud(
         val label = 6f * p
         val step = size + 11f * p
         buttons.forEachIndexed { i, (a, click) ->
-            val x = frame.right - margin - size - (buttons.size - 1 - i) * step
+            // (Each label's column is a step wide: the last one's edge, not its button's, keeps the margin.)
+            val x = frame.right - margin - (step - size) / 2f - size - (buttons.size - 1 - i) * step
             val y = frame.bottom - margin - size - label
             Column(
                 Modifier.offset { IntOffset((x - (step - size) / 2f).toInt(), y.toInt()) }.width(dp(step))
@@ -163,16 +168,78 @@ fun XyFieldHud(
     }
 }
 
+/** How wide (top-screen pixels) the bottom row needs: the margins, six party cells and their gaps, a gap, four buttons. */
+private const val HUD_ROW_WIDTH = 5f + 6 * 28f + 5 * 2.5f + 6f + 4 * 36f + 5f
+
+/** The rom-art picture at [path] (the cart's, read once into rom-art), for drawing. */
+@Composable
+private fun rememberXyArt(path: String?): androidx.compose.ui.graphics.ImageBitmap? {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val gen = rememberArtGeneration()
+    return remember(path, gen) { path?.let { GameArt.get(context, it)?.asImageBitmap() } }
+}
+
+/** The minimap: a window on the Town Map round the player's place, in the HUD's green frame, the pin in the middle. */
+@Composable
+private fun XyMinimap(map: XyMapSpot, frame: Rect, p: Float, onClick: () -> Unit) {
+    val density = LocalDensity.current
+    fun dp(px: Float) = with(density) { px.toDp() }
+    val picture = rememberXyArt(map.asset)
+    val pin = rememberXyArt(map.pin)
+    val w = 86f * p
+    val h = 54f * p
+    val border = 2.6f * p
+    Box(
+        Modifier.offset { IntOffset((frame.right - 5f * p - w).toInt(), (frame.top + 5f * p).toInt()) }.size(dp(w), dp(h))
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onClick),
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val r = CornerRadius(7f * p)
+            drawRoundRect(Color.Black.copy(alpha = 0.3f), Offset(0f, 1.2f * p), size, r)
+            drawRoundRect(XyColors.outline, cornerRadius = r)
+            val rim = Rect(0.8f * p, 0.8f * p, size.width - 0.8f * p, size.height - 0.8f * p)
+            drawRoundRect(Brush.verticalGradient(listOf(XyColors.rimTop, XyColors.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(6.2f * p))
+            val inner = Rect(border, border, size.width - border, size.height - border)
+            // About a third of Kalos across, the place in the middle (moved in at the map's edges).
+            val k = inner.width / 110f
+            val cw = inner.width / k
+            val ch = inner.height / k
+            val cx = (map.x - cw / 2).coerceIn(0f, (map.mapW - cw).coerceAtLeast(0f))
+            val cy = (map.y - ch / 2).coerceIn(0f, (map.mapH - ch).coerceAtLeast(0f))
+            val clip = androidx.compose.ui.graphics.Path().apply {
+                addRoundRect(androidx.compose.ui.geometry.RoundRect(inner, CornerRadius(4.5f * p)))
+            }
+            clipPath(clip) {
+                drawRect(Color(0xFF3C7FC0), inner.topLeft, inner.size)
+                picture?.let {
+                    drawImage(
+                        it, srcOffset = androidx.compose.ui.unit.IntOffset(cx.toInt(), cy.toInt()),
+                        srcSize = androidx.compose.ui.unit.IntSize(cw.toInt().coerceAtLeast(1), ch.toInt().coerceAtLeast(1)),
+                        dstOffset = androidx.compose.ui.unit.IntOffset(inner.left.toInt(), inner.top.toInt()),
+                        dstSize = androidx.compose.ui.unit.IntSize(inner.width.toInt(), inner.height.toInt()),
+                    )
+                }
+                val c = Offset(inner.left + (map.x - cx) * k, inner.top + (map.y - cy) * k)
+                if (pin != null) {
+                    val ps = 15f * p
+                    drawImage(
+                        pin, dstOffset = androidx.compose.ui.unit.IntOffset((c.x - ps / 2).toInt(), (c.y - ps * 0.92f).toInt()),
+                        dstSize = androidx.compose.ui.unit.IntSize(ps.toInt(), ps.toInt()),
+                    )
+                } else drawCircle(Color(0xFFE83030), 2.5f * p, c)
+            }
+        }
+    }
+}
+
 /** The game's Town Map in its green frame over the top screen, the place's name on a tab, the player's pin on the
  * place (its area lit). A tap anywhere closes it. */
 @Composable
 private fun XyMapPanel(map: XyMapSpot, place: String, frame: Rect, p: Float, bottomRoom: Float, onClose: () -> Unit) {
     val density = LocalDensity.current
     fun dp(px: Float) = with(density) { px.toDp() }
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val gen = rememberArtGeneration()
-    val picture = remember(map.asset, gen) { GameArt.get(context, map.asset)?.asImageBitmap() }
-    val pin = remember(map.pin, gen) { map.pin?.let { GameArt.get(context, it)?.asImageBitmap() } }
+    val picture = rememberXyArt(map.asset)
+    val pin = rememberXyArt(map.pin)
     Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, null, onClick = onClose))
     // As large as fits over the top screen above the buttons, the picture's own shape.
     val border = 4f * p

@@ -324,6 +324,12 @@ New screens should reuse these rather than
 summary, battle INFO / SUGGESTIONS) use `SummaryFrame` (`MonDetailScreen.kt`): one white
 window split by `Separator`s over a row of square `PlatinumButton`s with Back bottom-right.
 
+**Companion skins** (`companion/ui/CompanionSkin.kt`, 2026-11-15; Pokemon X first, the DS and some GBA games next): a game's
+whole look for the companion, by its shared pieces - corners (`pixelCornersPath`: smooth instead of GBA-pixel steps), the font /
+its size / its shadow (`pixelFontFamily`, `gbaTextStyle`, `GbaText`), button faces (`drawTwoTone`: a gradient) and `OptionColors`'
+window / text colours (`SkinColors`). `CompanionSkins.forGame` picks one (`PIXEL` = the look above, every game's unless named),
+only while a game is open (`OptionColors.inGame`). A new skin: its `CompanionSkin` (colours sampled off the game's menus), a line in
+`forGame`, its bag palette, and a render of every tab; screens with the game's own art keep their per-game drawing.
 **SETTINGS' group tabs sit outside the card** (both screens, the user's call): `RailedWindow` leaves the window to the `GroupedRows` inside, which draws it round the list alone, the `TabRail` on the backdrop beside it.
 **Buttons are HeartGold's two-tone (2026-11-05, the user's call)**: every companion button is a face in two colours with two soft lines between them (`drawTwoTone`, GbaText.kt): `PlatinumButton` (a thick dark outline, a thin white ring, `fill` over `frame`) and, through `drawLayeredBox(twoTone = true)`, `OptionButton`, the tab chips, SETTINGS' group chips, the DEX's sections, MORE's tiles and the bag's PC and sort; the quick menu's tiles (`quickTileFace`) add a thick outline. The BATTLE tab takes HeartGold's layout by proportion (`ActionButtons`' `ds`: a DS pixel from the pane's width, so a tall pane leaves room rather than stretching the buttons), `BattlePlaceholder`'s four move places behind FIGHT, and its move cards (`hgMovePanel`); RUN stays whole, not cut by the screen's edge as in the game.
 **DARK MODE** (SETTINGS on either screen, SCREEN group; `Prefs.darkMode` OFF default / ON / AUTO = the device's uiMode;

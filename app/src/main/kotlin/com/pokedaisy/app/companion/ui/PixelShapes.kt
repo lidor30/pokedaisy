@@ -42,6 +42,17 @@ fun pixelCornersPath(
 ): Path {
     val w = size.width
     val h = size.height
+    // A smooth skin (CompanionSkin): the same corners as true arcs.
+    if (CompanionSkins.current.smooth) {
+        fun r(v: Float) = androidx.compose.ui.geometry.CornerRadius(v.coerceAtMost(minOf(w, h) / 2f).coerceAtLeast(0f))
+        return Path().apply {
+            addRoundRect(androidx.compose.ui.geometry.RoundRect(
+                offset.x, offset.y, offset.x + w, offset.y + h,
+                topLeftCornerRadius = r(topLeft), topRightCornerRadius = r(topRight),
+                bottomRightCornerRadius = r(bottomRight), bottomLeftCornerRadius = r(bottomLeft),
+            ))
+        }
+    }
     // Row j of a corner (from the outer edge) is inset insets[j] steps: a
     // quarter circle of radius n, sampled at each row's outer edge.
     class Corner(radius: Float) {
