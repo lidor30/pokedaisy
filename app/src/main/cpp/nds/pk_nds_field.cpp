@@ -960,50 +960,99 @@ int pk_nds_bgm_settle(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t))
     return -1;
 }
 
-// EXP SHARE on the DS (Gen 4: Platinum US rev 1, HeartGold / SoulSilver US; pret's pokeplatinum / pokeheartgold).
-// BtlCmd_CalcExpGain counts the party Pokémon standing with their bit in BattleContext.sideGetExpMask[the foe's side]
-// (+0xA4, two words: set as each one is sent out, cleared for a new foe) and gives each `gainedExp` (+0x9C) = the EXP over
-// that count - or, with an Exp. Share held, half of it over that count, the other half (`sharedExp`, +0xA0) over the
-// holders; GetExp pays the masked ones and the holders, never the fainted. SPLIT (and FULL) set both sides' masks to every
-// party Pokémon that isn't an egg, every frame of a battle. FULL EXP also divides by 1 (`ldr r1, [sp, #4]`, the count, ->
-// `movs r1, #1`, at +0x102 and +0x142 of the function) and takes the whole EXP on the Exp. Share path (+0x104: `adds r0,
-// r4, #0`, the halved EXP, -> `adds r0, r0, #0`, the whole), so everyone gets it all and a holder its half on top. The
-// function is in the battle's overlay: patched only over the bytes expected there (it's loaded only in a battle), all
-// three or none, put back when FULL goes. The same code at those offsets in both games, read off headless battles.
+// EXP SHARE on the DS.
+// Gen 4 (Platinum US rev 1, HeartGold / SoulSilver US; pret's pokeplatinum / pokeheartgold): BtlCmd_CalcExpGain counts the
+// party Pokémon standing with their bit in BattleContext.sideGetExpMask[the foe's side] (+0xA4, two words: set as each one
+// is sent out, cleared for a new foe) and gives each `gainedExp` (+0x9C) = the EXP over that count - or, with an Exp.
+// Share held, half of it over that count, the other half (`sharedExp`, +0xA0) over the holders; GetExp pays the masked
+// ones and the holders, never the fainted. FULL EXP divides by 1 (`ldr r1, [sp, #4]`, the count, -> `movs r1, #1`, at
+// +0x102 and +0x142 of the function) and takes the whole EXP on the Exp. Share path (+0x104: `adds r0, r4, #0`, the halved
+// EXP, -> `adds r0, r0, #0`, the whole). The same code at those offsets in both games, read off headless battles.
+// Gen 5 (Black / White / Black 2 / White 2 US; no decomp: the battle overlay's EXP routine, found by the traded bonus's
+// fx32 0x1B33 and read in Ghidra): each foe's BTL_POKEPARAM keeps who fought it (+0xD0 a count, +0xD1 the ids, up to 24);
+// the routine counts the standing ones and gives each the EXP over that count - with an Exp. Share (item 216) held, the
+// EXP halved first (`subs r1, r1, r0`), the half over the holders. FULL EXP: that `subs` -> a `nop` (the participants keep
+// the whole) and the count -> 1 (`adds r1, r6, #0` -> `movs r1, #1`). White is Black's code 0x20 higher, White 2 Black
+// 2's 0x40.
+// SPLIT (and FULL) mark every party Pokémon that isn't an egg as having fought, every frame of a battle: Gen 4 the
+// masks, Gen 5 every foe's list (the player's ids are their party places, the mask's bits). The patch: all of a game's
+// sites or none, only over the bytes expected (the battle's overlay is loaded only in a battle), put back when FULL goes,
+// so with the item held everyone gets the whole EXP and a holder its half on top.
 namespace {
-struct ExpFn { int callSet; uint32_t fn; };
-const ExpFn EXP_FNS[] = { {1, 0x02241D34}, {2, 0x0223E6A0} };
-struct ExpSite { uint32_t off; uint16_t orig, patched; };
-const ExpSite EXP_SITES[] = { {0x102, 0x9901, 0x2101}, {0x104, 0x1C20, 0x1C00}, {0x142, 0x9901, 0x2101} };
+struct ExpSite { uint32_t addr; uint16_t orig, patched; };
+struct ExpGame { int callSet; ExpSite sites[3]; int n; };
+constexpr uint16_t THUMB_NOP = 0x46C0;   // mov r8, r8
+const ExpGame EXP_GAMES[] = {
+    {1, {{0x02241D34 + 0x102, 0x9901, 0x2101}, {0x02241D34 + 0x104, 0x1C20, 0x1C00}, {0x02241D34 + 0x142, 0x9901, 0x2101}}, 3},
+    {2, {{0x0223E6A0 + 0x102, 0x9901, 0x2101}, {0x0223E6A0 + 0x104, 0x1C20, 0x1C00}, {0x0223E6A0 + 0x142, 0x9901, 0x2101}}, 3},
+    {3, {{0x021CB368, 0x1A09, THUMB_NOP}, {0x021CB3EE, 0x1C31, 0x2101}}, 2},   // Black (overlay 93)
+    {4, {{0x021CB388, 0x1A09, THUMB_NOP}, {0x021CB40E, 0x1C31, 0x2101}}, 2},   // White
+    {5, {{0x021AEEB0, 0x1A09, THUMB_NOP}, {0x021AEF36, 0x1C31, 0x2101}}, 2},   // Black 2 (overlay 167)
+    {6, {{0x021AEEF0, 0x1A09, THUMB_NOP}, {0x021AEF76, 0x1C31, 0x2101}}, 2},   // White 2
+};
+
+// Gen 5: every foe-side BTL_POKEPARAM's who-fought-it list set to the mask's ids. The main module holds two BTL_POKECONs,
+// the clients' (+0xC8) and the server's (+0xC8 + 0xE8: the EXP routine's, through the server flow's +8), each a party a
+// client from +4, 0x1C bytes apart: { BTL_POKEPARAM* member[6], u32 count }; client 0 the player's, left alone.
+void gen5MarkFought(const PkNdsFieldGame* g, uint32_t mask, uint32_t (*read32)(uint32_t), void (*write32)(uint32_t, uint32_t))
+{
+    uint32_t gs = read32(g->fieldSystemPtr);
+    uint32_t proc = inMainRam(gs) ? gen5Proc(g, read32, gs) : 0;
+    if (!proc || (int) read32(proc + g->offProcOverlay) != g->battleOverlay) return;
+    uint32_t main = read32(proc + g->offProcWork);
+    if (!inMainRam(main)) return;
+    uint8_t list[8] = {0};
+    int n = 0;
+    for (int slot = 0; slot < 6; slot++) if (mask & (1u << slot)) list[1 + n++] = (uint8_t) slot;
+    list[0] = (uint8_t) n;
+    const uint32_t w0 = list[0] | (list[1] << 8) | (list[2] << 16) | ((uint32_t) list[3] << 24);
+    const uint32_t w1 = list[4] | (list[5] << 8) | (list[6] << 16) | ((uint32_t) list[7] << 24);
+    for (uint32_t con : { main + 0xC8, main + 0xC8 + 0xE8 }) {
+        for (int client = 1; client < 4; client++) {
+            const uint32_t party = con + 4 + client * 0x1C;
+            const uint32_t count = read32(party + 0x18);
+            if (count == 0 || count > 6) continue;
+            for (uint32_t i = 0; i < count; i++) {
+                const uint32_t pp = read32(party + i * 4);
+                if (!inMainRam(pp) || (pp & 3)) continue;
+                if (read32(pp + 0xD0) != w0) write32(pp + 0xD0, w0);
+                if (read32(pp + 0xD4) != w1) write32(pp + 0xD4, w1);
+            }
+        }
+    }
+}
 }
 
 bool pk_nds_exp_share_tick(const PkNdsFieldGame* g, int mode, uint32_t mask, bool patched, uint32_t (*read32)(uint32_t),
                            void (*write32)(uint32_t, uint32_t), void (*write16)(uint32_t, uint16_t))
 {
     if (!g) return false;
-    const ExpFn* f = nullptr;
-    for (const ExpFn& e : EXP_FNS) if (e.callSet == g->callSet) f = &e;
-    if (!f) return false;
+    const ExpGame* e = nullptr;
+    for (const ExpGame& x : EXP_GAMES) if (x.callSet == g->callSet) e = &x;
+    if (!e) return false;
     auto r16 = [&](uint32_t a) { return (uint16_t) (read32(a & ~3u) >> ((a & 2) * 8)); };
-    // FULL EXP's patch: all three sites the game's (or ours) before anything changes.
+    // FULL EXP's patch: all of the game's sites the game's (or ours) before anything changes.
     bool orig = true, ours = true;
-    for (const ExpSite& s : EXP_SITES) {
-        const uint16_t now = r16(f->fn + s.off);
-        orig &= now == s.orig;
-        ours &= now == s.patched;
+    for (int k = 0; k < e->n; k++) {
+        const uint16_t now = r16(e->sites[k].addr);
+        orig &= now == e->sites[k].orig;
+        ours &= now == e->sites[k].patched;
     }
     if (mode == 2 && orig) {
-        for (const ExpSite& s : EXP_SITES) write16(f->fn + s.off, s.patched);
+        for (int k = 0; k < e->n; k++) write16(e->sites[k].addr, e->sites[k].patched);
         ours = true;
     } else if (mode != 2 && patched && ours) {
-        for (const ExpSite& s : EXP_SITES) write16(f->fn + s.off, s.orig);
+        for (int k = 0; k < e->n; k++) write16(e->sites[k].addr, e->sites[k].orig);
         ours = false;
     }
-    // SPLIT / FULL: both sides' masks, in a battle.
+    // SPLIT / FULL: who fought, in a battle.
     if (mode != 0 && mask) {
-        const uint32_t ctx = pk_nds_battle_context(g, read32);
-        if (ctx) for (uint32_t side = 0; side < 2; side++)
-            if (read32(ctx + 0xA4 + side * 4) != mask) write32(ctx + 0xA4 + side * 4, mask);
+        if (g->gen == 5) {
+            gen5MarkFought(g, mask, read32, write32);
+        } else if (const uint32_t ctx = pk_nds_battle_context(g, read32)) {
+            for (uint32_t side = 0; side < 2; side++)
+                if (read32(ctx + 0xA4 + side * 4) != mask) write32(ctx + 0xA4 + side * 4, mask);
+        }
     }
     return mode == 2 && ours;
 }

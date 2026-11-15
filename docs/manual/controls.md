@@ -275,7 +275,7 @@ Eggs are left out. The game shows each Pokémon's EXP as it comes, level ups and
 
 While it's on, [achievements](achievements.md) are paused, since some sets reward reaching a level.
 
-It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. On the DS it works in Platinum, HeartGold and SoulSilver (the US carts), with the DS core set to melonDS (`DS CORE`). There the game's own held item that shares EXP keeps working with it: with `SPLIT` its holder still gets its extra share on top of the party's, and with `FULL EXP` every Pokémon gets the whole amount and the holder its extra share on top, so holding it never costs the others anything. Black, White and their sequels aren't covered yet. Where it can't work (Ruby and Sapphire, and hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
+It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. On the DS it works in the US Platinum, HeartGold and SoulSilver and the English Black, White, Black 2 and White 2, with the DS core set to melonDS (`DS CORE`). There the game's own held item that shares EXP keeps working with it: with `SPLIT` its holder still gets its extra share on top of the party's, and with `FULL EXP` every Pokémon gets the whole amount and the holder its extra share on top, so holding it never costs the others anything. Where it can't work (Ruby and Sapphire, and hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
 
 ## LEVEL CAP
 

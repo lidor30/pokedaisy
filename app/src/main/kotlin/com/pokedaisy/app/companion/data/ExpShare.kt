@@ -40,13 +40,14 @@ object ExpShare {
     class Found(val sentPokes: Long, val full: List<InstantText.Write>, val ds: Boolean = false)
 
     /**
-     * The DS games EXP SHARE knows: Gen 4's US carts (Platinum rev 1, HeartGold, SoulSilver: pret's BtlCmd_CalcExpGain
-     * at the addresses pk_nds.cpp patches, checked headless), on melonDS only - DSperate's recompiler wouldn't see a code
-     * patch. [renegade]: Renegade Platinum keeps retail's header, its battle code not checked.
+     * The DS games EXP SHARE knows: Gen 4's US carts (Platinum rev 1, HeartGold, SoulSilver: pret's BtlCmd_CalcExpGain)
+     * and Gen 5's (Black, White, Black 2, White 2: their battle overlay's EXP routine), at the addresses pk_nds_field.cpp
+     * patches, checked headless; on melonDS only - DSperate's recompiler wouldn't see a code patch. [hack]: Renegade
+     * Platinum or a Redux build, which keep retail's header (their battle code not checked).
      */
-    fun dsFind(code: String, rev: Int, dsperate: Boolean, renegade: Boolean): Found? = when {
-        dsperate || renegade -> null
-        code == "CPUE" && rev == 1 || code == "IPKE" && rev == 0 || code == "IPGE" && rev == 0 -> Found(0, emptyList(), ds = true)
+    fun dsFind(code: String, rev: Int, dsperate: Boolean, hack: Boolean): Found? = when {
+        dsperate || hack -> null
+        code == "CPUE" && rev == 1 || rev == 0 && code in setOf("IPKE", "IPGE", "IRBO", "IRAO", "IREO", "IRDO") -> Found(0, emptyList(), ds = true)
         else -> null
     }
 
