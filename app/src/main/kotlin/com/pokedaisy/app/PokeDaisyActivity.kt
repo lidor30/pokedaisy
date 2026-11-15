@@ -1127,7 +1127,7 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.QuickAction.BIKE, com.pokedaisy.app.companion.QuickAction.ROD -> keyItemsWork()
             com.pokedaisy.app.companion.QuickAction.WILD -> companionSettings.wildEncountersSupported
             com.pokedaisy.app.companion.QuickAction.SAVE_STATE, com.pokedaisy.app.companion.QuickAction.LOAD_STATE,
-            com.pokedaisy.app.companion.QuickAction.FF -> true
+            com.pokedaisy.app.companion.QuickAction.FF, com.pokedaisy.app.companion.QuickAction.TURBO -> true
             // A DS / 3DS game whose touch screen floats in on this layout (the TOUCH SCREEN hotkey's rule).
             com.pokedaisy.app.companion.QuickAction.TOUCH_SCREEN -> dsFloats.value || n3dsFloats
             // One screen held sideways: the companion's window or side panel (upright, it's always open).
@@ -1145,6 +1145,8 @@ class PokeDaisyActivity : Activity() {
         override fun flying() = ::engine.isInitialized && engine.flightState != MgbaCore.FLIGHT_IDLE
 
         override fun wildEncounters() = Prefs(this@PokeDaisyActivity).wildEncounters
+
+        override fun turbo() = input.turboLatch != 0
 
         override fun flashDark(): Boolean? {
             val flash = flashFns() ?: return null
@@ -1202,6 +1204,11 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.QuickAction.SAVE_STATE -> handleHotkey(Hotkeys.Event(Hotkeys.Action.SAVE_STATE, true))
             com.pokedaisy.app.companion.QuickAction.LOAD_STATE -> handleHotkey(Hotkeys.Event(Hotkeys.Action.LOAD_STATE, true))
             com.pokedaisy.app.companion.QuickAction.FF -> handleHotkey(Hotkeys.Event(Hotkeys.Action.FF_TOGGLE, true))
+            com.pokedaisy.app.companion.QuickAction.TURBO -> {
+                input.turboLatch = if (input.turboLatch != 0) 0 else MgbaCore.Key.A
+                showHud(com.pokedaisy.app.companion.i18n.tr("TURBO A") + ": " +
+                    com.pokedaisy.app.companion.i18n.tr(if (input.turboLatch != 0) "ON" else "OFF"))
+            }
             com.pokedaisy.app.companion.QuickAction.TOUCH_SCREEN -> toggleDsTouch()
             com.pokedaisy.app.companion.QuickAction.COMPANION -> if (::sidePanel.isInitialized) sidePanel.openPanel()
         }

@@ -99,6 +99,9 @@ interface QuickActions {
     /** WILD ENCOUNTERS now, as SETTINGS has it (100 = NORMAL, 0 = OFF). */
     fun wildEncounters(): Int = 100
 
+    /** The quick menu's TURBO A is on (holding A mashes it). */
+    fun turbo(): Boolean = false
+
     /** Steps left on the REPEL in effect (0 = none). */
     fun repelSteps(): Int = 0
 
@@ -386,6 +389,7 @@ private fun quickLabel(action: QuickAction, actions: QuickActions): String = whe
 /** The hint line for the highlighted tile when it can run: what it does, where the label alone doesn't say. */
 private fun quickHint(action: QuickAction, actions: QuickActions): String = when (action) {
     QuickAction.WILD -> tr("WILD ENCOUNTERS") + ": " + tr(wildEncountersLabel(actions.wildEncounters()))
+    QuickAction.TURBO -> tr("TURBO A") + ": " + tr(if (actions.turbo()) "ON" else "OFF")
     else -> quickLabel(action, actions)
 }
 
@@ -458,7 +462,7 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
                 TileRing(state, items.size, gap = u * 10, maxW = maxWidth * 0.96f, maxH = maxHeight * 0.96f, { fan }, tile) {
                     // With names on the tiles, the middle only says why the highlighted one is dimmed (or WILD's state).
                     val name = if (state.labels) null else quickLabel(current ?: QuickAction.PC, actions)
-                    val note = why ?: if (current == QuickAction.WILD) quickHint(current, actions) else null
+                    val note = why ?: if (current == QuickAction.WILD || current == QuickAction.TURBO) quickHint(current, actions) else null
                     if (current != null && (name != null || note != null)) {
                         Column(
                             Modifier.hudPanel(u).padding(horizontal = u * 5, vertical = u * 4),
@@ -741,7 +745,7 @@ private fun QuickTile(
     val u = m.u
     val small = rememberGbaTextMetrics(0.75f)
     val noRipple = remember { MutableInteractionSource() }
-    val off = action == QuickAction.WILD && actions.wildEncounters() == 0
+    val off = (action == QuickAction.WILD && actions.wildEncounters() == 0) || (action == QuickAction.TURBO && !actions.turbo())
     Box(
         Modifier.fillMaxSize().hudButtonFace(u, selected, solid = false, shadow = true)
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick),
@@ -811,6 +815,7 @@ private fun QuickIcon(action: QuickAction, s: SnapshotView, actions: QuickAction
         QuickAction.SAVE_STATE -> PixelArt(SAVE_STATE_ICON, STATE_COLORS, Modifier.size(size * 0.8f))
         QuickAction.LOAD_STATE -> PixelArt(LOAD_STATE_ICON, STATE_COLORS, Modifier.size(size * 0.8f))
         QuickAction.FF -> PixelIcon(FF_ICON, ink.text, Modifier.size(size * 0.8f))
+        QuickAction.TURBO -> PixelIcon(TURBO_ICON, ink.text, Modifier.size(size * 0.8f))
         QuickAction.TOUCH_SCREEN -> PixelArt(TOUCH_ICON, TOUCH_COLORS, Modifier.size(size * 0.8f))
         QuickAction.COMPANION -> PixelIcon(COMPANION_ICON, ink.text, Modifier.size(size * 0.6f))
     }
@@ -839,6 +844,7 @@ fun quickMenuRows(
             QuickAction.FLIGHT -> NewFeatures.badge(NewFeatures.FREE_FLIGHT)
             QuickAction.HEAL -> NewFeatures.badge(NewFeatures.POKEMON_CENTER)
             QuickAction.TOUCH_SCREEN -> NewFeatures.badge(NewFeatures.QUICK_TOUCH)
+            QuickAction.TURBO -> NewFeatures.badge(NewFeatures.QUICK_TURBO)
             else -> null
         }
         SettingRow(a.label, onOff(a in shown), labelBadge = badge) {
@@ -849,7 +855,7 @@ fun quickMenuRows(
 
 /** SETTINGS' row for the page. */
 fun quickMenuBadge(): String? = NewFeatures.badge(NewFeatures.QUICK_MENU) ?: NewFeatures.badge(NewFeatures.QUICK_FLASH)
-    ?: NewFeatures.badge(NewFeatures.FREE_FLIGHT) ?: NewFeatures.badge(NewFeatures.QUICK_TOUCH)
+    ?: NewFeatures.badge(NewFeatures.FREE_FLIGHT) ?: NewFeatures.badge(NewFeatures.QUICK_TOUCH) ?: NewFeatures.badge(NewFeatures.QUICK_TURBO)
 
 /** MOVE_FLASH (the quick menu's FLASH tile, the party check). */
 internal const val FLASH_MOVE = 148
@@ -959,6 +965,22 @@ private val LOAD_STATE_ICON = listOf(
 
 private val STATE_COLORS = mapOf(
     'K' to Color(0xFF202838), 'D' to Color(0xFF4870C0), 'L' to Color(0xFFE8ECF4), 'A' to Color(0xFFF8C030),
+)
+
+/** An A with speed lines: TURBO A. */
+private val TURBO_ICON = listOf(
+    "............",
+    "......1111..",
+    ".....11..11.",
+    "111..11..11.",
+    ".....11..11.",
+    "1111.111111.",
+    ".....11..11.",
+    "111..11..11.",
+    ".....11..11.",
+    ".....11..11.",
+    "............",
+    "............",
 )
 
 /** Two arrows pointing right: fast forward. */
