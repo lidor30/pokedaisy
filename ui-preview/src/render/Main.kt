@@ -256,6 +256,26 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override fun setLevelCap(on: Boolean) { levelCapOn = on }
     override val levelCapSupported get() = true
     override val levelCapLevel get() = 14
+    private var repelRefillOn = false
+    override val repelRefill get() = repelRefillOn
+    override fun setRepelRefill(on: Boolean) { repelRefillOn = on }
+    override val repelRefillSupported get() = true
+    private var shinyAlertOn = false
+    override val shinyAlert get() = shinyAlertOn
+    override fun setShinyAlert(on: Boolean) { shinyAlertOn = on }
+    override val shinyHuntCount get() = 312
+    override val shinyAlertSupported get() = true
+    private var beepOn = true
+    override val lowHpBeep get() = beepOn
+    override fun setLowHpBeep(on: Boolean) { beepOn = on }
+    override val lowHpBeepSupported get() = true
+    private var poisonOn = true
+    override val fieldPoison get() = poisonOn
+    override fun setFieldPoison(on: Boolean) { poisonOn = on }
+    override val fieldPoisonSupported get() = true
+    private var battleRetryOn = false
+    override val battleRetry get() = battleRetryOn
+    override fun setBattleRetry(on: Boolean) { battleRetryOn = on }
     private var shinyOddsValue = com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
     override val shinyOdds get() = shinyOddsValue
     override fun setShinyOdds(odds: Int) { shinyOddsValue = odds }
@@ -581,7 +601,11 @@ class PreviewItemUse(private val party: List<MonView>, private val bagFull: Bool
     }
 }
 
+/** LAST BALL's button in the battle shots that ask for it ($g-battle-last-ball): the preview bag's first ball. */
+var previewLastBall: com.pokedaisy.app.companion.data.ItemView? = null
+
 class FakeBattleInput(override val busy: Boolean) : BattleInput {
+    override val lastBall get() = previewLastBall
     override fun selectAction(actionIndex: Int) {}
     override fun selectMove(moveIndex: Int) {}
     override fun back() {}
@@ -621,6 +645,11 @@ fun card(): SnapshotView {
 }
 
 /** A wild battle: the party's lead against a Pidgey, at [state]. */
+/** The preview bag's first ball (else a made-up one), for LAST BALL's shots. */
+fun lastBallPreview(): com.pokedaisy.app.companion.data.ItemView =
+    snapshot().items.firstOrNull { it.pocket == com.pokedaisy.app.companion.data.POCKET_POKE_BALLS }
+        ?: com.pokedaisy.app.companion.data.ItemView(4, "POKé BALL", 12, null, pocket = com.pokedaisy.app.companion.data.POCKET_POKE_BALLS)
+
 fun battle(state: Int): SnapshotView {
     val s = snapshot()
     val foe = s.party[1].copy(moves = emptyList())
@@ -1766,6 +1795,9 @@ fun main(args: Array<String>) {
         Shot("$g-battle-trainer3", bw, bh, bd, companion("PARTY") { trainerBattle(BATTLE_INPUT_ACTION_SELECT).withBench() }),
         Shot("$g-battle-noinfo", bw, bh, bd, { previewBattleInfo = false; companion("PARTY") { battle(BATTLE_INPUT_ACTION_SELECT) }() }, { previewBattleInfo = true }),
         Shot("$g-battle-moves", bw, bh, bd, companion("PARTY") { battle(BATTLE_INPUT_MOVE_SELECT) }),
+        // LAST BALL: the ball button over the panel's corner, and in ONE-TAP MOVES' row.
+        Shot("$g-battle-last-ball", bw, bh, bd, { previewLastBall = lastBallPreview(); companion("PARTY") { battle(BATTLE_INPUT_ACTION_SELECT) }() }, { previewLastBall = null }),
+        Shot("$g-battle-last-ball-onetap", bw, bh, bd, { previewLastBall = lastBallPreview(); companion("PARTY", oneTap = true) { battle(BATTLE_INPUT_ACTION_SELECT) }() }, { previewLastBall = null }),
         // SETTINGS > ONE-TAP MOVES: the action menu with the moves where FIGHT was.
         Shot("$g-battle-onetap", bw, bh, bd, companion("PARTY", oneTap = true) { battle(BATTLE_INPUT_ACTION_SELECT) }),
         // The POKéMON pane: from the action menu, and over the game's own party menu.
@@ -1913,6 +1945,12 @@ fun main(args: Array<String>) {
                 blocked = com.pokedaisy.app.companion.data.BlockedGames.GHOST_GREY)
         }),
         Shot("$g-settings", bw, bh, bd, companion("SETTINGS")),
+        // DESCRIPTIONS and GROUP TABS hidden: the rows without their grey lines, the list without its tabs.
+        Shot("$g-settings-look-hidden", bw, bh, bd, companion("SETTINGS"), {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("DESCRIPTIONS")).performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("GROUP TABS")).performSemanticsAction(SemanticsActions.OnClick)
+            waitForIdle()
+        }),
         // MORE (left of the gear): the tabs off the bar as app icons, the TAB BAR link under them.
         Shot("$g-more", bw, bh, bd, companion("MORE")),
         // NUZLOCKE is under MORE in every game the tracker follows; off, the tab says so and offers TURN ON.
@@ -2035,6 +2073,22 @@ fun main(args: Array<String>) {
         // LEVEL CAP turned on: the row shows the cap now (the preview's LV 14).
         Shot("$g-settings-level-cap", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("LEVEL CAP")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // AUTO REFILL turned on.
+        Shot("$g-settings-auto-refill", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("AUTO REFILL")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // FIELD POISON turned off (LOW HP BEEP above it, still the game's).
+        Shot("$g-settings-field-poison", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("FIELD POISON")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // BOSS RETRY turned on.
+        Shot("$g-settings-boss-retry", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("BOSS RETRY")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // SHINY ALERT turned on: the subtitle counts the hunt (the preview's 312).
+        Shot("$g-settings-shiny-alert", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("SHINY ALERT")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
         Shot("$g-settings-hm-free-on", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
@@ -2856,6 +2910,21 @@ fun main(args: Array<String>) {
                 }
             }
         }),
+        // BOSS RETRY's question after a lost trainer battle (BattleRetryAsk), over the game on one screen.
+        Shot("ask-battle-retry", 1920, 1080, 2.30625f, {
+            {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF3A5A40), androidx.compose.ui.graphics.Color(0xFF1E2A22)))),
+                    contentAlignment = androidx.compose.ui.Alignment.TopCenter,
+                ) {
+                    com.pokedaisy.app.companion.ui.FeatureTipCard(
+                        com.pokedaisy.app.companion.ui.battleRetryAskText(),
+                        androidx.compose.ui.Modifier.padding(top = 24.dp).fillMaxWidth(0.54f),
+                        left = 0.7f, badge = "NEW",
+                    )
+                }
+            }
+        }),
         // The first scenic FLY's landing: keep it or the classic FLY (FlyStyleAsk), over the game on one screen and on the companion.
         Shot("ask-fly-style", 1920, 1080, 2.30625f, {
             {
@@ -3176,6 +3245,9 @@ fun main(args: Array<String>) {
             com.pokedaisy.app.companion.FavoriteItems.load(emptySet()) {} // a shot's stars don't carry into the next
             com.pokedaisy.app.companion.data.PlayerLook.worn.value = null
             com.pokedaisy.app.companion.data.randomizedRetail = null // only the randomized shots set it
+            // SETTINGS' DESCRIPTIONS / GROUP TABS are process-wide: each shot starts with both shown.
+            com.pokedaisy.app.companion.ui.SettingsLook.descriptions = true
+            com.pokedaisy.app.companion.ui.SettingsLook.tabs = true
             val content = shot.content()
             runSkikoComposeUiTest(Size(shot.w.toFloat(), shot.h.toFloat()), Density(shot.density)) {
                 // Manual clock: the party icons / map highlight animate forever,

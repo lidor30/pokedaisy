@@ -925,6 +925,11 @@ fun CompanionScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), cardModifier = Modifier.fillMaxWidth(),
                     maxWidth = 1200.dp, onAnswer = settings::answerFlyStyle,
                 )
+                BattleRetryAskHost(
+                    active = settings.showsTips, roomy = true,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), cardModifier = Modifier.fillMaxWidth(),
+                    maxWidth = 1200.dp, onAnswer = settings::answerBattleRetry,
+                )
             }
 
             // PLAY TOGETHER ONLY: the partner's proposal over whatever tab is open, on the touchable screen when the game screen isn't

@@ -66,6 +66,13 @@ object NewFeatures {
     const val EXP_SHARE = "exp_share"
     /** SETTINGS > LEVEL CAP: no Pokémon past the next boss's top level (companion.data.LevelCap). */
     const val LEVEL_CAP = "level_cap"
+    const val REPEL_REFILL = "repel_refill"
+    const val SHINY_ALERT = "shiny_alert"
+    const val LAST_BALL = "last_ball"
+    const val BOSS_RETRY = "boss_retry"
+    const val LOW_HP_BEEP = "low_hp_beep"
+    const val FIELD_POISON = "field_poison"
+    const val SETTINGS_LOOK = "settings_look"
     /** SETTINGS > NO HMS NEEDED: the field moves without a Pokémon that knows them (companion.data.HmFree). */
     const val HM_FREE = "hm_free"
     /** SETTINGS > TRADE EVOLUTIONS: a trade evolution from the Pokémon's summary (companion.data.TradeEvolution). */
@@ -213,7 +220,7 @@ object NewFeatures {
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
-        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP,
+        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP, REPEL_REFILL, SHINY_ALERT, LAST_BALL, BOSS_RETRY, LOW_HP_BEEP, FIELD_POISON, SETTINGS_LOOK,
         QUICK_TOUCH, APP_FONT,
     )
 
