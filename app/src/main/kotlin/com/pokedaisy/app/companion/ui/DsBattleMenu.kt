@@ -54,6 +54,7 @@ import com.pokedaisy.app.companion.data.BATTLE_INPUT_BAG_OPEN
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import com.pokedaisy.app.companion.data.GameKind
+import com.pokedaisy.app.companion.data.isXy
 import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.data.SnapshotView
 import com.pokedaisy.app.companion.data.typeLabel
@@ -147,7 +148,7 @@ enum class DsLook(val bandTop: Int, val textTop: Int) {
             GameKind.PLATINUM -> PLATINUM
             GameKind.BLACK, GameKind.WHITE -> UNOVA
             GameKind.BLACK2, GameKind.WHITE2 -> UNOVA2
-            GameKind.POKEMON_X -> XY
+            GameKind.POKEMON_X, GameKind.POKEMON_Y -> XY
             else -> HEARTGOLD
         }
     }
@@ -224,7 +225,7 @@ fun DsBattleMenu(
         state.pickAction = { if (!busy) { if (it == 3) leaving = true; battleInput?.selectAction(it) } }
         state.pickMove = { if (!busy) { leaving = true; battleInput?.selectMove(it) } }
         state.back = { if (!busy) battleInput?.back() }
-        state.xy = snapshot.game == GameKind.POKEMON_X
+        state.xy = snapshot.game.isXy
     }
     // What the strip shows: the menu up, or - the keys the game's meanwhile - the last one held while the battle's bag or
     // party floats over it, and for a moment between two menus (FIGHT's panel sliding in), so the game's own text box

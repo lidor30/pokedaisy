@@ -182,7 +182,8 @@ object Gen6Reader {
     }
 
     fun configFor(titleId: Long): Config? = when (titleId) {
-        N3dsCart.POKEMON_X_USA -> POKEMON_X_USA
+        // Y: X's code and memory, every address X's (headless on one save, 2026-11-15).
+        N3dsCart.POKEMON_X_USA, N3dsCart.POKEMON_Y_USA -> POKEMON_X_USA
         else -> null
     }
 

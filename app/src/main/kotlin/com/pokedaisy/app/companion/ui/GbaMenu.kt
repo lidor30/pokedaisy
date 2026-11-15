@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.data.GameKind
+import com.pokedaisy.app.companion.data.isXy
 import com.pokedaisy.app.companion.data.activeGame
 import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.data.isRedBlue
@@ -939,7 +940,7 @@ fun GameBackdrop(game: GameKind, modifier: Modifier = Modifier.fillMaxSize()) {
         if (scrim > 0f) drawRect(NIGHT.copy(alpha = scrim))
     } else modifier
     // Pokemon X: its party screen's striped green, drawn smooth (XyBackdrop).
-    if (game == GameKind.POKEMON_X) {
+    if (game.isXy) {
         Box(modifier) { XyBackdrop() }
         return
     }

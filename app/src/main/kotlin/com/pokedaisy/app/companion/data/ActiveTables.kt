@@ -30,8 +30,12 @@ import kotlin.concurrent.Volatile
 enum class GameKind { FIRERED, EMERALD, UNBOUND, GAIA, RADICAL_RED, ODYSSEY, HEART_AND_SOUL, LAZARUS, ROWE, EMERALD_ROGUE, AMETHYST, EMERALD_SEAGLASS, CELIA, TMT2, SOULGOLD, YELLOW, GLAZED, IMPERIUM, QUETZAL, ORANGE_ISLANDS, RECHARGED_YELLOW, MARIOMON, SWORD_SHIELD, GS_CHRONICLES, CRYSTAL, CRYSTAL_CLEAR, PRISM,
     GOLD, SILVER, RED, BLUE, ELITE_REDUX, POLISHED_CRYSTAL, PLATINUM, HEARTGOLD, SOULSILVER, TEAM_ROCKET, BLACK, WHITE, BLACK2, WHITE2,
     WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY,
-    /** A 3DS game (docs/3DS_GAMES_PLAN.md): its companion reads Azahar's memory, PARTY and BAG so far. */
-    POKEMON_X }
+    /** A 3DS game (docs/3DS_GAMES_PLAN.md): its companion reads Azahar's memory, PARTY and BAG so far. Y is X's code
+     * with its own version's Pokemon ([isXy]: everything else the same). */
+    POKEMON_X, POKEMON_Y }
+
+/** Pokemon X or Y: one engine, one companion, one look (2026-11-15: Y's addresses all X's, headless). */
+val GameKind?.isXy: Boolean get() = this == GameKind.POKEMON_X || this == GameKind.POKEMON_Y
 
 /**
  * Games with an auto-run of their own, on by default: holding B walks there, so AUTO-RUN's flip of B walked and B ran
@@ -800,4 +804,5 @@ fun GameKind.displayName(): String = when (this) {
     GameKind.YELLOW_LEGACY -> "Pokémon Yellow Legacy"
     GameKind.CRYSTAL_LEGACY -> "Pokémon Crystal Legacy"
     GameKind.POKEMON_X -> "Pokémon X"
+    GameKind.POKEMON_Y -> "Pokémon Y"
 }
