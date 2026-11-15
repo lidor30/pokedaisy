@@ -157,6 +157,26 @@ u32 number(const std::string& s) {
 
 } // namespace
 
+// The loaded CRO modules, as the app's moduleNames (pk_n3ds_jni.cpp): the static module's header (Pokemon X:
+// 0x012B6000), each header's name at +0x84 and the next one at +0x88. Each name after a space.
+static std::string moduleNames(Memory::MemorySystem& mem, u32 root) {
+    std::string out;
+    if (mem.Read32(root + 0x80) != 0x304F5243) return out;
+    u32 m = mem.Read32(root + 0x88);
+    for (int n = 0; n < 32 && m != 0; n++) {
+        const u32 name = mem.Read32(m + 0x84);
+        std::string nm;
+        for (u32 i = 0; i < 48; i++) {
+            const char c = static_cast<char>(mem.Read8(name + i));
+            if (c < 0x20 || c > 0x7E) break;
+            nm += c;
+        }
+        out += ' ' + nm;
+        m = mem.Read32(m + 0x88);
+    }
+    return out;
+}
+
 int main(int argc, char** argv) {
     if (argc < 3) {
         std::fprintf(stderr, "usage: n3ds_dump CART.3ds USERDIR [--save MAIN] [--new3ds] < script.txt\n");
@@ -303,6 +323,32 @@ int main(int argc, char** argv) {
             runFrames(n);
             const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
             std::printf("bench %u frames %.2f ms a frame\n", n, ms / n);
+        } else if (cmd == "modules") {
+            std::printf("modules%s\n", moduleNames(mem, a.empty() ? 0x012B6000 : number(a[0])).c_str());
+        } else if (cmd == "waitmod" || cmd == "waitnomod") {
+            // Frames until a module of that name is loaded (waitnomod: until none is), at most N (default 3000).
+            const std::string want = ' ' + a.at(0) + ' ';
+            const u32 most = a.size() > 1 ? number(a[1]) : 3000;
+            u32 n = 0;
+            for (; n < most; n++) {
+                const bool has = (moduleNames(mem, 0x012B6000) + ' ').find(want) != std::string::npos;
+                if (has == (cmd == "waitmod")) break;
+                runFrames(1);
+            }
+            std::printf("%s %s %s after %u frames:%s\n", cmd.c_str(), a[0].c_str(), n < most ? "ok" : "TIMED OUT", n,
+                moduleNames(mem, 0x012B6000).c_str());
+        } else if (cmd == "pressuntil") {
+            // pressuntil KEYS MODULE [N]: KEYS for 2 frames every 60 until MODULE is loaded, at most N frames (3000).
+            const std::string want = ' ' + a.at(1) + ' ';
+            const u32 most = a.size() > 2 ? number(a[2]) : 3000;
+            u32 n = 0;
+            for (; n < most && (moduleNames(mem, 0x012B6000) + ' ').find(want) == std::string::npos; n++) {
+                setKeys(n % 60 < 2 ? a[0] : "NONE");
+                runFrames(1);
+            }
+            setKeys("NONE");
+            std::printf("pressuntil %s %s after %u frames:%s\n", a[1].c_str(), n < most ? "ok" : "TIMED OUT", n,
+                moduleNames(mem, 0x012B6000).c_str());
         } else if (cmd == "frames") {
             std::printf("frames %llu\n", static_cast<unsigned long long>(emuWindow.frames));
         } else {

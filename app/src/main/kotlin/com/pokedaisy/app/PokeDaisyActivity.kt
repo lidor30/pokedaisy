@@ -4252,6 +4252,7 @@ class PokeDaisyActivity : Activity() {
         stage.dsTouchFrame = frame
         dsTouchView.setPadding(frame, frame, frame, frame)
         dsTouchView.setBackgroundColor(if (pip) Color.WHITE else Color.TRANSPARENT)
+        dsTouchView.isClickable = false
         dsBackdropView.visibility = if (on) View.VISIBLE else View.GONE
         dsTouchView.visibility = if (on && layout != com.pokedaisy.app.companion.DsLayout.ONE_SCREEN) View.VISIBLE else View.GONE
         dsFloats.value = on && layout.floats
@@ -4514,7 +4515,9 @@ class PokeDaisyActivity : Activity() {
         }
         val alone = com.pokedaisy.app.companion.DsLayouts.arrange(layout, w, h, fill, top, touch).top
         // At most the area's width too (a locked side panel leaves the game a narrow area: the window went under it).
-        val th = minOf(h * N3DS_FLOAT_HEIGHT, w * N3DS_FLOAT_WIDTH / touch).toInt()
+        // (Inside its frame: N3dsWindowFrame, [syncN3dsStage].)
+        val frame = (com.pokedaisy.app.n3ds.N3dsWindowFrame.FRAME_DP * resources.displayMetrics.density).toInt() * 2
+        val th = minOf(h * N3DS_FLOAT_HEIGHT, (w * N3DS_FLOAT_WIDTH - frame) / touch).toInt()
         val tw = (th * touch).toInt()
         val x = (w - tw) / 2
         val y = (h - th) / 2
@@ -4523,9 +4526,20 @@ class PokeDaisyActivity : Activity() {
 
     /** [syncDsStage]'s part for a 3DS game: its touch screen's view always laid out (see [n3dsArrange]), no DS window. */
     private fun syncN3dsStage(on: Boolean, layout: com.pokedaisy.app.companion.DsLayout) {
-        stage.dsTouchFrame = 0
-        dsTouchView.setPadding(0, 0, 0, 0)
-        dsTouchView.setBackgroundColor(Color.TRANSPARENT)
+        // ONE SCREEN's floating touch screen in a frame of the game's smooth look (side by side and the other layouts: none).
+        val floating = on && layout == com.pokedaisy.app.companion.DsLayout.ONE_SCREEN && !n3dsBothScreens
+        val frame = if (floating) (com.pokedaisy.app.n3ds.N3dsWindowFrame.FRAME_DP * resources.displayMetrics.density).toInt() else 0
+        stage.dsTouchFrame = frame
+        dsTouchView.setPadding(frame, frame, frame, frame)
+        if (floating) {
+            if (dsTouchView.background !is com.pokedaisy.app.n3ds.N3dsWindowFrame) {
+                dsTouchView.background = com.pokedaisy.app.n3ds.N3dsWindowFrame(resources.displayMetrics.density)
+            }
+        } else {
+            dsTouchView.setBackgroundColor(Color.TRANSPARENT)
+        }
+        // A tap on the frame stays the window's (else it reached the dim under it and closed the window).
+        dsTouchView.isClickable = floating
         // A screen of the game's own: its two screens framed over the field it came from, as a DS game's menus.
         dsBackdropView.visibility = if (on && n3dsBothScreens) View.VISIBLE else View.GONE
         // Back from the second display (SINGLE SCREEN, the display gone): the touch surface into the stage again.

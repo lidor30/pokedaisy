@@ -122,7 +122,14 @@ were checked through this path (2026-11-15).
   second before the menu is set again: out of a screen the field counts only after 1.1 s, and out of the menu after
   three reads (Save's question going leaves it unset a moment), so the window doesn't blink away. The field picture
   behind the two screens skips fades' near-black frames. Not tried yet: shops, the nurse's Yes / No, the PC, Amie and
-  Super Training (no Pokemon Center near that save's spot).
+  Super Training (no Pokemon Center near that save's spot). The cart's RomFS has 133 `Dll*.cro` modules and no shop
+  one: the shops and the nurse run inside `DllField` (with an area's own, `DllUSPokecen` in a center), so they read as
+  FIELD unless the game also loads a module of its own then. The PC is `DllPCMenu` / `DllBox`, Amie `DllKawaigari`,
+  Super Training `DllTrainingAppManager`: SCREEN if the field's module goes meanwhile, else FIELD. The PSS's own pages
+  (a player's card, `DllPssCharaMenu`) stay FIELD: the player opens them from a window already up.
+- The floating touch screen's frame (ONE SCREEN, 2026-11-15, the user's call: the game's look, not the app's pixel
+  window): `N3dsWindowFrame`, a soft shadow, a dark edge, the battle buttons' silver rim, a dark band to the screen, round
+  outer corners (the surface's own stay square: a SurfaceView can't be rounded). A tap on it stays the window's.
   Test saves: the Citra saves in ~/Downloads/XY Citra Saves (early story, post game); on the RP6, slot 9 = Route 2's
   grass, slot 8 = a wild battle at its command menu (2026-11-15).
 - Battles on one screen (2026-11-15): the game's own buttons in the top screen's bottom-right corner, no backdrop,

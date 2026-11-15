@@ -33,6 +33,14 @@ SELECT ZL ZR HOME`, joined with commas (`A,UP`), or `NONE`. A frame is one the s
 | `peek8/16/32 ADDR`, `poke8/16/32 ADDR V` | The game process's memory. |
 | `savestate FILE` / `loadstate FILE` | An Azahar state. |
 | `bench N` | N frames flat out, then ms a frame. |
+| `modules` | The loaded CRO modules, as the app reads them (`DllField DllUSC02 ...`). |
+| `waitmod M [N]` / `waitnomod M [N]` | Frames until module M is loaded (or gone), at most N (3000). |
+| `pressuntil K M [N]` | K for 2 frames every 60 until module M is loaded, at most N frames. |
 | `frames` | Frames run so far. |
 
 `N3DS_LOG` sets Azahar's log filter (default `*:Warning`, e.g. `N3DS_LOG='*:Info'`).
+
+A module loads a few seconds before its screen shows (the field's with the start menu still up): wait ~500 frames after
+`pressuntil A DllPssMessageWindow` before walking. `savestate` fails on Pokemon X (a boost archive class isn't
+registered), so every run boots. With the user's save the field opens on a "changed console" message on the touch
+screen; after a touch the pictures stopped changing once (2026-11-15), not looked into.
