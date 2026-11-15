@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data
 
+import okio.Path.Companion.toOkioPath
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -57,8 +58,8 @@ class DsStatsTest {
             if (!rom.isFile) continue
             val dir = kotlin.io.path.createTempDirectory("nds-stats").toFile()
             try {
-                assertTrue(NdsArt.extractTo(rom, dir))
-                NdsArt.dir = dir
+                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
+                NdsArt.dir = dir.toOkioPath()
                 activeGame = kind
                 romLanguage = 'E'
                 romGameCode = ""
