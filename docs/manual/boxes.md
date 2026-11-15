@@ -41,7 +41,7 @@ Back on the box, you see the move: each Pokémon flashes white, shrinks to a spa
 
 A few things the game itself wouldn't allow are refused:
 
-- **Mail**: a Pokémon holding Mail can't go into a box. Take the Mail off first.
+- **Mail**: a Pokémon holding Mail can't go into a box. Take the Mail off first with the summary's `TAKE`, which sends the letter to your PC's mailbox.
 - **Your last fighter**: an Egg can't take the place of the last Pokémon in your party that can battle.
 - **Not now**: you have to be walking around, with no battle, menu or text box open. Close the game's own PC first too.
 
