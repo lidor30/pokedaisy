@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.data.DexEntry
 import com.pokedaisy.app.companion.data.GameKind
 import com.pokedaisy.app.companion.data.GuideTables
+import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.companion.data.activeGame
 import com.pokedaisy.app.companion.data.PokedexSource
 import com.pokedaisy.app.companion.data.PokedexState
@@ -603,10 +604,10 @@ private fun pct(tenths: Int) = if (tenths % 10 == 0) "${tenths / 10}" else "${te
 @Composable
 internal fun rememberRomBitmap(
     t: PokedexTables, species: Int,
-    cached: (PokedexTables, Int) -> Bitmap?, load: (PokedexTables, Int) -> Bitmap?,
+    cached: (PokedexTables, Int) -> RomArt.Image?, load: (PokedexTables, Int) -> RomArt.Image?,
 ): Bitmap? =
-    produceKeyedState(cached(t, species), t, species) {
-        if (value == null && species > 0) value = withContext(Dispatchers.IO) { load(t, species) }
+    produceKeyedState(cached(t, species)?.bitmap(), t, species) {
+        if (value == null && species > 0) value = withContext(Dispatchers.IO) { load(t, species)?.bitmap() }
     }.value
 
 /**

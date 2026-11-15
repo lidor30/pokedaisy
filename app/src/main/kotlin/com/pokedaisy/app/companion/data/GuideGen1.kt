@@ -174,7 +174,7 @@ class Gen1World(wildRaw: List<String>, bossRaw: List<String>) : GuideWorld {
 internal val YELLOW_WORLD = Gen1World(G1Y_WILD_RAW, G1Y_BOSSES_RAW)
 internal val RED_WORLD = Gen1World(G1R_WILD_RAW, G1R_BOSSES_RAW)
 internal val BLUE_WORLD = Gen1World(G1B_WILD_RAW, G1B_BOSSES_RAW)
-internal val YELLOW_LEGACY_WORLD = Gen1World(G1L_WILD_RAW, G1L_BOSSES_RAW)
+val YELLOW_LEGACY_WORLD = Gen1World(G1L_WILD_RAW, G1L_BOSSES_RAW)
 
 private fun gen1Guide(world: Gen1World) = GameGuide(verified = false, bosses = world.bosses, world = world, pages = emptyList())
 

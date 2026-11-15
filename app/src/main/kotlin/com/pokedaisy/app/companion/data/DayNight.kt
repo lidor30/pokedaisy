@@ -33,8 +33,8 @@ object DayNight {
 
     /** The tint now, by the device's clock. */
     fun now(): IntArray {
-        val c = java.util.Calendar.getInstance()
-        return at(c.get(java.util.Calendar.HOUR_OF_DAY) + c.get(java.util.Calendar.MINUTE) / 60f)
+        val c = localNow()
+        return at(c.hour + c.minute / 60f)
     }
 
     /** gMapHeader.mapType under the sky: town, city, route, ocean route (pret's MAP_TYPE_*: the same in FireRed and

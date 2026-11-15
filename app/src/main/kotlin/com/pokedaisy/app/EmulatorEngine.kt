@@ -1,6 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.data.SnapshotCache
+import com.pokedaisy.app.companion.data.delete
 import com.pokedaisy.app.companion.i18n.tr
 import android.graphics.Bitmap
 import android.media.AudioFormat
@@ -18,6 +19,7 @@ import com.pokedaisy.app.companion.data.ShopWatch
 import java.io.File
 import java.nio.ByteBuffer
 import kotlin.math.roundToInt
+import okio.Path.Companion.toOkioPath
 
 /**
  * Owns the single emulator thread: run a frame, push its audio, service any
@@ -582,6 +584,52 @@ class EmulatorEngine(
     }
     private var followerFrames = 0
 
+    /**
+     * HIDE BATTLE MENU ([Prefs.hideBattleMenu]): what the activity wants - 0 = the game's battle menus shown, 1 = hidden
+     * with the two-screens sign lighting the bottom one (the companion's), 2 = the top one (SWAP SCREENS) - and gBattleTypeFlags' address (0 = unknown).
+     * The core finds the menus on screen itself and keeps a double battle's and the Safari Zone's.
+     */
+    @Volatile var battleMenuHide = 0
+    @Volatile var battleTypeFlagsAddr = 0L
+    private var battleMenuHideSent = -1
+    private var battleMenuHideFrames = 0
+
+    /** Which battle menu the core left off the last frame ([MgbaCore.pkBattleMenuHidden]: 160 the action menu, 320 the moves,
+     * 0 none); read after every GBA frame while HIDE BATTLE MENU is on. */
+    @Volatile var battleMenuHidden = 0
+        private set
+    private var battleMenuSignLogged = -1
+
+    /**
+     * HIDE BATTLE MENU's D-pad: the game's action menu is off the screen and the companion's buttons stand in for it, so a
+     * direction moves the game's cursor round them as they're laid out there ([BattleInputController.steerAction]) - true
+     * when it's taken. Only while the core really hid the action menu (not a double battle's) and its cursor can be
+     * written. Any thread.
+     */
+    fun steerBattleMenu(key: Int): Boolean {
+        if (nds || battleMenuHidden != 160 || !battleInput.canSteerAction) return false
+        battleInput.steerAction(key)
+        return true
+    }
+
+    /** HIDE BATTLE MENU, once a frame (emu thread): to the core when it changed, and every second while on (a core
+     * started since - another game, a restart - is hooked when told). */
+    private fun stepBattleMenuHide() {
+        val mode = battleMenuHide
+        if (mode != battleMenuHideSent || (mode != 0 && ++battleMenuHideFrames % 60 == 0)) {
+            MgbaCore.pkBattleMenuHide(mode, battleTypeFlagsAddr.toInt())
+            battleMenuHideSent = mode
+        }
+        battleMenuHidden = if (mode != 0) MgbaCore.pkBattleMenuHidden() else 0
+        if (BuildConfig.DEBUG && battleMenuHidden != 0) {
+            val why = MgbaCore.pkBattleMenuSignWhy()
+            if (why != battleMenuSignLogged) {
+                battleMenuSignLogged = why
+                Log.i("pokedaisy", "battle menu hidden ($battleMenuHidden): " + if (why == 0) "sign drawn" else "no sign, reason $why")
+            }
+        } else battleMenuSignLogged = -1
+    }
+
     /** Co-op presence ([CoopPresence]): called once per game frame beside FOLLOWER; null = none (not retail Emerald). */
     @Volatile var coopPresence: CoopPresence? = null
     /** The co-op lock (PLAY TOGETHER ONLY): stepped every loop turn, also while a hold runs no frame. */
@@ -985,6 +1033,7 @@ class EmulatorEngine(
         // The core starts with no follower and no tint (pk_wide_extras_reset): so do what this engine last sent.
         followerSent = null
         followerShown = false
+        battleMenuHideSent = -1
         tintNow.fill(256f)
         tintSent.fill(256)
         endDsHold()
@@ -1004,18 +1053,18 @@ class EmulatorEngine(
                 Log.w("pokedaisy", "resume skipped: the state is the other DS core's")
                 val other = if (dsCore == MgbaCore.NDS_CORE_DSPERATE) MgbaCore.NDS_CORE_MELONDS else MgbaCore.NDS_CORE_DSPERATE
                 resume.renameTo(SaveStates.parkedResume(resume, other))
-                SnapshotCache.fileFor(resume).delete()
+                SnapshotCache.fileFor(resume.toOkioPath()).delete()
                 startNotice = tr("This game was left on the other DS core, so it started from the save file")
             } else if (matches == 0) {
                 Log.w("pokedaisy", "resume skipped: ${save.name} changed since the state was made")
                 resume.renameTo(File(resume.parentFile, "resume.replaced"))
-                SnapshotCache.fileFor(resume).delete()
+                SnapshotCache.fileFor(resume.toOkioPath()).delete()
                 startNotice = tr("Your save changed since you last played here, so the game started from the save file")
             } else {
                 val ok = MgbaCore.pkLoadState(resume.absolutePath)
                 Log.i("pokedaisy", "resume state load: $ok")
                 resume.delete()
-                SnapshotCache.fileFor(resume).delete()
+                SnapshotCache.fileFor(resume.toOkioPath()).delete()
                 if (ok) resumed = resume
             }
             onResumeResult?.invoke(resumed != null)
@@ -1513,6 +1562,7 @@ class EmulatorEngine(
                 if (gba) coopLock?.onFrame()
                 if (gba) coopPresence?.onFrame(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
                     battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
+                if (gba) stepBattleMenuHide()
                 if (gba) stepTint(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
                     battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
                 logField(effectiveSpeed())
@@ -2073,7 +2123,7 @@ class EmulatorEngine(
                 val cur = states.stateFile(save)
                 if (cur.isFile) cur.copyTo(states.bakFile(save), overwrite = true)
                 RetroAchievements.progressFile(cur).let { if (it.isFile) it.copyTo(RetroAchievements.progressFile(states.bakFile(save)), overwrite = true) }
-                SnapshotCache.copy(cur, states.bakFile(save))
+                SnapshotCache.copy(cur.toOkioPath(), states.bakFile(save).toOkioPath())
                 states.thumbFile(save).let { if (it.isFile) it.copyTo(states.bakThumbFile(save), overwrite = true) }
             }
             val ok = saveState(states.stateFile(save))
@@ -2105,7 +2155,7 @@ class EmulatorEngine(
                     val bakProgress = RetroAchievements.progressFile(bak)
                     if (bakProgress.isFile) bakProgress.copyTo(cur, overwrite = true) else cur.delete()
                 }
-                SnapshotCache.copy(bak, states.stateFile(slot))
+                SnapshotCache.copy(bak.toOkioPath(), states.stateFile(slot).toOkioPath())
                 states.bakThumbFile(slot).let { if (it.isFile) it.copyTo(states.thumbFile(slot), overwrite = true) }
                 true
             }.getOrDefault(false)

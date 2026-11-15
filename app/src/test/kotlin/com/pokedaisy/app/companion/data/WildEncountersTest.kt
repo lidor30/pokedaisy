@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.data
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * WILD ENCOUNTERS' switch, found in each ROM by StandardWildEncounter's code ([WildEncounters.find]). The retail
@@ -79,7 +80,7 @@ class WildEncountersTest {
         for ((name, want) in cases) {
             val rom = File(RETAIL_ROM_DIR + name)
             if (!rom.isFile) continue
-            assertEquals(name, "%08X".format(want), "%08X".format(WildEncounters.find(rom)))
+            assertEquals(name, "%08X".format(want), "%08X".format(WildEncounters.find(rom.toOkioPath())))
         }
     }
 }

@@ -43,6 +43,7 @@ import com.pokedaisy.app.companion.data.activeGame
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import okio.Path.Companion.toOkioPath
 
 /**
  * A single-screen device's companion (SidePanel): the side panel beside the
@@ -69,9 +70,9 @@ class SidePanelScreenshotTest {
         activeGame = GameKind.FIRERED
         // The side panel lives in the game's activity: the companion's in-game look, not the Library's theme.
         OptionColors.inGame = true
-        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it }
+        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it.toOkioPath() }
         for (path in listOf(RomFileReader.FIRERED_REV1_PATH, RomFileReader.EMERALD_PATH)) {
-            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art) }
+            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art.toOkioPath()) }
         }
         RomFileReader.load(RomFileReader.FIRERED_REV1_PATH)?.let { rom ->
             DecompIconSource.reader = rom

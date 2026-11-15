@@ -1,5 +1,7 @@
 package com.pokedaisy.app
 
+import okio.source
+
 /**
  * SETTINGS > ASPECT > WIDE: the overworld drawn past the GBA's 240 px, so the game fills a wide
  * screen with its own pixels square. The strips beside the real frame are rebuilt every frame
@@ -45,7 +47,7 @@ object WideScreen {
         val hit = runCatching {
             com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(
                 RomIdentity.gameCode(rom), RomIdentity.revision(rom), RomArchive.romSize(rom),
-            ) { RomArchive.open(rom) }
+            ) { RomArchive.open(rom).source() }
         }.getOrNull()
         if (hit != null) return "%08x".format(hit.retailCrc)
         retailEngineRow(rom, v)   // the ROM's own CRC either way: known by it now, or not at all

@@ -146,7 +146,7 @@ private fun boxMove(fields: FieldItemFns, fns: BoxSwapFns, busy: Boolean, g: Gam
     val p = fields.party ?: return BoxSwapResult.FAILED
     val crcs = fns.codeCrcs.zip(listOf(fns.boxMonToMon, fns.boxMonRestorePP, fns.getBoxMonData))
     if (!fieldItemCodeMatches(fields, g::read) ||
-        crcs.any { (crc, fn) -> java.util.zip.CRC32().apply { update(g.read(fn, 32)) }.value != crc }) return BoxSwapResult.FAILED
+        crcs.any { (crc, fn) -> crc32(g.read(fn, 32)) != crc }) return BoxSwapResult.FAILED
     if (busy || g.call(fields.fieldControlsLocked) != 0L) return BoxSwapResult.NOT_NOW
     return runCatching { BoxMove(fields, p, fns, g).move() }.getOrElse { BoxSwapResult.FAILED }
 }

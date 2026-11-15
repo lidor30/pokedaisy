@@ -1,6 +1,9 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.Path
 
 /**
  * HeartGold / SoulSilver's Pokégear map on the MAP tab, put together the way the game does (overlay_101_021E9270.c's
@@ -14,6 +17,7 @@ import java.io.File
  * once into rom-art's regionmap/ ([image]); the Sinjoh Ruins / S.S. Aqua pieces (shown only while there) are left out.
  */
 object PokegearMap {
+    private val lock = SynchronizedObject()
     const val TILES = "nds/heartgold/pgmap_tiles.bin"
     const val TILEMAP = "nds/heartgold/pgmap_map.bin"
     fun palette(skin: Int) = "nds/heartgold/pgmap_pal_$skin.bin"
@@ -27,7 +31,7 @@ object PokegearMap {
     private const val SRC_W = 64
 
     /** rom-art's folder ([NdsArt.prefetch] sets it). */
-    @Volatile var dir: File? = null
+    @Volatile var dir: Path? = null
 
     /** The Pokégear's state from the save: [Telemetry.pokegearState] (skin << 2 | unlock level) and the flypoint flags
      * ([Telemetry.townsVisited], bit n = flypoint n). Set with each snapshot. */
@@ -35,24 +39,22 @@ object PokegearMap {
 
     /** The picture's name under regionmap/ for the current [state], written first if it isn't there; null without the
      * cart's pieces or a state yet. */
-    @Synchronized
     fun image(): String? {
-        val d = dir ?: return null
-        val (packed, flags) = state ?: return null
-        val skin = (packed shr 2).coerceIn(0, SKINS - 1)
-        val unlock = packed and 3
-        val name = "hgss_pokegear_${skin}_${unlock}_${flags.toULong().toString(16)}"
-        val out = File(d, "regionmap/$name.png")
-        if (out.isFile) return name
-        val tiles = File(d, TILES).takeIf { it.isFile }?.readBytes() ?: return null
-        val tilemap = File(d, TILEMAP).takeIf { it.isFile }?.readBytes() ?: return null
-        val pal = File(d, palette(skin)).takeIf { it.isFile }?.readBytes() ?: return null
-        val img = compose(tiles, tilemap, pal, unlock) { flag -> flypointSet(flags, flag) }
-        out.parentFile?.mkdirs()
-        val tmp = File(out.path + ".tmp")
-        tmp.writeBytes(img.png())
-        tmp.renameTo(out)
-        return name
+        synchronized(lock) {
+            val d = dir ?: return null
+            val (packed, flags) = state ?: return null
+            val skin = (packed shr 2).coerceIn(0, SKINS - 1)
+            val unlock = packed and 3
+            val name = "hgss_pokegear_${skin}_${unlock}_${flags.toULong().toString(16)}"
+            val out = d / "regionmap/$name.png"
+            if (out.isFile) return name
+            val tiles = (d / TILES).takeIf { it.isFile }?.readBytes() ?: return null
+            val tilemap = (d / TILEMAP).takeIf { it.isFile }?.readBytes() ?: return null
+            val pal = (d / palette(skin)).takeIf { it.isFile }?.readBytes() ?: return null
+            val img = compose(tiles, tilemap, pal, unlock) { flag -> flypointSet(flags, flag) }
+            out.writeAtomically(img.png())
+            return name
+        }
     }
 
     /** Flag [flag] (an event flag number from FLAG_SYS_FLYPOINT_PALLET on) in the flypoint bits [flags]. */

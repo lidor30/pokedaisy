@@ -1,7 +1,9 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.util.zip.CRC32
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.Path
 
 /**
  * FLIGHT AREA (SETTINGS > GAMEPLAY, [com.pokedaisy.app.companion.FlightAreaMode]): FREE FLIGHT and the scenic FLY cross only
@@ -153,11 +155,12 @@ object FlightArea {
         val b = read(sb2, 14)
         val key = b.copyOfRange(0, 9) + b.copyOfRange(10, 14)
         if (key.all { it == 0.toByte() } || key.all { it == 0xFF.toByte() }) return null
-        return CRC32().apply { update(key) }.value.hex(8)
+        return crc32(key).hex(8)
     }
 
     /** One save's seen maps, kept in [file] (a line per map, `group.num`). */
-    class SeenMaps(private val file: File) {
+    class SeenMaps(private val file: Path) {
+        private val lock = SynchronizedObject()
         private val ids = HashSet<Int>()
         /** The save's flags were read into it ([seed]) this run. */
         var seeded = false
@@ -171,28 +174,25 @@ object FlightArea {
             }
         }
 
-        val maps: Set<Int> get() = synchronized(ids) { ids.toSet() }
+        val maps: Set<Int> get() = synchronized(lock) { ids.toSet() }
 
-        operator fun contains(id: Int) = synchronized(ids) { id in ids }
+        operator fun contains(id: Int) = synchronized(lock) { id in ids }
 
         /** Adds [more]; true when any was new (then written). */
         fun addAll(more: Collection<Int>): Boolean {
-            val added = synchronized(ids) { ids.addAll(more) }
+            val added = synchronized(lock) { ids.addAll(more) }
             if (added) runCatching {
-                file.parentFile?.mkdirs()
-                val text = synchronized(ids) { ids.sorted().joinToString("\n") { "${it shr 8}.${it and 0xFF}" } }
-                val tmp = File(file.path + ".tmp")
-                tmp.writeText(text)
-                tmp.renameTo(file)
+                val text = synchronized(lock) { ids.sorted().joinToString("\n") { "${it shr 8}.${it and 0xFF}" } }
+                file.writeTextAtomically(text)
             }
             return added
         }
 
-        val size: Int get() = synchronized(ids) { ids.size }
+        val size: Int get() = synchronized(lock) { ids.size }
 
         companion object {
             /** [dir]/flight-area/<rom crc>-<save key>.txt. */
-            fun of(dir: File, romKey: String, key: String) = SeenMaps(File(File(dir, "flight-area"), "$romKey-$key.txt"))
+            fun of(dir: Path, romKey: String, key: String) = SeenMaps(dir / "flight-area" / "$romKey-$key.txt")
         }
     }
 
@@ -201,7 +201,7 @@ object FlightArea {
      * run from the game's own answers (GetMapsecType for its towns, FlagGet for its trainers), the map the player stands on
      * added as they go. Emu thread only, in a field job (the game's functions are called).
      */
-    class Keeper(private val dir: File, private val romKey: String) {
+    class Keeper(private val dir: Path, private val romKey: String) {
         private var key: String? = null
         @Volatile private var seen: SeenMaps? = null
         private var maps: Map<Int, MapInfo>? = null

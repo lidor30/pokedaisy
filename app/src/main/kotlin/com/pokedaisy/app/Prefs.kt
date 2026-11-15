@@ -507,6 +507,12 @@ class Prefs(context: Context) {
             ).apply()
     }
 
+    /** HIDE BATTLE MENU: two screens, the game's own FIGHT / BAG and move menus left off the game's screen (the
+     * companion's battle buttons pick), an arrow pointing at the companion instead (pk_wide.c's menuHideBegin). */
+    var hideBattleMenu: Boolean
+        get() = p.getBoolean("hide_battle_menu", true)
+        set(v) = p.edit().putBoolean("hide_battle_menu", v).apply()
+
     /** BATTLE BUTTONS (companion.ui.BattleButtons): one screen, FIGHT, POKéMON and RUN beside a battle. */
     var battleButtons: Boolean
         get() = p.getBoolean("battle_buttons", true)

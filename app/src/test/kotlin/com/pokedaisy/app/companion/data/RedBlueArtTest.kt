@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Red's and Blue's art and dex pages, rebuilt from the player's own ROMs (skipped without them; Blue is also looked for
@@ -30,12 +31,12 @@ class RedBlueArtTest {
     fun `Red and Blue give the same art`() {
         val out = File("build/gen1-art-red")
         out.deleteRecursively()
-        val wrote = Gen1Art.extractTo(red(), out)
+        val wrote = Gen1Art.extractTo(red(), out.toOkioPath())
         assertTrue(wrote.size > 150)
         assertTrue(Gen1Art.RED_BLUE_TOWN_MAP in wrote && Gen1Art.RED_BLUE_PLAYER in wrote && Gen1Art.RED_BLUE_FONT in wrote)
         assumeTrue("Blue ROM not on this machine", blue != null)
         val other = File.createTempFile("gen1", "").also { it.delete() }
-        assertEquals(wrote.toSet(), Gen1Art.extractTo(blue!!.readBytes(), other).toSet())
+        assertEquals(wrote.toSet(), Gen1Art.extractTo(blue!!.readBytes(), other.toOkioPath()).toSet())
         for (path in wrote) assertTrue(path, File(out, path).readBytes().contentEquals(File(other, path).readBytes()))
         other.deleteRecursively()
     }

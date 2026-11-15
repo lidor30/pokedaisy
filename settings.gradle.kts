@@ -15,3 +15,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "PokeDaisy"
 include(":app")
+// The companion's data and language code, for Android and iOS (shared/build.gradle.kts).
+include(":shared")

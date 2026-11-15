@@ -1,6 +1,9 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
 import kotlin.math.roundToInt
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /**
  * A Game Boy Color (Gen 2) game's POKéDEX and item text, read from the cart's own bytes ([Gen1Dex.rom]:
@@ -284,7 +287,8 @@ val POKEDEX_PRISM = POKEDEX_CRYSTAL.copy(
  * cache never crosses them.
  */
 private val polishedDexes = HashMap<String, PokedexTables>()
-fun polishedCrystalPokedex(sha1: String): PokedexTables? = synchronized(polishedDexes) {
+private val polishedDexesLock = SynchronizedObject()
+fun polishedCrystalPokedex(sha1: String): PokedexTables? = synchronized(polishedDexesLock) {
     val a = polishedCrystalAddrs[sha1] ?: return null
     polishedDexes.getOrPut(sha1) {
         fun at(k: Int) = (a[k] shr 16) to (a[k] and 0xFFFF)

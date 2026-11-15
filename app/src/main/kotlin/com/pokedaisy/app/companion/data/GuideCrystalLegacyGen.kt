@@ -6,7 +6,7 @@ package com.pokedaisy.app.companion.data
 // RAM, the same in every build: wEventFlags (NUM_EVENTS bits), wTimeOfDay (MORN 0, DAY 1, NITE 2),
 // wJohtoBadges (wKantoBadges follows it), wTradeFlags (a bit per NPC trade). WRAM bank 1 (wramx).
 internal const val CL_EVENT_FLAGS = 0xDA7D
-internal const val CL_EVENT_FLAG_BYTES = 256
+const val CL_EVENT_FLAG_BYTES = 256
 internal const val CL_TIME_OF_DAY = 0xD274
 internal const val CL_BADGES = 0xD862
 internal const val CL_TRADE_FLAGS = 0xD96B

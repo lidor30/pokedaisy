@@ -37,9 +37,11 @@ import com.pokedaisy.app.companion.ui.PcBoxesScreen
 import com.pokedaisy.app.companion.ui.PcBoxesState
 import com.pokedaisy.app.companion.ui.TradeScreen
 import com.pokedaisy.app.companion.ui.TradeState
+import com.pokedaisy.app.companion.ui.bitmap
 import com.pokedaisy.app.companion.ui.rememberGbaTextMetrics
 import com.pokedaisy.app.companion.ui.theme.AppTheme
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * A game's SAVE EDITOR (its library menu, or TOOLS with the game picked first: [EXTRA_PICK]), and TRADE with another
@@ -205,8 +207,8 @@ class SaveEditorActivity : ComponentActivity() {
         if (rom.absolutePath in icons) return
         val tables = RomMonIcons.tablesFor(RomIdentity.sha1(rom), RomIdentity.gameCode(rom), RomIdentity.revision(rom)) ?: return
         val file = RomArchive.playable(rom, cacheDir) ?: rom
-        val source = RomMonIcons.open(file, tables) ?: return
-        runOnUiThread { icons[rom.absolutePath] = MonIconLoader { source.get(it) } }
+        val source = RomMonIcons.open(file.toOkioPath(), tables) ?: return
+        runOnUiThread { icons[rom.absolutePath] = MonIconLoader { source.get(it)?.bitmap() } }
     }
 
     private fun save(ready: Page.Ready) {

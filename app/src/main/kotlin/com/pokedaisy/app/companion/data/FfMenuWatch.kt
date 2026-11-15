@@ -1,5 +1,9 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+
 /**
  * Whether the game has a menu screen up - party, bag, summary, PC, Pokédex,
  * options... - so SMART fast-forward ([com.pokedaisy.app.companion.FfMode])
@@ -27,6 +31,7 @@ package com.pokedaisy.app.companion.data
  * from the first frame on the next launch.
  */
 object FfMenuWatch {
+    private val lock = SynchronizedObject()
     /** Called (emu thread) when the learned field / battle callback2 changes: persist them. */
     @Volatile
     var onLearned: ((field: Long, battle: Long) -> Unit)? = null
@@ -52,26 +57,27 @@ object FfMenuWatch {
     private var lastPos: List<Int>? = null
 
     /** A ROM was loaded ([gameCode] = its header code): forget the last one, start from what was learned before. */
-    @Synchronized
     fun load(gameCode: String, learnedField: Long, learnedBattle: Long) {
-        gMain = -1L
-        knownGMain = -1L
-        verifyFrame = 0
-        verifyPrimed = false
-        // Ruby/Sapphire's Main has 4 more bytes - but not the Japanese ones' (their Main is FireRed's size).
-        inBattleOff = if ((gameCode.startsWith("AXV") || gameCode.startsWith("AXP")) && !gameCode.endsWith("J")) 0x43DL else 0x439L
-        frame = 0
-        snapshot = null
-        scans = 0
-        fieldVotes.clear()
-        battleFrames.clear()
-        field = learnedField
-        battle = learnedBattle
-        if (field != 0L) fieldVotes[field] = SEED_VOTES
-        if (battle != 0L) battleFrames[battle] = SEED_FRAMES
-        cb2 = 0L
-        inBattle = false
-        lastPos = null
+        synchronized(lock) {
+            gMain = -1L
+            knownGMain = -1L
+            verifyFrame = 0
+            verifyPrimed = false
+            // Ruby/Sapphire's Main has 4 more bytes - but not the Japanese ones' (their Main is FireRed's size).
+            inBattleOff = if ((gameCode.startsWith("AXV") || gameCode.startsWith("AXP")) && !gameCode.endsWith("J")) 0x43DL else 0x439L
+            frame = 0
+            snapshot = null
+            scans = 0
+            fieldVotes.clear()
+            battleFrames.clear()
+            field = learnedField
+            battle = learnedBattle
+            if (field != 0L) fieldVotes[field] = SEED_VOTES
+            if (battle != 0L) battleFrames[battle] = SEED_FRAMES
+            cb2 = 0L
+            inBattle = false
+            lastPos = null
+        }
     }
 
     /**
@@ -79,64 +85,66 @@ object FfMenuWatch {
      * the scan. A different address than the scan found means the scan was
      * wrong, so what was learned through it goes too.
      */
-    @Synchronized
     fun useKnownGMain(addr: Long, inBattleOffset: Long) {
-        if (addr == knownGMain || addr <= 0L || knownGMain == Long.MIN_VALUE) return
-        knownGMain = addr
-        inBattleOff = inBattleOffset
-        if (gMain >= 0 && gMain != addr) forgetLearned()
-        gMain = addr
-        verifyFrame = 0
-        verifyPrimed = false
+        synchronized(lock) {
+            if (addr == knownGMain || addr <= 0L || knownGMain == Long.MIN_VALUE) return
+            knownGMain = addr
+            inBattleOff = inBattleOffset
+            if (gMain >= 0 && gMain != addr) forgetLearned()
+            gMain = addr
+            verifyFrame = 0
+            verifyPrimed = false
+        }
     }
 
     /** gMain.inBattle as of the last [tick] (false until gMain is found). */
     val battling: Boolean
-        @Synchronized get() = gMain >= 0 && inBattle
+        get() = synchronized(lock) { gMain >= 0 && inBattle }
 
     /** The field's own callback2 is running (learned and not in a battle): the player's field, no menu screen over it.
      * False until the field has been learned (a few seconds of walking the first time a game runs). */
     val onField: Boolean get() = onFieldNow()
 
     // (A function: in a property's getter `field` would be its own backing field, not the learned callback.)
-    @Synchronized
-    private fun onFieldNow() = gMain >= 0 && field != 0L && !inBattle && cb2 == field
+    private fun onFieldNow() = synchronized(lock) { gMain >= 0 && field != 0L && !inBattle && cb2 == field }
 
     /** Emu thread, once a frame: true while a menu screen is up. */
-    @Synchronized
     fun tick(r: MemoryReader): Boolean {
-        if (gMain < 0) {
-            findGMain(r)
-            return false
-        }
-        if (!stillGMain(r)) return false
-        val b = runCatching { r.readCoreMemory(gMain + 4, 4) }.getOrNull() ?: return false
-        cb2 = Gfx.u32(b, 0)
-        inBattle = runCatching { (r.readCoreMemory(gMain + inBattleOff, 1)[0].toInt() shr 1) and 1 == 1 }.getOrDefault(false)
-        if (inBattle && Gfx.inRom(cb2)) {
-            val n = (battleFrames[cb2] ?: 0) + 1
-            battleFrames[cb2] = n
-            if (cb2 != battle && n > (battleFrames[battle] ?: 0) && n >= MIN_BATTLE_FRAMES) {
-                battle = cb2
-                learned()
+        synchronized(lock) {
+            if (gMain < 0) {
+                findGMain(r)
+                return false
             }
+            if (!stillGMain(r)) return false
+            val b = runCatching { r.readCoreMemory(gMain + 4, 4) }.getOrNull() ?: return false
+            cb2 = Gfx.u32(b, 0)
+            inBattle = runCatching { (r.readCoreMemory(gMain + inBattleOff, 1)[0].toInt() shr 1) and 1 == 1 }.getOrDefault(false)
+            if (inBattle && Gfx.inRom(cb2)) {
+                val n = (battleFrames[cb2] ?: 0) + 1
+                battleFrames[cb2] = n
+                if (cb2 != battle && n > (battleFrames[battle] ?: 0) && n >= MIN_BATTLE_FRAMES) {
+                    battle = cb2
+                    learned()
+                }
+            }
+            val home = if (inBattle) battle else field
+            return home != 0L && Gfx.inRom(cb2) && cb2 != home
         }
-        val home = if (inBattle) battle else field
-        return home != 0L && Gfx.inRom(cb2) && cb2 != home
     }
 
     /** From each snapshot (~1 Hz): the player moving on the field votes for the callback2 running. */
-    @Synchronized
     fun notePosition(x: Int, y: Int, mapGroup: Int, mapNum: Int, battling: Boolean) {
-        val pos = listOf(x, y, mapGroup, mapNum)
-        val moved = lastPos != null && pos != lastPos
-        lastPos = pos
-        if (!moved || battling || inBattle || !Gfx.inRom(cb2)) return
-        val n = (fieldVotes[cb2] ?: 0) + 1
-        fieldVotes[cb2] = n
-        if (cb2 != field && n > (fieldVotes[field] ?: 0) && n >= MIN_FIELD_VOTES) {
-            field = cb2
-            learned()
+        synchronized(lock) {
+            val pos = listOf(x, y, mapGroup, mapNum)
+            val moved = lastPos != null && pos != lastPos
+            lastPos = pos
+            if (!moved || battling || inBattle || !Gfx.inRom(cb2)) return
+            val n = (fieldVotes[cb2] ?: 0) + 1
+            fieldVotes[cb2] = n
+            if (cb2 != field && n > (fieldVotes[field] ?: 0) && n >= MIN_FIELD_VOTES) {
+                field = cb2
+                learned()
+            }
         }
     }
 

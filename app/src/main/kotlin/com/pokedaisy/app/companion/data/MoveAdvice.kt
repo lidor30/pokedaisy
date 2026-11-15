@@ -266,7 +266,8 @@ object MoveAdvisor {
         return moves.mapNotNull { id -> effectTier(mon, id) }
             .sortedByDescending { it.second }
             .sumOf { (g, t) ->
-                val n = seen.merge(g, 1, Int::plus)!!
+                val n = (seen[g] ?: 0) + 1
+                seen[g] = n
                 // One way to put a foe to sleep is plenty: a second of a kind counts for little.
                 (t * if (n == 1) 1f else 0.3f).toDouble()
             }.toFloat() * TIER_SHARE * ref

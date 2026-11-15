@@ -1,12 +1,12 @@
 package com.pokedaisy.app.companion.data.coop
 
+import okio.Path
 import com.pokedaisy.app.companion.data.LookArt
 import com.pokedaisy.app.companion.data.LookBlob
 import com.pokedaisy.app.companion.data.LookChar
 import com.pokedaisy.app.companion.data.LookPart
 import com.pokedaisy.app.companion.data.PlayerLook
-import java.io.File
-import java.util.zip.CRC32
+import com.pokedaisy.app.companion.data.crc32
 
 /**
  * The co-op partner's art (pk_wide.c's `pk_partner_set`): 42 frames of 32x32 4bpp in reading order, then the
@@ -44,7 +44,7 @@ object PartnerArt {
      * [rom] and kept there first; dressed as [look] only if all its graphics are kept here. Null when [rom]
      * isn't retail Emerald (no surf blob), the hero can't be had, or [look] isn't kept here (ask again with null for the plain hero).
      */
-    fun build(filesDir: File, rom: ByteArray, female: Boolean, look: LookChar?): ByteArray? {
+    fun build(filesDir: Path, rom: ByteArray, female: Boolean, look: LookChar?): ByteArray? {
         if (surfBlob(rom) == null) return null
         val me = if (female) LookChar.MAY else LookChar.BRENDAN
         val own = LookArt.load(filesDir, me) ?: run {
@@ -62,7 +62,7 @@ object PartnerArt {
         val at = CoopEmeraldGen.SURF_BLOB_PIC
         if (rom.size < at + BLOB_BYTES) return null
         val bytes = rom.copyOfRange(at, at + BLOB_BYTES)
-        return bytes.takeIf { CRC32().apply { update(it) }.value == CoopEmeraldGen.SURF_BLOB_CRC }
+        return bytes.takeIf { crc32(it) == CoopEmeraldGen.SURF_BLOB_CRC }
     }
 
     /** [pack] with the blob's bytes already read. */

@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import okio.Path
 
 /** A piece of a game's text look: the dialogue box's tiles and palette, the normal font's glyphs and their widths. */
 enum class TextPart { BOX, BOX_PAL, FONT, FONT_WIDTHS }
@@ -92,7 +92,7 @@ object TextLook {
             val start = at - sig.anchor
             if (start >= 0 && start % 4 == 0 && start + sig.length <= rom.size) {
                 val keep = mask(rom, start, sig.length)
-                val crc = java.util.zip.CRC32()
+                val crc = Crc32()
                 for (k in 0 until sig.length) crc.update(if (keep[k]) rom[start + k].toInt() and 0xFF else 0)
                 if (crc.value == sig.crc) out += start
             }
@@ -228,11 +228,11 @@ object TextLook {
 
 /** Each game's text look as decoded from a ROM the player has, in `rom-art/look/text/<style>/` (like [LookArt]). */
 object TextArt {
-    private fun dir(filesDir: File?, style: LookEngine) = File(File(LookArt.dir(filesDir), "text"), style.name.lowercase())
-    private fun file(filesDir: File?, style: LookEngine, part: TextPart) = File(dir(filesDir, style), "${part.name.lowercase()}.bin")
+    private fun dir(filesDir: Path?, style: LookEngine) = LookArt.dir(filesDir) / "text" / style.name.lowercase()
+    private fun file(filesDir: Path?, style: LookEngine, part: TextPart) = dir(filesDir, style) / "${part.name.lowercase()}.bin"
 
     /** Keeps whatever [scan] found of each style (once): the box with its palette, the font with its widths. */
-    fun keep(filesDir: File?, scan: PlayerLook.Scan): List<LookEngine> = TextLook.STYLES.filter { style ->
+    fun keep(filesDir: Path?, scan: PlayerLook.Scan): List<LookEngine> = TextLook.STYLES.filter { style ->
         val pairs = listOf(TextPart.BOX to TextPart.BOX_PAL, TextPart.FONT to TextPart.FONT_WIDTHS)
         var kept = false
         for ((a, b) in pairs) {
@@ -254,11 +254,11 @@ object TextArt {
     }
 
     /** [style]'s kept parts (the box at least), or null. */
-    fun load(filesDir: File?, style: LookEngine): Map<TextPart, ByteArray>? {
+    fun load(filesDir: Path?, style: LookEngine): Map<TextPart, ByteArray>? {
         val m = TextPart.entries.mapNotNull { p ->
             val f = file(filesDir, style, p)
             val b = TextLook.blob(style, p)
-            if (b != null && f.isFile && f.length() == b.size.toLong()) p to f.readBytes() else null
+            if (b != null && f.isFile && f.length == b.size.toLong()) p to f.readBytes() else null
         }.toMap()
         return m.takeIf { TextPart.BOX in it && TextPart.BOX_PAL in it }
     }

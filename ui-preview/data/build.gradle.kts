@@ -104,7 +104,11 @@ dependencies {
     // CoopRelaySocket (the relay over WebSocket).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Byte buffers, files and hashes in the data code shared with the iPad app (okio is Kotlin Multiplatform).
-    implementation("com.squareup.okio:okio:3.10.2")
+    api("com.squareup.okio:okio:3.10.2")   // api: okio's Path / Source appear in the data code's functions
+    // Threads and locks in the data code shared with the iPad app (Kotlin Multiplatform).
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+    implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
     // CoopKeys' X25519 (the co-op connection's Noise handshake).
     implementation("org.bouncycastle:bcprov-jdk18on:1.79")
 }

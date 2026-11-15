@@ -148,7 +148,7 @@ data class PartyItemFns(
 fun fieldItemCodeMatches(fns: FieldItemFns, readRom: (addr: Long, len: Int) -> ByteArray): Boolean {
     val party = fns.party
     val all = fns.functions.zip(fns.codeCrcs) + (party?.let { it.functions.zip(it.codeCrcs) }.orEmpty())
-    return all.all { (fn, crc) -> java.util.zip.CRC32().apply { update(readRom(fn, 32)) }.value == crc }
+    return all.all { (fn, crc) -> crc32(readRom(fn, 32)) == crc }
 }
 
 /** REPEL / SUPER REPEL / MAX REPEL: the same ids in both games. */

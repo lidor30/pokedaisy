@@ -88,3 +88,13 @@ battlerPartyIndexes = 0x02023BCE
 battleStructPtr = 0x02023FE8
 monToSwitchIntoOff = 0x5C  # include/battle.h struct BattleStruct (field_78 lands at 0x78)
 trainerCard = 'TRAINER_CARD_FIRERED'
+
+# Retail FireRed 1.0 itself (the Poller's, on a retail hash only): rev 0's config is the CFRU hacks' base, so the card
+# and the battle menus' cursors go here, never on it. The cursors are rev 1's: checked headless on the retail cart
+# (2026-11-14) - RIGHT / DOWN walk the byte 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move cell + A
+# uses that move (THUNDER WAVE from cell 1).
+[config.firered_rev0_retail]
+base = 'firered_rev0'
+trainerCard = 'TRAINER_CARD_FIRERED'
+actionCursor = 0x02023FF8
+moveCursor = 0x02023FFC
