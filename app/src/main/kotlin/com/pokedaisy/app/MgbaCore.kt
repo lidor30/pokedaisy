@@ -136,21 +136,21 @@ object MgbaCore {
     external fun pkPartnerPlace(visible: Boolean, fineX: Int, fineY: Int, frame: Int, hflip: Boolean, blobFrame: Int, bob: Int)
 
     // pkFieldState's bits (pk_wide.h's PK_FIELD_*).
-    const val FIELD_KNOWN = 1
-    const val FIELD_LOCKED = 2
-    const val FIELD_BATTLE = 4
-    const val FIELD_TEXT = 8
-    const val FIELD_BIKE = 16
+    const val FIELD_KNOWN = com.pokedaisy.app.companion.data.GameField.KNOWN
+    const val FIELD_LOCKED = com.pokedaisy.app.companion.data.GameField.LOCKED
+    const val FIELD_BATTLE = com.pokedaisy.app.companion.data.GameField.BATTLE
+    const val FIELD_TEXT = com.pokedaisy.app.companion.data.GameField.TEXT
+    const val FIELD_BIKE = com.pokedaisy.app.companion.data.GameField.BIKE
     /** WILD ENCOUNTERS set the game's switch: keep calling (with 100) until it's been put back. */
-    const val FIELD_WILD_HELD = 32
-    const val FIELD_SURF = 64
+    const val FIELD_WILD_HELD = com.pokedaisy.app.companion.data.GameField.WILD_HELD
+    const val FIELD_SURF = com.pokedaisy.app.companion.data.GameField.SURF
     /** [FIELD_BIKE] / [FIELD_SURF] come from the game's own player state (FIELD SPEED's BIKE / SURF rows work). */
-    const val FIELD_AVATAR = 128
+    const val FIELD_AVATAR = com.pokedaisy.app.companion.data.GameField.AVATAR
     /** A DS game's own: the overworld is on screen (its field map runs, nothing over it) - what FfMenuWatch.onField
      * tells for a GBA game. */
     const val FIELD_SCREEN = 256
     /** A DS game's own: a menu screen (party, bag, Pokédex, ...) runs over the field. */
-    const val FIELD_MENU = 512
+    const val FIELD_MENU = com.pokedaisy.app.companion.data.GameField.MENU
     /** A DS game's own: a battle waits for the player's command (FIGHT / BAG / POKéMON / RUN, a move, a target). */
     const val FIELD_BATTLE_INPUT = 1024
     /** A DS game's own: the game wants its touch screen now (DS LAYOUT floats it in; nds/pk_nds_field.cpp's touch rules). */
@@ -168,7 +168,7 @@ object MgbaCore {
     const val FIELD_TOP_ONLY = 131072
     /** A GBA game: a window up on the field's text layer while its controls are free (a START menu that doesn't lock them,
      *  Recharged Yellow's): AUTO-RUN keeps its B out of it (GitHub #610). */
-    const val FIELD_WINDOW = 262144
+    const val FIELD_WINDOW = com.pokedaisy.app.companion.data.GameField.WINDOW
     /** WIDE: the window to draw around the frame from the next frame on ([WideCamera]), in the frame's pixels
      * (its top-left 0, 0); [w] 0 = none. Any thread. */
     external fun pkWideSetView(x: Int, y: Int, w: Int, h: Int)
