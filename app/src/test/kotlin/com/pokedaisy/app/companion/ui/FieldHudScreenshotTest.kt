@@ -121,8 +121,8 @@ class FieldHudScreenshotTest {
         com.pokedaisy.app.companion.data.AreaMaps.romChanged()
         val id = com.pokedaisy.app.companion.data.AreaMap.MapId(1, 51)
         val area = com.pokedaisy.app.companion.data.AreaMaps.area(id) ?: return
-        com.pokedaisy.app.companion.data.AreaMaps.image(id)
-        AreaMapChoice.showArea()
+        com.pokedaisy.app.companion.data.AreaMaps.miniImage(id)
+        AreaMapChoice.reset()
         shot(
             FieldHudStyle(),
             snap = snapshot.copy(

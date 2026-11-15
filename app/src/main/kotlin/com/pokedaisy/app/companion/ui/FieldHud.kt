@@ -1229,7 +1229,7 @@ private fun HudMiniMap(
     val small = rememberGbaTextMetrics(0.75f)
     val name = snapshot.location.mapSecName
     // In a cave / building with its own map (AreaMapView.kt), that map unless the player chose the region's.
-    val area = rememberPlayerArea(snapshot)?.takeIf { AreaMapChoice.showsArea(it) }
+    val area = rememberPlayerArea(snapshot)?.takeIf { AreaMapChoice.showsArea(it, com.pokedaisy.app.companion.data.AreaMap.MapId(snapshot.mapGroup, snapshot.mapNum)) }
     if ((model == null || bitmap == null) && area == null && name.isEmpty()) return
     Column(
         modifier.hudPanel(u).soundClickable(onClick = onClick).padding(u * 4 + hudEdge(u)).padding(bottom = u),

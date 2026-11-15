@@ -20,16 +20,16 @@ The cursor pulses between two sizes like the game's. To keep it still, turn off 
 
 ## Caves and buildings: the AREA map
 
-In the GBA games (FireRed, LeafGreen, Emerald, Ruby, Sapphire in every language, and most hacks), walking into a cave or a building that's bigger than the screen, or that has more than one floor, switches the `MAP` tab to that place's own map: the whole floor you're on, drawn from the game itself, with your head where you stand. The place's name and the floor sit in the bar at the top.
+In the GBA games (FireRed, LeafGreen, Emerald, Ruby, Sapphire in every language, and most hacks), walking into a big cave or building switches the `MAP` tab to that place's own map: the whole floor you're on, drawn from the game itself, with your head where you stand. The place's name and the floor sit in the bar at the top. A place counts as big when one of its floors is at least two screens wide or two screens tall, or holds more than three screens of room: caves, hideouts, towers, ships and the puzzle gyms.
 
-- A row of buttons under the map has one for each floor. Yours has a pin on it. Tap another floor to look around it, and `ME` to come back to yours. When you take the stairs, the map follows you.
+- A row of buttons under the map has one for each floor. Yours has a pin on it. Tap another floor to look around it, and `ME` to come back to yours. When you take the stairs, the map follows you. In a place with many floors, slide the row to reach the rest.
 - Floors are named the way the game names them (`B1F`, `1F`, `5F`, `RF` for a rooftop). Where the game doesn't name them, they're numbered in the game's own order. Some caves have more than one part on the same floor: those show as `3F`, `3F-2` and so on.
 - The magnifier shows the map at the game's own size around you. Drag it to look around, and tap the magnifier again to see the whole floor.
 - `REGION MAP` takes you to the region map, and `AREA MAP` there takes you back. Your pick holds until you leave for somewhere else; the next cave or building starts on its own map again.
 
-The HUD's minimap follows the same pick: in a cave or building it shows the floor around you, with the floor's name next to the place's.
+The HUD's minimap follows the same pick: in a big cave or building it shows the floor around you, zoomed out to about three screens of it, with the floor's name next to the place's. Tap it for the whole floor.
 
-A small room, like a single shop or a one-floor house, keeps the region map. So do the Game Boy and DS games, and a few hacks, for now.
+Pokémon Centers, shops, houses, department stores and the small gyms keep the region map, however many floors they have. So does a small room inside a big place, like a ship's cabin or an elevator: `AREA MAP` on the region map still opens the place's map from there. The Game Boy and DS games, and a few hacks, keep the region map everywhere for now.
 
 ## Tap a spot to name it
 

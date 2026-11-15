@@ -1377,7 +1377,7 @@ fun areaMapSpot(game: GameKind): AreaSpot? {
     if (System.getProperty("rom").isNullOrBlank()) return null
     return when (game) {
         GameKind.FIRERED -> AreaSpot(1, 2, 34, 35, "3")
-        GameKind.EMERALD -> AreaSpot(24, 16, 6, 7, "5")
+        GameKind.EMERALD -> AreaSpot(24, 8, 16, 13, "3")
         GameKind.UNBOUND -> AreaSpot(53, 2, 40, 30, "3F")
         else -> null
     }
@@ -1393,7 +1393,7 @@ fun areaSnapshot(spot: AreaSpot): SnapshotView {
     val id = com.pokedaisy.app.companion.data.AreaMap.MapId(spot.group, spot.num)
     val area = com.pokedaisy.app.companion.data.AreaMaps.area(id)
     area?.floors?.forEach { com.pokedaisy.app.companion.data.AreaMaps.image(it.id) }
-    com.pokedaisy.app.companion.ui.AreaMapChoice.showArea()
+    com.pokedaisy.app.companion.ui.AreaMapChoice.reset()
     val sec = area?.mapsec ?: homeMapsec(activeGame)
     return snapshot().copy(
         mapGroup = spot.group, mapNum = spot.num, x = spot.x, y = spot.y, mapType = 4,
@@ -1706,8 +1706,8 @@ fun main(args: Array<String>) {
             val at = if (game == GameKind.EMERALD || game == GameKind.EMERALD_ROGUE) Offset(0.45f, 0.125f) else Offset(0.4375f, 0.306f)
             onRoot().performTouchInput { click(Offset(37 + 1166 * at.x, 37 + 886 * at.y)) }
         },
-        // AREA maps (-Prom=<the game's ROM>): the player on a cave's second floor (FireRed's Mt. Moon B1F, Emerald's Mt. Pyre
-        // 2F, an Unbound cave's 2F) - the AREA map first, then REGION MAP, a floor chip, ZOOM.
+        // AREA maps (-Prom=<the game's ROM>): the player on a cave's second floor (FireRed's Mt. Moon B1F, Emerald's Granite Cave
+        // B1F, an Unbound cave's 2F) - the AREA map first, then REGION MAP, a floor chip, ZOOM.
         *(areaMapSpot(game)?.let { spot ->
             arrayOf(
                 Shot("$g-area-map", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }),

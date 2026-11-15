@@ -81,6 +81,40 @@ class AreaMapTest {
         assertTrue(AreaMap.area(t, MapId(1, 1), r)!!.worthShowing)
     }
 
+    /** Where the AREA map's line falls ([AreaMap.Floor.large]): only places with a floor two screens across or down, or
+     * over three screens of room, get one; inside such a place a room of a screen or less opens on the region map. */
+    @Test fun `only large places get an AREA map`() {
+        val r = rom(fireRed)?.read() ?: return
+        val t = AREA_MAP_FIRERED_REV1
+        fun worth(g: Int, n: Int) = AreaMap.area(t, MapId(g, n), r)?.worthShowing == true
+        assertFalse(worth(5, 4))      // Viridian's Pokémon Center: two floors of a screen each
+        assertFalse(worth(13, 0))     // Indigo Plateau's (25 x 18)
+        assertFalse(worth(10, 0))     // Celadon's department store: six floors, none over 19 x 16
+        assertFalse(worth(6, 0))      // Pewter's museum (28 x 11)
+        assertTrue(worth(11, 3))      // Fuchsia's gym, its invisible walls (15 x 23)
+        val silph = AreaMap.area(t, MapId(1, 56), r)!!
+        assertTrue(silph.worthShowing)
+        assertTrue(silph.opensOn(MapId(1, 56)))   // 10F: under the line itself (17 x 19), but bigger than the screen
+        assertFalse(silph.opensOn(MapId(1, 58)))  // its elevator: the region map
+        assertTrue(silph.opensOn(MapId(1, 51)))   // 5F
+        val ship = AreaMap.area(t, MapId(1, 5), r)!!
+        assertTrue(ship.opensOn(MapId(1, 5)))     // the S.S. Anne's corridor
+        assertFalse(ship.opensOn(MapId(1, 12)))   // ... a cabin: the region map
+        val e = rom(emerald)?.read() ?: return
+        assertFalse(AreaMap.area(AREA_MAP_EMERALD, MapId(8, 4), e)?.worthShowing == true)  // Petalburg's Pokémon Center
+        assertTrue(AreaMap.area(AREA_MAP_EMERALD, MapId(15, 0), e)!!.worthShowing)         // Sootopolis's ice gym (17 x 26)
+    }
+
+    @Test fun `the minimap's picture is a quarter of each side`() {
+        val r = rom(fireRed)?.read() ?: return
+        val full = AreaMap.render(AREA_MAP_FIRERED_REV1, MapId(1, 1), r)!!
+        val mini = AreaMap.shrink(full, 4)
+        assertEquals(full.width / 4, mini.width)
+        assertEquals(full.height / 4, mini.height)
+        assertTrue(mini.argb.distinct().size >= 8)
+        File("build/area-maps").apply { mkdirs() }.let { File(it, "mini_mt_moon_1f.png").writeBytes(mini.png()) }
+    }
+
     @Test fun `Emerald's areas`() {
         val r = rom(emerald)?.read() ?: return
         val t = AREA_MAP_EMERALD

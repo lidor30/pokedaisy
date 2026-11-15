@@ -112,7 +112,7 @@ fun MapScreen(
     val model = remember(snapshot.game, gen) { activeRegionMap() }
     // A cave or building with a map of its own (AreaMap.kt): its AREA map first, the region map a button away.
     val area = rememberPlayerArea(snapshot)
-    if (area != null && AreaMapChoice.showsArea(area)) {
+    if (area != null && AreaMapChoice.showsArea(area, com.pokedaisy.app.companion.data.AreaMap.MapId(snapshot.mapGroup, snapshot.mapNum))) {
         AreaMapPane(area, snapshot, onRegion = { AreaMapChoice.showRegion(area) }, modifier = modifier)
     } else Box(modifier = modifier.fillMaxSize()) {
         val playerRegion = model?.sections?.get(snapshot.regionMapSectionId)?.region?.takeIf { it in model.images.indices }
@@ -270,7 +270,7 @@ fun MapScreen(
                         onTakeOff = takeOff, flying = flyingNow,
                         onRegion = { selection = null; cursorTile = null; shownOverride = (shown + 1) % model.images.size },
                         onMe = { selection = null; cursorTile = null; shownOverride = null },
-                        onArea = area?.let { { AreaMapChoice.showArea() } },
+                        onArea = area?.let { a -> { AreaMapChoice.showArea(a) } },
                     )
                 }
             }
