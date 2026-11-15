@@ -439,15 +439,31 @@ class PokeDaisyActivity : Activity() {
         // The config's text key and tables too: Emerald Kaizo runs as EMERALD and keeps no classic FLY (fieldItemsForGame);
         // Recharged Emerald shares retail Emerald's code, revision and kind, but not its functions.
         val candidates = fieldItemsFor(game).ifEmpty { return null }
+        // Mail's struct lives in SaveBlock1 at the retail offset; offer its PC mailbox only where the vanilla PC storage
+        // and code are the ones the box moves know (a hack that keeps its own SaveBlock1 layout gets no mail TAKE).
+        val cfg = com.pokedaisy.app.companion.data.activeNativeConfig
+        val mailOff = when (game) {
+            com.pokedaisy.app.companion.data.GameKind.EMERALD -> 0x2BE0
+            com.pokedaisy.app.companion.data.GameKind.FIRERED -> 0x2CD0
+            else -> 0
+        }
+        // The mailbox part of the key too: support built before the config was known is rebuilt once it is.
         val key = "$romCode/$romRev/$game/${com.pokedaisy.app.companion.data.romGameCode}/" +
-            candidates.joinToString(",") { "${it.varGet}/${it.items}" }
+            candidates.joinToString(",") { "${it.varGet}/${it.items}" } +
+            "|${cfg?.saveBlock1Ptr}/${cfg?.staticSaveBlocks}/$mailOff"
         fieldSupport?.let { (k, v) -> if (k == key) return v }
         if (!::engine.isInitialized || !engine.running) return null
         // ROM bytes only (the core lock keeps a closing game's core safe); a read that fails isn't cached. The first
         // table whose code is in the ROM (SoulGold's builds share one game).
         val support = runCatching {
             candidates.firstNotNullOfOrNull { fns ->
-                com.pokedaisy.app.companion.data.fieldItemSupport(fns) { addr, len -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
+                val mailbox = if (cfg != null && mailOff != 0 &&
+                    com.pokedaisy.app.companion.data.boxSwapFor(fns, cfg) != null) {
+                    com.pokedaisy.app.companion.data.MailboxLayout(cfg.saveBlock1Ptr, cfg.staticSaveBlocks, mailOff)
+                } else null
+                com.pokedaisy.app.companion.data.fieldItemSupport(
+                    fns, { addr, len -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }, mailbox,
+                )
             }
         }.getOrElse { return null }
         fieldSupport = key to support
