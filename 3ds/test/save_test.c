@@ -302,7 +302,7 @@ int main(int argc, char** argv) {
             char why[160];
             struct pd_mon m;
             pd_save_box_mon(&saves[i], box, slot, &m);
-            const char* no = pd_trade(&a, PD_AT_BOX(box, slot), &bb, PD_AT_BOX(eb, ek), why, sizeof why);
+            const char* no = pd_trade(&a, PD_AT_BOX(box, slot), &bb, PD_AT_BOX(eb, ek), true, why, sizeof why);
             printf("trade %s -> %s: %s (species %d): %s\n", codes[i], codes[j], m.nickname, m.species, no ? no : "done");
             if (!no) {
                 struct pd_mon got;
@@ -314,6 +314,22 @@ int main(int argc, char** argv) {
             }
             pd_save_revert(&saves[i]);
             pd_save_revert(&saves[j]);
+            // A trade evolution: declined (the game's B) it arrives as it is, else as what it becomes.
+            for (int at = PD_AT_PARTY(5); at < PD_SAVE_BOXES * PD_SAVE_BOX_SLOTS; at++) {
+                int into = pd_trade_evolution(&a, at, &bb);
+                if (!into || pd_trade_blocker(&a, at, &bb, why, sizeof why) || !find_mon(&saves[j], &eb, &ek, true)) continue;
+                struct pd_mon before, got;
+                pd_save_mon_at(&saves[i], at, &before);
+                for (int evolve = 0; evolve < 2; evolve++) {
+                    no = pd_trade(&a, at, &bb, PD_AT_BOX(eb, ek), evolve, why, sizeof why);
+                    CHECK(!no && pd_save_box_mon(&saves[j], eb, ek, &got) && got.species == (evolve ? into : before.species),
+                          "%s -> %s: evolve %d gave species %d", codes[i], codes[j], evolve, got.species);
+                    printf("trade evolution %s -> %s: %s, evolve %d: species %d\n", codes[i], codes[j], before.nickname, evolve, got.species);
+                    pd_save_revert(&saves[i]);
+                    pd_save_revert(&saves[j]);
+                }
+                break;
+            }
             // The party's last Pokémon to the other's party (when there's room): refused if it's the only one.
             int ci = pd_save_party_count(&saves[i]), cj = pd_save_party_count(&saves[j]);
             // Party for party: the second of each.
@@ -321,7 +337,7 @@ int main(int argc, char** argv) {
                 struct pd_mon mi, mj, gi, gj;
                 pd_save_party_mon(&saves[i], 1, &mi);
                 pd_save_party_mon(&saves[j], 1, &mj);
-                no = pd_trade(&a, PD_AT_PARTY(1), &bb, PD_AT_PARTY(1), why, sizeof why);
+                no = pd_trade(&a, PD_AT_PARTY(1), &bb, PD_AT_PARTY(1), true, why, sizeof why);
                 printf("party swap %s <-> %s: %s for %s: %s\n", codes[i], codes[j], mi.nickname, mj.nickname, no ? no : "done");
                 if (!no) {
                     CHECK(pd_save_party_mon(&saves[i], 1, &gi) && pd_save_party_mon(&saves[j], 1, &gj) && gj.personality == mi.personality &&
@@ -336,7 +352,7 @@ int main(int argc, char** argv) {
                 pd_save_revert(&saves[j]);
             }
             if (ci > 0 && cj < 6) {
-                no = pd_trade(&a, PD_AT_PARTY(ci - 1), &bb, PD_AT_PARTY(cj), why, sizeof why);
+                no = pd_trade(&a, PD_AT_PARTY(ci - 1), &bb, PD_AT_PARTY(cj), true, why, sizeof why);
                 printf("party trade %s -> %s: %s\n", codes[i], codes[j], no ? no : "done");
                 if (ci == 1) CHECK(no != NULL, "%s: its only Pokémon traded away", codes[i]);
                 if (!no) {

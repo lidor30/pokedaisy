@@ -516,7 +516,8 @@ void pd_library_keys(struct pd_library* l, unsigned down) {
     if (!down) return;
     l->dirty = true;
     if (down & PD_LIB_START) {
-        l->quit = true;
+        if ((l->page == PD_PAGE_EDITOR || l->page == PD_PAGE_TRADE) && lib_saves_unsaved(l)) lib_saves_ask_quit(l);
+        else l->quit = true;
         return;
     }
     // SELECT steps through the pages (the rail's order), Y too; the save tools keep B while a save is open.

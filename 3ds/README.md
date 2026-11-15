@@ -143,7 +143,9 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
 - **TRADE SAVES**: two games' saves, party or PC, by the games' own rules (`Gen3Trade`: FireRed / LeafGreen only after the
   Sevii Islands, no National Dex = no eggs or Pokémon outside the regional dex, Mew / Deoxys from an event only, no mail, a
   party keeps one that isn't an egg; trade evolutions, the Pokédex, Ruby / Sapphire's National Dex). A tab per side over its
-  party or a box, a Pokémon (or an empty place) picked on each, Y trades; both saves written or neither. `make test-save`
+  party or a box, a Pokémon (or an empty place) picked on each, Y trades - a trade evolution asks EVOLVE / DON'T first, as
+  the app does - and trades pile up in both saves until SAVE (SELECT) writes the two together, both or neither; UNDO ALL drops
+  them, and leaving or START with trades not saved asks first. `make test-save`
   runs `core/pd_save.c` on real saves (every edit, then written and read back).
 - **Battle controls**: FIGHT / BAG / RUN / POKéMON, the moves, the party to send in (BEST / OUT), ONE-TAP MOVES,
   on the GBA games with their handlers known and on every Game Boy game (its 2x2 menu in the cart's own words).

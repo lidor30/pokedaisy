@@ -66,7 +66,9 @@ The 3DS app has the same editor for FireRed, LeafGreen, Emerald, Ruby and Sapphi
 - `BAG`: **L** and **R** go through the pockets, **A** changes how many you have (0 takes it out), and **Y** adds an item.
 - `TRAINER`: your money and coins, the Pokédex marks and the event tickets.
 
-**X** saves. A copy of the old save goes to `pokedaisy-backups` first. `TRADE SAVES` on the 3DS trades party Pokémon too: **L** and **R** reach the party on each side.
+**X** saves. A copy of the old save goes to `pokedaisy-backups` first.
+
+`TRADE SAVES` works as above: **L** and **R** reach the party and the boxes on each side, **X** switches sides, **Y** trades (a Pokémon that evolves by trading asks first: `EVOLVE`, or `DON'T` to trade it as it is), `UNDO ALL` drops the trades you made, and **SELECT** (or `SAVE`) writes both saves together. If you leave or close PokeDaisy with trades or changes not saved, it asks first.
 
 ## Trade between saves
 

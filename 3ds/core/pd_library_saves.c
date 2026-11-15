@@ -27,7 +27,7 @@
 enum stage { PICK_A, PICK_B, LOADING, OPEN };
 enum tab { TAB_MONS, TAB_BAG, TAB_TRAINER, TABS };
 enum dialog { NONE, CONFIRM, MESSAGE, NUMBER, PICK };
-enum confirm_of { C_WRITE, C_TRADE, C_LEAVE, C_RELEASE, C_REGISTER, C_SEEN, C_CAUGHT, C_EVENT };
+enum confirm_of { C_WRITE, C_EVOLVE, C_LEAVE, C_RELEASE, C_REGISTER, C_SEEN, C_CAUGHT, C_EVENT, C_QUIT };
 enum number_of { N_MONEY, N_COINS, N_LEVEL, N_FRIENDSHIP, N_IV, N_EV, N_QUANTITY, N_ADD };
 enum pick_of { P_NATURE, P_ITEM, P_MOVE, P_ADD_ITEM, P_BOX_MENU };
 #define BOX_SLOTS PD_SAVE_BOX_SLOTS
@@ -70,6 +70,8 @@ struct pd_library_saves {
     bool icons;
     int dialog, confirmOf, confirmArg;
     char title[32], line1[120], line2[120];
+    const char *yes, *no; // the confirm's buttons
+    char tradeNote[120];  // TRADE: what the last trade did (the top screen's status)
     // NUMBER: what for (and which IV / EV / stack), the digit, the value, its range.
     int numberOf, numberArg, digit, digits;
     long number, numberMin, numberMax;
@@ -175,6 +177,8 @@ static void confirm(struct pd_library_saves* s, int of, int arg, const char* tit
     s->dialog = CONFIRM;
     s->confirmOf = of;
     s->confirmArg = arg;
+    s->yes = "YES";
+    s->no = "NO";
     snprintf(s->title, sizeof s->title, "%s", title);
     snprintf(s->line1, sizeof s->line1, "%s", line1 ? line1 : "");
     snprintf(s->line2, sizeof s->line2, "%s", line2 ? line2 : "");
@@ -841,10 +845,46 @@ static void trainer_move(struct pd_library_saves* s, int dy) {
 
 // --- the trade ---
 
-static void trade_text(struct pd_library_saves* s, const struct pd_mon* ma, const struct pd_mon* mb) {
-    if (mb) snprintf(s->line1, sizeof s->line1, "%.31s for %.31s?", ma->nickname, mb->nickname);
-    else snprintf(s->line1, sizeof s->line1, "Send %.31s?", ma->nickname);
-    snprintf(s->line2, sizeof s->line2, "Both saves are written (backed up first).");
+// The app's TRADE: each trade is made in both saves' working copies at once (a trade evolution asks first, like the game's
+// evolution scene), they pile up until SAVE writes the two together, and UNDO ALL drops them.
+
+static bool trades_changed(const struct pd_library_saves* s) {
+    return pd_save_changed(&s->sides[0].save) || pd_save_changed(&s->sides[1].save);
+}
+
+// What the picks would do: from side [from] (its Pokémon) to the other; false if nothing would move.
+static bool trade_picks(struct pd_library_saves* s, struct pd_mon* ma, struct pd_mon* mb, bool* fromA, bool* fromB) {
+    struct side *a = &s->sides[0], *b = &s->sides[1];
+    if (a->mark == PD_AT_NONE || b->mark == PD_AT_NONE) return false;
+    *fromA = pd_save_mon_at(&a->save, a->mark, ma);
+    *fromB = pd_save_mon_at(&b->save, b->mark, mb);
+    return *fromA || *fromB;
+}
+
+static void do_trade(struct pd_library* l, bool evolve) {
+    struct pd_library_saves* s = S(l);
+    struct side *a = &s->sides[0], *b = &s->sides[1];
+    struct pd_mon ma, mb;
+    bool fromA, fromB;
+    if (!trade_picks(s, &ma, &mb, &fromA, &fromB)) return;
+    struct side *from = fromA ? a : b, *to = fromA ? b : a;
+    struct pd_mon* sent = fromA ? &ma : &mb;
+    int evolves = evolve ? pd_trade_evolution(&from->trade, from->mark, &to->trade) : 0;
+    char why[160], name[24];
+    const char* no = pd_trade(&from->trade, from->mark, &to->trade, to->mark, evolve, why, sizeof why);
+    if (no) {
+        message(s, "THE GAMES WON'T", no, NULL);
+        return;
+    }
+    const struct pd_library_game* g = &l->games[to->game];
+    const char* game = !strncmp(g->title, "Pokémon ", strlen("Pokémon ")) ? g->title + strlen("Pokémon ") : g->title;
+    if (fromA && fromB) snprintf(s->tradeNote, sizeof s->tradeNote, "%.24s and %.24s traded.", ma.nickname, mb.nickname);
+    else snprintf(s->tradeNote, sizeof s->tradeNote, "%.24s went to %.40s.", sent->nickname, game);
+    if (evolves) {
+        size_t n = strlen(s->tradeNote);
+        snprintf(s->tradeNote + n, sizeof s->tradeNote - n, " It evolved into %s.", species_text(s, evolves, name, sizeof name));
+    }
+    a->mark = b->mark = PD_AT_NONE;
 }
 
 static void start_trade(struct pd_library* l) {
@@ -855,9 +895,8 @@ static void start_trade(struct pd_library* l) {
         return;
     }
     struct pd_mon ma, mb;
-    bool fromA = pd_save_mon_at(&a->save, a->mark, &ma);
-    bool fromB = pd_save_mon_at(&b->save, b->mark, &mb);
-    if (!fromA && !fromB) {
+    bool fromA, fromB;
+    if (!trade_picks(s, &ma, &mb, &fromA, &fromB)) {
         message(s, "NOTHING TO TRADE", "Both places are empty.", NULL);
         return;
     }
@@ -868,36 +907,36 @@ static void start_trade(struct pd_library* l) {
         message(s, "THE GAMES WON'T", no, NULL);
         return;
     }
-    confirm(s, C_TRADE, 0, "TRADE", NULL, NULL);
-    if (fromA) trade_text(s, &ma, fromB ? &mb : NULL);
-    else trade_text(s, &mb, NULL);
+    // A trade evolution asks first: EVOLVE, or the game's B (traded as it is).
+    int evoA = fromA ? pd_trade_evolution(&a->trade, a->mark, &b->trade) : 0;
+    int evoB = fromB ? pd_trade_evolution(&b->trade, b->mark, &a->trade) : 0;
+    if (!evoA && !evoB) {
+        do_trade(l, true);
+        return;
+    }
+    char line1[120], line2[120], name[24];
+    const struct pd_mon* first = evoA ? &ma : &mb;
+    snprintf(line1, sizeof line1, "%.20s evolves into %s.", first->nickname, species_text(s, evoA ? evoA : evoB, name, sizeof name));
+    if (evoA && evoB) snprintf(line2, sizeof line2, "%.20s evolves into %s.", mb.nickname, species_text(s, evoB, name, sizeof name));
+    else snprintf(line2, sizeof line2, "Or trade it as it is?");
+    confirm(s, C_EVOLVE, 0, "EVOLVING", line1, line2);
+    s->yes = "EVOLVE";
+    s->no = "DON'T";
 }
 
-static void do_trade(struct pd_library* l) {
-    struct pd_library_saves* s = S(l);
-    struct side *a = &s->sides[0], *b = &s->sides[1];
-    struct pd_mon m;
-    bool fromA = pd_save_mon_at(&a->save, a->mark, &m);
-    struct side *from = fromA ? a : b, *to = fromA ? b : a;
-    int evolves = pd_trade_evolution(&from->trade, from->mark, &to->trade);
-    char why[160];
-    const char* no = pd_trade(&from->trade, from->mark, &to->trade, to->mark, why, sizeof why);
-    if (no) {
-        message(s, "THE GAMES WON'T", no, NULL);
+static void ask_write_trades(struct pd_library_saves* s) {
+    if (!trades_changed(s)) {
+        message(s, "NOTHING TO SAVE", "Make a trade first.", NULL);
         return;
     }
-    if (!write_sides(l, 2)) {
-        pd_save_revert(&a->save);
-        pd_save_revert(&b->save);
-        return;
-    }
-    char evo[64] = "";
-    if (evolves) {
-        char name[24];
-        snprintf(evo, sizeof evo, "It evolved into %s on arrival!", species_text(s, evolves, name, sizeof name));
-    }
-    a->mark = b->mark = PD_AT_NONE;
-    message(s, "TRADED", "Both saves are written.", evo[0] ? evo : NULL);
+    confirm(s, C_WRITE, 0, "SAVE BOTH?", "Both saves are written, each backed up first.", "If one can't be written, neither is.");
+}
+
+static void undo_trades(struct pd_library_saves* s) {
+    pd_save_revert(&s->sides[0].save);
+    pd_save_revert(&s->sides[1].save);
+    s->sides[0].mark = s->sides[1].mark = PD_AT_NONE;
+    s->tradeNote[0] = 0;
 }
 
 // --- input ---
@@ -909,9 +948,9 @@ static void act_button(struct pd_library* l, int b) {
         else if (b == 1) pick_box_menu(s);
         else ask_write(s);
     } else {
-        if (b == 0) s->active = 0;
-        else if (b == 1) s->active = 1;
-        else start_trade(l);
+        if (b == 0) start_trade(l);
+        else if (b == 1) undo_trades(s);
+        else ask_write_trades(s);
     }
 }
 
@@ -944,6 +983,10 @@ static void leave(struct pd_library* l) {
         confirm(s, C_LEAVE, 0, "LEAVE", "Leave without writing the changes?", NULL);
         return;
     }
+    if (s->page == PD_PAGE_TRADE && s->stage == OPEN && trades_changed(s)) {
+        confirm(s, C_LEAVE, 0, "DISCARD CHANGES?", "The trades you made aren't saved.", "Leave without saving them?");
+        return;
+    }
     s->stage = PICK_A;
     s->held = PD_AT_NONE;
     s->monPage = false;
@@ -954,14 +997,25 @@ static void answer(struct pd_library* l, bool yes) {
     struct pd_library_saves* s = S(l);
     int d = s->confirmOf;
     s->dialog = NONE;
-    if (!yes) return;
     struct pd_save* sv = &s->sides[0].save;
-    if (d == C_WRITE) {
-        if (write_sides(l, 1)) message(s, "SAVED", "The save is written.", "Its last version is in pokedaisy-backups.");
-    } else if (d == C_TRADE) {
-        do_trade(l);
+    if (d == C_EVOLVE) {
+        do_trade(l, yes);
+        return;
+    }
+    if (!yes) return;
+    if (d == C_QUIT) {
+        l->quit = true;
+    } else if (d == C_WRITE && s->page == PD_PAGE_TRADE) {
+        if (write_sides(l, 2)) {
+            s->tradeNote[0] = 0;
+            message(s, "SAVED", "Both saves are written.", "Backups are in pokedaisy-backups.");
+        }
+    } else if (d == C_WRITE) {
+        if (write_sides(l, 1)) message(s, "SAVED", "The save is written.", "A backup is in pokedaisy-backups.");
     } else if (d == C_LEAVE) {
         pd_save_revert(sv);
+        pd_save_revert(&s->sides[1].save);
+        s->tradeNote[0] = 0;
         s->stage = PICK_A;
         s->monPage = false;
         fill_pick(l);
@@ -975,6 +1029,19 @@ static void answer(struct pd_library* l, bool yes) {
         if (done_or_why(s, pd_save_give_event(sv, (enum pd_save_event) s->confirmArg)))
             message(s, "GIVEN", "It's in the key items pocket.", pd_save_event_note(sv));
     }
+}
+
+bool lib_saves_unsaved(const struct pd_library* l) {
+    const struct pd_library_saves* s = l->saves;
+    if (!s || s->stage != OPEN) return false;
+    return s->page == PD_PAGE_TRADE ? trades_changed(s) : pd_save_changed(&s->sides[0].save);
+}
+
+void lib_saves_ask_quit(struct pd_library* l) {
+    struct pd_library_saves* s = S(l);
+    if (s->dialog != NONE) return;
+    confirm(s, C_QUIT, 0, "CLOSE POKEDAISY?", s->page == PD_PAGE_TRADE ? "The trades you made aren't saved." : "Your changes aren't saved.",
+            "Close without saving them?");
 }
 
 static int dx_of(unsigned down) { return !!(down & PD_LIB_RIGHT) - !!(down & PD_LIB_LEFT); }
@@ -1075,6 +1142,7 @@ void lib_saves_keys(struct pd_library* l, unsigned down) {
     if (s->page == PD_PAGE_EDITOR && down & PD_LIB_Y && s->button < 0 && s->held == PD_AT_NONE) open_mon_page(s, cursor_at(s));
     if (s->page == PD_PAGE_TRADE && down & PD_LIB_X) s->active = 1 - s->active;
     if (s->page == PD_PAGE_TRADE && down & PD_LIB_Y) start_trade(l);
+    if (s->page == PD_PAGE_TRADE && down & PD_LIB_SELECT) ask_write_trades(s);
     if (down & PD_LIB_B) {
         if (s->held != PD_AT_NONE) s->held = PD_AT_NONE;
         else leave(l);
@@ -1638,13 +1706,13 @@ void lib_saves_draw(struct pd_library* l, struct pd_canvas* c) {
         }
         int top = TITLE_Y + TITLE_H + LIB_M;
         box_view(l, c, &s->sides[s->active], top, LIB_H - top - BUTTON_H - 2 * LIB_M);
-        static const char* const LABELS[BUTTONS] = { "FIRST", "SECOND", "TRADE" };
-        buttons(l, c, LABELS, s->active);
+        static const char* const LABELS[BUTTONS] = { "TRADE", "UNDO ALL", "SAVE" };
+        buttons(l, c, LABELS, -1);
     }
     if (s->dialog == NUMBER) number_dialog(s, c);
     else if (s->dialog == PICK) pick_dialog(l, c);
     else if (s->dialog == MESSAGE) lib_dialog(c, s->title, s->line1, s->line2[0] ? s->line2 : NULL, "OK", NULL);
-    else if (s->dialog != NONE) lib_dialog(c, s->title, s->line1[0] ? s->line1 : NULL, s->line2[0] ? s->line2 : NULL, "YES", "NO");
+    else if (s->dialog != NONE) lib_dialog(c, s->title, s->line1[0] ? s->line1 : NULL, s->line2[0] ? s->line2 : NULL, s->yes, s->no);
 }
 
 // --- drawing: the top screen ---
@@ -1884,13 +1952,13 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
         char heading[72];
         snprintf(heading, sizeof heading, "%s", l->games[side->game].title);
         mon_window(s, c, has[i] ? &ms[i] : NULL, i ? TOP_W / 2 + 4 : TOP_M, TOP_M, TOP_W / 2 - TOP_M - 4, 160, heading,
-                   side->mark != PD_AT_NONE ? "An empty place: send here." : "Pick one in its party or box.");
+                   side->mark != PD_AT_NONE ? "An empty place: send here." : "Pick one below.");
     }
     pd_triangle(c, TOP_W / 2 - 2, 72, 3, PD_RIGHT, PD_ON_BACKDROP);
     pd_triangle(c, TOP_W / 2 - 1, 82, 3, PD_LEFT, PD_ON_BACKDROP);
     int sy = TOP_M + 160 + 6;
     int f = pd_list_box(c, TOP_M, sy, TOP_W - 2 * TOP_M, TOP_BODY_END - sy);
-    const char* status = "Pick a Pokémon on either side, then TRADE.";
+    const char* status = s->tradeNote[0] ? s->tradeNote : trades_changed(s) ? "Not saved yet." : "Pick a Pokémon on either side, then TRADE.";
     char why[160] = "";
     struct side *a = &s->sides[0], *b = &s->sides[1];
     if (a->mark != PD_AT_NONE && b->mark != PD_AT_NONE && (has[0] || has[1])) {
@@ -1906,5 +1974,5 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
         } else status = "Ready to trade.";
     }
     pd_text_wrap(c, TOP_M + f + 8, sy + f + 2, TOP_W - 2 * TOP_M - 2 * f - 16, 16, 2, status, PD_LABEL, PD_LABEL_SHADOW);
-    lib_hint_bar(c, "A: PICK   L R: PARTY / BOXES   X: OTHER SIDE   Y: TRADE   B: CLOSE");
+    lib_hint_bar(c, "A: PICK   L R: BOXES   X: OTHER SIDE   Y: TRADE   SELECT: SAVE");
 }

@@ -209,6 +209,21 @@ static void tap_at(int x, int y) {
     pd_library_touch(&lib, 0, 0, false);
 }
 
+// The current box of the [n]th game the save tools list (GAMES' order, retail Gen 3 layouts): the party is that many L
+// presses away.
+static int current_box_of(int n) {
+    static uint8_t buf[PD_SAVE_MAX_SIZE];
+    static struct pd_save sv;
+    for (int i = 0; i < lib.list.count; i++) {
+        const struct pd_library_game* c = &lib.games[lib.list.items[i]];
+        if (c->console != PD_CONSOLE_GBA || !pd_save_layout_for(c->code) || c->size > 16 * 1024 * 1024 || n--) continue;
+        long len = read_save(NULL, c->file, buf, sizeof buf);
+        if (len > 0 && !pd_save_parse(&sv, buf, (size_t) len, pd_save_layout_for(c->code))) return pd_save_current_box(&sv);
+        return 0;
+    }
+    return 0;
+}
+
 int main(int argc, char** argv) {
     if (argc != 4 && argc != 6) {
         fprintf(stderr, "usage: pd_library_preview <rom dir> <save dir> <out dir> [<fixture dir> <its ROM>]\n");
@@ -303,23 +318,7 @@ int main(int argc, char** argv) {
     // pick-lists, BAG, TRAINER, the box menu, SAVE.
     tap_at(20, 3 + 45 + 20);
     shot("editor-pick");
-    int currentBox = 0;
-    {
-        // Which box the editor opens on: the party is that many L presses away.
-        static uint8_t buf[PD_SAVE_MAX_SIZE];
-        static struct pd_save sv;
-        // The editor's first game: GAMES' first that has a Gen 3 save of a retail layout.
-        const struct pd_library_game* g = &lib.games[lib.list.items[0]];
-        for (int i = 0; i < lib.list.count; i++) {
-            const struct pd_library_game* c = &lib.games[lib.list.items[i]];
-            if (c->console == PD_CONSOLE_GBA && pd_save_layout_for(c->code) && c->size <= 16 * 1024 * 1024) {
-                g = c;
-                break;
-            }
-        }
-        long n = read_save(NULL, g->file, buf, sizeof buf);
-        if (n > 0 && !pd_save_parse(&sv, buf, (size_t) n, pd_save_layout_for(g->code))) currentBox = pd_save_current_box(&sv);
-    }
+    int currentBox = current_box_of(0);
     keys(PD_LIB_A);
     shot("editor");
     keys(PD_LIB_A); // pick up the first Pokémon
@@ -385,10 +384,25 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 29; i++) keys(PD_LIB_RIGHT); // the box's last place (empty)
     keys(PD_LIB_A);
     shot("trade");
-    keys(PD_LIB_Y);
-    shot("trade-confirm");
-    keys(PD_LIB_A);
+    keys(PD_LIB_Y); // no trade evolution: made at once
     shot("trade-done");
+    // FireRed's party KADABRA (a trade evolution) for the other side's second Pokémon: the game's EVOLVE prompt.
+    keys(PD_LIB_X); // back to the first side
+    for (int i = 0; i <= current_box_of(1); i++) keys(PD_LIB_L);
+    keys(PD_LIB_UP);
+    keys(PD_LIB_UP); // the party's second place
+    keys(PD_LIB_A);
+    keys(PD_LIB_X);
+    keys(PD_LIB_A);
+    keys(PD_LIB_Y);
+    shot("trade-evolve");
+    keys(PD_LIB_A);
+    shot("trade-evolved");
+    keys(PD_LIB_SELECT);
+    shot("trade-save");
+    keys(PD_LIB_A);
+    shot("trade-saved");
+    keys(PD_LIB_A);
     printf("%d saves written to %s\n", writes, outDir);
     return 0;
 }

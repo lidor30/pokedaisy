@@ -235,9 +235,9 @@ const char* pd_trade_blocker(const struct pd_trade_side* from, int at, const str
 // The species the Pokémon at [at] of [from] would become arriving in [to], or 0.
 int pd_trade_evolution(const struct pd_trade_side* from, int at, const struct pd_trade_side* to);
 // Sends [atA] of [a] to [b]'s empty [atB] (an empty PC place, or a party place past its last Pokémon), or swaps the two:
-// each side's checks first, then the trade evolutions, the Pokédex and Ruby / Sapphire's National Dex. NULL = done, else
-// why not (nothing changed then).
-const char* pd_trade(struct pd_trade_side* a, int atA, struct pd_trade_side* b, int atB, char* buf, size_t len);
+// each side's checks first, then the trade evolutions (unless [evolve] is false: the game's B in its evolution scene), the
+// Pokédex and Ruby / Sapphire's National Dex. NULL = done, else why not (nothing changed then).
+const char* pd_trade(struct pd_trade_side* a, int atA, struct pd_trade_side* b, int atB, bool evolve, char* buf, size_t len);
 
 // pd_save_tables_gen.c (tools/gen_save_tables.py).
 extern const uint16_t pd_species_national[PD_SAVE_SPECIES];

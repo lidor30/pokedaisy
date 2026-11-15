@@ -99,6 +99,9 @@ bool lib_saves_busy(const struct pd_library* l);
 struct lib_list* lib_saves_list(struct pd_library* l);
 // The scroll of the list the save tools show now (a Pokémon's rows, the bag, a pick-list), NULL = none: a drag moves it.
 int* lib_saves_scroll(struct pd_library* l);
+// An open save with changes not written yet (START asks before closing the app over them), and that question.
+bool lib_saves_unsaved(const struct pd_library* l);
+void lib_saves_ask_quit(struct pd_library* l);
 
 // SETTINGS (pd_library_draw.c's list, pd_library.c's actions).
 int lib_settings_rows(const struct pd_library* l);

@@ -1470,10 +1470,10 @@ static bool english_name(int species, uint8_t out[10]) {
 
 // [m]'s record as it lands in [to]: evolved if it trade-evolves (the item it needed used up, its name changed when it was the
 // species' own - EvolutionRenameMon), and [to]'s Pokédex told about it.
-static void arrive(const struct pd_box_mon* m, struct pd_trade_side* to, uint8_t out[PD_SAVE_RECORD]) {
+static void arrive(const struct pd_box_mon* m, struct pd_trade_side* to, bool evolve, uint8_t out[PD_SAVE_RECORD]) {
     uint32_t personality = pd_box_mon_personality(m);
     if (!pd_box_mon_egg(m)) mark_caught(to->save, pd_box_mon_species(m), personality);
-    const struct pd_trade_evolution* e = evolution_of(m, to);
+    const struct pd_trade_evolution* e = evolve ? evolution_of(m, to) : NULL;
     if (!e) {
         pd_box_mon_encode(m, out);
         return;
@@ -1510,7 +1510,7 @@ static void take_out(struct pd_save* s, int at) {
     else memset(rec_ptr(s, at), 0, PD_SAVE_RECORD);
 }
 
-const char* pd_trade(struct pd_trade_side* a, int atA, struct pd_trade_side* b, int atB, char* buf, size_t len) {
+const char* pd_trade(struct pd_trade_side* a, int atA, struct pd_trade_side* b, int atB, bool evolve, char* buf, size_t len) {
     if (!at_valid(a->save, atA) || !at_valid(b->save, atB)) return "No such place";
     struct pd_box_mon ma, mb;
     bool hasA = pd_save_record_at(a->save, atA, &ma), hasB = pd_save_record_at(b->save, atB, &mb);
@@ -1529,8 +1529,8 @@ const char* pd_trade(struct pd_trade_side* a, int atA, struct pd_trade_side* b, 
     if (PD_AT_IS_PARTY(atA)) memcpy(keepA, rec_ptr(a->save, atA), PD_SAVE_PARTY_MON);
     if (hasB && PD_AT_IS_PARTY(atB)) memcpy(keepB, rec_ptr(b->save, atB), PD_SAVE_PARTY_MON);
     uint8_t toB[PD_SAVE_RECORD], toA[PD_SAVE_RECORD];
-    arrive(&ma, b, toB);
-    if (hasB) arrive(&mb, a, toA);
+    arrive(&ma, b, evolve, toB);
+    if (hasB) arrive(&mb, a, evolve, toA);
     put_incoming(b->save, atB, toB, PD_AT_IS_PARTY(atA) ? keepA : NULL);
     if (hasB) put_incoming(a->save, atA, toA, PD_AT_IS_PARTY(atB) ? keepB : NULL);
     else take_out(a->save, atA);
