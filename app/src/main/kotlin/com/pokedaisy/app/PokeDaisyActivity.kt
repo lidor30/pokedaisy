@@ -2971,6 +2971,10 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.data.Black2Redux.matches(r.toOkioPath())) {
             // Blaze Black 2 / Volt White 2 Redux: retail Black 2's / White 2's header, their own zones' rates (from the cart).
             { (com.pokedaisy.app.companion.data.Black2Redux.data ?: com.pokedaisy.app.companion.data.NdsArt.readRedux(r.toOkioPath()))?.wildRateWords() ?: IntArray(0) }
+        } else if (ndsCode == com.pokedaisy.app.companion.data.HeartfeltGold.CODE &&
+            com.pokedaisy.app.companion.data.HeartfeltGold.matches(r.toOkioPath())) {
+            // Heartfelt Gold: the US HeartGold's header, its own maps' rates (from its cart).
+            { (com.pokedaisy.app.companion.data.HeartfeltGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readHeartfelt(r.toOkioPath()))?.wildRates ?: IntArray(0) }
         } else when (ndsCode) {
             "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates

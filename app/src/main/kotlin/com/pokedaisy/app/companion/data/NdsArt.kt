@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import kotlin.concurrent.Volatile
+import kotlin.math.roundToInt
 import okio.FileHandle
 import okio.Path
 
@@ -27,6 +28,9 @@ object NdsArt {
     /** Heartfelt Gold ([HeartfeltGold]): its party icons by species id (1..1534) and HeartGold's item icons. */
     const val HEARTFELT_ICONS = "nds/heartfelt/pokemon"
     const val HEARTFELT_ITEMS = "nds/heartfelt/items"
+    /** Its DEX pages (a row per species id) and front pictures by species id ([dexHeartfelt]). */
+    const val HEARTFELT_DEX = "nds/heartfelt/dex.tsv"
+    const val HEARTFELT_FRONT = "nds/heartfelt/front"
     const val ORIGIN_EGG = 2000
     /** Its DEX pages and front pictures ([dexOrigin]), as [HEARTGOLD_DEX] / [HEARTGOLD_FRONT] are HeartGold's. */
     const val ORIGIN_DEX = "nds/originhg/dex.tsv"
@@ -201,7 +205,9 @@ object NdsArt {
         }
         // The Redux builds share a code and revision but not their species' records (Classic, EVless): the DEX's types
         // and stats are theirs, so the marker keeps a CRC of those too.
-        val stamp = "v$VERSION $code $rev" + if (redux) " " + (file(f, header, "/a/0/1/6")?.let { crc32(it) } ?: 0L) else ""
+        // Heartfelt Gold's art built before its DEX and its icons' own palettes is built again (" dex").
+        val stamp = "v$VERSION $code $rev" + (if (redux) " " + (file(f, header, "/a/0/1/6")?.let { crc32(it) } ?: 0L) else "") +
+            (if (heartfelt) " dex" else "")
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return false
         if (origin) {
             if (!extractOrigin(f, header, dir)) return false
@@ -291,16 +297,16 @@ object NdsArt {
 
     /**
      * Heartfelt Gold's art ([HeartfeltGold]): its party icons in HeartGold's archive grown (`/a/0/2/0`, member 0 the
-     * palettes, 7 + species each icon) in the palette its ARM9's table gives, as far as that table goes ([HeartfeltGold.
-     * LAST_ICON_PALETTE]: its newer species' palettes aren't in a table on the cart, so they get no icon); HeartGold's item icons for HeartGold's items
-     * (its `/a/0/1/8` keeps them where HeartGold's table has them), its Pokégear and bag buttons. No DEX (its pages aren't
-     * HeartGold's).
+     * palettes, 7 + species each icon, the eggs' at 494 / 495) in the palette hg-engine reads for each species
+     * ([HeartfeltGold.ICON_PALETTE_FILE]); HeartGold's item icons for HeartGold's items (its `/a/0/1/8` keeps them where
+     * HeartGold's table has them), its Pokégear and bag buttons, and its DEX ([dexHeartfelt]).
      */
     private fun extractHeartfelt(f: FileHandle, header: ByteArray, dir: Path): Boolean {
         val narc = Narc(file(f, header, "/a/0/2/0") ?: return false)
         val palettes = palettes(narc.member(0))
-        val iconPalettes = f.read(HeartfeltGold.ICON_PALETTES_OFFSET, HeartfeltGold.LAST_ICON_PALETTE + 1)
-        for (species in 1..HeartfeltGold.LAST_ICON_PALETTE) {
+        val iconPalettes = file(f, header, HeartfeltGold.ICON_PALETTE_FILE)?.let { Narc(it).member(HeartfeltGold.ICON_PALETTE_MEMBER) }
+            ?: return false
+        for (species in 1..minOf(HeartfeltGold.LAST_SPECIES, iconPalettes.size - 1)) {
             val pal = palettes.getOrNull(u8(iconPalettes, species)) ?: continue
             val icon = icon(narc.member(7 + species), pal) ?: continue
             write(dir, "$HEARTFELT_ICONS/$species.png", icon.png())
@@ -314,8 +320,86 @@ object NdsArt {
         }
         file(f, header, "/a/1/4/4")?.let { pokegear(Narc(it), dir) }
         file(f, header, "/a/0/1/5")?.let { bagPockets(Narc(it), dir) }
+        dexHeartfelt(f, header, dir)
         return true
     }
+
+    /**
+     * Heartfelt Gold's DEX ([HEARTFELT_DEX], [Gen4Dex]'s columns, a row per species id: [GEN4_DEX_HEARTFELT] maps them to
+     * Dex numbers): HeartGold's archives grown to its 1535 species. Its banks are retail's numbers (803 the descriptions,
+     * 816 the categories, 720 the abilities); the heights and weights are read from the pages' own text (814, 812: the
+     * numbers in `/a/0/7/4` stop at ARCEUS), as inches and tenths of a pound; the personal records keep each ability as
+     * a u16 (+0x16, +0x1A: its abilities run past 255) and no TM bits; the level-up moves are one file of 41 (move, level)
+     * pairs a species, 0xFFFF-ended; an evolution's target carries a form in its top bits (one to a form is left out);
+     * Johto's numbers are retail's (`/a/1/3/8`). The pictures are HeartGold's `/a/0/0/4`, six files a species, grown.
+     */
+    private fun dexHeartfelt(f: FileHandle, header: ByteArray, dir: Path) {
+        val msg = Narc(file(f, header, "/a/0/2/7") ?: return)
+        val text = msg.member(803)?.let { Gen4Text.lines(it) } ?: return
+        val category = msg.member(816)?.let { Gen4Text.lines(it) } ?: return
+        val abilities = msg.member(720)?.let { Gen4Text.lines(it) } ?: emptyList()
+        val weights = msg.member(812)?.let { Gen4Text.lines(it) } ?: emptyList()
+        val heights = msg.member(814)?.let { Gen4Text.lines(it) } ?: emptyList()
+        val personal = Narc(file(f, header, "/a/0/0/2") ?: return)
+        val johto = Narc(file(f, header, "/a/1/3/8") ?: return).member(0) ?: return
+        val learnsets = Narc(file(f, header, "/a/0/3/3") ?: return).member(0) ?: return
+        val evolutions = Narc(file(f, header, "/a/0/3/4") ?: return)
+        val species = (1..HeartfeltGold.LAST_NATIONAL).map(HeartfeltGold::speciesOf)
+        val sb = StringBuilder()
+        for (sp in species) {
+            val p = personal.member(sp) ?: continue
+            if (p.size < 0x1C) continue
+            fun b(o: Int) = u8(p, o)
+            fun ability(o: Int) = u16(p, o).let { if (it != 0) abilities.getOrElse(it) { "" } else "" }
+            val inches = HEIGHT_TEXT.find(heights.getOrElse(sp) { "" })?.let { m -> m.groupValues[1].toInt() * 12 + m.groupValues[2].toInt() }
+            val lbs10 = WEIGHT_TEXT.find(weights.getOrElse(sp) { "" })?.let { m -> m.groupValues[1].toInt() * 10 + m.groupValues[2].toInt() }
+            val levelUp = (0 until 41).asSequence().map { sp * 164 + it * 4 }.takeWhile { it + 4 <= learnsets.size }
+                .map { u16(learnsets, it) to u16(learnsets, it + 2) }.takeWhile { it.first != 0xFFFF }.toList()
+            val cells = listOf(
+                sp.toString(),
+                category.getOrElse(sp) { "" },
+                text.getOrElse(sp) { "" }.replace("\n", "\\n"),
+                // dm / hg from the page's feet / inches and pounds (the page itself shows those, columns 24 / 25)
+                (inches?.let { (it * 0.254).roundToInt() } ?: 0).toString(),
+                (lbs10?.let { (it / 2.20462).roundToInt() } ?: 0).toString(),
+                b(0).toString(), b(1).toString(), b(2).toString(), b(4).toString(), b(5).toString(), b(3).toString(),
+                b(6).toString(), b(7).toString(), b(8).toString(), b(0x10).toString(), b(0x14).toString(), b(0x15).toString(),
+                ability(0x16), ability(0x1A),
+                if (sp * 2 + 2 <= johto.size) u16(johto, sp * 2).toString() else "0",
+                evolutions.member(sp)?.let { e ->
+                    (0 until e.size / 6).mapNotNull { i ->
+                        val m = u16(e, i * 6)
+                        val to = u16(e, i * 6 + 4)
+                        if (m == 0 || to ushr 11 != 0) null else "$m,${u16(e, i * 6 + 2)},$to"
+                    }.joinToString(";")
+                } ?: "",
+                levelUp.joinToString(",") { "${it.second}:${it.first}" },
+                "",
+                "",
+                inches?.toString() ?: "",
+                lbs10?.toString() ?: "",
+            )
+            sb.append(cells.joinToString("\t") { it.replace("\t", " ") }).append('\n')
+        }
+        write(dir, HEARTFELT_DEX, sb.toString().encodeToByteArray())
+        val pics = Narc(file(f, header, "/a/0/0/4") ?: return)
+        for (sp in species) {
+            val pal = palettes(pics.member(sp * 6 + 4)).firstOrNull() ?: continue
+            val chars = ncgrData(pics.member(sp * 6 + 3))?.takeIf { it.size >= 6400 }
+                ?: ncgrData(pics.member(sp * 6 + 2))?.takeIf { it.size >= 6400 } ?: continue
+            val px = unscanPokepic(chars)
+            val img = RomArt.Image(80, 80)
+            for (y in 0 until 80) for (x in 0 until 80) {
+                val v = u8(px, y * 80 + x / 2).let { if (x and 1 == 1) it shr 4 else it and 15 }
+                if (v != 0) img.argb[y * 80 + x] = pal[v]
+            }
+            write(dir, "$HEARTFELT_FRONT/$sp.png", img.png())
+        }
+    }
+
+    /** A US page's height ("  1'04\"", the game's own apostrophe) and weight ("  19.8 lbs."). */
+    private val HEIGHT_TEXT = Regex("(\\d+)\\D(\\d{2})")
+    private val WEIGHT_TEXT = Regex("(\\d+)\\.(\\d) lbs")
 
     /**
      * Heartfelt Gold's tables from its cart ([HeartfeltGold.Data]): each species' types (HeartGold's 44-byte personal
@@ -351,7 +435,17 @@ object NdsArt {
             if (atk != 0xFE && pct != 100) chart[atk * 100 + def] = pct
             i += 3
         }
-        HeartfeltGold.Data(types, moves, categories, chart)
+        // Each map header's encounter bank (0xFF = none) into its encounter archive: the walking and surfing rates, its
+        // own (what the field read puts back for WILD ENCOUNTERS, as Origin's).
+        val headers = f.read(HeartfeltGold.MAP_HEADERS_OFFSET, HeartfeltGold.MAP_HEADER_COUNT * 24)
+        val encounters = file(f, header, "/a/0/3/7")?.let { Narc(it) }
+        val rates = ArrayList<Int>()
+        for (map in 0 until HeartfeltGold.MAP_HEADER_COUNT) {
+            val bank = u8(headers, map * 24)
+            val e = if (bank == 0xFF) null else encounters?.member(bank)
+            if (e != null && e.size >= 2) rates += listOf(map, u8(e, 0), u8(e, 1))
+        }
+        HeartfeltGold.Data(types, moves, categories, chart, rates.toIntArray())
     }
 
     /**

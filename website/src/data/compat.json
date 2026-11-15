@@ -312,7 +312,7 @@
       {"game": "Black 2 (DS)", "version": "USA/Europe, every language", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "White 2 (DS)", "version": "USA/Europe, every language", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Origin HeartGold (DS)", "version": "4.0.3 English 1.0.0", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
-      {"game": "Heartfelt Gold (DS)", "version": "1.0.15 (+ Zoomed In)", "cells": ["yes", "yes", "part", "yes", "no", "no"]},
+      {"game": "Heartfelt Gold (DS)", "version": "1.0.15 (+ Zoomed In)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Renegade Platinum (DS)", "version": "1.2.0, 1.3.0 (+ patches)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Blaze Black 2 Redux (DS)", "version": "1.4.1 (+ Classic, EVless)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Volt White 2 Redux (DS)", "version": "1.4.1 (+ Classic, EVless)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},

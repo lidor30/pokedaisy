@@ -3,7 +3,6 @@ package com.pokedaisy.app.companion.data
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -54,7 +53,60 @@ class HeartfeltGoldTest {
         assertEquals(listOf(1587 to 1, 468 to 1, 696 to 1), pocket(POCKET_KEY_ITEMS))
         assertEquals(listOf(17 to 5), pocket(POCKET_MEDICINE))
         assertEquals(listOf(4 to 5), pocket(POCKET_POKE_BALLS))
-        assertNull(t.pokedex)
+    }
+
+    @Test
+    fun `save - its Pokedex, seen bits at 0x400 and species ids past ARCEUS`() {
+        val dex = read("heartfelt_gold").pokedex!!
+        // The game's own Pokédex screen: NATIONAL POKéDEX, SEEN 012, OBTAINED 001 (the fixture's README).
+        assertEquals(setOf(10, 13, 161, 172, 255, 258, 278, 287, 406, 519, 731, 829), dex.seen)
+        assertEquals(setOf(255), dex.caught)
+        assertTrue(dex.national)
+        assertEquals(POKEDEX_HEARTFELT, dex.tables)
+        assertEquals(569, PokedexSource.speciesFor(dex.tables, 519))
+        assertEquals(519, PokedexSource.nationalOf(dex.tables, 569))
+        assertEquals(0, PokedexSource.nationalOf(dex.tables, 505))          // a form's id: no Dex number
+        assertEquals(1075, HeartfeltGold.speciesOf(1025))
+    }
+
+    @Test
+    fun `the cart - its DEX pages, pictures and party icons`() {
+        if (!rom.isFile) return
+        val dir = kotlin.io.path.createTempDirectory("heartfelt-art").toFile()
+        val before = NdsArt.dir
+        try {
+            NdsArt.names = NdsArt.readNames(rom.toOkioPath())
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
+            NdsArt.dir = dir.toOkioPath()
+            // Party icons for every species, past the old table's 543 too, in the palettes hg-engine reads (/a/0/2/8).
+            for (sp in listOf(13, 494, 700, 1075, 1534)) assertTrue("icon $sp", File(dir, "${NdsArt.HEARTFELT_ICONS}/$sp.png").isFile)
+            val t = POKEDEX_HEARTFELT
+            val chespin = PokedexSource.entry(t, 650)!!
+            assertEquals(700, chespin.species)
+            assertEquals("Spiny Nut", chespin.category)
+            assertEquals(16 to 198, chespin.heightIn to chespin.weightLbs10)      // 1'04", 19.8 lbs.
+            assertEquals(4 to 90, chespin.heightDm to chespin.weightHg)
+            assertEquals(listOf("Overgrow"), chespin.abilities)
+            val pecharunt = PokedexSource.entry(t, 1025)!!
+            assertEquals(1075, pecharunt.species)
+            assertEquals(listOf("Poison Puppeteer"), pecharunt.abilities)       // ability 310: a u16 in its records
+            val geodude = PokedexSource.entry(t, 74)!!
+            assertEquals(listOf("Rock Head", "Sturdy"), geodude.abilities)
+            assertEquals(152, PokedexSource.regionalOrder(t)!!.first())          // Johto's order: CHIKORITA first
+            assertTrue(File(dir, "${NdsArt.HEARTFELT_FRONT}/1075.png").isFile)
+            // Evolutions and moves by species id: TORCHIC at 16, EEVEE's stones to SYLVEON (No.700, species 750).
+            val evo = Gen4Dex.evolutions(GEN4_DEX_HEARTFELT)!!
+            assertEquals(listOf(256), evo.getValue(255).map { it.to })
+            assertTrue(evo.getValue(133).any { it.to == 750 })
+            assertEquals(null, evo[509])                                          // a form's id: no row
+            val dewott = evo.getValue(HeartfeltGold.speciesOf(502))              // SAMUROTT by day (its Hisui form left out)
+            assertEquals(listOf(EvoReq.Level(36), EvoReq.Time(EvoTime.DAY)), dewott.single().reqs)
+            assertEquals(LevelMove(1, 33), Gen4Dex.levelUp(GEN4_DEX_HEARTFELT, 1)!!.first())   // BULBASAUR: TACKLE
+        } finally {
+            NdsArt.dir = before
+            PokedexSource.romChanged()
+            dir.deleteRecursively()
+        }
     }
 
     @Test
@@ -69,6 +121,9 @@ class HeartfeltGoldTest {
         assertEquals(16 to 5, foe.species to foe.level)
         assertEquals(0 to 2, foe.type1 to foe.type2)   // NORMAL / FLYING
         assertEquals(listOf(16 to 5), t.battleFoes.map { it.species to it.level })
+        // "What will Torchic do?", HeartGold's command panel drawn: the battle buttons' taps go in (FIGHT, then a move's
+        // card at HeartGold's places used SCRATCH headless: NdsBattleTaps.GEN4).
+        assertEquals(BATTLE_INPUT_ACTION_SELECT, t.battleInputState)
     }
 
     @Test

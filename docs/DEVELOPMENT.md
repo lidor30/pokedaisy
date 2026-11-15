@@ -3395,13 +3395,28 @@ of hg-engine's after), an uncompressed ARM9 grown to 0x111EF8, the US RAM (sSave
 system (the BATTLE tab reads it as HeartGold's: a wild battle's battlers and foe). `HeartfeltGold.matches` tells it apart by
 the header's ARM9 size and overlay table size (the website the same, `dsHacks`). Its save is HeartGold's with hg-engine's
 bag (include/bag.h's ITEM_POCKET_EXPANSION: Items 245, Key Items 92, Balls 26; the slots read off the player's save agree),
-so every section after the bag moved 0x1F0 (its SaveData's arrayHeaders, +0x2F014, read live: `GEN4_HEARTFELT_GOLD`); its
-Pokédex section grew to 0x704 bytes in a shape not worked out, so no DEX. Its data stays in HeartGold's own archives,
-grown (`NdsArt.readHeartfelt`, never bundled): 1535 personal records of 44 bytes (Fairy is type 9), 923 moves of 16 bytes,
-the names from HeartGold's text banks (they kept their numbers: species, then forms past the National Dex, items to 2684),
-its type chart as HeartGold's triples with Fairy's rows (cart 0x3C4680), party icons at 7 + species in `/a/0/2/0`. The
-icon palette index table in its ARM9 (0x020FFC10) only runs through species 543; no table for the newer species' palettes
-was found on the cart (the game's own icon code wasn't traced), so they get no party icon. No GUIDE.
+so every section after the bag moved 0x1F0 (its SaveData's arrayHeaders, +0x2F014, read live: `GEN4_HEARTFELT_GOLD`). Its
+Pokédex (0x704 bytes at +0x14A8) keeps retail's caught bits at +0x04 and National Dex byte at +0x337, but the seen bits sit at
++0x400, each array a bit per species id: hg-engine edited the ARM9's Pokédex functions in place (0x02029FF8, the caught check,
+reads +0x04 and +0x400; Pokedex_GetNatDexFlag at 0x0202A55C is `movs r0, #1`, so its dex is National from the start,
+`nationalDexAlways`). Species ids are the Dex numbers to ARCEUS, then the eggs and 48 of Gen 4's forms (494-543), so every
+later species is its Dex number + 50 (VICTINI 544 .. PECHARUNT 1075; `HeartfeltGold.speciesOf`, `Gen4DexTables.speciesOf` /
+`dexOf`, which the DEX's lookups and the save's bits go through). The game's own Pokédex screen agreed headless (SEEN 12,
+OBTAINED 1). Its data stays in HeartGold's own archives, grown (`NdsArt.readHeartfelt`, never bundled): 1535 personal records
+of 44 bytes (Fairy is type 9; each ability a u16, at +0x16 and +0x1A: its abilities pass 255; no TM bits), 923 moves of 16
+bytes, the names from HeartGold's text banks (they kept their numbers: species, then forms past the National Dex, items to
+2684), its type chart as HeartGold's triples with Fairy's rows (cart 0x3C4680), party icons at 7 + species in `/a/0/2/0`. Their
+palettes are a byte a species in `/a/0/2/8` member 9: hg-engine's GetMonIconPalette (retail's 0x02074364 jumps to overlay
+129's 0x023D9EE4) reads it there; the ARM9's own table (0x020FFC10) is retail's, unread, and gave 78 of the first 493 the
+wrong colours. The DEX (`dexHeartfelt`, `POKEDEX_HEARTFELT`: Johto's 256 as retail's `/a/1/3/8`, the National Dex's 1025)
+takes retail's banks (803 descriptions, 816 categories, 720 abilities), heights and weights from the pages' own text (814 /
+812: `/a/0/7/4`'s numbers stop at ARCEUS), the level-up moves from one `/a/0/3/3` file (41 (move, level) pairs a species,
+0xFFFF-ended), evolutions in `/a/0/3/4` (nine of 6 bytes; a target's top bits are a form, left out) by hg-engine's newer
+numbering (27 / 28 a level by day / night, 30 rain, 36 critical hits: `heartfeltEvoReqs`, checked against the evolution list
+in its own player guide) and the pictures from `/a/0/0/4` as retail's. MOVES lists level-up moves only: its TM compatibility
+isn't in the personal records. Its map headers are retail's table (0x020F6BE0, 540): their banks into its own `/a/0/3/7`
+give WILD ENCOUNTERS its rates (`HeartfeltGold.Data.wildRates`). EXPAND, FLY, the battle buttons and WILD ENCOUNTERS ran
+headless as HeartGold's (docs/ROM_FEATURES.md note 37). No GUIDE.
 
 **Renegade Platinum** (Drayano's v1.3.0, SHA-1 `d4ee068b7e0a19a848436369f145e3154afe13ca`): US Platinum rev 1 edited in
 place, header and all (`CPUE` rev 1), so everything that goes by the header (the Poller's `detectDs`,
