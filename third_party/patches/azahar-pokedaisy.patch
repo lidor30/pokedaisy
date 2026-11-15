@@ -162,3 +162,30 @@ index b8659892d..76f3a894d 100644
  
  if (UNIX AND NOT APPLE)
    target_sources(citra_common PRIVATE
+diff --git a/src/core/memory.cpp b/src/core/memory.cpp
+index b5eb9b829..bbdc0c682 100644
+--- a/src/core/memory.cpp
++++ b/src/core/memory.cpp
+@@ -682,6 +682,10 @@ T MemorySystem::Read(const std::shared_ptr<PageTable>& page_table, const VAddr v
+     }
+ }
+ 
++// PokeDaisy: a write to a watched page (RegisterWatchpoint) also goes here when set: the headless runner's `watchw`
++// (native-capture/n3ds_dump) logs which game code writes a value. Never set in the app.
++void (*pk_watch_write)(VAddr vaddr, u32 size, u64 value) = nullptr;
++
+ template <typename T>
+ void MemorySystem::Write(const std::shared_ptr<PageTable>& page_table, const VAddr vaddr,
+                          const T data) {
+@@ -729,6 +733,11 @@ void MemorySystem::Write(const std::shared_ptr<PageTable>& page_table, const VAd
+                    "Missing memory for watchpoint page");
+ 
+         std::memcpy(it->second.memory.GetPtr() + (vaddr & CITRA_PAGE_MASK), &data, sizeof(T));
++        if (pk_watch_write) {
++            u64 v = 0;
++            std::memcpy(&v, &data, sizeof(T) < 8 ? sizeof(T) : 8);
++            pk_watch_write(vaddr, sizeof(T), v);
++        }
+ 
+ #ifdef ENABLE_GDBSTUB
+         if (GDBStub::CheckBreakpoint(vaddr, sizeof(T), GDBStub::BreakpointType::Write)) {

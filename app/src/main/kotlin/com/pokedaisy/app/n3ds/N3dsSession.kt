@@ -102,6 +102,7 @@ class N3dsSession(
         pump.start()
         sampler.start()
         scenes.start()
+        camera.start()
     }
 
     fun setPaused(p: Boolean) {
@@ -196,7 +197,14 @@ class N3dsSession(
     fun saveState(file: File, done: (Boolean) -> Unit) {
         if (!started) return done(false)
         file.parentFile?.mkdirs()
-        Thread { val ok = N3dsNative.saveState(file.absolutePath); ui.post { done(ok) } }.start()
+        Thread {
+            // A state keeps the game's own camera: the pulled-back distance comes off for the save and goes back after.
+            val ok = synchronized(cameraLock) {
+                cameraRestore()
+                N3dsNative.saveState(file.absolutePath)
+            }
+            ui.post { done(ok) }
+        }.start()
     }
 
     /** The top screen as it shows now, [width] px wide, into [dest] (a state's thumbnail, as the GBA games' are):
@@ -224,6 +232,11 @@ class N3dsSession(
 
     /** What the game's screens show now ([Gen6Reader.sceneOf]), read ten times a second; [onScene] hears a change. */
     @Volatile var scene: Gen6Reader.Scene = Gen6Reader.Scene.FIELD
+        private set
+
+    /** The field camera may be pulled back (the app's ZOOM): the game is on its field (its module loaded, not the
+     * title's default FIELD), the X menu over it included. */
+    @Volatile var zoomable = false
         private set
 
     private val scenes = Thread({
@@ -255,6 +268,10 @@ class N3dsSession(
                         ui.post { onScene(now) }
                     }
                     seen = now
+                    // ZOOM's say: the field's module up and the scene the field (or the X menu over it).
+                    val canZoom = "DllField" in modules &&
+                        (scene == Gen6Reader.Scene.FIELD || scene == Gen6Reader.Scene.MENU)
+                    zoomable = canZoom
                     readBattle(config, if ("DllBattle" in modules) modules else null)
                 }
                 if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) fieldShot()
@@ -314,6 +331,75 @@ class N3dsSession(
         }
         Log.i(TAG, "dumped $stamp")
     }
+
+    // ---- the field camera (ZOOM: pulled back) -------------------------------------------------------------------
+
+    /** How far the field camera stands back, as a factor of the game's own distance (1 = the game's): ZOOM's steps,
+     * set by the activity. Applied on the field only ([zoomable]), eased by [camera]. */
+    @Volatile var cameraZoom = 1f
+
+    private val cameraLock = Any()
+    private var camSetup = 0                 // the camera setup's address (Gen6Reader.cameraSetup) last seen
+    private var camBase = Float.NaN          // the game's own distance there
+    private var camWritten = Float.NaN       // the last distance written (another value = the game set a new one)
+    private var camShown = 1f                // the factor eased toward [cameraZoom]
+
+    /** The camera's setup and the game's own distance in it, the pulled-back one written: every 100 ms on the field, every
+     * frame while easing. A new setup (another map) or a distance the game changed becomes the base. */
+    private val camera = Thread({
+        val config = Gen6Reader.configFor(titleId)
+        while (running && config != null && config.fieldMenuRoot != 0) {
+            var easing = false
+            if (!paused) synchronized(cameraLock) {
+                val want = if (zoomable) cameraZoom else 1f
+                val setup = cameraSetup(config)
+                if (setup == 0) { camSetup = 0; camShown = 1f; return@synchronized }
+                val d = readFloat(setup + Gen6Reader.CAMERA_DISTANCE) ?: return@synchronized
+                if (setup != camSetup) { camSetup = setup; camBase = d; camWritten = Float.NaN; camShown = 1f }
+                else if (d != camWritten) camBase = d
+                if (!(camBase > 0f)) return@synchronized
+                val step = (want - camShown).coerceIn(-CAMERA_EASE, CAMERA_EASE)
+                camShown = if (kotlin.math.abs(want - camShown) < 0.002f) want else camShown + step
+                easing = camShown != want
+                val target = camBase * camShown
+                if (camShown == 1f && camWritten.isNaN()) return@synchronized
+                if (target != d) {
+                    N3dsNative.writeMemory(setup + Gen6Reader.CAMERA_DISTANCE, floatBytes(target))
+                    camWritten = target
+                }
+                if (camShown == 1f) camWritten = Float.NaN
+            }
+            try { Thread.sleep(if (easing) CAMERA_FRAME_MS else SCENE_MS) } catch (_: InterruptedException) { break }
+        }
+    }, "pokedaisy-n3ds-camera")
+
+    /** The game's own distance written back (before a state is saved); the loop pulls it out again after. */
+    private fun cameraRestore() {
+        val config = Gen6Reader.configFor(titleId) ?: return
+        val setup = cameraSetup(config)
+        if (setup == 0 || setup != camSetup || camWritten.isNaN() || !(camBase > 0f)) return
+        N3dsNative.writeMemory(setup + Gen6Reader.CAMERA_DISTANCE, floatBytes(camBase))
+        camWritten = camBase
+        camShown = 1f
+    }
+
+    /** The field camera's setup ([Gen6Reader.cameraSetup]): the field object's pointers followed, 0 off the field. */
+    private fun cameraSetup(config: Gen6Reader.Config): Int {
+        var a = readInt(config.fieldMenuRoot) ?: return 0
+        for (off in Gen6Reader.CAMERA_PATH) {
+            if (!Gen6Reader.inHeap(a)) return 0
+            a = readInt(a + off) ?: return 0
+        }
+        return if (Gen6Reader.inHeap(a)) a + Gen6Reader.CAMERA_SETUP else 0
+    }
+
+    private fun readInt(addr: Int): Int? = N3dsNative.readMemory(intArrayOf(addr, 4))?.takeIf { it.size == 4 }
+        ?.let { java.nio.ByteBuffer.wrap(it).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(0) }
+
+    private fun readFloat(addr: Int): Float? = readInt(addr)?.let { java.lang.Float.intBitsToFloat(it) }
+
+    private fun floatBytes(v: Float): ByteArray =
+        java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN).putFloat(v).array()
 
     // ---- battles -------------------------------------------------------------------------------------------------
 
@@ -462,6 +548,9 @@ class N3dsSession(
 
     companion object {
         private const val TAG = "pokedaisy/n3ds"
+        /** The camera's ease: this much of the factor a frame (about a quarter second from 1x to the farthest step). */
+        private const val CAMERA_EASE = 0.05f
+        private const val CAMERA_FRAME_MS = 16L
         /** The 3D picture at 3x the 3DS's (the Thor / RP6 show the top screen at about 4x); a setting later. */
         private const val RESOLUTION = 3
         /** Azahar's Default layout: only used if the touch screen's surface were missing at boot (it never is here). */

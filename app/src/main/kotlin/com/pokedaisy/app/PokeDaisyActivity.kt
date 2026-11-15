@@ -4411,6 +4411,8 @@ class PokeDaisyActivity : Activity() {
             syncTouchControls()
         }
         telemetry.reset()
+        n3dsZoomStep = Prefs(this).zoomLevelFor(key).coerceIn(0, N3DS_CAMERA_PULLS.size - 1)
+        session.cameraZoom = N3DS_CAMERA_PULLS[n3dsZoomStep]
         syncGameScreen()
     }
 
@@ -4476,6 +4478,20 @@ class PokeDaisyActivity : Activity() {
         n3dsBattle.value = scene == com.pokedaisy.app.n3ds.Gen6Reader.Scene.BATTLE && n3dsFloats &&
             Prefs(this).dsLayout == com.pokedaisy.app.companion.DsLayout.ONE_SCREEN
         syncGameScreen()
+    }
+
+    /** 3DS ZOOM (the ZOOM hotkey): the field camera pulled back, its distance times these ([N3dsSession.cameraZoom]: the
+     * game's own camera, so more of the map shows, not a cropped picture); the step is kept per game
+     * ([Prefs.zoomLevelFor]). Shown as GBA EXPAND's zoom is, the view's size: 1x, 0.7x, 0.6x. */
+    private var n3dsZoomStep = 0
+
+    private fun n3dsZoomNext() {
+        val session = n3ds ?: return
+        n3dsZoomStep = (n3dsZoomStep + 1) % N3DS_CAMERA_PULLS.size
+        if (romKey.isNotEmpty()) Prefs(this).setZoomLevelFor(romKey, n3dsZoomStep)
+        com.pokedaisy.app.companion.FeatureTips.used(TipId.ZOOM)
+        session.cameraZoom = N3DS_CAMERA_PULLS[n3dsZoomStep]
+        showHud(com.pokedaisy.app.companion.i18n.tr("Zoom {0}", com.pokedaisy.app.companion.zoomLabel(1f / N3DS_CAMERA_PULLS[n3dsZoomStep])))
     }
 
     /** A 3DS battle on ONE SCREEN ([onN3dsScene]): the strip shows ([DsBattleMenu]); Compose state. */
@@ -4611,8 +4627,9 @@ class PokeDaisyActivity : Activity() {
                 session.setSpeed(if (n3dsFfOn) N3DS_FF_PERCENT else 100)
                 if (::touchControls.isInitialized) touchControls.ffOn = n3dsFfOn
             }
+            Hotkeys.Action.ZOOM -> if (e.pressed) n3dsZoomNext()
             Hotkeys.Action.REWIND_HOLD, Hotkeys.Action.SOFT_RESET, Hotkeys.Action.UNDO_SAVE, Hotkeys.Action.UNDO_LOAD,
-            Hotkeys.Action.SPEED_CYCLE, Hotkeys.Action.SLOWMO_HOLD, Hotkeys.Action.ZOOM -> Unit
+            Hotkeys.Action.SPEED_CYCLE, Hotkeys.Action.SLOWMO_HOLD -> Unit
             else -> return false
         }
         return true
@@ -6304,6 +6321,8 @@ class PokeDaisyActivity : Activity() {
         /** How often [DsShots] takes the game's picture. */
         private const val DS_SHOT_MS = 1000L
         /** ONE SCREEN: a 3DS game's floating touch screen, as a share of the screen's height. */
+        /** 3DS ZOOM's camera distances, times the game's own ([n3dsZoomNext]). */
+        private val N3DS_CAMERA_PULLS = floatArrayOf(1f, 1.35f, 1.75f)
         private const val N3DS_FLOAT_HEIGHT = 0.82f
         /** ... and at most this share of its width. */
         private const val N3DS_FLOAT_WIDTH = 0.94f

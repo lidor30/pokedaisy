@@ -130,6 +130,25 @@ were checked through this path (2026-11-15).
   Tried on the RP6 (2026-11-15, Lumiose's Pokemon Center, a state of the player's save): the nurse's Yes / No and the
   shop's Buy / Sell / Quit and buy list are all on the top screen (the game alone, nothing to do); the PC's menus and
   boxes, Pokemon-Amie's play and Super Training each show both screens side by side. Nothing needed changing.
+- ZOOM pulls the field camera back (2026-11-15, the user's ask: zoom out, not in): the ZOOM hotkey (R3) steps the game's
+  own camera distance x1 / x1.35 / x1.75 (shown as GBA EXPAND's zoom is: 1x / 0.7x / 0.6x), kept per game; more of the
+  map shows, nothing is cropped. `N3dsSession`'s camera thread follows [Gen6Reader.CAMERA_PATH] to the setup (below),
+  keeps the game's own distance as the base (a new setup or a value the game changed becomes it) and eases the factor
+  over ~a quarter second; only while `zoomable` (the field's module up, FIELD or the X menu), else back to x1. A state
+  is saved with the game's distance (written back first), so loading one never doubles the pull (checked on the RP6:
+  saved at 0.6x, loaded = 240.8 x 1.75). A picture zoom (the top screen's middle cropped) was built first and dropped.
+  EXPAND was weighed and left: the top screen is 5:3 already, ~7% more on a 16:9 screen for a wider projection, a wider
+  render target and the game's culling at the new edges.
+- The field camera (2026-11-15, a test toward right-stick camera control; headless `n3ds_dump` then live on the RP6):
+  the drawn camera's object (Vaniville: 0x0847E01C) holds position, target, yaw / pitch (rad, +0x24 / +0x28), distance
+  (+0x30), FOV (+0x58, 30°) and aspect (+0x5C, 5:3), all rebuilt every game frame. Each frame (DllField code, 0x7242B4)
+  copies a 68-byte setup from the camera controller +0x64 to +0x20 (then an area's own 36-byte entries can override):
+  floats target height, pitch (degrees, -40.74), yaw (degrees), 0, near (24), far (3500), FOV (degrees), distance, 0,
+  5.1. Writes there stick and the camera follows. Path: [0x08C54044] (the field object, as the X menu's root) +0xD8,
+  then +0x21C = the camera system, +0xB0C = the controller (0x084C0AB0 headless, 0x084C0D90 on the RP6). Checked live:
+  distance 420 shows far more of Route 2, pitch -22 looks to the horizon, a 45° yaw shows the void past the map's edge
+  and trees between camera and player. Found with `watchw` (who writes each copy). Not done: the area entries'
+  override, Lumiose's close camera, and easing / clamping for a stick.
 - Move multipliers (2026-11-15, the user's ask): each damaging move card shows its multiplier on the foe as a pill on the
   card's top-right rim, with BATTLE HINTS on (`DsBattleMenu`'s `hints`). The foe's types come from the cart's personal
   records (`Gen6Personal`, RomFS `a/2/1/8`, +6 / +7, by species: forms not read yet), the chart is Gen 6's (`Gen6Types`).

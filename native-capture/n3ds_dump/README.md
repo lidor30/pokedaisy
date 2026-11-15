@@ -36,6 +36,7 @@ SELECT ZL ZR HOME`, joined with commas (`A,UP`), or `NONE`. A frame is one the s
 | `modules` | The loaded CRO modules, as the app reads them (`DllField DllUSC02 ...`). |
 | `waitmod M [N]` / `waitnomod M [N]` | Frames until module M is loaded (or gone), at most N (3000). |
 | `pressuntil K M [N]` | K for 2 frames every 60 until module M is loaded, at most N frames. |
+| `watchw ADDR [N] [LEN]` | N frames (2) with ADDR's page watched: who wrote its LEN bytes (4), as PC / LR / value, counted (our Azahar patch's `Memory::pk_watch_write`). |
 | `frames` | Frames run so far. |
 
 `N3DS_LOG` sets Azahar's log filter (default `*:Warning`, e.g. `N3DS_LOG='*:Info'`).

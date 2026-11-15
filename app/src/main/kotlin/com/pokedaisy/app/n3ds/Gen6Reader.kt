@@ -83,6 +83,17 @@ object Gen6Reader {
      * game?" with its Yes / No: the X menu's marker is cleared meanwhile). */
     private val FIELD_TOUCH = setOf("DllReport")
 
+    /**
+     * The field camera's setup, from the field object ([Config.fieldMenuRoot]): +0xD8, then +0x21C (the camera system),
+     * then +0xB0C (its controller), and +[CAMERA_SETUP] in that the 68 bytes the game copies into the drawn camera every
+     * frame (DllField's 0x7242B4): floats target height, pitch (degrees), yaw (degrees), 0, near, far, FOV (degrees),
+     * distance (+[CAMERA_DISTANCE]), ... Written there, a value sticks and the camera follows it (found headless with
+     * n3ds_dump's watchw, checked live on the RP6, 2026-11-15: the controller at 0x084C0AB0 / 0x084C0D90).
+     */
+    val CAMERA_PATH = intArrayOf(0xD8, 0x21C, 0xB0C)
+    const val CAMERA_SETUP = 0x64
+    const val CAMERA_DISTANCE = 0x1C
+
     /** What [sceneOf] reads at the field object's [Config.fieldMenuOffset]. */
     const val FIELD_MENU_BYTES = 0x28
 

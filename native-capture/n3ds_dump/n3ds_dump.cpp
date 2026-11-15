@@ -11,6 +11,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <lodepng.h>
@@ -27,6 +28,10 @@
 #include "core/hle/service/service.h"
 #include "core/loader/loader.h"
 #include "core/memory.h"
+
+namespace Memory {
+extern void (*pk_watch_write)(VAddr vaddr, u32 size, u64 value); // our Azahar patch
+}
 #include "input_common/keyboard.h"
 #include "input_common/main.h"
 #include "video_core/gpu.h"
@@ -349,6 +354,31 @@ int main(int argc, char** argv) {
             setKeys("NONE");
             std::printf("pressuntil %s %s after %u frames:%s\n", a[1].c_str(), n < most ? "ok" : "TIMED OUT", n,
                 moduleNames(mem, 0x012B6000).c_str());
+        } else if (cmd == "watchw") {
+            // watchw ADDR [FRAMES] [LEN]: runs FRAMES (default 2) with the page watched and prints who wrote the LEN
+            // bytes at ADDR (default 4): the CPU's PC and LR at the write (dynarmic's PC can be its block's start) and
+            // the values, counted. Needs our Azahar patch's Memory::pk_watch_write.
+            const u32 addr = number(a.at(0));
+            const u32 frames = a.size() > 1 ? number(a[1]) : 2;
+            const u32 len = a.size() > 2 ? number(a[2]) : 4;
+            static std::map<std::tuple<u32, u32, u32, u64>, u32> seen;
+            static u32 watchLo, watchHi;
+            seen.clear();
+            watchLo = addr, watchHi = addr + len;
+            Memory::pk_watch_write = [](VAddr v, u32 size, u64 value) {
+                if (v + size <= watchLo || v >= watchHi) return;
+                auto& core = Core::System::GetInstance().GetRunningCore();
+                seen[{v, core.GetPC(), core.GetReg(14), value}]++;
+            };
+            auto proc = process();
+            mem.RegisterWatchpoint(*proc, addr & ~0xFFFu, 0x1000);
+            runFrames(frames);
+            mem.UnregisterWatchpoint(*proc, addr & ~0xFFFu, 0x1000);
+            Memory::pk_watch_write = nullptr;
+            for (const auto& [k, n] : seen)
+                std::printf("watchw %08x pc=%08x lr=%08x value=%llx x%u\n", std::get<0>(k), std::get<1>(k), std::get<2>(k),
+                            static_cast<unsigned long long>(std::get<3>(k)), n);
+            std::printf("watchw done (%zu kinds)\n", seen.size());
         } else if (cmd == "frames") {
             std::printf("frames %llu\n", static_cast<unsigned long long>(emuWindow.frames));
         } else {
