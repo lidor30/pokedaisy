@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,6 +37,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
@@ -44,6 +46,7 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.FieldHudLook
 import com.pokedaisy.app.companion.NewFeatures
@@ -53,6 +56,7 @@ import com.pokedaisy.app.companion.REPEL_KINDS
 import com.pokedaisy.app.companion.data.FlyTargets
 import com.pokedaisy.app.companion.data.dsFlySpotName
 import com.pokedaisy.app.companion.data.KeyItems
+import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.SnapshotView
 import com.pokedaisy.app.companion.data.activeGame
 import com.pokedaisy.app.companion.data.activeMapSecData
@@ -111,6 +115,11 @@ class QuickMenuState {
     var open by mutableStateOf(false)
         private set
 
+    /** Closed by a pick from FLY's / REPEL's list: gone at once, no tiles going back (they flashed up for a moment
+     * between the list and the flight). */
+    var gone by mutableStateOf(false)
+        private set
+
     /** Laid out as a circle (QUICK MENU > STYLE): the stick points at a tile ([aim]). */
     var ring by mutableStateOf(false)
 
@@ -131,7 +140,10 @@ class QuickMenuState {
     /** REPEL's kinds in the bag (item ids) when there's more than one: the menu turns into their list. */
     var repels by mutableStateOf<List<Int>?>(null)
 
-    /** The highlighted row of FLY's / REPEL's list. */
+    /** An action that asks first (HEAL: heal the whole party?): the menu turns into its YES / NO, [pickIndex] 0 = YES. */
+    var confirm by mutableStateOf<QuickAction?>(null)
+
+    /** The highlighted row of FLY's / REPEL's list, or [confirm]'s answer. */
     var pickIndex by mutableIntStateOf(0)
         private set
 
@@ -158,8 +170,12 @@ class QuickMenuState {
     /** The left stick moved the highlight to another tile ([aim]): the activity's haptic tick. */
     var onAimMove: () -> Unit = {}
 
-    private val listing get() = fly != null || repels != null
-    private val listSize get() = (if (fly != null) flyIds.size else repels?.size ?: 0).coerceAtLeast(1)
+    private val listing get() = fly != null || repels != null || confirm != null
+    private val listSize get() = when {
+        confirm != null -> 2
+        fly != null -> flyIds.size
+        else -> repels?.size ?: 0
+    }.coerceAtLeast(1)
 
     /**
      * The hotkey: a press opens it, or closes it again; letting go does nothing. (Holding it, moving and letting go to run
@@ -169,16 +185,20 @@ class QuickMenuState {
         if (!pressed) return
         if (open) close() else {
             open = true
+            gone = false
             fly = null
             repels = null
+            confirm = null
         }
     }
 
-    fun close() {
+    fun close(instant: Boolean = false) {
         val was = open
+        if (instant && was) gone = true
         open = false
         fly = null
         repels = null
+        confirm = null
         if (was) onClose()
     }
 
@@ -186,6 +206,7 @@ class QuickMenuState {
     fun back() {
         fly = null
         repels = null
+        confirm = null
     }
 
     /** A game button while it's open: true = taken. */
@@ -195,6 +216,8 @@ class QuickMenuState {
             when (key) {
                 MenuKey.UP -> pickIndex = (pickIndex - 1).mod(listSize)
                 MenuKey.DOWN -> pickIndex = (pickIndex + 1).mod(listSize)
+                // YES / NO sit side by side.
+                MenuKey.LEFT, MenuKey.RIGHT -> if (confirm != null) pickIndex = 1 - pickIndex
                 MenuKey.A -> pick()
                 MenuKey.B -> back()
                 else -> {}
@@ -256,12 +279,16 @@ class QuickMenuState {
     }
 
     private fun pick() {
-        val f = fly
-        if (f != null) {
-            flyIds.getOrNull(pickIndex)?.let { id -> close(); onFly(id, f) }
+        confirm?.let { a ->
+            if (pickIndex == 0) { close(instant = true); onRun(a) } else back()
             return
         }
-        repels?.getOrNull(pickIndex)?.let { id -> close(); onRepel(id) }
+        val f = fly
+        if (f != null) {
+            flyIds.getOrNull(pickIndex)?.let { id -> close(instant = true); onFly(id, f) }
+            return
+        }
+        repels?.getOrNull(pickIndex)?.let { id -> close(instant = true); onRepel(id) }
     }
 
     private fun activate() {
@@ -270,6 +297,11 @@ class QuickMenuState {
         if (blocked(a) != null) return
         when {
             a == QuickAction.FLY -> onRun(a)
+            // Healing the whole party isn't undone: asked first, YES highlighted.
+            a == QuickAction.HEAL -> {
+                pickIndex = 0
+                confirm = a
+            }
             // More than one kind: which one is the player's.
             a == QuickAction.REPEL && repelKinds.size > 1 -> {
                 pickIndex = 0
@@ -372,7 +404,7 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
         androidx.compose.animation.core.tween(if (state.open) RING_OPEN_MS else RING_CLOSE_MS, easing = androidx.compose.animation.core.LinearEasing),
         label = "quick-menu-fan",
     )
-    if (!state.open && fan == 0f) return
+    if (!state.open && (fan == 0f || state.gone)) return
     val items = QuickAction.entries.filter { it in shown && actions.offered(it) }
     val repelSteps = actions.repelSteps()
     val dark = if (QuickAction.FLASH in shown) actions.flashDark() else null
@@ -383,7 +415,7 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
     LaunchedEffect(items.size) { state.clamp() }
     val m = rememberGbaTextMetrics(1f)
     val u = m.u
-    CompanionBackHandler(enabled = state.open) { if (state.fly != null || state.repels != null) state.back() else state.close() }
+    CompanionBackHandler(enabled = state.open) { if (state.fly != null || state.repels != null || state.confirm != null) state.back() else state.close() }
     CompositionLocalProvider(LocalHudLook provides look) {
         BoxWithConstraints(
             Modifier.fillMaxSize().drawBehind { drawRect(Color(0x55000000).copy(alpha = 0x55 / 255f * fan)) }
@@ -392,6 +424,7 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
         ) {
             val fly = state.fly
             val repels = state.repels
+            val confirm = state.confirm
             val current = items.getOrNull(state.index)
             val why = current?.let { quickBlocked(it, snapshot, repelSteps, dark, flying) }
             val hint = current?.let { why ?: quickHint(it, actions) }
@@ -402,7 +435,7 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
                 val a = items.getOrNull(i)
                 if (a != null) QuickTile(a, snapshot, actions, selected = i == state.index, blocked = quickBlocked(a, snapshot, repelSteps, dark, flying) != null, m, label = state.labels) { state.tap(i) }
             }
-            if (fly != null || repels != null || items.isEmpty() || !ring) {
+            if (fly != null || repels != null || confirm != null || items.isEmpty() || !ring) {
                 Column(
                     // Taps on the panel stay in it (the dim around it closes the menu).
                     Modifier.graphicsLayer { alpha = fan }.widthIn(max = maxWidth * 0.92f).hudPanel(u).pointerInput(Unit) { detectTapGestures { } }.padding(u * 6),
@@ -411,6 +444,7 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
                 ) {
                     when {
                         fly != null -> FlyDestinations(state, fly, m)
+                        confirm != null -> HealConfirm(state, snapshot, m)
                         repels != null -> RepelKinds(state, repels, snapshot, m)
                         items.isEmpty() -> GbaText(tr("Nothing to show: pick actions in SETTINGS > QUICK MENU"), ink.text, ink.shadow, m, maxLines = 2)
                         else -> {
@@ -621,6 +655,40 @@ private fun FlyDestinations(state: QuickMenuState, targets: FlyTargets, m: GbaTe
     // A DS game's destinations are its fly spots (Gen 4: spawn ids; Gen 5: the towns' places), not map sections.
     val name: (Int) -> String? = if (activeGame.isDsGame) ({ dsFlySpotName(activeGame, it) }) else ({ activeMapSecData[it]?.name })
     PickList(tr("FLY"), ids.map { id -> gameCase(name(id) ?: tr("AREA {0}", id)) }, state, m)
+}
+
+/** HEAL's question: the party as it is now (HP bars, status), then YES / NO side by side - LEFT / RIGHT and A, or a tap. */
+@Composable
+private fun HealConfirm(state: QuickMenuState, s: SnapshotView, m: GbaTextMetrics) {
+    val u = m.u
+    GbaText(tr("Heal all your POKéMON?"), ink.text, ink.shadow, m)
+    HealPartyRow(s.party.filter { !it.isEgg }, u) { _, mon -> mon.hp to mon.status }
+    Row(horizontalArrangement = Arrangement.spacedBy(u * 6)) {
+        listOf(tr("YES"), tr("NO")).forEachIndexed { i, text ->
+            val noRipple = remember { MutableInteractionSource() }
+            Box(
+                Modifier.widthIn(min = u * 48).hudButtonFace(u, i == state.pickIndex, solid = false, shadow = true)
+                    .soundClickable(interactionSource = noRipple, indication = null) { state.tapPick(i) }
+                    .padding(horizontal = u * 8, vertical = u * 5),
+                contentAlignment = Alignment.Center,
+            ) { GbaText(text, ink.text, ink.shadow, m, bold = gameBoldLabels()) }
+        }
+    }
+}
+
+/** The party's icons in a row, each over its HP bar; [state] gives a Pokémon's HP and status as drawn now. */
+@Composable
+internal fun HealPartyRow(party: List<MonView>, u: Dp, modifier: Modifier = Modifier, lift: (Int) -> Float = { 0f }, state: (Int, MonView) -> Pair<Int, String>) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(u * 4)) {
+        party.forEachIndexed { i, mon ->
+            val (hp, status) = state(i, mon)
+            Column(Modifier.offset { IntOffset(0, (-lift(i) * u.toPx()).roundToInt()) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                HudMonIcon(mon.copy(hp = hp, status = status), u * 24, u)
+                Spacer(Modifier.height(u * 2))
+                HudHpBar(hp, mon.maxHp, Modifier.width(u * 24).height(u * 5))
+            }
+        }
+    }
 }
 
 /** REPEL's kinds in the bag: each one's name, how many and how many steps it lasts. */
@@ -907,3 +975,103 @@ private val FF_ICON = listOf(
     "11....11....",
     "1.....1.....",
 )
+
+// ---- HEAL's healed animation ----------------------------------------------------------------------
+
+/** The party as it was before HEAL ran ([before], eggs left out), shown healing by [HealedAnimation]; [id] tells two heals apart. */
+class HealShow(val before: List<MonView>, val id: Long = System.nanoTime())
+
+/**
+ * HEAL done, over the game (the HUD's view): a window in the middle with the party's icons, each one's HP bar filling to
+ * full in turn (its status gone once full) with a sparkle and a hop, then "Your POKéMON are fully healed."; it fades away
+ * by itself after [HEAL_TOTAL_MS]. A tap closes it early. The game keeps running under it.
+ */
+@Composable
+fun HealedAnimation(
+    show: HealShow?, look: FieldHudLook,
+    /** One moment of it, held (screenshot tests, which don't run the clock). */
+    frozenAtMs: Int? = null,
+    onDone: () -> Unit,
+) {
+    if (show == null) return
+    val party = show.before.filter { !it.isEgg }
+    val time = remember(show.id) { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(show.id) {
+        if (frozenAtMs != null) return@LaunchedEffect
+        time.animateTo(HEAL_TOTAL_MS.toFloat(), androidx.compose.animation.core.tween(HEAL_TOTAL_MS, easing = androidx.compose.animation.core.LinearEasing))
+        onDone()
+    }
+    val ms = frozenAtMs?.toFloat() ?: time.value
+    // In over the first 180 ms, out over the last 300.
+    val alpha = minOf(ms / 180f, (HEAL_TOTAL_MS - ms) / 300f).coerceIn(0f, 1f)
+    fun fillOf(i: Int) = ((ms - HEAL_FILL_START_MS - i * HEAL_STAGGER_MS) / HEAL_FILL_MS).coerceIn(0f, 1f)
+    // A sparkle and a hop, from the moment a bar is full.
+    fun sinceFull(i: Int) = ms - (HEAL_FILL_START_MS + i * HEAL_STAGGER_MS + HEAL_FILL_MS)
+    val allFull = HEAL_FILL_START_MS + (party.size - 1).coerceAtLeast(0) * HEAL_STAGGER_MS + HEAL_FILL_MS
+    val m = rememberGbaTextMetrics(1f)
+    val u = m.u
+    CompositionLocalProvider(LocalHudLook provides look) {
+        Box(
+            Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }.pointerInput(show.id) { detectTapGestures { onDone() } },
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                Modifier.hudPanel(u).padding(horizontal = u * 10, vertical = u * 8),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(u * 6),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    HealPartyRow(
+                        party, u,
+                        // A hop of 3 GBA pixels up and down, whole pixels.
+                        lift = { i -> sinceFull(i).let { t -> if (t in 0f..HEAL_HOP_MS) (kotlin.math.sin(t / HEAL_HOP_MS * PI) * 3).roundToInt().toFloat() else 0f } },
+                    ) { i, mon ->
+                        val f = fillOf(i)
+                        val hp = (mon.hp + (mon.maxHp - mon.hp) * f).roundToInt()
+                        hp to (if (f >= 1f) "" else mon.status)
+                    }
+                    // The sparkles, over the row: each icon's own burst, drawn in whole GBA pixels.
+                    androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+                        val px = u.toPx()
+                        val cell = 24 * px + 4 * px
+                        party.indices.forEach { i ->
+                            val t = sinceFull(i) / HEAL_SPARKLE_MS
+                            if (t !in 0f..1f) return@forEach
+                            val cx = i * cell + 12 * px
+                            val cy = 12 * px
+                            // Four stars on the diagonals, flying out from the icon's edge; their arms grow, then fade.
+                            val r = 11 + 9 * t
+                            val arm = if (t < 0.4f) 1 + (t / 0.4f * 2).toInt() else 3
+                            val a = if (t < 0.6f) 1f else 1f - (t - 0.6f) / 0.4f
+                            for (k in 0 until 4) {
+                                val ang = k * PI / 2 + PI / 4
+                                val sx = ((cx / px) + r * kotlin.math.cos(ang)).roundToInt() * px
+                                val sy = ((cy / px) + r * kotlin.math.sin(ang)).roundToInt() * px
+                                val c = if (k % 2 == 0) Color(0xFFFFFFFF) else Color(0xFFFFE070)
+                                val one = androidx.compose.ui.geometry.Size(px, px)
+                                drawRect(c.copy(alpha = a), Offset(sx, sy), one)
+                                for (d in 1..arm) {
+                                    // Arms thin out toward their tips.
+                                    val ca = c.copy(alpha = a * if (d == arm && arm > 1) 0.55f else 1f)
+                                    drawRect(ca, Offset(sx + d * px, sy), one)
+                                    drawRect(ca, Offset(sx - d * px, sy), one)
+                                    drawRect(ca, Offset(sx, sy + d * px), one)
+                                    drawRect(ca, Offset(sx, sy - d * px), one)
+                                }
+                            }
+                        }
+                    }
+                }
+                val textAlpha = ((ms - allFull) / 250f).coerceIn(0f, 1f)
+                GbaText(tr("Your POKéMON are fully healed."), ink.text, ink.shadow, m, modifier = Modifier.alpha(textAlpha))
+            }
+        }
+    }
+}
+
+private const val HEAL_TOTAL_MS = 2900
+private const val HEAL_FILL_START_MS = 250f
+private const val HEAL_STAGGER_MS = 150f
+private const val HEAL_FILL_MS = 420f
+private const val HEAL_HOP_MS = 220f
+private const val HEAL_SPARKLE_MS = 380f

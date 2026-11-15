@@ -454,6 +454,8 @@ class PokeDaisyActivity : Activity() {
         }
     }
     private val quickShown = androidx.compose.runtime.mutableStateOf(com.pokedaisy.app.companion.QuickAction.entries.toSet())
+    /** The QUICK MENU's HEAL done: its animation over the game until it fades ([com.pokedaisy.app.companion.ui.HealedAnimation]). */
+    private val healShow = androidx.compose.runtime.mutableStateOf<com.pokedaisy.app.companion.ui.HealShow?>(null)
     /** The joystick's directions while the QUICK MENU is open, so a new one is a press. */
     private var quickHat = 0
     /** The stick / hat off centre at the QUICK MENU's last motion event; then, once it closed, held from the game until centred. */
@@ -1163,9 +1165,13 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.QuickAction.PC -> itemUse.openPc { o ->
                 if (o.result != com.pokedaisy.app.companion.data.ItemUseResult.USED) showHud(com.pokedaisy.app.companion.ui.itemUseMessage(o))
             }
-            com.pokedaisy.app.companion.QuickAction.HEAL -> itemUse.centerHeal { r ->
-                showHud(if (r == com.pokedaisy.app.companion.data.CenterResult.OK) com.pokedaisy.app.companion.i18n.tr("Your POKéMON are fully healed.")
-                else com.pokedaisy.app.companion.ui.centerMessage(r, ""))
+            // Asked first in the menu (QuickMenuState.confirm); healed = the party's bars filling up (HealedAnimation).
+            com.pokedaisy.app.companion.QuickAction.HEAL -> {
+                val before = snap.party
+                itemUse.centerHeal { r ->
+                    if (r == com.pokedaisy.app.companion.data.CenterResult.OK) healShow.value = com.pokedaisy.app.companion.ui.HealShow(before)
+                    else showHud(com.pokedaisy.app.companion.ui.centerMessage(r, ""))
+                }
             }
             com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.targets { t ->
                 if (t.result == com.pokedaisy.app.companion.data.FlyResult.OK) quickMenu.fly = t
@@ -5274,6 +5280,7 @@ class PokeDaisyActivity : Activity() {
                     onWindow = { battlePicking.value = it },
                 )
                 com.pokedaisy.app.companion.ui.QuickMenu(quickMenu, snap, quickActions, quickShown.value, hudStyle.value.look)
+                com.pokedaisy.app.companion.ui.HealedAnimation(healShow.value, hudStyle.value.look) { healShow.value = null }
                 // Co-op joined battles: the join prompt, the waits, the notices - over the game, HUD on or off.
                 com.pokedaisy.app.companion.ui.CoopBattleOverlays(coopOverlay)
                 CoopLockLayer()
