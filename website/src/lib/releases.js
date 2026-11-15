@@ -23,6 +23,8 @@ export async function getReleases() {
         url: r.html_url,
         body: r.body ?? '',
         apk: r.assets.find((a) => a.name.endsWith('.apk'))?.browser_download_url,
+        // Every file on it (the APK, the Linux packages, the 3DS .3dsx...): the download cards pick theirs (downloads.js).
+        assets: r.assets.map((a) => ({ name: a.name, url: a.browser_download_url, size: a.size })),
       }));
   } catch (e) {
     console.warn(`[releases] couldn't read GitHub releases: ${e.message}`);
