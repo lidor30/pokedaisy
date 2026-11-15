@@ -2326,7 +2326,12 @@ back). A site-only fix therefore waits for the next release (or a manual run of 
 The site's game matrix is README's Supported games table; a row of all "—" means detected but no companion yet,
 so the export lists it under `inProgress` - off the matrix, and "in progress" in the ROM check (none since R.O.W.E.
 got its companion, 2026-10-09).
-The site's demos and art never use real Pokémon / move / item names or the games' art (the user's rule).
+The site's drawn demos and art never use real Pokémon / move / item names or the games' art (the user's rule). Real
+screenshots and clips of the app on real games are allowed on the homepage, the game pages and the README (2026-11-15,
+the user's call: `website/public/media/`, taken on the Thor, every picture noted as the real app with the owners named; no title
+screens, box art or ROM file names; Ghost Grey never shown). The manual stays invented. The homepage's DOWNLOAD cards
+(`src/lib/downloads.js`, `Downloads.astro`) list each platform's release files by name: a new file name in docs/RELEASING.md
+goes there and in README's "Download and install" too.
 **Website languages** (2026-11-07, website/README.md's "Languages"): the app's nine (EN / JA / KO / FR / DE / IT / ES / pt-BR / pt-PT),
 English at the root, the rest under `/<code>/` (`src/views/` drawn by `src/pages/` and `src/pages/[lang]/`); the manual and
 release notes stay English, but for pages translated in all eight (`docs/manual/translations/<code>/`, `/<code>/docs/<page>/`: the 3DS and
