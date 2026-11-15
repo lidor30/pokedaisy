@@ -4419,6 +4419,11 @@ steps. iOS supplies ROM/save steps and retains Files-based import. Native exit e
 behavior and each platform's completion preference policy. Replacing or destroying Android setup retires its flow;
 save-folder suggestions only publish to their original active visit.
 
-The library/setup follow-up plan is in `docs/specs/shared-library-setup-coordination.md`. Library projections
-and save-picker coordination follow as separate layers on the cleaned canonical chain. Android permissions,
-picker effects and launcher media remain native adapters.
+`LibraryProjection` splits an ordered library into quick views for Android's library and launcher and for iOS.
+It shares counts, overlapping console/HACKS membership and fallback to ALL when a view disappears. Hosts supply
+cached platform/category metadata and apply their hidden/unsupported/search filters before projection. Its
+optional availability list preserves iOS's console pills while searching; Android retains pills for matching games.
+
+The library/setup follow-up plan is in `docs/specs/shared-library-setup-coordination.md`. Save-picker coordination
+follows as a separate layer on the cleaned canonical chain. Android permissions, picker effects and launcher
+media remain native adapters.

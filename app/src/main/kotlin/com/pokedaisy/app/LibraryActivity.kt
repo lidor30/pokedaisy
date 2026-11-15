@@ -508,23 +508,10 @@ class LibraryActivity : ComponentActivity() {
         )
     }
 
-    /** The library ([sortLibrary]'s order) split into its quick views. */
-    private class QuickViews(val byView: Map<LibraryView, List<File>>) {
-        /** A console's (or HACKS') pill only while the library holds one of its games; the others always (an empty one says how to fill it). */
-        val shown = LibraryView.entries.filter { !it.byKind || byView[it].orEmpty().isNotEmpty() }
-        val counts = byView.mapValues { it.value.size }
-        val library get() = byView[LibraryView.ALL].orEmpty()
-        /** [want], or ALL while it has no pill (a console with no games left). */
-        fun open(want: LibraryView) = want.takeIf { it in shown } ?: LibraryView.ALL
-        fun games(want: LibraryView) = byView[open(want)].orEmpty()
-    }
-
-    /** Main thread: each game's console and kind are cache reads (GameTitles), once per call. */
-    private fun quickViewsOf(library: List<File>): QuickViews {
-        val platforms = library.associateWith { GameTitles.platform(this, it) }
-        val categories = library.associateWith { GameTitles.category(this, it) }
-        return QuickViews(LibraryView.entries.associateWith { libraryPreferences.filtered(library, it, { file -> file.absolutePath }, platforms::get, categories::get) })
-    }
+    /** Main thread: host metadata is cached once per game for the common projection. */
+    private fun quickViewsOf(library: List<File>): com.pokedaisy.app.companion.LibraryProjection<File> =
+        com.pokedaisy.app.companion.LibraryProjection(libraryPreferences, library, { it.absolutePath },
+            { GameTitles.platform(this, it) }, { GameTitles.category(this, it) })
 
     private fun pickQuickView(view: LibraryView) {
         library.selectView(view)
@@ -1546,7 +1533,7 @@ class LibraryActivity : ComponentActivity() {
     }
 
     /** The launcher's quick views (its pills and their counts), as [refreshLauncherGames] last split the library. */
-    private var launcherViews by mutableStateOf<QuickViews?>(null)
+    private var launcherViews by mutableStateOf<com.pokedaisy.app.companion.LibraryProjection<File>?>(null)
 
     /** The launcher's games: the open quick view of the library in its order (favorites first), the last played
      * selected at first. */

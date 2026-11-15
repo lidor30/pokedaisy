@@ -91,13 +91,9 @@ internal class IosLibraryHost(
             LibraryGame(path, label(path), "roms/$id", playing = prefs.last == id,
                 isNew = prefs.isNew(id),
                 hasSave = RomPicker.savePathFor(path).toPath().length > 0, favorite = id in prefs.favorites)
-        }.filter { game -> com.pokedaisy.app.companion.matchesLibrarySearch(library.query, listOf(game.label, key(game.id))) }
-            .sortedBy { it.label.lowercase() }
+        }.sortedBy { it.label.lowercase() }
         return prefs.ordered(games) { key(it.id) }
     }
-
-    private fun filtered(games: List<LibraryGame>, view: LibraryView): List<LibraryGame> =
-        prefs.filtered(games, view, { key(it.id) }, { category(it.id) })
 
     @Composable
     private fun Library() {
@@ -118,16 +114,18 @@ internal class IosLibraryHost(
 
         val m = rememberGbaTextMetrics()
         val small = rememberGbaTextMetrics(1f)
-        val games = entries()
-        val views = listOf(LibraryView.ALL, LibraryView.FAVORITES, LibraryView.RECENT) +
-            listOf(LibraryView.GB, LibraryView.GBC, LibraryView.GBA).filter { view -> paths.any { category(it) == view.platform } }
-        val view = library.view.takeIf { it in views } ?: LibraryView.ALL
-        val shown = filtered(games, view)
+        val all = entries()
+        val games = all.filter { com.pokedaisy.app.companion.matchesLibrarySearch(library.query, listOf(it.label, key(it.id))) }
+        val projection = com.pokedaisy.app.companion.LibraryProjection(prefs, games, { key(it.id) },
+            { category(it.id) }, available = all)
+        val views = projection.shown
+        val view = projection.open(library.view)
+        val shown = projection.games(view)
         val tools = listOf(LibraryTool("save_editor", "LOAD SAVE",
             "The game starts from this save next time, not from where you left off.", null,
             open = { if (paths.isEmpty()) library.selectSection(LibrarySection.GAMES) else choosingSaveGame = true }))
         val state = LibraryPresentation(shown, library.grid, library.section, views, view,
-            views.associateWith { filtered(games, it).size }, games.isNotEmpty(), library.query,
+            projection.counts, games.isNotEmpty(), library.query,
             tr("Add your own GBA or Game Boy ROMs from Files. Copies are kept in PokeDaisy's folder."), tools)
         val actions = library.actions(add = ::addGames, refresh = { paths = PokeDaisyHost.games() })
         LibraryScreen(state, actions, m, small, key = { it.id }, focus = focus,
