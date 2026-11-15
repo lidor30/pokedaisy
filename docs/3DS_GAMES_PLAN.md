@@ -139,6 +139,13 @@ were checked through this path (2026-11-15).
   saved at 0.6x, loaded = 240.8 x 1.75). A picture zoom (the top screen's middle cropped) was built first and dropped.
   EXPAND was weighed and left: the top screen is 5:3 already, ~7% more on a 16:9 screen for a wider projection, a wider
   render target and the game's culling at the new edges.
+- The right stick turns and tilts the field camera (2026-11-15, the user's ask: a modern game's free camera): the same
+  setup, its yaw (+8) and pitch (+4) the game's plus the stick's, at most 40° either way and 8° flatter / 15° steeper
+  (Santalune Forest showed black past its top at 15° flatter; 45° on Route 2 showed the void past its edge). Let go, it
+  stays while the player stands and glides back once they walk (left stick or D-pad), as EXPAND's look-around, so the
+  circle pad never points another way than the picture; back at once off the field. One read and one write of the
+  setup's first 0x20 bytes a step, the path followed twice a second. A state is saved with the game's own camera.
+  Checked on the RP6 (Santalune Forest): turn, tilt, stays, glides back.
 - The field camera (2026-11-15, a test toward right-stick camera control; headless `n3ds_dump` then live on the RP6):
   the drawn camera's object (Vaniville: 0x0847E01C) holds position, target, yaw / pitch (rad, +0x24 / +0x28), distance
   (+0x30), FOV (+0x58, 30°) and aspect (+0x5C, 5:3), all rebuilt every game frame. Each frame (DllField code, 0x7242B4)

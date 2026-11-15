@@ -130,7 +130,18 @@ class N3dsSession(
     /** The left stick as the circle pad, and the hat as the D-pad. */
     fun onMotion(event: MotionEvent) {
         fun dead(v: Float) = if (kotlin.math.abs(v) < STICK_DEAD) 0f else v
-        N3dsNative.setStick(dead(event.getAxisValue(MotionEvent.AXIS_X)), -dead(event.getAxisValue(MotionEvent.AXIS_Y)))
+        val sx = dead(event.getAxisValue(MotionEvent.AXIS_X))
+        val sy = dead(event.getAxisValue(MotionEvent.AXIS_Y))
+        N3dsNative.setStick(sx, -sy)
+        stickMoving = sx != 0f || sy != 0f
+        // The right stick (most pads Z / RZ, some RX / RY): the field camera's turn and tilt.
+        fun axis(a: Int, b: Int): Float {
+            val va = event.getAxisValue(a)
+            val vb = event.getAxisValue(b)
+            return dead(if (kotlin.math.abs(va) >= kotlin.math.abs(vb)) va else vb)
+        }
+        lookX = axis(MotionEvent.AXIS_Z, MotionEvent.AXIS_RX)
+        lookY = -axis(MotionEvent.AXIS_RZ, MotionEvent.AXIS_RY)
         val hx = event.getAxisValue(MotionEvent.AXIS_HAT_X)
         val hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
         hatBits = (if (hx < -0.5f) MgbaCore.Key.LEFT else 0) or (if (hx > 0.5f) MgbaCore.Key.RIGHT else 0) or
@@ -332,55 +343,121 @@ class N3dsSession(
         Log.i(TAG, "dumped $stamp")
     }
 
-    // ---- the field camera (ZOOM: pulled back) -------------------------------------------------------------------
+    // ---- the field camera (ZOOM pulls it back, the right stick turns and tilts it) -----------------------------
 
     /** How far the field camera stands back, as a factor of the game's own distance (1 = the game's): ZOOM's steps,
      * set by the activity. Applied on the field only ([zoomable]), eased by [camera]. */
     @Volatile var cameraZoom = 1f
 
-    private val cameraLock = Any()
-    private var camSetup = 0                 // the camera setup's address (Gen6Reader.cameraSetup) last seen
-    private var camBase = Float.NaN          // the game's own distance there
-    private var camWritten = Float.NaN       // the last distance written (another value = the game set a new one)
-    private var camShown = 1f                // the factor eased toward [cameraZoom]
+    /** The right stick, -1..1 (right and up positive): turns and tilts the field camera ([camera]). */
+    @Volatile private var lookX = 0f
+    @Volatile private var lookY = 0f
 
-    /** The camera's setup and the game's own distance in it, the pulled-back one written: every 100 ms on the field, every
-     * frame while easing. A new setup (another map) or a distance the game changed becomes the base. */
+    /** The left stick is pushed (the player walks): a turned camera glides back to the game's. */
+    @Volatile private var stickMoving = false
+
+    private val cameraLock = Any()
+    private var camSetup = 0                 // the camera setup's address (Gen6Reader.CAMERA_PATH) last seen
+    private var camResolved = 0L             // when the path was last followed
+    // Per CAM_FIELDS (pitch, yaw, distance): the game's own value, and the last one written (another value there = the
+    // game set a new one, which becomes the base).
+    private val camBase = FloatArray(CAM_FIELDS.size) { Float.NaN }
+    private val camWritten = FloatArray(CAM_FIELDS.size) { Float.NaN }
+    private var camShown = 1f                // the distance factor, eased toward [cameraZoom]
+    private var yawOff = 0f                  // the stick's turn and tilt, degrees
+    private var pitchOff = 0f
+    private var camTick = 0L
+
+    /**
+     * The camera's setup, rewritten from the game's own values: the distance times [camShown], the turn and tilt plus
+     * the stick's (within [CAMERA_YAW_MAX], [CAMERA_PITCH_UP] / [CAMERA_PITCH_DOWN]: past them the map's edge and its unbuilt
+     * sides show; Santalune Forest's top went black at 15° flatter).
+     * Let go, the camera stays while the player stands, and glides back once they walk (as EXPAND's look-around), so the
+     * circle pad never points another way than the picture. Every 100 ms on the field, every frame while it moves.
+     */
     private val camera = Thread({
         val config = Gen6Reader.configFor(titleId)
         while (running && config != null && config.fieldMenuRoot != 0) {
-            var easing = false
-            if (!paused) synchronized(cameraLock) {
-                val want = if (zoomable) cameraZoom else 1f
-                val setup = cameraSetup(config)
-                if (setup == 0) { camSetup = 0; camShown = 1f; return@synchronized }
-                val d = readFloat(setup + Gen6Reader.CAMERA_DISTANCE) ?: return@synchronized
-                if (setup != camSetup) { camSetup = setup; camBase = d; camWritten = Float.NaN; camShown = 1f }
-                else if (d != camWritten) camBase = d
-                if (!(camBase > 0f)) return@synchronized
-                val step = (want - camShown).coerceIn(-CAMERA_EASE, CAMERA_EASE)
-                camShown = if (kotlin.math.abs(want - camShown) < 0.002f) want else camShown + step
-                easing = camShown != want
-                val target = camBase * camShown
-                if (camShown == 1f && camWritten.isNaN()) return@synchronized
-                if (target != d) {
-                    N3dsNative.writeMemory(setup + Gen6Reader.CAMERA_DISTANCE, floatBytes(target))
-                    camWritten = target
-                }
-                if (camShown == 1f) camWritten = Float.NaN
-            }
-            try { Thread.sleep(if (easing) CAMERA_FRAME_MS else SCENE_MS) } catch (_: InterruptedException) { break }
+            var active = false
+            if (!paused) synchronized(cameraLock) { active = cameraStep(config) }
+            try { Thread.sleep(if (active) CAMERA_FRAME_MS else SCENE_MS) } catch (_: InterruptedException) { break }
         }
     }, "pokedaisy-n3ds-camera")
 
-    /** The game's own distance written back (before a state is saved); the loop pulls it out again after. */
-    private fun cameraRestore() {
-        val config = Gen6Reader.configFor(titleId) ?: return
-        val setup = cameraSetup(config)
-        if (setup == 0 || setup != camSetup || camWritten.isNaN() || !(camBase > 0f)) return
-        N3dsNative.writeMemory(setup + Gen6Reader.CAMERA_DISTANCE, floatBytes(camBase))
-        camWritten = camBase
+    private fun cameraStep(config: Gen6Reader.Config): Boolean {
+        val now = System.nanoTime()
+        val dt = if (camTick == 0L) 0.016f else ((now - camTick) / 1e9f).coerceIn(0f, 0.1f)
+        camTick = now
+        val field = zoomable
+        // The path is followed again twice a second (and off the field): reading it costs a frame a step.
+        if (camSetup == 0 || !field || now - camResolved > CAMERA_RESOLVE_NS) {
+            val setup = if (field) cameraSetup(config) else 0
+            camResolved = now
+            if (setup == 0) { cameraForget(); return false }
+            if (setup != camSetup) { cameraForget(); camSetup = setup }
+        }
+        val setup = camSetup
+        val block = N3dsNative.readMemory(intArrayOf(setup, CAM_BLOCK))?.takeIf { it.size == CAM_BLOCK } ?: return false
+        val buf = java.nio.ByteBuffer.wrap(block).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        val values = FloatArray(CAM_FIELDS.size) { buf.getFloat(CAM_FIELDS[it]) }
+        // A distance of 0 or less, or a tilt not looking down: not the setup (memory reused), read again next time.
+        if (!(values[CAM_DISTANCE] > 0f) || !(values[CAM_PITCH] < 0f)) { camResolved = 0L; camSetup = 0; return false }
+        for (k in values.indices) if (camBase[k].isNaN() || values[k] != camWritten[k]) camBase[k] = values[k]
+
+        val want = if (field) cameraZoom else 1f
+        val zoomStep = CAMERA_ZOOM_RATE * dt
+        camShown = if (kotlin.math.abs(want - camShown) <= zoomStep) want else camShown + kotlin.math.sign(want - camShown) * zoomStep
+        val lx = if (field) lookX else 0f
+        val ly = if (field) lookY else 0f
+        val looking = lx != 0f || ly != 0f
+        if (looking) {
+            yawOff = (yawOff + lx * CAMERA_YAW_SPEED * dt).coerceIn(-CAMERA_YAW_MAX, CAMERA_YAW_MAX)
+            pitchOff = (pitchOff + ly * CAMERA_PITCH_SPEED * dt).coerceIn(-CAMERA_PITCH_DOWN, CAMERA_PITCH_UP)
+        } else if (stickMoving || dpadHeld() || !field) {
+            val k = (CAMERA_GLIDE * dt).coerceAtMost(1f)
+            yawOff = if (kotlin.math.abs(yawOff) < 0.2f) 0f else yawOff - yawOff * k
+            pitchOff = if (kotlin.math.abs(pitchOff) < 0.2f) 0f else pitchOff - pitchOff * k
+        }
+        val targets = floatArrayOf(
+            (camBase[CAM_PITCH] + pitchOff).coerceIn(CAMERA_PITCH_LOWEST, CAMERA_PITCH_HIGHEST),
+            camBase[CAM_YAW] + yawOff,
+            camBase[CAM_DISTANCE] * camShown,
+        )
+        val untouched = yawOff == 0f && pitchOff == 0f && camShown == 1f
+        // The game's own camera and nothing of ours left in it: leave it alone.
+        if (untouched && camWritten.all { it.isNaN() }) return false
+        if (targets.indices.any { targets[it] != values[it] }) {
+            for (k in targets.indices) buf.putFloat(CAM_FIELDS[k], targets[k])
+            // One write for the three (pitch at +4 to the distance at +0x1C), the fields between as read.
+            N3dsNative.writeMemory(setup + CAM_FIELDS[CAM_PITCH], block.copyOfRange(CAM_FIELDS[CAM_PITCH], CAM_BLOCK))
+            for (k in targets.indices) camWritten[k] = targets[k]
+        }
+        if (untouched) camWritten.fill(Float.NaN)
+        val gliding = (yawOff != 0f || pitchOff != 0f) && (stickMoving || dpadHeld() || !field)
+        return looking || gliding || camShown != want
+    }
+
+    private fun cameraForget() {
+        camSetup = 0
+        camBase.fill(Float.NaN)
+        camWritten.fill(Float.NaN)
         camShown = 1f
+        yawOff = 0f
+        pitchOff = 0f
+    }
+
+    private fun dpadHeld(): Boolean =
+        (input.mask or hatBits) and (MgbaCore.Key.UP or MgbaCore.Key.DOWN or MgbaCore.Key.LEFT or MgbaCore.Key.RIGHT) != 0
+
+    /** The game's own camera written back (before a state is saved); the loop puts the zoom and the turn back after. */
+    private fun cameraRestore() {
+        val setup = camSetup
+        if (setup == 0 || camWritten.all { it.isNaN() } || camBase.any { it.isNaN() }) return
+        val block = N3dsNative.readMemory(intArrayOf(setup, CAM_BLOCK))?.takeIf { it.size == CAM_BLOCK } ?: return
+        val buf = java.nio.ByteBuffer.wrap(block).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        for (k in CAM_FIELDS.indices) buf.putFloat(CAM_FIELDS[k], camBase[k])
+        N3dsNative.writeMemory(setup + CAM_FIELDS[CAM_PITCH], block.copyOfRange(CAM_FIELDS[CAM_PITCH], CAM_BLOCK))
+        for (k in CAM_FIELDS.indices) camWritten[k] = camBase[k]
     }
 
     /** The field camera's setup ([Gen6Reader.cameraSetup]): the field object's pointers followed, 0 off the field. */
@@ -395,8 +472,6 @@ class N3dsSession(
 
     private fun readInt(addr: Int): Int? = N3dsNative.readMemory(intArrayOf(addr, 4))?.takeIf { it.size == 4 }
         ?.let { java.nio.ByteBuffer.wrap(it).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(0) }
-
-    private fun readFloat(addr: Int): Float? = readInt(addr)?.let { java.lang.Float.intBitsToFloat(it) }
 
     private fun floatBytes(v: Float): ByteArray =
         java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN).putFloat(v).array()
@@ -549,8 +624,28 @@ class N3dsSession(
     companion object {
         private const val TAG = "pokedaisy/n3ds"
         /** The camera's ease: this much of the factor a frame (about a quarter second from 1x to the farthest step). */
-        private const val CAMERA_EASE = 0.05f
         private const val CAMERA_FRAME_MS = 16L
+        private const val CAMERA_RESOLVE_NS = 500_000_000L
+        /** The setup's fields written ([Gen6Reader.CAMERA_SETUP]): pitch and yaw in degrees, the distance; read as one
+         * block of [CAM_BLOCK] bytes from the setup's start. */
+        private val CAM_FIELDS = intArrayOf(0x4, 0x8, Gen6Reader.CAMERA_DISTANCE)
+        private const val CAM_PITCH = 0
+        private const val CAM_YAW = 1
+        private const val CAM_DISTANCE = 2
+        private const val CAM_BLOCK = 0x20
+        /** ZOOM's factor eases this much a second. */
+        private const val CAMERA_ZOOM_RATE = 3f
+        /** The right stick, fully pushed: degrees a second; how far it turns / tilts from the game's angle; and the tilt's
+         * bounds (degrees, negative = looking down). */
+        private const val CAMERA_YAW_SPEED = 90f
+        private const val CAMERA_PITCH_SPEED = 45f
+        private const val CAMERA_YAW_MAX = 40f
+        private const val CAMERA_PITCH_UP = 8f
+        private const val CAMERA_PITCH_DOWN = 15f
+        private const val CAMERA_PITCH_LOWEST = -75f
+        private const val CAMERA_PITCH_HIGHEST = -12f
+        /** A turned camera's way back once the player walks: this share of what's left a second. */
+        private const val CAMERA_GLIDE = 4f
         /** The 3D picture at 3x the 3DS's (the Thor / RP6 show the top screen at about 4x); a setting later. */
         private const val RESOLUTION = 3
         /** Azahar's Default layout: only used if the touch screen's surface were missing at boot (it never is here). */
