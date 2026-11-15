@@ -25,6 +25,12 @@ object FeatureFlags {
     fun coop(context: Context): Boolean = BuildConfig.FEATURE_COOP || marker(context, "coop")
 
     /**
+     * 3DS games (Azahar, the n3ds module): built in only with `-Ppokedaisy.n3ds=true` / local.properties, since the
+     * library itself is left out of other builds, so there's no marker file for it. Android 10+ only (Azahar's floor).
+     */
+    fun n3ds(): Boolean = BuildConfig.FEATURE_N3DS && android.os.Build.VERSION.SDK_INT >= 29
+
+    /**
      * Blocked games ([com.pokedaisy.app.companion.data.BlockedGames]) play with every feature, only tagged BLOCKED in the
      * library: always in a debug build, else with `-Ppokedaisy.allowBlocked=true` or the marker `allow-blocked`. Off in a
      * release, where they play as plain games. Read into [com.pokedaisy.app.companion.data.BlockedGames.enforced] when the

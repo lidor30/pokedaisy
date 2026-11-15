@@ -905,6 +905,21 @@ class SettingsActivity : ComponentActivity() {
                 DarkMode.set(this@SettingsActivity, DarkMode.setting.next())
                 revision++
             },
+            // The app's text: the pixel font or a smooth one, both screens at once.
+            SettingRow(
+                tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFonts.current.label, subtitle = "Pixel letters or smooth ones",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.APP_FONT),
+            ) {
+                selector = Selector(
+                    tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFont.entries.map { it.label },
+                    com.pokedaisy.app.companion.ui.theme.AppFonts.current.label,
+                ) { l ->
+                    com.pokedaisy.app.companion.ui.theme.AppFont.entries.firstOrNull { it.label == l }?.let {
+                        com.pokedaisy.app.companion.ui.theme.AppFonts.set(this@SettingsActivity, it)
+                        revision++
+                    }
+                }
+            },
             // The game's frames per second and the app's CPU share, in the game's corner.
             SettingRow(tk("FPS / CPU"), onOff(prefs.showPerformance), subtitle = "Speed and CPU use in the game's corner") {
                 prefs.showPerformance = !prefs.showPerformance

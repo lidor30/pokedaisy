@@ -1372,7 +1372,7 @@ private fun HudMapPanel(snapshot: SnapshotView, m: GbaTextMetrics, fly: FlyActio
 
 /** A party member's summary (the PARTY tab's), over the game; up / down step through the party. */
 @Composable
-private fun HudSummaryPanel(
+internal fun HudSummaryPanel(
     snapshot: SnapshotView, index: Int, onIndex: (Int) -> Unit, m: GbaTextMetrics, itemUse: ItemUse?, onClose: () -> Unit,
 ) {
     val u = m.u

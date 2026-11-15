@@ -81,7 +81,7 @@ Held sideways, `DS LAYOUT` (in the `SCREEN` group of Settings and of the compani
 
 To switch layouts while you play, press R2 (the `DS LAYOUT` hotkey, see [Hotkeys](controls.md#hotkeys)): each press steps to the next one. Wherever the screens leave room, the game itself fills it, blurred, never black bars, also where `EXPAND` has nothing to draw past the game (the title, a menu screen). Tap the touch screen with your finger in any layout.
 
-To bring up the touch screen yourself in `ONE SCREEN` or `PICTURE IN PICTURE`, tap `TOUCH` on the [HUD](hud.md), or press L2 (the `TOUCH SCREEN` hotkey, T on a keyboard). Close it with its X, the same button again, or `BACK`. Taps beside the window still reach your touch controls.
+To bring up the touch screen yourself in `ONE SCREEN` or `PICTURE IN PICTURE`, tap `TOUCH` on the [HUD](hud.md), pick `TOUCH SCREEN` in the [quick menu](controls.md#the-quick-menu), or press L2 (the `TOUCH SCREEN` hotkey, T on a keyboard). Close it with its X, the same button again, or `BACK`. Taps beside the window still reach your touch controls.
 
 HeartGold and SoulSilver (the USA releases), Platinum, Black, White, Black 2 and White 2 are the games PokeDaisy follows this closely so far, each its own way:
 

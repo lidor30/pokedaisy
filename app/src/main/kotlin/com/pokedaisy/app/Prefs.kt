@@ -201,6 +201,21 @@ class Prefs(context: Context) {
         get() = p.getBoolean("reusable_tms", false)
         set(v) = p.edit().putBoolean("reusable_tms", v).apply()
 
+    /** EXP SHARE: OFF / SPLIT / FULL, by [com.pokedaisy.app.companion.data.ExpShare.Mode.id]. */
+    var expShare: Int
+        get() = p.getInt("exp_share", 0)
+        set(v) = p.edit().putInt("exp_share", v).apply()
+
+    /** LEVEL CAP: no Pokémon goes past the next boss's top level (LevelCap.kt). */
+    var levelCap: Boolean
+        get() = p.getBoolean("level_cap", false)
+        set(v) = p.edit().putBoolean("level_cap", v).apply()
+
+    /** NO HMS NEEDED: the field moves work without a Pokémon that knows them, once the badge is in (HmFree.kt). */
+    var hmFree: Boolean
+        get() = p.getBoolean("hm_free", false)
+        set(v) = p.edit().putBoolean("hm_free", v).apply()
+
     /** INSTANT TEXT: a text box's words appear at once (InstantText.kt). */
     var instantText: Boolean
         get() = p.getBoolean("instant_text", false)
@@ -242,6 +257,11 @@ class Prefs(context: Context) {
     fun setSpeedIndexFor(romKey: String, index: Int) = p.edit().putInt("speed_$romKey", index).apply()
 
     /** The ZOOM step the player last picked on this ROM (WideCamera.level: 0 = 1x), put back when it's played again. */
+    /** SETTINGS > FONT: the app's text font by AppFont ordinal (0 PIXEL, the default; companion/ui/theme/AppFont.kt). */
+    var appFont: Int
+        get() = p.getInt("app_font", 0)
+        set(v) = p.edit().putInt("app_font", v).apply()
+
     fun zoomLevelFor(romKey: String): Int = p.getInt("zoom_$romKey", 0)
     fun setZoomLevelFor(romKey: String, level: Int) = p.edit().putInt("zoom_$romKey", level).apply()
 
