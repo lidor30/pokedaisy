@@ -388,5 +388,7 @@
   "PortMaster handhelds (ROCKNIX, Knulli, muOS)": "Consoles avec PortMaster (ROCKNIX, Knulli, muOS)",
   "TrimUI Brick on NXRedux": "TrimUI Brick sous NXRedux",
   "Cores for RetroArch, on a PC": "Cœurs pour RetroArch, sur PC",
-  "Cores for RetroArch, on an ARM handheld": "Cœurs pour RetroArch, sur console ARM"
+  "Cores for RetroArch, on an ARM handheld": "Cœurs pour RetroArch, sur console ARM",
+  "AREA MAP": "CARTE ZONE",
+  "A cave or building's map, with its floors.": "La carte d'une grotte ou d'un bâtiment, avec ses étages."
 }
