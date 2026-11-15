@@ -1561,8 +1561,9 @@ class EmulatorEngine(
                         if (n > 0) Log.i("pokedaisy", "shiny odds: foe made shiny (1 in $shinyOdds)")
                     }.onFailure { Log.w("pokedaisy", "shiny odds failed", it) }
                 }
-                // EXP SHARE: every party Pokémon that isn't an egg counts as having fought (only getexp reads it).
-                if (gba && expShareMode != com.pokedaisy.app.companion.data.ExpShare.Mode.OFF && expShareMask != 0) expShareFound?.let { f ->
+                // EXP SHARE: every party Pokémon that isn't an egg counts as having fought (only getexp reads it). A Game Boy
+                // game's flags only in a battle (ExpShare.mark).
+                if ((gba || expShareFound?.gb == true) && expShareMode != com.pokedaisy.app.companion.data.ExpShare.Mode.OFF && expShareMask != 0) expShareFound?.let { f ->
                     runCatching { com.pokedaisy.app.companion.data.ExpShare.mark(f, expShareMask, InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes) }
                 }
                 if (fieldState and MgbaCore.FIELD_AVATAR != 0) fieldMovesKnown = true
@@ -2048,6 +2049,12 @@ class EmulatorEngine(
     private fun applyTmPatch() {
         tmPatchDirty = false
         MgbaCore.pkRomUnpatch()
+        // A Game Boy cart: EXP SHARE's FULL (its division's `ret`, ExpShare.gbFind).
+        expShareFound?.takeIf { it.gb && expShareMode == com.pokedaisy.app.companion.data.ExpShare.Mode.FULL }?.let { f ->
+            val ok = f.full.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
+            if (!ok) MgbaCore.pkRomUnpatch()
+            Log.i("pokedaisy", "exp share full (Game Boy): ${if (ok) "patched" else "code didn't match"}")
+        }
         if (!gba) return
         // All or none, each: a ROM that only matched in part would still use TMs up on the other paths, and half a
         // routine can't run. pkRomUnpatch takes everything, so one that fails puts the ones before it back.

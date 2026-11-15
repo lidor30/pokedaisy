@@ -275,7 +275,7 @@ Eggs are left out. The game shows each Pokémon's EXP as it comes, level ups and
 
 While it's on, [achievements](achievements.md) are paused, since some sets reward reaching a level.
 
-It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work (Ruby and Sapphire, and hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
+It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code, and in the Game Boy games: Red, Blue, Yellow, Gold, Silver and Crystal. On the Game Boy a Pokémon that has fainted gets no share and takes none from the others, and the game rounds each share down its own way, so two Pokémon splitting 15 EXP get 7 each. Where it can't work (Ruby and Sapphire, the Game Boy hacks, and hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
 
 ## LEVEL CAP
 

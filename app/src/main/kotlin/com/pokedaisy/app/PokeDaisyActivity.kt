@@ -2853,6 +2853,13 @@ class PokeDaisyActivity : Activity() {
             gen1Music != null -> Gen1MusicRenderer(r, gen1Music!!, ffMusicCache).also { it.start() }
             else -> null
         }
+        // EXP SHARE on the Game Boy: the retail carts' division and flags, by their code (ExpShare.gbFind; none = N/A).
+        if (gbRom != null && romBlocked == null) {
+            val sha1 = java.security.MessageDigest.getInstance("SHA-1").digest(gbRom).joinToString("") { b -> "%02x".format(b) }
+            expShareFound = runCatching { com.pokedaisy.app.companion.data.ExpShare.gbFind(gbRom, sha1) }.getOrNull()
+            Log.i("pokedaisy", "exp share: ${if (expShareFound != null) "found (Game Boy)" else "not found"}")
+            syncExpShare()
+        }
         // A FireRed-engine hack's own region map (Unbound, Odyssey, ...), read
         // from the ROM on every launch - a few KB of reads (see RomRegionMap).
         if (gba) RomRegionMap.load(filesDir.toOkioPath(), crc, r.toOkioPath()) else RomRegionMap.current = null   // not the last GBA game's
@@ -2960,7 +2967,7 @@ class PokeDaisyActivity : Activity() {
                     }
                 }
                 // EXP SHARE: the party slots that aren't eggs, for getexp's bits (ExpShare.mark, every frame).
-                if (snap.connected && snap.party.isNotEmpty()) engine.expShareMask = com.pokedaisy.app.companion.data.ExpShare.maskOf(snap.party)
+                if (snap.connected && snap.party.isNotEmpty()) engine.expShareMask = com.pokedaisy.app.companion.data.ExpShare.maskOf(snap.party, gb = expShareFound?.gb == true)
                 // LEVEL CAP: the next boss's top level, from the save's flags.
                 updateLevelCap(snap)
                 // SMART FF reads the game's own gMain once the game is known (no scan

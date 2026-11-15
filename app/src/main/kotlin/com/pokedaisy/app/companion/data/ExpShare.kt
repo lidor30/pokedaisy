@@ -23,6 +23,9 @@ import okio.Path
  * Ruby / Sapphire build it another way, and hacks that rewrote it (Odyssey, Gaia) or run their own (CFRU's: Radical Red,
  * Unbound, Amethyst, ... - [getexp]) show N/A. Played headless on
  * FireRed rev 1 (a wild battle won three ways, every Pokémon's EXP read before and after).
+ *
+ * The Game Boy games ([gbFind]): their own flags and division, the same idea; played headless on English Red, Blue, Yellow,
+ * Gold, Silver and Crystal the same way (docs/ROM_FEATURES.md's exp share note).
  */
 object ExpShare {
     enum class Mode(val id: Int, val label: String) {
@@ -35,8 +38,12 @@ object ExpShare {
         }
     }
 
-    /** gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. */
-    class Found(val sentPokes: Long, val full: List<InstantText.Write>)
+    /**
+     * gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. A Game Boy game's ([gb]): [sentPokes] is its one byte of
+     * who-gains-EXP flags, [battle] the byte that says a battle is on (written only then: those flags share WRAM with
+     * other screens'), FULL's patch a `ret` at its division's start (file offsets).
+     */
+    class Found(val sentPokes: Long, val full: List<InstantText.Write>, val gb: Boolean = false, val battle: Long = 0)
 
     private const val ROM_BASE = 0x08000000L
     private const val ANY = -1
@@ -119,18 +126,84 @@ object ExpShare {
 
     /**
      * SPLIT / FULL's every frame: both flanks' bits set to [mask] (the party's slots that aren't eggs) if they aren't already.
-     * Emu thread.
+     * A Game Boy game's one byte, only while its battle byte says a wild (1) or trainer (2) battle is on. Emu thread.
      */
     fun mark(f: Found, mask: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean) {
+        if (f.gb) {
+            val battle = read(f.battle, 1).firstOrNull()?.toInt()?.and(0xFF) ?: return
+            if (battle != 1 && battle != 2) return
+            val flags = read(f.sentPokes, 1)
+            if (flags.size == 1 && flags[0] == mask.toByte()) return
+            write(f.sentPokes, byteArrayOf(mask.toByte()))
+            return
+        }
         val now = read(f.sentPokes, 2)
         val m = mask.toByte()
         if (now.size == 2 && now[0] == m && now[1] == m) return
         write(f.sentPokes, byteArrayOf(m, m))
     }
 
-    /** The party slots that aren't eggs, as getexp's bits. */
-    fun maskOf(party: List<MonView>): Int =
-        party.take(6).withIndex().filter { !it.value.isEgg && it.value.species > 0 }.fold(0) { m, (i, _) -> m or (1 shl i) }
+    /** The party slots that aren't eggs, as getexp's bits; for a Game Boy game ([gb]) only the ones that can still fight:
+     * Gen 1 / 2 divide by every set bit but pay only the ones standing, so a fainted one would take a share nobody gets. */
+    fun maskOf(party: List<MonView>, gb: Boolean = false): Int =
+        party.take(6).withIndex().filter { !it.value.isEgg && it.value.species > 0 && (!gb || it.value.hp > 0) }
+            .fold(0) { m, (i, _) -> m or (1 shl i) }
+
+    /**
+     * The Game Boy games (Red, Blue, Yellow, Gold, Silver, Crystal: the retail carts, by [sha1]). pret's pokered / pokeyellow
+     * GainExperience pays every party Pokémon whose bit is set in wPartyGainExpFlags (one set as each is sent out, cleared
+     * for a new foe), after DivideExpDataByNumMonsGainingExp divides the foe's base EXP (and the stat EXP) by how many bits
+     * are set; pokegold / pokecrystal's GiveExperiencePoints does the same with wBattleParticipantsNotFainted and
+     * .EvenlyDivideExpAmongParticipants (Gen 1's own EXP. ALL sets every bit the same way). So SPLIT sets the bits of the
+     * Pokémon that can still fight ([mark], in a battle only), and FULL makes the division return at once: its first
+     * instruction, `ld a, [flags]`, becomes `ret` (the flags' address read from that same instruction). Gen 2's held Exp.
+     * Share keeps its own half. Found by the routine's code ([GB_DIVIDE1] / [GB_DIVIDE2]: once in the cart), checked against
+     * the cart's RAM: Gen 1's flags sit right after wIsInBattle, Gen 2's in WRAM bank 0.
+     */
+    fun gbFind(rom: ByteArray, sha1: String): Found? {
+        val gen1 = when (sha1) {
+            TelemetrySampler.RED_SHA1 -> GEN1_RED
+            TelemetrySampler.BLUE_SHA1 -> GEN1_BLUE
+            TelemetrySampler.RED_DE_SHA1 -> GEN1_RED_DE
+            TelemetrySampler.BLUE_DE_SHA1 -> GEN1_BLUE_DE
+            else -> TelemetrySampler.gen1ConfigFor(sha1)
+        }
+        val gen2 = when (sha1) {
+            in TelemetrySampler.CRYSTAL_SHA1S -> GEN2_CRYSTAL
+            TelemetrySampler.CRYSTAL_DE_SHA1 -> GEN2_CRYSTAL_DE
+            TelemetrySampler.GOLD_SHA1 -> GEN2_GOLD
+            TelemetrySampler.SILVER_SHA1 -> GEN2_SILVER
+            TelemetrySampler.GOLD_DE_SHA1 -> GEN2_GOLD_DE
+            TelemetrySampler.SILVER_DE_SHA1 -> GEN2_SILVER_DE
+            else -> null
+        }
+        val sig = when {
+            gen1 != null -> GB_DIVIDE1
+            gen2 != null -> GB_DIVIDE2
+            else -> return null
+        }
+        val at = (0..rom.size - sig.size).filter { o -> rom[o] == 0xFA.toByte() && matches(rom, o, sig) }.singleOrNull() ?: return null
+        val flags = ((rom[at + 1].toInt() and 0xFF) or ((rom[at + 2].toInt() and 0xFF) shl 8)).toLong()
+        val battle = when {
+            gen1 != null -> gen1.isInBattle.takeIf { flags == it + 1 } ?: return null
+            flags in 0xC000L..0xCFFFL -> gen2!!.battleMode
+            else -> return null
+        }
+        return Found(flags, listOf(InstantText.Write(at.toLong(), rom.copyOfRange(at, at + 3), GB_RET)), gb = true, battle = battle)
+    }
+
+    /** DivideExpDataByNumMonsGainingExp's start (Gen 1): ld a, [wPartyGainExpFlags]; count its bits of 8; cp 2; ret c. */
+    private val GB_DIVIDE1 = sig("fa????47af0e081600afcb388a570d20f8fe02d8")
+    /** .EvenlyDivideExpAmongParticipants' (Gen 2): ld a, [wBattleParticipantsNotFainted]; count its bits of 6; cp 2; ret c. */
+    private val GB_DIVIDE2 = sig("fa????470e061600afcb388a570d20f8fe02d8")
+    /** `ret; nop; nop` over the `ld a, [flags]`. */
+    private val GB_RET = byteArrayOf(0xC9.toByte(), 0, 0)
+
+    private fun matches(rom: ByteArray, at: Int, s: IntArray): Boolean {
+        if (at < 0 || at + s.size > rom.size) return false
+        for (i in s.indices) if (s[i] != ANY && (rom[at + i].toInt() and 0xFF) != s[i]) return false
+        return true
+    }
 
     private fun matches(rom: LittleEndianReader, at: Int, s: IntArray): Boolean {
         if (at < 0 || at + s.size > rom.limit()) return false
