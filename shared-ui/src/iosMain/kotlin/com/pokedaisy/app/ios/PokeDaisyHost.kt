@@ -159,7 +159,8 @@ object PokeDaisyHost {
         val source = fromPath.toPath()
         val size = fs.metadataOrNull(source)?.size ?: return "Can't read that file"
         if (size !in 1L..MAX_SAVE_BYTES.toLong()) return "That isn't a game save"
-        val bytes = runCatching { fs.read(source) { readByteArray() } }.getOrNull() ?: return "Can't read that file"
+        val bytes = runCatching { com.pokedaisy.app.GameSaves.readPicked(fs.source(source)) }
+            .getOrNull() ?: return "Can't read that file"
         return loadSave(romPath, bytes)
     }
 

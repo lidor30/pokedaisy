@@ -10,6 +10,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import com.pokedaisy.app.companion.SaveImportFlow
+import com.pokedaisy.app.GameSaves
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import com.pokedaisy.app.companion.SetupFlow
 import com.pokedaisy.app.companion.LibraryPreferences
 import com.pokedaisy.app.companion.LibrarySort
@@ -43,8 +48,7 @@ internal class IosLibraryHost(
         if (!iosPreferences.setupDone && paths.isEmpty()) newSetup() else null)
     private var choosingSaveGame by mutableStateOf(false)
     private var notice by mutableStateOf<Pair<String, String>?>(failed?.let { tr("ERROR") to it.substringAfterLast('/') })
-    private data class PendingSave(val rom: String, val name: String, val bytes: ByteArray)
-    private var pendingSave by mutableStateOf<PendingSave?>(null)
+    private val saveImports = SaveImportFlow<String>(GameSaves.MAX_BYTES)
     private var screen by mutableStateOf(DpSize.Zero)
     private var scale by mutableStateOf(1f)
     private lateinit var host: UIViewController
@@ -58,6 +62,7 @@ internal class IosLibraryHost(
             onEditTouch = { touch.editStandalone(settingsStage()) }, readTouchStage = ::settingsStage)
         L10n.apply(appSettings.appLanguage, null)
         host = ComposeUIViewController(configure = { configureUiAutomation() }) {
+            DisposableEffect(Unit) { onDispose { saveImports.close(); setup?.close() } }
             AppTheme { CompactTextOnSmallWindows {
                 CompositionLocalProvider(LocalCompanionBack provides back) {
                     val density = androidx.compose.ui.platform.LocalDensity.current.density
@@ -149,7 +154,9 @@ internal class IosLibraryHost(
                     if (game.favorite) Icons.Filled.StarBorder else Icons.Filled.Star,
                     pixel = if (game.favorite) PixelIcons.starOutline else PixelIcons.star) { prefs.toggleFavorite(key(game.id)) },
                 LibraryMenuItem("LOAD SAVE", Icons.Filled.FileOpen, opens = true) { pickSave(game.id) })
-            val onPlay = { prefs.recordPlay(key(game.id)); play(game.id) }
+            val onPlay = {
+                if (saveImports.importing == null) { prefs.recordPlay(key(game.id)); play(game.id) }
+            }
             if (prefs.grid) LibraryRomTile(game, m, small, upTo = up, onClick = onPlay,
                 onLongClick = openMenu, cover = cover, menu = { LibraryGameMenu(menu, { menu = false }, items, m, screen) })
             else LibraryRomRow(game, m, small, upTo = up, onClick = onPlay,
@@ -186,18 +193,24 @@ internal class IosLibraryHost(
         LibraryNavigationDialogs(library, m, rememberGbaTextMetrics(1f))
         if (choosingSaveGame && paths.isNotEmpty()) OptionSelector(tr("LOAD SAVE"), paths, paths.first(), ::label, m,
             onPick = { choosingSaveGame = false; pickSave(it) }, onDismiss = { choosingSaveGame = false })
-        pendingSave?.let { picked ->
-            val base = label(picked.rom)
+        LaunchedEffect(saveImports.importing) {
+            val picked = saveImports.importing ?: return@LaunchedEffect
+            val result = withContext(NonCancellable + Dispatchers.Default) {
+                runCatching { PokeDaisyHost.loadSave(picked.target, picked.bytes) }
+                    .getOrElse { tr("Can't write the save") }
+            }
+            if (saveImports.finished(picked)) {
+                notice = tr("LOAD SAVE") to (result ?: tr("Save loaded"))
+                paths = PokeDaisyHost.games()
+            }
+        }
+        saveImports.pending?.let { picked ->
+            val base = label(picked.target)
             val backup = "saves/$base.backup-*.sav"
             OptionConfirm(tr("LOAD SAVE?"),
-                tr("{0}: replace its save with {1}? The current save is kept, renamed to {2}.", base, picked.name, backup) +
+                tr("{0}: replace its save with {1}? The current save is kept, renamed to {2}.", base, picked.fileName, backup) +
                     "\n" + tr("The game starts from this save next time, not from where you left off."), tr("LOAD"), m,
-                onConfirm = {
-                    val result = PokeDaisyHost.loadSave(picked.rom, picked.bytes)
-                    pendingSave = null
-                    notice = tr("LOAD SAVE") to (result ?: tr("Save loaded"))
-                    paths = PokeDaisyHost.games()
-                }, onDismiss = { pendingSave = null })
+                onConfirm = { saveImports.confirm(picked) }, onDismiss = { saveImports.dismiss(picked) })
         }
         notice?.let { (title, message) ->
             OptionConfirm(title, message, tr("OK"), m, onConfirm = { notice = null }, onDismiss = { notice = null }, cancelLabel = null)
@@ -218,15 +231,13 @@ internal class IosLibraryHost(
     }
 
     private fun pickSave(rom: String) {
+        val pick = saveImports.begin(rom) ?: return
         RomPicker.pickSave(host) { picked ->
-            if (picked != null) {
-                val bytes = runCatching {
-                    val path = picked.toPath()
-                    require(path.length in 1L..(1L shl 20))
-                    path.readBytes()
-                }.getOrNull()
-                if (bytes == null) notice = tr("LOAD SAVE") to tr("This doesn't look like a GBA save file.")
-                else pendingSave = PendingSave(rom, picked.substringAfterLast('/'), bytes)
+            if (picked == null) saveImports.cancel(pick)
+            else {
+                val bytes = runCatching { GameSaves.readPicked(FileSystem.SYSTEM.source(picked.toPath())) }.getOrNull()
+                if (saveImports.ready(pick, bytes, picked.substringAfterLast('/')) != null)
+                    notice = tr("LOAD SAVE") to tr("This doesn't look like a GBA save file.")
             }
         }
     }

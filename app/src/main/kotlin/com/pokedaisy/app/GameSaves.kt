@@ -18,6 +18,15 @@ object GameSaves {
      * SaveBackups skipped every DS save. */
     const val MAX_BYTES = 1024 * 1024
 
+    /** Close the native source after reading at most one byte beyond the import limit.
+     * The extra byte lets the confirmation flow reject oversized input without retaining the whole file.
+     */
+    fun readPicked(source: Source): ByteArray = source.buffer().use {
+        val limit = MAX_BYTES + 1L
+        it.request(limit)
+        it.buffer.readByteArray(minOf(it.buffer.size, limit))
+    }
+
     /** What a save of [size] bytes is, by the GBA's save chips. */
     fun kind(size: Long): String? = when (size) {
         512L, 528L -> "EEPROM 4K"

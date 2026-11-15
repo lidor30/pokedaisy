@@ -2,6 +2,8 @@ package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.ui.LibraryMenuItem as RomMenuItem
 
+import com.pokedaisy.app.companion.SaveImportFlow
+import okio.source
 import com.pokedaisy.app.companion.data.LibraryView
 import com.pokedaisy.app.companion.data.RomCategory
 import com.pokedaisy.app.companion.ui.produceKeyedState
@@ -212,17 +214,18 @@ class LibraryActivity : ComponentActivity() {
         uri?.let { spritePack.start(it) }
     }
 
-    /** LOAD SAVE: the save file picked for a game, waiting on its confirm (internal for ui-preview). */
-    internal class PendingSaveLoad(val rom: File, val bytes: ByteArray, val fileName: String)
-    internal var saveLoad by mutableStateOf<PendingSaveLoad?>(null)
-    private var saveTarget: File? = null
+    /** Picker/read/confirmation ownership is shared; URI reads and the save transaction stay native effects. */
+    internal val saveImports = SaveImportFlow<File>(GameSaves.MAX_BYTES)
+    private var savePick: SaveImportFlow.Request<File>? = null
     /** RESTORE BACKUP: [rom]'s save backups to pick one from, newest first. */
     internal class BackupPick(val rom: File, val files: List<File>)
     internal var backupPick by mutableStateOf<BackupPick?>(null)
     private val pickSaveFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        val rom = saveTarget
-        saveTarget = null
-        if (uri != null && rom != null) readPickedSave(rom, uri)
+        val pick = savePick
+        savePick = null
+        if (pick != null) {
+            if (uri == null) saveImports.cancel(pick) else readPickedSave(pick, uri)
+        }
     }
 
     /** The GitHub update check / offer (internal for the ui-preview harness). */
@@ -401,6 +404,7 @@ class LibraryActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        saveImports.close()
         setup?.let { it.flow.close(); it.capture.cancel() }
         super.onDestroy()
     }
@@ -799,9 +803,9 @@ class LibraryActivity : ComponentActivity() {
                 )
             }
 
-            saveLoad?.let { p ->
-                val name = romLabel(p.rom)
-                val current = remember(p) { SavesLocation.saveFor(this@LibraryActivity, prefs, p.rom) }
+            saveImports.pending?.let { p ->
+                val name = romLabel(p.target)
+                val current = remember(p) { SavesLocation.saveFor(this@LibraryActivity, prefs, p.target) }
                 val size = p.bytes.size.toLong()
                 val what = "${p.fileName} (${GameInfo.sizeLabel(size)}${GameSaves.kind(size)?.let { " · $it" } ?: ""})"
                 OptionConfirm(
@@ -817,8 +821,8 @@ class LibraryActivity : ComponentActivity() {
                         (if (GameSaves.kind(size) == null) " " + tr("This doesn't look like a GBA save file.") else ""),
                     confirmLabel = tr("LOAD"),
                     m = m,
-                    onDismiss = { saveLoad = null },
-                    onConfirm = { saveLoad = null; loadSave(p) },
+                    onDismiss = { saveImports.dismiss(p) },
+                    onConfirm = { saveImports.confirm(p)?.let(::loadSave) },
                 )
             }
 
@@ -1016,7 +1020,9 @@ class LibraryActivity : ComponentActivity() {
                     startActivity(Intent(this@LibraryActivity, LinkActivity::class.java).putExtra(LinkActivity.EXTRA_ROM, rom.absolutePath))
                 })
             }
-            add(RomMenuItem(tr("LOAD SAVE"), Icons.Filled.FileOpen, opens = true) { saveTarget = rom; pickSaveFile.launch(arrayOf("*/*")) })
+            add(RomMenuItem(tr("LOAD SAVE"), Icons.Filled.FileOpen, opens = true) {
+                saveImports.begin(rom)?.let { pick -> savePick = pick; pickSaveFile.launch(arrayOf("*/*")) }
+            })
             add(RomMenuItem(tr("RESTORE BACKUP"), Icons.Filled.History, opens = true) { showBackups(rom) })
             // The save's party and PC boxes, read (and edited) from the file; Game Boy and DS saves aren't Gen 3's.
             if (rom.extension.lowercase() !in setOf("gb", "gbc", "nds")) {
@@ -1192,7 +1198,7 @@ class LibraryActivity : ComponentActivity() {
     internal var preparing by mutableStateOf<File?>(null)
 
     private fun play(rom: File) {
-        if (preparing != null) return
+        if (preparing != null || saveImports.importing != null) return
         // A 3DS cart is never read whole before it starts (no CRC: it's gigabytes); the game screen plays it.
         if (FeatureFlags.n3ds() && rom.extension.lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS) {
             launch(rom)
@@ -1311,30 +1317,24 @@ class LibraryActivity : ComponentActivity() {
         }, "pokedaisy-game-info").apply { isDaemon = true; start() }
     }
 
-    /** Reads the picked save (anything over [GameSaves.MAX_BYTES] isn't one) for its confirm. */
-    private fun readPickedSave(rom: File, uri: Uri) {
+    /** Native URI access feeds the common bounded reader and request ownership. */
+    private fun readPickedSave(pick: SaveImportFlow.Request<File>, uri: Uri) {
         Thread({
             val bytes = runCatching {
-                contentResolver.openInputStream(uri)?.use { input ->
-                    val out = java.io.ByteArrayOutputStream()
-                    val buf = ByteArray(1 shl 14)
-                    while (out.size() <= GameSaves.MAX_BYTES) {
-                        val n = input.read(buf)
-                        if (n < 0) break
-                        out.write(buf, 0, n)
-                    }
-                    out.toByteArray()
-                }
+                contentResolver.openInputStream(uri)?.let { GameSaves.readPicked(it.source()) }
             }.getOrNull()
             val name = RomUris.displayName(this, uri) ?: tr("the picked file")
-            runOnUiThread {
-                when {
-                    bytes == null || bytes.isEmpty() -> Toast.makeText(this, tr("Couldn't read {0}", name), Toast.LENGTH_LONG).show()
-                    bytes.size > GameSaves.MAX_BYTES -> Toast.makeText(this, tr("{0} is too big to be a GBA save", name), Toast.LENGTH_LONG).show()
-                    else -> saveLoad = PendingSaveLoad(rom, bytes, name)
-                }
-            }
+            runOnUiThread { reportSaveRead(saveImports.ready(pick, bytes, name)) }
         }, "pokedaisy-read-save").apply { isDaemon = true; start() }
+    }
+
+    private fun reportSaveRead(problem: SaveImportFlow.Problem?) {
+        if (problem == null) return
+        val message = when (problem.failure) {
+            SaveImportFlow.Failure.UNREADABLE -> tr("Couldn't read {0}", problem.fileName)
+            SaveImportFlow.Failure.TOO_LARGE -> tr("{0} is too big to be a GBA save", problem.fileName)
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
     /** Every backup of [rom]'s save: the ones each start takes ([SaveBackups]) and LOAD SAVE's. */
@@ -1363,25 +1363,26 @@ class LibraryActivity : ComponentActivity() {
 
     /** A backup goes through LOAD SAVE's own confirm, so the current save is kept too. */
     private fun readBackup(rom: File, f: File) {
+        val pick = saveImports.begin(rom) ?: return
         Thread({
-            val bytes = runCatching { f.readBytes() }.getOrNull()
-            runOnUiThread {
-                if (bytes == null || bytes.isEmpty()) Toast.makeText(this, tr("Couldn't read {0}", f.name), Toast.LENGTH_LONG).show()
-                else saveLoad = PendingSaveLoad(rom, bytes, f.name)
-            }
+            val bytes = runCatching { GameSaves.readPicked(f.source()) }.getOrNull()
+            runOnUiThread { reportSaveRead(saveImports.ready(pick, bytes, f.name)) }
         }, "pokedaisy-read-backup").apply { isDaemon = true; start() }
     }
 
-    private fun loadSave(p: PendingSaveLoad) {
+    private fun loadSave(p: SaveImportFlow.Pending<File>) {
         Thread({
-            val result = GameSaves.load(this, prefs, p.rom, p.bytes)
+            val result = runCatching { GameSaves.load(this, prefs, p.target, p.bytes) }
+                .getOrElse { GameSaves.Result.Failed(tr("Can't write the save")) }
             runOnUiThread {
-                val msg = when (result) {
-                    is GameSaves.Result.Loaded -> result.backup?.let { tr("Save loaded - the old one is {0}", it.name) } ?: tr("Save loaded")
-                    is GameSaves.Result.Failed -> result.reason
+                if (saveImports.finished(p)) {
+                    val msg = when (result) {
+                        is GameSaves.Result.Loaded -> result.backup?.let { tr("Save loaded - the old one is {0}", it.name) } ?: tr("Save loaded")
+                        is GameSaves.Result.Failed -> result.reason
+                    }
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                    bump()
                 }
-                Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
-                bump()
             }
         }, "pokedaisy-load-save").apply { isDaemon = true; start() }
     }
@@ -1550,7 +1551,7 @@ class LibraryActivity : ComponentActivity() {
     /** Every window over the main screen (pass keys to them, not the launcher). */
     private val libraryDialogOpen
         get() = searching || pickingSort || addMenu || renaming != null || deleting != null || gameInfo != null || coverPickerFor != null ||
-            pendingImport != null || patcher.step != null || spritePack.step != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
+            pendingImport != null || patcher.step != null || spritePack.step != null || saveImports.pending != null || saveImports.importing != null || backupPick != null || updates.release != null || crashAsk ||
             (expandIntro && !crashAsk) || battleStyleIntroShown || ssIntroShown || whatsNewShown || supportShown || seasonalShown
 
     /** BACK for the library's windows (OptionOverlay & co.): the newest open one closes. */

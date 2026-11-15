@@ -49,5 +49,6 @@ Keep each PR independently reviewable with a chained base and register the serie
 
 E1 is replayed onto the cleaned canonical fork chain after the final shared hosts. E2 shares progression on both
 hosts through `SetupFlow`, with platform-specific steps and entry/exit effects. E3 shares quick-view projection on
-Android's library/launcher and iOS through `LibraryProjection`. Continue E4 as a separate layer on that chain,
-retaining one implementation to mirror upstream. Historical migration refs are preserved.
+Android's library/launcher and iOS through `LibraryProjection`. E4 shares bounded reads and picker/read/confirmation
+ownership through `SaveImportFlow`, retaining the existing `GameSaves` transaction and native picker/backup
+capabilities. Each capability remains a separate layer for upstream mirroring. Historical migration refs are preserved.

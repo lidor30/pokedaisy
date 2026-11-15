@@ -4424,6 +4424,12 @@ It shares counts, overlapping console/HACKS membership and fallback to ALL when 
 cached platform/category metadata and apply their hidden/unsupported/search filters before projection. Its
 optional availability list preserves iOS's console pills while searching; Android retains pills for matching games.
 
-The library/setup follow-up plan is in `docs/specs/shared-library-setup-coordination.md`. Save-picker coordination
-follows as a separate layer on the cleaned canonical chain. Android permissions, picker effects and launcher
-media remain native adapters.
+`SaveImportFlow` owns picker/read identity, bounded confirmation bytes and one accepted import at a time. Both
+hosts discard stale picker/read/dialog callbacks, retire the flow with the library host, and gate game launch
+while a confirmed transaction runs. `GameSaves.readPicked` closes native sources after a bounded read; Android URI
+and backup reads and iOS Files imports reuse it. `GameSaves.load` remains the shared backup/fresh-boot/rollback
+transaction. Android keeps its background thread and backup browser; iOS executes confirmed writes off the UI
+thread and lets an accepted transaction finish if its Compose host is disposed, without publishing a stale result.
+
+The library/setup follow-up plan is in `docs/specs/shared-library-setup-coordination.md`. Android permissions,
+picker effects and launcher media remain native adapters.

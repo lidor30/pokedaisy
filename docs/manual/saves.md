@@ -96,6 +96,8 @@ To use a save from somewhere else (an old save from another emulator, a friend's
 
 If the file doesn't look like a GBA save, the confirmation says so.
 
+An unreadable or oversized file is rejected before confirmation. Wait for the import result before starting a game or loading another save.
+
 If replacing the save fails, PokeDaisy tries to put the old one back. If your storage prevents that, the error gives you the backup's name.
 
 ## Resuming where you left off

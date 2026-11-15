@@ -9,6 +9,31 @@ import kotlinx.datetime.TimeZone
 import okio.*
 
 class GameSavesTest {
+    @Test fun pickedReadsRetainOnlyBoundedBytesAndCloseTheirSource() {
+        for (size in listOf(0, 512, GameSaves.MAX_BYTES, GameSaves.MAX_BYTES * 3)) {
+            var closed = false
+            val buffer = Buffer().write(ByteArray(size) { (it % 251).toByte() })
+            val source = object : ForwardingSource(buffer) {
+                override fun close() { closed = true; super.close() }
+            }
+            val picked = GameSaves.readPicked(source)
+            assertTrue(closed)
+            assertEquals(minOf(size, GameSaves.MAX_BYTES + 1), picked.size)
+            assertTrue(picked.indices.all { picked[it] == (it % 251).toByte() })
+        }
+    }
+
+    @Test fun failedPickedReadStillClosesTheNativeSource() {
+        var closed = false
+        val source = object : Source {
+            override fun read(sink: Buffer, byteCount: Long): Long = throw IOException("unreadable")
+            override fun timeout() = Timeout.NONE
+            override fun close() { closed = true }
+        }
+        assertFailsWith<IOException> { GameSaves.readPicked(source) }
+        assertTrue(closed)
+    }
+
     private val fs = FileSystem.SYSTEM
     private inline fun temporary(test: (Path, StateFiles) -> Unit) {
         val dir = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "pokedaisy-save-import-${Random.nextLong().toULong()}"

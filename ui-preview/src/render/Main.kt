@@ -2703,7 +2703,8 @@ fun main(args: Array<String>) {
         Shot("library-load-save", tw, th, td, activity {
             LibraryActivity().apply {
                 val ctx = android.content.Context()
-                saveLoad = LibraryActivity.PendingSaveLoad(File(ctx.filesDir, "roms/firered-hack.gba"), ByteArray(131072), "FireRed - Hall of Fame.sav")
+                val pick = saveImports.begin(File(ctx.filesDir, "roms/firered-hack.gba"))!!
+                saveImports.ready(pick, ByteArray(131072), "FireRed - Hall of Fame.sav")
             }
         }),
         // The update offer on opening the app, and while its APK downloads.
