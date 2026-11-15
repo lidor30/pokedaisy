@@ -1,14 +1,27 @@
 package com.pokedaisy.app.companion
 
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.InputStream
-import java.util.zip.ZipInputStream
+import com.pokedaisy.app.companion.data.LockedMap
+import com.pokedaisy.app.companion.data.deleteRecursively
+import com.pokedaisy.app.companion.data.isDirectory
+import com.pokedaisy.app.companion.data.isFile
+import com.pokedaisy.app.companion.data.lastModified
+import com.pokedaisy.app.companion.data.listFiles
+import com.pokedaisy.app.companion.data.mkdirs
+import com.pokedaisy.app.companion.data.moveTo
+import com.pokedaisy.app.companion.data.readText
+import com.pokedaisy.app.companion.data.writeBytes
+import okio.Buffer
+import okio.FileSystem
+import okio.IOException
+import okio.Path
+import okio.Path.Companion.toPath
+import okio.SYSTEM
+import okio.buffer
+import okio.openZip
 
 /** An imported skin: its info, and the folder its pictures are in. [id] is the folder's name. */
-data class InstalledSkin(val id: String, val skin: DeltaSkin, val dir: File) {
-    fun file(name: String): File? = DeltaSkinStore.safeName(name)?.let { File(dir, it) }?.takeIf { it.isFile }
+data class InstalledSkin(val id: String, val skin: DeltaSkin, val dir: Path) {
+    fun file(name: String): Path? = DeltaSkinStore.safeName(name)?.let { dir / it }?.takeIf { it.isFile }
 }
 
 /**
@@ -17,43 +30,50 @@ data class InstalledSkin(val id: String, val skin: DeltaSkin, val dir: File) {
  * are written (no `..`, no absolute paths), each and all together within size limits, and the skin must read as one
  * PokeDaisy can play before anything is kept. Importing a skin with the same identifier again replaces it.
  */
-class DeltaSkinStore(val root: File) {
+class DeltaSkinStore(val root: Path) {
 
     /** What an import found: the skins kept, and why the others weren't. */
     data class ImportResult(val added: List<InstalledSkin>, val refused: List<String>)
 
     fun list(): List<InstalledSkin> {
-        val dirs = root.listFiles { f -> f.isDirectory && !f.name.startsWith(".") } ?: return emptyList()
+        val dirs = root.listFiles().filter { it.isDirectory && !it.name.startsWith(".") }
         return dirs.mapNotNull { load(it.name) }.sortedBy { it.skin.name.lowercase() }
     }
 
     fun load(id: String): InstalledSkin? {
-        val dir = File(root, safeName(id) ?: return null)
-        val info = File(dir, INFO)
+        val dir = root / (safeName(id) ?: return null)
+        val info = dir / INFO
         if (!info.isFile) return null
-        cache[id]?.takeIf { it.first == info.lastModified() }?.let { return it.second }
+        cache[id]?.takeIf { it.first == info.lastModified }?.let { return it.second }
         val skin = runCatching { DeltaSkin.parse(info.readText()) }.getOrNull() ?: return null
-        return InstalledSkin(id, skin, dir).also { cache[id] = info.lastModified() to it }
+        return InstalledSkin(id, skin, dir).also { cache[id] = info.lastModified to it }
     }
 
     fun delete(id: String): Boolean {
-        val dir = File(root, safeName(id) ?: return false)
+        val dir = root / (safeName(id) ?: return false)
         cache.remove(id)
-        return dir.isDirectory && dir.deleteRecursively()
+        if (!dir.isDirectory) return false
+        return runCatching { dir.deleteRecursively() }.isSuccess
     }
 
-    /** Imports a `.deltaskin` (a zip), or a zip holding several. */
-    fun import(input: InputStream): ImportResult {
-        val files = readZip(input)
+    /** Imports the `.deltaskin` (a zip) at [zip], or a zip holding several. The platform copies a picked file there. */
+    fun import(zip: Path): ImportResult {
+        val files = runCatching { readZip(zip) }.getOrElse { return ImportResult(emptyList(), listOf(it.message ?: "not a zip file")) }
         val nested = files.filterKeys { it.endsWith(".deltaskin", ignoreCase = true) }
         if (nested.isNotEmpty() && INFO !in files) {
             val added = ArrayList<InstalledSkin>()
             val refused = ArrayList<String>()
-            for ((name, bytes) in nested) {
-                runCatching { readZip(ByteArrayInputStream(bytes)) }
-                    .mapCatching { install(it) }
-                    .onSuccess { added += it }
-                    .onFailure { refused += "${name.substringAfterLast('/')}: ${it.message}" }
+            root.mkdirs()
+            val temp = root / ".nested.deltaskin"
+            try {
+                for ((name, bytes) in nested) {
+                    runCatching { temp.writeBytes(bytes); readZip(temp) }
+                        .mapCatching { install(it) }
+                        .onSuccess { added += it }
+                        .onFailure { refused += "${name.substringAfterLast('/')}: ${it.message}" }
+                }
+            } finally {
+                FileSystem.SYSTEM.delete(temp, mustExist = false)
             }
             return ImportResult(added, refused)
         }
@@ -67,26 +87,24 @@ class DeltaSkinStore(val root: File) {
             ?: throw IllegalArgumentException("no info.json in it")
         val prefix = infoPath.removeSuffix(INFO)
         val files = raw.filterKeys { it.startsWith(prefix) }.mapKeys { it.key.removePrefix(prefix) }
-        val skin = DeltaSkin.parse(String(files.getValue(INFO), Charsets.UTF_8))
+        val skin = DeltaSkin.parse(files.getValue(INFO).decodeToString())
         val system = skin.system ?: throw IllegalArgumentException("a skin for another system (${skin.gameType.substringAfterLast('.')})")
         if (system == SkinSystem.DS) throw IllegalArgumentException("DS skins aren't supported yet")
         val missing = skin.representations.mapNotNull { it.asset }.distinct().filter { a -> safeName(a)?.let { it !in files } ?: true }
         if (missing.isNotEmpty()) throw IllegalArgumentException("its pictures are missing (${missing.first()})")
         val id = folderFor(skin)
         root.mkdirs()
-        val temp = File(root, ".import-$id")
+        val temp = root / ".import-$id"
         temp.deleteRecursively()
         temp.mkdirs()
         try {
             for ((name, bytes) in files) {
                 val safe = safeName(name) ?: continue
-                val out = File(temp, safe)
-                out.parentFile?.mkdirs()
-                out.writeBytes(bytes)
+                (temp / safe).writeBytes(bytes)
             }
-            val dir = File(root, id)
+            val dir = root / id
             dir.deleteRecursively()
-            if (!temp.renameTo(dir)) throw IllegalArgumentException("it couldn't be saved")
+            runCatching { temp.moveTo(dir) }.onFailure { throw IllegalArgumentException("it couldn't be saved") }
             cache.remove(id)
             return load(id) ?: throw IllegalArgumentException("it couldn't be read back")
         } finally {
@@ -110,7 +128,7 @@ class DeltaSkinStore(val root: File) {
         const val MAX_ENTRIES = 256
 
         /** Every skin store's parsed skins, by folder: list() runs on every visit to the settings page. */
-        private val cache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, InstalledSkin>>()
+        private val cache = LockedMap<String, Pair<Long, InstalledSkin>>()
 
         /** [name] as a relative path with no way out of the skin's folder, or null. */
         fun safeName(name: String): String? {
@@ -119,34 +137,38 @@ class DeltaSkinStore(val root: File) {
             val parts = n.split('/')
             if (parts.any { it.isEmpty() || it == "." || it == ".." || it.startsWith(".") }) return null
             if (parts.first().contains(':')) return null
-            return parts.joinToString(File.separator)
+            return parts.joinToString("/")
         }
 
-        /** Every file in a zip by its path, within the limits (else IllegalArgumentException). macOS's `__MACOSX`
-         * leftovers are skipped. */
-        fun readZip(input: InputStream): Map<String, ByteArray> {
+        /** Every file in the zip at [zip] by its path, within the limits (else IllegalArgumentException). macOS's
+         * `__MACOSX` leftovers are skipped. Read through okio's zip file system: each entry's size is checked against
+         * what is really read, never trusted from the zip's directory. */
+        fun readZip(zip: Path): Map<String, ByteArray> {
+            val fs = try {
+                FileSystem.SYSTEM.openZip(zip)
+            } catch (e: IOException) {
+                throw IllegalArgumentException("not a zip file")
+            }
             val out = LinkedHashMap<String, ByteArray>()
             var total = 0L
             var entries = 0
-            ZipInputStream(input).use { zip ->
-                while (true) {
-                    val e = zip.nextEntry ?: break
-                    if (++entries > MAX_ENTRIES) throw IllegalArgumentException("too many files in it")
-                    val name = e.name.replace('\\', '/')
-                    if (e.isDirectory || name.startsWith("__MACOSX/") || name.substringAfterLast('/').startsWith(".")) continue
-                    val buf = ByteArrayOutputStream()
-                    val chunk = ByteArray(64 * 1024)
+            for (entry in fs.listRecursively("/".toPath())) {
+                if (++entries > MAX_ENTRIES) throw IllegalArgumentException("too many files in it")
+                val name = entry.toString().removePrefix("/")
+                if (name.startsWith("__MACOSX/") || entry.name.startsWith(".")) continue
+                if (fs.metadataOrNull(entry)?.isRegularFile != true) continue
+                val buf = Buffer()
+                fs.source(entry).buffer().use { src ->
                     var size = 0L
                     while (true) {
-                        val n = zip.read(chunk)
+                        val n = src.read(buf, 64L * 1024)
                         if (n < 0) break
                         size += n
                         total += n
                         if (size > MAX_ENTRY || total > MAX_TOTAL) throw IllegalArgumentException("too big")
-                        buf.write(chunk, 0, n)
                     }
-                    out[name] = buf.toByteArray()
                 }
+                out[name] = buf.readByteArray()
             }
             if (out.isEmpty()) throw IllegalArgumentException("not a zip file")
             return out

@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -175,7 +174,7 @@ fun DocsReader(
 private fun readingStyle(m: GbaTextMetrics, scale: Float = 0.62f): TextStyle {
     val size = m.fontSize * scale
     return TextStyle(
-        fontFamily = com.pokedaisy.app.readingFontFamily(LocalContext.current),
+        fontFamily = com.pokedaisy.app.companion.ui.theme.FontSource.get().reading(),
         fontSize = size,
         lineHeight = size * 1.5f,
         color = OptionColors.readingText,

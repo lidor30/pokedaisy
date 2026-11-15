@@ -226,7 +226,7 @@ fun DsShotBackdrop(shot: androidx.compose.ui.graphics.ImageBitmap?, blurred: Boo
             androidx.compose.foundation.Image(
                 shot, null,
                 Modifier.fillMaxSize().then(
-                    if (blurred && android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(u * 6, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle)
+                    if (blurred) Modifier.blur(u * 6, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle)
                     else Modifier,
                 ),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,

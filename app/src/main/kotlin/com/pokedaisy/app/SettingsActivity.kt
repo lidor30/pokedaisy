@@ -125,6 +125,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.pokedaisy.app.companion.ui.PixelRoundedShape
 import com.pokedaisy.app.companion.ui.drawPixelRoundRect
+import okio.Path.Companion.toOkioPath
 
 /**
  * Settings, in the companion SETTINGS tab's OPTION-screen look: a hub of
@@ -1232,14 +1233,19 @@ class SettingsActivity : ComponentActivity() {
     private var removingAllOverlays by mutableStateOf(false)
 
     /** TOUCH CONTROLS > SKINS: the imported Delta skins, their pick-lists, IMPORT SKIN's file picker. */
-    private val skinStore by lazy { com.pokedaisy.app.companion.DeltaSkinStore(java.io.File(filesDir, "skins")) }
+    private val skinStore by lazy { com.pokedaisy.app.companion.DeltaSkinStore(filesDir.toOkioPath() / "skins") }
     private val touchSkinUi = com.pokedaisy.app.companion.ui.TouchSkinUi()
     private val pickSkin = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { importSkin(it) } }
 
     /** IMPORT SKIN: the picked .deltaskin (or a zip of them) into files/skins/; one new skin is picked for its system. */
     private fun importSkin(uri: Uri) {
         Thread {
-            val result = runCatching { contentResolver.openInputStream(uri)?.use { skinStore.import(it) } }.getOrNull()
+            // The store reads a zip from a file: the picked document is copied into the cache first.
+            val temp = java.io.File(cacheDir, "skin-import.deltaskin")
+            val result = runCatching {
+                contentResolver.openInputStream(uri)?.use { input -> temp.outputStream().use { input.copyTo(it) } }
+                    ?.let { skinStore.import(temp.toOkioPath()) }
+            }.getOrNull().also { temp.delete() }
                 ?: com.pokedaisy.app.companion.DeltaSkinStore.ImportResult(emptyList(), listOf("it couldn't be opened"))
             runOnUiThread {
                 val added = result.added

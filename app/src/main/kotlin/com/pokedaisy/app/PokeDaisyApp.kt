@@ -24,6 +24,10 @@ class PokeDaisyApp : Application() {
             override var darkMode by themePrefs::darkMode
         }
         com.pokedaisy.app.companion.ui.DocsSources.current = StoreDocsSource(this)
+        // The screens' fonts (Pixel Operator and its fallbacks, the manual's, a game's own) from the app's assets.
+        com.pokedaisy.app.companion.ui.theme.FontSource.current = AndroidFonts(this)
+        // The screens' pictures: Bitmaps made from pixels, image files decoded by BitmapFactory.
+        com.pokedaisy.app.companion.ui.PictureCodec.current = AndroidPictures
         // The NEW tags' week starts with the first launch of a build that has the feature.
         Prefs(this).let { p -> com.pokedaisy.app.companion.NewFeatures.init(p.newFeatureSince, { p.newFeatureSince = it }) }
         val prefs = Prefs(this)

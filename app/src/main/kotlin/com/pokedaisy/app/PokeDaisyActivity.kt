@@ -81,6 +81,7 @@ import com.pokedaisy.app.companion.data.isGen1
 import com.pokedaisy.app.companion.data.delete
 import okio.Path.Companion.toOkioPath
 import okio.source
+import com.pokedaisy.app.companion.data.lastModified
 
 /**
  * Phase 1 shell: full-screen GBA emulation with RetroArch-style savestate slots
@@ -5238,7 +5239,7 @@ class PokeDaisyActivity : Activity() {
     }
 
     /** TOUCH CONTROLS > SKIN: the imported Delta skins (files/skins/). */
-    private val skinStore by lazy { com.pokedaisy.app.companion.DeltaSkinStore(java.io.File(filesDir, "skins")) }
+    private val skinStore by lazy { com.pokedaisy.app.companion.DeltaSkinStore(filesDir.toOkioPath() / "skins") }
 
     /** The skin's game placement handed to the stage, kept while it's the same skin (a new lambda relays it out). */
     private var skinGameFor: Pair<String, (Int, Int) -> androidx.compose.ui.geometry.Rect?>? = null
@@ -5259,11 +5260,11 @@ class PokeDaisyActivity : Activity() {
             stage.skinGame = null
             return
         }
-        val fn = skinGameFor?.takeIf { it.first == skin.id + ":" + skin.dir.lastModified() }?.second ?: run {
+        val fn = skinGameFor?.takeIf { it.first == skin.id + ":" + skin.dir.lastModified }?.second ?: run {
             val f: (Int, Int) -> androidx.compose.ui.geometry.Rect? = { w, h ->
                 com.pokedaisy.app.companion.ui.skinFit(skin, w.toFloat(), h.toFloat(), portrait = false)?.game
             }
-            skinGameFor = skin.id + ":" + skin.dir.lastModified() to f
+            skinGameFor = skin.id + ":" + skin.dir.lastModified to f
             f
         }
         stage.skinGame = fn

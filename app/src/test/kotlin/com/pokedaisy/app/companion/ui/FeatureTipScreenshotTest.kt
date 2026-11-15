@@ -24,6 +24,7 @@ import org.junit.Test
  *     ./gradlew :app:recordPaparazziDebug --tests '*FeatureTip*ScreenshotTest'
  */
 class FeatureTipGameScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1920, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),
@@ -67,6 +68,7 @@ internal fun keysFor(id: TipId) = when (id) {
 
 /** Feature tips on two screens: the card on the companion (the Thor's bottom screen), the game left clear. */
 class FeatureTipCompanionScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1240, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),

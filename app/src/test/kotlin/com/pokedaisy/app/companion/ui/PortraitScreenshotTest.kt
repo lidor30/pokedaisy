@@ -39,6 +39,7 @@ import okio.Path.Companion.toOkioPath
  *     ./gradlew :app:recordPaparazziDebug --tests '*PortraitScreenshotTest'
  */
 class PortraitScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_6,
