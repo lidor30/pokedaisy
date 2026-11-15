@@ -1582,7 +1582,7 @@ class SettingsActivity : ComponentActivity() {
     /** A title + message to show over CHEATS (an import's result, a file that isn't one; internal for ui-preview). */
     internal var cheatNotice by mutableStateOf<Pair<String, String>?>(null)
 
-    private fun cheatStore(): CheatStore? = cheatCrc?.let { CheatStore.forCrc(filesDir, it) }
+    private fun cheatStore(): CheatStore? = cheatCrc?.let { CheatStore.forCrc(filesDir.toOkioPath(), it) }
 
     private fun saveCheats(list: List<Cheat>) {
         cheatStore()?.save(list)
@@ -1606,7 +1606,7 @@ class SettingsActivity : ComponentActivity() {
             val crc = rom?.let { withContext(Dispatchers.IO) { cheatCrcOf(it) } }
             cheatDs = rom != null && withContext(Dispatchers.IO) { runCatching { RomIdentity.isNds(rom) }.getOrDefault(false) }
             cheatCrc = crc
-            cheatList = crc?.let { c -> withContext(Dispatchers.IO) { CheatStore.forCrc(filesDir, c).load() } }.orEmpty()
+            cheatList = crc?.let { c -> withContext(Dispatchers.IO) { CheatStore.forCrc(filesDir.toOkioPath(), c).load() } }.orEmpty()
         }
         val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) importCheats(uri)

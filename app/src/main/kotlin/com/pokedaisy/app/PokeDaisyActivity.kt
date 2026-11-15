@@ -3266,7 +3266,7 @@ class PokeDaisyActivity : Activity() {
 
     /** This ROM's cheats (by CRC, like its states); null before a ROM is loaded. */
     private fun cheatStore(): com.pokedaisy.app.cheats.CheatStore? =
-        romKey.takeIf { it.isNotEmpty() }?.let { com.pokedaisy.app.cheats.CheatStore.forCrc(filesDir, it) }
+        romKey.takeIf { it.isNotEmpty() }?.let { com.pokedaisy.app.cheats.CheatStore.forCrc(filesDir.toOkioPath(), it) }
 
     /** This ROM's cheats as last read, by [romKey]. The companion asks for them while it draws its SETTINGS, and parsing an
      * imported file each time (RetroArch's Platinum one has 2321 cheats) held the UI thread until the app stopped

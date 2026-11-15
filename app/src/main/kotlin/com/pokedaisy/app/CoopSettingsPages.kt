@@ -52,9 +52,10 @@ import com.pokedaisy.app.companion.ui.PageHint
 import com.pokedaisy.app.companion.ui.SettingRow
 import com.pokedaisy.app.companion.ui.coopFindLine
 import com.pokedaisy.app.companion.ui.coopPartnerRows
-import com.pokedaisy.app.companion.ui.coopWifiAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.net.Inet4Address
+import java.net.NetworkInterface
 
 /**
  * Settings > CO-OP's pages on the top screen - PAIR (a save, then its panes), PARTNERS (UNPAIR) and RELAY - with their state and
@@ -124,7 +125,7 @@ internal class CoopSettingsPages(
                 val save = SavesLocation.saveFor(activity, prefs, rom)
                 val id = if (save.isFile) CoopSaveId.read(save.toOkioPath()) else null
                 val pair = id?.let { i -> pairs.firstOrNull { it.ownSave == i } }
-                CoopSaveChoice(rom, save, GameTitles.label(activity, prefs, rom), id, pair?.partner?.name)
+                CoopSaveChoice(save.toOkioPath(), GameTitles.label(activity, prefs, rom), id, pair?.partner?.name)
             }
     }
 
@@ -134,7 +135,7 @@ internal class CoopSettingsPages(
         picked = choice
         joinError = null
         nearbyError = null
-        CoopSession.usePairingSave(choice.save, EMERALD_COOP_SHA1)
+        CoopSession.usePairingSave(choice.save.toFile(), EMERALD_COOP_SHA1)
         val p = CoopSession.pairing(activity)
         pairing = p
         val ticket = ticketIn
@@ -297,4 +298,14 @@ internal class CoopSettingsPages(
             }
         }
     }
+}
+
+/** This device's IPv4 address on the Wi-Fi network (else any private one), or null. Reads interfaces: not on the UI thread. */
+private fun coopWifiAddress(): String? = try {
+    val own = NetworkInterface.getNetworkInterfaces().toList().filter { it.isUp && !it.isLoopback }
+        .flatMap { nic -> nic.inetAddresses.toList().filterIsInstance<Inet4Address>().map { nic to it } }
+        .filter { !it.second.isLoopbackAddress && !it.second.isLinkLocalAddress }
+    (own.firstOrNull { it.first.name.startsWith("wlan") } ?: own.firstOrNull { it.second.isSiteLocalAddress })?.second?.hostAddress
+} catch (e: java.io.IOException) {
+    null
 }

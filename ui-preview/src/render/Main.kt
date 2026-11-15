@@ -886,7 +886,7 @@ fun withCheats(seeded: Boolean = true, many: Int = 0, make: () -> SettingsActivi
     // [many]: an imported cheat file's worth (RetroArch's Platinum one has 2321), GitHub #786.
     val list = if (many > 0) List(many) { i -> com.pokedaisy.app.cheats.Cheat("CODE ${i + 1}", listOf("82025838 %04X".format(i)), enabled = i % 7 == 0) }
         else previewCheats()
-    if (seeded) com.pokedaisy.app.cheats.CheatStore.forCrc(ctx.filesDir, crc).save(list)
+    if (seeded) com.pokedaisy.app.cheats.CheatStore.forCrc(okio.Path.Companion.run { ctx.filesDir.toOkioPath() }, crc).save(list)
     Prefs(ctx).cheatsEnabled = seeded
     return make().apply { intent.putExtra(SettingsActivity.EXTRA_CHEATS_ROM, rom.absolutePath) }
 }
@@ -1019,6 +1019,8 @@ fun installPreviewHosts() {
     com.pokedaisy.app.companion.ui.theme.FontSource.current = com.pokedaisy.app.PreviewFonts(context)
     // The app's own codec, over the android.graphics shims.
     com.pokedaisy.app.companion.ui.PictureCodec.current = com.pokedaisy.app.AndroidPictures
+    com.pokedaisy.app.companion.ui.DeviceDates.current = com.pokedaisy.app.JvmDeviceDates
+    com.pokedaisy.app.cheats.CheatParser.current = com.pokedaisy.app.cheats.PreviewCheatParser
 }
 
 /** Saves and puts on [t]; for a limited-time one the theme clock moves into its window (so it isn't put away). */
@@ -1151,9 +1153,9 @@ private val COOP_TICKET = com.pokedaisy.app.companion.coop.CoopTicket(
 private val COOP_CHOICES by lazy {
     val dir = File(android.content.Context().filesDir, "coop-saves").apply { mkdirs() }
     listOf(
-        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "a.gba"), File(dir, "a.sav"), "Pokémon Emerald", coopSave("RED", 12345), null),
-        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "b.gba"), File(dir, "b.sav"), "Pokémon Emerald (second copy)", coopSave("MAY", 777), "LEAF"),
-        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "c.gba"), File(dir, "c.sav"), "Pokémon Emerald (never saved)", null, null),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(okio.Path.Companion.run { File(dir, "a.sav").toOkioPath() }, "Pokémon Emerald", coopSave("RED", 12345), null),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(okio.Path.Companion.run { File(dir, "b.sav").toOkioPath() }, "Pokémon Emerald (second copy)", coopSave("MAY", 777), "LEAF"),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(okio.Path.Companion.run { File(dir, "c.sav").toOkioPath() }, "Pokémon Emerald (never saved)", null, null),
     )
 }
 

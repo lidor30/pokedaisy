@@ -67,6 +67,7 @@ import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlin.math.PI
 
 /** The BOXES tab's place, kept across tab switches: the box on show, the slot looked at last, the summary open. */
 class BoxesUiState {
@@ -113,7 +114,7 @@ fun BoxesScreen(boxes: BoxesView, ui: BoxesUiState, dex: PokedexTables?, modifie
     // The box on show read at the tap, not captured: a `::step` of a local fun equals the last one whatever it captured,
     // so Compose kept the arrows' first click handler and they only ever stepped from the box the tab opened on.
     val step: (Int) -> Unit = { by ->
-        ui.box = Math.floorMod(ui.boxOf(boxes) + by, boxes.boxes.size)
+        ui.box = (ui.boxOf(boxes) + by).mod(boxes.boxes.size)
         ui.looked = null
     }
     val m = rememberGbaTextMetrics()
@@ -463,7 +464,7 @@ private fun DrawScope.swapBurst(cx: Float, cy: Float, side: Float, q: Float, p: 
     // The arms in the frame's grey-blue, so they show on the light well; the centre white.
     val arm = Color(SWAP_BURST_ARM).copy(alpha = fade)
     for (i in 0 until 12) {
-        val a = i * Math.PI.toFloat() / 6
+        val a = i * PI.toFloat() / 6
         // Every other one a little behind, so they leave as a ring of two.
         val r = if (i % 2 == 0) d else d * 0.8f
         val x = ((cx + r * kotlin.math.cos(a)) / p).roundToInt() * p

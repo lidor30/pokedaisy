@@ -76,6 +76,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.floor
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import kotlin.math.roundToInt
 
 /** Which entries the list shows. SEEN = seen but not caught yet. [label] is English; OptionRows translates it. */
 enum class DexFilter(val label: String) { ALL(tk("ALL")), CAUGHT(tk("CAUGHT")), SEEN(tk("SEEN ONLY")), UNSEEN(tk("NOT SEEN")) }
@@ -595,7 +596,7 @@ private fun genderLabel(ratio: Int): String = when (ratio) {
     else -> {
         // The data is PERCENT_FEMALE(x) = x * 255 / 100 and every Gen 3 ratio
         // is a multiple of 12.5%: round back to it (31 -> 12.5%, not 12.1%).
-        val female = Math.round(ratio * 100 / 255.0 / 12.5).toInt() * 125 // tenths of a percent
+        val female = (ratio * 100 / 255.0 / 12.5).roundToInt() * 125 // tenths of a percent
         "♂ ${pct(1000 - female)}%  ♀ ${pct(female)}%"
     }
 }
