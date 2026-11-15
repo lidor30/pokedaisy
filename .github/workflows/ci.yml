@@ -30,7 +30,11 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
-          submodules: recursive
+
+      # This job builds without n3ds. Keep the optional Azahar tree (and its unrelated Android wrappers) out;
+      # required submodules remain recursive and setup-gradle still validates every checked-out wrapper.
+      - name: Native dependencies (default features)
+        run: git -c submodule.third_party/azahar.update=none submodule update --init --recursive
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
