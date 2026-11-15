@@ -257,6 +257,7 @@ class N3dsSession(
     /** What the game's screens show now ([Gen6Reader.sceneOf]), read ten times a second; [onScene] hears a change. */
     @Volatile var scene: Gen6Reader.Scene = Gen6Reader.Scene.FIELD
         private set
+    private var sceneTold = false
 
     /** The field camera may be pulled back (the app's ZOOM): the game is on its field (its module loaded, not the
      * title's default FIELD), the X menu over it included. */
@@ -286,8 +287,10 @@ class N3dsSession(
                         scene == Gen6Reader.Scene.MENU && now == Gen6Reader.Scene.FIELD -> 3
                         else -> 2
                     }
-                    if (now != null && now != scene && streak >= needed) {
+                    // (The first scene read is told too: the field is the default, so it wouldn't be a change.)
+                    if (now != null && (now != scene || !sceneTold) && streak >= needed) {
                         scene = now
+                        sceneTold = true
                         Log.i(TAG, "scene: $now")
                         ui.post { onScene(now) }
                     }
@@ -614,7 +617,7 @@ class N3dsSession(
                         connected = true,
                         game = com.pokedaisy.app.companion.data.GameKind.POKEMON_X,
                         frameCounter = N3dsNative.frames(),
-                        party = N3dsCompanionData.party(sample, text),
+                        party = N3dsCompanionData.party(sample, text, moveData, personalData),
                         items = N3dsCompanionData.bag(sample, text),
                         location = N3dsCompanionData.location(sample, text, zones),
                     )

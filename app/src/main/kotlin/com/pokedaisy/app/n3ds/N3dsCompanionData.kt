@@ -7,8 +7,14 @@ import com.pokedaisy.app.companion.data.statusLabel
 
 /** A [Gen6Reader.Sample] as the companion's screens take it, names from the cart's own text ([Gen6Text]). */
 object N3dsCompanionData {
-    fun party(sample: Gen6Reader.Sample, text: Gen6Text?): List<MonView> = sample.party.map { m ->
+    /** The party, its types, moves and matchups from the cart ([Gen6Personal], [Gen6Moves], [Gen6Types]) when they're
+     * there: the PARTY tab and the HUD's summary. */
+    fun party(
+        sample: Gen6Reader.Sample, text: Gen6Text?, moves: List<Gen6Moves.Move>? = null, personal: List<IntArray>? = null,
+    ): List<MonView> = sample.party.map { m ->
         val species = text?.species?.getOrNull(m.species) ?: "#${m.species}"
+        val types = if (m.isEgg) null else personal?.getOrNull(m.species)
+        val matchups = types?.let { matchups(it[0], it[1]) }
         MonView(
             species = m.species,
             name = species,
@@ -16,15 +22,46 @@ object N3dsCompanionData {
             hp = m.hp,
             maxHp = m.maxHp,
             status = if (m.hp == 0) "FNT" else statusLabel(m.status.toLong() and 0xFFFFFFFFL),
-            types = emptyList(),
+            types = types?.distinct()?.mapNotNull { Gen6Moves.TYPES.getOrNull(it) }.orEmpty(),
             iconAsset = Gen6IconTable.index(m.species, m.form, m.female)?.let(Gen6Icons::asset),
             genderSymbol = GENDER_SYMBOL_UNKNOWN,
             isEgg = m.isEgg,
+            moves = if (m.isEgg) emptyList() else m.moves.toList().mapIndexedNotNull { i, id ->
+                if (id == 0) return@mapIndexedNotNull null
+                val data = moves?.getOrNull(id)
+                com.pokedaisy.app.companion.data.MoveView(
+                    name = text?.moves?.getOrNull(id) ?: "#$id",
+                    type = data?.let { Gen6Moves.TYPES.getOrNull(it.type) } ?: "NORMAL",
+                    pp = m.pp.getOrElse(i) { 0 },
+                    power = data?.power ?: 0,
+                    id = id,
+                )
+            },
             personality = m.encryptionConstant,
             heldItemId = m.heldItem,
             nickname = m.nickname.takeIf { it.isNotEmpty() },
             shiny = m.shiny,
+            weaknesses = matchups?.weaknesses.orEmpty(),
+            resistances = matchups?.resistances.orEmpty(),
+            immunities = matchups?.immunities.orEmpty(),
         )
+    }
+
+    /** Every attacking type against [t1] / [t2] by Gen 6's chart, sorted into the summary's three lists. */
+    private fun matchups(t1: Int, t2: Int): com.pokedaisy.app.companion.data.TypeMatchups {
+        val weak = mutableListOf<com.pokedaisy.app.companion.data.TypeMatchup>()
+        val resist = mutableListOf<com.pokedaisy.app.companion.data.TypeMatchup>()
+        val immune = mutableListOf<com.pokedaisy.app.companion.data.TypeMatchup>()
+        for ((atk, name) in Gen6Moves.TYPES.withIndex()) {
+            val pct = Gen6Types.multiplierPct(atk, t1, t2)
+            val m = com.pokedaisy.app.companion.data.TypeMatchup(name, com.pokedaisy.app.companion.data.formatMultiplier(pct), pct)
+            when {
+                pct == 0 -> immune += m
+                pct > 100 -> weak += m
+                pct < 100 -> resist += m
+            }
+        }
+        return com.pokedaisy.app.companion.data.TypeMatchups(weak.sortedByDescending { it.pct }, resist.sortedBy { it.pct }, immune)
     }
 
     /** A battler ([Gen6Reader.battleMon]) as the battle strip and BATTLE take it: its types and its moves with their

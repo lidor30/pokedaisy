@@ -4426,6 +4426,7 @@ class PokeDaisyActivity : Activity() {
         n3dsAutoFloat = false
         n3dsFieldShot.value = null
         n3dsBattle.value = false
+        n3dsOnField.value = false
         n3dsTopRect.value = null
         session.stop()
         (session.topView.parent as? android.view.ViewGroup)?.removeView(session.topView)
@@ -4461,6 +4462,7 @@ class PokeDaisyActivity : Activity() {
      * menu, beside the top one for a screen of the game's own, away again on the field (if it came in by itself). */
     private fun onN3dsScene(scene: com.pokedaisy.app.n3ds.Gen6Reader.Scene) {
         if (n3ds == null) return
+        n3dsOnField.value = scene == com.pokedaisy.app.n3ds.Gen6Reader.Scene.FIELD
         when (scene) {
             com.pokedaisy.app.n3ds.Gen6Reader.Scene.MENU -> if (!n3dsFloating.value && n3dsFloats) {
                 setN3dsFloating(true)
@@ -4493,6 +4495,9 @@ class PokeDaisyActivity : Activity() {
         session.cameraZoom = N3DS_CAMERA_PULLS[n3dsZoomStep]
         showHud(com.pokedaisy.app.companion.i18n.tr("Zoom {0}", com.pokedaisy.app.companion.zoomLabel(1f / N3DS_CAMERA_PULLS[n3dsZoomStep])))
     }
+
+    /** A 3DS game is on its field ([onN3dsScene]): the HUD shows (Compose state). */
+    private val n3dsOnField = androidx.compose.runtime.mutableStateOf(false)
 
     /** A 3DS battle on ONE SCREEN ([onN3dsScene]): the strip shows ([DsBattleMenu]); Compose state. */
     private val n3dsBattle = androidx.compose.runtime.mutableStateOf(false)
@@ -4921,7 +4926,9 @@ class PokeDaisyActivity : Activity() {
             val engine by hudEngine.collectAsState()
             val idle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
             val onField by (engine?.onField ?: idle).collectAsState()
-            val shown = hudOn.value && !hudUpright.value && onField && snap.hasData && !snap.unsupported && !snap.inBattle
+            // A 3DS game: its scene says the field (the engine stands idle there), the touch window down.
+            val field = if (romIs3ds) n3dsOnField.value && !n3dsFloating.value else onField
+            val shown = hudOn.value && !hudUpright.value && field && snap.hasData && !snap.unsupported && !snap.inBattle
             // One screen, the companion's panel closed: its open button joins the HUD's, and the edge tab steps aside
             // (for BATTLE BUTTONS' party window too, which sits in that corner). As the window it stays put while the
             // window is up too (under its dim): it doesn't vanish from the HUD the player sees around it.
@@ -4962,15 +4969,17 @@ class PokeDaisyActivity : Activity() {
                 // The buttons on the other screen's companion (X): the HUD steps back too, under the strip pointing there.
                 val hudAlpha by androidx.compose.animation.core.animateFloatAsState(if (quickMenu.open || bottomFocus.value) 0.25f else 1f, label = "hudAlpha")
                 com.pokedaisy.app.companion.ui.FieldHud(
-                    snap, shown && !dsWindowUp, hudStyle.value,
+                    snap, shown && !dsWindowUp,
+                    // A 3DS game: what it reads so far (the party); no map, balls pocket, bag actions, PC or wild list yet.
+                    if (romIs3ds) hudStyle.value.copy(hidden = hudStyle.value.hidden + N3DS_HUD_HIDDEN) else hudStyle.value,
                     modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
                     clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
                     itemUse = itemUse, fly = flyAction,
                     onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
-                    onTouchScreen = if (romIsNds && dsFloats.value) ::toggleDsTouch else null,
+                    onTouchScreen = if (romIsNds && dsFloats.value || romIs3ds && n3dsFloats) ::toggleDsTouch else null,
                     dsCorner = dsCornerTaken.value,
                     dsClearBottom = dsHudClear.value,
-                    frame = hudFrame.value ?: hudTouchFrame.value,
+                    frame = if (romIs3ds) n3dsTopRect.value else hudFrame.value ?: hudTouchFrame.value,
                     avoid = hudAvoid.value,
                     closePanels = hudCloseTick.intValue,
                     openPanel = hudOpenPanel.value, openTick = hudOpenTick.intValue,
@@ -6321,6 +6330,13 @@ class PokeDaisyActivity : Activity() {
         /** How often [DsShots] takes the game's picture. */
         private const val DS_SHOT_MS = 1000L
         /** ONE SCREEN: a 3DS game's floating touch screen, as a share of the screen's height. */
+        /** The HUD's parts a 3DS game has nothing for yet (it reads the party, the bag's names, the map's name). */
+        private val N3DS_HUD_HIDDEN = setOf(
+            com.pokedaisy.app.companion.FieldHudPart.MAP, com.pokedaisy.app.companion.FieldHudPart.BALLS,
+            com.pokedaisy.app.companion.FieldHudPart.REPEL, com.pokedaisy.app.companion.FieldHudPart.PC,
+            com.pokedaisy.app.companion.FieldHudPart.BAG, com.pokedaisy.app.companion.FieldHudPart.WILD,
+        )
+
         /** 3DS ZOOM's camera distances, times the game's own ([n3dsZoomNext]). */
         private val N3DS_CAMERA_PULLS = floatArrayOf(1f, 1.35f, 1.75f)
         private const val N3DS_FLOAT_HEIGHT = 0.82f

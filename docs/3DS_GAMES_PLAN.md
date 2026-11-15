@@ -139,6 +139,13 @@ were checked through this path (2026-11-15).
   saved at 0.6x, loaded = 240.8 x 1.75). A picture zoom (the top screen's middle cropped) was built first and dropped.
   EXPAND was weighed and left: the top screen is 5:3 already, ~7% more on a 16:9 screen for a wider projection, a wider
   render target and the game's culling at the new edges.
+- The HUD on 3DS games (2026-11-15, the user's ask): on the field (the session's scene FIELD, the touch window down;
+  `n3dsOnField`, the scene thread now tells its first scene too, the field being the default), inside the top screen's
+  picture (`n3dsTopRect`): the party (icons, HP, status; a tap = the summary), TOUCH (the floating touch screen) and
+  COMPANION. The minimap, balls, REPEL, PC, BAG and WILD are hidden there (`N3DS_HUD_HIDDEN`): no region map, Gen 6
+  keeps the balls in the Items pocket, and nothing calls the game yet. The party now carries its types (`Gen6Personal`),
+  moves (`Gen6Moves`: type, power, PP) and matchups (`Gen6Types`), so the summary and PARTY are whole. Checked on the
+  RP6 (Santalune Forest): the HUD, a summary (Chespin: GRASS, weak to Flying / Poison / Bug / Fire / Ice).
 - The right stick turns and tilts the field camera (2026-11-15, the user's ask: a modern game's free camera): the same
   setup, its yaw (+8) and pitch (+4) the game's plus the stick's, at most 40° either way and 8° flatter / 15° steeper
   (Santalune Forest showed black past its top at 15° flatter; 45° on Route 2 showed the void past its edge). Let go, it
