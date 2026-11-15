@@ -138,7 +138,7 @@ Hold `BACK` to leave the game, as always.
 Hold a phone upright and the game sits across the top of the screen, with the companion docked below it and the touch controls under that. It's open until you hide it: there's nothing to slide in. In a DS game the touch screen takes the companion's place, between the top screen and the buttons.
 
 - **Change its height:** drag the grip on the companion's top edge up or down. It snaps to the default size (the shape of the Thor's bottom screen) and to the largest size (everything under the game).
-- **Step through sizes:** tap the grip to go from small, to the default, to everything under the game, then to hidden, and round again.
+- **Step through sizes:** tap the grip to go from small, to the default, to everything under the game, then to hidden, and round again. On a tablet held upright, where only one size fits under the game, a tap switches between shown and hidden.
 - **Hide it:** with the companion hidden, the game has the screen to itself and only the grip stays, along the bottom. Tap it, drag it, or press the `COMPANION` hotkey to bring the companion back.
 - **Touch controls:** they get the space at the bottom of the screen, under the companion. With the companion `AT BOTTOM` (below) they go in the gap between the game and the companion when there's room, and lie over the game when there isn't. The phone held upright has its own layout, and `POSITION` on the `TOUCH CONTROLS` page puts the buttons at the top, middle or bottom of their space; see [Touch controls](controls.md#touch-controls).
 

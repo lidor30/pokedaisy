@@ -36,6 +36,27 @@ class PortraitLayoutTest {
     }
 
     @Test
+    fun tapsHideOnlyAtTheLargest() {
+        val max = PortraitLayout.maxRatio(w, h, game)
+        assertFalse(PortraitLayout.atLargest(w, h, game, PortraitLayout.MIN_RATIO))
+        assertFalse(PortraitLayout.atLargest(w, h, game, PortraitLayout.DEFAULT_RATIO))
+        assertTrue(PortraitLayout.atLargest(w, h, game, max))
+    }
+
+    @Test
+    fun aTabletUprightStillHides() {
+        // An iPad mini-shaped screen (1488x2266) with a 3:2 game (992 tall) and the controls' strip under the game:
+        // the room left is under the smallest size, so every size is the smallest and the next is never smaller.
+        val tw = 1488
+        val th = 2266
+        val tg = 992
+        val reserve = 72 + 600
+        val now = PortraitLayout.companionHeight(tw, th, tg, PortraitLayout.DEFAULT_RATIO, reserve).toFloat() / tw
+        assertEquals(PortraitLayout.MIN_RATIO, PortraitLayout.next(tw, th, tg, now, reserve), 0f)
+        assertTrue(PortraitLayout.atLargest(tw, th, tg, now, reserve))
+    }
+
+    @Test
     fun touchPadTakesTheGapOnlyWhenItFits() {
         assertTrue(PortraitLayout.padInGap(w, h - game - 941))
         assertFalse(PortraitLayout.padInGap(w, 100))

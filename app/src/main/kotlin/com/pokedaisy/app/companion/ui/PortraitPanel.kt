@@ -67,6 +67,14 @@ object PortraitLayout {
         return stops.firstOrNull { it > ratio + 0.01f } ?: stops.first()
     }
 
+    /**
+     * A tap on the grip hides the companion when it's already as tall as it gets. On a screen wide for its height (a
+     * tablet upright) even the smallest size takes everything under the game, so [next] has only one size to go to and
+     * the companion never got smaller: it never hid.
+     */
+    fun atLargest(w: Int, h: Int, gameH: Int, ratio: Float, reserve: Int = 0): Boolean =
+        ratio >= maxRatio(w, h, gameH, reserve) - 0.01f
+
     /** The touch controls fit in a [gap]-tall strip on a [w]-wide screen. */
     fun padInGap(w: Int, gap: Int): Boolean = gap >= w * PAD_GAP_RATIO
 

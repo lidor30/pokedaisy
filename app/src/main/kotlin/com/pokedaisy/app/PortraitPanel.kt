@@ -251,8 +251,9 @@ class PortraitPanel(
         if (hinge != null) return
         if (hiddenNow) return setHidden(false)
         val now = currentRatio
+        val hide = !ds && PortraitLayout.atLargest(screenW, screenH, gameH, now, reserve)
         ratio = PortraitLayout.next(screenW, screenH, gameH, now, reserve)
-        if (!ds && ratio < now) { hidden = true; prefs.portraitCompanionHidden = true }
+        if (hide) { hidden = true; prefs.portraitCompanionHidden = true }
         save()
     }
 
