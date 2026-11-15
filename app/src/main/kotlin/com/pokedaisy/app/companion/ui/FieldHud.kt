@@ -55,7 +55,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.Layout
@@ -1237,8 +1236,8 @@ private fun HudMiniMap(
             val tile = (if (black) snapshot.regionMapTile else null)
                 ?: PlayerMapTile.of(model, snapshot.regionMapSectionId, snapshot.x, snapshot.y, snapshot.mapWidth, snapshot.mapHeight, snapshot.mapType)
             val point = if (black && tile != null) model.pick(0, tile.first, tile.second)?.mapsec?.let { model.points[it] } else null
-            val image = remember(bitmap) { bitmap.asImageBitmap() }
-            val headImage = remember(head) { head?.asImageBitmap() }
+            val image = bitmap
+            val headImage = head
             val crop = remember(bitmap) { regionMapContentBounds(bitmap) }
             Box(Modifier.size(u * mapW, u * mapH).clip(PixelRoundedShape(u * 2))) {
                 Canvas(Modifier.fillMaxSize()) {

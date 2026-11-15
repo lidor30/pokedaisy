@@ -47,11 +47,21 @@ object RomArt {
     @Volatile
     var dirOverride: Path? = null
 
+    /** The app's own files folder (Android's filesDir), set by the host at start: where the screens find the art. */
+    @Volatile
+    var filesDir: Path? = null
+
     /** Where the art lives: [DIR] under the app's filesDir. */
     fun dir(filesDir: Path?): Path = dirOverride ?: filesDir?.div(DIR) ?: DIR.toPath()
 
+    /** [dir] under the host's [RomArt.filesDir]. */
+    fun dir(): Path = dir(filesDir)
+
     /** The cached file for an art [path], or null if no ROM has supplied it yet. */
     fun file(filesDir: Path?, path: String): Path? = (dir(filesDir) / path).takeIf { it.isFile }
+
+    /** [file] under the host's [RomArt.filesDir]. */
+    fun file(path: String): Path? = file(filesDir, path)
 
     /**
      * Scans [rom] in the background unless a ROM with this [romKey] was

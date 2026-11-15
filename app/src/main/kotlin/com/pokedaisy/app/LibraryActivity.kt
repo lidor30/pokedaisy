@@ -407,7 +407,7 @@ class LibraryActivity : ComponentActivity() {
             supportAsk = com.pokedaisy.app.companion.SupportAsk.due(prefs.playMillis, prefs.supportAskAt, prefs.supportAskDone)
         }
         // A limited-time theme's dates have come (and an ended one gives way to the theme worn before it).
-        com.pokedaisy.app.companion.ui.theme.loadTheme(this)
+        com.pokedaisy.app.companion.ui.theme.loadTheme()
         if (seasonalTheme == null) {
             seasonalTheme = com.pokedaisy.app.companion.ui.theme.seasonalThemeToAnnounce(
                 com.pokedaisy.app.companion.ui.theme.ThemeClock.today(), prefs.seasonalThemesShown, prefs.appTheme,
@@ -869,7 +869,7 @@ class LibraryActivity : ComponentActivity() {
                 }
                 com.pokedaisy.app.companion.ui.SeasonalThemeWindow(
                     theme, window.endInclusive, m, small,
-                    onTry = { com.pokedaisy.app.companion.ui.theme.pickTheme(this@LibraryActivity, theme); seasonalTheme = null },
+                    onTry = { com.pokedaisy.app.companion.ui.theme.pickTheme(theme); seasonalTheme = null },
                     onNoThanks = { seasonalTheme = null },
                 )
             }

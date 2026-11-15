@@ -1415,7 +1415,7 @@ open class CompanionScreenshotTest {
             .let { if (onMap == null) it else it.copy(mapNum = onMap, regionMapSectionId = onMap) }
         val v = buildSnapshotView(t).copy(game = game)
         // The icon sheets load asynchronously in the app; decode them before the snapshot.
-        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(paparazzi.context, it) } }
+        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
         // The touch controls (FIGHT / moves) show with a battle input to drive.
         val input = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
             override val busy = false
@@ -1430,7 +1430,7 @@ open class CompanionScreenshotTest {
             val here = world.encounters(v.mapGroup, v.mapNum, v.progress)
             val teams = gameGuide(guideId(game, null))?.bosses.orEmpty().flatMap { b -> v.progress?.let { p -> b.trainers(p).flatMap { world.party(it, p) } }.orEmpty() }
             ((here.grass + here.water + here.oldRod + here.goodRod + here.superRod).map { it.species } + teams.map { it.species })
-                .forEach { sp -> com.pokedaisy.app.companion.data.spriteAsset("pokemon", sp)?.let { GameArt.get(paparazzi.context, it) } }
+                .forEach { sp -> com.pokedaisy.app.companion.data.spriteAsset("pokemon", sp)?.let { GameArt.get(it) } }
             snapshot {
                 AppTheme {
                     androidx.compose.runtime.CompositionLocalProvider(
@@ -1505,7 +1505,7 @@ open class CompanionScreenshotTest {
         }
         val t = com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load(fixture), cfg)
         val v = buildSnapshotView(t).copy(game = game)
-        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(paparazzi.context, it) } }
+        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
         val input = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
             override val busy = false
             override fun selectAction(actionIndex: Int) {}
@@ -1523,7 +1523,7 @@ open class CompanionScreenshotTest {
             val here = world.encounters(v.mapGroup, v.mapNum, v.progress)
             val teams = gameGuide(guideId(game, null))?.bosses.orEmpty().take(3).flatMap { b -> v.progress?.let { world.party(b.trainer(it), it) }.orEmpty() }
             ((here.grass + here.headbutt + here.headbuttRare).map { it.species } + teams.map { it.species })
-                .forEach { sp -> com.pokedaisy.app.companion.data.spriteAsset("pokemon", sp)?.let { GameArt.get(paparazzi.context, it) } }
+                .forEach { sp -> com.pokedaisy.app.companion.data.spriteAsset("pokemon", sp)?.let { GameArt.get(it) } }
             snapshot {
                 AppTheme {
                     androidx.compose.runtime.CompositionLocalProvider(

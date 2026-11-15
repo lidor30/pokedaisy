@@ -1,11 +1,11 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
-import android.graphics.Bitmap
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -57,7 +57,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -423,9 +422,9 @@ private fun regionName(images: Array<String>, i: Int): String = when (images[i])
  * focus goes on to the buttons. */
 @Composable
 private fun RegionMap(
-    bitmap: Bitmap,
+    bitmap: ImageBitmap,
     style: MapLabelStyle,
-    head: Bitmap?,
+    head: ImageBitmap?,
     headTile: Pair<Int, Int>?,
     cursor: List<MapTiles>,
     label: String,
@@ -443,10 +442,10 @@ private fun RegionMap(
     originX: Int = 0,
     originY: Int = 0,
     /** Sprites over the map, each at its top-left map pixel (Platinum's towns). */
-    marks: List<Pair<Bitmap, IntOffset>> = emptyList(),
+    marks: List<Pair<ImageBitmap, IntOffset>> = emptyList(),
     /** The game's own cursor sprite (HeartGold / SoulSilver's: small, big), centred on [cursorFrom]'s tile instead of
      * FireRed's corners around [cursor]; it pulses on the same beat. */
-    cursorSprite: Pair<Bitmap, Bitmap>? = null,
+    cursorSprite: Pair<ImageBitmap, ImageBitmap>? = null,
     /** The map pixel the head is centred on, at its own size (Black's places' points); null = [headTile]'s middle. */
     headAt: IntOffset? = null,
     /** The map pixel [cursorSprite] is centred on; null = [cursorFrom]'s tile's middle. */
@@ -457,10 +456,10 @@ private fun RegionMap(
     // so a swap redraws the map without recomposing it.
     val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK])
 
-    val image = remember(bitmap) { bitmap.asImageBitmap() }
-    val headImage = remember(head) { head?.asImageBitmap() }
-    val markImages = remember(marks) { marks.map { (b, at) -> b.asImageBitmap() to at } }
-    val cursorImages = remember(cursorSprite) { cursorSprite?.let { (a, b) -> a.asImageBitmap() to b.asImageBitmap() } }
+    val image = bitmap
+    val headImage = head
+    val markImages = marks
+    val cursorImages = cursorSprite
     // FireRed's region-map screens carry the game's own black border (and
     // a white inner strip) around the map; draw only the map itself.
     val crop = remember(bitmap) { regionMapContentBounds(bitmap) }
@@ -924,10 +923,10 @@ private const val CURSOR_THICK = 2
  * Only near-black/near-white lines count, so a map edge that's all sea (blue)
  * is never mistaken for border, and at most a quarter of each side goes.
  */
-fun regionMapContentBounds(bitmap: Bitmap): IntRect {
+fun regionMapContentBounds(bitmap: ImageBitmap): IntRect {
     val w = bitmap.width
     val h = bitmap.height
-    val px = IntArray(w * h).also { bitmap.getPixels(it, 0, w, 0, 0, w, h) }
+    val px = IntArray(w * h).also { bitmap.readPixels(it, 0, 0, w, h) }
     fun border(c: Int): Boolean {
         val r = (c shr 16) and 0xFF
         val g = (c shr 8) and 0xFF
@@ -962,11 +961,11 @@ private const val POKEGEAR_STICK_DEAD = 0.2f
  */
 @Composable
 private fun PokegearMapView(
-    bitmap: Bitmap,
+    bitmap: ImageBitmap,
     style: MapLabelStyle,
-    head: Bitmap?,
+    head: ImageBitmap?,
     playerTile: Pair<Int, Int>?,
-    cursorSprite: Pair<Bitmap, Bitmap>?,
+    cursorSprite: Pair<ImageBitmap, ImageBitmap>?,
     tile: Int,
     cell: Pair<Int, Int>?,
     label: String,
@@ -974,9 +973,9 @@ private fun PokegearMapView(
     self: FocusRequester,
     buttons: @Composable ColumnScope.(zoomed: Boolean, toggleZoom: () -> Unit) -> Unit,
 ) {
-    val image = remember(bitmap) { bitmap.asImageBitmap() }
-    val headImage = remember(head) { head?.asImageBitmap() }
-    val cursorImages = remember(cursorSprite) { cursorSprite?.let { (a, b) -> a.asImageBitmap() to b.asImageBitmap() } }
+    val image = bitmap
+    val headImage = head
+    val cursorImages = cursorSprite
     val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK])
     val mapW = bitmap.width.toFloat()
     val mapH = bitmap.height.toFloat()

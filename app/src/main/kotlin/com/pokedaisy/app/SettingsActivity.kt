@@ -898,11 +898,11 @@ class SettingsActivity : ComponentActivity() {
                 selector = Selector(
                     tk("THEME"), themes.map { it.label }, AppColors.theme.label,
                     badge = { l -> tk("LIMITED").takeIf { themes.firstOrNull { it.label == l }?.season != null } },
-                ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(this@SettingsActivity, it) } }
+                ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(it) } }
             },
             // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
             SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
-                DarkMode.set(this@SettingsActivity, DarkMode.setting.next())
+                DarkMode.set(DarkMode.setting.next())
                 revision++
             },
             // The game's frames per second and the app's CPU share, in the game's corner.

@@ -1,6 +1,6 @@
 package render
 
-import android.graphics.Bitmap
+import com.pokedaisy.app.companion.ui.imageBitmapOf
 import com.pokedaisy.app.companion.data.save.Gen3SaveEditor
 import com.pokedaisy.app.companion.data.save.SyntheticSave
 import com.pokedaisy.app.companion.data.save.TradeSide
@@ -16,18 +16,18 @@ fun pcBoxesDemo(): PcBoxesState = PcBoxesState(Gen3SaveEditor(SyntheticSave.demo
  * a dot in a colour of its own per species, outlined, so the cards' layout shows as it will with real icons.
  */
 val demoIcons = MonIconLoader { species ->
-    val bmp = Bitmap.createBitmap(32, 64, Bitmap.Config.ARGB_8888)
+    val px = IntArray(32 * 64)
     val hue = (species * 47) % 360
     val fill = hsv(hue, 0.55f, 0.95f)
     val ink = hsv(hue, 0.7f, 0.45f)
     for (y in 0 until 32) for (x in 0 until 32) {
         val d = (x - 15.5f) * (x - 15.5f) + (y - 17.5f) * (y - 17.5f)
         when {
-            d < 9.5f * 9.5f -> bmp.setPixel(x, y, fill)
-            d < 11f * 11f -> bmp.setPixel(x, y, ink)
+            d < 9.5f * 9.5f -> px[y * 32 + x] = fill
+            d < 11f * 11f -> px[y * 32 + x] = ink
         }
     }
-    bmp
+    imageBitmapOf(px, 32, 64)
 }
 
 private fun hsv(h: Int, s: Float, v: Float): Int {

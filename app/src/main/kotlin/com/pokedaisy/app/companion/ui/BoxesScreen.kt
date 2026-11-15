@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
 import com.pokedaisy.app.companion.data.LockedMap
-import android.graphics.Bitmap
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -45,7 +44,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -294,8 +292,8 @@ internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: ()
     CompanionBackHandler(onBack = ::tap)
     val outPic = anim.boxMon?.let { swapPictureOf(it, dex) }
     val inPic = anim.partyMon?.let { swapPictureOf(it, dex) }
-    val outArt = remember(outPic) { outPic?.let { SwapArt(it.asImageBitmap(), opaqueBounds(it)) } }
-    val inArt = remember(inPic) { inPic?.let { SwapArt(it.asImageBitmap(), opaqueBounds(it)) } }
+    val outArt = remember(outPic) { outPic?.let { SwapArt(it, opaqueBounds(it)) } }
+    val inArt = remember(inPic) { inPic?.let { SwapArt(it, opaqueBounds(it)) } }
     val fade = (t / SWAP_IN.toFloat()).coerceIn(0f, 1f)
     val noRipple = remember { MutableInteractionSource() }
     BoxWithConstraints(
@@ -402,7 +400,7 @@ private class SwapArt(val image: ImageBitmap, val trim: Trim)
 
 /** [mon]'s front picture from the ROM, else (no Pokédex tables, an egg) its icon's first frame. */
 @Composable
-private fun swapPictureOf(mon: MonView, dex: PokedexTables?): Bitmap? {
+private fun swapPictureOf(mon: MonView, dex: PokedexTables?): ImageBitmap? {
     val species = mon.species.takeIf { !mon.isEgg && dex != null } ?: 0
     return if (dex != null && species > 0) rememberRomBitmap(dex, species, PokedexSource::cachedFrontSprite, PokedexSource::frontSprite)
     else remember(mon.iconAsset) { peekMonIcon(mon.iconAsset)?.let(::cropToFirstFrame) }
@@ -567,7 +565,7 @@ private fun MonPanel(mon: MonView?, dex: PokedexTables?, m: GbaTextMetrics, modi
  * fits, centred: the well's room goes to the Pokémon, not to the picture's empty margin.
  */
 @Composable
-private fun TrimmedSprite(bitmap: Bitmap?, modifier: Modifier) {
+private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier) {
     val density = LocalDensity.current
     val trim = remember(bitmap) { bitmap?.let(::opaqueBounds) }
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
@@ -575,7 +573,7 @@ private fun TrimmedSprite(bitmap: Bitmap?, modifier: Modifier) {
         val w = with(density) { maxWidth.toPx() }
         val h = with(density) { maxHeight.toPx() }
         val k = floor(minOf(w / trim.width, h / trim.height)).coerceAtLeast(1f)
-        val image = remember(bitmap) { bitmap.asImageBitmap() }
+        val image = bitmap
         Canvas(Modifier.size(with(density) { (trim.width * k).toDp() }, with(density) { (trim.height * k).toDp() })) {
             drawImage(
                 image, srcOffset = IntOffset(trim.left, trim.top), srcSize = IntSize(trim.width, trim.height),
@@ -588,11 +586,11 @@ private fun TrimmedSprite(bitmap: Bitmap?, modifier: Modifier) {
 private class Trim(val left: Int, val top: Int, val width: Int, val height: Int)
 
 /** The smallest rectangle holding [b]'s non-transparent pixels (the whole picture if it has none). */
-private fun opaqueBounds(b: Bitmap): Trim {
+private fun opaqueBounds(b: ImageBitmap): Trim {
     val w = b.width
     val h = b.height
     val px = IntArray(w * h)
-    b.getPixels(px, 0, w, 0, 0, w, h)
+    b.readPixels(px, 0, 0, w, h)
     var l = w; var t = h; var r = -1; var bt = -1
     for (y in 0 until h) for (x in 0 until w) if (px[y * w + x] ushr 24 != 0) {
         if (x < l) l = x
@@ -866,7 +864,7 @@ internal object PcColors {
                 else -> base
             }
         }
-        return Bitmap.createBitmap(px, n, n, Bitmap.Config.ARGB_8888).asImageBitmap()
+        return imageBitmapOf(px, n, n)
     }
 }
 
@@ -1049,7 +1047,7 @@ internal object BoxWallpapers {
             val paper = paper(id)
             val inks = intArrayOf(shade(paper.base, night).toArgb(), shade(paper.mark, night).toArgb(), shade(paper.mark2, night).toArgb())
             val px = IntArray(TILE * TILE) { i -> inks[ink(paper.pattern, i % TILE, i / TILE)] }
-            Bitmap.createBitmap(px, TILE, TILE, Bitmap.Config.ARGB_8888).asImageBitmap()
+            imageBitmapOf(px, TILE, TILE)
         }
 
     private const val TILE = 16

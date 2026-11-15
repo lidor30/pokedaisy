@@ -1,7 +1,5 @@
 package com.pokedaisy.app.companion.ui.theme
 
-import android.content.Context
-import android.content.res.Configuration
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -30,17 +28,30 @@ object DarkMode {
 
     val on: Boolean get() = override ?: (setting == DarkModeSetting.ON || setting == DarkModeSetting.AUTO && systemDark)
 
-    fun load(context: Context) {
-        setting = runCatching { DarkModeSetting.entries[com.pokedaisy.app.Prefs(context).darkMode] }.getOrDefault(DarkModeSetting.OFF)
-        systemDark = isSystemDark(context)
+    /** The stored setting ([ThemeStore]); the device's own dark mode comes from AppTheme and the game's activity. */
+    fun load() {
+        setting = ThemeStore.current?.let { s -> DarkModeSetting.entries.getOrNull(s.darkMode) } ?: DarkModeSetting.OFF
     }
 
-    fun set(context: Context, s: DarkModeSetting) {
-        com.pokedaisy.app.Prefs(context).darkMode = s.ordinal
+    fun set(s: DarkModeSetting) {
+        ThemeStore.current?.darkMode = s.ordinal
         setting = s
     }
+}
 
-    fun isSystemDark(context: Context): Boolean = runCatching {
-        context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-    }.getOrDefault(false)
+/**
+ * Where THEME and DARK MODE are kept: the app's Prefs, which the host sets at start ([current]); null (previews,
+ * screenshot tests) = the defaults, nothing saved.
+ */
+interface ThemeStore {
+    /** A [ThemeSpec.id]. */
+    var appTheme: Int
+    /** The theme worn before a limited-time one, to go back to when its dates are over. */
+    var themeBeforeSeasonal: Int
+    /** A [DarkModeSetting.ordinal]. */
+    var darkMode: Int
+
+    companion object {
+        @kotlin.concurrent.Volatile var current: ThemeStore? = null
+    }
 }

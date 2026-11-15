@@ -1,9 +1,9 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlin.concurrent.Volatile
 import com.pokedaisy.app.companion.data.LockedLru
 import android.content.Context
-import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -73,7 +72,7 @@ interface DocsSource {
     /** Asks the site for a newer manual. Blocking. */
     fun refresh(): DocsStore.Refresh
     /** An image block's picture, or null (offline and never shown before). Blocking. */
-    fun image(manual: DocsApi.Manual, image: Block.Image): Bitmap?
+    fun image(manual: DocsApi.Manual, image: Block.Image): ImageBitmap?
 }
 
 /** The source both screens read: the docs API through [DocsStore], unless [override] (ui-preview's local build) is set. */
@@ -86,7 +85,7 @@ class StoreDocsSource(context: Context) : DocsSource {
     private val app = context.applicationContext
     override fun cached() = DocsStore.cached(app)
     override fun refresh() = DocsStore.refresh(app).also { if (it is DocsStore.Refresh.Updated) DocsStore.pruneImages(app, it.manual) }
-    override fun image(manual: DocsApi.Manual, image: Block.Image) = DocsStore.image(app, manual, image)
+    override fun image(manual: DocsApi.Manual, image: Block.Image) = DocsStore.image(app, manual, image)?.asImageBitmap()
 }
 
 /**
@@ -451,7 +450,7 @@ private fun DocImage(b: Block.Image, manual: DocsApi.Manual, m: GbaTextMetrics, 
     val key = b.src + "@" + b.version
     val bitmap by produceKeyedState(imageCache[key], key) {
         if (value == null) value = withContext(Dispatchers.IO) {
-            source.image(manual, b)?.asImageBitmap()?.also { imageCache[key] = it }
+            source.image(manual, b)?.also { imageCache[key] = it }
         }
     }
     Column(Modifier.fillMaxWidth().padding(vertical = m.u * 5)) {

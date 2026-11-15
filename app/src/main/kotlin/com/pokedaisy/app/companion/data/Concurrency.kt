@@ -85,4 +85,7 @@ class LockedLru<K, V : Any>(private val max: Int) {
             while (map.size > max) map.remove(map.keys.first())
         }
     }
+
+    /** [key]'s value, else [make]'s, stored; computed outside the lock, like [LockedMap.getOrPut]. */
+    inline fun getOrPut(key: K, make: () -> V): V = get(key) ?: make().also { set(key, it) }
 }

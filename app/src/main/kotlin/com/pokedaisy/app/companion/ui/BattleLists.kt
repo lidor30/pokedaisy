@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -203,7 +202,7 @@ private fun PartyListRow(palette: PartyPalette, mon: MonView, selected: Boolean,
     // The icon's two poses at the game's HP-based pace, and the selected one's bob (SpriteCB_BouncePartyMonIcon).
     // From an already-decoded sheet where there is one (no blank first frame), then the loaded one.
     val sheet = rememberMonIconSheet(mon.iconAsset) ?: remember(mon.iconAsset) { peekMonIcon(mon.iconAsset) }
-    val icon = remember(sheet) { sheet?.asImageBitmap() }
+    val icon = sheet
     val ticks = if (mon.isEgg || mon.hp <= 0) 0 else PartySlotLayout.ICON_FRAME_TICKS[listHpLevel(mon.hp, mon.maxHp)]
     val moving = CompanionTweaks[CompanionTweaks.Tweak.PARTY_ICONS_MOVE]
     val pose by rememberBlink(partyIconPoseMs(ticks), enabled = ticks > 0 && moving)
