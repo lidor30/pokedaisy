@@ -165,6 +165,8 @@ The `FOLD LAYOUT` setting (in the `SCREEN` group, on both screens) turns this on
 
 ## On iPhone and iPad
 
+On supported GBA games, `NO HMS NEEDED`, `EXP SHARE` and `LEVEL CAP` use the same settings and game-option rules as Android. Unknown ROM layouts show N/A.
+
 The game screen uses the same panel controls as Android. In portrait, drag the companion grip to resize it, or tap it to step through sizes and hide it. The grip stays visible when the companion is hidden, so you can bring it back.
 
 In landscape, the companion starts docked beside the game. Drag the padlock tab to change its width, tap it to lock or unlock the panel, and use the edge tabs to close or reopen it. Your sizes and docking choice are remembered. `COMPANION VIEW`, in the companion's `SETTINGS` while held sideways, switches between the side panel and a window over the game.

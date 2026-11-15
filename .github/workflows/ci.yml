@@ -119,6 +119,44 @@ jobs:
             shared-ui/build/reports/tests/
           retention-days: 7
 
+  # The iPad app: the companion's screens (shared-ui/) compiled for the iPad, then iosApp/'s XcodeGen project built
+  # for the simulator with no signing. Its build runs Gradle, which links the screens, the data code and the
+  # emulator core into the PokeDaisyUI framework. A Mac, as the core needs Xcode (advisory for now).
+  ios-app:
+    name: iPad app (simulator build)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.ref }}
+
+      - run: git submodule update --init third_party/mgba
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+
+      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+
+      - name: Compile the screens for the iPad
+        run: ./gradlew :shared-ui:compileKotlinIosArm64 --stacktrace
+
+      - name: Generate the Xcode project
+        run: brew install xcodegen && cd iosApp && xcodegen
+
+      - name: Build for the iPad simulator
+        run: >-
+          xcodebuild -project iosApp/PokeDaisy.xcodeproj -scheme PokeDaisy -configuration Debug
+          -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' ARCHS=arm64
+          CODE_SIGNING_ALLOWED=NO build
+
   ui-preview:
     name: UI preview + stress
     runs-on: ubuntu-latest
