@@ -44,7 +44,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import com.pokedaisy.app.companion.ui.LibraryIcons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -336,7 +336,7 @@ class SettingsActivity : ComponentActivity() {
                         Spacer(Modifier.width(nm.u * 4))
                         com.pokedaisy.app.companion.ui.OptionButton(
                             null, nm, onClick = { screen = Screen.HELP },
-                            icon = Icons.AutoMirrored.Filled.HelpOutline, contentDescription = tr("Help"),
+                            icon = LibraryIcons.HelpOutline, contentDescription = tr("Help"),
                         )
                     }
                     Spacer(Modifier.height(nm.u * 8))

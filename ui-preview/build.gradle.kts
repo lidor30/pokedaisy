@@ -48,7 +48,7 @@ dependencies {
     implementation(project(":data"))
     implementation("org.jetbrains.compose.material3:material3:$cmp")
     implementation("org.jetbrains.compose.material:material-icons-extended:$cmp")
-    implementation("org.json:json:20240303")
+    implementation("org.json:json:20260814")
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")
     implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:$cmp")

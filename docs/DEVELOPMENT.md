@@ -3888,7 +3888,7 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
   carries the peer id and the HELLO user data). The relay server is `server/coop-relay/` (a separate Kotlin / JVM program on Java-WebSocket, never in the APK);
   its README covers deploying it (by hand, or to Google Cloud by `.github/workflows/coop-relay.yml` over `deploy/gcp/`) and its limits table.
 - **Channel** (`CoopChannel`, one per connection, whatever the pipe is): a Noise IK handshake, `Noise_IK_25519_AESGCM_SHA256`
-  (`CoopNoise`, X25519 from Bouncy Castle, the rest java.security). The static key is the device's `filesDir/coop/secret.key`
+  (`CoopNoise`, X25519 from Bouncy Castle - its own code copied into `companion/coop/x25519/`, the whole library only a test dependency that `X25519Test` checks it against - the rest java.security). The static key is the device's `filesDir/coop/secret.key`
   (32 bytes; the peer id is its public key, 64 hex characters). The prologue is ASCII `PokeDaisy co-op 1`, one path byte (0 invite room,
   1 pair room, 2 TCP) and the room id's 32 characters (none for TCP). Message 1 carries the transport version (u16, 1), message 2 a
   status byte (0 go on, else a reason code). After the handshake every message is sealed; the plaintext is a kind byte plus a body:

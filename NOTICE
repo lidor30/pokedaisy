@@ -128,7 +128,8 @@ The app shows every license below in full under Settings > LICENSES.
   Google Play services' play-services-basement and play-services-tasks, under
   the Android Software Development Kit License
   (https://developer.android.com/studio/terms).
-- Bouncy Castle (bcprov), Copyright (c) 2000-2024 The Legion of the Bouncy Castle
+- Bouncy Castle (its X25519 and X25519Field, copied into
+  companion/coop/x25519/), Copyright (c) 2000-2024 The Legion of the Bouncy Castle
   Inc., MIT License (third_party/licenses/BouncyCastle-MIT.txt) -
   https://www.bouncycastle.org - X25519 for the co-op link's handshake.
 - OkHttp and Okio, Copyright (c) Square, Inc., Apache License 2.0
