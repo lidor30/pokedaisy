@@ -71,6 +71,7 @@ class SaveEditorActivity : ComponentActivity() {
         class Message(val text: String) : Page()
         class Ready(val state: PcBoxesState, val opened: Opened) : Page()
         class Trade(val state: TradeState, val a: Opened, val b: Opened) : Page()
+        class PalPark(val state: com.pokedaisy.app.companion.ui.PalParkState, val gba: Opened, val ds: Opened) : Page()
     }
 
     private lateinit var prefs: Prefs
@@ -88,6 +89,14 @@ class SaveEditorActivity : ComponentActivity() {
     private var tradeFrom: Opened? = null
     /** SAVE EDITOR (TOOLS): the game's pick-list, before any game is open. */
     private var editPick by mutableStateOf<List<Pair<File, String>>?>(null)
+    /** PAL PARK (TOOLS): Pal Park alone - the GBA game picked, then the DS one, then Pal Park. */
+    private var palParkOnly = false
+    /** PAL PARK's two pick-lists: the GBA game to bring Pokémon from, then the DS game. */
+    private var palFromPick by mutableStateOf<List<Pair<File, String>>?>(null)
+    private var palToPick by mutableStateOf<List<Pair<File, String>>?>(null)
+    private var palFrom: Opened? = null
+    /** MISSING's other saves, in the order its entries name them. */
+    private var missingRoms: List<File> = emptyList()
     /** Icons per ROM path, once loaded (absent = none for that ROM). */
     private val icons = mutableStateMapOf<String, MonIconLoader>()
 
@@ -109,8 +118,9 @@ class SaveEditorActivity : ComponentActivity() {
         com.pokedaisy.app.companion.i18n.L10n.apply(prefs.appLanguage, null)
         val path = intent?.getStringExtra(EXTRA_ROM)
         tradeOnly = path == null && intent?.getBooleanExtra(EXTRA_TRADE, false) == true
+        palParkOnly = path == null && intent?.getBooleanExtra(EXTRA_PAL_PARK, false) == true
         val pick = path == null && intent?.getBooleanExtra(EXTRA_PICK, false) == true
-        if (path == null && !tradeOnly && !pick) { finish(); return }
+        if (path == null && !tradeOnly && !pick && !palParkOnly) { finish(); return }
         // The editor's text a step smaller everywhere (the user's call: more of the save on screen), like Settings':
         // a font pixel down, so it stays crisp.
         setContent {
@@ -129,6 +139,7 @@ class SaveEditorActivity : ComponentActivity() {
         when {
             path != null -> openGame(File(path))
             tradeOnly -> pickFirst()
+            palParkOnly -> pickPalParkFrom()
             else -> pickToEdit()
         }
     }
@@ -186,8 +197,8 @@ class SaveEditorActivity : ComponentActivity() {
     }
 
     /** The library's games with a save the editor can read; a trade's partner ([with]): one of the same generation. Blocking. */
-    private fun readableGames(except: File? = null, with: File? = null): List<Pair<File, String>> {
-        val ds = with?.let { SaveFileEdits.isDsEditable(it) }
+    private fun readableGames(except: File? = null, with: File? = null, onlyDs: Boolean? = null): List<Pair<File, String>> {
+        val ds = onlyDs ?: with?.let { SaveFileEdits.isDsEditable(it) }
         return RomFolder.libraryRoms(this, prefs)
             .filter {
                 it.absolutePath != except?.absolutePath &&
@@ -211,6 +222,114 @@ class SaveEditorActivity : ComponentActivity() {
                 else firstPick = list
             }
         }.start()
+    }
+
+    /** PAL PARK: which GBA game to bring Pokémon from (then [pickPalParkTo] for the DS game). */
+    private fun pickPalParkFrom() {
+        page = Page.Picking
+        Thread {
+            val gba = readableGames(onlyDs = false)
+            val ds = readableGames(onlyDs = true)
+            runOnUiThread {
+                if (gba.isEmpty() || ds.isEmpty()) page = Page.Message(tr("PAL PARK needs a GBA game (FireRed, LeafGreen, Emerald, Ruby or Sapphire) and HeartGold, SoulSilver or Platinum, each with a save it can read, saved once in the game."))
+                else palFromPick = gba
+            }
+        }.start()
+    }
+
+    private fun openPalParkFrom(f: File) {
+        page = Page.Loading
+        Thread {
+            val o = open(f)
+            runOnUiThread {
+                if (o is Opened) { palFrom = o; page = Page.Picking; pickPalParkTo() } else page = Page.Message(o as String)
+            }
+            loadIcons(f)
+        }.start()
+    }
+
+    private fun pickPalParkTo() {
+        Thread {
+            val list = readableGames(onlyDs = true)
+            runOnUiThread { palToPick = list }
+        }.start()
+    }
+
+    /** Pal Park between [gba] and [ds] (both read), with [pick] in the GBA PC already picked. */
+    private fun startPalPark(gba: Opened, ds: Opened, pick: com.pokedaisy.app.companion.data.save.BoxSlot? = null) {
+        val st = com.pokedaisy.app.companion.ui.PalParkState(TradeSide(gba.name, gba.editor(), gba.gameCode), TradeSide(ds.name, ds.editor(), ds.gameCode))
+        if (pick != null) { st.boxGba = pick.box; st.toggle(pick) }
+        page = Page.PalPark(st, gba, ds)
+        Thread { loadIcons(gba.rom); loadIcons(ds.rom) }.start()
+    }
+
+    private fun openPalPark(gbaRom: File, dsRom: File, pick: com.pokedaisy.app.companion.data.save.BoxSlot? = null) {
+        val before = page
+        page = Page.Loading
+        Thread {
+            val a = open(gbaRom)
+            val b = open(dsRom)
+            runOnUiThread {
+                if (a is Opened && b is Opened) startPalPark(a, b, pick)
+                else { Toast.makeText(this, (a as? String) ?: (b as String), Toast.LENGTH_LONG).show(); page = if (palParkOnly) Page.Message((a as? String) ?: (b as String)) else before }
+            }
+        }.start()
+    }
+
+    private fun leavePalPark() {
+        if (palParkOnly) finish() else load()
+    }
+
+    private fun savePalPark(p: Page.PalPark) {
+        if (saving) return
+        saving = true
+        Thread {
+            val result = runCatching {
+                SaveFileEdits.commitBoth(
+                    this, prefs,
+                    SaveFileEdits.Edit(p.gba.rom, p.gba.bytes, p.state.gba.editor.build()),
+                    SaveFileEdits.Edit(p.ds.rom, p.ds.bytes, p.state.ds.editor.build()),
+                )
+            }.getOrElse { SaveFileEdits.Result.Failed(it.message ?: it.toString()) }
+            runOnUiThread { saved(result) }
+        }.start()
+    }
+
+    /**
+     * MISSING: the other games' saves this one could get a Pokémon from (its own generation's, and a GBA game's for a DS
+     * one through Pal Park), read off the UI thread, then what this Pokédex lacks.
+     */
+    private fun loadMissing(ready: Page.Ready) {
+        val s = ready.state
+        s.missing = com.pokedaisy.app.companion.ui.MissingView(null, emptyList())
+        val target = TradeSide(ready.opened.name, s.editor, ready.opened.gameCode)
+        val ds = ready.opened.ds != null
+        Thread {
+            val others = readableGames(except = rom).map { it.first }
+                .filter { if (ds) true else !SaveFileEdits.isDsEditable(it) }
+                .mapNotNull { f -> (open(f) as? Opened)?.let { f to it } }
+            val sides = others.map { (_, o) -> TradeSide(o.name, o.editor(), o.gameCode) }
+            val entries = runCatching { com.pokedaisy.app.companion.data.save.MissingDex.find(target, sides) }.getOrElse { emptyList() }
+            runOnUiThread {
+                missingRoms = others.map { it.first }
+                if (s.missing != null) s.missing = com.pokedaisy.app.companion.ui.MissingView(entries, sides)
+            }
+            others.forEach { loadIcons(it.first) }
+        }.start()
+    }
+
+    /** A MISSING row: the trade (or Pal Park) that brings it, with it picked on the other side. */
+    private fun getMissing(ready: Page.Ready, o: com.pokedaisy.app.companion.data.save.MissingDex.Owned) {
+        if (ready.state.changed) {
+            ready.state.missing = null
+            ready.state.notice = tr("Save your changes first, then bring it over")
+            return
+        }
+        val src = missingRoms.getOrNull(o.source) ?: return
+        if (o.palPark) {
+            val at = (o.at as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.at ?: return
+            openPalPark(src, rom, at)
+        } else startTrade(src, pick = o.at)
     }
 
     override fun onResume() {
@@ -309,7 +428,12 @@ class SaveEditorActivity : ComponentActivity() {
                 Toast.makeText(this, tr("Saved. The previous save is in {0}", result.backup.parentFile?.name ?: SaveBackups.DIR_NAME), Toast.LENGTH_LONG).show()
                 // Further edits start from the files as written.
                 val t = page as? Page.Trade
-                if (tradeOnly && t != null) reopenTrade(t.a.rom, t.b.rom) else load()
+                val pp = page as? Page.PalPark
+                when {
+                    tradeOnly && t != null -> reopenTrade(t.a.rom, t.b.rom)
+                    palParkOnly && pp != null -> openPalPark(pp.gba.rom, pp.ds.rom)
+                    else -> load()
+                }
             }
             is SaveFileEdits.Result.Failed -> Toast.makeText(this, result.reason, Toast.LENGTH_LONG).show()
         }
@@ -326,14 +450,17 @@ class SaveEditorActivity : ComponentActivity() {
         }.start()
     }
 
-    private fun startTrade(partner: File) {
+    private fun startTrade(partner: File, pick: com.pokedaisy.app.companion.data.save.MonRef? = null) {
         val before = page
         val a = tradeFrom ?: (before as? Page.Ready)?.opened ?: return
         page = Page.Loading
         Thread {
             val next = when (val o = open(partner)) {
                 is Opened -> {
-                    Page.Trade(TradeState(TradeSide(a.name, a.editor(), a.gameCode), TradeSide(o.name, o.editor(), o.gameCode)), a, o)
+                    val st = TradeState(TradeSide(a.name, a.editor(), a.gameCode), TradeSide(o.name, o.editor(), o.gameCode))
+                    // From MISSING: the Pokémon to bring already picked on the other side.
+                    pick?.let { st.selB = it; (it as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.let { pc -> st.boxB = pc.at.box } }
+                    Page.Trade(st, a, o)
                 }
                 else -> null.also { runOnUiThread { Toast.makeText(this, o as String, Toast.LENGTH_LONG).show() } }
             }
@@ -355,6 +482,7 @@ class SaveEditorActivity : ComponentActivity() {
                 BackHandler {
                     when {
                         s.editing != null -> s.editing = null
+                        s.missing != null -> s.missing = null
                         s.confirmSave -> s.confirmSave = false
                         s.confirmDiscard -> s.confirmDiscard = false
                         s.detail != null -> s.detail = null
@@ -366,6 +494,7 @@ class SaveEditorActivity : ComponentActivity() {
                 PcBoxesScreen(
                     s, gameName, m, onBack = { finish() }, onSave = { save(p) }, saving = saving,
                     icons = icons[rom.absolutePath], onTrade = { pickPartner() },
+                    onMissing = { loadMissing(p) }, onGet = { getMissing(p, it) },
                 )
             }
             is Page.Trade -> {
@@ -382,6 +511,21 @@ class SaveEditorActivity : ComponentActivity() {
                 TradeScreen(
                     s, m, onBack = { leaveTrade() }, onSave = { saveTrade(p) }, saving = saving,
                     iconsA = icons[p.a.rom.absolutePath], iconsB = icons[p.b.rom.absolutePath],
+                )
+            }
+            is Page.PalPark -> {
+                val s = p.state
+                BackHandler {
+                    when {
+                        s.confirmSave -> s.confirmSave = false
+                        s.confirmDiscard -> s.confirmDiscard = false
+                        s.changed -> s.confirmDiscard = true
+                        else -> leavePalPark()
+                    }
+                }
+                com.pokedaisy.app.companion.ui.PalParkScreen(
+                    s, m, onBack = { leavePalPark() }, onSave = { savePalPark(p) }, saving = saving,
+                    iconsGba = icons[p.gba.rom.absolutePath], iconsDs = icons[p.ds.rom.absolutePath],
                 )
             }
             Page.Loading -> MessagePage(tr("Reading the save…"), m)
@@ -402,6 +546,20 @@ class SaveEditorActivity : ComponentActivity() {
                 onDismiss = { finish() },
             )
         }
+        palFromPick?.let { list ->
+            OptionSelector(
+                tk("BRING FROM"), list.indices.toList(), -1, { list[it].second }, m,
+                onPick = { palFromPick = null; openPalParkFrom(list[it].first) },
+                onDismiss = { finish() },
+            )
+        }
+        palToPick?.let { list ->
+            OptionSelector(
+                tk("BRING TO"), list.indices.toList(), -1, { list[it].second }, m,
+                onPick = { palToPick = null; val from = palFrom; if (from != null) openPalPark(from.rom, list[it].first) },
+                onDismiss = { palToPick = null; palFrom = null; pickPalParkFrom() },
+            )
+        }
         // The trade's other game: from TRADE SAVES BACK picks the first one again; in the editor it just closes.
         partners?.let { list ->
             OptionSelector(
@@ -418,7 +576,7 @@ class SaveEditorActivity : ComponentActivity() {
         Box(Modifier.fillMaxSize()) {
             AppBackdrop()
             Column(Modifier.fillMaxSize().padding(16.dp)) {
-                OptionTitleWindow(if (tradeOnly) tk("TRADE SAVES") else tk("SAVE EDITOR"), m, trailing = gameName, onBack = { finish() })
+                OptionTitleWindow(when { tradeOnly -> tk("TRADE SAVES"); palParkOnly -> tk("PAL PARK"); else -> tk("SAVE EDITOR") }, m, trailing = gameName, onBack = { finish() })
                 Spacer(Modifier.height(m.u * 4))
                 // A pick-list over it (Picking): the title alone.
                 if (text.isNotEmpty()) OptionListWindow(m, Modifier.fillMaxWidth()) {
@@ -434,5 +592,7 @@ class SaveEditorActivity : ComponentActivity() {
         const val EXTRA_TRADE = "trade"
         /** TOOLS > SAVE EDITOR: no [EXTRA_ROM], the game picked first. */
         const val EXTRA_PICK = "pick"
+        /** TOOLS > PAL PARK: no [EXTRA_ROM], the GBA game and the DS game picked, then Pal Park alone. */
+        const val EXTRA_PAL_PARK = "pal_park"
     }
 }

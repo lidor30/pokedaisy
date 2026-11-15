@@ -109,7 +109,7 @@ EXPAND works in every Gen 3 game, many hacks and the Game Boy's Yellow and Cryst
 - **Shaders** (LCD, scanlines, CRT, GBA colours, edge smoothing), themes, dark mode, overlays.
 - **Controls**: remap everything, touch controls you lay out yourself (or a Delta skin), any controller.
 - **DS games**: the touch screen on the bottom screen, or in five layouts on one, upscaled 2x to 8x.
-- **Tools**: link play (two to four games on one cable), a save editor, save trades, BPS patching.
+- **Tools**: link play (two to four games on one cable), a save editor (with what your Pokédex is missing), save trades, Pal Park from a GBA game to a DS one, BPS patching.
 - **Your files**: standard `.sav` / `.srm` saves shared with RetroArch and mGBA, a backup every start, zipped ROMs,
   launching from ES-DE, Cocoon and iiSU ([iiSU](docs/iisu/README.md), [ES-DE](docs/es-de/README.md) setup).
 - **Nine languages**: English, Japanese, Korean, French, German, Italian, Spanish and both Portugueses.

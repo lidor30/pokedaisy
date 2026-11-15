@@ -377,6 +377,12 @@ class Gen4BoxMon private constructor(
             return out
         }
 
+        /** A whole new record from its four blocks in A B C D order (128 bytes): checksummed, shuffled and encrypted. */
+        internal fun build(personality: Long, logical: ByteArray): ByteArray {
+            require(logical.size == 128)
+            return encode(personality, 0, logical)
+        }
+
         /** ZeroBoxMonData: zeroes, encrypted with checksum 0 (what an empty PC slot holds). */
         fun emptyRecord(): ByteArray = ByteArray(SIZE).also { crypt(ByteArray(128), 0, 128, 0).copyInto(it, 8) }
 
@@ -743,6 +749,13 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
 
     private fun dexBit(off: Int, species: Int) = (general[l.dex + off + (species - 1) / 8].toInt() shr ((species - 1) % 8)) and 1 == 1
     private val hasNational: Boolean get() = general[l.dex + l.dexNational].toInt() != 0
+    /** The save has the National Pokédex (what Pal Park waits for). */
+    val nationalDex: Boolean get() = hasNational
+    /** [species] (a National Dex number) is caught in this save's Pokédex. */
+    fun caughtInDex(species: Int): Boolean = species in 1..Gen4GameData.LAST_SPECIES && dexBit(DEX_CAUGHT, species)
+    /** The species the Pokédex lists now: the regional ones until the National Pokédex. */
+    fun dexSpecies(): List<Int> =
+        (1..Gen4GameData.LAST_SPECIES).filter { hasNational || game.regional.isEmpty() || inRegional(it) }
     private fun inRegional(species: Int) = (game.regional.getOrNull(species) ?: 0) != 0
 
     override val dex: DexSummary get() {

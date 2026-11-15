@@ -2255,6 +2255,15 @@ box names (`Gen4Text.encode`), GIVE / TAKE through the bag, and HG / SS / Platin
 registers a received one) too. Not yet: DS play time, Diamond / Pearl, Gen 5. The 3DS port has the Gen 3 editor (every page) and trades (party too) in C (`3ds/core/pd_save.c`,
 `pd_library_saves.c`; names typed on the console's swkbd): its tables come from the app's generated Kotlin by `3ds/tools/gen_save_tables.py`
 (rerun it after changing `SaveTablesGen.kt` / `SaveSpeciesGen.kt` / `SpeciesDexGen.kt`; `make -C 3ds test-save` fails while it's stale).
+**PAL PARK** (TOOLS, `EXTRA_PAL_PARK`; `save/PalPark.kt`, `ui/PalParkScreen.kt`, NEW tag `PAL_PARK`, 2026-11-16): six Pokémon from a GBA save's PC into an
+HG / SS / Platinum save, by pret/pokeplatinum's own migration (decompiled: `src/main_menu/gba_migrator.c`'s rules, `gba_pokemon.c`'s
+BoxMonGBAToBoxMon, then scrcmd_catching_show.c's store with UpdateMonStatusAndTrainerInfo case 2 = met at Pal Park (55) today at its level;
+HG / SS's overlay isn't decompiled, its scrcmd_12.c stores the same way and its ball setter fills HGSS_Pokeball too). The National Pokédex and a
+GBA cart in the DS game's language (main_menu.c) gate it; the day's wait and the park itself are left out. Its item map, refused items, HMs,
+new-ability species and GBA -> DS charset are `PalParkTablesGen.kt` from `scripts/gen_pal_park_tables.py` (`$DECOMPS/pokeplatinum`, `--check`).
+**MISSING** (the editor's TRAINER > POKéDEX, `save/MissingDex.kt`, `ui/SaveMissingPage.kt`, NEW tag `SAVE_MISSING`): what a save's dex hasn't
+caught (regional until National, the dex's order) and the other saves' Pokémon that could fill it, each judged by `Gen3Trade` / `Gen4Trade` /
+`PalPark`; a row opens TRADE or PAL PARK with it picked (the editor must have no unsaved edits). Not yet booted in a game after a Pal Park.
 **REWIND** (Settings, `Prefs.rewind`, off by default; REWIND HOLD hotkey, R on a keyboard): `pk_rewind.c` - mGBA's own
 diff ring (`mCoreRewindContext`, 600 entries, one every 2 frames: ~20 s, rewinds at 2x) but with states taken / loaded
 WITHOUT `SAVESTATE_SAVEDATA`: mGBA's `mCoreRewindRestore` would write the state's save over the save file every

@@ -327,11 +327,35 @@ internal object ToolIcons {
         mapOf('k' to OUTLINE, 'r' to Color(0xFFE04040), 'w' to WHITE, 's' to Color(0xFFF8C8A0), 'd' to Color(0xFF603820), 'b' to Color(0xFF3878E0)),
     )
 
+    /** PAL PARK: a round green tree on a strip of grass (our own drawing). */
+    private val palPark = TabIcons.TabIcon(
+        listOf(
+            ".....kkkkkk.....",
+            "...kkgggghgkk...",
+            "..kgggggghhggk..",
+            ".kggggggggghggk.",
+            ".kgggdgggggggk..",
+            "kgggggggggdgggk.",
+            "kggdggggggggggk.",
+            "kgggggggdggggk..",
+            ".kggggggggggk...",
+            "..kkkggggkkk....",
+            "....kkttkk......",
+            ".....kttk.......",
+            ".....kttk.......",
+            "kkkkkkttkkkkkkk.",
+            "kllllllllllllllk",
+            "kkkkkkkkkkkkkkk.",
+        ),
+        mapOf('k' to OUTLINE, 'g' to Color(0xFF48A848), 'h' to Color(0xFF90D870), 'd' to Color(0xFF2E7838), 't' to Color(0xFF8A5A30), 'l' to Color(0xFF70C050)),
+    )
+
     fun of(id: String): TabIcons.TabIcon? = when (id) {
         "PATCH" -> patch
         "LINK" -> link
         "EDIT" -> edit
         "TRADE" -> trade
+        "PALPARK" -> palPark
         "SPRITES" -> sprites
         else -> null
     }

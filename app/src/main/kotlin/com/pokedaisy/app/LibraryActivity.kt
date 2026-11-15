@@ -479,11 +479,14 @@ class LibraryActivity : ComponentActivity() {
             com.pokedaisy.app.companion.ui.LibraryTool("LINK", "LINK PLAY", "Trade and battle between your games", nf.badge(nf.LINK_PLAY)) {
                 startActivity(Intent(this, LinkActivity::class.java))
             },
-            com.pokedaisy.app.companion.ui.LibraryTool("EDIT", "SAVE EDITOR", "Change a game's Pokémon, bag and Pokédex", nf.badge(nf.SAVE_EDITOR_PLUS)) {
+            com.pokedaisy.app.companion.ui.LibraryTool("EDIT", "SAVE EDITOR", "Change a game's Pokémon, bag and Pokédex", nf.badge(nf.SAVE_MISSING) ?: nf.badge(nf.SAVE_EDITOR_PLUS)) {
                 startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_PICK, true))
             },
             com.pokedaisy.app.companion.ui.LibraryTool("TRADE", "TRADE SAVES", "Move Pokémon between your games' saves", nf.badge(nf.SAVE_EDITOR_PLUS)) {
                 startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_TRADE, true))
+            },
+            com.pokedaisy.app.companion.ui.LibraryTool("PALPARK", "PAL PARK", "Bring GBA Pokémon to HeartGold, SoulSilver or Platinum", nf.badge(nf.PAL_PARK)) {
+                startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_PAL_PARK, true))
             },
             com.pokedaisy.app.companion.ui.LibraryTool("SPRITES", "SPRITE PACK", "Load other games' looks for MAKEOVER", nf.badge(nf.SPRITE_PACK)) {
                 pickSpritePack.launch(arrayOf("*/*"))
