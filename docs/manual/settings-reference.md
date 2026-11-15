@@ -260,7 +260,7 @@ The `DISPLAY OPTIONS` page:
 | `BATTLE VIEW` | **`BUTTONS`**, `INFO`, `SUGGESTIONS` | What the `BATTLE` tab opens on. | [Battle](battle.md) |
 | `ONE-TAP MOVES` | `ON`, **`OFF`** | Puts your moves on the battle's first menu, so one tap picks FIGHT and the move. | [Battle](battle.md) |
 | `LAST BALL` | **`ON`**, `OFF` | A button on your turn's screen in a wild battle that throws the ball you threw last, without the bag. | [Battle](battle.md#last-ball) |
-| `BATTLE STYLE` | **`GEN 4`**, `GEN 5` | The battle buttons' look: big coloured buttons, or dark plates round a red and white ball. Both work the same way. | [Battle](battle.md#battle-style) |
+| `BATTLE STYLE` | **`GEN 4`**, `GEN 5` | The battle buttons' look, on the BATTLE tab and on one screen's `BATTLE BUTTONS`: big coloured buttons, or dark plates (round a red and white ball on the tab). Both work the same way. | [Battle](battle.md#battle-style) |
 | `FOE IVS` | `ON`, **`OFF`** | A STATS page in battle with the foe's IVs, EVs and nature. | [Battle](battle.md) |
 | `BATTLE FOCUS` | `ON`, **`OFF`** | Battle `INFO` as one page with no scrolling: one Pokémon's ability, item, stats, moves and matchups, a button to turn from the foe to yours, the foe's team down the side. No `SUGGESTIONS` or `STATS` there. | [Battle](battle.md) |
 | `TAB BAR` | **5 tabs** (a page) | Which tabs sit next to the gear: up to 5, `SHOWN` or `HIDDEN`. By default `PARTY`, `DEX`, `MAP`, `BAG` and `GUIDE`. A tab the game doesn't have gives its place to another of the game's tabs. The rest open from `MORE`, left of the gear. | [The companion](companion.md) |

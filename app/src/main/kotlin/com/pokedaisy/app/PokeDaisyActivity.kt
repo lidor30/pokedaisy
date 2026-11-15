@@ -5287,6 +5287,7 @@ class PokeDaisyActivity : Activity() {
                     core = coreFrame.value,
                     clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
                     onWindow = { battlePicking.value = it },
+                    style = battleStyle.value,
                 )
                 com.pokedaisy.app.companion.ui.QuickMenu(quickMenu, snap, quickActions, quickShown.value, hudStyle.value.look)
                 com.pokedaisy.app.companion.ui.HealedAnimation(healShow.value, hudStyle.value.look) { healShow.value = null }

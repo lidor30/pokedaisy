@@ -1379,6 +1379,9 @@ ball sprites are ours). Lengths are the game's pixels over the tab (`G5`: 256 x 
 every edge stepped in whole screen pixels of one game pixel, `rowsPath`); the lens / field, discs (`DISC`) and plates (`PLATE`) are profile
 tables from the frames. Edge to edge: CompanionScreen eases its margin away and docks the tab bar on `Gen5Dock` while the controls are up.
 D-pad focus is the game's key cursor (magenta corner brackets). Look at it with `gradle render -Ponly=battle-gen5` beside the game's frames.
+One screen's BATTLE BUTTONS follow it too (2026-11-16, players who picked GEN 4 on one screen saw no change): `BattleButtons(style)` ->
+`Gen5ActionButton` / `Gen5MoveRow` / `Gen5PartyRow` / `Gen5ListCancel` (end of BattleControlsGen5.kt: the same faces, rims and labels, a
+game pixel = the HUD's GBA pixel, laid out as the GEN 4 buttons and lists). `BattleButtonsScreenshotTest`'s `gen5*` renders them.
 **ASPECT** (SETTINGS on either screen, `Prefs.stretchGame`, ORIGINAL default / STRETCH): STRETCH fills
 the top screen - `EmulatorView.stretch` drops the quad's letterbox and `GameStageLayout.stretch` gives the
 game all the space under the status bar. The bottom screen flips it in place; the top-screen Settings opens
