@@ -53,7 +53,15 @@ import okio.Path.Companion.toOkioPath
 class SaveEditorActivity : ComponentActivity() {
 
     /** A game's save as read: what the editor edits, and the bytes the file must still hold when it's written. */
-    private class Opened(val rom: File, val name: String, val gameCode: String, val bytes: ByteArray, val file: Gen3SaveFile)
+    private class Opened(
+        val rom: File, val name: String, val gameCode: String, val bytes: ByteArray,
+        /** A Gen 3 save (the editor's every page, and TRADE), or [ds]'s HeartGold / SoulSilver one (its POKéMON page). */
+        val file: Gen3SaveFile?,
+        val ds: Pair<com.pokedaisy.app.companion.data.save.Gen4SaveFile, com.pokedaisy.app.companion.data.save.Gen4GameData>? = null,
+    ) {
+        fun editor(): com.pokedaisy.app.companion.data.save.MonSaveEditor =
+            file?.let { Gen3SaveEditor(it) } ?: ds!!.let { (f, g) -> com.pokedaisy.app.companion.data.save.Gen4SaveEditor(f, g) }
+    }
 
     private sealed class Page {
         object Loading : Page()
@@ -90,7 +98,9 @@ class SaveEditorActivity : ComponentActivity() {
         tradeOnly = path == null && intent?.getBooleanExtra(EXTRA_TRADE, false) == true
         val pick = path == null && intent?.getBooleanExtra(EXTRA_PICK, false) == true
         if (path == null && !tradeOnly && !pick) { finish(); return }
-        setContent { AppTheme { com.pokedaisy.app.companion.ui.CompactTextOnSmallWindows { Root() } } }
+        // The editor's text a step smaller everywhere (the user's call: more of the save on screen), like Settings':
+        // a font pixel down, so it stays crisp.
+        setContent { AppTheme { com.pokedaisy.app.companion.ui.SaveEditorText { Root() } } }
         when {
             path != null -> openGame(File(path))
             tradeOnly -> pickFirst()
@@ -104,7 +114,7 @@ class SaveEditorActivity : ComponentActivity() {
         Thread {
             val list = readableGames()
             runOnUiThread {
-                if (list.isEmpty()) page = Page.Message(tr("SAVE EDITOR needs a game with a save it can read: FireRed, LeafGreen, Emerald, Ruby or Sapphire, saved once in the game."))
+                if (list.isEmpty()) page = Page.Message(tr("SAVE EDITOR needs a game with a save it can read: FireRed, LeafGreen, Emerald, Ruby, Sapphire, HeartGold, SoulSilver or Platinum, saved once in the game."))
                 else editPick = list
             }
         }.start()
@@ -133,7 +143,7 @@ class SaveEditorActivity : ComponentActivity() {
             runOnUiThread {
                 page = if (a is Opened && b is Opened) {
                     tradeFrom = a
-                    Page.Trade(TradeState(TradeSide(a.name, Gen3SaveEditor(a.file), a.gameCode), TradeSide(b.name, Gen3SaveEditor(b.file), b.gameCode)), a, b)
+                    Page.Trade(TradeState(TradeSide(a.name, a.editor(), a.gameCode), TradeSide(b.name, b.editor(), b.gameCode)), a, b)
                 } else Page.Message((a as? String) ?: (b as String))
             }
         }.start()
@@ -150,11 +160,21 @@ class SaveEditorActivity : ComponentActivity() {
         load()
     }
 
-    /** The library's games with a save the editor can read. Blocking. */
-    private fun readableGames(except: File? = null): List<Pair<File, String>> =
-        RomFolder.libraryRoms(this, prefs)
-            .filter { it.absolutePath != except?.absolutePath && SaveFileEdits.formatFor(it) != null && SavesLocation.saveFor(this, prefs, it).isFile }
+    /** The library's games with a save the editor can read; a trade's partner ([with]): one of the same generation. Blocking. */
+    private fun readableGames(except: File? = null, with: File? = null): List<Pair<File, String>> {
+        val ds = with?.let { SaveFileEdits.isDsEditable(it) }
+        return RomFolder.libraryRoms(this, prefs)
+            .filter {
+                it.absolutePath != except?.absolutePath &&
+                    when (ds) {
+                        null -> SaveFileEdits.formatFor(it) != null || SaveFileEdits.isDsEditable(it)
+                        true -> SaveFileEdits.isDsEditable(it)
+                        false -> SaveFileEdits.formatFor(it) != null
+                    } &&
+                    SavesLocation.saveFor(this, prefs, it).isFile
+            }
             .map { it to GameTitles.label(this, prefs, it) }
+    }
 
     /** TRADE SAVES: which game to trade from (then [pickPartner] for the other). */
     private fun pickFirst() {
@@ -162,7 +182,7 @@ class SaveEditorActivity : ComponentActivity() {
         Thread {
             val list = readableGames()
             runOnUiThread {
-                if (list.size < 2) page = Page.Message(tr("TRADE SAVES needs two games with a save it can read: FireRed, LeafGreen, Emerald, Ruby or Sapphire, saved once in the game."))
+                if (list.size < 2) page = Page.Message(tr("TRADE SAVES needs two games with a save it can read, each saved once in the game: FireRed, LeafGreen, Emerald, Ruby and Sapphire trade with each other, HeartGold, SoulSilver and Platinum with each other."))
                 else firstPick = list
             }
         }.start()
@@ -177,7 +197,7 @@ class SaveEditorActivity : ComponentActivity() {
         page = Page.Loading
         Thread {
             val next = when (val o = open(rom)) {
-                is Opened -> Page.Ready(PcBoxesState(Gen3SaveEditor(o.file)), o)
+                is Opened -> Page.Ready(PcBoxesState(o.editor()), o)
                 else -> Page.Message(o as String)
             }
             runOnUiThread { page = next }
@@ -187,8 +207,9 @@ class SaveEditorActivity : ComponentActivity() {
 
     /** [rom]'s save as an [Opened], or why there's none (a String). Blocking. */
     private fun open(rom: File): Any {
+        if (SaveFileEdits.isDsEditable(rom)) return openDs(rom)
         val format = SaveFileEdits.formatFor(rom)
-            ?: return tr("The save editor reads FireRed, LeafGreen, Emerald, Ruby and Sapphire saves (and builds that keep their save layout). This game's isn't one yet.")
+            ?: return tr("The save editor reads FireRed, LeafGreen, Emerald, Ruby, Sapphire, HeartGold, SoulSilver and Platinum saves (and builds that keep their save layout). This game's isn't one yet.")
         val save = SavesLocation.saveFor(this, prefs, rom)
         if (!save.isFile) return tr("No save yet - save once in the game first.")
         val bytes = runCatching { save.readBytes() }.getOrNull() ?: return tr("Can't read the save {0}", save.path)
@@ -198,6 +219,25 @@ class SaveEditorActivity : ComponentActivity() {
                 val why = Gen3SaveData(parsed.save).mismatch()
                 if (why != null) tr("This save doesn't look like a {0} save ({1}), so it's left alone.", format.label, why)
                 else Opened(rom, GameTitles.label(this, prefs, rom), RomIdentity.gameCode(rom).orEmpty(), bytes, parsed.save)
+            }
+        }
+    }
+
+    /** A HeartGold / SoulSilver or Platinum save as an [Opened] (the cart's own tables read for it), or why there's none. Blocking. */
+    private fun openDs(rom: File): Any {
+        val save = SavesLocation.saveFor(this, prefs, rom)
+        if (!save.isFile) return tr("No save yet - save once in the game first.")
+        val bytes = runCatching { save.readBytes() }.getOrNull() ?: return tr("Can't read the save {0}", save.path)
+        val cart = RomArchive.playable(rom, cacheDir) ?: rom
+        val game = runCatching { com.pokedaisy.app.companion.data.NdsArt.readSaveTables(cart.toOkioPath()) }.getOrNull()
+            ?: return tr("The save editor reads FireRed, LeafGreen, Emerald, Ruby, Sapphire, HeartGold, SoulSilver and Platinum saves (and builds that keep their save layout). This game's isn't one yet.")
+        return when (val parsed = com.pokedaisy.app.companion.data.save.Gen4SaveFile.parse(bytes)) {
+            is com.pokedaisy.app.companion.data.save.Gen4SaveFile.Parsed.Failed -> parsed.reason
+            is com.pokedaisy.app.companion.data.save.Gen4SaveFile.Parsed.Ok -> {
+                val why = if (parsed.save.layout != game.layout) "it's a ${parsed.save.layout.label} save"
+                    else com.pokedaisy.app.companion.data.save.Gen4SaveData(game, parsed.save.general, parsed.save.pc, parsed.save.layout).mismatch()
+                if (why != null) tr("This save doesn't look like a {0} save ({1}), so it's left alone.", game.layout.label, why)
+                else Opened(rom, GameTitles.label(this, prefs, rom), RomIdentity.ndsGameCode(rom).orEmpty(), bytes, null, parsed.save to game)
             }
         }
     }
@@ -253,7 +293,7 @@ class SaveEditorActivity : ComponentActivity() {
     /** TRADE: the library's other games whose saves the editor can read. */
     private fun pickPartner() {
         Thread {
-            val list = readableGames(except = rom)
+            val list = readableGames(except = rom, with = rom)
             runOnUiThread {
                 if (list.isEmpty()) Toast.makeText(this, tr("No other game here has a save the save editor can read"), Toast.LENGTH_LONG).show()
                 else partners = list
@@ -268,7 +308,7 @@ class SaveEditorActivity : ComponentActivity() {
         Thread {
             val next = when (val o = open(partner)) {
                 is Opened -> {
-                    Page.Trade(TradeState(TradeSide(a.name, Gen3SaveEditor(a.file), a.gameCode), TradeSide(o.name, Gen3SaveEditor(o.file), o.gameCode)), a, o)
+                    Page.Trade(TradeState(TradeSide(a.name, a.editor(), a.gameCode), TradeSide(o.name, o.editor(), o.gameCode)), a, o)
                 }
                 else -> null.also { runOnUiThread { Toast.makeText(this, o as String, Toast.LENGTH_LONG).show() } }
             }
@@ -292,6 +332,7 @@ class SaveEditorActivity : ComponentActivity() {
                         s.editing != null -> s.editing = null
                         s.confirmSave -> s.confirmSave = false
                         s.confirmDiscard -> s.confirmDiscard = false
+                        s.detail != null -> s.detail = null
                         s.moving != null -> s.moving = null
                         s.changed -> s.confirmDiscard = true
                         else -> finish()

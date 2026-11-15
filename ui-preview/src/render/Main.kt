@@ -12,6 +12,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithText
@@ -991,24 +992,28 @@ fun platformLibrary(view: com.pokedaisy.app.LibraryView = com.pokedaisy.app.Libr
     prefs.libraryView = view.id
 }
 
-fun pcBoxes(icons: Boolean = false): () -> (@Composable () -> Unit) = {
-    val state = pcBoxesDemo()
-    val content: @Composable () -> Unit = {
+fun pcBoxes(icons: Boolean = false, ds: Boolean = false): () -> (@Composable () -> Unit) = {
+    val state = if (ds) pcBoxesDsDemo() else pcBoxesDemo()
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
         com.pokedaisy.app.companion.ui.PcBoxesScreen(
-            state, "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
+            state, if (ds) "Pokémon HeartGold" else "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
             icons = if (icons) demoIcons else null, onTrade = {},
         )
-    }
+    } }
     content
 }
 
+/** A PC slot as a trade pick. */
+fun pc(box: Int, slot: Int): com.pokedaisy.app.companion.data.save.MonRef =
+    com.pokedaisy.app.companion.data.save.MonRef.Pc(com.pokedaisy.app.companion.data.save.BoxSlot(box, slot))
+
 fun trade(setup: com.pokedaisy.app.companion.ui.TradeState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
     val state = tradeDemo().apply(setup)
-    val content: @Composable () -> Unit = {
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
         com.pokedaisy.app.companion.ui.TradeScreen(
             state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {}, iconsA = demoIcons, iconsB = demoIcons,
         )
-    }
+    } }
     content
 }
 
@@ -2435,45 +2440,105 @@ fun main(args: Array<String>) {
             onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("MOVE").performClick()
             onNodeWithContentDescription("Next box").performClick(); onAllNodesWithText("PIDGEY")[0].performClick()
         },
+        // ABRA into the party, in CHARIZARD's place (CHARIZARD to ABRA's box slot).
+        Shot("pc-boxes-to-party", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("MOVE").performClick()
+            onAllNodesWithText("CHARIZARD")[0].performClick()
+        },
+        // The party's last fighter can't go: a notice says why.
         Shot("pc-boxes-save", tw, th, td, pcBoxes()) {
             onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("MOVE").performClick()
-            onAllNodesWithText("EGG")[0].performClick()
-            onAllNodesWithText("TREECKO")[0].performClick(); onNodeWithText("MOVE").performClick()
             onAllNodesWithText("EGG")[0].performClick(); onNodeWithText("SAVE").performClick()
         },
         Shot("pc-boxes-phone", 1080, 2400, 2.625f, pcBoxes()) { onAllNodesWithText("TREECKO")[0].performClick() },
         // With the party icons a ROM gives (stand-in dots here: no game art in this repo).
         Shot("pc-boxes-icons", tw, th, td, pcBoxes(icons = true)) { onAllNodesWithText("ABRA")[0].performClick() },
         Shot("pc-boxes-icons-phone", 1080, 2400, 2.625f, pcBoxes(icons = true)),
-        // Editing: a party Pokémon's moves and item, the BAG page, an amount, ADD ITEM.
-        Shot("pc-boxes-edit", tw, th, td, pcBoxes(icons = true)) { onAllNodesWithText("CHARIZARD")[0].performClick() },
-        Shot("pc-boxes-move", tw, th, td, pcBoxes(icons = true)) {
-            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("WING ATTACK").performClick()
+        // A Pokémon's page: INFO, STATS, MOVES and their pickers.
+        Shot("pc-boxes-page", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick()
         },
-        Shot("pc-boxes-moved-move", tw, th, td, pcBoxes(icons = true)) {
-            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("WING ATTACK").performClick()
-            onNodeWithText("BLAST BURN").performClick()
+        Shot("pc-boxes-page-stats", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+        },
+        Shot("pc-boxes-page-maxiv", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+            onNodeWithText("MAX IVs").performClick()
+        },
+        Shot("pc-boxes-page-moves", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("MOVES").performClick()
+        },
+        Shot("pc-boxes-move", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("MOVES").performClick()
+            onNodeWithText("WING ATTACK").performClick()
+        },
+        Shot("pc-boxes-page-nature", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("NATURE").performClick()
+        },
+        Shot("pc-boxes-page-shiny", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("SHINY").performClick()
         },
         Shot("pc-boxes-item", tw, th, td, pcBoxes(icons = true)) {
-            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("LEFTOVERS").performClick()
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("ITEM").performClick()
         },
+        Shot("pc-boxes-page-phone", 1080, 2400, 2.625f, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+        },
+        // Box tools.
+        Shot("pc-boxes-sort", tw, th, td, pcBoxes(icons = true)) { onNodeWithText("SORT").performClick() },
+        Shot("pc-boxes-sorted", tw, th, td, pcBoxes(icons = true)) { onNodeWithText("SORT").performClick(); onNodeWithText("BY LEVEL").performClick() },
+        Shot("pc-boxes-rename", tw, th, td, pcBoxes()) { onNodeWithText("RENAME").performClick() },
+        Shot("pc-boxes-search", tw, th, td, pcBoxes()) {
+            onNodeWithContentDescription("Search the boxes").performClick()
+            onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("PI")
+        },
+        Shot("pc-boxes-release", tw, th, td, pcBoxes()) { onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("RELEASE").performClick() },
+        // A DS save (HeartGold): its POKéMON page and a Pokémon's page.
+        Shot("pc-boxes-ds", tw, th, td, pcBoxes(ds = true)) { onAllNodesWithText("MEGANIUM")[0].performClick() },
+        Shot("pc-boxes-ds-page", tw, th, td, pcBoxes(ds = true)) {
+            onAllNodesWithText("MEGANIUM")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+        },
+        Shot("pc-boxes-ds-info", tw, th, td, pcBoxes(ds = true)) {
+            onAllNodesWithText("MEGANIUM")[0].performClick(); onNodeWithText("CHANGE").performClick()
+        },
+        Shot("pc-boxes-ds-item", tw, th, td, pcBoxes(ds = true)) {
+            onAllNodesWithText("MEGANIUM")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("ITEM").performClick()
+        },
+        Shot("pc-boxes-ds-bag", tw, th, td, pcBoxes(ds = true)) { onNodeWithText("BAG").performClick(); onNodeWithText("MEDICINE").performClick() },
+        Shot("pc-boxes-ds-bag-add", tw, th, td, pcBoxes(ds = true)) {
+            onNodeWithText("BAG").performClick(); onAllNodesWithText("BERRIES")[0].performClick(); mainClock.advanceTimeBy(1000); onNodeWithText("ADD ITEM").performClick()
+        },
+        Shot("pc-boxes-ds-trainer", tw, th, td, pcBoxes(ds = true)) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-ds-trainer-phone", 1080, 2400, 2.625f, pcBoxes(ds = true)) { onNodeWithText("TRAINER").performClick() },
         Shot("pc-boxes-bag", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick() },
         Shot("pc-boxes-bag-tm", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("TMs & HMs").performClick() },
         Shot("pc-boxes-bag-amount", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("POTION").performClick() },
-        Shot("pc-boxes-bag-money", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("MONEY").performClick() },
-        Shot("pc-boxes-bag-add", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("ADD ITEM").performClick() },
+        Shot("pc-boxes-bag-add", tw, th, td, pcBoxes()) {
+            // Taps a moment apart: two quick ones read as a double tap and the second is lost.
+            onNodeWithText("BAG").performClick(); onAllNodesWithText("BERRIES")[0].performClick(); mainClock.advanceTimeBy(1000); onNodeWithText("ADD ITEM").performClick()
+        },
         Shot("pc-boxes-bag-phone", 1080, 2400, 2.625f, pcBoxes()) { onNodeWithText("BAG").performClick() },
+        // TRAINER: money, coins, the Pokédex and the event tickets.
+        Shot("pc-boxes-trainer", tw, th, td, pcBoxes()) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-bag-money", tw, th, td, pcBoxes()) { onNodeWithText("TRAINER").performClick(); onNodeWithText("MONEY").performClick() },
+        Shot("pc-boxes-trainer-event", tw, th, td, pcBoxes()) { onNodeWithText("TRAINER").performClick(); onNodeWithText("AURORA TICKET").performClick() },
+        Shot("pc-boxes-trainer-got", tw, th, td, pcBoxes()) {
+            onNodeWithText("TRAINER").performClick(); onNodeWithText("AURORA TICKET").performClick(); onAllNodesWithText("GET").let { it[it.fetchSemanticsNodes().size - 1] }.performClick()
+        },
+        Shot("pc-boxes-trainer-phone", 1080, 2400, 2.625f, pcBoxes()) { onNodeWithText("TRAINER").performClick() },
         // TRADE: two saves side by side; KADABRA sent over (it evolves on arrival), MEW refused (no event), a swap.
         // Picks are set on the state (Emerald's KADABRA is its 4th, MEW its 6th; FireRed's box 1 has slot 22 free).
         Shot("trade", tw, th, td, trade()),
-        Shot("trade-send", tw, th, td, trade { selA = BoxSlot(0, 21); selB = BoxSlot(0, 3) }),
-        Shot("trade-evolve", tw, th, td, trade { selA = BoxSlot(0, 21); selB = BoxSlot(0, 3) }) { onNodeWithText("SEND").performClick() },
-        Shot("trade-evolved", tw, th, td, trade { selA = BoxSlot(0, 21); selB = BoxSlot(0, 3) }) {
+        Shot("trade-send", tw, th, td, trade { selA = pc(0, 21); selB = pc(0, 3) }),
+        Shot("trade-evolve", tw, th, td, trade { selA = pc(0, 21); selB = pc(0, 3) }) { onNodeWithText("SEND").performClick() },
+        Shot("trade-evolved", tw, th, td, trade { selA = pc(0, 21); selB = pc(0, 3) }) {
             onNodeWithText("SEND").performClick(); onNodeWithText("EVOLVE").performClick()
         },
-        Shot("trade-refused", tw, th, td, trade { selA = BoxSlot(0, 21); selB = BoxSlot(0, 5) }),
-        Shot("trade-swap", tw, th, td, trade { selA = BoxSlot(0, 0); selB = BoxSlot(0, 0) }),
-        Shot("trade-phone", 1080, 2400, 2.625f, trade { selA = BoxSlot(0, 0); selB = BoxSlot(0, 0) }),
+        Shot("trade-refused", tw, th, td, trade { selA = pc(0, 21); selB = pc(0, 5) }),
+        Shot("trade-swap", tw, th, td, trade { selA = pc(0, 0); selB = pc(0, 0) }),
+        // From FireRed's party to the end of Emerald's.
+        Shot("trade-party", tw, th, td, trade { selA = com.pokedaisy.app.companion.data.save.MonRef.Party(1); selB = com.pokedaisy.app.companion.data.save.MonRef.Party(2) }),
+        Shot("trade-phone", 1080, 2400, 2.625f, trade { selA = pc(0, 0); selB = pc(0, 0) }),
         Shot("library-expand-intro", tw, th, td, activity(expandIntro = true) { LibraryActivity() }),
         Shot("library-battle-style", tw, th, td, activity(battleStyleIntro = true) { LibraryActivity() }),
         // Picking GEN 5 closes it and saves the choice.

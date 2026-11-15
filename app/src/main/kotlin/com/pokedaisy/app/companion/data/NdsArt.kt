@@ -1032,6 +1032,91 @@ object NdsArt {
             FIGHTING[types.getOrNull(1)?.trim()?.uppercase()] ?: 'E')
     }
 
+    /**
+     * What the SAVE EDITOR needs from a HeartGold / SoulSilver cart ([com.pokedaisy.app.companion.data.save.Gen4GameData]),
+     * or null for another cart: the names (species, moves, items, abilities), each species' personal record (a/0/0/2),
+     * level-up moves (a/0/3/3: level << 9 | move to 0xFFFF), pre-evolutions (a/0/3/4's targets) and each move's PP
+     * (a/0/1/1, byte 6 of its 16).
+     */
+    fun readSaveTables(rom: Path): com.pokedaisy.app.companion.data.save.Gen4GameData? {
+        val names = readNames(rom) ?: return null
+        return withRomFile(rom) { f ->
+            val header = f.read(0, 0x200)
+            val code = asciiString(header, 0x0C, 4)
+            val rev = header[0x1E].toInt() and 0xFF
+            val reader = { off: Long, len: Int -> f.read(off, len) }
+            val hgss = isHgss(code, rev) && !OriginHeartGold.matches(reader)
+            // Platinum: USA rev 1 and Renegade Platinum (edited in place: its own machines).
+            val platinum = code == "CPUE" && rev == 1
+            if (!hgss && !platinum) return null
+            val renegade = platinum && RenegadePlatinum.matches(reader)
+            val files = if (hgss) {
+                listOf("/a/0/2/7", "/a/0/0/2", "/a/0/3/3", "/a/0/3/4", "/a/0/1/1")
+            } else {
+                listOf("/msgdata/pl_msg.narc", "/poketool/personal/pl_personal.narc", "/poketool/personal/wotbl.narc",
+                    "/poketool/personal/evo.narc", "/poketool/waza/pl_waza_tbl.narc")
+            }
+            val abilityBank = if (platinum) 610 else when (code[3]) { 'K' -> 715; 'J' -> 711; else -> 720 }
+            val abilities = Narc(file(f, header, files[0]) ?: return null).member(abilityBank)?.let { Gen4Text.lines(it) } ?: return null
+            val personal = Narc(file(f, header, files[1]) ?: return null)
+            val learnsets = Narc(file(f, header, files[2]) ?: return null)
+            val evolutions = Narc(file(f, header, files[3]) ?: return null)
+            val moves = Narc(file(f, header, files[4]) ?: return null)
+            // The regional dex's numbers (member 0, a u16 per species; 0 = not in it): Johto's a/1/3/8, Sinnoh's pl_pokezukan.
+            val regionalNumbers = file(f, header, if (platinum) "/poketool/pl_pokezukan.narc" else "/a/1/3/8")?.let { Narc(it).member(0) }
+            val itemPockets = if (platinum) {
+                com.pokedaisy.app.companion.data.save.gen4ItemPocketsPlatinum.copyOf().also { it[0] = -1 }
+            } else {
+                // Each item's field pocket: its record (save.gen4ItemDataIndexHeartGold) in item_data (a/0/1/7), bits 7-10 of +8.
+                val itemData = Narc(file(f, header, "/a/0/1/7") ?: return null)
+                IntArray(com.pokedaisy.app.companion.data.save.gen4ItemDataIndexHeartGold.size) { item ->
+                    val rec = itemData.member(com.pokedaisy.app.companion.data.save.gen4ItemDataIndexHeartGold[item])
+                    if (item == 0 || rec == null || rec.size < 10) -1 else (u16(rec, 8) shr 7) and 0xF
+                }
+            }
+            val tmMoves = when {
+                renegade -> f.read(RenegadePlatinum.TM_MOVES_OFFSET, 100 * 2).let { t -> IntArray(100) { u16(t, it * 2) } }
+                platinum -> tmMovesPlatinum
+                else -> tmMovesHeartGold
+            }
+            val last = com.pokedaisy.app.companion.data.save.Gen4GameData.LAST_SPECIES
+            val pre = IntArray(last + 1)
+            for (species in 1..last) {
+                val e = evolutions.member(species) ?: continue
+                for (i in 0 until 7) {
+                    if (i * 6 + 6 > e.size) break
+                    val target = u16(e, i * 6 + 4)
+                    if (u16(e, i * 6) != 0 && target in 1..last && pre[target] == 0) pre[target] = species
+                }
+            }
+            com.pokedaisy.app.companion.data.save.Gen4GameData(
+                species = names.species, moveNames = names.moves, items = names.items, abilityNames = abilities,
+                personal = (0..last).map { personal.member(it) },
+                levelUp = (0..last).map { s ->
+                    learnsets.member(s)?.let { l ->
+                        (0 until l.size / 2).asSequence().map { u16(l, it * 2) }.takeWhile { it != 0xFFFF }
+                            .map { (it shr 9) to (it and 0x1FF) }.toList()
+                    }.orEmpty()
+                },
+                preEvolution = pre,
+                tmMoves = tmMoves,
+                movePp = IntArray(moves.size) { m -> moves.member(m)?.takeIf { it.size > 6 }?.let { it[6].toInt() and 0xFF } ?: 0 },
+                itemPockets = itemPockets,
+                evolutions = (0..last).map { sp ->
+                    val e = evolutions.member(sp) ?: return@map emptyList()
+                    (0 until 7).mapNotNull { i ->
+                        if (i * 6 + 6 > e.size) null
+                        else Triple(u16(e, i * 6), u16(e, i * 6 + 2), u16(e, i * 6 + 4)).takeIf { it.first != 0 }
+                    }
+                },
+                gameLanguage = when (code[3]) { 'J' -> 1; 'F' -> 3; 'I' -> 4; 'D' -> 5; 'S' -> 7; 'K' -> 8; else -> 2 },
+                layout = if (platinum) com.pokedaisy.app.companion.data.save.Gen4Layout.PLATINUM
+                    else com.pokedaisy.app.companion.data.save.Gen4Layout.HGSS,
+                regional = regionalNumbers?.let { r -> IntArray(last + 1) { sp -> if (sp * 2 + 2 <= r.size) u16(r, sp * 2) else 0 } } ?: IntArray(0),
+            )
+        }
+    }
+
     /** Where one cart keeps what [dex] reads: file paths and text banks. */
     private class DexFiles(
         val msg: String, val description: Int, val category: Int, val abilities: Int,
