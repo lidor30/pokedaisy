@@ -40,8 +40,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.StateSlots
-import java.text.DateFormat
-import java.util.Date
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -265,7 +263,7 @@ private fun SlotCard(
             Spacer(Modifier.height(u * 2))
             GbaText(
                 if (slot.present) {
-                    remember(slot.savedAtMillis) { slotDateFormat.format(Date(slot.savedAtMillis)) }
+                    remember(slot.savedAtMillis) { DeviceDates.get().shortDateTime(slot.savedAtMillis) }
                 } else "-",
                 OptionColors.muted, OptionColors.mutedShadow, small,
                 modifier = Modifier.padding(horizontal = u * 2),
@@ -279,8 +277,6 @@ private fun SlotCard(
         }
     }
 }
-
-private val slotDateFormat: DateFormat by lazy { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT) }
 
 /** Decoded slot thumbnails by path + save / thumbnail time, so a STATES visit doesn't decode all ten again. */
 private object StateThumbs {

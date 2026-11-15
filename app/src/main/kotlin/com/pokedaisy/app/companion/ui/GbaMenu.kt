@@ -193,7 +193,7 @@ object OptionColors {
      * [slot] picking one of seven (a tab by its place in the bar: a full bar is seven chips, a button by
      * [nextRainbowSlot]); null = the usual look (any other theme, and the Game Boy games' black-on-white). */
     fun rainbow(slot: Int): RainbowColors? =
-        if (gen1 || !AppColors.theme.rainbow) null else RainbowColors.of(RAINBOW[Math.floorMod(slot, RAINBOW.size)], dark)
+        if (gen1 || !AppColors.theme.rainbow) null else RainbowColors.of(RAINBOW[slot.mod(RAINBOW.size)], dark)
     private val RAINBOW = listOf(0xFFE83838, 0xFFF88A20, 0xFFE0A800, 0xFF40B048, 0xFF3C88E0, 0xFF8E58D0, 0xFFE8509A).map { Color(it) }
     /** The next button's [rainbow] slot, taken once when it's first drawn: buttons drawn one after another (a header's,
      * a window's NO THANKS / TRY IT) get the next colours, so neighbours never match. (Composition runs on one thread.) */

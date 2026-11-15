@@ -483,8 +483,8 @@ private fun RegionMap(
                     else -> return@onPreviewKeyEvent false
                 }
                 // The map's tiles (its border cropped off); off them, the key moves the focus out instead.
-                val (cols, rows) = Math.floorDiv(crop.left - originX, tile)..Math.floorDiv(crop.right - 1 - originX, tile) to
-                    Math.floorDiv(crop.top - originY, tile)..Math.floorDiv(crop.bottom - 1 - originY, tile)
+                val (cols, rows) = (crop.left - originX).floorDiv(tile)..(crop.right - 1 - originX).floorDiv(tile) to
+                    (crop.top - originY).floorDiv(tile)..(crop.bottom - 1 - originY).floorDiv(tile)
                 val (x, y) = from ?: ((cols.first + cols.last) / 2 to (rows.first + rows.last) / 2)
                 val tx = x + dx
                 val ty = y + dy

@@ -45,11 +45,9 @@ import com.pokedaisy.app.companion.coop.CoopState
 import com.pokedaisy.app.companion.data.Gen3Text
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
-import java.io.File
-import java.net.Inet4Address
-import java.net.NetworkInterface
 import kotlin.math.max
 import kotlin.math.min
+import okio.Path
 
 /*
  * CO-OP on the top screen (Settings > CO-OP): the QR code, the ACCEPT THIS PLAYER? prompt, the link's labels, the PARTNERS rows and
@@ -129,8 +127,8 @@ fun coopLinkLabel(state: CoopState): String = when (state) {
 fun coopPartnerRows(pairs: List<CoopPair>, onUnpair: (CoopPair) -> Unit): List<SettingRow> =
     pairs.map { p -> SettingRow(p.partner.name, p.ownLabel) { onUnpair(p) } }
 
-/** A save the pairing page offers: [id] null = no save made yet; [pairedWith] = the partner it already has. */
-class CoopSaveChoice(val rom: File, val save: File, val gameLabel: String, val id: CoopSaveId?, val pairedWith: String?) {
+/** A save the pairing page offers ([save]: its file): [id] null = no save made yet; [pairedWith] = the partner it already has. */
+class CoopSaveChoice(val save: Path, val gameLabel: String, val id: CoopSaveId?, val pairedWith: String?) {
     val usable: Boolean get() = id != null && pairedWith == null
 
     /** The trainer's name as the game writes it. */
@@ -468,13 +466,3 @@ private fun subtitledRow(m: GbaTextMetrics) = m.rowHeight * 1.2f + m.lineHeight
 
 /** YOUR ROOM puts the link beside the code from this width (GBA pixels): the QR code is 130 of them. */
 private const val WIDE_ROOM_PANE = 300
-
-/** This device's IPv4 address on the Wi-Fi network (else any private one), or null. Reads interfaces: not on the UI thread. */
-fun coopWifiAddress(): String? = try {
-    val own = NetworkInterface.getNetworkInterfaces().toList().filter { it.isUp && !it.isLoopback }
-        .flatMap { nic -> nic.inetAddresses.toList().filterIsInstance<Inet4Address>().map { nic to it } }
-        .filter { !it.second.isLoopbackAddress && !it.second.isLinkLocalAddress }
-    (own.firstOrNull { it.first.name.startsWith("wlan") } ?: own.firstOrNull { it.second.isSiteLocalAddress })?.second?.hostAddress
-} catch (e: java.io.IOException) {
-    null
-}
