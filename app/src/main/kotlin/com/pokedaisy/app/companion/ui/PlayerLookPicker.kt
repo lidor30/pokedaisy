@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
-import android.graphics.Bitmap
+import com.pokedaisy.app.companion.data.RomArt
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -38,8 +38,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
@@ -81,25 +79,24 @@ internal fun PlayerLookPicker(
 ) {
     // The tiles' two lines in the denser text (the user's call: smaller tiles, more of them on screen).
     val small = rememberGbaTextMetrics(0.75f)
-    val context = LocalContext.current
     val tiles = listOf(own) + looks
     // Each hero's three frames, read once the picker opens (a few KB a hero).
     // A Pokémon's tile says which hack its sprite came from (MonArt.Source), as a hero's says its game.
     val monSources = produceState<Map<Int, String>>(emptyMap(), tiles) {
         value = withContext(Dispatchers.IO) {
-            tiles.mapNotNull { MonArt.monOf(it) }.mapNotNull { n -> runCatching { MonArt.load(context.filesDir.toOkioPath(), n) }.getOrNull()?.let { n to it.source.tag } }.toMap()
+            tiles.mapNotNull { MonArt.monOf(it) }.mapNotNull { n -> runCatching { MonArt.load(RomArt.filesDir, n) }.getOrNull()?.let { n to it.source.tag } }.toMap()
         }
     }.value
     val sprites = produceState<Map<String, List<ImageBitmap>>>(emptyMap(), tiles) {
         value = withContext(Dispatchers.IO) {
             tiles.filterNotNull().mapNotNull { name ->
                 val mon = MonArt.monOf(name)
-                val frames = if (mon != null) runCatching { MonArt.walk(context.filesDir.toOkioPath(), mon) }.getOrNull() ?: return@mapNotNull null
+                val frames = if (mon != null) runCatching { MonArt.walk(RomArt.filesDir, mon) }.getOrNull() ?: return@mapNotNull null
                 else {
                     val c = LookChar.byName(name) ?: return@mapNotNull null
-                    runCatching { LookArt.walk(context.filesDir.toOkioPath(), c) }.getOrNull() ?: return@mapNotNull null
+                    runCatching { LookArt.walk(RomArt.filesDir, c) }.getOrNull() ?: return@mapNotNull null
                 }
-                name to frames.map { Bitmap.createBitmap(it.argb, it.width, it.height, Bitmap.Config.ARGB_8888).asImageBitmap() }
+                name to frames.map { imageBitmapOf(it.argb, it.width, it.height) }
             }.toMap()
         }
     }.value

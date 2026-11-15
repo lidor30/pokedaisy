@@ -28,7 +28,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
@@ -40,6 +39,7 @@ import com.pokedaisy.app.companion.data.SnapshotView
 import com.pokedaisy.app.companion.data.gameCase
 import com.pokedaisy.app.companion.i18n.tr
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 
 /**
@@ -71,8 +71,8 @@ fun rememberPlayerArea(snapshot: SnapshotView): AreaMap.Area? {
 
 @Composable
 private fun rememberAreaImage(id: AreaMap.MapId): ImageBitmap? {
-    val img by produceState(AreaMaps.cachedImage(id)?.bitmap()?.asImageBitmap(), id) {
-        value = withContext(Dispatchers.IO) { runCatching { AreaMaps.image(id)?.bitmap()?.asImageBitmap() }.getOrNull() }
+    val img by produceState(AreaMaps.cachedImage(id)?.imageBitmap(), id) {
+        value = withContext(Dispatchers.IO) { runCatching { AreaMaps.image(id)?.imageBitmap() }.getOrNull() }
     }
     return img
 }
@@ -97,7 +97,7 @@ fun AreaMapPane(area: AreaMap.Area, snapshot: SnapshotView, onRegion: () -> Unit
     val image = rememberAreaImage(floor.id)
     val style = MapLabelStyle.of(snapshot.game)
     val head = regionMapBitmap(style.headAsset(snapshot.playerGender, snapshot.game))
-    val headImage = remember(head) { head?.asImageBitmap() }
+    val headImage = remember(head) { head }
     Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(u * 4)) {
         // The place and floor, REGION MAP, ZOOM: a bar over the map (the map stays whole under it).
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(u * 4)) {
@@ -172,7 +172,7 @@ internal fun HudAreaMap(snapshot: SnapshotView, mapW: Int, mapH: Int, u: Dp, mod
     val image = rememberAreaImage(id) ?: return
     val style = MapLabelStyle.of(snapshot.game)
     val head = regionMapBitmap(style.headAsset(snapshot.playerGender, snapshot.game))
-    val headImage = remember(head) { head?.asImageBitmap() }
+    val headImage = remember(head) { head }
     Box(modifier.size(u * mapW, u * mapH).clip(PixelRoundedShape(u * 2)).background(Color.Black)) {
         Canvas(Modifier.fillMaxSize()) {
             val gba = u.toPx()

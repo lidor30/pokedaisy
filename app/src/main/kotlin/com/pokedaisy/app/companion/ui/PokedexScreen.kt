@@ -1,8 +1,8 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.ui.graphics.ImageBitmap
 import com.pokedaisy.app.companion.i18n.stripAccents
 import androidx.compose.ui.graphics.RectangleShape
-import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -47,7 +47,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -606,9 +605,9 @@ private fun pct(tenths: Int) = if (tenths % 10 == 0) "${tenths / 10}" else "${te
 internal fun rememberRomBitmap(
     t: PokedexTables, species: Int,
     cached: (PokedexTables, Int) -> RomArt.Image?, load: (PokedexTables, Int) -> RomArt.Image?,
-): Bitmap? =
-    produceKeyedState(cached(t, species)?.bitmap(), t, species) {
-        if (value == null && species > 0) value = withContext(Dispatchers.IO) { load(t, species)?.bitmap() }
+): ImageBitmap? =
+    produceKeyedState(cached(t, species)?.imageBitmap(), t, species) {
+        if (value == null && species > 0) value = withContext(Dispatchers.IO) { load(t, species)?.imageBitmap() }
     }.value
 
 /**
@@ -616,7 +615,7 @@ internal fun rememberRomBitmap(
  * pixels per sprite pixel that fits, centered - pixel art stays crisp.
  */
 @Composable
-internal fun PixelImage(bitmap: Bitmap?, srcPx: Int, modifier: Modifier) {
+internal fun PixelImage(bitmap: ImageBitmap?, srcPx: Int, modifier: Modifier) {
     val density = LocalDensity.current
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val room = with(density) { minOf(maxWidth, maxHeight).toPx() }
@@ -624,7 +623,7 @@ internal fun PixelImage(bitmap: Bitmap?, srcPx: Int, modifier: Modifier) {
         val side = with(density) { (srcPx * scale).toDp() }
         if (bitmap != null) {
             Image(
-                bitmap.asImageBitmap(), contentDescription = null,
+                bitmap, contentDescription = null,
                 modifier = Modifier.size(side), filterQuality = FilterQuality.None,
             )
         }

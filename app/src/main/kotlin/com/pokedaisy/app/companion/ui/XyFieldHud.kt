@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -190,9 +189,8 @@ private const val PARTY_PANEL_ALPHA = 0.65f
 /** The rom-art picture at [path] (the cart's, read once into rom-art), for drawing. */
 @Composable
 private fun rememberXyArt(path: String?): androidx.compose.ui.graphics.ImageBitmap? {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val gen = rememberArtGeneration()
-    return remember(path, gen) { path?.let { GameArt.get(context, it)?.asImageBitmap() } }
+    return remember(path, gen) { path?.let { GameArt.get(it) } }
 }
 
 /** The minimap: a window on the Town Map round the player's place, in the HUD's green frame, the pin in the middle. */

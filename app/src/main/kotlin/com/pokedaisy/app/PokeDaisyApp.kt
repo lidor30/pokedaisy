@@ -1,6 +1,7 @@
 package com.pokedaisy.app
 
 import android.app.Application
+import okio.Path.Companion.toOkioPath
 
 /** Process start: counts the app open (for CrashReports' one-time ask) and applies the crash-report choice. */
 class PokeDaisyApp : Application() {
@@ -8,9 +9,19 @@ class PokeDaisyApp : Application() {
         super.onCreate()
         // The data code reads the emulator through MgbaCore (companion/data/EmulatorCore.kt).
         com.pokedaisy.app.companion.data.EmulatorCore.current = MgbaEmulatorCore
+        // The app's files folder, where the screens find the art RomArt rebuilt from the player's ROMs.
+        com.pokedaisy.app.companion.data.RomArt.filesDir = filesDir.toOkioPath()
         // The data code's log lines (companion/data/Logs.kt) go to Android's log.
         com.pokedaisy.app.companion.data.Logs.sink = com.pokedaisy.app.companion.data.Logs.Sink { tag, warning, message, error ->
             if (warning) android.util.Log.w(tag, message, error) else android.util.Log.i(tag, message)
+        }
+        // THEME and DARK MODE are saved in the app's Prefs.
+        val themePrefs = Prefs(this)
+        com.pokedaisy.app.companion.ui.theme.ThemeStore.current = object : com.pokedaisy.app.companion.ui.theme.ThemeStore {
+            override var appTheme by themePrefs::appTheme
+            override var themeBeforeSeasonal by themePrefs::themeBeforeSeasonal
+            override var appFont by themePrefs::appFont
+            override var darkMode by themePrefs::darkMode
         }
         // The NEW tags' week starts with the first launch of a build that has the feature.
         com.pokedaisy.app.companion.NewFeatures.init(Prefs(this))

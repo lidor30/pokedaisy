@@ -1005,6 +1005,18 @@ fun previewThemeDay(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec): kotlinx.
         ?.let { w -> if (now in w) now else w.start.plus(kotlinx.datetime.DatePeriod(days = 1)) }
 }
 
+/** What PokeDaisyApp.onCreate hands the shared screens on Android: art files and theme storage over the shim Context. */
+fun installPreviewHosts() {
+    val context = android.content.Context()
+    com.pokedaisy.app.companion.data.RomArt.filesDir = okio.Path.Companion.run { context.filesDir.toOkioPath() }
+    val prefs = Prefs(context)
+    com.pokedaisy.app.companion.ui.theme.ThemeStore.current = object : com.pokedaisy.app.companion.ui.theme.ThemeStore {
+        override var appTheme by prefs::appTheme
+        override var themeBeforeSeasonal by prefs::themeBeforeSeasonal
+        override var darkMode by prefs::darkMode
+    }
+}
+
 /** Saves and puts on [t]; for a limited-time one the theme clock moves into its window (so it isn't put away). */
 fun wearPreviewTheme(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec) {
     val day = previewThemeDay(t)
@@ -1399,6 +1411,8 @@ fun ndsSnapshot(): SnapshotView {
 }
 
 fun main(args: Array<String>) {
+    // The app sets this at start (PokeDaisyApp): the screens find the art under it.
+    installPreviewHosts()
     // The docs' shots (gradle docsShots) never show a game's art: no ROM art, only the invented map.
     if (docsMode) installDocsArt() else romArt()
     // A DS game's art from its cart (-PndsRom): icons, item icons, the Pokégear map's pieces.

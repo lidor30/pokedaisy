@@ -1,9 +1,10 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.readBytes
+import okio.Path.Companion.toPath
+import androidx.compose.ui.graphics.ImageBitmap
 import com.pokedaisy.app.companion.data.LockedLru
 import com.pokedaisy.app.companion.i18n.tr
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -35,7 +36,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -244,12 +244,12 @@ private fun SlotCard(
                         val bmp by produceKeyedState(thumbKey?.let(StateThumbs::get), thumbKey) {
                             if (value != null || thumbPath == null || thumbKey == null) return@produceKeyedState
                             value = withContext(Dispatchers.IO) {
-                                runCatching { BitmapFactory.decodeFile(thumbPath) }.getOrNull()
+                                runCatching { decodeImage(thumbPath.toPath().readBytes()) }.getOrNull()
                             }?.also { StateThumbs.put(thumbKey, it) }
                         }
                         bmp?.let {
                             Image(
-                                bitmap = it.asImageBitmap(),
+                                bitmap = it,
                                 contentDescription = tr("Slot {0}", slot.index),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop,
@@ -284,7 +284,7 @@ private val slotDateFormat: DateFormat by lazy { DateFormat.getDateTimeInstance(
 
 /** Decoded slot thumbnails by path + save / thumbnail time, so a STATES visit doesn't decode all ten again. */
 private object StateThumbs {
-    private val map = LockedLru<String, Bitmap>(16)
-    fun get(key: String): Bitmap? = map[key]
-    fun put(key: String, bmp: Bitmap) { map[key] = bmp }
+    private val map = LockedLru<String, ImageBitmap>(16)
+    fun get(key: String): ImageBitmap? = map[key]
+    fun put(key: String, bmp: ImageBitmap) { map[key] = bmp }
 }

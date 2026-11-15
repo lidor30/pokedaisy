@@ -33,7 +33,6 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
@@ -1020,11 +1019,10 @@ internal fun DrawScope.drawPixelBitmap(bitmap: List<String>, palette: Map<Char, 
 @Composable
 internal fun HeldItemMarker(itemId: Int, u: Int, x: Float, y: Float) {
     if (itemId == 0) return
-    val context = androidx.compose.ui.platform.LocalContext.current
     val gen = rememberArtGeneration()
     val icons = androidx.compose.runtime.remember(gen) {
         // The Gen 2 games' own marks (Gen2Art), the GBA games' from RomArt.
-        GameArt.get(context, when (com.pokedaisy.app.companion.data.activeGame) {
+        GameArt.get(when (com.pokedaisy.app.companion.data.activeGame) {
             com.pokedaisy.app.companion.data.GameKind.CRYSTAL -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_HOLD_ICONS
             com.pokedaisy.app.companion.data.GameKind.CRYSTAL_CLEAR -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_CLEAR_HOLD_ICONS
             com.pokedaisy.app.companion.data.GameKind.CRYSTAL_LEGACY -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_LEGACY_HOLD_ICONS
@@ -1033,7 +1031,7 @@ internal fun HeldItemMarker(itemId: Int, u: Int, x: Float, y: Float) {
             com.pokedaisy.app.companion.data.GameKind.GOLD, com.pokedaisy.app.companion.data.GameKind.SILVER ->
                 com.pokedaisy.app.companion.data.Gen2Art.GOLD_SILVER_HOLD_ICONS
             else -> RomArt.HOLD_ICONS
-        })?.asImageBitmap()
+        })
     } ?: return
     val mail = if (com.pokedaisy.app.companion.data.activeGame.isGen2) {
         itemId in com.pokedaisy.app.companion.data.activeGen2.mailItems

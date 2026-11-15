@@ -43,12 +43,12 @@ object AppFonts {
 
     val current: AppFont get() = override ?: setting
 
-    fun load(context: Context) {
-        setting = runCatching { AppFont.entries[com.pokedaisy.app.Prefs(context).appFont] }.getOrDefault(AppFont.PIXEL)
+    fun load() {
+        setting = runCatching { AppFont.entries[ThemeStore.current?.appFont ?: 0] }.getOrDefault(AppFont.PIXEL)
     }
 
-    fun set(context: Context, font: AppFont) {
-        com.pokedaisy.app.Prefs(context).appFont = font.ordinal
+    fun set(font: AppFont) {
+        ThemeStore.current?.appFont = font.ordinal
         setting = font
     }
 }

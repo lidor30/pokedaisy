@@ -31,7 +31,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -288,7 +287,7 @@ private fun BoxWindow(state: PcBoxesState, data: Gen3SaveData, m: GbaTextMetrics
 
 /** Party icons, decoded on demand (blocking: called off the UI thread) and cached by whoever loads them. */
 fun interface MonIconLoader {
-    fun load(species: Int): android.graphics.Bitmap?
+    fun load(species: Int): ImageBitmap?
 }
 
 /**
@@ -335,7 +334,7 @@ internal fun BoxGrid(
 internal fun BoxMonIcon(loader: MonIconLoader, mon: Gen3BoxMon, size: Dp) {
     val species = if (mon.isEgg) SPECIES_EGG else mon.species
     val bmp by produceState<ImageBitmap?>(null, loader, species) {
-        value = withContext(Dispatchers.IO) { runCatching { loader.load(species) }.getOrNull()?.let { cropToFirstFrame(it).asImageBitmap() } }
+        value = withContext(Dispatchers.IO) { runCatching { loader.load(species) }.getOrNull()?.let { cropToFirstFrame(it) } }
     }
     Box(Modifier.size(size)) {
         bmp?.let { Image(it, contentDescription = null, modifier = Modifier.size(size), filterQuality = FilterQuality.None) }

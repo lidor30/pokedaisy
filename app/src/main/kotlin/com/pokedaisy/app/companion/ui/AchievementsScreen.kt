@@ -1,13 +1,12 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.ui.graphics.ImageBitmap
 import kotlin.concurrent.Volatile
 import com.pokedaisy.app.companion.data.LockedMap
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -49,7 +48,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -79,12 +77,12 @@ import java.net.URL
  */
 object AchievementBadges {
     @Volatile var dir: File? = null
-    private val cache = LockedMap<String, Bitmap>()
+    private val cache = LockedMap<String, ImageBitmap>()
 
-    fun cached(url: String): Bitmap? = cache[url]
+    fun cached(url: String): ImageBitmap? = cache[url]
 
     /** Blocking (IO thread): the badge at [url], from disk or the network, or null. */
-    fun load(url: String): Bitmap? {
+    fun load(url: String): ImageBitmap? {
         cache[url]?.let { return it }
         val d = dir ?: return null
         val name = url.substringAfterLast('/').filter { it.isLetterOrDigit() || it == '_' || it == '.' }
@@ -102,7 +100,7 @@ object AchievementBadges {
             tmp.writeBytes(bytes)
             tmp.renameTo(f)
         }
-        val bmp = runCatching { BitmapFactory.decodeFile(f.path) }.getOrNull() ?: return null
+        val bmp = runCatching { decodeImage(f.readBytes()) }.getOrNull() ?: return null
         cache[url] = bmp
         return bmp
     }
@@ -131,7 +129,7 @@ fun AchievementBadge(url: String?, size: Dp, modifier: Modifier = Modifier, dim:
         val b = bmp
         if (b != null) {
             Image(
-                b.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop,
+                b, contentDescription = null, contentScale = ContentScale.Crop,
                 filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize().padding(u * 2),
             )
         } else {

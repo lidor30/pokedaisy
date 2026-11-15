@@ -2,7 +2,7 @@
 
 package render
 
-import android.graphics.BitmapFactory
+import com.pokedaisy.app.companion.ui.decodeImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -146,7 +146,7 @@ class LocalDocsSource(private val api: File, private val manualDir: File) : Docs
     override fun cached() = manual
     override fun refresh() = DocsStore.Refresh.Unchanged
     override fun image(manual: DocsApi.Manual, image: DocsApi.Block.Image) =
-        File(manualDir, image.src.removePrefix("/docs/")).takeIf { it.isFile }?.let { BitmapFactory.decodeFile(it.path) }
+        File(manualDir, image.src.removePrefix("/docs/")).takeIf { it.isFile }?.let { decodeImage(it.readBytes()) }
 }
 
 fun installDocsSource(): Boolean {
