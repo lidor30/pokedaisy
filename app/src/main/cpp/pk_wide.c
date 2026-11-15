@@ -3194,10 +3194,15 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
     memset(menuArrowAt, 0, sizeof(menuArrowAt));
     if (!menuHideMode || !hookGba) return;
     menuHideFrames++;
-    // A double battle or the Safari Zone keeps its menu: the companion has no buttons for them.
+    // A double battle or the Safari Zone keeps its menu: the companion has no buttons for them. So do the tutorial battles:
+    // FireRed's first rival battle in Oak's lab and the Old Man's catching show (Emerald's first battle and Wally's)
+    // run on battle_controller_oak_old_man.c / the Wally controller, which the companion's buttons don't drive - the
+    // menu went missing and only the game's cursor was left to pick with (a player's report, 2026-11-15).
     if (menuHideTypeFlags >> 24 == 2) {
         const uint8_t* f = (const uint8_t*) hookGba->memory.wram + (menuHideTypeFlags & 0x3FFFC);
-        if (f[0] & (1 << 0 | 1 << 7)) return;   // BATTLE_TYPE_DOUBLE, BATTLE_TYPE_SAFARI (FireRed's and Emerald's)
+        // BATTLE_TYPE_DOUBLE, BATTLE_TYPE_FIRST_BATTLE, BATTLE_TYPE_SAFARI, BATTLE_TYPE_OLD_MAN_TUTORIAL / WALLY_TUTORIAL (bit 9)
+        if (f[0] & (1 << 0 | 1 << 4 | 1 << 7)) return;
+        if (f[1] & (1 << 1)) return;
     }
     const uint16_t* io = hookGba->memory.io;
     uint16_t dispcnt = io[0], cnt = io[0x08 >> 1];
