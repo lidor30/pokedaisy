@@ -400,6 +400,12 @@ class Gen4BoxMon private constructor(
             return encode(personality, 0, logical)
         }
 
+        /** [build] keeping the record's flags word (Gen 5's records: [Gen5BoxMon]). */
+        internal fun build(personality: Long, flags: Int, logical: ByteArray): ByteArray {
+            require(logical.size == 128)
+            return encode(personality, flags, logical)
+        }
+
         /** ZeroBoxMonData: zeroes, encrypted with checksum 0 (what an empty PC slot holds). */
         fun emptyRecord(): ByteArray = ByteArray(SIZE).also { crypt(ByteArray(128), 0, 128, 0).copyInto(it, 8) }
 

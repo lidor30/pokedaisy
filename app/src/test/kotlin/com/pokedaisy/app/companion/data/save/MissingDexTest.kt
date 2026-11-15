@@ -32,6 +32,28 @@ class MissingDexTest {
     }
 
     @Test
+    fun aDsPcReachesBlackThroughPokeTransfer() {
+        val hg = Gen4SaveEditor((Gen4SaveFile.parse(SyntheticGen4.save(national = true)) as Gen4SaveFile.Parsed.Ok).save, SyntheticGen4.demoGame())
+        hg.putIncoming(MonRef.Pc(BoxSlot(0, 5)), SyntheticGen4.mon(0x3333L, 25, 2000))
+        val source = TradeSide("HEARTGOLD", hg, "IPKE")
+        val black = TradeSide("BLACK",
+            Gen5SaveEditor((Gen5SaveFile.parse(SyntheticGen5.save(national = true)) as Gen5SaveFile.Parsed.Ok).save, SyntheticGen5.demoGame()), "IRBO")
+        val entries = MissingDex.find(black, listOf(source))
+        // Black has its National Pokédex: PIKACHU in HeartGold's PC comes through Poké Transfer.
+        val pikachu = entries.first { it.species == 25 }.best!!
+        assertTrue(pikachu.pokeTransfer)
+        assertNull(pikachu.blocker)
+        // Without the National Pokédex, Black lists Unova's alone (its own numbers, VICTINI 0 first), and nothing caught.
+        val unova = MissingDex.find(
+            TradeSide("BLACK", Gen5SaveEditor((Gen5SaveFile.parse(SyntheticGen5.save(national = false)) as Gen5SaveFile.Parsed.Ok).save, SyntheticGen5.demoGame()), "IRBO"),
+            listOf(source),
+        )
+        assertEquals(0, unova.first().number)
+        assertTrue(unova.none { it.species < 494 })
+        assertTrue(unova.none { it.species == 495 })   // SNIVY is caught there
+    }
+
+    @Test
     fun aGbaPcReachesADsGameThroughPalPark() {
         val gba = TradeSide("FIRERED", Gen3SaveEditor(SyntheticSave.demoFireRed()), "BPRE")
         val ds = TradeSide("HEARTGOLD",

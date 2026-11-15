@@ -6,7 +6,7 @@ import com.pokedaisy.app.companion.i18n.tr
  * The SAVE EDITOR's MISSING page: what a save's Pokédex hasn't caught yet (the regional dex until its National one,
  * in the dex's own order), and for each one, the Pokémon of that species in the player's other saves - whether the
  * games would let it come over (a trade between two games of one generation, Pal Park from a GBA game's PC to a DS
- * game) and, if not, why. A trade evolution counts too: a Pokémon in another save that evolves into a missing one as
+ * game, Poké Transfer from a HeartGold / SoulSilver / Platinum PC to Black / White and their sequels) and, if not, why. A trade evolution counts too: a Pokémon in another save that evolves into a missing one as
  * it arrives, and one of the save's own that would come home evolved from a trip to another save ([TradeBack]). Eggs
  * don't count: one doesn't fill the Pokédex until it hatches.
  */
@@ -21,6 +21,8 @@ object MissingDex {
         EVOLVES,
         /** One of the save's own Pokémon, traded to another save ([source]) and back, evolving there. */
         TRADE_BACK,
+        /** Poké Transfer, a HeartGold / SoulSilver / Platinum PC into a Black / White one. */
+        POKE_TRANSFER,
     }
 
     /**
@@ -30,6 +32,7 @@ object MissingDex {
     class Owned(val source: Int, val at: MonRef, val mon: SaveMon, val level: Int, val blocker: String?, val way: Way) {
         val reachable: Boolean get() = blocker == null
         val palPark: Boolean get() = way == Way.PAL_PARK
+        val pokeTransfer: Boolean get() = way == Way.POKE_TRANSFER
     }
 
     /** A species the dex hasn't caught: its number in the dex shown ([number]), its National one, and where to get it. */
@@ -54,6 +57,10 @@ object MissingDex {
             val regional = !editor.nationalDex && editor.game.regional.isNotEmpty()
             editor.dexSpecies().map { if (regional) editor.game.regional[it] to it else it to it }.sortedBy { it.first }
         }
+        is Gen5SaveEditor -> {
+            val regional = !editor.nationalDex && editor.game.regional.isNotEmpty()
+            editor.dexSpecies().map { if (regional) editor.game.regional[it] to it else it to it }.sortedBy { it.first }
+        }
         else -> emptyList()
     }
 
@@ -67,6 +74,7 @@ object MissingDex {
     fun caught(editor: MonSaveEditor, national: Int): Boolean = when (editor) {
         is Gen3SaveEditor -> nationalToInternal.getOrNull(national)?.let { editor.caught(it) } == true
         is Gen4SaveEditor -> editor.caughtInDex(national)
+        is Gen5SaveEditor -> editor.caughtInDex(national)
         else -> true
     }
 
@@ -81,8 +89,8 @@ object MissingDex {
                 if (mon.isEgg || mon.isBadEgg) continue
                 val n = mon.game.nationalDex(mon.species) ?: continue
                 if (n in wanted) {
-                    val (why, palPark) = canCome(src, at, mon, target) ?: continue
-                    add(n, Owned(i, at, mon, level, why, if (palPark) Way.PAL_PARK else Way.TRADE))
+                    val (why, way) = canCome(src, at, mon, target) ?: continue
+                    add(n, Owned(i, at, mon, level, why, way))
                 }
                 // It evolves into a missing one as it arrives (and the Pokédex registers that one).
                 if (!sameGeneration(src, target)) continue
@@ -101,11 +109,16 @@ object MissingDex {
             add(into, Owned(i, at, mon, level, why, Way.TRADE_BACK))
         }
         return missing.map { (number, n) ->
-            Entry(number, n, bySpecies[n].orEmpty().sortedWith(compareBy<Owned>({ !it.reachable }, { it.way != Way.TRADE && it.way != Way.PAL_PARK }, { -it.level })))
+            Entry(number, n, bySpecies[n].orEmpty().sortedWith(compareBy<Owned>({ !it.reachable }, { it.way !in DIRECT }, { -it.level })))
         }
     }
 
-    private fun sameGeneration(a: TradeSide, b: TradeSide) = (a.editor is Gen4SaveEditor) == (b.editor is Gen4SaveEditor)
+    /** The ways that bring the missing one itself (not something that evolves into it). */
+    private val DIRECT = setOf(Way.TRADE, Way.PAL_PARK, Way.POKE_TRANSFER)
+
+    /** Two saves that trade with each other (Gen 5 saves don't trade here yet). */
+    private fun sameGeneration(a: TradeSide, b: TradeSide) =
+        a.editor !is Gen5SaveEditor && b.editor !is Gen5SaveEditor && (a.editor is Gen4SaveEditor) == (b.editor is Gen4SaveEditor)
 
     private fun owned(e: MonSaveEditor): List<Triple<MonRef, SaveMon, Int>> {
         val d = e.data
@@ -116,21 +129,26 @@ object MissingDex {
         return party + pc
     }
 
-    /** Why [mon] at [at] in [src] can't come to [to] (null: it can) and whether Pal Park brings it; null when it never could. */
-    private fun canCome(src: TradeSide, at: MonRef, mon: SaveMon, to: TradeSide): Pair<String?, Boolean>? {
+    /** Why [mon] at [at] in [src] can't come to [to] (null: it can) and the way that brings it; null when it never could. */
+    private fun canCome(src: TradeSide, at: MonRef, mon: SaveMon, to: TradeSide): Pair<String?, Way>? {
         val a = src.editor
         val b = to.editor
         return when {
             a is Gen3SaveEditor && b is Gen3SaveEditor ->
-                (Gen3Trade.blocker(mon, src, to) ?: Gen3Trade.partyBlocker(src, at)) to false
+                (Gen3Trade.blocker(mon, src, to) ?: Gen3Trade.partyBlocker(src, at)) to Way.TRADE
             a is Gen4SaveEditor && b is Gen4SaveEditor ->
-                (Gen4Trade.blocker(mon, src, to) ?: Gen4Trade.partyBlocker(src, at)) to false
+                (Gen4Trade.blocker(mon, src, to) ?: Gen4Trade.partyBlocker(src, at)) to Way.TRADE
+            a is Gen4SaveEditor && b is Gen5SaveEditor -> {
+                val why = if (at is MonRef.Party) tr("Poké Transfer takes Pokémon from the PC: put it in a box first")
+                    else PokeTransfer.blocker(mon as Gen4BoxMon, a.game) ?: PokeTransfer.linkBlocker(a, src.label, b, to.label)
+                why to Way.POKE_TRANSFER
+            }
             a is Gen3SaveEditor && b is Gen4SaveEditor -> {
                 val why = if (at is MonRef.Party) tr("Pal Park takes Pokémon from the PC: put it in a box first")
                     else PalPark.blocker(mon as Gen3BoxMon) ?: PalPark.linkBlocker(a, src.gameCode, src.label, b, to.label)
-                why to true
+                why to Way.PAL_PARK
             }
-            else -> null   // nothing goes back from a DS game to a GBA one
+            else -> null   // nothing goes back a generation, and Gen 5 saves don't trade here yet
         }
     }
 

@@ -2266,7 +2266,9 @@ new-ability species and GBA -> DS charset are `PalParkTablesGen.kt` from `script
 **MISSING** (the editor's TRAINER > POKéDEX, `save/MissingDex.kt`, `ui/SaveMissingPage.kt`, NEW tag `SAVE_MISSING`): what a save's dex hasn't
 caught (regional until National, the dex's order) and the other saves' Pokémon that could fill it, each judged by `Gen3Trade` / `Gen4Trade` /
 `PalPark`; a row opens TRADE or PAL PARK with it picked (the editor must have no unsaved edits). Pal Park checked in HeartGold (2026-11-16: a real Emerald six
-booted in nds_dump, the memo "Arrived at", saved in game on top, read back); Platinum not booted yet.
+booted in nds_dump, the memo "Arrived at", saved in game on top, read back); Platinum too (2026-11-16: the same six into a copy of
+the headless Platinum save with its National Pokédex switched on, its save window counting them, saved in game on top, read back; then on
+through POKé TRANSFER into Black, saved in game there and read back).
 **TRADE AND BACK** (TRADE, `save/TradeBack.kt`, NEW tag `TRADE_BACK`): a Pokémon picked alone that the other save would evolve goes there and
 straight back by two `TradeRules.send`s (waiting in the partner's first free PC slot; a party one steps back to its place), both editors put
 back (`MonSaveEditor.snapshot` / `restore`) if either leg is refused. MISSING lists it (`Way.TRADE_BACK`) and a pre-evolution in another save
@@ -2280,7 +2282,14 @@ items back to the Gen 4 bag) and PKHeX's PK4 -> PK5 with the game's own date (me
 full PP). The Gen 5 file: two equal copies, a CRC16 per block inline and in the checksum block's table (`Gen5Layout`); the Pokédex
 registered PKHeX's SetDex way with its form / shiny-display slips fixed. Checked end to end 2026-11-16: an Emerald six through Pal Park
 into HeartGold, then six through Poké Transfer into the player's Black, booted in nds_dump (the memo "Apparently arrived at Lv. 30",
-Johto), saved in game, read back. Gen 5 has no editor page of its own (MISSING / COLLECTION don't list it).
+Johto), saved in game, read back. **Black / White and their sequels in the editor** (`Gen5SaveEditor`: every page, NEW tag `SAVE_EDITOR_GEN5`, 2026-11-16): the blocks it
+touches (box names, the 24 boxes, bag 0x18400, party, trainer, the money block, the Pokédex) found by their CRCs in the player's Black and Black 2
+saves (`Gen5Layout.editedBlocks`); the cart gives level-up moves, evolutions, PP, item pockets (bits 7-10 of a/0/2/4's u16 at +8: items, medicine,
+TMs, berries, key) and the regional dex (a/0/1/6 member 668 / 709). Gen 5 keeps the nature in its own byte (any nature, any personality); the
+ability is personality bit 16, a hidden one kept; TMs are one each. MISSING on a Gen 5 save looks at the Gen 4 saves through Poké Transfer
+(`Way.POKE_TRANSFER`, a row opens the transfer with it picked); Gen 5 saves don't trade with each other yet (no TRADE). Checked 2026-11-16: an
+edited Black save (money, a level, IVs / EVs, a nature, PC -> party, an item given) booted in nds_dump, shown by the game's own party and trainer
+card, saved in game on top and read back (`Gen5SaveTest`, `POKE_TRANSFER_EDIT_OUT`).
 **REWIND** (Settings, `Prefs.rewind`, off by default; REWIND HOLD hotkey, R on a keyboard): `pk_rewind.c` - mGBA's own
 diff ring (`mCoreRewindContext`, 600 entries, one every 2 frames: ~20 s, rewinds at 2x) but with states taken / loaded
 WITHOUT `SAVESTATE_SAVEDATA`: mGBA's `mCoreRewindRestore` would write the state's save over the save file every
