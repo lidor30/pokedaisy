@@ -728,7 +728,9 @@ fun CompanionScreen(
                             // ones) over the party-menu backdrop - no extra window
                             // behind them, and the full tab area for bigger slots.
                             var swapNotice by remember { mutableStateOf<ItemNotice?>(null) }
-                            PartyScreen(
+                            // Pokemon X: its own party screen's slots (the game's smooth look, not the pixel ones).
+                            if (game == GameKind.POKEMON_X) XyPartyScreen(snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) })
+                            else PartyScreen(
                                 snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) },
                                 onSwap = itemUse?.takeIf { it.canReorderParty() }?.let { use ->
                                     { a, b -> use.reorderParty(a, b) { r -> partySwapMessage(r)?.let { swapNotice = ItemNotice(0, it, ok = false) } } }

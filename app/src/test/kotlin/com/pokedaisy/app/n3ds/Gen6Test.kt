@@ -119,6 +119,35 @@ class Gen6Test {
         assertEquals(100, Gen6Types.multiplierPct(99, 0, 0))
     }
 
+    /** The zones' wild Pokemon from the cart: Route 2 (zone 259) is grass alone, its levels 2-4. */
+    @Test fun readsTheCartsWildPokemon() {
+        val cart = File(File(RETAIL_ROM_DIR).parentFile, "3ds/Pokemon X (USA) (En,Ja,Fr,De,Es,It,Ko).3ds")
+        assumeTrue(cart.isFile)
+        val wild = Gen6Wild.load(cart)!!
+        val route2 = wild[259]
+        assertEquals(listOf("GRASS / CAVE"), route2.map { it.method })
+        val grass = route2[0].slots
+        assertEquals(12, grass.size)
+        assertEquals(setOf(659, 263, 661, 16, 664, 13), grass.map { it.species }.toSet())
+        assertEquals(100, grass.sumOf { it.percent })
+        assertEquals(2, grass.minOf { it.minLevel })
+        assertEquals(4, grass.maxOf { it.maxLevel })
+        assertTrue(wild[67].isEmpty())
+    }
+
+    /** The Town Map's places from the cart (checked against the map: Vaniville, Route 2, Lumiose's centre for its
+     * Pokemon Center). */
+    @Test fun readsTheCartsTownMap() {
+        val cart = File(File(RETAIL_ROM_DIR).parentFile, "3ds/Pokemon X (USA) (En,Ja,Fr,De,Es,It,Ko).3ds")
+        assumeTrue(cart.isFile)
+        val spots = Gen6TownMap.spots(cart)
+        assertEquals(360, spots.size)
+        fun at(zone: Int) = spots.getValue(zone).let { it.x.toInt() to it.y.toInt() }
+        assertEquals(212 to 180, at(0))
+        assertEquals(212 to 145, at(259))
+        assertEquals(166 to 78, at(359))
+    }
+
     /** The species' types from the cart's personal records. */
     @Test fun readsTheCartsSpeciesTypes() {
         val cart = File(File(RETAIL_ROM_DIR).parentFile, "3ds/Pokemon X (USA) (En,Ja,Fr,De,Es,It,Ko).3ds")
@@ -180,6 +209,10 @@ class Gen6Test {
         assertEquals(Gen6Reader.Scene.SCREEN, scene("DllTrainerCase", null))
         assertEquals(Gen6Reader.Scene.SCREEN, scene("DllConfig", null))
         // Between two screens and on the title: can't tell.
+        // START's PSS menu (and a page of it) waits on the touch screen: MENU, as the X menu; its notes don't.
+        assertEquals(Gen6Reader.Scene.MENU, scene("DllField\nDllPssMainMenu", fieldMenu(0, 0)))
+        assertEquals(Gen6Reader.Scene.MENU, scene("DllField\nDllUSC02\nDllPssCharaMenu", fieldMenu(0, 0)))
+        assertEquals(Gen6Reader.Scene.FIELD, scene("DllField\nDllUSC02\nDllPssMessageWindow", fieldMenu(0, 0)))
         assertNull(scene("", null))
         assertNull(scene("DllTitle\nDllBackGround\nDllSequence", null))
         assertNull(scene("DllStartMenu", null))

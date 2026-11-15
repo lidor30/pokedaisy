@@ -71,7 +71,7 @@ private const val CORNER_MIN_DP = 170
 
 /** An action's colours (FIGHT 0, BAG 1, POKéMON 2, RUN 3, as [DsBattleMenuState]'s): its face light and dark, the
  * ring round it, its word. Sampled off the game's touch screen. */
-private class XyAction(val word: String, val light: Color, val dark: Color, val ring: Color, val ink: Color)
+internal class XyAction(val word: String, val light: Color, val dark: Color, val ring: Color, val ink: Color)
 private val XY_ACTIONS = listOf(
     XyAction(tk("FIGHT"), Color(0xFFF0584A), Color(0xFFD8352A), Color(0xFFC22E24), Color(0xFF5A1610)),
     XyAction(tk("BAG"), Color(0xFFF6BE62), Color(0xFFE79A34), Color(0xFFE0922C), Color(0xFF4A2A0E)),
@@ -303,7 +303,7 @@ private fun XyBackButton(enabled: Boolean, p: Float, onClick: () -> Unit) {
 
 /** A round button's layers, as the game's: a soft shadow, a dark edge, a ring in [a]'s colour [ring] px wide, a silver
  * one [silver] px wide (light at the top), a dark line, then the face light over dark with a sheen; its face's oval back. */
-private fun DrawScope.drawRoundButton(a: XyAction, p: Float, ring: Float, silver: Float): Rect {
+internal fun DrawScope.drawRoundButton(a: XyAction, p: Float, ring: Float, silver: Float): Rect {
     drawOval(Color.Black.copy(alpha = 0.35f), Offset(0f, 1.3f * p), size)
     drawOval(XY_EDGE)
     var r = insetRect(0.6f * p)
@@ -321,7 +321,7 @@ private fun DrawScope.drawRoundButton(a: XyAction, p: Float, ring: Float, silver
 }
 
 /** A white sheen over [face]'s top half, [side] of its width in from each side, fading down from [alpha]. */
-private fun DrawScope.drawGloss(face: Rect, side: Float, alpha: Float) {
+internal fun DrawScope.drawGloss(face: Rect, side: Float, alpha: Float) {
     val g = Rect(face.left + face.width * side, face.top + face.height * 0.03f, face.right - face.width * side, face.top + face.height * 0.5f)
     drawOval(Brush.verticalGradient(listOf(Color.White.copy(alpha = alpha), Color.White.copy(alpha = 0f)), g.top, g.bottom), g.topLeft, g.size)
 }
@@ -402,12 +402,12 @@ private fun DrawScope.drawXyArrow(tip: Offset, p: Float, pulse: Float) {
     drawPath(path, Color.White, style = Stroke(1.3f * p, join = StrokeJoin.Round))
 }
 
-private fun DrawScope.insetRect(by: Float) = Rect(by, by, size.width - by, size.height - by)
+internal fun DrawScope.insetRect(by: Float) = Rect(by, by, size.width - by, size.height - by)
 
 /** [text] in the system's sans-serif, [size] px, filled [fill] inside a [outline] edge [edge] px wide, made smaller until
  * it fits the width it's given ([spacing]: letter spacing, em). */
 @Composable
-private fun XyText(
+internal fun XyText(
     text: String, size: Float, fill: Color, outline: Color, edge: Float, modifier: Modifier = Modifier,
     weight: FontWeight = FontWeight.Bold, spacing: Float = 0f,
 ) {

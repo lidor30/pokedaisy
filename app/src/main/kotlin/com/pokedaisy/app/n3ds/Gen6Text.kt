@@ -326,3 +326,76 @@ object Gen6Types {
         return a * (row.getOrNull(def2) ?: 100) / 100
     }
 }
+
+/**
+ * Pokemon X / Y's wild Pokemon per zone, from the cart: each zone's bundle in `a/0/1/2` ("ZO", LZ11) has its encounter
+ * table as its fourth section (0x188 bytes: a 0x10 header, then 94 slots of 4 bytes: u16 species (11 bits) + form (5;
+ * 30 / 31 = any), level, level), in this order: grass, yellow / purple / red flowers, tall grass (12 each), surfing and
+ * Rock Smash (5 each), the three rods (3 each), three hordes of 5. The rates are the games' fixed ones per slot. Zone 259
+ * (Route 2): Bunnelby, Zigzagoon, Fletchling, Pidgey, Scatterbug, Weedle at 2-4 (2026-11-15).
+ */
+object Gen6Wild {
+    class Slot(val species: Int, val form: Int, val minLevel: Int, val maxLevel: Int, val percent: Int)
+
+    /** One way of meeting them ([method]: the HUD's heading, an English key `tr` translates). */
+    class Table(val method: String, val slots: List<Slot>)
+
+    private val GRASS = intArrayOf(20, 20, 10, 10, 10, 10, 5, 5, 4, 4, 1, 1)
+    private val WATER = intArrayOf(50, 30, 15, 4, 1)
+    private val ROD = intArrayOf(60, 35, 5)
+    private val TABLES = listOf(
+        "GRASS / CAVE" to GRASS, "YELLOW FLOWERS" to GRASS, "PURPLE FLOWERS" to GRASS, "RED FLOWERS" to GRASS,
+        "TALL GRASS" to GRASS, "SURFING" to WATER, "ROCK SMASH" to WATER,
+        "OLD ROD" to ROD, "GOOD ROD" to ROD, "SUPER ROD" to ROD,
+    )
+    private const val HORDES = 3
+    private const val HORDE_SIZE = 5
+    private const val HEADER = 0x10
+    private const val SLOT = 4
+
+    private val cache = HashMap<String, List<List<Table>>>()
+
+    /** Each zone's tables (empty ones left out), by zone number; null when the cart can't be read that far. */
+    fun load(cart: File): List<List<Table>>? = synchronized(cache) {
+        val key = "${cart.absolutePath}:${cart.length()}"
+        cache[key] ?: runCatching {
+            RomFs(cart).use { fs ->
+                val files = fs.read("a/0/1/2")?.let { Gen6Text.garcFiles(it) } ?: return@use null
+                files.dropLast(1).map { f -> tables(unpack(f)) }
+            }
+        }.getOrNull()?.also { cache[key] = it }
+    }
+
+    private fun unpack(f: ByteArray): ByteArray =
+        if (f.isNotEmpty() && f[0].toInt() == 0x11) com.pokedaisy.app.companion.data.Gen5Lz.decompress(f) ?: ByteArray(0) else f
+
+    /** A zone bundle's encounter section read into its tables. */
+    fun tables(zo: ByteArray): List<Table> {
+        if (zo.size < 0x18 || String(zo, 0, 2, Charsets.US_ASCII) != "ZO") return emptyList()
+        val b = ByteBuffer.wrap(zo).order(ByteOrder.LITTLE_ENDIAN)
+        val sections = b.getShort(2).toInt() and 0xFFFF
+        if (sections < 4) return emptyList()
+        val start = b.getInt(4 + 3 * 4)
+        val end = b.getInt(4 + 4 * 4)
+        if (end - start < HEADER + SLOT || end > zo.size) return emptyList()
+        var at = start + HEADER
+        fun slot(percent: Int): Slot? {
+            if (at + SLOT > end) return null
+            val raw = b.getShort(at).toInt() and 0xFFFF
+            val lo = zo[at + 2].toInt() and 0xFF
+            val hi = zo[at + 3].toInt() and 0xFF
+            at += SLOT
+            val species = raw and 0x7FF
+            return if (species == 0) null else Slot(species, raw ushr 11, minOf(lo, hi), maxOf(lo, hi), percent)
+        }
+        val out = ArrayList<Table>()
+        for ((method, rates) in TABLES) {
+            val slots = rates.map { slot(it) }.filterNotNull()
+            if (slots.isNotEmpty()) out += Table(method, slots)
+        }
+        // A horde is 5 Pokemon met together; its 60 / 35 / 5 is the horde's (as the rods'), each of its five carries it.
+        val hordes = (0 until HORDES).flatMap { h -> (0 until HORDE_SIZE).mapNotNull { slot(ROD[h]) } }
+        if (hordes.isNotEmpty()) out += Table("HORDES", hordes)
+        return out
+    }
+}

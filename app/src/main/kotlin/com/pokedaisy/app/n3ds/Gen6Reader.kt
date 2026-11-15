@@ -79,9 +79,14 @@ object Gen6Reader {
     /** The modules that are the title and the start menu, and the field's: a screen is any other. */
     private val NOT_SCREENS = setOf("DllTitle", "DllBackGround", "DllSequence", "DllStartMenu")
 
-    /** Field modules whose question waits on the touch screen alone, the top screen dimmed: MENU too (Save's "save the
-     * game?" with its Yes / No: the X menu's marker is cleared meanwhile). */
-    private val FIELD_TOUCH = setOf("DllReport")
+    /** Field modules that wait on the touch screen alone, the top screen dimmed: MENU too. Save's "save the game?" with
+     * its Yes / No (the X menu's marker is cleared meanwhile), and START's PSS menu and its pages (headless, 2026-11-15:
+     * START loads DllPssMainMenu beside the field; the cart's other DllPss* are its pages). Not DllPssMessageWindow:
+     * the PSS's notes ride along on the plain field. */
+    private val FIELD_TOUCH = setOf(
+        "DllReport", "DllPssMainMenu", "DllPssCharaMenu", "DllPssConfig", "DllPssFavorite", "DllPssIconSelect",
+        "DllPssPlaySelect", "DllPssRuleSelect", "DllPssAssistPower",
+    )
 
     /**
      * The field camera's setup, from the field object ([Config.fieldMenuRoot]): +0xD8, then +0x21C (the camera system),
@@ -195,6 +200,8 @@ object Gen6Reader {
         val status: Int,
         /** Attack, Defense, Speed, Sp. Atk, Sp. Def. */
         val stats: IntArray,
+        /** The record's gender bit 2: no gender. */
+        val genderless: Boolean = false,
     )
 
     data class Item(val id: Int, val count: Int, val pocket: Int)
@@ -305,6 +312,7 @@ object Gen6Reader {
             hp = b.getShort(0xF0).toInt() and 0xFFFF,
             maxHp = b.getShort(0xF2).toInt() and 0xFFFF,
             stats = IntArray(5) { b.getShort(0xF4 + it * 2).toInt() and 0xFFFF },
+            genderless = p[0x1D].toInt() and 4 != 0,
         )
     }
 }

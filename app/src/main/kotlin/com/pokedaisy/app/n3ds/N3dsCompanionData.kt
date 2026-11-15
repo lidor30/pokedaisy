@@ -24,7 +24,11 @@ object N3dsCompanionData {
             status = if (m.hp == 0) "FNT" else statusLabel(m.status.toLong() and 0xFFFFFFFFL),
             types = types?.distinct()?.mapNotNull { Gen6Moves.TYPES.getOrNull(it) }.orEmpty(),
             iconAsset = Gen6IconTable.index(m.species, m.form, m.female)?.let(Gen6Icons::asset),
-            genderSymbol = GENDER_SYMBOL_UNKNOWN,
+            genderSymbol = when {
+                m.genderless -> com.pokedaisy.app.companion.data.GENDER_SYMBOL_NONE
+                m.female -> com.pokedaisy.app.companion.data.GENDER_SYMBOL_FEMALE
+                else -> com.pokedaisy.app.companion.data.GENDER_SYMBOL_MALE
+            },
             isEgg = m.isEgg,
             moves = if (m.isEgg) emptyList() else m.moves.toList().mapIndexedNotNull { i, id ->
                 if (id == 0) return@mapIndexedNotNull null
@@ -101,6 +105,23 @@ object N3dsCompanionData {
                 )
             },
         )
+    }
+
+    /** A zone's wild Pokemon ([Gen6Wild]) for the HUD: per way of meeting them, each species once (its slots' chances
+     * added, its levels' range), most common first. */
+    fun wild(tables: List<Gen6Wild.Table>, text: Gen6Text?): List<com.pokedaisy.app.companion.ui.XyWildRow> = tables.flatMap { t ->
+        t.slots.groupBy { it.species }.map { (species, slots) ->
+            // Forms 30 / 31 are "any" (Scatterbug's patterns): the plain icon.
+            val form = slots.first().form.takeIf { it < 30 } ?: 0
+            com.pokedaisy.app.companion.ui.XyWildRow(
+                method = t.method,
+                name = text?.species?.getOrNull(species) ?: "#$species",
+                iconAsset = Gen6IconTable.index(species, form, false)?.let(Gen6Icons::asset),
+                minLevel = slots.minOf { it.minLevel },
+                maxLevel = slots.maxOf { it.maxLevel },
+                percent = slots.sumOf { it.percent },
+            )
+        }.sortedByDescending { it.percent }
     }
 
     /** Where the player is: the zone's place name ([Gen6Zones]), for the status bars. No region map yet. */

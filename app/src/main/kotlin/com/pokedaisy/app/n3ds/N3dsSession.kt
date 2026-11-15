@@ -534,6 +534,16 @@ class N3dsSession(
     }
 
     @Volatile private var lastView: SnapshotView? = null
+
+    /** The wild Pokemon of the zone the player is in, for the HUD's WILD ([Gen6Wild]); empty where there are none. */
+    @Volatile var wildHere: List<com.pokedaisy.app.companion.ui.XyWildRow> = emptyList()
+        private set
+    private var wildZone = -1
+
+    /** The player's place on the Town Map ([Gen6TownMap]), for the HUD's MAP; null off the map (or unread). */
+    @Volatile var mapHere: com.pokedaisy.app.companion.ui.XyMapSpot? = null
+        private set
+    private var wildLanguage = -1
     @Volatile private var text: Gen6Text? = null
     private val moveData by lazy { Gen6Moves.load(rom) }
     private val personalData by lazy { Gen6Personal.load(rom) }
@@ -599,6 +609,11 @@ class N3dsSession(
         runCatching {
             if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles))) com.pokedaisy.app.companion.data.RomArt.announce()
         }.onFailure { Log.w(TAG, "icons failed", it) }
+        // The Town Map's picture and pin (once per cart), and every zone's place on it.
+        val townSpots = runCatching {
+            if (Gen6TownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles))) com.pokedaisy.app.companion.data.RomArt.announce()
+            Gen6TownMap.spots(rom)
+        }.onFailure { Log.w(TAG, "town map failed", it) }.getOrDefault(emptyMap())
         val config = Gen6Reader.configFor(titleId)
         var textLanguage = -1
         val zones = Gen6Zones.load(rom)
@@ -612,6 +627,17 @@ class N3dsSession(
                         Gen6Text.languageLetter(sample.language)?.let { l -> ui.post { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(l) } }
                         val names = t.items
                         OwnItemNames.lookup = { id -> names.getOrNull(id) }
+                    }
+                    // The HUD's WILD list follows the zone (built here, off the UI thread: the cart's zone archive).
+                    if (sample.zone != wildZone || wildLanguage != textLanguage) {
+                        wildZone = sample.zone
+                        wildLanguage = textLanguage
+                        wildHere = N3dsCompanionData.wild(Gen6Wild.load(rom)?.getOrNull(sample.zone).orEmpty(), text)
+                        mapHere = townSpots[sample.zone]?.let {
+                            com.pokedaisy.app.companion.ui.XyMapSpot(
+                                Gen6TownMap.MAP, Gen6TownMap.PIN, Gen6TownMap.WIDTH, Gen6TownMap.HEIGHT, it.x, it.y, it.w, it.h,
+                            )
+                        }
                     }
                     val view = SnapshotView(
                         connected = true,

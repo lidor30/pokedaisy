@@ -4968,18 +4968,27 @@ class PokeDaisyActivity : Activity() {
                 // The QUICK MENU up: the HUD fades well back, so the menu is what stands out.
                 // The buttons on the other screen's companion (X): the HUD steps back too, under the strip pointing there.
                 val hudAlpha by androidx.compose.animation.core.animateFloatAsState(if (quickMenu.open || bottomFocus.value) 0.25f else 1f, label = "hudAlpha")
-                com.pokedaisy.app.companion.ui.FieldHud(
-                    snap, shown && !dsWindowUp,
-                    // A 3DS game: what it reads so far (the party); no map, balls pocket, bag actions, PC or wild list yet.
-                    if (romIs3ds) hudStyle.value.copy(hidden = hudStyle.value.hidden + N3DS_HUD_HIDDEN) else hudStyle.value,
+                // A 3DS game: its own HUD, in the game's smooth look (party, WILD, TOUCH, COMPANION).
+                if (romIs3ds) com.pokedaisy.app.companion.ui.XyFieldHud(
+                    snap, shown, n3dsTopRect.value,
+                    modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
+                    wild = n3ds?.wildHere.orEmpty(),
+                    map = n3ds?.mapHere,
+                    itemUse = itemUse,
+                    onTouchScreen = if (n3dsFloats) ::toggleDsTouch else null,
+                    onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
+                    onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
+                    onPanel = { hudPanelOpen.value = it },
+                ) else com.pokedaisy.app.companion.ui.FieldHud(
+                    snap, shown && !dsWindowUp, hudStyle.value,
                     modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
                     clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
                     itemUse = itemUse, fly = flyAction,
                     onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
-                    onTouchScreen = if (romIsNds && dsFloats.value || romIs3ds && n3dsFloats) ::toggleDsTouch else null,
+                    onTouchScreen = if (romIsNds && dsFloats.value) ::toggleDsTouch else null,
                     dsCorner = dsCornerTaken.value,
                     dsClearBottom = dsHudClear.value,
-                    frame = if (romIs3ds) n3dsTopRect.value else hudFrame.value ?: hudTouchFrame.value,
+                    frame = hudFrame.value ?: hudTouchFrame.value,
                     avoid = hudAvoid.value,
                     closePanels = hudCloseTick.intValue,
                     openPanel = hudOpenPanel.value, openTick = hudOpenTick.intValue,
@@ -6330,13 +6339,6 @@ class PokeDaisyActivity : Activity() {
         /** How often [DsShots] takes the game's picture. */
         private const val DS_SHOT_MS = 1000L
         /** ONE SCREEN: a 3DS game's floating touch screen, as a share of the screen's height. */
-        /** The HUD's parts a 3DS game has nothing for yet (it reads the party, the bag's names, the map's name). */
-        private val N3DS_HUD_HIDDEN = setOf(
-            com.pokedaisy.app.companion.FieldHudPart.MAP, com.pokedaisy.app.companion.FieldHudPart.BALLS,
-            com.pokedaisy.app.companion.FieldHudPart.REPEL, com.pokedaisy.app.companion.FieldHudPart.PC,
-            com.pokedaisy.app.companion.FieldHudPart.BAG, com.pokedaisy.app.companion.FieldHudPart.WILD,
-        )
-
         /** 3DS ZOOM's camera distances, times the game's own ([n3dsZoomNext]). */
         private val N3DS_CAMERA_PULLS = floatArrayOf(1f, 1.35f, 1.75f)
         private const val N3DS_FLOAT_HEIGHT = 0.82f

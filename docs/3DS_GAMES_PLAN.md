@@ -146,6 +146,22 @@ were checked through this path (2026-11-15).
   keeps the balls in the Items pocket, and nothing calls the game yet. The party now carries its types (`Gen6Personal`),
   moves (`Gen6Moves`: type, power, PP) and matchups (`Gen6Types`), so the summary and PARTY are whole. Checked on the
   RP6 (Santalune Forest): the HUD, a summary (Chespin: GRASS, weak to Flying / Poison / Bug / Fire / Ice).
+- In the game's own look (2026-11-15, the user's asks; colours sampled from the game's party screen, headless):
+  - The HUD (`XyFieldHud`): the party as pill cells (icon, HP, status) bottom left; round silver-rimmed WILD / MAP /
+    TOUCH / COMPANION buttons (the battle buttons' `drawRoundButton`) bottom right; a tap on a cell opens the summary.
+  - WILD: the zone's wild Pokemon from the cart (`Gen6Wild`: each zone bundle's fourth section, 94 four-byte slots:
+    grass, yellow / purple / red flowers, tall grass (12 each), surfing and Rock Smash (5), three rods (3), three hordes
+    of 5; the games' fixed rates, the hordes' 60 / 35 / 5 assumed as the rods'), per way of meeting them, in the game's
+    pills. Checked: Route 2 (zone 259), Santalune Forest on the RP6.
+  - MAP: the game's Town Map (`Gen6TownMap`, read from the cart into rom-art, never bundled: RomFS `a/0/6/9`'s UI
+    archive, `townmap_bg1` 320 x 210 ETC1 and `hero_obj` the pin; a zone's place via its record +0x1A, the spot table
+    `a/0/6/8` and `townmap_lower.bclyt`'s panes: picture pixel (160 + x, 105 - y)), the pin on the place, its area
+    pulsing, the place's name on a tab. Found by a research agent with a Python decoder (Vaniville (212, 180), Route 2
+    (212, 145), Lumiose's centre (166, 78), all 360 zones placed).
+  - PARTY tab (`XyPartyScreen`, `XyBackdrop` as Pokemon X's party backdrop on every tab): the game's pill slots, two
+    columns, the right one set lower, the level on a tab, gender, HP bar and numbers, status tags.
+- START's PSS menu (and its pages, `DllPss*` but its message window) floats the touch screen in as the X menu does:
+  `Gen6Reader.FIELD_TOUCH` (headless: START loads DllPssMainMenu beside the field). Checked on the RP6.
 - The right stick turns and tilts the field camera (2026-11-15, the user's ask: a modern game's free camera): the same
   setup, its yaw (+8) and pitch (+4) the game's plus the stick's, at most 40° either way and 8° flatter / 15° steeper
   (Santalune Forest showed black past its top at 15° flatter; 45° on Route 2 showed the void past its edge). Let go, it

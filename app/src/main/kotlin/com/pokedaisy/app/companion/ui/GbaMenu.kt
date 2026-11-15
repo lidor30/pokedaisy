@@ -935,6 +935,11 @@ fun GameBackdrop(game: GameKind, modifier: Modifier = Modifier.fillMaxSize()) {
         wash?.let { drawRect(it, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
         if (scrim > 0f) drawRect(NIGHT.copy(alpha = scrim))
     } else modifier
+    // Pokemon X: its party screen's striped green, drawn smooth (XyBackdrop).
+    if (game == GameKind.POKEMON_X) {
+        Box(modifier) { XyBackdrop() }
+        return
+    }
     // HeartGold / SoulSilver: their party screen's flat teal, no stripes.
     if (game.isHgss) {
         Canvas(modifier) { drawRect(HGSS_BACKDROP) }
