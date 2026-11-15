@@ -105,6 +105,33 @@ jobs:
       - name: Compile for iOS (iPad, iPad simulator)
         run: ./gradlew :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64 --stacktrace
 
+  # The companion's screens (shared-ui/) for the iPad, compiled where they live against shared/ and Compose
+  # Multiplatform. Advisory for now, like the job above.
+  ios-shared-ui:
+    name: Companion screens for iOS
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # shared/ is an Android library too, so Gradle configures it with the SDK (no NDK needed here).
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+
+      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+
+      - name: Compile the screens for iOS (iPad, iPad simulator)
+        run: ./gradlew :shared-ui:compileKotlinIosArm64 :shared-ui:compileKotlinIosSimulatorArm64 --stacktrace
+
   # Link and run the portable platform checks too: a successful KLIB compile alone doesn't exercise Native APIs.
   ios-simulator:
     name: Shared code on the iOS simulator

@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.concurrent.Volatile
+
 import androidx.compose.ui.graphics.ImageBitmap
 import com.pokedaisy.app.companion.data.LockedMap
 import androidx.compose.foundation.layout.wrapContentSize
@@ -912,7 +914,7 @@ fun ItemsScreen(
     // repeated key.
     val keys = remember(sorted) {
         val seen = HashMap<Int, Int>()
-        sorted.map { "${it.itemId}#${seen.merge(it.itemId, 1, Int::plus)!! - 1}" }
+        sorted.map { val n = seen[it.itemId] ?: 0; seen[it.itemId] = n + 1; "${it.itemId}#$n" }
     }
 
     // Keep the tapped row on screen once the window shrinks for the
@@ -1698,7 +1700,7 @@ private fun ItemDescriptionBar(
 
 /** What a USE / GIVE did, in the companion's words: [mon] the Pokémon it went to, [item] the item, [held]
  * what the Pokémon held before. */
-internal fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = "", held: Int = 0): String = when (o.result) {
+fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = "", held: Int = 0): String = when (o.result) {
     ItemUseResult.USED -> if (o.steps > 0) tr("Used! It lasts {0} steps.", o.steps) else tr("Used on {0}.", mon)
     ItemUseResult.STILL_ACTIVE -> tr("The last one is still working.")
     ItemUseResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")

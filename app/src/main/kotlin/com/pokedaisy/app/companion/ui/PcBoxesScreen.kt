@@ -50,6 +50,7 @@ import com.pokedaisy.app.companion.data.save.SPECIES_EGG
 import com.pokedaisy.app.companion.data.speciesNames
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
+import kotlinx.coroutines.IO
 
 /**
  * PC BOXES (the library's game menu, top screen): a save's party and its 14 PC boxes, read from

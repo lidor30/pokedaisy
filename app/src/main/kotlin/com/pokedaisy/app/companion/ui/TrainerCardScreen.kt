@@ -44,7 +44,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
-import okio.Path.Companion.toOkioPath
+import kotlinx.coroutines.IO
 
 /** The art generation each style's [TrainerCardArt.cached] was loaded at (main thread). */
 private val cardArtGeneration = HashMap<CardStyle, Int>()

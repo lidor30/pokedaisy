@@ -54,9 +54,9 @@ import com.pokedaisy.app.companion.MAX_BAR_TABS
 private val FF_RATES = floatArrayOf(0f, 1.5f, 2f, 3f, 4f, 5f, 6f, 8f, 10f)
 
 /** SETTINGS > STATUS BAR's choices: off, over the game, over the companion's tabs. */
-internal val STATUS_BAR_PLACES = listOf(tk("OFF"), tk("GAME"), tk("COMPANION"))
+val STATUS_BAR_PLACES = listOf(tk("OFF"), tk("GAME"), tk("COMPANION"))
 
-internal fun statusBarLabel(on: Boolean, onCompanion: Boolean) = STATUS_BAR_PLACES[if (!on) 0 else if (onCompanion) 2 else 1]
+fun statusBarLabel(on: Boolean, onCompanion: Boolean) = STATUS_BAR_PLACES[if (!on) 0 else if (onCompanion) 2 else 1]
 
 internal enum class Page(val title: String) { HOME(tk("SETTINGS")), TABS(tk("TAB BAR")), BUTTONS(tk("GAME BUTTONS")), HOTKEYS(tk("HOTKEYS")), SHADERS(tk("SHADERS")), FIELD_HUD(tk("HUD")), QUICK_MENU(tk("QUICK MENU")), TOUCH(tk("TOUCH CONTROLS")), SPEED(tk("SPEED OPTIONS")), DISPLAY(tk("DISPLAY OPTIONS")), CHEATS(tk("CHEATS")), TWEAKS(tk("TWEAKS")), COOP_PARTNERS(tk("PARTNERS")), HELP(tk("HELP")) }
 
@@ -1022,7 +1022,7 @@ internal fun coopRows(
 /** NEARBY RANGE (both screens): how far away a partner's battle can be joined from, in steps. */
 internal val COOP_NEARBY_RANGES = listOf(2, 4, 8, 16, 32)
 
-internal fun nearbyRangeRow(
+fun nearbyRangeRow(
     current: Int,
     pick: (title: String, choices: List<String>, current: String, onPick: (String) -> Unit) -> Unit,
     set: (Int) -> Unit,
@@ -1175,16 +1175,16 @@ private fun KeyCapture.toggle(title: String, request: () -> KeyCapture.Request) 
 
 /** WILD ENCOUNTERS' value: ON (the game's own rate) or OFF. */
 /** GAME VOLUME's value (both screens): "100%" .. "0%". */
-internal fun gameVolumeLabel(percent: Int) = "$percent%"
+fun gameVolumeLabel(percent: Int) = "$percent%"
 
 /** GAME VOLUME's slider moves in steps of this many percent (a drag, LEFT / RIGHT). */
 private const val GAME_VOLUME_STEP = 5
 
 /** GAME VOLUME's slider (both screens): 0 - 100% in [GAME_VOLUME_STEP]s, [set] on every move. */
-internal fun gameVolumeSlider(percent: Int, set: (Int) -> Unit) =
+fun gameVolumeSlider(percent: Int, set: (Int) -> Unit) =
     SettingSlider(percent, 0..100, GAME_VOLUME_STEP, set)
 
-internal fun wildEncountersLabel(percent: Int) = if (percent == 0) tk("OFF") else tk("ON")
+fun wildEncountersLabel(percent: Int) = if (percent == 0) tk("OFF") else tk("ON")
 
 /** SHINY ODDS' value: NORMAL (the game's own 1 in 8192), else "1 IN n". */
 private fun shinyOddsLabel(odds: Int): String =

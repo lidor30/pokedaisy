@@ -108,8 +108,8 @@ object CheatFiles {
      * own). A code's parts are joined by `+`, the way mGBA's libretro core splits them.
      */
     fun parseLibretro(lines: List<String>): List<Cheat> {
-        val desc = sortedMapOf<Int, String>()
-        val code = sortedMapOf<Int, String>()
+        val desc = mutableMapOf<Int, String>()
+        val code = mutableMapOf<Int, String>()
         val on = mutableMapOf<Int, Boolean>()
         for (raw in lines) {
             val m = LIBRETRO_KEY.matchEntire(raw.trim()) ?: continue
@@ -121,7 +121,7 @@ object CheatFiles {
                 "enable" -> on[i] = value.equals("true", ignoreCase = true)
             }
         }
-        return code.mapNotNull { (i, c) ->
+        return code.entries.sortedBy { it.key }.mapNotNull { (i, c) ->
             val parts = CheatCodes.normalize(c)
             if (parts.isEmpty()) null
             else Cheat(desc[i]?.ifBlank { null } ?: "CHEAT ${i + 1}", parts, "", on[i] ?: false)

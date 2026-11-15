@@ -392,7 +392,7 @@ class CoopPairing(
         return Gen3Text.decode(bytes, 0, 7)
     }
 
-    internal companion object {
+    companion object {
         const val LAN_VERSION = "pokedaisy-coop/1"
         const val LAN_PREFIX = "$LAN_VERSION;"
         const val HELLO_TIMEOUT_MS = 10_000L
@@ -401,6 +401,6 @@ class CoopPairing(
         const val VERSION_CODE: Byte = 3
 
         /** The ticket for [peer] with no secret and no addresses. */
-        internal fun peerOnlyTicket(peer: CoopPeerId): String = CoopTicket.peerOnly(peer)
+        fun peerOnlyTicket(peer: CoopPeerId): String = CoopTicket.peerOnly(peer)
     }
 }

@@ -24,6 +24,7 @@ import okio.FileSystem
 import okio.IOException
 import okio.Path
 import okio.Path.Companion.toPath
+import okio.use
 
 /**
  * The pairings, one partner per save, in `filesDir/coop/pairs.json` (a JSON array, written to a
@@ -152,11 +153,11 @@ class CoopPairs(
 }
 
 /** Moves [tmp] over [dest] in one step (okio's atomicMove: a rename that replaces [dest]). */
-internal fun replaceFile(tmp: Path, dest: Path) = FileSystem.SYSTEM.atomicMove(tmp, dest)
+fun replaceFile(tmp: Path, dest: Path) = FileSystem.SYSTEM.atomicMove(tmp, dest)
 
 /** Writes [bytes] to [tmp] and forces them to disk (okio's FileHandle.flush syncs), so a rename over the real file
  * never leaves an empty one after a crash. */
-internal fun writeDurably(tmp: Path, bytes: ByteArray) {
+fun writeDurably(tmp: Path, bytes: ByteArray) {
     FileSystem.SYSTEM.openReadWrite(tmp).use { h ->
         h.resize(0)
         h.write(0, bytes, 0, bytes.size)

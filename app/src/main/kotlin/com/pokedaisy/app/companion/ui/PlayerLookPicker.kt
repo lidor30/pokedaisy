@@ -52,7 +52,7 @@ import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.floor
-import okio.Path.Companion.toOkioPath
+import kotlinx.coroutines.IO
 
 /** Rows of tiles the list shows at once: two and a half, so a cut row says it scrolls. */
 private const val ROWS_IN_VIEW = 2.5f

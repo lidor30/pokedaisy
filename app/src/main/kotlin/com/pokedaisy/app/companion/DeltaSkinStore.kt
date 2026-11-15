@@ -18,6 +18,7 @@ import okio.Path.Companion.toPath
 import okio.SYSTEM
 import okio.buffer
 import okio.openZip
+import okio.use
 
 /** An imported skin: its info, and the folder its pictures are in. [id] is the folder's name. */
 data class InstalledSkin(val id: String, val skin: DeltaSkin, val dir: Path) {

@@ -53,6 +53,8 @@ dependencies {
     implementation("org.tukaani:xz:1.12")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
     implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
+    // The screens use `import kotlinx.coroutines.IO` (Dispatchers.IO on iOS too): coroutines 1.7+, as data/ already runs.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:$cmp")
 }

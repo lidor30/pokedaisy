@@ -56,6 +56,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import kotlinx.coroutines.IO
 
 /*
  * The DEX page's sections past INFO (GitHub #28): EVOLVE (the whole family, both

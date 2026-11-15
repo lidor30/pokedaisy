@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlinx.coroutines.IO
+
 import androidx.compose.ui.graphics.RectangleShape
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
@@ -560,7 +562,7 @@ private val CenterPink = Color(0xFFE8687C)
 private val CenterPinkDark = Color(0xFFB03850)
 
 /** What a POKéMON CENTER service said instead of going ahead, in the companion's words. */
-internal fun centerMessage(r: com.pokedaisy.app.companion.data.CenterResult, mon: String): String = when (r) {
+fun centerMessage(r: com.pokedaisy.app.companion.data.CenterResult, mon: String): String = when (r) {
     com.pokedaisy.app.companion.data.CenterResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.CenterResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.CenterResult.EGG -> tr("Not for an EGG.")

@@ -192,7 +192,7 @@ internal fun BoxSwapPicker(boxMon: MonView?, party: List<MonView>, onCancel: () 
 }
 
 /** What a SWAP of [boxMon] for [partyMon] (into box [boxName]) did, in the companion's words. */
-internal fun boxSwapMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, boxMon: MonView, partyMon: MonView, boxName: String): String = when (r) {
+fun boxSwapMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, boxMon: MonView, partyMon: MonView, boxName: String): String = when (r) {
     com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED ->
         tr("{0} joined the party and {1} went to {2}. Save in the game to keep it.", boxMon.shownName, partyMon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
@@ -214,7 +214,7 @@ internal fun BoxSwapNotice(ui: BoxesUiState) {
 }
 
 /** What a DEPOSIT of [mon] into box [boxName] did, in the companion's words. */
-internal fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
+fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
     com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was stored in {1}. Save in the game to keep it.", mon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.LAST_MON -> tr("That's your last POKéMON that can battle!")
     com.pokedaisy.app.companion.data.BoxSwapResult.BOX_FULL -> tr("{0} is full.", boxName)
@@ -223,7 +223,7 @@ internal fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult
 }
 
 /** What a WITHDRAW of [mon] from box [boxName] did, in the companion's words. */
-internal fun boxWithdrawMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
+fun boxWithdrawMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
     com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was taken out of {1} and joined the party. Save in the game to keep it.", mon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.PARTY_FULL -> tr("Your party is full!")
     com.pokedaisy.app.companion.data.BoxSwapResult.FAILED -> tr("That didn't work. Nothing was changed.")
@@ -232,7 +232,7 @@ internal fun boxWithdrawMessage(r: com.pokedaisy.app.companion.data.BoxSwapResul
 
 /** DEPOSIT's box pick: every box with how full it is, the save's current box first lit; a full one says FULL. */
 @Composable
-internal fun BoxDepositPicker(boxes: BoxesView, mon: MonView?, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+fun BoxDepositPicker(boxes: BoxesView, mon: MonView?, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
     OptionSelector(
         title = tr("Deposit {0} in which BOX?", mon?.shownName.orEmpty()),
         options = boxes.boxes.indices.toList(),
@@ -271,7 +271,7 @@ private const val SWAP_DONE = 1950L
  * of the clock, for screenshots.
  */
 @Composable
-internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit, at: Long? = null) {
+fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit, at: Long? = null) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
     val u = m.u
@@ -362,7 +362,7 @@ internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: ()
                     for (k in 3 downTo 0) {
                         val back = (e - k * 0.05f).coerceAtLeast(0f)
                         val alpha = if (k == 0) 1f else 0.5f / k
-                        val arc = kotlin.math.sin(Math.PI.toFloat() * back)
+                        val arc = kotlin.math.sin(kotlin.math.PI.toFloat() * back)
                         val twinkle = k == 0 && (t / 80) % 2 == 0L
                         if (out) swapSpark(snap(lx + (rx - lx) * back), snap(cy + outLift * arc), p, alpha, twinkle)
                         if (into) swapSpark(snap(rx + (lx - rx) * back), snap(cy + inLift * arc), p, alpha, if (out) !twinkle && k == 0 else twinkle)

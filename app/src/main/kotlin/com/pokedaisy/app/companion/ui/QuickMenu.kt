@@ -136,13 +136,13 @@ class QuickMenuState {
         private set
 
     /** The tiles shown (set as it draws), so the D-pad knows how many there are. */
-    internal var items: List<QuickAction> = emptyList()
+    var items: List<QuickAction> = emptyList()
 
     /** Why each tile is dimmed now (null = ready), as it draws. */
-    internal var blocked: (QuickAction) -> String? = { null }
+    var blocked: (QuickAction) -> String? = { null }
 
     /** REPEL's kinds in the bag, weakest first, as it draws. */
-    internal var repelKinds: List<Int> = emptyList()
+    var repelKinds: List<Int> = emptyList()
 
     /** FLY's destination ids in its list's order. */
     internal var flyIds: List<Int> = emptyList()
@@ -333,7 +333,7 @@ fun quickBlocked(action: QuickAction, s: SnapshotView, repelSteps: Int = 0, dark
 }
 
 /** Why FLASH didn't start, in the companion's words (the HUD's notice). */
-internal fun flashMessage(r: com.pokedaisy.app.companion.data.FlashResult): String = when (r) {
+fun flashMessage(r: com.pokedaisy.app.companion.data.FlashResult): String = when (r) {
     com.pokedaisy.app.companion.data.FlashResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.FlashResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.FlashResult.NO_BADGE -> tr("FLASH needs a new BADGE first.")
@@ -537,7 +537,7 @@ private const val TILE_TRIP = 0.4f
  * leaves a little after the one before it and slows as it arrives, so closing, the same run backwards, takes the last one in
  * first.
  */
-internal fun tileOut(open: Float, i: Int, n: Int): Float {
+fun tileOut(open: Float, i: Int, n: Int): Float {
     val start = if (n > 1) i * (1f - TILE_TRIP) / (n - 1) else 0f
     val t = ((open - start) / TILE_TRIP).coerceIn(0f, 1f)
     return 1f - (1f - t) * (1f - t) * (1f - t)
@@ -784,7 +784,7 @@ fun quickMenuBadge(): String? = NewFeatures.badge(NewFeatures.QUICK_MENU) ?: New
     ?: NewFeatures.badge(NewFeatures.FREE_FLIGHT) ?: NewFeatures.badge(NewFeatures.QUICK_TOUCH)
 
 /** MOVE_FLASH (the quick menu's FLASH tile, the party check). */
-internal const val FLASH_MOVE = 148
+const val FLASH_MOVE = 148
 
 /** FLASH: a burst of light, K outline, Y its glow, W the white middle. */
 /** HEAL: a heart in the POKéMON CENTER's pink, a highlight on its left lobe. */
