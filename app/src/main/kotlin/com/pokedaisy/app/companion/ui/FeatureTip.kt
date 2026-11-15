@@ -175,6 +175,57 @@ fun FlyStyleAskHost(
 }
 
 /**
+ * BOSS RETRY (SETTINGS > GAMEPLAY): after a trainer battle was lost, the card asks whether to go back to its start (the state
+ * taken as it began). Where the tips are, like [FlyStyleAsk]; its bar running out means no.
+ */
+object BattleRetryAsk {
+    var showing by mutableStateOf(false)
+}
+
+/** The card's words: RETRY for TRY IT. */
+fun battleRetryAskText(): FeatureTip = FeatureTip(
+    tr("TRY THAT BATTLE AGAIN?"),
+    tr("Go back to the start of the battle you lost, as if it never happened."),
+    tk("RETRY"),
+)
+
+/** [BattleRetryAsk] on screen, sliding in from the top like [FeatureTipHost]; [onAnswer] gets true for RETRY (false: NO
+ * THANKS, or the bar ran out). */
+@Composable
+fun BattleRetryAskHost(
+    active: Boolean,
+    roomy: Boolean,
+    modifier: Modifier = Modifier,
+    cardModifier: Modifier = Modifier,
+    maxWidth: Dp = 760.dp,
+    onAnswer: (Boolean) -> Unit,
+) {
+    val asking = BattleRetryAsk.showing
+    val left = remember { Animatable(1f) }
+    LaunchedEffect(asking, active) {
+        if (!asking || !active) return@LaunchedEffect
+        left.snapTo(1f)
+        left.animateTo(0f, tween(TipScheduler.SHOW_MS.toInt(), easing = LinearEasing))
+        BattleRetryAsk.showing = false
+        onAnswer(false)
+    }
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        AnimatedVisibility(
+            visible = active && asking,
+            enter = slideInVertically(tween(260)) { -it } + fadeIn(tween(260)),
+            exit = slideOutVertically(tween(220)) { -it } + fadeOut(tween(220)),
+        ) {
+            FeatureTipCard(
+                battleRetryAskText(), cardModifier, left = left.value, roomy = roomy, maxWidth = maxWidth,
+                badge = tk("NEW"),
+                onTry = { BattleRetryAsk.showing = false; onAnswer(true) },
+                onNoThanks = { BattleRetryAsk.showing = false; onAnswer(false) },
+            )
+        }
+    }
+}
+
+/**
  * The tip's card: the flower on the left, the feature's name and a line or two about it, its keys, and TRY IT /
  * NO THANKS. [left] is the share of its time still to go (it goes by itself, which is the "later"); null = no bar.
  * [roomy]: the companion's screen, where the card has room for its keys under the text.

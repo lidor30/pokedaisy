@@ -40,7 +40,7 @@ a dual-screen handheld it gets the bottom screen; on one screen it opens over th
   </tr>
   <tr>
     <td><b>PARTY</b>: your team in the game's own party screen. Tap one for stats, moves, IVs / EVs and what to learn.</td>
-    <td><b>BATTLE</b>: opens by itself. Every matchup, the foe's whole team, the best pick, and buttons that play the turn.</td>
+    <td><b>BATTLE</b>: opens by itself. Every matchup, the foe's whole team, the best pick, and buttons that play the turn (your last ball in one tap too).</td>
     <td><b>MAP</b>: the region map with you on it, every place searchable, FLY and TAKE OFF.</td>
   </tr>
   <tr>
@@ -101,10 +101,11 @@ EXPAND works in every Gen 3 game, many hacks and the Game Boy's Yellow and Cryst
 
 ## And more
 
-- **Fast-forward** that slows down in menus, with music that keeps its tempo. Slow motion, rewind, turbo, save states.
+- **Fast-forward** that slows down in menus, with music that keeps its tempo. Slow motion, rewind, turbo, save states,
+  a shiny alert that stops it all for a shiny, and a retry for a lost trainer battle.
 - **Less walking back**: PC anywhere, FLY from the map, the Pokemon Center's services on any summary, wild encounters off,
   reusable TMs, field moves without HMs, an EXP share for the whole party, a level cap at the next boss's top level,
-  auto-run, instant text.
+  a keep-away spray that refills itself, no low-health beep, no poison damage while walking, auto-run, instant text.
 - **Shaders** (LCD, scanlines, CRT, GBA colours, edge smoothing), themes, dark mode, overlays.
 - **Controls**: remap everything, touch controls you lay out yourself (or a Delta skin), any controller.
 - **DS games**: the touch screen on the bottom screen, or in five layouts on one, upscaled 2x to 8x.

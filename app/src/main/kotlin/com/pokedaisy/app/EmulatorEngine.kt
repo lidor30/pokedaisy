@@ -58,6 +58,8 @@ class EmulatorEngine(
     @Volatile private var pendingLoad = -1
     @Volatile private var pendingUndoSave = false
     @Volatile private var pendingUndoLoad = false
+    @Volatile private var pendingRetrySave = false
+    @Volatile private var pendingRetryLoad = false
     @Volatile private var pendingSuspend: File? = null
 
     @Volatile private var ffHeld = false
@@ -183,6 +185,20 @@ class EmulatorEngine(
         expShareFound = found
         expShareMode = mode
         if (fullChanged) tmPatchDirty = true
+    }
+
+    /** LOW HP BEEP / FIELD POISON off: the ROM's two patches ([com.pokedaisy.app.companion.data.QuietPatches]; null = none
+     * known) and which go in, with the other options on the next frame boundary. */
+    @Volatile private var quietFound: com.pokedaisy.app.companion.data.QuietPatches.Found? = null
+    @Volatile private var beepOff = false
+    @Volatile private var poisonOff = false
+
+    fun setQuietPatches(found: com.pokedaisy.app.companion.data.QuietPatches.Found?, beepOff: Boolean, poisonOff: Boolean) {
+        if (found === quietFound && beepOff == this.beepOff && poisonOff == this.poisonOff) return
+        quietFound = found
+        this.beepOff = beepOff
+        this.poisonOff = poisonOff
+        tmPatchDirty = true
     }
 
     /** LEVEL CAP: getexp's two level checks ([com.pokedaisy.app.companion.data.LevelCap]; null = not known) and the cap
@@ -322,7 +338,9 @@ class EmulatorEngine(
     /** Bottom-screen touch battle control (see PLAN.md Phase 5):
      * drives the real battle menu via synthetic button presses through the
      * same touch-overlay bitmask the on-screen D-pad uses. */
-    private val battleInput = BattleInputController(input, writer = { a, b -> MgbaCore.pkWriteBytes(a, b) })
+    private val battleInput = BattleInputController(
+        input, writer = { a, b -> MgbaCore.pkWriteBytes(a, b) }, caller = { fn, a0, a1, a2, a3 -> if (MgbaCore.pkCallSafe()) MgbaCore.pkCall(fn, a0, a1, a2, a3) else BattleInputController.CALL_NOT_NOW },
+    )
 
     /** A DS game's battle picks: the game's own touch-screen buttons pressed with the stylus ([NdsBattleTaps]). */
     private val ndsTaps = NdsBattleTaps()
@@ -370,6 +388,10 @@ class EmulatorEngine(
     var battleRunAsksFirst: Boolean
         get() = battleInput.runAsksFirst
         set(v) { battleInput.runAsksFirst = v }
+
+    /** LAST BALL: [itemId] thrown from the action menu without the bag ([BattleInputController.throwBall]). UI thread. */
+    fun battleThrowBall(fns: com.pokedaisy.app.companion.data.BattleBall.Fns, itemId: Int, removeBagItem: Long) =
+        battleInput.throwBall(fns, itemId, removeBagItem)
 
     /** Switch to the party mon with this personality. Call from the UI thread. */
     fun battleSwitchTo(personality: Long) = battleInput.switchTo(personality)
@@ -922,6 +944,10 @@ class EmulatorEngine(
     fun requestLoadState(slot: Int) { pendingLoad = slot.coerceIn(SaveStates.SLOT_MIN, SaveStates.SLOT_MAX) }
     fun requestUndoSave() { if (!CoopGuards.battleActive()) pendingUndoSave = true }   // no state of a co-op battle is ever written
     fun requestUndoLoad() { pendingUndoLoad = true }
+    /** BOSS RETRY: a state of this moment (a trainer battle's start) into [SaveStates.retryFile]; never of a co-op battle. */
+    fun requestRetrySave() { if (!CoopGuards.battleActive()) pendingRetrySave = true }
+    /** BOSS RETRY: back to that state ([onStateResult] with LOAD_STATE, slot -1); undoable like any load. */
+    fun requestRetryLoad() { pendingRetryLoad = true }
 
     fun cycleSlot(delta: Int) {
         val n = (currentSlot + delta).mod(SaveStates.SLOT_MAX - SaveStates.SLOT_MIN + 1)
@@ -2079,6 +2105,13 @@ class EmulatorEngine(
         option("exp share full", expShareMode == com.pokedaisy.app.companion.data.ExpShare.Mode.FULL && exp != null) {
             exp!!.full.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
         }
+        val quiet = quietFound
+        option("low HP beep off", beepOff && quiet?.beep != null) {
+            quiet!!.beep!!.writes.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
+        }
+        option("field poison off", poisonOff && quiet?.poison != null) {
+            quiet!!.poison!!.writes.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
+        }
         val cap = levelCapFound
         val capLevel = levelCapLevel
         option("level cap $capLevel", cap != null && capLevel in 1..99) {
@@ -2217,6 +2250,19 @@ class EmulatorEngine(
                 true
             }.getOrDefault(false)
             onStateResult?.invoke(Hotkeys.Action.UNDO_SAVE, slot, ok)
+        }
+        if (pendingRetrySave) {
+            pendingRetrySave = false
+            val ok = saveState(states.retryFile)
+            Log.i("pokedaisy", "boss retry: state ${if (ok) "taken" else "failed"}")
+        }
+        if (pendingRetryLoad) {
+            pendingRetryLoad = false
+            val ok = !refuseLoad(CoopGuards.statesBlocked, isResume = false) &&
+                states.retryFile.let { it.isFile && it.length() > 0 } &&
+                run { runCatching { saveState(states.undoLoadFile) }; loadState(states.retryFile) }
+            Log.i("pokedaisy", "boss retry: load $ok")
+            onStateResult?.invoke(Hotkeys.Action.LOAD_STATE, -1, ok)
         }
         if (pendingUndoLoad) {
             pendingUndoLoad = false
