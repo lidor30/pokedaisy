@@ -281,3 +281,64 @@ fun withdrawFromBox(
         BoxSwapResult.SWAPPED
     }
 }
+
+/** What SORT did. */
+enum class BoxSortResult {
+    /** Every box was rewritten in Pokédex order (the game keeps it once saved). */
+    SORTED,
+    /** Not on the field with the controls free (a battle, a menu, a text box, the game's own PC). */
+    NOT_NOW,
+    IN_BATTLE,
+    /** The boxes hold no Pokémon. */
+    EMPTY,
+    FAILED,
+}
+
+/**
+ * SORT: every Pokémon in the 14 boxes, packed from box 1 slot 1 in Pokédex-number order, as if the player had deposited
+ * them that way - the game's own storage records moved whole (80-byte BoxPokemon, checksums intact), not re-created.
+ * A species goes lowest level first (a box record keeps EXP, not the level: [decodeBoxMon] works it out from the growth
+ * rate); the same level keeps the order the boxes already had. Eggs count as the species they will hatch into; a record
+ * the decoder can't read (a Bad Egg) goes last. Writes all 420 slots at once and reads them back; anything else puts the
+ * boxes exactly as they were. Emu thread, same gate and code checks as the other PC moves.
+ */
+fun sortBoxes(fields: FieldItemFns, fns: BoxSwapFns, busy: Boolean, g: GameCalls): BoxSortResult {
+    val crcs = fns.codeCrcs.zip(listOf(fns.boxMonToMon, fns.boxMonRestorePP, fns.getBoxMonData))
+    if (!fieldItemCodeMatches(fields, g::read) ||
+        crcs.any { (crc, fn) -> java.util.zip.CRC32().apply { update(g.read(fn, 32)) }.value != crc }) return BoxSortResult.FAILED
+    if (busy || g.call(fields.fieldControlsLocked) != 0L) return BoxSortResult.NOT_NOW
+    return runCatching {
+        val storage = u32le(g.read(fns.storagePtr, 4), 0)
+        if (storage !in 0x02000000L until 0x02040000L) return@runCatching BoxSortResult.FAILED
+        val start = storage + 4
+        val size = BOXES * SLOTS * BOX_MON
+        val before = g.read(start, size)
+        if (before.size != size) return@runCatching BoxSortResult.FAILED
+        // Each stored Pokémon's 80 bytes, in the boxes' order. An all-zero slot is empty (ZeroBoxMonData); one that
+        // doesn't decode (a Bad Egg) is kept, after the rest.
+        data class Stored(val bytes: ByteArray, val species: Int, val level: Int)
+        val stored = mutableListOf<Stored>()
+        for (slot in 0 until BOXES * SLOTS) {
+            val off = slot * BOX_MON
+            if ((0 until BOX_MON).none { before[off + it] != 0.toByte() }) continue
+            val mon = decodeBoxMon(before, off)
+            stored.add(Stored(before.copyOfRange(off, off + BOX_MON), mon?.species ?: Int.MAX_VALUE, mon?.level ?: Int.MAX_VALUE))
+        }
+        if (stored.isEmpty()) return@runCatching BoxSortResult.EMPTY
+        val sorted = ByteArray(size)
+        // Stable: the same species and level stay in the order the boxes already had.
+        stored.sortedWith(compareBy({ it.species }, { it.level }))
+            .forEachIndexed { i, mon -> mon.bytes.copyInto(sorted, i * BOX_MON) }
+        if (sorted.contentEquals(before)) return@runCatching BoxSortResult.SORTED
+        if (!g.write(start, sorted)) {
+            g.write(start, before)
+            return@runCatching BoxSortResult.FAILED
+        }
+        val check = runCatching { g.read(start, size) }.getOrNull()
+        if (check == null || !check.contentEquals(sorted)) {
+            g.write(start, before)
+            return@runCatching BoxSortResult.FAILED
+        }
+        BoxSortResult.SORTED
+    }.getOrElse { BoxSortResult.FAILED }
+}

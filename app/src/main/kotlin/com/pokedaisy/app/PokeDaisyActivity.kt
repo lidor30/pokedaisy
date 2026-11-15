@@ -888,6 +888,19 @@ class PokeDaisyActivity : Activity() {
         }
         override fun canSwapBox() = com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns, com.pokedaisy.app.companion.data.activeNativeConfig) != null
 
+        override fun canSortBoxes() = canSwapBox()
+
+        override fun sortBoxes(done: (com.pokedaisy.app.companion.data.BoxSortResult) -> Unit) {
+            val inBattle = telemetry.snapshot.value.inBattle
+            onGame(com.pokedaisy.app.companion.data.BoxSortResult.FAILED, { r ->
+                done(if (inBattle && r == com.pokedaisy.app.companion.data.BoxSortResult.NOT_NOW) com.pokedaisy.app.companion.data.BoxSortResult.IN_BATTLE else r)
+            }) { s, calls, busy ->
+                val fns = com.pokedaisy.app.companion.data.boxSwapFor(s.fns, com.pokedaisy.app.companion.data.activeNativeConfig)
+                    ?: return@onGame com.pokedaisy.app.companion.data.BoxSortResult.FAILED
+                com.pokedaisy.app.companion.data.sortBoxes(s.fns, fns, busy, calls)
+            }
+        }
+
         override fun swapBox(
             box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
             done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
