@@ -41,6 +41,12 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
     var holdFrame: () -> Boolean
         get() = renderer.holdFrame
         set(v) { renderer.holdFrame = v }
+    var showAtSource: () -> Long
+        get() = renderer.showAtSource
+        set(v) { renderer.showAtSource = v }
+    var vsyncNow: () -> Long
+        get() = renderer.vsyncNow
+        set(v) { renderer.vsyncNow = v }
 
     /** Fill the whole view instead of keeping the GBA's 3:2 (ASPECT > STRETCH, [Prefs.gameAspect]). */
     var stretch: Boolean = false
@@ -427,6 +433,12 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
         private var unlitTarget = RenderTarget()
         private var effectTarget = RenderTarget()
         @Volatile var holdFrame: () -> Boolean = { false }
+        /** Read as a frame is published: the refresh it may first go up on (EmulatorEngine.frameShowAt; 0 = at once). */
+        @Volatile var showAtSource: () -> Long = { 0L }
+        /** The refreshes so far (EmulatorEngine.vsyncNow), held against the published frame's [readyShowAt]. */
+        @Volatile var vsyncNow: () -> Long = { 0L }
+        /** The published frame's [showAtSource] (frameLock). */
+        private var readyShowAt = 0L
 
         // DS RESOLUTION's frames (EmulatorView.gpuFrames): the core draws them into [gpuTexture]'s Surface on its own
         // GL context; each is copied into [gpuTarget] at its own size and goes on from there like an uploaded frame.
@@ -507,6 +519,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             if (fresh) unshownFrames++
             readyGpu = true
             readyWin = win
+            readyShowAt = showAtSource()
             fresh = true
             (frameLock as Object).notifyAll()
         }
@@ -528,6 +541,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             readyW = w
             readyH = h
             readyWin = if (wideSrc != null) win else null
+            readyShowAt = showAtSource()
             if (fresh) unshownFrames++
             fresh = true
             (frameLock as Object).notifyAll()
@@ -709,9 +723,11 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             synchronized(frameLock) {
                 val buf = ready ?: return  // set with buffer by bind
                 if (!fresh) repeatedDraws++
+                // Not this refresh's turn: the last frame stays up, as a held one does.
+                val held = holdFrame() || (fresh && vsyncNow() < readyShowAt)
                 if (readyGpu) {
                     // A held frame keeps what's up, as below; without one taken yet the last upload stays.
-                    if (fresh && !holdFrame() && takeGpuFrame()) {
+                    if (fresh && !held && takeGpuFrame()) {
                         fresh = false
                         shownWin = readyWin
                         framesShown++
@@ -722,7 +738,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
                 }
                 GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
                 GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
-                if (fresh && !holdFrame() && (gpuShown || readyW != texW || readyH != texH)) {
+                if (fresh && !held && (gpuShown || readyW != texW || readyH != texH)) {
                     // WIDE came on or off, or ZOOM / the look-around changed the window's size: a texture of the new size.
                     texW = readyW
                     texH = readyH
@@ -740,7 +756,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
                     shownWin = readyWin
                     framesShown += 1
                     gpuShown = false
-                } else if (fresh && !holdFrame()) {
+                } else if (fresh && !held) {
                     // A held frame keeps the texture as is: the last frame shown stays up.
                     buf.position(0)
                     GLES20.glTexSubImage2D(

@@ -2095,7 +2095,9 @@ frame (4-20 ms) is never waited for by the GL thread (`onVsync` returns 0 for `n
 latency - waited for within 60% of a refresh, 45 of 120 were late. (3) FF on the refresh fits its group to the device
 (`FfGroupFit`: a running average of group time; a frame goes only while the smaller group keeps 3/4 of the late one's
 throughput, frames are tried back with a doubling back-off) and SPED-UP divides by the group really run. DS audio is
-resampled by `NDS_FPS` (59.83), not the GBA's. (4) A GBA game whose frames keep missing the wait (3+ late draws in two 120-frame
+resampled by `NDS_FPS` (59.83), not the GBA's. On a screen with several refreshes a frame (120 Hz), a frame drawn a refresh later goes up only on the refresh that starts the
+next frame (`EmulatorEngine.showAtTick` stamped on each published frame, `EmulatorView.readyShowAt`; GitHub #638, 2026-11-16: done within 8 ms it showed for one refresh, slower ones for
+three - DS judder at 1x on a Thor Max, smooth in FF); not yet checked on a device. (4) A GBA game whose frames keep missing the wait (3+ late draws in two 120-frame
 windows: Radical Red, 5-9 ms frames with 12-14 ms ones, GitHub #63) goes the DS way until it closes (`slowFrames`, latched -
 flipping back skips / repeats a frame; the `fps=` line says `paced=1 (slow: not waited for)`).
 **FPS / CPU** (SETTINGS on either screen, SCREEN group, `Prefs.showPerformance`, off): flush in the game screen's
