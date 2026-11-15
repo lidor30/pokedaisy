@@ -132,8 +132,9 @@ class N3dsSession(
         fun dead(v: Float) = if (kotlin.math.abs(v) < STICK_DEAD) 0f else v
         val sx = dead(event.getAxisValue(MotionEvent.AXIS_X))
         val sy = dead(event.getAxisValue(MotionEvent.AXIS_Y))
-        N3dsNative.setStick(sx, -sy)
-        stickMoving = sx != 0f || sy != 0f
+        // The circle pad goes to the game from the input pump, turned with the camera ([stickTurn]).
+        stickX = sx
+        stickY = -sy
         // The right stick (most pads Z / RZ, some RX / RY): the field camera's turn and tilt.
         fun axis(a: Int, b: Int): Float {
             val va = event.getAxisValue(a)
@@ -169,6 +170,11 @@ class N3dsSession(
     // The input every 4 ms: Azahar's HID reads our bits once a frame, the app's input has no listener of its own. A
     // press the hotkeys held back and let go (START / SELECT of a chord: GbaInput.tapMask) lasts a number of game frames,
     // so it's ticked once a 60 Hz frame here (every 4th pass), as the GBA / DS engine ticks it once a frame.
+    @Volatile private var stickX = 0f
+    @Volatile private var stickY = 0f
+    private var lastPadX = Float.NaN
+    private var lastPadY = Float.NaN
+
     private val pump = Thread({
         var last = -1
         var pass = 0
@@ -177,6 +183,13 @@ class N3dsSession(
             if (pass++ % 4 == 0) tap = input.tapMask()
             val now = buttons(input.mask or hatBits or tap)
             if (now != last) { N3dsNative.setButtons(now); last = now }
+            // The circle pad turned as the camera is ([stickTurn]): up walks away from it, as in a modern game.
+            val turn = Math.toRadians((stickTurn * STICK_TURN_SIGN).toDouble())
+            val c = kotlin.math.cos(turn).toFloat()
+            val sn = kotlin.math.sin(turn).toFloat()
+            val px = stickX * c - stickY * sn
+            val py = stickX * sn + stickY * c
+            if (px != lastPadX || py != lastPadY) { N3dsNative.setStick(px, py); lastPadX = px; lastPadY = py }
             try { Thread.sleep(4) } catch (_: InterruptedException) { break }
         }
     }, "pokedaisy-n3ds-input")
@@ -353,8 +366,8 @@ class N3dsSession(
     @Volatile private var lookX = 0f
     @Volatile private var lookY = 0f
 
-    /** The left stick is pushed (the player walks): a turned camera glides back to the game's. */
-    @Volatile private var stickMoving = false
+    /** The camera's turn now (degrees, the stick's, 0 off the field): the circle pad is turned by it in the pump. */
+    @Volatile private var stickTurn = 0f
 
     private val cameraLock = Any()
     private var camSetup = 0                 // the camera setup's address (Gen6Reader.CAMERA_PATH) last seen
@@ -367,13 +380,15 @@ class N3dsSession(
     private var yawOff = 0f                  // the stick's turn and tilt, degrees
     private var pitchOff = 0f
     private var camTick = 0L
+    private var camZone = -1                 // the map the turn and tilt were set on (another map: back to the game's)
 
     /**
      * The camera's setup, rewritten from the game's own values: the distance times [camShown], the turn and tilt plus
      * the stick's (within [CAMERA_YAW_MAX], [CAMERA_PITCH_UP] / [CAMERA_PITCH_DOWN]: past them the map's edge and its unbuilt
      * sides show; Santalune Forest's top went black at 15° flatter).
-     * Let go, the camera stays while the player stands, and glides back once they walk (as EXPAND's look-around), so the
-     * circle pad never points another way than the picture. Every 100 ms on the field, every frame while it moves.
+     * Let go, the camera keeps its angle, walking too (the user's call: keep seeing round with it), and the circle pad is
+     * turned with it ([stickTurn]); another map (the zone changes) starts again from the game's, which that map may need.
+     * A battle or the game's own screens leave it as it was. Every 100 ms on the field, every frame while it moves.
      */
     private val camera = Thread({
         val config = Gen6Reader.configFor(titleId)
@@ -393,8 +408,15 @@ class N3dsSession(
         if (camSetup == 0 || !field || now - camResolved > CAMERA_RESOLVE_NS) {
             val setup = if (field) cameraSetup(config) else 0
             camResolved = now
-            if (setup == 0) { cameraForget(); return false }
-            if (setup != camSetup) { cameraForget(); camSetup = setup }
+            if (setup == 0) { camSetup = 0; stickTurn = 0f; return false }
+            // (A new setup keeps the bases: a value equal to the one written is still ours, another is the game's.)
+            camSetup = setup
+            val zone = N3dsNative.readMemory(intArrayOf(config.zone, 2))?.takeIf { it.size == 2 }
+                ?.let { (it[0].toInt() and 0xFF) or ((it[1].toInt() and 0xFF) shl 8) }
+            if (zone != null && zone != camZone) {
+                if (camZone != -1) { yawOff = 0f; pitchOff = 0f }
+                camZone = zone
+            }
         }
         val setup = camSetup
         val block = N3dsNative.readMemory(intArrayOf(setup, CAM_BLOCK))?.takeIf { it.size == CAM_BLOCK } ?: return false
@@ -413,11 +435,8 @@ class N3dsSession(
         if (looking) {
             yawOff = (yawOff + lx * CAMERA_YAW_SPEED * dt).coerceIn(-CAMERA_YAW_MAX, CAMERA_YAW_MAX)
             pitchOff = (pitchOff + ly * CAMERA_PITCH_SPEED * dt).coerceIn(-CAMERA_PITCH_DOWN, CAMERA_PITCH_UP)
-        } else if (stickMoving || dpadHeld() || !field) {
-            val k = (CAMERA_GLIDE * dt).coerceAtMost(1f)
-            yawOff = if (kotlin.math.abs(yawOff) < 0.2f) 0f else yawOff - yawOff * k
-            pitchOff = if (kotlin.math.abs(pitchOff) < 0.2f) 0f else pitchOff - pitchOff * k
         }
+        stickTurn = yawOff
         val targets = floatArrayOf(
             (camBase[CAM_PITCH] + pitchOff).coerceIn(CAMERA_PITCH_LOWEST, CAMERA_PITCH_HIGHEST),
             camBase[CAM_YAW] + yawOff,
@@ -433,21 +452,8 @@ class N3dsSession(
             for (k in targets.indices) camWritten[k] = targets[k]
         }
         if (untouched) camWritten.fill(Float.NaN)
-        val gliding = (yawOff != 0f || pitchOff != 0f) && (stickMoving || dpadHeld() || !field)
-        return looking || gliding || camShown != want
+        return looking || camShown != want
     }
-
-    private fun cameraForget() {
-        camSetup = 0
-        camBase.fill(Float.NaN)
-        camWritten.fill(Float.NaN)
-        camShown = 1f
-        yawOff = 0f
-        pitchOff = 0f
-    }
-
-    private fun dpadHeld(): Boolean =
-        (input.mask or hatBits) and (MgbaCore.Key.UP or MgbaCore.Key.DOWN or MgbaCore.Key.LEFT or MgbaCore.Key.RIGHT) != 0
 
     /** The game's own camera written back (before a state is saved); the loop puts the zoom and the turn back after. */
     private fun cameraRestore() {
@@ -644,8 +650,8 @@ class N3dsSession(
         private const val CAMERA_PITCH_DOWN = 15f
         private const val CAMERA_PITCH_LOWEST = -75f
         private const val CAMERA_PITCH_HIGHEST = -12f
-        /** A turned camera's way back once the player walks: this share of what's left a second. */
-        private const val CAMERA_GLIDE = 4f
+        /** Which way the circle pad turns with a positive camera turn (checked on the RP6). */
+        private const val STICK_TURN_SIGN = -1f
         /** The 3D picture at 3x the 3DS's (the Thor / RP6 show the top screen at about 4x); a setting later. */
         private const val RESOLUTION = 3
         /** Azahar's Default layout: only used if the touch screen's surface were missing at boot (it never is here). */

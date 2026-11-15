@@ -142,10 +142,12 @@ were checked through this path (2026-11-15).
 - The right stick turns and tilts the field camera (2026-11-15, the user's ask: a modern game's free camera): the same
   setup, its yaw (+8) and pitch (+4) the game's plus the stick's, at most 40° either way and 8° flatter / 15° steeper
   (Santalune Forest showed black past its top at 15° flatter; 45° on Route 2 showed the void past its edge). Let go, it
-  stays while the player stands and glides back once they walk (left stick or D-pad), as EXPAND's look-around, so the
-  circle pad never points another way than the picture; back at once off the field. One read and one write of the
-  setup's first 0x20 bytes a step, the path followed twice a second. A state is saved with the game's own camera.
-  Checked on the RP6 (Santalune Forest): turn, tilt, stays, glides back.
+  keeps its angle, walking too (the user's call: it first glided back as EXPAND's look-around), and the circle pad is
+  turned with it, so up walks away from the camera; the game walks its tile grid in 8 directions, so a 40° turn walks
+  the nearest diagonal (measured on the RP6: the camera facing 140°, up walked 135°). The D-pad stays the game's (the
+  roller skates' grid). Another map (the zone changes) starts again from the game's angle; a battle or the game's own
+  screens leave it as it was. One read and one write of the setup's first 0x20 bytes a step, the path followed twice a
+  second. A state is saved with the game's own camera.
 - The field camera (2026-11-15, a test toward right-stick camera control; headless `n3ds_dump` then live on the RP6):
   the drawn camera's object (Vaniville: 0x0847E01C) holds position, target, yaw / pitch (rad, +0x24 / +0x28), distance
   (+0x30), FOV (+0x58, 30°) and aspect (+0x5C, 5:3), all rebuilt every game frame. Each frame (DllField code, 0x7242B4)
