@@ -2242,7 +2242,17 @@ fateful bit, the Pokédex's three seen copies, trade evolutions + EvolutionRenam
 neither (`SaveFileEdits.writeBoth`). Icons come from the ROM file (`RomMonIcons`, known tables only - never guessed). Values
 (money, coins, the bag, a Pokémon's held item and moves) take only what `Gen3Legal` allows (`SaveTablesGen.kt` from
 `scripts/gen_save_tables.py`: each game's pocket items, learnsets, TM / tutor sets, pre-evolutions); the editor throws before a
-byte changes otherwise, and key items / HMs are never taken away. Event flags (ticket islands) come next.
+byte changes otherwise, and key items / HMs are never taken away. Round two (2026-11-15, NEW tag `SAVE_EDITOR_PLUS`; the user's call:
+*game-possible values only*): pages POKéMON / BAG / TRAINER and a Pokémon's page (`SaveMonPage.kt`); nature / gender / shiny /
+ability by a new personality keeping the rest (`Gen3Personality`), IVs, EVs (510), level up from the one read, friendship, a nickname
+for the save's own OT; party <-> PC moves and party trades with the PC's rules (`SaveEditRefused` carries the reason); box rename /
+sort / search / release; Pokédex marks and the event tickets as their distribution scripts gave them (`Gen3Events.kt`).
+docs/DEVELOPMENT.md's "Round two". **HeartGold / SoulSilver and Platinum USA rev 1** too (`Gen4Save.kt` behind `SaveModel.kt`'s interfaces,
+`Gen4Layout` for each game's offsets, the cart's own tables: `NdsArt.readSaveTables`): every page (BAG / TRAINER through `TrainerBagEditor`,
+which Gen 3's editor implements too); HG / SS's edit goes into the other half with every PC box flagged changed, Platinum's is a full save
+(global + 1, each block into its other copy). Checked by booting edited real saves in `nds_dump` and saving in the game on top. Nicknames /
+box names (`Gen4Text.encode`), GIVE / TAKE through the bag, and HG / SS / Platinum trades (`Gen4Trade`, `TradeRules`; Pokédex as pokedex.c
+registers a received one) too. Not yet: DS play time, Diamond / Pearl, Gen 5.
 **REWIND** (Settings, `Prefs.rewind`, off by default; REWIND HOLD hotkey, R on a keyboard): `pk_rewind.c` - mGBA's own
 diff ring (`mCoreRewindContext`, 600 entries, one every 2 frames: ~20 s, rewinds at 2x) but with states taken / loaded
 WITHOUT `SAVESTATE_SAVEDATA`: mGBA's `mCoreRewindRestore` would write the state's save over the save file every
