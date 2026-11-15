@@ -27,29 +27,44 @@ object N3dsCompanionData {
         )
     }
 
-    /** A battler ([Gen6Reader.battleMon]) as the battle strip and BATTLE take it: its moves with their PP, types and
-     * power from the cart ([Gen6Moves]). */
-    fun battleMon(mon: Gen6Reader.BattleMon, text: Gen6Text?, moves: List<Gen6Moves.Move>?): MonView = MonView(
-        species = mon.species,
-        name = text?.species?.getOrNull(mon.species) ?: "#${mon.species}",
-        level = mon.level,
-        hp = mon.hp,
-        maxHp = mon.maxHp,
-        status = if (mon.hp == 0) "FNT" else "",
-        types = emptyList(),
-        iconAsset = Gen6IconTable.index(mon.species, 0, false)?.let(Gen6Icons::asset),
-        moves = mon.moves.map { m ->
-            val data = moves?.getOrNull(m.id)
-            com.pokedaisy.app.companion.data.MoveView(
-                name = text?.moves?.getOrNull(m.id) ?: "#${m.id}",
-                type = data?.let { Gen6Moves.TYPES.getOrNull(it.type) } ?: "NORMAL",
-                pp = m.pp,
-                power = data?.power ?: 0,
-                id = m.id,
-                maxPp = m.maxPp,
-            )
-        },
-    )
+    /** A battler ([Gen6Reader.battleMon]) as the battle strip and BATTLE take it: its types and its moves with their
+     * PP, types and power from the cart ([Gen6Moves], [Gen6Personal]); each damaging move's multiplier on [foe] when
+     * one is given (the strip's verdicts: BATTLE HINTS decides whether they show). */
+    fun battleMon(
+        mon: Gen6Reader.BattleMon, text: Gen6Text?, moves: List<Gen6Moves.Move>?, personal: List<IntArray>?,
+        foe: Gen6Reader.BattleMon? = null,
+    ): MonView {
+        val types = personal?.getOrNull(mon.species)
+        val foeTypes = foe?.let { personal?.getOrNull(it.species) }
+        val foeName = foe?.let { text?.species?.getOrNull(it.species) ?: "#${it.species}" }.orEmpty()
+        return MonView(
+            species = mon.species,
+            name = text?.species?.getOrNull(mon.species) ?: "#${mon.species}",
+            level = mon.level,
+            hp = mon.hp,
+            maxHp = mon.maxHp,
+            status = if (mon.hp == 0) "FNT" else "",
+            types = types?.distinct()?.mapNotNull { Gen6Moves.TYPES.getOrNull(it) }.orEmpty(),
+            iconAsset = Gen6IconTable.index(mon.species, 0, false)?.let(Gen6Icons::asset),
+            moves = mon.moves.map { m ->
+                val data = moves?.getOrNull(m.id)
+                // A status move (category 2, no power) has no multiplier, as on the other games' cards.
+                val vs = if (data == null || foeTypes == null || data.category == 2 || data.power == 0) emptyList() else {
+                    val pct = Gen6Types.multiplierPct(data.type, foeTypes[0], foeTypes[1])
+                    listOf(com.pokedaisy.app.companion.data.MoveVsFoe(foeName, com.pokedaisy.app.companion.data.formatMultiplier(pct), pct))
+                }
+                com.pokedaisy.app.companion.data.MoveView(
+                    name = text?.moves?.getOrNull(m.id) ?: "#${m.id}",
+                    type = data?.let { Gen6Moves.TYPES.getOrNull(it.type) } ?: "NORMAL",
+                    pp = m.pp,
+                    power = data?.power ?: 0,
+                    vs = vs,
+                    id = m.id,
+                    maxPp = m.maxPp,
+                )
+            },
+        )
+    }
 
     /** Where the player is: the zone's place name ([Gen6Zones]), for the status bars. No region map yet. */
     fun location(sample: Gen6Reader.Sample, text: Gen6Text?, zones: IntArray?): com.pokedaisy.app.companion.data.LocationView =

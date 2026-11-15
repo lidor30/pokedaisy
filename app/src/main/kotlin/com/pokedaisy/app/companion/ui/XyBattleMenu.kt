@@ -233,13 +233,6 @@ private fun XyMoveCard(move: MoveView?, on: Boolean, enabled: Boolean, p: Float,
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxWidth().weight(0.5f), contentAlignment = Alignment.Center) {
                 XyText(move.name, 9.5f * p, XY_NAME, Color.Transparent, 0f, weight = FontWeight.Medium)
-                move.vs.firstOrNull()?.let { v ->
-                    Box(
-                        Modifier.align(Alignment.TopEnd)
-                            .drawBehind { drawRoundRect(verdictColor(v.pct), cornerRadius = CornerRadius(size.height / 2)) }
-                            .padding(horizontal = dp(1.5f)),
-                    ) { XyText(v.label, 5.5f * p, Color.White, Color.Black.copy(alpha = 0.4f), 0.4f * p) }
-                }
             }
             Row(Modifier.fillMaxWidth().weight(0.5f), verticalAlignment = Alignment.CenterVertically) {
                 // The type's chip: a white-rimmed pill, the type's dark inside, its word white.
@@ -255,6 +248,21 @@ private fun XyMoveCard(move: MoveView?, on: Boolean, enabled: Boolean, p: Float,
                     XyText(tr("PP {0}", pp), 8.4f * p, Color.White, lerp(type, Color.Black, 0.65f), 0.3f * p, weight = FontWeight.Medium)
                 }
             }
+        }
+        // The multiplier on the foe (BATTLE HINTS): a pill on the card's top-right rim, clear of the name.
+        move.vs.firstOrNull()?.let { v ->
+            Box(
+                Modifier.align(Alignment.TopEnd).offset(x = dp(3f), y = -dp(5.5f))
+                    .drawBehind {
+                        val r = CornerRadius(size.height / 2)
+                        drawRoundRect(XY_EDGE, cornerRadius = r)
+                        val i = insetRect(0.5f * p)
+                        drawRoundRect(Color.White, i.topLeft, i.size, CornerRadius(i.height / 2))
+                        val f = insetRect(1.1f * p)
+                        drawRoundRect(verdictColor(v.pct), f.topLeft, f.size, CornerRadius(f.height / 2))
+                    }
+                    .padding(horizontal = dp(2.6f), vertical = dp(0.9f)),
+            ) { XyText(v.label, 5.8f * p, Color.White, Color.Black.copy(alpha = 0.45f), 0.4f * p, weight = FontWeight.Medium) }
         }
     }
 }

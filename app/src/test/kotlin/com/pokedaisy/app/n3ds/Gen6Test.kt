@@ -102,6 +102,35 @@ class Gen6Test {
         assertEquals("Luminopoli", Gen6Zones.placeName(zones, Gen6Text.load(cart, 4), 67))
     }
 
+    /** Gen 6's chart: Fairy's matchups, Steel no longer resisting Ghost / Dark, two types multiplied. */
+    @Test fun typeChart() {
+        fun t(n: String) = Gen6Moves.TYPES.indexOf(n)
+        fun pct(a: String, d1: String, d2: String = d1) = Gen6Types.multiplierPct(t(a), t(d1), t(d2))
+        assertEquals(200, pct("FAIRY", "DRAGON"))
+        assertEquals(0, pct("DRAGON", "FAIRY"))
+        assertEquals(50, pct("FAIRY", "FIRE"))
+        assertEquals(200, pct("POISON", "FAIRY"))
+        assertEquals(100, pct("GHOST", "STEEL"))
+        assertEquals(100, pct("DARK", "STEEL"))
+        assertEquals(400, pct("ICE", "GROUND", "FLYING"))
+        assertEquals(0, pct("ELECTRIC", "WATER", "GROUND"))
+        assertEquals(25, pct("GRASS", "FIRE", "FLYING"))
+        assertEquals(100, pct("FIRE", "WATER", "GRASS"))
+        assertEquals(100, Gen6Types.multiplierPct(99, 0, 0))
+    }
+
+    /** The species' types from the cart's personal records. */
+    @Test fun readsTheCartsSpeciesTypes() {
+        val cart = File(File(RETAIL_ROM_DIR).parentFile, "3ds/Pokemon X (USA) (En,Ja,Fr,De,Es,It,Ko).3ds")
+        assumeTrue(cart.isFile)
+        val personal = Gen6Personal.load(cart)!!
+        fun types(species: Int) = personal[species].map { Gen6Moves.TYPES[it] }
+        assertEquals(listOf("FIRE", "FLYING"), types(6))
+        assertEquals(listOf("ELECTRIC", "ELECTRIC"), types(25))
+        assertEquals(listOf("PSYCHIC", "FAIRY"), types(282))
+        assertEquals(listOf("FAIRY", "FAIRY"), types(716))
+    }
+
     /** The icon table as the game's party screen drew it (the RP6, 2026-11-15), and the cart's icons decoded. */
     @Test fun iconTableAndTheCartsIcons() {
         assertEquals(1, Gen6IconTable.index(1, 0, female = false))

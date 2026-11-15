@@ -350,6 +350,8 @@ class N3dsSession(
             Gen6Reader.Battle(Gen6Reader.battleInput(ui), player, foe)
         }
         if (now == battle) return
+        // The cart's move and species tables, read here on the scene thread, never by the UI's first battle snapshot.
+        if (now != null) { moveData; personalData }
         battle = now
         ui.post { onBattle(now) }
         publishBattle()
@@ -364,6 +366,7 @@ class N3dsSession(
     @Volatile private var lastView: SnapshotView? = null
     @Volatile private var text: Gen6Text? = null
     private val moveData by lazy { Gen6Moves.load(rom) }
+    private val personalData by lazy { Gen6Personal.load(rom) }
 
     private fun withBattle(view: SnapshotView): SnapshotView {
         val b = battle ?: return view.copy(inBattle = false, battlePlayer = emptyList(), battleOpponent = emptyList(),
@@ -371,8 +374,8 @@ class N3dsSession(
         val t = text
         return view.copy(
             inBattle = true,
-            battlePlayer = listOfNotNull(b.player?.let { N3dsCompanionData.battleMon(it, t, moveData) }),
-            battleOpponent = listOfNotNull(b.foe?.let { N3dsCompanionData.battleMon(it, t, moveData) }),
+            battlePlayer = listOfNotNull(b.player?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData, b.foe) }),
+            battleOpponent = listOfNotNull(b.foe?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData) }),
             battleInputState = b.input,
         )
     }

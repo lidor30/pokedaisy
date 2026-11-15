@@ -259,3 +259,70 @@ object Gen6Moves {
         }.getOrNull()?.also { cache[key] = it }
     }
 }
+
+/**
+ * Pokemon X / Y's species types, from the cart (RomFS `a/2/1/8`, the personal records: one a species and form, +6 / +7
+ * the two types by [Gen6Moves.TYPES], the same twice for one type). Kept per cart.
+ */
+object Gen6Personal {
+    private val cache = HashMap<String, List<IntArray>>()
+
+    fun load(cart: File): List<IntArray>? = synchronized(cache) {
+        val key = "${cart.absolutePath}:${cart.length()}"
+        cache[key] ?: runCatching {
+            RomFs(cart).use { fs ->
+                fs.read("a/2/1/8")?.let { Gen6Text.garcFiles(it) }?.map { f ->
+                    if (f.size < 8) intArrayOf(0, 0) else intArrayOf(f[6].toInt() and 0xFF, f[7].toInt() and 0xFF)
+                }
+            }
+        }.getOrNull()?.also { cache[key] = it }
+    }
+}
+
+/** Gen 6's type chart (18 types, Fairy included), by [Gen6Moves.TYPES]' numbers: how hard a move's type hits. */
+object Gen6Types {
+    // An attacking type: what it hits for double, for half and not at all (the rest normal).
+    private val RULES = mapOf(
+        "NORMAL" to Triple("", "ROCK STEEL", "GHOST"),
+        "FIGHTING" to Triple("NORMAL ROCK STEEL ICE DARK", "FLYING POISON BUG PSYCHIC FAIRY", "GHOST"),
+        "FLYING" to Triple("FIGHTING BUG GRASS", "ROCK STEEL ELECTRIC", ""),
+        "POISON" to Triple("GRASS FAIRY", "POISON GROUND ROCK GHOST", "STEEL"),
+        "GROUND" to Triple("POISON ROCK STEEL FIRE ELECTRIC", "BUG GRASS", "FLYING"),
+        "ROCK" to Triple("FLYING BUG FIRE ICE", "FIGHTING GROUND STEEL", ""),
+        "BUG" to Triple("GRASS PSYCHIC DARK", "FIGHTING FLYING POISON GHOST STEEL FIRE FAIRY", ""),
+        "GHOST" to Triple("GHOST PSYCHIC", "DARK", "NORMAL"),
+        "STEEL" to Triple("ROCK ICE FAIRY", "STEEL FIRE WATER ELECTRIC", ""),
+        "FIRE" to Triple("BUG STEEL GRASS ICE", "ROCK FIRE WATER DRAGON", ""),
+        "WATER" to Triple("GROUND ROCK FIRE", "WATER GRASS DRAGON", ""),
+        "GRASS" to Triple("GROUND ROCK WATER", "FLYING POISON BUG STEEL FIRE GRASS DRAGON", ""),
+        "ELECTRIC" to Triple("FLYING WATER", "GRASS ELECTRIC DRAGON", "GROUND"),
+        "PSYCHIC" to Triple("FIGHTING POISON", "STEEL PSYCHIC", "DARK"),
+        "ICE" to Triple("FLYING GROUND GRASS DRAGON", "STEEL FIRE WATER ICE", ""),
+        "DRAGON" to Triple("DRAGON", "STEEL", "FAIRY"),
+        "DARK" to Triple("GHOST PSYCHIC", "FIGHTING DARK FAIRY", ""),
+        "FAIRY" to Triple("FIGHTING DRAGON DARK", "POISON STEEL FIRE", ""),
+    )
+
+    /** [attacker][defender] in percent: 0, 50, 100 or 200. */
+    private val CHART: Array<IntArray> = Array(Gen6Moves.TYPES.size) { a ->
+        val (double, half, zero) = RULES.getValue(Gen6Moves.TYPES[a])
+        IntArray(Gen6Moves.TYPES.size) { d ->
+            val t = Gen6Moves.TYPES[d]
+            when (t) {
+                in double.split(' ') -> 200
+                in half.split(' ') -> 50
+                in zero.split(' ') -> 0
+                else -> 100
+            }
+        }
+    }
+
+    /** Percent (0, 25 ... 400) for a move of type [atk] on a Pokemon of [def1] / [def2] (the same twice for one type);
+     * 100 when a type is out of range. */
+    fun multiplierPct(atk: Int, def1: Int, def2: Int): Int {
+        val row = CHART.getOrNull(atk) ?: return 100
+        val a = row.getOrNull(def1) ?: return 100
+        if (def2 == def1) return a
+        return a * (row.getOrNull(def2) ?: 100) / 100
+    }
+}

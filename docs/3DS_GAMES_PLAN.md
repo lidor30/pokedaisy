@@ -127,6 +127,12 @@ were checked through this path (2026-11-15).
   FIELD unless the game also loads a module of its own then. The PC is `DllPCMenu` / `DllBox`, Amie `DllKawaigari`,
   Super Training `DllTrainingAppManager`: SCREEN if the field's module goes meanwhile, else FIELD. The PSS's own pages
   (a player's card, `DllPssCharaMenu`) stay FIELD: the player opens them from a window already up.
+  Tried on the RP6 (2026-11-15, Lumiose's Pokemon Center, a state of the player's save): the nurse's Yes / No and the
+  shop's Buy / Sell / Quit and buy list are all on the top screen (the game alone, nothing to do); the PC's menus and
+  boxes, Pokemon-Amie's play and Super Training each show both screens side by side. Nothing needed changing.
+- Move multipliers (2026-11-15, the user's ask): each damaging move card shows its multiplier on the foe as a pill on the
+  card's top-right rim, with BATTLE HINTS on (`DsBattleMenu`'s `hints`). The foe's types come from the cart's personal
+  records (`Gen6Personal`, RomFS `a/2/1/8`, +6 / +7, by species: forms not read yet), the chart is Gen 6's (`Gen6Types`).
 - The floating touch screen's frame (ONE SCREEN, 2026-11-15, the user's call: the game's look, not the app's pixel
   window): `N3dsWindowFrame`, a soft shadow, a dark edge, the battle buttons' silver rim, a dark band to the screen, round
   outer corners (the surface's own stay square: a SurfaceView can't be rounded). A tap on it stays the window's.
