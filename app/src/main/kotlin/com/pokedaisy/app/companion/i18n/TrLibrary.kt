@@ -396,7 +396,6 @@ internal val trLibrary: Map<String, Tr> = mapOf(
     "CHANGE" to Tr(ja = "かえる", fr = "MODIFIER", de = "ÄNDERN", it = "MODIFICA", es = "CAMBIAR", br = "MUDAR", pt = "MUDAR", ko = "바꾸기"),
     "SEE" to Tr(ja = "みる", fr = "VOIR", de = "ANSEHEN", it = "VEDI", es = "VER", br = "VER", pt = "VER", ko = "보기"),
     "RELEASE" to Tr(ja = "にがす", fr = "RELÂCHER", de = "FREILASSEN", it = "LIBERA", es = "LIBERAR", br = "SOLTAR", pt = "LIBERTAR", ko = "놓아주기"),
-    "NICKNAME" to Tr(ja = "ニックネーム", fr = "SURNOM", de = "SPITZNAME", it = "SOPRANNOME", es = "MOTE", br = "APELIDO", pt = "ALCUNHA", ko = "닉네임"),
     "BOX NAME" to Tr(ja = "ボックスの なまえ", fr = "NOM DE BOÎTE", de = "BOXNAME", it = "NOME DEL BOX", es = "NOMBRE DE CAJA", br = "NOME DA CAIXA", pt = "NOME DA CAIXA", ko = "박스 이름"),
     "SORT THIS BOX" to Tr(ja = "この ボックスを ならべかえ", fr = "TRIER CETTE BOÎTE", de = "BOX SORTIEREN", it = "ORDINA QUESTO BOX", es = "ORDENAR ESTA CAJA", br = "ORDENAR ESTA CAIXA", pt = "ORDENAR ESTA CAIXA", ko = "이 박스 정렬"),
     "BY DEX No." to Tr(ja = "ずかん ばんごう", fr = "PAR N° DU POKéDEX", de = "NACH DEX-NR.", it = "PER N. DEL POKéDEX", es = "POR N.º DE POKéDEX", br = "POR Nº DA POKéDEX", pt = "POR Nº DA POKéDEX", ko = "도감 번호순"),
