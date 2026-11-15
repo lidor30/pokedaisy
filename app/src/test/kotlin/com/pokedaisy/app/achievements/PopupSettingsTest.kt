@@ -20,6 +20,16 @@ class PopupSettingsTest {
         assertTrue(popupAllowed(AchievementPopup.Kind.NOTICE, notifications = true, progressNotifications = false))
     }
 
+    /** GitHub #925: a game started offline says so, as a notice: shown unless NOTIFICATIONS is off, whatever PROGRESS says. */
+    @Test
+    fun offlineNoticeAtGameStart() {
+        val p = offlinePopup()
+        assertTrue(p.kind == AchievementPopup.Kind.NOTICE)
+        assertTrue(p.title == "ACHIEVEMENTS OFFLINE")
+        assertTrue(popupAllowed(p.kind, notifications = true, progressNotifications = false))
+        assertFalse(popupAllowed(p.kind, notifications = false, progressNotifications = true))
+    }
+
     @Test
     fun bothOnShowsEverything() {
         AchievementPopup.Kind.entries.forEach { assertTrue(popupAllowed(it, notifications = true, progressNotifications = true)) }
