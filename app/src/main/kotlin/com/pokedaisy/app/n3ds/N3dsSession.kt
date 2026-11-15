@@ -1,5 +1,6 @@
 package com.pokedaisy.app.n3ds
 
+import okio.Path.Companion.toOkioPath
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -621,11 +622,11 @@ class N3dsSession(
     private val sampler = Thread({
         // The cart's icons into rom-art once (a few hundred small files), before the first sample needs them.
         runCatching {
-            if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles))) com.pokedaisy.app.companion.data.RomArt.announce()
+            if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile())) com.pokedaisy.app.companion.data.RomArt.announce()
         }.onFailure { Log.w(TAG, "icons failed", it) }
         // The Town Map's picture and pin (once per cart), and every zone's place on it.
         val townSpots = runCatching {
-            if (Gen6TownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles))) com.pokedaisy.app.companion.data.RomArt.announce()
+            if (Gen6TownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile())) com.pokedaisy.app.companion.data.RomArt.announce()
             Gen6TownMap.spots(rom)
         }.onFailure { Log.w(TAG, "town map failed", it) }.getOrDefault(emptyMap())
         val config = Gen6Reader.configFor(titleId)
