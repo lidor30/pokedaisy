@@ -54,6 +54,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
     implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
+    // The screens use `import kotlinx.coroutines.IO`; data/'s implementation dependency is not exported.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:$cmp")
 }
 
