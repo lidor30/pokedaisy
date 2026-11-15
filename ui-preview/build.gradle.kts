@@ -51,6 +51,8 @@ dependencies {
     implementation("org.json:json:20240303")
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")
+    // The screens use `import kotlinx.coroutines.IO`; data/'s implementation dependency is not exported.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:$cmp")
 }
 
