@@ -97,3 +97,16 @@ fun readingFontFamily(context: Context): FontFamily {
 }
 
 @Volatile private var readingFamily: FontFamily? = null
+
+/** Atkinson Hyperlegible alone, regular or bold (SETTINGS > FONT's SMOOTH / SMOOTH BOLD), one per process like the others. */
+fun atkinsonFamily(context: Context, bold: Boolean): FontFamily {
+    (if (bold) atkinsonBold else atkinsonRegular)?.let { return it }
+    return synchronized(fontLock) {
+        val assets = context.applicationContext.assets
+        if (bold) atkinsonBold ?: FontFamily(ComposeFont("fonts/AtkinsonHyperlegible-Bold.ttf", assets)).also { atkinsonBold = it }
+        else atkinsonRegular ?: FontFamily(ComposeFont("fonts/AtkinsonHyperlegible-Regular.ttf", assets)).also { atkinsonRegular = it }
+    }
+}
+
+@Volatile private var atkinsonRegular: FontFamily? = null
+@Volatile private var atkinsonBold: FontFamily? = null

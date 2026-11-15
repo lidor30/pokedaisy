@@ -121,8 +121,9 @@ fun MapScreen(
         // FLY: its destinations once asked for, or what kept it from starting.
         var flyTargets by remember { mutableStateOf(initialFly) }
         var flyNote by remember { mutableStateOf<String?>(null) }
-        // The button shows where the ROM has FLY and someone in the party knows it.
-        val canFly = fly?.canFly() == true && snapshot.party.any { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } }
+        // The button shows where the ROM has FLY and someone in the party knows it (anyone, with NO HMS NEEDED).
+        val canFly = fly?.canFly() == true && (com.pokedaisy.app.companion.data.HmFree.active ||
+            snapshot.party.any { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } })
         val openFly: (() -> Unit)? = fly?.takeIf { canFly }?.let { f ->
             {
                 f.targets { t ->

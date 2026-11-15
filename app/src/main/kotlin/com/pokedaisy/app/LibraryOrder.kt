@@ -134,6 +134,7 @@ enum class LibraryView(val id: Int, val label: String, val platform: RomCategory
     GBC(4, "GBC", platform = RomCategory.GBC),
     GBA(5, "GBA", platform = RomCategory.GBA),
     DS(6, "DS", platform = RomCategory.NDS),
+    N3DS(8, "3DS", platform = RomCategory.N3DS),
     HACKS(7, "HACKS", category = RomCategory.HACK);
 
     /** A view of some games by what they are (a console, the hacks): shown only while the library has one. */

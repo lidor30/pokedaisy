@@ -10,7 +10,8 @@
     "preview": "astro preview",
     "test": "node --test test/*.test.js",
     "cover": "astro build && node scripts/cover.mjs",
-    "docs-art": "node scripts/docs-art.mjs"
+    "docs-art": "node scripts/docs-art.mjs",
+    "handheld-art": "node scripts/handheld-art.mjs"
   },
   "dependencies": {
     "astro": "^7.3.7",

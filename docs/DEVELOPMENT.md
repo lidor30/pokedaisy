@@ -1644,6 +1644,37 @@ entries showing its sprite's tiles (subsprites split it; parked entries sit at y
 mgba_dump: `follower FILE` (frames + palette), `followon 1`, `followinfo`; checked walking / turning / running in
 Emerald and FireRed, with EXPAND too.
 
+### Sprite packs (the makeover's graphics in one file)
+
+PLAYER LOOK, TEXT LOOK and FOLLOWER need the other games' graphics, which a scan of a ROM leaves decoded in
+`rom-art/look/` (`<hero>/<part>.bin`, `text/<style>/<part>.bin`, `mon/<source>/<national>.bin`). A sprite pack is those
+files in a zip, so a player without the other ROMs can load them: library > TOOLS > SPRITE PACK (`SpritePackFlow`, NEW tag
+`SPRITE_PACK`). The rule stays: nothing is bundled, nothing is downloaded, the repo never holds a pack and the app, manual and
+site never link to one. Whoever has the ROMs makes it:
+
+```bash
+make sprite-pack SPRITE_ROMS="<folder of your ROMs>" SPRITE_PACK=<out.zip>
+```
+
+(ui-preview's `spritePack` task, `src/render/SpritePackTool.kt`: every `.gba` under the folder through the app's own
+`PlayerLook.scan` / `LookArt.keep` / `TextArt.keep` / `MonArt.keep`, each ROM into a folder of its own; defaults: the test
+ROM folder, `~/Documents/PokeDaisy/pokedaisy-sprites.zip`.) The zip holds `pokedaisy-sprites.txt` (`pokedaisy-sprite-pack
+<format>`, `made <date>`, then `path size crc32` per file), a README and the files at their `rom-art/look/` paths.
+
+**Exact graphics only** (`SpritePack.kt`): a file goes in only where its path names a known graphic (`itemOf`: no `..`, no
+other names) and its size and CRC32 are that graphic's: the heroes' and text looks' fingerprints (`LookBlob`, `TextBlob`),
+the follower Pokémon's table (`MonArtSigsGen.kt`). So a pack can't put a byte into the running game that a scan of a known
+ROM wouldn't have; anything else is counted as refused and left out. The reader (`SpritePackFlow.read`) keeps only the
+manifest and `.bin` entries, 64 KB each, 4000 entries and 48 MB at most. A load never overwrites a kept file, then writes
+the region map heads of heroes now whole (`LookArt.keepHead`, as a scan does). The pack is the tool's output after
+`SpritePack.collect`, which applies the same check, so a pack never carries what the app would refuse.
+
+The follower Pokémon have no fingerprints, so their CRCs are generated from the hacks' ROMs (`make sprite-pack-sigs`, every
+version found: Recharged Yellow's versions draw a few species apart): rerun it after changing what `MonArt.keep` writes, or
+for a new follower source or version, and the next pack takes them. `SpritePackTest` (paths, refusals, round trips from
+FireRed / Emerald and the four follower hacks), `SpritePackFlowTest` (the zip reader, a real pack through it); ui-preview
+`library-sprite-pack-*`.
+
 ### Co-op: seeing each other (the partner on your map)
 
 Two linked players on retail English Emerald (BPEE, SHA-1 `f3ae0881...`, the same ROM on both) see each other's character
