@@ -55,7 +55,7 @@ fun BatteryIndicator(m: GbaTextMetrics, modifier: Modifier = Modifier, status: B
  * nub, and [percent] of its 11 inner columns filled (at least one while any
  * charge is left).
  */
-internal fun batteryBitmap(percent: Int): List<String> {
+fun batteryBitmap(percent: Int): List<String> {
     val w = BODY_W + 2 + 1
     val h = BODY_H + 1
     val g = Array(h) { CharArray(w) { '.' } }
@@ -71,5 +71,5 @@ internal fun batteryBitmap(percent: Int): List<String> {
         val ny = y + dy
         if (nx < w && ny < h && g[ny][nx] == '.') g[ny][nx] = 's'
     }
-    return g.map { String(it) }
+    return g.map { it.concatToString() }
 }

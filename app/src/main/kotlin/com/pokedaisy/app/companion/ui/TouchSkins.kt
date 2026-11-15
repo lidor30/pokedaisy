@@ -24,6 +24,7 @@ import com.pokedaisy.app.companion.data.lastModified
 import okio.Path
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlinx.coroutines.IO
 
 /**
  * A Delta skin's pictures, drawn at the size they're shown: a PDF page rendered to it, a PNG decoded (and scaled when

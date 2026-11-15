@@ -86,6 +86,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import kotlinx.coroutines.IO
 
 /** What the GUIDE tab has for a game: its hand-written [text], the ROM's
  * evolution table ([evolutions]) and the live pages' tables ([live]). */

@@ -783,7 +783,7 @@ private fun PlacesList(model: RegionMapModel, onPick: (Int) -> Unit, onMe: () ->
 }
 
 /** MOVE_FLY: the same id in every game the companion flies in. */
-internal const val FLY_MOVE = 19
+const val FLY_MOVE = 19
 
 /**
  * FLY's destinations: the towns the game's Fly map would take - visited ones, in the map's own order - each a row
@@ -816,7 +816,7 @@ private fun FlyList(model: RegionMapModel?, targets: com.pokedaisy.app.companion
 }
 
 /** Why FLY didn't start, in the companion's words. */
-internal fun flyMessage(r: com.pokedaisy.app.companion.data.FlyResult): String = when (r) {
+fun flyMessage(r: com.pokedaisy.app.companion.data.FlyResult): String = when (r) {
     com.pokedaisy.app.companion.data.FlyResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.FlyResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.FlyResult.NO_BADGE -> tr("FLY needs a new BADGE first.")

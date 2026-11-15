@@ -24,7 +24,7 @@ import com.pokedaisy.app.companion.data.UnboundIconSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.pokedaisy.app.companion.data.readBytes
-import okio.Path.Companion.toOkioPath
+import kotlinx.coroutines.IO
 
 /**
  * Art images by path, decoded once: what [RomArt] rebuilt from a ROM the
@@ -32,7 +32,7 @@ import okio.Path.Companion.toOkioPath
  * bundled). A path missing now is retried once
  * [RomArt.updates] moves - key composables on [rememberArtGeneration].
  */
-internal object GameArt {
+object GameArt {
     // A map can't hold a missing path as null, so those are kept apart (with the RomArt generation they missed in).
     private val cache = LockedMap<String, ImageBitmap>()
     private val missing = LockedMap<String, Int>()

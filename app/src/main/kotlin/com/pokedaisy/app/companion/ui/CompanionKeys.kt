@@ -64,7 +64,7 @@ class CompanionKeys {
         entries.asReversed().any { it.enabled && it.onKey(key, repeat) }
 
     @Composable
-    internal fun Handler(enabled: Boolean, onKey: (MenuKey, Boolean) -> Boolean) {
+    fun Handler(enabled: Boolean, onKey: (MenuKey, Boolean) -> Boolean) {
         val current by rememberUpdatedState(onKey)
         val entry = remember { Entry(enabled) { k, r -> current(k, r) } }
         SideEffect { entry.enabled = enabled }

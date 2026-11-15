@@ -57,6 +57,7 @@ import com.pokedaisy.app.companion.i18n.tr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.IO
 
 /**
  * Where the manual comes from: the website's docs API, kept on disk (`StoreDocsSource`); ui-preview reads

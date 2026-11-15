@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.StateSlots
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.IO
 
 /**
  * Savestate slots for the bottom screen, in the SETTINGS tab's OPTION-screen

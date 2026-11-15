@@ -107,6 +107,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlinx.coroutines.IO
 
 /*
  * FIELD HUD (SETTINGS > HUD, on by default): a modern game's heads-up display over the overworld - the party
@@ -610,7 +611,7 @@ private const val HUD_MIN_ROOM = 150
  * controls reaching [clearTop] / [clearBottom] down / up from the box's edges: both cut back by the same share where
  * they'd leave less than [minRoom] between them (or all the picture has, if less), so the HUD never squeezes into a strip.
  */
-internal fun hudClears(clearTop: Float, clearBottom: Float, inT: Float, inB: Float, boxH: Float, minRoom: Float): Pair<Float, Float> {
+fun hudClears(clearTop: Float, clearBottom: Float, inT: Float, inB: Float, boxH: Float, minRoom: Float): Pair<Float, Float> {
     val t = (clearTop - inT).coerceAtLeast(0f)
     val b = (clearBottom - inB).coerceAtLeast(0f)
     val picture = (boxH - inT - inB).coerceAtLeast(0f)
@@ -714,14 +715,14 @@ private fun CornersLayout(p: HudParts, swapped: Boolean, obstacles: List<Rect> =
 private enum class CornerPart { MAP, PARTY, BUTTONS }
 
 /** A part of CORNERS: its size and its corner. */
-internal data class HudCornerItem(val w: Float, val h: Float, val right: Boolean, val bottom: Boolean)
+data class HudCornerItem(val w: Float, val h: Float, val right: Boolean, val bottom: Boolean)
 
 /**
  * Where CORNERS' [items] go in [box] around the touch controls' buttons ([obstacles]): each in its corner where that's
  * clear, else stepped off the buttons ([hudCornerSpot]). Placed in every order, the one that leaves the most parts clear,
  * then moves them least, wins: one part going first can take the only clear place another had.
  */
-internal fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: List<Rect>, gap: Float): List<Rect> {
+fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: List<Rect>, gap: Float): List<Rect> {
     fun corner(it: HudCornerItem): Rect {
         val x = if (it.right) box.right - it.w else box.left
         val y = if (it.bottom) box.bottom - it.h else box.top
@@ -754,7 +755,7 @@ internal fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: L
  * controls) or [taken] (the parts already placed) is there, else the clear place nearest that corner - slid along its
  * edge or in from it past the buttons in the way, [gap] from them - inside [box]. Null: nowhere clear.
  */
-internal fun hudCornerSpot(
+fun hudCornerSpot(
     w: Float, h: Float, right: Boolean, bottom: Boolean, box: Rect, obstacles: List<Rect>, taken: List<Rect>, gap: Float,
 ): Rect? {
     val x0 = if (right) box.right - w else box.left

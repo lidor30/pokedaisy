@@ -77,6 +77,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.floor
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import kotlin.math.roundToInt
+import kotlinx.coroutines.IO
 
 /** Which entries the list shows. SEEN = seen but not caught yet. [label] is English; OptionRows translates it. */
 enum class DexFilter(val label: String) { ALL(tk("ALL")), CAUGHT(tk("CAUGHT")), SEEN(tk("SEEN ONLY")), UNSEEN(tk("NOT SEEN")) }

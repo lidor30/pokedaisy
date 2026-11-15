@@ -29,7 +29,7 @@ class CoopOverlayState {
     /** (partner's name, seconds left) while the host waits for an answer. */
     private var hostWaitState by mutableStateOf<Pair<String, Int>?>(null)
     private var hostWaitSince = TimeSource.Monotonic.markNow()
-    internal var cancelGrace = CANCEL_GRACE
+    var cancelGrace = CANCEL_GRACE
     var hostWait: Pair<String, Int>?
         get() = hostWaitState
         set(v) { if (v != null && hostWaitState == null) hostWaitSince = TimeSource.Monotonic.markNow(); hostWaitState = v }

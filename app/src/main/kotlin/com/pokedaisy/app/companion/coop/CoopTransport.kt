@@ -17,4 +17,4 @@ interface CoopTransport {
 }
 
 /** A co-op log line (the data code's [com.pokedaisy.app.companion.data.Logs]: Android's Log in the app, standard output in tests). */
-internal fun coopLog(message: String) = com.pokedaisy.app.companion.data.Logs.w(message, tag = "pokedaisy/coop")
+fun coopLog(message: String) = com.pokedaisy.app.companion.data.Logs.w(message, tag = "pokedaisy/coop")

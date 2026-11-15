@@ -13,6 +13,14 @@ plugins {
     id("app.cash.paparazzi")
 }
 
+// The companion's screens and what they need, compiled by shared-ui/ (the root build's sharedUiSources): their paths
+// under src/main/kotlin, left out of this module's compile and lint.
+@Suppress("UNCHECKED_CAST")
+val sharedUiFiles: Set<String> = fileTree("src/main/kotlin") {
+    include(rootProject.extra["sharedUiSources"] as List<String>)
+    exclude(rootProject.extra["sharedUiAppOnly"] as List<String>)
+}.map { it.relativeTo(file("src/main/kotlin")).invariantSeparatorsPath }.toSet()
+
 // Crash reports (Firebase Crashlytics, opt-in - CrashReports.kt): only with the project's
 // app/google-services.json, which stays out of this public repo (gitignored; the release
 // workflow writes it from a secret). Without it the app builds the same, reports off.
@@ -183,8 +191,9 @@ android {
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/licenses"))
     sourceSets["test"].java.srcDirs("src/test/kotlin", "../server/coop-relay/src/main/kotlin")
 
-    // The shared module's files are compiled there; lint reads them there too.
+    // The shared modules' files are compiled there; lint reads them there too.
     sourceSets["main"].java.filter.exclude("com/pokedaisy/app/companion/data/**", "com/pokedaisy/app/companion/i18n/**")
+    sourceSets["main"].java.filter.exclude(sharedUiFiles)
 
     testOptions {
         unitTests.isIncludeAndroidResources = false
@@ -209,6 +218,8 @@ tasks.withType<KotlinCompile>().configureEach {
     exclude { e ->
         !e.isDirectory && sharedDirs.any { e.path.startsWith(it) } && !(tests && e.file.nameWithoutExtension in appOnlyTests + sharedTestHelpers)
     }
+    // The companion's screens are compiled by shared-ui/; their tests stay here (Paparazzi).
+    if (!tests) exclude { e -> !e.isDirectory && e.path in sharedUiFiles }
 }
 
 // Settings > LICENSES: NOTICE, then the license text of everything the APK carries, as one asset
@@ -306,6 +317,8 @@ val jdkHttpServerJar by tasks.registering(Zip::class) {
 dependencies {
     // The companion's data and language code (shared/build.gradle.kts).
     implementation(project(":shared"))
+    // The companion's screens (shared-ui/build.gradle.kts).
+    implementation(project(":shared-ui"))
     implementation("androidx.core:core-ktx:1.13.1")
     // FOLD LAYOUT: a foldable's hinge and posture (WindowInfoTracker's FoldingFeature), for a plain Activity.
     implementation("androidx.window:window:1.3.0")

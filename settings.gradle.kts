@@ -17,3 +17,5 @@ rootProject.name = "PokeDaisy"
 include(":app")
 // The companion's data and language code, for Android and iOS (shared/build.gradle.kts).
 include(":shared")
+// The companion's screens for iOS, compiled where they live (shared-ui/build.gradle.kts).
+include(":shared-ui")
