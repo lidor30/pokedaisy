@@ -257,6 +257,11 @@ class Prefs(context: Context) {
     fun setSpeedIndexFor(romKey: String, index: Int) = p.edit().putInt("speed_$romKey", index).apply()
 
     /** The ZOOM step the player last picked on this ROM (WideCamera.level: 0 = 1x), put back when it's played again. */
+    /** SETTINGS > FONT: the app's text font by AppFont ordinal (0 PIXEL, the default; companion/ui/theme/AppFont.kt). */
+    var appFont: Int
+        get() = p.getInt("app_font", 0)
+        set(v) = p.edit().putInt("app_font", v).apply()
+
     fun zoomLevelFor(romKey: String): Int = p.getInt("zoom_$romKey", 0)
     fun setZoomLevelFor(romKey: String, level: Int) = p.edit().putInt("zoom_$romKey", level).apply()
 

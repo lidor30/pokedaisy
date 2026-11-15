@@ -61,6 +61,18 @@ class TelemetryStore {
         _snapshot.value = v
     }
 
+    /** [v] as it is, from a game the sampler doesn't read (a 3DS game: [com.pokedaisy.app.n3ds.N3dsSession] samples it
+     * itself). */
+    fun publish(v: SnapshotView) {
+        cached = null
+        // The per-game look reads activeGame; a GBA game's icon tables would draw this game's species wrong.
+        v.game?.let { game ->
+            if (game != activeGame) DecompIconSource.tables = com.pokedaisy.app.companion.data.IconTables()
+            activeGame = game
+        }
+        _snapshot.value = v
+    }
+
     /** The resume state didn't load after all (the save changed since): its copy is stale. */
     fun dropCached() {
         if (cached == null) return

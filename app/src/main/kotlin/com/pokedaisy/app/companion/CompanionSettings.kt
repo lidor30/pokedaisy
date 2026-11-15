@@ -297,6 +297,8 @@ interface CompanionSettings {
 
     /** Saves DARK MODE (an ordinal of DarkModeSetting, see [Prefs.darkMode]); the look itself is DarkMode's state. */
     fun setDarkMode(v: Int) {}
+    /** SETTINGS > FONT (Prefs.appFont, an AppFont ordinal); the look itself is AppFonts' state. */
+    fun setAppFont(v: Int) {}
 
     /** Saves THEME (a ThemeSpec.id, see [Prefs.appTheme]; ui.theme.pickTheme); the screen puts the theme on itself. */
     fun setAppTheme(id: Int) {}

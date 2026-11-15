@@ -183,6 +183,10 @@ object NewFeatures {
     const val BATTLE_STYLE = "battle_style"
     /** QUICK MENU > FLASH: the field move from the quick menu (companion.data.Flash); the QUICK MENU row carries it too. */
     const val QUICK_FLASH = "quick_flash"
+    /** QUICK MENU > TOUCH SCREEN: a DS / 3DS game's touch screen in by hand on one screen (a phone has no L2). */
+    const val QUICK_TOUCH = "quick_touch"
+    /** SETTINGS > FONT on both screens: the pixel font or a smooth one (ui.theme.AppFont). */
+    const val APP_FONT = "app_font"
     /** FREE FLIGHT: TAKE OFF / LAND (the QUICK MENU's tile and its row, the MAP tab, the FREE FLIGHT hotkey). */
     const val FREE_FLIGHT = "free_flight"
     /** SETTINGS > FLY STYLE: SCENIC flies over the field to the town. */
@@ -210,6 +214,7 @@ object NewFeatures {
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
         DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP,
+        QUICK_TOUCH, APP_FONT,
     )
 
     private const val DAYS = 7

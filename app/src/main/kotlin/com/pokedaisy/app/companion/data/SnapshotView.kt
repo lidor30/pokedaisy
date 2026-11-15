@@ -5,7 +5,7 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 
 data class MoveVsFoe(val vsName: String, val label: String, val pct: Int)
-data class MoveView(val name: String, val type: String, val pp: Int, val power: Int, val vs: List<MoveVsFoe> = emptyList(), val id: Int = 0)
+data class MoveView(val name: String, val type: String, val pp: Int, val power: Int, val vs: List<MoveVsFoe> = emptyList(), val id: Int = 0, val maxPp: Int = 0)
 
 /**
  * Doubles as the party-mon detail view: Types/Moves/Weaknesses/Resistances/

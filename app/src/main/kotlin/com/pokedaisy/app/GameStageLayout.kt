@@ -95,6 +95,12 @@ class GameStageLayout(
 
     private var skinLaid: android.graphics.Rect? = null
 
+    /**
+     * A view of its own in the game's place, laid out exactly over [game]'s box in every arrangement: a 3DS game's top
+     * screen (Azahar draws it into a SurfaceView of its own, [com.pokedaisy.app.n3ds.N3dsSession]); null = none.
+     */
+    var gameCover: View? = null
+
     /** The touch screen's view for [dsArrange] (a child of this layout, over [game]). */
     var dsTouch: View? = null
 
@@ -124,6 +130,7 @@ class GameStageLayout(
         val w = if (ds) dsBackdrop?.measuredWidth ?: game.measuredWidth else game.measuredWidth
         val h = if (ds) dsBackdrop?.measuredHeight ?: game.measuredHeight else game.measuredHeight
         overGame.forEach { if (it.visibility != GONE) it.measure(exactly(w), exactly(h)) }
+        gameCover?.takeIf { it.visibility != GONE }?.measure(exactly(game.measuredWidth), exactly(game.measuredHeight))
     }
 
     /** DS LAYOUT: where the game's box starts in the area [overGame] covers (px), to move the game's rects into it. */
@@ -220,6 +227,7 @@ class GameStageLayout(
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         layoutStage(changed, left, top, right, bottom)
+        gameCover?.takeIf { it.visibility != GONE }?.layout(game.left, game.top, game.right, game.bottom)
         val area = dsBackdrop?.takeIf { dsLaid != null }
         overGame.forEach {
             if (it.visibility == GONE) return@forEach

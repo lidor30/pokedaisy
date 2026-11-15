@@ -41,6 +41,9 @@ object CompanionSupport {
     }
 
     fun isSupported(rom: File): Boolean {
+        // A 3DS cart (FeatureFlags.n3ds): by its header's title id, decrypted only (never hashed: they're gigabytes).
+        if (rom.extension.lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS)
+            return FeatureFlags.n3ds() && com.pokedaisy.app.n3ds.N3dsCart.supported(rom)
         // Game Boy / Color: the exact carts the GB reader knows (Pokémon Yellow).
         if (RomIdentity.isGameBoy(rom)) return TelemetrySampler.GAME_BOY_SUPPORT && RomIdentity.sha1(rom) in TelemetrySampler.SUPPORTED_GB_SHA1S
         // A DS cart: by its header's code and revision, as detect() takes it (a 128 MB+ ROM isn't hashed).

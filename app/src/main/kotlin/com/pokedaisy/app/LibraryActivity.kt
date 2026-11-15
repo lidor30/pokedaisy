@@ -1599,6 +1599,11 @@ class LibraryActivity : ComponentActivity() {
 
     private fun play(rom: File) {
         if (preparing != null) return
+        // A 3DS cart is never read whole before it starts (no CRC: it's gigabytes); the game screen plays it.
+        if (FeatureFlags.n3ds() && rom.extension.lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS) {
+            launch(rom)
+            return
+        }
         // A ROM whose CRC isn't known (or an archive) is read / unpacked first, off the UI thread: the game's window did
         // it on its own and froze on a 512 MB DS cart.
         if (RomCrcs.needsPrepare(this, rom)) {
