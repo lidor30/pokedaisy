@@ -56,6 +56,7 @@ run-dev: install-dev ## Build + install + launch the dev app's library screen
 gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt, the DS ports' tables; see gamedata/README.md)
 	python3 scripts/gen_gamedata.py
 	python3 scripts/gen_nds_ports.py
+	python3 scripts/gen_area_maps.py
 
 # Unfiltered runs cover both modules. A focused run (T='*FooTest') goes to the module(s) whose tests the filter names
 # (scripts/test_module.py; MODULE=app / MODULE=shared forces one), so a misspelled filter still fails in Gradle.
@@ -77,6 +78,7 @@ check: ## Everything a PR must pass: unit tests, translations, game data, ui-pre
 	python3 scripts/check_translations.py
 	python3 scripts/gen_gamedata.py --check
 	python3 scripts/gen_nds_ports.py --check
+	python3 scripts/gen_area_maps.py --check
 	python3 scripts/check_melonds_patch.py
 	python3 scripts/check_azahar_patch.py
 	$(MAKE) -C 3ds test-configs-gen

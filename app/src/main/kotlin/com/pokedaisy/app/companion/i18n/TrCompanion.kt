@@ -244,6 +244,9 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     // Map.
     "MAP {0}" to Tr(ja = "マップ {0}", fr = "CARTE {0}", de = "KARTE {0}", it = "MAPPA {0}", es = "MAPA {0}", br = "MAPA {0}", pt = "MAPA {0}", ko = "지도 {0}"),
     "ME" to Tr(ja = "じぶん", fr = "MOI", de = "ICH", it = "IO", es = "YO", br = "EU", pt = "EU", ko = "나"),
+    // AREA maps (AreaMapView.kt): the cave / building's own map, and back to the region's.
+    "AREA MAP" to Tr(ja = "このばしょ", fr = "CARTE ZONE", de = "ORTSKARTE", it = "MAPPA ZONA", es = "MAPA ZONA", br = "MAPA LOCAL", pt = "MAPA LOCAL", ko = "구역 지도"),
+    "REGION MAP" to Tr(ja = "タウンマップ", fr = "CARTE RÉGION", de = "REGIONSKARTE", it = "MAPPA REGIONE", es = "MAPA REGIÓN", br = "MAPA REGIÃO", pt = "MAPA REGIÃO", ko = "지방 지도"),
     "PLACES" to Tr(ja = "ばしょ", fr = "LIEUX", de = "ORTE", it = "LUOGHI", es = "LUGARES", br = "LUGARES", pt = "LUGARES", ko = "장소"),
     // FLY on the MAP tab (Fly.kt): the localized games' own word for the move.
     "FLY" to Tr(ja = "そらをとぶ", fr = "VOL", de = "FLIEGEN", it = "VOLO", es = "VUELO", br = "VOAR", pt = "VOAR", ko = "공중날기"),
