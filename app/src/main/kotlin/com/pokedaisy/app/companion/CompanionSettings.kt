@@ -82,6 +82,23 @@ interface CompanionSettings {
     val reusableTmsSupported: Boolean get() = false
     /** The game's own TMs never run out ([com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN]): the row says so. */
     val reusableTmsBuiltIn: Boolean get() = false
+    /** EXP SHARE - see [com.pokedaisy.app.Prefs.expShare]; [expShareSupported]: the game's getexp is known
+     * ([com.pokedaisy.app.companion.data.ExpShare]). */
+    val expShare: com.pokedaisy.app.companion.data.ExpShare.Mode get() = com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
+    fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) {}
+    val expShareSupported: Boolean get() = false
+    /** LEVEL CAP - see [com.pokedaisy.app.Prefs.levelCap]; [levelCapSupported]: the game's getexp is known
+     * ([com.pokedaisy.app.companion.data.LevelCap]); [levelCapLevel]: the cap now (null = none worked out yet, or no
+     * boss left). */
+    val levelCap: Boolean get() = false
+    fun setLevelCap(on: Boolean) {}
+    val levelCapSupported: Boolean get() = false
+    val levelCapLevel: Int? get() = null
+    /** NO HMS NEEDED - see [com.pokedaisy.app.Prefs.hmFree]; [hmFreeSupported]: the ROM's field move check is known
+     * ([com.pokedaisy.app.companion.data.HmFree]). */
+    val hmFree: Boolean get() = false
+    fun setHmFree(on: Boolean) {}
+    val hmFreeSupported: Boolean get() = false
     /** INSTANT TEXT - see [com.pokedaisy.app.Prefs.instantText]; [instantTextSupported]: the ROM's text code is known
      * ([com.pokedaisy.app.companion.data.InstantText]). */
     val instantText: Boolean get() = false
@@ -280,6 +297,8 @@ interface CompanionSettings {
 
     /** Saves DARK MODE (an ordinal of DarkModeSetting, see [Prefs.darkMode]); the look itself is DarkMode's state. */
     fun setDarkMode(v: Int) {}
+    /** SETTINGS > FONT (Prefs.appFont, an AppFont ordinal); the look itself is AppFonts' state. */
+    fun setAppFont(v: Int) {}
 
     /** Saves THEME (a ThemeSpec.id, see [Prefs.appTheme]; ui.theme.pickTheme); the screen puts the theme on itself. */
     fun setAppTheme(id: Int) {}

@@ -39,7 +39,11 @@ test('loads only on the live site, with an ID, and without an opt-out', () => {
 
 test('link clicks map to their event', () => {
   assert.deepEqual(linkEvent('https://github.com/lidor30/pokedaisy/releases/download/v1.3.2/PokeDaisy-1.3.2.apk', 'hero'),
-    { name: 'download_apk', params: { where: 'hero', version: '1.3.2' } });
+    { name: 'download_apk', params: { where: 'hero', version: '1.3.2', platform: 'android' } });
+  assert.deepEqual(linkEvent('https://github.com/lidor30/pokedaisy/releases/download/v1.6.0/pokedaisy.3dsx', 'downloads'),
+    { name: 'download_apk', params: { where: 'downloads', version: '1.6.0', platform: '3ds' } });
+  assert.deepEqual(linkEvent('https://github.com/lidor30/pokedaisy/releases/download/v1.5.0.1/pokedaisy-linux-x86_64.zip', 'downloads'),
+    { name: 'download_apk', params: { where: 'downloads', version: '1.5.0.1', platform: 'linux' } });
   assert.deepEqual(linkEvent('https://github.com/lidor30/pokedaisy/releases/latest', 'footer'),
     { name: 'download_apk', params: { where: 'footer' } });
   assert.deepEqual(linkEvent('https://github.com/lidor30/pokedaisy', 'nav'), { name: 'link_click', params: { to: 'github', where: 'nav' } });

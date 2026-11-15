@@ -90,6 +90,9 @@ android {
         buildConfigField("boolean", "FEATURE_SCREENSCRAPER", featureFlag("screenScraper").toString())
         // CO-OP (the connection to a paired partner): off until the feature ships (FeatureFlags.coop).
         buildConfigField("boolean", "FEATURE_COOP", featureFlag("coop").toString())
+        // 3DS games (Azahar, the n3ds module): only built in with the flag (settings.gradle.kts), off until they ship
+        // (FeatureFlags.n3ds).
+        buildConfigField("boolean", "FEATURE_N3DS", featureFlag("n3ds").toString())
         // Blocked games (BlockedGames) play with everything, tagged BLOCKED: debug builds always, else only with this.
         buildConfigField("boolean", "FEATURE_ALLOW_BLOCKED", featureFlag("allowBlocked").toString())
         // ...and `allowBlocked=false` keeps them blocked in a debug build too (to see it as a release does).
@@ -306,6 +309,8 @@ val jdkHttpServerJar by tasks.registering(Zip::class) {
 dependencies {
     // The companion's data and language code (shared/build.gradle.kts).
     implementation(project(":shared"))
+    // 3DS games' native library (libpk_n3ds.so), only with the n3ds flag: see settings.gradle.kts.
+    if (featureFlag("n3ds")) implementation(project(":n3ds"))
     implementation("androidx.core:core-ktx:1.13.1")
     // FOLD LAYOUT: a foldable's hinge and posture (WindowInfoTracker's FoldingFeature), for a plain Activity.
     implementation("androidx.window:window:1.3.0")

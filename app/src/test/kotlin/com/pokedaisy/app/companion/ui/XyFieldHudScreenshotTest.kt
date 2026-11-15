@@ -1,0 +1,65 @@
+package com.pokedaisy.app.companion.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import app.cash.paparazzi.DeviceConfig
+import app.cash.paparazzi.Paparazzi
+import com.android.resources.Density
+import com.android.resources.ScreenOrientation
+import com.pokedaisy.app.companion.data.GameKind
+import com.pokedaisy.app.companion.data.MonView
+import com.pokedaisy.app.companion.data.SnapshotView
+import org.junit.Rule
+import org.junit.Test
+
+/**
+ * Pokemon X's field HUD (XyFieldHud) with a full party of six, the minimap and all four buttons, where the top screen
+ * is the whole height: 16:9, a 4:3 screen (the 5:3 picture letterboxed), and a small dense 640 x 480 one (the cells
+ * shrink to fit). Its pictures (map, icons) come from the cart, so blanks here.
+ *
+ *     ./gradlew :app:recordPaparazziDebug --tests '*XyFieldHudScreenshotTest'
+ */
+abstract class XyFieldHudShots(w: Int, h: Int, density: Density = Density.XHIGH) {
+    @get:Rule
+    val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = w, screenHeight = h, density = density, orientation = ScreenOrientation.LANDSCAPE),
+        theme = "android:Theme.Material.NoActionBar",
+    )
+
+    private fun mon(n: String, hp: Int, st: String = "") =
+        MonView(species = 1, name = n, level = 50, hp = hp, maxHp = 100, status = st, types = emptyList(), iconAsset = null)
+
+    private val snap = SnapshotView(
+        connected = true, game = GameKind.POKEMON_X,
+        party = listOf(mon("A", 100), mon("B", 40, "PAR"), mon("C", 10), mon("D", 0), mon("E", 100, "PSN"), mon("F", 75)),
+    )
+
+    @Test fun hud() = paparazzi.snapshot {
+        BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
+            val w = constraints.maxWidth.toFloat()
+            val h = constraints.maxHeight.toFloat()
+            // The 5:3 top screen, as large as fits, centred.
+            val fw = minOf(w, h * 5f / 3f)
+            val fh = fw * 3f / 5f
+            val frame = Rect((w - fw) / 2, (h - fh) / 2, (w + fw) / 2, (h + fh) / 2)
+            Box(Modifier.fillMaxSize()) {
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) { drawRect(Color(0xFF5E8A54), frame.topLeft, frame.size) }
+                XyFieldHud(
+                    snap, true, frame,
+                    wild = listOf(XyWildRow("GRASS / CAVE", "Pidgey", null, 2, 3, 40)),
+                    map = XyMapSpot("missing.png", null, 320, 210, 212f, 145f, 15f, 8f),
+                    onTouchScreen = {}, onOpenCompanion = {},
+                )
+            }
+        }
+    }
+}
+
+class XyFieldHudScreenshotTest : XyFieldHudShots(1920, 1080)
+class XyFieldHud43ScreenshotTest : XyFieldHudShots(1440, 1080)
+class XyFieldHudSmallScreenshotTest : XyFieldHudShots(640, 480, Density.HIGH)
