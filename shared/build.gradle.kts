@@ -32,11 +32,11 @@ kotlin {
             kotlin.srcDir(appSrc.resolve("data"))
             kotlin.srcDir(appSrc.resolve("i18n"))
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
                 implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
                 api("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
                 // okio's Path / FileHandle / BufferedSource appear in the data code's functions.
-                api("com.squareup.okio:okio:3.10.2")
+                api("com.squareup.okio:okio:3.18.2")
                 // L10n.language and PlayerLook's state are Compose state; L10n reads the device's Locale.
                 // Compose Multiplatform 1.7.x = Compose 1.7 on Android (the app's BOM picks the exact version).
                 api("org.jetbrains.compose.runtime:runtime:1.7.3")
@@ -53,7 +53,7 @@ kotlin {
             dependencies {
                 implementation("junit:junit:4.13.2")
                 // The real org.json (android.jar's is a stub in unit tests).
-                implementation("org.json:json:20240303")
+                implementation("org.json:json:20260814")
             }
         }
     }

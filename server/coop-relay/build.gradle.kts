@@ -19,7 +19,7 @@ application {
 }
 
 dependencies {
-    implementation("org.java-websocket:Java-WebSocket:1.5.7")
-    runtimeOnly("org.slf4j:slf4j-nop:2.0.13")
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
+    runtimeOnly("org.slf4j:slf4j-nop:2.0.20")
     testImplementation("junit:junit:4.13.2")
 }

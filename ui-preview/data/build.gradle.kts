@@ -98,15 +98,15 @@ java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaV
 dependencies {
     api("org.jetbrains.compose.desktop:desktop-jvm-$desktopTarget:$cmp")
     // The co-op invite as a QR code (CoopQr).
-    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:core:3.5.4")
     // CoopPairs reads and writes pairs.json.
-    implementation("org.json:json:20240303")
+    implementation("org.json:json:20260814")
     // CoopRelaySocket (the relay over WebSocket).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Byte buffers, files and hashes in the data code shared with the iPad app (okio is Kotlin Multiplatform).
-    api("com.squareup.okio:okio:3.10.2")   // api: okio's Path / Source appear in the data code's functions
+    api("com.squareup.okio:okio:3.18.2")   // api: okio's Path / Source appear in the data code's functions
     // Threads and locks in the data code shared with the iPad app (Kotlin Multiplatform).
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
     // CoopKeys' X25519 (the co-op connection's Noise handshake).
