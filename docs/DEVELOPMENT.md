@@ -4401,3 +4401,17 @@ matching iOS. A newly pressed input source can then start a fresh hold after the
 The default Make unit-test targets and CI's JVM step include `shared-ui` alongside `app` and `shared`; failure
 reports include all three. Use `make test-quick MODULE=shared-ui T='*GameRuntimeTest'` for a focused common UI
 model check. Native CI already runs both shared modules' simulator tests.
+
+
+### Shared library coordination
+
+`LibraryCoordinator` owns section/help routing, query, search/sort modal selection and library preference actions
+for Android and iOS. Its optional Settings launcher supplies Android's external Activity effect; iOS presents
+the same destinations inline. Native launcher refresh effects run after shared preference writes. Preferences
+are supplied lazily so constructor-time preview/navigation state does not access an unattached Activity.
+`LibraryNavigationDialogs` renders both modals from that controller. Section/action contracts live with the
+common model; UI package aliases preserve existing Kotlin callers and the desktop data module's independence.
+
+The library/setup follow-up plan is in `docs/specs/shared-library-setup-coordination.md`. Library coordination
+continues on the cleaned canonical fork chain; setup progression, library projections and save-picker
+coordination follow as separate layers. Android permissions, picker effects and launcher media remain native adapters.

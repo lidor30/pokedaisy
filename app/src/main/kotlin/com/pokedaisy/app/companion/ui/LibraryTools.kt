@@ -105,7 +105,7 @@ private fun ToolCard(tool: LibraryTool, m: GbaTextMetrics, small: GbaTextMetrics
 }
 
 /** The library's places, in its rail / bar ([LibraryNav]): the games, the tools, the app's settings. */
-enum class LibrarySection(val label: String) { GAMES("GAMES"), TOOLS("TOOLS"), SETTINGS("SETTINGS") }
+typealias LibrarySection = com.pokedaisy.app.companion.LibrarySection
 
 /**
  * GAMES / TOOLS / SETTINGS as a rail down the left of a wide screen ([vertical]) or a bar along the bottom of a tall one

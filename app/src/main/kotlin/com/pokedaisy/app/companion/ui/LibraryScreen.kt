@@ -418,11 +418,7 @@ data class LibraryPresentation<T>(
     val tools: List<LibraryTool> = emptyList(),
 )
 
-class LibraryActions(
-    val add: () -> Unit, val refresh: () -> Unit, val search: () -> Unit, val sort: () -> Unit,
-    val toggleGrid: () -> Unit, val help: () -> Unit, val query: (String) -> Unit,
-    val view: (LibraryView) -> Unit, val section: (LibrarySection) -> Unit,
-)
+typealias LibraryActions = com.pokedaisy.app.companion.LibraryActions
 
 class LibraryFocus(val header: FocusRequester = FocusRequester(), val views: FocusRequester = FocusRequester()) {
     var headerAttached = false

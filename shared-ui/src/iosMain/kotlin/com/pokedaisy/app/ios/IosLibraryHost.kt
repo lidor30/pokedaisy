@@ -37,12 +37,9 @@ internal class IosLibraryHost(
     private val prefs = LibraryPreferences({ defaults.stringForKey("library_preferences") },
         { defaults.setObject(it, "library_preferences") })
     private var paths by mutableStateOf(PokeDaisyHost.games())
-    private var section by mutableStateOf(LibrarySection.GAMES)
+    private val library = com.pokedaisy.app.companion.LibraryCoordinator({ prefs })
     private var setupFromSettings = false
     private var setupStep by mutableStateOf<Int?>(if (!iosPreferences.setupDone && paths.isEmpty()) 0 else null)
-    private var query by mutableStateOf("")
-    private var searching by mutableStateOf(false)
-    private var sorting by mutableStateOf(false)
     private var choosingSaveGame by mutableStateOf(false)
     private var notice by mutableStateOf<Pair<String, String>?>(failed?.let { tr("ERROR") to it.substringAfterLast('/') })
     private data class PendingSave(val rom: String, val name: String, val bytes: ByteArray)
@@ -93,7 +90,7 @@ internal class IosLibraryHost(
             LibraryGame(path, label(path), "roms/$id", playing = prefs.last == id,
                 isNew = prefs.isNew(id),
                 hasSave = RomPicker.savePathFor(path).toPath().length > 0, favorite = id in prefs.favorites)
-        }.filter { game -> com.pokedaisy.app.companion.matchesLibrarySearch(query, listOf(game.label, key(game.id))) }
+        }.filter { game -> com.pokedaisy.app.companion.matchesLibrarySearch(library.query, listOf(game.label, key(game.id))) }
             .sortedBy { it.label.lowercase() }
         return prefs.ordered(games) { key(it.id) }
     }
@@ -123,23 +120,20 @@ internal class IosLibraryHost(
         val games = entries()
         val views = listOf(LibraryView.ALL, LibraryView.FAVORITES, LibraryView.RECENT) +
             listOf(LibraryView.GB, LibraryView.GBC, LibraryView.GBA).filter { view -> paths.any { category(it) == view.platform } }
-        val view = prefs.view.takeIf { it in views } ?: LibraryView.ALL
+        val view = library.view.takeIf { it in views } ?: LibraryView.ALL
         val shown = filtered(games, view)
         val tools = listOf(LibraryTool("save_editor", "LOAD SAVE",
             "The game starts from this save next time, not from where you left off.", null,
-            open = { if (paths.isEmpty()) section = LibrarySection.GAMES else choosingSaveGame = true }))
-        val state = LibraryPresentation(shown, prefs.grid, section, views, view,
-            views.associateWith { filtered(games, it).size }, games.isNotEmpty(), query,
+            open = { if (paths.isEmpty()) library.selectSection(LibrarySection.GAMES) else choosingSaveGame = true }))
+        val state = LibraryPresentation(shown, library.grid, library.section, views, view,
+            views.associateWith { filtered(games, it).size }, games.isNotEmpty(), library.query,
             tr("Add your own GBA or Game Boy ROMs from Files. Copies are kept in PokeDaisy's folder."), tools)
-        val actions = LibraryActions(add = ::addGames, refresh = { paths = PokeDaisyHost.games() },
-            search = { searching = true }, sort = { sorting = true }, toggleGrid = { prefs.setGrid(!prefs.grid) },
-            help = { section = LibrarySection.SETTINGS; appSettingsPage = "HELP" }, query = { query = it },
-            view = prefs::setView, section = { section = it; if (it == LibrarySection.SETTINGS) appSettingsPage = null })
+        val actions = library.actions(add = ::addGames, refresh = { paths = PokeDaisyHost.games() })
         LibraryScreen(state, actions, m, small, key = { it.id }, focus = focus,
             settings = {
-                key(appSettingsPage) {
+                key(library.settingsPage) {
                     Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
-                        CompanionSettingsScreen(appSettings, application = true, initialPage = appSettingsPage,
+                        CompanionSettingsScreen(appSettings, application = true, initialPage = library.settingsPage,
                             applicationFooter = { AppAboutFooter(NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "", m) { url ->
                                 NSURL.URLWithString(url)?.let { UIApplication.sharedApplication.openURL(it) }
                             } },
@@ -166,8 +160,6 @@ internal class IosLibraryHost(
         }
     }
 
-    private var appSettingsPage by mutableStateOf<String?>(null)
-
     @Composable
     private fun Setup(step: Int) {
         val m = rememberGbaTextMetrics()
@@ -186,9 +178,7 @@ internal class IosLibraryHost(
     @Composable
     private fun Dialogs() {
         val m = rememberGbaTextMetrics()
-        if (sorting) OptionSelector(tr("SORT BY"), LibrarySort.entries.toList(), prefs.sort, { tr(it.label) }, m,
-            onPick = { prefs.setSort(it); sorting = false }, onDismiss = { sorting = false })
-        if (searching) LibrarySearchDialog(query, { query = it }, m, rememberGbaTextMetrics(1f)) { searching = false }
+        LibraryNavigationDialogs(library, m, rememberGbaTextMetrics(1f))
         if (choosingSaveGame && paths.isNotEmpty()) OptionSelector(tr("LOAD SAVE"), paths, paths.first(), ::label, m,
             onPick = { choosingSaveGame = false; pickSave(it) }, onDismiss = { choosingSaveGame = false })
         pendingSave?.let { picked ->
@@ -215,9 +205,9 @@ internal class IosLibraryHost(
             prefs.recordAdded(added.map(::key).filter { it !in known })
             paths = PokeDaisyHost.games()
             if (added.isNotEmpty()) {
-                query = ""
+                library.search("")
                 prefs.setView(LibraryView.ALL)
-                if (setupStep == null) section = LibrarySection.GAMES
+                if (setupStep == null) library.selectSection(LibrarySection.GAMES)
             }
         }
     }

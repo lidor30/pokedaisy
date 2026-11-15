@@ -171,6 +171,16 @@ class LibraryActivity : ComponentActivity() {
     private val libraryPreferences by lazy { com.pokedaisy.app.companion.LibraryPreferences(prefs, RomAdded.forContext(this)) }
     private lateinit var romsDir: File
     private lateinit var coversDir: File
+    private val library = com.pokedaisy.app.companion.LibraryCoordinator({ libraryPreferences },
+        settings = { page ->
+            if (page == "HELP") startActivity(Intent(this, SettingsActivity::class.java)
+                .putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_HELP))
+            else launchSettings()
+        }, changed = { change ->
+            if (change == com.pokedaisy.app.companion.LibraryCoordinator.Change.VIEW ||
+                change == com.pokedaisy.app.companion.LibraryCoordinator.Change.SORT ||
+                change == com.pokedaisy.app.companion.LibraryCoordinator.Change.QUERY && launcherOn) refreshLauncherGames()
+        })
 
     private val importRom = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { startImport(it, play = false) }
@@ -345,8 +355,6 @@ class LibraryActivity : ComponentActivity() {
         // The device's marker can change between visits (FeatureFlags): read before setup builds its steps.
         ScreenScraperClient.enabled = FeatureFlags.screenScraper(this)
         FeatureFlags.applyBlocked(this)
-        sort = LibrarySort.of(prefs.librarySort)
-        quickView = LibraryView.of(prefs.libraryView)
         // The second screen (and so SWAP) is the game's media page: ScreenScraper's, off until its flag is on.
         launcher.swapped = prefs.launcherSwapped && ScreenScraperClient.enabled
         if (intent?.action != Intent.ACTION_VIEW && !prefs.setupDone && listRoms().isEmpty()) startSetup()
@@ -458,18 +466,20 @@ class LibraryActivity : ComponentActivity() {
     }
 
     /** The library's order, SORT BY's picker, and the game RENAME / DELETE are open for (both views). */
-    private var sort by mutableStateOf(LibrarySort.NAME)
-    private var pickingSort by mutableStateOf(false)
+    private val sort get() = library.sort
+    private var pickingSort: Boolean
+        get() = library.dialog == com.pokedaisy.app.companion.LibraryCoordinator.Dialog.SORT
+        set(on) { if (on) library.openSort() else library.dismiss(com.pokedaisy.app.companion.LibraryCoordinator.Dialog.SORT) }
     /** The grid view (else the list), the classic library's and the launcher's alike (Prefs.libraryViewMode). */
-    private var gridView: Boolean
-        get() = libraryPreferences.grid
-        set(v) { libraryPreferences.setGrid(v) }
+    private val gridView get() = library.grid
 
     /** The open quick view (the pills over the games, Prefs.libraryView). */
-    private var quickView by mutableStateOf(LibraryView.ALL)
+    private val quickView get() = library.view
 
     /** TOOLS is open in the games' place (the rail's / bar's TOOLS). Internal for ui-preview. */
-    internal var toolsOpen by mutableStateOf(false)
+    internal var toolsOpen: Boolean
+        get() = library.section == com.pokedaisy.app.companion.ui.LibrarySection.TOOLS
+        set(on) { library.selectSection(if (on) com.pokedaisy.app.companion.ui.LibrarySection.TOOLS else com.pokedaisy.app.companion.ui.LibrarySection.GAMES) }
 
     /** The library's TOOLS, in the order they're shown. */
     private fun libraryTools(): List<com.pokedaisy.app.companion.ui.LibraryTool> {
@@ -512,10 +522,7 @@ class LibraryActivity : ComponentActivity() {
     }
 
     private fun pickQuickView(view: LibraryView) {
-        toolsOpen = false
-        quickView = view
-        libraryPreferences.setView(view)
-        refreshLauncherGames()
+        library.selectView(view)
     }
 
     /** What an empty FAVORITES / RECENT says. */
@@ -525,13 +532,12 @@ class LibraryActivity : ComponentActivity() {
     private val quickViewFocus get() = libraryFocus.views
 
     /** The header's SEARCH (GitHub #123): what the games are filtered by, [shownRoms]; [searching] = its window is up. */
-    private var searchQuery by mutableStateOf("")
-    private var searching by mutableStateOf(false)
+    private val searchQuery get() = library.query
+    private var searching: Boolean
+        get() = library.dialog == com.pokedaisy.app.companion.LibraryCoordinator.Dialog.SEARCH
+        set(on) { if (on) library.openSearch() else library.dismiss(com.pokedaisy.app.companion.LibraryCoordinator.Dialog.SEARCH) }
 
-    private fun search(query: String) {
-        searchQuery = query
-        if (launcherOn) refreshLauncherGames()
-    }
+    private fun search(query: String) = library.search(query)
 
     private var renaming by mutableStateOf<File?>(null)
     private var deleting by mutableStateOf<File?>(null)
@@ -550,27 +556,13 @@ class LibraryActivity : ComponentActivity() {
         val density = androidx.compose.ui.platform.LocalDensity.current
         val tools = remember(revision) { libraryTools() }
         val toolsNew = tools.any { it.newBadge != null }
-        val pickSection: (com.pokedaisy.app.companion.ui.LibrarySection) -> Unit = { s ->
-            when (s) {
-                com.pokedaisy.app.companion.ui.LibrarySection.GAMES -> toolsOpen = false
-                com.pokedaisy.app.companion.ui.LibrarySection.TOOLS -> toolsOpen = true
-                com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS -> openSettings()
-            }
-        }
-        val section = if (toolsOpen) com.pokedaisy.app.companion.ui.LibrarySection.TOOLS else com.pokedaisy.app.companion.ui.LibrarySection.GAMES
-        // BACK on TOOLS goes back to the games, not out of the app.
-        BackHandler(enabled = toolsOpen) { toolsOpen = false }
-        // BACK with a search on shows the whole library again.
-        BackHandler(enabled = !toolsOpen && searchQuery.isNotEmpty()) { search("") }
+        val section = this.library.section
+        BackHandler(enabled = toolsOpen || searchQuery.isNotEmpty()) { this.library.back() }
         val presentation = com.pokedaisy.app.companion.ui.LibraryPresentation(roms, gridView, section,
             views.shown, view, views.counts, library.isNotEmpty(), searchQuery,
             tr("No ROMs yet. Tap + to add a ROM file (a .gba, .zip or .7z) or your ROMs folders, or drop files into {0}",
                 "Android/data/$packageName/files/roms/"), tools)
-        val actions = com.pokedaisy.app.companion.ui.LibraryActions(
-            add = { addMenu = true }, refresh = ::refreshLibrary, search = { searching = true }, sort = { pickingSort = true },
-            toggleGrid = { gridView = !gridView }, help = {
-                startActivity(Intent(this@LibraryActivity, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_HELP))
-            }, query = ::search, view = ::pickQuickView, section = pickSection)
+        val actions = this.library.actions(add = { addMenu = true }, refresh = ::refreshLibrary)
         com.pokedaisy.app.companion.ui.LibraryScreen(presentation, actions, m, small, key = { it.absolutePath },
             modifier = Modifier.onSizeChanged { screenSize = with(density) { DpSize(it.width.toDp(), it.height.toDp()) } },
             focus = libraryFocus, overlays = { LibraryDialogs(m, small); GameLoadingCover(m) }) { rom, up ->
@@ -652,14 +644,7 @@ class LibraryActivity : ComponentActivity() {
                     badge = { if (it == AddChoice.PATCH) com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.ROM_PATCH) else null },
                 )
             }
-            if (searching) SearchWindow(m, small)
-            if (pickingSort) {
-                OptionSelector(
-                    tr("SORT BY"), LibrarySort.entries.toList(), sort, { tr(it.label) }, m,
-                    onPick = { sort = it; libraryPreferences.setSort(it); pickingSort = false; refreshLauncherGames() },
-                    onDismiss = { pickingSort = false },
-                )
-            }
+            com.pokedaisy.app.companion.ui.LibraryNavigationDialogs(library, m, small)
 
             renaming?.let { rom ->
                 RenameDialog(
@@ -904,12 +889,10 @@ class LibraryActivity : ComponentActivity() {
         // TOOLS has no games to sort, show, add or refresh: HELP alone.
         HeaderButton(Icons.AutoMirrored.Filled.Sort, tr("Sort")) { pickingSort = true }.takeIf { !toolsOpen },
         HeaderButton(Icons.Filled.Search, tr("SEARCH")) { searching = true }.takeIf { !toolsOpen },
-        HeaderButton(if (gridView) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView, tr("Toggle view")) { gridView = !gridView }.takeIf { !toolsOpen },
+        HeaderButton(if (gridView) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView, tr("Toggle view"), library::toggleGrid).takeIf { !toolsOpen },
         HeaderButton(Icons.Filled.Add, tr("Add games")) { addMenu = true }.takeIf { !toolsOpen },
         HeaderButton(Icons.Filled.Refresh, tr("Refresh")) { refreshLibrary() }.takeIf { !toolsOpen },
-        HeaderButton(Icons.AutoMirrored.Filled.HelpOutline, tr("Help")) {
-            startActivity(Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_HELP))
-        },
+        HeaderButton(Icons.AutoMirrored.Filled.HelpOutline, tr("Help"), library::help),
         // SETTINGS is the rail's / bar's (and Y's), as in the classic library.
     )
 
@@ -921,11 +904,8 @@ class LibraryActivity : ComponentActivity() {
     /** The launcher's rail / bar: a place picked (a tap, or A on it). */
     private fun launcherPick(section: com.pokedaisy.app.companion.ui.LibrarySection) {
         launcher.navCursor = -1
-        when (section) {
-            com.pokedaisy.app.companion.ui.LibrarySection.GAMES -> toolsOpen = false
-            com.pokedaisy.app.companion.ui.LibrarySection.TOOLS -> { toolsOpen = true; launcher.toolCursor = 0 }
-            com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS -> openSettings()
-        }
+        if (section == com.pokedaisy.app.companion.ui.LibrarySection.TOOLS) launcher.toolCursor = 0
+        library.selectSection(section)
     }
 
     /** Onto the rail / bar, on the open place. */
@@ -1158,13 +1138,6 @@ class LibraryActivity : ComponentActivity() {
 
     /** A card in the launcher: its cursor, a tap (the cursor onto it, then play), a long press / ⋮ (the launcher's menu). */
     private class LauncherCard(val cursor: Boolean, val onTap: () -> Unit, val onMenu: () -> Unit)
-
-    /** The header's SEARCH: the games behind it follow what's typed. A window, so the launcher (every key its own) can
-     * have it too: while one is up keys go to Compose. */
-    @Composable
-    private fun SearchWindow(m: GbaTextMetrics, small: GbaTextMetrics) {
-        com.pokedaisy.app.companion.ui.LibrarySearchDialog(searchQuery, ::search, m, small) { searching = false }
-    }
 
     /** What the library is filtered by, over the games: a tap opens SEARCH again, CLEAR shows them all. */
     @Composable
@@ -1813,7 +1786,9 @@ class LibraryActivity : ComponentActivity() {
     }
 
     /** SETTINGS as the library's third tab: the rail / bar stays, no slide between them (SettingsActivity.EXTRA_TAB). */
-    private fun openSettings() {
+    private fun openSettings() = library.selectSection(com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS)
+
+    private fun launchSettings() {
         settingsTab.launch(
             Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_TAB, true)
                 .putExtra(SettingsActivity.EXTRA_TOOLS_NEW, libraryTools().any { it.newBadge != null }),
