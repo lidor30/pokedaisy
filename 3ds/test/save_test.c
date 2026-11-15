@@ -330,6 +330,41 @@ int main(int argc, char** argv) {
                 }
                 break;
             }
+            // TRADE AND BACK: the first Pokémon [bb] would evolve comes home evolved, in its place; else nothing changes.
+            for (int at = PD_AT_PARTY(5); at < PD_SAVE_BOXES * PD_SAVE_BOX_SLOTS; at++) {
+                int into = pd_trade_evolution(&a, at, &bb);
+                if (!into) continue;
+                struct pd_mon before, got;
+                pd_save_mon_at(&saves[i], at, &before);
+                no = pd_trade_back(&a, at, &bb, why, sizeof why);
+                printf("trade back %s via %s: %s: %s\n", codes[i], codes[j], before.nickname, no ? no : "done");
+                if (!no) {
+                    CHECK(pd_save_mon_at(&saves[i], at, &got) && got.species == into && got.personality == before.personality,
+                          "%s: trade back gave species %d", codes[i], got.species);
+                    CHECK(!pd_save_changed(&saves[j]) || pd_save_dex_caught(&saves[j]) > 0, "trade back: the partner");
+                    round_trip(&saves[i], codes[i]);
+                    round_trip(&saves[j], codes[j]);
+                } else {
+                    CHECK(!pd_save_changed(&saves[i]) && !pd_save_changed(&saves[j]), "%s: a refused trade back changed something", codes[i]);
+                }
+                pd_save_revert(&saves[i]);
+                pd_save_revert(&saves[j]);
+                break;
+            }
+            // MISSING: what [i]'s Pokédex lacks that [j] can fill.
+            {
+                static struct pd_missing list[400];
+                int nm = pd_missing_list(&saves[i], list, 400), from = 0, can = 0;
+                pd_missing_add(list, nm, &a, &bb, 0);
+                for (int k = 0; k < nm; k++) from += list[k].way != PD_MISSING_NONE, can += list[k].reachable;
+                printf("missing %s: %d not caught, %d in %s, %d can come\n", codes[i], nm, from, codes[j], can);
+                for (int k = 0; k < nm; k++) {
+                    if (list[k].way == PD_MISSING_NONE || list[k].way == PD_MISSING_TRADE) continue;
+                    printf("  No.%03d (species %d): way %d from species %d Lv%d %s\n", list[k].number, list[k].species, list[k].way, list[k].owned,
+                           list[k].level, list[k].reachable ? "can come" : list[k].why);
+                }
+                for (int k = 0; k < nm; k++) CHECK(list[k].way == PD_MISSING_NONE || list[k].source == 0, "missing: a source");
+            }
             // The party's last Pokémon to the other's party (when there's room): refused if it's the only one.
             int ci = pd_save_party_count(&saves[i]), cj = pd_save_party_count(&saves[j]);
             // Party for party: the second of each.

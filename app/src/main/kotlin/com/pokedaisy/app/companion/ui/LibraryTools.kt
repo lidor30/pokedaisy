@@ -350,12 +350,63 @@ internal object ToolIcons {
         mapOf('k' to OUTLINE, 'g' to Color(0xFF48A848), 'h' to Color(0xFF90D870), 'd' to Color(0xFF2E7838), 't' to Color(0xFF8A5A30), 'l' to Color(0xFF70C050)),
     )
 
+    /** COLLECTION: an open album, a creature's round icon in each pocket (our own drawing). */
+    private val collection = TabIcons.TabIcon(
+        listOf(
+            "................",
+            ".kkkkkkk.kkkkkkk",
+            ".kwwwwwk.kwwwwwk",
+            ".kwrrwwk.kwggwwk",
+            ".krrrrwk.kggggwk",
+            ".kwrrwwk.kwggwwk",
+            ".kwwwwwk.kwwwwwk",
+            ".kwwwwwk.kwwwwwk",
+            ".kwbbwwk.kwyywwk",
+            ".kbbbbwk.kyyyywk",
+            ".kwbbwwk.kwyywwk",
+            ".kwwwwwk.kwwwwwk",
+            ".kkkkkkkkkkkkkkk",
+            ".kppppppkppppppk",
+            ".kkkkkkkkkkkkkkk",
+            "................",
+        ),
+        mapOf(
+            'k' to OUTLINE, 'w' to WHITE, 'r' to Color(0xFFE85050), 'g' to Color(0xFF58B858), 'b' to Color(0xFF4880E0),
+            'y' to Color(0xFFF0C030), 'p' to Color(0xFF9060C8),
+        ),
+    )
+
+    /** POKé TRANSFER: one game card sending a ball's worth of light into another, an arrow between (our own drawing). */
+    private val transfer = TabIcons.TabIcon(
+        listOf(
+            "................",
+            ".kkkkk....kkkkk.",
+            ".kgggk....kbbbk.",
+            ".kgwgk....kbwbk.",
+            ".kgggk....kbbbk.",
+            ".kgggk.k..kbbbk.",
+            ".kkkkk.kk.kkkkk.",
+            ".......kak......",
+            ".kkkkkkkaak.....",
+            ".kaaaaaaaaak....",
+            ".kkkkkkkaak.....",
+            ".......kak......",
+            ".......kk.......",
+            ".......k........",
+            "................",
+            "................",
+        ),
+        mapOf('k' to OUTLINE, 'g' to Color(0xFFD8B040), 'b' to Color(0xFF4878D8), 'w' to WHITE, 'a' to Color(0xFFE85050)),
+    )
+
     fun of(id: String): TabIcons.TabIcon? = when (id) {
         "PATCH" -> patch
         "LINK" -> link
         "EDIT" -> edit
         "TRADE" -> trade
         "PALPARK" -> palPark
+        "COLLECTION" -> collection
+        "TRANSFER" -> transfer
         "SPRITES" -> sprites
         else -> null
     }

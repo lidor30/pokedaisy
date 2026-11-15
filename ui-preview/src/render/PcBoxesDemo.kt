@@ -69,6 +69,38 @@ fun palParkDemo(): com.pokedaisy.app.companion.ui.PalParkState {
     )
 }
 
+/** POKé TRANSFER's shots: the made-up HeartGold save (six more in box 1) beside the made-up Black one. */
+fun transferDemo(): com.pokedaisy.app.companion.ui.PokeTransferState {
+    val sv = com.pokedaisy.app.companion.data.save.SyntheticGen4
+    val hg = com.pokedaisy.app.companion.data.save.Gen4SaveEditor(
+        (com.pokedaisy.app.companion.data.save.Gen4SaveFile.parse(sv.save(national = true)) as com.pokedaisy.app.companion.data.save.Gen4SaveFile.Parsed.Ok).save,
+        sv.demoGame(),
+    )
+    listOf(152, 155, 158, 25, 133, 143).forEachIndexed { i, sp ->
+        hg.putIncoming(com.pokedaisy.app.companion.data.save.MonRef.Pc(com.pokedaisy.app.companion.data.save.BoxSlot(0, 2 + i)), sv.mon(0x3000L + i * 131, sp, 2000))
+    }
+    // A fresh editor over that file, so UNDO ALL and "not saved yet" start from it.
+    val hgFile = (com.pokedaisy.app.companion.data.save.Gen4SaveFile.parse(hg.build()) as com.pokedaisy.app.companion.data.save.Gen4SaveFile.Parsed.Ok).save
+    val g5 = com.pokedaisy.app.companion.data.save.SyntheticGen5
+    val black = com.pokedaisy.app.companion.data.save.Gen5SaveEditor(
+        (com.pokedaisy.app.companion.data.save.Gen5SaveFile.parse(g5.save()) as com.pokedaisy.app.companion.data.save.Gen5SaveFile.Parsed.Ok).save, g5.demoGame(),
+    )
+    return com.pokedaisy.app.companion.ui.PokeTransferState(
+        "Pokémon HeartGold", com.pokedaisy.app.companion.data.save.Gen4SaveEditor(hgFile, sv.demoGame()), "Pokémon Black", black,
+    ).apply { today = { java.time.LocalDate.of(2026, 11, 16) } }
+}
+
+/** COLLECTION's shots: the made-up FireRed, Emerald and HeartGold saves read together. */
+fun collectionDemo(): com.pokedaisy.app.companion.ui.CollectionState {
+    val (fr, emerald) = SyntheticSave.demoTrade()
+    val p = palParkDemo()
+    return com.pokedaisy.app.companion.ui.CollectionState().apply {
+        load(listOf(
+            TradeSide("Pokémon FireRed", Gen3SaveEditor(fr), "BPRE"), TradeSide("Pokémon Emerald", Gen3SaveEditor(emerald), "BPEE"), p.ds,
+        ))
+    }
+}
+
 /** MISSING's shots: the made-up FireRed save's Pokédex (with its National one) against the made-up Emerald save. */
 fun missingDemo(state: PcBoxesState): com.pokedaisy.app.companion.ui.MissingView {
     val (_, emerald) = SyntheticSave.demoTrade()

@@ -2254,7 +2254,9 @@ which Gen 3's editor implements too); HG / SS's edit goes into the other half wi
 box names (`Gen4Text.encode`), GIVE / TAKE through the bag, and HG / SS / Platinum trades (`Gen4Trade`, `TradeRules`; Pokédex as pokedex.c
 registers a received one) too. Not yet: DS play time, Diamond / Pearl, Gen 5. The 3DS port has the Gen 3 editor (every page) and trades (party too) in C (`3ds/core/pd_save.c`,
 `pd_library_saves.c`; names typed on the console's swkbd): its tables come from the app's generated Kotlin by `3ds/tools/gen_save_tables.py`
-(rerun it after changing `SaveTablesGen.kt` / `SaveSpeciesGen.kt` / `SpeciesDexGen.kt`; `make -C 3ds test-save` fails while it's stale).
+(rerun it after changing `SaveTablesGen.kt` / `SaveSpeciesGen.kt` / `SpeciesDexGen.kt`; `make -C 3ds test-save` fails while it's stale). Its TRAINER > MISSING (`pd_missing_list` / `pd_missing_add`:
+the other GBA saves read one by one) lists the gaps and where to get each, without opening the trade for you (the library's pages would have to
+switch under it); TRADE AND BACK is `pd_trade_back`. No Pal Park there: the 3DS app reads no DS save.
 **PAL PARK** (TOOLS, `EXTRA_PAL_PARK`; `save/PalPark.kt`, `ui/PalParkScreen.kt`, NEW tag `PAL_PARK`, 2026-11-16): six Pokémon from a GBA save's PC into an
 HG / SS / Platinum save, by pret/pokeplatinum's own migration (decompiled: `src/main_menu/gba_migrator.c`'s rules, `gba_pokemon.c`'s
 BoxMonGBAToBoxMon, then scrcmd_catching_show.c's store with UpdateMonStatusAndTrainerInfo case 2 = met at Pal Park (55) today at its level;
@@ -2263,7 +2265,22 @@ GBA cart in the DS game's language (main_menu.c) gate it; the day's wait and the
 new-ability species and GBA -> DS charset are `PalParkTablesGen.kt` from `scripts/gen_pal_park_tables.py` (`$DECOMPS/pokeplatinum`, `--check`).
 **MISSING** (the editor's TRAINER > POKéDEX, `save/MissingDex.kt`, `ui/SaveMissingPage.kt`, NEW tag `SAVE_MISSING`): what a save's dex hasn't
 caught (regional until National, the dex's order) and the other saves' Pokémon that could fill it, each judged by `Gen3Trade` / `Gen4Trade` /
-`PalPark`; a row opens TRADE or PAL PARK with it picked (the editor must have no unsaved edits). Not yet booted in a game after a Pal Park.
+`PalPark`; a row opens TRADE or PAL PARK with it picked (the editor must have no unsaved edits). Pal Park checked in HeartGold (2026-11-16: a real Emerald six
+booted in nds_dump, the memo "Arrived at", saved in game on top, read back); Platinum not booted yet.
+**TRADE AND BACK** (TRADE, `save/TradeBack.kt`, NEW tag `TRADE_BACK`): a Pokémon picked alone that the other save would evolve goes there and
+straight back by two `TradeRules.send`s (waiting in the partner's first free PC slot; a party one steps back to its place), both editors put
+back (`MonSaveEditor.snapshot` / `restore`) if either leg is refused. MISSING lists it (`Way.TRADE_BACK`) and a pre-evolution in another save
+that evolves as it arrives (`Way.EVOLVES`).
+**COLLECTION** (TOOLS, `EXTRA_COLLECTION`; `save/SaveCollection.kt`, `ui/SaveCollectionScreen.kt`, NEW tag `SAVE_COLLECTION`): every readable save's party
+and PC in one list (search, game, shiny, order); OPEN (the editor on it, `load(focus)`), TRADE (`pickA`) and PAL PARK (`palPick`) all come back
+to it read again (`backToCollection`).
+**POKé TRANSFER** (TOOLS, `EXTRA_POKE_TRANSFER`; `save/PokeTransfer.kt`, `save/Gen5Save.kt`, `ui/PokeTransferScreen.kt`, NEW tag `POKE_TRANSFER`, 2026-11-16):
+six from an HG / SS / Pt PC into a Black / White / B2 / W2 PC by the Lab's rules (National Pokédex, one language, no egg / HM / Spiky-eared Pichu,
+items back to the Gen 4 bag) and PKHeX's PK4 -> PK5 with the game's own date (met at 30001 today at its level, friendship 70, nature byte,
+full PP). The Gen 5 file: two equal copies, a CRC16 per block inline and in the checksum block's table (`Gen5Layout`); the Pokédex
+registered PKHeX's SetDex way with its form / shiny-display slips fixed. Checked end to end 2026-11-16: an Emerald six through Pal Park
+into HeartGold, then six through Poké Transfer into the player's Black, booted in nds_dump (the memo "Apparently arrived at Lv. 30",
+Johto), saved in game, read back. Gen 5 has no editor page of its own (MISSING / COLLECTION don't list it).
 **REWIND** (Settings, `Prefs.rewind`, off by default; REWIND HOLD hotkey, R on a keyboard): `pk_rewind.c` - mGBA's own
 diff ring (`mCoreRewindContext`, 600 entries, one every 2 frames: ~20 s, rewinds at 2x) but with states taken / loaded
 WITHOUT `SAVESTATE_SAVEDATA`: mGBA's `mCoreRewindRestore` would write the state's save over the save file every

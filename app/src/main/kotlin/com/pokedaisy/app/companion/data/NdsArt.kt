@@ -1033,6 +1033,28 @@ object NdsArt {
     }
 
     /**
+     * What POKé TRANSFER needs from a Black / White (or Black 2 / White 2) cart ([com.pokedaisy.app.companion.data.save.Gen5GameData]),
+     * or null for another cart: its names ([readNames]), ability names (a/0/0/2 bank 182; the sequels' 374) and each
+     * species' personal record (a/0/1/6, 1..649).
+     */
+    fun readGen5SaveTables(rom: Path): com.pokedaisy.app.companion.data.save.Gen5GameData? {
+        val names = readNames(rom)?.takeIf { it.gen5 } ?: return null
+        return withRomFile(rom) { f ->
+            val header = f.read(0, 0x200)
+            val code = asciiString(header, 0x0C, 4)
+            val msg = Narc(file(f, header, "/a/0/0/2") ?: return null)
+            val abilities = msg.member(if (names.bw2) 374 else 182)?.let { Gen5Text.lines(it) }.orEmpty()
+            val personal = Narc(file(f, header, "/a/0/1/6") ?: return null)
+            com.pokedaisy.app.companion.data.save.Gen5GameData(
+                species = names.species, moveNames = names.moves, items = names.items, abilityNames = abilities,
+                personal = (0..com.pokedaisy.app.companion.data.save.Gen5GameData.LAST_SPECIES).map { personal.member(it) },
+                gameLanguage = when (code[3]) { 'J' -> 1; 'F' -> 3; 'I' -> 4; 'D' -> 5; 'S' -> 7; 'K' -> 8; else -> 2 },
+                layout = if (names.bw2) com.pokedaisy.app.companion.data.save.Gen5Layout.B2W2 else com.pokedaisy.app.companion.data.save.Gen5Layout.BW,
+            )
+        }
+    }
+
+    /**
      * What the SAVE EDITOR needs from a HeartGold / SoulSilver cart ([com.pokedaisy.app.companion.data.save.Gen4GameData]),
      * or null for another cart: the names (species, moves, items, abilities), each species' personal record (a/0/0/2),
      * level-up moves (a/0/3/3: level << 9 | move to 0xFFFF), pre-evolutions (a/0/3/4's targets) and each move's PP

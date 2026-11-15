@@ -148,7 +148,11 @@ class PalParkTest {
         println("HeartGold has its National Pokedex: ${hg.nationalDex}; ${picks.size} could go")
         if (!hg.nationalDex) return
         val to = PalPark.migrate(em, "BPEE", "EMERALD", picks.take(6), hg, "HEARTGOLD", today)
-        val out = (Gen4SaveFile.parse(hg.build()) as Gen4SaveFile.Parsed.Ok).save
+        val built = hg.build()
+        // PAL_PARK_OUT=<file>: the migrated save written there, to boot in nds_dump (never the player's file).
+        System.getenv("PAL_PARK_OUT")?.let { File(it).writeBytes(built) }
+        println("Arrived at " + to.joinToString { "box ${it.box + 1} slot ${it.slot + 1}" })
+        val out = (Gen4SaveFile.parse(built) as Gen4SaveFile.Parsed.Ok).save
         assertNull(Gen4SaveData(game, out.general, out.pc).mismatch())
         to.forEach { assertFalse(Gen4SaveData(game, out.general, out.pc).mon(it).isBadEgg) }
         assertNull(Gen3SaveData((Gen3SaveFile.parse(em.build(), Gen3SaveFormat.EMERALD) as Gen3SaveFile.Parsed.Ok).save).mismatch())

@@ -52,6 +52,13 @@ object SaveFileEdits {
         return code.take(3) in setOf("IPK", "IPG") || code == "CPUE" && RomIdentity.ndsRevision(rom) == 1
     }
 
+    /** Black / White or Black 2 / White 2 (any language): POKé TRANSFER's receiving game. */
+    fun isGen5(rom: File): Boolean {
+        if (!com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT || !RomIdentity.isNds(rom)) return false
+        val code = RomIdentity.ndsGameCode(rom) ?: return false
+        return code.take(3) in setOf("IRB", "IRA", "IRE", "IRD")
+    }
+
     /** Writes [edited] over [rom]'s save, which must still be [expected]. Blocking: off the UI thread. */
     fun commit(context: Context, prefs: Prefs, rom: File, expected: ByteArray, edited: ByteArray): Result {
         val save = SavesLocation.saveFor(context, prefs, rom)

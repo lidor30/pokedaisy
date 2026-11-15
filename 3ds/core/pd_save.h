@@ -239,6 +239,30 @@ int pd_trade_evolution(const struct pd_trade_side* from, int at, const struct pd
 // Pokédex and Ruby / Sapphire's National Dex. NULL = done, else why not (nothing changed then).
 const char* pd_trade(struct pd_trade_side* a, int atA, struct pd_trade_side* b, int atB, bool evolve, char* buf, size_t len);
 
+// TRADE AND BACK (the app's TradeBack): the Pokémon at [at] goes to [partner], evolves there as it arrives, and comes
+// straight back to the same place (waiting in [partner]'s first free PC place). Both saves are put back if either way is
+// refused. NULL = done, else why not.
+const char* pd_trade_back_blocker(const struct pd_trade_side* home, int at, const struct pd_trade_side* partner, char* buf, size_t len);
+const char* pd_trade_back(struct pd_trade_side* home, int at, struct pd_trade_side* partner, char* buf, size_t len);
+
+// MISSING (the app's MissingDex): what a save's Pokédex hasn't caught (the regional dex until the National one, in its
+// order), and for each the best Pokémon of the other saves to bring it: a trade, one that evolves as it arrives, or one of
+// the save's own that a trip to another save and back would evolve.
+enum pd_missing_way { PD_MISSING_NONE, PD_MISSING_TRADE, PD_MISSING_EVOLVES, PD_MISSING_TRADE_BACK };
+struct pd_missing {
+    uint16_t number, national, species; // the dex's own number, the National one, the internal species
+    int8_t source;                      // the other save it comes from (or goes to and back), -1 = none
+    int16_t at;                         // where that Pokémon is (in the target's save for TRADE_BACK)
+    uint16_t owned;                     // that Pokémon's species (the one that evolves, for EVOLVES / TRADE_BACK)
+    uint8_t level, way;
+    bool reachable;
+    char why[96]; // why it can't come yet ("" when it can)
+};
+// The species [s]'s Pokédex lists that it hasn't caught, each with no source yet. Their count.
+int pd_missing_list(const struct pd_save* s, struct pd_missing* out, int max);
+// Looks through [other] (the saves' [source]-th) for each entry of [list].
+void pd_missing_add(struct pd_missing* list, int n, const struct pd_trade_side* target, const struct pd_trade_side* other, int source);
+
 // pd_save_tables_gen.c (tools/gen_save_tables.py).
 extern const uint16_t pd_species_national[PD_SAVE_SPECIES];
 extern const uint16_t pd_species_hoenn[PD_SAVE_SPECIES];

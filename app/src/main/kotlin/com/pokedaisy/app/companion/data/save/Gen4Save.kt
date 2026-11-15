@@ -377,8 +377,25 @@ class Gen4BoxMon private constructor(
             return out
         }
 
+        /**
+         * A record's four blocks decrypted and put in A B C D order, with whether its checksum holds (Gen 5's records are
+         * built the same way: [Gen5BoxMon]). Null for a slot never written.
+         */
+        internal fun decode(b: ByteArray, off: Int): Pair<ByteArray, Boolean>? {
+            if ((0 until SIZE).all { b[off + it].toInt() == 0 }) return null
+            val personality = u32(b, off)
+            val checksum = u16(b, off + 6)
+            val stored = crypt(b, off + 8, 128, checksum.toLong())
+            val order = ORDERS[(((personality shr 13) and 0x1F) % 24).toInt()]
+            val logical = ByteArray(128)
+            for (slot in 0 until 4) stored.copyInto(logical, "ABCD".indexOf(order[slot]) * 32, slot * 32, slot * 32 + 32)
+            var sum = 0
+            for (i in 0 until 64) sum = (sum + u16(logical, i * 2)) and 0xFFFF
+            return logical to (sum == checksum)
+        }
+
         /** A whole new record from its four blocks in A B C D order (128 bytes): checksummed, shuffled and encrypted. */
-        internal fun build(personality: Long, logical: ByteArray): ByteArray {
+        fun build(personality: Long, logical: ByteArray): ByteArray {
             require(logical.size == 128)
             return encode(personality, 0, logical)
         }
@@ -583,6 +600,10 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
     override val data: Gen4SaveData get() = Gen4SaveData(game, general, pc, file.layout)
     override val changed: Boolean get() = !general.contentEquals(file.general) || !pc.contentEquals(file.pc)
     override fun fresh(): MonSaveEditor = Gen4SaveEditor(file, game)
+    override fun snapshot() = EditorSnapshot(listOf(general.copyOf(), pc.copyOf()))
+    override fun restore(snapshot: EditorSnapshot) {
+        snapshot.parts.zip(listOf(general, pc)).forEach { (from, to) -> from.copyInto(to) }
+    }
     override fun build(): ByteArray = file.withBlocks(general, pc)
     override val canWriteNames: Boolean get() = true
     override val canEditItems: Boolean get() = true
@@ -829,6 +850,9 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
         }
         put(at, mon.withChanges(heldItem = item))
     }
+
+    /** An item a Pokémon held, back into the bag (Poké Transfer's way); false when the bag has no room. */
+    internal fun returnToBag(item: Int): Boolean = addOne(item)
 
     private val partyCount: Int get() = u32(general, l.party + 4).toInt()
     private fun partyOff(i: Int) = l.partyMons + i * Gen4BoxMon.PARTY_SIZE

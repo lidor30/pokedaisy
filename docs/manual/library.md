@@ -38,8 +38,10 @@ Down the left edge of the library are three buttons: `GAMES`, `TOOLS` and `SETTI
 | `PATCH A ROM` | Turns a `.bps` patch into a game (see [Patch a ROM hack](#patch-a-rom-hack)). |
 | `LINK PLAY` | Runs two to four GBA games joined as if by a link cable, to trade and battle between them (see [Link play](link-play.md)). |
 | `SAVE EDITOR` | Opens a game's save (a GBA game, or HeartGold / SoulSilver / Platinum): move Pokémon between the party and the PC, change a Pokémon's nature, IVs, EVs, level and moves, the bag, money and Pokédex, and see what the Pokédex is missing (see [Save editor and save trades](save-trade.md)). |
-| `TRADE SAVES` | Trades Pokémon between two of your games' save files, from the party or the PC (see [Save editor and save trades](save-trade.md)). |
+| `TRADE SAVES` | Trades Pokémon between two of your games' save files, from the party or the PC, or sends one away and back to evolve it (see [Save editor and save trades](save-trade.md)). |
 | `PAL PARK` | Brings six Pokémon from a GBA game's PC to HeartGold, SoulSilver or Platinum, the way the DS games' Pal Park does (see [Pal Park](save-trade.md#pal-park)). |
+| `POKé TRANSFER` | Sends six Pokémon from HeartGold, SoulSilver or Platinum to Black, White or their sequels, the way the Poké Transfer Lab does (see [Transfer to Black and White](save-trade.md#transfer-to-black-and-white)). |
+| `COLLECTION` | Every Pokémon in all your saves in one list, to search, sort and open, trade or send to Pal Park (see [Collection](save-trade.md#collection)). |
 | `SPRITE PACK` | Loads a sprite pack file, so `MAKEOVER` has other games' looks without those games (see [Sprite packs](companion.md#sprite-packs)). |
 
 A green dot on `TOOLS` means one of them is new. `BACK` on the tools takes you back to your games.
