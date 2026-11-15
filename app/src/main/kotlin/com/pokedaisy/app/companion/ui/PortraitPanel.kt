@@ -67,13 +67,20 @@ object PortraitLayout {
         return stops.firstOrNull { it > ratio + 0.01f } ?: stops.first()
     }
 
+    /** What a tap on the grip does to a shown companion: its next size, and whether it goes away. */
+    data class Tap(val ratio: Float, val hide: Boolean)
+
     /**
-     * A tap on the grip hides the companion when it's already as tall as it gets. On a screen wide for its height (a
-     * tablet upright) even the smallest size takes everything under the game, so [next] has only one size to go to and
-     * the companion never got smaller: it never hid.
+     * A tap on the grip of a companion shown at [ratio]: the next size, hiding it first when it's already as tall as it
+     * gets ([canHide]: a DS game's touch screen never hides). That goes by the height it's drawn at, not by the sizes'
+     * order: when the room under the game is no more than the smallest size, every size is drawn the same height,
+     * [next] never comes round to a smaller one, and a rule waiting for that never hid it.
      */
-    fun atLargest(w: Int, h: Int, gameH: Int, ratio: Float, reserve: Int = 0): Boolean =
-        ratio >= maxRatio(w, h, gameH, reserve) - 0.01f
+    fun tap(w: Int, h: Int, gameH: Int, ratio: Float, reserve: Int = 0, canHide: Boolean = true): Tap {
+        val shown = companionHeight(w, h, gameH, ratio, reserve)
+        val tallest = companionHeight(w, h, gameH, maxRatio(w, h, gameH, reserve), reserve)
+        return Tap(next(w, h, gameH, ratio, reserve), canHide && shown >= tallest - w * 0.01f)
+    }
 
     /** The touch controls fit in a [gap]-tall strip on a [w]-wide screen. */
     fun padInGap(w: Int, gap: Int): Boolean = gap >= w * PAD_GAP_RATIO

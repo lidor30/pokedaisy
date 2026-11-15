@@ -35,25 +35,47 @@ class PortraitLayoutTest {
         assertEquals(PortraitLayout.MIN_RATIO, PortraitLayout.next(w, h, game, max), 0f)
     }
 
-    @Test
-    fun tapsHideOnlyAtTheLargest() {
-        val max = PortraitLayout.maxRatio(w, h, game)
-        assertFalse(PortraitLayout.atLargest(w, h, game, PortraitLayout.MIN_RATIO))
-        assertFalse(PortraitLayout.atLargest(w, h, game, PortraitLayout.DEFAULT_RATIO))
-        assertTrue(PortraitLayout.atLargest(w, h, game, max))
+    /**
+     * The companion's height after each of [n] taps on the grip from [start], 0 while it's hidden, the way
+     * PortraitPanel.stepSize taps: a hidden companion comes back at its size, a shown one goes by [PortraitLayout.tap].
+     */
+    private fun taps(n: Int, start: Float, reserve: Int = 0, canHide: Boolean = true): List<Int> {
+        var ratio = start
+        var hidden = false
+        return List(n) {
+            if (hidden) {
+                hidden = false
+            } else {
+                val shown = PortraitLayout.companionHeight(w, h, game, ratio, reserve).toFloat() / w
+                val tap = PortraitLayout.tap(w, h, game, shown, reserve, canHide)
+                ratio = tap.ratio
+                hidden = tap.hide
+            }
+            if (hidden) 0 else PortraitLayout.companionHeight(w, h, game, ratio, reserve)
+        }
     }
 
     @Test
-    fun aTabletUprightStillHides() {
-        // An iPad mini-shaped screen (1488x2266) with a 3:2 game (992 tall) and the controls' strip under the game:
-        // the room left is under the smallest size, so every size is the smallest and the next is never smaller.
-        val tw = 1488
-        val th = 2266
-        val tg = 992
-        val reserve = 72 + 600
-        val now = PortraitLayout.companionHeight(tw, th, tg, PortraitLayout.DEFAULT_RATIO, reserve).toFloat() / tw
-        assertEquals(PortraitLayout.MIN_RATIO, PortraitLayout.next(tw, th, tg, now, reserve), 0f)
-        assertTrue(PortraitLayout.atLargest(tw, th, tg, now, reserve))
+    fun tapsGoRoundTheSizesThenHide() {
+        val small = PortraitLayout.companionHeight(w, h, game, PortraitLayout.MIN_RATIO)
+        val default = PortraitLayout.companionHeight(w, h, game, PortraitLayout.DEFAULT_RATIO)
+        val full = h - game
+        assertEquals(listOf(default, full, 0, small, default, full), taps(6, PortraitLayout.MIN_RATIO))
+    }
+
+    @Test
+    fun tapsHideWhenOnlyTheSmallestSizeFits() {
+        // The room under the game (here the touch controls' strip takes most of it) is less than the smallest size, so
+        // every size is drawn the same height: the taps go between shown and hidden.
+        val reserve = 1200
+        val small = PortraitLayout.companionHeight(w, h, game, PortraitLayout.MIN_RATIO, reserve)
+        assertEquals(listOf(0, small, 0, small), taps(4, PortraitLayout.DEFAULT_RATIO, reserve))
+    }
+
+    @Test
+    fun aDsTouchScreenNeverHides() {
+        assertFalse(taps(6, PortraitLayout.MIN_RATIO, canHide = false).contains(0))
+        assertFalse(taps(4, PortraitLayout.DEFAULT_RATIO, reserve = 1200, canHide = false).contains(0))
     }
 
     @Test

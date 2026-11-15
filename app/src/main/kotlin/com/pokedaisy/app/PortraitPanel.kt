@@ -250,10 +250,9 @@ class PortraitPanel(
     private fun stepSize() {
         if (hinge != null) return
         if (hiddenNow) return setHidden(false)
-        val now = currentRatio
-        val hide = !ds && PortraitLayout.atLargest(screenW, screenH, gameH, now, reserve)
-        ratio = PortraitLayout.next(screenW, screenH, gameH, now, reserve)
-        if (hide) { hidden = true; prefs.portraitCompanionHidden = true }
+        val tap = PortraitLayout.tap(screenW, screenH, gameH, currentRatio, reserve, canHide = !ds)
+        ratio = tap.ratio
+        if (tap.hide) { hidden = true; prefs.portraitCompanionHidden = true }
         save()
     }
 
