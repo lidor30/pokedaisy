@@ -16,6 +16,7 @@ import java.io.File
 import java.nio.file.Files
 import java.util.zip.CRC32
 import kotlin.random.Random
+import okio.Path.Companion.toOkioPath
 
 /**
  * The partner's art ([PartnerArt]): 42 frames of 32x32 and the palette, packed from a hero's graphics in a fixed order.
@@ -103,11 +104,11 @@ class PartnerArtTest {
         val dir = Files.createTempDirectory("partner").toFile()
         try {
             // MAY kept (made up, so no scan), LEAF not.
-            val may = File(LookArt.dir(dir), "may").apply { mkdirs() }
+            val may = LookArt.dir(dir.toOkioPath()).toFile().resolve("may").apply { mkdirs() }
             art(LookChar.MAY).forEach { (p, b) -> File(may, "${p.name.lowercase()}.bin").writeBytes(b) }
-            val plain = PartnerArt.build(dir, rom!!, female = true, look = null)
+            val plain = PartnerArt.build(dir.toOkioPath(), rom!!, female = true, look = null)
             assertNotNull(plain)
-            assertNull(PartnerArt.build(dir, rom, female = true, look = LookChar.LEAF))
+            assertNull(PartnerArt.build(dir.toOkioPath(), rom, female = true, look = LookChar.LEAF))
             assertArrayEquals(PartnerArt.assemble(art(LookChar.MAY), null, LookChar.MAY, null, frame3(rom)), plain)
         } finally {
             dir.deleteRecursively()
@@ -123,7 +124,7 @@ class PartnerArtTest {
         try {
             val out = File("build/partner").apply { mkdirs() }
             for ((female, name) in listOf(false to "brendan", true to "may")) {
-                val art = PartnerArt.build(dir, rom!!, female, look = null)
+                val art = PartnerArt.build(dir.toOkioPath(), rom!!, female, look = null)
                 assertNotNull(name, art)
                 assertEquals(PartnerArt.ART_BYTES, art!!.size)
                 // The hero's own overworld palette (the ROM's, by its fingerprint's CRC).
@@ -132,7 +133,7 @@ class PartnerArtTest {
                 File(out, "$name.bin").writeBytes(art)
             }
             // The scan kept the ROM's heroes for next time.
-            assertNotNull(LookArt.load(dir, LookChar.BRENDAN))
+            assertNotNull(LookArt.load(dir.toOkioPath(), LookChar.BRENDAN))
         } finally {
             dir.deleteRecursively()
         }

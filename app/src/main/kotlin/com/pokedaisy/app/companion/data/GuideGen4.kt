@@ -134,7 +134,7 @@ class Gen4World(
     }
 
     private fun timeOfDay(progress: SaveProgress?): Int {
-        val hour = progress?.variable(GEN4_VAR_HOUR) ?: java.time.LocalTime.now().hour
+        val hour = progress?.variable(GEN4_VAR_HOUR) ?: localNow().hour
         return when (hour) {
             in 4..9 -> MORNING
             in 10..19 -> DAY

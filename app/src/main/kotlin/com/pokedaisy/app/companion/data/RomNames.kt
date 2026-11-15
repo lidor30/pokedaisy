@@ -64,7 +64,7 @@ class RomNames private constructor(private val found: Map<String, IntArray>, pri
             val b = Gen3Text.encode(loose) ?: return null
             if (b.size < MIN_LEN) return null
             val n = norm()
-            return String(CharArray(b.size) { n[b[it].toInt() and 0xFF].toChar() })
+            return CharArray(b.size) { n[b[it].toInt() and 0xFF].toChar() }.concatToString()
         }
 
         /** Byte -> its loose form ([key]): case folded, é / ♀ / ♂ replaced, -1 for a byte to skip. */

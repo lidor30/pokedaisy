@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+
 /**
  * Generation 2 (Game Boy Color) games' RAM. Addresses are pret/pokecrystal's symbols (its build is
  * byte-identical to every retail English Crystal: rev 0, rev 1 and Australia, which keep their RAM

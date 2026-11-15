@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Prism's art, rebuilt from the player's own ROM (skipped without it): its party icons in the colours the party menu
@@ -26,10 +27,10 @@ class PrismArtTest {
     fun `everything lands on its own paths`() {
         val out = File("build/gen2-art-prism")
         out.deleteRecursively()
-        val wrote = Gen2Art.extractTo(rom(), out)
+        val wrote = Gen2Art.extractTo(rom(), out.toOkioPath())
         assertEquals(254 + 1 + 1 + 6, wrote.size)   // 254 icons (EGG's is 253), the font, the held-item marks, six maps
         assertTrue(wrote.all { it.startsWith("gen2/prism") || it.startsWith("regionmap/prism_") })
-        assertTrue("the same build again: nothing", Gen2Art.extractTo(rom(), out).isEmpty())
+        assertTrue("the same build again: nothing", Gen2Art.extractTo(rom(), out.toOkioPath()).isEmpty())
     }
 
     @Test

@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * A DS cart's names read from its own text (GitHub #230: a French Sacred Gold, an IPKE HeartGold, showed English ones):
@@ -15,7 +16,7 @@ class NdsNamesTest {
     private fun names(rom: String): NdsArt.Names {
         val f = File(nds, rom)
         assumeTrue("no $f", f.isFile)
-        return NdsArt.readNames(f)!!
+        return NdsArt.readNames(f.toOkioPath())!!
     }
 
     @Test fun heartGold() = check(names("Pokemon - HeartGold Version (USA).nds"), itemNamesHeartGold, GEN4_HEARTGOLD_US)

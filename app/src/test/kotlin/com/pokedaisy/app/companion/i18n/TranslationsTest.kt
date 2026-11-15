@@ -1,11 +1,11 @@
 package com.pokedaisy.app.companion.i18n
 
+import androidx.compose.ui.text.intl.Locale
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import java.util.Locale
 
 /** The tables cover every tr / tk literal in the app (scripts/check_translations.py, on the JVM). */
 class TranslationsTest {
@@ -48,31 +48,31 @@ class TranslationsTest {
 
     @Test
     fun `auto follows the ROM, then the device`() {
-        L10n.apply(LANGUAGE_AUTO, "BPRF", Locale.GERMAN)
+        L10n.apply(LANGUAGE_AUTO, "BPRF", Locale("de"))
         assertEquals(AppLanguage.FR, L10n.language)
-        L10n.apply(LANGUAGE_AUTO, "AXVJ", Locale.GERMAN)
+        L10n.apply(LANGUAGE_AUTO, "AXVJ", Locale("de"))
         assertEquals(AppLanguage.JA, L10n.language)
         // Library: no ROM.
-        L10n.apply(LANGUAGE_AUTO, null, Locale.GERMAN)
+        L10n.apply(LANGUAGE_AUTO, null, Locale("de"))
         assertEquals(AppLanguage.DE, L10n.language)
         // Portuguese by region (GitHub #61): Brazil's, else Portugal's. No ROM is in Portuguese, so an English
         // game shows the device's Portuguese too; a game in another language keeps its own.
-        L10n.apply(LANGUAGE_AUTO, null, Locale.forLanguageTag("pt-BR"))
+        L10n.apply(LANGUAGE_AUTO, null, Locale("pt-BR"))
         assertEquals(AppLanguage.BR, L10n.language)
-        L10n.apply(LANGUAGE_AUTO, null, Locale.forLanguageTag("pt-PT"))
+        L10n.apply(LANGUAGE_AUTO, null, Locale("pt-PT"))
         assertEquals(AppLanguage.PT, L10n.language)
-        L10n.apply(LANGUAGE_AUTO, "BPRE", Locale.forLanguageTag("pt-BR"))
+        L10n.apply(LANGUAGE_AUTO, "BPRE", Locale("pt-BR"))
         assertEquals(AppLanguage.BR, L10n.language)
-        L10n.apply(LANGUAGE_AUTO, "BPRF", Locale.forLanguageTag("pt-PT"))
+        L10n.apply(LANGUAGE_AUTO, "BPRF", Locale("pt-PT"))
         assertEquals(AppLanguage.FR, L10n.language)
-        L10n.apply(LANGUAGE_AUTO, "BPRE", Locale.GERMAN)
+        L10n.apply(LANGUAGE_AUTO, "BPRE", Locale("de"))
         assertEquals(AppLanguage.EN, L10n.language)
         // Korean: the device's, a Korean DS cart's (IPKK: HeartGold), and a language the app lacks is English.
-        L10n.apply(LANGUAGE_AUTO, null, Locale.forLanguageTag("ko-KR"))
+        L10n.apply(LANGUAGE_AUTO, null, Locale("ko-KR"))
         assertEquals(AppLanguage.KO, L10n.language)
-        L10n.apply(LANGUAGE_AUTO, "IPKK", Locale.GERMAN)
+        L10n.apply(LANGUAGE_AUTO, "IPKK", Locale("de"))
         assertEquals(AppLanguage.KO, L10n.language)
-        L10n.apply(LANGUAGE_AUTO, null, Locale.forLanguageTag("nl-NL"))
+        L10n.apply(LANGUAGE_AUTO, null, Locale("nl-NL"))
         assertEquals(AppLanguage.EN, L10n.language)
         // An override wins over the ROM.
         L10n.apply("IT", "BPRE")

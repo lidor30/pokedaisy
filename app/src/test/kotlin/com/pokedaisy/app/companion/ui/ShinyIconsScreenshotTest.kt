@@ -26,6 +26,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import kotlin.random.Random
+import okio.Path.Companion.toOkioPath
 
 /**
  * Shiny icons on retail FireRed, from real data: the `firered_shiny_battle` fixture (a wild PIKACHU SHINY ODDS made shiny,
@@ -61,8 +62,8 @@ open class ShinyIconsScreenshotTest {
         OptionColors.inGame = true
         resetNativeBagCache()
         // The party slots' art comes from the ROM too.
-        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it }
-        RomArt.extractTo(java.io.File(RomFileReader.FIRERED_REV1_PATH).readBytes(), art)
+        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it.toOkioPath() }
+        RomArt.extractTo(java.io.File(RomFileReader.FIRERED_REV1_PATH).readBytes(), art.toOkioPath())
         val cfg = NATIVE_FIRERED_REV1.copy(shinyBelow = 8)
         val ram = Ram(FixtureMemoryReader.load("firered_shiny_battle"))
         val lead = Gen3BoxMon.read(ram.readCoreMemory(cfg.playerParty, Gen3BoxMon.SIZE), 0)

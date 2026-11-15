@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import android.graphics.Bitmap
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /** Which memory a game's seen / caught arrays are offsets into. */
 enum class DexFlagBlock { SAVE_BLOCK_1, SAVE_BLOCK_2, FIXED }
@@ -1536,14 +1537,15 @@ data class DexEntry(
  * [reader] is swappable so tests and previews can read a ROM file instead.
  */
 object PokedexSource {
+    private val lock = SynchronizedObject()
     @Volatile
     var reader: MemoryReader = InProcessReader
 
-    private val entries = ConcurrentHashMap<Int, DexEntry>()
-    private val sprites = ConcurrentHashMap<Int, Bitmap>()
-    private val footprints = ConcurrentHashMap<Int, Bitmap>()
-    private val baseStats = ConcurrentHashMap<Int, IntArray>()
-    private val growthRates = ConcurrentHashMap<Int, Int>()
+    private val entries = LockedMap<Int, DexEntry>()
+    private val sprites = LockedMap<Int, RomArt.Image>()
+    private val footprints = LockedMap<Int, RomArt.Image>()
+    private val baseStats = LockedMap<Int, IntArray>()
+    private val growthRates = LockedMap<Int, Int>()
     @Volatile private var nationalToSpecies: IntArray? = null
     @Volatile private var speciesToNational: IntArray? = null
     @Volatile private var regional: IntArray? = null
@@ -1551,7 +1553,7 @@ object PokedexSource {
 
     private fun sync(t: PokedexTables) {
         if (cachedFor == t) return
-        synchronized(this) {
+        synchronized(lock) {
             if (cachedFor == t) return
             entries.clear(); sprites.clear(); footprints.clear(); baseStats.clear(); growthRates.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
             cachedFor = t
@@ -1594,7 +1596,7 @@ object PokedexSource {
      * (Glazed runs on Emerald's PokedexTables) - Emerald then Glazed in one session kept Emerald's.
      */
     fun romChanged() {
-        synchronized(this) { cachedFor = null }
+        synchronized(lock) { cachedFor = null }
         DexDetails.romChanged()
         GuideRomSource.romChanged()
         EvolutionSource.romChanged()
@@ -1603,8 +1605,8 @@ object PokedexSource {
     /** Already-loaded data only (no ROM read) - composables start from these,
      * so a page seen before draws at once instead of after a load. */
     fun cachedEntry(t: PokedexTables, national: Int): DexEntry? = if (cachedFor == t) entries[national] else null
-    fun cachedFrontSprite(t: PokedexTables, species: Int): Bitmap? = if (cachedFor == t) sprites[species] else null
-    fun cachedFootprint(t: PokedexTables, species: Int): Bitmap? = if (cachedFor == t) footprints[species] else null
+    fun cachedFrontSprite(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) sprites[species] else null
+    fun cachedFootprint(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) footprints[species] else null
     fun cachedSpeciesMap(t: PokedexTables): IntArray? = when {
         // Gen 1's and 2's tables are by Dex number - but Prism's, by its own species ids in its own dex order.
         t.cartDex -> IntArray(t.nationalCount + 1) { n -> t.gen2?.speciesOf(n) ?: n }
@@ -1694,21 +1696,21 @@ object PokedexSource {
         // Not cached here: before NdsArt has the cart's pages in, there's nothing yet (Gen4Dex keeps them once read).
         t.gen4?.let { g -> return Gen4Dex.entry(g, national) }
         return runCatching { readEntry(t, national) }
-            .onFailure { android.util.Log.w("pokedaisy", "dex entry $national failed", it) }
+            .onFailure { Logs.w("dex entry $national failed", it) }
             .getOrNull()?.also { entries[national] = it }
     }
 
     /** The 64x64 front sprite, as the dex page shows it. */
-    fun frontSprite(t: PokedexTables, species: Int): Bitmap? {
+    fun frontSprite(t: PokedexTables, species: Int): RomArt.Image? {
         sync(t)
         if (species <= 0) return null
         sprites[species]?.let { return it }
         t.gen2?.let { g ->
-            return runCatching { Gen2Dex.frontPixels(g, species)?.let { Bitmap.createBitmap(it, 56, 56, Bitmap.Config.ARGB_8888) } }
+            return runCatching { Gen2Dex.frontPixels(g, species)?.let { RomArt.Image(56, 56, it) } }
                 .getOrNull()?.also { sprites[species] = it }
         }
         t.gen1?.let { g ->
-            return runCatching { Gen1Dex.frontPixels(g, species)?.let { Bitmap.createBitmap(it, 56, 56, Bitmap.Config.ARGB_8888) } }
+            return runCatching { Gen1Dex.frontPixels(g, species)?.let { RomArt.Image(56, 56, it) } }
                 .getOrNull()?.also { sprites[species] = it }
         }
         t.gen4?.let { g -> return Gen4Dex.front(g, species)?.also { sprites[species] = it } }
@@ -1736,7 +1738,7 @@ object PokedexSource {
     }
 
     /** The 16x16 footprint (black on transparent). */
-    fun footprint(t: PokedexTables, species: Int): Bitmap? {
+    fun footprint(t: PokedexTables, species: Int): RomArt.Image? {
         sync(t)
         if (species <= 0) return null
         footprints[species]?.let { return it }
@@ -1757,11 +1759,11 @@ object PokedexSource {
                     px[((tile / 2) * 8 + row) * 16 + (tile % 2) * 8 + col] = 0xFF000000.toInt()
                 }
             }
-            Bitmap.createBitmap(px, 16, 16, Bitmap.Config.ARGB_8888)
+            RomArt.Image(16, 16, px)
         }.getOrNull()?.also { footprints[species] = it }
     }
 
-    private val abilityNames = ConcurrentHashMap<Pair<PokedexTables, Int>, String>()
+    private val abilityNames = LockedMap<Pair<PokedexTables, Int>, String>()
 
     /** Ability [id]'s name in the running game (battle INFO's FOE DETAILS); null = no table / unreadable. */
     fun cachedAbilityName(t: PokedexTables, id: Int): String? = abilityNames[t to id]

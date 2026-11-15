@@ -10,6 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
+import okio.Path.Companion.toOkioPath
 
 /**
  * NATIVE_EMERALD_LEGACY: Emerald Legacy v1.1.4, its own agbcc build of pokeemerald (every address its ELF's). The
@@ -132,7 +133,7 @@ class EmeraldLegacyDecodeTest {
         assertNull(fieldItemSupport(FIELD_ITEMS_EMERALD, read))   // retail's addresses aren't its code
         val bytes = java.io.File(RETAIL_ROM_DIR + "Pokemon Emerald Legacy (v1.1.4).gba").readBytes()
         assertEquals(3, RegionMapWatch.find(bytes).size)
-        assertEquals(0x02038D8CL, WildEncounters.find(java.io.File(RETAIL_ROM_DIR + "Pokemon Emerald Legacy (v1.1.4).gba")))
+        assertEquals(0x02038D8CL, WildEncounters.find(java.io.File(RETAIL_ROM_DIR + "Pokemon Emerald Legacy (v1.1.4).gba").toOkioPath()))
         assertTrue(RomBlob.LG_CARD_PAL5 in RomArt.find(bytes))
         assertNotNull(TrainerCardArt.art(CardStyle.LEGACY) { RomArt.find(bytes)[it] })
     }

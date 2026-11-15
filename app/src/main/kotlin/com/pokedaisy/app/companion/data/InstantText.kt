@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import okio.Path
 
 /**
  * INSTANT TEXT (SETTINGS > GAMEPLAY, GitHub #111): a text box's words appear at once, whatever the game's own text speed,
@@ -81,17 +81,8 @@ object InstantText {
     private fun bytes(vararg v: Int) = ByteArray(v.size) { v[it].toByte() }
 
     /** The patch for [rom] (reads its first 64 KB), null where the code isn't known. */
-    fun find(rom: File): Patch? = runCatching {
-        rom.inputStream().use { f ->
-            val head = ByteArray(minOf(rom.length(), SEARCH.toLong()).toInt())
-            var got = 0
-            while (got < head.size) {
-                val n = f.read(head, got, head.size - got)
-                if (n < 0) break
-                got += n
-            }
-            find(LittleEndianBytes(head, got))
-        }
+    fun find(rom: Path): Patch? = runCatching {
+        withRomFile(rom) { f -> find(LittleEndianBytes(f.readUpTo(0, SEARCH))) }
     }.getOrNull()
 
     fun find(rom: LittleEndianReader): Patch? {

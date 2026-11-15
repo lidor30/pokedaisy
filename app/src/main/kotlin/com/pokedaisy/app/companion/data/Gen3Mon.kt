@@ -452,7 +452,7 @@ internal fun gen3Stats(species: Int, base: IntArray, ivs: List<Int>, evs: List<I
 private const val SPECIES_SHEDINJA = 303
 
 /** Gen 3's shiny value: the OT ID's and the personality's halves XORed together. */
-internal fun shinyValue(personality: Long, otId: Long): Int =
+fun shinyValue(personality: Long, otId: Long): Int =
     ((otId ushr 16) xor (otId and 0xFFFF) xor (personality ushr 16) xor (personality and 0xFFFF)).toInt()
 
 /**

@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
+import okio.Path.Companion.toOkioPath
 
 /** The art generation each style's [TrainerCardArt.cached] was loaded at (main thread). */
 private val cardArtGeneration = HashMap<CardStyle, Int>()
@@ -61,7 +62,7 @@ fun rememberTrainerCardArt(style: CardStyle?): TrainerCardArt.Art? {
         // (another identity) re-rendered the card: load only what this generation hasn't.
         val s = style ?: run { value = null; return@produceKeyedState }
         if (value != null && cardArtGeneration[s] == generation) return@produceKeyedState
-        value = withContext(Dispatchers.IO) { runCatching { TrainerCardArt.load(RomArt.dir(context.filesDir), s) }.getOrNull() }
+        value = withContext(Dispatchers.IO) { runCatching { TrainerCardArt.load(RomArt.dir(context.filesDir?.toOkioPath()), s) }.getOrNull() }
         if (value != null) cardArtGeneration[s] = generation
     }.value
 }
@@ -88,7 +89,7 @@ fun TrainerCardScreen(card: TrainerCardInfo, art: TrainerCardArt.Art, modifier: 
     val context = LocalContext.current
     val look = PlayerLook.worn.value
     val lookPic = produceKeyedState<Pair<ByteArray, ByteArray>?>(null, look) {
-        value = look?.let { c -> withContext(Dispatchers.IO) { runCatching { LookArt.frontPic(context.filesDir, c) }.getOrNull() } }
+        value = look?.let { c -> withContext(Dispatchers.IO) { runCatching { LookArt.frontPic(context.filesDir.toOkioPath(), c) }.getOrNull() } }
     }.value
     val renders = remember(art, card, back, lookPic) { arrayOfNulls<ImageBitmap>(2) }
     val image = renders[if (colon) 1 else 0] ?: run {

@@ -54,6 +54,7 @@ import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.floor
+import okio.Path.Companion.toOkioPath
 
 /** Rows of tiles the list shows at once: two and a half, so a cut row says it scrolls. */
 private const val ROWS_IN_VIEW = 2.5f
@@ -86,17 +87,17 @@ internal fun PlayerLookPicker(
     // A Pokémon's tile says which hack its sprite came from (MonArt.Source), as a hero's says its game.
     val monSources = produceState<Map<Int, String>>(emptyMap(), tiles) {
         value = withContext(Dispatchers.IO) {
-            tiles.mapNotNull { MonArt.monOf(it) }.mapNotNull { n -> runCatching { MonArt.load(context.filesDir, n) }.getOrNull()?.let { n to it.source.tag } }.toMap()
+            tiles.mapNotNull { MonArt.monOf(it) }.mapNotNull { n -> runCatching { MonArt.load(context.filesDir.toOkioPath(), n) }.getOrNull()?.let { n to it.source.tag } }.toMap()
         }
     }.value
     val sprites = produceState<Map<String, List<ImageBitmap>>>(emptyMap(), tiles) {
         value = withContext(Dispatchers.IO) {
             tiles.filterNotNull().mapNotNull { name ->
                 val mon = MonArt.monOf(name)
-                val frames = if (mon != null) runCatching { MonArt.walk(context.filesDir, mon) }.getOrNull() ?: return@mapNotNull null
+                val frames = if (mon != null) runCatching { MonArt.walk(context.filesDir.toOkioPath(), mon) }.getOrNull() ?: return@mapNotNull null
                 else {
                     val c = LookChar.byName(name) ?: return@mapNotNull null
-                    runCatching { LookArt.walk(context.filesDir, c) }.getOrNull() ?: return@mapNotNull null
+                    runCatching { LookArt.walk(context.filesDir.toOkioPath(), c) }.getOrNull() ?: return@mapNotNull null
                 }
                 name to frames.map { Bitmap.createBitmap(it.argb, it.width, it.height, Bitmap.Config.ARGB_8888).asImageBitmap() }
             }.toMap()

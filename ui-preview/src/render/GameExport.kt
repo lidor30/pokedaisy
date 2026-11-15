@@ -385,6 +385,7 @@ fun main(args: Array<String>) {
     for (rom in roms) {
         val bytes = rom.readBytes()
         ExportCore.rom = bytes
+        com.pokedaisy.app.companion.data.EmulatorCore.current = com.pokedaisy.app.MgbaEmulatorCore
         ExportCore.platform = if (rom.extension.lowercase() == "gba") MgbaCore.PLATFORM_GBA else MgbaCore.PLATFORM_GB
         activeNativeConfig = null
         romGameCode = ""

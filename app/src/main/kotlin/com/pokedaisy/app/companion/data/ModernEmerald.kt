@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.data
 
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+
 /**
  * Pokémon Modern Emerald (v3.6; resetes12's pokeemerald fork, public at github.com/resetes12/pokeemerald, tag Release3.6):
  * a gcc build of pokeemerald on Emerald's ids, 50 species past Emerald's 411, FAIRY as type 18. It runs as EMERALD with
@@ -15,6 +18,7 @@ package com.pokedaisy.app.companion.data
  * number on every call, so then nothing can follow: [Settings.chaos] says so.
  */
 object ModernEmerald {
+    private val lock = SynchronizedObject()
     const val V3_6_SHA1 = TelemetrySampler.MODERN_EMERALD_V3_6_SHA1
 
     /** SaveBlock1 + this: tx_Random_Chaos bit 0, tx_Random_Type bit 5, tx_Random_TypeEffectiveness bit 6. */
@@ -105,22 +109,23 @@ object ModernEmerald {
     private val cache = HashMap<Settings, HackText>()
 
     /** Its tables under [s], laid over Emerald's: one per settings the companion has met (a few at most). */
-    @Synchronized
-    fun text(s: Settings): HackText = cache.getOrPut(s) {
-        HackText(
-            species = speciesNamesModernEmerald,
-            types = speciesNamesModernEmerald.keys.mapNotNull { id -> speciesTypes(id, s)?.let { id to it } }.toMap(),
-            moves = movesModernEmerald,
-            items = itemNamesModernEmerald,
-            mapSecs = mapSecNamesModernEmerald,
-            typeNames = mapOf(FAIRY to "Fairy"),
-            typeChart = typeChart(s),
-            genderRatios = genderRatiosModernEmerald,
-            growthRates = growthRatesModernEmerald,
-            ownCase = true,
-        )
+    fun text(s: Settings): HackText = synchronized(lock) {
+        cache.getOrPut(s) {
+            HackText(
+                species = speciesNamesModernEmerald,
+                types = speciesNamesModernEmerald.keys.mapNotNull { id -> speciesTypes(id, s)?.let { id to it } }.toMap(),
+                moves = movesModernEmerald,
+                items = itemNamesModernEmerald,
+                mapSecs = mapSecNamesModernEmerald,
+                typeNames = mapOf(FAIRY to "Fairy"),
+                typeChart = typeChart(s),
+                genderRatios = genderRatiosModernEmerald,
+                growthRates = growthRatesModernEmerald,
+                ownCase = true,
+            )
+        }
     }
 
     /** Whether [h] is one of its tables (the Recharged Emerald look must not reach it). */
-    fun isIt(h: HackText?): Boolean = h != null && synchronized(this) { cache.values.any { it === h } }
+    fun isIt(h: HackText?): Boolean = h != null && synchronized(lock) { cache.values.any { it === h } }
 }

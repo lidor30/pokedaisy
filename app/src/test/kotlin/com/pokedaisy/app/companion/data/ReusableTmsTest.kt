@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * REUSABLE TMS' sites, found in each ROM by their code ([ReusableTms.find]): the TM-number compare, the `bhi` the
@@ -48,7 +49,7 @@ class ReusableTmsTest {
         for ((name, want) in cases) {
             val rom = File(RETAIL_ROM_DIR + name)
             if (!rom.isFile) continue
-            val sites = ReusableTms.find(rom)
+            val sites = ReusableTms.find(rom.toOkioPath())
             assertEquals(name, want, sites.size)
             sites.forEach { assertEquals(name, 0x03, it.expect[ReusableTms.BRANCH.toInt()].toInt()) }
         }
@@ -57,7 +58,7 @@ class ReusableTmsTest {
     @Test
     fun sitesCallTheBuildsRemoveBagItem() {
         val rom = File(RETAIL_ROM_DIR + "Pokemon Emerald Legacy (v1.1.4).gba")
-        if (rom.isFile) assertEquals("%08X".format(FIELD_ITEMS_EMERALD_LEGACY.removeBagItem), "%08X".format(ReusableTms.find(rom).single().calls))
+        if (rom.isFile) assertEquals("%08X".format(FIELD_ITEMS_EMERALD_LEGACY.removeBagItem), "%08X".format(ReusableTms.find(rom.toOkioPath()).single().calls))
     }
 
     /** Every retail cart in the retail ROM dir (-DmultiRomDir=...): as many sites as its engine
@@ -70,7 +71,7 @@ class ReusableTmsTest {
         for (f in retailRomFiles(dir).filter { listOf("Pirate", "Debug").none { x -> x in it.name } }) {
             val h = f.inputStream().use { ByteArray(0xC0).also { b -> it.read(b) } }
             val code = String(h, 0xAC, 4)
-            val sites = ReusableTms.find(f)
+            val sites = ReusableTms.find(f.toOkioPath())
             assertEquals(f.name, ReusableTms.expectedSites(code), sites.size)
             val remove = fieldItemsFor(code, h[0xBC].toInt())?.removeBagItem ?: continue
             sites.forEach { assertEquals(f.name, "%08X".format(remove), "%08X".format(it.calls)) }
