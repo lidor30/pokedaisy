@@ -56,3 +56,26 @@ fun tradeDemo(): TradeState {
     val (fr, emerald) = SyntheticSave.demoTrade()
     return TradeState(TradeSide("Pokémon FireRed", Gen3SaveEditor(fr), "BPRE"), TradeSide("Pokémon Emerald", Gen3SaveEditor(emerald), "BPEE"))
 }
+
+/** PAL PARK's shots: the made-up FireRed save's PC beside the made-up HeartGold one (with its National Pokédex). */
+fun palParkDemo(): com.pokedaisy.app.companion.ui.PalParkState {
+    val hg = com.pokedaisy.app.companion.data.save.Gen4SaveEditor(
+        (com.pokedaisy.app.companion.data.save.Gen4SaveFile.parse(com.pokedaisy.app.companion.data.save.SyntheticGen4.save(national = true))
+            as com.pokedaisy.app.companion.data.save.Gen4SaveFile.Parsed.Ok).save,
+        com.pokedaisy.app.companion.data.save.SyntheticGen4.demoGame(),
+    )
+    return com.pokedaisy.app.companion.ui.PalParkState(
+        TradeSide("Pokémon FireRed", Gen3SaveEditor(SyntheticSave.demoFireRed()), "BPRE"), TradeSide("Pokémon HeartGold", hg, "IPKE"),
+    )
+}
+
+/** MISSING's shots: the made-up FireRed save's Pokédex (with its National one) against the made-up Emerald save. */
+fun missingDemo(state: PcBoxesState): com.pokedaisy.app.companion.ui.MissingView {
+    val (_, emerald) = SyntheticSave.demoTrade()
+    val target = TradeSide("Pokémon FireRed", state.editor, "BPRE")
+    val sides = listOf(TradeSide("Pokémon Emerald", Gen3SaveEditor(emerald), "BPEE"))
+    return com.pokedaisy.app.companion.ui.MissingView(com.pokedaisy.app.companion.data.save.MissingDex.find(target, sides), sides)
+}
+
+/** The MISSING shots' FireRed: [SyntheticSave.demoTrade]'s, with its National Pokédex and Sevii Islands. */
+fun missingTargetDemo(): PcBoxesState = PcBoxesState(Gen3SaveEditor(SyntheticSave.demoTrade().first))

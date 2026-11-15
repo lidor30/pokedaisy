@@ -158,6 +158,10 @@ object NewFeatures {
     /** The save editor's second round (2026-11-15): a Pokémon's page (nature, ability, IVs / EVs, level, shiny...), the party
      * in the editor and in trades, box tools, TRAINER's Pokédex and event tickets. On the same TOOLS cards. */
     const val SAVE_EDITOR_PLUS = "save_editor_plus"
+    /** TOOLS > PAL PARK: six Pokémon from a GBA game's PC into HeartGold / SoulSilver / Platinum (save.PalPark). */
+    const val PAL_PARK = "pal_park"
+    /** The save editor's TRAINER > MISSING: what a Pokédex lacks and which other save can send one (save.MissingDex). */
+    const val SAVE_MISSING = "save_missing"
 
     /** SETTINGS > DS LAYOUT: a DS game's two screens on one (companion.DsLayout), its touch screen floating in over the
      * game when wanted; the TOUCH SCREEN hotkey and the HUD's TOUCH button open it by hand. */
@@ -224,7 +228,7 @@ object NewFeatures {
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
         DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP, REPEL_REFILL, SHINY_ALERT, LAST_BALL, BOSS_RETRY, LOW_HP_BEEP, FIELD_POISON, SETTINGS_LOOK,
-        QUICK_TOUCH, APP_FONT,
+        QUICK_TOUCH, APP_FONT, PAL_PARK, SAVE_MISSING,
     )
 
     private const val DAYS = 7

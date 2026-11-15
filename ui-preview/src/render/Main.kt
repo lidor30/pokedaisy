@@ -995,13 +995,16 @@ fun platformLibrary(view: com.pokedaisy.app.LibraryView = com.pokedaisy.app.Libr
 /** The SAVE EDITOR's D-pad starts, as SaveEditorActivity provides them (the `pc-boxes-focus` shot). */
 val pcBoxesStarts = com.pokedaisy.app.companion.ui.FocusStarts()
 
-fun pcBoxes(icons: Boolean = false, ds: Boolean = false): () -> (@Composable () -> Unit) = {
-    val state = if (ds) pcBoxesDsDemo() else pcBoxesDemo()
+fun pcBoxes(
+    icons: Boolean = false, ds: Boolean = false, missing: Boolean = false,
+    setup: com.pokedaisy.app.companion.ui.PcBoxesState.() -> Unit = {},
+): () -> (@Composable () -> Unit) = {
+    val state = (if (ds) pcBoxesDsDemo() else if (missing) missingTargetDemo() else pcBoxesDemo()).apply(setup)
     val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
         androidx.compose.runtime.CompositionLocalProvider(com.pokedaisy.app.companion.ui.LocalFocusStarts provides pcBoxesStarts) {
             com.pokedaisy.app.companion.ui.PcBoxesScreen(
                 state, if (ds) "Pokémon HeartGold" else "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
-                icons = if (icons) demoIcons else null, onTrade = {},
+                icons = if (icons) demoIcons else null, onTrade = {}, onMissing = { state.missing = missingDemo(state) },
             )
         }
     } }
@@ -1011,6 +1014,16 @@ fun pcBoxes(icons: Boolean = false, ds: Boolean = false): () -> (@Composable () 
 /** A PC slot as a trade pick. */
 fun pc(box: Int, slot: Int): com.pokedaisy.app.companion.data.save.MonRef =
     com.pokedaisy.app.companion.data.save.MonRef.Pc(com.pokedaisy.app.companion.data.save.BoxSlot(box, slot))
+
+fun palPark(setup: com.pokedaisy.app.companion.ui.PalParkState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
+    val state = palParkDemo().apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        com.pokedaisy.app.companion.ui.PalParkScreen(
+            state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {}, iconsGba = demoIcons, iconsDs = demoIcons,
+        )
+    } }
+    content
+}
 
 fun trade(setup: com.pokedaisy.app.companion.ui.TradeState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
     val state = tradeDemo().apply(setup)
@@ -2550,6 +2563,19 @@ fun main(args: Array<String>) {
         // From FireRed's party to the end of Emerald's.
         Shot("trade-party", tw, th, td, trade { selA = com.pokedaisy.app.companion.data.save.MonRef.Party(1); selB = com.pokedaisy.app.companion.data.save.MonRef.Party(2) }),
         Shot("trade-phone", 1080, 2400, 2.625f, trade { selA = pc(0, 0); selB = pc(0, 0) }),
+        // PAL PARK: FireRed's PC into HeartGold's, six picked and brought over; the egg refused.
+        Shot("pal-park", tw, th, td, palPark()),
+        Shot("pal-park-picked", tw, th, td, palPark { (0 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        Shot("pal-park-migrated", tw, th, td, palPark { (0 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) }; migrate() }),
+        Shot("pal-park-refused", tw, th, td, palPark { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, 23)) }),
+        Shot("pal-park-phone", 1080, 2400, 2.625f, palPark { (0 until 4).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        // MISSING: what FireRed's Pokédex lacks, and the made-up Emerald save's Pokémon that could fill it.
+        Shot("pc-boxes-missing-button", tw, th, td, pcBoxes(missing = true)) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-missing", tw, th, td, pcBoxes(missing = true)) { onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick() },
+        Shot("pc-boxes-missing-can-come", tw, th, td, pcBoxes(missing = true)) {
+            onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick(); onNodeWithText("IN MY SAVES").performClick()
+        },
+        Shot("pc-boxes-missing-phone", 1080, 2400, 2.625f, pcBoxes(missing = true)) { onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick() },
         Shot("library-expand-intro", tw, th, td, activity(expandIntro = true) { LibraryActivity() }),
         Shot("library-battle-style", tw, th, td, activity(battleStyleIntro = true) { LibraryActivity() }),
         // Picking GEN 5 closes it and saves the choice.
