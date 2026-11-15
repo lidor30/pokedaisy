@@ -31,7 +31,7 @@ object Gen4Trade : TradeRules {
         return if (others == 0) tr("That's {0}'s last Pokémon that isn't an egg: it stays in the party", side.label) else null
     }
 
-    override fun evolution(mon: SaveMon, to: TradeSide): TradeEvolution? {
+    override fun evolution(mon: SaveMon, to: TradeSide, partner: SaveMon?): TradeEvolution? {
         if (mon.isEmpty || mon.isBadEgg || mon.isEgg) return null
         return to.ed4.game.tradeEvolution(mon.species, mon.heldItem)
     }

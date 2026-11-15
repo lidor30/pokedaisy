@@ -116,9 +116,8 @@ object MissingDex {
     /** The ways that bring the missing one itself (not something that evolves into it). */
     private val DIRECT = setOf(Way.TRADE, Way.PAL_PARK, Way.POKE_TRANSFER)
 
-    /** Two saves that trade with each other (Gen 5 saves don't trade here yet). */
-    private fun sameGeneration(a: TradeSide, b: TradeSide) =
-        a.editor !is Gen5SaveEditor && b.editor !is Gen5SaveEditor && (a.editor is Gen4SaveEditor) == (b.editor is Gen4SaveEditor)
+    /** Two saves of one generation: they trade with each other. */
+    private fun sameGeneration(a: TradeSide, b: TradeSide) = a.rules == b.rules
 
     private fun owned(e: MonSaveEditor): List<Triple<MonRef, SaveMon, Int>> {
         val d = e.data
@@ -138,6 +137,8 @@ object MissingDex {
                 (Gen3Trade.blocker(mon, src, to) ?: Gen3Trade.partyBlocker(src, at)) to Way.TRADE
             a is Gen4SaveEditor && b is Gen4SaveEditor ->
                 (Gen4Trade.blocker(mon, src, to) ?: Gen4Trade.partyBlocker(src, at)) to Way.TRADE
+            a is Gen5SaveEditor && b is Gen5SaveEditor ->
+                (Gen5Trade.blocker(mon, src, to) ?: Gen5Trade.partyBlocker(src, at)) to Way.TRADE
             a is Gen4SaveEditor && b is Gen5SaveEditor -> {
                 val why = if (at is MonRef.Party) tr("Poké Transfer takes Pokémon from the PC: put it in a box first")
                     else PokeTransfer.blocker(mon as Gen4BoxMon, a.game) ?: PokeTransfer.linkBlocker(a, src.label, b, to.label)
@@ -148,7 +149,7 @@ object MissingDex {
                     else PalPark.blocker(mon as Gen3BoxMon) ?: PalPark.linkBlocker(a, src.gameCode, src.label, b, to.label)
                 why to Way.PAL_PARK
             }
-            else -> null   // nothing goes back a generation, and Gen 5 saves don't trade here yet
+            else -> null   // nothing goes back a generation
         }
     }
 

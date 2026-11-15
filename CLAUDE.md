@@ -1293,7 +1293,7 @@ never committed), else a drawn stand-in.
 **QUICK MENU** (`companion/ui/QuickMenu.kt`, `QuickAction` / `QuickMenuStyle` in `companion/QuickMenuSettings.kt`; the QUICK MENU hotkey, L3 by
 default - the user's pick, which took L3 from SLOT PREV, migrated only where unchanged; SETTINGS > QUICK MENU on both screens: STYLE and the
 actions, `Prefs.quickMenuActions` stored as the ones switched off so a new action shows by itself, NEW tag): PC / FLY / REPEL / BIKE / ROD /
-WILD / SAVE STATE / LOAD STATE / FF / COMPANION as tiles over the game in the HUD's view (`QuickMenuState`), the HUD and BATTLE BUTTONS faded
+WILD / SAVE STATE / LOAD STATE / FF / TURBO A (`GbaInput.turboLatch`: holding A mashes it till tapped again; NEW tag `QUICK_TURBO`) / COMPANION as tiles over the game in the HUD's view (`QuickMenuState`), the HUD and BATTLE BUTTONS faded
 to 0.25 meanwhile and its open panel closed (`FieldHud(closePanels)`, bumped on open): a press opens it for the D-pad / stick + A (B / the button closes); no hold-and-release (tried, dropped - the user's
 call: a slip on letting go ran actions nobody meant).
 Every tile is the largest one's size (`UniformTiles`, a SubcomposeLayout: measured loose, then all at the max). STYLE RING (default; a tap flips
@@ -2095,7 +2095,9 @@ frame (4-20 ms) is never waited for by the GL thread (`onVsync` returns 0 for `n
 latency - waited for within 60% of a refresh, 45 of 120 were late. (3) FF on the refresh fits its group to the device
 (`FfGroupFit`: a running average of group time; a frame goes only while the smaller group keeps 3/4 of the late one's
 throughput, frames are tried back with a doubling back-off) and SPED-UP divides by the group really run. DS audio is
-resampled by `NDS_FPS` (59.83), not the GBA's. (4) A GBA game whose frames keep missing the wait (3+ late draws in two 120-frame
+resampled by `NDS_FPS` (59.83), not the GBA's. On a screen with several refreshes a frame (120 Hz), a frame drawn a refresh later goes up only on the refresh that starts the
+next frame (`EmulatorEngine.showAtTick` stamped on each published frame, `EmulatorView.readyShowAt`; GitHub #638, 2026-11-16: done within 8 ms it showed for one refresh, slower ones for
+three - DS judder at 1x on a Thor Max, smooth in FF); not yet checked on a device. (4) A GBA game whose frames keep missing the wait (3+ late draws in two 120-frame
 windows: Radical Red, 5-9 ms frames with 12-14 ms ones, GitHub #63) goes the DS way until it closes (`slowFrames`, latched -
 flipping back skips / repeats a frame; the `fps=` line says `paced=1 (slow: not waited for)`).
 **FPS / CPU** (SETTINGS on either screen, SCREEN group, `Prefs.showPerformance`, off): flush in the game screen's
@@ -2287,7 +2289,7 @@ touches (box names, the 24 boxes, bag 0x18400, party, trainer, the money block, 
 saves (`Gen5Layout.editedBlocks`); the cart gives level-up moves, evolutions, PP, item pockets (bits 7-10 of a/0/2/4's u16 at +8: items, medicine,
 TMs, berries, key) and the regional dex (a/0/1/6 member 668 / 709). Gen 5 keeps the nature in its own byte (any nature, any personality); the
 ability is personality bit 16, a hidden one kept; TMs are one each. MISSING on a Gen 5 save looks at the Gen 4 saves through Poké Transfer
-(`Way.POKE_TRANSFER`, a row opens the transfer with it picked); Gen 5 saves don't trade with each other yet (no TRADE). Checked 2026-11-16: an
+(`Way.POKE_TRANSFER`, a row opens the transfer with it picked); Gen 5 saves trade with each other (`Gen5Trade`, 2026-11-16: the cart's trade evolutions, method 7 = traded for that species, so `TradeRules.evolution` takes the swap's partner; an item Black / White lack refused; a real Black -> Black 2 trade booted, saved in game, every CRC checked). Checked 2026-11-16: an
 edited Black save (money, a level, IVs / EVs, a nature, PC -> party, an item given) booted in nds_dump, shown by the game's own party and trainer
 card, saved in game on top and read back (`Gen5SaveTest`, `POKE_TRANSFER_EDIT_OUT`).
 **REWIND** (Settings, `Prefs.rewind`, off by default; REWIND HOLD hotkey, R on a keyboard): `pk_rewind.c` - mGBA's own

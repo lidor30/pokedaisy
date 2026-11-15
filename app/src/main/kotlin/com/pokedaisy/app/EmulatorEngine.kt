@@ -1016,12 +1016,28 @@ class EmulatorEngine(
     private var dsSkipDrawn = true    // this frame's plan: drawn
     private var dsSkipTimed = false   // this frame's core time goes to dsSkip
 
+    /** The GL thread's refreshes so far ([onVsync]). */
+    @Volatile private var vsyncCount = 0L
+    /**
+     * The refresh a frame drawn a refresh later ([nds] / [slowFrames]) may first show on: the one that starts the frame after
+     * it, so on a screen with two refreshes a frame (120 Hz) every frame is up for two. Shown on the first refresh after it
+     * was done, one finished within 8 ms showed for one refresh and a slower one for three (GitHub #638: HeartGold-based
+     * hacks judder at 1x on a Thor Max, smooth in fast-forward). 0 = show it as soon as it's done.
+     */
+    @Volatile private var showAtTick = 0L
+
+    /** Emu thread, as a frame is published: the refresh it may first show on ([showAtTick]); the view keeps it with the frame. */
+    fun frameShowAt(): Long = showAtTick
+    /** GL thread: the refreshes so far, to hold [frameShowAt] against. */
+    fun vsyncNow(): Long = vsyncCount
+
     /** The game screen's fastest display mode (Hz, 0 = unknown), for [VsyncCheck]: asked on the GL thread once a second. */
     @Volatile var displayMaxHz: () -> Float = { 0f }
 
     /** GL thread: the game's screen just refreshed (EmulatorView.onVsync). Returns how long the draw may
      * wait for the frame this refresh starts (~60% of a refresh), or 0 when none is due. */
     fun onVsync(): Long {
+        vsyncCount++
         val now = System.nanoTime()
         val d = now - lastVsyncNanos
         lastVsyncNanos = now
@@ -1399,6 +1415,10 @@ class EmulatorEngine(
                     }
                 }
                 val coreStart = System.nanoTime()
+                // Drawn a refresh later at 1x on a screen with several refreshes a frame: up on the refresh that
+                // starts the next frame, the same time on screen for each ([showAtTick], read as the frame is published).
+                val paced = pacedPerFrame
+                showAtTick = if (vsyncMode && paced >= 2 && (nds || slowFrames) && effectiveSpeed() == 1f) vsyncCount + paced else 0L
                 MgbaCore.pkRunFrame()
                 val coreEnd = System.nanoTime()
                 // Before the frame is shown: the frame a menu transition starts fading on is never seen.

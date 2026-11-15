@@ -365,6 +365,12 @@ class SaveEditorActivity : ComponentActivity() {
         /** Black / White and their sequels too (the editor and COLLECTION; they don't trade here yet). */
         gen5: Boolean = false,
     ): List<Pair<File, String>> {
+        // A Black / White save trades with the others of its generation alone.
+        if (with != null && SaveFileEdits.isGen5(with)) {
+            return RomFolder.libraryRoms(this, prefs)
+                .filter { it.absolutePath != except?.absolutePath && SaveFileEdits.isGen5(it) && SavesLocation.saveFor(this, prefs, it).isFile }
+                .map { it to GameTitles.label(this, prefs, it) }
+        }
         val ds = onlyDs ?: with?.let { SaveFileEdits.isDsEditable(it) }
         return RomFolder.libraryRoms(this, prefs)
             .filter {
@@ -383,9 +389,9 @@ class SaveEditorActivity : ComponentActivity() {
     private fun pickFirst() {
         page = Page.Picking
         Thread {
-            val list = readableGames()
+            val list = readableGames(gen5 = true)
             runOnUiThread {
-                if (list.size < 2) page = Page.Message(tr("TRADE SAVES needs two games with a save it can read, each saved once in the game: FireRed, LeafGreen, Emerald, Ruby and Sapphire trade with each other, HeartGold, SoulSilver and Platinum with each other."))
+                if (list.size < 2) page = Page.Message(tr("TRADE SAVES needs two games with a save it can read, each saved once in the game: FireRed, LeafGreen, Emerald, Ruby and Sapphire trade with each other, HeartGold, SoulSilver and Platinum with each other, Black, White, Black 2 and White 2 with each other."))
                 else firstPick = list
             }
         }.start()
@@ -474,8 +480,9 @@ class SaveEditorActivity : ComponentActivity() {
         val ds = ready.opened.ds != null
         val gen5 = ready.opened.gen5 != null
         Thread {
-            val others = readableGames(except = rom).map { it.first }
-                .filter { if (gen5) SaveFileEdits.isDsEditable(it) else if (ds) true else !SaveFileEdits.isDsEditable(it) }
+            // A Black / White save: the HeartGold / SoulSilver / Platinum saves (Poké Transfer) and the other Gen 5 ones (trades).
+            val others = readableGames(except = rom, gen5 = gen5).map { it.first }
+                .filter { if (gen5) SaveFileEdits.isDsEditable(it) || SaveFileEdits.isGen5(it) else if (ds) true else !SaveFileEdits.isDsEditable(it) }
                 .mapNotNull { f -> (open(f) as? Opened)?.let { f to it } }
             val sides = others.map { (_, o) -> TradeSide(o.name, o.editor(), o.gameCode) }
             val entries = runCatching { com.pokedaisy.app.companion.data.save.MissingDex.find(target, sides) }.getOrElse { emptyList() }
@@ -690,7 +697,7 @@ class SaveEditorActivity : ComponentActivity() {
                 }
                 PcBoxesScreen(
                     s, gameName, m, onBack = { if (!backToCollection()) finish() }, onSave = { save(p) }, saving = saving,
-                    icons = icons[rom.absolutePath], onTrade = if (p.opened.gen5 != null) null else ({ pickPartner() }),
+                    icons = icons[rom.absolutePath], onTrade = { pickPartner() },
                     onMissing = { loadMissing(p) }, onGet = { getMissing(p, it) },
                 )
             }

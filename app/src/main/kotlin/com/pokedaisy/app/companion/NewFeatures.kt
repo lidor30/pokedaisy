@@ -168,8 +168,10 @@ object NewFeatures {
     const val SAVE_COLLECTION = "save_collection"
     /** TOOLS > POKé TRANSFER: six Pokémon from HeartGold / SoulSilver / Platinum into Black / White and their sequels (save.PokeTransfer). */
     const val POKE_TRANSFER = "poke_transfer"
-    /** The SAVE EDITOR on Black / White and their sequels' saves (save.Gen5SaveEditor): every page, MISSING through Poké Transfer. */
+    /** The SAVE EDITOR on Black / White and their sequels' saves (save.Gen5SaveEditor): every page, MISSING through Poké Transfer, and their trades with each other (save.Gen5Trade). */
     const val SAVE_EDITOR_GEN5 = "save_editor_gen5"
+    /** The QUICK MENU's TURBO A tile: holding A mashes it until it's tapped again (GbaInput.turboLatch). */
+    const val QUICK_TURBO = "quick_turbo"
 
     /** SETTINGS > DS LAYOUT: a DS game's two screens on one (companion.DsLayout), its touch screen floating in over the
      * game when wanted; the TOUCH SCREEN hotkey and the HUD's TOUCH button open it by hand. */
@@ -236,7 +238,7 @@ object NewFeatures {
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
         DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP, REPEL_REFILL, SHINY_ALERT, LAST_BALL, BOSS_RETRY, LOW_HP_BEEP, FIELD_POISON, SETTINGS_LOOK,
-        QUICK_TOUCH, APP_FONT, PAL_PARK, SAVE_MISSING, TRADE_BACK, SAVE_COLLECTION, POKE_TRANSFER, SAVE_EDITOR_GEN5,
+        QUICK_TOUCH, APP_FONT, PAL_PARK, SAVE_MISSING, TRADE_BACK, SAVE_COLLECTION, POKE_TRANSFER, SAVE_EDITOR_GEN5, QUICK_TURBO,
     )
 
     private const val DAYS = 7

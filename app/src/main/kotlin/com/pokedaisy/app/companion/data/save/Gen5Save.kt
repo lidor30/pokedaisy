@@ -139,6 +139,8 @@ class Gen5BoxMon private constructor(
     private val ivWord: Long get() = u32(data, b + 0x10)
     override val ivs: IntArray get() = IntArray(6) { ((ivWord shr (it * 5)) and 0x1F).toInt() }
     override val isEgg: Boolean get() = (ivWord shr 30) and 1L == 1L
+    /** It carries a nickname (the IV word's top bit): a trade evolution keeps it, else it takes the new species' name. */
+    val nicknamed: Boolean get() = (ivWord shr 31) and 1L == 1L
     val form: Int get() = (data[b + 0x18].toInt() and 0xFF) shr 3
     override val gender: Gen3Gender get() = when (((data[b + 0x18].toInt() and 0xFF) shr 1) and 3) {
         0 -> Gen3Gender.MALE; 1 -> Gen3Gender.FEMALE; else -> Gen3Gender.GENDERLESS
@@ -166,13 +168,14 @@ class Gen5BoxMon private constructor(
     fun withChanges(
         exp: Long? = null, friendship: Int? = null, ability: Int? = null, evs: IntArray? = null, ivs: IntArray? = null,
         moves: IntArray? = null, pp: IntArray? = null, ppUps: IntArray? = null, gender: Gen3Gender? = null,
-        personality: Long? = null, heldItem: Int? = null, nature: Int? = null,
+        personality: Long? = null, heldItem: Int? = null, nature: Int? = null, species: Int? = null,
         /** 22 bytes: block C's u16[11]. */
         nickname: ByteArray? = null, nicknamed: Boolean? = null,
     ): ByteArray {
         require(checksumOk) { "an unreadable record is never changed" }
         val n = data.copyOf()
         heldItem?.let { putU16(n, a + 2, it) }
+        species?.let { putU16(n, a, it) }
         nickname?.let { require(it.size == 22); it.copyInto(n, c) }
         nicknamed?.let { putU32(n, b + 0x10, (u32(n, b + 0x10) and 0x7FFFFFFFL) or (if (it) 1L shl 31 else 0L)) }
         exp?.let { putU32(n, a + 8, it) }
@@ -274,6 +277,26 @@ class Gen5GameData(
     override val wurmpleLine: IntRange get() = 265..269
     override val shedinja: Int get() = 292
 
+    /** The species' hidden ability (personal +0x1A), or 0. */
+    fun hiddenAbility(species: Int): Int = p(species)?.let { it[0x1A].toInt() and 0xFF } ?: 0
+
+    /** Whether this game has [item] at all (Black / White lack their sequels' newer ones). */
+    fun hasItem(item: Int): Boolean = item == 0 || itemPockets.isEmpty() || pocketOf(item) != null
+
+    /**
+     * The evolution a trade sets off (the cart's evolution table): method 5 (trade), 6 (trade holding its item, used up),
+     * 7 (traded for [partner], Karrablast and Shelmet's way). An Everstone stops any of them.
+     */
+    fun tradeEvolution(species: Int, heldItem: Int, partner: Int? = null): TradeEvolution? {
+        if (heldItem == EVERSTONE) return null
+        for ((method, param, target) in evolutions.getOrNull(species).orEmpty()) {
+            if (method == 5) return TradeEvolution(species, 0, target)
+            if (method == 6 && param == heldItem) return TradeEvolution(species, param, target)
+            if (method == 7 && partner != null && param == partner) return TradeEvolution(species, 0, target)
+        }
+        return null
+    }
+
     /** The bag pocket the game files [item] in (0 items ... 4 key items), or null. */
     fun pocketOf(item: Int): Int? = itemPockets.getOrNull(item)?.takeIf { it in 0..4 && itemName(item) != null }
     val itemCount: Int get() = itemPockets.size
@@ -310,6 +333,7 @@ class Gen5GameData(
     companion object {
         const val LAST_SPECIES = 649
         private const val SMEARGLE = 235
+        private const val EVERSTONE = 229
         private const val STRUGGLE = 165
         /** Gen 5's mail items. */
         val MAIL = 137..148
@@ -759,6 +783,37 @@ class Gen5SaveEditor(val file: Gen5SaveFile, val game: Gen5GameData) : MonSaveEd
         writeSlots(p, s)
         return true
     }
+
+    // ---- What a trade puts in or takes out ----
+
+    /** Party Pokémon [index]'s 220 bytes (a trade from the party keeps its HP, status and letter), or null. */
+    fun partyRecord(index: Int): ByteArray? = if (index < partyCount) partyBytes(index) else null
+
+    /** Puts a traded-in [record] at [at] (a party slot past the last = the end of the party); [partyMon] = its party bytes. */
+    fun putIncoming(at: MonRef, record: ByteArray, partyMon: ByteArray? = null) {
+        when (at) {
+            is MonRef.Pc -> putRecord(at.at, record)
+            is MonRef.Party -> {
+                val count = partyCount
+                if (at.index >= count) {
+                    refuseIf(count >= 6) { tr("Your party is full") }
+                    writePartyMon(count, record, partyMon)
+                    putU32(work, Gen5Layout.PARTY + 4, (count + 1).toLong())
+                } else writePartyMon(at.index, record, partyMon)
+            }
+        }
+    }
+
+    /** Takes the Pokémon at [at] out (a trade sent it away). */
+    fun takeOut(at: MonRef) {
+        when (at) {
+            is MonRef.Pc -> putRecord(at.at, Gen4BoxMon.emptyRecord())
+            is MonRef.Party -> removePartyMon(at.index)
+        }
+    }
+
+    /** [name] as a nickname's 22 bytes (a trade evolution's new name), or null when it can't be written. */
+    fun nameCodesFor(name: String): ByteArray? = name.takeIf { it.length < 11 }?.let { Gen5BoxMon.gen5Codes(it, 11) }
 
     /** An item a Pokémon held, back into the bag (Poké Transfer's way); false when the bag has no room. */
     internal fun returnToBag(item: Int): Boolean = addOne(item)

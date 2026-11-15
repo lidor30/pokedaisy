@@ -143,8 +143,9 @@ class TradeState(a: TradeSide, b: TradeSide) {
         val ma = monA
         val mb = monB
         return buildList {
-            if (k != Kind.SEND_TO_A) ma?.let { m -> a.rules.evolution(m, b)?.let { add(m to it) } }
-            if (k != Kind.SEND_TO_B) mb?.let { m -> a.rules.evolution(m, a)?.let { add(m to it) } }
+            // A swap's evolutions can hang on what it's traded for (Gen 5's Karrablast and Shelmet).
+            if (k != Kind.SEND_TO_A) ma?.let { m -> a.rules.evolution(m, b, mb.takeIf { k == Kind.SWAP })?.let { add(m to it) } }
+            if (k != Kind.SEND_TO_B) mb?.let { m -> a.rules.evolution(m, a, ma.takeIf { k == Kind.SWAP })?.let { add(m to it) } }
         }
     }
 
