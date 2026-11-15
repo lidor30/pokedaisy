@@ -388,5 +388,7 @@
   "PortMaster handhelds (ROCKNIX, Knulli, muOS)": "PortMaster 휴대용 기기 (ROCKNIX, Knulli, muOS)",
   "TrimUI Brick on NXRedux": "NXRedux의 TrimUI Brick",
   "Cores for RetroArch, on a PC": "RetroArch용 코어 (PC)",
-  "Cores for RetroArch, on an ARM handheld": "RetroArch용 코어 (ARM 휴대용 기기)"
+  "Cores for RetroArch, on an ARM handheld": "RetroArch용 코어 (ARM 휴대용 기기)",
+  "AREA MAP": "구역 지도",
+  "A cave or building's map, with its floors.": "동굴이나 건물의 지도를 층별로 표시합니다."
 }
