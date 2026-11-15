@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import com.pokedaisy.app.companion.data.BoxSortResult
 import com.pokedaisy.app.companion.data.BoxView
 import com.pokedaisy.app.companion.data.BoxesView
 import com.pokedaisy.app.companion.data.MonView
@@ -88,6 +89,9 @@ class BoxesUiState {
     /** A PC move that went through, playing its animation and then its message ([BoxSwapAnimation]); null = none.
      * PARTY and BOXES both draw it, so it plays over whichever the move was made from. */
     var swapAnim by mutableStateOf<BoxSwapAnim?>(null)
+    /** SORT's confirmation is up; [sorting] while the game rewrites the boxes. */
+    var confirmSort by mutableStateOf(false)
+    var sorting by mutableStateOf(false)
 
     /** A PC move's [result] ([title]: SWAP / DEPOSIT / WITHDRAW): [anim] when it went through, else [message] in a window. */
     fun moved(result: com.pokedaisy.app.companion.data.BoxSwapResult, title: String, message: String, anim: () -> BoxSwapAnim) {
@@ -108,7 +112,12 @@ class BoxesUiState {
  * D-pad, the focused Pokémon shows in the panel.
  */
 @Composable
-fun BoxesScreen(boxes: BoxesView, ui: BoxesUiState, dex: PokedexTables?, modifier: Modifier = Modifier) {
+fun BoxesScreen(
+    boxes: BoxesView, ui: BoxesUiState, dex: PokedexTables?, modifier: Modifier = Modifier,
+    /** SORT is offered (the game supports it); the button opens its confirmation. */
+    onSort: (() -> Unit)? = null,
+    sorting: Boolean = false,
+) {
     val boxIndex = ui.boxOf(boxes)
     val box = boxes.boxes[boxIndex]
     // The box on show read at the tap, not captured: a `::step` of a local fun equals the last one whatever it captured,
@@ -135,13 +144,13 @@ fun BoxesScreen(boxes: BoxesView, ui: BoxesUiState, dex: PokedexTables?, modifie
             // The window about as wide as the tab's height allows a tall picture in, never most of the tab.
             val panelW = minOf(maxWidth * 0.36f, maxHeight * 0.5f)
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                MonPanel(looked, dex, m, Modifier.width(panelW).fillMaxHeight(), wide = false)
+                MonPanel(looked, dex, m, Modifier.width(panelW).fillMaxHeight(), wide = false, onSort = onSort, sorting = sorting)
                 content(Modifier.weight(1f).fillMaxHeight())
             }
         } else {
             val panelH = minOf(maxHeight * 0.3f, maxWidth * 0.45f)
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap)) {
-                MonPanel(looked, dex, m, Modifier.fillMaxWidth().height(panelH), wide = true)
+                MonPanel(looked, dex, m, Modifier.fillMaxWidth().height(panelH), wide = true, onSort = onSort, sorting = sorting)
                 content(Modifier.weight(1f).fillMaxWidth())
             }
         }
@@ -211,6 +220,29 @@ internal fun BoxSwapNotice(ui: BoxesUiState) {
     val text = ui.swapMessage ?: return
     OptionConfirm(tk(ui.swapTitle), text, tk("OK"), rememberGbaTextMetrics(), onConfirm = { ui.swapMessage = null },
         onDismiss = { ui.swapMessage = null }, cancelLabel = null)
+}
+
+/** What SORT did, in the companion's words (shown in the same window as a PC move's notice). */
+internal fun boxSortMessage(r: BoxSortResult): String = when (r) {
+    BoxSortResult.SORTED -> tr("Boxes sorted by Pokédex number. Save in the game to keep it.")
+    BoxSortResult.EMPTY -> tr("There are no Pokémon in the boxes.")
+    BoxSortResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
+    BoxSortResult.IN_BATTLE -> tr("You can't do that during a battle.")
+    BoxSortResult.FAILED -> tr("The sort didn't work. Nothing was changed.")
+}
+
+/** SORT's warning before it rewrites the boxes; the button that opened it sits in the PKMN DATA panel. */
+@Composable
+internal fun BoxSortConfirm(ui: BoxesUiState, onConfirm: () -> Unit) {
+    if (!ui.confirmSort) return
+    OptionConfirm(
+        title = tk("SORT"),
+        message = tr("Sort every box by Pokédex number? Pokémon of the same species go lowest level first. Save in the game afterwards to keep it."),
+        confirmLabel = tk("SORT"),
+        m = rememberGbaTextMetrics(),
+        onDismiss = { ui.confirmSort = false },
+        onConfirm = onConfirm,
+    )
 }
 
 /** What a DEPOSIT of [mon] into box [boxName] did, in the companion's words. */
@@ -482,7 +514,10 @@ private const val SWAP_BURST_ARM = 0xFF4A83B4
  * lines (a short panel over the box).
  */
 @Composable
-private fun MonPanel(mon: MonView?, dex: PokedexTables?, m: GbaTextMetrics, modifier: Modifier, wide: Boolean) {
+private fun MonPanel(
+    mon: MonView?, dex: PokedexTables?, m: GbaTextMetrics, modifier: Modifier, wide: Boolean,
+    onSort: (() -> Unit)? = null, sorting: Boolean = false,
+) {
     val u = m.u
     val small = rememberGbaTextMetrics(1f)
     val night = OptionColors.dark
@@ -538,7 +573,12 @@ private fun MonPanel(mon: MonView?, dex: PokedexTables?, m: GbaTextMetrics, modi
                 title()
                 well(Modifier.fillMaxWidth().weight(1f))
             }
-            Column(Modifier.weight(1f).fillMaxHeight().padding(u * 8), verticalArrangement = Arrangement.spacedBy(u * 2, Alignment.CenterVertically)) { lines() }
+            Column(Modifier.weight(1f).fillMaxHeight().padding(u * 8), verticalArrangement = Arrangement.spacedBy(u * 2)) {
+                Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(u * 2, Alignment.CenterVertically)) { lines() }
+                if (onSort != null) {
+                    OptionButton(tk("SORT"), m, onClick = onSort, enabled = !sorting, emphasis = true, modifier = Modifier.fillMaxWidth())
+                }
+            }
         }
     } else {
         Column(modifier.drawBehind { drawRect(frame); drawRect(body, Offset(2 * u.toPx(), 2 * u.toPx()), Size(size.width - 4 * u.toPx(), size.height - 4 * u.toPx())) }) {
@@ -557,6 +597,12 @@ private fun MonPanel(mon: MonView?, dex: PokedexTables?, m: GbaTextMetrics, modi
                 well(Modifier.fillMaxWidth().weight(1f))
             }
             Column(Modifier.fillMaxWidth().padding(horizontal = u * 8, vertical = u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) { lines() }
+            if (onSort != null) {
+                // The well above gives up the button's room; the button sits at the panel's bottom.
+                Box(Modifier.fillMaxWidth().padding(horizontal = u * 8, vertical = u * 6)) {
+                    OptionButton(tk("SORT"), m, onClick = onSort, enabled = !sorting, emphasis = true, modifier = Modifier.fillMaxWidth())
+                }
+            }
         }
     }
 }
