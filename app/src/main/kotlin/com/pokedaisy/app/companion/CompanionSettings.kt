@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion
 
+import com.pokedaisy.app.companion.data.fixed
 import com.pokedaisy.app.GbaControls
 import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.companion.i18n.tk
@@ -723,4 +724,4 @@ enum class BattleStyle(val id: Int, val label: String) {
 }
 
 /** An EXPAND zoom step as the HUD and SETTINGS > ZOOM show it: how much more of the map it shows ("1x", "1.4x"). */
-fun zoomLabel(factor: Float): String = "%.1fx".format(java.util.Locale.ROOT, factor).replace(".0x", "x")
+fun zoomLabel(factor: Float): String = "${factor.toDouble().fixed(1)}x".replace(".0x", "x")

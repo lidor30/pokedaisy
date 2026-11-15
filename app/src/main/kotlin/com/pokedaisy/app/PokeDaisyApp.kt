@@ -23,8 +23,9 @@ class PokeDaisyApp : Application() {
             override var appFont by themePrefs::appFont
             override var darkMode by themePrefs::darkMode
         }
+        com.pokedaisy.app.companion.ui.DocsSources.current = StoreDocsSource(this)
         // The NEW tags' week starts with the first launch of a build that has the feature.
-        com.pokedaisy.app.companion.NewFeatures.init(Prefs(this))
+        Prefs(this).let { p -> com.pokedaisy.app.companion.NewFeatures.init(p.newFeatureSince, { p.newFeatureSince = it }) }
         val prefs = Prefs(this)
         prefs.appOpenCount = (prefs.appOpenCount + 1).coerceAtMost(1000)
         CrashReports.apply(prefs.crashReportsEnabled)

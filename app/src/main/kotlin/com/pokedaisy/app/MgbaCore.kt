@@ -15,23 +15,6 @@ object MgbaCore {
         System.loadLibrary("pokedaisy")
     }
 
-    /** GBA key bit positions, matching the native bridge. */
-    object Key {
-        const val A = 1 shl 0
-        const val B = 1 shl 1
-        const val SELECT = 1 shl 2
-        const val START = 1 shl 3
-        const val RIGHT = 1 shl 4
-        const val LEFT = 1 shl 5
-        const val UP = 1 shl 6
-        const val DOWN = 1 shl 7
-        const val R = 1 shl 8
-        const val L = 1 shl 9
-        /** The DS's X / Y (melonDS's key mask bits 10 and 11); a GBA core ignores them. */
-        const val X = 1 shl 10
-        const val Y = 1 shl 11
-    }
-
     /** Loads [romPath], attaches [savePath] as persistent SRAM, resets. */
     external fun pkInit(romPath: String, savePath: String?): Boolean
     external fun pkDeinit()
@@ -275,14 +258,10 @@ object MgbaCore {
     /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock - a game's own slow frames (HeartGold walking) go. Emu thread. */
     external fun pkNdsCpuBoost(on: Boolean)
 
-    /** DS CORE (companion.DsCore): the DS core the next [pkInit] of a DS cart starts, NDS_CORE_*. Emu thread. */
+    /** DS CORE (companion.DsCore): the DS core the next [pkInit] of a DS cart starts, companion.DsCore.CORE_*. Emu thread. */
     external fun pkNdsSetCore(core: Int)
-    /** The DS core that's up (NDS_CORE_*), -1 with no DS game. */
+    /** The DS core that's up (companion.DsCore.CORE_*), -1 with no DS game. */
     external fun pkNdsCore(): Int
-    /** melonDS (nds/pk_nds.cpp): every DS feature. */
-    const val NDS_CORE_MELONDS = 0
-    /** DSperate (nds/pk_nds_dsp.cpp): for weak devices; no EXPAND, DS RESOLUTION, PC / FLY calls, STEADY or DS CPU BOOST. */
-    const val NDS_CORE_DSPERATE = 1
     /** [pkStateMatchesSave]'s answer for a DS state the other core made: it won't load. */
     const val STATE_OTHER_CORE = 2
     /** A DS game's Action Replay codes ([words], [lengths] words per cheat: cheats.DsCheats) into melonDS's AREngine,

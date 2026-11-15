@@ -367,5 +367,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
     // The local date and time in the data code shared with the iPad app (Kotlin Multiplatform).
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+    // JSON in the code shared with the iPad app (the manual's API; Kotlin Multiplatform, no compiler plugin: the element API).
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
 }
 

@@ -7,6 +7,7 @@ import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_TARGET_SELECT
+import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.data.GbPartySwitch
 import com.pokedaisy.app.companion.data.Gfx
 import com.pokedaisy.app.companion.data.InProcessReader
@@ -147,7 +148,7 @@ class BattleInputController(
         get() = gameState == BATTLE_INPUT_ACTION_SELECT && writer != null && cursorAddrs?.menus == MenuCells.GEN3 &&
             menuCursor in 0..3 && pickCell < 0
 
-    /** A D-pad press ([MgbaCore.Key] bits) for the action menu's cursor, applied on the next frame ([tick]). */
+    /** A D-pad press ([CoreKey] bits) for the action menu's cursor, applied on the next frame ([tick]). */
     fun steerAction(key: Int) {
         steerKey = key
     }
@@ -420,7 +421,7 @@ class BattleInputController(
                     switchLastSlot = slot
                 }
                 if (slot == want) {
-                    pressLocked(MgbaCore.Key.A)      // the mon -> its SHIFT / SUMMARY / CANCEL menu
+                    pressLocked(CoreKey.A)      // the mon -> its SHIFT / SUMMARY / CANCEL menu
                     waitFramesLocked(SUBMENU_FRAMES)
                     switchPhase = SwitchPhase.CONFIRM
                 } else if (switchPresses > MAX_CURSOR_PRESSES || switchFrames > MENU_TIMEOUT_FRAMES) {
@@ -431,7 +432,7 @@ class BattleInputController(
                 }
             }
             SwitchPhase.CONFIRM -> {
-                pressLocked(MgbaCore.Key.A)          // SHIFT, the menu's first entry
+                pressLocked(CoreKey.A)          // SHIFT, the menu's first entry
                 switchPhase = SwitchPhase.WAIT_CLOSE
                 switchFrames = 0
             }
@@ -455,9 +456,9 @@ class BattleInputController(
      * column, then along it - or along it first when there's no Pokémon beside [slot] (an odd party's last row). */
     private fun cursorKey(grid: Boolean, slot: Int, want: Int, count: Int): Int = when {
         !grid -> listKey(slot, want, count, cancel = true)
-        slot !in 0 until 6 -> MgbaCore.Key.UP     // CANCEL: back into the grid
-        slot % 2 != want % 2 && (slot xor 1) < count -> if (want % 2 == 1) MgbaCore.Key.RIGHT else MgbaCore.Key.LEFT
-        else -> if (want / 2 > slot / 2) MgbaCore.Key.DOWN else MgbaCore.Key.UP
+        slot !in 0 until 6 -> CoreKey.UP     // CANCEL: back into the grid
+        slot % 2 != want % 2 && (slot xor 1) < count -> if (want % 2 == 1) CoreKey.RIGHT else CoreKey.LEFT
+        else -> if (want / 2 > slot / 2) CoreKey.DOWN else CoreKey.UP
     }
 
     /** DOWN or UP, the shorter way from [slot] to [want] round a wrapping list of [count] mons (then CANCEL, with [cancel]). */
@@ -466,7 +467,7 @@ class BattleInputController(
         val i = ring.indexOf(slot)
         val j = ring.indexOf(want)
         val down = (j - i + ring.size) % ring.size
-        return if (i < 0 || j < 0 || down <= ring.size - down) MgbaCore.Key.DOWN else MgbaCore.Key.UP
+        return if (i < 0 || j < 0 || down <= ring.size - down) CoreKey.DOWN else CoreKey.UP
     }
 
     /**
@@ -492,7 +493,7 @@ class BattleInputController(
                 if (switchFrames > MENU_TIMEOUT_FRAMES) return endSwitchLocked("cursor didn't reach the mon")
                 if (menu == null) return                                   // being drawn
                 if (menu.submenu) {                                        // a SWITCH menu we didn't open: back to the list
-                    pressGbLocked(MgbaCore.Key.B)
+                    pressGbLocked(CoreKey.B)
                     waitFramesLocked(GB_REPRESS_FRAMES)
                     return
                 }
@@ -506,7 +507,7 @@ class BattleInputController(
                     switchLastSlot = slot
                 }
                 if (slot == want) {
-                    pressGbLocked(MgbaCore.Key.A)                            // the mon -> SWITCH / STATS / CANCEL, or out after a faint
+                    pressGbLocked(CoreKey.A)                            // the mon -> SWITCH / STATS / CANCEL, or out after a faint
                     waitFramesLocked(GB_SETTLE_FRAMES)
                     gbForced = menu.forced
                     gbLastA = 0
@@ -531,11 +532,11 @@ class BattleInputController(
                     }
                 menu.submenu ->
                     if (menu.cursor != 0) {
-                        pressGbLocked(MgbaCore.Key.UP)                       // SWITCH is the first item
+                        pressGbLocked(CoreKey.UP)                       // SWITCH is the first item
                         waitFramesLocked(CURSOR_FRAMES)
                     } else if (!gbSwitchPressed || switchFrames - gbLastA >= GB_REPRESS_FRAMES) {
                         if (++gbAPresses > MAX_GB_A_PRESSES) return endSwitchLocked("SWITCH never took A")
-                        pressGbLocked(MgbaCore.Key.A)
+                        pressGbLocked(CoreKey.A)
                         waitFramesLocked(GB_SETTLE_FRAMES)
                         gbSwitchPressed = true
                         gbLastA = switchFrames
@@ -599,7 +600,7 @@ class BattleInputController(
                 if (--runGap > 0) return
                 runGap = RUN_PRESS_GAP
                 val read = stateNow ?: run {
-                    pressLocked(MgbaCore.Key.B)
+                    pressLocked(CoreKey.B)
                     runPresses--
                     return
                 }
@@ -607,7 +608,7 @@ class BattleInputController(
                     // A message or a YES / NO: A closes the one and says YES to the other.
                     BATTLE_INPUT_BUSY -> {
                         runLeftMenu = true
-                        pressLocked(MgbaCore.Key.A)
+                        pressLocked(CoreKey.A)
                         runPresses--
                     }
                     // Still leaving the menu, or back on it: nothing to press this time.
@@ -640,7 +641,7 @@ class BattleInputController(
                     BATTLE_INPUT_TARGET_SELECT -> {
                         log("target-select seen, sending confirm A")
                         awaitingTargetConfirm = false
-                        pressLocked(MgbaCore.Key.A) // accept the game's own default target
+                        pressLocked(CoreKey.A) // accept the game's own default target
                     }
                     // Anything else here means the move submitted directly
                     // (no target-select needed) or something unrelated
@@ -739,7 +740,7 @@ class BattleInputController(
             log("back()")
             pendingMoveIndex = null
             // A Game Boy party menu (the POKéMON pane's CANCEL) takes it held: Prism's party menu reads keys every other frame.
-            if (gen1) pressGbLocked(MgbaCore.Key.B) else pressLocked(MgbaCore.Key.B)
+            if (gen1) pressGbLocked(CoreKey.B) else pressLocked(CoreKey.B)
         }
     }
 
@@ -771,11 +772,11 @@ class BattleInputController(
      * the extra gap after it is just unused wait time, not a correctness
      * risk. */
     private fun queueCellLocked(col: Int, row: Int) {
-        pressAndSettleLocked(MgbaCore.Key.LEFT)
-        pressAndSettleLocked(MgbaCore.Key.UP)
-        if (col == 1) pressAndSettleLocked(MgbaCore.Key.RIGHT)
-        if (row == 1) pressAndSettleLocked(MgbaCore.Key.DOWN)
-        pressLocked(MgbaCore.Key.A)
+        pressAndSettleLocked(CoreKey.LEFT)
+        pressAndSettleLocked(CoreKey.UP)
+        if (col == 1) pressAndSettleLocked(CoreKey.RIGHT)
+        if (row == 1) pressAndSettleLocked(CoreKey.DOWN)
+        pressLocked(CoreKey.A)
     }
 
     private fun pressAndSettleLocked(bit: Int) {
@@ -796,8 +797,8 @@ class BattleInputController(
             // One list (items 1-4): UP / DOWN from the read cursor, then A. No target screen.
             if (gbPickLocked(BATTLE_INPUT_MOVE_SELECT, moveIndex)) return
             val from = gen1Cursor.takeIf { it in 0..3 } ?: 0
-            repeat(kotlin.math.abs(moveIndex - from)) { pressAndSettleLocked(if (moveIndex > from) MgbaCore.Key.DOWN else MgbaCore.Key.UP) }
-            pressLocked(MgbaCore.Key.A)
+            repeat(kotlin.math.abs(moveIndex - from)) { pressAndSettleLocked(if (moveIndex > from) CoreKey.DOWN else CoreKey.UP) }
+            pressLocked(CoreKey.A)
             return
         }
         pickCellLocked(moveIndex, move = true)
@@ -833,21 +834,21 @@ class BattleInputController(
                 .getOrDefault(false)
             if (set) {
                 pickCell = -1
-                pressLocked(MgbaCore.Key.A)
+                pressLocked(CoreKey.A)
                 return
             }
         }
         if (cur == pickCell) {
             pickCell = -1
-            pressLocked(MgbaCore.Key.A)
+            pressLocked(CoreKey.A)
             return
         }
         if (++pickPresses > MAX_PICK_PRESSES) return pickFallbackLocked("cursor stayed on $cur")
         val m = addrs.menus
         pressLocked(
             when {
-                m.col(cur, pickMove) != m.col(pickCell, pickMove) -> if (m.col(pickCell, pickMove) == 1) MgbaCore.Key.RIGHT else MgbaCore.Key.LEFT
-                else -> if (m.row(pickCell, pickMove) > m.row(cur, pickMove)) MgbaCore.Key.DOWN else MgbaCore.Key.UP
+                m.col(cur, pickMove) != m.col(pickCell, pickMove) -> if (m.col(pickCell, pickMove) == 1) CoreKey.RIGHT else CoreKey.LEFT
+                else -> if (m.row(pickCell, pickMove) > m.row(cur, pickMove)) CoreKey.DOWN else CoreKey.UP
             },
         )
     }
@@ -861,9 +862,9 @@ class BattleInputController(
         if (m == MenuCells.GEN3) return queueCellLocked(col(cell), row(cell))
         // A column of moves: to the top (UP wraps nowhere past it), then DOWN to the row.
         if (pickMove) {
-            repeat(NUM_MOVE_ROWS) { pressAndSettleLocked(MgbaCore.Key.UP) }
-            repeat(m.row(cell, true)) { pressAndSettleLocked(MgbaCore.Key.DOWN) }
-            pressLocked(MgbaCore.Key.A)
+            repeat(NUM_MOVE_ROWS) { pressAndSettleLocked(CoreKey.UP) }
+            repeat(m.row(cell, true)) { pressAndSettleLocked(CoreKey.DOWN) }
+            pressLocked(CoreKey.A)
         } else queueCellLocked(m.col(cell, false), m.row(cell, false))
     }
 
@@ -876,9 +877,9 @@ class BattleInputController(
         val target = when (actionIndex) { 0 -> 0; 1 -> 2; 2 -> 1; else -> 3 }
         if (gbPickLocked(BATTLE_INPUT_ACTION_SELECT, target)) return
         val from = gen1Cursor.takeIf { it in 0..3 } ?: 0
-        if ((from and 1) != (target and 1)) pressAndSettleLocked(if (target and 1 == 1) MgbaCore.Key.RIGHT else MgbaCore.Key.LEFT)
-        if ((from shr 1) != (target shr 1)) pressAndSettleLocked(if (target shr 1 == 1) MgbaCore.Key.DOWN else MgbaCore.Key.UP)
-        pressLocked(MgbaCore.Key.A)
+        if ((from and 1) != (target and 1)) pressAndSettleLocked(if (target and 1 == 1) CoreKey.RIGHT else CoreKey.LEFT)
+        if ((from shr 1) != (target shr 1)) pressAndSettleLocked(if (target shr 1 == 1) CoreKey.DOWN else CoreKey.UP)
+        pressLocked(CoreKey.A)
     }
 
     /**
@@ -913,7 +914,7 @@ class BattleInputController(
             if (!waiting || cur != gbPickCell) return endGbPickLocked(null)    // taken: the game moved on
             if (gbPickFrames - gbPickA < GB_REPRESS_FRAMES) return
             if (++gbPickPresses > MAX_GB_PICK_PRESSES) return endGbPickLocked("A never took")
-            pressLocked(MgbaCore.Key.A)
+            pressLocked(CoreKey.A)
             gbPickA = gbPickFrames
             return
         }
@@ -922,16 +923,16 @@ class BattleInputController(
             return
         }
         if (cur == gbPickCell) {
-            pressLocked(MgbaCore.Key.A)
+            pressLocked(CoreKey.A)
             gbPickA = gbPickFrames
             return
         }
         if (++gbPickPresses > MAX_GB_PICK_PRESSES) return endGbPickLocked("cursor stayed on $cur")
         pressLocked(
             when {
-                gbPickMenu == BATTLE_INPUT_MOVE_SELECT -> if (gbPickCell > cur) MgbaCore.Key.DOWN else MgbaCore.Key.UP
-                (cur and 1) != (gbPickCell and 1) -> if (gbPickCell and 1 == 1) MgbaCore.Key.RIGHT else MgbaCore.Key.LEFT
-                else -> if (gbPickCell shr 1 == 1) MgbaCore.Key.DOWN else MgbaCore.Key.UP
+                gbPickMenu == BATTLE_INPUT_MOVE_SELECT -> if (gbPickCell > cur) CoreKey.DOWN else CoreKey.UP
+                (cur and 1) != (gbPickCell and 1) -> if (gbPickCell and 1 == 1) CoreKey.RIGHT else CoreKey.LEFT
+                else -> if (gbPickCell shr 1 == 1) CoreKey.DOWN else CoreKey.UP
             },
         )
         waitFramesLocked(GB_PICK_SETTLE_FRAMES)
@@ -988,12 +989,12 @@ class BattleInputController(
     }
 
     private fun keyName(bit: Int) = when (bit) {
-        MgbaCore.Key.A -> "A"
-        MgbaCore.Key.B -> "B"
-        MgbaCore.Key.LEFT -> "LEFT"
-        MgbaCore.Key.RIGHT -> "RIGHT"
-        MgbaCore.Key.UP -> "UP"
-        MgbaCore.Key.DOWN -> "DOWN"
+        CoreKey.A -> "A"
+        CoreKey.B -> "B"
+        CoreKey.LEFT -> "LEFT"
+        CoreKey.RIGHT -> "RIGHT"
+        CoreKey.UP -> "UP"
+        CoreKey.DOWN -> "DOWN"
         else -> "?$bit"
     }
 }
@@ -1005,10 +1006,10 @@ class BattleInputController(
  */
 object HiddenMenuSteer {
     fun next(cell: Int, key: Int): Int = when {
-        key and MgbaCore.Key.UP != 0 -> 0
-        key and MgbaCore.Key.DOWN != 0 -> if (cell == 0) 3 else cell
-        key and MgbaCore.Key.LEFT != 0 -> when (cell) { 0, 3 -> 1; 2 -> 3; else -> cell }
-        key and MgbaCore.Key.RIGHT != 0 -> when (cell) { 0, 3 -> 2; 1 -> 3; else -> cell }
+        key and CoreKey.UP != 0 -> 0
+        key and CoreKey.DOWN != 0 -> if (cell == 0) 3 else cell
+        key and CoreKey.LEFT != 0 -> when (cell) { 0, 3 -> 1; 2 -> 3; else -> cell }
+        key and CoreKey.RIGHT != 0 -> when (cell) { 0, 3 -> 2; 1 -> 3; else -> cell }
         else -> cell
     }
 }

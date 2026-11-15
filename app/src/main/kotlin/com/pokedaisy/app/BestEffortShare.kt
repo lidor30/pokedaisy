@@ -10,7 +10,7 @@ import java.net.URL
 /**
  * SHARE on the BEST EFFORT notice (only when the player says yes): one record per match into the
  * `bestEffortReports` collection of PokéDaisy's Firebase project, through Firestore's public REST API
- * - no Firebase SDK, no account, no API key, no device or install id. The record is [fields], nothing
+ * - no Firebase SDK, no account, no API key, no device or install id. The record is [BestEffortReport.shareFields], nothing
  * else: what the ROM is (its SHA-1, size, header code and revision) and what it matched as, so the
  * next release can support it outright. `website/firestore.rules` accepts exactly these fields and
  * lets nobody read them back. A record that can't go out now (offline) waits in [queueFile] and is
@@ -21,18 +21,7 @@ object BestEffortShare {
     private const val COLLECTION = "bestEffortReports"
     private const val ENDPOINT = "https://firestore.googleapis.com/v1/projects/$PROJECT/databases/(default)/documents/$COLLECTION"
 
-    /** Exactly what [share] sends, as the consent window lists it: (label, value). */
-    fun fields(r: BestEffortReport, appVersion: String = BuildConfig.VERSION_NAME): List<Pair<String, String>> = listOf(
-        "ROM SHA-1" to r.sha1,
-        "ROM SIZE" to "${r.size} B",
-        "GAME CODE" to "${r.gameCode} (rev ${r.revision})",
-        "READ AS" to r.matchedAs,
-        "MATCH" to if (r.full) "FULL" else "PARTIAL",
-        "PARTS OFF" to r.off.joinToString(", ") { it.name }.ifEmpty { "-" },
-        "APP VERSION" to appVersion,
-    )
-
-    /** The Firestore document [fields] become. Every value is checked first (hex, digits, A-Z ids), so nothing else fits in. */
+    /** The Firestore document [BestEffortReport.shareFields] become. Every value is checked first (hex, digits, A-Z ids), so nothing else fits in. */
     internal fun body(r: BestEffortReport, appVersion: String): String? {
         if (!r.sha1.matches(Regex("[0-9a-f]{40}")) || !r.gameCode.matches(Regex("[A-Z0-9]{4}")) ||
             !r.matchedAs.matches(Regex("[A-Z0-9_]{1,40}")) || !appVersion.matches(Regex("[0-9A-Za-z.\\-]{1,20}")) ||

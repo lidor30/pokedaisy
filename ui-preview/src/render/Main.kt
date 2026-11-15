@@ -930,7 +930,7 @@ fun favoriteLibrary() {
  * [favoriteLibrary] with a game on every console (Yellow, Crystal, a Crystal hack, Platinum), so every quick
  * view has a pill, and a play history (Emerald last, then Crystal, Unbound, Yellow) for RECENT; [view] open.
  */
-fun platformLibrary(view: com.pokedaisy.app.LibraryView = com.pokedaisy.app.LibraryView.ALL) {
+fun platformLibrary(view: com.pokedaisy.app.companion.data.LibraryView = com.pokedaisy.app.companion.data.LibraryView.ALL) {
     favoriteLibrary()
     val ctx = android.content.Context()
     val prefs = Prefs(ctx)
@@ -1015,6 +1015,7 @@ fun installPreviewHosts() {
         override var themeBeforeSeasonal by prefs::themeBeforeSeasonal
         override var darkMode by prefs::darkMode
     }
+    com.pokedaisy.app.companion.ui.DocsSources.current = com.pokedaisy.app.StoreDocsSource(context)
 }
 
 /** Saves and puts on [t]; for a limited-time one the theme clock moves into its window (so it isn't put away). */
@@ -1104,7 +1105,7 @@ fun activity(expandIntro: Boolean = false, start: Boolean = false, battleStyleIn
     prefs.coopRelayOnly = false; prefs.coopRelayUrl = null
     prefs.touchControlsStyle = com.pokedaisy.app.companion.TouchControlsStyle()
     prefs.portraitCompanionUnderGame = false
-    prefs.libraryView = com.pokedaisy.app.LibraryView.ALL.id
+    prefs.libraryView = com.pokedaisy.app.companion.data.LibraryView.ALL.id
     prefs.lastRomPath = File(roms, names[0]).absolutePath
     names.take(3).reversed().forEach { prefs.pushRecentRom(File(roms, it).absolutePath) }
     make().also { a ->
@@ -2263,13 +2264,13 @@ fun main(args: Array<String>) {
         Shot("library-views-grid", tw, th, td, activity { platformLibrary(); LibraryActivity() }) {
             onNodeWithContentDescription("Toggle view").performClick()
         },
-        Shot("library-views-favorites", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.FAVORITES); LibraryActivity() }),
-        Shot("library-views-recent", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.RECENT); LibraryActivity() }),
-        Shot("library-views-gb", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GB); LibraryActivity() }),
-        Shot("library-views-gbc", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBC); LibraryActivity() }),
-        Shot("library-views-gba", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBA); LibraryActivity() }),
-        Shot("library-views-ds", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.DS); LibraryActivity() }),
-        Shot("library-views-hacks", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.HACKS); LibraryActivity() }),
+        Shot("library-views-favorites", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.FAVORITES); LibraryActivity() }),
+        Shot("library-views-recent", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.RECENT); LibraryActivity() }),
+        Shot("library-views-gb", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GB); LibraryActivity() }),
+        Shot("library-views-gbc", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GBC); LibraryActivity() }),
+        Shot("library-views-gba", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GBA); LibraryActivity() }),
+        Shot("library-views-ds", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.DS); LibraryActivity() }),
+        Shot("library-views-hacks", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.HACKS); LibraryActivity() }),
         // GAMES / TOOLS / SETTINGS: a rail down the left of a wide screen, a bar along the bottom of an upright one. Each with
         // the games, then TOOLS open.
         // A big game being got ready to start: the library dimmed under the rocking ball.
@@ -2298,7 +2299,7 @@ fun main(args: Array<String>) {
                 }
             }
         }),
-        Shot("library-views-phone", 1080, 2400, 2.625f, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBA); LibraryActivity() }) {
+        Shot("library-views-phone", 1080, 2400, 2.625f, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GBA); LibraryActivity() }) {
             mainClock.advanceTimeBy(500)   // the open pill scrolled into view
         },
         // A game with no cover art: its kind (CategoryArt), at a list row's size and a grid tile's.
@@ -2310,7 +2311,7 @@ fun main(args: Array<String>) {
                 ) {
                     for (size in listOf(44.dp, 120.dp)) {
                         androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
-                            for (c in com.pokedaisy.app.RomCategory.entries) {
+                            for (c in com.pokedaisy.app.companion.data.RomCategory.entries) {
                                 com.pokedaisy.app.companion.ui.CategoryArt(c, androidx.compose.ui.Modifier.size(size))
                             }
                         }

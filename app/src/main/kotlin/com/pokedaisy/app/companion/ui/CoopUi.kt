@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.pad
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -106,7 +107,7 @@ fun CoopAcceptPrompt(partner: CoopPartner, onAccept: () -> Unit, onDeny: () -> U
 }
 
 /** A trainer ID as the game's card shows it. */
-fun coopIdText(trainerId: Int): String = "%05d".format(trainerId)
+fun coopIdText(trainerId: Int): String = trainerId.pad(5)
 
 /** The CO-OP row's state of the link, in the game's capitals. */
 fun coopLinkLabel(state: CoopState): String = when (state) {

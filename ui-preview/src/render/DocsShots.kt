@@ -144,7 +144,7 @@ fun installDocsArt() {
 class LocalDocsSource(private val api: File, private val manualDir: File) : DocsSource {
     private val manual by lazy { DocsApi.parse(api.readText()) }
     override fun cached() = manual
-    override fun refresh() = DocsStore.Refresh.Unchanged
+    override fun refresh() = DocsApi.Refresh.Unchanged
     override fun image(manual: DocsApi.Manual, image: DocsApi.Block.Image) =
         File(manualDir, image.src.removePrefix("/docs/")).takeIf { it.isFile }?.let { decodeImage(it.readBytes()) }
 }
@@ -155,7 +155,7 @@ fun installDocsSource(): Boolean {
         println("docs: no $api (run npm run build in website/): the HELP shots are skipped")
         return false
     }
-    DocsSources.override = LocalDocsSource(api, File(System.getProperty("docsDir").orEmpty()))
+    DocsSources.current = LocalDocsSource(api, File(System.getProperty("docsDir").orEmpty()))
     return true
 }
 

@@ -1,14 +1,16 @@
 package com.pokedaisy.app
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
-import java.security.MessageDigest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * The user manual, as the website serves it: docs/manual's Markdown turned into blocks by website/src/lib/docs.js
@@ -70,161 +72,78 @@ object DocsApi {
         object Rule : Block()
     }
 
+    /** What asking the site for the manual came to. */
+    sealed class Refresh {
+        class Updated(val manual: Manual) : Refresh()
+        object Unchanged : Refresh()
+        class Failed(val offline: Boolean) : Refresh()
+    }
+
     /** [json] as the API serves it. Throws on a reply this reader can't use (another version, not JSON). */
     fun parse(json: String): Manual {
-        val o = JSONObject(json)
-        require(o.optInt("version") == VERSION) { "docs API version ${o.optInt("version")}" }
-        val synonyms = o.optJSONObject("synonyms")?.let { s ->
-            s.keys().asSequence().associateWith { k -> strings(s.optJSONArray(k)) }
-        }.orEmpty()
+        val o = Json.parseToJsonElement(json).jsonObject
+        require(o.int("version") == VERSION) { "docs API version ${o.int("version")}" }
+        val synonyms = o.obj("synonyms")?.let { s -> s.keys.associateWith { k -> strings(s.array(k)) } }.orEmpty()
         return Manual(
-            rev = o.optString("rev"),
-            site = o.optString("site", "https://pokedaisy.com").trimEnd('/'),
-            sections = objects(o.optJSONArray("sections")).map { Section(it.getString("id"), it.getString("title"), strings(it.optJSONArray("pages"))) },
-            pages = objects(o.optJSONArray("pages")).map { p ->
+            rev = o.string("rev"),
+            site = o.string("site", "https://pokedaisy.com").trimEnd('/'),
+            sections = objects(o.array("sections")).map { Section(it.required("id"), it.required("title"), strings(it.array("pages"))) },
+            pages = objects(o.array("pages")).map { p ->
                 Page(
-                    slug = p.getString("slug"),
-                    title = p.getString("title"),
-                    summary = p.optString("summary"),
-                    section = p.optString("section"),
-                    keywords = strings(p.optJSONArray("keywords")),
-                    blocks = blocks(p.optJSONArray("blocks")),
+                    slug = p.required("slug"),
+                    title = p.required("title"),
+                    summary = p.string("summary"),
+                    section = p.string("section"),
+                    keywords = strings(p.array("keywords")),
+                    blocks = blocks(p.array("blocks")),
                 )
             },
             synonyms = synonyms,
         )
     }
 
-    private fun objects(a: JSONArray?): List<JSONObject> = if (a == null) emptyList() else (0 until a.length()).map { a.getJSONObject(it) }
-    private fun strings(a: JSONArray?): List<String> = if (a == null) emptyList() else (0 until a.length()).map { a.getString(it) }
+    // org.json's opt* rules, which the reader was written against: a missing or mistyped field is its default.
+    private fun JsonObject.primitive(key: String) = (this[key] as? JsonPrimitive)?.takeIf { it !is JsonNull }
+    private fun JsonObject.string(key: String, default: String = "") = primitive(key)?.content ?: default
+    private fun JsonObject.required(key: String) = primitive(key)?.takeIf { it.isString }?.content ?: throw IllegalArgumentException("no \"$key\"")
+    private fun JsonObject.int(key: String, default: Int = 0) = primitive(key)?.let { it.intOrNull ?: it.doubleOrNull?.toInt() } ?: default
+    private fun JsonObject.bool(key: String) = primitive(key)?.booleanOrNull ?: false
+    private fun JsonObject.array(key: String) = this[key] as? JsonArray
+    private fun JsonObject.obj(key: String) = this[key] as? JsonObject
 
-    private fun spans(a: JSONArray?): List<Span> = objects(a).map { s ->
+    private fun objects(a: JsonArray?): List<JsonObject> = a.orEmpty().map { it.jsonObject }
+    private fun strings(a: JsonArray?): List<String> = a.orEmpty().map { it.jsonPrimitive.content }
+
+    private fun spans(a: JsonArray?): List<Span> = objects(a).map { s ->
         Span(
-            text = s.optString("text"),
-            bold = s.optBoolean("b"),
-            italic = s.optBoolean("i"),
-            code = s.optBoolean("code"),
-            page = s.optString("page").ifEmpty { null },
-            anchor = s.optString("anchor").ifEmpty { null },
-            href = s.optString("href").ifEmpty { null },
+            text = s.string("text"),
+            bold = s.bool("b"),
+            italic = s.bool("i"),
+            code = s.bool("code"),
+            page = s.string("page").ifEmpty { null },
+            anchor = s.string("anchor").ifEmpty { null },
+            href = s.string("href").ifEmpty { null },
         )
     }
 
     /** Blocks this reader doesn't know (a newer site) are skipped rather than failing the whole page. */
-    private fun blocks(a: JSONArray?): List<Block> = objects(a).mapNotNull { b ->
-        when (b.optString("t")) {
-            "h2", "h3" -> Block.Heading(b.getString("t").drop(1).toInt(), b.optString("id"), b.optString("text"))
-            "p" -> Block.Paragraph(spans(b.optJSONArray("c")))
-            "ul", "ol" -> b.optJSONArray("items").let { items ->
-                Block.Bullets(
-                    ordered = b.getString("t") == "ol",
-                    start = b.optInt("start", 1),
-                    items = if (items == null) emptyList() else (0 until items.length()).map { blocks(items.getJSONArray(it)) },
-                )
-            }
-            "img" -> Block.Image(b.optString("src"), b.optString("alt"), b.optString("caption").ifEmpty { null }, b.optInt("w"), b.optInt("h"), b.optString("v"))
-            "note" -> Block.Note(b.optString("kind", "note"), blocks(b.optJSONArray("c")))
+    private fun blocks(a: JsonArray?): List<Block> = objects(a).mapNotNull { b ->
+        when (val t = b.string("t")) {
+            "h2", "h3" -> Block.Heading(t.drop(1).toInt(), b.string("id"), b.string("text"))
+            "p" -> Block.Paragraph(spans(b.array("c")))
+            "ul", "ol" -> Block.Bullets(
+                ordered = t == "ol",
+                start = b.int("start", 1),
+                items = b.array("items").orEmpty().map { blocks(it.jsonArray) },
+            )
+            "img" -> Block.Image(b.string("src"), b.string("alt"), b.string("caption").ifEmpty { null }, b.int("w"), b.int("h"), b.string("v"))
+            "note" -> Block.Note(b.string("kind", "note"), blocks(b.array("c")))
             "table" -> Block.Table(
-                head = b.optJSONArray("head").let { h -> if (h == null) emptyList() else (0 until h.length()).map { spans(h.getJSONArray(it)) } },
-                rows = b.optJSONArray("rows").let { r ->
-                    if (r == null) emptyList() else (0 until r.length()).map { i ->
-                        val row = r.getJSONArray(i)
-                        (0 until row.length()).map { spans(row.getJSONArray(it)) }
-                    }
-                },
+                head = b.array("head").orEmpty().map { spans(it.jsonArray) },
+                rows = b.array("rows").orEmpty().map { row -> row.jsonArray.map { spans(it.jsonArray) } },
             )
             "hr" -> Block.Rule
             else -> null
         }
-    }
-}
-
-/** Fetches, keeps and serves the manual and its images (filesDir/docs). Blocking calls: run them off the UI thread. */
-object DocsStore {
-    private fun dir(context: Context) = File(context.filesDir, "docs").apply { mkdirs() }
-    private fun manualFile(context: Context) = File(dir(context), "docs.json")
-    private fun etagFile(context: Context) = File(dir(context), "docs.etag")
-
-    /** The copy on disk, or null (never fetched, or unreadable). */
-    fun cached(context: Context): DocsApi.Manual? =
-        runCatching { DocsApi.parse(manualFile(context).readText()) }.getOrNull()
-
-    sealed class Refresh {
-        class Updated(val manual: DocsApi.Manual) : Refresh()
-        object Unchanged : Refresh()
-        class Failed(val offline: Boolean) : Refresh()
-    }
-
-    /** Asks the site for the manual, sending the kept copy's ETag; a new one replaces the copy on disk. */
-    fun refresh(context: Context, url: String = DocsApi.URL): Refresh = runCatching {
-        val etag = etagFile(context).takeIf { it.isFile && manualFile(context).isFile }?.readText()
-        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 8000
-            readTimeout = 12000
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "PokeDaisy/${BuildConfig.VERSION_NAME}")
-            etag?.let { setRequestProperty("If-None-Match", it) }
-        }
-        when (conn.responseCode) {
-            HttpURLConnection.HTTP_NOT_MODIFIED -> Refresh.Unchanged
-            HttpURLConnection.HTTP_OK -> {
-                val body = conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
-                val manual = DocsApi.parse(body)
-                val tmp = File(dir(context), "docs.json.part")
-                tmp.writeText(body)
-                tmp.renameTo(manualFile(context))
-                conn.getHeaderField("ETag")?.let { etagFile(context).writeText(it) } ?: etagFile(context).delete()
-                Refresh.Updated(manual)
-            }
-            else -> Refresh.Failed(offline = false)
-        }
-    }.getOrElse { Refresh.Failed(offline = it is java.io.IOException) }
-
-    /** An image block's picture: from disk if it was shown before, else fetched from the site and kept. */
-    fun image(context: Context, manual: DocsApi.Manual, image: DocsApi.Block.Image): Bitmap? = runCatching {
-        val file = imageFile(context, image)
-        if (!file.isFile) {
-            val conn = (URL(manual.site + image.src).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 8000
-                readTimeout = 15000
-                setRequestProperty("User-Agent", "PokeDaisy/${BuildConfig.VERSION_NAME}")
-            }
-            if (conn.responseCode != HttpURLConnection.HTTP_OK) return@runCatching null
-            val tmp = File(file.parentFile, "${file.name}.part")
-            conn.inputStream.use { input -> tmp.outputStream().use { input.copyTo(it) } }
-            tmp.renameTo(file)
-        }
-        BitmapFactory.decodeFile(file.path)
-    }.getOrNull()
-
-    private fun imageFile(context: Context, image: DocsApi.Block.Image): File {
-        val name = MessageDigest.getInstance("SHA-1").digest((image.src + "@" + image.version).toByteArray())
-            .joinToString("") { "%02x".format(it) }.take(20) + ".png"
-        return File(File(dir(context), "img").apply { mkdirs() }, name)
-    }
-
-    @Volatile private var prefetched = false
-
-    /** Once per process, in the background: asks for a newer manual, so HELP has one even offline later. */
-    fun prefetch(context: Context) {
-        if (prefetched) return
-        prefetched = true
-        val app = context.applicationContext
-        Thread({ (refresh(app) as? Refresh.Updated)?.let { pruneImages(app, it.manual) } }, "docs-prefetch").apply { isDaemon = true }.start()
-    }
-
-    /** Deletes kept pictures the manual no longer shows (an old version of a screenshot). */
-    fun pruneImages(context: Context, manual: DocsApi.Manual) {
-        val keep = mutableSetOf<String>()
-        fun walk(blocks: List<DocsApi.Block>) {
-            for (b in blocks) when (b) {
-                is DocsApi.Block.Image -> keep += imageFile(context, b).name
-                is DocsApi.Block.Bullets -> b.items.forEach(::walk)
-                is DocsApi.Block.Note -> walk(b.blocks)
-                else -> {}
-            }
-        }
-        manual.pages.forEach { walk(it.blocks) }
-        File(dir(context), "img").listFiles()?.filter { it.name !in keep }?.forEach { it.delete() }
     }
 }

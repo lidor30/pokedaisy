@@ -2,11 +2,9 @@ package com.pokedaisy.app.companion.ui
 
 import kotlin.time.Clock
 import com.pokedaisy.app.companion.SkinSystem
-
 import com.pokedaisy.app.companion.DsCore
 import com.pokedaisy.app.companion.NewFeatures
 import com.pokedaisy.app.companion.zoomLabel
-
 import com.pokedaisy.app.companion.data.LookChar
 import com.pokedaisy.app.companion.ui.theme.DarkMode
 import com.pokedaisy.app.companion.i18n.L10n
@@ -280,7 +278,7 @@ fun CompanionSettingsScreen(
                 // HELP: the manual, read from the docs API (no search box: the bottom screen can't host a keyboard).
                 if (page == Page.HELP) {
                     val context = androidx.compose.ui.platform.LocalContext.current
-                    val source = remember { DocsSources.of(context) }
+                    val source = remember { DocsSources.get() }
                     DocsReader(ui.docs, m, source, Modifier.fillMaxWidth().weight(1f), searchable = false)
                 } else if (page == Page.TOUCH && settings != null) {
                     // The preview beside / above the rows; it follows each change (tick).
@@ -762,7 +760,7 @@ private fun homeRows(
         // A DS game: which emulator runs it (melonDS, or DSperate for weak devices); taken at the game's next start.
         s.dsCore?.let { core ->
             val now = core.valueLabel()
-            val pending = (core.runs() == com.pokedaisy.app.MgbaCore.NDS_CORE_DSPERATE) == s.dsMelonDs
+            val pending = (core.runs() == DsCore.CORE_DSPERATE) == s.dsMelonDs
             SettingRow(
                 tk("DS CORE"), now, labelBadge = NewFeatures.badge(NewFeatures.DS_CORE),
                 subtitle = if (pending) "Takes effect when the game restarts" else "DSPERATE runs on weaker devices",
@@ -1180,9 +1178,12 @@ private fun KeyCapture.toggle(title: String, request: () -> KeyCapture.Request) 
 /** GAME VOLUME's value (both screens): "100%" .. "0%". */
 internal fun gameVolumeLabel(percent: Int) = "$percent%"
 
-/** GAME VOLUME's slider (both screens): 0 - 100% in [com.pokedaisy.app.GameVolume.STEP]s, [set] on every move. */
+/** GAME VOLUME's slider moves in steps of this many percent (a drag, LEFT / RIGHT). */
+private const val GAME_VOLUME_STEP = 5
+
+/** GAME VOLUME's slider (both screens): 0 - 100% in [GAME_VOLUME_STEP]s, [set] on every move. */
 internal fun gameVolumeSlider(percent: Int, set: (Int) -> Unit) =
-    SettingSlider(percent, 0..100, com.pokedaisy.app.GameVolume.STEP, set)
+    SettingSlider(percent, 0..100, GAME_VOLUME_STEP, set)
 
 internal fun wildEncountersLabel(percent: Int) = if (percent == 0) tk("OFF") else tk("ON")
 

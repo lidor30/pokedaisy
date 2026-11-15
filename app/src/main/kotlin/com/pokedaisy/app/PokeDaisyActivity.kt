@@ -1,5 +1,7 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.DsCore
+import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.ui.produceKeyedState
 import android.app.ActivityManager
 import android.app.Activity
@@ -43,6 +45,7 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.pokedaisy.app.achievements.RetroAchievements
+import com.pokedaisy.app.achievements.downloadBadge
 import com.pokedaisy.app.companion.ui.AchievementBadges
 import com.pokedaisy.app.companion.BatteryStatus
 import com.pokedaisy.app.companion.DeviceBattery
@@ -492,7 +495,7 @@ class PokeDaisyActivity : Activity() {
     private val gamePick get() = telemetry.gamePick
 
     /** The match notice's SHARE - the player's yes to sending exactly what it listed. */
-    private val shareBestEffort: (com.pokedaisy.app.companion.data.BestEffortReport) -> Unit = { r ->
+    private val shareBestEffort = com.pokedaisy.app.companion.data.BestEffortSharing(BuildConfig.VERSION_NAME) { r ->
         BestEffortShare.share(this, r)
     }
 
@@ -1346,9 +1349,9 @@ class PokeDaisyActivity : Activity() {
                 if (com.pokedaisy.app.companion.data.KeyItems.selectWheel) {
                     // SoulGold: SELECT opens its wheel, DOWN uses the slot written above; the player's own put back after.
                     val down = com.pokedaisy.app.companion.data.KeyItems.WHEEL_DOWN_AFTER
-                    input.setPress(MgbaCore.Key.SELECT)
+                    input.setPress(CoreKey.SELECT)
                     engine.requestFieldItemJob(false, delayFrames = 2) { _, _ -> input.setPress(0) }
-                    engine.requestFieldItemJob(false, delayFrames = down) { _, _ -> input.setPress(MgbaCore.Key.DOWN) }
+                    engine.requestFieldItemJob(false, delayFrames = down) { _, _ -> input.setPress(CoreKey.DOWN) }
                     engine.requestFieldItemJob(false, delayFrames = down + 2) { _, _ -> input.setPress(0) }
                     engine.requestFieldItemJob(false, delayFrames = down + 20) { c, _ -> if (u16(c.read(addr, 2)) == itemId) c.write(addr, le16(old)) }
                     return@runCatching true
@@ -1373,7 +1376,7 @@ class PokeDaisyActivity : Activity() {
         val riding = engine.riding
         val sure = engine.fieldMovesKnown
         var took = false
-        input.setPress(MgbaCore.Key.SELECT)
+        input.setPress(CoreKey.SELECT)
         for (f in 1..SELECT_WAIT) engine.requestFieldItemJob(false, delayFrames = f) { c, _ ->
             if (engine.riding != riding || c.call(locked) != 0L) took = true
         }
@@ -2075,16 +2078,16 @@ class PokeDaisyActivity : Activity() {
         override fun editTouchLayout() = runOnUiThread { openTouchEditor() }
         override val touchRevision get() = touchRev.intValue
         override val touchControlsShown get() = ::touchControls.isInitialized && touchControls.visibility == View.VISIBLE
-        override fun gbaControlBindings() = GbaControls.rawBindings(getExternalFilesDir(null) ?: filesDir)
+        override fun gbaControlBindings() = GbaControls.rawBindings(controlsDir)
         override val keyCapture get() = this@PokeDaisyActivity.keyCapture
         override fun setGbaControlBinding(btn: GbaControls.Btn, keyName: String) {
             val code = keyCodeForName(keyName) ?: return
-            GbaControls.setBinding(getExternalFilesDir(null) ?: filesDir, btn, code)
-            input.setControls(GbaControls.load(getExternalFilesDir(null) ?: filesDir))
+            GbaControls.setBinding(controlsDir, btn, code)
+            input.setControls(GbaControls.load(controlsDir))
         }
         override fun clearGbaControlBinding(btn: GbaControls.Btn) {
-            GbaControls.clearBinding(getExternalFilesDir(null) ?: filesDir, btn)
-            input.setControls(GbaControls.load(getExternalFilesDir(null) ?: filesDir))
+            GbaControls.clearBinding(controlsDir, btn)
+            input.setControls(GbaControls.load(controlsDir))
         }
         override val buttonGroup get() = if (romIsNds) GbaControls.Group.DS else GbaControls.Group.GBA
         override val hotkeysEnabled get() = hotkeysOn
@@ -2092,12 +2095,12 @@ class PokeDaisyActivity : Activity() {
             Prefs(this@PokeDaisyActivity).hotkeysEnabled = on
             setHotkeysOn(on)
         }
-        override fun hotkeyBindings() = Hotkeys.load(getExternalFilesDir(null) ?: filesDir).rawBindings
+        override fun hotkeyBindings() = Hotkeys.load(controlsDir).rawBindings
         override fun setHotkeyBinding(action: Hotkeys.Action, keyNames: List<String>?, takeFrom: List<Hotkeys.Action>) {
-            val dir = getExternalFilesDir(null) ?: filesDir
+            val dir = controlsDir
             if (keyNames.isNullOrEmpty()) Hotkeys.clearBinding(dir, action)
             else Hotkeys.setBindingNamed(dir, action, keyNames, takeFrom)
-            hotkeys = Hotkeys.load(getExternalFilesDir(null) ?: filesDir)
+            hotkeys = Hotkeys.load(controlsDir)
         }
         override fun restartGame() = this@PokeDaisyActivity.restartGame()
         override fun closeGame() {
@@ -2435,7 +2438,8 @@ class PokeDaisyActivity : Activity() {
         goImmersive()
         RetroAchievements.init(this)
         RetroAchievements.onUnlockSound = { unlockSound?.play() }
-        AchievementBadges.dir = java.io.File(cacheDir, "ra-badges")
+        AchievementBadges.dir = cacheDir.toOkioPath() / "ra-badges"
+        AchievementBadges.download = ::downloadBadge
         // A popup goes to the companion the player can see, else over the game (a DS game's touch screen hides it: #500).
         com.pokedaisy.app.companion.ui.AchievementPopupRoute.shownProbe = {
             val v = androidx.compose.ui.platform.LocalView.current
@@ -2479,7 +2483,7 @@ class PokeDaisyActivity : Activity() {
                 kotlinx.coroutines.delay(500)
             }
         }
-        com.pokedaisy.app.companion.FeatureTips.init(Prefs(this))
+        Prefs(this).let { com.pokedaisy.app.companion.FeatureTips.init(it.tipStore, it.tips) }
         com.pokedaisy.app.companion.FeatureTips.available = ::tipAvailable
 
         // Debug-only mirror of the companion UI onto the main display, for
@@ -2644,7 +2648,7 @@ class PokeDaisyActivity : Activity() {
         syncOrientation(secondScreen() != null)
         syncGameScreen()
 
-        hotkeys = Hotkeys.load(getExternalFilesDir(null) ?: filesDir)
+        hotkeys = Hotkeys.load(controlsDir)
         // L2 / R2 are TOUCH SCREEN / DS LAYOUT's in a DS game on one screen, SPEED CYCLE / FF HOLD's elsewhere.
         Hotkeys.dsActive = { a ->
             when (a) {
@@ -3236,9 +3240,9 @@ class PokeDaisyActivity : Activity() {
         view.onResume()
         // Pick up any Settings changes made since launch.
         if (romCode.isNotEmpty()) com.pokedaisy.app.companion.i18n.L10n.apply(Prefs(this).appLanguage, romCode)
-        hotkeys = Hotkeys.load(getExternalFilesDir(null) ?: filesDir)
+        hotkeys = Hotkeys.load(controlsDir)
         hotkeysOn = Prefs(this).hotkeysEnabled
-        input.setControls(GbaControls.load(getExternalFilesDir(null) ?: filesDir))
+        input.setControls(GbaControls.load(controlsDir))
         if (::engine.isInitialized) {
             engine.ffMaxSpeed = Prefs(this).ffMaxSpeed
             engine.ffMusicMode = Prefs(this).ffMusicMode
@@ -3563,7 +3567,7 @@ class PokeDaisyActivity : Activity() {
         AudioEffects.load(Prefs(this))
         AudioEffectsTrack.open(this)
         val save = SavesLocation.saveFor(this, Prefs(this), r)
-        engine.ndsCore = if (dsperate) MgbaCore.NDS_CORE_DSPERATE else MgbaCore.NDS_CORE_MELONDS   // DS CORE (pickDsCore)
+        engine.ndsCore = if (dsperate) DsCore.CORE_DSPERATE else DsCore.CORE_MELONDS   // DS CORE (pickDsCore)
         // Cheats may have changed in the library's Settings since the game was last up.
         cheatCache = null
         syncCheats()
@@ -4341,7 +4345,7 @@ class PokeDaisyActivity : Activity() {
     private fun dismissDsTouch() {
         if (dsWindowManual.value) { dsWindowManual.value = false; return }
         if (telemetry.snapshot.value.inBattle) return
-        input.setPress(MgbaCore.Key.B)
+        input.setPress(CoreKey.B)
         window.decorView.postDelayed({ input.setPress(0) }, DS_B_PRESS_MS)
     }
 
@@ -5539,8 +5543,8 @@ class PokeDaisyActivity : Activity() {
         if (bottomKeys.stick(event.getAxisValue(MotionEvent.AXIS_X), event.getAxisValue(MotionEvent.AXIS_Y))) {
             val hx = event.getAxisValue(MotionEvent.AXIS_HAT_X)
             val hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
-            bits = (if (hx < -0.5f) MgbaCore.Key.LEFT else 0) or (if (hx > 0.5f) MgbaCore.Key.RIGHT else 0) or
-                (if (hy < -0.5f) MgbaCore.Key.UP else 0) or (if (hy > 0.5f) MgbaCore.Key.DOWN else 0)
+            bits = (if (hx < -0.5f) CoreKey.LEFT else 0) or (if (hx > 0.5f) CoreKey.RIGHT else 0) or
+                (if (hy < -0.5f) CoreKey.UP else 0) or (if (hy > 0.5f) CoreKey.DOWN else 0)
         }
         val pressed = bits and bottomHat.inv()
         bottomHat = bits
@@ -5739,18 +5743,18 @@ class PokeDaisyActivity : Activity() {
 
     /** The window's key for a GBA button bit (a diagonal counts as its up / down). */
     private fun menuKeyFor(bits: Int): MenuKey? = when {
-        bits and MgbaCore.Key.UP != 0 -> MenuKey.UP
-        bits and MgbaCore.Key.DOWN != 0 -> MenuKey.DOWN
-        bits and MgbaCore.Key.LEFT != 0 -> MenuKey.LEFT
-        bits and MgbaCore.Key.RIGHT != 0 -> MenuKey.RIGHT
-        bits and MgbaCore.Key.A != 0 -> MenuKey.A
-        bits and MgbaCore.Key.B != 0 -> MenuKey.B
-        bits and MgbaCore.Key.L != 0 -> MenuKey.L
-        bits and MgbaCore.Key.R != 0 -> MenuKey.R
-        bits and MgbaCore.Key.START != 0 -> MenuKey.START
-        bits and MgbaCore.Key.SELECT != 0 -> MenuKey.SELECT
-        bits and MgbaCore.Key.X != 0 -> MenuKey.X
-        bits and MgbaCore.Key.Y != 0 -> MenuKey.Y
+        bits and CoreKey.UP != 0 -> MenuKey.UP
+        bits and CoreKey.DOWN != 0 -> MenuKey.DOWN
+        bits and CoreKey.LEFT != 0 -> MenuKey.LEFT
+        bits and CoreKey.RIGHT != 0 -> MenuKey.RIGHT
+        bits and CoreKey.A != 0 -> MenuKey.A
+        bits and CoreKey.B != 0 -> MenuKey.B
+        bits and CoreKey.L != 0 -> MenuKey.L
+        bits and CoreKey.R != 0 -> MenuKey.R
+        bits and CoreKey.START != 0 -> MenuKey.START
+        bits and CoreKey.SELECT != 0 -> MenuKey.SELECT
+        bits and CoreKey.X != 0 -> MenuKey.X
+        bits and CoreKey.Y != 0 -> MenuKey.Y
         else -> null
     }
 
@@ -5761,8 +5765,8 @@ class PokeDaisyActivity : Activity() {
         if (sidePanel.menuStick(event.getAxisValue(MotionEvent.AXIS_X), event.getAxisValue(MotionEvent.AXIS_Y))) {
             val hx = event.getAxisValue(MotionEvent.AXIS_HAT_X)
             val hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
-            bits = (if (hx < -0.5f) MgbaCore.Key.LEFT else 0) or (if (hx > 0.5f) MgbaCore.Key.RIGHT else 0) or
-                (if (hy < -0.5f) MgbaCore.Key.UP else 0) or (if (hy > 0.5f) MgbaCore.Key.DOWN else 0)
+            bits = (if (hx < -0.5f) CoreKey.LEFT else 0) or (if (hx > 0.5f) CoreKey.RIGHT else 0) or
+                (if (hy < -0.5f) CoreKey.UP else 0) or (if (hy > 0.5f) CoreKey.DOWN else 0)
         }
         val pressed = bits and menuHat.inv()
         menuHat = bits
@@ -5900,7 +5904,7 @@ class PokeDaisyActivity : Activity() {
         rtDown = false; ltDown = false
         if (::view.isInitialized) { view.camera.stickX = 0f; view.camera.stickY = 0f }
         if (::engine.isInitialized) { engine.setFastForwardHeld(false); engine.setSlowmoHeld(false); engine.setRewindHeld(false) }
-        hotkeys = Hotkeys.load(getExternalFilesDir(null) ?: filesDir)
+        hotkeys = Hotkeys.load(controlsDir)
     }
 
     /** Turns the hotkeys on/off from the companion. Off lets go of any held one (FF / slow-mo
@@ -5908,7 +5912,7 @@ class PokeDaisyActivity : Activity() {
     private fun setHotkeysOn(on: Boolean) {
         hotkeysOn = on
         if (::engine.isInitialized) { engine.setFastForwardHeld(false); engine.setSlowmoHeld(false) }
-        hotkeys = Hotkeys.load(getExternalFilesDir(null) ?: filesDir)
+        hotkeys = Hotkeys.load(controlsDir)
     }
 
     private fun handleHotkey(e: Hotkeys.Event) {
@@ -6236,10 +6240,10 @@ class PokeDaisyActivity : Activity() {
     /** DS CORE for the DS game that's loaded ([dsperate]), and what follows from it: EXPAND only on melonDS (a cart its
      * field read knows). The engine starts the game on it ([startGame], [restartGame]). */
     private fun pickDsCore() {
-        dsperate = romIsNds && Prefs(this).dsCore.runs() == MgbaCore.NDS_CORE_DSPERATE
+        dsperate = romIsNds && Prefs(this).dsCore.runs() == DsCore.CORE_DSPERATE
         if (!romIsNds) return
         wideGame = if (!dsperate && (WideScreen.ndsKnows(romCode, romRev) || romOrigin)) WideScreen.NDS else WideScreen.OFF
-        if (::engine.isInitialized) engine.ndsCore = if (dsperate) MgbaCore.NDS_CORE_DSPERATE else MgbaCore.NDS_CORE_MELONDS
+        if (::engine.isInitialized) engine.ndsCore = if (dsperate) DsCore.CORE_DSPERATE else DsCore.CORE_MELONDS
     }
 
     /** RESTART GAME (SETTINGS, and its hotkey): the game booted again from its save, the resume state dropped. */
@@ -6338,7 +6342,7 @@ class PokeDaisyActivity : Activity() {
 
     companion object {
         /** The GBA D-pad's key bits. */
-        private const val DPAD_KEYS = MgbaCore.Key.UP or MgbaCore.Key.DOWN or MgbaCore.Key.LEFT or MgbaCore.Key.RIGHT
+        private const val DPAD_KEYS = CoreKey.UP or CoreKey.DOWN or CoreKey.LEFT or CoreKey.RIGHT
         /** [EmulatorEngine.battleMenuHidden] with the action menu (FIGHT / BAG / POKéMON / RUN) off the screen. */
         private const val BATTLE_MENU_ACTIONS = 160
 

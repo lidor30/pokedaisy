@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.DsCore
 import com.pokedaisy.app.companion.ui.theme.DarkMode
 import com.pokedaisy.app.companion.i18n.L10n
 import com.pokedaisy.app.companion.i18n.tk
@@ -206,13 +207,13 @@ class SettingsActivity : ComponentActivity() {
     /** DS RESOLUTION's GPU renderer can run here (OpenGL ES 3.2). */
     private val dsGpu by lazy { GlCaps.gles32(this) }
     /** DS games start on DSperate (DS CORE): DS RESOLUTION and DS CPU BOOST are melonDS's, greyed out then. */
-    private val dsOnDsperate get() = prefs.dsCore.runs() == MgbaCore.NDS_CORE_DSPERATE
+    private val dsOnDsperate get() = prefs.dsCore.runs() == DsCore.CORE_DSPERATE
 
     private val updates by lazy { AppUpdateFlow(this) }
 
     /** HELP: the manual (DocsScreen.kt), its place kept while Settings is open. */
     private val docsUi = com.pokedaisy.app.companion.ui.DocsUiState()
-    private val docsSource by lazy { com.pokedaisy.app.companion.ui.DocsSources.of(this) }
+    private val docsSource by lazy { com.pokedaisy.app.companion.ui.DocsSources.get() }
     /** Opened straight on HELP (the library's ? button): BACK from its contents leaves. */
     private var helpOnly = false
 
@@ -495,7 +496,7 @@ class SettingsActivity : ComponentActivity() {
                     onDismiss = { hotkeyClash = null },
                     onConfirm = {
                         hotkeyClash = null
-                        Hotkeys.setBinding(filesRoot, c.action, c.keys, takeFrom = c.taken)
+                        Hotkeys.setBinding(controlsDir, c.action, c.keys, takeFrom = c.taken)
                         revision++
                     },
                 )
@@ -1200,7 +1201,7 @@ class SettingsActivity : ComponentActivity() {
     @Composable
     private fun QuickMenuScreen(m: GbaTextMetrics) {
         @Suppress("UNUSED_EXPRESSION") revision
-        val binding = remember(revision) { Hotkeys.load(filesRoot).rawBindings[Hotkeys.Action.QUICK_MENU].orEmpty() }
+        val binding = remember(revision) { Hotkeys.load(controlsDir).rawBindings[Hotkeys.Action.QUICK_MENU].orEmpty() }
         val rows = com.pokedaisy.app.companion.ui.quickMenuRows(
             prefs.quickMenuActions, binding.joinToString(", ") { it.replace("BUTTON_", "").replace('_', ' ') }, prefs.quickMenuStyle, prefs.quickMenuLabels,
             setShown = { prefs.quickMenuActions = it; revision++ },
@@ -1935,15 +1936,15 @@ class SettingsActivity : ComponentActivity() {
 
     /** A hotkey bound to [keys] - asked first when other hotkeys have exactly that chord (MOVE takes it off them). */
     private fun bindHotkey(action: Hotkeys.Action, keys: List<Int>) {
-        val taken = Hotkeys.clashes(Hotkeys.load(filesRoot).rawBindings, action, keys.map { Hotkeys.keyName(it) })
-        if (taken.isEmpty()) Hotkeys.setBinding(filesRoot, action, keys)
+        val taken = Hotkeys.clashes(Hotkeys.load(controlsDir).rawBindings, action, keys.map { Hotkeys.keyName(it) })
+        if (taken.isEmpty()) Hotkeys.setBinding(controlsDir, action, keys)
         else hotkeyClash = HotkeyClash(action, keys, taken)
         revision++
     }
 
     @Composable
     private fun HotkeysScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
-        val hotkeys = remember(revision) { Hotkeys.load(filesRoot) }
+        val hotkeys = remember(revision) { Hotkeys.load(controlsDir) }
         Column(modifier = Modifier.fillMaxWidth()) {
             Hint(
                 tr("Tap a hotkey, then press one or more keys/buttons together and release — e.g. hold Select and tap R1 for a chord. BACK cancels."),
@@ -1966,7 +1967,7 @@ class SettingsActivity : ComponentActivity() {
                                 action.title, chord = true,
                                 onDone = { keys -> bindHotkey(action, keys) },
                                 // CLEAR leaves it unbound ("-").
-                                onClear = { Hotkeys.clearBinding(filesRoot, action); revision++ },
+                                onClear = { Hotkeys.clearBinding(controlsDir, action); revision++ },
                             )
                         }
                     }
@@ -1977,7 +1978,7 @@ class SettingsActivity : ComponentActivity() {
 
     @Composable
     private fun ControlsScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
-        val ctrls = remember(revision) { GbaControls.rawBindings(filesRoot) }
+        val ctrls = remember(revision) { GbaControls.rawBindings(controlsDir) }
         Column(modifier = Modifier.fillMaxWidth()) {
             Hint(tr("Which physical button is each GBA button. The D-pad and analog stick always work; the D-PAD rows add more keys to them."), m, small)
             OptionListWindow(m, Modifier.fillMaxWidth().weight(1f, fill = false)) {
@@ -2001,8 +2002,8 @@ class SettingsActivity : ComponentActivity() {
 
     private fun controlRequest(btn: GbaControls.Btn) = com.pokedaisy.app.companion.KeyCapture.Request(
         btn.title, chord = false,
-        onDone = { keys -> GbaControls.setBinding(filesRoot, btn, keys.first()); revision++ },
-        onClear = if (btn.canClear) ({ GbaControls.clearBinding(filesRoot, btn); revision++ }) else null,
+        onDone = { keys -> GbaControls.setBinding(controlsDir, btn, keys.first()); revision++ },
+        onClear = if (btn.canClear) ({ GbaControls.clearBinding(controlsDir, btn); revision++ }) else null,
     )
 
     // ---- folders --------------------------------------------------------

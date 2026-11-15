@@ -1,5 +1,7 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.LibraryView
+import com.pokedaisy.app.companion.data.RomCategory
 import com.pokedaisy.app.companion.ui.produceKeyedState
 import androidx.compose.foundation.lazy.grid.itemsIndexed as gridItemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -445,7 +447,7 @@ class LibraryActivity : ComponentActivity() {
         identifyGames()
         updates.onResume()
         // The manual (Settings > HELP), fetched in the background so it's there offline later.
-        if (com.pokedaisy.app.companion.ui.DocsSources.override == null) DocsStore.prefetch(this)
+        if (com.pokedaisy.app.companion.ui.DocsSources.current is StoreDocsSource) DocsStore.prefetch(this)
         bump()   // refresh list / PLAYING marker after returning
         launcher.mediaChanged()   // Settings may have fetched some
         syncLauncher()
@@ -2515,7 +2517,7 @@ class LibraryActivity : ComponentActivity() {
             onScreenScraperSignIn = { s.ssLogin.signIn(prefs, { r -> runOnUiThread { r() } }) { startMediaSync(s.covers) } },
             onScreenScraperSignOut = { s.ssLogin.signOut(prefs) },
             buttonRequest = { btn ->
-                val dir = getExternalFilesDir(null) ?: filesDir
+                val dir = controlsDir
                 KeyCapture.Request(
                     btn.title, chord = false,
                     onDone = { keys -> GbaControls.setBinding(dir, btn, keys.first()); readButtons(s) },
@@ -2554,7 +2556,7 @@ class LibraryActivity : ComponentActivity() {
 
     /** The GAME BUTTONS step's list: A, B, L, R, START, SELECT (+ the second START / SELECT, turbo) as bound now. */
     private fun readButtons(s: SetupState) {
-        s.buttons = GbaControls.rawBindings(getExternalFilesDir(null) ?: filesDir)
+        s.buttons = GbaControls.rawBindings(controlsDir)
     }
 
     private fun finishSetup() {

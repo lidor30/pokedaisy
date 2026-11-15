@@ -672,7 +672,7 @@ open class CompanionScreenshotTest {
                     ),
                 ),
             ),
-            SampleCompanion.Slots, SampleCompanion.Settings(), shareBestEffort = {}, gamePick = SamplePicker.actions,
+            SampleCompanion.Slots, SampleCompanion.Settings(), shareBestEffort = com.pokedaisy.app.companion.data.BestEffortSharing("1.0") {}, gamePick = SamplePicker.actions,
         )
     }
 

@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion
 
-import com.pokedaisy.app.Prefs
+import kotlin.time.Clock
+import kotlin.concurrent.Volatile
 import com.pokedaisy.app.companion.i18n.tk
 
 /**
@@ -226,17 +227,21 @@ object NewFeatures {
     @Volatile
     private var started = false
 
-    /** App start: date every feature not seen before (now); the ones seen keep their date. */
-    fun init(prefs: Prefs, now: Long = System.currentTimeMillis()) {
-        val seen = prefs.newFeatureSince
+    /**
+     * App start: date every feature not seen before (now); the ones seen keep their date. [seen] is what the host kept
+     * (Prefs.newFeatureSince on Android); [save] gets the dates back when a feature was added.
+     */
+    fun init(seen: Map<String, Long>, save: (Map<String, Long>) -> Unit, now: Long = nowMillis()) {
         val all = seen + ALL.filter { it !in seen }.associateWith { now }
-        if (all != seen) prefs.newFeatureSince = all
+        if (all != seen) save(all)
         since = all
         started = true
     }
 
+    private fun nowMillis() = Clock.System.now().toEpochMilliseconds()
+
     /** Still new: dated less than [DAYS] days ago. Before [init] (screenshot tests, ui-preview) every feature is. */
-    fun isNew(id: String, now: Long = System.currentTimeMillis()): Boolean {
+    fun isNew(id: String, now: Long = nowMillis()): Boolean {
         if (!started) return true
         val at = since[id] ?: return false
         return now - at < DAYS * DAY_MS

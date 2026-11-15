@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.GamePickActions
 import com.pokedaisy.app.companion.data.BestEffort
 import com.pokedaisy.app.companion.data.BestEffortReport
+import com.pokedaisy.app.companion.data.BestEffortSharing
 import com.pokedaisy.app.companion.data.BestEffortView
 import com.pokedaisy.app.companion.data.GamePickerView
 import com.pokedaisy.app.companion.i18n.tk
@@ -109,7 +110,7 @@ private fun bestEffortSummary(be: BestEffortView): String = when {
  * Both offer the picker ([onPick]).
  */
 @Composable
-fun BestEffortNotices(be: BestEffortView, actions: GamePickActions, share: ((BestEffortReport) -> Unit)?, onPick: () -> Unit) {
+fun BestEffortNotices(be: BestEffortView, actions: GamePickActions, share: BestEffortSharing?, onPick: () -> Unit) {
     val m = rememberGbaTextMetrics()
     val report = be.report
     when {
@@ -122,7 +123,7 @@ fun BestEffortNotices(be: BestEffortView, actions: GamePickActions, share: ((Bes
         )
         !be.fresh -> {}
         report != null && share != null -> BestEffortShareNotice(
-            be, report, onShare = { share(report); actions.seen() }, onDismiss = actions.seen,
+            be, report, appVersion = share.appVersion, onShare = { share.send(report); actions.seen() }, onDismiss = actions.seen,
             onWrongGame = { actions.seen(); onPick() },
         )
         else -> NoticeWindow(
@@ -162,13 +163,14 @@ private fun NoticeWindow(
 }
 
 /**
- * The match notice with the ask to share it: what the match is, then every field [com.pokedaisy.app.BestEffortShare]
- * would send, value by value - nothing goes out unless SHARE is tapped.
+ * The match notice with the ask to share it: what the match is, then every field sharing
+ * would send ([BestEffortReport.shareFields]), value by value - nothing goes out unless SHARE is tapped.
  */
 @Composable
 private fun BestEffortShareNotice(
     be: BestEffortView,
     report: BestEffortReport,
+    appVersion: String,
     onShare: () -> Unit,
     onDismiss: () -> Unit,
     onWrongGame: () -> Unit,
@@ -190,7 +192,7 @@ private fun BestEffortShareNotice(
                         OptionColors.label, OptionColors.labelShadow, small, maxLines = Int.MAX_VALUE,
                         modifier = Modifier.padding(top = m.u * 2, bottom = m.u * 3),
                     )
-                    com.pokedaisy.app.BestEffortShare.fields(report).forEach { (label, value) ->
+                    report.shareFields(appVersion).forEach { (label, value) ->
                         Row(Modifier.fillMaxWidth().padding(vertical = m.u)) {
                             GbaText(tr(label), OptionColors.muted, OptionColors.mutedShadow, small, Modifier.weight(0.35f))
                             GbaText(value, OptionColors.label, OptionColors.labelShadow, small, Modifier.weight(0.65f), maxLines = 2)

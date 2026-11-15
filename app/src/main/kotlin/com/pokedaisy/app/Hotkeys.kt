@@ -1,11 +1,16 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.NewFeatures
-import android.util.Log
-import android.view.KeyEvent
+import com.pokedaisy.app.companion.data.CoreKey
+import com.pokedaisy.app.companion.data.KeyCodes
+import com.pokedaisy.app.companion.data.Logs
+import com.pokedaisy.app.companion.data.PropertiesText
+import com.pokedaisy.app.companion.data.isFile
+import com.pokedaisy.app.companion.data.readText
+import com.pokedaisy.app.companion.data.writeText
 import com.pokedaisy.app.companion.i18n.tk
-import java.io.File
-import java.util.Properties
+import kotlin.concurrent.Volatile
+import okio.Path
 
 /**
  * Configurable emulator hotkeys, read from `files/hotkeys.properties`.
@@ -149,7 +154,7 @@ class Hotkeys private constructor(
         }
         if (consumes(keyCode)) return true
         val button = input.buttonFor(keyCode) ?: return false
-        if (button and (MgbaCore.Key.START or MgbaCore.Key.SELECT) != 0 && inChord(keyCode) && !input.holdsButtons) {
+        if (button and (CoreKey.START or CoreKey.SELECT) != 0 && inChord(keyCode) && !input.holdsButtons) {
             heldBack[keyCode] = false
             return true
         }
@@ -206,76 +211,71 @@ class Hotkeys private constructor(
             "slot_prev" to "BUTTON_THUMBL, LEFT_BRACKET",
         )
 
-        private fun file(filesDir: File) = File(filesDir, "hotkeys.properties")
+        private fun file(filesDir: Path) = filesDir / "hotkeys.properties"
 
-        private fun readProps(filesDir: File): Properties {
-            val props = Properties()
+        private fun readProps(filesDir: Path): MutableMap<String, String> {
             val f = file(filesDir)
-            if (f.isFile) {
-                runCatching { f.inputStream().use(props::load) }
-                    .onFailure { Log.w("pokedaisy", "hotkeys.properties unreadable, using defaults", it) }
-            }
+            val props = if (!f.isFile) LinkedHashMap() else runCatching { PropertiesText.parse(f.readText()) }
+                .onFailure { Logs.w("hotkeys.properties unreadable, using defaults", it) }.getOrNull() ?: LinkedHashMap()
             var changed = false
             // X / Y left the state hotkeys for GAME BUTTONS' X / Y: only where nobody changed them.
-            for ((k, old) in OLD_DEFAULTS) if (props.getProperty(k) == old) { props.setProperty(k, DEFAULTS.getValue(k)); changed = true }
-            for ((k, v) in DEFAULTS) if (!props.containsKey(k)) { props.setProperty(k, v); changed = true }
+            for ((k, old) in OLD_DEFAULTS) if (props[k] == old) { props[k] = DEFAULTS.getValue(k); changed = true }
+            for ((k, v) in DEFAULTS) if (k !in props) { props[k] = v; changed = true }
             if (changed) writeProps(filesDir, props)
             return props
         }
 
-        private fun writeProps(filesDir: File, props: Properties) {
+        private fun writeProps(filesDir: Path, props: Map<String, String>) {
             runCatching {
-                file(filesDir).outputStream().use {
-                    props.store(it, "PokeDaisy hotkeys — comma-separated chords, '+' joins keys of one chord")
-                }
+                file(filesDir).writeText(PropertiesText.format(props, "PokeDaisy hotkeys — comma-separated chords, '+' joins keys of one chord"))
             }
         }
 
-        fun load(filesDir: File): Hotkeys {
+        fun load(filesDir: Path): Hotkeys {
             val props = readProps(filesDir)
             val raw = Action.entries.associateWith { a ->
-                props.getProperty(a.prop).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                props[a.prop].orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
             }
             return Hotkeys(raw)
         }
 
         /** Replace [action]'s binding with the single chord [keyCodes] and persist. */
-        fun setBinding(filesDir: File, action: Action, keyCodes: Collection<Int>, takeFrom: Collection<Action> = emptyList()) =
+        fun setBinding(filesDir: Path, action: Action, keyCodes: Collection<Int>, takeFrom: Collection<Action> = emptyList()) =
             setBindingNamed(filesDir, action, keyCodes.map { keyName(it) }, takeFrom)
 
         /**
          * Replace [action]'s binding with the chord [keyNames] (KEYCODE_ suffixes) and persist; the same
          * chord comes off each of [takeFrom] (the player said MOVE to [clashes]), their other chords stay.
          */
-        fun setBindingNamed(filesDir: File, action: Action, keyNames: Collection<String>, takeFrom: Collection<Action> = emptyList()) {
+        fun setBindingNamed(filesDir: Path, action: Action, keyNames: Collection<String>, takeFrom: Collection<Action> = emptyList()) {
             val props = readProps(filesDir)
             val chord = chordOf(keyNames.joinToString("+"))
             for (other in takeFrom) if (other != action) {
-                val kept = props.getProperty(other.prop).orEmpty().split(',').map { it.trim() }
+                val kept = props[other.prop].orEmpty().split(',').map { it.trim() }
                     .filter { it.isNotEmpty() && chordOf(it) != chord }
-                props.setProperty(other.prop, kept.joinToString(", "))
+                props[other.prop] = kept.joinToString(", ")
             }
-            props.setProperty(action.prop, keyNames.joinToString("+"))
+            props[action.prop] = keyNames.joinToString("+")
             writeProps(filesDir, props)
         }
 
         /** The key [keyName] alone comes off every hotkey that was just that key (its chords with other keys stay). */
-        fun releaseKey(filesDir: File, keyName: String) {
+        fun releaseKey(filesDir: Path, keyName: String) {
             val props = readProps(filesDir)
             val chord = chordOf(keyName)
             var changed = false
             for (a in Action.entries) {
-                val chords = props.getProperty(a.prop).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                val chords = props[a.prop].orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
                 val kept = chords.filter { chordOf(it) != chord }
-                if (kept.size != chords.size) { props.setProperty(a.prop, kept.joinToString(", ")); changed = true }
+                if (kept.size != chords.size) { props[a.prop] = kept.joinToString(", "); changed = true }
             }
             if (changed) writeProps(filesDir, props)
         }
 
         /** Unbinds [action] (an empty value, so the default doesn't come back). */
-        fun clearBinding(filesDir: File, action: Action) {
+        fun clearBinding(filesDir: Path, action: Action) {
             val props = readProps(filesDir)
-            props.setProperty(action.prop, "")
+            props[action.prop] = ""
             writeProps(filesDir, props)
         }
 
@@ -294,14 +294,11 @@ class Hotkeys private constructor(
             s.split('+').map { it.trim().uppercase() }.filter { it.isNotEmpty() }.toSet()
 
         /** Human name for a keycode (e.g. 96 -> "BUTTON_A"). */
-        fun keyName(keyCode: Int): String =
-            KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
+        fun keyName(keyCode: Int): String = KeyCodes.name(keyCode)
 
         private fun resolveKey(name: String): Int? {
             if (name.isEmpty()) return null
-            return runCatching {
-                KeyEvent::class.java.getField("KEYCODE_$name").getInt(null)
-            }.onFailure { Log.w("pokedaisy", "unknown hotkey key: $name") }.getOrNull()
+            return KeyCodes.code(name) ?: null.also { Logs.w("unknown hotkey key: $name") }
         }
     }
 }

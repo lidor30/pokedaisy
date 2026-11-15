@@ -1,5 +1,7 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.DsCore
+import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.data.SnapshotCache
 import com.pokedaisy.app.companion.data.delete
 import com.pokedaisy.app.companion.i18n.tr
@@ -535,8 +537,8 @@ class EmulatorEngine(
 
     /** DS CPU BOOST ([Prefs.dsCpuBoost]): the emulated ARM9 at twice the DS's clock, set between frames. */
     @Volatile var ndsCpuBoost = true
-    /** DS CORE ([com.pokedaisy.app.companion.DsCore]): the core the next DS game starts on (MgbaCore.NDS_CORE_*). */
-    @Volatile var ndsCore = MgbaCore.NDS_CORE_MELONDS
+    /** DS CORE ([com.pokedaisy.app.companion.DsCore]): the core the next DS game starts on (DsCore.CORE_*). */
+    @Volatile var ndsCore = DsCore.CORE_MELONDS
 
     /** DS LAYOUT floats the X menu (one screen): it comes back after a menu screen left by touch ([MgbaCore.pkNdsKeepStartMenu]). */
     @Volatile var dsKeepStartMenu = false
@@ -1089,7 +1091,7 @@ class EmulatorEngine(
                 // A DS game left on the other DS core (DS CORE changed since): its state can't load here. Kept for that
                 // core (SaveStates.parkedResume: the next start on it resumes it), and the game starts from its save file.
                 Log.w("pokedaisy", "resume skipped: the state is the other DS core's")
-                val other = if (dsCore == MgbaCore.NDS_CORE_DSPERATE) MgbaCore.NDS_CORE_MELONDS else MgbaCore.NDS_CORE_DSPERATE
+                val other = if (dsCore == DsCore.CORE_DSPERATE) DsCore.CORE_MELONDS else DsCore.CORE_DSPERATE
                 resume.renameTo(SaveStates.parkedResume(resume, other))
                 SnapshotCache.fileFor(resume.toOkioPath()).delete()
                 startNotice = tr("This game was left on the other DS core, so it started from the save file")
@@ -1312,14 +1314,14 @@ class EmulatorEngine(
                 // battle, a menu screen (B leaves it) or on a bike (the Acro Bike's wheelie is B). Nor with A held: the
                 // expansion's DexNav creeps on A (Seaglass & co.), but checks B's run first, so a held B scared the
                 // Pokémon off. A while walking does nothing in the other games.
-                if (autoRun && !ownAutoRun && (gba || nds) && keys and DIRECTIONS != 0 && keys and MgbaCore.Key.A == 0 &&
+                if (autoRun && !ownAutoRun && (gba || nds) && keys and DIRECTIONS != 0 && keys and CoreKey.A == 0 &&
                     fieldState and AUTO_RUN_BLOCKERS == MgbaCore.FIELD_KNOWN && fieldScreen
-                ) keys = keys xor MgbaCore.Key.B
+                ) keys = keys xor CoreKey.B
                 else if (!autoRun && !ownAutoRun && (gba || nds) && keys and DIRECTIONS != 0 &&
                     fieldState and AUTO_RUN_BLOCKERS == MgbaCore.FIELD_KNOWN && fieldScreen
                 ) {
                     walkFrames++
-                    if (keys and MgbaCore.Key.B != 0) runFrames++
+                    if (keys and CoreKey.B != 0) runFrames++
                 }
                 // CO-OP BATTLES (hook null = nothing changes): the hook gives this frame's keys (always the player's own: a joined
                 // battle is the game's own link battle); null = the game is held (a joined battle waiting at its start, a stop in flight).
@@ -2341,7 +2343,7 @@ class EmulatorEngine(
         const val FIELD_SETTLE_FRAMES = 20
 
         private const val SOFT_RESET_FRAMES = 10
-        private const val SOFT_RESET_KEYS = MgbaCore.Key.A or MgbaCore.Key.B or MgbaCore.Key.SELECT or MgbaCore.Key.START
+        private const val SOFT_RESET_KEYS = CoreKey.A or CoreKey.B or CoreKey.SELECT or CoreKey.START
 
         /** The GBA's (and Game Boy's) frame rate: 16777216 Hz / 280896 cycles per frame. */
         const val GBA_FPS = 16777216.0 / 280896.0
@@ -2397,7 +2399,7 @@ class EmulatorEngine(
             MgbaCore.FIELD_SURF or   // under the sea B is what surfaces (TrySetupDiveEmergeScript): GitHub #338
             MgbaCore.FIELD_WINDOW
         /** The D-pad's bits: one held = the player walking (the look-around glides back). */
-        const val DIRECTIONS = MgbaCore.Key.UP or MgbaCore.Key.DOWN or MgbaCore.Key.LEFT or MgbaCore.Key.RIGHT
+        const val DIRECTIONS = CoreKey.UP or CoreKey.DOWN or CoreKey.LEFT or CoreKey.RIGHT
     }
 }
 

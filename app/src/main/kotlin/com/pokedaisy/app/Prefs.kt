@@ -1,12 +1,14 @@
 package com.pokedaisy.app
 
 import android.content.Context
+import com.pokedaisy.app.companion.DS_RESOLUTION_MAX
 import com.pokedaisy.app.companion.FfMode
 import com.pokedaisy.app.companion.GameAspect
 import com.pokedaisy.app.companion.GridStrength
 import com.pokedaisy.app.companion.ScreenFilter
 import com.pokedaisy.app.companion.Smoothing
 import com.pokedaisy.app.companion.FfMusicMode
+import com.pokedaisy.app.companion.data.LibraryView
 
 /** Tiny SharedPreferences wrapper for app-level state. */
 class Prefs(context: Context) {
@@ -988,6 +990,3 @@ class Prefs(context: Context) {
         const val RECENT_CAP = 10   // more than the 3 shown, so deleted ROMs don't starve the row
     }
 }
-
-/** DS RESOLUTION's highest scale ([Prefs.dsResolution]). */
-const val DS_RESOLUTION_MAX = 8
