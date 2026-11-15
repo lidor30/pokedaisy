@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "pd_experience.h"
@@ -366,10 +367,19 @@ const char* pd_save_mismatch(const struct pd_save* s) {
         if (!m.checksumOk || species < 1 || species > PD_SAVE_SPECIES || (!pd_box_mon_egg(&m) && (level < 1 || level > 100)))
             return "Its party doesn't read: another game's save?";
     }
-    // The game zeroes the slots past the count (ZeroMonData): anything there is another layout's data.
-    for (int i = count; i < 6; i++)
-        for (int b = 0; b < PD_SAVE_PARTY_MON; b++)
-            if (s->block1[f->partyOff + i * PD_SAVE_PARTY_MON + b]) return "Its party doesn't read: another game's save?";
+    // The game empties the slots past the count (ZeroMonData): zeroes, but the mail byte (+0x55) MAIL_NONE in every slot a
+    // party ever shrank from. A whole Pokémon left there (a party some tool shrank) is still this layout's; anything else
+    // is another layout's data.
+    for (int i = count; i < 6; i++) {
+        const uint8_t* r = s->block1 + f->partyOff + i * PD_SAVE_PARTY_MON;
+        bool empty = true;
+        for (int b = 0; b < PD_SAVE_PARTY_MON; b++) empty &= r[b] == 0 || (b == 0x55 && r[b] == 0xFF);
+        if (empty) continue;
+        struct pd_box_mon m;
+        pd_box_mon_read(&m, r);
+        int sp = pd_box_mon_species(&m);
+        if (!m.checksumOk || sp < 1 || sp >= PD_SAVE_SPECIES) return "Its party doesn't read: another game's save?";
+    }
     if (s->storage[0] >= PD_SAVE_BOXES) return "Its PC doesn't read: another game's save?";
     int used = 0, unreadable = 0;
     for (int b = 0; b < PD_SAVE_BOXES; b++) {
@@ -387,22 +397,301 @@ const char* pd_save_mismatch(const struct pd_save* s) {
     return NULL;
 }
 
+// --- box record fields ---
+
+uint32_t pd_box_mon_ot_id(const struct pd_box_mon* m) { return u32(m->header + 4); }
+uint32_t pd_box_mon_exp(const struct pd_box_mon* m) { return u32(m->data + 4); }
+int pd_box_mon_friendship(const struct pd_box_mon* m) { return m->data[9]; }
+int pd_box_mon_move(const struct pd_box_mon* m, int i) { return u16(m->data + 12 + i * 2); }
+int pd_box_mon_language(const struct pd_box_mon* m) { return m->header[0x12]; }
+int pd_box_mon_ability_num(const struct pd_box_mon* m) { return (int) (u32(m->data + 40) >> 31 & 1); }
+
+void pd_box_mon_ivs(const struct pd_box_mon* m, int out[6]) {
+    uint32_t word = u32(m->data + 40);
+    for (int i = 0; i < 6; i++) out[i] = (int) (word >> (i * 5) & 0x1F);
+}
+
+void pd_box_mon_evs(const struct pd_box_mon* m, int out[6]) {
+    for (int i = 0; i < 6; i++) out[i] = m->data[24 + i];
+}
+
+// --- species and personalities (pokemon.c) ---
+
+#define SPECIES_SHEDINJA 303
+#define SPECIES_SMEARGLE 235
+#define MOVE_STRUGGLE 165
+#define FIRST_TM 289
+#define FIRST_HM 339
+#define ITEM_LAST_TMHM 346
+#define EV_MAX 255
+#define EV_TOTAL 510
+#define PARTY_STATUS 0x50
+#define PARTY_LEVEL 0x54
+#define PARTY_MAIL 0x55
+#define PARTY_HP 0x56
+#define PARTY_STATS 0x58
+#define MAIL_NONE 0xFF
+
+static bool species_ok(int species) { return species > 0 && species < PD_SAVE_SPECIES; }
+
+enum pd_save_gender pd_save_gender_of(int species, uint32_t personality) {
+    int ratio = species_ok(species) ? pd_save_gender_ratios[species] : 255;
+    if (ratio == 0) return PD_SAVE_MALE;
+    if (ratio == 254) return PD_SAVE_FEMALE;
+    if (ratio == 255) return PD_SAVE_GENDERLESS;
+    return (int) (personality & 0xFF) < ratio ? PD_SAVE_FEMALE : PD_SAVE_MALE;
+}
+
+bool pd_save_both_genders(int species) {
+    int ratio = species_ok(species) ? pd_save_gender_ratios[species] : 255;
+    return ratio != 0 && ratio != 254 && ratio != 255;
+}
+
+bool pd_save_is_shiny(uint32_t personality, uint32_t otId) {
+    return ((otId >> 16) ^ (otId & 0xFFFF) ^ (personality >> 16) ^ (personality & 0xFFFF)) < 8;
+}
+
+int pd_save_ability_count(int species) {
+    if (!species_ok(species)) return 1;
+    int a = pd_save_abilities[species][0], b = pd_save_abilities[species][1];
+    return b == 0 || b == a ? 1 : 2;
+}
+
+int pd_save_ability(int species, int abilityNum) {
+    if (!species_ok(species)) return 0;
+    return abilityNum == 1 && pd_save_ability_count(species) == 2 ? pd_save_abilities[species][1] : pd_save_abilities[species][0];
+}
+
+const char* pd_save_ability_name(int ability) {
+    return ability >= 0 && ability < pd_save_ability_names_count ? pd_save_ability_names[ability] : "?";
+}
+
+void pd_save_stats(int species, int level, const int ivs[6], const int evs[6], int nature, int out[6]) {
+    const uint8_t* base = species_ok(species) ? pd_save_base_stats[species] : pd_save_base_stats[0];
+    out[0] = species == SPECIES_SHEDINJA ? 1 : (2 * base[0] + ivs[0] + evs[0] / 4) * level / 100 + level + 10;
+    for (int i = 1; i < 6; i++) {
+        int n = (2 * base[i] + ivs[i] + evs[i] / 4) * level / 100 + 5;
+        // gNatureStatTable: nature / 5 raises, nature % 5 lowers, over Attack, Defense, Speed, Sp. Atk, Sp. Def.
+        if (nature / 5 != nature % 5) {
+            if (i - 1 == nature / 5) n = n * 110 / 100;
+            else if (i - 1 == nature % 5) n = n * 90 / 100;
+        }
+        out[i] = n;
+    }
+}
+
+uint32_t pd_save_exp_for(int species, int level) {
+    if (!species_ok(species) || species >= pd_growth_rates_count || level < 1 || level > 100) return 0;
+    int rate = pd_growth_rates[species];
+    return rate >= 0 && rate <= 5 ? pd_experience_tables[rate][level] : 0;
+}
+
+// GetUnownLetterByPersonality and Wurmple's branch: what a new personality has to keep.
+static int unown_letter(uint32_t p) {
+    return (int) (((p & 0x3000000) >> 18 | (p & 0x30000) >> 12 | (p & 0x300) >> 6 | (p & 0x3)) % 28);
+}
+
+static bool wurmple_silcoon(uint32_t p) { return (p >> 16 & 0xFFFF) % 10 < 5; }
+
+// --- places ---
+
+static bool at_valid(const struct pd_save* s, int at) {
+    if (PD_AT_IS_PARTY(at)) return PD_AT_PARTY_INDEX(at) < PD_SAVE_PARTY;
+    (void) s;
+    return at >= 0 && at < PD_SAVE_BOXES * PD_SAVE_BOX_SLOTS;
+}
+
+static int party_off(const struct pd_save* s, int i) { return s->f->partyOff + i * PD_SAVE_PARTY_MON; }
+
+static uint8_t* rec_ptr(struct pd_save* s, int at) {
+    return PD_AT_IS_PARTY(at) ? s->block1 + party_off(s, PD_AT_PARTY_INDEX(at)) : s->storage + 4 + at * PD_SAVE_RECORD;
+}
+
+static const uint8_t* rec_cptr(const struct pd_save* s, int at) { return rec_ptr((struct pd_save*) s, at); }
+
+bool pd_save_record_at(const struct pd_save* s, int at, struct pd_box_mon* out) {
+    if (!at_valid(s, at)) return false;
+    if (PD_AT_IS_PARTY(at) && PD_AT_PARTY_INDEX(at) >= pd_save_party_count(s)) return false;
+    pd_box_mon_read(out, rec_cptr(s, at));
+    return !pd_box_mon_empty(out);
+}
+
+bool pd_save_mon_at(const struct pd_save* s, int at, struct pd_mon* out) {
+    if (!at_valid(s, at)) return false;
+    if (PD_AT_IS_PARTY(at)) return pd_save_party_mon(s, PD_AT_PARTY_INDEX(at), out);
+    return pd_save_box_mon(s, at / PD_SAVE_BOX_SLOTS, at % PD_SAVE_BOX_SLOTS, out);
+}
+
+int pd_save_level_at(const struct pd_save* s, int at) {
+    struct pd_box_mon m;
+    if (!pd_save_record_at(s, at, &m)) return 0;
+    if (PD_AT_IS_PARTY(at)) return rec_cptr(s, at)[PARTY_LEVEL];
+    return pd_save_level_for(pd_box_mon_species(&m), pd_box_mon_exp(&m));
+}
+
+void pd_save_stats_at(const struct pd_save* s, int at, int out[6], int* hp) {
+    memset(out, 0, 6 * sizeof out[0]);
+    *hp = 0;
+    struct pd_box_mon m;
+    if (!pd_save_record_at(s, at, &m) || pd_box_mon_egg(&m) || pd_box_mon_bad_egg(&m)) return;
+    if (PD_AT_IS_PARTY(at)) {
+        const uint8_t* r = rec_cptr(s, at);
+        for (int i = 0; i < 6; i++) out[i] = u16(r + PARTY_STATS + i * 2);
+        *hp = u16(r + PARTY_HP);
+        return;
+    }
+    int ivs[6], evs[6];
+    pd_box_mon_ivs(&m, ivs);
+    pd_box_mon_evs(&m, evs);
+    pd_save_stats(pd_box_mon_species(&m), pd_save_level_at(s, at), ivs, evs, (int) (pd_box_mon_personality(&m) % 25), out);
+    *hp = out[0];
+}
+
 // --- edits ---
+
+static bool alive(const uint8_t* party) {
+    struct pd_box_mon m;
+    pd_box_mon_read(&m, party);
+    return !pd_box_mon_empty(&m) && !pd_box_mon_egg(&m) && !pd_box_mon_bad_egg(&m) && u16(party + PARTY_HP) > 0;
+}
+
+// CountPartyAliveNonEggMonsExcept.
+static int alive_except(const struct pd_save* s, int except) {
+    int n = 0;
+    for (int i = 0; i < pd_save_party_count(s) && i < PD_SAVE_PARTY; i++)
+        if (i != except && alive(s->block1 + party_off(s, i))) n++;
+    return n;
+}
+
+// CalculateMonStats for the party Pokémon at [off]: its level from its EXP and its stats, the HP moved by as much as its
+// max did (a fainted one stays at 0; Shedinja keeps 1).
+static void refresh_party_stats(struct pd_save* s, int off, bool fullHp) {
+    uint8_t* r = s->block1 + off;
+    struct pd_box_mon m;
+    pd_box_mon_read(&m, r);
+    if (!m.checksumOk || (pd_box_mon_egg(&m) && !fullHp)) return;
+    int species = pd_box_mon_species(&m), level = pd_save_level_for(species, pd_box_mon_exp(&m));
+    if (level < 1) level = 1;
+    int ivs[6], evs[6], stats[6];
+    pd_box_mon_ivs(&m, ivs);
+    pd_box_mon_evs(&m, evs);
+    pd_save_stats(species, level, ivs, evs, (int) (pd_box_mon_personality(&m) % 25), stats);
+    int oldMax = u16(r + PARTY_STATS), hp = u16(r + PARTY_HP), newHp;
+    if (species == SPECIES_SHEDINJA) newHp = hp != 0 || oldMax == 0 || fullHp ? 1 : 0;
+    else if (fullHp || (hp == 0 && oldMax == 0)) newHp = stats[0];
+    else if (hp == 0) newHp = 0;
+    else {
+        newHp = hp + stats[0] - oldMax;
+        if (newHp < 1) newHp = 1;
+        if (newHp > stats[0]) newHp = stats[0];
+    }
+    r[PARTY_LEVEL] = (uint8_t) level;
+    put16(r + PARTY_HP, (unsigned) newHp);
+    for (int i = 0; i < 6; i++) put16(r + PARTY_STATS + i * 2, (unsigned) stats[i]);
+}
+
+// A changed record back where it was; a party Pokémon's level byte and stats follow it.
+static void put_mon(struct pd_save* s, int at, const struct pd_box_mon* m) {
+    pd_box_mon_encode(m, rec_ptr(s, at));
+    if (PD_AT_IS_PARTY(at)) refresh_party_stats(s, party_off(s, PD_AT_PARTY_INDEX(at)), false);
+}
+
+// A box record as party Pokémon [index] (BoxMonToMon): no status, no mail, its level and stats, full HP; [keep] = a party
+// Pokémon's own 100 bytes, whose status and HP stay (a trade from a party).
+static void write_party_mon(struct pd_save* s, int index, const uint8_t* record, const uint8_t* keep) {
+    uint8_t* r = s->block1 + party_off(s, index);
+    memcpy(r, record, PD_SAVE_RECORD);
+    if (keep) memcpy(r + PD_SAVE_RECORD, keep + PD_SAVE_RECORD, PD_SAVE_PARTY_MON - PD_SAVE_RECORD);
+    else memset(r + PD_SAVE_RECORD, 0, PD_SAVE_PARTY_MON - PD_SAVE_RECORD);
+    r[PARTY_MAIL] = MAIL_NONE;
+    refresh_party_stats(s, party_off(s, index), keep == NULL);
+}
+
+// CompactPartySlots after party Pokémon [index] leaves; ZeroMonData on the last.
+static void remove_party_mon(struct pd_save* s, int index) {
+    int count = pd_save_party_count(s);
+    for (int i = index; i < count - 1; i++) memmove(s->block1 + party_off(s, i), s->block1 + party_off(s, i + 1), PD_SAVE_PARTY_MON);
+    uint8_t* last = s->block1 + party_off(s, count - 1);
+    memset(last, 0, PD_SAVE_PARTY_MON);
+    last[PARTY_MAIL] = MAIL_NONE;
+    s->block1[s->f->partyCountOff] = (uint8_t) (count - 1);
+}
+
+bool pd_save_is_mail(int item) { return item >= MAIL_FIRST && item <= MAIL_LAST; }
 
 const char* pd_save_move(struct pd_save* s, int box, int slot, int toBox, int toSlot) {
     if (!box_ok(box, slot) || !box_ok(toBox, toSlot)) return "No such box";
-    if (box == toBox && slot == toSlot) return NULL;
-    struct pd_box_mon a, b;
-    read_box_mon(s, box, slot, &a);
-    read_box_mon(s, toBox, toSlot, &b);
-    if (pd_box_mon_empty(&a) || pd_box_mon_bad_egg(&a)) return "Nothing to move there";
-    if (!pd_box_mon_empty(&b) && pd_box_mon_bad_egg(&b)) return "A Bad Egg sits there";
-    uint8_t tmp[PD_SAVE_RECORD];
-    uint8_t* ra = s->storage + record_off(box, slot);
-    uint8_t* rb = s->storage + record_off(toBox, toSlot);
-    memcpy(tmp, ra, PD_SAVE_RECORD);
-    memcpy(ra, rb, PD_SAVE_RECORD);
-    memcpy(rb, tmp, PD_SAVE_RECORD);
+    return pd_save_move_at(s, PD_AT_BOX(box, slot), PD_AT_BOX(toBox, toSlot));
+}
+
+const char* pd_save_move_at(struct pd_save* s, int from, int to) {
+    if (!at_valid(s, from) || !at_valid(s, to)) return "No such place";
+    if (from == to) return NULL;
+    int count = pd_save_party_count(s);
+    bool fp = PD_AT_IS_PARTY(from), tp = PD_AT_IS_PARTY(to);
+    if (!fp && !tp) {
+        struct pd_box_mon a, b;
+        read_box_mon(s, from / PD_SAVE_BOX_SLOTS, from % PD_SAVE_BOX_SLOTS, &a);
+        read_box_mon(s, to / PD_SAVE_BOX_SLOTS, to % PD_SAVE_BOX_SLOTS, &b);
+        if (pd_box_mon_empty(&a) || pd_box_mon_bad_egg(&a)) return "Nothing to move there";
+        if (!pd_box_mon_empty(&b) && pd_box_mon_bad_egg(&b)) return "A Bad Egg sits there";
+        uint8_t tmp[PD_SAVE_RECORD];
+        memcpy(tmp, rec_ptr(s, from), PD_SAVE_RECORD);
+        memcpy(rec_ptr(s, from), rec_ptr(s, to), PD_SAVE_RECORD);
+        memcpy(rec_ptr(s, to), tmp, PD_SAVE_RECORD);
+        return NULL;
+    }
+    if (fp && tp) {
+        int a = PD_AT_PARTY_INDEX(from), b = PD_AT_PARTY_INDEX(to);
+        if (a >= count) return "Nothing to move there";
+        if (b >= count) b = count - 1;
+        if (a == b) return NULL;
+        uint8_t tmp[PD_SAVE_PARTY_MON];
+        memcpy(tmp, s->block1 + party_off(s, a), PD_SAVE_PARTY_MON);
+        memcpy(s->block1 + party_off(s, a), s->block1 + party_off(s, b), PD_SAVE_PARTY_MON);
+        memcpy(s->block1 + party_off(s, b), tmp, PD_SAVE_PARTY_MON);
+        return NULL;
+    }
+    if (!fp) { // PC -> party
+        struct pd_box_mon mon;
+        pd_box_mon_read(&mon, rec_ptr(s, from));
+        if (pd_box_mon_empty(&mon) || pd_box_mon_bad_egg(&mon)) return "Nothing to move there";
+        int i = PD_AT_PARTY_INDEX(to);
+        uint8_t record[PD_SAVE_RECORD];
+        memcpy(record, rec_ptr(s, from), PD_SAVE_RECORD);
+        if (i >= count) {
+            if (count >= PD_SAVE_PARTY) return "Your party is full";
+            write_party_mon(s, count, record, NULL);
+            s->block1[s->f->partyCountOff] = (uint8_t) (count + 1);
+            memset(rec_ptr(s, from), 0, PD_SAVE_RECORD);
+            return NULL;
+        }
+        struct pd_box_mon leaving;
+        pd_box_mon_read(&leaving, s->block1 + party_off(s, i));
+        if (pd_save_is_mail(pd_box_mon_item(&leaving))) return "A Pokémon holding mail can't go in the PC";
+        if (pd_box_mon_egg(&mon) && alive_except(s, i) == 0) return "That's your last Pokémon able to battle";
+        uint8_t out[PD_SAVE_RECORD];
+        memcpy(out, s->block1 + party_off(s, i), PD_SAVE_RECORD);
+        write_party_mon(s, i, record, NULL);
+        memcpy(rec_ptr(s, from), out, PD_SAVE_RECORD);
+        return NULL;
+    }
+    // party -> PC
+    int i = PD_AT_PARTY_INDEX(from);
+    if (i >= count) return "Nothing to move there";
+    struct pd_box_mon leaving, target;
+    pd_box_mon_read(&leaving, s->block1 + party_off(s, i));
+    if (pd_save_is_mail(pd_box_mon_item(&leaving))) return "A Pokémon holding mail can't go in the PC";
+    pd_box_mon_read(&target, rec_ptr(s, to));
+    if (!pd_box_mon_empty(&target) && pd_box_mon_bad_egg(&target)) return "A Bad Egg sits there";
+    bool incomingAlive = !pd_box_mon_empty(&target) && !pd_box_mon_egg(&target);
+    if (!incomingAlive && alive_except(s, i) == 0) return "That's your last Pokémon able to battle";
+    uint8_t record[PD_SAVE_RECORD], incoming[PD_SAVE_RECORD];
+    memcpy(record, s->block1 + party_off(s, i), PD_SAVE_RECORD);
+    memcpy(incoming, rec_ptr(s, to), PD_SAVE_RECORD);
+    if (pd_box_mon_empty(&target)) remove_party_mon(s, i);
+    else write_party_mon(s, i, incoming, NULL);
+    memcpy(rec_ptr(s, to), record, PD_SAVE_RECORD);
     return NULL;
 }
 
@@ -419,7 +708,508 @@ bool pd_save_set_coins(struct pd_save* s, int amount) {
     return true;
 }
 
-// --- trading ---
+// --- a Pokémon's page ---
+
+const char* pd_save_editable(const struct pd_save* s, int at) {
+    struct pd_box_mon m;
+    if (!pd_save_record_at(s, at, &m)) return "There's no Pokémon there";
+    if (pd_box_mon_bad_egg(&m)) return "A Bad Egg isn't edited";
+    if (pd_box_mon_egg(&m)) return "An egg isn't edited";
+    return NULL;
+}
+
+int pd_save_level_as_read(const struct pd_save* s, int at) {
+    struct pd_box_mon m;
+    if (!pd_save_record_at(s, at, &m)) return 1;
+    uint32_t p = pd_box_mon_personality(&m), ot = pd_box_mon_ot_id(&m);
+    // The same Pokémon in the blocks as read: in the party or anywhere in the PC.
+    for (int i = 0; i < PD_SAVE_PARTY && i < s->read1[s->f->partyCountOff]; i++) {
+        struct pd_box_mon was;
+        const uint8_t* r = s->read1 + s->f->partyOff + i * PD_SAVE_PARTY_MON;
+        pd_box_mon_read(&was, r);
+        if (was.checksumOk && pd_box_mon_personality(&was) == p && pd_box_mon_ot_id(&was) == ot)
+            return pd_save_level_for(pd_box_mon_species(&was), pd_box_mon_exp(&was));
+    }
+    for (int k = 0; k < PD_SAVE_BOXES * PD_SAVE_BOX_SLOTS; k++) {
+        struct pd_box_mon was;
+        pd_box_mon_read(&was, s->readStorage + 4 + k * PD_SAVE_RECORD);
+        if (!pd_box_mon_empty(&was) && was.checksumOk && pd_box_mon_personality(&was) == p && pd_box_mon_ot_id(&was) == ot)
+            return pd_save_level_for(pd_box_mon_species(&was), pd_box_mon_exp(&was));
+    }
+    return pd_save_level_for(pd_box_mon_species(&m), pd_box_mon_exp(&m));
+}
+
+static const char* editable_mon(const struct pd_save* s, int at, struct pd_box_mon* m) {
+    const char* why = pd_save_editable(s, at);
+    if (why) return why;
+    pd_save_record_at(s, at, m);
+    return NULL;
+}
+
+const char* pd_save_set_level(struct pd_save* s, int at, int level) {
+    struct pd_box_mon m;
+    const char* why = editable_mon(s, at, &m);
+    if (why) return why;
+    if (level < pd_save_level_as_read(s, at) || level > 100) return "Not a level it can have";
+    put32(m.data + 4, pd_save_exp_for(pd_box_mon_species(&m), level));
+    put_mon(s, at, &m);
+    return NULL;
+}
+
+const char* pd_save_set_ivs(struct pd_save* s, int at, const int ivs[6]) {
+    struct pd_box_mon m;
+    const char* why = editable_mon(s, at, &m);
+    if (why) return why;
+    uint32_t word = u32(m.data + 40) & ~0x3FFFFFFFu;
+    for (int i = 0; i < 6; i++) {
+        if (ivs[i] < 0 || ivs[i] > 31) return "IVs go from 0 to 31";
+        word |= (uint32_t) ivs[i] << (i * 5);
+    }
+    put32(m.data + 40, word);
+    put_mon(s, at, &m);
+    return NULL;
+}
+
+const char* pd_save_set_evs(struct pd_save* s, int at, const int evs[6]) {
+    struct pd_box_mon m;
+    const char* why = editable_mon(s, at, &m);
+    if (why) return why;
+    int total = 0;
+    for (int i = 0; i < 6; i++) {
+        if (evs[i] < 0 || evs[i] > EV_MAX) return "EVs go up to 255 a stat";
+        total += evs[i];
+    }
+    if (total > EV_TOTAL) return "EVs go up to 510 in all";
+    for (int i = 0; i < 6; i++) m.data[24 + i] = (uint8_t) evs[i];
+    put_mon(s, at, &m);
+    return NULL;
+}
+
+const char* pd_save_set_friendship(struct pd_save* s, int at, int value) {
+    struct pd_box_mon m;
+    const char* why = editable_mon(s, at, &m);
+    if (why) return why;
+    if (value < 0 || value > 255) return "Friendship goes from 0 to 255";
+    m.data[9] = (uint8_t) value;
+    put_mon(s, at, &m);
+    return NULL;
+}
+
+static int name_bytes_len(const uint8_t* b, int max) {
+    int n = 0;
+    while (n < max && b[n] != 0xFF) n++;
+    return n;
+}
+
+bool pd_save_is_own(const struct pd_save* s, int at) {
+    struct pd_box_mon m;
+    if (!pd_save_record_at(s, at, &m)) return false;
+    uint32_t ot = pd_box_mon_ot_id(&m);
+    if ((ot & 0xFFFF) != u16(s->block2 + 0x0A) || ot >> 16 != u16(s->block2 + 0x0C)) return false;
+    int a = name_bytes_len(m.header + 0x14, 7), b = name_bytes_len(s->block2, 7);
+    return a == b && !memcmp(m.header + 0x14, s->block2, (size_t) a);
+}
+
+// The naming screen's characters (charmap.txt): one byte each in the Western games. -1 = not one of them.
+static int name_char(const unsigned char** p) {
+    unsigned c = **p;
+    if (c >= 'A' && c <= 'Z') return (*p)++, 0xBB + (int) (c - 'A');
+    if (c >= 'a' && c <= 'z') return (*p)++, 0xD5 + (int) (c - 'a');
+    if (c >= '0' && c <= '9') return (*p)++, 0xA1 + (int) (c - '0');
+    static const char ASCII[] = " !?.-,/'\"";
+    static const int CODES[] = { 0x00, 0xAB, 0xAC, 0xAD, 0xAE, 0xB8, 0xBA, 0xB4, 0xB2 };
+    for (int i = 0; ASCII[i]; i++)
+        if ((char) c == ASCII[i]) return (*p)++, CODES[i];
+    // UTF-8: … “ ” ‘ ’ ♂ ♀ é
+    static const struct { const char* utf8; int code; } WIDE[] = {
+        { "\xE2\x80\xA6", 0xB0 }, { "\xE2\x80\x9C", 0xB1 }, { "\xE2\x80\x9D", 0xB2 }, { "\xE2\x80\x98", 0xB3 },
+        { "\xE2\x80\x99", 0xB4 }, { "\xE2\x99\x82", 0xB5 }, { "\xE2\x99\x80", 0xB6 }, { "\xC3\xA9", 0x1B },
+    };
+    for (size_t i = 0; i < sizeof WIDE / sizeof WIDE[0]; i++) {
+        size_t n = strlen(WIDE[i].utf8);
+        if (!strncmp((const char*) *p, WIDE[i].utf8, n)) {
+            *p += n;
+            return WIDE[i].code;
+        }
+    }
+    return -1;
+}
+
+// [utf8] in [size] bytes as the naming screen leaves it (the characters, then 0xFF); its length, -1 if it can't be.
+static int encode_name(const char* utf8, uint8_t* out, int size, int max) {
+    memset(out, 0xFF, (size_t) size);
+    int n = 0;
+    const unsigned char* p = (const unsigned char*) utf8;
+    while (*p) {
+        int code = name_char(&p);
+        if (code < 0 || n >= max || n >= size) return -1;
+        out[n++] = (uint8_t) code;
+    }
+    return n;
+}
+
+bool pd_save_name_ok(const char* utf8, int max) {
+    uint8_t buf[16];
+    bool blank = true;
+    for (const char* c = utf8; *c; c++) blank &= *c == ' ';
+    return !blank && encode_name(utf8, buf, sizeof buf, max) > 0;
+}
+
+const char* pd_save_set_nickname(struct pd_save* s, int at, const char* utf8) {
+    struct pd_box_mon m;
+    const char* why = editable_mon(s, at, &m);
+    if (why) return why;
+    if (!pd_save_is_own(s, at)) return "Only the trainer who caught it can rename it";
+    if (pd_box_mon_language(&m) == 1) return "A Japanese Pokémon's name isn't edited";
+    if (!pd_save_name_ok(utf8, 10)) return "The games can't write that name (letters, digits, . - ! ? ' and ♂ ♀)";
+    encode_name(utf8, m.header + 8, 10, 10);
+    put_mon(s, at, &m);
+    return NULL;
+}
+
+// xorshift32: the personality search's random numbers (any spread will do: it only has to find one that fits).
+static uint32_t rng_state = 0x9E3779B9u;
+static uint32_t rng(void) {
+    uint32_t x = rng_state;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return rng_state = x;
+}
+
+const char* pd_save_reroll(struct pd_save* s, int at, int nature, int shiny, int gender, int abilityNum) {
+    struct pd_box_mon m;
+    const char* why = editable_mon(s, at, &m);
+    if (why) return why;
+    int species = pd_box_mon_species(&m);
+    uint32_t p0 = pd_box_mon_personality(&m), ot = pd_box_mon_ot_id(&m);
+    if (nature > 24 || (abilityNum >= 0 && abilityNum >= pd_save_ability_count(species))) return "Not one it can have";
+    int wantNature = nature >= 0 ? nature : (int) (p0 % 25);
+    bool wantShiny = shiny >= 0 ? shiny != 0 : pd_save_is_shiny(p0, ot);
+    enum pd_save_gender wantGender = gender >= 0 ? (enum pd_save_gender) gender : pd_save_gender_of(species, p0);
+    if (wantGender != pd_save_gender_of(species, p0) && !pd_save_both_genders(species)) return "No Pokémon like that can exist";
+    bool two = pd_save_ability_count(species) == 2;
+    int wantBit = abilityNum >= 0 ? abilityNum : pd_box_mon_ability_num(&m);
+    int letter = unown_letter(p0);
+    bool silcoon = wurmple_silcoon(p0);
+    uint32_t ids = (ot >> 16 ^ (ot & 0xFFFF)) & 0xFFFF;
+    rng_state ^= p0 ^ (uint32_t) at * 2654435761u;
+    if (!rng_state) rng_state = 1;
+    for (long tries = 0; tries < 4000000; tries++) {
+        uint32_t low = rng() & 0xFFFF;
+        uint32_t high = wantShiny ? (ids ^ low ^ (rng() & 7)) & 0xFFFF : rng() & 0xFFFF;
+        uint32_t p = high << 16 | low;
+        if ((int) (p % 25) != wantNature || pd_save_is_shiny(p, ot) != wantShiny || pd_save_gender_of(species, p) != wantGender) continue;
+        if (two && (int) (p & 1) != wantBit) continue;
+        if (species == SPECIES_UNOWN && unown_letter(p) != letter) continue;
+        if (species >= 265 && species <= 269 && wurmple_silcoon(p) != silcoon) continue;
+        // The ability bit follows the personality, as when the game made it.
+        uint32_t word = u32(m.data + 40);
+        if (two) word = (word & 0x7FFFFFFFu) | (p & 1) << 31;
+        put32(m.data + 40, word);
+        put32(m.header, p);
+        put_mon(s, at, &m);
+        return NULL;
+    }
+    return "No Pokémon like that can exist";
+}
+
+int pd_save_tmhm_move(int item) {
+    return item >= FIRST_TM && item <= ITEM_LAST_TMHM ? pd_save_tmhm_moves[item - FIRST_TM] : 0;
+}
+
+static const struct pd_save_legal* legal(const struct pd_save* s) { return &pd_save_legal[s->f->kind]; }
+
+static int pocket_of(const struct pd_save* s, int item) {
+    const struct pd_save_legal* t = legal(s);
+    for (int i = 0; i < t->bagCount; i++)
+        if (t->bag[i][0] == item) return t->bag[i][1];
+    return 0;
+}
+
+static int cmp_u16(const void* a, const void* b) { return (int) *(const uint16_t*) a - (int) *(const uint16_t*) b; }
+
+int pd_save_holdable(const struct pd_save* s, uint16_t* out, int max) {
+    const struct pd_save_legal* t = legal(s);
+    int n = 0;
+    for (int i = 0; i < t->bagCount && n < max; i++) {
+        int item = t->bag[i][0];
+        if (item >= FIRST_HM && item <= ITEM_LAST_TMHM) continue;
+        if (pd_save_is_mail(item)) continue;
+        out[n++] = (uint16_t) item;
+    }
+    qsort(out, (size_t) n, sizeof out[0], cmp_u16);
+    return n;
+}
+
+const char* pd_save_set_held_item(struct pd_save* s, int at, int item) {
+    struct pd_box_mon m;
+    const char* why = editable_mon(s, at, &m);
+    if (why) return why;
+    int now = pd_box_mon_item(&m);
+    if (pd_save_is_mail(now)) return "Mail stays with its letter: take it off in the game";
+    if (item != 0 && item != now && (pocket_of(s, item) == 0 || (item >= FIRST_HM && item <= ITEM_LAST_TMHM) || pd_save_is_mail(item)))
+        return "That can't be held";
+    put16(m.data + 2, (unsigned) item);
+    put_mon(s, at, &m);
+    return NULL;
+}
+
+static void learnable_of(const struct pd_save* s, int species, int level, uint8_t* bits) {
+    memset(bits, 0, (PD_SAVE_LAST_MOVE + 8) / 8);
+#define SET(mv) do { int m_ = (mv); if (m_ > 0 && m_ <= PD_SAVE_LAST_MOVE) bits[m_ / 8] |= (uint8_t) (1 << (m_ % 8)); } while (0)
+    if (species == SPECIES_SMEARGLE) { // Sketch: any move but Struggle
+        for (int mv = 1; mv <= PD_SAVE_LAST_MOVE; mv++)
+            if (mv != MOVE_STRUGGLE) SET(mv);
+        return;
+    }
+    const struct pd_save_legal* t = legal(s);
+    for (int guard = 0; species_ok(species) && guard < 4; guard++) {
+        for (int k = t->levelUpStart[species]; k < t->levelUpStart[species + 1]; k++)
+            if (t->levelUp[k] >> 9 <= level) SET(t->levelUp[k] & 0x1FF);
+        for (int b = 0; b < PD_SAVE_TMHM; b++)
+            if (t->tmhm[species] >> b & 1) SET(pd_save_tmhm_moves[b]);
+        for (int b = 0; b < t->tutorCount; b++)
+            if (t->tutors[species] >> b & 1) SET(t->tutorMoves[b]);
+        // FireRed / LeafGreen's Cape Brink tutor for the three starters' last stages.
+        if (s->f->kind == PD_SAVE_FIRERED_LEAFGREEN) {
+            if (species == 3) SET(338);
+            if (species == 6) SET(307);
+            if (species == 9) SET(308);
+        }
+        species = pd_save_pre_evolution[species];
+    }
+#undef SET
+}
+
+int pd_save_learnable(const struct pd_save* s, int at, uint8_t out[(PD_SAVE_LAST_MOVE + 8) / 8]) {
+    struct pd_box_mon m;
+    memset(out, 0, (PD_SAVE_LAST_MOVE + 8) / 8);
+    if (!pd_save_record_at(s, at, &m)) return 0;
+    learnable_of(s, pd_box_mon_species(&m), pd_save_level_at(s, at), out);
+    int n = 0;
+    for (int mv = 1; mv <= PD_SAVE_LAST_MOVE; mv++) n += out[mv / 8] >> (mv % 8) & 1;
+    return n;
+}
+
+const char* pd_save_set_moves(struct pd_save* s, int at, const int* moves, int n) {
+    struct pd_box_mon m;
+    const char* why = editable_mon(s, at, &m);
+    if (why) return why;
+    if (n < 1 || n > 4) return "A Pokémon knows one to four moves";
+    uint8_t learn[(PD_SAVE_LAST_MOVE + 8) / 8];
+    learnable_of(s, pd_box_mon_species(&m), pd_save_level_at(s, at), learn);
+    int known[4], pp[4], ups = m.data[8], ids[4] = { 0 }, newPp[4] = { 0 }, newUps = 0;
+    for (int i = 0; i < 4; i++) known[i] = pd_box_mon_move(&m, i), pp[i] = m.data[20 + i];
+    for (int i = 0; i < n; i++) {
+        int mv = moves[i];
+        if (mv < 1 || mv > PD_SAVE_LAST_MOVE) return "Not a move";
+        for (int k = 0; k < i; k++)
+            if (moves[k] == mv) return "A move only once";
+        int was = -1;
+        for (int k = 0; k < 4; k++)
+            if (known[k] == mv) was = k;
+        if (was < 0 && !(learn[mv / 8] >> (mv % 8) & 1)) return "It can't learn that move";
+        ids[i] = mv;
+        if (was >= 0) {
+            newPp[i] = pp[was];
+            newUps |= (ups >> (was * 2) & 3) << (i * 2);
+        } else {
+            newPp[i] = pd_save_move_pp[mv];
+        }
+    }
+    for (int i = 0; i < 4; i++) put16(m.data + 12 + i * 2, (unsigned) ids[i]), m.data[20 + i] = (uint8_t) newPp[i];
+    m.data[8] = (uint8_t) newUps;
+    put_mon(s, at, &m);
+    return NULL;
+}
+
+// --- boxes ---
+
+const char* pd_save_rename_box(struct pd_save* s, int box, const char* utf8) {
+    if (box < 0 || box >= PD_SAVE_BOXES) return "No such box";
+    if (!pd_save_name_ok(utf8, 8)) return "The games can't write that name (8 letters, digits, . - ! ? ')";
+    encode_name(utf8, s->storage + BOX_NAMES_OFF + box * BOX_NAME, BOX_NAME, 8);
+    return NULL;
+}
+
+struct sort_entry { uint8_t record[PD_SAVE_RECORD]; bool egg, bad; int dex, level; char name[24]; };
+static enum pd_box_sort sortBy;
+
+static int cmp_entry(const void* pa, const void* pb) {
+    const struct sort_entry *a = pa, *b = pb;
+    if (a->bad != b->bad) return a->bad - b->bad; // Bad Eggs last, untouched
+    if (a->bad) return 0;
+    if (a->egg != b->egg) return a->egg - b->egg;
+    if (sortBy == PD_SORT_NAME) return strcmp(a->name, b->name);
+    if (sortBy == PD_SORT_LEVEL && a->level != b->level) return b->level - a->level;
+    if (a->dex != b->dex) return a->dex - b->dex;
+    return b->level - a->level;
+}
+
+void pd_save_sort_box(struct pd_save* s, int box, enum pd_box_sort by) {
+    if (box < 0 || box >= PD_SAVE_BOXES) return;
+    static struct sort_entry e[PD_SAVE_BOX_SLOTS];
+    int n = 0;
+    for (int i = 0; i < PD_SAVE_BOX_SLOTS; i++) {
+        uint8_t* r = s->storage + record_off(box, i);
+        struct pd_box_mon m;
+        pd_box_mon_read(&m, r);
+        if (pd_box_mon_empty(&m)) continue;
+        struct sort_entry* x = &e[n++];
+        memcpy(x->record, r, PD_SAVE_RECORD);
+        x->bad = pd_box_mon_bad_egg(&m);
+        x->egg = !x->bad && pd_box_mon_egg(&m);
+        int sp = pd_box_mon_species(&m);
+        x->dex = species_ok(sp) && pd_species_national[sp] ? pd_species_national[sp] : 999;
+        x->level = pd_save_level_for(sp, pd_box_mon_exp(&m));
+        pd_gen3_text(m.header + 8, 10, x->name, sizeof x->name);
+    }
+    // A stable sort: insertion keeps equal Pokémon in their order (qsort needn't).
+    sortBy = by;
+    for (int i = 1; i < n; i++) {
+        struct sort_entry t = e[i];
+        int k = i - 1;
+        while (k >= 0 && cmp_entry(&e[k], &t) > 0) e[k + 1] = e[k], k--;
+        e[k + 1] = t;
+    }
+    for (int i = 0; i < PD_SAVE_BOX_SLOTS; i++) {
+        uint8_t* r = s->storage + record_off(box, i);
+        if (i < n) memcpy(r, e[i].record, PD_SAVE_RECORD);
+        else memset(r, 0, PD_SAVE_RECORD);
+    }
+}
+
+const char* pd_save_release(struct pd_save* s, int at) {
+    if (PD_AT_IS_PARTY(at)) return "Put it in a box first: the PC releases from its boxes";
+    struct pd_box_mon m;
+    if (!pd_save_record_at(s, at, &m) || pd_box_mon_bad_egg(&m)) return "Nothing to release there";
+    if (pd_box_mon_egg(&m)) return "An egg can't be released";
+    memset(rec_ptr(s, at), 0, PD_SAVE_RECORD);
+    return NULL;
+}
+
+// --- the bag ---
+
+// global.h's bagPocket_Items, _KeyItems, _PokeBalls, _TMHM, _Berries: back to back, 4 bytes a slot.
+struct pocket_layout { int start, slots[PD_BAG_POCKETS], stackMax; };
+static const struct pocket_layout POCKET_LAYOUTS[3] = {
+    { 0x560, { 20, 16, 64, 46, 20 }, 99 },  // Ruby / Sapphire
+    { 0x560, { 30, 16, 64, 46, 30 }, 99 },  // Emerald
+    { 0x310, { 42, 13, 58, 43, 30 }, 999 }, // FireRed / LeafGreen
+};
+
+static int pocket_off(const struct pd_save* s, enum pd_save_pocket p) {
+    const struct pocket_layout* l = &POCKET_LAYOUTS[s->f->kind];
+    // The struct's order: items, key items, balls, TMs & HMs, berries.
+    static const enum pd_save_pocket ORDER[PD_BAG_POCKETS] = { PD_BAG_ITEMS, PD_BAG_KEY, PD_BAG_BALLS, PD_BAG_TMHM, PD_BAG_BERRIES };
+    int off = l->start;
+    for (int i = 0; i < PD_BAG_POCKETS; i++) {
+        if (ORDER[i] == p) return off;
+        off += l->slots[ORDER[i]] * 4;
+    }
+    return off;
+}
+
+int pd_save_pocket_slots(const struct pd_save* s, enum pd_save_pocket p) { return POCKET_LAYOUTS[s->f->kind].slots[p]; }
+
+int pd_save_pocket(const struct pd_save* s, enum pd_save_pocket p, struct pd_stack* out, int max) {
+    int off = pocket_off(s, p), n = 0;
+    for (int i = 0; i < pd_save_pocket_slots(s, p) && n < max; i++) {
+        int item = u16(s->block1 + off + i * 4);
+        if (!item) continue;
+        out[n].item = item;
+        out[n].quantity = u16(s->block1 + off + i * 4 + 2) ^ key16(s);
+        n++;
+    }
+    return n;
+}
+
+int pd_save_stack_max(const struct pd_save* s, enum pd_save_pocket p, int item) {
+    if (p == PD_BAG_TMHM && item >= FIRST_HM) return 1;
+    if (p == PD_BAG_BERRIES) return 999;
+    return POCKET_LAYOUTS[s->f->kind].stackMax;
+}
+
+bool pd_save_stack_fixed(enum pd_save_pocket p, int item) {
+    return p == PD_BAG_KEY || (p == PD_BAG_TMHM && item >= FIRST_HM);
+}
+
+// The pocket packed from its first slot, the rest zeroed (CompactItemsInBagPocket); TMs and berries by id, as the game sorts them.
+static void write_pocket(struct pd_save* s, enum pd_save_pocket p, struct pd_stack* stacks, int n) {
+    if (p == PD_BAG_TMHM || p == PD_BAG_BERRIES) {
+        for (int i = 1; i < n; i++) {
+            struct pd_stack t = stacks[i];
+            int k = i - 1;
+            while (k >= 0 && stacks[k].item > t.item) stacks[k + 1] = stacks[k], k--;
+            stacks[k + 1] = t;
+        }
+    }
+    int off = pocket_off(s, p);
+    for (int i = 0; i < pd_save_pocket_slots(s, p); i++) {
+        put16(s->block1 + off + i * 4, i < n ? (unsigned) stacks[i].item : 0);
+        put16(s->block1 + off + i * 4 + 2, i < n ? (unsigned) (stacks[i].quantity ^ key16(s)) : 0);
+    }
+}
+
+static const char* legal_stack(const struct pd_save* s, enum pd_save_pocket p, int item, int quantity) {
+    if (p == PD_BAG_KEY) return "Key items aren't edited";
+    if (pocket_of(s, item) != (int) p + 1) return "That doesn't go in this pocket in this game";
+    if (quantity < 1 || quantity > pd_save_stack_max(s, p, item)) return "Not that many in one stack";
+    return NULL;
+}
+
+#define POCKET_MAX 64
+
+const char* pd_save_set_quantity(struct pd_save* s, enum pd_save_pocket p, int index, int quantity) {
+    struct pd_stack stacks[POCKET_MAX];
+    int n = pd_save_pocket(s, p, stacks, POCKET_MAX);
+    if (index < 0 || index >= n) return "No such item";
+    int item = stacks[index].item;
+    if (quantity == 0) {
+        // Key items and HMs are handed out once: without them the game can't go on.
+        if (pd_save_stack_fixed(p, item)) return "That one stays: the game needs it";
+        memmove(stacks + index, stacks + index + 1, (size_t) (n - index - 1) * sizeof stacks[0]);
+        n--;
+    } else {
+        const char* why = legal_stack(s, p, item, quantity);
+        if (why) return why;
+        stacks[index].quantity = quantity;
+    }
+    write_pocket(s, p, stacks, n);
+    return NULL;
+}
+
+const char* pd_save_add_item(struct pd_save* s, enum pd_save_pocket p, int item, int quantity) {
+    const char* why = legal_stack(s, p, item, quantity);
+    if (why) return why;
+    struct pd_stack stacks[POCKET_MAX];
+    int n = pd_save_pocket(s, p, stacks, POCKET_MAX);
+    for (int i = 0; i < n; i++)
+        if (stacks[i].item == item) return "That's in the bag already";
+    if (n >= pd_save_pocket_slots(s, p)) return "That pocket is full";
+    stacks[n].item = item;
+    stacks[n].quantity = quantity;
+    write_pocket(s, p, stacks, n + 1);
+    return NULL;
+}
+
+int pd_save_addable(const struct pd_save* s, enum pd_save_pocket p, uint16_t* out, int max) {
+    if (p == PD_BAG_KEY) return 0;
+    struct pd_stack stacks[POCKET_MAX];
+    int have = pd_save_pocket(s, p, stacks, POCKET_MAX), n = 0;
+    const struct pd_save_legal* t = legal(s);
+    for (int i = 0; i < t->bagCount && n < max; i++) {
+        if (t->bag[i][1] != (int) p + 1) continue;
+        bool in = false;
+        for (int k = 0; k < have; k++) in |= stacks[k].item == t->bag[i][0];
+        if (!in) out[n++] = t->bag[i][0];
+    }
+    qsort(out, (size_t) n, sizeof out[0], cmp_u16);
+    return n;
+}
+
+// --- the Pokédex ---
 
 static bool dex_bit(const uint8_t* base, int off, int national) {
     return base[off + (national - 1) / 8] >> ((national - 1) % 8) & 1;
@@ -430,7 +1220,31 @@ static void set_dex_bit(uint8_t* base, int off, int national) {
 }
 
 static int national_of(int species) {
-    return species > 0 && species < PD_SAVE_SPECIES ? pd_species_national[species] : 0;
+    return species_ok(species) ? pd_species_national[species] : 0;
+}
+
+static bool in_regional_dex(int species, const struct pd_save_layout* f) {
+    if (f->kanto) return species >= 1 && species <= KANTO_COUNT;
+    return species_ok(species) && pd_species_hoenn[species] >= 1 && pd_species_hoenn[species] <= HOENN_COUNT;
+}
+
+void pd_save_dex_counts(const struct pd_save* s, struct pd_save_dex* out) {
+    memset(out, 0, sizeof *out);
+    static bool regional[NATIONAL_COUNT + 1];
+    memset(regional, 0, sizeof regional);
+    for (int sp = 1; sp < PD_SAVE_SPECIES; sp++) {
+        int n = national_of(sp);
+        if (n >= 1 && n <= NATIONAL_COUNT && in_regional_dex(sp, s->f)) regional[n] = true;
+    }
+    for (int n = 1; n <= NATIONAL_COUNT; n++) {
+        bool seen = dex_bit(s->block2, POKEDEX_OFF + 0x44, n), got = dex_bit(s->block2, POKEDEX_OFF + 0x10, n);
+        out->seen += seen;
+        out->caught += got;
+        out->regionalSize += regional[n];
+        if (regional[n]) out->regionalSeen += seen, out->regionalCaught += got;
+    }
+    out->national = pd_save_national_dex(s);
+    out->region = s->f->kanto ? "KANTO" : "HOENN";
 }
 
 // GetSetPokedexFlag(FLAG_GET_CAUGHT): owned, and seen in all three copies.
@@ -455,6 +1269,26 @@ static void mark_caught(struct pd_save* s, int species, uint32_t personality) {
     if (species == SPECIES_SPINDA) put32(s->block2 + POKEDEX_OFF + 0x08, personality);
 }
 
+void pd_save_register_owned(struct pd_save* s) {
+    for (int at = PD_AT_PARTY(PD_SAVE_PARTY - 1); at < PD_SAVE_BOXES * PD_SAVE_BOX_SLOTS; at++) {
+        struct pd_box_mon m;
+        if (!pd_save_record_at(s, at, &m) || pd_box_mon_egg(&m) || pd_box_mon_bad_egg(&m)) continue;
+        mark_caught(s, pd_box_mon_species(&m), pd_box_mon_personality(&m));
+    }
+}
+
+void pd_save_mark_all_dex(struct pd_save* s, bool caughtToo) {
+    bool national = pd_save_national_dex(s);
+    for (int sp = 1; sp < PD_SAVE_SPECIES; sp++) {
+        int n = national_of(sp);
+        if (n < 1 || n > NATIONAL_COUNT || (!national && !in_regional_dex(sp, s->f))) continue;
+        set_dex_bit(s->block2, POKEDEX_OFF + 0x44, n);
+        set_dex_bit(s->block1, s->f->seen1Off, n);
+        set_dex_bit(s->block1, s->f->seen2Off, n);
+        if (caughtToo) set_dex_bit(s->block2, POKEDEX_OFF + 0x10, n);
+    }
+}
+
 // Ruby / Sapphire's EnableNationalPokedex: what a trade with FireRed / LeafGreen / Emerald does to them.
 static void enable_national_dex(struct pd_save* s) {
     const struct pd_save_layout* f = s->f;
@@ -465,10 +1299,65 @@ static void enable_national_dex(struct pd_save* s) {
     s->block2[POKEDEX_OFF] = 0;     // order: numerical
 }
 
-static bool in_regional_dex(int species, const struct pd_save_layout* f) {
-    if (f->kanto) return species >= 1 && species <= KANTO_COUNT;
-    return species > 0 && species < PD_SAVE_SPECIES && pd_species_hoenn[species] >= 1 && pd_species_hoenn[species] <= HOENN_COUNT;
+// --- events (pret's LilycoveCity_Harbor / VermilionCity scripts, gift_*_ticket.inc) ---
+
+struct event_flags { int set[2], setCount, done[2], doneCount; };
+struct event { const char* name; int item; struct event_flags per[3]; }; // per pd_save_kind; setCount 0 = not in that game
+
+static const struct event EVENTS[PD_EVENTS] = {
+    // pokeruby: FLAG_SYS_HAS_EON_TICKET. pokeemerald: FLAG_ENABLE_SHIP_SOUTHERN_ISLAND; done: FLAG_CAUGHT_LATIAS_OR_LATIOS.
+    { "EON TICKET", 275, { { { 0x853 }, 1, { 0 }, 0 }, { { 0x8B3 }, 1, { 0x1C9 }, 1 }, { { 0 }, 0, { 0 }, 0 } } },
+    // FLAG_ENABLE_SHIP_BIRTH_ISLAND, FLAG_RECEIVED_AURORA_TICKET; done: FLAG_BATTLED_DEOXYS / FLAG_FOUGHT_DEOXYS.
+    { "AURORA TICKET", 371, { { { 0 }, 0, { 0 }, 0 }, { { 0x8D5, 0x13A }, 2, { 0x1AD }, 1 }, { { 0x84B, 0x2A7 }, 2, { 0x2E4 }, 1 } } },
+    // FLAG_ENABLE_SHIP_NAVEL_ROCK, FLAG_RECEIVED_MYSTIC_TICKET; done: Lugia / Ho-Oh caught (Emerald) or fought (FR / LG).
+    { "MYSTIC TICKET", 370, { { { 0 }, 0, { 0 }, 0 }, { { 0x8E0, 0x13B }, 2, { 0x91, 0x92 }, 2 }, { { 0x84A, 0x2A8 }, 2, { 0x2F2, 0x2F3 }, 2 } } },
+    // FLAG_ENABLE_SHIP_FARAWAY_ISLAND, FLAG_RECEIVED_OLD_SEA_MAP; done: FLAG_CAUGHT_MEW.
+    { "OLD SEA MAP", 376, { { { 0 }, 0, { 0 }, 0 }, { { 0x8D6, 0x13C }, 2, { 0x1CA }, 1 }, { { 0 }, 0, { 0 }, 0 } } },
+};
+
+const char* pd_save_event_name(enum pd_save_event e) { return e < PD_EVENTS ? EVENTS[e].name : "?"; }
+
+const char* pd_save_event_note(const struct pd_save* s) {
+    return s->f->kind == PD_SAVE_FIRERED_LEAFGREEN ? "Show it at the port once you have the Rainbow Pass"
+                                                     : "Show it at the port after the Hall of Fame";
 }
+
+static bool has_key_item(const struct pd_save* s, int item) {
+    struct pd_stack stacks[POCKET_MAX];
+    int n = pd_save_pocket(s, PD_BAG_KEY, stacks, POCKET_MAX);
+    for (int i = 0; i < n; i++)
+        if (stacks[i].item == item) return true;
+    return false;
+}
+
+enum pd_event_state pd_save_event_state(const struct pd_save* s, enum pd_save_event e) {
+    if (e >= PD_EVENTS) return PD_EVENT_NOT_HERE;
+    const struct event_flags* fl = &EVENTS[e].per[s->f->kind];
+    if (!fl->setCount) return PD_EVENT_NOT_HERE;
+    if (has_key_item(s, EVENTS[e].item) || pd_save_flag(s, fl->set[0])) return PD_EVENT_HAS;
+    for (int i = 1; i < fl->setCount; i++)
+        if (pd_save_flag(s, fl->set[i])) return PD_EVENT_DONE;
+    for (int i = 0; i < fl->doneCount; i++)
+        if (pd_save_flag(s, fl->done[i])) return PD_EVENT_DONE;
+    return PD_EVENT_AVAILABLE;
+}
+
+const char* pd_save_give_event(struct pd_save* s, enum pd_save_event e) {
+    enum pd_event_state st = pd_save_event_state(s, e);
+    if (st == PD_EVENT_NOT_HERE) return "That isn't in this game";
+    if (st != PD_EVENT_AVAILABLE) return "This save has that already";
+    struct pd_stack stacks[POCKET_MAX];
+    int n = pd_save_pocket(s, PD_BAG_KEY, stacks, POCKET_MAX);
+    if (n >= pd_save_pocket_slots(s, PD_BAG_KEY)) return "The key items pocket is full";
+    stacks[n].item = EVENTS[e].item;
+    stacks[n].quantity = 1;
+    write_pocket(s, PD_BAG_KEY, stacks, n + 1);
+    const struct event_flags* fl = &EVENTS[e].per[s->f->kind];
+    for (int i = 0; i < fl->setCount; i++) s->block1[s->f->flagsOff + fl->set[i] / 8] |= (uint8_t) (1 << (fl->set[i] % 8));
+    return NULL;
+}
+
+// --- trading ---
 
 static const char* species_label(int species, char* buf, size_t len) {
     if (species > 0 && species < pd_species_names_count && pd_species_names[species]) {
@@ -514,16 +1403,32 @@ static const char* blocker(const struct pd_box_mon* m, const struct pd_trade_sid
         return buf;
     }
     int item = pd_box_mon_item(m);
-    if ((item >= MAIL_FIRST && item <= MAIL_LAST) || item == ITEM_ENIGMA_BERRY)
-        return "Mail and Enigma Berries stay with their save: take it off in the game first";
+    if (pd_save_is_mail(item) || item == ITEM_ENIGMA_BERRY) return "Mail and Enigma Berries stay with their save: take it off in the game first";
     return NULL;
 }
 
-const char* pd_trade_blocker(const struct pd_trade_side* from, int box, int slot, const struct pd_trade_side* to, char* buf, size_t len) {
-    if (!box_ok(box, slot)) return "No such box";
+// The game's "last Pokémon" rule for a party Pokémon about to leave: another one that isn't an egg must stay.
+static const char* party_blocker(const struct pd_trade_side* side, int at, char* buf, size_t len) {
+    if (!PD_AT_IS_PARTY(at)) return NULL;
+    const struct pd_save* s = side->save;
+    int others = 0;
+    for (int i = 0; i < pd_save_party_count(s) && i < PD_SAVE_PARTY; i++) {
+        if (i == PD_AT_PARTY_INDEX(at)) continue;
+        struct pd_box_mon m;
+        pd_box_mon_read(&m, s->block1 + party_off(s, i));
+        if (!pd_box_mon_empty(&m) && !pd_box_mon_egg(&m) && !pd_box_mon_bad_egg(&m)) others++;
+    }
+    if (others) return NULL;
+    snprintf(buf, len, "That's %s's last Pokémon that isn't an egg: it stays in the party", side->label);
+    return buf;
+}
+
+const char* pd_trade_blocker(const struct pd_trade_side* from, int at, const struct pd_trade_side* to, char* buf, size_t len) {
     struct pd_box_mon m;
-    read_box_mon(from->save, box, slot, &m);
-    return blocker(&m, from, to, buf, len);
+    if (!at_valid(from->save, at)) return "No such place";
+    if (!pd_save_record_at(from->save, at, &m)) return NULL;
+    const char* why = blocker(&m, from, to, buf, len);
+    return why ? why : party_blocker(from, at, buf, len);
 }
 
 static const struct pd_trade_evolution* evolution_of(const struct pd_box_mon* m, const struct pd_trade_side* to) {
@@ -538,10 +1443,9 @@ static const struct pd_trade_evolution* evolution_of(const struct pd_box_mon* m,
     return NULL;
 }
 
-int pd_trade_evolution(const struct pd_trade_side* from, int box, int slot, const struct pd_trade_side* to) {
-    if (!box_ok(box, slot)) return 0;
+int pd_trade_evolution(const struct pd_trade_side* from, int at, const struct pd_trade_side* to) {
     struct pd_box_mon m;
-    read_box_mon(from->save, box, slot, &m);
+    if (!pd_save_record_at(from->save, at, &m)) return 0;
     const struct pd_trade_evolution* e = evolution_of(&m, to);
     return e ? e->into : 0;
 }
@@ -549,54 +1453,36 @@ int pd_trade_evolution(const struct pd_trade_side* from, int box, int slot, cons
 // The species' English name in the games' charset as gSpeciesNames stores it (caps, EOS, zero padding); false if it can't be.
 static bool english_name(int species, uint8_t out[10]) {
     if (species <= 0 || species >= pd_species_names_count || !pd_species_names[species]) return false;
-    const char* name = pd_species_names[species];
+    char upper[32];
+    species_label(species, upper, sizeof upper);
     memset(out, 0, 10);
     int n = 0;
-    for (const unsigned char* p = (const unsigned char*) name; *p; n++) {
+    for (const unsigned char* p = (const unsigned char*) upper; *p;) {
         if (n >= 10) return false;
-        unsigned c = *p;
         int code;
-        if (c >= 'a' && c <= 'z') code = 0xBB + (int) (c - 'a');
-        else if (c >= 'A' && c <= 'Z') code = 0xBB + (int) (c - 'A');
-        else if (c >= '0' && c <= '9') code = 0xA1 + (int) (c - '0');
-        else if (c == ' ') code = 0x00;
-        else if (c == '.') code = 0xAD;
-        else if (c == '-') code = 0xAE;
-        else if (c == '\'') code = 0xB4;
-        else if (c == 0xE2 && p[1] == 0x99 && (p[2] == 0x82 || p[2] == 0x80)) { // ♂ / ♀
-            code = p[2] == 0x82 ? 0xB5 : 0xB6;
-            p += 2;
-        } else if (c == 0xC3 && (p[1] == 0xA9 || p[1] == 0x89)) { // é / É
-            code = 0x1B;
-            p += 1;
-        } else return false;
-        out[n] = (uint8_t) code;
-        p++;
+        if (*p == 0xC3 && (p[1] == 0xA9 || p[1] == 0x89)) code = 0x1B, p += 2; // é / É
+        else if ((code = name_char(&p)) < 0) return false;
+        out[n++] = (uint8_t) code;
     }
     if (n < 10) out[n] = 0xFF;
     return true;
 }
 
-static int name_len(const uint8_t* b) {
-    int n = 0;
-    while (n < 10 && b[n] != 0xFF) n++;
-    return n;
-}
-
 // [m]'s record as it lands in [to]: evolved if it trade-evolves (the item it needed used up, its name changed when it was the
 // species' own - EvolutionRenameMon), and [to]'s Pokédex told about it.
-static void arrive(const struct pd_box_mon* m, struct pd_trade_side* to, uint8_t out[PD_SAVE_RECORD]) {
+static void arrive(const struct pd_box_mon* m, struct pd_trade_side* to, bool evolve, uint8_t out[PD_SAVE_RECORD]) {
     uint32_t personality = pd_box_mon_personality(m);
     if (!pd_box_mon_egg(m)) mark_caught(to->save, pd_box_mon_species(m), personality);
-    const struct pd_trade_evolution* e = evolution_of(m, to);
+    const struct pd_trade_evolution* e = evolve ? evolution_of(m, to) : NULL;
     if (!e) {
         pd_box_mon_encode(m, out);
         return;
     }
     struct pd_box_mon evolved = *m;
     uint8_t oldName[10], newName[10];
-    bool renamed = english_name(e->species, oldName) && name_len(oldName) == name_len(m->header + 8) &&
-                   !memcmp(oldName, m->header + 8, (size_t) name_len(oldName)) && english_name(e->into, newName);
+    int len = name_bytes_len(m->header + 8, 10);
+    bool renamed = english_name(e->species, oldName) && name_bytes_len(oldName, 10) == len && !memcmp(oldName, m->header + 8, (size_t) len) &&
+                   english_name(e->into, newName);
     put16(evolved.data, e->into);
     if (e->item) put16(evolved.data + 2, 0);
     if (renamed) memcpy(evolved.header + 8, newName, 10);
@@ -604,21 +1490,50 @@ static void arrive(const struct pd_box_mon* m, struct pd_trade_side* to, uint8_t
     mark_caught(to->save, e->into, personality);
 }
 
-const char* pd_trade(struct pd_trade_side* a, int box, int slot, struct pd_trade_side* b, int toBox, int toSlot, char* buf, size_t len) {
-    if (!box_ok(box, slot) || !box_ok(toBox, toSlot)) return "No such box";
+// A traded-in record at [at]: a PC place, or a party place (past the last = the end of the party); [keep] = its party bytes.
+static void put_incoming(struct pd_save* s, int at, const uint8_t* record, const uint8_t* keep) {
+    if (!PD_AT_IS_PARTY(at)) {
+        memcpy(rec_ptr(s, at), record, PD_SAVE_RECORD);
+        return;
+    }
+    int count = pd_save_party_count(s), i = PD_AT_PARTY_INDEX(at);
+    if (i >= count) {
+        write_party_mon(s, count, record, keep);
+        s->block1[s->f->partyCountOff] = (uint8_t) (count + 1);
+    } else {
+        write_party_mon(s, i, record, keep);
+    }
+}
+
+static void take_out(struct pd_save* s, int at) {
+    if (PD_AT_IS_PARTY(at)) remove_party_mon(s, PD_AT_PARTY_INDEX(at));
+    else memset(rec_ptr(s, at), 0, PD_SAVE_RECORD);
+}
+
+const char* pd_trade(struct pd_trade_side* a, int atA, struct pd_trade_side* b, int atB, bool evolve, char* buf, size_t len) {
+    if (!at_valid(a->save, atA) || !at_valid(b->save, atB)) return "No such place";
     struct pd_box_mon ma, mb;
-    read_box_mon(a->save, box, slot, &ma);
-    read_box_mon(b->save, toBox, toSlot, &mb);
-    if (pd_box_mon_empty(&ma)) return "There's no Pokémon there";
-    if (!pd_box_mon_empty(&mb) && pd_box_mon_bad_egg(&mb)) return "A Bad Egg sits there";
+    bool hasA = pd_save_record_at(a->save, atA, &ma), hasB = pd_save_record_at(b->save, atB, &mb);
+    if (!hasA) return "There's no Pokémon there";
+    if (hasB && pd_box_mon_bad_egg(&mb)) return "A Bad Egg sits there";
+    if (!hasB && PD_AT_IS_PARTY(atB) && pd_save_party_count(b->save) >= PD_SAVE_PARTY) {
+        snprintf(buf, len, "%s's party is full", b->label);
+        return buf;
+    }
     const char* why = blocker(&ma, a, b, buf, len);
-    if (!why && !pd_box_mon_empty(&mb)) why = blocker(&mb, b, a, buf, len);
+    if (!why && hasB) why = blocker(&mb, b, a, buf, len);
+    if (!why) why = party_blocker(a, atA, buf, len);
+    if (!why && hasB) why = party_blocker(b, atB, buf, len);
     if (why) return why;
-    uint8_t toB[PD_SAVE_RECORD], toA[PD_SAVE_RECORD] = { 0 };
-    arrive(&ma, b, toB);
-    if (!pd_box_mon_empty(&mb)) arrive(&mb, a, toA);
-    memcpy(b->save->storage + record_off(toBox, toSlot), toB, PD_SAVE_RECORD);
-    memcpy(a->save->storage + record_off(box, slot), toA, PD_SAVE_RECORD);
+    uint8_t keepA[PD_SAVE_PARTY_MON], keepB[PD_SAVE_PARTY_MON];
+    if (PD_AT_IS_PARTY(atA)) memcpy(keepA, rec_ptr(a->save, atA), PD_SAVE_PARTY_MON);
+    if (hasB && PD_AT_IS_PARTY(atB)) memcpy(keepB, rec_ptr(b->save, atB), PD_SAVE_PARTY_MON);
+    uint8_t toB[PD_SAVE_RECORD], toA[PD_SAVE_RECORD];
+    arrive(&ma, b, evolve, toB);
+    if (hasB) arrive(&mb, a, evolve, toA);
+    put_incoming(b->save, atB, toB, PD_AT_IS_PARTY(atA) ? keepA : NULL);
+    if (hasB) put_incoming(a->save, atA, toA, PD_AT_IS_PARTY(atB) ? keepB : NULL);
+    else take_out(a->save, atA);
     // Ruby / Sapphire get their National Dex from any trade with FireRed / LeafGreen / Emerald (pokeruby trade.c).
     struct pd_trade_side* sides[2] = { a, b };
     for (int i = 0; i < 2; i++) {

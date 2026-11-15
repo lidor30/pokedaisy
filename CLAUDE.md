@@ -2252,7 +2252,9 @@ docs/DEVELOPMENT.md's "Round two". **HeartGold / SoulSilver and Platinum USA rev
 which Gen 3's editor implements too); HG / SS's edit goes into the other half with every PC box flagged changed, Platinum's is a full save
 (global + 1, each block into its other copy). Checked by booting edited real saves in `nds_dump` and saving in the game on top. Nicknames /
 box names (`Gen4Text.encode`), GIVE / TAKE through the bag, and HG / SS / Platinum trades (`Gen4Trade`, `TradeRules`; Pokédex as pokedex.c
-registers a received one) too. Not yet: DS play time, Diamond / Pearl, Gen 5.
+registers a received one) too. Not yet: DS play time, Diamond / Pearl, Gen 5. The 3DS port has the Gen 3 editor (every page) and trades (party too) in C (`3ds/core/pd_save.c`,
+`pd_library_saves.c`; names typed on the console's swkbd): its tables come from the app's generated Kotlin by `3ds/tools/gen_save_tables.py`
+(rerun it after changing `SaveTablesGen.kt` / `SaveSpeciesGen.kt` / `SpeciesDexGen.kt`; `make -C 3ds test-save` fails while it's stale).
 **REWIND** (Settings, `Prefs.rewind`, off by default; REWIND HOLD hotkey, R on a keyboard): `pk_rewind.c` - mGBA's own
 diff ring (`mCoreRewindContext`, 600 entries, one every 2 frames: ~20 s, rewinds at 2x) but with states taken / loaded
 WITHOUT `SAVESTATE_SAVEDATA`: mGBA's `mCoreRewindRestore` would write the state's save over the save file every

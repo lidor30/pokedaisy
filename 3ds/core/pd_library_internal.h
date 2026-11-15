@@ -31,6 +31,9 @@ enum {
     HIT_BOX_PREV = 4100, HIT_BOX_NEXT, HIT_SIDE_A, HIT_SIDE_B, HIT_MONEY, HIT_COINS, HIT_WRITE, HIT_DONE, HIT_TRADE,
     HIT_YES, HIT_NO, HIT_DIGIT_UP = 4200, HIT_DIGIT_DOWN = 4300, HIT_OK, HIT_MESSAGE,
     HIT_SCROLL = 5000, // a list's scroll bar: dragged, not tapped
+    // The save editor's tabs, pockets, its buttons, the rows of its lists (+ index) and their ◀ / ▶.
+    HIT_TAB = 5100, HIT_POCKET = 5200, HIT_BUTTON = 5300, HIT_EDIT_ROW = 6000, HIT_EDIT_DEC = 6500, HIT_EDIT_INC = 7000,
+    HIT_CHOICE = 7500,
 };
 
 // A list's scroll bar (the one on the page now): its track, drawn and dragged. [scroll] is the list's.
@@ -94,6 +97,11 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c);
 // Whether the save tools take a drag (their lists) and B (an open save): the library leaves those to them.
 bool lib_saves_busy(const struct pd_library* l);
 struct lib_list* lib_saves_list(struct pd_library* l);
+// The scroll of the list the save tools show now (a Pokémon's rows, the bag, a pick-list), NULL = none: a drag moves it.
+int* lib_saves_scroll(struct pd_library* l);
+// An open save with changes not written yet (START asks before closing the app over them), and that question.
+bool lib_saves_unsaved(const struct pd_library* l);
+void lib_saves_ask_quit(struct pd_library* l);
 
 // SETTINGS (pd_library_draw.c's list, pd_library.c's actions).
 int lib_settings_rows(const struct pd_library* l);

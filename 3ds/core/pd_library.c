@@ -516,7 +516,8 @@ void pd_library_keys(struct pd_library* l, unsigned down) {
     if (!down) return;
     l->dirty = true;
     if (down & PD_LIB_START) {
-        l->quit = true;
+        if ((l->page == PD_PAGE_EDITOR || l->page == PD_PAGE_TRADE) && lib_saves_unsaved(l)) lib_saves_ask_quit(l);
+        else l->quit = true;
         return;
     }
     // SELECT steps through the pages (the rail's order), Y too; the save tools keep B while a save is open.
@@ -590,6 +591,10 @@ void pd_library_touch(struct pd_library* l, int x, int y, bool down) {
             if (l->dragged) {
                 if (l->page == PD_PAGE_SETTINGS && l->pickRow < 0) l->settingsScroll += l->lastY - y;
                 else if (list) list->scroll += l->lastY - y;
+                else if (l->page == PD_PAGE_EDITOR || l->page == PD_PAGE_TRADE) {
+                    int* sc = lib_saves_scroll(l);
+                    if (sc) *sc += l->lastY - y;
+                }
                 l->lastY = y;
                 l->pressedHit = HIT_NONE;
                 l->dirty = true;
