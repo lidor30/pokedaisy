@@ -26,6 +26,7 @@ gamedata/
   gen3/ports/*.toml         their other-language releases (written by scripts/port_retail.py)
   gen3/hacks/*.toml         one file per hack, every release of it
   gen3/records/*.toml       named records ([record.POKEDEX_EMERALD]) and lists the configs name
+  gen3/area_maps.toml       AREA maps' rows by ROM CRC32 (written by scripts/gen_area_maps.py --scan; not configs)
   nds/ports.toml            the DS carts in other languages (scripts/gen_nds_ports.py: its own header has the format)
   targets/3ds.toml          what the 3DS / Linux companion's C gets, field by field
 ```

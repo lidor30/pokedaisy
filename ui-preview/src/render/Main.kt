@@ -1335,6 +1335,38 @@ fun wearing(game: GameKind, content: () -> (@Composable () -> Unit)): () -> (@Co
 }
 
 /** The game's home town, which its own region map shows (Emerald has no Pallet Town rect). */
+/** Where the AREA map shots stand ([areaMapSpot]): a map, a square on it, a floor chip to tap. */
+class AreaSpot(val group: Int, val num: Int, val x: Int, val y: Int, val otherFloor: String)
+
+/** The AREA map shots' spot for [game], with -Prom; null otherwise. */
+fun areaMapSpot(game: GameKind): AreaSpot? {
+    if (System.getProperty("rom").isNullOrBlank()) return null
+    return when (game) {
+        GameKind.FIRERED -> AreaSpot(1, 2, 34, 35, "3")
+        GameKind.EMERALD -> AreaSpot(24, 16, 6, 7, "5")
+        GameKind.UNBOUND -> AreaSpot(53, 2, 40, 30, "3F")
+        else -> null
+    }
+}
+
+/** The snapshot for an AREA map shot: [spot]'s map, read from -Prom by its CRC's row (areas and pictures loaded first, as
+ * a player who walked in would have them), the AREA map chosen. */
+fun areaSnapshot(spot: AreaSpot): SnapshotView {
+    val bytes = File(System.getProperty("rom")).readBytes()
+    PokedexSource.reader = RomFile(bytes)
+    PokedexSource.romChanged()
+    com.pokedaisy.app.companion.data.activeAreaMapCrc = java.util.zip.CRC32().apply { update(bytes) }.value
+    val id = com.pokedaisy.app.companion.data.AreaMap.MapId(spot.group, spot.num)
+    val area = com.pokedaisy.app.companion.data.AreaMaps.area(id)
+    area?.floors?.forEach { com.pokedaisy.app.companion.data.AreaMaps.image(it.id) }
+    com.pokedaisy.app.companion.ui.AreaMapChoice.showArea()
+    val sec = area?.mapsec ?: homeMapsec(activeGame)
+    return snapshot().copy(
+        mapGroup = spot.group, mapNum = spot.num, x = spot.x, y = spot.y, mapType = 4,
+        location = lookupLocation(sec), regionMapSectionId = sec,
+    )
+}
+
 fun homeMapsec(game: GameKind) = when (game) {
     GameKind.EMERALD, GameKind.EMERALD_ROGUE -> 0x00 // MAPSEC_LITTLEROOT_TOWN
     GameKind.LAZARUS -> 0x5A // Acrisia City
@@ -1640,6 +1672,18 @@ fun main(args: Array<String>) {
             val at = if (game == GameKind.EMERALD || game == GameKind.EMERALD_ROGUE) Offset(0.45f, 0.125f) else Offset(0.4375f, 0.306f)
             onRoot().performTouchInput { click(Offset(37 + 1166 * at.x, 37 + 886 * at.y)) }
         },
+        // AREA maps (-Prom=<the game's ROM>): the player on a cave's second floor (FireRed's Mt. Moon B1F, Emerald's Mt. Pyre
+        // 2F, an Unbound cave's 2F) - the AREA map first, then REGION MAP, a floor chip, ZOOM.
+        *(areaMapSpot(game)?.let { spot ->
+            arrayOf(
+                Shot("$g-area-map", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }),
+                Shot("$g-area-map-region", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }) { onNodeWithText("REGION MAP").performClick() },
+                Shot("$g-area-map-floor", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }) {
+                    onNodeWithText(spot.otherFloor).performClick()
+                },
+                Shot("$g-area-map-zoom", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }) { onNodeWithContentDescription("ZOOM").performClick() },
+            )
+        } ?: emptyArray()),
         *(if (activeRegionMap() != null) arrayOf(
             Shot("$g-map-places", bw, bh, bd, companion("MAP")) { onNodeWithText("PLACES").performClick() },
         ) else emptyArray()),
