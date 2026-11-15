@@ -114,6 +114,25 @@ class FieldHudScreenshotTest {
 
     @Test fun cornersWindow() = shot(FieldHudStyle(look = FieldHudLook.WINDOW))
 
+    /** In a building with its own map (Silph Co. 5F, from the ROM): the minimap is its AREA map around the player, the
+     * floor beside the name. Skips without the ROM. */
+    @Test fun cornersAreaMap() {
+        com.pokedaisy.app.companion.data.activeNativeConfig = NATIVE_FIRERED_REV1
+        com.pokedaisy.app.companion.data.AreaMaps.romChanged()
+        val id = com.pokedaisy.app.companion.data.AreaMap.MapId(1, 51)
+        val area = com.pokedaisy.app.companion.data.AreaMaps.area(id) ?: return
+        com.pokedaisy.app.companion.data.AreaMaps.image(id)
+        AreaMapChoice.showArea()
+        shot(
+            FieldHudStyle(),
+            snap = snapshot.copy(
+                mapGroup = 1, mapNum = 51, x = 12, y = 9, mapType = 8,
+                location = com.pokedaisy.app.companion.data.lookupLocation(area.mapsec), regionMapSectionId = area.mapsec,
+            ),
+        )
+        com.pokedaisy.app.companion.data.activeNativeConfig = null
+    }
+
     @Test fun cornersWhiteGlass() = shot(FieldHudStyle(look = FieldHudLook.WHITE_GLASS))
 
     @Test fun bagOpenWhiteGlass() = shot(FieldHudStyle(look = FieldHudLook.WHITE_GLASS), panel = FieldHudPanel.BAG)

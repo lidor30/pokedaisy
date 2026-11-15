@@ -1334,6 +1334,18 @@ val FLIGHT_SAPPHIRE: FlightFns by lazy {
     )
 }
 
+// AREA maps (AreaMap.kt): Emerald's engine - 512 tiles / 512 metatiles / 6 palettes in a primary tileset, no floor
+// number in its MapHeader (floors are numbered by map order). gMapGroups and its sizes are FLIGHT's.
+val AREA_MAP_EMERALD: AreaMapTables by lazy {
+    AreaMapTables(
+        mapGroups = 0x08486578L,
+        mapGroupSizes = listOf(57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1),
+        primaryTiles = 512,
+        primaryMetatiles = 512,
+        primaryPalettes = 6,
+    )
+}
+
 // ---- gamedata/gen3/records/expansion_flash.toml ----
 
 // Pokemon Lazarus (v2.0).gba: found by scripts/find_flash_expansion.py.
@@ -2381,6 +2393,35 @@ val FLIGHT_LEAFGREEN_REV1: FlightFns by lazy {
         noFly = listOf(0x030B),
         codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x1E5B3B09L, 0x11B905BAL, 0x20389A3EL),
         drawView = 0x0805A698L, // DrawWholeMapView
+    )
+}
+
+// AREA maps (AreaMap.kt): FireRed's engine - 640 tiles / 640 metatiles / 7 palettes in a primary tileset, the floor
+// number at MapHeader +0x1A (set on Silph Co., the Rocket Hideout, the department store). gMapGroups and its sizes are
+// FLIGHT's (the same table).
+val AREA_MAP_FIRERED_REV1: AreaMapTables by lazy {
+    AreaMapTables(
+        mapGroups = 0x08352718L,
+        mapGroupSizes = listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1),
+        primaryTiles = 640,
+        primaryMetatiles = 640,
+        primaryPalettes = 7,
+        floorNumOff = 0x1A,
+    )
+}
+
+val AREA_MAP_FIRERED_REV0: AreaMapTables by lazy {
+    AREA_MAP_FIRERED_REV1.copy(
+        mapGroups = 0x083526A8L,
+    )
+}
+
+// Unbound (CFRU on FireRed 1.0): FireRed's engine, its own map table, group pointers XORed. It numbers most floors.
+val AREA_MAP_UNBOUND: AreaMapTables by lazy {
+    AREA_MAP_FIRERED_REV1.copy(
+        mapGroups = 0x08B70498L,
+        mapGroupsXor = 0x00B749DEL,
+        mapGroupSizes = listOf(6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 1, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13),
     )
 }
 

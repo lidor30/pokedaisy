@@ -2301,6 +2301,36 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
   Silver and Prism (Crystal's engine, their own addresses), Polished Crystal's other builds, battles past the edges, walking
   frames for Gen 1's off-screen NPCs.
 
+## AREA maps (`AreaMap.kt`, `AreaMapView.kt`)
+
+A cave or building's own map on the MAP tab and the HUD's minimap, with its floors (retail FireRed rev 0 / 1, Emerald,
+Unbound so far). Nothing bundled, nothing coded per game: the map is drawn from the ROM the way the game builds it, so a game
+needs only a `gen3_area_map` record (`gamedata/schema/gen3_area_map.toml`, records in `gamedata/gen3/records/`, named by the
+config's `areaMap`). The record holds gMapGroups (+ Unbound's XOR) and its group sizes (the same table FLIGHT has) and the
+engine's numbers: the primary tileset's tiles / metatiles / palettes (FireRed's engine 640 / 640 / 7, Emerald's 512 / 512 / 6)
+and MapHeader's floor byte (FireRed's engine +0x1A; Emerald has none). `AreaMap.matches` checks the table against the ROM
+before anything is drawn, so a hack or port that copies a config can't draw garbage (the copies that moved their maps set
+`areaMap = 'none'`).
+
+What it reads, in every Gen 3 engine (the recipe for the 3DS / Linux C companion):
+
+- The area: from the player's map (SaveBlock1's location, which the companion has anyway), breadth first over MapEvents'
+  warps (+1 count, +8 list of 8-byte `{x, y, elevation, warpId, mapNum, mapGroup}`; group 0x7F = dynamic, skipped), keeping
+  maps that share the start's map section (MapHeader +0x14) and aren't outdoors (mapType +0x17 not 1, 2, 3, 5, 6). An elevator
+  leads nowhere (dynamic warps), so from one the floors are found the other way: the group's maps whose warps lead in.
+- The floors: numbered ones (floor byte != 0) lowest first, 127 = `RF`; unnumbered ones by map id (the decomps list a place's
+  maps in the game's order), numbered 1, 2, 3; in a numbered building an unnumbered room only when the player is in it.
+  Shown when there's more than one map or it's bigger than 15 x 10 metatiles.
+- The picture: MapLayout (+0 width, +4 height, +0xC grid of u16, +0x10 / +0x14 tilesets); Tileset (+0 compressed, +4 tiles
+  LZ77 or raw, +8 palettes, +0xC metatiles of 8 u16 tile entries, bottom layer then top); palettes 0 until the primary count
+  from the primary's list, the rest to 13 from the secondary's; colour 0 of palette 0 under everything; grid ids & 0x3FF,
+  0x3FF = undefined (see-through).
+
+It's the ROM's map, not RAM's: what changes as you play (a boulder pushed, a door opened, items picked up, people) isn't
+drawn. `AreaMapTest` checks the three games (floors, labels, a render of each); ui-preview `-Ponly=area-map -Prom=<ROM>`
+draws the tab (`areaMapSpot`), Paparazzi `FieldHudScreenshotTest.cornersAreaMap` the minimap. A new game: its record (its
+FLIGHT record's gMapGroups is the place to start), `areaMap` on its config, a row in `AreaMapTest`.
+
 ## FREE FLIGHT and the scenic FLY (`pk_flight.c`, `Flight.kt`, `ScenicFly.kt`)
 
 Retail FireRed rev 1 (`FLIGHT_FIRERED_REV1`, every address from pret's pokefirered built clean as firered_rev1 and its

@@ -486,3 +486,12 @@ default = 'VANILLA_PC_STORAGE'
 kotlin = 'Boolean'
 type = 'bool'
 default = false
+
+# AREA maps (AreaMap.kt): the map tables a cave / building and its floors are drawn from (gen3_area_map); none = the
+# region map only. AreaMap.matches checks them against the ROM first, so a hack that copies the config draws nothing
+# rather than garbage.
+[field.areaMap]
+kotlin = 'AreaMapTables?'
+type = 'ref'
+record = 'gen3_area_map'
+default = 'none'

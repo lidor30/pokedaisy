@@ -40,6 +40,7 @@ handleInputChooseTarget = 0x08057824
 # Pokédex ROM addresses would be wrong for every one of them.
 [config.emerald_retail]
 base = 'emerald'
+areaMap = 'AREA_MAP_EMERALD'
 # From the unpatched (byte-identical) build's map; headless on retail: presses land back to back.
 actionCursor = 0x020244AC
 moveCursor = 0x020244B0
@@ -62,6 +63,7 @@ monToSwitchIntoOff = 0x5C
 # TRAINER CARD stays off: their cards are localized art, not matched yet.
 [config.emerald_es]
 base = 'emerald_retail'
+areaMap = 'none'  # its maps moved: AREA maps need a record of its own
 itemDescs = { preset = 'vanilla', base = 0x0858639C }
 language = 'S'
 gameCode = 'BPES'
@@ -76,6 +78,7 @@ guideTables = 'GUIDE_TABLES_EMERALD_ES'
 
 [config.emerald_de]
 base = 'emerald_retail'
+areaMap = 'none'  # its maps moved: AREA maps need a record of its own
 itemDescs = { preset = 'vanilla', base = 0x085946DC }
 language = 'D'
 gameCode = 'BPED'
@@ -95,6 +98,7 @@ guideTables = 'GUIDE_TABLES_EMERALD_DE'
 
 [config.emerald_fr]
 base = 'emerald_retail'
+areaMap = 'none'  # its maps moved: AREA maps need a record of its own
 itemDescs = { preset = 'vanilla', base = 0x08587D6C }
 language = 'F'
 gameCode = 'BPEF'
@@ -109,6 +113,7 @@ guideTables = 'GUIDE_TABLES_EMERALD_FR'
 
 [config.emerald_it]
 base = 'emerald_retail'
+areaMap = 'none'  # its maps moved: AREA maps need a record of its own
 itemDescs = { preset = 'vanilla', base = 0x0858000C }
 language = 'I'
 gameCode = 'BPEI'
@@ -136,6 +141,7 @@ guideTables = 'GUIDE_TABLES_EMERALD_IT'
 # fonts aren't the Western ones the slot art is drawn with).
 [config.emerald_ja]
 base = 'emerald_retail'
+areaMap = 'none'  # its maps moved: AREA maps need a record of its own
 itemDescs = { preset = 'japanese', base = 0x0855CEE8 }
 actionCursor = 0
 moveCursor = 0  # its RAM moved; not located yet

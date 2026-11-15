@@ -60,6 +60,7 @@ itemIconTable = 0x083D4294  # sItemIconTable (static, but readable)
 # PokeDaisy's memory notes.
 [config.firered_rev1]
 base = 'firered_rev0'
+areaMap = 'AREA_MAP_FIRERED_REV1'
 itemDescs = { preset = 'vanilla', base = 0x083DB098 }
 monIconTable = 0x083D3810
 monIconPaletteIndices = 0x083D3EF0
@@ -95,6 +96,7 @@ trainerCard = 'TRAINER_CARD_FIRERED'
 # uses that move (THUNDER WAVE from cell 1).
 [config.firered_rev0_retail]
 base = 'firered_rev0'
+areaMap = 'AREA_MAP_FIRERED_REV0'
 trainerCard = 'TRAINER_CARD_FIRERED'
 actionCursor = 0x02023FF8
 moveCursor = 0x02023FFC
