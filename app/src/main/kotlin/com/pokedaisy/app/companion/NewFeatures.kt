@@ -60,6 +60,14 @@ object NewFeatures {
 
     /** SETTINGS > REUSABLE TMS: a TM stays in the bag after it teaches a move (companion.data.ReusableTms). */
     const val REUSABLE_TMS = "reusable_tms"
+    /** The POKéMON CENTER anywhere: the QUICK MENU's HEAL and the summary's CENTER (companion.data.PokemonCenter). */
+    const val POKEMON_CENTER = "pokemon_center"
+    /** SETTINGS > EXP SHARE: the whole party gains EXP from a win (companion.data.ExpShare). */
+    const val EXP_SHARE = "exp_share"
+    /** SETTINGS > LEVEL CAP: no Pokémon past the next boss's top level (companion.data.LevelCap). */
+    const val LEVEL_CAP = "level_cap"
+    /** SETTINGS > NO HMS NEEDED: the field moves without a Pokémon that knows them (companion.data.HmFree). */
+    const val HM_FREE = "hm_free"
     /** SETTINGS > TRADE EVOLUTIONS: a trade evolution from the Pokémon's summary (companion.data.TradeEvolution). */
     const val TRADE_EVOLUTIONS = "trade_evolutions"
     /** SETTINGS > SHINY ODDS: a wild foe shiny at the odds picked (companion.data.ShinyOdds). */
@@ -134,6 +142,8 @@ object NewFeatures {
 
     /** Settings > LIBRARY > PATCH A ROM and the library's + menu: a .bps patch applied to a ROM the library has (RomPatchFlow). */
     const val ROM_PATCH = "rom_patch"
+    /** TOOLS > SPRITE PACK: the makeover's graphics loaded from a pack file instead of the other games' ROMs (SpritePack). */
+    const val SPRITE_PACK = "sprite_pack"
     /** Settings > TOOLS > LINK PLAY (and a GBA game's library menu): two to four GBA games on one link cable (LinkActivity). */
     const val LINK_PLAY = "link_play"
     /** TOOLS > SAVE EDITOR / TRADE SAVES and a game's library menu > SAVE EDITOR: the save editor, out from behind its flag. */
@@ -173,6 +183,10 @@ object NewFeatures {
     const val BATTLE_STYLE = "battle_style"
     /** QUICK MENU > FLASH: the field move from the quick menu (companion.data.Flash); the QUICK MENU row carries it too. */
     const val QUICK_FLASH = "quick_flash"
+    /** QUICK MENU > TOUCH SCREEN: a DS / 3DS game's touch screen in by hand on one screen (a phone has no L2). */
+    const val QUICK_TOUCH = "quick_touch"
+    /** SETTINGS > FONT on both screens: the pixel font or a smooth one (ui.theme.AppFont). */
+    const val APP_FONT = "app_font"
     /** FREE FLIGHT: TAKE OFF / LAND (the QUICK MENU's tile and its row, the MAP tab, the FREE FLIGHT hotkey). */
     const val FREE_FLIGHT = "free_flight"
     /** SETTINGS > FLY STYLE: SCENIC flies over the field to the town. */
@@ -199,7 +213,8 @@ object NewFeatures {
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
-        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU,
+        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP,
+        QUICK_TOUCH, APP_FONT,
     )
 
     private const val DAYS = 7

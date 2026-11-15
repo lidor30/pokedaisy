@@ -17,7 +17,7 @@ export MON_ICONS
 
 .DEFAULT_GOAL := help
 
-.PHONY: help docs-shots docs-check submodules apk install run test clean shots preview menu-shots capture-image \
+.PHONY: help sprite-pack sprite-pack-sigs docs-shots docs-check submodules apk install run test clean shots preview menu-shots capture-image \
         check gamedata stress test-roms test-quick version bump release-apk symbols release release-local \
         rom-support rom-identify rom-checklist
 
@@ -78,6 +78,7 @@ check: ## Everything a PR must pass: unit tests, translations, game data, ui-pre
 	python3 scripts/gen_gamedata.py --check
 	python3 scripts/gen_nds_ports.py --check
 	python3 scripts/check_melonds_patch.py
+	python3 scripts/check_azahar_patch.py
 	$(MAKE) -C 3ds test-configs-gen
 	./gradlew $(UNIT_TESTS) :app:assembleDebug :shared:compileKotlinIosArm64
 	./gradlew -p ui-preview stress
@@ -148,6 +149,15 @@ shots: ## Paparazzi screenshots of the companion tabs -> app/src/test/snapshots/
 
 preview: ## Render the UI without the Android SDK (Compose Desktop) -> ui-preview/build/shots/
 	./gradlew -p ui-preview render
+
+SPRITE_ROMS ?= $(HOME)/Downloads/Game ROMs & Emulation/gba
+SPRITE_PACK ?= $(HOME)/Documents/PokeDaisy/pokedaisy-sprites.zip
+
+sprite-pack: ## SPRITE PACK zip from your own ROMs: SPRITE_ROMS=<folder> SPRITE_PACK=<out.zip> (never committed, never shared by us)
+	./gradlew -p ui-preview spritePack -Pmode=pack "-Proms=$(SPRITE_ROMS)" "-Pout=$(SPRITE_PACK)"
+
+sprite-pack-sigs: ## The follower Pokémon's CRC table a sprite pack is checked against (MonArtSigsGen.kt) from SPRITE_ROMS
+	./gradlew -p ui-preview spritePack -Pmode=sigs "-Proms=$(SPRITE_ROMS)" "-Pout=$(CURDIR)/app/src/main/kotlin/com/pokedaisy/app/companion/data/MonArtSigsGen.kt"
 
 ##@ Headless captures (Docker + libmgba)
 

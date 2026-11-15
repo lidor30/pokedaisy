@@ -12,34 +12,108 @@
 </p>
 
 <p>
-  <strong><a href="https://github.com/lidor30/pokedaisy/releases/latest">Download</a></strong>
-  · <strong><a href="#features">Features</a></strong>
+  <strong><a href="#download-and-install">Download</a></strong>
+  · <strong><a href="#the-companion">Features</a></strong>
   · <strong><a href="#supported-games">Supported games</a></strong>
   · <strong><a href="https://pokedaisy.com/docs/">Manual</a></strong>
   · <strong><a href="https://pokedaisy.com/feedback/#bug">Report a problem</a></strong>
 </p>
 
-<p>
-  <sub><strong>Support PokeDaisy</strong></sub><br>
-  <a href="https://www.patreon.com/cw/pokedaisy"><img src="https://img.shields.io/badge/Patreon-F96854?logo=patreon&logoColor=white" alt="Patreon"></a>
-  <a href="https://buymeacoffee.com/lidor30g"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
-  <a href="https://ko-fi.com/pokedaisy"><img src="https://img.shields.io/badge/Ko--fi-FF5E5B?logo=kofi&logoColor=white" alt="Ko-fi"></a>
-</p>
+<img src="website/public/media/readme-free-flight.webp" width="100%" alt="FireRed on PokeDaisy: flying over Kanto on a bird, the map drawn past the GBA's edges, the party and buttons in the corners">
+
+<sub>FireRed on an AYN Thor: TAKE OFF, EXPAND and the HUD. Every picture here is the real app.</sub>
 
 </div>
 
-PokeDaisy is a Game Boy, Game Boy Color, GBA and Nintendo DS player for Android handhelds with two screens or one,
-made for the Pokemon games of every generation from Red to Black 2 and White 2 and popular ROM hacks. Next to the
-game runs a live companion that reads it as you play: your party, bag, map, battle matchups, Pokedex and a spoiler-free
-guide, all drawn in the game's own menu style.
+PokeDaisy plays Game Boy, Game Boy Color, GBA and Nintendo DS games on Android handhelds, made for the Pokemon games
+from Red to Black 2 and White 2 and dozens of ROM hacks. Next to the game runs a live companion that reads it as you
+play: your party, bag, map, battle matchups, Pokedex and a spoiler-free guide, drawn in the game's own menu style. On
+a dual-screen handheld it gets the bottom screen; on one screen it opens over the game.
 
-- **Two screens** (AYN Thor, Retroid Pocket Duo, ...): the game on top, the companion on the bottom screen.
-- **One screen** (Retroid Pocket 6, phones, ...): the companion opens as a window over the game or a panel beside
-  it, and a HUD, a quick menu and battle buttons keep the essentials on the game screen.
-- **Folding phones** (Galaxy Z Fold, Pixel Fold, ...): half open, the game goes above the fold and the companion below it,
-  like a two-screen handheld (or on facing pages when held like a book).
-- **DS games** (Platinum, HeartGold, SoulSilver, Black, White, Black 2, White 2, and the Origin HeartGold, Renegade Platinum, Blaze Black 2 Redux and Volt White 2 Redux hacks): the touch screen
-  goes on the bottom screen, one tap swaps it for the companion.
+## The companion
+
+<table>
+  <tr>
+    <td width="33%"><img src="website/public/media/companion-party.webp" alt="PARTY: the team in FireRed's own party screen"></td>
+    <td width="33%"><img src="website/public/media/companion-battle-gen5.webp" alt="BATTLE: FIGHT, BAG, RUN and POKEMON buttons, INFO and SUGGESTIONS"></td>
+    <td width="33%"><img src="website/public/media/companion-map.webp" alt="MAP: Kanto with the player on it, FLY and TAKE OFF"></td>
+  </tr>
+  <tr>
+    <td><b>PARTY</b>: your team in the game's own party screen. Tap one for stats, moves, IVs / EVs and what to learn.</td>
+    <td><b>BATTLE</b>: opens by itself. Every matchup, the foe's whole team, the best pick, and buttons that play the turn.</td>
+    <td><b>MAP</b>: the region map with you on it, every place searchable, FLY and TAKE OFF.</td>
+  </tr>
+  <tr>
+    <td><img src="website/public/media/companion-guide.webp" alt="GUIDE: the wild Pokemon on Route 4 and how many are caught"></td>
+    <td><img src="website/public/media/companion-dex.webp" alt="DEX: seen and caught, filters, entries"></td>
+    <td><img src="website/public/media/companion-boxes.webp" alt="BOXES: a PC box laid out like the game's"></td>
+  </tr>
+  <tr>
+    <td><b>GUIDE</b>: hints first, answers on a second tap. What's in this area, the next boss's team, a STUCK? page.</td>
+    <td><b>DEX</b>: seen and caught, full entries, evolutions, where to catch each one, the moves it learns.</td>
+    <td><b>BOXES</b>: your PC's boxes, laid out like the game's. Withdraw and deposit without a PC in FireRed, LeafGreen and Emerald.</td>
+  </tr>
+</table>
+
+Also **BAG** (use and give items), **NUZLOCKE** (keeps score of a run), **CARD**, **STATES** (10 save-state slots) and
+**ACHIEVEMENTS** (RetroAchievements). You pick which tabs sit on the bar.
+
+## On the game screen
+
+<table>
+  <tr>
+    <td width="50%"><img src="website/public/media/readme-on-the-game-screen.webp" alt="Emerald: the quick menu's FLY list, a balloon flight, a motorcycle, fishing, fast-forward, then the HUD's wild Pokemon, bag and map"></td>
+    <td width="50%"><img src="website/public/media/firered-field.webp" alt="FireRed with EXPAND and the HUD: party, minimap, Poke Balls, PC, BAG and WILD"></td>
+  </tr>
+  <tr>
+    <td><b>QUICK MENU</b> (L3) and the <b>HUD</b>: PC, FLY, TAKE OFF, BIKE, ROD and fast-forward from one ring; the wild Pokemon here, your bag and the map a tap away on the game.</td>
+    <td><b>EXPAND + HUD</b>: the overworld drawn past the GBA's edges to fill a wide screen, with your party, a minimap and your bag in the corners.</td>
+  </tr>
+</table>
+
+EXPAND works in every Gen 3 game, many hacks and the Game Boy's Yellow and Crystal:
+
+<table>
+  <tr>
+    <td width="33%"><img src="website/public/media/soulgold-expand.webp" alt="SoulGold with EXPAND"><br><sub>SoulGold</sub></td>
+    <td width="33%"><img src="website/public/media/rogue-expand.webp" alt="Emerald Rogue with EXPAND"><br><sub>Emerald Rogue</sub></td>
+    <td width="33%"><img src="website/public/media/lazarus-expand.webp" alt="Lazarus with EXPAND"><br><sub>Lazarus</sub></td>
+  </tr>
+  <tr>
+    <td><img src="website/public/media/monomyth-expand.webp" alt="Monomyth with EXPAND"><br><sub>Monomyth</sub></td>
+    <td><img src="website/public/media/mariomon-expand.webp" alt="Super Mariomon with EXPAND"><br><sub>Super Mariomon</sub></td>
+    <td><img src="website/public/media/yellow-field.webp" alt="Yellow on the Game Boy with EXPAND"><br><sub>Yellow (Game Boy)</sub></td>
+  </tr>
+</table>
+
+## Fly anywhere, ride anything
+
+<table>
+  <tr>
+    <td width="60%"><img src="website/public/media/readme-fly-on.webp" alt="Unbound: flying over the map in a helicopter, then a plane, then a balloon"></td>
+    <td width="40%"><img src="website/public/media/readme-follower.webp" alt="Unbound: the player walking with the lead Pokemon behind"></td>
+  </tr>
+  <tr>
+    <td><b>FREE FLIGHT + FLY ON</b>: take off and fly anywhere over the map, on your Pokemon's bird or in a helicopter, plane, balloon or zeppelin.</td>
+    <td><b>MAKEOVER</b>: your lead Pokemon follows you, play as another game's hero, day and night tints, a motorcycle for the bike.</td>
+  </tr>
+</table>
+
+## And more
+
+- **Fast-forward** that slows down in menus, with music that keeps its tempo. Slow motion, rewind, turbo, save states.
+- **Less walking back**: PC anywhere, FLY from the map, the Pokemon Center's services on any summary, wild encounters off,
+  reusable TMs, field moves without HMs, an EXP share for the whole party, a level cap at the next boss's top level,
+  auto-run, instant text.
+- **Shaders** (LCD, scanlines, CRT, GBA colours, edge smoothing), themes, dark mode, overlays.
+- **Controls**: remap everything, touch controls you lay out yourself (or a Delta skin), any controller.
+- **DS games**: the touch screen on the bottom screen, or in five layouts on one, upscaled 2x to 8x.
+- **Tools**: link play (two to four games on one cable), a save editor, save trades, BPS patching.
+- **Your files**: standard `.sav` / `.srm` saves shared with RetroArch and mGBA, a backup every start, zipped ROMs,
+  launching from ES-DE, Cocoon and iiSU ([iiSU](docs/iisu/README.md), [ES-DE](docs/es-de/README.md) setup).
+- **Nine languages**: English, Japanese, Korean, French, German, Italian, Spanish and both Portugueses.
+
+Everything is explained in the [manual](https://pokedaisy.com/docs/).
 
 ## Devices
 
@@ -56,71 +130,57 @@ guide, all drawn in the game's own menu style.
 
 Any Android 8.0+ device runs the games.
 
-## Install
+## Download and install
 
-1. Download `PokeDaisy-<version>.apk` from the [latest release](https://github.com/lidor30/pokedaisy/releases/latest)
-   on the device and open it (allow your browser or file manager to install apps if Android asks).
-2. Open PokeDaisy. A short setup links your ROMs folders, picks where saves go (PokeDaisy's own folder or another
-   emulator's, like RetroArch's) and can add cover art. All of it can be changed later in Settings.
+<p align="center">
+  <a href="#android"><img src="https://img.shields.io/badge/Android-APK-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android"></a>
+  <a href="#linux"><img src="https://img.shields.io/badge/Linux-Steam%20Deck%20%C2%B7%20handhelds-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux"></a>
+  <a href="#nintendo-3ds"><img src="https://img.shields.io/badge/Nintendo%203DS-preview-D12228?style=for-the-badge&logo=nintendo3ds&logoColor=white" alt="Nintendo 3DS"></a>
+  <img src="https://img.shields.io/badge/Windows-soon-8a8a98?style=for-the-badge&logo=windows&logoColor=white" alt="Windows: coming soon">
+  <img src="https://img.shields.io/badge/iOS-soon-8a8a98?style=for-the-badge&logo=apple&logoColor=white" alt="iOS: coming soon">
+</p>
 
-The app updates itself: it offers each new version when you open it. The full manual is at
-[pokedaisy.com/docs](https://pokedaisy.com/docs/) and in the app under Settings > HELP.
+Every file is on the [latest release](https://github.com/lidor30/pokedaisy/releases/latest). **No games are included:**
+use your own legally dumped ROMs.
 
-**No games are included.** Use your own legally dumped ROMs.
+### Android
 
-## Features
+Android 8.0 or newer: dual-screen handhelds, one-screen handhelds and phones.
+[**Download the APK**](https://github.com/lidor30/pokedaisy/releases/latest) (`PokeDaisy-<version>.apk`) on the
+device and open it. A short setup links your ROMs folders, picks where saves go and can add cover art. The app then
+offers each new version by itself. Guide: [Install and first setup](https://pokedaisy.com/docs/install/).
 
-**The companion**
+### Linux
 
-- **PARTY**: your team in your game's own party screen. Tap one for its summary: stats, moves, IVs / EVs,
-  matchups, and which moves or TMs are worth learning.
-- **BAG**: every pocket with icons and descriptions, and items you can use or give from it in the games that allow it.
-- **BATTLE**: opens by itself. Your moves rated SUPER / RESISTED / NEUTRAL / IMMUNE, the foe's weaknesses,
-  ability, item and stats, suggestions for who to send out and which move to use, and the rest of the foe's team. Its
-  touch buttons come in two looks: big coloured buttons, or a battle screen styled after the fifth generation's.
-- **MAP**: the game's region map with you on it, every place searchable, and FLY. In FireRed, LeafGreen, Ruby, Sapphire and Emerald (every language), Emerald Legacy, a dozen hacks on their code and Emerald Imperium, Lazarus, Heart and Soul and SoulGold, TAKE OFF lets you fly anywhere over the map on your Pokémon's bird, and FLY takes you to a town over the real map instead of cutting to it (FLY STYLE > CLASSIC for the game's own).
-- **DEX**: seen / caught, full entries, evolutions, where to catch each one and the moves it learns.
-- **GUIDE**: hints first, answers on a second tap. What's in the area you're in, the next boss's team, evolutions,
-  tips and a STUCK? page.
-- **BOXES** (FireRed, LeafGreen, Emerald, Ruby and Sapphire in every language, Unbound, Radical Red, SoulGold and most hacks built on those games): your PC's boxes, laid out like the game's box screen. Tap a Pokemon for its summary, WITHDRAW it into your party (or swap it with one there), or DEPOSIT a party Pokemon from its summary (FireRed, LeafGreen and Emerald in English, German, French, Italian and Spanish, and a few FireRed hacks).
-- **CARD**, **STATES** (10 save-state slots), **ACHIEVEMENTS** (RetroAchievements), and the tabs you pick for the bar.
-- **NUZLOCKE** (per game, GBA games but Emerald Rogue): keeps score of a Nuzlocke run, the first encounter in each
-  area and every fainted Pokemon out for good, with a gravestone on its party slot.
+| For | Download |
+| --- | --- |
+| Steam Deck and Linux PCs | [`pokedaisy-linux-x86_64.zip`](https://github.com/lidor30/pokedaisy/releases/latest/download/pokedaisy-linux-x86_64.zip) |
+| TrimUI handhelds (CrossMix, NextUI) | [`pokedaisy-linux-aarch64.zip`](https://github.com/lidor30/pokedaisy/releases/latest/download/pokedaisy-linux-aarch64.zip) |
+| PortMaster handhelds (ROCKNIX, Knulli, muOS) | [`pokedaisy-portmaster-aarch64.zip`](https://github.com/lidor30/pokedaisy/releases/latest/download/pokedaisy-portmaster-aarch64.zip) |
+| TrimUI Brick on NXRedux | [`PokeDaisy-NXRedux.zip`](https://github.com/lidor30/pokedaisy/releases/latest/download/PokeDaisy-NXRedux.zip) |
+| Cores for RetroArch, on a PC | [`pokedaisy-libretro-x86_64.zip`](https://github.com/lidor30/pokedaisy/releases/latest/download/pokedaisy-libretro-x86_64.zip) |
+| Cores for RetroArch, on an ARM handheld | [`pokedaisy-libretro-aarch64.zip`](https://github.com/lidor30/pokedaisy/releases/latest/download/pokedaisy-libretro-aarch64.zip) |
 
-**On the game screen**
+Guide: [Install on Linux, Steam Deck and handhelds](https://pokedaisy.com/docs/linux-install/).
 
-- **HUD**: your party, a minimap, your Poke Balls and PC / BAG / WILD buttons while you walk around.
-- **Quick menu** (L3): PC, FLY, TAKE OFF, BIKE, ROD, the keep-away spray, wild encounters on / off, save states.
-- **Battle buttons**: FIGHT, POKEMON and RUN right beside the battle.
-- **EXPAND**: the overworld drawn past the GBA's edges to fill a wide screen, with zoom and look-around.
+### Nintendo 3DS
 
-**The player**
+An early preview, for a 3DS with custom firmware and the Homebrew Launcher:
+[`pokedaisy.3dsx`](https://github.com/lidor30/pokedaisy/releases/latest/download/pokedaisy.3dsx). Guide: [Install on a Nintendo 3DS](https://pokedaisy.com/docs/3ds/).
 
-- Fast-forward (smart: normal speed in menus, fast in battles) with music that keeps its normal speed, slow motion,
-  rewind, a real-time clock, save states, turbo buttons.
-- Shaders (LCD, scanlines, CRT, GBA colours, edge smoothing), overlays, and your own RetroArch overlays.
-- Makeovers: play one game as another game's hero, a Pokemon following you, day and night tints.
-- Remappable controls and hotkeys, touch controls you can lay out yourself (with several looks and colors, or a Delta `.deltaskin` controller skin), Bluetooth and USB controllers.
-- **Link play**: two to four GBA games at once on one link cable, to trade (trade evolutions too), battle and
-  mix records between your games or two saves of one.
-- **PC boxes and save trades**: rearrange a game's PC, change its bag and moves, or trade Pokemon between two of your
-  games' save files with the games closed (FireRed, LeafGreen, Emerald, Ruby, Sapphire), by the games' own rules.
-- Optional cheats, wild encounters off, reusable TMs, trade evolutions without a trade, auto-run and running indoors.
-- A library with cover art, favorites, zipped ROMs, BPS patching (it finds the base ROM by itself), a dual-screen
-  launcher, and launching from frontends like
-  ES-DE, Cocoon and iiSU ([iiSU](docs/iisu/README.md), [ES-DE](docs/es-de/README.md) setup).
-- Standard `.sav` / `.srm` saves, shared with mGBA and RetroArch. Every start keeps a backup of your save.
-- English, Japanese, Korean, French, German, Italian, Spanish and Portuguese.
+### Windows and iOS
 
-Everything is explained in the [manual](https://pokedaisy.com/docs/).
+In the works.
 
 ## Supported games
 
-Any Game Boy, Game Boy Color, GBA or DS game plays. The companion needs one of the games below, **in the exact
-version listed** (ROM hacks are recognized by their file, so another version
-shows a "not supported" notice).
+Any Game Boy, Game Boy Color, GBA or DS game plays. The companion knows Red to Crystal, FireRed, LeafGreen, Emerald,
+Ruby and Sapphire in every language, Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2, and dozens of
+ROM hacks, **in the exact version listed** (another version shows a "not supported" notice). Drop your ROM into the
+[ROM check](https://pokedaisy.com/#check) to see what works with it: it never leaves your browser.
 
-✅ works · ◐ partly · — not yet
+<details>
+<summary><strong>The full list, game by game</strong> (✅ works · ◐ partly · — not yet)</summary>
 
 | Game                           | Version                    | Party | Bag | Battle | Map |   Dex   | Guide |
 | ------------------------------ | -------------------------- | :---: | :-: | :----: | :-: | :-----: | :---: |
@@ -199,6 +259,8 @@ shows a "not supported" notice).
 | Emerald Rogue                  | 2.2.1-EX                   |  ✅   | ✅  |   ✅   | ✅  |   ✅    |   —   |
 | SoulGold                       | 1.1.4, 1.2 (3), 1.2.1 (2)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | R.O.W.E.                       | 2.1.9.1 Experimental       |  ✅   | ✅  |   ◐    | ✅  |    ◐    |   —   |
+
+</details>
 
 <details>
 <summary><strong>Notes on the table</strong></summary>

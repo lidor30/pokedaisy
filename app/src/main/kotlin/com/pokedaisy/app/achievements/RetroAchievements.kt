@@ -137,6 +137,7 @@ object RetroAchievements : CompanionAchievements {
 
     /** SHINY ODDS is raised on a game it works in (ShinyOdds.kt): paused the same way, since sets reward catching a shiny. */
     @Volatile private var shinyOddsActive = false
+    @Volatile private var expShareActive = false
     /** FLIGHT AREA is ANYWHERE and the player took off with it (companion.data.FlightArea): flying past the story could
      * reach a set's places early, so paused the same way until it's VISITED again. */
     @Volatile private var flightActive = false
@@ -426,7 +427,7 @@ object RetroAchievements : CompanionAchievements {
             resumeProgress?.let { RaNative.raDeserializeProgress(it) }
             resumeProgress = null
         }
-        if (cheatsActive || shinyOddsActive || flightActive || coopBattle) RaNative.raIdle() else RaNative.raDoFrame()
+        if (cheatsActive || shinyOddsActive || flightActive || expShareActive || coopBattle) RaNative.raIdle() else RaNative.raDoFrame()
         // Debug builds: what rc_client sees, every ~10 s of emulated time.
         if (BuildConfig.DEBUG && ++debugFrames >= 600) {
             debugFrames = 0
@@ -456,6 +457,18 @@ object RetroAchievements : CompanionAchievements {
         if (!ready || !coreAttached) return
         if ((_state.value.game?.total ?: 0) > 0) emitPopup(shinyOddsPopup(active))
     }
+
+    fun setExpShareActive(active: Boolean) {
+        if (active == expShareActive) return
+        expShareActive = active
+        _state.update { it.copy(expSharePaused = active) }
+        if (!ready || !coreAttached) return
+        if ((_state.value.game?.total ?: 0) > 0) emitPopup(expSharePopup(active))
+    }
+
+    private fun expSharePopup(active: Boolean) =
+        if (active) AchievementPopup(AchievementPopup.Kind.NOTICE, tr("EXP SHARE") + ": " + tr("ON"), tr("Achievements are paused while EXP SHARE is on."))
+        else AchievementPopup(AchievementPopup.Kind.NOTICE, tr("EXP SHARE") + ": " + tr("OFF"), tr("Achievements are back on."))
 
     fun setFlightAnywhere(active: Boolean) {
         if (active == flightActive) return

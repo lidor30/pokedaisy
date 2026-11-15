@@ -1,9 +1,9 @@
 ---
 title: Party and summaries
-summary: Your team at a glance, each Pokémon's full summary, its exact IVs and EVs, and which new moves are worth learning.
+summary: Your team at a glance, each Pokémon's full summary, its exact IVs and EVs, which new moves are worth learning, and the POKéMON CENTER's services anywhere.
 section: companion
 order: 2
-keywords: [team, pokemon, summary, ivs, evs, nature, ability, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade]
+keywords: [team, pokemon, summary, ivs, evs, nature, ability, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade, pokemon center, center, heal, heal anywhere, nurse, move relearner, move tutor, relearn, remember move, move deleter, delete move, forget move, name rater, nickname, rename]
 ---
 
 The `PARTY` tab is your team, live. Glance down and you know who's hurt, who's poisoned and who's about to level up, without pausing to open the game's menu.
@@ -54,6 +54,20 @@ The game decides, by its own rules: a Pokémon holding the item that stops evolu
 
 > [!NOTE]
 > `TRADE EVOS` works in the English FireRed (the later release), LeafGreen and Emerald. In other games it shows `N/A`. To trade for real between two of your games, see [Link play](link-play.md).
+
+## CENTER: heal, relearn, forget, rename
+
+The services you'd normally walk to a town for are on every Pokémon's summary: tap `CENTER` (the pink button) and pick one.
+
+- `HEAL THE PARTY`: the whole party back to full health, PP and status included, with the nurse's jingle. It's also a tile in the [quick menu](controls.md#the-quick-menu), `HEAL`.
+- `RELEARN A MOVE`: the game's own screen for teaching this Pokémon a move it could have learned by now, as the move tutor does, free. It's only there when there's something to relearn.
+- `FORGET A MOVE`: pick one of its moves and confirm, and it's gone, as the move deleter does it, field moves included.
+- `NICKNAME`: the game's own naming screen for this Pokémon.
+
+The games' own rules stay: an egg gets none of these, a Pokémon keeps at least one move, and only the trainer who caught a Pokémon can rename it, so one from a trade can't be renamed. The last Pokémon in your party that can cross water can't forget that move, unless [`NO HMS NEEDED`](controls.md#no-hms-needed) is on. Everything works out on the field, with no menu, text or battle open. **Save in the game** to keep the changes.
+
+> [!NOTE]
+> `CENTER` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. In hacks that changed the naming screen (Unbound and other CFRU hacks), `NICKNAME` isn't offered. `RELEARN A MOVE` needs the game's move lists, which PokeDaisy reads for most games.
 
 ## STATS: IVs, EVs, nature and ability
 

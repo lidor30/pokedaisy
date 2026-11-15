@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.HmFree
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -295,18 +297,18 @@ fun quickBlocked(action: QuickAction, s: SnapshotView, repelSteps: Int = 0, dark
         QuickAction.FLIGHT -> when {
             flying -> null
             !field -> tr("Not during a battle")
-            s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } -> tr("No one in your party knows FLY")
+            !HmFree.active && s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } -> tr("No one in your party knows FLY")
             else -> null
         }
-        QuickAction.PC -> if (!field) tr("Not during a battle") else null
+        QuickAction.PC, QuickAction.HEAL -> if (!field) tr("Not during a battle") else null
         QuickAction.FLY -> when {
             !field -> tr("Not during a battle")
-            s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } -> tr("No one in your party knows FLY")
+            !HmFree.active && s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } -> tr("No one in your party knows FLY")
             else -> null
         }
         QuickAction.FLASH -> when {
             !field -> tr("Not during a battle")
-            s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLASH_MOVE } } -> tr("No one in your party knows FLASH")
+            !HmFree.active && s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLASH_MOVE } } -> tr("No one in your party knows FLASH")
             dark == false -> tr("It isn't dark here")
             else -> null
         }
@@ -725,6 +727,7 @@ private fun QuickIcon(action: QuickAction, s: SnapshotView, actions: QuickAction
     fun item(ids: List<Int>) = ItemIcon(spriteAsset("items", KeyItems.firstIn(s.items, ids) ?: ids.first()), size)
     when (action) {
         QuickAction.PC -> PixelArt(PC_ICON, PC_COLORS, Modifier.size(size * 0.8f))
+        QuickAction.HEAL -> PixelArt(HEAL_ICON, HEAL_COLORS, Modifier.size(size * 0.8f))
         QuickAction.FLY -> {
             val flyer = s.party.firstOrNull { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } ?: s.party.firstOrNull()
             SpeciesIcon(flyer?.iconAsset, size * 1.2f)
@@ -740,6 +743,7 @@ private fun QuickIcon(action: QuickAction, s: SnapshotView, actions: QuickAction
         QuickAction.SAVE_STATE -> PixelArt(SAVE_STATE_ICON, STATE_COLORS, Modifier.size(size * 0.8f))
         QuickAction.LOAD_STATE -> PixelArt(LOAD_STATE_ICON, STATE_COLORS, Modifier.size(size * 0.8f))
         QuickAction.FF -> PixelIcon(FF_ICON, ink.text, Modifier.size(size * 0.8f))
+        QuickAction.TOUCH_SCREEN -> PixelArt(TOUCH_ICON, TOUCH_COLORS, Modifier.size(size * 0.8f))
         QuickAction.COMPANION -> PixelIcon(COMPANION_ICON, ink.text, Modifier.size(size * 0.6f))
     }
 }
@@ -765,6 +769,8 @@ fun quickMenuRows(
         val badge = when (a) {
             QuickAction.FLASH -> NewFeatures.badge(NewFeatures.QUICK_FLASH)
             QuickAction.FLIGHT -> NewFeatures.badge(NewFeatures.FREE_FLIGHT)
+            QuickAction.HEAL -> NewFeatures.badge(NewFeatures.POKEMON_CENTER)
+            QuickAction.TOUCH_SCREEN -> NewFeatures.badge(NewFeatures.QUICK_TOUCH)
             else -> null
         }
         SettingRow(a.label, onOff(a in shown), labelBadge = badge) {
@@ -775,12 +781,32 @@ fun quickMenuRows(
 
 /** SETTINGS' row for the page. */
 fun quickMenuBadge(): String? = NewFeatures.badge(NewFeatures.QUICK_MENU) ?: NewFeatures.badge(NewFeatures.QUICK_FLASH)
-    ?: NewFeatures.badge(NewFeatures.FREE_FLIGHT)
+    ?: NewFeatures.badge(NewFeatures.FREE_FLIGHT) ?: NewFeatures.badge(NewFeatures.QUICK_TOUCH)
 
 /** MOVE_FLASH (the quick menu's FLASH tile, the party check). */
 internal const val FLASH_MOVE = 148
 
 /** FLASH: a burst of light, K outline, Y its glow, W the white middle. */
+/** HEAL: a heart in the POKéMON CENTER's pink, a highlight on its left lobe. */
+private val HEAL_ICON = listOf(
+    "............",
+    "..KKK..KKK..",
+    ".KHHPKKPPPK.",
+    "KHWHPPPPPPPK",
+    "KHHPPPPPPPPK",
+    "KPPPPPPPPPPK",
+    ".KPPPPPPPPK.",
+    "..KPPPPPPK..",
+    "...KPPPPK...",
+    "....KPPK....",
+    ".....KK.....",
+    "............",
+)
+
+private val HEAL_COLORS = mapOf(
+    'K' to Color(0xFF602030), 'P' to Color(0xFFE8687C), 'H' to Color(0xFFF8A8B8), 'W' to Color(0xFFFFFFFF),
+)
+
 private val FLASH_ICON = listOf(
     ".....KK.....",
     ".K...KK...K.",

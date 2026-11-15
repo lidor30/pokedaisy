@@ -3,7 +3,7 @@ title: Your game library
 summary: Add games, sort and favorite them, set covers, and use each game's menu for saves, info, cheats and more.
 section: start
 order: 4
-keywords: [shortcut, home screen, launcher icon, search, find a game, filter, support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch, tools, toolbox, rail, bottom bar, where is settings]
+keywords: [shortcut, home screen, launcher icon, search, find a game, filter, support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch, tools, toolbox, rail, bottom bar, where is settings, sprite pack]
 ---
 
 The library is the first thing you see when you open PokeDaisy: every game you've added, in the order you pick. Tap a game to play it.
@@ -39,6 +39,7 @@ Down the left edge of the library are three buttons: `GAMES`, `TOOLS` and `SETTI
 | `LINK PLAY` | Runs two to four GBA games joined as if by a link cable, to trade and battle between them (see [Link play](link-play.md)). |
 | `SAVE EDITOR` | Opens a game's save: rearrange the PC, change the bag, money and moves (see [Save editor and save trades](save-trade.md)). |
 | `TRADE SAVES` | Trades Pokémon between two of your games' save files (see [Save editor and save trades](save-trade.md)). |
+| `SPRITE PACK` | Loads a sprite pack file, so `MAKEOVER` has other games' looks without those games (see [Sprite packs](companion.md#sprite-packs)). |
 
 A green dot on `TOOLS` means one of them is new. `BACK` on the tools takes you back to your games.
 
