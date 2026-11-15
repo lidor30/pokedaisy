@@ -40,7 +40,20 @@ internal fun itemGains(before: Map<Int, Int>, after: Map<Int, Int>): Map<Int, In
         if (q > was) id to (q - was) else null
     }.toMap()
 
+/**
+ * What deserves an "OBTAINED" card: a bag that (re)appeared whole or changed wholesale is a load, a savestate or a
+ * stale cache catching up - announcing it would queue the entire bag one item at a time.
+ */
+internal fun itemGainNotices(before: Map<Int, Int>, after: Map<Int, Int>): Map<Int, Int> {
+    if (before.isEmpty() || after.isEmpty()) return emptyMap()
+    val changed = (before.keys + after.keys).count { id -> (before[id] ?: 0) != (after[id] ?: 0) }
+    return if (changed > MAX_SETTLE_IDS) emptyMap() else itemGains(before, after)
+}
+
 private class ItemGain(val item: ItemView, val count: Int)
+
+/** More distinct items changing in one settled sample than this is the bag being reloaded, not a pickup. */
+private const val MAX_SETTLE_IDS = 6
 
 /**
  * A small "OBTAINED" card at the bottom left when the bag gains an item (a pickup, a purchase, a PC withdrawal, a held
@@ -72,7 +85,7 @@ fun ItemToastHost(
         if (!connected || !hasData) return@LaunchedEffect
         // The game's own bag load, or a savestate's, is not an acquisition: let it settle, then take it as the baseline.
         delay(900)
-        previous = itemTotals(latest)
+        previous = itemTotals(latest).takeIf { it.isNotEmpty() }
         ready = true
     }
     LaunchedEffect(items, connected, hasData) {
@@ -80,10 +93,11 @@ fun ItemToastHost(
         // A bag write can touch the array in a few steps (a purchase): compare the settled bag, not the half-written one.
         delay(160)
         val now = itemTotals(items)
+        if (now.isEmpty()) return@LaunchedEffect
         val before = previous
         previous = now
         if (before == null) return@LaunchedEffect
-        for ((id, count) in itemGains(before, now)) {
+        for ((id, count) in itemGainNotices(before, now)) {
             latest.firstOrNull { it.itemId == id }?.let { queue.trySend(ItemGain(it, count)) }
         }
     }

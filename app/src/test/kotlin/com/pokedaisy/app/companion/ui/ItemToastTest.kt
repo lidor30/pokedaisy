@@ -18,4 +18,21 @@ class ItemToastTest {
         val gains = itemGains(mapOf(1 to 2, 2 to 5), mapOf(1 to 4, 2 to 1, 3 to 1))
         assertEquals(mapOf(1 to 2, 3 to 1), gains)
     }
+
+    @Test
+    fun `a bag that appears whole is not a pickup`() {
+        assertEquals(emptyMap<Int, Int>(), itemGainNotices(emptyMap(), mapOf(1 to 3, 2 to 1)))
+    }
+
+    @Test
+    fun `a wholesale change is a reload, not a pile of pickups`() {
+        val before = (1..20).associateWith { 1 }
+        val after = before + (21..30).associateWith { 1 }
+        assertEquals(emptyMap<Int, Int>(), itemGainNotices(before, after))
+    }
+
+    @Test
+    fun `one pickup still gets its card`() {
+        assertEquals(mapOf(1 to 2), itemGainNotices(mapOf(1 to 1, 2 to 1), mapOf(1 to 3, 2 to 1)))
+    }
 }
