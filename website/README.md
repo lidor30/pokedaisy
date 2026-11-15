@@ -1,6 +1,6 @@
 # PokeDaisy website
 
-A static [Astro](https://astro.build) site: the home page and the ROM check. Node 22.12+ (`nvm use`).
+A static [Astro](https://astro.build) site: the home page and the ROM check. Node 22.23.4+ (`nvm use`).
 
 ```sh
 npm install

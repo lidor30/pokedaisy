@@ -2394,7 +2394,7 @@ it; in game, `SnapshotView.unsupported` swaps every companion tab but SETTINGS f
 and its name to `GameTitles.BY_SHA1` (`GameTitlesTest` checks), its version in the `*_V<ver>_SHA1`
 constant's name, and regenerating the website's `website/src/data/compat.json` (`SiteDataExportTest`
 fails while it's stale: `UPDATE_SITE_DATA=1 ./gradlew :app:testDebugUnitTest --tests '*SiteDataExportTest'`).
-**Website** (`website/`, Astro, static, Node 22.12+): its ROM check (`src/lib/compat.js`) runs
+**Website** (`website/`, Astro, static, Node 22.23.4+): its ROM check (`src/lib/compat.js`) runs
 `isSupported`'s rules in the browser over that JSON - the ROM is never uploaded; keep the two in step.
 Deployed to Firebase Hosting (`pokedaisy.com`) by `.github/workflows/website.yml` **only with an app release**
 (the user's rule: the site never lists games the downloadable APK can't run): a published, non-pre-release release
@@ -2429,8 +2429,8 @@ The site's REPORT A BUG / REQUEST A GAME / SUGGEST A FEATURE go there (it links 
 **GitHub layout (2026-10-18)**: Issues are for bugs (and accepted work); game requests and ideas are Discussions
 (Game requests / Ideas, open-ended, upvoted). Labels: type `bug` / `game request` / `feature request` / `question`, topic
 (`companion`, `display / expand`, ...), status `fixed in next release` / `needs info` / `planned`. `rom_request.yml` stays
-only for older apps' ASK FOR SUPPORT; its issues get converted to Game requests. Astro needs Node 22.12+ (this Mac's
-default 22.1 can't build it: use `~/.nvm/versions/node/v22.23.3/bin`).
+only for older apps' ASK FOR SUPPORT; its issues get converted to Game requests. Astro needs Node 22.23.4+ (this Mac's
+default 22.1 can't build it: use `~/.nvm/versions/node/v22.23.5/bin`).
 **Answering GitHub issues** (the user's rules, gathered from every issue batch so far):
 - **Draft first, post after.** Show the user every reply (in a batch: all of them at once, issue by issue) and post
   only after a clear OK. Then post, add the label, and close if they say so ("post and close" is the usual).
