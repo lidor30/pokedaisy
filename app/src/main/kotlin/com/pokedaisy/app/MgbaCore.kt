@@ -267,6 +267,9 @@ object MgbaCore {
     /** DS LAYOUT floats the X menu (one screen): it comes back after a menu screen left by touch, as after B (the game
      * closes it then: HeartGold / SoulSilver's menuInputState). Emu thread. */
     external fun pkNdsKeepStartMenu(on: Boolean)
+    /** EXP SHARE on the DS (Gen 4, melonDS: pk_nds.cpp's expShareTick): [mode] 0 off / 1 SPLIT / 2 FULL EXP, [mask] the
+     * party slots that aren't eggs. Emu thread. */
+    external fun pkNdsExpShare(mode: Int, mask: Int)
 
     /** A DS game's screens fading by master brightness (towards black or white): the factor 0-16, the top screen's in
      * bits 0-7, the touch screen's in 8-15; 0 = no fade. Emu thread, after [pkRunFrame]. */

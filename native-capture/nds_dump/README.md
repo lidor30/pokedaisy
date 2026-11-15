@@ -73,6 +73,7 @@ X Y`, joined with commas (`A,UP`), or `NONE`.
 | `script FILE` / `scriptgo FILE` | A field script (the game's bytecode) run as the PC job runs its own; `scriptgo` returns once it has started. |
 | `itcm32 ADDR V` | A word into the hook's spare ITCM (an argument a call points at). |
 | `watch LO HI [r\|w\|rw] [N]`, `watch off` | The game's own reads / writes of main RAM in [LO, HI) (at most N, default 20), each with the ARM9's PC, LR, r0-r5 and SP; `WATCH_STACK=N` in the environment adds N stack words (the callers' return addresses). The interpreter only: run without `--jit`. How Black's PC and FLY were traced. |
+| `expshare MODE MASK` | EXP SHARE from now on as the app runs it (`pk_nds_exp_share_tick`, after every frame): MODE 0 off / 1 SPLIT / 2 FULL EXP, MASK the party slots (Gen 4's US carts). |
 | `wildoff 1/0`, `battles` | WILD ENCOUNTERS OFF / back on, and the battles started since. |
 | `music SECONDS FILE.wav` | STEADY's copy (`pk_nds_music`) begun from the game as it is, run alone; its audio, its cost a frame and the longest stall (`MUSIC_DEBUG=1` prints the ARM7 / IPC state and the sounding channels). |
 | `steady G FILE.wav` / `steady off` | From here on, the app's STEADY as EmulatorEngine runs it at G game frames a refresh (a copy for each song once its player settles, taken again when it changes; `STEADY_DEBUG=1` prints the copy's state), its audio written at `steady off`; `steady 0` records the game's own audio instead. Run a script both ways and compare. |

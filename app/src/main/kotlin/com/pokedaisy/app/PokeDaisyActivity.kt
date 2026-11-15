@@ -6240,6 +6240,14 @@ class PokeDaisyActivity : Activity() {
         if (!romIsNds) return
         wideGame = if (!dsperate && (WideScreen.ndsKnows(romCode, romRev) || romOrigin)) WideScreen.NDS else WideScreen.OFF
         if (::engine.isInitialized) engine.ndsCore = if (dsperate) MgbaCore.NDS_CORE_DSPERATE else MgbaCore.NDS_CORE_MELONDS
+        // EXP SHARE on the DS: Gen 4's US carts on melonDS (ExpShare.dsFind; none = N/A).
+        if (romBlocked == null) {
+            val renegade = romCode == com.pokedaisy.app.companion.data.RenegadePlatinum.CODE &&
+                runCatching { com.pokedaisy.app.companion.data.RenegadePlatinum.matches(romData!!.toOkioPath()) }.getOrDefault(true)
+            expShareFound = com.pokedaisy.app.companion.data.ExpShare.dsFind(romCode, romRev, dsperate, renegade)
+            Log.i("pokedaisy", "exp share: ${if (expShareFound != null) "found (DS)" else "not found"}")
+            syncExpShare()
+        }
     }
 
     /** RESTART GAME (SETTINGS, and its hotkey): the game booted again from its save, the resume state dropped. */

@@ -78,6 +78,8 @@ bool pk_nds_action_results(int seq, uint32_t* out);
 void pk_nds_set_wild_off(bool off);
 /** DS LAYOUT floats the X menu: it comes back after a menu screen left by touch (the game closes it then). */
 void pk_nds_set_keep_start_menu(bool on);
+/** EXP SHARE (Gen 4, melonDS): 0 off, 1 SPLIT, 2 FULL EXP; [mask] the party slots that aren't eggs. Emu thread. */
+void pk_nds_set_exp_share(int mode, uint32_t mask);
 /** DS CPU BOOST: the ARM9 at twice the DS's clock (fewer of a game's own slow frames). Emu thread, between frames. */
 void pk_nds_set_cpu_boost(bool on);
 // Action Replay DS codes into melonDS's AREngine (it runs them on the ARM7's VBlank), replacing the ones before:

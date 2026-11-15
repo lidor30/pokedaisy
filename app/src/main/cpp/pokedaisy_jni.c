@@ -1680,6 +1680,12 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsCheats(JNIEnv* env, jobject thiz, jintArray
     return n;
 }
 
+// EXP SHARE on the DS (pk_nds.cpp's expShareTick): mode 0 off / 1 SPLIT / 2 FULL EXP, the party's non-egg slots. Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsExpShare(JNIEnv* env, jobject thiz, jint mode, jint mask) {
+    if (pk_nds_active()) pk_nds_set_exp_share((int) mode, (uint32_t) mask);
+}
+
 // DS LAYOUT floats the X menu on one screen: it comes back after a menu screen left by touch. Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsKeepStartMenu(JNIEnv* env, jobject thiz, jboolean on) {

@@ -35,8 +35,20 @@ object ExpShare {
         }
     }
 
-    /** gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. */
-    class Found(val sentPokes: Long, val full: List<InstantText.Write>)
+    /** gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. A DS game ([ds]) has neither here: its native side
+     * (pk_nds.cpp's expShareTick) writes the battle's masks and patches the battle overlay itself. */
+    class Found(val sentPokes: Long, val full: List<InstantText.Write>, val ds: Boolean = false)
+
+    /**
+     * The DS games EXP SHARE knows: Gen 4's US carts (Platinum rev 1, HeartGold, SoulSilver: pret's BtlCmd_CalcExpGain
+     * at the addresses pk_nds.cpp patches, checked headless), on melonDS only - DSperate's recompiler wouldn't see a code
+     * patch. [renegade]: Renegade Platinum keeps retail's header, its battle code not checked.
+     */
+    fun dsFind(code: String, rev: Int, dsperate: Boolean, renegade: Boolean): Found? = when {
+        dsperate || renegade -> null
+        code == "CPUE" && rev == 1 || code == "IPKE" && rev == 0 || code == "IPGE" && rev == 0 -> Found(0, emptyList(), ds = true)
+        else -> null
+    }
 
     private const val ROM_BASE = 0x08000000L
     private const val ANY = -1
