@@ -1,9 +1,9 @@
 ---
 title: Save editor and save trades
-summary: Change a game's Pokémon, party, boxes, bag and Pokédex (HeartGold, SoulSilver and Platinum too), see what your Pokédex is missing, trade Pokémon between two of your games' saves, or bring GBA Pokémon to a DS game through Pal Park, straight in the save files.
+summary: Change a game's Pokémon, party, boxes, bag and Pokédex (HeartGold, SoulSilver and Platinum too), see what your Pokédex is missing, trade Pokémon between two of your games' saves, bring GBA Pokémon to a DS game through Pal Park, send DS Pokémon on to Black and White through Poké Transfer, or see every save's Pokémon in one list, straight in the save files.
 section: player
 order: 8
-keywords: [3ds, nintendo 3ds, heartgold, soulsilver, platinum, ds save, nds save, save editor, edit save, editor, pc boxes, boxes, trade saves, trade, trading, transfer, move pokemon between games, bag, money, coins, held item, moves, save file, ivs, evs, nature, ability, shiny, gender, level, nickname, rename, friendship, pokedex, event, ticket, mystery gift, release, sort, search, party, pal park, migrate, migration, gba to ds, missing, what am i missing, complete pokedex, living dex, pokedex helper]
+keywords: [3ds, nintendo 3ds, heartgold, soulsilver, platinum, ds save, nds save, save editor, edit save, editor, pc boxes, boxes, trade saves, trade, trading, transfer, move pokemon between games, bag, money, coins, held item, moves, save file, ivs, evs, nature, ability, shiny, gender, level, nickname, rename, friendship, pokedex, event, ticket, mystery gift, release, sort, search, party, pal park, migrate, migration, gba to ds, missing, what am i missing, complete pokedex, living dex, pokedex helper, trade back, trade and back, trade evolution, evolve by trade, collection, all my pokemon, every save, find a pokemon, poke transfer, poketransfer, black, white, black 2, white 2, gen 5, transfer lab]
 ---
 
 PokeDaisy can open a game's save file while the game is closed: you can tidy its PC, change your Pokémon, or move Pokémon between two of your games, the way a trade would. It works with FireRed, LeafGreen, Emerald, Ruby and Sapphire saves (and ROM hacks that kept their save layout), in English and the other Western languages, and with HeartGold, SoulSilver and Platinum saves on the DS (see [On the DS](#on-the-ds)). The 3DS app has it too (see [On the 3DS](#on-the-3ds)).
@@ -48,7 +48,7 @@ A Pokémon's nature, gender, ability and shininess all come from one hidden numb
 
 The `POKéDEX` window counts what you've seen and caught. `ADD MINE` marks every Pokémon in your party and boxes as caught, `ALL SEEN` marks every Pokémon as seen, and `ALL CAUGHT` marks every Pokémon as caught, even the ones you don't have.
 
-`MISSING` lists every Pokémon this Pokédex hasn't caught yet (the region's until you have the National Pokédex), in the Pokédex's order, and looks through your other games' saves for one of each. A row shows where the best one is (the game, then its box or party) and its level. Tap it to open the trade that brings it, with that Pokémon already picked: you only pick where it lands. For a DS game, a Pokémon in a GBA game's PC comes through [Pal Park](#pal-park). A row that can't come yet says why, by the games' own rules (no National Pokédex yet, the island part of the story, a Pokémon holding mail). `IN MY SAVES` shows only the ones that can come. Save your changes before you bring one over.
+`MISSING` lists every Pokémon this Pokédex hasn't caught yet (the region's until you have the National Pokédex), in the Pokédex's order, and looks through your other games' saves for one of each. A row shows where the best one is (the game, then its box or party) and its level. Tap it to open the trade that brings it, with that Pokémon already picked: you only pick where it lands. For a DS game, a Pokémon in a GBA game's PC comes through [Pal Park](#pal-park). A Pokémon that only evolves by trading counts too: one in another save that evolves as it arrives, or one of this save's own that could make a [trade and back](#trade-and-back) (tap it to open the trade with it picked). A row that can't come yet says why, by the games' own rules (no National Pokédex yet, the island part of the story, a Pokémon holding mail). `IN MY SAVES` shows only the ones that can come. Save your changes before you bring one over.
 
 `EVENT TICKETS` lists the tickets Nintendo once handed out at events, the ones that open a ferry to a faraway island. `GET` puts one in your key items pocket, the way the event did. The game's port only takes you there after the Hall of Fame (in FireRed and LeafGreen, once you have the pass for all the Sevii Islands). A ticket you already have, or have already used, isn't offered again.
 
@@ -66,11 +66,11 @@ The 3DS app has the same editor for FireRed, LeafGreen, Emerald, Ruby and Sapphi
 
 - `POKéMON`: **L** and **R** go through your party and the 14 boxes. **A** picks a Pokémon up and puts it down in another place, by the same rules as above. **Y** (or `EDIT`) opens its page: a list where **LEFT** and **RIGHT** change a value step by step (or tap its arrows), and **A** opens a window to pick one (a nature, an item, a move) or to type a number. Names are typed on the 3DS's own keyboard. **L** and **R** on the page go to the next Pokémon. `BOX` renames or sorts the box.
 - `BAG`: **L** and **R** go through the pockets, **A** changes how many you have (0 takes it out), and **Y** adds an item.
-- `TRAINER`: your money and coins, the Pokédex marks and the event tickets.
+- `TRAINER`: your money and coins, the Pokédex marks and the event tickets. `MISSING` lists what this Pokédex hasn't caught, each with the other GBA save that has one (in grey: none yet, or one the games won't trade yet). The top screen says where it is and how it comes: a trade, one that evolves as it arrives, or one of yours that a [trade and back](#trade-and-back) evolves. Bring it with `TRADE SAVES`.
 
 **X** saves. A copy of the old save goes to `pokedaisy-backups` first.
 
-`TRADE SAVES` works as above: **L** and **R** reach the party and the boxes on each side, **X** switches sides, **Y** trades (a Pokémon that evolves by trading asks first: `EVOLVE`, or `DON'T` to trade it as it is), `UNDO ALL` drops the trades you made, and **SELECT** (or `SAVE`) writes both saves together. If you leave or close PokeDaisy with trades or changes not saved, it asks first.
+`TRADE SAVES` works as above: **L** and **R** reach the party and the boxes on each side, **X** switches sides, **Y** trades (a Pokémon that evolves by trading asks first: `EVOLVE`, or `DON'T` to trade it as it is; one picked alone that the other game would evolve makes a [trade and back](#trade-and-back)), `UNDO ALL` drops the trades you made, and **SELECT** (or `SAVE`) writes both saves together. If you leave or close PokeDaisy with trades or changes not saved, it asks first.
 
 ## Trade between saves
 
@@ -81,6 +81,10 @@ Each game shows its party over its boxes. Pick a Pokémon on one side, then a Po
 HeartGold, SoulSilver and Platinum trade with each other (not with the GBA games). Any Pokémon can go, eggs too, except the Spiky-eared Pichu, and one holding mail can only go to the other game's party. A Pokémon holding an item Platinum doesn't have (some of HeartGold and SoulSilver's newer items) can't go to Platinum. What arrives is registered in the Pokédex, as in a real trade.
 
 The games' own trade rules apply. FireRed and LeafGreen only trade with Ruby, Sapphire and Emerald after the island part of their story, a game without its National Pokédex yet only takes Pokémon from its own regional one, and a party has to keep at least one Pokémon that isn't an egg. A Pokémon that evolves when traded evolves when it arrives, as it would with a cable. If you'd rather trade inside the games themselves, see [Link play](link-play.md).
+
+### Trade and back
+
+Some Pokémon only evolve when they're traded. Pick one on its own (nothing on the other side) and, if the other game would evolve it, the button reads `TRADE AND BACK`. It goes to the other game, evolves there as it arrives (using up the item it needed), and comes straight back to the same place in its own game, the way two players trade back and forth. Both games' Pokédexes register it, as two real trades would. The other game needs one free box place for the trip. If the way back isn't allowed (say the evolved Pokémon isn't in the regional Pokédex of a game without its National one), nothing happens at all.
 
 ## Pal Park
 
@@ -95,6 +99,36 @@ It keeps the DS games' own rules:
 - An egg can't go, nor a Pokémon that knows an HM or holds mail or a key item.
 
 Each one arrives the way the real Pal Park makes it: the same Pokémon with its trainer, nature, IVs, EVs, moves (at full PP), ribbons and ball, its friendship back to the start, and "met at Pal Park" today at the level it has now. It counts as caught in the DS game's Pokédex. You don't have to wait a day between two sixes, or catch them in the park: all six are always caught there in the end anyway.
+
+## Transfer to Black and White
+
+Black, White, Black 2 and White 2 take Pokémon from HeartGold, SoulSilver and Platinum through the Poké Transfer Lab. PokeDaisy does it with the two saves: tap `TOOLS` in the library, then `POKé TRANSFER`, pick the game to send from (`SEND FROM`), then the one to send to (`SEND TO`).
+
+It works like [Pal Park](#pal-park): tap six Pokémon in the first game's boxes, then `TRANSFER`. They land in the first free places of the other game's PC, from the box its PC is on, framed so you can see them. `UNDO ALL` puts everything back, and `SAVE` writes both saves together.
+
+It keeps the Lab's rules:
+
+- The receiving game needs its National Pokédex, and both games have to be in the same language.
+- Exactly six go at a time, from the boxes.
+- An egg can't go, nor a Pokémon that knows an HM (the sending game's own HMs), nor the Pichu with the spiky ear.
+- A held item goes back into the sending game's bag, so each one arrives holding nothing (the bag needs room for them).
+
+Each one arrives the way the Lab makes it: the same Pokémon with its trainer, nature, IVs, EVs, moves (at full PP), ribbons and ball, its friendship back to the start, and "arrived" today at the level it has now. It counts as caught in the receiving game's Pokédex. You don't have to play the catching game on the other side: all six always make it.
+
+## Collection
+
+Tap `TOOLS` in the library, then `COLLECTION`, to see every Pokémon in all your saves in one list: the party and every box of each game the save editor can read. The title counts them, and how many different kinds you have. Each row shows the Pokémon's number, name and level, with the game and the box it's in (or `PARTY`) under it, and a `SHINY` tag on a shiny one.
+
+- Type in the box at the top to find one by its name or its species.
+- `ALL GAMES` picks one game to show, `SHINY` shows only shiny ones, and the order button sorts by Pokédex number, by level or by game.
+
+Tap a Pokémon for what you can do with it:
+
+- `OPEN` opens its game in the save editor, with that Pokémon picked.
+- `TRADE` asks which game to trade with (one of the same generation), then opens the trade with it picked.
+- `PAL PARK` (a GBA game's Pokémon in a box, when you have HeartGold, SoulSilver or Platinum) asks which DS game, then opens Pal Park with it picked.
+
+`BACK` from any of them comes back to the collection, read again, so what you changed shows.
 
 ## Your saves stay safe
 

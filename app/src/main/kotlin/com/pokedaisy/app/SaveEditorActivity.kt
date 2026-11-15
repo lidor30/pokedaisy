@@ -64,6 +64,14 @@ class SaveEditorActivity : ComponentActivity() {
             file?.let { Gen3SaveEditor(it) } ?: ds!!.let { (f, g) -> com.pokedaisy.app.companion.data.save.Gen4SaveEditor(f, g) }
     }
 
+    /** A Black / White (or sequel) save as read: POKé TRANSFER's receiving side. */
+    private class OpenedGen5(
+        val rom: File, val name: String, val bytes: ByteArray,
+        val file: com.pokedaisy.app.companion.data.save.Gen5SaveFile, val game: com.pokedaisy.app.companion.data.save.Gen5GameData,
+    ) {
+        fun editor() = com.pokedaisy.app.companion.data.save.Gen5SaveEditor(file, game)
+    }
+
     private sealed class Page {
         object Loading : Page()
         /** A pick-list is up (the game, or the trade's two): the title alone behind it. */
@@ -72,6 +80,8 @@ class SaveEditorActivity : ComponentActivity() {
         class Ready(val state: PcBoxesState, val opened: Opened) : Page()
         class Trade(val state: TradeState, val a: Opened, val b: Opened) : Page()
         class PalPark(val state: com.pokedaisy.app.companion.ui.PalParkState, val gba: Opened, val ds: Opened) : Page()
+        class Collection(val state: com.pokedaisy.app.companion.ui.CollectionState) : Page()
+        class Transfer(val state: com.pokedaisy.app.companion.ui.PokeTransferState, val gen4: Opened, val gen5: OpenedGen5) : Page()
     }
 
     private lateinit var prefs: Prefs
@@ -95,6 +105,17 @@ class SaveEditorActivity : ComponentActivity() {
     private var palFromPick by mutableStateOf<List<Pair<File, String>>?>(null)
     private var palToPick by mutableStateOf<List<Pair<File, String>>?>(null)
     private var palFrom: Opened? = null
+    /** COLLECTION (TOOLS): every save's Pokémon; OPEN, TRADE and PAL PARK come back to it. */
+    private var collectionOnly = false
+    /** COLLECTION's saves as read, in the order its items name them. */
+    private var collectionOpened: List<Opened> = emptyList()
+    /** PAL PARK from COLLECTION: the GBA PC Pokémon to have picked once the DS game is chosen. */
+    private var palPick: com.pokedaisy.app.companion.data.save.BoxSlot? = null
+    /** POKé TRANSFER (TOOLS): the Gen 4 game picked, then the Gen 5 one, then the transfer alone. */
+    private var transferOnly = false
+    private var transferFromPick by mutableStateOf<List<Pair<File, String>>?>(null)
+    private var transferToPick by mutableStateOf<List<Pair<File, String>>?>(null)
+    private var transferFrom: File? = null
     /** MISSING's other saves, in the order its entries name them. */
     private var missingRoms: List<File> = emptyList()
     /** Icons per ROM path, once loaded (absent = none for that ROM). */
@@ -119,8 +140,10 @@ class SaveEditorActivity : ComponentActivity() {
         val path = intent?.getStringExtra(EXTRA_ROM)
         tradeOnly = path == null && intent?.getBooleanExtra(EXTRA_TRADE, false) == true
         palParkOnly = path == null && intent?.getBooleanExtra(EXTRA_PAL_PARK, false) == true
+        collectionOnly = path == null && intent?.getBooleanExtra(EXTRA_COLLECTION, false) == true
+        transferOnly = path == null && intent?.getBooleanExtra(EXTRA_POKE_TRANSFER, false) == true
         val pick = path == null && intent?.getBooleanExtra(EXTRA_PICK, false) == true
-        if (path == null && !tradeOnly && !pick && !palParkOnly) { finish(); return }
+        if (path == null && !tradeOnly && !pick && !palParkOnly && !collectionOnly && !transferOnly) { finish(); return }
         // The editor's text a step smaller everywhere (the user's call: more of the save on screen), like Settings':
         // a font pixel down, so it stays crisp.
         setContent {
@@ -140,9 +163,132 @@ class SaveEditorActivity : ComponentActivity() {
             path != null -> openGame(File(path))
             tradeOnly -> pickFirst()
             palParkOnly -> pickPalParkFrom()
+            collectionOnly -> openCollection()
+            transferOnly -> pickTransferFrom()
             else -> pickToEdit()
         }
     }
+
+    /** POKé TRANSFER: which HeartGold / SoulSilver / Platinum save to send from (then [pickTransferTo]). */
+    private fun pickTransferFrom() {
+        page = Page.Picking
+        Thread {
+            val from = readableGames(onlyDs = true)
+            val to = gen5Games()
+            runOnUiThread {
+                if (from.isEmpty() || to.isEmpty()) page = Page.Message(tr("POKé TRANSFER needs HeartGold, SoulSilver or Platinum and Black, White, Black 2 or White 2, each with a save it can read, saved once in the game."))
+                else transferFromPick = from
+            }
+        }.start()
+    }
+
+    /** The library's Black / White games (and sequels) with a save. Blocking. */
+    private fun gen5Games(): List<Pair<File, String>> = RomFolder.libraryRoms(this, prefs)
+        .filter { SaveFileEdits.isGen5(it) && SavesLocation.saveFor(this, prefs, it).isFile }
+        .map { it to GameTitles.label(this, prefs, it) }
+
+    private fun pickTransferTo() {
+        Thread {
+            val list = gen5Games()
+            runOnUiThread { transferToPick = list }
+        }.start()
+    }
+
+    /** A Black / White save as an [OpenedGen5] (the cart's names and personal records read for it), or why there's none. Blocking. */
+    private fun openGen5(rom: File): Any {
+        val save = SavesLocation.saveFor(this, prefs, rom)
+        if (!save.isFile) return tr("No save yet - save once in the game first.")
+        val bytes = runCatching { save.readBytes() }.getOrNull() ?: return tr("Can't read the save {0}", save.path)
+        val cart = RomArchive.playable(rom, cacheDir) ?: rom
+        val game = runCatching { com.pokedaisy.app.companion.data.NdsArt.readGen5SaveTables(cart.toOkioPath()) }.getOrNull()
+            ?: return tr("POKé TRANSFER reads Black, White, Black 2 and White 2 saves. This game's isn't one.")
+        return when (val parsed = com.pokedaisy.app.companion.data.save.Gen5SaveFile.parse(bytes)) {
+            is com.pokedaisy.app.companion.data.save.Gen5SaveFile.Parsed.Failed -> parsed.reason
+            is com.pokedaisy.app.companion.data.save.Gen5SaveFile.Parsed.Ok ->
+                if (parsed.save.layout != game.layout) tr("This save doesn't look like a {0} save ({1}), so it's left alone.", game.layout.label, parsed.save.layout.label)
+                else OpenedGen5(rom, GameTitles.label(this, prefs, rom), bytes, parsed.save, game)
+        }
+    }
+
+    private fun openTransfer(gen4Rom: File, gen5Rom: File) {
+        page = Page.Loading
+        Thread {
+            val a = open(gen4Rom)
+            val b = openGen5(gen5Rom)
+            runOnUiThread {
+                page = if (a is Opened && b is OpenedGen5) {
+                    val st = com.pokedaisy.app.companion.ui.PokeTransferState(
+                        a.name, a.editor() as com.pokedaisy.app.companion.data.save.Gen4SaveEditor, b.name, b.editor(),
+                    )
+                    Page.Transfer(st, a, b)
+                } else Page.Message((a as? String) ?: (b as String))
+            }
+        }.start()
+    }
+
+    private fun saveTransfer(p: Page.Transfer) {
+        if (saving) return
+        saving = true
+        Thread {
+            val result = runCatching {
+                SaveFileEdits.commitBoth(
+                    this, prefs,
+                    SaveFileEdits.Edit(p.gen4.rom, p.gen4.bytes, p.state.gen4.build()),
+                    SaveFileEdits.Edit(p.gen5.rom, p.gen5.bytes, p.state.gen5.build()),
+                )
+            }.getOrElse { SaveFileEdits.Result.Failed(it.message ?: it.toString()) }
+            runOnUiThread { saved(result) }
+        }.start()
+    }
+
+    /** COLLECTION: every readable save read off the UI thread, then their Pokémon in one list. */
+    private fun openCollection() {
+        val st = com.pokedaisy.app.companion.ui.CollectionState()
+        (page as? Page.Collection)?.state?.let { old -> st.query = old.query; st.shinyOnly = old.shinyOnly; st.sort = old.sort; st.game = old.game }
+        page = Page.Collection(st)
+        tradeFrom = null
+        palFrom = null
+        palPick = null
+        Thread {
+            val opened = readableGames().mapNotNull { (f, _) -> open(f) as? Opened }
+            val sides = opened.map { TradeSide(it.name, it.editor(), it.gameCode) }
+            runOnUiThread { collectionOpened = opened; st.load(sides) }
+            opened.forEach { loadIcons(it.rom) }
+        }.start()
+    }
+
+    /** Back from a page COLLECTION opened: to COLLECTION, read again (a save may have changed). False when not from it. */
+    private fun backToCollection(): Boolean {
+        if (!collectionOnly) return false
+        openCollection()
+        return true
+    }
+
+    private fun collectionOpen(item: com.pokedaisy.app.companion.data.save.SaveCollection.Item) {
+        val o = collectionOpened.getOrNull(item.source) ?: return
+        rom = o.rom
+        gameName = o.name
+        load(focus = item.at)
+    }
+
+    private fun collectionTrade(item: com.pokedaisy.app.companion.data.save.SaveCollection.Item) {
+        val o = collectionOpened.getOrNull(item.source) ?: return
+        rom = o.rom
+        gameName = o.name
+        tradeFrom = o
+        collectionTradePick = item.at
+        pickPartner()
+    }
+
+    private fun collectionPalPark(item: com.pokedaisy.app.companion.data.save.SaveCollection.Item) {
+        val o = collectionOpened.getOrNull(item.source) ?: return
+        palFrom = o
+        palPick = (item.at as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.at
+        pickPalParkTo()
+    }
+
+    /** COLLECTION's TRADE: the Pokémon to have picked on its own side once the other game is chosen. */
+    private var collectionTradePick: com.pokedaisy.app.companion.data.save.MonRef? = null
 
     /** SAVE EDITOR from TOOLS: which game's save to open. */
     private fun pickToEdit() {
@@ -187,6 +333,7 @@ class SaveEditorActivity : ComponentActivity() {
 
     /** Off the trade: TRADE SAVES' is the trade alone, so it leaves; a game's editor goes back to that game. */
     private fun leaveTrade() {
+        if (backToCollection()) return
         if (tradeOnly) finish() else load()
     }
 
@@ -277,6 +424,7 @@ class SaveEditorActivity : ComponentActivity() {
     }
 
     private fun leavePalPark() {
+        if (backToCollection()) return
         if (palParkOnly) finish() else load()
     }
 
@@ -326,10 +474,15 @@ class SaveEditorActivity : ComponentActivity() {
             return
         }
         val src = missingRoms.getOrNull(o.source) ?: return
-        if (o.palPark) {
-            val at = (o.at as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.at ?: return
-            openPalPark(src, rom, at)
-        } else startTrade(src, pick = o.at)
+        when (o.way) {
+            com.pokedaisy.app.companion.data.save.MissingDex.Way.PAL_PARK -> {
+                val at = (o.at as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.at ?: return
+                openPalPark(src, rom, at)
+            }
+            // This save's own Pokémon, picked on this side: TRADE AND BACK is then one press.
+            com.pokedaisy.app.companion.data.save.MissingDex.Way.TRADE_BACK -> startTrade(src, pickA = o.at)
+            else -> startTrade(src, pick = o.at)
+        }
     }
 
     override fun onResume() {
@@ -337,11 +490,14 @@ class SaveEditorActivity : ComponentActivity() {
         OptionColors.inGame = false
     }
 
-    private fun load() {
+    private fun load(focus: com.pokedaisy.app.companion.data.save.MonRef? = null) {
         page = Page.Loading
         Thread {
             val next = when (val o = open(rom)) {
-                is Opened -> Page.Ready(PcBoxesState(o.editor()), o)
+                is Opened -> Page.Ready(PcBoxesState(o.editor()).also { st ->
+                    // From COLLECTION: on the Pokémon picked there.
+                    focus?.let { at -> st.selected = at; (at as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.let { st.box = it.at.box } }
+                }, o)
                 else -> Page.Message(o as String)
             }
             runOnUiThread { page = next }
@@ -429,9 +585,11 @@ class SaveEditorActivity : ComponentActivity() {
                 // Further edits start from the files as written.
                 val t = page as? Page.Trade
                 val pp = page as? Page.PalPark
+                val tp = page as? Page.Transfer
                 when {
-                    tradeOnly && t != null -> reopenTrade(t.a.rom, t.b.rom)
-                    palParkOnly && pp != null -> openPalPark(pp.gba.rom, pp.ds.rom)
+                    tp != null -> openTransfer(tp.gen4.rom, tp.gen5.rom)
+                    (tradeOnly || collectionOnly) && t != null -> reopenTrade(t.a.rom, t.b.rom)
+                    (palParkOnly || collectionOnly) && pp != null -> openPalPark(pp.gba.rom, pp.ds.rom)
                     else -> load()
                 }
             }
@@ -450,7 +608,9 @@ class SaveEditorActivity : ComponentActivity() {
         }.start()
     }
 
-    private fun startTrade(partner: File, pick: com.pokedaisy.app.companion.data.save.MonRef? = null) {
+    private fun startTrade(
+        partner: File, pick: com.pokedaisy.app.companion.data.save.MonRef? = null, pickA: com.pokedaisy.app.companion.data.save.MonRef? = null,
+    ) {
         val before = page
         val a = tradeFrom ?: (before as? Page.Ready)?.opened ?: return
         page = Page.Loading
@@ -460,6 +620,7 @@ class SaveEditorActivity : ComponentActivity() {
                     val st = TradeState(TradeSide(a.name, a.editor(), a.gameCode), TradeSide(o.name, o.editor(), o.gameCode))
                     // From MISSING: the Pokémon to bring already picked on the other side.
                     pick?.let { st.selB = it; (it as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.let { pc -> st.boxB = pc.at.box } }
+                    pickA?.let { st.selA = it; (it as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.let { pc -> st.boxA = pc.at.box } }
                     Page.Trade(st, a, o)
                 }
                 else -> null.also { runOnUiThread { Toast.makeText(this, o as String, Toast.LENGTH_LONG).show() } }
@@ -488,11 +649,11 @@ class SaveEditorActivity : ComponentActivity() {
                         s.detail != null -> s.detail = null
                         s.moving != null -> s.moving = null
                         s.changed -> s.confirmDiscard = true
-                        else -> finish()
+                        else -> if (!backToCollection()) finish()
                     }
                 }
                 PcBoxesScreen(
-                    s, gameName, m, onBack = { finish() }, onSave = { save(p) }, saving = saving,
+                    s, gameName, m, onBack = { if (!backToCollection()) finish() }, onSave = { save(p) }, saving = saving,
                     icons = icons[rom.absolutePath], onTrade = { pickPartner() },
                     onMissing = { loadMissing(p) }, onGet = { getMissing(p, it) },
                 )
@@ -528,6 +689,26 @@ class SaveEditorActivity : ComponentActivity() {
                     iconsGba = icons[p.gba.rom.absolutePath], iconsDs = icons[p.ds.rom.absolutePath],
                 )
             }
+            is Page.Collection -> {
+                BackHandler { finish() }
+                com.pokedaisy.app.companion.ui.CollectionScreen(
+                    p.state, m, onBack = { finish() },
+                    icons = { i -> collectionOpened.getOrNull(i)?.let { icons[it.rom.absolutePath] } },
+                    onOpen = { collectionOpen(it) }, onTrade = { collectionTrade(it) }, onPalPark = { collectionPalPark(it) },
+                )
+            }
+            is Page.Transfer -> {
+                val s = p.state
+                BackHandler {
+                    when {
+                        s.confirmSave -> s.confirmSave = false
+                        s.confirmDiscard -> s.confirmDiscard = false
+                        s.changed -> s.confirmDiscard = true
+                        else -> finish()
+                    }
+                }
+                com.pokedaisy.app.companion.ui.PokeTransferScreen(s, m, onBack = { finish() }, onSave = { saveTransfer(p) }, saving = saving)
+            }
             Page.Loading -> MessagePage(tr("Reading the save…"), m)
             Page.Picking -> MessagePage("", m)
             is Page.Message -> MessagePage(p.text, m)
@@ -556,16 +737,33 @@ class SaveEditorActivity : ComponentActivity() {
         palToPick?.let { list ->
             OptionSelector(
                 tk("BRING TO"), list.indices.toList(), -1, { list[it].second }, m,
-                onPick = { palToPick = null; val from = palFrom; if (from != null) openPalPark(from.rom, list[it].first) },
-                onDismiss = { palToPick = null; palFrom = null; pickPalParkFrom() },
+                onPick = { palToPick = null; val from = palFrom; if (from != null) openPalPark(from.rom, list[it].first, palPick) },
+                onDismiss = { palToPick = null; palFrom = null; if (collectionOnly) palPick = null else pickPalParkFrom() },
+            )
+        }
+        transferFromPick?.let { list ->
+            OptionSelector(
+                tk("SEND FROM"), list.indices.toList(), -1, { list[it].second }, m,
+                onPick = { transferFromPick = null; transferFrom = list[it].first; pickTransferTo() },
+                onDismiss = { finish() },
+            )
+        }
+        transferToPick?.let { list ->
+            OptionSelector(
+                tk("SEND TO"), list.indices.toList(), -1, { list[it].second }, m,
+                onPick = { transferToPick = null; transferFrom?.let { from -> openTransfer(from, list[it].first) } },
+                onDismiss = { transferToPick = null; transferFrom = null; pickTransferFrom() },
             )
         }
         // The trade's other game: from TRADE SAVES BACK picks the first one again; in the editor it just closes.
         partners?.let { list ->
             OptionSelector(
                 tk("TRADE WITH"), list.indices.toList(), -1, { list[it].second }, m,
-                onPick = { partners = null; startTrade(list[it].first) },
-                onDismiss = { partners = null; if (tradeOnly) { tradeFrom = null; pickFirst() } },
+                onPick = { partners = null; startTrade(list[it].first, pickA = collectionTradePick); collectionTradePick = null },
+                onDismiss = {
+                    partners = null
+                    if (collectionOnly) { tradeFrom = null; collectionTradePick = null } else if (tradeOnly) { tradeFrom = null; pickFirst() }
+                },
             )
         }
     }
@@ -576,7 +774,7 @@ class SaveEditorActivity : ComponentActivity() {
         Box(Modifier.fillMaxSize()) {
             AppBackdrop()
             Column(Modifier.fillMaxSize().padding(16.dp)) {
-                OptionTitleWindow(when { tradeOnly -> tk("TRADE SAVES"); palParkOnly -> tk("PAL PARK"); else -> tk("SAVE EDITOR") }, m, trailing = gameName, onBack = { finish() })
+                OptionTitleWindow(when { tradeOnly -> tk("TRADE SAVES"); palParkOnly -> tk("PAL PARK"); collectionOnly -> tk("COLLECTION"); transferOnly -> tk("POKé TRANSFER"); else -> tk("SAVE EDITOR") }, m, trailing = gameName, onBack = { finish() })
                 Spacer(Modifier.height(m.u * 4))
                 // A pick-list over it (Picking): the title alone.
                 if (text.isNotEmpty()) OptionListWindow(m, Modifier.fillMaxWidth()) {
@@ -594,5 +792,9 @@ class SaveEditorActivity : ComponentActivity() {
         const val EXTRA_PICK = "pick"
         /** TOOLS > PAL PARK: no [EXTRA_ROM], the GBA game and the DS game picked, then Pal Park alone. */
         const val EXTRA_PAL_PARK = "pal_park"
+        /** TOOLS > COLLECTION: no [EXTRA_ROM], every save's Pokémon in one list, OPEN / TRADE / PAL PARK from it. */
+        const val EXTRA_COLLECTION = "collection"
+        /** TOOLS > POKé TRANSFER: no [EXTRA_ROM], the HeartGold / SoulSilver / Platinum game then the Black / White one, then the transfer alone. */
+        const val EXTRA_POKE_TRANSFER = "poke_transfer"
     }
 }

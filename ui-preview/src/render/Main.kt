@@ -1025,6 +1025,25 @@ fun palPark(setup: com.pokedaisy.app.companion.ui.PalParkState.() -> Unit = {}):
     content
 }
 
+fun transfer(setup: com.pokedaisy.app.companion.ui.PokeTransferState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
+    val state = transferDemo().apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        com.pokedaisy.app.companion.ui.PokeTransferScreen(state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {})
+    } }
+    content
+}
+
+fun collection(setup: com.pokedaisy.app.companion.ui.CollectionState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
+    val state = collectionDemo().apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        com.pokedaisy.app.companion.ui.CollectionScreen(
+            state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, icons = { demoIcons },
+            onOpen = {}, onTrade = {}, onPalPark = {},
+        )
+    } }
+    content
+}
+
 fun trade(setup: com.pokedaisy.app.companion.ui.TradeState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
     val state = tradeDemo().apply(setup)
     val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
@@ -2563,6 +2582,22 @@ fun main(args: Array<String>) {
         // From FireRed's party to the end of Emerald's.
         Shot("trade-party", tw, th, td, trade { selA = com.pokedaisy.app.companion.data.save.MonRef.Party(1); selB = com.pokedaisy.app.companion.data.save.MonRef.Party(2) }),
         Shot("trade-phone", 1080, 2400, 2.625f, trade { selA = pc(0, 0); selB = pc(0, 0) }),
+        // TRADE AND BACK: Emerald's KADABRA picked alone (FireRed would evolve it), its confirm, and back home as ALAKAZAM.
+        Shot("trade-back", tw, th, td, trade { selB = pc(0, 3) }),
+        Shot("trade-back-confirm", tw, th, td, trade { selB = pc(0, 3) }) { onNodeWithText("TRADE AND BACK").performClick() },
+        Shot("trade-back-done", tw, th, td, trade { selB = pc(0, 3); tradeBack() }),
+        // POKé TRANSFER: HeartGold's PC into Black's, six picked and sent; Black without its National Pokédex.
+        Shot("poke-transfer", tw, th, td, transfer()),
+        Shot("poke-transfer-picked", tw, th, td, transfer { (2 until 8).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        Shot("poke-transfer-sent", tw, th, td, transfer { (2 until 8).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) }; transfer() }),
+        Shot("poke-transfer-phone", 1080, 2400, 2.625f, transfer { (2 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        // COLLECTION: the three made-up saves' Pokémon in one list; by level, one game, a search; a Pokémon's choices.
+        Shot("collection", tw, th, td, collection()),
+        Shot("collection-level", tw, th, td, collection { sort = com.pokedaisy.app.companion.data.save.SaveCollection.Sort.LEVEL }),
+        Shot("collection-search", tw, th, td, collection { query = "tr" }),
+        Shot("collection-game", tw, th, td, collection()) { onNodeWithText("ALL GAMES").performClick() },
+        Shot("collection-picked", tw, th, td, collection { picked = shown().first { it.palParkable } }),
+        Shot("collection-phone", 1080, 2400, 2.625f, collection()),
         // PAL PARK: FireRed's PC into HeartGold's, six picked and brought over; the egg refused.
         Shot("pal-park", tw, th, td, palPark()),
         Shot("pal-park-picked", tw, th, td, palPark { (0 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),

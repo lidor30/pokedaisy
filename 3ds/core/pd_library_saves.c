@@ -27,7 +27,7 @@
 enum stage { PICK_A, PICK_B, LOADING, OPEN };
 enum tab { TAB_MONS, TAB_BAG, TAB_TRAINER, TABS };
 enum dialog { NONE, CONFIRM, MESSAGE, NUMBER, PICK };
-enum confirm_of { C_WRITE, C_EVOLVE, C_LEAVE, C_RELEASE, C_REGISTER, C_SEEN, C_CAUGHT, C_EVENT, C_QUIT };
+enum confirm_of { C_WRITE, C_EVOLVE, C_LEAVE, C_RELEASE, C_REGISTER, C_SEEN, C_CAUGHT, C_EVENT, C_QUIT, C_TRADE_BACK };
 enum number_of { N_MONEY, N_COINS, N_LEVEL, N_FRIENDSHIP, N_IV, N_EV, N_QUANTITY, N_ADD };
 enum pick_of { P_NATURE, P_ITEM, P_MOVE, P_ADD_ITEM, P_BOX_MENU };
 #define BOX_SLOTS PD_SAVE_BOX_SLOTS
@@ -43,7 +43,8 @@ enum row {
     G_MOVES = R_EV + 6, R_MOVE, R_RELEASE = R_MOVE + 4, ROW_COUNT,
 };
 // TRAINER's rows.
-enum trainer_row { T_MONEY, T_COINS, TG_DEX, T_REGISTER, T_SEEN, T_CAUGHT, TG_EVENTS, T_EVENT };
+enum trainer_row { T_MONEY, T_COINS, TG_DEX, T_REGISTER, T_SEEN, T_CAUGHT, T_MISSING, TG_EVENTS, T_EVENT };
+#define MISSING_MAX 400
 
 struct side {
     int game;
@@ -66,6 +67,10 @@ struct pd_library_saves {
     bool monPage;
     // BAG: the pocket, the row, the scroll. TRAINER: the row, the scroll.
     int pocket, bagRow, bagScroll, trainerRow, trainerScroll;
+    // TRAINER > MISSING: the list (pd_missing), its other saves' games by source, the row, the scroll.
+    bool missingOpen;
+    int missingCount, missingRow, missingScroll, missingSources;
+    int missingGames[PD_LIBRARY_MAX];
     struct pd_game names; // side 0's game, for its names and (with its ROM loaded) its icons
     bool icons;
     int dialog, confirmOf, confirmArg;
@@ -85,6 +90,8 @@ struct pd_library_saves {
 static struct pd_library_saves state;
 static uint8_t written[2][PD_SAVE_MAX_SIZE];
 static uint8_t readBuf[PD_SAVE_MAX_SIZE];
+static struct pd_missing missing[MISSING_MAX];
+static struct pd_save missingSave; // each other save in turn, read for MISSING
 
 static struct pd_library_saves* S(struct pd_library* l) {
     if (!l->saves) l->saves = &state;
@@ -134,6 +141,7 @@ void lib_saves_open(struct pd_library* l, int page) {
     s->dialog = NONE;
     s->held = PD_AT_NONE;
     s->monPage = false;
+    s->missingOpen = false;
     s->pick.count = 0;
     s->pick.scroll = 0;
     fill_pick(l);
@@ -273,6 +281,7 @@ static void picked(struct pd_library* l, int game) {
     s->button = -1;
     s->held = PD_AT_NONE;
     s->monPage = false;
+    s->missingOpen = false;
     s->pocket = PD_BAG_ITEMS;
     s->bagRow = s->bagScroll = s->trainerScroll = 0;
     s->trainerRow = T_MONEY;
@@ -797,6 +806,7 @@ static int trainer_rows(const struct pd_library_saves* s, int* ids) {
     ids[n++] = T_REGISTER;
     ids[n++] = T_SEEN;
     ids[n++] = T_CAUGHT;
+    ids[n++] = T_MISSING;
     int events = 0;
     for (int e = 0; e < PD_EVENTS; e++) events += pd_save_event_state(&s->sides[0].save, (enum pd_save_event) e) != PD_EVENT_NOT_HERE;
     if (events) {
@@ -807,7 +817,28 @@ static int trainer_rows(const struct pd_library_saves* s, int* ids) {
     return n;
 }
 
-static void trainer_act(struct pd_library_saves* s) {
+// MISSING: this Pokédex's gaps, and the library's other GBA saves read one by one for the Pokémon to fill them.
+static void open_missing(struct pd_library* l) {
+    struct pd_library_saves* s = S(l);
+    const struct pd_library_host* h = l->host;
+    s->missingCount = pd_missing_list(&s->sides[0].save, missing, MISSING_MAX);
+    s->missingSources = 0;
+    for (int game = 0; game < l->count && s->missingSources < PD_LIBRARY_MAX; game++) {
+        const struct pd_library_game* g = &l->games[game];
+        if (game == s->sides[0].game || !editable(g) || !h || !h->read_save) continue;
+        long n = h->read_save(h->ctx, g->file, readBuf, sizeof readBuf);
+        if (n <= 0 || pd_save_parse(&missingSave, readBuf, (size_t) n, pd_save_layout_for(g->code)) || pd_save_mismatch(&missingSave)) continue;
+        struct pd_trade_side other = { &missingSave, g->title, { 0 } };
+        snprintf(other.code, sizeof other.code, "%s", g->code);
+        pd_missing_add(missing, s->missingCount, &s->sides[0].trade, &other, s->missingSources);
+        s->missingGames[s->missingSources++] = game;
+    }
+    s->missingOpen = true;
+    s->missingRow = s->missingScroll = 0;
+}
+
+static void trainer_act(struct pd_library* l) {
+    struct pd_library_saves* s = S(l);
     struct pd_save* sv = &s->sides[0].save;
     int r = s->trainerRow;
     struct pd_save_dex d;
@@ -816,6 +847,7 @@ static void trainer_act(struct pd_library_saves* s) {
     if (r == T_MONEY) edit_number(s, N_MONEY, 0, pd_save_money(sv), 0, PD_SAVE_MAX_MONEY);
     else if (r == T_COINS) edit_number(s, N_COINS, 0, pd_save_coins(sv), 0, PD_SAVE_MAX_COINS);
     else if (r == T_REGISTER) confirm(s, C_REGISTER, 0, "POKéDEX", "Mark every Pokémon in the party and the PC", "as caught?");
+    else if (r == T_MISSING) open_missing(l);
     else if (r == T_SEEN || r == T_CAUGHT) {
         snprintf(line, sizeof line, "Mark all of the %s Pokédex as %s?", d.national ? "National" : d.region[0] == 'K' ? "Kanto" : "Hoenn",
                  r == T_SEEN ? "seen" : "caught");
@@ -887,9 +919,64 @@ static void do_trade(struct pd_library* l, bool evolve) {
     a->mark = b->mark = PD_AT_NONE;
 }
 
+// A game's name without the series' ("Pokémon FireRed" -> "FireRed").
+static const char* short_title(const struct pd_library_game* g) {
+    return !strncmp(g->title, "Pokémon ", strlen("Pokémon ")) ? g->title + strlen("Pokémon ") : g->title;
+}
+
+// TRADE AND BACK: one Pokémon picked alone that the other save would evolve: its side, or NULL; [into] what it becomes.
+static struct side* trip_home(struct pd_library_saves* s, int* into) {
+    struct side *a = &s->sides[0], *b = &s->sides[1];
+    if ((a->mark == PD_AT_NONE) == (b->mark == PD_AT_NONE)) return NULL;
+    struct side *home = a->mark != PD_AT_NONE ? a : b, *partner = home == a ? b : a;
+    struct pd_mon m;
+    if (!pd_save_mon_at(&home->save, home->mark, &m)) return NULL;
+    *into = pd_trade_evolution(&home->trade, home->mark, &partner->trade);
+    return *into ? home : NULL;
+}
+
+static void do_trade_back(struct pd_library* l) {
+    struct pd_library_saves* s = S(l);
+    int into = 0;
+    struct side* home = trip_home(s, &into);
+    if (!home) return;
+    struct side* partner = home == &s->sides[0] ? &s->sides[1] : &s->sides[0];
+    struct pd_mon m;
+    pd_save_mon_at(&home->save, home->mark, &m);
+    char why[160], name[24];
+    const char* no = pd_trade_back(&home->trade, home->mark, &partner->trade, why, sizeof why);
+    if (no) {
+        message(s, "THE GAMES WON'T", no, NULL);
+        return;
+    }
+    snprintf(s->tradeNote, sizeof s->tradeNote, "%.20s went to %.30s and came back as %s.", m.nickname, short_title(&l->games[partner->game]),
+             species_text(s, into, name, sizeof name));
+    home->mark = PD_AT_NONE;
+}
+
 static void start_trade(struct pd_library* l) {
     struct pd_library_saves* s = S(l);
     struct side *a = &s->sides[0], *b = &s->sides[1];
+    int into = 0;
+    struct side* home = trip_home(s, &into);
+    if (home) {
+        struct side* partner = home == a ? b : a;
+        char why[160], line1[120], name[24];
+        const char* no = pd_trade_back_blocker(&home->trade, home->mark, &partner->trade, why, sizeof why);
+        if (no) {
+            message(s, "THE GAMES WON'T", no, NULL);
+            return;
+        }
+        struct pd_mon m;
+        pd_save_mon_at(&home->save, home->mark, &m);
+        char line2[120];
+        snprintf(line1, sizeof line1, "%.20s goes to %.24s,", m.nickname, short_title(&l->games[partner->game]));
+        snprintf(line2, sizeof line2, "becomes %s and comes back.", species_text(s, into, name, sizeof name));
+        confirm(s, C_TRADE_BACK, 0, "TRADE AND BACK", line1, line2);
+        s->yes = "TRADE BACK";
+        s->no = "CANCEL";
+        return;
+    }
     if (a->mark == PD_AT_NONE || b->mark == PD_AT_NONE) {
         message(s, "PICK BOTH", "Pick a Pokémon on one side and", "a Pokémon or an empty place on the other.");
         return;
@@ -1000,6 +1087,10 @@ static void answer(struct pd_library* l, bool yes) {
     struct pd_save* sv = &s->sides[0].save;
     if (d == C_EVOLVE) {
         do_trade(l, yes);
+        return;
+    }
+    if (d == C_TRADE_BACK) {
+        if (yes) do_trade_back(l);
         return;
     }
     if (!yes) return;
@@ -1113,6 +1204,7 @@ void lib_saves_keys(struct pd_library* l, unsigned down) {
         if (down & PD_LIB_SELECT) {
             s->tab = (s->tab + 1) % TABS;
             s->held = PD_AT_NONE;
+            s->missingOpen = false;
             return;
         }
         if (s->tab == TAB_BAG) {
@@ -1125,9 +1217,17 @@ void lib_saves_keys(struct pd_library* l, unsigned down) {
             if (down & PD_LIB_B) leave(l);
             return;
         }
+        if (s->tab == TAB_TRAINER && s->missingOpen) {
+            int n = s->missingCount;
+            if (n && dy) s->missingRow = (s->missingRow + dy + n) % n;
+            if (n && down & PD_LIB_L) s->missingRow = s->missingRow > 8 ? s->missingRow - 8 : 0;
+            if (n && down & PD_LIB_R) s->missingRow = s->missingRow + 8 < n ? s->missingRow + 8 : n - 1;
+            if (down & PD_LIB_B) s->missingOpen = false;
+            return;
+        }
         if (s->tab == TAB_TRAINER) {
             if (dy) trainer_move(s, dy);
-            if (down & PD_LIB_A) trainer_act(s);
+            if (down & PD_LIB_A) trainer_act(l);
             if (down & PD_LIB_B) leave(l);
             return;
         }
@@ -1191,6 +1291,7 @@ void lib_saves_tap(struct pd_library* l, int hit) {
             s->tab = hit - HIT_TAB;
             s->monPage = false;
             s->held = PD_AT_NONE;
+            s->missingOpen = false;
             return;
         }
         if (s->monPage) {
@@ -1222,10 +1323,15 @@ void lib_saves_tap(struct pd_library* l, int hit) {
             else if (hit == HIT_WRITE) ask_write(s);
             return;
         }
+        if (s->tab == TAB_TRAINER && s->missingOpen) {
+            if (hit >= HIT_EDIT_ROW && hit < HIT_EDIT_ROW + MISSING_MAX) s->missingRow = hit - HIT_EDIT_ROW;
+            else if (hit == HIT_DONE) s->missingOpen = false;
+            return;
+        }
         if (s->tab == TAB_TRAINER) {
             if (hit >= HIT_EDIT_ROW && hit < HIT_EDIT_ROW + 32) {
                 int r = hit - HIT_EDIT_ROW;
-                if (r == s->trainerRow) trainer_act(s);
+                if (r == s->trainerRow) trainer_act(l);
                 s->trainerRow = r;
             } else if (hit == HIT_WRITE) ask_write(s);
             return;
@@ -1614,7 +1720,52 @@ static void bag_tab(struct pd_library* l, struct pd_canvas* c) {
     bottom_buttons(l, c, 2, LABELS, HITS);
 }
 
+// MISSING's touch screen: the gaps in the Pokédex's order, each with the game that can fill it (grey: none, or not yet).
+static const char* missing_game(struct pd_library* l, const struct pd_missing* e) {
+    struct pd_library_saves* s = S(l);
+    if (e->source < 0 || e->source >= s->missingSources) return NULL;
+    const char* t = l->games[s->missingGames[e->source]].title;
+    return !strncmp(t, "Pokémon ", strlen("Pokémon ")) ? t + strlen("Pokémon ") : t;
+}
+
+static void missing_tab(struct pd_library* l, struct pd_canvas* c) {
+    struct pd_library_saves* s = S(l);
+    int y = TITLE_Y + TITLE_H + LIB_M;
+    static struct row_draw rows[MISSING_MAX];
+    static int ids[MISSING_MAX];
+    char name[24];
+    for (int i = 0; i < s->missingCount; i++) {
+        const struct pd_missing* e = &missing[i];
+        struct row_draw* r = &rows[i];
+        memset(r, 0, sizeof *r);
+        ids[i] = i;
+        static char labels[MISSING_MAX][32];
+        snprintf(labels[i], sizeof labels[i], "No.%03d %s", e->number, species_text(s, e->species, name, sizeof name));
+        r->label = labels[i];
+        const char* game = missing_game(l, e);
+        if (!game) snprintf(r->value, sizeof r->value, "NONE");
+        else snprintf(r->value, sizeof r->value, "%s", game);
+        r->muted = !e->reachable;
+    }
+    static int lastRow = -1;
+    if (!s->missingCount) {
+        int f = pd_list_box(c, PAGE_X, y, PAGE_W, 60);
+        pd_text(c, PAGE_X + f + 8, y + f + 16, "Every Pokémon this Pokédex lists is caught.", PD_LABEL, PD_LABEL_SHADOW);
+    } else {
+        row_list(l, c, y, LIB_H - y - BUTTON_H - 2 * LIB_M, rows, ids, s->missingCount, s->missingRow, &s->missingScroll, 170,
+                 lastRow != s->missingRow);
+    }
+    lastRow = s->missingRow;
+    static const char* const LABELS[1] = { "BACK" };
+    static const int HITS[1] = { HIT_DONE };
+    bottom_buttons(l, c, 1, LABELS, HITS);
+}
+
 static void trainer_tab(struct pd_library* l, struct pd_canvas* c) {
+    if (S(l)->missingOpen) {
+        missing_tab(l, c);
+        return;
+    }
     struct pd_library_saves* s = S(l);
     struct pd_save* sv = &s->sides[0].save;
     int y = TITLE_Y + TITLE_H + LIB_M;
@@ -1643,6 +1794,9 @@ static void trainer_tab(struct pd_library* l, struct pd_canvas* c) {
             r->label = id == T_SEEN ? "ALL SEEN" : "ALL CAUGHT";
             int have = id == T_SEEN ? (d.national ? d.seen : d.regionalSeen) : (d.national ? d.caught : d.regionalCaught);
             snprintf(r->value, sizeof r->value, "%d/%d", have, d.national ? 386 : d.regionalSize);
+        } else if (id == T_MISSING) {
+            r->label = "MISSING";
+            snprintf(r->value, sizeof r->value, "%d NOT CAUGHT", (d.national ? 386 - d.caught : d.regionalSize - d.regionalCaught));
         } else if (id == TG_EVENTS) {
             r->label = "EVENTS";
             r->group = true;
@@ -1871,6 +2025,37 @@ static void bag_top(struct pd_library_saves* s, struct pd_canvas* c) {
                      PD_MUTED_SHADOW);
 }
 
+// MISSING's top screen: the species on the cursor, where the one to bring is and how it comes, or why it can't yet.
+static void missing_top(struct pd_library* l, struct pd_canvas* c) {
+    struct pd_library_saves* s = S(l);
+    int x = TOP_M, w = TOP_W - 2 * TOP_M, h = TOP_BODY_END - TOP_M;
+    int f = pd_title_box(c, x, TOP_M, w, h, PD_TITLE_FILL);
+    int lx = x + f + 8, ty = TOP_M + f + 6, cw = w - 2 * f - 16;
+    char text[160], name[24], owned[24];
+    snprintf(text, sizeof text, "MISSING  %d NOT CAUGHT", s->missingCount);
+    pd_text(c, lx, ty, text, PD_MUTED, PD_MUTED_SHADOW);
+    if (!s->missingCount) return;
+    const struct pd_missing* e = &missing[s->missingRow];
+    snprintf(text, sizeof text, "No.%03d %s", e->number, species_text(s, e->species, name, sizeof name));
+    pd_text_fit(c, lx, ty + 24, cw, text, PD_VALUE, PD_VALUE_SHADOW);
+    const char* game = missing_game(l, e);
+    if (!game) {
+        pd_text_wrap(c, lx, ty + 52, cw, 16, 3, "None of your other GBA saves has one, or one that evolves into it by trading.", PD_LABEL, PD_LABEL_SHADOW);
+        return;
+    }
+    char where[24];
+    if (PD_AT_IS_PARTY(e->at)) snprintf(where, sizeof where, "PARTY");
+    else snprintf(where, sizeof where, "BOX %d", e->at / PD_SAVE_BOX_SLOTS + 1);
+    species_text(s, e->owned, owned, sizeof owned);
+    if (e->way == PD_MISSING_TRADE_BACK)
+        snprintf(text, sizeof text, "Your %s Lv%d (%s) evolves into it on a trip to %s and back: TRADE SAVES, pick it alone, then Y.", owned, e->level, where, game);
+    else if (e->way == PD_MISSING_EVOLVES)
+        snprintf(text, sizeof text, "%s's %s Lv%d (%s) evolves into it as it arrives: TRADE SAVES.", game, owned, e->level, where);
+    else snprintf(text, sizeof text, "%s has one, Lv%d (%s): TRADE SAVES brings it.", game, e->level, where);
+    pd_text_wrap(c, lx, ty + 52, cw, 16, 4, text, PD_LABEL, PD_LABEL_SHADOW);
+    if (!e->reachable) pd_text_wrap(c, lx, ty + 52 + 4 * 16 + 8, cw, 16, 3, e->why, PD_VALUE, PD_VALUE_SHADOW);
+}
+
 static void trainer_top(struct pd_library_saves* s, struct pd_canvas* c) {
     struct pd_save* sv = &s->sides[0].save;
     int x = TOP_M, w = TOP_W - 2 * TOP_M, h = TOP_BODY_END - TOP_M;
@@ -1929,6 +2114,11 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
             lib_hint_bar(c, "A: HOW MANY   Y: ADD   L R: POCKETS   X: SAVE   SELECT: TABS");
             return;
         }
+        if (s->tab == TAB_TRAINER && s->missingOpen) {
+            missing_top(l, c);
+            lib_hint_bar(c, "UP DOWN: STEP   L R: PAGE   B: BACK");
+            return;
+        }
         if (s->tab == TAB_TRAINER) {
             trainer_top(s, c);
             lib_hint_bar(c, "A: CHANGE   X: SAVE   SELECT: TABS   B: CLOSE");
@@ -1960,6 +2150,12 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
     int f = pd_list_box(c, TOP_M, sy, TOP_W - 2 * TOP_M, TOP_BODY_END - sy);
     const char* status = s->tradeNote[0] ? s->tradeNote : trades_changed(s) ? "Not saved yet." : "Pick a Pokémon on either side, then TRADE.";
     char why[160] = "";
+    int tripInto = 0;
+    if (trip_home(s, &tripInto)) {
+        char name[24];
+        snprintf(why, sizeof why, "Picked alone: Y trades it there and back as %s.", species_text(s, tripInto, name, sizeof name));
+        status = why;
+    }
     struct side *a = &s->sides[0], *b = &s->sides[1];
     if (a->mark != PD_AT_NONE && b->mark != PD_AT_NONE && (has[0] || has[1])) {
         const char* no = has[0] ? pd_trade_blocker(&a->trade, a->mark, &b->trade, why, sizeof why) : NULL;

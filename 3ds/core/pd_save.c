@@ -1543,3 +1543,148 @@ const char* pd_trade(struct pd_trade_side* a, int atA, struct pd_trade_side* b, 
     }
     return NULL;
 }
+
+// --- TRADE AND BACK (the app's TradeBack) ---
+
+// A save's working copies, to put back when the way home is refused.
+struct save_copy { uint8_t b2[PD_SAVE_BLOCK2_MAX], b1[PD_SAVE_BLOCK1_MAX], st[PD_SAVE_STORAGE]; };
+static struct save_copy keepHome, keepPartner;
+
+static void keep_copy(const struct pd_save* s, struct save_copy* c) {
+    memcpy(c->b2, s->block2, sizeof c->b2);
+    memcpy(c->b1, s->block1, sizeof c->b1);
+    memcpy(c->st, s->storage, sizeof c->st);
+}
+
+static void put_back(struct pd_save* s, const struct save_copy* c) {
+    memcpy(s->block2, c->b2, sizeof c->b2);
+    memcpy(s->block1, c->b1, sizeof c->b1);
+    memcpy(s->storage, c->st, sizeof c->st);
+}
+
+// The first empty PC place from the box the PC is on, or PD_AT_NONE.
+static int free_box_place(const struct pd_save* s) {
+    for (int k = 0; k < PD_SAVE_BOXES; k++) {
+        int box = (pd_save_current_box(s) + k) % PD_SAVE_BOXES;
+        for (int slot = 0; slot < PD_SAVE_BOX_SLOTS; slot++) {
+            struct pd_box_mon m;
+            read_box_mon(s, box, slot, &m);
+            if (pd_box_mon_empty(&m)) return PD_AT_BOX(box, slot);
+        }
+    }
+    return PD_AT_NONE;
+}
+
+const char* pd_trade_back_blocker(const struct pd_trade_side* home, int at, const struct pd_trade_side* partner, char* buf, size_t len) {
+    struct pd_box_mon m;
+    if (!at_valid(home->save, at) || !pd_save_record_at(home->save, at, &m)) return "There's no Pokémon there";
+    const char* why = blocker(&m, home, partner, buf, len);
+    if (!why) why = party_blocker(home, at, buf, len);
+    if (why) return why;
+    if (!evolution_of(&m, partner)) {
+        snprintf(buf, len, "It wouldn't evolve in %s", partner->label);
+        return buf;
+    }
+    if (free_box_place(partner->save) == PD_AT_NONE) {
+        snprintf(buf, len, "%s's PC is full", partner->label);
+        return buf;
+    }
+    return NULL;
+}
+
+const char* pd_trade_back(struct pd_trade_side* home, int at, struct pd_trade_side* partner, char* buf, size_t len) {
+    const char* why = pd_trade_back_blocker(home, at, partner, buf, len);
+    if (why) return why;
+    int waiting = free_box_place(partner->save);
+    keep_copy(home->save, &keepHome);
+    keep_copy(partner->save, &keepPartner);
+    why = pd_trade(home, at, partner, waiting, true, buf, len);
+    if (!why && PD_AT_IS_PARTY(at)) {
+        // It left a gap the party closed up: it comes back at the end, then steps back to its old place.
+        int end = pd_save_party_count(home->save);
+        why = pd_trade(partner, waiting, home, PD_AT_PARTY(end), false, buf, len);
+        for (int i = end; !why && i > PD_AT_PARTY_INDEX(at); i--) why = pd_save_move_at(home->save, PD_AT_PARTY(i), PD_AT_PARTY(i - 1));
+    } else if (!why) {
+        why = pd_trade(partner, waiting, home, at, false, buf, len);
+    }
+    if (why) {
+        put_back(home->save, &keepHome);
+        put_back(partner->save, &keepPartner);
+    }
+    return why;
+}
+
+// --- MISSING (the app's MissingDex) ---
+
+int pd_missing_list(const struct pd_save* s, struct pd_missing* out, int max) {
+    bool national = pd_save_national_dex(s);
+    int n = 0;
+    for (int number = 1; number <= NATIONAL_COUNT && n < max; number++) {
+        // The dex's own number: the National one, Kanto's (the same), or Hoenn's.
+        int species = 0;
+        for (int sp = 1; sp < PD_SAVE_SPECIES && !species; sp++) {
+            if (national || s->f->kanto) { if (national_of(sp) == number && (national || sp <= KANTO_COUNT)) species = sp; }
+            else if (pd_species_hoenn[sp] == number && number <= HOENN_COUNT) species = sp;
+        }
+        if (!species || caught(s, species)) continue;
+        memset(&out[n], 0, sizeof out[n]);
+        out[n].number = (uint16_t) number;
+        out[n].national = (uint16_t) national_of(species);
+        out[n].species = (uint16_t) species;
+        out[n].source = -1;
+        n++;
+    }
+    return n;
+}
+
+// [cand] is a better way than what [e] holds: one that can come first, then a plain trade, then the highest level.
+static bool better(const struct pd_missing* e, bool reachable, int way, int level) {
+    if (e->way == PD_MISSING_NONE) return true;
+    if (reachable != e->reachable) return reachable;
+    bool plain = way == PD_MISSING_TRADE, wasPlain = e->way == PD_MISSING_TRADE;
+    if (plain != wasPlain) return plain;
+    return level > e->level;
+}
+
+static void offer(struct pd_missing* list, int n, int national, int source, int at, int species, int level, int way, const char* why) {
+    for (int i = 0; i < n; i++) {
+        struct pd_missing* e = &list[i];
+        if (e->national != national || !better(e, why == NULL, way, level)) continue;
+        e->source = (int8_t) source;
+        e->at = (int16_t) at;
+        e->owned = (uint16_t) species;
+        e->level = (uint8_t) level;
+        e->way = (uint8_t) way;
+        e->reachable = why == NULL;
+        snprintf(e->why, sizeof e->why, "%s", why ? why : "");
+        return;
+    }
+}
+
+void pd_missing_add(struct pd_missing* list, int n, const struct pd_trade_side* target, const struct pd_trade_side* other, int source) {
+    char buf[160];
+    int count = pd_save_party_count(other->save);
+    for (int i = 0; i < PD_SAVE_PARTY + PD_SAVE_BOXES * PD_SAVE_BOX_SLOTS; i++) {
+        int at = i < PD_SAVE_PARTY ? PD_AT_PARTY(i) : (i - PD_SAVE_PARTY);
+        if (i < PD_SAVE_PARTY && i >= count) continue;
+        struct pd_box_mon m;
+        if (!pd_save_record_at(other->save, at, &m) || pd_box_mon_egg(&m) || pd_box_mon_bad_egg(&m)) continue;
+        int species = pd_box_mon_species(&m), level = pd_save_level_at(other->save, at);
+        offer(list, n, national_of(species), source, at, species, level, PD_MISSING_TRADE, pd_trade_blocker(other, at, target, buf, sizeof buf));
+        // It evolves into a missing one as it arrives.
+        int into = pd_trade_evolution(other, at, target);
+        if (into) offer(list, n, national_of(into), source, at, species, level, PD_MISSING_EVOLVES, pd_trade_blocker(other, at, target, buf, sizeof buf));
+    }
+    // The target's own Pokémon that would come back evolved from a trip to [other].
+    count = pd_save_party_count(target->save);
+    for (int i = 0; i < PD_SAVE_PARTY + PD_SAVE_BOXES * PD_SAVE_BOX_SLOTS; i++) {
+        int at = i < PD_SAVE_PARTY ? PD_AT_PARTY(i) : (i - PD_SAVE_PARTY);
+        if (i < PD_SAVE_PARTY && i >= count) continue;
+        int into = pd_trade_evolution(target, at, other);
+        if (!into) continue;
+        struct pd_box_mon m;
+        if (!pd_save_record_at(target->save, at, &m)) continue;
+        offer(list, n, national_of(into), source, at, pd_box_mon_species(&m), pd_save_level_at(target->save, at), PD_MISSING_TRADE_BACK,
+              pd_trade_back_blocker(target, at, other, buf, sizeof buf));
+    }
+}

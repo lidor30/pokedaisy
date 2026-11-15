@@ -27,7 +27,7 @@ val appIncludes = listOf(
 val prepSrc = tasks.register<Sync>("prepSrc") {
     from(app) { appIncludes.forEach { include(it) } }
     // PC BOXES' demo save is built with the save tests' own writer.
-    from(rootDir.resolve("../app/src/test/kotlin/com/pokedaisy/app/companion/data/save")) { include("SyntheticSave.kt", "SyntheticGen4.kt"); into("synthetic") }
+    from(rootDir.resolve("../app/src/test/kotlin/com/pokedaisy/app/companion/data/save")) { include("SyntheticSave.kt", "SyntheticGen4.kt", "SyntheticGen5.kt"); into("synthetic") }
     into(layout.buildDirectory.dir("appsrc"))
     filter { line: String ->
         line.replace("Icons.AutoMirrored.Filled.", "Icons.Filled.")

@@ -27,6 +27,7 @@ import com.pokedaisy.app.companion.data.save.Gen3SaveEditor
 import com.pokedaisy.app.companion.data.save.Gen3Trade
 import com.pokedaisy.app.companion.data.save.MonRef
 import com.pokedaisy.app.companion.data.save.MonSave
+import com.pokedaisy.app.companion.data.save.TradeBack
 import com.pokedaisy.app.companion.data.save.TradeEvolution
 import com.pokedaisy.app.companion.data.save.TradeRefused
 import com.pokedaisy.app.companion.data.save.TradeSide
@@ -37,7 +38,8 @@ import com.pokedaisy.app.companion.i18n.tr
  * TRADE (from a game's PC BOXES): two saves' boxes side by side. A slot picked on each side makes the trade - a
  * Pokémon for a Pokémon (TRADE), or one sent over to an empty slot (SEND) - checked by the games' own rules
  * ([Gen3Trade.blocker], shown before anything happens). A Pokémon that evolves by trading asks first, like the game's
- * evolution scene (B stops it). Trades pile up in both saves until SAVE writes the two together.
+ * evolution scene (B stops it). A Pokémon picked alone that would evolve in the other save can make the trip and come
+ * straight back evolved (TRADE AND BACK, [TradeBack]). Trades pile up in both saves until SAVE writes the two together.
  */
 class TradeState(a: TradeSide, b: TradeSide) {
     var a = a
@@ -57,6 +59,45 @@ class TradeState(a: TradeSide, b: TradeSide) {
     var evolving by mutableStateOf<List<Pair<SaveMon, TradeEvolution>>?>(null)
     var confirmSave by mutableStateOf(false)
     var confirmDiscard by mutableStateOf(false)
+    /** TRADE AND BACK waiting on its confirm. */
+    var confirmBack by mutableStateOf(false)
+    /** What the last TRADE AND BACK did. */
+    var notice by mutableStateOf<String?>(null)
+
+    /** A trip there and back: the Pokémon's side, its slot and the other side. */
+    class Trip(val home: TradeSide, val at: MonRef, val partner: TradeSide, val mon: SaveMon, val evolution: TradeEvolution)
+
+    /** The Pokémon picked alone (nothing picked on the other side) when the other save would evolve it. */
+    val trip: Trip? get() {
+        revision
+        if (kind != null) return null
+        val sa = selA
+        val sb = selB
+        val (home, at, partner) = when {
+            sa != null && sb == null -> Triple(a, sa, b)
+            sb != null && sa == null -> Triple(b, sb, a)
+            else -> return null
+        }
+        val mon = home.editor.monAt(at) ?: return null
+        val evo = TradeBack.evolution(home, at, partner) ?: return null
+        return Trip(home, at, partner, mon, evo)
+    }
+
+    /** TRADE AND BACK: there, evolved, and home again. */
+    fun tradeBack() {
+        confirmBack = false
+        val t = trip ?: return
+        refusal = null
+        try {
+            TradeBack.run(t.home, t.at, t.partner)
+            notice = tr("{0} went to {1} and came back as {2}", monLabel(t.mon), t.partner.label, speciesLabel(t.evolution.into, t.mon.game))
+            selA = null
+            selB = null
+        } catch (e: TradeRefused) {
+            refusal = e.message
+        }
+        revision++
+    }
 
     val dataA: MonSave get() { revision; return a.editor.data }
     val dataB: MonSave get() { revision; return b.editor.data }
@@ -110,6 +151,7 @@ class TradeState(a: TradeSide, b: TradeSide) {
     /** TRADE / SEND pressed: ask about evolutions first, else trade. */
     fun start() {
         refusal = null
+        notice = null
         val evos = evolutions()
         if (evos.isNotEmpty()) evolving = evos else perform(evolve = false)
     }
@@ -138,6 +180,7 @@ class TradeState(a: TradeSide, b: TradeSide) {
         a = TradeSide(a.label, a.editor.fresh(), a.gameCode)
         b = TradeSide(b.label, b.editor.fresh(), b.gameCode)
         refusal = null
+        notice = null
         revision++
     }
 }
@@ -164,11 +207,11 @@ fun TradeScreen(
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 val wide = maxWidth > maxHeight * 1.1f
                 val sideA: @Composable (Modifier) -> Unit = { mod ->
-                    TradeSidePane(state.dataA, state.a.label, state.boxA, { state.boxA = it }, state.selA, { state.selA = it; state.refusal = null },
+                    TradeSidePane(state.dataA, state.a.label, state.boxA, { state.boxA = it }, state.selA, { state.selA = it; state.refusal = null; state.notice = null },
                         state.revision, m, cell, iconsA, mod, wide)
                 }
                 val sideB: @Composable (Modifier) -> Unit = { mod ->
-                    TradeSidePane(state.dataB, state.b.label, state.boxB, { state.boxB = it }, state.selB, { state.selB = it; state.refusal = null },
+                    TradeSidePane(state.dataB, state.b.label, state.boxB, { state.boxB = it }, state.selB, { state.selB = it; state.refusal = null; state.notice = null },
                         state.revision, m, cell, iconsB, mod, wide)
                 }
                 if (wide) Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
@@ -182,12 +225,16 @@ fun TradeScreen(
             Spacer(Modifier.height(m.u * 4))
             Row(horizontalArrangement = Arrangement.spacedBy(m.u * 4), verticalAlignment = Alignment.CenterVertically) {
                 val kind = state.kind
-                val blocker = linkBlock ?: state.blocker
-                val hint = state.refusal ?: blocker ?: when (kind) {
+                val trip = state.trip
+                val tripBlocker = trip?.let { TradeBack.blocker(it.home, it.at, it.partner) }
+                val blocker = linkBlock ?: state.blocker ?: tripBlocker
+                val hint = state.refusal ?: blocker ?: state.notice ?: when (kind) {
                     TradeState.Kind.SEND_TO_B -> tr("{0} goes to {1}", monLabel(state.monA!!), state.b.label)
                     TradeState.Kind.SEND_TO_A -> tr("{0} goes to {1}", monLabel(state.monB!!), state.a.label)
                     TradeState.Kind.SWAP -> tr("{0} for {1}", monLabel(state.monA!!), monLabel(state.monB!!))
                     null -> when {
+                        trip != null -> tr("{0} evolves in {1}: pick where it goes, or TRADE AND BACK to bring it home as {2}",
+                            monLabel(trip.mon), trip.partner.label, speciesLabel(trip.evolution.into, trip.mon.game))
                         state.monA != null && state.selB == null -> tr("{0}: now pick where it goes in {1}", monLabel(state.monA!!), state.b.label)
                         state.monB != null && state.selA == null -> tr("{0}: now pick where it goes in {1}", monLabel(state.monB!!), state.a.label)
                         state.changed -> tr("Not saved yet")
@@ -196,7 +243,9 @@ fun TradeScreen(
                 }
                 // Two lines: a rule's reason names both games.
                 GbaText(hint, OptionColors.onBackdrop, OptionColors.onBackdropShadow, small, Modifier.weight(1f), maxLines = 2)
-                OptionButton(
+                if (kind == null && trip != null) {
+                    OptionButton(tk("TRADE AND BACK"), m, onClick = { state.confirmBack = true }, emphasis = true, enabled = blocker == null && !saving)
+                } else OptionButton(
                     if (kind == TradeState.Kind.SWAP) tk("TRADE") else tk("SEND"), m, onClick = { state.start() }, emphasis = true,
                     enabled = kind != null && blocker == null && !saving,
                 )
@@ -207,6 +256,17 @@ fun TradeScreen(
 
         state.evolving?.let { evos ->
             EvolvePrompt(evos, m, onEvolve = { state.perform(evolve = true) }, onStop = { state.perform(evolve = false) }, onCancel = { state.evolving = null })
+        }
+        if (state.confirmBack) state.trip?.let { t ->
+            OptionConfirm(
+                title = tk("TRADE AND BACK?"),
+                message = tr("{0} goes to {1}, evolves into {2} there, and comes straight back to {3}. Both Pokédexes register it.",
+                    monLabel(t.mon), t.partner.label, speciesLabel(t.evolution.into, t.mon.game), t.home.label),
+                confirmLabel = tk("TRADE AND BACK"),
+                m = m,
+                onDismiss = { state.confirmBack = false },
+                onConfirm = { state.tradeBack() },
+            )
         }
         if (state.confirmSave) {
             OptionConfirm(

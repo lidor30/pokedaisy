@@ -359,6 +359,13 @@ int main(int argc, char** argv) {
     shot("editor-trainer");
     for (int i = 0; i < 4; i++) keys(PD_LIB_DOWN);
     shot("editor-trainer-events");
+    // MISSING: the Pokédex's gaps, each with the other saves' Pokémon that fill it.
+    keys(PD_LIB_DOWN);
+    keys(PD_LIB_A);
+    shot("editor-missing");
+    for (int i = 0; i < 26; i++) keys(PD_LIB_DOWN); // ALAKAZAM: this save's KADABRA, to Ruby and back
+    shot("editor-missing-row");
+    keys(PD_LIB_B);
     keys(PD_LIB_SELECT); // back to POKéMON
     keys(PD_LIB_R);      // BOX 1
     tap_at(178, 225); // BOX
@@ -392,6 +399,11 @@ int main(int argc, char** argv) {
     keys(PD_LIB_UP);
     keys(PD_LIB_UP); // the party's second place
     keys(PD_LIB_A);
+    // Picked alone, KADABRA can go to the other game and come back evolved: Y asks (B: not now).
+    shot("trade-back-pick");
+    keys(PD_LIB_Y);
+    shot("trade-back-ask");
+    keys(PD_LIB_B);
     keys(PD_LIB_X);
     keys(PD_LIB_A);
     keys(PD_LIB_Y);

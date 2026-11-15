@@ -70,14 +70,10 @@ internal fun MissingPage(
                         val best = e.best
                         OptionLine(
                             "No.${e.number.toString().padStart(3, '0')} ${MissingDex.speciesName(state.editor, e.species)?.let(::caps) ?: "#${e.species}"}",
-                            best?.let { whereIn(it, view.sources) } ?: tk("NONE"),
+                            best?.let { whereIn(it, state, view.sources) } ?: tk("NONE"),
                             selected = false, m, height = if (best != null) rowHeight else m.rowHeight, labelWeight = 0.55f, divider = true,
                             // Which game it's in, then its level and the way it comes, or why it can't yet.
-                            subtitle = best?.let {
-                                val game = view.sources[it.source].label
-                                it.blocker?.let { why -> "$game: $why" }
-                                    ?: "$game · " + tr("Lv{0} · {1}", it.level, if (it.palPark) tk("PAL PARK") else tk("TRADE"))
-                            },
+                            subtitle = best?.let { wayLine(it, view.sources) },
                             enabled = best?.reachable == true, chevron = best?.reachable == true,
                         ) { best?.takeIf { it.reachable }?.let(onGet) }
                     }
@@ -94,8 +90,26 @@ private fun Message(text: String, m: GbaTextMetrics) {
     }
 }
 
-/** Where in its save it is: its box's name, or PARTY. */
-private fun whereIn(o: MissingDex.Owned, sources: List<TradeSide>): String = when (val at = o.at) {
+/**
+ * The line under a row: which game it's in, its level and how it comes - or, when it's one that evolves on the way,
+ * which Pokémon makes the trip - or why it can't yet.
+ */
+private fun wayLine(o: MissingDex.Owned, sources: List<TradeSide>): String {
+    val game = sources[o.source].label
+    val how = when (o.way) {
+        MissingDex.Way.TRADE -> tr("{0} · Lv{1} · TRADE", game, o.level)
+        MissingDex.Way.PAL_PARK -> tr("{0} · Lv{1} · PAL PARK", game, o.level)
+        MissingDex.Way.EVOLVES -> tr("{0} · {1} Lv{2} evolves in the trade", game, monLabel(o.mon), o.level)
+        MissingDex.Way.TRADE_BACK -> tr("Your {0} Lv{1} · trade it to {2} and back", monLabel(o.mon), o.level, game)
+    }
+    return o.blocker?.let { why -> "$game: $why" } ?: how
+}
+
+/** Where in its save it is: its box's name, or PARTY (a trade-back's in this save). */
+private fun whereIn(o: MissingDex.Owned, state: PcBoxesState, sources: List<TradeSide>): String = when (val at = o.at) {
     is MonRef.Party -> tr("PARTY")
-    is MonRef.Pc -> sources[o.source].editor.data.boxName(at.at.box).ifBlank { "BOX ${at.at.box + 1}" }
+    is MonRef.Pc -> {
+        val data = if (o.way == MissingDex.Way.TRADE_BACK) state.editor.data else sources[o.source].editor.data
+        data.boxName(at.at.box).ifBlank { "BOX ${at.at.box + 1}" }
+    }
 }

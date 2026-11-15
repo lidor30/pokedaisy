@@ -212,6 +212,10 @@ class Gen3SaveEditor(val file: Gen3SaveFile) : MonSaveEditor, TrainerBagEditor {
 
     override val data: Gen3SaveData get() = Gen3SaveData(file.format, saveBlock2, saveBlock1, storage)
     override fun fresh(): MonSaveEditor = Gen3SaveEditor(file)
+    override fun snapshot() = EditorSnapshot(listOf(saveBlock2.copyOf(), saveBlock1.copyOf(), storage.copyOf()))
+    override fun restore(snapshot: EditorSnapshot) {
+        snapshot.parts.zip(listOf(saveBlock2, saveBlock1, storage)).forEach { (from, to) -> from.copyInto(to) }
+    }
     override val canWriteNames: Boolean get() = true
     override fun nicknameMax(at: MonRef): Int = Gen3Names.NICKNAME_MAX
     override val boxNameMax: Int get() = Gen3Names.BOX_NAME_MAX
