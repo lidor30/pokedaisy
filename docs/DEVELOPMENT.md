@@ -1644,6 +1644,37 @@ entries showing its sprite's tiles (subsprites split it; parked entries sit at y
 mgba_dump: `follower FILE` (frames + palette), `followon 1`, `followinfo`; checked walking / turning / running in
 Emerald and FireRed, with EXPAND too.
 
+### Sprite packs (the makeover's graphics in one file)
+
+PLAYER LOOK, TEXT LOOK and FOLLOWER need the other games' graphics, which a scan of a ROM leaves decoded in
+`rom-art/look/` (`<hero>/<part>.bin`, `text/<style>/<part>.bin`, `mon/<source>/<national>.bin`). A sprite pack is those
+files in a zip, so a player without the other ROMs can load them: library > TOOLS > SPRITE PACK (`SpritePackFlow`, NEW tag
+`SPRITE_PACK`). The rule stays: nothing is bundled, nothing is downloaded, the repo never holds a pack and the app, manual and
+site never link to one. Whoever has the ROMs makes it:
+
+```bash
+make sprite-pack SPRITE_ROMS="<folder of your ROMs>" SPRITE_PACK=<out.zip>
+```
+
+(ui-preview's `spritePack` task, `src/render/SpritePackTool.kt`: every `.gba` under the folder through the app's own
+`PlayerLook.scan` / `LookArt.keep` / `TextArt.keep` / `MonArt.keep`, each ROM into a folder of its own; defaults: the test
+ROM folder, `~/Documents/PokeDaisy/pokedaisy-sprites.zip`.) The zip holds `pokedaisy-sprites.txt` (`pokedaisy-sprite-pack
+<format>`, `made <date>`, then `path size crc32` per file), a README and the files at their `rom-art/look/` paths.
+
+**Exact graphics only** (`SpritePack.kt`): a file goes in only where its path names a known graphic (`itemOf`: no `..`, no
+other names) and its size and CRC32 are that graphic's: the heroes' and text looks' fingerprints (`LookBlob`, `TextBlob`),
+the follower Pokémon's table (`MonArtSigsGen.kt`). So a pack can't put a byte into the running game that a scan of a known
+ROM wouldn't have; anything else is counted as refused and left out. The reader (`SpritePackFlow.read`) keeps only the
+manifest and `.bin` entries, 64 KB each, 4000 entries and 48 MB at most. A load never overwrites a kept file, then writes
+the region map heads of heroes now whole (`LookArt.keepHead`, as a scan does). The pack is the tool's output after
+`SpritePack.collect`, which applies the same check, so a pack never carries what the app would refuse.
+
+The follower Pokémon have no fingerprints, so their CRCs are generated from the hacks' ROMs (`make sprite-pack-sigs`, every
+version found: Recharged Yellow's versions draw a few species apart): rerun it after changing what `MonArt.keep` writes, or
+for a new follower source or version, and the next pack takes them. `SpritePackTest` (paths, refusals, round trips from
+FireRed / Emerald and the four follower hacks), `SpritePackFlowTest` (the zip reader, a real pack through it); ui-preview
+`library-sprite-pack-*`.
+
 ### Co-op: seeing each other (the partner on your map)
 
 Two linked players on retail English Emerald (BPEE, SHA-1 `f3ae0881...`, the same ROM on both) see each other's character
@@ -2269,6 +2300,51 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
   `MapHeaderPointers`), Red / Blue (Yellow's + 1 from 0xCF1B, SGB palettes: `palette` takes `sgbAttributes` there), Gold /
   Silver and Prism (Crystal's engine, their own addresses), Polished Crystal's other builds, battles past the edges, walking
   frames for Gen 1's off-screen NPCs.
+
+## AREA maps (`AreaMap.kt`, `AreaMapView.kt`)
+
+A cave or building's own map on the MAP tab and the HUD's minimap, with its floors: every GBA ROM with a row in
+`gamedata/gen3/area_maps.toml` (retail in every language and most hacks; docs/ROM_FEATURES.md's Area map column). Nothing
+bundled, nothing coded per game: the map is drawn from the ROM the way the game builds it, from a row per ROM by its CRC32
+(the activity sets `activeAreaMapCrc` to the CRC EXPAND looks up by, so a randomized retail cart uses retail's row). A row
+holds gMapGroups (+ Unbound's XOR) and its groups' sizes, and the engine's numbers: where secondary tiles and metatiles
+start and how many palettes the primary has (FireRed's engine 640 / 640 / 7, Emerald's 512 / 512 / 6; R.O.W.E. 512 /
+2048 / 6), MapHeader's floor byte (FireRed's engine +0x1A; Emerald's has none), the metatile size (24: Lazarus's and
+Monomyth's three layers), the grid's id mask (R.O.W.E. 0xFFF, SoulGold 0x7FF), SoulGold's u16 map section (`mapSecWide`),
+and for a ROM with two kinds of layout the other kind's numbers (`alt`: Heart and Soul's MapLayout +0x18 is 0 for its
+Emerald-style layouts, 512 / 512 / 6, and 2 for its FireRed-style ones, 640 / 640 / 7).
+`AreaMap.matches` checks a row against the ROM before anything is drawn.
+
+The rows are generated, never typed: `python3 scripts/gen_area_maps.py --scan <folder of GBA ROMs> [--report DIR]` takes
+gMapGroups and the engine's numbers from EXPAND's rows (`pk_wide_games.h`) where a ROM has one, else finds gMapGroups by
+its shape; sizes each group from the ROM (empty groups and deleted maps allowed: Rogue, Amethyst); and works out where
+secondary tiles start from the tile data (the split under which the maps' secondary metatiles land inside their tilesets'
+tiles, 98% at least). EXPAND rows whose ROM isn't on hand take a sibling build's row (same game, same gMapGroups).
+`--report` draws a few indoor maps of each ROM to look at (LZ77 only; `AreaMapTest`'s `every row reads its own ROM` writes
+one per ROM, smol included, to `app/build/area-maps/all/`). Its `LATER` list keeps out what passed the numbers but drew
+wrong (Team Rocket Edition 2026) or is blocked; the file ends with every ROM left out and why. Then
+`python3 scripts/gen_area_maps.py` (`make gamedata`) writes `AreaMapTablesGen.kt`; `make check` / CI fail while it's stale.
+
+What it reads, in every Gen 3 engine (the recipe for the 3DS / Linux C companion):
+
+- The area: from the player's map (SaveBlock1's location, which the companion has anyway), breadth first over MapEvents'
+  warps (+1 count, +8 list of 8-byte `{x, y, elevation, warpId, mapNum, mapGroup}`; group 0x7F = dynamic, skipped), keeping
+  maps that share the start's map section (MapHeader +0x14) and aren't outdoors (mapType +0x17 not 1, 2, 3, 5, 6). An elevator
+  leads nowhere (dynamic warps), so from one the floors are found the other way: the group's maps whose warps lead in.
+- The floors: numbered ones (floor byte != 0) lowest first, 127 = `RF`; unnumbered ones by map id (the decomps list a place's
+  maps in the game's order), numbered 1, 2, 3; in a numbered building an unnumbered room only when the player is in it.
+  Shown when there's more than one map or it's bigger than 15 x 10 metatiles.
+- The picture: MapLayout (+0 width, +4 height, +0xC grid of u16 - raw, or LZ77 when its header says so with exactly
+  width x height x 2 bytes: Monomyth's indoor maps - +0x10 / +0x14 tilesets); Tileset (+0 compressed, +4 tiles
+  raw, LZ77 or smol - pokeemerald-expansion's, `Smol.kt` / the 3DS core's `pd_smol.h` - +8 palettes, +0xC metatiles of 8
+  u16 tile entries, bottom layer then top, or 12 for three layers); palettes 0 until the primary count from the primary's
+  list, the rest to 13 from the secondary's; colour 0 of palette 0 under everything; grid ids & the mask, the mask itself =
+  undefined (see-through).
+
+It's the ROM's map, not RAM's: what changes as you play (a boulder pushed, a door opened, items picked up, people) isn't
+drawn. `AreaMapTest` checks FireRed's, Emerald's and Unbound's floors and labels and every row against its ROM; ui-preview
+`-Ponly=area-map -Prom=<ROM>` draws the tab (`areaMapSpot`), Paparazzi `FieldHudScreenshotTest.cornersAreaMap` the
+minimap. A new ROM: put it in the folder and rerun the scan (an EXPAND row first makes it surer), then look at its picture.
 
 ## FREE FLIGHT and the scenic FLY (`pk_flight.c`, `Flight.kt`, `ScenicFly.kt`)
 

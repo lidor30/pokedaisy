@@ -12,7 +12,7 @@ const ROM_REASONS = ['unknown-hack', 'retail-hack', 'revision', 'other-game', 'g
 
 // event -> parameter -> the values it may take (a list, or a pattern the whole value must match).
 export const EVENTS = {
-  download_apk: { where: ['hero', 'latest', 'releases', 'nav', 'footer', 'page'], version: /^\d{1,3}\.\d{1,3}\.\d{1,3}$/ },
+  download_apk: { where: ['hero', 'latest', 'releases', 'nav', 'footer', 'page', 'downloads'], version: /^\d{1,3}(\.\d{1,3}){2,3}$/, platform: ['android', 'linux', '3ds'] },
   rom_check: { verdict: ['supported', 'in-progress', 'unsupported', 'error'], reason: ROM_REASONS },
   feedback_sent: { kind: ['game', 'bug', 'feature'], ok: ['yes', 'no'] },
   link_click: { to: ['github', 'reddit', 'discord', 'kofi', 'patreon', 'coffee'], where: ['hero', 'latest', 'releases', 'nav', 'footer', 'page'] },
@@ -59,7 +59,9 @@ export function linkEvent(href, where) {
   const path = u.pathname;
   if (host === 'github.com' && /^\/lidor30\/pokedaisy\/releases\/(latest|download\/)/i.test(path) || path.endsWith('.apk')) {
     const version = path.match(/\/download\/v([\d.]+)\//)?.[1];
-    return { name: 'download_apk', params: version ? { where, version } : { where } };
+    // Which platform's file (the DOWNLOAD cards): the APK, a Linux package or the 3DS app; a release page link has none.
+    const platform = path.endsWith('.apk') ? 'android' : path.endsWith('.3dsx') ? '3ds' : path.endsWith('.zip') ? 'linux' : null;
+    return { name: 'download_apk', params: { where, ...(version && { version }), ...(platform && { platform }) } };
   }
   const to = host === 'github.com' && /^\/lidor30\/pokedaisy/i.test(path) ? 'github'
     : host === 'reddit.com' ? 'reddit'

@@ -676,16 +676,22 @@ object LookArt {
             val bytes = scan.data(c, b.part) ?: return@filter false
             write(d / "${b.part.name.lowercase()}.bin", bytes)
         }
-        val head = RomArt.dir(filesDir) / "regionmap/${c.headArt}.png"
-        if (!head.isFile) {
-            val gfx = scan.data(c, LookPart.MAP_HEAD)
-            val pal = scan.data(c, LookPart.MAP_HEAD_PAL)
-            if (gfx != null && pal != null) {
-                write(head, RomArt.sprite(gfx, RomArt.palette(pal), 16, 16).png())
-                RomArt.announce()
-            }
-        }
+        writeHead(filesDir, c, scan.data(c, LookPart.MAP_HEAD), scan.data(c, LookPart.MAP_HEAD_PAL))
         true
+    }
+
+    /** [c]'s region map head where [RomArt] keeps it, from its kept graphics, if no scan of its game made it (a SPRITE PACK). */
+    fun keepHead(filesDir: Path?, c: LookChar) {
+        writeHead(filesDir, c, file(filesDir, c, LookPart.MAP_HEAD).takeIf { it.isFile }?.readBytes(),
+            file(filesDir, c, LookPart.MAP_HEAD_PAL).takeIf { it.isFile }?.readBytes())
+    }
+
+    private fun writeHead(filesDir: Path?, c: LookChar, gfx: ByteArray?, pal: ByteArray?) {
+        val head = RomArt.dir(filesDir) / "regionmap/${c.headArt}.png"
+        if (head.isFile || gfx == null || pal == null) return
+        head.parent?.mkdirs()
+        write(head, RomArt.sprite(gfx, RomArt.palette(pal), 16, 16).png())
+        RomArt.announce()
     }
 
     private fun write(f: Path, bytes: ByteArray) = f.writeAtomically(bytes)

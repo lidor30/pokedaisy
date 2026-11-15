@@ -3,12 +3,12 @@ title: Controls, hotkeys and touch
 summary: Remap the game's buttons, set up turbo, change or turn off the hotkeys, set up the touch controls or an external controller, and what the BACK button does.
 section: player
 order: 2
-keywords: [flash, dark cave, light up cave, remap, rebind, keybind, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors]
+keywords: [flash, dark cave, light up cave, remap, rebind, keybind, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors, hm, hms, hm slave, hidden machine, field moves, no hms, without hms, exp share, exp all, experience, share exp, party exp, grinding, level up faster, level cap, max level, hard mode, overleveled]
 ---
 
 PokeDaisy works out of the box on handhelds like the AYN Thor: the face buttons, shoulders, START and SELECT are the GBA's, and a few button combinations do emulator things like saving a state. Everything here is about changing that: which button presses what, which shortcuts exist, and what happens when you plug in a controller or play by touch.
 
-The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `WILD ENCOUNTERS` and `SHINY ODDS` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
+The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `WILD ENCOUNTERS`, `SHINY ODDS`, `EXP SHARE`, `LEVEL CAP` and `NO HMS NEEDED` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
 
 ## Game buttons
 
@@ -134,15 +134,17 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | Action | What it does |
 | --- | --- |
 | `PC` | Opens your game's own PC right where you stand, as in the [bag](bag.md). |
-| `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move. |
+| `HEAL` | Heals the whole party, as the nurse at a POKéMON CENTER does. The other services are on a Pokémon's summary: see [CENTER](party.md#center-heal-relearn-forget-rename). |
+| `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move, or any Pokémon with [`NO HMS NEEDED`](#no-hms-needed) on. |
 | `TAKE OFF` | Takes off on your Pokémon's bird and lets you [fly over the map](map.md#flying-over-the-map); while you're up it says `LAND` and brings you down. The original games in every language, Emerald Legacy and the hacks listed in [Map](map.md#flying-over-the-map). |
-| `FLASH` | Lights up a dark cave, the way the move does from the game's party menu: the Pokémon that knows it shows up and the cave lights up. It only shows while a Pokémon in your party knows `FLASH`, and it's greyed out where it isn't dark. In Emerald it also opens the sealed wall in the ancient tomb when you stand where the game asks. It needs the same badge as in the game. |
+| `FLASH` | Lights up a dark cave, the way the move does from the game's party menu: the Pokémon that knows it shows up and the cave lights up. It only shows while a Pokémon in your party knows `FLASH` (any Pokémon will do with [`NO HMS NEEDED`](#no-hms-needed) on), and it's greyed out where it isn't dark. In Emerald it also opens the sealed wall in the ancient tomb when you stand where the game asks. It needs the same badge as in the game. |
 | The keep-away spray | Uses an item from your bag that keeps wild Pokémon away (the tile shows its icon and name). With more than one kind in your bag, it lists them with how many you have and how many steps each lasts, so you pick. While one is still working it's greyed out and says how many steps are left. |
 | `BIKE` | Gets on your bike. While you're riding it says `GET OFF` and gets you off. |
 | `ROD` | Casts your best fishing rod. Face the water first. |
 | `WILD` | Turns `WILD ENCOUNTERS` off, and back on the next time. An `OFF` tag on its corner says they're off. It shows in games where `WILD ENCOUNTERS` works. |
 | `SAVE STATE`, `LOAD STATE` | Saves or loads the current state slot. |
 | `FF` | Turns fast-forward on or off. |
+| `TOUCH SCREEN` | In a DS game on one screen: brings its touch screen up over the game, or closes it, like L2. Handy on a phone, which has no L2. |
 | `COMPANION` | Opens the companion (on a device with one screen). |
 
 Press L3 and the menu stays open: move with the D-pad or the left stick (on the ring, point the stick at an action), press `A` to use it, and `B` (or L3 again) closes it. You can also tap an action on the screen. While the menu is open your buttons work it, not the game, and the game keeps running underneath.
@@ -260,6 +262,40 @@ A shiny one you catch stays shiny when you set the odds back to `NORMAL`, and th
 While the odds are raised, [achievements](achievements.md) are paused, since some sets reward catching a shiny.
 
 It works in the original FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language and revision, and in these hacks: Unbound (French too), Radical Red, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Emerald Kaizo, Emerald Legacy, Recharged Emerald (Rebalanced too), Glazed, Ultra Violet, Orange Islands, FireRed Rocket Edition, Ash Gray, Recharged Yellow, Lazarus, Emerald Seaglass, Too Many Types 2, Emerald Imperium, Super Mariomon, SoulGold, Team Rocket Edition, Elite Redux and R.O.W.E. Many hacks have better odds of their own (1 in 4096 in Unbound, Glazed, the newer Amethyst and most of the hacks rebuilt from newer source code, about 1 in 1800 in Emerald Imperium, 1 in 256 in SoulGold, about 1 in 257 in Odyssey): there `NORMAL` keeps theirs, and a choice that isn't better changes nothing. Everywhere else, the Game Boy and DS games included, it shows `N/A`.
+
+## EXP SHARE
+
+Normally only the Pokémon that fought gain EXP when you win, so the rest of your team falls behind unless you swap them in. `EXP SHARE`, in the companion's `GAMEPLAY` group, opens a list:
+
+- **`OFF`** (the default) leaves the game's own rules.
+- **`SPLIT`** counts every Pokémon in your party as having fought: a win's EXP is shared out across the whole team, as the first games' version of this did. Each gets a smaller share, but nobody gets nothing.
+- **`FULL EXP`** gives every Pokémon in your party the EXP the one that fought would have had on its own. The game's own boosts still count: a held item that shares or boosts EXP, and the bonus for a Pokémon from a trade.
+
+Eggs are left out. The game shows each Pokémon's EXP as it comes, level ups and new moves included, and evolves the ones that leveled up once the battle is over. Battles that give no EXP in the game (link battles, the Battle Frontier) still give none.
+
+While it's on, [achievements](achievements.md) are paused, since some sets reward reaching a level.
+
+It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work (Ruby and Sapphire, and hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
+
+## LEVEL CAP
+
+A level cap keeps your team from outgrowing the story, the way many hard-mode hacks do. Turn on `LEVEL CAP` in the companion's `GAMEPLAY` group and no Pokémon goes past the highest level on the next boss's team: the same boss the guide's [NEXT BOSS](guide.md#next-boss-the-next-gym-leader) page shows. The row says the cap now, like `LV 14`.
+
+A Pokémon at the cap gains nothing from a win until you beat that boss. One that reaches the cap during a win stops there, and the rest of that win's EXP is lost. Beat the boss and the cap moves up to the next one's top level by itself. Once every boss is beaten there's no cap.
+
+Only EXP from battles is capped: items that raise a level and the day care still work. Pair it with `EXP SHARE` to keep the whole team at the cap.
+
+It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work, or the game has no NEXT BOSS page to follow, the row shows `N/A`. Turning it off puts the game back as it was.
+
+## NO HMS NEEDED
+
+In the games, the moves you use out on the field (cutting down a small tree, smashing a cracked rock, pushing a boulder, crossing water, climbing a waterfall, diving) need two things: the right badge, and a Pokémon in your party that knows the move. That second part means teaching those moves to Pokémon you'd rather keep for battles, or carrying one around just for them.
+
+Turn on `NO HMS NEEDED` in the companion's `SETTINGS`, `GAMEPLAY` group, and the badge is enough. Walk up to the tree, the rock, the boulder or the water and press A as usual: the game asks, and your first Pokémon (the first one that isn't an egg) does the move, with its own picture and all. If a Pokémon in your party does know the move, that one still goes.
+
+The companion's own `FLY`, `TAKE OFF` and `FLASH` (on the [map](map.md) and in the [quick menu](#the-quick-menu)) follow it too: with the badge, they no longer need someone who knows the move. The badges stay: a move the game would refuse without its badge is still refused.
+
+It works in the original FireRed, LeafGreen, Emerald, Ruby and Sapphire, in every language and revision, and in many hacks built on their code. Where it can't work the row shows `N/A`. Turning it off puts the game back as it was: nothing in your save changes either way.
 
 ## External controllers
 

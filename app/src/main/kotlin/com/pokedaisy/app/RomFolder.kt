@@ -16,7 +16,11 @@ import okio.Path.Companion.toOkioPath
 object RomFolder {
 
     // A getter: ROM_EXTENSIONS follows the DS / Game Boy switches, which LibraryActivity sets after this object may load.
-    private val EXTENSIONS get() = RomArchive.ROM_EXTENSIONS + RomArchive.EXTENSIONS
+    private val EXTENSIONS get() = RomArchive.ROM_EXTENSIONS + RomArchive.EXTENSIONS +
+        // 3DS carts (FeatureFlags.n3ds): played in place, never unpacked or copied.
+        (if (FeatureFlags.n3ds()) com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS else emptySet())
+    /** A 3DS cart: up to 4 GB (Pokemon X is 2). */
+    private const val MAX_3DS_ROM_BYTES = 4L shl 30
     private const val MAX_ROM_BYTES = 32L shl 20
     /** A DS cart: 512 MB at most (Platinum and HeartGold are 128, Black 256). */
     private const val MAX_DS_ROM_BYTES = 512L shl 20
@@ -25,7 +29,8 @@ object RomFolder {
 
     /** A DS cart or an archive (which may hold one: GitHub #315, zipped DS games went missing) up to a DS cart's size. */
     private fun maxBytes(f: File): Long =
-        if (f.name.endsWith(".nds", ignoreCase = true) || RomArchive.isArchive(f)) MAX_DS_ROM_BYTES else MAX_ROM_BYTES
+        if (f.extension.lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS) MAX_3DS_ROM_BYTES
+        else if (f.name.endsWith(".nds", ignoreCase = true) || RomArchive.isArchive(f)) MAX_DS_ROM_BYTES else MAX_ROM_BYTES
 
     /** [partial]: read through a PARTIAL best-effort match ([CompanionSupport.Verdict.PARTIAL]) - listed, tagged. */
     /** [tryable]: unsupported but a Gen 3 Pokémon base game - listed, tagged NOT SUPPORTED, so TRY BEST EFFORT is reachable. */

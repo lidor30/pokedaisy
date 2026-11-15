@@ -171,6 +171,44 @@ class EmulatorEngine(
         tmPatchDirty = true
     }
 
+    /** EXP SHARE: the game's getexp ([com.pokedaisy.app.companion.data.ExpShare]; null = not known), the mode, and the party
+     * slots that aren't eggs ([expShareMask], kept up to date by the activity from each sample). */
+    @Volatile private var expShareFound: com.pokedaisy.app.companion.data.ExpShare.Found? = null
+    @Volatile private var expShareMode = com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
+    @Volatile var expShareMask = 0
+
+    fun setExpShare(found: com.pokedaisy.app.companion.data.ExpShare.Found?, mode: com.pokedaisy.app.companion.data.ExpShare.Mode) {
+        val fullChanged = (expShareMode == com.pokedaisy.app.companion.data.ExpShare.Mode.FULL) != (mode == com.pokedaisy.app.companion.data.ExpShare.Mode.FULL) ||
+            found !== expShareFound
+        expShareFound = found
+        expShareMode = mode
+        if (fullChanged) tmPatchDirty = true
+    }
+
+    /** LEVEL CAP: getexp's two level checks ([com.pokedaisy.app.companion.data.LevelCap]; null = not known) and the cap
+     * (1..99; 0 = none: the game's own 100). A new cap is patched in on the next frame boundary, with the other options. */
+    @Volatile private var levelCapFound: com.pokedaisy.app.companion.data.LevelCap.Found? = null
+    @Volatile private var levelCapLevel = 0
+
+    fun setLevelCap(found: com.pokedaisy.app.companion.data.LevelCap.Found?, level: Int) {
+        val l = if (found != null && level in 1..99) level else 0
+        if (found === levelCapFound && l == levelCapLevel) return
+        levelCapFound = found
+        levelCapLevel = l
+        tmPatchDirty = true
+    }
+
+    /** NO HMS NEEDED: the ROM's patch ([com.pokedaisy.app.companion.data.HmFree]; null = none known) and whether it's
+     * in; with REUSABLE TMS's on the next frame boundary. */
+    @Volatile private var hmPatch: com.pokedaisy.app.companion.data.HmFree.Patch? = null
+    @Volatile private var hmFree = false
+
+    fun setHmFree(patch: com.pokedaisy.app.companion.data.HmFree.Patch?, on: Boolean) {
+        hmPatch = patch
+        hmFree = on
+        tmPatchDirty = true
+    }
+
     /** SHINY ODDS ([com.pokedaisy.app.companion.data.ShinyOdds]): the game's foe party watched every frame, a new wild foe
      * made shiny at 1 in [shinyOdds] ([com.pokedaisy.app.companion.data.ShinyOdds.NORMAL] = the game's own odds, nothing
      * done); null = a game it doesn't know. */
@@ -1523,6 +1561,10 @@ class EmulatorEngine(
                         if (n > 0) Log.i("pokedaisy", "shiny odds: foe made shiny (1 in $shinyOdds)")
                     }.onFailure { Log.w("pokedaisy", "shiny odds failed", it) }
                 }
+                // EXP SHARE: every party Pokémon that isn't an egg counts as having fought (only getexp reads it).
+                if (gba && expShareMode != com.pokedaisy.app.companion.data.ExpShare.Mode.OFF && expShareMask != 0) expShareFound?.let { f ->
+                    runCatching { com.pokedaisy.app.companion.data.ExpShare.mark(f, expShareMask, InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes) }
+                }
                 if (fieldState and MgbaCore.FIELD_AVATAR != 0) fieldMovesKnown = true
                 val bike = MgbaCore.FIELD_AVATAR or MgbaCore.FIELD_BIKE
                 riding = (fieldState and bike) == bike
@@ -2002,29 +2044,46 @@ class EmulatorEngine(
         runCatching { RetroAchievements.setCheatsActive(n > 0) }
     }
 
-    /** REUSABLE TMS and INSTANT TEXT onto the ROM (emu thread): what's on patched, the rest the file's bytes. */
+    /** REUSABLE TMS, INSTANT TEXT, NO HMS NEEDED, FULL EXP and LEVEL CAP onto the ROM (emu thread): what's on patched, the rest the file's bytes. */
     private fun applyTmPatch() {
         tmPatchDirty = false
         MgbaCore.pkRomUnpatch()
         if (!gba) return
-        val text = textPatch.takeIf { instantText }
-        // All or none, each: a ROM that only matched in part would still use TMs up on the other paths, and half a text
-        // routine can't run. pkRomUnpatch takes everything, so text that fails puts the TMs' back.
-        val sites = tmSites
-        val tms = reusableTms && sites.isNotEmpty() && sites.all {
-            MgbaCore.pkRomPatch(it.at, it.expect, it.branch, com.pokedaisy.app.companion.data.ReusableTms.ALWAYS_SKIP)
-        }
-        if (reusableTms && sites.isNotEmpty()) {
-            if (!tms) MgbaCore.pkRomUnpatch()
-            Log.i("pokedaisy", "reusable TMs: ${if (tms) "${sites.size} site(s) patched" else "code didn't match"}")
-        }
-        if (text != null && !text.writes.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }) {
-            MgbaCore.pkRomUnpatch()
-            if (tms) sites.forEach {
-                MgbaCore.pkRomPatch(it.at, it.expect, it.branch, com.pokedaisy.app.companion.data.ReusableTms.ALWAYS_SKIP)
+        // All or none, each: a ROM that only matched in part would still use TMs up on the other paths, and half a
+        // routine can't run. pkRomUnpatch takes everything, so one that fails puts the ones before it back.
+        val placed = ArrayList<() -> Boolean>()
+        fun option(name: String, on: Boolean, apply: () -> Boolean) {
+            if (!on) return
+            if (apply()) {
+                placed += apply
+                Log.i("pokedaisy", "$name: patched")
+            } else {
+                MgbaCore.pkRomUnpatch()
+                placed.forEach { it() }
+                Log.i("pokedaisy", "$name: code didn't match")
             }
-            Log.i("pokedaisy", "instant text: code didn't match")
-        } else if (text != null) Log.i("pokedaisy", "instant text: ${text.writes.size} piece(s) patched")
+        }
+        val sites = tmSites
+        option("reusable TMs", reusableTms && sites.isNotEmpty()) {
+            sites.all { MgbaCore.pkRomPatch(it.at, it.expect, it.branch, com.pokedaisy.app.companion.data.ReusableTms.ALWAYS_SKIP) }
+        }
+        val text = textPatch
+        option("instant text", instantText && text != null) {
+            text!!.writes.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
+        }
+        val hm = hmPatch
+        option("no HMs needed", hmFree && hm != null) {
+            hm!!.writes.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
+        }
+        val exp = expShareFound
+        option("exp share full", expShareMode == com.pokedaisy.app.companion.data.ExpShare.Mode.FULL && exp != null) {
+            exp!!.full.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
+        }
+        val cap = levelCapFound
+        val capLevel = levelCapLevel
+        option("level cap $capLevel", cap != null && capLevel in 1..99) {
+            com.pokedaisy.app.companion.data.LevelCap.writes(cap!!, capLevel).all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }
+        }
     }
 
     /** PLAYER LOOK onto the ROM (emu thread): the last look's blocks out, this one's in (all or none), then the palettes. */

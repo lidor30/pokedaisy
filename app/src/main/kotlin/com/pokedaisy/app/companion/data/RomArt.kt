@@ -38,8 +38,8 @@ object RomArt {
 
     @Volatile private var running = false
 
-    /** Tells loaders new art landed in [dir] (see [RomRegionMap]). */
-    internal fun announce() {
+    /** Tells loaders new art landed in [dir] (see [RomRegionMap]); public for the app's own extractors (3DS games'). */
+    fun announce() {
         _updates.value++
     }
 

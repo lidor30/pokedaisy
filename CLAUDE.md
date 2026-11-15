@@ -81,7 +81,9 @@ The Gen 3 `NativeConfig`s are TOML in `gamedata/gen3/` (one file per game family
 every platform: `make gamedata` (`scripts/gen_gamedata.py`) writes the app's `NativeConfigsGen.kt` from them, and
 `make check` / CI fail while it's stale. **A new config or a changed address goes in the TOML, never in Kotlin**;
 a new field goes in `NativeConfig` *and* `gamedata/schema/gen3_config.toml` (the generator checks they agree).
-`gamedata/README.md` has the format. The language ports are there too (`gamedata/gen3/ports/`, written by
+`gamedata/README.md` has the format. AREA maps (a cave's / building's own map with its floors, `AreaMap.kt`) have a row per GBA ROM by CRC32 in
+`gamedata/gen3/area_maps.toml`, written by `scripts/gen_area_maps.py --scan <ROM folder>` (never by hand; the file ends
+with the ROMs left out and why) - rerun it after adding a ROM, then `make test-quick T='*AreaMapTest'` draws every row. The language ports are there too (`gamedata/gen3/ports/`, written by
 `port_retail.py`), with their dex / guide tables spelled out as sub-tables over a named Kotlin val
 (`[config.port_axpd0.pokedex]`, `base = 'POKEDEX_SAPPHIRE'`; `gamedata/schema/gen3_pokedex.toml` / `gen3_guide.toml`).
 Phase 2: the records the 3DS / Linux companion reads are in `gamedata/gen3/records/` (retail FireRed / LeafGreen /
@@ -324,6 +326,12 @@ New screens should reuse these rather than
 summary, battle INFO / SUGGESTIONS) use `SummaryFrame` (`MonDetailScreen.kt`): one white
 window split by `Separator`s over a row of square `PlatinumButton`s with Back bottom-right.
 
+**Companion skins** (`companion/ui/CompanionSkin.kt`, 2026-11-15; Pokemon X first, the DS and some GBA games next): a game's
+whole look for the companion, by its shared pieces - corners (`pixelCornersPath`: smooth instead of GBA-pixel steps), the font /
+its size / its shadow (`pixelFontFamily`, `gbaTextStyle`, `GbaText`), button faces (`drawTwoTone`: a gradient) and `OptionColors`'
+window / text colours (`SkinColors`). `CompanionSkins.forGame` picks one (`PIXEL` = the look above, every game's unless named),
+only while a game is open (`OptionColors.inGame`). A new skin: its `CompanionSkin` (colours sampled off the game's menus), a line in
+`forGame`, its bag palette, and a render of every tab; screens with the game's own art keep their per-game drawing.
 **SETTINGS' group tabs sit outside the card** (both screens, the user's call): `RailedWindow` leaves the window to the `GroupedRows` inside, which draws it round the list alone, the `TabRail` on the backdrop beside it.
 **Buttons are HeartGold's two-tone (2026-11-05, the user's call)**: every companion button is a face in two colours with two soft lines between them (`drawTwoTone`, GbaText.kt): `PlatinumButton` (a thick dark outline, a thin white ring, `fill` over `frame`) and, through `drawLayeredBox(twoTone = true)`, `OptionButton`, the tab chips, SETTINGS' group chips, the DEX's sections, MORE's tiles and the bag's PC and sort; the quick menu's tiles (`quickTileFace`) add a thick outline. The BATTLE tab takes HeartGold's layout by proportion (`ActionButtons`' `ds`: a DS pixel from the pane's width, so a tall pane leaves room rather than stretching the buttons), `BattlePlaceholder`'s four move places behind FIGHT, and its move cards (`hgMovePanel`); RUN stays whole, not cut by the screen's edge as in the game.
 **DARK MODE** (SETTINGS on either screen, SCREEN group; `Prefs.darkMode` OFF default / ON / AUTO = the device's uiMode;
@@ -895,6 +903,31 @@ CB2_ReturnToField, controls locked first, from the field only. Which Pokémon ge
 bytes put back (a held-item evolution's item would be spent otherwise). Records `TRADE_EVO_*` in gamedata (retail English FireRed
 rev 1, LeafGreen rev 0 / 1 - found in retail by the shifted `$DECOMPS` build's masked code - and Emerald); hacks / Kaizo / Legacy off.
 **INSTANT TEXT** (GitHub #111, GAMEPLAY on the companion, `Prefs.instantText` OFF, NEW tag; `InstantText.kt`): a game-option patch like REUSABLE TMS (`pkRomPatch` in 4-byte pieces, `EmulatorEngine.applyTmPatch` does both). RenderFont rewritten in its own 40 bytes (no free ROM): it goes on past RENDER_PRINT until a control code, textSpeed 0; Ruby / Sapphire: UpdateWindowText's delay turned into a `b` back to PrintNextChar. A delay of 0 (the game's own instant path) would lose everything after a page break. Found in the ROM's first 64 KB by code; gcc builds: N/A. TEXT SPEED stays: it's the emulator's speed, stops at what the device runs.
+**NO HMS NEEDED** (2026-11-14, GAMEPLAY on the companion, `Prefs.hmFree` OFF, NEW tag; `HmFree.kt`): the field moves with the badge
+alone, a game-option patch beside INSTANT TEXT's. Every field-move script runs `checkpartymove` after its badge check: ScrCmd_checkpartymove
+is rewritten in its own 124 bytes (`scripts/hm_free.s`, assembled with clang `--target=thumbv4t-none-eabi`; calls and literals filled per
+ROM) to answer the first Pokémon that isn't an egg when nobody knows the move (a knower still first; MOVE_SECRET_POWER keeps the game's
+rule), and PartyHasMonWithSurf's `beq` becomes a `nop` (the A press on water). Both found by agbcc's code, all or nothing, cross-checked
+(same GetMonData / MonKnowsMove / gPlayerParty, gSpecialVar_Result = 0x8004 + 0x10). `HmFree.active` makes FLY / FREE FLIGHT / FLASH's
+`flyer` / `flasher` fall back the same way. Played headless with `rompatch` (FireRed Cut / Surf, Emerald Rock Smash, Ruby by calls).
+**EXP SHARE** (2026-11-14, GAMEPLAY on the companion, `Prefs.expShare` OFF / SPLIT / FULL EXP, NEW tag; `ExpShare.kt`): Gen 3's getexp pays the
+Pokémon in gSentPokesToOpponent (nothing else reads it), the EXP divided by their count. SPLIT: the engine writes the party's non-egg slots there
+every frame (`ExpShare.mark`, mask from each sample; per frame because the battle's first turn resets it after the intro). FULL EXP: also the two
+`bl __divsi3` after `adds r1, r5` `nop`ed, a game-option patch with the others. Pauses RetroAchievements (`setExpShareActive`, like SHINY ODDS).
+**LEVEL CAP** (2026-11-14, GAMEPLAY on the companion, `Prefs.levelCap` OFF, NEW tag; `LevelCap.kt`): no Pokémon past the top level of
+the first boss NEXT BOSS has ahead (`LevelCap.next`: the guide's bosses and the ROM's trainer table, worked out on the activity's
+`level-cap` thread every 2 s at most). getexp's two `cmp r0, #100` (before the EXP message; before each one-level step of
+Task_GiveExpToMon, which hands the rest back) become `cmp r0, #cap` + `bcc` / `bcs`, a game-option patch re-applied as the cap moves.
+Both it and EXP SHARE take getexp from `ExpShare.getexp`, which wants its address in a command table the code loads: CFRU's hacks keep
+the old getexp but run their own (N/A there). N/A without a NEXT BOSS list (`LevelCap.hasBosses`). Doesn't pause achievements.
+**POKéMON CENTER anywhere** (2026-11-14; the summary's pink CENTER button + the QUICK MENU's HEAL, NEW tag `POKEMON_CENTER`; `PokemonCenter.kt`):
+HEAL THE PARTY / RELEARN A MOVE / FORGET A MOVE / NICKNAME, each the game's own special (HealPlayerParty, the Move Tutor's screen,
+MoveDeleterForgetMove, ChangePokemonNickname) on the summary's Pokémon (gSpecialVar_0x8004), run as a short script at 0x0203FFD8 like PC
+anywhere's; found in gSpecials by masked code (HealPlayerParty = entry 0, the relearner three after the deleter), so every language. The
+games' rules kept (eggs, the last move, IsMonOTIDNotPlayers for traded ones, the party's last Surf unless NO HMS NEEDED). RELEARN opens in
+two steps like the TM screen (`centerRelearnStart` / `Finish`: fade, then cleanup + gFieldCallback + SetMainCallback2) and, on FireRed,
+LoadStdWindowFrameGfx first: the relearner never loads the message box palette (15), which a loaded save's recap leaves dark (black word
+boxes). Offered only when `relearnableMoves` (DexDetails.levelUp) has some.
 **PLAYER LOOK** (2026-10-22, the companion's MAKEOVER group - first, a blue-framed `featuredGroupTitle`, only in a game it works in; per ROM: `Prefs.playerLookFor`, NEW tag; `PlayerLook.kt`,
 `PlayerLookRunner.kt`, docs/DEVELOPMENT.md's "PLAYER LOOK"): play retail FireRed / LeafGreen / Ruby / Sapphire / Emerald (and Kaizo, Legacy, Imperium, Ultra
 Violet: `PlayerLook.HACKS`) as another game's hero, picked from tiles of the heroes walking (`PlayerLookPicker`),
@@ -913,6 +946,10 @@ trainer pic) wears the look's `counterpart`, built in the same patch (`build(riv
 needs Emerald's frame routines swapped for `scripts/text_look_dialogue.s` (assembled bytes in `TextLook.DIALOGUE_CODE`).
 FOLLOWER (same group): the party lead walks behind the player as one more hardware sprite put in at line 0 and taken
 out after line 159 (pk_wide.c `followBegin` / `followEnd`: OBJ tiles 1008-1023, a free OAM entry and palette slot).
+SPRITE PACK (library > TOOLS, NEW tag; `SpritePack.kt`, `SpritePackFlow.kt`, docs/DEVELOPMENT.md's "Sprite packs"): those
+looks' graphics loaded from one zip instead of the other games' ROMs, made only by `make sprite-pack` from ROMs the maker has
+(never in the repo, never linked); a file goes in only where its size and CRC32 are a known graphic's (`LookBlob`, `TextBlob`,
+`MonArtSigsGen.kt` from `make sprite-pack-sigs`).
 DAY AND NIGHT (`DayNight.kt`, same group, any GBA game): the renderer's BG palettes 0-12 + OBJ tinted at line 0 through
 `writePalette` (pk_wide.c `tintPalettes`, palette RAM untouched; text windows 13-15 kept), eased by the engine on the field.
 **QoL batch 2**: PC anywhere on every language + FireRed rev 0 + Ruby / Sapphire (`port_field_items.py` maps PcFns, each
@@ -2322,7 +2359,12 @@ back). A site-only fix therefore waits for the next release (or a manual run of 
 The site's game matrix is README's Supported games table; a row of all "—" means detected but no companion yet,
 so the export lists it under `inProgress` - off the matrix, and "in progress" in the ROM check (none since R.O.W.E.
 got its companion, 2026-10-09).
-The site's demos and art never use real Pokémon / move / item names or the games' art (the user's rule).
+The site's drawn demos and art never use real Pokémon / move / item names or the games' art (the user's rule). Real
+screenshots and clips of the app on real games are allowed on the homepage, the game pages and the README (2026-11-15,
+the user's call: `website/public/media/`, taken on the Thor, every picture noted as the real app with the owners named; no title
+screens, box art or ROM file names; Ghost Grey never shown). The manual stays invented. The homepage's DOWNLOAD cards
+(`src/lib/downloads.js`, `Downloads.astro`) list each platform's release files by name: a new file name in docs/RELEASING.md
+goes there and in README's "Download and install" too.
 **Website languages** (2026-11-07, website/README.md's "Languages"): the app's nine (EN / JA / KO / FR / DE / IT / ES / pt-BR / pt-PT),
 English at the root, the rest under `/<code>/` (`src/views/` drawn by `src/pages/` and `src/pages/[lang]/`); the manual and
 release notes stay English, but for pages translated in all eight (`docs/manual/translations/<code>/`, `/<code>/docs/<page>/`: the 3DS and

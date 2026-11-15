@@ -1228,12 +1228,23 @@ private fun HudMiniMap(
     val cursor = labelStyle.cursorColor
     val small = rememberGbaTextMetrics(0.75f)
     val name = snapshot.location.mapSecName
-    if ((model == null || bitmap == null) && name.isEmpty()) return
+    // In a cave / building with its own map (AreaMapView.kt), that map unless the player chose the region's.
+    val area = rememberPlayerArea(snapshot)?.takeIf { AreaMapChoice.showsArea(it) }
+    if ((model == null || bitmap == null) && area == null && name.isEmpty()) return
     Column(
         modifier.hudPanel(u).soundClickable(onClick = onClick).padding(u * 4 + hudEdge(u)).padding(bottom = u),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (model != null && bitmap != null) {
+        if (area != null) {
+            Box {
+                HudAreaMap(snapshot, mapW, mapH, u)
+                Box(
+                    Modifier.align(Alignment.BottomEnd).padding(u * 2).size(u * 11).background(Color(0x99000000), PixelRoundedShape(u * 2)),
+                    contentAlignment = Alignment.Center,
+                ) { PixelIcon(PixelIcons.expand, Color.White, Modifier.size(u * 7)) }
+            }
+            Spacer(Modifier.height(u * 3))
+        } else if (model != null && bitmap != null) {
             val tile = (if (black) snapshot.regionMapTile else null)
                 ?: PlayerMapTile.of(model, snapshot.regionMapSectionId, snapshot.x, snapshot.y, snapshot.mapWidth, snapshot.mapHeight, snapshot.mapType)
             val point = if (black && tile != null) model.pick(0, tile.first, tile.second)?.mapsec?.let { model.points[it] } else null
@@ -1296,7 +1307,9 @@ private fun HudMiniMap(
         }
         if (name.isNotEmpty()) {
             Box(Modifier.width(u * mapW)) {
-                GbaText(gameCase(name).uppercase().replace('É', 'é'), ink.text, ink.shadow, small, maxLines = nameLines)
+                val floor = area?.floors?.firstOrNull { it.id.group == snapshot.mapGroup && it.id.num == snapshot.mapNum }?.takeIf { it.floorNum != null }?.label
+                val text = gameCase(name).uppercase().replace('É', 'é') + (floor?.let { "  $it" } ?: "")
+                GbaText(text, ink.text, ink.shadow, small, maxLines = nameLines)
             }
         }
     }
@@ -1372,7 +1385,7 @@ private fun HudMapPanel(snapshot: SnapshotView, m: GbaTextMetrics, fly: FlyActio
 
 /** A party member's summary (the PARTY tab's), over the game; up / down step through the party. */
 @Composable
-private fun HudSummaryPanel(
+internal fun HudSummaryPanel(
     snapshot: SnapshotView, index: Int, onIndex: (Int) -> Unit, m: GbaTextMetrics, itemUse: ItemUse?, onClose: () -> Unit,
 ) {
     val u = m.u
