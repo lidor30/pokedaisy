@@ -14,8 +14,11 @@ object N3dsCart {
     /** Pokemon X (USA, every language on the cart). */
     const val POKEMON_X_USA = 0x0004000000055D00L
 
-    /** The carts the app plays so far: Pokemon X first (docs/3DS_GAMES_PLAN.md). */
-    val SUPPORTED = setOf(POKEMON_X_USA)
+    /** Pokemon Y (USA): X's code and memory, its own version's Pokemon (2026-11-15: every address X's, headless). */
+    const val POKEMON_Y_USA = 0x0004000000055E00L
+
+    /** The carts the app plays so far: Pokemon X first, Y with it (docs/3DS_GAMES_PLAN.md). */
+    val SUPPORTED = setOf(POKEMON_X_USA, POKEMON_Y_USA)
 
     class Header(val titleId: Long, val decrypted: Boolean)
 

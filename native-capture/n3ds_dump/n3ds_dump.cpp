@@ -154,6 +154,7 @@ struct SaveFormat {
 };
 constexpr SaveFormat SAVE_FORMATS[] = {
     {0x0004000000055D00, 0x40000, 1, 1, 1}, // Pokemon X (USA), seen when it formats a new save
+    {0x0004000000055E00, 0x40000, 1, 1, 1}, // Pokemon Y (USA): X's save format
 };
 
 u32 number(const std::string& s) {

@@ -303,6 +303,17 @@ were checked through this path (2026-11-15).
   - bag pockets: items 0x08C67554, key items 0x08C67B94, TMs 0x08C67D14, medicine 0x08C67EBC, berries 0x08C67FBC
     (u16 item, u16 count each).
 
+## Pokemon Y (2026-11-15)
+
+Y (USA, title 0004000000055E00, `CTR-P-EK2A`) plays as X does: `N3dsCart.POKEMON_Y_USA`, `GameKind.POKEMON_Y` (`isXy` for
+everything X has: tabs, look, bag, battle corner, skin), X's `Gen6Reader.Config`. Checked headless with n3ds_dump on one save
+in both carts: every field address reads the same (party, MyStatus, bag, zone, the static module's chain, the field hold
+flag, the field object's root and its X menu pointer and byte, the camera chain to the same setup), and the battle, party,
+bag, save and X menu modules (`.cro`) are byte for byte X's (so the battle controller's place is too). DllField is the same
+size with its code laid out differently past ~0x5F000: nothing of ours reads its code. The cart readers read Y's own
+RomFS (same layout): text, zones, Town Map, types and icons equal X's, the wild Pokemon are Y's (Route 2: Caterpie where X
+has Weedle; `Gen6Test.pokemonYReadsLikeX`). Its save is X's format. Not yet played on a device.
+
 ## Open
 
 - Shader cache and pipeline compiles on first play (stutter): Azahar's disk cache under our files dir.

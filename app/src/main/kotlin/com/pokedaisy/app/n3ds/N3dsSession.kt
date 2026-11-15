@@ -656,7 +656,8 @@ class N3dsSession(
                     }
                     val view = SnapshotView(
                         connected = true,
-                        game = com.pokedaisy.app.companion.data.GameKind.POKEMON_X,
+                        game = if (titleId == N3dsCart.POKEMON_Y_USA) com.pokedaisy.app.companion.data.GameKind.POKEMON_Y
+                            else com.pokedaisy.app.companion.data.GameKind.POKEMON_X,
                         frameCounter = N3dsNative.frames(),
                         party = N3dsCompanionData.party(sample, text, moveData, personalData),
                         items = N3dsCompanionData.bag(sample, text),

@@ -104,7 +104,7 @@ object CompanionSkins {
 
     /** The skin a game's companion wears. */
     fun forGame(game: GameKind?): CompanionSkin = when (game) {
-        GameKind.POKEMON_X -> POKEMON_XY
+        GameKind.POKEMON_X, GameKind.POKEMON_Y -> POKEMON_XY
         else -> PIXEL
     }
 

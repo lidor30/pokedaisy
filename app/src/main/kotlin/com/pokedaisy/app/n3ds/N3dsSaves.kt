@@ -29,6 +29,7 @@ object N3dsSaves {
     /** Formats seen from each game making its own new save. */
     private val FORMATS = mapOf(
         N3dsCart.POKEMON_X_USA to Format(0x40000, 1, 1, true),
+        N3dsCart.POKEMON_Y_USA to Format(0x40000, 1, 1, true),
     )
 
     /** Azahar's user folder: its SD card, NAND, config and shader caches. On the shared storage, so a save can be put

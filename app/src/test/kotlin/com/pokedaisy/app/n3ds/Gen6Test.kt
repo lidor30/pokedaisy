@@ -182,6 +182,31 @@ class Gen6Test {
         }
     }
 
+    /** Pokemon Y's cart through the same readers: its RomFS is X's layout, so everything reads, and what isn't a version
+     * difference (text, zones, the Town Map, types, icons) reads the same as X's. Skipped without both carts. */
+    @Test fun pokemonYReadsLikeX() {
+        val dir = File(File(RETAIL_ROM_DIR).parentFile, "3ds")
+        val x = File(dir, "Pokemon X (USA) (En,Ja,Fr,De,Es,It,Ko).3ds")
+        val y = File(dir, "Pokemon Y (USA) (En,Ja,Fr,De,Es,It,Ko).3ds")
+        assumeTrue(x.isFile && y.isFile)
+        assertEquals(N3dsCart.POKEMON_Y_USA, N3dsCart.header(y)!!.titleId)
+        assertTrue(N3dsCart.supported(y))
+        val tx = Gen6Text.load(x, 2)!!
+        val ty = Gen6Text.load(y, 2)!!
+        assertEquals(tx.species, ty.species)
+        assertEquals(tx.moves, ty.moves)
+        assertEquals(tx.items, ty.items)
+        assertEquals(Gen6Zones.load(x)!!.toList(), Gen6Zones.load(y)!!.toList())
+        assertEquals(Gen6TownMap.spots(x).mapValues { it.value.x to it.value.y }, Gen6TownMap.spots(y).mapValues { it.value.x to it.value.y })
+        assertEquals(Gen6Personal.load(x)!!.map { it.toList() }, Gen6Personal.load(y)!!.map { it.toList() })
+        val wild = Gen6Wild.load(y)!!
+        assertEquals(Gen6Wild.load(x)!!.size, wild.size)
+        // Its own version's Pokemon: Route 2 has Caterpie (10) where X has Weedle (13).
+        assertEquals(setOf(659, 263, 661, 16, 664, 10), wild[259][0].slots.map { it.species }.toSet())
+        val icons = RomFs(y).use { it.read("a/0/9/3") }!!.let { Gen6Text.garcFiles(it) }
+        assertEquals(945, icons.size)
+    }
+
     /** The field menu's bytes ([Gen6Reader.Config.fieldMenuRoot]) as the RP6 read them: the menu's pointer and the byte at +0x24. */
     private fun fieldMenu(pointer: Int, flag: Int): ByteArray =
         ByteBuffer.allocate(Gen6Reader.FIELD_MENU_BYTES).order(ByteOrder.LITTLE_ENDIAN).apply {
