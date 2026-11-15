@@ -91,6 +91,23 @@ object Gen1Art {
         playerSprite = 0x05 to 0x4571,         // RedSprite: 16x16 frames of 4 tiles (TL, TR, BL, BR)
         playerPath = YELLOW_PLAYER,
     )
+    val YELLOW_RELOAD = Gen1ArtTables(
+        sha1 = TelemetrySampler.YELLOW_RELOAD_SHA1,
+        font = YELLOW.font,
+        fontPath = YELLOW.fontPath,
+        iconPointers = YELLOW.iconPointers,
+        iconPointerCount = YELLOW.iconPointerCount,
+        monPartyData = YELLOW.monPartyData,
+        dexCount = YELLOW.dexCount,
+        iconsDir = YELLOW.iconsDir,
+        iconColors = YELLOW.iconColors,
+        townMap = YELLOW.townMap,
+        townMapTiles = YELLOW.townMapTiles,
+        townMapPath = YELLOW.townMapPath,
+        townMapColors = YELLOW.townMapColors,
+        playerSprite = YELLOW.playerSprite,
+        playerPath = YELLOW.playerPath,
+    )
 
     /**
      * The German, French, Italian and Spanish Yellows: English's art, some of it moved (scripts/port_gen1.py,
@@ -197,7 +214,7 @@ object Gen1Art {
         iconSheet2 = 0x0E to 0x64BF,
     )
 
-    private val GAMES = listOf(YELLOW, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, RED_RELOAD, BLUE, PURE_RED, PURE_BLUE, YELLOW_LEGACY)
+    private val GAMES = listOf(YELLOW, YELLOW_RELOAD, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, RED_RELOAD, BLUE, PURE_RED, PURE_BLUE, YELLOW_LEGACY)
 
     private fun off(bank: Int, addr: Int) = if (bank == 0) addr else bank * 0x4000 + (addr - 0x4000)
 

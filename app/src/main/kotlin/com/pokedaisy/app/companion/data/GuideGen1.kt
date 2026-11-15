@@ -60,11 +60,11 @@ private val YELLOW_LEGACY_GUIDE_RAM = Gen1GuideRam(
 
 /** [cfg]'s guide RAM: Yellow in all five languages, Red, Blue, Yellow Legacy; null for PureRGB (it moved things). */
 fun gen1GuideRam(cfg: Gen1Config): Gen1GuideRam? = when {
-    cfg === GEN1_YELLOW -> YELLOW_GUIDE_RAM
+    cfg === GEN1_YELLOW || cfg === GEN1_YELLOW_RELOAD -> YELLOW_GUIDE_RAM
     cfg === GEN1_YELLOW_LEGACY -> YELLOW_LEGACY_GUIDE_RAM
     cfg === GEN1_YELLOW_DE || cfg === GEN1_YELLOW_FR || cfg === GEN1_YELLOW_IT || cfg === GEN1_YELLOW_ES ->
         YELLOW_GUIDE_RAM.shifted((cfg.badges - GEN1_YELLOW.badges).toInt())
-    cfg === GEN1_RED -> RED_GUIDE_RAM
+    cfg === GEN1_RED || cfg === GEN1_RED_RELOAD -> RED_GUIDE_RAM
     cfg === GEN1_BLUE -> BLUE_GUIDE_RAM
     else -> null
 }
