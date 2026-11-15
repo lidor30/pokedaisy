@@ -38,11 +38,9 @@ class GameDataMigrationTest {
 
     @Test
     fun `every generated config equals the hand-written one`() {
-        // AREA maps' tables were born in gamedata (no hand-written config has them).
-        fun gen(name: String) = generated.getValue(name).copy(areaMap = null)
-        val differ = legacy.keys.sorted().filter { legacy[it] != gen(it) }.map { name ->
+        val differ = legacy.keys.sorted().filter { legacy[it] != generated[it] }.map { name ->
             val old = legacy.getValue(name).toString().removeSurrounding("NativeConfig(", ")").split(", ")
-            val new = gen(name).toString().removeSurrounding("NativeConfig(", ")").split(", ")
+            val new = generated.getValue(name).toString().removeSurrounding("NativeConfig(", ")").split(", ")
             "$name: ${(old - new.toSet()).joinToString()} -> ${(new - old.toSet()).joinToString()}"
         }
         assertTrue("generated configs that differ:\n" + differ.joinToString("\n"), differ.isEmpty())

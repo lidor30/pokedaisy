@@ -7,13 +7,15 @@ import kotlinx.atomicfu.locks.synchronized
 /**
  * AREA maps: the map the player is in (a cave, a building) drawn whole from the ROM, with the area's other floors - the
  * maps joined to it by warps that share its map section and aren't outdoors (Mt. Moon's 1F / B1F / B2F, Silph Co.'s
- * eleven floors, a two-storey house). Nothing is bundled and nothing game-specific is coded here: a game needs only an
- * [AreaMapTables] record (gamedata/gen3/records/, schema gen3_area_map.toml), so the 3DS / Linux companion can draw the
- * same maps from the same data.
+ * eleven floors, a two-storey house). Nothing is bundled and nothing game-specific is coded here: a ROM needs only its
+ * [AreaMapTables] row (gamedata/gen3/area_maps.toml by CRC32, written by scripts/gen_area_maps.py --scan), so the 3DS /
+ * Linux companion can draw the same maps from the same data. Tiles are raw, LZ77 or smol (pokeemerald-expansion's); a map
+ * grid raw or LZ77 (Monomyth's indoor maps).
  *
  * Every Gen 3 game keeps a map the same way: gMapGroups -> MapHeader (+0 layout, +4 events, +0x14 section, +0x17 type),
  * MapLayout (+0 width, +4 height, +0xC grid of u16 metatile ids, +0x10 / +0x14 primary / secondary tileset), Tileset (+0
- * compressed, +4 tiles, +8 palettes, +0xC metatiles: 8 tile entries each, bottom layer then top), MapEvents (+1 warp count,
+ * compressed, +4 tiles, +8 palettes, +0xC metatiles: 8 tile entries each, bottom layer then top; 12 in a three-layer
+ * engine, Lazarus's), MapEvents (+1 warp count,
  * +8 warps of {s16 x, s16 y, u8 elevation, u8 warpId, u8 mapNum, u8 mapGroup}). The engines differ only in how many
  * tiles / metatiles / palettes the primary tileset holds and whether the header carries a floor number.
  *
@@ -40,11 +42,14 @@ object AreaMap {
         val mapsec: Int, val type: Int, val floorNum: Int?, val warps: List<MapId>,
     )
 
-    /** True when [t]'s map table reads as one in this ROM: every group's list and its first map in ROM with a sane
-     * layout. A config shared with a hack that moved its maps then shows no AREA map rather than garbage. */
+    /** True when [t]'s map table reads as one in this ROM: two in three of its groups start with a map that reads with a
+     * sane layout (a group can be empty - Rogue's - or hold only deleted maps - 8 of Amethyst's 43). Rows go by the ROM's
+     * CRC, so this only guards against a wrong row: no AREA map rather than garbage. */
     fun matches(t: AreaMapTables, read: (Long, Int) -> ByteArray): Boolean = runCatching {
-        if (t.mapGroupSizes.isEmpty()) return false
-        t.mapGroupSizes.indices.all { g -> info(t, MapId(g, 0), read) != null }
+        val groups = t.mapGroupSizes.indices.filter { t.mapGroupSizes[it] > 0 }
+        if (groups.isEmpty()) return false
+        // A group's first readable map among its first four (Amethyst's groups often start with deleted ones).
+        groups.count { g -> (0 until minOf(4, t.mapGroupSizes[g])).any { info(t, MapId(g, it), read) != null } } * 3 >= groups.size * 2
     }.getOrDefault(false)
 
     internal fun header(t: AreaMapTables, id: MapId, read: (Long, Int) -> ByteArray): Long? {
@@ -78,7 +83,9 @@ object AreaMap {
             }
         }
         val floor = if (t.floorNumOff >= 0) hb[t.floorNumOff].toInt().takeIf { it != 0 } else null
-        MapInfo(id, h, layout, w, hh, hb[0x14].toInt() and 0xFF, hb[0x17].toInt() and 0xFF, floor, warps)
+        // SoulGold's map section is a u16, which moves the map type a byte on.
+        val mapsec = if (t.mapSecWide) (hb[0x14].toInt() and 0xFF) or ((hb[0x15].toInt() and 0xFF) shl 8) else hb[0x14].toInt() and 0xFF
+        MapInfo(id, h, layout, w, hh, mapsec, hb[if (t.mapSecWide) 0x18 else 0x17].toInt() and 0xFF, floor, warps)
     }.getOrNull()
 
     /** The area around [here]; null outdoors (a town, a route, the sea) or where the map can't be read. */
@@ -148,33 +155,37 @@ object AreaMap {
      */
     fun render(t: AreaMapTables, id: MapId, read: (Long, Int) -> ByteArray): RomArt.Image? = runCatching {
         val m = info(t, id, read) ?: return null
-        val lb = read(m.layout, 0x18)
-        val primary = tileset(t, u32(lb, 0x10), primary = true, read) ?: return null
-        val secondary = tileset(t, u32(lb, 0x14), primary = false, read) ?: return null
+        val lb = read(m.layout, 0x1C)
+        // Heart and Soul: a layout's own numbers by its kind (+0x18).
+        val n = t.numbersFor(lb[0x18].toInt())
+        val primary = tileset(t, n, u32(lb, 0x10), primary = true, read) ?: return null
+        val secondary = tileset(t, n, u32(lb, 0x14), primary = false, read) ?: return null
         // Palettes 0 until primaryPalettes from the primary's list, the rest (to 13) from the secondary's, as the game loads them.
         val pal = IntArray(16 * 16)
         for (p in 0 until 13) {
-            val src = if (p < t.primaryPalettes) primary.palettes else secondary.palettes
+            val src = if (p < n.palettes) primary.palettes else secondary.palettes
             for (c in 0 until 16) pal[p * 16 + c] = bgr555((src[p * 32 + 2 * c].toInt() and 0xFF) or ((src[p * 32 + 2 * c + 1].toInt() and 0xFF) shl 8))
         }
         val backdrop = pal[0]
         val w = m.width
         val h = m.height
-        val grid = read(u32(lb, 0xC), w * h * 2)
+        val grid = grid(u32(lb, 0xC), w, h, read) ?: return null
         val img = RomArt.Image(w * 16, h * 16)
         val cache = HashMap<Int, IntArray?>()
         fun tileRow(tile: Int, y: Int): Int? {
-            val (src, i) = if (tile < t.primaryTiles) primary.tiles to tile else secondary.tiles to tile - t.primaryTiles
+            val (src, i) = if (tile < n.tiles) primary.tiles to tile else secondary.tiles to tile - n.tiles
             val o = i * 32 + y * 4
             if (o < 0 || o + 4 > src.size) return null
             return (src[o].toInt() and 0xFF) or ((src[o + 1].toInt() and 0xFF) shl 8) or ((src[o + 2].toInt() and 0xFF) shl 16) or ((src[o + 3].toInt() and 0xFF) shl 24)
         }
         fun metatile(mid: Int): IntArray? = cache.getOrPut(mid) {
-            val (src, i) = if (mid < t.primaryMetatiles) primary.metatiles to mid else secondary.metatiles to mid - t.primaryMetatiles
-            if (i * 16 + 16 > src.size) return@getOrPut null
+            val (src, i) = if (mid < n.metatiles) primary.metatiles to mid else secondary.metatiles to mid - n.metatiles
+            val size = t.metatileSize
+            if (i * size + size > src.size) return@getOrPut null
             val px = IntArray(256) { backdrop }
-            for (k in 0 until 8) {
-                val e = (src[i * 16 + 2 * k].toInt() and 0xFF) or ((src[i * 16 + 2 * k + 1].toInt() and 0xFF) shl 8)
+            // Each layer's four tiles, bottom layer first (two layers, or three).
+            for (k in 0 until size / 2) {
+                val e = (src[i * size + 2 * k].toInt() and 0xFF) or ((src[i * size + 2 * k + 1].toInt() and 0xFF) shl 8)
                 val tile = e and 0x3FF
                 val hf = e and 0x400 != 0
                 val vf = e and 0x800 != 0
@@ -204,7 +215,18 @@ object AreaMap {
 
     private class Tileset(val tiles: ByteArray, val palettes: ByteArray, val metatiles: ByteArray)
 
-    private fun tileset(t: AreaMapTables, addr: Long, primary: Boolean, read: (Long, Int) -> ByteArray): Tileset? {
+    /** A layout's grid, [w] x [h] u16s: raw, or LZ77 when its header says so with exactly that size (Monomyth packs its
+     * indoor maps' grids; a raw grid can't start with that header: its first cell would need these very bytes). */
+    private fun grid(at: Long, w: Int, h: Int, read: (Long, Int) -> ByteArray): ByteArray? {
+        if (!inRom(at)) return null
+        val size = w * h * 2
+        val head = read(at, 4)
+        val packed = head[0].toInt() == 0x10 &&
+            ((head[1].toInt() and 0xFF) or ((head[2].toInt() and 0xFF) shl 8) or ((head[3].toInt() and 0xFF) shl 16)) == size
+        return if (packed) Gfx.lz77(read(at, 4 + size + size / 8 + 8)).takeIf { it.size == size } else read(at, size)
+    }
+
+    private fun tileset(t: AreaMapTables, n: AreaMapTables.Numbers, addr: Long, primary: Boolean, read: (Long, Int) -> ByteArray): Tileset? {
         if (!inRom(addr)) return null
         val b = read(addr, 0x10)
         val compressed = b[0].toInt() != 0
@@ -212,17 +234,24 @@ object AreaMap {
         val palsAt = u32(b, 8)
         val metasAt = u32(b, 0xC)
         if (!inRom(tilesAt) || !inRom(palsAt) || !inRom(metasAt)) return null
-        val tileCount = if (primary) t.primaryTiles else TILES_TOTAL - t.primaryTiles
+        val tileCount = if (primary) n.tiles else TILES_TOTAL - n.tiles
         val tiles = if (compressed) {
-            val head = read(tilesAt, 4)
-            if (head[0].toInt() != 0x10) return null
-            val size = (head[1].toInt() and 0xFF) or ((head[2].toInt() and 0xFF) shl 8) or ((head[3].toInt() and 0xFF) shl 16)
-            if (size !in 32..TILES_TOTAL * 32) return null
-            // Worst case: a flag byte per 8 literals.
-            Gfx.lz77(read(tilesAt, 4 + size + size / 8 + 8))
+            val head = read(tilesAt, 8)
+            if (head[0].toInt() == 0x10) {
+                val size = (head[1].toInt() and 0xFF) or ((head[2].toInt() and 0xFF) shl 8) or ((head[3].toInt() and 0xFF) shl 16)
+                if (size !in 32..TILES_TOTAL * 32) return null
+                // Worst case: a flag byte per 8 literals.
+                Gfx.lz77(read(tilesAt, 4 + size + size / 8 + 8))
+            } else if (Smol.isSmol(head)) {
+                // pokeemerald-expansion's smol (SoulGold, the newer hacks): its output is imageSize words of 4 bytes; the
+                // stream is never longer than that plus its tables.
+                val size = ((u32(head, 0) shr 4) and 0x3FFF).toInt() * 4
+                if (size !in 32..TILES_TOTAL * 32) return null
+                Smol.decompress(read(tilesAt, size + 256))
+            } else return null
         } else read(tilesAt, tileCount * 32)
-        val metaCount = if (primary) t.primaryMetatiles else METATILES_TOTAL - t.primaryMetatiles
-        return Tileset(tiles, read(palsAt, 16 * 32), read(metasAt, metaCount * 16))
+        val metaCount = if (primary) n.metatiles else maxOf(METATILES_TOTAL, t.metatileMask + 1) - n.metatiles
+        return Tileset(tiles, read(palsAt, 16 * 32), read(metasAt, metaCount * t.metatileSize))
     }
 
     private fun bgr555(c: Int): Int {
@@ -237,8 +266,9 @@ object AreaMap {
         (b[o].toLong() and 0xFF) or ((b[o + 1].toLong() and 0xFF) shl 8) or ((b[o + 2].toLong() and 0xFF) shl 16) or ((b[o + 3].toLong() and 0xFF) shl 24)
     private fun u32(read: (Long, Int) -> ByteArray, a: Long) = u32(read(a, 4), 0)
 
-    /** MapHeader.mapType: town, city, route, underwater, ocean route - the region map's places. */
-    private val OUTDOOR = setOf(1, 2, 3, 5, 6)
+    /** MapHeader.mapType: town, city, route, underwater, ocean route - the region map's places; and none (0), which the
+     * expansion hacks give some of theirs (Wishes of Tomorrow's towns). */
+    private val OUTDOOR = setOf(0, 1, 2, 3, 5, 6)
     private const val DYNAMIC = 0x7F
     private const val ROOF = 127
     private const val MAX_SIDE = 512
@@ -251,9 +281,10 @@ object AreaMap {
 }
 
 /**
- * What AREA maps need of a game (gamedata/schema/gen3_area_map.toml; records in gamedata/gen3/records/): gMapGroups and its
- * groups' sizes, the primary tileset's tiles / metatiles / palettes (FireRed's engine 640 / 640 / 7, Emerald's 512 / 512 /
- * 6) and where MapHeader keeps the floor number (FireRed's engine +0x1A; Emerald has none: -1).
+ * What AREA maps need of a ROM (gamedata/gen3/area_maps.toml, by CRC32: [AREA_MAP_TABLES]): gMapGroups and its groups'
+ * sizes, the primary tileset's tiles / metatiles / palettes (FireRed's engine 640 / 640 / 7, Emerald's 512 / 512 / 6;
+ * hacks differ: R.O.W.E. 512 / 2048 / 6) and where MapHeader keeps the floor number (FireRed's engine +0x1A; Emerald has
+ * none: -1).
  */
 data class AreaMapTables(
     val mapGroups: Long,
@@ -264,14 +295,30 @@ data class AreaMapTables(
     val primaryMetatiles: Int,
     val primaryPalettes: Int,
     val floorNumOff: Int = -1,
-    /** The map grid's metatile id bits, also its undefined square (0x3FF everywhere but SoulGold's 0x7FF). */
+    /** A metatile's bytes: 16 (two layers), 24 (three: Lazarus). */
+    val metatileSize: Int = 16,
+    /** The map grid's metatile id bits, also its undefined square (0x3FF; R.O.W.E. 0xFFF, SoulGold 0x7FF). */
     val metatileMask: Int = 0x3FF,
-)
+    /** MapHeader's map section is a u16 at +0x14 and its map type at +0x18 (SoulGold), not u8s at +0x14 / +0x17. */
+    val mapSecWide: Boolean = false,
+    /** The numbers for a layout whose byte +0x18 isn't 0 (Heart and Soul's FireRed-style layouts among its Emerald ones);
+     * null = every layout uses the ones above. */
+    val alt: Numbers? = null,
+) {
+    /** Where secondary tiles and metatiles start, and the palettes the primary loads. */
+    data class Numbers(val tiles: Int, val metatiles: Int, val palettes: Int)
 
-/** The running game's AREA map tables: its config's, checked against the ROM ([AreaMap.matches]); null = none. English
- * Unbound runs without a config of its own set (the Poller reads it through NATIVE_UNBOUND_WITH_DEX). */
-private fun activeAreaMapTables(): AreaMapTables? =
-    activeNativeConfig?.areaMap ?: if (activeGame == GameKind.UNBOUND) NATIVE_UNBOUND_WITH_DEX.areaMap else null
+    /** The numbers for a layout whose byte +0x18 is [kind]. */
+    fun numbersFor(kind: Int): Numbers =
+        if (alt != null && kind != 0) alt else Numbers(primaryTiles, primaryMetatiles, primaryPalettes)
+}
+
+/** The running ROM's CRC32, as the activity looks EXPAND up by (a randomized retail cart: retail's), 0 = none. Set by the
+ * activity when a game loads; picks the [AREA_MAP_TABLES] row. */
+@Volatile var activeAreaMapCrc: Long = 0
+
+/** The running ROM's AREA map tables ([AREA_MAP_TABLES]); null = none. */
+private fun activeAreaMapTables(): AreaMapTables? = AREA_MAP_TABLES[activeAreaMapCrc]
 
 /**
  * The AREA maps of the running ROM, read through [PokedexSource.reader] (the bus) and kept for the process: areas and

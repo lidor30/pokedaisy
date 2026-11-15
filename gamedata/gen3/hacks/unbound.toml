@@ -40,7 +40,6 @@ moveCursor = 0x02023FFC
 # NATIVE_UNBOUND itself, which the other CFRU configs reuse as NATIVE_FIRERED_REV0.
 [config.unbound_with_dex]
 base = 'unbound'
-areaMap = 'AREA_MAP_UNBOUND'
 # CFRU repointed gItems (FireRed 1.0's literal pools load it from here).
 itemDescs = { preset = 'vanilla', base = 0x08876200 }
 pokedex = 'POKEDEX_UNBOUND'

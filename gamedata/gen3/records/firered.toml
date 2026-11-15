@@ -821,28 +821,3 @@ healLocationCount = 20
 noFly = [0x030B]
 codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x1E5B3B09, 0x11B905BA, 0x20389A3E]
 drawView = 0x0805A698       # DrawWholeMapView
-
-# AREA maps (AreaMap.kt): FireRed's engine - 640 tiles / 640 metatiles / 7 palettes in a primary tileset, the floor
-# number at MapHeader +0x1A (set on Silph Co., the Rocket Hideout, the department store). gMapGroups and its sizes are
-# FLIGHT's (the same table).
-[record.AREA_MAP_FIRERED_REV1]
-schema = 'gen3_area_map'
-mapGroups = 0x08352718
-mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
-primaryTiles = 640
-primaryMetatiles = 640
-primaryPalettes = 7
-floorNumOff = 0x1A
-
-[record.AREA_MAP_FIRERED_REV0]
-schema = 'gen3_area_map'
-base = 'AREA_MAP_FIRERED_REV1'
-mapGroups = 0x083526A8
-
-# Unbound (CFRU on FireRed 1.0): FireRed's engine, its own map table, group pointers XORed. It numbers most floors.
-[record.AREA_MAP_UNBOUND]
-schema = 'gen3_area_map'
-base = 'AREA_MAP_FIRERED_REV1'
-mapGroups = 0x08B70498
-mapGroupsXor = 0x00B749DE
-mapGroupSizes = [6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 1, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13]

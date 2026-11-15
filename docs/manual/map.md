@@ -20,7 +20,7 @@ The cursor pulses between two sizes like the game's. To keep it still, turn off 
 
 ## Caves and buildings: the AREA map
 
-In FireRed, Emerald and Unbound, walking into a cave or a building that's bigger than the screen, or that has more than one floor, switches the `MAP` tab to that place's own map: the whole floor you're on, drawn from the game itself, with your head where you stand. The place's name and the floor sit in the bar at the top.
+In the GBA games (FireRed, LeafGreen, Emerald, Ruby, Sapphire in every language, and most hacks), walking into a cave or a building that's bigger than the screen, or that has more than one floor, switches the `MAP` tab to that place's own map: the whole floor you're on, drawn from the game itself, with your head where you stand. The place's name and the floor sit in the bar at the top.
 
 - A row of buttons under the map has one for each floor. Yours has a pin on it. Tap another floor to look around it, and `ME` to come back to yours. When you take the stairs, the map follows you.
 - Floors are named the way the game names them (`B1F`, `1F`, `5F`, `RF` for a rooftop). Where the game doesn't name them, they're numbered in the game's own order. Some caves have more than one part on the same floor: those show as `3F`, `3F-2` and so on.
@@ -29,7 +29,7 @@ In FireRed, Emerald and Unbound, walking into a cave or a building that's bigger
 
 The HUD's minimap follows the same pick: in a cave or building it shows the floor around you, with the floor's name next to the place's.
 
-A small room, like a single shop or a one-floor house, keeps the region map. So do the other games for now.
+A small room, like a single shop or a one-floor house, keeps the region map. So do the Game Boy and DS games, and a few hacks, for now.
 
 ## Tap a spot to name it
 

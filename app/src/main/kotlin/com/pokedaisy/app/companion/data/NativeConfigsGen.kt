@@ -66,7 +66,6 @@ val NATIVE_FIRERED_REV0 = NativeConfig(
 // gMain+0x439 (inBattle) read garbage too — see the item/battle bugs in
 // PokeDaisy's memory notes.
 val NATIVE_FIRERED_REV1 = NATIVE_FIRERED_REV0.copy(
-    areaMap = AREA_MAP_FIRERED_REV1,
     itemDescs = vanillaItems(0x083DB098L),
     monIconTable = 0x083D3810L,
     monIconPaletteIndices = 0x083D3EF0L,
@@ -102,7 +101,6 @@ val NATIVE_FIRERED_REV1 = NATIVE_FIRERED_REV0.copy(
 // (2026-11-14) - RIGHT / DOWN walk the byte 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move cell + A
 // uses that move (THUNDER WAVE from cell 1).
 val NATIVE_FIRERED_REV0_RETAIL = NATIVE_FIRERED_REV0.copy(
-    areaMap = AREA_MAP_FIRERED_REV0,
     trainerCard = TRAINER_CARD_FIRERED,
     actionCursor = 0x02023FF8L,
     moveCursor = 0x02023FFCL,
@@ -131,7 +129,6 @@ val NATIVE_LEAFGREEN_REV0 = NATIVE_FIRERED_REV0.copy(
 )
 
 val NATIVE_LEAFGREEN_REV1 = NATIVE_FIRERED_REV1.copy(
-    areaMap = null, // its maps moved: AREA maps need a record of its own
     pokemonStoragePtr = 0x03005010L, // BOXES, as rev 0's
     itemDescs = vanillaItems(0x083DAED4L),
     // Not here: the language ports are built on these configs and their RAM moved. Retail's own: leafgreen_rev1_retail.
@@ -203,7 +200,6 @@ val NATIVE_EMERALD = NativeConfig(
 // Retail Emerald only: the hacks below start from NATIVE_EMERALD, and its
 // Pokédex ROM addresses would be wrong for every one of them.
 val NATIVE_EMERALD_RETAIL = NATIVE_EMERALD.copy(
-    areaMap = AREA_MAP_EMERALD,
     // From the unpatched (byte-identical) build's map; headless on retail: presses land back to back.
     actionCursor = 0x020244ACL,
     moveCursor = 0x020244B0L,
@@ -226,7 +222,6 @@ val NATIVE_EMERALD_RETAIL = NATIVE_EMERALD.copy(
 // guide tables. German and Italian's battle code sits 4 bytes later. The
 // TRAINER CARD stays off: their cards are localized art, not matched yet.
 val NATIVE_EMERALD_ES = NATIVE_EMERALD_RETAIL.copy(
-    areaMap = null, // its maps moved: AREA maps need a record of its own
     itemDescs = vanillaItems(0x0858639CL),
     language = 'S',
     gameCode = "BPES",
@@ -241,7 +236,6 @@ val NATIVE_EMERALD_ES = NATIVE_EMERALD_RETAIL.copy(
 )
 
 val NATIVE_EMERALD_DE = NATIVE_EMERALD_RETAIL.copy(
-    areaMap = null, // its maps moved: AREA maps need a record of its own
     itemDescs = vanillaItems(0x085946DCL),
     language = 'D',
     gameCode = "BPED",
@@ -261,7 +255,6 @@ val NATIVE_EMERALD_DE = NATIVE_EMERALD_RETAIL.copy(
 )
 
 val NATIVE_EMERALD_FR = NATIVE_EMERALD_RETAIL.copy(
-    areaMap = null, // its maps moved: AREA maps need a record of its own
     itemDescs = vanillaItems(0x08587D6CL),
     language = 'F',
     gameCode = "BPEF",
@@ -276,7 +269,6 @@ val NATIVE_EMERALD_FR = NATIVE_EMERALD_RETAIL.copy(
 )
 
 val NATIVE_EMERALD_IT = NATIVE_EMERALD_RETAIL.copy(
-    areaMap = null, // its maps moved: AREA maps need a record of its own
     itemDescs = vanillaItems(0x0858000CL),
     language = 'I',
     gameCode = "BPEI",
@@ -304,7 +296,6 @@ val NATIVE_EMERALD_IT = NATIVE_EMERALD_RETAIL.copy(
 // Japanese table). No TRAINER CARD, and the party slot is the app's own (its
 // fonts aren't the Western ones the slot art is drawn with).
 val NATIVE_EMERALD_JA = NATIVE_EMERALD_RETAIL.copy(
-    areaMap = null, // its maps moved: AREA maps need a record of its own
     itemDescs = japaneseItems(0x0855CEE8L),
     actionCursor = 0,
     moveCursor = 0, // its RAM moved; not located yet
@@ -755,7 +746,6 @@ private val NATIVE_PORT_BPRJ1 by lazy {
 // Pokemon - Edicion Rojo Fuego (Spain).gba (sha1 ab8f6bfe...): English BPRE1's config, mapped.
 private val NATIVE_PORT_BPRS0 by lazy {
     NATIVE_FIRERED_REV1.copy(
-        areaMap = null, // its maps moved: AREA maps need a record of its own
         language = 'S',
         gameCode = "BPRS",
         trainerCard = null,
@@ -3149,7 +3139,6 @@ val NATIVE_EMERALD_KAIZO = NATIVE_EMERALD_RETAIL.copy(
 // the flags / vars / dex / card offsets are on their tables) and ObjectEvent's u16 graphicsId. Eggs are SPECIES_EGG 415:
 // species 412-414 are Deoxys forms, so an egg is flagged (eggSpecies) rather than read as vanilla's 412.
 val NATIVE_EMERALD_LEGACY = NATIVE_EMERALD_RETAIL.copy(
-    areaMap = null, // its maps moved: AREA maps need a record of its own
     gameCode = LEGACY_TEXT,
     itemDescs = vanillaItems(0x085B6210L),
     gMain = 0x030024A0L,
@@ -5416,7 +5405,6 @@ val NATIVE_UNBOUND = NATIVE_FIRERED_REV0.copy(
 // Unbound's own POKéDEX tables (SHA1-pinned, see POKEDEX_UNBOUND) - kept off
 // NATIVE_UNBOUND itself, which the other CFRU configs reuse as NATIVE_FIRERED_REV0.
 val NATIVE_UNBOUND_WITH_DEX = NATIVE_UNBOUND.copy(
-    areaMap = AREA_MAP_UNBOUND,
     // CFRU repointed gItems (FireRed 1.0's literal pools load it from here).
     itemDescs = vanillaItems(0x08876200L),
     pokedex = POKEDEX_UNBOUND,

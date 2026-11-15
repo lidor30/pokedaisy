@@ -81,7 +81,9 @@ The Gen 3 `NativeConfig`s are TOML in `gamedata/gen3/` (one file per game family
 every platform: `make gamedata` (`scripts/gen_gamedata.py`) writes the app's `NativeConfigsGen.kt` from them, and
 `make check` / CI fail while it's stale. **A new config or a changed address goes in the TOML, never in Kotlin**;
 a new field goes in `NativeConfig` *and* `gamedata/schema/gen3_config.toml` (the generator checks they agree).
-`gamedata/README.md` has the format. The language ports are there too (`gamedata/gen3/ports/`, written by
+`gamedata/README.md` has the format. AREA maps (a cave's / building's own map with its floors, `AreaMap.kt`) have a row per GBA ROM by CRC32 in
+`gamedata/gen3/area_maps.toml`, written by `scripts/gen_area_maps.py --scan <ROM folder>` (never by hand; the file ends
+with the ROMs left out and why) - rerun it after adding a ROM, then `make test-quick T='*AreaMapTest'` draws every row. The language ports are there too (`gamedata/gen3/ports/`, written by
 `port_retail.py`), with their dex / guide tables spelled out as sub-tables over a named Kotlin val
 (`[config.port_axpd0.pokedex]`, `base = 'POKEDEX_SAPPHIRE'`; `gamedata/schema/gen3_pokedex.toml` / `gen3_guide.toml`).
 Phase 2: the records the 3DS / Linux companion reads are in `gamedata/gen3/records/` (retail FireRed / LeafGreen /

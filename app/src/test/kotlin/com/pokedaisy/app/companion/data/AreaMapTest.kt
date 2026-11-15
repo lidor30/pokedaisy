@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.util.zip.CRC32
 
 /**
  * AREA maps ([AreaMap]) on the player's ROMs (skips without them): each game's tables match its own ROM only, the areas
@@ -15,11 +16,16 @@ import java.io.File
  */
 class AreaMapTest {
     private fun rom(file: String) = RomFileReader.load(RETAIL_ROM_DIR + file)
+
     private val read: RomFileReader.() -> (Long, Int) -> ByteArray = { { a, n -> readCoreMemory(a, n) } }
 
     private val fireRed = "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba"
     private val emerald = "Pokemon - Emerald Version (USA, Europe).gba"
     private val unbound = "Pokemon Unbound (v2.1.1.1).gba"
+
+    private val AREA_MAP_FIRERED_REV1 get() = AREA_MAP_TABLES.getValue(0x84ee4776L)
+    private val AREA_MAP_EMERALD get() = AREA_MAP_TABLES.getValue(0x1f1c08fbL)
+    private val AREA_MAP_UNBOUND get() = AREA_MAP_TABLES.getValue(0x4b3d4957L)
 
     @Test fun `each game's tables match its own ROM only`() {
         val tables = listOf(fireRed to AREA_MAP_FIRERED_REV1, emerald to AREA_MAP_EMERALD, unbound to AREA_MAP_UNBOUND)
@@ -29,12 +35,35 @@ class AreaMapTest {
         }
     }
 
-    @Test fun `the configs carry them`() {
-        assertEquals(AREA_MAP_FIRERED_REV1, NATIVE_FIRERED_REV1.areaMap)
-        assertEquals(AREA_MAP_EMERALD, NATIVE_EMERALD_RETAIL.areaMap)
-        assertEquals(AREA_MAP_UNBOUND, NATIVE_UNBOUND_WITH_DEX.areaMap)
-        assertNull(NATIVE_FIRERED_REV0.areaMap) // the CFRU hacks' base
-        assertNull(NATIVE_EMERALD.areaMap)       // the Emerald hacks' base
+    /** Every ROM gamedata/gen3/area_maps.toml has a row for (found by name in the ROM folder): its tables match it, and
+     * an indoor area of several floors draws. */
+    @Test fun `every row reads its own ROM`() {
+        val rows = File("../gamedata/gen3/area_maps.toml").takeIf { it.isFile } ?: File("gamedata/gen3/area_maps.toml")
+        val names = Regex("^name = \"(.*)\"$", RegexOption.MULTILINE).findAll(rows.readText()).map { it.groupValues[1] }.toList()
+        val dir = File(RETAIL_ROM_DIR)
+        val files = dir.walkTopDown().filter { it.isFile }.associateBy { it.name }
+        var checked = 0
+        for (name in names) {
+            val f = files[name] ?: continue
+            val bytes = f.readBytes()
+            val t = AREA_MAP_TABLES[CRC32().apply { update(bytes) }.value] ?: error("$name: no row by its CRC")
+            val r = RomFileReader(bytes)
+            val read: (Long, Int) -> ByteArray = { a, n -> r.readCoreMemory(a, n) }
+            assertTrue("$name: tables don't match", AreaMap.matches(t, read))
+            // An area with more than one floor whose floors draw in more than a few colours (a hack's blank leftover maps
+            // don't count): the tiles, palettes and metatiles came out.
+            val drawn = (0 until t.mapGroupSizes.size).asSequence()
+                .flatMap { g -> (0 until t.mapGroupSizes[g]).asSequence().map { MapId(g, it) } }
+                .mapNotNull { AreaMap.area(t, it, read) }.filter { it.floors.size > 1 }.take(40)
+                .firstOrNull { a -> a.floors.all { f -> AreaMap.render(t, f.id, read)?.argb?.distinct()?.size ?: 0 >= 8 } }
+            assertNotNull("$name: no area with floors draws", drawn)
+            // To look at: build/area-maps/all/<ROM>.png, the area's first floor.
+            File("build/area-maps/all").apply { mkdirs() }.let { dir ->
+                AreaMap.render(t, drawn!!.floors.first().id, read)?.let { File(dir, name.substringBeforeLast('.') + ".png").writeBytes(it.png()) }
+            }
+            checked++
+        }
+        println("AREA maps: $checked ROMs checked")
     }
 
     private fun labels(t: AreaMapTables, r: (Long, Int) -> ByteArray, g: Int, n: Int) =
@@ -67,6 +96,24 @@ class AreaMapTest {
         val area = AreaMap.area(AREA_MAP_UNBOUND, MapId(53, 1), r)!!
         // Thundercap Mt.: four floors, several maps on some of them (its unnumbered side room has no chip).
         assertEquals(listOf("1F", "2F", "2F-2", "3F", "3F-2", "3F-3", "3F-4", "4F", "4F-2", "4F-3"), area.floors.map { it.label })
+    }
+
+    /** Heart and Soul mixes two kinds of layout (+0x18: 0 Emerald's numbers, 2 FireRed's: [AreaMapTables.alt]); one of
+     * each draws (build/area-maps/hns_*.png), with the palettes split each kind's way. */
+    @Test fun `Heart and Soul's two kinds of layout`() {
+        val r = rom("Pokemon Heart and Soul (v2.0.6).gba")?.read() ?: return
+        val t = AREA_MAP_TABLES.getValue(0x01713508L)
+        val out = File("build/area-maps").apply { mkdirs() }
+        for ((id, kind) in listOf(MapId(22, 13) to 0, MapId(24, 0) to 2)) {
+            val layout = AreaMap.info(t, id, r)!!.layout
+            assertEquals("$id's kind", kind, r(layout + 0x18, 1)[0].toInt())
+            for (pals in listOf(6, 7)) {
+                val tt = if (kind == 0) t.copy(primaryPalettes = pals) else t.copy(alt = t.alt!!.copy(palettes = pals))
+                val img = AreaMap.render(tt, id, r)!!
+                assertFalse("$id is flat", img.argb.distinct().size < 8)
+                File(out, "hns_${id.group}_${id.num}_kind${kind}_pals$pals.png").writeBytes(img.png())
+            }
+        }
     }
 
     @Test fun `every map of these areas renders`() {

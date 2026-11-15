@@ -89,7 +89,6 @@ import com.pokedaisy.app.companion.data.NATIVE_FIRERED_REV1
 import com.pokedaisy.app.companion.data.readSaveProgress
 import com.pokedaisy.app.companion.data.TypeMatchup
 import com.pokedaisy.app.companion.data.activeGame
-import com.pokedaisy.app.companion.data.activeNativeConfig
 import com.pokedaisy.app.companion.data.expProgress
 import com.pokedaisy.app.companion.data.gameCase
 import com.pokedaisy.app.companion.data.lookupLocation
@@ -1336,31 +1335,30 @@ fun wearing(game: GameKind, content: () -> (@Composable () -> Unit)): () -> (@Co
 }
 
 /** The game's home town, which its own region map shows (Emerald has no Pallet Town rect). */
-/** Where the AREA map shots stand ([areaMapSpot]): a map, a square on it, a floor chip to tap, the config for its tables. */
-class AreaSpot(val group: Int, val num: Int, val x: Int, val y: Int, val otherFloor: String, val config: com.pokedaisy.app.companion.data.NativeConfig?)
+/** Where the AREA map shots stand ([areaMapSpot]): a map, a square on it, a floor chip to tap. */
+class AreaSpot(val group: Int, val num: Int, val x: Int, val y: Int, val otherFloor: String)
 
 /** The AREA map shots' spot for [game], with -Prom; null otherwise. */
 fun areaMapSpot(game: GameKind): AreaSpot? {
     if (System.getProperty("rom").isNullOrBlank()) return null
     return when (game) {
-        GameKind.FIRERED -> AreaSpot(1, 2, 34, 35, "3", NATIVE_FIRERED_REV1)
-        GameKind.EMERALD -> AreaSpot(24, 16, 6, 7, "5", NATIVE_EMERALD_RETAIL)
-        GameKind.UNBOUND -> AreaSpot(53, 2, 40, 30, "3F", null)
+        GameKind.FIRERED -> AreaSpot(1, 2, 34, 35, "3")
+        GameKind.EMERALD -> AreaSpot(24, 16, 6, 7, "5")
+        GameKind.UNBOUND -> AreaSpot(53, 2, 40, 30, "3F")
         else -> null
     }
 }
 
-/** The snapshot for an AREA map shot: [spot]'s map, read from -Prom (areas and pictures loaded first, as a player who
- * walked in would have them), the AREA map chosen. */
+/** The snapshot for an AREA map shot: [spot]'s map, read from -Prom by its CRC's row (areas and pictures loaded first, as
+ * a player who walked in would have them), the AREA map chosen. */
 fun areaSnapshot(spot: AreaSpot): SnapshotView {
-    PokedexSource.reader = RomFile(File(System.getProperty("rom")).readBytes())
+    val bytes = File(System.getProperty("rom")).readBytes()
+    PokedexSource.reader = RomFile(bytes)
     PokedexSource.romChanged()
-    val before = activeNativeConfig
-    activeNativeConfig = spot.config
+    com.pokedaisy.app.companion.data.activeAreaMapCrc = java.util.zip.CRC32().apply { update(bytes) }.value
     val id = com.pokedaisy.app.companion.data.AreaMap.MapId(spot.group, spot.num)
     val area = com.pokedaisy.app.companion.data.AreaMaps.area(id)
     area?.floors?.forEach { com.pokedaisy.app.companion.data.AreaMaps.image(it.id) }
-    activeNativeConfig = before
     com.pokedaisy.app.companion.ui.AreaMapChoice.showArea()
     val sec = area?.mapsec ?: homeMapsec(activeGame)
     return snapshot().copy(

@@ -192,9 +192,6 @@ data class NativeConfig(
     val pcStorage: PcStorageLayout = VANILLA_PC_STORAGE,
     /** gMonIconTable points at Monomyth's packed icon blobs ([MonomythIcons]), not raw tiles. */
     val monIconPacked: Boolean = false,
-    /** AREA maps (AreaMap.kt): the map tables a cave / building and its floors are drawn from; null = the region map only.
-     * Checked against the ROM before use ([AreaMap.matches]), so a hack sharing the config can't draw garbage. */
-    val areaMap: AreaMapTables? = null,
 ) {
     /** [partyMonLayout] with [shinyBelow] as its shiny check, where the layout has none of its own. */
     val monLayout: PartyMonLayout

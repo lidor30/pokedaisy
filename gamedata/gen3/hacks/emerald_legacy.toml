@@ -8,7 +8,6 @@
 # species 412-414 are Deoxys forms, so an egg is flagged (eggSpecies) rather than read as vanilla's 412.
 [config.emerald_legacy]
 base = 'emerald_retail'
-areaMap = 'none'  # its maps moved: AREA maps need a record of its own
 gameCode = { ref = 'LEGACY_TEXT' }
 itemDescs = { preset = 'vanilla', base = 0x085B6210 }
 gMain = 0x030024A0

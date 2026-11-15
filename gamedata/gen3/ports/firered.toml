@@ -357,7 +357,6 @@ probeName = "タケシ"
 # Pokemon - Edicion Rojo Fuego (Spain).gba (sha1 ab8f6bfe...): English BPRE1's config, mapped.
 [config.port_bprs0]
 base = 'firered_rev1'
-areaMap = 'none'  # its maps moved: AREA maps need a record of its own
 private = true
 lazy = true
 port = 'BPRS0'

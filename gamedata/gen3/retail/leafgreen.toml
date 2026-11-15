@@ -22,7 +22,6 @@ pokemonStoragePtr = 0x03005010
 
 [config.leafgreen_rev1]
 base = 'firered_rev1'
-areaMap = 'none'  # its maps moved: AREA maps need a record of its own
 pokemonStoragePtr = 0x03005010  # BOXES, as rev 0's
 itemDescs = { preset = 'vanilla', base = 0x083DAED4 }
 # Not here: the language ports are built on these configs and their RAM moved. Retail's own: leafgreen_rev1_retail.
