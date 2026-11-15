@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import com.pokedaisy.app.MgbaCore
+import kotlin.concurrent.Volatile
+import kotlin.time.TimeSource
+import kotlinx.coroutines.channels.Channel
 
 /** Told once per game when the Poller has decided what it is (a GameKind's name, and a BEST EFFORT match's title):
  * crash reports name it (CrashReports.gameIdentified, set up in PokeDaisyApp). */
@@ -119,16 +121,16 @@ class TelemetrySampler {
         object Keep : PickAnswer
         object Seen : PickAnswer
     }
-    private val answers = java.util.concurrent.ConcurrentLinkedQueue<PickAnswer>()
+    private val answers = Channel<PickAnswer>(Channel.UNLIMITED)
 
     /** WHICH GAME IS THIS?: read the ROM as candidate [id] ([BestEffort.candidate]). */
-    fun pickGame(id: String) { answers += PickAnswer.Pick(id) }
+    fun pickGame(id: String) { answers.trySend(PickAnswer.Pick(id)) }
     /** NONE OF THESE: no game - NOT SUPPORTED, until the player opens the picker again. */
-    fun pickNone() { answers += PickAnswer.None }
+    fun pickNone() { answers.trySend(PickAnswer.None) }
     /** KEEP: the doubted match stays, as the player's own pick. */
-    fun keepGame() { answers += PickAnswer.Keep }
+    fun keepGame() { answers.trySend(PickAnswer.Keep) }
     /** The match notice was seen. */
-    fun bestEffortSeen() { answers += PickAnswer.Seen }
+    fun bestEffortSeen() { answers.trySend(PickAnswer.Seen) }
 
     /** [label]: the ROM isn't one detect() knows. A match kept for it ([BestEffortStore]) reads it anyway. */
     private fun unsupportedRom(reader: MemoryReader, code: String, size: Long, hash: String?, label: String) {
@@ -195,7 +197,7 @@ class TelemetrySampler {
 
     private fun takeAnswers(reader: MemoryReader) {
         while (true) {
-            when (val a = answers.poll() ?: return) {
+            when (val a = answers.tryReceive().getOrNull() ?: return) {
                 is PickAnswer.Pick -> {
                     val c = BestEffort.candidate(a.id) ?: continue
                     val code = beCode ?: continue
@@ -206,7 +208,7 @@ class TelemetrySampler {
                     useBestEffort(m)
                     beDeclined = false
                     save(m, BestEffortStore.Source.PICKED, verified = fit?.sure == true)
-                    android.util.Log.i("pokedaisy", "best effort: picked ${c.id} off=${m.off} for sha1=$beSha1")
+                    Logs.i("best effort: picked ${c.id} off=${m.off} for sha1=$beSha1")
                 }
                 PickAnswer.None -> {
                     dropBestEffort()
@@ -225,9 +227,9 @@ class TelemetrySampler {
 
     private fun verdict(reader: MemoryReader, code: String): BestEffort.Verdict? {
         val text = beText ?: runCatching {
-            val t0 = System.nanoTime()
+            val t0 = TimeSource.Monotonic.markNow()
             BestEffort.romText(reader, code, beSize).also {
-                android.util.Log.i("pokedaisy", "best effort: ROM text read in ${(System.nanoTime() - t0) / 1_000_000} ms")
+                Logs.i("best effort: ROM text read in ${t0.elapsedNow().inWholeMilliseconds} ms")
             }
         }.getOrNull()?.also { beText = it } ?: return null
         return BestEffort.evaluate(reader, code, beSize, text).also { beVerdict = it }
@@ -246,7 +248,7 @@ class TelemetrySampler {
         if (beVerdict != null && !unresolved && !unverified) return
         if (beGuess && ++beGuessSamples > GUESS_SAMPLES) {
             // A guess no party ever confirmed (the RAM isn't the guessed game's): the player picks.
-            android.util.Log.i("pokedaisy", "best effort: guess ${beMatch?.candidate?.id} never read a party, asking")
+            Logs.i("best effort: guess ${beMatch?.candidate?.id} never read a party, asking")
             dropBestEffort()
             return
         }
@@ -271,7 +273,7 @@ class TelemetrySampler {
                 beGuess = sure == null
                 beGuessSamples = 0
                 save(m, BestEffortStore.Source.AUTO, verified = sure != null)
-                android.util.Log.i("pokedaisy", "best effort: ${if (sure != null) "sure" else "guess"} ${m.candidate.id} off=${m.off} for sha1=$beSha1")
+                Logs.i("best effort: ${if (sure != null) "sure" else "guess"} ${m.candidate.id} off=${m.off} for sha1=$beSha1")
             }
             !v.sawParty -> {}
             sure != null && sure.candidate.kind == current.candidate.kind -> {
@@ -415,17 +417,17 @@ class TelemetrySampler {
         val t = cfg?.itemDescs
         if (t != null && RomItemText.matchesRom(reader, t)) return t
         if (cfg != null && t == null) return null
-        val size = runCatching { MgbaCore.pkRomSize() }.getOrDefault(0L)
+        val size = runCatching { EmulatorCore.current.romSize() }.getOrDefault(0L)
         return RomItemText.findVanillaItems(reader, size)
     }
 
     private fun detect(reader: MemoryReader) {
-        when (runCatching { MgbaCore.pkPlatform() }.getOrDefault(0)) {
-            MgbaCore.PLATFORM_GB -> return detectGameBoy()
-            MgbaCore.PLATFORM_NDS -> return detectDs()
+        when (runCatching { EmulatorCore.current.platform() }.getOrDefault(0)) {
+            EmulatorCore.PLATFORM_GB -> return detectGameBoy()
+            EmulatorCore.PLATFORM_NDS -> return detectDs()
         }
-        val code = runCatching { MgbaCore.pkRomCode() }.getOrNull().orEmpty()
-        val size = runCatching { MgbaCore.pkRomSize() }.getOrDefault(0L)
+        val code = runCatching { EmulatorCore.current.romCode() }.getOrNull().orEmpty()
+        val size = runCatching { EmulatorCore.current.romSize() }.getOrDefault(0L)
         romSha1 = null
         retailEngine = null
         fireRedEngine =code.startsWith("BPR") || code.startsWith("BPG")
@@ -447,6 +449,13 @@ class TelemetrySampler {
                     val hash = runCatching { romHash(reader, size) }.getOrNull()
                     val retail = hash in ShinyOdds.RETAIL_SHA1S
                     retailRom = retail
+                    // Retail LeafGreen's battle cursors: on its own configs, checked on the retail carts only.
+                    val cfg = when {
+                        !retail -> cfg
+                        cfg === NATIVE_LEAFGREEN_REV0 -> NATIVE_LEAFGREEN_REV0_RETAIL
+                        cfg === NATIVE_LEAFGREEN_REV1 -> NATIVE_LEAFGREEN_REV1_RETAIL
+                        else -> cfg
+                    }
                     nativeCfg = withCheckedTables(reader, cfg).let { if (retail) it.copy(shinyBelow = 8) else it.copy(pokemonStoragePtr = 0) }
                     ramVerified = true
                 }
@@ -562,7 +571,7 @@ class TelemetrySampler {
                     // comment on why it can differ from a plain `shasum` on
                     // the file - RTC/GPIO registers mapped into the ROM's
                     // address space), so don't substitute a file-hash here.
-                    android.util.Log.i("pokedaisy", "unrecognized BPRE hack: full sha1=$hash size=$size")
+                    Logs.i("unrecognized BPRE hack: full sha1=$hash size=$size")
                     proveRetailEngine(reader, code)
                 }
             }
@@ -619,7 +628,7 @@ class TelemetrySampler {
                     unsupportedRom(reader, code, size, hash, "unrecognized Emerald-based ROM hack " +
                         "(BPEE, ${size / (1024 * 1024)} MB, sha1 ${hash?.take(12) ?: "unknown"}…) " +
                         "- no known RAM addresses for this build")
-                    android.util.Log.i("pokedaisy", "unrecognized BPEE hack: full sha1=$hash size=$size")
+                    Logs.i("unrecognized BPEE hack: full sha1=$hash size=$size")
                     proveRetailEngine(reader, code)
                 }
             }
@@ -671,7 +680,7 @@ class TelemetrySampler {
         if (!retailHash) {
             unsupportedRom(reader, code, size, smallHash, "unrecognized ${if (emerald) "Emerald" else "FireRed"}-based ROM hack " +
                 "($code, ${size / (1024 * 1024)} MB, sha1 ${smallHash?.take(12) ?: "unknown"}…) - no known RAM addresses for this build")
-            android.util.Log.i("pokedaisy", "unrecognized $code ROM: full sha1=$smallHash size=$size")
+            Logs.i("unrecognized $code ROM: full sha1=$smallHash size=$size")
             proveRetailEngine(reader, code)
             return
         }
@@ -679,8 +688,8 @@ class TelemetrySampler {
         val cfg = when {
             emerald -> NATIVE_EMERALD_RETAIL
             rev >= 1 -> NATIVE_FIRERED_REV1
-            // NATIVE_FIRERED_REV0 is the hacks' base too: only retail gets the card.
-            else -> NATIVE_FIRERED_REV0.copy(trainerCard = TRAINER_CARD_FIRERED)
+            // NATIVE_FIRERED_REV0 is the hacks' base too: only retail gets the card and the battle cursors.
+            else -> NATIVE_FIRERED_REV0_RETAIL
         }
         // The SHINY marks: retail's shiny check (8 of 65536), on this copy only - a randomizer leaves it be. BOXES:
         // gPokemonStoragePtr, right after gSaveBlock2Ptr (FireRed 0x03005010 in both revisions, Emerald 0x03005D94; read
@@ -701,7 +710,7 @@ class TelemetrySampler {
         val proof = runCatching {
             RetailEngine.check(code, rev) { off, len -> reader.readCoreMemory(0x08000000L + off, len) }
         }.getOrNull() ?: return
-        android.util.Log.i("pokedaisy", "retail engine: ${proof.build.id} " +
+        Logs.i("retail engine: ${proof.build.id} " +
             if (proof.ramProven) "proven (EXPAND row ${if (proof.wideRow != null) "rebuilt" else "not proven"})" else "not proven: ${proof.why.take(4)}")
         retailEngine = proof.takeIf { it.ramProven }
     }
@@ -716,7 +725,7 @@ class TelemetrySampler {
         val rev = runCatching { reader.readCoreMemory(0x080000BCL, 1)[0].toInt() and 0xFF }.getOrNull()
         randomizedRom = runCatching {
             RandomizedRetail.match(code, rev, size) { off, len -> reader.readCoreMemory(0x08000000L + off, len) }
-        }.getOrNull()?.also { android.util.Log.i("pokedaisy", "$code: retail randomized by Universal Pokemon Randomizer (retail ${it.retailSha1})") }
+        }.getOrNull()?.also { Logs.i("$code: retail randomized by Universal Pokemon Randomizer (retail ${it.retailSha1})") }
         return randomizedRom != null
     }
 
@@ -725,7 +734,7 @@ class TelemetrySampler {
         val rev = runCatching { reader.readCoreMemory(0x080000BCL, 1)[0].toInt() and 0xFF }.getOrNull()
         return runCatching {
             RetailDumps.match(code, rev, size) { off, len -> reader.readCoreMemory(0x08000000L + off, len) }
-        }.getOrNull()?.also { android.util.Log.i("pokedaisy", "$code: a retail dump with its save code patched / end trimmed (retail $it)") } != null
+        }.getOrNull()?.also { Logs.i("$code: a retail dump with its save code patched / end trimmed (retail $it)") } != null
     }
 
     /** No DEX tab, and no HERE / NEXT BOSS guide pages, unless the config's
@@ -757,14 +766,14 @@ class TelemetrySampler {
      * "not supported" notice.
      */
     private fun detectDs() {
-        val code = runCatching { MgbaCore.pkRomCode() }.getOrNull().orEmpty()
+        val code = runCatching { EmulatorCore.current.romCode() }.getOrNull().orEmpty()
         dsGameCode = code
         val rev = runCatching { reader0x1E() }.getOrDefault(-1)
         dsRevision = rev
-        dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
-        dsRenegade = code == RenegadePlatinum.CODE && RenegadePlatinum.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
+        dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
+        dsRenegade = code == RenegadePlatinum.CODE && RenegadePlatinum.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         dsRedux = (code == Black2Redux.CODE_BLACK2 || code == Black2Redux.CODE_WHITE2) &&
-            Black2Redux.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
+            Black2Redux.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         when {
             dsOrigin && NDS_SUPPORT -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_ORIGIN_HEARTGOLD }
             ndsSupported(code, rev) && DsPorts.of(code, rev) != null -> {
@@ -797,15 +806,15 @@ class TelemetrySampler {
     }
 
     /** The DS header's revision byte (0x1E), from the cart's ROM window (pk_nds_read: 0x08000000 + offset). */
-    private fun reader0x1E(): Int = MgbaCore.pkReadBytes(0x0800001EL, 1)?.get(0)?.toInt()?.and(0xFF) ?: -1
+    private fun reader0x1E(): Int = EmulatorCore.current.readBytes(0x0800001EL, 1)?.get(0)?.toInt()?.and(0xFF) ?: -1
 
     private fun detectGameBoy() {
-        val size = runCatching { MgbaCore.pkRomSize() }.getOrDefault(0L)
-        val digest = java.security.MessageDigest.getInstance("SHA-1")
+        val size = runCatching { EmulatorCore.current.romSize() }.getOrDefault(0L)
+        val digest = Sha1()
         var off = 0L
         while (off < size) {
             val len = minOf(1L shl 20, size - off).toInt()
-            digest.update(MgbaCore.pkRomRead(off, len) ?: break)
+            digest.update(EmulatorCore.current.romRead(off, len) ?: break)
             off += len
         }
         val hash = if (off == size && size > 0) digest.digest().hex() else null
@@ -1367,7 +1376,7 @@ private const val GPIO_HOLE_SIZE = 6
 
 private fun sha1HexChunked(reader: MemoryReader, baseAddr: Long, size: Long): String {
     val chunkSize = 1 shl 20 // 1 MB - comfortably under pkReadBytes' 16 MB cap
-    val digest = java.security.MessageDigest.getInstance("SHA-1")
+    val digest = Sha1()
     var off = 0L
     while (off < size) {
         val len = minOf(chunkSize.toLong(), size - off).toInt()

@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.util.zip.CRC32
+import okio.Path.Companion.toOkioPath
 
 /**
  * PLAYER LOOK ([PlayerLook]): every hero found whole in each retail ROM, and a patch for every hero in every game -
@@ -186,23 +187,23 @@ class PlayerLookTest {
         for ((source, rom) in roms) {
             val f = File(RETAIL_ROM_DIR + rom.first).takeIf { it.isFile } ?: continue
             val one = java.nio.file.Files.createTempDirectory("mon").toFile()
-            val kept = MonArt.keep(one, f.readBytes())
+            val kept = MonArt.keep(one.toOkioPath(), f.readBytes())
             println("follower sources: $source kept $kept")
             assertTrue("$source: kept $kept of ${rom.second}", kept >= rom.second)
-            assertEquals(setOf(source), MonArt.sources(one))
-            has[source] = MonArt.available(one)
+            assertEquals(setOf(source), MonArt.sources(one.toOkioPath()))
+            has[source] = MonArt.available(one.toOkioPath())
             for (n in listOf(1, 25, 64, 151, 258, 386)) {
-                val m = MonArt.load(one, n) ?: continue
+                val m = MonArt.load(one.toOkioPath(), n) ?: continue
                 assertEquals(source, m.source)
                 // A drawn sprite in a real palette: its south frame isn't empty, colour 0 is the see-through one.
                 assertTrue("$source $n frame", m.frames.copyOf(512).any { it != 0.toByte() })
                 assertTrue("$source $n pictures", m.front.any { it != 0.toByte() } && m.back.any { it != 0.toByte() })
             }
             one.deleteRecursively()
-            MonArt.keep(dir, f.readBytes())
+            MonArt.keep(dir.toOkioPath(), f.readBytes())
         }
         // Several kept: each Pokémon from the first source (in Source's order) that has it.
-        for (n in listOf(25, 151, 249, 384)) MonArt.load(dir, n)?.let { m -> assertEquals("$n", MonArt.Source.entries.first { n in has[it].orEmpty() }, m.source) }
+        for (n in listOf(25, 151, 249, 384)) MonArt.load(dir.toOkioPath(), n)?.let { m -> assertEquals("$n", MonArt.Source.entries.first { n in has[it].orEmpty() }, m.source) }
         dir.deleteRecursively()
     }
 
@@ -212,14 +213,14 @@ class PlayerLookTest {
     fun pokemonLooks() {
         val hns = File(RETAIL_ROM_DIR + sources["heart_and_soul"]!!.first).takeIf { it.isFile } ?: return
         val dir = java.nio.file.Files.createTempDirectory("mon").toFile()
-        val kept = MonArt.keep(dir, hns.readBytes())
+        val kept = MonArt.keep(dir.toOkioPath(), hns.readBytes())
         assertTrue("kept $kept", kept >= MonArt.LAST - 5)
         val out = File("build/player-look").apply { mkdirs() }
         for ((key, name) in roms) {
             val f = File(RETAIL_ROM_DIR + name).takeIf { it.isFile } ?: continue
             val scan = PlayerLook.scan(f.readBytes())
             for (me in scan.chars) for (n in listOf(25, 64, 258)) {
-                val patch = PlayerLook.buildMon(scan, me, MonArt.load(dir, n)!!)
+                val patch = PlayerLook.buildMon(scan, me, MonArt.load(dir.toOkioPath(), n)!!)
                 assertNotNull("$key $me as $n", patch)
                 var end = 0
                 for (b in patch!!.blocks.sortedBy { it.off }) {

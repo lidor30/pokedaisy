@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import android.graphics.Bitmap
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /**
  * Party / bag icons pulled straight out of the running FireRed/Emerald ROM,
@@ -51,28 +52,28 @@ object DecompIconSource {
     var reader: MemoryReader = InProcessReader
 
 
-    private val monCache = ConcurrentHashMap<Int, Bitmap>()
-    private val itemCache = ConcurrentHashMap<Int, Bitmap>()
-    private val missing = java.util.Collections.newSetFromMap(ConcurrentHashMap<Long, Boolean>())
-    private val lock = Any()
+    private val monCache = LockedMap<Int, RomArt.Image>()
+    private val itemCache = LockedMap<Int, RomArt.Image>()
+    private val missing = LockedMap<Long, Unit>()
+    private val lock = SynchronizedObject()
     @Volatile private var loggedOnce = false
 
     /** An already-decoded icon (no ROM read), or null. */
-    fun peek(species: Int): Bitmap? = if (tables.monPresent) monCache[species] else null
+    fun peek(species: Int): RomArt.Image? = if (tables.monPresent) monCache[species] else null
 
-    fun get(species: Int): Bitmap? = cached(monCache, species, tables.monPresent) { fetchMon(species) }
+    fun get(species: Int): RomArt.Image? = cached(monCache, species, tables.monPresent) { fetchMon(species) }
 
     /** [species]' icon in its shiny palette (SoulGold keeps one per species, beside the normal one); null where the
      * tables have no per-species palettes. */
-    fun getShiny(species: Int): Bitmap? = if (tables.monIconPalettes == 0L && tables.battlePalettes == 0L) null
+    fun getShiny(species: Int): RomArt.Image? = if (tables.monIconPalettes == 0L && tables.battlePalettes == 0L) null
         else cached(monCache, SHINY_KEY + species, tables.monPresent) { decodeMonIcon(tables, species, shiny = true, rd = ::rd) }
-    fun peekShiny(species: Int): Bitmap? = if (tables.monPresent) monCache[SHINY_KEY + species] else null
+    fun peekShiny(species: Int): RomArt.Image? = if (tables.monPresent) monCache[SHINY_KEY + species] else null
 
     /** An already-decoded item icon (no ROM read), or null. */
-    fun peekItem(itemId: Int): Bitmap? = if (tables.itemPresent) itemCache[1_000_000 + itemId] else null
-    fun getItem(itemId: Int): Bitmap? = cached(itemCache, 1_000_000 + itemId, tables.itemPresent) { fetchItem(itemId) }
+    fun peekItem(itemId: Int): RomArt.Image? = if (tables.itemPresent) itemCache[1_000_000 + itemId] else null
+    fun getItem(itemId: Int): RomArt.Image? = cached(itemCache, 1_000_000 + itemId, tables.itemPresent) { fetchItem(itemId) }
 
-    private inline fun cached(cache: ConcurrentHashMap<Int, Bitmap>, key: Int, gate: Boolean, fetch: () -> Bitmap?): Bitmap? {
+    private inline fun cached(cache: LockedMap<Int, RomArt.Image>, key: Int, gate: Boolean, fetch: () -> RomArt.Image?): RomArt.Image? {
         if (key <= 0 || !gate) return null
         cache[key]?.let { return it }
         val sig = tables.monIconTable * 31 + key
@@ -81,12 +82,12 @@ object DecompIconSource {
             cache[key]?.let { return it }
             // A read that failed (the core not up yet) isn't a missing icon: the next try may work.
             val bmp = try { fetch() } catch (e: Exception) {
-                android.util.Log.w("pokedaisy", "DecompIcon fetch $key failed", e); return null
+                Logs.w("DecompIcon fetch $key failed", e); return null
             }
-            if (bmp == null) { missing.add(sig); return null }
+            if (bmp == null) { missing[sig] = Unit; return null }
             if (!loggedOnce) {
                 loggedOnce = true
-                android.util.Log.i("pokedaisy", "DecompIcon: first sprite decoded ${bmp.width}x${bmp.height} from tables=$tables")
+                Logs.i("DecompIcon: first sprite decoded ${bmp.width}x${bmp.height} from tables=$tables")
             }
             cache[key] = bmp
             return bmp
@@ -104,9 +105,9 @@ object DecompIconSource {
         return out
     }
 
-    private fun fetchMon(species: Int): Bitmap? = decodeMonIcon(tables, species, rd = ::rd)
+    private fun fetchMon(species: Int): RomArt.Image? = decodeMonIcon(tables, species, rd = ::rd)
 
-    private fun fetchItem(itemId: Int): Bitmap? {
+    private fun fetchItem(itemId: Int): RomArt.Image? {
         val t = tables
         val extra = itemId - t.extraItemFirst
         val entry = if (t.extraItemIconTable != 0L && extra in 0 until t.extraItemCount) {
@@ -130,10 +131,10 @@ object DecompIconSource {
  * Species [species]' party icon (32x64, both frames) from [t]'s tables, read through [rd] - the running core
  * ([DecompIconSource]) or a ROM file (`RomMonIcons`, the save editor's). Null if a pointer leaves the ROM.
  */
-internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, rd: (Long, Int) -> ByteArray): Bitmap? {
+internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, rd: (Long, Int) -> ByteArray): RomArt.Image? {
     val tilesPtr = Gfx.u32(rd(t.monIconTable + species.toLong() * t.monIconStride, 4), 0)
     if (!Gfx.inRom(tilesPtr)) {
-        android.util.Log.w("pokedaisy", "DecompIcon mon $species: tilesPtr ${tilesPtr.hex(8)} not in ROM"); return null
+        Logs.w("DecompIcon mon $species: tilesPtr ${tilesPtr.hex(8)} not in ROM"); return null
     }
     val palIdx = rd(t.monIconPaletteIndices + species.toLong() * t.monPalIdxStride, 1)[0].toInt() and t.monPalIdxMask
     val palDataPtr = if (t.monIconPalettes != 0L) {
@@ -143,7 +144,7 @@ internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, 
         Gfx.u32(rd(t.monIconPaletteTable + palIdx.toLong() * MON_PAL_ENTRY_BYTES, MON_PAL_ENTRY_BYTES), 0)
     }
     if (!Gfx.inRom(palDataPtr)) {
-        android.util.Log.w("pokedaisy", "DecompIcon mon $species: palPtr ${palDataPtr.hex(8)} not in ROM (idx=$palIdx)"); return null
+        Logs.w("DecompIcon mon $species: palPtr ${palDataPtr.hex(8)} not in ROM (idx=$palIdx)"); return null
     }
     val tiles = if (t.monIconPacked) MonomythIcons.unpack(rd, tilesPtr) ?: return null else rd(tilesPtr, MON_TILE_BYTES)
     var pal = rd(palDataPtr, PAL_BYTES)
@@ -157,7 +158,7 @@ internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, 
  * swapped for the shiny battle palette's colour where its nearest normal battle colour sits. The game never shows shiny
  * icons; these follow the shiny Pokémon's own colours, from the ROM. Null without the tables (or a tag that doesn't match).
  */
-internal fun shinyIconPalette(t: IconTables, species: Int, iconPal: ByteArray, rd: (Long, Int) -> ByteArray): ByteArray? {
+fun shinyIconPalette(t: IconTables, species: Int, iconPal: ByteArray, rd: (Long, Int) -> ByteArray): ByteArray? {
     if (t.battlePalettes == 0L) return null
     fun battlePal(table: Long, tag: Int): IntArray? {
         val entry = rd(table + species * 8L, 8)

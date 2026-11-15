@@ -38,7 +38,7 @@ class RandomizedRetailTest {
     private fun match(b: ByteArray): RandomizedRetailRom? {
         val code = String(b, 0xAC, 4, Charsets.US_ASCII)
         val rev = b[0xBC].toInt() and 0xFF
-        val fromFile = RandomizedRetail.matchStream(code, rev, b.size.toLong()) { b.inputStream() }
+        val fromFile = RandomizedRetail.matchStream(code, rev, b.size.toLong()) { okio.Buffer().write(b) }
         // The game's bus gives the same answer as the file.
         val fromBus = RandomizedRetail.match(code, rev, b.size.toLong()) { off, len ->
             if (off + len > b.size) null else b.copyOfRange(off.toInt(), off.toInt() + len)

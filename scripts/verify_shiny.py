@@ -297,7 +297,7 @@ def docker(sh):
 
 
 def jvm():
-    subprocess.run([os.path.join(ROOT, "gradlew"), "-p", ROOT, ":app:testDebugUnitTest", "--tests", "*ShinyVerifyTest", "--rerun", "-q"],
+    subprocess.run([os.path.join(ROOT, "gradlew"), "-p", ROOT, ":shared:testDebugUnitTest", "--tests", "*ShinyVerifyTest", "--rerun", "-q"],
                    check=True)
 
 

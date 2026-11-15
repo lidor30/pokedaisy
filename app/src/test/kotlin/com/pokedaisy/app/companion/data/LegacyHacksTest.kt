@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Yellow Legacy v1.0.10 and Crystal Legacy v1.3.1 on the retail saves rewritten by scripts/convert_save_legacy.py - see the
@@ -190,7 +191,7 @@ class LegacyHacksTest {
     fun `Yellow Legacy's art - its own icons, two frames, in Yellow's colours`() {
         val out = File("build/gen1-art-legacy")
         out.deleteRecursively()
-        val wrote = Gen1Art.extractTo(yellowLegacy, out)
+        val wrote = Gen1Art.extractTo(yellowLegacy, out.toOkioPath())
         assertTrue(Gen1Art.YELLOW_LEGACY_FONT in wrote && "regionmap/yellow_legacy.png" in wrote)
         val icons = Gen1Art.icons(yellowLegacy, Gen1Art.YELLOW_LEGACY)
         assertEquals(151, icons.size)
@@ -204,7 +205,7 @@ class LegacyHacksTest {
     fun `Crystal Legacy's art - an icon a species, each in its palette`() {
         val out = File("build/gen2-art-legacy")
         out.deleteRecursively()
-        val wrote = Gen2Art.extractTo(crystalLegacy, out)
+        val wrote = Gen2Art.extractTo(crystalLegacy, out.toOkioPath())
         assertTrue(Gen2Art.CRYSTAL_LEGACY_FONT in wrote && "regionmap/crystal_legacy_johto.png" in wrote)
         val icons = Gen2Art.icons(crystalLegacy, Gen2Art.CRYSTAL_LEGACY)
         assertEquals(252, icons.size)

@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Crystal Clear's art and dex pages, rebuilt from the player's own ROMs (skipped without them), at each version's
@@ -29,17 +30,17 @@ class CrystalClearArtTest {
     fun `both versions give the same art, the colour builds the same paths`() {
         val out = File("build/gen2-art-crystal-clear")
         out.deleteRecursively()
-        val wrote = Gen2Art.extractTo(rom(v260), out)
+        val wrote = Gen2Art.extractTo(rom(v260), out.toOkioPath())
         assertEquals(252 + 1 + 1 + 2, wrote.size)   // 251 icons + the egg, the font, the held-item marks, two maps
         assertTrue(wrote.all { it.startsWith("gen2/crystal_clear/") || it.startsWith("gen2/crystal-clear") || it.startsWith("regionmap/crystal_clear_") })
-        assertTrue("the same build again: nothing", Gen2Art.extractTo(rom(v260), out).isEmpty())
+        assertTrue("the same build again: nothing", Gen2Art.extractTo(rom(v260), out.toOkioPath()).isEmpty())
         val other = File.createTempFile("gen2", "").also { it.delete() }
         try {
-            assertEquals(wrote, Gen2Art.extractTo(rom(v2511), other))
+            assertEquals(wrote, Gen2Art.extractTo(rom(v2511), other.toOkioPath()))
             for (path in wrote) assertTrue(path, File(out, path).readBytes().contentEquals(File(other, path).readBytes()))
             // Another build of the game on the same paths: rebuilt, its own colours.
-            assertEquals(wrote, Gen2Art.extractTo(rom(v2511cf), other))
-            assertEquals(wrote, Gen2Art.extractTo(rom(v260cf), other))
+            assertEquals(wrote, Gen2Art.extractTo(rom(v2511cf), other.toOkioPath()))
+            assertEquals(wrote, Gen2Art.extractTo(rom(v260cf), other.toOkioPath()))
         } finally {
             other.deleteRecursively()
         }

@@ -75,6 +75,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.pokedaisy.app.companion.data.isGen2
 import com.pokedaisy.app.companion.data.isGen1
+import com.pokedaisy.app.companion.data.delete
+import okio.Path.Companion.toOkioPath
+import okio.source
 
 /**
  * Phase 1 shell: full-screen GBA emulation with RetroArch-style savestate slots
@@ -365,7 +368,7 @@ class PokeDaisyActivity : Activity() {
                 s.thumbFile(index).delete()
                 s.bakFile(index).delete()
                 s.bakThumbFile(index).delete()
-                com.pokedaisy.app.companion.data.SnapshotCache.fileFor(state).delete()
+                com.pokedaisy.app.companion.data.SnapshotCache.fileFor(state.toOkioPath()).delete()
                 com.pokedaisy.app.achievements.RetroAchievements.progressFile(state).delete()
             }
         }
@@ -378,6 +381,7 @@ class PokeDaisyActivity : Activity() {
      * so the player sees it play out; FIGHT keeps it open, for the move list in it. */
     private val battleInput = object : com.pokedaisy.app.companion.BattleInput {
         override val menuCursor get() = if (::engine.isInitialized) engine.battleMenuCursor else -1
+        override val menuOnCompanion get() = ::engine.isInitialized && engine.battleMenuHide != 0
         override val busy get() = if (::engine.isInitialized) engine.battleInputBusy else false
         override val gameSilent get() = ::engine.isInitialized && engine.gameAudioPaused
         override fun selectAction(actionIndex: Int) {
@@ -1507,10 +1511,32 @@ class PokeDaisyActivity : Activity() {
         val on = Prefs(this).follower && followerSupported()
         val n = followerLead
         engine.follower = if (on && n != null) engine.follower?.takeIf { it.national == n }
-            ?: com.pokedaisy.app.companion.data.MonArt.load(filesDir, n) else null
+            ?: com.pokedaisy.app.companion.data.MonArt.load(filesDir.toOkioPath(), n) else null
     }
 
     /** DAY AND NIGHT works here: a GBA game (not a Game Boy or DS one) that doesn't change with the time itself. */
+    /** HIDE BATTLE MENU works in this game: FireRed, LeafGreen or Emerald's engine (their text box, pk_wide.c's
+     * menuHideBegin; not Ruby / Sapphire's, whose cursor is drawn apart and stayed over the empty box) whose battles the
+     * companion's buttons can steer (the battle input read). */
+    private fun battleMenuHideSupported() = !romIsGameBoy && !romIsNds && romBlocked == null && ::engine.isInitialized &&
+        (romCode.startsWith("BPR") || romCode.startsWith("BPG") || romCode.startsWith("BPE")) &&
+        com.pokedaisy.app.companion.data.activeGame.let {
+            it == com.pokedaisy.app.companion.data.GameKind.FIRERED || it == com.pokedaisy.app.companion.data.GameKind.EMERALD
+        } && com.pokedaisy.app.companion.data.activeNativeConfig?.hasBattleInputAddrs == true &&
+        // The D-pad steers the hidden menu by its cursor (battleSteerTakes): without the cursor's address it would move an
+        // unseen 2 x 2 under the companion's differently shaped buttons.
+        engine.battleCursorAddrs?.menus == BattleInputController.MenuCells.GEN3
+
+    /** HIDE BATTLE MENU to the engine: only with the companion on the other screen, where its battle buttons are. The sign
+     * lights the bottom screen: SWAP SCREENS is there to put the game on top (a device whose main display is its bottom one). */
+    private fun syncBattleMenuHide() {
+        if (!::engine.isInitialized) return
+        val on = Prefs(this).hideBattleMenu && battleMenuHideSupported() && !debugMirror && !companionClosed &&
+            !companionOverGame.value && presentation?.isShowing == true
+        engine.battleTypeFlagsAddr = com.pokedaisy.app.companion.data.activeNativeConfig?.battleTypeFlags ?: 0L
+        engine.battleMenuHide = if (on) 1 else 0
+    }
+
     private fun dayNightSupported() = !romIsGameBoy && !romIsNds && romBlocked == null && ::engine.isInitialized &&
         com.pokedaisy.app.companion.data.activeGame !in com.pokedaisy.app.companion.data.DayNight.OWN_DAY_NIGHT
     /** The game running is a DS cart (melonDS): two screens, touch, X / Y ([loadRom]). */
@@ -1820,7 +1846,7 @@ class PokeDaisyActivity : Activity() {
             lookRunner.apply()
         }
         override val followerSupported get() = followerSupported()
-        override val followerReady get() = com.pokedaisy.app.companion.data.MonArt.available(filesDir).isNotEmpty()
+        override val followerReady get() = com.pokedaisy.app.companion.data.MonArt.available(filesDir.toOkioPath()).isNotEmpty()
         override val follower get() = Prefs(this@PokeDaisyActivity).follower
         override fun setFollower(on: Boolean) {
             Prefs(this@PokeDaisyActivity).follower = on
@@ -1954,6 +1980,11 @@ class PokeDaisyActivity : Activity() {
         override fun setFieldHud(on: Boolean) {
             Prefs(this@PokeDaisyActivity).fieldHud = on
             runOnUiThread { syncGameScreen() }
+        }
+        override val hideBattleMenu get() = if (secondScreen() != null && battleMenuHideSupported()) Prefs(this@PokeDaisyActivity).hideBattleMenu else null
+        override fun setHideBattleMenu(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).hideBattleMenu = on
+            syncBattleMenuHide()
         }
         override val battleButtons get() = Prefs(this@PokeDaisyActivity).battleButtons
         override fun setBattleButtons(on: Boolean) {
@@ -2270,6 +2301,8 @@ class PokeDaisyActivity : Activity() {
         // DAY AND NIGHT: the tint the engine eases to on the field - the clock's, outdoors, while the row is on.
         lookGender.launch {
             while (true) {
+                // HIDE BATTLE MENU follows the game being detected, the companion closed / reopened, a second screen.
+                syncBattleMenuHide()
                 if (::engine.isInitialized) {
                     val snap = telemetry.snapshot.value
                     engine.dayNightTint = if (Prefs(this@PokeDaisyActivity).dayNight && dayNightSupported() &&
@@ -2486,7 +2519,7 @@ class PokeDaisyActivity : Activity() {
         romKey = crc
         FeatureFlags.applyBlocked(this)
         romBlocked = com.pokedaisy.app.companion.data.BlockedGames.forCrc(crc)
-        flightArea = com.pokedaisy.app.companion.data.FlightArea.Keeper(filesDir, crc)
+        flightArea = com.pokedaisy.app.companion.data.FlightArea.Keeper(filesDir.toOkioPath(), crc)
         flightAreaAnywhereSent = false
         flightAreaQueued = false
         RetroAchievements.setFlightAnywhere(false)
@@ -2520,19 +2553,19 @@ class PokeDaisyActivity : Activity() {
         if (::portraitPanel.isInitialized) portraitPanel.ds = nds
         val ndsCode = if (nds) RomIdentity.ndsGameCode(r).orEmpty() else ""
         romOrigin = nds && ndsCode == com.pokedaisy.app.companion.data.OriginHeartGold.CODE &&
-            com.pokedaisy.app.companion.data.OriginHeartGold.matches(r)
+            com.pokedaisy.app.companion.data.OriginHeartGold.matches(r.toOkioPath())
         dsWildRates = if (!nds) null else if (romOrigin) {
             // Its tables are read in the background (NdsArt.prefetch); the core may start first, so read them here then.
-            { (com.pokedaisy.app.companion.data.OriginHeartGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readOrigin(r))?.wildRates ?: IntArray(0) }
+            { (com.pokedaisy.app.companion.data.OriginHeartGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readOrigin(r.toOkioPath()))?.wildRates ?: IntArray(0) }
         } else if (ndsCode == com.pokedaisy.app.companion.data.RenegadePlatinum.CODE &&
-            com.pokedaisy.app.companion.data.RenegadePlatinum.matches(r)) {
+            com.pokedaisy.app.companion.data.RenegadePlatinum.matches(r.toOkioPath())) {
             // Renegade Platinum: retail Platinum's header, its own maps' rates (read from its cart, like Origin's).
-            { (com.pokedaisy.app.companion.data.RenegadePlatinum.data ?: com.pokedaisy.app.companion.data.NdsArt.readRenegade(r))?.wildRates ?: IntArray(0) }
+            { (com.pokedaisy.app.companion.data.RenegadePlatinum.data ?: com.pokedaisy.app.companion.data.NdsArt.readRenegade(r.toOkioPath()))?.wildRates ?: IntArray(0) }
         } else if ((ndsCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_BLACK2 ||
                 ndsCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_WHITE2) &&
-            com.pokedaisy.app.companion.data.Black2Redux.matches(r)) {
+            com.pokedaisy.app.companion.data.Black2Redux.matches(r.toOkioPath())) {
             // Blaze Black 2 / Volt White 2 Redux: retail Black 2's / White 2's header, their own zones' rates (from the cart).
-            { (com.pokedaisy.app.companion.data.Black2Redux.data ?: com.pokedaisy.app.companion.data.NdsArt.readRedux(r))?.wildRateWords() ?: IntArray(0) }
+            { (com.pokedaisy.app.companion.data.Black2Redux.data ?: com.pokedaisy.app.companion.data.NdsArt.readRedux(r.toOkioPath()))?.wildRateWords() ?: IntArray(0) }
         } else when (ndsCode) {
             "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
@@ -2571,12 +2604,12 @@ class PokeDaisyActivity : Activity() {
         gbFieldCache = null
         if (::engine.isInitialized) engine.gbField = null
         if (gba && romBlocked == null) Thread({
-            val flag = com.pokedaisy.app.companion.data.WildEncounters.find(r)
+            val flag = com.pokedaisy.app.companion.data.WildEncounters.find(r.toOkioPath())
             Log.i("pokedaisy", "wild encounters: switch %08X".format(flag))
             // REUSABLE TMS: the spots that use a TM up, by their code (none = the row shows N/A).
-            val tms = com.pokedaisy.app.companion.data.ReusableTms.find(r)
+            val tms = com.pokedaisy.app.companion.data.ReusableTms.find(r.toOkioPath())
             Log.i("pokedaisy", "reusable TMs: ${tms.size} site(s)")
-            val text = com.pokedaisy.app.companion.data.InstantText.find(r)
+            val text = com.pokedaisy.app.companion.data.InstantText.find(r.toOkioPath())
             runOnUiThread {
                 if (romData != r) return@runOnUiThread
                 wildFlag = flag
@@ -2593,10 +2626,10 @@ class PokeDaisyActivity : Activity() {
         }
         // FireRed / Emerald party-menu art and region maps come from the ROM
         // itself, once per ROM (see RomArt) - nothing of the game is bundled.
-        if (gba) RomArt.prefetch(filesDir, crc, r) else if (gameBoy) com.pokedaisy.app.companion.data.Gen1Art.prefetch(filesDir, r)
+        if (gba) RomArt.prefetch(filesDir.toOkioPath(), crc, r.toOkioPath()) else if (gameBoy) com.pokedaisy.app.companion.data.Gen1Art.prefetch(filesDir.toOkioPath(), r.toOkioPath())
         // A DS cart's party icons, from its own file system (NdsArt).
-        if (nds) com.pokedaisy.app.companion.data.NdsArt.prefetch(filesDir, r)
-        if (gameBoy) com.pokedaisy.app.companion.data.Gen2Art.prefetch(filesDir, r)   // a Color cart's (Crystal): its own scan
+        if (nds) com.pokedaisy.app.companion.data.NdsArt.prefetch(filesDir.toOkioPath(), r.toOkioPath())
+        if (gameBoy) com.pokedaisy.app.companion.data.Gen2Art.prefetch(filesDir.toOkioPath(), r.toOkioPath())   // a Color cart's (Crystal): its own scan
         // A Game Boy cart's POKéDEX pages are read from its bytes (bank-switched: not on the bus whole); a few MB at most.
         val gbRom = if (gameBoy) runCatching { r.readBytes() }.getOrNull() else null
         com.pokedaisy.app.companion.data.Gen1Dex.rom = gbRom
@@ -2612,9 +2645,9 @@ class PokeDaisyActivity : Activity() {
         }
         // A FireRed-engine hack's own region map (Unbound, Odyssey, ...), read
         // from the ROM on every launch - a few KB of reads (see RomRegionMap).
-        if (gba) RomRegionMap.load(filesDir, crc, r) else RomRegionMap.current = null   // not the last GBA game's
+        if (gba) RomRegionMap.load(filesDir.toOkioPath(), crc, r.toOkioPath()) else RomRegionMap.current = null   // not the last GBA game's
         // SMART FF steps aside while the game's region map or a menu is up (see EmulatorEngine).
-        if (gba) RegionMapWatch.load(r)
+        if (gba) RegionMapWatch.load(r.toOkioPath())
         val (menuField, menuBattle) = Prefs(this).ffMenuCallbacks(crc)
         // The game code and revision: a GBA header's 0xAC / 0xBC, a DS header's 0x0C / 0x1E.
         val header = runCatching {
@@ -2760,7 +2793,7 @@ class PokeDaisyActivity : Activity() {
             // resumes from it shows that at once instead of LOADING (TelemetryStore.showCached).
             onStateSaved = { state ->
                 telemetry.refresh()
-                com.pokedaisy.app.companion.data.SnapshotCache.write(state, telemetry.forState())
+                com.pokedaisy.app.companion.data.SnapshotCache.write(state.toOkioPath(), telemetry.forState())
             }
             onResumeResult = { loaded -> if (!loaded) { telemetry.dropCached(); runOnUiThread { waitForPlay() } } }
             battleStateNow = { telemetry.refreshBattleInputFast()?.second }   // the emu thread, before a RUN follow-up press
@@ -2843,7 +2876,7 @@ class PokeDaisyActivity : Activity() {
                 if (coopBuilding.add(key)) Thread({
                     runCatching {
                         val rom = coopRom ?: r.readBytes().also { coopRom = it }
-                        com.pokedaisy.app.companion.data.coop.PartnerArt.build(dir, rom, female, look)?.let { coopArt[key] = it }
+                        com.pokedaisy.app.companion.data.coop.PartnerArt.build(dir.toOkioPath(), rom, female, look)?.let { coopArt[key] = it }
                     }
                     coopBuilding.remove(key)
                 }, "pokedaisy-partner-art").start()
@@ -3086,7 +3119,7 @@ class PokeDaisyActivity : Activity() {
     @Volatile private var coopPairKeyCache: Pair<com.pokedaisy.app.companion.coop.CoopSaveId, String>? = null
     @Volatile private var coopPairKeyMissAt = -10_000L
 
-    private val catchFile by lazy { com.pokedaisy.app.companion.data.coop.FileCatchStore(File(File(filesDir, "coop"), "catches.txt")) }
+    private val catchFile by lazy { com.pokedaisy.app.companion.data.coop.FileCatchStore(filesDir.toOkioPath() / "coop" / "catches.txt") }
 
     private val coopApp = object : CoopApp {
         override val coopOn get() = FeatureFlags.coop(this@PokeDaisyActivity)
@@ -3199,7 +3232,7 @@ class PokeDaisyActivity : Activity() {
     private fun dropResumeState() {
         states?.resumeFile?.let {
             it.delete()
-            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(it).delete()
+            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(it.toOkioPath()).delete()
             RetroAchievements.progressFile(it).delete()
         }
     }
@@ -3298,7 +3331,7 @@ class PokeDaisyActivity : Activity() {
             }
             val own = RomIdentity.sha1(r)
             val sha1 = if (own == com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1) own
-                else com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, RomArchive.romSize(r)) { RomArchive.open(r) } ?: own
+                else com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, RomArchive.romSize(r)) { RomArchive.open(r).source() } ?: own
             com.pokedaisy.app.companion.coop.CoopSession.startForGame(applicationContext, prefs, sha1, save, cheatsLoaded)
             runOnUiThread { coopAttach(sha1) }   // joined battles + presence: retail English Emerald only
             startCoopLock(sha1, save, cheatsLoaded, gen)
@@ -3322,7 +3355,7 @@ class PokeDaisyActivity : Activity() {
             CoopBattles.resume()   // [pauseGame] ended any joined battle before the sleep: battles may start again
             engine.wake()
             st.resumeFile.delete()
-            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(st.resumeFile).delete()
+            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(st.resumeFile.toOkioPath()).delete()
             RetroAchievements.progressFile(st.resumeFile).delete()
             return true
         }
@@ -3365,14 +3398,14 @@ class PokeDaisyActivity : Activity() {
         st.latestResumeSource()?.let { src ->
             if (src != st.resumeFile) runCatching {
                 src.copyTo(st.resumeFile, overwrite = true)
-                com.pokedaisy.app.companion.data.SnapshotCache.copy(src, st.resumeFile)
+                com.pokedaisy.app.companion.data.SnapshotCache.copy(src.toOkioPath(), st.resumeFile.toOkioPath())
             }
         }
         val resume = st.resumeFile.takeIf { it.isFile && it.length() > 0 }
         // The companion's data as that state left it, until the game's own is read (a few KB).
         // Not over live data (back from HOME: the game was never closed).
         if (resume != null && !telemetry.snapshot.value.hasData) {
-            com.pokedaisy.app.companion.data.SnapshotCache.read(resume)?.let { telemetry.showCached(it) }
+            com.pokedaisy.app.companion.data.SnapshotCache.read(resume.toOkioPath())?.let { telemetry.showCached(it) }
         }
         // Resumed from a state: the player was in the game (a menu included). A boot: the title screen first.
         if (resume != null) nowPlaying() else waitForPlay()
@@ -4805,6 +4838,7 @@ class PokeDaisyActivity : Activity() {
         quickMenuTakes(event)?.let { return it }
         dsBattleTakes(event)?.let { return it }
         if (hotkeyTakes(event.keyCode, down)) return true
+        battleSteerTakes(event)?.let { return it }
         if (input.onKey(event.keyCode, down)) {
             if (down && !physicalPadUsed && event.device?.isVirtual == false) {
                 physicalPadUsed = true
@@ -5016,6 +5050,59 @@ class PokeDaisyActivity : Activity() {
         return true
     }
 
+    // --- HIDE BATTLE MENU: the D-pad on the companion's battle buttons ---------------------------------
+
+    /** D-pad keys a press of which [battleSteerTakes] took: their releases stay away from the game too. */
+    private val steerHeld = HashSet<Int>()
+    /** The stick / hat directions while it steers ([steerMotion]), so a new one is a press. */
+    private var steerHat = 0
+
+    /**
+     * HIDE BATTLE MENU with the game on its action menu (off its screen, the companion's buttons standing in): the D-pad
+     * moves the cursor round those buttons as the bottom screen lays them out, FIGHT over BAG / RUN / POKéMON
+     * ([EmulatorEngine.steerBattleMenu]), not round the game's unseen 2 x 2. A and B stay the game's own, so they act on the
+     * button the companion lights. Null = not its business (another key, or the menu isn't hidden there).
+     */
+    private fun battleSteerTakes(event: KeyEvent): Boolean? {
+        val code = event.keyCode
+        if (event.action != KeyEvent.ACTION_DOWN) return if (steerHeld.remove(code)) true else null
+        val dir = (input.buttonFor(code) ?: return null) and DPAD_KEYS
+        if (dir == 0) return null
+        // A held direction's repeats: no more steps (the game moves its cursor once a press too).
+        if (event.repeatCount > 0) return if (code in steerHeld) true else null
+        if (!steerPress(dir)) return null
+        steerHeld.add(code)
+        return true
+    }
+
+    /** A joystick's D-pad hat / stick while the hidden action menu is up: each direction that comes on is a press
+     * ([battleSteerTakes]); centred, it's let go in the game too, so nothing stays held there. */
+    private fun steerMotion(event: MotionEvent): Boolean {
+        val bits = (GbaInput.motionBits(event) ?: return false) and DPAD_KEYS
+        if (!::engine.isInitialized || engine.battleMenuHidden != BATTLE_MENU_ACTIONS) {
+            steerHat = 0
+            return false
+        }
+        val pressed = bits and steerHat.inv()
+        steerHat = bits
+        if (bits == 0) {
+            input.onMotion(event)
+            return true
+        }
+        if (pressed != 0) steerPress(pressed)
+        return true
+    }
+
+    /** One D-pad press for the hidden action menu: taken (with the companion's click when the cursor moves - the game
+     * hears no press, so plays no sound of its own) or not. */
+    private fun steerPress(dir: Int): Boolean {
+        if (!::engine.isInitialized) return false
+        val from = engine.battleMenuCursor
+        if (!engine.steerBattleMenu(dir)) return false
+        if (from >= 0 && HiddenMenuSteer.next(from, dir) != from) playClick()
+        return true
+    }
+
     /** A DS battle's Gen 3 menu is up ([dsBattleMenu]): the D-pad, A and B are its, kept from the game until let go. */
     private fun dsBattleTakes(event: KeyEvent): Boolean? {
         val code = event.keyCode
@@ -5192,6 +5279,7 @@ class PokeDaisyActivity : Activity() {
             if (GbaInput.motionBits(event)?.let { it != 0 } == true) return true
             quickStickHold = false
         }
+        if (steerMotion(event)) return true
         if (GbaInput.motionBits(event)?.let { it != 0 } == true) letHeldBackThrough()
         if (input.onMotion(event)) return true
         return super.onGenericMotionEvent(event)
@@ -5571,7 +5659,7 @@ class PokeDaisyActivity : Activity() {
         engine.stop()
         states?.resumeFile?.let {
             if (it.exists()) it.delete()
-            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(it).delete()
+            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(it.toOkioPath()).delete()
         }
         val save = SavesLocation.saveFor(this, Prefs(this), r)
         syncCheats()
@@ -5651,6 +5739,11 @@ class PokeDaisyActivity : Activity() {
     }
 
     companion object {
+        /** The GBA D-pad's key bits. */
+        private const val DPAD_KEYS = MgbaCore.Key.UP or MgbaCore.Key.DOWN or MgbaCore.Key.LEFT or MgbaCore.Key.RIGHT
+        /** [EmulatorEngine.battleMenuHidden] with the action menu (FIGHT / BAG / POKéMON / RUN) off the screen. */
+        private const val BATTLE_MENU_ACTIONS = 160
+
         /** Retail English Emerald (BPEE): the only game co-op presence runs on. */
         private const val RETAIL_EMERALD_SHA1 = "f3ae088181bf583e55daf962a92bb46f4f1d07b7"
         /** Games whose Pokémon follow the player already: FOLLOWER isn't offered there. */

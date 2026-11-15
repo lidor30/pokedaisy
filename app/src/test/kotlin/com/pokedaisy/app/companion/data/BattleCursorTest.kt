@@ -70,8 +70,14 @@ class BattleCursorTest {
         assertEquals(0x02001E50L to 0x02001E54L, NATIVE_SOULGOLD_V1_2C.actionCursor to NATIVE_SOULGOLD_V1_2C.moveCursor)
         assertEquals(0x02001E50L to 0x02001E54L, NATIVE_SOULGOLD_V1_2_1.actionCursor to NATIVE_SOULGOLD_V1_2_1.moveCursor)
         assertEquals(0x02024E60L to 0x02024E64L, NATIVE_RUBY.actionCursor to NATIVE_RUBY.moveCursor)
+        // Retail FireRed 1.0 and LeafGreen themselves (checked headless on the retail carts, 2026-11-14): their own configs,
+        // which the Poller picks on a retail hash only - the bases below carry the language ports and the hacks.
+        listOf(NATIVE_FIRERED_REV0_RETAIL, NATIVE_LEAFGREEN_REV0_RETAIL, NATIVE_LEAFGREEN_REV1_RETAIL).forEach {
+            assertEquals(0x02023FF8L to 0x02023FFCL, it.actionCursor to it.moveCursor)
+        }
         // Copies whose RAM differs (or isn't checked) are zeroed; the hacks' base configs never had them.
-        listOf(NATIVE_EMERALD_JA, NATIVE_LEAFGREEN_REV1, NATIVE_EMERALD, NATIVE_FIRERED_REV0, NATIVE_EMERALD_ROGUE).forEach {
+        (listOf(NATIVE_EMERALD_JA, NATIVE_LEAFGREEN_REV0, NATIVE_LEAFGREEN_REV1, NATIVE_EMERALD, NATIVE_FIRERED_REV0, NATIVE_EMERALD_ROGUE,
+        ) + listOf("BPGJ0", "BPGJ1", "BPGD0", "BPRJ0").map { RETAIL_PORTS.getValue(it)() }).forEach {
             assertEquals(0L to 0L, it.actionCursor to it.moveCursor)
         }
     }

@@ -96,6 +96,16 @@ val NATIVE_FIRERED_REV1 = NATIVE_FIRERED_REV0.copy(
     trainerCard = TRAINER_CARD_FIRERED,
 )
 
+// Retail FireRed 1.0 itself (the Poller's, on a retail hash only): rev 0's config is the CFRU hacks' base, so the card
+// and the battle menus' cursors go here, never on it. The cursors are rev 1's: checked headless on the retail cart
+// (2026-11-14) - RIGHT / DOWN walk the byte 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move cell + A
+// uses that move (THUNDER WAVE from cell 1).
+val NATIVE_FIRERED_REV0_RETAIL = NATIVE_FIRERED_REV0.copy(
+    trainerCard = TRAINER_CARD_FIRERED,
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
+)
+
 // ---- gamedata/gen3/retail/leafgreen.toml ----
 
 // LeafGreen (BPGE). pret/pokefirered @ c75f352 builds `leafgreen` and
@@ -121,8 +131,9 @@ val NATIVE_LEAFGREEN_REV0 = NATIVE_FIRERED_REV0.copy(
 val NATIVE_LEAFGREEN_REV1 = NATIVE_FIRERED_REV1.copy(
     pokemonStoragePtr = 0x03005010L, // BOXES, as rev 0's
     itemDescs = vanillaItems(0x083DAED4L),
+    // Not here: the language ports are built on these configs and their RAM moved. Retail's own: leafgreen_rev1_retail.
     actionCursor = 0,
-    moveCursor = 0, // FireRed's, probably, but not checked on LeafGreen yet
+    moveCursor = 0,
     monIconTable = 0x083D364CL,
     monIconPaletteIndices = 0x083D3D2CL,
     monIconPaletteTable = 0x083D3EE4L,
@@ -132,6 +143,19 @@ val NATIVE_LEAFGREEN_REV1 = NATIVE_FIRERED_REV1.copy(
     // Its foe-team RAM addresses (gEnemyParty, gBattlerPartyIndexes, ...)
     // match FireRed's in the map, so those carry over unchanged.
     guideTables = GUIDE_TABLES_LEAFGREEN_REV1,
+)
+
+// Retail LeafGreen itself (the Poller's, on a retail hash only - the language ports are built on the configs above, and
+// their RAM moved): the battle menus' cursors, FireRed's. Checked headless on both retail carts (2026-11-14): RIGHT / DOWN
+// walk the byte 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move cell + A uses that move (ICE BEAM from 3).
+val NATIVE_LEAFGREEN_REV0_RETAIL = NATIVE_LEAFGREEN_REV0.copy(
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
+)
+
+val NATIVE_LEAFGREEN_REV1_RETAIL = NATIVE_LEAFGREEN_REV1.copy(
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
 )
 
 // ---- gamedata/gen3/retail/emerald.toml ----

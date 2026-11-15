@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.data
 
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+
 /**
  * Whether a shop is open - a Poké Mart's BUY / SELL / QUIT menu, its buy screen, its sell bag - so
  * SMART fast-forward stays fast there (GitHub #41: the clerk's lines are printed inside the buy
@@ -14,26 +17,29 @@ package com.pokedaisy.app.companion.data
  * the sell bag all point past the clerk's `pokemart`, and the pointer is 0 once the clerk is done.
  */
 object ShopWatch {
+    private val lock = SynchronizedObject()
     private var contexts = LongArray(0)
     private var retryIn = 0
 
     /** A ROM was loaded: find its script contexts again. */
-    @Synchronized
     fun load() {
-        contexts = LongArray(0)
-        retryIn = 0
+        synchronized(lock) {
+            contexts = LongArray(0)
+            retryIn = 0
+        }
     }
 
     /** Emu thread: true while a shop is open. Asked only while a menu screen is up. */
-    @Synchronized
     fun isOpen(r: MemoryReader): Boolean {
-        if (contexts.isEmpty()) {
-            // Not set up yet (booting) or not where this game keeps them: look again now and then.
-            if (retryIn-- > 0) return false
-            retryIn = RETRY_FRAMES
-            contexts = runCatching { find(r.readCoreMemory(IWRAM, IWRAM_SIZE)) }.getOrDefault(LongArray(0))
+        synchronized(lock) {
+            if (contexts.isEmpty()) {
+                // Not set up yet (booting) or not where this game keeps them: look again now and then.
+                if (retryIn-- > 0) return false
+                retryIn = RETRY_FRAMES
+                contexts = runCatching { find(r.readCoreMemory(IWRAM, IWRAM_SIZE)) }.getOrDefault(LongArray(0))
+            }
+            return contexts.any { ctx -> runCatching { pastShopCommand(r, ctx) }.getOrDefault(false) }
         }
-        return contexts.any { ctx -> runCatching { pastShopCommand(r, ctx) }.getOrDefault(false) }
     }
 
     /** The scriptPtr of the context at [ctx] (+8) is just past a shop command and its ROM pointer. */

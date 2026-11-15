@@ -76,7 +76,7 @@ object RetailEngine {
                 val i = s.pool + k - (s.user - RetailEngineBuild.BEFORE)
                 if (i in w.indices) w[i] = 0
             }
-            if (crc32(w) != s.crc) continue
+            if (crc32(w).toInt() != s.crc) continue
             val v = (p[0].toInt() and 0xFF) or (p[1].toInt() and 0xFF shl 8) or (p[2].toInt() and 0xFF shl 16) or
                 (p[3].toInt() and 0xFF shl 24)
             out[v] = (out[v] ?: 0) + 1
@@ -84,7 +84,6 @@ object RetailEngine {
         return out
     }
 
-    private fun crc32(b: ByteArray): Int = java.util.zip.CRC32().apply { update(b) }.value.toInt()
 }
 
 /** One retail build's fingerprints (RetailEngineGen.kt). */

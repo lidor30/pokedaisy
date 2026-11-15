@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Crystal's art and dex pages, rebuilt from the player's own ROMs (skipped without them): every release
@@ -29,11 +30,11 @@ class Gen2ArtTest {
     fun `every release gives the same art`() {
         val out = File("build/gen2-art")
         out.deleteRecursively()
-        val wrote = Gen2Art.extractTo(rom(0), out)
+        val wrote = Gen2Art.extractTo(rom(0), out.toOkioPath())
         assertTrue(wrote.size > 250)
         for (i in 1..2) {
             val other = File.createTempFile("gen2", "").also { it.delete() }
-            Gen2Art.extractTo(rom(i), other)
+            Gen2Art.extractTo(rom(i), other.toOkioPath())
             for (path in wrote) assertTrue(path, File(out, path).readBytes().contentEquals(File(other, path).readBytes()))
             other.deleteRecursively()
         }
@@ -99,7 +100,7 @@ class Gen2ArtTest {
 
     @Test
     fun `another cart gets nothing`() {
-        assertTrue(Gen2Art.extractTo(ByteArray(0x8000), File.createTempFile("gen2", "").also { it.delete() }).isEmpty())
+        assertTrue(Gen2Art.extractTo(ByteArray(0x8000), File.createTempFile("gen2", "").also { it.delete() }.toOkioPath()).isEmpty())
     }
 
     private fun <T> assertNotNullAndGet(v: T?): T { assertNotNull(v); return v!! }

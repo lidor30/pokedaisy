@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.Path
 
 /**
  * WILD ENCOUNTERS (SETTINGS > CONTROLS, GitHub #43): the game's own switch for random encounters,
@@ -43,15 +45,17 @@ object WildEncounters {
 
     private val cache = HashMap<String, Long>()
 
-    /** The switch's EWRAM address in [rom], or 0 if its code isn't one of the shapes above. Reads the file (mapped,
+    private val lock = SynchronizedObject()
+
+    /** The switch's EWRAM address in [rom], or 0 if its code isn't one of the shapes above. Reads the file (a window at a time,
      * ~100 ms for 32 MB): call it off the UI thread; cached per file. */
-    fun find(rom: File): Long {
-        val key = "${rom.path}:${rom.length()}:${rom.lastModified()}"
-        synchronized(cache) { cache[key]?.let { return it } }
+    fun find(rom: Path): Long {
+        val key = fileKey(rom)
+        synchronized(lock) { cache[key]?.let { return it } }
         val found = runCatching {
-            withMappedRom(rom) { find(it) }
+            withRomFile(rom) { find(FileLittleEndian(it)) }
         }.getOrDefault(0L)
-        synchronized(cache) { cache[key] = found }
+        synchronized(lock) { cache[key] = found }
         return found
     }
 

@@ -84,7 +84,7 @@ private const val GEN4_FLAG_BYTES = 2912 / 8
 
 /** The save's event flags and vars, as the GUIDE reads them ([Gen4Config.varsFlagsOff]), with the hour as
  * [GEN4_VAR_HOUR]; null without them. */
-fun readGen4Progress(r: MemoryReader, cfg: Gen4Config, body: Long, hour: Int = java.time.LocalTime.now().hour): SaveProgress? {
+fun readGen4Progress(r: MemoryReader, cfg: Gen4Config, body: Long, hour: Int = localNow().hour): SaveProgress? {
     if (cfg.varsFlagsOff < 0) return null
     val vars = r.readCoreMemory(body + cfg.varsFlagsOff, cfg.numVars * 2)
     val flags = r.readCoreMemory(body + cfg.varsFlagsOff + cfg.numVars * 2, GEN4_FLAG_BYTES)

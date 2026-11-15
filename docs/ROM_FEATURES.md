@@ -23,10 +23,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
 | Polished Crystal (GBC) | 3.2.0 - 3.2.3 (16 builds) | ◐ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
 | FireRed | USA/Europe rev 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
-| FireRed | USA/Europe rev 0 | ✅ | ✅ | — | — | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
+| FireRed | USA/Europe rev 0 | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | FireRed | ES | ✅ | ✅ | ◐ ² | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | FireRed | DE / FR / IT / JP | ✅ | ✅ | — | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
-| LeafGreen | USA/Europe rev 0 and 1 | ✅ | ✅ | — | — | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
+| LeafGreen | USA/Europe rev 0 and 1 | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | LeafGreen | ES / DE / FR / IT / JP | ✅ | ✅ | — | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | Emerald | USA/Europe | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | Emerald | ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
@@ -610,7 +610,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
 - **Battle buttons**: the BATTLE tab's FIGHT / BAG / POKéMON / RUN and the move buttons press the game's own menus
   (`BattleInputController`). Without them the battle panes are information only.
 - **One-press picks**: a FIGHT / move tap writes the menu's cursor and presses A once (GitHub #33). Without it a tap
-  walks the cursor blind, 46-90 frames a tap (the "taps take a while" report).
+  walks the cursor blind, 46-90 frames a tap (the "taps take a while" report). Retail English FireRed rev 0 and LeafGreen
+  rev 0 / 1 (2026-11-14): FireRed rev 1's cursors, checked headless on each retail cart, on configs of their own
+  (`firered_rev0_retail`, `leafgreen_rev*_retail`) the Poller picks on a retail hash only - the bases carry the hacks and
+  the language ports.
 - **POKéMON switch**: the battle POKéMON pane switches the tapped party slot in (the closed loop on gPartyMenu, or on
   a Game Boy game's own party menu).
 - **Field items**: ITEMS' USE (Repels, medicine, PP items) and GIVE / TAKE on a Pokémon (`FieldItems.kt`).
@@ -640,6 +643,16 @@ change to any of the places listed under "Where it's decided" updates its rows h
   picks walked and written headless on English Sapphire rev 1 (`sapphire_rev1_battle`), German Sapphire rev 1 and
   Japanese Sapphire rev 1; the other ports' cursors are mapped through the literal pools (English's RAM in the Western
   ones). No POKéMON switch there: R / S's party menu keeps its cursor in a sprite's data, not in a gPartyMenu.
+- **Hide battle menu** (two screens; not a column: it follows the battle buttons): `PokeDaisyActivity.battleMenuHideSupported`
+  (a BPR / BPG / BPE header running as FireRed / Emerald with the battle buttons' addresses and the one-press picks' cursors:
+  the D-pad steers the hidden action menu by writing gActionSelectionCursor, `HiddenMenuSteer`), the menus found on screen by
+  `pk_wide.c`'s `menuHideBegin` (no address of its own; gBattleTypeFlags keeps doubles' and the Safari Zone's). Checked
+  headless on English FireRed rev 1 and Emerald (mgba_dump `battlemenu`), then (2026-11-15) a wild battle in every covered
+  game, both menus hidden with the sign drawn (`battlemenuinfo`): FireRed rev 0 / 1, LeafGreen rev 0 / 1, Emerald, German / Spanish /
+  French / Italian Emerald, Spanish FireRed / LeafGreen, Emerald Kaizo, Emerald Legacy, randomized FireRed rev 0 / 1 and Emerald,
+  Modern Emerald, Recharged Emerald (three builds: its message box is a band with no right edge), Rocket Edition, Ash Gray and its
+  fork, Ghost Grey v1.0.1 / v1.0.4 (white on black text with no shadow colour), Let's Go Pikachu / Eevee. Ruby / Sapphire are left out: their cursor is
+  drawn apart and stayed over the empty box.
 - **One-press picks**: `NativeConfig.actionCursor` / `moveCursor`, handed out only for a hash-verified ROM
   (`TelemetrySampler.knownCursorAddrs`; a randomized retail ROM's masked hash counts, `RandomizedRetail`), or for a hack
   whose code proves retail's engine (`RetailEngine`, note 30). Configs made with `.copy()` inherit them: zero them where the RAM moved.

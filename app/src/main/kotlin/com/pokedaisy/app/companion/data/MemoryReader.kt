@@ -1,7 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import com.pokedaisy.app.MgbaCore
-
 /**
  * The one memory primitive the telemetry decoders need. In android-companion
  * this was `RetroArchClient.readCoreMemory` over UDP; here it's an in-process
@@ -19,7 +17,7 @@ interface MemoryReader {
  */
 object InProcessReader : MemoryReader {
     override fun readCoreMemory(addr: Long, size: Int): ByteArray {
-        return MgbaCore.pkReadBytes(addr, size)
+        return EmulatorCore.current.readBytes(addr, size)
             ?: throw TelemetryDecodeException("core not running / read of $size B @ 0x${addr.toString(16)} failed")
     }
 }
@@ -49,6 +47,6 @@ class RamSnapshot private constructor(private val regions: List<Pair<Long, ByteA
     companion object {
         /** Copies the RAM into [buffers] (emu thread, between frames); null when the core isn't up. */
         fun capture(buffers: Buffers): RamSnapshot? =
-            if (buffers.regions.all { (base, bytes) -> MgbaCore.pkReadInto(base, bytes) }) RamSnapshot(buffers.regions) else null
+            if (buffers.regions.all { (base, bytes) -> EmulatorCore.current.readInto(base, bytes) }) RamSnapshot(buffers.regions) else null
     }
 }

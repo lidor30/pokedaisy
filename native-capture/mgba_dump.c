@@ -65,6 +65,11 @@
 //   framediff A B [LABEL] - the box of pixels two `shot` PPMs differ in: "framediff box X0,Y0-X1,Y1" or "framediff none"
 //   lookrefresh [PAL]  - PLAYER LOOK's refresh of the player's sprite from its record (pk_look_refresh), after
 //                        `romblocks` / `romunblock` changed the look in place; needs `wideon` (the field reads' table)
+//   battlemenu 0|1|2 [FLAGS] - HIDE BATTLE MENU (pk_battle_menu_hide): 1 / 2 hide the battle's FIGHT / BAG and move
+//                        menus from the next frame drawn (the two-screens sign lighting the bottom / top one), 0 shows them again; FLAGS =
+//                        gBattleTypeFlags' address (hex), whose double / Safari bits keep the menus
+//   battlemenuinfo     - which battle menu the last frame hid (160 / 320 / 0) and why it had no two-screens sign
+//                        (0 = drawn: pk_battle_menu_sign_why)
 //   tint R G B         - DAY AND NIGHT's tint from the next frame (256 each = none): the map's and sprites' palettes
 //   rawshot FILE       - write the current frame as "W H\n" then its 32-bit pixels as the core gives them, mGBA's
 //                        layer tags in the top byte (BG n = 0x08 | n << 4; DAY AND NIGHT's tint reads them)
@@ -3081,6 +3086,13 @@ int main(int argc, char** argv) {
             int havePal = sscanf(line, "%*s %79s", hex) == 1 && strlen(hex) == 64;
             for (int i = 0; havePal && i < 32; i++) { unsigned v; sscanf(hex + i * 2, "%2x", &v); pal[i] = (uint8_t) v; }
             printf("lookrefresh: %d\n", pk_look_refresh(core, havePal ? pal : NULL));
+        } else if (!strcmp(cmd, "battlemenu")) {
+            int mode = 0;
+            unsigned flags = 0;
+            sscanf(line, "%*s %d %x", &mode, &flags);
+            pk_battle_menu_hide(core, mode, flags);
+        } else if (!strcmp(cmd, "battlemenuinfo")) {
+            printf("battlemenuinfo: hidden %d sign %d\n", pk_battle_menu_hidden(), pk_battle_menu_sign_why());
         } else if (!strcmp(cmd, "tint")) {
             int tr = 256, tg = 256, tb = 256;
             sscanf(line, "%*s %d %d %d", &tr, &tg, &tb);
