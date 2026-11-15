@@ -1600,6 +1600,7 @@ object PokedexSource {
         DexDetails.romChanged()
         GuideRomSource.romChanged()
         EvolutionSource.romChanged()
+        AreaMaps.romChanged()
     }
 
     /** Already-loaded data only (no ROM read) - composables start from these,
