@@ -103,7 +103,7 @@ fun rememberGbaTextMetrics(textScale: Float = 1.25f, wholePixels: Boolean = true
     val density = LocalDensity.current
     // A game font with smaller letters than Pixel Operator's (Gen 1's 7px caps vs 9) is set larger -
     // except where a layout is sized to the line ([gameScaled] false: the tab chips, battle INFO).
-    val gameScale = if (gameScaled) com.pokedaisy.app.companion.ui.theme.LocalGameTextScale.current else 1f
+    val gameScale = if (gameScaled && com.pokedaisy.app.companion.ui.theme.AppFonts.current.pixel) com.pokedaisy.app.companion.ui.theme.LocalGameTextScale.current else 1f
     val step = LocalTextStep.current
     return remember(density, textScale, wholePixels, gameScale, step) {
         with(density) {
@@ -121,8 +121,9 @@ fun rememberGbaTextMetrics(textScale: Float = 1.25f, wholePixels: Boolean = true
 
 fun gbaTextStyle(font: FontFamily, m: GbaTextMetrics, scaleX: Float = 1f) = TextStyle(
     fontFamily = font,
-    // A skin's font set to Pixel Operator's height (CompanionSkin.fontScale); the line keeps its height.
-    fontSize = CompanionSkins.current.fontScale.let { k -> if (k == 1f) m.fontSize else m.fontSize * k },
+    // SETTINGS > FONT's smooth fonts, else a skin's font, set to Pixel Operator's capital height; the line keeps its height.
+    fontSize = com.pokedaisy.app.companion.ui.theme.AppFonts.current.let { f -> if (!f.pixel) f.sizeScale else CompanionSkins.current.fontScale }
+        .let { k -> if (k == 1f) m.fontSize else m.fontSize * k },
     textGeometricTransform = if (scaleX == 1f) null else TextGeometricTransform(scaleX = scaleX),
     lineHeight = m.fontSize,
     platformStyle = PlatformTextStyle(includeFontPadding = false),
@@ -151,7 +152,8 @@ fun GbaText(
 ) {
     val scaleX = scaleX ?: gameFontScaleX(m)
     val style = gbaTextStyle(pixelFontFamily(), m, scaleX)
-    val k = m.fontPixel.roundToInt()
+    // The GBA's shadow is a whole font pixel; under a smooth font (SETTINGS > FONT) half of one, so it stays a shadow.
+    val k = if (com.pokedaisy.app.companion.ui.theme.AppFonts.current.pixel) m.fontPixel.roundToInt() else (m.fontPixel * 0.5f).roundToInt().coerceAtLeast(1)
     val b = if (bold) boldOffsetPx(m.fontPixel * scaleX) else 0
     // The layout the text was given, for its copies; set before each draw (layout comes first), read only there.
     val laid = remember { arrayOfNulls<androidx.compose.ui.text.TextLayoutResult>(1) }
@@ -210,7 +212,7 @@ fun boldOffsetPx(pixelWidthPx: Float): Int = (pixelWidthPx * 0.5f).roundToInt().
 
 /** Labels on tabs and buttons are bold in a thin game font (Gen 1's 1px strokes). */
 @Composable
-fun gameBoldLabels(): Boolean = com.pokedaisy.app.companion.ui.theme.LocalGameFont.current != null
+fun gameBoldLabels(): Boolean = com.pokedaisy.app.companion.ui.theme.LocalGameFont.current != null && com.pokedaisy.app.companion.ui.theme.AppFonts.current.pixel
 
 /**
  * [LocalGameFontWidth] at [m]'s size: on whole-pixel text, rounded so a font pixel is a whole
@@ -223,7 +225,7 @@ fun gameFontScaleX(m: GbaTextMetrics): Float = gameFontScaleX(m.fontPixel)
 @Composable
 fun gameFontScaleX(p: Float): Float {
     val w = com.pokedaisy.app.companion.ui.theme.LocalGameFontWidth.current
-    if (w >= 1f) return 1f
+    if (w >= 1f || !com.pokedaisy.app.companion.ui.theme.AppFonts.current.pixel) return 1f
     val whole = p.roundToInt()
     if (whole < 1 || kotlin.math.abs(p - whole) > 0.01f) return w
     return (whole * w).roundToInt().coerceAtLeast(1) / whole.toFloat()

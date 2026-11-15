@@ -40,6 +40,8 @@ class N3dsSession(
     private val onBattle: (Gen6Reader.Battle?) -> Unit = {},
     /** The top screen in the field, about once a second (the backdrop of the game's own screens), on the UI thread. */
     private val onFieldShot: (android.graphics.Bitmap) -> Unit = {},
+    /** [fieldHeld] changed (the UI thread). */
+    private val onFieldHeld: (Boolean) -> Unit = {},
 ) {
     val topView = SurfaceView(context)
     /** Over the top screen when it floats in (ONE SCREEN): drawn above the other surfaces. */
@@ -264,6 +266,11 @@ class N3dsSession(
     @Volatile var zoomable = false
         private set
 
+    /** The game holds the player on the field ([Gen6Reader.Config.fieldHold]): its text box may be up; [onFieldHeld]. */
+    @Volatile var fieldHeld = false
+        private set
+    private var freeReads = 0
+
     private val scenes = Thread({
         val config = Gen6Reader.configFor(titleId)
         var lastModules: String? = null
@@ -295,6 +302,13 @@ class N3dsSession(
                         ui.post { onScene(now) }
                     }
                     seen = now
+                    // The game holding the player (talking, a scene, a door): the HUD's bottom row steps away at once and
+                    // comes back after a few free reads (no blink between two lines or through a door).
+                    val heldNow = "DllField" in modules && config.fieldHold != 0 &&
+                        (N3dsNative.readMemory(intArrayOf(config.fieldHold, 4))?.takeIf { it.size == 4 }?.let { it[0].toInt() and Gen6Reader.FIELD_HELD != 0 } == true)
+                    freeReads = if (heldNow) 0 else freeReads + 1
+                    val held = heldNow || freeReads < FIELD_FREE_READS
+                    if (held != fieldHeld) { fieldHeld = held; ui.post { onFieldHeld(held) } }
                     // ZOOM's say: the field's module up and the scene the field (or the X menu over it).
                     val canZoom = "DllField" in modules &&
                         (scene == Gen6Reader.Scene.FIELD || scene == Gen6Reader.Scene.MENU)
@@ -658,6 +672,8 @@ class N3dsSession(
 
     companion object {
         private const val TAG = "pokedaisy/n3ds"
+        /** Free reads (100 ms each) before the HUD's bottom row comes back. */
+        private const val FIELD_FREE_READS = 3
         /** The camera's ease: this much of the factor a frame (about a quarter second from 1x to the farthest step). */
         private const val CAMERA_FRAME_MS = 16L
         private const val CAMERA_RESOLVE_NS = 500_000_000L

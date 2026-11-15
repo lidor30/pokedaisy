@@ -63,6 +63,7 @@ The `SPEED OPTIONS` page:
 | `SINGLE SCREEN` | `ON`, **`OFF`** | Only on a device with two screens: play on one, the second screen free for other apps and the companion as a window over the game. | [Devices](devices.md#single-screen) |
 | `THEME` | **`POKéDAISY`**, `CHERRY`, `RAINBOW`, `OCEAN`, `MINT`, `LAVENDER`, `SUNSET`, `FOREST`, `LEMON`, and a holiday theme around its dates | Colours of the app and the companion, on both screens. | [Screen](screen.md#theme) |
 | `DARK MODE` | **`OFF`**, `ON`, `AUTO` | Dark windows on both screens. `AUTO` follows the device. | [Screen](screen.md) |
+| `FONT` | **`PIXEL`**, `SMOOTH`, `SMOOTH BOLD`, `SYSTEM` | The app's letters on both screens: pixel art or smooth ones. | [Screen](screen.md#font) |
 | `FPS / CPU` | `ON`, **`OFF`** | Frames per second and the app's CPU use in the game's corner. Tap it for more. | [Screen](screen.md) |
 
 The `DISPLAY OPTIONS` page:
@@ -220,6 +221,7 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | `SINGLE SCREEN` | as on the top screen | Only with two screens. Switches right away, and the companion opens over the game. | [Devices](devices.md#single-screen) |
 | `THEME` | as on the top screen | Colours of the app and the companion, on both screens. | [Screen](screen.md#theme) |
 | `DARK MODE` | as on the top screen | Dark windows on both screens. | [Screen](screen.md) |
+| `FONT` | as on the top screen | The app's letters on both screens. | [Screen](screen.md#font) |
 | `FPS / CPU` | as on the top screen | The performance readout. | [Screen](screen.md) |
 
 The `DISPLAY OPTIONS` page:

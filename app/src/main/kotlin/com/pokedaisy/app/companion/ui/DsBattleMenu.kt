@@ -256,7 +256,7 @@ fun DsBattleMenu(
         if (holding || !active) return
         // (Its cursor breathes smoothly: the pulse eased, 0 .. 1.)
         val breath = (0.5f - 0.5f * kotlin.math.cos(Math.PI.toFloat() * pulse / (PULSE_PX + 0.99f)))
-        XyBattleCorner(state, picture, shownMode, idle, moves, snapshot.battlePlayer.getOrNull(0)?.iconAsset, breath)
+        XyBattleCorner(state, picture, shownMode, idle, moves, snapshot.battlePlayer.getOrNull(0)?.iconAsset, breath, power = hints)
         return
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {

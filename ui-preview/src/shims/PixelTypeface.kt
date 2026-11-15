@@ -31,3 +31,11 @@ fun readingFontFamily(context: android.content.Context): FontFamily = reading ?:
 ).also { reading = it }
 
 @Volatile private var reading: FontFamily? = null
+
+/** Desktop stand-in for the app's atkinsonFamily (SETTINGS > FONT's SMOOTH / SMOOTH BOLD). */
+fun atkinsonFamily(context: android.content.Context, bold: Boolean): FontFamily = (if (bold) atkBold else atkRegular) ?: FontFamily(
+    Font(if (bold) "fonts/AtkinsonHyperlegible-Bold.ttf" else "fonts/AtkinsonHyperlegible-Regular.ttf", context.assets),
+).also { if (bold) atkBold = it else atkRegular = it }
+
+@Volatile private var atkRegular: FontFamily? = null
+@Volatile private var atkBold: FontFamily? = null

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -66,6 +67,11 @@ import kotlin.math.sin
 private const val CORNER_W = 124f
 private const val CORNER_H = 100f
 private const val CORNER_MARGIN = 4f
+/** A move card's width; wider with each move's power on it too (BATTLE HINTS: the power and the PP side by side, each
+ * at a readable size - squeezed into the plain card's room they were too small, the user's call), the corner with it. */
+private const val CARD_W = 60f
+private const val CARD_W_POWER = 90f
+private const val CARD_GAP = 4f
 /** The corner's least width in dp (a small, dense screen's picture, the RG DS's, made it a stamp). */
 private const val CORNER_MIN_DP = 170
 
@@ -101,15 +107,19 @@ private val XY_TYPES = mapOf(
 @Composable
 internal fun XyBattleCorner(
     state: DsBattleMenuState, picture: Rect, mode: Int, idle: Boolean, moves: List<MoveView>, icon: String?, pulse: Float,
+    /** BATTLE HINTS: each move's power on its card too. */
+    power: Boolean = false,
 ) {
     val density = LocalDensity.current
     // A 3DS pixel in screen px, the corner never under [CORNER_MIN_DP] wide nor over half the picture.
     val minP = with(density) { CORNER_MIN_DP.dp.toPx() } / CORNER_W
     val p = maxOf(picture.height / 240f, minP).coerceAtMost(picture.width * 0.5f / CORNER_W)
     fun dp(n: Float): Dp = with(density) { (n * p).toDp() }
-    val left = picture.right - (CORNER_W + CORNER_MARGIN) * p
+    val cardW = if (mode == 2 && power) CARD_W_POWER else CARD_W
+    val cornerW = if (mode == 2) 2 * cardW + CARD_GAP else CORNER_W
+    val left = picture.right - (cornerW + CORNER_MARGIN) * p
     val top = picture.bottom - (CORNER_H + CORNER_MARGIN) * p
-    Box(Modifier.offset(x = with(density) { left.toDp() }, y = with(density) { top.toDp() }).size(dp(CORNER_W), dp(CORNER_H))) {
+    Box(Modifier.offset(x = with(density) { left.toDp() }, y = with(density) { top.toDp() }).size(dp(cornerW), dp(CORNER_H))) {
         @Composable
         fun Place(x: Float, y: Float, w: Float, h: Float, content: @Composable () -> Unit) {
             Box(Modifier.offset(x = dp(x), y = dp(y)).size(dp(w), dp(h))) { content() }
@@ -130,14 +140,14 @@ internal fun XyBattleCorner(
             }
         } else {
             for (i in 0..3) {
-                Place((i % 2) * 64f, (i / 2) * 34f, 60f, 30f) {
+                Place((i % 2) * (cardW + CARD_GAP), (i / 2) * 34f, cardW, 30f) {
                     val move = moves.getOrNull(i)
-                    XyMoveCard(move, state.moveCursor == i, move != null && state.moveEnabled(i) && !idle, p, pulse) {
+                    XyMoveCard(move, state.moveCursor == i, move != null && state.moveEnabled(i) && !idle, p, pulse, power) {
                         state.moveCursor = i; state.pickMove(i)
                     }
                 }
             }
-            Place(94f, 70f, 30f, 30f) { XyBackButton(!idle, p) { state.back() } }
+            Place(cornerW - 30f, 70f, 30f, 30f) { XyBackButton(!idle, p) { state.back() } }
         }
     }
 }
@@ -196,7 +206,7 @@ private fun XyRound(i: Int, on: Boolean, enabled: Boolean, p: Float, pulse: Floa
 /** A move as the touch screen's card: a pill in a silver rim, the type's colour light over dark, the name on the light
  * half, the type's chip and "PP 35/35" on the dark one; top right its multiplier on the foe; [on] the arrow over it. */
 @Composable
-private fun XyMoveCard(move: MoveView?, on: Boolean, enabled: Boolean, p: Float, pulse: Float, onClick: () -> Unit) {
+private fun XyMoveCard(move: MoveView?, on: Boolean, enabled: Boolean, p: Float, pulse: Float, power: Boolean, onClick: () -> Unit) {
     val type = move?.let { XY_TYPES[it.type.uppercase()] ?: com.pokedaisy.app.companion.ui.theme.AppColors.typeColors[it.type] } ?: Color(0xFF9C9C9C)
     val density = LocalDensity.current
     fun dp(n: Float) = with(density) { (n * p).toDp() }
@@ -241,11 +251,16 @@ private fun XyMoveCard(move: MoveView?, on: Boolean, enabled: Boolean, p: Float,
                         drawRoundRect(Color(0xFFF2F2F2), cornerRadius = CornerRadius(size.height / 2))
                         val i = insetRect(0.6f * p)
                         drawRoundRect(Brush.verticalGradient(listOf(lerp(type, Color.Black, 0.15f), lerp(type, Color.Black, 0.45f)), i.top, i.bottom), i.topLeft, i.size, CornerRadius(i.height / 2))
-                    }.padding(horizontal = dp(2.4f), vertical = dp(0.4f)),
-                ) { XyText(typeLabel(move.type), 5.2f * p, Color.White, lerp(type, Color.Black, 0.6f), 0.3f * p, spacing = 0.05f) }
+                    }.padding(horizontal = dp(if (power) 2f else 2.4f), vertical = dp(0.4f)),
+                ) { XyText(typeLabel(move.type), (if (power) 4.8f else 5.2f) * p, Color.White, lerp(type, Color.Black, 0.6f), 0.3f * p, spacing = 0.05f) }
                 Box(Modifier.weight(1f).padding(start = dp(2f)), contentAlignment = Alignment.CenterEnd) {
                     val pp = if (move.maxPp > 0) "${move.pp}/${move.maxPp}" else "${move.pp}"
-                    XyText(tr("PP {0}", pp), 8.4f * p, Color.White, lerp(type, Color.Black, 0.65f), 0.3f * p, weight = FontWeight.Medium)
+                    val ink = lerp(type, Color.Black, 0.65f)
+                    // BATTLE HINTS: the power before the PP, on a wider card ([CARD_W_POWER]), a little smaller than the PP alone;
+                    // one line, so the two always share a size (made smaller together where it doesn't fit).
+                    if (power) {
+                        XyText(tr("PWR {0}", powerLabel(move.power)) + "  " + tr("PP {0}", pp), 7.6f * p, Color.White, ink, 0.3f * p, weight = FontWeight.Medium)
+                    } else XyText(tr("PP {0}", pp), 8.4f * p, Color.White, ink, 0.3f * p, weight = FontWeight.Medium)
                 }
             }
         }
@@ -415,8 +430,12 @@ internal fun XyText(
     val measurer = rememberTextMeasurer()
     BoxWithConstraints(modifier) {
         val max = constraints.maxWidth.toFloat() - 2 * edge
+        // SETTINGS > FONT's smooth fonts here too (the HUD, the battle buttons); PIXEL keeps the game's sans-serif.
+        val appFont = com.pokedaisy.app.companion.ui.theme.AppFonts.current
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val family = remember(appFont) { if (appFont.pixel) FontFamily.SansSerif else appFont.family(context) }
         fun style(px: Float) = TextStyle(
-            fontSize = with(density) { px.toSp() }, fontFamily = FontFamily.SansSerif, fontWeight = weight, letterSpacing = spacing.em,
+            fontSize = with(density) { px.toSp() }, fontFamily = family, fontWeight = weight, letterSpacing = spacing.em,
         )
         val layout = remember(text, size, weight, spacing, max) {
             val first = measurer.measure(text, style(size), maxLines = 1, softWrap = false)

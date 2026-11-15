@@ -2326,6 +2326,7 @@ class PokeDaisyActivity : Activity() {
         }
 
         override fun setDarkMode(v: Int) { Prefs(this@PokeDaisyActivity).darkMode = v }
+        override fun setAppFont(v: Int) { Prefs(this@PokeDaisyActivity).appFont = v }
         override fun setAppTheme(id: Int) {
             com.pokedaisy.app.companion.ui.theme.pickTheme(this@PokeDaisyActivity, com.pokedaisy.app.companion.ui.theme.themeById(id))
         }
@@ -2571,7 +2572,7 @@ class PokeDaisyActivity : Activity() {
             n3dsDim = View(this@PokeDaisyActivity).apply {
                 setBackgroundColor(0x99000000.toInt())
                 visibility = View.GONE
-                setOnClickListener { setN3dsFloating(false) }
+                setOnClickListener { if (!n3dsBattleScreenUp) setN3dsFloating(false) }
             }
             addView(n3dsDim, FrameLayout.LayoutParams(-1, -1))
             addView(dsTouchView, FrameLayout.LayoutParams(-1, -1))
@@ -4343,7 +4344,7 @@ class PokeDaisyActivity : Activity() {
 
     /** The TOUCH SCREEN hotkey and the HUD's TOUCH: the floating touch screen opened by hand, or closed again. */
     private fun toggleDsTouch() {
-        if (romIs3ds) { setN3dsFloating(!n3dsFloating.value); return }
+        if (romIs3ds) { if (!(n3dsFloating.value && n3dsBattleScreenUp)) setN3dsFloating(!n3dsFloating.value); return }
         if (!dsFloats.value) return
         dsWindowManual.value = !dsWindowManual.value
     }
@@ -4390,6 +4391,7 @@ class PokeDaisyActivity : Activity() {
             onScene = { onN3dsScene(it) },
             onBattle = { onN3dsBattle(it) },
             onFieldShot = { n3dsFieldShot.value = it.asImageBitmap() },
+            onFieldHeld = { n3dsFieldHeld.value = it },
         )
         n3ds = session
         // The idle engine's GL view stays laid out (the stage measures it) but draws nothing: its surface goes.
@@ -4427,6 +4429,7 @@ class PokeDaisyActivity : Activity() {
         n3dsFieldShot.value = null
         n3dsBattle.value = false
         n3dsOnField.value = false
+        n3dsFieldHeld.value = false
         n3dsTopRect.value = null
         session.stop()
         (session.topView.parent as? android.view.ViewGroup)?.removeView(session.topView)
@@ -4496,6 +4499,9 @@ class PokeDaisyActivity : Activity() {
         showHud(com.pokedaisy.app.companion.i18n.tr("Zoom {0}", com.pokedaisy.app.companion.zoomLabel(1f / N3DS_CAMERA_PULLS[n3dsZoomStep])))
     }
 
+    /** A 3DS game holds the player on its field (text, a scene, a door): the HUD's bottom row steps away. */
+    private val n3dsFieldHeld = androidx.compose.runtime.mutableStateOf(false)
+
     /** A 3DS game is on its field ([onN3dsScene]): the HUD shows (Compose state). */
     private val n3dsOnField = androidx.compose.runtime.mutableStateOf(false)
 
@@ -4504,6 +4510,14 @@ class PokeDaisyActivity : Activity() {
 
     /** The 3DS top screen's box in the HUD's coordinates: the battle strip's picture. */
     private val n3dsTopRect = androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+
+    /** A 3DS battle's bag or party is open: those are on the touch screen alone, so its window stays until the game
+     * closes them (its return arrow, B) - closed by itself (a tap beside it: a second tap on POKéMON before it was up),
+     * the game sat on its party with neither the window nor the battle's buttons to get back (the user's report). */
+    private val n3dsBattleScreenUp: Boolean
+        get() = n3dsBattle.value && n3ds?.battle?.input.let {
+            it == com.pokedaisy.app.companion.data.BATTLE_INPUT_BAG_OPEN || it == com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
+        }
 
     /** The battle's menu changed ([com.pokedaisy.app.n3ds.N3dsSession.battle]): its bag and party are the game's own
      * screens, so the touch screen floats in for them (and goes once they close); the strip stands for the rest. */
@@ -4974,6 +4988,7 @@ class PokeDaisyActivity : Activity() {
                     modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
                     wild = n3ds?.wildHere.orEmpty(),
                     map = n3ds?.mapHere,
+                    bottomHidden = n3dsFieldHeld.value,
                     itemUse = itemUse,
                     onTouchScreen = if (n3dsFloats) ::toggleDsTouch else null,
                     onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,

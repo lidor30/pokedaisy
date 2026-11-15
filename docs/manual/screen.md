@@ -198,6 +198,17 @@ Overlays are switched off on a phone held upright, where the game sits across th
 
 The game's own art stays as it is: party slots, the map, the trainer card and battle buttons keep the game's colours. Backgrounds dim behind them.
 
+## Font
+
+`FONT` sets the letters the app is written in, on both screens at once. Pick it in the top screen's Settings or in the companion's SETTINGS, under SCREEN:
+
+- `PIXEL` (the default): crisp pixel letters, like the games' own. A Game Boy game shows its own letters while it runs.
+- `SMOOTH`: soft, rounded letters that are easy to read on any screen.
+- `SMOOTH BOLD`: the same letters, heavier, closer to the games' thick menu text.
+- `SYSTEM`: your device's own font.
+
+The game's own art keeps its pixel letters: type tags, party slots and the trainer card stay as the game draws them.
+
 ## Theme
 
 `THEME` gives the whole app a colour scheme: the library, Settings, setup and the companion while you play, on both screens at once. It works like `DARK MODE`: the windows take the theme's colour, the values in the lists take its accent, and the backdrop behind them gets its own colours. You can pick it in the top screen's Settings or in the companion's SETTINGS, under SCREEN, and use it with `DARK MODE` on or off.

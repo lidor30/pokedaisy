@@ -363,10 +363,13 @@ object AppColors {
  */
 @Composable
 fun pixelFontFamily(): FontFamily {
-    // A game's skin with a font of its own (CompanionSkin: Pokemon X's sans-serif).
+    val context = LocalContext.current
+    // SETTINGS > FONT: another font everywhere (a game's skin and a Game Boy game's own font included); PIXEL keeps the
+    // game's: its skin's font (CompanionSkin: Pokemon X's sans-serif), else a Game Boy game's own, else Pixel Operator.
+    val font = AppFonts.current
+    if (!font.pixel) return remember(font) { font.family(context) }
     com.pokedaisy.app.companion.ui.CompanionSkins.current.font?.let { return it }
     LocalGameFont.current?.let { return it }
-    val context = LocalContext.current
     // Pixel Operator + its Japanese fallback (PixelTypeface.kt), one per process.
     return com.pokedaisy.app.pixelFontFamily(context)
 }
@@ -440,6 +443,7 @@ fun AppTheme(content: @Composable () -> Unit) {
         // runCatching: previews / screenshot tests may have no real prefs.
         runCatching { loadTheme(context) }
         runCatching { DarkMode.load(context) }
+        runCatching { AppFonts.load(context) }
     }
 
     val pixel = pixelFontFamily()

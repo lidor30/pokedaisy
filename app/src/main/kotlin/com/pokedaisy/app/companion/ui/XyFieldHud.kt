@@ -66,7 +66,6 @@ data class XyWildRow(val method: String, val name: String, val iconAsset: String
 private enum class XyPanel { SUMMARY, WILD, MAP }
 
 private val WILD_BUTTON = XyAction(tk("WILD"), Color(0xFF8ED870), Color(0xFF3C9A30), Color(0xFF3FA034), Color(0xFF1C3814))
-private val MAP_BUTTON = XyAction(tk("MAP"), Color(0xFF64B6F0), Color(0xFF2E78D0), Color(0xFF2E7CD6), Color(0xFF14265A))
 private val TOUCH_BUTTON = XyAction(tk("TOUCH"), Color(0xFFF6BE62), Color(0xFFE08A24), Color(0xFFE0922C), Color(0xFF4A2A0E))
 private val COMPANION_BUTTON = XyAction(tk("COMPANION"), Color(0xFFE8E8E8), Color(0xFF9A9A9A), Color(0xFF8A8A8A), Color(0xFF2A2A2A))
 
@@ -78,8 +77,10 @@ fun XyFieldHud(
     frame: Rect?,
     modifier: Modifier = Modifier,
     wild: List<XyWildRow> = emptyList(),
-    /** The Town Map and the player's place on it; null = no MAP button. */
+    /** The Town Map and the player's place on it: the minimap (and its whole map); null = none. */
     map: XyMapSpot? = null,
+    /** The game holds the player (its text box is up): the bottom row (party, buttons) steps away. */
+    bottomHidden: Boolean = false,
     itemUse: ItemUse? = null,
     onTouchScreen: (() -> Unit)? = null,
     onOpenCompanion: (() -> Unit)? = null,
@@ -103,50 +104,62 @@ fun XyFieldHud(
     fun open(what: XyPanel?) { panel = what; onPanel(what != null); onTap() }
     Box(modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }) {
         // The party: a pill per Pokemon, bottom left.
+        // The bottom row steps away while the game holds the player (its text box is there): faded, not tappable.
+        val bottom by animateFloatAsState(if (bottomHidden) 0f else 1f, tween(if (bottomHidden) 120 else 220), label = "xyHudBottom")
+        // The party: one panel, a slot per Pokemon (its icon, HP under it, a status tag), bottom left.
         val party = snapshot.party.take(6)
-        val cellW = 28f * p
-        val cellH = 25f * p
-        val gap = 2.5f * p
-        party.forEachIndexed { i, mon ->
-            val x = frame.left + margin + i * (cellW + gap)
-            val y = frame.bottom - margin - cellH
+        // Slots narrower than the sprites (their frames have room round them), the panel see-through: the field shows.
+        val slotW = 25f * p
+        val slotH = 30f * p
+        val pad = 2f * p
+        val slotGap = 0.5f * p
+        if (party.isNotEmpty() && bottom > 0f) {
+            val panelW = pad * 2 + party.size * slotW + (party.size - 1) * slotGap
+            val panelH = pad * 2 + slotH
             Box(
-                Modifier.offset { IntOffset(x.toInt(), y.toInt()) }.size(dp(cellW), dp(cellH))
-                    .clickable(remember { MutableInteractionSource() }, null) { summary = i; open(XyPanel.SUMMARY) },
+                Modifier.offset { IntOffset((frame.left + margin).toInt(), (frame.bottom - margin - panelH).toInt()) }
+                    .size(dp(panelW), dp(panelH)).graphicsLayer { this.alpha = bottom },
             ) {
-                Canvas(Modifier.fillMaxSize()) { drawXyCell(p) }
-                SpeciesIcon(
-                    mon.iconAsset, size = dp(20f * p),
-                    modifier = Modifier.offset { IntOffset((4f * p).toInt(), (1f * p).toInt()) },
-                )
-                if (!mon.isEgg) Canvas(Modifier.fillMaxSize()) {
-                    drawXyMiniHp(Rect(4f * p, 18.5f * p, size.width - 4f * p, 21.5f * p), mon.hp, mon.maxHp)
-                }
-                val status = if (mon.hp == 0) "FNT" else mon.status
-                if (status.isNotEmpty() && !mon.isEgg) Box(Modifier.align(Alignment.TopEnd).padding(top = dp(1f * p), end = dp(1f * p))) {
-                    XyStatusTag(status, 5f * p)
+                Canvas(Modifier.fillMaxSize().graphicsLayer { this.alpha = PARTY_PANEL_ALPHA }) { drawXyCell(p) }
+                party.forEachIndexed { i, mon ->
+                    val x = pad + i * (slotW + slotGap)
+                    Box(
+                        Modifier.offset { IntOffset(x.toInt(), pad.toInt()) }.size(dp(slotW), dp(slotH))
+                            .clickable(remember { MutableInteractionSource() }, null, enabled = !bottomHidden) { summary = i; open(XyPanel.SUMMARY) },
+                    ) {
+                        // (The icon stands at the bottom of its square frame: lifted so its feet meet the HP bar.)
+                        SpeciesIcon(
+                            mon.iconAsset, size = dp(30f * p),
+                            modifier = Modifier.offset { IntOffset(((slotW - 30f * p) / 2f).toInt(), (-7f * p).toInt()) },
+                        )
+                        if (!mon.isEgg) Canvas(Modifier.fillMaxSize()) {
+                            drawXyMiniHp(Rect(2.5f * p, size.height - 4.5f * p, size.width - 2.5f * p, size.height - 1f * p), mon.hp, mon.maxHp)
+                        }
+                        val status = if (mon.hp == 0) "FNT" else mon.status
+                        if (status.isNotEmpty() && !mon.isEgg) Box(Modifier.align(Alignment.TopEnd)) { XyStatusTag(status, 5f * p) }
+                    }
                 }
             }
         }
         // The minimap, top right: the Town Map round the player's place, the pin on it; a tap opens the whole map.
         if (map != null) XyMinimap(map, frame, p) { open(if (panel == XyPanel.MAP) null else XyPanel.MAP) }
-        // The buttons, bottom right: WILD, MAP, TOUCH, COMPANION (each where there's something for it).
+        // The buttons, bottom right: WILD, TOUCH, COMPANION (each where there's something for it; the minimap is MAP's).
         val buttons = listOfNotNull(
             if (wild.isNotEmpty()) WILD_BUTTON to { open(if (panel == XyPanel.WILD) null else XyPanel.WILD) } else null,
-            map?.let { MAP_BUTTON to { open(if (panel == XyPanel.MAP) null else XyPanel.MAP) } },
             onTouchScreen?.let { TOUCH_BUTTON to { onTap(); it() } },
             onOpenCompanion?.let { COMPANION_BUTTON to { onTap(); it() } },
         )
         val size = 25f * p
         val label = 6f * p
-        val step = size + 11f * p
+        val step = size + 7f * p
         buttons.forEachIndexed { i, (a, click) ->
             // (Each label's column is a step wide: the last one's edge, not its button's, keeps the margin.)
             val x = frame.right - margin - (step - size) / 2f - size - (buttons.size - 1 - i) * step
             val y = frame.bottom - margin - size - label
-            Column(
+            if (bottom > 0f) Column(
                 Modifier.offset { IntOffset((x - (step - size) / 2f).toInt(), y.toInt()) }.width(dp(step))
-                    .clickable(remember(a) { MutableInteractionSource() }, null, onClick = click),
+                    .graphicsLayer { this.alpha = bottom }
+                    .clickable(remember(a) { MutableInteractionSource() }, null, enabled = !bottomHidden, onClick = click),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Canvas(Modifier.size(dp(size))) {
@@ -169,7 +182,10 @@ fun XyFieldHud(
 }
 
 /** How wide (top-screen pixels) the bottom row needs: the margins, six party cells and their gaps, a gap, four buttons. */
-private const val HUD_ROW_WIDTH = 5f + 6 * 28f + 5 * 2.5f + 6f + 4 * 36f + 5f
+private const val HUD_ROW_WIDTH = 5f + (4f + 6 * 25f + 5 * 0.5f) + 6f + 3 * 32f + 5f
+
+/** The party panel's background: see-through, the sprites over it solid. */
+private const val PARTY_PANEL_ALPHA = 0.65f
 
 /** The rom-art picture at [path] (the cart's, read once into rom-art), for drawing. */
 @Composable
@@ -378,7 +394,7 @@ private fun DrawScope.drawXyMiniHp(r: Rect, hp: Int, maxHp: Int) {
     drawRoundRect(Brush.verticalGradient(listOf(light, dark), bar.top, bar.bottom), bar.topLeft, Size(bar.width * share, bar.height), CornerRadius(bar.height / 2))
 }
 
-/** A button's picture in white with a dark edge: grass blades (WILD), a folded map (MAP), a screen and stylus (TOUCH),
+/** A button's picture in white with a dark edge: grass blades (WILD), a screen and stylus (TOUCH),
  * a chevron (COMPANION: it opens from the right). */
 private fun DrawScope.drawXyGlyph(a: XyAction, face: Rect, p: Float) {
     val c = face.center
@@ -393,13 +409,6 @@ private fun DrawScope.drawXyGlyph(a: XyAction, face: Rect, p: Float) {
             moveTo(c.x, c.y + s * 0.2f); lineTo(c.x, c.y - s * 0.26f)
             moveTo(c.x + s * 0.22f, c.y + s * 0.2f); quadraticBezierTo(c.x + s * 0.24f, c.y - s * 0.02f, c.x + s * 0.32f, c.y - s * 0.16f)
         }, 2.2f * p)
-        MAP_BUTTON -> stroke(Path().apply {
-            moveTo(c.x - s * 0.3f, c.y - s * 0.2f); lineTo(c.x - s * 0.1f, c.y - s * 0.28f); lineTo(c.x + s * 0.1f, c.y - s * 0.2f)
-            lineTo(c.x + s * 0.3f, c.y - s * 0.28f); lineTo(c.x + s * 0.3f, c.y + s * 0.2f); lineTo(c.x + s * 0.1f, c.y + s * 0.28f)
-            lineTo(c.x - s * 0.1f, c.y + s * 0.2f); lineTo(c.x - s * 0.3f, c.y + s * 0.28f); close()
-            moveTo(c.x - s * 0.1f, c.y - s * 0.28f); lineTo(c.x - s * 0.1f, c.y + s * 0.2f)
-            moveTo(c.x + s * 0.1f, c.y - s * 0.2f); lineTo(c.x + s * 0.1f, c.y + s * 0.28f)
-        }, 1.6f * p)
         TOUCH_BUTTON -> stroke(Path().apply {
             addRoundRect(androidx.compose.ui.geometry.RoundRect(Rect(c.x - s * 0.28f, c.y - s * 0.2f, c.x + s * 0.2f, c.y + s * 0.2f), CornerRadius(2f * p)))
             moveTo(c.x + s * 0.06f, c.y + s * 0.04f); lineTo(c.x + s * 0.32f, c.y - s * 0.28f)

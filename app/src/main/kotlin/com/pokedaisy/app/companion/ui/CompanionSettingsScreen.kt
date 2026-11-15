@@ -874,6 +874,17 @@ private fun homeRows(
             s.setDarkMode(pick.ordinal)
             changed()
         },
+        // The app's text: the pixel font or a smooth one, both screens at once.
+        com.pokedaisy.app.companion.ui.theme.AppFonts.current.let { now ->
+            SettingRow(tk("FONT"), now.label, subtitle = "Pixel letters or smooth ones", labelBadge = NewFeatures.badge(NewFeatures.APP_FONT)) {
+                select(Selector(tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFont.entries.map { it.label }, now.label) { l ->
+                    com.pokedaisy.app.companion.ui.theme.AppFont.entries.firstOrNull { it.label == l }?.let {
+                        com.pokedaisy.app.companion.ui.theme.AppFonts.setting = it
+                        s.setAppFont(it.ordinal)
+                    }
+                })
+            }
+        },
         // The game's frames per second and the app's CPU share, in the game's corner.
         SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },
         groupTitle(tk("COMPANION")),

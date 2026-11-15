@@ -35,6 +35,10 @@ object Gen6Reader {
          * headless (two saves), the root checked against ten dumps on two devices (2026-11-15). */
         val fieldMenuRoot: Int = 0,
         val fieldMenuOffset: Int = 0x40,
+        /** A u32 whose bit 1 ([FIELD_HELD]) is set while the game holds the player on the field: talking, a scripted
+         * scene, a door (0x3D1 free, 0x3D3 held; the same in the player's save on the RP6 and a test save headless,
+         * 2026-11-15). The HUD's bottom row steps away meanwhile (the game's text box is there). */
+        val fieldHold: Int = 0,
         /** The battle's touch-screen controller ([battleInput]); its command panel points at the battlers' records
          * ([battleMon]): the player's at +[panelPlayer], the foe's at +[panelFoe]. */
         val battleUi: Int = 0,
@@ -61,6 +65,7 @@ object Gen6Reader {
         ),
         staticModule = 0x012B6000,
         fieldMenuRoot = 0x08C54044,
+        fieldHold = 0x08D03400,
         battleUi = 0x08515980,
     )
 
@@ -98,6 +103,9 @@ object Gen6Reader {
     val CAMERA_PATH = intArrayOf(0xD8, 0x21C, 0xB0C)
     const val CAMERA_SETUP = 0x64
     const val CAMERA_DISTANCE = 0x1C
+
+    /** [Config.fieldHold]'s bit while the game holds the player. */
+    const val FIELD_HELD = 2
 
     /** What [sceneOf] reads at the field object's [Config.fieldMenuOffset]. */
     const val FIELD_MENU_BYTES = 0x28

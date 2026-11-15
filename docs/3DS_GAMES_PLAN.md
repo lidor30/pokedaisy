@@ -170,6 +170,11 @@ were checked through this path (2026-11-15).
 - The HUD's minimap (2026-11-15): the Town Map cropped round the player's place (about a third of Kalos across), the pin
   in the middle, top right; a tap opens the whole map. The HUD's top-screen pixel is capped so six party cells and four
   buttons fit across the picture (`HUD_ROW_WIDTH`): `XyFieldHud*ScreenshotTest` at 16:9, 4:3 and 640 x 480.
+- The HUD, round two (2026-11-15, the user's asks): the party in one panel, its icons bigger; the buttons closer, no
+  MAP button (the minimap opens the map); the bottom row (party, buttons) steps away while the game holds the player -
+  talking, a scene, a door: `Gen6Reader.Config.fieldHold` (0x08D03400, bit 1: 0x3D1 free, 0x3D3 held; the same in the
+  player's save on the RP6 and a test save headless), back after three free reads. Checked on the RP6: the nurse's
+  talk. The move cards show each move's power beside its PP with BATTLE HINTS on.
 - START's PSS menu (and its pages, `DllPss*` but its message window) floats the touch screen in as the X menu does:
   `Gen6Reader.FIELD_TOUCH` (headless: START loads DllPssMainMenu beside the field). Checked on the RP6.
 - The right stick turns and tilts the field camera (2026-11-15, the user's ask: a modern game's free camera): the same
@@ -205,7 +210,9 @@ were checked through this path (2026-11-15).
   0x08515980 (+0x17: 1 command menu, 2 moves; +0x10: 1 bag, 2 party, stale once closed) and its command panel's battler
   records (+0xDC the player's, +0xE4 the foe's; 0x244 bytes: species +0xC, HP +0x10, level +0x18, moves +0x116 by 14:
   id, PP, max PP); move data from RomFS `a/2/1/2`. A pick taps the touch screen's own buttons (`N3dsBattleTaps`).
-  The bag and the party float in as the game's screens, the corner gone meanwhile. Checked on the RP6: a turn, bag,
+  The bag and the party float in as the game's screens, the corner gone meanwhile; their window stays until the game
+  closes them (a tap beside it or the TOUCH SCREEN toggle does nothing then, as on a DS game: closed alone, it left the
+  game on its party with no window and no corner, the user's report). Checked on the RP6: a turn, bag,
   party, RUN, the D-pad, and at 4:3 (1440 x 1080) and 640 x 480 at 240 dpi (the corner at least 170 dp wide there).
 - Two displays: the touch surface moves into the bottom display's `NdsBottomHost` (`screen`), the companion behind its
   COMPANION switch, as for a DS game; hidden by translationX there too. Checked on the Thor (2026-11-15, the player's
