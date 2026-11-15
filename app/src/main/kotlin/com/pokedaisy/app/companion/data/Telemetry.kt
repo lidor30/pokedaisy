@@ -197,6 +197,11 @@ data class IconTables(
     // Each species' own icon palette (a pointer per gSpeciesInfo entry, [monIconStride]
     // apart) instead of an index into the 6 shared ones: SoulGold's. 0 = the shared ones.
     val monIconPalettes: Long = 0,
+    // [monIconPalettes]' stride when it isn't [monIconStride] (Epsilon Emerald's are gMonPaletteTable's 8-byte {raw palette,
+    // tag} entries, its icon table plain pointers: 0 = [monIconStride]), and where the shiny palette's pointer is from the
+    // normal one's (SoulGold's next field, 4; Epsilon's gMonShinyPaletteTable, right after gMonPaletteTable).
+    val monIconPalStride: Int = 0,
+    val monIconShinyOff: Long = 4,
     // gMonPaletteTable ({LZ77 palette, tag} per species), with gMonShinyPaletteTable right after it: a shared-palette icon's
     // shiny colours (decodeMonIcon). 0 = no shiny icons.
     val battlePalettes: Long = 0,

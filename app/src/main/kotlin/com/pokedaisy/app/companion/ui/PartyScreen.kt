@@ -630,7 +630,7 @@ fun partyPaletteFor(game: GameKind): PartyPalette = when (game) {
     GameKind.ROWE -> RowePartyPalette
     GameKind.SOULGOLD -> SoulGoldPartyPalette
     GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowPartyPalette
-    GameKind.RED, GameKind.BLUE -> RedBluePartyPalette
+    GameKind.RED, GameKind.BLUE, GameKind.BROWN -> RedBluePartyPalette
     GameKind.PURE_RED -> PureRedPartyPalette
     GameKind.PURE_BLUE -> PureBluePartyPalette
     // Gold's and Silver's party menu is Crystal's, pixel for pixel (sampled headless in both).

@@ -22,6 +22,7 @@ class MonomythDecodeTest {
 
     @After fun tearDown() {
         activeGame = GameKind.FIRERED
+        monomythV1_2 = false
     }
 
     @Test
@@ -269,5 +270,84 @@ class MonomythDecodeTest {
         assertTrue(support.canPc)
         assertFalse(support.canFly)
         assertNull(fieldItemSupport(FIELD_ITEMS_MONOMYTH) { a, n -> rom.readCoreMemory(a, n) })
+    }
+
+    // v1.2: v1.1 rebuilt again, gMapHeader and the RAM after it 4 bytes later; v1.0's save loads in it.
+    private val v12 = NATIVE_MONOMYTH_V1_2
+
+    @Test
+    fun `v1_2 - v1_0's save reads the same, its map and bag 4 bytes later`() {
+        assertEquals(cfg.playerParty, v12.playerParty)
+        assertEquals(cfg.mapHeader + 4, v12.mapHeader)
+        assertEquals(cfg.objectEvents + 4, v12.objectEvents)
+        val old = decodeNative("monomyth", cfg)
+        val t = decodeNative("monomyth_v1_2", v12)
+        assertEquals(old.party.map { it.species }, t.party.map { it.species })
+        assertEquals(old.party.map { it.level to it.hp }, t.party.map { it.level to it.hp })
+        assertEquals(old.party.map { it.moves.toList() }, t.party.map { it.moves.toList() })
+        assertEquals(1968L, t.money)
+        assertEquals(old.items.map { it.itemId to it.quantity }, t.items.map { it.itemId to it.quantity })
+        assertEquals(old.mapGroup to old.mapNum, t.mapGroup to t.mapNum)
+        assertEquals(0x01, t.regionMapSectionId)   // CATSEAR CITY
+        assertEquals(old.x to old.y, t.x to t.y)
+        assertFalse(t.inBattle)
+    }
+
+    @Test
+    fun `v1_2 - its battle handlers are read live`() {
+        val ram = FixtureMemoryReader.load("monomyth_v1_2_battle")
+        val t = decodeNative("monomyth_v1_2_battle", v12)
+        assertTrue(t.inBattle)
+        assertEquals("Poliwag" to 5, t.battleMons[BATTLE_POS_OPPONENT_LEFT].let { speciesName(it.species) to it.level })
+        assertEquals(194, t.battleMons[BATTLE_POS_PLAYER_LEFT].species)
+        assertEquals(v12.handleInputChooseAction, u32le(ram.readCoreMemory(v12.battlerControllerFuncs, 4), 0))
+        assertEquals(0 to BATTLE_INPUT_ACTION_SELECT, readNativeBattleInputFast(ram, v12))
+        val trainer = decodeNative("monomyth_v1_2_trainer", v12)
+        assertEquals(listOf("Spinarak", "Joltik"), trainer.enemyParty.map { speciesName(it.species) })
+        assertEquals(listOf(3, 4), trainer.enemyParty.map { it.level })
+    }
+
+    @Test
+    fun `v1_2 - its one changed move`() {
+        assertEquals(1, lookupMove(508).power)
+        monomythV1_2 = true
+        assertEquals("Liftoff" to 150, lookupMove(508).let { it.name to it.power })
+        assertEquals("Water Gun" to 40, lookupMove(55).let { it.name to it.power })   // the rest is v1.0's
+    }
+
+    @Test
+    fun `v1_2 - its tables match the ROM`() {
+        val rom = RomFileReader.load(RETAIL_ROM_DIR + "Pokemon Monomyth (v1.2).gba") ?: return
+        val sha1 = java.security.MessageDigest.getInstance("SHA-1").digest(rom.readCoreMemory(0x08000000L, 0x2000000)).joinToString("") { "%02x".format(it) }
+        assertEquals(TelemetrySampler.MONOMYTH_V1_2_SHA1, sha1)
+        assertTrue(TelemetrySampler.MONOMYTH_V1_2_SHA1 in TelemetrySampler.SUPPORTED_HACK_SHA1S)
+        assertEquals("BPEE", String(rom.readCoreMemory(0x080000ACL, 4), Charsets.US_ASCII))
+        PokedexSource.reader = rom
+        assertTrue(pokedexMatchesRom(rom, POKEDEX_MONOMYTH_V1_2))
+        assertFalse(pokedexMatchesRom(rom, POKEDEX_MONOMYTH_V1_1))
+        assertTrue(guideTablesMatchRom(rom, GUIDE_TABLES_MONOMYTH_V1_2))
+        assertFalse(guideTablesMatchRom(rom, GUIDE_TABLES_MONOMYTH_V1_1))
+        assertEquals(194, PokedexSource.speciesFor(POKEDEX_MONOMYTH_V1_2, 7))
+        val e = PokedexSource.entry(POKEDEX_MONOMYTH_V1_2, 7)!!
+        assertEquals("Rookie" to (5 to 91), e.category to (e.heightDm to e.weightHg))
+        assertTrue(e.description.startsWith("Mishimizu love shiny copper objects"))
+        assertEquals(listOf("Torrent"), e.abilities)
+        assertTrue(EvoLink(194, 195, listOf(EvoReq.Level(20))) in DexDetails.family(POKEDEX_MONOMYTH_V1_2, 194)!!)
+        val moves = DexDetails.levelUp(POKEDEX_MONOMYTH_V1_2, v12.guideTables, 194)!!
+        assertTrue(LevelMove(8, 55) in moves && LevelMove(11, 229) in moves)
+        assertTrue(DexDetails.catchSpots(v12.guideTables, 183)!!.any { it.mapsec == 0x10 && it.method == WildMethod.GRASS })
+        val rd = { a: Long, n: Int -> rom.readCoreMemory(a, n) }
+        val tiles = MonomythIcons.unpack(rd, u32le(rd(v12.monIconTable + 194 * 4L, 4), 0))!!
+        assertEquals(0xB8E0F95FL, java.util.zip.CRC32().apply { update(tiles) }.value)
+    }
+
+    @Test
+    fun `v1_2 - PC anywhere matches the ROM, v1_1's table doesn't`() {
+        val rom = RomFileReader.load(RETAIL_ROM_DIR + "Pokemon Monomyth (v1.2).gba") ?: return
+        assertEquals(FIELD_ITEMS_MONOMYTH_V1_2, v12.fieldItems)
+        val support = fieldItemSupport(FIELD_ITEMS_MONOMYTH_V1_2) { a, n -> rom.readCoreMemory(a, n) }!!
+        assertTrue(support.canPc)
+        assertFalse(support.canFly)
+        assertNull(fieldItemSupport(FIELD_ITEMS_MONOMYTH_V1_1) { a, n -> rom.readCoreMemory(a, n) })
     }
 }

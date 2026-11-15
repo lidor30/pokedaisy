@@ -766,7 +766,8 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.ROWE -> RoweBag
     GameKind.SOULGOLD -> SoulGoldBag
     GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowBag
-    GameKind.RED, GameKind.BLUE -> RedBlueBag
+    // Brown runs as a Super Game Boy like Red: Red's colours.
+    GameKind.RED, GameKind.BLUE, GameKind.BROWN -> RedBlueBag
     GameKind.PURE_RED, GameKind.PURE_BLUE -> PureRgbBag
     // Gold's and Silver's PACK is Crystal's, pixel for pixel (sampled headless in both).
     GameKind.CRYSTAL, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY -> CrystalBag

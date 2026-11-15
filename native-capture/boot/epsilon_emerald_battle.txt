@@ -1,0 +1,91 @@
+# Pokémon Epsilon Emerald v1.0.0: its field (epsilon_emerald.txt), then a wild ZIGZAGOON Lv5 through the game's own
+# script commands - setwildbattle (0xB6: species, level, item and seven bytes more, zero) + dowildbattle (0xB7) + end,
+# poked into free EWRAM and run by ScriptContext_SetupScript (0x088C6621). Two A presses past the intro text: the
+# action menu, KADABRA out.
+wait 120
+press START
+wait 30
+press A
+wait 60
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+wait 300
+poke8 0x0203FF00 0xB6
+poke8 0x0203FF01 0x20
+poke8 0x0203FF02 0x01
+poke8 0x0203FF03 0x05
+poke8 0x0203FF04 0x00
+poke8 0x0203FF05 0x00
+poke8 0x0203FF06 0x00
+poke8 0x0203FF07 0x00
+poke8 0x0203FF08 0x00
+poke8 0x0203FF09 0x00
+poke8 0x0203FF0A 0x00
+poke8 0x0203FF0B 0x00
+poke8 0x0203FF0C 0x00
+poke8 0x0203FF0D 0xB7
+poke8 0x0203FF0E 0x02
+call 0x088C6621 0x0203FF00
+wait 900
+hold A 4
+wait 120
+hold A 4
+wait 120

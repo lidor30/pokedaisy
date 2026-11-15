@@ -1077,6 +1077,14 @@ val GUIDE_TABLES_MONOMYTH_V1_1 = GUIDE_TABLES_MONOMYTH.copy(
     mapGroups = 0x0886F3A8L,
 )
 
+/** Monomyth v1.2: v1.1's tables moved back. */
+val GUIDE_TABLES_MONOMYTH_V1_2 = GUIDE_TABLES_MONOMYTH.copy(
+    trainers = 0x084B6C60L,
+    learnsets = 0x08506630L,
+    wildHeaders = 0x089C2E40L,
+    mapGroups = 0x0886EF64L,
+)
+
 /**
  * Pokémon Dreamstone Mysteries (pokeemerald-expansion 1.11.2), from the ROM: gTrainers is [3][855] 0x28-byte records
  * from 0x085837E4 (GetTrainerDifficultyLevel: VarGet(0x40A8) picks the table, a NULL party there falls back to the second);

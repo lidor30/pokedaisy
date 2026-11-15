@@ -139,7 +139,8 @@ internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, 
     val palIdx = rd(t.monIconPaletteIndices + species.toLong() * t.monPalIdxStride, 1)[0].toInt() and t.monPalIdxMask
     val palDataPtr = if (t.monIconPalettes != 0L) {
         // The shiny palette's pointer follows the normal one's (+0x94 / +0x98 in SoulGold's gSpeciesInfo).
-        Gfx.u32(rd(t.monIconPalettes + species.toLong() * t.monIconStride + (if (shiny) 4 else 0), 4), 0)
+        val stride = if (t.monIconPalStride > 0) t.monIconPalStride else t.monIconStride
+        Gfx.u32(rd(t.monIconPalettes + species.toLong() * stride + (if (shiny) t.monIconShinyOff else 0L), 4), 0)
     } else {
         Gfx.u32(rd(t.monIconPaletteTable + palIdx.toLong() * MON_PAL_ENTRY_BYTES, MON_PAL_ENTRY_BYTES), 0)
     }

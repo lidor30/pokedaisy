@@ -412,6 +412,25 @@ val GEN4_ORIGIN_HEARTGOLD = gen4HeartGoldFamily(saveDataPtr = 0x021D11B4, fieldS
     formSpecies = { species, form -> OriginHeartGold.data?.formSpecies(species, form) ?: species },
 )
 
+/**
+ * Heartfelt Gold ([HeartfeltGold]): the US HeartGold's RAM and save, hg-engine's bag grown (Items 245, Key Items 92, Balls
+ * 26: include/bag.h's ITEM_POCKET_EXPANSION), so every section after it moved 0x1F0 - its SaveData's own table
+ * (arrayHeaders at +0x2F014, read live): the flags (VarsFlags) 0xFD4, the Location 0x1424, the roamers 0x721C (REPEL's
+ * steps +0x65), the Pokégear 0xC458. Its Pokédex section grew too (0x704 bytes, flag arrays of its own size, not mapped):
+ * no DEX. Species to 1534 (personal records; its forms are ids of their own past the National Dex). No GUIDE.
+ */
+val GEN4_HEARTFELT_GOLD = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PTR).copy(
+    pocketSizes = intArrayOf(245, 92, 101, 12, 40, 64, 26, 30),
+    locationOff = 0x1424,
+    repelStepsOff = 0x721C + 0x65,
+    pokedexOff = null,
+    pokedexTables = null,
+    flagsOff = 0xFD4 + 0x170 * 2,
+    varsFlagsOff = 0xFD4,
+    pokegearWordOff = 0xC458 + 4,
+    maxSpecies = HeartfeltGold.LAST_SPECIES,
+)
+
 /** German SoulSilver rev 0 shares HeartGold's globals and save layout (IPGD, SHA-1 576cdb7e…). */
 val GEN4_SOULSILVER_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138, battleTemplate = 0x020FA438)
 
@@ -439,6 +458,7 @@ fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = wh
     }
     GameKind.HEARTGOLD -> when {
         originHeartGold -> GEN4_ORIGIN_HEARTGOLD
+        heartfeltGold -> GEN4_HEARTFELT_GOLD
         code == "IPKD" -> GEN4_HEARTGOLD_DE
         code == "IPKF" -> GEN4_HEARTGOLD_FR
         else -> DsPorts.byCode(code)?.let(DsPorts::gen4Config) ?: GEN4_HEARTGOLD_US

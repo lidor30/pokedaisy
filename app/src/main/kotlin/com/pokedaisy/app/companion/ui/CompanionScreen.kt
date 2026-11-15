@@ -1017,7 +1017,8 @@ internal fun companionTabLabel(id: String): String = when (id) {
         GameKind.MARIOMON -> "POCKETS"
         GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY ->
             if (romLanguage == 'D') "BEUTEL" else "PACK"   // German Crystal's START menu
-        GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.PURE_RED, GameKind.PURE_BLUE, GameKind.YELLOW_LEGACY -> tr("ITEM")   // Gen 1's START menu (the European carts' own word)
+        GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.PURE_RED, GameKind.PURE_BLUE, GameKind.YELLOW_LEGACY,
+        GameKind.BROWN -> tr("ITEM")   // Gen 1's START menu (the European carts' own word)
         else -> tr("BAG")
     }
     else -> id

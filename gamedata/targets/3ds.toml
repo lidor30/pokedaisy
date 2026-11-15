@@ -918,6 +918,11 @@ name = 'MONOMYTH_V1_1'
 parts = ['ram', 'foes', 'icons', 'battle', 'engine', 'boxes']
 values = { partyMenuGrid = true }
 
+[config.monomyth_v1_2]
+name = 'MONOMYTH_V1_2'
+parts = ['ram', 'foes', 'icons', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
+
 [config.soulgold_v1_2_1]
 name = 'SOULGOLD_V1_2_1'
 parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
@@ -1632,6 +1637,16 @@ genderRatios = 'genderRatiosMonomyth'
 mapsecs = 'mapSecDataMonomyth'
 
 [text.monomyth_v1_1]
+species = 'speciesNamesMonomyth'
+items = 'itemNamesMonomyth'
+moves = 'moveDataMonomyth'
+typeNames = 'typeNamesMonomyth'
+typeChart = 'typeEffectivenessMonomyth'
+speciesTypes = 'speciesTypeDataMonomyth'
+genderRatios = 'genderRatiosMonomyth'
+mapsecs = 'mapSecDataMonomyth'
+
+[text.monomyth_v1_2]
 species = 'speciesNamesMonomyth'
 items = 'itemNamesMonomyth'
 moves = 'moveDataMonomyth'

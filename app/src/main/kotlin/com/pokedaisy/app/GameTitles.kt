@@ -43,9 +43,8 @@ object GameTitles {
         "28f075915dd445cbfd902f1e1a94d5048b03a095", "e5db5b8f79e8ae819be7d60e9e1006221d80ffab",
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1,
-        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1,
-    ) + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
+    ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S + com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
         com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
 
     private val RETAIL: Map<String, String> = mapOf(
@@ -71,10 +70,12 @@ object GameTitles {
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1 to "Pokémon Origin HeartGold",
         // Renegade Platinum v1.3.0, retail Platinum (USA rev 1) edited in place (RenegadePlatinum).
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1 to "Pokémon Renegade Platinum",
-        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1 to "Pokémon Renegade Platinum",
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1 to "Pokémon Renegade Platinum",
+    ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S.associateWith { "Pokémon Renegade Platinum" } +
+        // Heartfelt Gold v1.0.15 (and its Zoomed In patch): hg-engine over the US HeartGold (HeartfeltGold).
+        com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S.associateWith { "Pokémon Heartfelt Gold" } +
         // Blaze Black 2 / Volt White 2 Redux v1.4.1 (and their Classic / EVless patches), Black 2 / White 2 edited in place (Black2Redux).
-    ) + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S.associateWith { "Pokémon Blaze Black 2 Redux" } +
+        com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S.associateWith { "Pokémon Blaze Black 2 Redux" } +
         com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S.associateWith { "Pokémon Volt White 2 Redux" } + mapOf(
         // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
         "26ad0b9967aa279c4a266ee69f52b9b2332399a5" to "Pokémon Black",
@@ -164,6 +165,7 @@ object GameTitles {
         "1ee1557db1e4c2e0e94c6306efcc40506bc40cc9" to "Pokémon Ash Gray",
         "92ed82145c013069472153391c7aab1cfbf37b75" to "Pokémon Ash Gray Fork Bug Fix",
         "ab3bc012598d73dce965450df79893aeff97c834" to "Pokémon Modern Emerald",
+        "8decf0571ba3f17d31c76168346e240a14e248ce" to "Pokémon Epsilon Emerald",
         "5b38a681b6924ef3e0bb9f6cfbf22426c4c4e523" to "Pokémon Elite Redux",
         "2f3e17e55c6afe23da97ec0f96a067eeb142ad15" to "Pokémon Elite Redux",
         "40780347d0b4df6bf491eaf12603e5422caee677" to "Pokémon Team Rocket Edition: Dragonsden Version",
@@ -171,6 +173,7 @@ object GameTitles {
         "32d9e438ab791a0477fffe9f1cca750cab5a4a80" to "Pokémon Team Rocket Edition 2026 (ES)",
         "ae1c4be9be8d706bb989602bc05731203d42860d" to "Pokémon Monomyth",
         "eb660caffbc26e1f09f86714d03af4c3eccd9e4d" to "Pokémon Monomyth",
+        "742e62ffa5a8d607171fdb8477eb1f417dc36086" to "Pokémon Monomyth",
         "60182b934d2e8eb3eef226a9bbc25e5df6becd4f" to "Pokémon Wishes of Tomorrow",
         "20e91aecb3243eea7cd610659846f37062f5d709" to "Pokémon Dreamstone Mysteries",
         "20dfaea1d5317cf95fe0b493208edce7d50b865f" to "Pokémon Ghost Grey",
@@ -225,6 +228,9 @@ object GameTitles {
         "c0a2c70d73ce68830a891ddd292300c90766acdd" to "Pokémon Polished Crystal",
         // PureRed / PureBlue v2.7.6 (Vortyne/pureRGB builds both byte for byte).
         "2e94d09c1e16a57eb079404c030f26fdeeac949d" to "Pokémon PureRed",
+        // Pokémon Brown 6.1.2 / 6.0.1 (Koolboyman's Rijon, a Red hack: GEN1_BROWN).
+        "24eeda80ee78fa214a6f4a85164a2492d2b017ad" to "Pokémon Brown",
+        "2d6d1f1a6010f578d67045802611a288ebd8748b" to "Pokémon Brown",
         "d419fe244fa17196f7df46ddab47c840e7573652" to "Pokémon PureBlue",
     )
 

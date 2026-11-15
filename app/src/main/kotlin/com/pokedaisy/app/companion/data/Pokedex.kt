@@ -699,6 +699,18 @@ val POKEDEX_MONOMYTH_V1_1 = POKEDEX_MONOMYTH.copy(
     levelUpLearnsets = 0x08506AD4L,
 )
 
+/** Monomyth v1.2: v1.1's tables moved back (by -0x444 to -0x4A4; gen_monomyth_tables.py checks them equal). */
+val POKEDEX_MONOMYTH_V1_2 = POKEDEX_MONOMYTH.copy(
+    entries = 0x089D376CL,
+    frontPics = 0x0849F6F4L,
+    palettes = 0x084880B0L,
+    speciesInfo = 0x084F6DA0L,
+    speciesToNational = 0x084F4504L,
+    abilityNames = 0x084EE5DFL,
+    evoLayout = EvoLayout(EvoScheme.MONOMYTH, table = 0x085000F0L, perMon = 8, probeLevel = 31),
+    levelUpLearnsets = 0x08506630L,
+)
+
 val POKEDEX_ROWE = PokedexTables(
     entries = 0x08F592C8L,
     frontPics = 0x083E0AA4L,

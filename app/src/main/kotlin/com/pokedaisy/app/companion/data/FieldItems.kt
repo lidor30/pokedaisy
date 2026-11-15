@@ -293,6 +293,14 @@ val FIELD_ITEMS_MONOMYTH_V1_1 = FIELD_ITEMS_MONOMYTH.copy(
     pc = PcFns(0x08090A60L, 57, 0x08298510L, 0x080C6535L, listOf(0xCC9E3CD3L, 0x3DECE7E0L)),
 )
 
+/** Monomyth v1.2: v1.1's functions moved +0x220; ArePlayerFieldControlsLocked reads sLockFieldControls 4 bytes later
+ * (0x0203BF6B), so its CRC is its own. Special 57 is still the PC (gSpecials 0x08298368). */
+val FIELD_ITEMS_MONOMYTH_V1_2 = FIELD_ITEMS_MONOMYTH.copy(
+    varGet = 0x08096454L, varSet = 0x0809648CL, fieldControlsLocked = 0x08090BF0L,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0xCFEC077FL),
+    pc = PcFns(0x08090C80L, 57, 0x08298368L, 0x080C6761L, listOf(0xCC9E3CD3L, 0x8DD1B5B0L)),
+)
+
 /**
  * Emerald Imperium 1.3.1 (pokeemerald-expansion 1.10.0, no source): pokeemerald-expansion's 1.10.0 tag built plain with
  * Debian's arm-none-eabi-gcc 12 as the reference, each function found in Imperium by its first instructions (literal

@@ -24,6 +24,9 @@ object NdsArt {
      * item icons by item id, from its own archives ([extractOrigin]). */
     const val ORIGIN_ICONS = "nds/originhg/pokemon"
     const val ORIGIN_ITEMS = "nds/originhg/items"
+    /** Heartfelt Gold ([HeartfeltGold]): its party icons by species id (1..1534) and HeartGold's item icons. */
+    const val HEARTFELT_ICONS = "nds/heartfelt/pokemon"
+    const val HEARTFELT_ITEMS = "nds/heartfelt/items"
     const val ORIGIN_EGG = 2000
     /** Its DEX pages and front pictures ([dexOrigin]), as [HEARTGOLD_DEX] / [HEARTGOLD_FRONT] are HeartGold's. */
     const val ORIGIN_DEX = "nds/originhg/dex.tsv"
@@ -127,6 +130,7 @@ object NdsArt {
         names = null
         OriginHeartGold.data = null
         RenegadePlatinum.data = null
+        HeartfeltGold.data = null
         Black2Redux.data = null
         background("pokedaisy-nds-art") {
             // The names first (a few text banks): the companion's first samples use them.
@@ -135,6 +139,8 @@ object NdsArt {
                 .onFailure { Logs.w("NdsArt: Origin HeartGold's tables failed", it) }
             runCatching { RenegadePlatinum.data = if (RenegadePlatinum.matches(rom)) readRenegade(rom) else null }
                 .onFailure { Logs.w("NdsArt: Renegade Platinum's tables failed", it) }
+            runCatching { HeartfeltGold.data = if (HeartfeltGold.matches(rom)) readHeartfelt(rom) else null }
+                .onFailure { Logs.w("NdsArt: Heartfelt Gold's tables failed", it) }
             runCatching { Black2Redux.data = if (Black2Redux.matches(rom)) readRedux(rom) else null }
                 .onFailure { Logs.w("NdsArt: the Redux hacks' tables failed", it) }
             names?.let { n ->
@@ -175,10 +181,12 @@ object NdsArt {
         val black2 = code == "IREO" && rev == 0 || portIs(code, rev, GameKind.BLACK2) || white2
         val origin = OriginHeartGold.matches { off, len -> f.read(off, len) }
         val renegade = platinum && RenegadePlatinum.matches { off, len -> f.read(off, len) }
+        val heartfelt = heartGold && HeartfeltGold.matches { off, len -> f.read(off, len) }
         val redux = black2 && Black2Redux.matches { off, len -> f.read(off, len) }
         if (!platinum && !heartGold && !black && !black2 && !origin) return false
         val marker = dir / when {
             origin -> "nds/originhg-built"
+            heartfelt -> "nds/heartfelt-built"
             renegade -> "nds/renegade-built"
             redux -> "nds/redux-built"
             white2 -> "nds/white2-built"
@@ -194,6 +202,11 @@ object NdsArt {
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return false
         if (origin) {
             if (!extractOrigin(f, header, dir)) return false
+            marker.writeText(stamp)
+            return true
+        }
+        if (heartfelt) {
+            if (!extractHeartfelt(f, header, dir)) return false
             marker.writeText(stamp)
             return true
         }
@@ -271,6 +284,71 @@ object NdsArt {
         file(f, header, "/a/0/1/5")?.let { bagPockets(Narc(it), dir) }
         dexOrigin(f, header, dir)
         return true
+    }
+
+    /**
+     * Heartfelt Gold's art ([HeartfeltGold]): its party icons in HeartGold's archive grown (`/a/0/2/0`, member 0 the
+     * palettes, 7 + species each icon) in the palette its ARM9's table gives, as far as that table goes ([HeartfeltGold.
+     * LAST_ICON_PALETTE]: its newer species' palettes aren't in a table on the cart, so they get no icon); HeartGold's item icons for HeartGold's items
+     * (its `/a/0/1/8` keeps them where HeartGold's table has them), its Pokégear and bag buttons. No DEX (its pages aren't
+     * HeartGold's).
+     */
+    private fun extractHeartfelt(f: FileHandle, header: ByteArray, dir: Path): Boolean {
+        val narc = Narc(file(f, header, "/a/0/2/0") ?: return false)
+        val palettes = palettes(narc.member(0))
+        val iconPalettes = f.read(HeartfeltGold.ICON_PALETTES_OFFSET, HeartfeltGold.LAST_ICON_PALETTE + 1)
+        for (species in 1..HeartfeltGold.LAST_ICON_PALETTE) {
+            val pal = palettes.getOrNull(u8(iconPalettes, species)) ?: continue
+            val icon = icon(narc.member(7 + species), pal) ?: continue
+            write(dir, "$HEARTFELT_ICONS/$species.png", icon.png())
+        }
+        file(f, header, "/a/0/1/8")?.let { Narc(it) }?.let { items ->
+            for ((item, packed) in itemIconsHeartGold) {
+                val pal = palettes(items.member(packed and 0xFFFF)).firstOrNull() ?: continue
+                val icon = icon(items.member(packed ushr 16), pal, height = 32) ?: continue
+                write(dir, "$HEARTFELT_ITEMS/$item.png", icon.png())
+            }
+        }
+        file(f, header, "/a/1/4/4")?.let { pokegear(Narc(it), dir) }
+        file(f, header, "/a/0/1/5")?.let { bagPockets(Narc(it), dir) }
+        return true
+    }
+
+    /**
+     * Heartfelt Gold's tables from its cart ([HeartfeltGold.Data]): each species' types (HeartGold's 44-byte personal
+     * records, types at 6 and 7), each move's category, power and type (`/a/0/1/1`, 16 bytes a move: 2, 3, 4) under the
+     * cart's move names, and its type chart (HeartGold's triples with Fairy's rows).
+     */
+    fun readHeartfelt(rom: Path): HeartfeltGold.Data? = withRomFile(rom) { f ->
+        val header = f.read(0, 0x200)
+        val personal = Narc(file(f, header, "/a/0/0/2") ?: return null)
+        val types = HashMap<Int, SpeciesTypes>()
+        for (id in 1..HeartfeltGold.LAST_SPECIES) {
+            val p = personal.member(id) ?: continue
+            if (p.size >= 8) types[id] = SpeciesTypes(u8(p, 6), u8(p, 7))
+        }
+        val moveNames = readNames(rom)?.moves.orEmpty()
+        val moveRecords = Narc(file(f, header, "/a/0/1/1") ?: return null)
+        val moves = HashMap<Int, MoveInfo>()
+        val categories = HashMap<Int, Int>()
+        for (id in 1 until moveRecords.size) {
+            val m = moveRecords.member(id) ?: continue
+            if (m.size < 5) continue
+            val name = moveNames.getOrNull(id)?.takeIf { it.isNotBlank() && !it.startsWith("MOVE_") } ?: continue
+            moves[id] = MoveInfo(name, u8(m, 4), u8(m, 3))
+            categories[id] = u8(m, 2)
+        }
+        val chart = HashMap<Int, Int>()
+        val c = f.read(HeartfeltGold.TYPE_CHART_OFFSET, 0x400)
+        var i = 0
+        while (i + 3 <= c.size && u8(c, i) != 0xFF) {
+            val atk = u8(c, i)
+            val def = u8(c, i + 1)
+            val pct = u8(c, i + 2) * 10
+            if (atk != 0xFE && pct != 100) chart[atk * 100 + def] = pct
+            i += 3
+        }
+        HeartfeltGold.Data(types, moves, categories, chart)
     }
 
     /**
