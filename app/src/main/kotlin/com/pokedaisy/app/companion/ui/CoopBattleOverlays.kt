@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -26,11 +28,11 @@ class CoopOverlayState {
     var join by mutableStateOf<CoopJoinPromptState?>(null)
     /** (partner's name, seconds left) while the host waits for an answer. */
     private var hostWaitState by mutableStateOf<Pair<String, Int>?>(null)
-    private var hostWaitSince = 0L
-    internal var cancelGraceNanos = CANCEL_GRACE_NANOS
+    private var hostWaitSince = TimeSource.Monotonic.markNow()
+    internal var cancelGrace = CANCEL_GRACE
     var hostWait: Pair<String, Int>?
         get() = hostWaitState
-        set(v) { if (v != null && hostWaitState == null) hostWaitSince = System.nanoTime(); hostWaitState = v }
+        set(v) { if (v != null && hostWaitState == null) hostWaitSince = TimeSource.Monotonic.markNow(); hostWaitState = v }
     /** (partner's name, seconds left) while the link is down in a battle. */
     var linkWait by mutableStateOf<Pair<String, Int>?>(null)
     var notice by mutableStateOf<String?>(null)
@@ -61,7 +63,7 @@ class CoopOverlayState {
         if (hostWait != null) {
             // not A: the host is often mashing it through the battle intro; and not a B held or tapped as the wait opens (running
             // away, auto-run): the device run's offers were all withdrawn 0.4 s after they went out
-            if (k == MenuKey.B && System.nanoTime() - hostWaitSince >= cancelGraceNanos) onCancelAsk()
+            if (k == MenuKey.B && hostWaitSince.elapsedNow() >= cancelGrace) onCancelAsk()
             return true
         }
         return false
@@ -69,7 +71,7 @@ class CoopOverlayState {
 
     internal val noticeKey: Int get() = noticeToken
 
-    companion object { const val CANCEL_GRACE_NANOS = 2_000_000_000L }
+    companion object { val CANCEL_GRACE = 2.seconds }
 }
 
 /** The overlays, over the whole game view; each sits in its own part of the picture and leaves the rest to the game. */

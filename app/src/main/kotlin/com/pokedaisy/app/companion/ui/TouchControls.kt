@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.synchronized
+import kotlinx.atomicfu.locks.SynchronizedObject
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -250,8 +253,9 @@ class TouchPressTracker(val pressed: TouchPressed) {
     private var turboWas = 0
     private var heldWas = 0
     private var dpadWas = 0
+    private val lock = SynchronizedObject()
 
-    fun update(source: Int, hits: TouchHits) = synchronized(this) {
+    fun update(source: Int, hits: TouchHits) = synchronized(lock) {
         bySource[source] = hits
         val held = bySource[0].held or bySource[1].held
         val dpad = bySource[0].dpad or bySource[1].dpad

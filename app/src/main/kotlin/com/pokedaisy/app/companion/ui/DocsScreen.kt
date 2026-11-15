@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.concurrent.Volatile
+import com.pokedaisy.app.companion.data.LockedLru
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
@@ -442,16 +444,14 @@ private fun annotate(spans: List<DocsApi.Span>, pixel: androidx.compose.ui.text.
     }
 
 /** Pictures already decoded this process (a page left and opened again shouldn't decode them twice). */
-private val imageCache = object : LinkedHashMap<String, ImageBitmap>(16, 0.75f, true) {
-    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>?) = size > 12
-}
+private val imageCache = LockedLru<String, ImageBitmap>(12)
 
 @Composable
 private fun DocImage(b: Block.Image, manual: DocsApi.Manual, m: GbaTextMetrics, small: GbaTextMetrics, source: DocsSource) {
     val key = b.src + "@" + b.version
-    val bitmap by produceKeyedState(synchronized(imageCache) { imageCache[key] }, key) {
+    val bitmap by produceKeyedState(imageCache[key], key) {
         if (value == null) value = withContext(Dispatchers.IO) {
-            source.image(manual, b)?.asImageBitmap()?.also { synchronized(imageCache) { imageCache[key] = it } }
+            source.image(manual, b)?.asImageBitmap()?.also { imageCache[key] = it }
         }
     }
     Column(Modifier.fillMaxWidth().padding(vertical = m.u * 5)) {

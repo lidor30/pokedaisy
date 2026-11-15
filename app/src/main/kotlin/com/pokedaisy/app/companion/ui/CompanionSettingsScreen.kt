@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.time.Clock
 import com.pokedaisy.app.companion.SkinSystem
 
 import com.pokedaisy.app.companion.DsCore
@@ -1001,7 +1002,7 @@ internal fun coopRows(
         }
         is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> when (state.reason) {
             com.pokedaisy.app.companion.coop.CoopDropReason.CLOSED, com.pokedaisy.app.companion.coop.CoopDropReason.NETWORK -> {
-                val secs = ((state.retryAtMs - System.currentTimeMillis() + 999) / 1000).coerceAtLeast(0)
+                val secs = ((state.retryAtMs - Clock.System.now().toEpochMilliseconds() + 999) / 1000).coerceAtLeast(0)
                 tr("{0}: trying again in {1} s", state.partner.name, secs.toString())
             }
             else -> partnerName

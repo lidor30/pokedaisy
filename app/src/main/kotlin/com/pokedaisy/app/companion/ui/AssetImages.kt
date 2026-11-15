@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.LockedMap
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -26,7 +27,6 @@ import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.companion.data.UnboundIconSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 import okio.Path.Companion.toOkioPath
 
 /**
@@ -36,10 +36,9 @@ import okio.Path.Companion.toOkioPath
  * [RomArt.updates] moves - key composables on [rememberArtGeneration].
  */
 internal object GameArt {
-    // ConcurrentHashMap rejects null values, so a missing path can't go in the
-    // map — track those separately (with the RomArt generation they missed in).
-    private val cache = ConcurrentHashMap<String, Bitmap>()
-    private val missing = ConcurrentHashMap<String, Int>()
+    // A map can't hold a missing path as null, so those are kept apart (with the RomArt generation they missed in).
+    private val cache = LockedMap<String, Bitmap>()
+    private val missing = LockedMap<String, Int>()
 
     /** [path] if it's already decoded (no disk read). */
     fun peek(path: String): Bitmap? = cache[path]

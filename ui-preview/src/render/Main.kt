@@ -2,6 +2,8 @@
 
 package render
 
+import kotlinx.datetime.plus
+import kotlinx.datetime.todayIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toAwtImage
@@ -997,18 +999,19 @@ val previewTheme: com.pokedaisy.app.companion.ui.theme.ThemeSpec =
     } ?: com.pokedaisy.app.companion.ui.theme.themeById(com.pokedaisy.app.companion.ui.theme.DAISY_THEME_ID)
 
 /** A day inside [t]'s next window (today's, if it's on now); null for a theme that's always there. */
-fun previewThemeDay(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec): java.time.LocalDate? {
-    val now = java.time.LocalDate.now()
+fun previewThemeDay(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec): kotlinx.datetime.LocalDate? {
+    val now = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
     return t.season?.let { s -> (now.year..now.year + 2).firstNotNullOf { y -> s.window(y)?.takeIf { it.endInclusive >= now } } }
-        ?.let { w -> if (now in w) now else w.start.plusDays(1) }
+        ?.let { w -> if (now in w) now else w.start.plus(kotlinx.datetime.DatePeriod(days = 1)) }
 }
 
 /** Saves and puts on [t]; for a limited-time one the theme clock moves into its window (so it isn't put away). */
 fun wearPreviewTheme(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec) {
     val day = previewThemeDay(t)
     // The docs' shots on a day with no holiday theme, so they don't change with the date they're made on.
-    val quiet = java.time.LocalDate.of(java.time.LocalDate.now().year, 6, 15).takeIf { System.getProperty("docs") == "true" }
-    com.pokedaisy.app.companion.ui.theme.ThemeClock.today = { day ?: quiet ?: java.time.LocalDate.now() }
+    val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+    val quiet = kotlinx.datetime.LocalDate(today.year, 6, 15).takeIf { System.getProperty("docs") == "true" }
+    com.pokedaisy.app.companion.ui.theme.ThemeClock.today = { day ?: quiet ?: today }
     Prefs(android.content.Context()).appTheme = t.id
     com.pokedaisy.app.companion.ui.theme.AppColors.applyTheme(t)
 }

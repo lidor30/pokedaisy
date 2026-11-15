@@ -64,3 +64,25 @@ class LockedMap<K, V : Any> {
     /** Stores [value] unless [key] has one; returns the one it had, else null. */
     fun putIfAbsent(key: K, value: V): V? = synchronized(lock) { map[key] ?: null.also { map[key] = value } }
 }
+
+/**
+ * The [max] most recently used entries, each call under one lock: what a `LinkedHashMap(accessOrder = true)` with
+ * `removeEldestEntry` behind `synchronized` was used for (decoded pictures kept for the next visit). A read moves the
+ * entry to the newest end; a put past [max] drops the oldest.
+ */
+class LockedLru<K, V : Any>(private val max: Int) {
+    private val lock = SynchronizedObject()
+    private val map = LinkedHashMap<K, V>()
+
+    operator fun get(key: K): V? = synchronized(lock) {
+        map.remove(key)?.also { map[key] = it }
+    }
+
+    operator fun set(key: K, value: V) {
+        synchronized(lock) {
+            map.remove(key)
+            map[key] = value
+            while (map.size > max) map.remove(map.keys.first())
+        }
+    }
+}

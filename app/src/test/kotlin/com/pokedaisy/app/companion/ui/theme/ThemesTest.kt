@@ -7,7 +7,9 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
+import com.pokedaisy.app.companion.i18n.L10n
+import com.pokedaisy.app.companion.ui.shortDate
 
 /** THEME: the limited-time themes' dates, their popup once per window, an ended one giving way, and the tint. */
 class ThemesTest {
@@ -93,5 +95,15 @@ class ThemesTest {
         val ink = Color(0xFF101010).themed(200f, 0.6f)
         assertTrue(ink.red < 0.12f && ink.green < 0.12f && ink.blue < 0.12f)
         assertFalse(Color.Transparent.themed(200f, 0.6f).alpha > 0f)
+    }
+
+    /** The popup's short dates, a fixed month table per language (no device locale, so iOS draws the same). */
+    @Test fun shortDatesPerLanguage() {
+        val date = LocalDate(2026, 10, 3)
+        val want = mapOf("EN" to "OCT 3", "JA" to "10月3日", "KO" to "10월 3일", "FR" to "3 OCT.", "DE" to "3 OKT.",
+            "IT" to "3 OTT", "ES" to "3 OCT", "BR" to "3 OUT.", "PT" to "3 OUT.")
+        try {
+            for ((code, text) in want) { L10n.apply(code, null); assertEquals(code, text, shortDate(date)) }
+        } finally { L10n.apply("EN", null) }
     }
 }
