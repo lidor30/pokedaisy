@@ -47,5 +47,6 @@ Keep each PR independently reviewable with a chained base and register the serie
 
 ## Progress
 
-E1 is replayed onto the cleaned canonical fork chain after the final shared hosts. Continue E2-E4 as separate
-layers on that chain, retaining one implementation to mirror upstream. Historical migration refs are preserved.
+E1 is replayed onto the cleaned canonical fork chain after the final shared hosts. E2 shares progression on both
+hosts through `SetupFlow`, with platform-specific steps and entry/exit effects. Continue E3-E4 as separate layers
+on that chain, retaining one implementation to mirror upstream. Historical migration refs are preserved.

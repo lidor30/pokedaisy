@@ -400,6 +400,11 @@ class LibraryActivity : ComponentActivity() {
         syncLauncher()
     }
 
+    override fun onDestroy() {
+        setup?.let { it.flow.close(); it.capture.cancel() }
+        super.onDestroy()
+    }
+
     override fun onStop() {
         super.onStop()
         secondScreen.dismiss()
@@ -2082,7 +2087,14 @@ class LibraryActivity : ComponentActivity() {
     // ---- first-time setup ---------------------------------------------------
 
     private fun startSetup() {
-        setup = SetupState().apply {
+        setup?.let { it.flow.close(); it.capture.cancel() }
+        setup = SetupState(entered = ::enterStep, exited = { state, reason ->
+            if (setup === state) {
+                finishSetup()
+                if (reason == com.pokedaisy.app.companion.SetupFlow.Exit.BACK && state.fromSettings)
+                    startActivity(Intent(this, SettingsActivity::class.java))
+            }
+        }).apply {
             hasAccess = StorageAccess.hasAllFilesAccess(this@LibraryActivity)
             romsFolders = prefs.romsFolders
             if (romsFolders.isNotEmpty()) found = RomFolder.found(this@LibraryActivity, prefs).map(::romLabel)
@@ -2100,7 +2112,8 @@ class LibraryActivity : ComponentActivity() {
     private fun SetupHost(s: SetupState) {
         val m = rememberGbaTextMetrics()
         val small = rememberGbaTextMetrics(textScale = 1f)
-        BackHandler { setupBack(s) }
+        val page = s.flow.visit
+        BackHandler { s.flow.back(page) }
         SetupScreen(
             s, m, small,
             onChooseRoms = { chooseFolder(s, SetupState.Step.ROMS) },
@@ -2114,7 +2127,7 @@ class LibraryActivity : ComponentActivity() {
                 s.keySaved = prefs.steamGridDbApiKey != null || prefs.raWebApiKey != null
                 if (s.keySaved) s.covers.start(this, prefs, replace = false)
             },
-            onBack = { setupBack(s) },
+            onBack = { s.flow.back(page) },
             onScreenScraperSignIn = { s.ssLogin.signIn(prefs, { r -> runOnUiThread { r() } }) { startMediaSync(s.covers) } },
             onScreenScraperSignOut = { s.ssLogin.signOut(prefs) },
             buttonRequest = { btn ->
@@ -2125,32 +2138,21 @@ class LibraryActivity : ComponentActivity() {
                     onClear = if (btn.canClear) ({ GbaControls.clearBinding(dir, btn); readButtons(s) }) else null,
                 )
             },
-            onNext = {
-                val steps = s.steps
-                if (s.step == steps.last()) finishSetup() else enterStep(s, steps[s.index + 1])
-            },
+            onNext = { s.flow.next(page) },
         )
     }
 
-    /** BACK: the previous step; on the first, leaves setup as if skipped - back to
-     * Settings when RUN SETUP opened it. */
-    private fun setupBack(s: SetupState) {
-        if (s.index > 0) {
-            enterStep(s, s.steps[s.index - 1])
-            return
-        }
-        finishSetup()
-        if (s.fromSettings) startActivity(Intent(this, SettingsActivity::class.java))
-    }
-
     private fun enterStep(s: SetupState, step: SetupState.Step) {
+        if (setup !== s) return
         s.capture.cancel()
-        s.step = step
         if (step == SetupState.Step.BUTTONS) readButtons(s)
         if (step == SetupState.Step.SAVES) {
+            val page = s.flow.visit
             Thread({
                 val found = runCatching { SavesLocation.suggestions(prefs) }.getOrDefault(emptyList())
-                runOnUiThread { s.suggestions = found }
+                runOnUiThread {
+                    if (setup === s && s.flow.active && s.flow.visit === page) s.suggestions = found
+                }
             }, "pokedaisy-saves-suggest").apply { isDaemon = true; start() }
         }
     }

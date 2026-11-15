@@ -40,17 +40,22 @@ import com.pokedaisy.app.companion.ui.OptionTitleWindow
  * skippable, each one also in Settings.
  * [LibraryActivity] owns the folder pickers and background work and feeds this.
  */
-internal class SetupState {
+internal class SetupState(
+    entered: (SetupState, Step) -> Unit = { _, _ -> },
+    exited: (SetupState, com.pokedaisy.app.companion.SetupFlow.Exit) -> Unit = { _, _ -> },
+) {
     enum class Step { ROMS, SAVES, BUTTONS, MEDIA, COVERS }
 
     /** The steps shown: GAME MEDIA only while ScreenScraper is on. */
-    val steps: List<Step> = Step.entries.filter { it != Step.MEDIA || ScreenScraperClient.enabled }
-    var step by mutableStateOf(Step.ROMS)
-    val index get() = steps.indexOf(step)
-    /** Opened by Settings' RUN SETUP: BACK on the first step returns there. */
-    var fromSettings by mutableStateOf(false)
-    /** Whether BACK has somewhere to go: an earlier step, or Settings. */
-    val canGoBack get() = index > 0 || fromSettings
+    val flow = com.pokedaisy.app.companion.SetupFlow(
+        Step.entries.filter { it != Step.MEDIA || ScreenScraperClient.enabled },
+        entered = { entered(this, it) }, exited = { exited(this, it) })
+    var step: Step
+        get() = flow.step
+        set(value) { flow.select(value) }
+    var fromSettings: Boolean
+        get() = flow.fromSettings
+        set(value) { flow.fromSettings = value }
     /** False until All files access is granted - picking a folder asks for it first. */
     var hasAccess by mutableStateOf(true)
     /** The folder pick waiting on Android's All files access page, resumed on return. */
@@ -58,7 +63,9 @@ internal class SetupState {
 
     /** The linked ROMs folders, as [Prefs.romsFolders] has them. */
     var romsFolders by mutableStateOf<List<String>>(emptyList())
-    var scanning by mutableStateOf(false)
+    var scanning: Boolean
+        get() = flow.busy
+        set(value) { flow.busy = value }
     var checked by mutableIntStateOf(0)
     var toCheck by mutableIntStateOf(0)
     /** Names of the supported games in [romsFolders]; null until a scan finishes. */
@@ -101,15 +108,15 @@ internal fun SetupScreen(
     onScreenScraperSignIn: () -> Unit = {},
     onScreenScraperSignOut: () -> Unit = {},
 ) {
-    val steps = s.steps
+    val flow = s.flow
     val skipping = when (s.step) {
         SetupState.Step.ROMS -> s.romsFolders.isEmpty()
         SetupState.Step.SAVES, SetupState.Step.BUTTONS -> false
         SetupState.Step.MEDIA -> s.ssLogin.signedInAs == null
         SetupState.Step.COVERS -> !s.keySaved
     }
-    com.pokedaisy.app.companion.ui.SetupFrame(s.index, steps.size, s.canGoBack, s.scanning,
-        last = s.step == steps.last(), skipping = skipping, m, onBack, onNext) {
+    com.pokedaisy.app.companion.ui.SetupFrame(flow.index, flow.steps.size, flow.canGoBack, flow.busy,
+        last = flow.last, skipping = skipping, m, onBack, onNext) {
         when (s.step) {
             SetupState.Step.ROMS -> com.pokedaisy.app.companion.ui.SetupRomsPage(
                 com.pokedaisy.app.companion.ui.SetupRomsModel(s.romsFolders, s.found, s.scanning, s.checked, s.toCheck, s.hasAccess),

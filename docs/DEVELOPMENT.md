@@ -4412,6 +4412,13 @@ are supplied lazily so constructor-time preview/navigation state does not access
 `LibraryNavigationDialogs` renders both modals from that controller. Section/action contracts live with the
 common model; UI package aliases preserve existing Kotlin callers and the desktop data module's independence.
 
-The library/setup follow-up plan is in `docs/specs/shared-library-setup-coordination.md`. Library coordination
-continues on the cleaned canonical fork chain; setup progression, library projections and save-picker
-coordination follow as separate layers. Android permissions, picker effects and launcher media remain native adapters.
+`SetupFlow` owns one setup run's supported steps, progression, busy navigation guards and exactly-once exit.
+Both hosts capture its current visit when presenting a page; callbacks from earlier visits or retired runs are
+inert. Android's setup state composes the flow with its permissions, scans, button capture and optional media
+steps. iOS supplies ROM/save steps and retains Files-based import. Native exit effects preserve RUN SETUP return
+behavior and each platform's completion preference policy. Replacing or destroying Android setup retires its flow;
+save-folder suggestions only publish to their original active visit.
+
+The library/setup follow-up plan is in `docs/specs/shared-library-setup-coordination.md`. Library projections
+and save-picker coordination follow as separate layers on the cleaned canonical chain. Android permissions,
+picker effects and launcher media remain native adapters.

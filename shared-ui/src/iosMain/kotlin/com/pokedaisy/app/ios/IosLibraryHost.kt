@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import com.pokedaisy.app.companion.SetupFlow
 import com.pokedaisy.app.companion.LibraryPreferences
 import com.pokedaisy.app.companion.LibrarySort
 import com.pokedaisy.app.companion.NewFeatures
@@ -38,8 +39,8 @@ internal class IosLibraryHost(
         { defaults.setObject(it, "library_preferences") })
     private var paths by mutableStateOf(PokeDaisyHost.games())
     private val library = com.pokedaisy.app.companion.LibraryCoordinator({ prefs })
-    private var setupFromSettings = false
-    private var setupStep by mutableStateOf<Int?>(if (!iosPreferences.setupDone && paths.isEmpty()) 0 else null)
+    private var setup by mutableStateOf<SetupFlow<Int>?>(
+        if (!iosPreferences.setupDone && paths.isEmpty()) newSetup() else null)
     private var choosingSaveGame by mutableStateOf(false)
     private var notice by mutableStateOf<Pair<String, String>?>(failed?.let { tr("ERROR") to it.substringAfterLast('/') })
     private data class PendingSave(val rom: String, val name: String, val bytes: ByteArray)
@@ -62,8 +63,8 @@ internal class IosLibraryHost(
                     val density = androidx.compose.ui.platform.LocalDensity.current.density
                     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
                         SideEffect { screen = DpSize(maxWidth, maxHeight); scale = density }
-                        val step = setupStep
-                        if (step == null) Library() else Setup(step)
+                        val flow = setup
+                        if (flow == null) Library() else Setup(flow)
                         Dialogs()
                         touch.EditorOverlay()
                     }
@@ -138,7 +139,7 @@ internal class IosLibraryHost(
                                 NSURL.URLWithString(url)?.let { UIApplication.sharedApplication.openURL(it) }
                             } },
                             homeExtras = listOf(SettingRow("RUN SETUP", null, opensPage = true,
-                                labelBadge = NewFeatures.badge(NewFeatures.IPAD_APP_UI)) { setupFromSettings = true; setupStep = 0 }))
+                                labelBadge = NewFeatures.badge(NewFeatures.IPAD_APP_UI)) { setup?.close(); setup = newSetup(fromSettings = true) }))
                     }
                 }
             }) { game, up ->
@@ -160,15 +161,21 @@ internal class IosLibraryHost(
         }
     }
 
+    private fun newSetup(fromSettings: Boolean = false): SetupFlow<Int> =
+        SetupFlow(listOf(0, 1), fromSettings, exited = { reason ->
+            if (reason == SetupFlow.Exit.COMPLETE) iosPreferences.setupDone = true
+            setup = null
+        })
+
     @Composable
-    private fun Setup(step: Int) {
+    private fun Setup(flow: SetupFlow<Int>) {
+        val page = flow.visit
+        val step = page.step
         val m = rememberGbaTextMetrics()
         val small = rememberGbaTextMetrics(1f)
-        SetupFrame(step, 2, step > 0 || setupFromSettings, busy = false, last = step == 1, skipping = step == 0 && paths.isEmpty(),
-            m, onBack = { setupStep = if (step == 0) null else step - 1 },
-            onNext = {
-                if (step == 0) setupStep = 1 else { iosPreferences.setupDone = true; setupStep = null }
-            }) {
+        SetupFrame(flow.index, flow.steps.size, flow.canGoBack, busy = flow.busy, last = flow.last,
+            skipping = step == 0 && paths.isEmpty(), m,
+            onBack = { flow.back(page) }, onNext = { flow.next(page) }) {
             if (step == 0) SetupRomsPage(SetupRomsModel(if (paths.isEmpty()) emptyList() else listOf("PokeDaisy/roms"),
                 paths.map(::label), linked = false), m, small, onChoose = ::addGames)
             else SetupSavesPage(SetupSavesModel(null), m, small, onChoose = null, onUse = {})
@@ -207,7 +214,7 @@ internal class IosLibraryHost(
             if (added.isNotEmpty()) {
                 library.search("")
                 prefs.setView(LibraryView.ALL)
-                if (setupStep == null) library.selectSection(LibrarySection.GAMES)
+                if (setup == null) library.selectSection(LibrarySection.GAMES)
             }
         }
     }
