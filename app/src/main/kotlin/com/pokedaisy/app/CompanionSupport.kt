@@ -4,6 +4,7 @@ import com.pokedaisy.app.companion.data.BestEffortStore
 import com.pokedaisy.app.companion.data.OriginHeartGold
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
+import okio.source
 
 /**
  * Whether the second-screen companion can read [rom] - the same call
@@ -66,8 +67,8 @@ object CompanionSupport {
         // (RandomizedRetail), as detect() takes them.
         val rev = RomIdentity.revision(rom)
         return sha1 in TelemetrySampler.RETAIL_SHA1S ||
-            com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, size) { RomArchive.open(rom) } != null ||
-            com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, rev, size) { RomArchive.open(rom) } != null
+            com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, size) { RomArchive.open(rom).source() } != null ||
+            com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, rev, size) { RomArchive.open(rom).source() } != null
     }
 
     /** [rom] is a game its makers asked PokéDaisy not to read ([com.pokedaisy.app.companion.data.BlockedGames]), by its

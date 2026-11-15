@@ -60,6 +60,7 @@ import com.pokedaisy.app.companion.ui.theme.AppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * The docs' screenshots (`gradle docsShots` -> docs/manual/shots): the app's real screens, but never a real
@@ -132,7 +133,7 @@ fun SnapshotView.disguised() = copy(
 /** No ROM art in the docs: a scratch folder of their own, holding only the invented region map. */
 fun installDocsArt() {
     val manual = File(System.getProperty("docsDir").orEmpty())
-    val dir = RomArt.dir(android.content.Context().filesDir)
+    val dir = RomArt.dir(android.content.Context().filesDir.toOkioPath()).toFile()
     dir.deleteRecursively()
     val map = File(manual, "art/regionmap.png")
     if (map.isFile) map.copyTo(File(dir, "regionmap/kanto.png").apply { parentFile.mkdirs() }, overwrite = true)

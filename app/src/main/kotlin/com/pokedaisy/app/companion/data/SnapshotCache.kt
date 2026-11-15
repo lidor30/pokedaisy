@@ -1,9 +1,10 @@
 package com.pokedaisy.app.companion.data
 
+import okio.Path
+import okio.Path.Companion.toPath
 import okio.Buffer
 import okio.BufferedSink
 import okio.BufferedSource
-import java.io.File
 
 /**
  * The companion's data saved beside a savestate (`<state>.companion`), so a launch that resumes
@@ -22,7 +23,7 @@ object SnapshotCache {
     private const val VERSION = 5
     private const val MAX_BYTES = 256 * 1024
 
-    fun fileFor(state: File) = File(state.path + ".companion")
+    fun fileFor(state: Path) = "$state.companion".toPath()
 
     /** The tabs [v] has data for that the cache can't carry. */
     fun dataTabs(v: SnapshotView): Set<String> = buildSet {
@@ -36,7 +37,7 @@ object SnapshotCache {
     }
 
     /** Writes [v] beside [state], or removes a stale one when [v] has no data worth showing. */
-    fun write(state: File, v: SnapshotView?) {
+    fun write(state: Path, v: SnapshotView?) {
         val f = fileFor(state)
         val bytes = v?.takeIf { it.hasData && !it.unsupported }?.let { encode(it) }
         runCatching {
@@ -44,23 +45,21 @@ object SnapshotCache {
                 f.delete()
                 return
             }
-            val tmp = File(f.path + ".tmp")
-            tmp.writeBytes(bytes)
-            if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
+            f.writeAtomically(bytes)
         }
     }
 
-    fun read(state: File): SnapshotView? {
+    fun read(state: Path): SnapshotView? {
         val f = fileFor(state)
-        if (!f.isFile || f.length() > MAX_BYTES) return null
+        if (!f.isFile || f.length > MAX_BYTES) return null
         return runCatching { decode(f.readBytes()) }.getOrNull()
     }
 
     /** Copies [from]'s cache to [to]'s (or clears [to]'s when [from] has none). */
-    fun copy(from: File, to: File) {
+    fun copy(from: Path, to: Path) {
         runCatching {
             val src = fileFor(from)
-            if (src.isFile) src.copyTo(fileFor(to), overwrite = true) else fileFor(to).delete()
+            if (src.isFile) src.copyTo(fileFor(to)) else fileFor(to).delete()
         }
     }
 

@@ -49,7 +49,7 @@ fun tradeEvoFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean)
 
 /** Whether the running ROM has [evo]'s functions where they're expected. */
 fun tradeEvoCodeMatches(evo: TradeEvoFns, read: (addr: Long, len: Int) -> ByteArray): Boolean =
-    evo.functions.zip(evo.codeCrcs).all { (fn, crc) -> java.util.zip.CRC32().apply { update(read(fn, 32)) }.value == crc }
+    evo.functions.zip(evo.codeCrcs).all { (fn, crc) -> crc32(read(fn, 32)) == crc }
 
 enum class TradeEvoResult {
     /** The game's evolution is playing. */

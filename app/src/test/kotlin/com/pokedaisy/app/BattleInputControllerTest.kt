@@ -449,6 +449,47 @@ class BattleInputControllerTest {
         assertEquals(2, game.moveCursor[0])
     }
 
+    // ---- HIDE BATTLE MENU: the D-pad round the companion's buttons (FIGHT over BAG / RUN / POKéMON) ----
+
+    @Test fun hiddenMenuSteerFollowsTheCompanionsLayout() {
+        val k = MgbaCore.Key
+        // 0 FIGHT, 1 BAG, 2 POKéMON, 3 RUN: FIGHT on top, BAG / RUN / POKéMON left to right under it.
+        assertEquals(3, HiddenMenuSteer.next(0, k.DOWN))
+        assertEquals(1, HiddenMenuSteer.next(0, k.LEFT))
+        assertEquals(2, HiddenMenuSteer.next(0, k.RIGHT))
+        assertEquals(0, HiddenMenuSteer.next(0, k.UP))
+        for (cell in 1..3) assertEquals(0, HiddenMenuSteer.next(cell, k.UP))
+        assertEquals(3, HiddenMenuSteer.next(1, k.RIGHT))
+        assertEquals(2, HiddenMenuSteer.next(3, k.RIGHT))
+        assertEquals(3, HiddenMenuSteer.next(2, k.LEFT))
+        assertEquals(1, HiddenMenuSteer.next(3, k.LEFT))
+        // Nothing wraps, and DOWN on the bottom row stays.
+        assertEquals(1, HiddenMenuSteer.next(1, k.LEFT))
+        assertEquals(2, HiddenMenuSteer.next(2, k.RIGHT))
+        for (cell in 1..3) assertEquals(cell, HiddenMenuSteer.next(cell, k.DOWN))
+    }
+
+    @Test fun aSteeredPressIsWrittenIntoTheActionCursorWithNoPress() {
+        game.actionCursor[1] = 0
+        direct.onState(1, BATTLE_INPUT_ACTION_SELECT)
+        direct.tick()
+        assertTrue(direct.canSteerAction)
+        direct.steerAction(MgbaCore.Key.DOWN)
+        direct.tick()
+        assertEquals(3, game.actionCursor[1])
+        assertEquals(3, direct.menuCursor)
+        direct.steerAction(MgbaCore.Key.RIGHT)
+        direct.tick()
+        assertEquals(2, game.actionCursor[1])
+        assertEquals(0, input.mask)
+        // On another menu it does nothing.
+        direct.onState(1, BATTLE_INPUT_MOVE_SELECT)
+        assertFalse(direct.canSteerAction)
+        direct.steerAction(MgbaCore.Key.UP)
+        direct.tick()
+        assertEquals(2, game.actionCursor[1])
+    }
+
     // ---- Elite Redux: FIGHT / INFO over POKéMON / RUN valued 0 / 3 over 1 / 2, no BAG, a column of moves ----
 
     private val elite = BattleInputController(input, game, log = {}, writer = { addr, b ->

@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.io.RandomAccessFile
+import kotlin.concurrent.Volatile
+import okio.FileHandle
+import okio.Path
 
 /**
  * A FireRed-engine hack's own region map - Unbound's Borrius, Odyssey's,
@@ -67,43 +68,36 @@ object RomRegionMap {
     private const val FIRERED_TILES = 0x3EF61C
 
     /** Reads [rom] in the background and publishes its map as [current]. */
-    fun load(filesDir: File, romKey: String, rom: File) {
+    fun load(filesDir: Path, romKey: String, rom: Path) {
         current = null
-        Thread({
+        background("pokedaisy-region-map") {
             try {
-                current = loadNow(filesDir, romKey, rom) ?: return@Thread
+                current = loadNow(filesDir, romKey, rom) ?: return@background
                 RomArt.announce()
             } catch (t: Throwable) {
-                android.util.Log.w("pokedaisy", "RomRegionMap: read failed", t)
+                Logs.w("RomRegionMap: read failed", t)
             }
-        }, "pokedaisy-region-map").apply { isDaemon = true; start() }
+        }
     }
 
     /** [read] [rom], writing its screens (once per [romKey]) where [RomArt]'s art goes. */
-    fun loadNow(filesDir: File, romKey: String, rom: File): Data? {
-        val parsed = RandomAccessFile(rom, "r").use { read(FileRom(it)) } ?: return null
-        val dir = File(RomArt.dir(filesDir), "regionmap").apply { mkdirs() }
+    fun loadNow(filesDir: Path, romKey: String, rom: Path): Data? {
+        val parsed = withRomFile(rom) { read(FileRom(it)) } ?: return null
+        val dir = (RomArt.dir(filesDir) / "regionmap").apply { mkdirs() }
         val names = parsed.images.mapIndexed { i, img ->
             val name = "rom-$romKey-v$VERSION-$i"
-            val f = File(dir, "$name.png")
-            if (!f.isFile) {
-                val tmp = File(dir, "$name.png.tmp")
-                tmp.writeBytes(img.png())
-                tmp.renameTo(f)
-            }
+            val f = dir / "$name.png"
+            if (!f.isFile) f.writeAtomically(img.png())
             name
         }
         return Data(names.toTypedArray(), parsed.sections, parsed.layouts)
     }
 
-    private class FileRom(private val f: RandomAccessFile) : Rom {
-        override val size = f.length().toInt()
+    private class FileRom(private val f: FileHandle) : Rom {
+        override val size = f.size().toInt()
         override fun read(off: Int, n: Int): ByteArray {
             if (off < 0 || off >= size) return ByteArray(0)
-            val out = ByteArray(minOf(n, size - off))
-            f.seek(off.toLong())
-            f.readFully(out)
-            return out
+            return f.readFully(off.toLong(), minOf(n, size - off))
         }
     }
 

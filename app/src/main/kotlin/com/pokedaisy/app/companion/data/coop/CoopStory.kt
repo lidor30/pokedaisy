@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data.coop
 
+import kotlin.concurrent.Volatile
+
 /** How a story event starts: stepping on a tile, talking to an object, or a map's frame script. */
 enum class StoryKind { COORD, OBJECT, FRAME }
 

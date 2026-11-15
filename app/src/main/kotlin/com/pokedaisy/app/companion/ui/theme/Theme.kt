@@ -47,6 +47,7 @@ import com.pokedaisy.app.companion.ui.rememberArtGeneration
 import com.pokedaisy.app.companion.ui.soundClickable
 import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.i18n.tk
+import okio.Path.Companion.toOkioPath
 
 /**
  * A theme (Settings > THEME on both screens): the app's and the companion's look in its colours, the way DARK MODE
@@ -415,7 +416,7 @@ fun rememberGameFont(game: GameKind?): FontFamily? {
             GameKind.GOLD, GameKind.SILVER -> com.pokedaisy.app.companion.data.Gen2Art.GOLD_SILVER_FONT
             else -> null
         } ?: return@remember null
-        com.pokedaisy.app.companion.data.RomArt.file(context.filesDir, path)?.let { com.pokedaisy.app.gameFontFamily(context, it) }
+        com.pokedaisy.app.companion.data.RomArt.file(context.filesDir?.toOkioPath(), path)?.let { com.pokedaisy.app.gameFontFamily(context, it.toFile()) }
     }
 }
 

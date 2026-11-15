@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /**
  * Where the GUIDE's live pages (HERE, NEXT BOSS) and the battle's foe team
@@ -271,20 +273,21 @@ private val SUPER_ROD_ODDS = listOf(40, 40, 15, 4, 1)
  * Compose's IO dispatcher rather than the emulator thread.
  */
 object GuideRomSource {
-    private val encounters = ConcurrentHashMap<Int, MapEncounters>()
-    private val parties = ConcurrentHashMap<Int, List<TrainerMon>>()
+    private val lock = SynchronizedObject()
+    private val encounters = LockedMap<Int, MapEncounters>()
+    private val parties = LockedMap<Int, List<TrainerMon>>()
     @Volatile private var headers: Map<Int, Long>? = null
     @Volatile private var cachedFor: GuideTables? = null
 
     /** A new ROM ([PokedexSource.romChanged]): two can share tables, so start over. */
     fun romChanged() {
-        synchronized(this) { cachedFor = null }
+        synchronized(lock) { cachedFor = null }
         GuideRandomizer.romChanged()
     }
 
     private fun sync(t: GuideTables) {
         if (cachedFor == t) return
-        synchronized(this) {
+        synchronized(lock) {
             if (cachedFor == t) return
             encounters.clear(); parties.clear(); headers = null
             cachedFor = t
@@ -323,7 +326,7 @@ object GuideRomSource {
                 goodRod = merge(fishing.drop(2).take(3), GOOD_ROD_ODDS),
                 superRod = merge(fishing.drop(5), SUPER_ROD_ODDS),
             )
-        }.onFailure { android.util.Log.w("pokedaisy", "encounters $group.$num failed", it) }
+        }.onFailure { Logs.w("encounters $group.$num failed", it) }
             .getOrNull()?.also { encounters[key or (set shl 16)] = it }
     }
 
@@ -431,7 +434,7 @@ object GuideRomSource {
                     else defaultMoves(t, species, level),
                 )
             }
-        }.onFailure { android.util.Log.w("pokedaisy", "trainer $id failed", it) }
+        }.onFailure { Logs.w("trainer $id failed", it) }
             .getOrNull()?.also { parties[id] = it }
     }
 
@@ -489,7 +492,7 @@ object GuideRomSource {
             val group = h[0].toInt() and 0xFF
             if (group == MAP_GROUP_UNDEFINED) break
             // The first header wins, as in GetCurrentMapWildMonHeaderId.
-            out.putIfAbsent(group shl 8 or (h[1].toInt() and 0xFF), addr)
+            out.getOrPut(group shl 8 or (h[1].toInt() and 0xFF)) { addr }
             addr += wildHeaderStride(t)
         }
         return out.also { headers = it }

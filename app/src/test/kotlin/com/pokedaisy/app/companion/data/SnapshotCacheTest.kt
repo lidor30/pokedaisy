@@ -6,8 +6,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 import java.nio.file.Files
+import okio.Path.Companion.toOkioPath
 
 /** The companion's data saved beside a savestate, shown on a launch that resumes from it. */
 class SnapshotCacheTest {
@@ -51,18 +51,18 @@ class SnapshotCacheTest {
     fun `beside the state, and none for a game with no data yet`() {
         val dir = Files.createTempDirectory("snapcache").toFile()
         try {
-            val state = File(dir, "resume")
+            val state = dir.toOkioPath() / "resume"
             SnapshotCache.write(state, live())
             assertTrue(SnapshotCache.fileFor(state).isFile)
             assertNotNull(SnapshotCache.read(state))
 
-            val slot = File(dir, "ss3")
+            val slot = dir.toOkioPath() / "ss3"
             SnapshotCache.copy(state, slot)
             assertEquals(SnapshotCache.read(state), SnapshotCache.read(slot))
 
             // The title screen: the old copy would be stale, so it goes.
             SnapshotCache.write(state, SnapshotView(connected = true, game = GameKind.FIRERED))
-            assertFalse(SnapshotCache.fileFor(state).exists())
+            assertFalse(SnapshotCache.fileFor(state).isFile)
             assertNull(SnapshotCache.read(state))
             SnapshotCache.copy(state, slot)
             assertNull(SnapshotCache.read(slot))

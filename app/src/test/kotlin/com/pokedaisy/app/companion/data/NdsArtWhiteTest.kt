@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Pokémon White's art and DEX from its cart (NdsArt): the same art as Black's, written to Black's paths, and its own
@@ -15,7 +16,9 @@ import java.io.File
 class NdsArtWhiteTest {
     private val nds = File(File(RETAIL_ROM_DIR).parentFile, "nds")
     private val black = File(nds, "Pokemon - Black Version (USA, Europe) (NDSi Enhanced).nds")
-    private val white = File(nds, "Pokemon - White Version (USA, Europe) (NDSi Enhanced).nds")
+    // The clean dump (sha1 bc696a0d, the fixtures'), else the [b] one some sets carry under that name.
+    private val white = listOf("", " [b]").map { File(nds, "Pokemon - White Version (USA, Europe) (NDSi Enhanced)$it.nds") }
+        .firstOrNull { it.isFile } ?: File(nds, "Pokemon - White Version (USA, Europe) (NDSi Enhanced).nds")
 
     @Test
     fun `White's art is Black's, its DEX descriptions its own`() {
@@ -23,8 +26,8 @@ class NdsArtWhiteTest {
         val bDir = kotlin.io.path.createTempDirectory("nds-art-b").toFile()
         val wDir = kotlin.io.path.createTempDirectory("nds-art-w").toFile()
         try {
-            assertTrue(NdsArt.extractTo(black, bDir))
-            assertTrue(NdsArt.extractTo(white, wDir))
+            assertTrue(NdsArt.extractTo(black.toOkioPath(), bDir.toOkioPath()))
+            assertTrue(NdsArt.extractTo(white.toOkioPath(), wDir.toOkioPath()))
             // the art: file for file
             for (path in listOf("${NdsArt.BLACK_ICONS}/495.png", "${NdsArt.BLACK_ITEMS}/17.png", "${NdsArt.BLACK_FRONT}/643.png",
                 "regionmap/${NdsArt.BLACK_MAP}.png", "regionmap/${NdsArt.BLACK_PLAYER}.png")) {
@@ -39,9 +42,9 @@ class NdsArtWhiteTest {
             assertEquals(b.map(::noText), w.map(::noText))
             assertNotEquals(b[494][2], w[494][2])   // SNIVY's entry
             // the names: White's cart reads as Black's
-            assertEquals("Snivy", NdsArt.readNames(white)?.species(495))
+            assertEquals("Snivy", NdsArt.readNames(white.toOkioPath())?.species(495))
             // a second run on the same cart writes nothing
-            assertEquals(false, NdsArt.extractTo(white, wDir))
+            assertEquals(false, NdsArt.extractTo(white.toOkioPath(), wDir.toOkioPath()))
         } finally {
             bDir.deleteRecursively()
             wDir.deleteRecursively()

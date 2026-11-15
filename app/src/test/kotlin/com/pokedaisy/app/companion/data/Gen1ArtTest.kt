@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data
 
+import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -31,6 +32,6 @@ class Gen1ArtTest {
 
     @Test
     fun `another cart gets nothing`() {
-        assertTrue(Gen1Art.extractTo(ByteArray(0x8000), File.createTempFile("gen1", "").also { it.delete() }).isEmpty())
+        assertTrue(Gen1Art.extractTo(ByteArray(0x8000), File.createTempFile("gen1", "").also { it.delete() }.toOkioPath()).isEmpty())
     }
 }

@@ -7,6 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * INSTANT TEXT's patch, found in each ROM by its code ([InstantText.find]). The bytes were played headless with
@@ -76,7 +77,7 @@ class InstantTextTest {
             val f = File(RETAIL_ROM_DIR, name)
             if (!f.exists()) continue
             seen++
-            assertEquals(name, want, InstantText.find(f) != null)
+            assertEquals(name, want, InstantText.find(f.toOkioPath()) != null)
         }
         assumeTrue("no ROMs here", seen > 0)
     }
@@ -85,6 +86,6 @@ class InstantTextTest {
         val roms = retailRomFiles().toList()
             .filter { Regex("Rubin|Rubi|Saphir|Zafiro|Zaffiro|Rubis").containsMatchIn(it.name) && "Debug" !in it.name }
         assumeTrue("no ROMs here", roms.isNotEmpty())
-        for (f in roms) assertEquals(f.name, 1, InstantText.find(f)?.writes?.size)
+        for (f in roms) assertEquals(f.name, 1, InstantText.find(f.toOkioPath())?.writes?.size)
     }
 }

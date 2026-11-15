@@ -134,7 +134,7 @@ enum class FlightVehicle(val id: Int, val label: String) {
 /** Whether the running ROM has [f]'s functions where they're expected. */
 fun flightCodeMatches(f: FlightFns, read: (addr: Long, len: Int) -> ByteArray): Boolean =
     f.functions.size == f.codeCrcs.size && f.functions.zip(f.codeCrcs).all { (fn, crc) ->
-        java.util.zip.CRC32().apply { update(read(fn, 32)) }.value == crc
+        crc32(read(fn, 32)) == crc
     }
 
 /**

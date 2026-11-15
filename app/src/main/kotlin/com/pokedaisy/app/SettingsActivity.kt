@@ -832,6 +832,14 @@ class SettingsActivity : ComponentActivity() {
             ) { dsLayoutPicker = true }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT && !usesSecondScreen },
             // The party, a minimap, the balls and BAG / WILD over the game on the field: its own page (layout, look, size, parts).
             SettingRow(tk("HUD"), onOff(prefs.fieldHud), labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.HUD), opensPage = true, subtitle = "Party, minimap and bag over the game") { screen = Screen.FIELD_HUD },
+            // Two screens: the game's own FIGHT / BAG and move menus off its screen, the companion's buttons pick.
+            SettingRow(
+                tk("HIDE BATTLE MENU"), onOff(prefs.hideBattleMenu), subtitle = "Pick from the companion, not the game",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.HIDE_BATTLE_MENU),
+            ) {
+                prefs.hideBattleMenu = !prefs.hideBattleMenu
+                revision++
+            }.takeIf { usesSecondScreen },
             // One screen: FIGHT, POKéMON and RUN in the room beside a battle (BattleButtons).
             SettingRow(
                 tk("BATTLE BUTTONS"), onOff(prefs.battleButtons), subtitle = "FIGHT, POKéMON and RUN beside a battle",
