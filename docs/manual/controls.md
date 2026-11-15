@@ -50,7 +50,7 @@ On a handheld with two screens, or a phone held upright with a controller, press
 
 While your buttons are down there, the game keeps running but doesn't see them:
 
-- The D-pad moves the cursor and `A` picks what it's on.
+- The D-pad moves the cursor and `A` picks what it's on. Hold a direction to keep moving.
 - `L` and `R` move between the tabs.
 - `B` goes back, and when there's nothing left to go back from, it gives your buttons back to the game.
 - `X` or `START` give them back from anywhere. So does a tap on the silver strip.

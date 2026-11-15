@@ -5764,6 +5764,7 @@ class PokeDaisyActivity : Activity() {
         // The player's held keys let go in the game (which runs on), and the other way round.
         input.releaseAll()
         bottomHat = 0
+        hatRepeat.stop()
         if (on && ::view.isInitialized) view.camera.let { it.stickX = 0f; it.stickY = 0f }
     }
 
@@ -5817,8 +5818,13 @@ class PokeDaisyActivity : Activity() {
         val pressed = bits and bottomHat.inv()
         bottomHat = bits
         menuKeyFor(pressed)?.let { bottomKeys.key(it) }
+        // Held: it repeats, as a held key does (a hat's axes never do by themselves).
+        hatRepeat.update(bits, pressed) { bit -> if (bottomFocus.value) menuKeyFor(bit)?.let { bottomKeys.key(it, repeat = true) } else hatRepeat.stop() }
         return true
     }
+
+    /** A hat / stick direction held while the buttons steer the companion (the window or the other screen's), repeated. */
+    private val hatRepeat = HatRepeat()
 
     // --- the companion's window (one screen, SidePanel) -----------------------------
 
@@ -5832,6 +5838,7 @@ class PokeDaisyActivity : Activity() {
     private fun onCompanionWindow(open: Boolean) {
         input.releaseAll()
         menuHat = 0
+        hatRepeat.stop()
         if (open) view.camera.let { it.stickX = 0f; it.stickY = 0f }
     }
 
@@ -6039,6 +6046,7 @@ class PokeDaisyActivity : Activity() {
         val pressed = bits and menuHat.inv()
         menuHat = bits
         menuKeyFor(pressed)?.let { sidePanel.menuKey(it) }
+        hatRepeat.update(bits, pressed) { bit -> if (sidePanel.windowOpen) menuKeyFor(bit)?.let { sidePanel.menuKey(it, repeat = true) } else hatRepeat.stop() }
         return true
     }
 
