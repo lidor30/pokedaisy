@@ -81,7 +81,9 @@ The Gen 3 `NativeConfig`s are TOML in `gamedata/gen3/` (one file per game family
 every platform: `make gamedata` (`scripts/gen_gamedata.py`) writes the app's `NativeConfigsGen.kt` from them, and
 `make check` / CI fail while it's stale. **A new config or a changed address goes in the TOML, never in Kotlin**;
 a new field goes in `NativeConfig` *and* `gamedata/schema/gen3_config.toml` (the generator checks they agree).
-`gamedata/README.md` has the format. The language ports are there too (`gamedata/gen3/ports/`, written by
+`gamedata/README.md` has the format. AREA maps (a cave's / building's own map with its floors, `AreaMap.kt`) have a row per GBA ROM by CRC32 in
+`gamedata/gen3/area_maps.toml`, written by `scripts/gen_area_maps.py --scan <ROM folder>` (never by hand; the file ends
+with the ROMs left out and why) - rerun it after adding a ROM, then `make test-quick T='*AreaMapTest'` draws every row. The language ports are there too (`gamedata/gen3/ports/`, written by
 `port_retail.py`), with their dex / guide tables spelled out as sub-tables over a named Kotlin val
 (`[config.port_axpd0.pokedex]`, `base = 'POKEDEX_SAPPHIRE'`; `gamedata/schema/gen3_pokedex.toml` / `gen3_guide.toml`).
 Phase 2: the records the 3DS / Linux companion reads are in `gamedata/gen3/records/` (retail FireRed / LeafGreen /
@@ -877,7 +879,7 @@ replay, which sets it itself) with probability 1 - keep; NORMAL puts it back onc
 instead and put the cart's own back from `Gen4World.wildRates` (`MgbaCore.pkNdsWildRates`): a remembered value didn't
 survive a restart, and a resumed game stayed without wild Pokémon until a map change. Walked headless
 (mgba_dump `wild ADDR KEEP`, warp into Route 101 / Route 1 grass): OFF 360 steps, none; 50% about twice NORMAL's steps.
-**SHINY ODDS on the DS** (2026-11-14, `ShinyOdds.DsTarget` / `DsRoller`, docs/ROM_FEATURES.md's note 36): the foe rewritten in the
+**SHINY ODDS on the DS** (2026-11-14, `ShinyOdds.DsTarget` / `DsRoller`, docs/ROM_FEATURES.md's note 37): the foe rewritten in the
 battle's setup in the frames before the battle copies the parties - Gen 4: the field's child app is the battle's (`Gen4Battle.battleTemplate`'s
 init word) with its data NULL (two frames: its init does nothing, Battle_Main's first step only makes a heap), `setup->parties[1]`, wild
 types only; Gen 5: the running proc is the battle overlay's with its work NULL (~14 frames), `BATTLE_SETUP_PARAM` competitor 0, party

@@ -2772,6 +2772,9 @@ class PokeDaisyActivity : Activity() {
         val tablesCrc = if (gba) WideScreen.tablesCrc(r, crc) else crc
         wideGame = if (nds || romBlocked != null) WideScreen.OFF else WideScreen.gameFor(tablesCrc)
         fieldGame = if (!gba || romBlocked != null) WideScreen.OFF else WideScreen.fieldGameFor(tablesCrc)
+        // AREA maps (AreaMap.kt): their row by the same CRC (a randomized retail cart draws retail's maps); none for a blocked game.
+        com.pokedaisy.app.companion.data.activeAreaMapCrc = if (gba && romBlocked == null) tablesCrc.toLongOrNull(16) ?: 0L else 0L
+        com.pokedaisy.app.companion.data.AreaMaps.romChanged()
         wildFlag = 0L
         tmSites = emptyList()
         if (::engine.isInitialized) engine.setReusableTms(tmSites, false)
