@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import okio.Path.Companion.toOkioPath
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -121,7 +122,7 @@ internal class CoopSettingsPages(
             .filter { it.length() == SettingsActivity.EMERALD_ROM_BYTES && RomIdentity.gameCode(it) == "BPEE" && RomIdentity.sha1(it) == EMERALD_COOP_SHA1 }
             .map { rom ->
                 val save = SavesLocation.saveFor(activity, prefs, rom)
-                val id = if (save.isFile) CoopSaveId.read(save) else null
+                val id = if (save.isFile) CoopSaveId.read(save.toOkioPath()) else null
                 val pair = id?.let { i -> pairs.firstOrNull { it.ownSave == i } }
                 CoopSaveChoice(rom, save, GameTitles.label(activity, prefs, rom), id, pair?.partner?.name)
             }

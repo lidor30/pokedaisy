@@ -419,7 +419,7 @@ class RelayCoopTransportTest {
         a.transport.addresses = { listOf(first) }
         assertEquals(0, a.start())
         val one = (a.waitFor(0, "Ready") { it is CoopEvent.Ready } as CoopEvent.Ready).ticket
-        assertEquals(first, CoopTicket.decode(one)!!.addresses.single().address)
+        assertArrayEquals(first.address, CoopTicket.decode(one)!!.addresses.single().ip)
         a.transport.addresses = { listOf(first, second) }
         val two = a.waitFor(0, "Ready with two") { it is CoopEvent.Ready && it.ticket != one } as CoopEvent.Ready
         assertEquals(2, CoopTicket.decode(two.ticket)!!.addresses.size)

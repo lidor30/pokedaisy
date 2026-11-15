@@ -1,7 +1,9 @@
 package com.pokedaisy.app.companion.coop
 
 import com.pokedaisy.app.companion.data.Gen3Text
-import java.io.IOException
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +23,8 @@ class CoopPairing(
     private val ownHello: () -> CoopHello?,
     private val clock: () -> Long,
 ) {
+    private val lock = SynchronizedObject()
+
     sealed interface Step {
         data class Inviting(val ticket: String?, val lan: List<LanEntry>) : Step
         data class Connecting(val viaLan: Boolean) : Step
@@ -53,110 +57,118 @@ class CoopPairing(
     private val lan = LinkedHashMap<CoopPeerId, String>()
 
     /** Starts pairing for [save]: allows every paired peer, opens pairing and announces this device on the LAN. */
-    @Synchronized
     fun open(save: CoopSaveId) {
-        // A repeat call (TRY AGAIN): the old attempt's connection goes with its state.
-        peer?.takeIf { _step.value !is Step.Paired }?.let { transport.disconnect(it) }
-        resetAll()
-        if (pairs.forSave(save) != null) {
-            _step.value = Step.Failed(CoopPairFail.SAVE_ALREADY_PAIRED)
-            return
+        synchronized(lock) {
+            // A repeat call (TRY AGAIN): the old attempt's connection goes with its state.
+            peer?.takeIf { _step.value !is Step.Paired }?.let { transport.disconnect(it) }
+            resetAll()
+            if (pairs.forSave(save) != null) {
+                _step.value = Step.Failed(CoopPairFail.SAVE_ALREADY_PAIRED)
+                return
+            }
+            ownSave = save
+            opened = true
+            ticket = transport.ticket()
+            transport.setPolicy(pairs.allowedPeers(), true, lanUserData(save))
+            _step.value = inviting()
         }
-        ownSave = save
-        opened = true
-        ticket = transport.ticket()
-        transport.setPolicy(pairs.allowedPeers(), true, lanUserData(save))
-        _step.value = inviting()
     }
 
     /** Dials the host's invite ([ticket] or a `pokedaisy://coop/` link); [open] came first. */
-    @Synchronized
     fun join(ticket: String) {
-        val t = CoopInvite.parse(ticket)
-        if (t == null) {
-            fail(CoopPairFail.BAD_INVITE)
-            return
+        synchronized(lock) {
+            val t = CoopInvite.parse(ticket)
+            if (t == null) {
+                fail(CoopPairFail.BAD_INVITE)
+                return
+            }
+            dial(t, viaLan = false)
         }
-        dial(t, viaLan = false)
     }
 
     /** Dials a device found on the LAN by its key: a ticket with no addresses, which the LAN lookup fills in. */
-    @Synchronized
     fun joinLan(peer: CoopPeerId) {
-        dial(peerOnlyTicket(peer), viaLan = true)
+        synchronized(lock) {
+            dial(peerOnlyTicket(peer), viaLan = true)
+        }
     }
 
-    @Synchronized
     fun accept() {
-        val p = partner ?: return
-        val to = peer ?: return
-        if (_step.value !is Step.Confirm) return
-        iAccepted = true
-        transport.send(to, CoopWire.encode(CoopWire.PAIR_ACCEPT, ByteArray(0)))
-        _step.value = Step.WaitingForPartner(p)
-        if (theyAccepted) finish()
+        synchronized(lock) {
+            val p = partner ?: return
+            val to = peer ?: return
+            if (_step.value !is Step.Confirm) return
+            iAccepted = true
+            transport.send(to, CoopWire.encode(CoopWire.PAIR_ACCEPT, ByteArray(0)))
+            _step.value = Step.WaitingForPartner(p)
+            if (theyAccepted) finish()
+        }
     }
 
-    @Synchronized
     fun deny() {
-        val to = peer
-        if (to == null || (_step.value !is Step.Confirm && _step.value !is Step.WaitingForPartner)) return
-        transport.send(to, CoopWire.encode(CoopWire.PAIR_DENY, ByteArray(0)))
-        transport.deny(to)
-        fail(CoopPairFail.DENIED)
+        synchronized(lock) {
+            val to = peer
+            if (to == null || (_step.value !is Step.Confirm && _step.value !is Step.WaitingForPartner)) return
+            transport.send(to, CoopWire.encode(CoopWire.PAIR_DENY, ByteArray(0)))
+            transport.deny(to)
+            fail(CoopPairFail.DENIED)
+        }
     }
 
     /** Closes pairing: the policy goes back to closed and any unpaired connection is dropped. */
-    @Synchronized
     fun close() {
-        transport.setPolicy(pairs.allowedPeers(), false, null)
-        val p = peer
-        if (p != null && _step.value !is Step.Paired) transport.disconnect(p)
-        opened = false
-        peer = null
+        synchronized(lock) {
+            transport.setPolicy(pairs.allowedPeers(), false, null)
+            val p = peer
+            if (p != null && _step.value !is Step.Paired) transport.disconnect(p)
+            opened = false
+            peer = null
+        }
     }
 
-    @Synchronized
     fun onEvent(e: CoopEvent) {
-        when (e) {
-            is CoopEvent.Ready -> {
-                ticket = e.ticket
-                if (_step.value is Step.Inviting) _step.value = inviting()
+        synchronized(lock) {
+            when (e) {
+                is CoopEvent.Ready -> {
+                    ticket = e.ticket
+                    if (_step.value is Step.Inviting) _step.value = inviting()
+                }
+                is CoopEvent.LanPeer -> {
+                    val label = lanLabel(e.userData) ?: return
+                    if (e.peer == transport.endpointId()) return
+                    lan[e.peer] = label
+                    if (_step.value is Step.Inviting) _step.value = inviting()
+                }
+                is CoopEvent.LanGone -> if (lan.remove(e.peer) != null && _step.value is Step.Inviting) {
+                    _step.value = inviting()
+                }
+                is CoopEvent.Connected -> onConnected(e)
+                is CoopEvent.Frame -> if (e.peer == peer || e.peer in candidates) onFrame(e.peer, e.bytes)
+                is CoopEvent.Disconnected -> if (e.code != DUPLICATE) onDisconnected(e.peer, e.code)
+                is CoopEvent.DialFailed -> if (joining && peer == null && active()) fail(failFor(e.code))
+                else -> Unit
             }
-            is CoopEvent.LanPeer -> {
-                val label = lanLabel(e.userData) ?: return
-                if (e.peer == transport.endpointId()) return
-                lan[e.peer] = label
-                if (_step.value is Step.Inviting) _step.value = inviting()
-            }
-            is CoopEvent.LanGone -> if (lan.remove(e.peer) != null && _step.value is Step.Inviting) {
-                _step.value = inviting()
-            }
-            is CoopEvent.Connected -> onConnected(e)
-            is CoopEvent.Frame -> if (e.peer == peer || e.peer in candidates) onFrame(e.peer, e.bytes)
-            is CoopEvent.Disconnected -> if (e.code != DUPLICATE) onDisconnected(e.peer, e.code)
-            is CoopEvent.DialFailed -> if (joining && peer == null && active()) fail(failFor(e.code))
-            else -> Unit
         }
     }
 
     /** The HELLO and confirmation timeouts; call every 250 ms. */
-    @Synchronized
     fun tick() {
-        if (!active()) return
-        val now = clock()
-        val s = _step.value
-        if (s is Step.Confirm || s is Step.WaitingForPartner) {
-            if (now >= confirmDeadline) timeOut()
-            return
-        }
-        for ((who, c) in candidates.entries.toList()) {
-            if (now < c.deadline) continue
-            if (joining) {
-                timeOut()
+        synchronized(lock) {
+            if (!active()) return
+            val now = clock()
+            val s = _step.value
+            if (s is Step.Confirm || s is Step.WaitingForPartner) {
+                if (now >= confirmDeadline) timeOut()
                 return
             }
-            dropCandidate(who)   // a silent stray: the host keeps waiting for the real joiner
+            for ((who, c) in candidates.entries.toList()) {
+                if (now < c.deadline) continue
+                if (joining) {
+                    timeOut()
+                    return
+                }
+                dropCandidate(who)   // a silent stray: the host keeps waiting for the real joiner
+            }
         }
     }
 
