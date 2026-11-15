@@ -37,6 +37,7 @@ import okio.Path.Companion.toOkioPath
  *     ./gradlew :app:recordPaparazziDebug --tests '*ShinyIconsScreenshotTest'
  */
 open class ShinyIconsScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     open val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1240, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),

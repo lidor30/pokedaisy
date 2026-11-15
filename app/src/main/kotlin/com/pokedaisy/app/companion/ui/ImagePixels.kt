@@ -1,25 +1,37 @@
 package com.pokedaisy.app.companion.ui
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import com.pokedaisy.app.companion.data.LockedLru
 import com.pokedaisy.app.companion.data.RomArt
+import kotlin.concurrent.Volatile
 
 /*
  * The screens' pictures are Compose ImageBitmaps (common to Android and iOS), read through readPixels. Making one from
- * pixels or decoding a file is the platform's: those two are here, the only place the screens touch
- * android.graphics, so the iPad build replaces this file alone.
+ * pixels or decoding a file is the platform's ([PictureCodec]: Android's Bitmap / BitmapFactory, AndroidPictures.kt);
+ * the screens go through the two functions below.
  */
 
+/** How the platform makes a picture: from pixels, or from an image file's bytes. Set by the app at start. */
+interface PictureCodec {
+    /** An [width] x [height] picture of [argb] (ARGB, row by row). */
+    fun fromArgb(argb: IntArray, width: Int, height: Int): ImageBitmap
+
+    /** A PNG / JPEG / WebP file's bytes as a picture, or null when they aren't one. */
+    fun decode(bytes: ByteArray): ImageBitmap?
+
+    companion object {
+        /** Set by the app at start (and by ui-preview / the screenshot tests). */
+        @Volatile var current: PictureCodec? = null
+
+        fun get(): PictureCodec = checkNotNull(current) { "PictureCodec.current isn't set" }
+    }
+}
+
 /** An [width] x [height] picture of [argb] (ARGB, row by row). */
-fun imageBitmapOf(argb: IntArray, width: Int, height: Int): ImageBitmap =
-    Bitmap.createBitmap(argb, width, height, Bitmap.Config.ARGB_8888).asImageBitmap()
+fun imageBitmapOf(argb: IntArray, width: Int, height: Int): ImageBitmap = PictureCodec.get().fromArgb(argb, width, height)
 
 /** A PNG / JPEG / WebP file's bytes as a picture, or null when they aren't one. */
-fun decodeImage(bytes: ByteArray): ImageBitmap? =
-    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+fun decodeImage(bytes: ByteArray): ImageBitmap? = PictureCodec.get().decode(bytes)
 
 /** Every pixel, ARGB, row by row. */
 fun ImageBitmap.argb(): IntArray = IntArray(width * height).also { readPixels(it) }

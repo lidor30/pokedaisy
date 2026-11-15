@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -124,7 +123,6 @@ fun gbaTextStyle(font: FontFamily, m: GbaTextMetrics, scaleX: Float = 1f) = Text
     fontSize = m.fontSize,
     textGeometricTransform = if (scaleX == 1f) null else TextGeometricTransform(scaleX = scaleX),
     lineHeight = m.fontSize,
-    platformStyle = PlatformTextStyle(includeFontPadding = false),
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
 )
 

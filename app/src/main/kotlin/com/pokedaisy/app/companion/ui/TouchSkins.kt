@@ -20,7 +20,8 @@ import com.pokedaisy.app.companion.SkinFit
 import com.pokedaisy.app.companion.SkinRepresentation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
+import com.pokedaisy.app.companion.data.lastModified
+import okio.Path
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -31,7 +32,7 @@ import kotlin.math.roundToInt
  */
 object SkinImages {
     /** [file] as a [w]x[h] px picture, or null when it can't be read. */
-    @Volatile var decode: (file: File, w: Int, h: Int) -> ImageBitmap? = { _, _, _ -> null }
+    @Volatile var decode: (file: Path, w: Int, h: Int) -> ImageBitmap? = { _, _, _ -> null }
 
     /** No picture bigger than this a side (a 4K tablet's skin is still under it). */
     const val MAX_SIDE = 4096
@@ -43,7 +44,7 @@ object SkinImages {
         val k = minOf(1f, MAX_SIDE.toFloat() / max(w, h).coerceAtLeast(1))
         val tw = (w * k).roundToInt().coerceAtLeast(1)
         val th = (h * k).roundToInt().coerceAtLeast(1)
-        val key = "${file.path}:${file.lastModified()}:$tw:$th"
+        val key = "$file:${file.lastModified}:$tw:$th"
         cache[key]?.let { return it }
         val image = runCatching { decode(file, tw, th) }.getOrNull() ?: return null
         cache[key] = image

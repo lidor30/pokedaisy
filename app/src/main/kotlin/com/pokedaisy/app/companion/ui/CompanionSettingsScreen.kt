@@ -277,7 +277,6 @@ fun CompanionSettingsScreen(
             androidx.compose.runtime.key(page) {
                 // HELP: the manual, read from the docs API (no search box: the bottom screen can't host a keyboard).
                 if (page == Page.HELP) {
-                    val context = androidx.compose.ui.platform.LocalContext.current
                     val source = remember { DocsSources.get() }
                     DocsReader(ui.docs, m, source, Modifier.fillMaxWidth().weight(1f), searchable = false)
                 } else if (page == Page.TOUCH && settings != null) {

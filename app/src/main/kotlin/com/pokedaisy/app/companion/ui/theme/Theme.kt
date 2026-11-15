@@ -34,7 +34,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -364,9 +363,8 @@ object AppColors {
 @Composable
 fun pixelFontFamily(): FontFamily {
     LocalGameFont.current?.let { return it }
-    val context = LocalContext.current
-    // Pixel Operator + its Japanese fallback (PixelTypeface.kt), one per process.
-    return com.pokedaisy.app.pixelFontFamily(context)
+    // Pixel Operator + its Japanese / Korean fallbacks (the platform's FontSource), one per process.
+    return FontSource.get().pixel()
 }
 
 /**
@@ -399,7 +397,6 @@ fun gameTextScale(game: GameKind?): Float = if (game.isGameBoyGame) 9f / 7f else
 /** [game]'s own font from the rom-art cache, once a launch of it has written it; else null. */
 @Composable
 fun rememberGameFont(game: GameKind?): FontFamily? {
-    val context = LocalContext.current
     val gen = com.pokedaisy.app.companion.ui.rememberArtGeneration()
     val language = com.pokedaisy.app.companion.data.romLanguage
     return remember(game, gen, language) {
@@ -416,7 +413,7 @@ fun rememberGameFont(game: GameKind?): FontFamily? {
             GameKind.GOLD, GameKind.SILVER -> com.pokedaisy.app.companion.data.Gen2Art.GOLD_SILVER_FONT
             else -> null
         } ?: return@remember null
-        com.pokedaisy.app.companion.data.RomArt.file(path)?.let { com.pokedaisy.app.gameFontFamily(context, it.toFile()) }
+        com.pokedaisy.app.companion.data.RomArt.file(path)?.let { FontSource.get().game(it) }
     }
 }
 

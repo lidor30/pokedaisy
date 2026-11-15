@@ -117,6 +117,7 @@ import okio.Path.Companion.toOkioPath
  * screen (1240x1080, landscape). See CLAUDE.md's "UI work" section.
  */
 open class CompanionScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     open val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(

@@ -7,6 +7,7 @@ import android.os.ParcelFileDescriptor
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import java.io.File
+import okio.Path
 
 /**
  * A Delta skin's picture on Android (companion.ui.SkinImages.decode): a PDF's first page rendered at the size it's shown
@@ -14,7 +15,9 @@ import java.io.File
  * Transparent where the picture is.
  */
 object SkinBitmaps {
-    fun decode(file: File, w: Int, h: Int): ImageBitmap? = when {
+    fun decode(path: Path, w: Int, h: Int): ImageBitmap? = decode(path.toFile(), w, h)
+
+    private fun decode(file: File, w: Int, h: Int): ImageBitmap? = when {
         isPdf(file) -> pdf(file, w, h)
         else -> png(file, w, h)
     }?.asImageBitmap()

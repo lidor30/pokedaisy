@@ -27,6 +27,7 @@ import org.junit.Test
  *     ./gradlew :app:recordPaparazziDebug --tests '*WindowRp6ScreenshotTest'
  */
 class WindowRp6ScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(
