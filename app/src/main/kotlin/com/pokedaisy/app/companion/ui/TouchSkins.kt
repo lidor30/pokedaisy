@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.concurrent.Volatile
+import com.pokedaisy.app.companion.data.LockedLru
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
@@ -34,9 +36,7 @@ object SkinImages {
     /** No picture bigger than this a side (a 4K tablet's skin is still under it). */
     const val MAX_SIDE = 4096
 
-    private val cache = object : LinkedHashMap<String, ImageBitmap>(4, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>?) = size > 3
-    }
+    private val cache = LockedLru<String, ImageBitmap>(3)
 
     fun load(skin: InstalledSkin, rep: SkinRepresentation, w: Int, h: Int): ImageBitmap? {
         val file = rep.asset?.let { skin.file(it) } ?: return null
@@ -44,9 +44,9 @@ object SkinImages {
         val tw = (w * k).roundToInt().coerceAtLeast(1)
         val th = (h * k).roundToInt().coerceAtLeast(1)
         val key = "${file.path}:${file.lastModified()}:$tw:$th"
-        synchronized(cache) { cache[key] }?.let { return it }
+        cache[key]?.let { return it }
         val image = runCatching { decode(file, tw, th) }.getOrNull() ?: return null
-        synchronized(cache) { cache[key] = image }
+        cache[key] = image
         return image
     }
 }

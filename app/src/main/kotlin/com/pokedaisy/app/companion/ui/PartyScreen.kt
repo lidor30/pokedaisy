@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.LockedMap
 import com.pokedaisy.app.companion.i18n.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -672,7 +673,7 @@ private fun localPartyStyle(base: PartySlotStyle, fireRed: Boolean): PartySlotSt
     }
 }
 
-private val localStyles = java.util.concurrent.ConcurrentHashMap<String, PartySlotStyle>()
+private val localStyles = LockedMap<String, PartySlotStyle>()
 
 /**
  * Let's Go Pikachu / Eevee's slot: CFRU's party menu (its slot tilemaps, layout and FireRed's font and Poké Ball) over its own

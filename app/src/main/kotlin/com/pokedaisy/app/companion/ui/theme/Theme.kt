@@ -193,29 +193,29 @@ val SEASONAL_THEMES = listOf(
 )
 
 /** The themes the THEME row offers on [date]: every one that's always there, then the limited ones in their window. */
-fun availableThemes(date: java.time.LocalDate = ThemeClock.today()): List<ThemeSpec> =
+fun availableThemes(date: kotlinx.datetime.LocalDate = ThemeClock.today()): List<ThemeSpec> =
     APP_THEMES + SEASONAL_THEMES.filter { it.season!!.windowOn(date) != null }
 
 /** A limited-time theme's window around [date] (null: not a limited one, or not now). */
-fun ThemeSpec.windowOn(date: java.time.LocalDate = ThemeClock.today()): ClosedRange<java.time.LocalDate>? = season?.windowOn(date)
+fun ThemeSpec.windowOn(date: kotlinx.datetime.LocalDate = ThemeClock.today()): ClosedRange<kotlinx.datetime.LocalDate>? = season?.windowOn(date)
 
 /**
  * The limited-time theme to announce on [date], once per window: in its window, not already worn, and not in [shown]
  * (Prefs.seasonalThemesShown, [announceKey]s). Several at once (LUNAR NEW YEAR and VALENTINE'S DAY): the one that began first.
  */
-fun seasonalThemeToAnnounce(date: java.time.LocalDate, shown: Set<String>, currentId: Int): ThemeSpec? =
+fun seasonalThemeToAnnounce(date: kotlinx.datetime.LocalDate, shown: Set<String>, currentId: Int): ThemeSpec? =
     SEASONAL_THEMES.mapNotNull { t -> t.windowOn(date)?.let { t to it } }
         .filter { (t, w) -> t.id != currentId && announceKey(t, w) !in shown }
         .minByOrNull { (_, w) -> w.start }?.first
 
 /** The key a theme's window is remembered by once its popup has shown: the theme and the window's first day. */
-fun announceKey(theme: ThemeSpec, window: ClosedRange<java.time.LocalDate>): String = "${theme.id}:${window.start}"
+fun announceKey(theme: ThemeSpec, window: ClosedRange<kotlinx.datetime.LocalDate>): String = "${theme.id}:${window.start}"
 
 /**
  * The theme to wear on [date] for the stored [id]: itself, unless it's a limited-time theme past its window - then
  * the theme worn before it ([before], if that's still a theme), else the default.
  */
-fun themeToWear(id: Int, before: Int, date: java.time.LocalDate = ThemeClock.today()): ThemeSpec {
+fun themeToWear(id: Int, before: Int, date: kotlinx.datetime.LocalDate = ThemeClock.today()): ThemeSpec {
     val t = themeById(id)
     if (t.season == null || t.windowOn(date) != null) return t
     return themeById(before).takeIf { it.season == null } ?: themeById(DAISY_THEME_ID)

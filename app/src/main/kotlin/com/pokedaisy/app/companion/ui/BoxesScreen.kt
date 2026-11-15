@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.LockedMap
 import android.graphics.Bitmap
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -1040,17 +1041,16 @@ internal object BoxWallpapers {
     private val WAVE = intArrayOf(0, 0, 1, 2, 2, 2, 1, 0)
     private val BUBBLE = listOf(3 to 2, 2 to 3, 4 to 3, 3 to 4, 11 to 9, 10 to 10, 12 to 10, 11 to 11, 13 to 3, 6 to 12)
 
-    private val cache = HashMap<Triple<List<Paper>, Int, Boolean>, ImageBitmap>()
+    private val cache = LockedMap<Triple<List<Paper>, Int, Boolean>, ImageBitmap>()
 
     /** Wallpaper [id]'s 16x16 fill tile. */
-    fun tile(id: Int, night: Boolean): ImageBitmap = synchronized(cache) {
+    fun tile(id: Int, night: Boolean): ImageBitmap =
         cache.getOrPut(Triple(papers, id, night)) {
             val paper = paper(id)
             val inks = intArrayOf(shade(paper.base, night).toArgb(), shade(paper.mark, night).toArgb(), shade(paper.mark2, night).toArgb())
             val px = IntArray(TILE * TILE) { i -> inks[ink(paper.pattern, i % TILE, i / TILE)] }
             Bitmap.createBitmap(px, TILE, TILE, Bitmap.Config.ARGB_8888).asImageBitmap()
         }
-    }
 
     private const val TILE = 16
 }

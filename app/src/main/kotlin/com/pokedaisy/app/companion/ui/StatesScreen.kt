@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.LockedLru
 import com.pokedaisy.app.companion.i18n.tr
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -283,9 +284,7 @@ private val slotDateFormat: DateFormat by lazy { DateFormat.getDateTimeInstance(
 
 /** Decoded slot thumbnails by path + save / thumbnail time, so a STATES visit doesn't decode all ten again. */
 private object StateThumbs {
-    private val map = object : LinkedHashMap<String, Bitmap>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?) = size > 16
-    }
-    fun get(key: String): Bitmap? = synchronized(map) { map[key] }
-    fun put(key: String, bmp: Bitmap) = synchronized(map) { map[key] = bmp }
+    private val map = LockedLru<String, Bitmap>(16)
+    fun get(key: String): Bitmap? = map[key]
+    fun put(key: String, bmp: Bitmap) { map[key] = bmp }
 }

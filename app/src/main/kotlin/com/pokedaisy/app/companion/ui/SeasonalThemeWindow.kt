@@ -24,9 +24,8 @@ import com.pokedaisy.app.companion.i18n.AppLanguage
 import com.pokedaisy.app.companion.i18n.L10n
 import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.ui.theme.ThemeSpec
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 
 /**
  * The popup for a limited-time theme whose dates have come (ThemeSpec.season; the Library shows it once per window):
@@ -105,12 +104,24 @@ fun ThemeSwatch(theme: ThemeSpec, modifier: Modifier = Modifier) {
 
 /** [date] as a short day and month in the app's language ("NOV 3", "3 NOV.", "11月3日", "11월 3일"). */
 fun shortDate(date: LocalDate): String {
-    val lang = L10n.language
-    val pattern = when (lang) {
-        AppLanguage.EN -> "MMM d"
-        AppLanguage.JA -> "M月d日"
-        AppLanguage.KO -> "M월 d일"
-        else -> "d MMM"
+    val month = date.month.number
+    val day = date.day
+    return when (L10n.language) {
+        AppLanguage.EN -> "${SHORT_MONTHS_EN[month - 1]} $day"
+        AppLanguage.JA -> "${month}月${day}日"
+        AppLanguage.KO -> "${month}월 ${day}일"
+        AppLanguage.FR -> "$day ${SHORT_MONTHS_FR[month - 1]}"
+        AppLanguage.DE -> "$day ${SHORT_MONTHS_DE[month - 1]}"
+        AppLanguage.IT -> "$day ${SHORT_MONTHS_IT[month - 1]}"
+        AppLanguage.ES -> "$day ${SHORT_MONTHS_ES[month - 1]}"
+        AppLanguage.BR, AppLanguage.PT -> "$day ${SHORT_MONTHS_PT[month - 1]}"
     }
-    return DateTimeFormatter.ofPattern(pattern, Locale.forLanguageTag(lang.locale)).format(date).uppercase(Locale.forLanguageTag(lang.locale))
 }
+
+// Each language's abbreviated months in capitals, as Java's CLDR data gives them (the format this used before).
+private val SHORT_MONTHS_EN = listOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+private val SHORT_MONTHS_FR = listOf("JANV.", "FÉVR.", "MARS", "AVR.", "MAI", "JUIN", "JUIL.", "AOÛT", "SEPT.", "OCT.", "NOV.", "DÉC.")
+private val SHORT_MONTHS_DE = listOf("JAN.", "FEB.", "MÄRZ", "APR.", "MAI", "JUNI", "JULI", "AUG.", "SEPT.", "OKT.", "NOV.", "DEZ.")
+private val SHORT_MONTHS_IT = listOf("GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SET", "OTT", "NOV", "DIC")
+private val SHORT_MONTHS_ES = listOf("ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEPT", "OCT", "NOV", "DIC")
+private val SHORT_MONTHS_PT = listOf("JAN.", "FEV.", "MAR.", "ABR.", "MAI.", "JUN.", "JUL.", "AGO.", "SET.", "OUT.", "NOV.", "DEZ.")

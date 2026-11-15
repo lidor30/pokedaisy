@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.i18n.stripAccents
 import androidx.compose.ui.graphics.RectangleShape
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
@@ -126,7 +127,7 @@ private fun dexTypes(species: Int): List<String> = activeSpeciesTypeData[species
 
 /** The letter a species' name is filed under, accents gone; null for no name. */
 private fun dexInitial(species: Int): Char? = if (species <= 0) null else
-    java.text.Normalizer.normalize(speciesName(species), java.text.Normalizer.Form.NFD).firstOrNull { it.isLetter() }?.uppercaseChar()
+    stripAccents(speciesName(species)).firstOrNull { it.isLetter() }?.uppercaseChar()
 
 /**
  * The dex being shown, as national numbers in its own order - national, or the

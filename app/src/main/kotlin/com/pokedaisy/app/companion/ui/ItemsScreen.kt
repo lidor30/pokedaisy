@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.LockedMap
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.lerp
@@ -232,7 +233,7 @@ private data class BagPalette(
     )
 }
 
-private val nightBags = java.util.concurrent.ConcurrentHashMap<BagPalette, BagPalette>()
+private val nightBags = LockedMap<BagPalette, BagPalette>()
 
 /** Sampled 1:1 from a FireRed bag screenshot. */
 private val FireRedBag = BagPalette(
@@ -1101,7 +1102,7 @@ private fun hgssPocketArt(pocket: Int, open: Boolean): android.graphics.Bitmap? 
 
 /** The FAVORITES button in the pocket buttons' own look: a pocket button ([open] or not) with its icon painted out by
  * the fill each row has at its left edge, cached per button. */
-private val hgssBlankButtons = java.util.concurrent.ConcurrentHashMap<android.graphics.Bitmap, android.graphics.Bitmap>()
+private val hgssBlankButtons = LockedMap<android.graphics.Bitmap, android.graphics.Bitmap>()
 
 private fun hgssBlankButton(button: android.graphics.Bitmap): android.graphics.Bitmap = hgssBlankButtons.getOrPut(button) {
     val w = button.width

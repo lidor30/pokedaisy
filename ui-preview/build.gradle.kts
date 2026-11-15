@@ -51,6 +51,8 @@ dependencies {
     implementation("org.json:json:20240303")
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+    implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
     implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:$cmp")
 }
 
