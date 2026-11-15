@@ -25,6 +25,18 @@ val appOnlyTests by extra(
         "RenegadePlatinumTest", "ShinyOddsTest",
     ),
 )
+// The input models are needed by the native iOS core, below shared-ui. All sources compile in place.
+val sharedCoreSources by extra(
+    listOf(
+        "com/pokedaisy/app/companion/data/**",
+        "com/pokedaisy/app/companion/i18n/**",
+        "com/pokedaisy/app/GbaControls.kt",
+        "com/pokedaisy/app/GbaInput.kt",
+        "com/pokedaisy/app/Hotkeys.kt",
+        "com/pokedaisy/app/ScriptInput.kt",
+        "com/pokedaisy/app/companion/KeyCapture.kt",
+    ),
+)
 // The companion's screens and what they need (shared-ui/build.gradle.kts), as paths under app/src/main/kotlin: the
 // app leaves them out of its own compile and links shared-ui instead. The co-op transport stays the app's (sockets,
 // Android NSD, Bouncy Castle, OkHttp).
@@ -35,9 +47,12 @@ val sharedUiSources by extra(
         "com/pokedaisy/app/companion/coop/**",
         "com/pokedaisy/app/cheats/Cheats.kt",
         "com/pokedaisy/app/DocsApi.kt",
+        "com/pokedaisy/app/DocsCache.kt",
         "com/pokedaisy/app/DocsSearch.kt",
-        "com/pokedaisy/app/GbaControls.kt",
-        "com/pokedaisy/app/Hotkeys.kt",
+        "com/pokedaisy/app/InputBadges.kt",
+        "com/pokedaisy/app/Prefs.kt",
+        "com/pokedaisy/app/GameSaves.kt",
+        "com/pokedaisy/app/BattleInputController.kt",
     ),
 )
 val sharedUiAppOnly by extra(

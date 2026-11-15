@@ -16,13 +16,8 @@ class PokeDaisyApp : Application() {
             if (warning) android.util.Log.w(tag, message, error) else android.util.Log.i(tag, message)
         }
         // THEME and DARK MODE are saved in the app's Prefs.
-        val themePrefs = Prefs(this)
-        com.pokedaisy.app.companion.ui.theme.ThemeStore.current = object : com.pokedaisy.app.companion.ui.theme.ThemeStore {
-            override var appTheme by themePrefs::appTheme
-            override var themeBeforeSeasonal by themePrefs::themeBeforeSeasonal
-            override var appFont by themePrefs::appFont
-            override var darkMode by themePrefs::darkMode
-        }
+        com.pokedaisy.app.companion.ui.theme.ThemeStore.current =
+            com.pokedaisy.app.companion.ui.theme.PrefsThemeStore(Prefs(this))
         com.pokedaisy.app.companion.ui.DocsSources.current = StoreDocsSource(this)
         // The screens' fonts (Pixel Operator and its fallbacks, the manual's, a game's own) from the app's assets.
         com.pokedaisy.app.companion.ui.theme.FontSource.current = AndroidFonts(this)

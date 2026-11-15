@@ -26,7 +26,8 @@ val LocalGameSilent = staticCompositionLocalOf<() -> Boolean> { { false } }
  */
 fun Modifier.soundClickable(enabled: Boolean = true, onClick: () -> Unit): Modifier = composed {
     val sound = LocalClickSound.current
-    clickable(enabled = enabled) { onClick(); sound() }
+    val click = { onClick(); sound() }
+    menuFocusAction(enabled, click).clickable(enabled = enabled, onClick = click)
 }
 
 /** [soundClickable] with the caller's [interactionSource] / [indication], like [clickable]'s overload. */
@@ -37,5 +38,19 @@ fun Modifier.soundClickable(
     onClick: () -> Unit,
 ): Modifier = composed {
     val sound = LocalClickSound.current
-    clickable(interactionSource = interactionSource, indication = indication, enabled = enabled) { onClick(); sound() }
+    val click = { onClick(); sound() }
+    menuFocusAction(enabled, click).clickable(interactionSource = interactionSource, indication = indication, enabled = enabled, onClick = click)
+}
+
+/** A silent clickable with the same portable controller activation as [soundClickable]. */
+fun Modifier.menuClickable(enabled: Boolean = true, role: androidx.compose.ui.semantics.Role? = null,
+                           onClick: () -> Unit): Modifier = composed {
+    menuFocusAction(enabled, onClick).clickable(enabled = enabled, role = role, onClick = onClick)
+}
+
+fun Modifier.menuClickable(interactionSource: MutableInteractionSource, indication: Indication?,
+                           enabled: Boolean = true, role: androidx.compose.ui.semantics.Role? = null,
+                           onClick: () -> Unit): Modifier = composed {
+    menuFocusAction(enabled, onClick).clickable(interactionSource = interactionSource, indication = indication,
+        enabled = enabled, role = role, onClick = onClick)
 }

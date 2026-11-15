@@ -18,7 +18,7 @@ import kotlinx.serialization.json.jsonPrimitive
  * same blocks are the website's /docs/ pages, so the Markdown is the one place the manual is written.
  *
  * The app keeps the last copy it fetched (and every image it showed) under filesDir/docs, for reading
- * offline; [DocsStore.refresh] asks again with the copy's ETag, so an unchanged manual costs one small reply.
+ * offline; [DocsCache.refresh] asks again with the copy's ETag, so an unchanged manual costs one small reply.
  */
 object DocsApi {
     const val URL = "https://pokedaisy.com/api/docs/v1/docs.json"

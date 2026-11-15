@@ -9,6 +9,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.composed
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -97,6 +98,15 @@ fun CompanionKeyHandler(enabled: Boolean = true, onKey: (key: MenuKey, repeat: B
  */
 class FocusStarts {
     internal val entries = mutableListOf<() -> androidx.compose.ui.focus.FocusRequester?>()
+    internal class Action(var focused: Boolean = false, var enabled: Boolean = true, var click: () -> Unit)
+    internal val actions = mutableListOf<Action>()
+
+    /** Native-free A/Enter fallback for a focused shared button (UIKit has no Android KeyEvent injection). */
+    fun activateFocused(): Boolean {
+        val action = actions.lastOrNull { it.focused && it.enabled } ?: return false
+        action.click()
+        return true
+    }
 
     /** Focuses the newest start; false = none, or it couldn't take focus. */
     fun focusNewest(): Boolean {
@@ -109,6 +119,19 @@ class FocusStarts {
 }
 
 val LocalFocusStarts = staticCompositionLocalOf<FocusStarts?> { null }
+
+/** Register the same action a pointer/keyboard click invokes, only inside a companion focus host. */
+internal fun androidx.compose.ui.Modifier.menuFocusAction(enabled: Boolean, click: () -> Unit): androidx.compose.ui.Modifier = composed {
+    val starts = LocalFocusStarts.current ?: return@composed this
+    val current by rememberUpdatedState(click)
+    val action = remember(starts) { FocusStarts.Action(click = { current() }) }
+    SideEffect { action.enabled = enabled }
+    DisposableEffect(starts, action) {
+        starts.actions += action
+        onDispose { starts.actions -= action }
+    }
+    onFocusChanged { action.focused = it.isFocused }
+}
 
 /** This element is where the D-pad starts in the companion's window while [on] (the white cursor row). No-op
  * outside the window. */

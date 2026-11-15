@@ -2,6 +2,8 @@ package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.DsCore
 import java.io.File
+import okio.Path.Companion.toOkioPath
+import com.pokedaisy.app.companion.data.StateFiles
 import java.util.zip.CRC32
 
 /**
@@ -14,20 +16,20 @@ import java.util.zip.CRC32
  */
 class SaveStates(filesDir: File, romCrc: String) {
 
-    private val dir = File(File(filesDir, "states"), romCrc).apply { mkdirs() }
+    internal val files = StateFiles(File(File(filesDir, "states"), romCrc).toOkioPath(), extraSidecars = listOf(".ra"))
 
-    fun stateFile(slot: Int): File = File(dir, "ss$slot")
-    fun thumbFile(slot: Int): File = File(dir, "ss$slot.png")
-    fun bakFile(slot: Int): File = File(dir, "ss$slot.bak")        // one-level undo of a save
-    fun bakThumbFile(slot: Int): File = File(dir, "ss$slot.bak.png")
-    val resumeFile: File get() = File(dir, "resume")
-    val undoLoadFile: File get() = File(dir, "undo_load")          // pre-load snapshot
+    fun stateFile(slot: Int): File = File(files.stateFile(slot).toString())
+    fun thumbFile(slot: Int): File = File(files.thumbFile(slot).toString())
+    fun bakFile(slot: Int): File = File(files.bakFile(slot).toString())        // one-level undo of a save
+    fun bakThumbFile(slot: Int): File = File(files.bakThumbFile(slot).toString())
+    val resumeFile: File get() = File(files.resumeFile.toString())
+    val undoLoadFile: File get() = File(files.undoLoadFile.toString())          // pre-load snapshot
     /** Set when the library loads another save file into this game ([GameSaves.load]):
      * the next start boots from that save instead of resuming, since a resume (or
      * manual) state still holds the old save's progress and would write it back. */
-    val freshBootFile: File get() = File(dir, "boot_fresh")
+    val freshBootFile: File get() = File(files.freshBootFile.toString())
 
-    fun exists(slot: Int): Boolean = stateFile(slot).let { it.isFile && it.length() > 0 }
+    fun exists(slot: Int): Boolean = files.exists(slot)
 
     fun slotInfo(slot: Int): SlotInfo {
         val f = stateFile(slot)
@@ -52,12 +54,7 @@ class SaveStates(filesDir: File, romCrc: String) {
      * Returns null if there's nothing to resume from at all.
      */
     fun latestResumeSource(): File? {
-        val resume = resumeFile.takeIf { it.isFile && it.length() > 0 }
-        val newestSlot = (SLOT_MIN..SLOT_MAX)
-            .map { stateFile(it) }
-            .filter { it.isFile && it.length() > 0 }
-            .maxByOrNull { it.lastModified() }
-        return listOfNotNull(resume, newestSlot).maxByOrNull { it.lastModified() }
+        return files.latestResumeSource()?.let { File(it.toString()) }
     }
 
     data class SlotInfo(

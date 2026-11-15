@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.data
 import okio.HashingSink
 import okio.blackholeSink
 import okio.buffer
+import okio.use
 
 /*
  * CRC32 and SHA-1 without java.util.zip / java.security, which the iPad build doesn't have: CRC32 in plain Kotlin
@@ -51,3 +52,17 @@ internal class Sha1 {
 
 /** The SHA-1 of [b]. */
 internal fun sha1(b: ByteArray): ByteArray = Sha1().apply { update(b) }.digest()
+
+/** Streaming ROM CRC for native table lookup; does not retain a second copy of the cartridge. */
+fun romCrc32(path: okio.Path): Long {
+    val crc = Crc32()
+    okio.FileSystem.SYSTEM.source(path).buffer().use { source ->
+        val block = ByteArray(65536)
+        while (true) {
+            val n = source.read(block)
+            if (n < 0) break
+            crc.update(block, 0, n)
+        }
+    }
+    return crc.value
+}

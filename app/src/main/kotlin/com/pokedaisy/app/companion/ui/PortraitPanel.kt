@@ -164,7 +164,7 @@ val LocalCompanionTopInset = compositionLocalOf { 0 }
  * The grip on the portrait companion: a white title-window tab with arrows up and
  * down, running into the companion from above ([PortraitLayout.Grip.ABOVE]) or
  * below ([PortraitLayout.Grip.BELOW]), or whole inside its top. Dragging it
- * (handled by the view around it, in screen coordinates) resizes the companion; a
+ * (handled by [PanelResizeHandle]) resizes the companion; a
  * tap steps through the sizes ([PortraitLayout.next]).
  */
 @Composable

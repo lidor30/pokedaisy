@@ -19,6 +19,12 @@ plugins {
 val sharedUiFiles: Set<String> = fileTree("src/main/kotlin") {
     include(rootProject.extra["sharedUiSources"] as List<String>)
     exclude(rootProject.extra["sharedUiAppOnly"] as List<String>)
+    exclude(rootProject.extra["sharedCoreSources"] as List<String>)
+}.map { it.relativeTo(file("src/main/kotlin")).invariantSeparatorsPath }.toSet()
+
+@Suppress("UNCHECKED_CAST")
+val sharedCoreFiles: Set<String> = fileTree("src/main/kotlin") {
+    include(rootProject.extra["sharedCoreSources"] as List<String>)
 }.map { it.relativeTo(file("src/main/kotlin")).invariantSeparatorsPath }.toSet()
 
 // Crash reports (Firebase Crashlytics, opt-in - CrashReports.kt): only with the project's
@@ -195,7 +201,7 @@ android {
     sourceSets["test"].java.srcDirs("src/test/kotlin", "../server/coop-relay/src/main/kotlin")
 
     // The shared modules' files are compiled there; lint reads them there too.
-    sourceSets["main"].java.filter.exclude("com/pokedaisy/app/companion/data/**", "com/pokedaisy/app/companion/i18n/**")
+    sourceSets["main"].java.filter.exclude(sharedCoreFiles)
     sourceSets["main"].java.filter.exclude(sharedUiFiles)
 
     testOptions {
@@ -222,7 +228,7 @@ tasks.withType<KotlinCompile>().configureEach {
         !e.isDirectory && sharedDirs.any { e.path.startsWith(it) } && !(tests && e.file.nameWithoutExtension in appOnlyTests + sharedTestHelpers)
     }
     // The companion's screens are compiled by shared-ui/; their tests stay here (Paparazzi).
-    if (!tests) exclude { e -> !e.isDirectory && e.path in sharedUiFiles }
+    if (!tests) exclude { e -> !e.isDirectory && (e.path in sharedUiFiles || e.path in sharedCoreFiles) }
 }
 
 // Settings > LICENSES: NOTICE, then the license text of everything the APK carries, as one asset
@@ -253,7 +259,7 @@ val licensesAsset by tasks.registering {
         "Galmuri - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-Galmuri.txt",
         "Atkinson Hyperlegible - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-AtkinsonHyperlegible.txt",
         "PokeAPI data - BSD 3-Clause" to "third_party/licenses/PokeAPI-BSD-3-Clause.txt",
-        "AndroidX, Jetpack Compose / Compose Multiplatform, Kotlin, kotlinx.atomicfu, kotlinx-datetime, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
+        "AndroidX, Jetpack Compose / Compose Multiplatform, Kotlin, Ktor, kotlinx.atomicfu, kotlinx-datetime, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
         "Apache Commons - NOTICE" to "third_party/licenses/Apache-Commons-NOTICE.txt",
         "XZ for Java - BSD Zero Clause" to "third_party/licenses/XZ-Java-0BSD.txt",
         "Bouncy Castle (co-op) - MIT" to "third_party/licenses/BouncyCastle-MIT.txt",

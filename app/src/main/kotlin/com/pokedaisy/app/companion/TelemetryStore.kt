@@ -117,10 +117,26 @@ class TelemetryStore {
     private val refreshLock = SynchronizedObject()
 
     fun refresh(reader: MemoryReader = InProcessReader): SnapshotView = synchronized(refreshLock) {
+        refreshLocked(reader, generation, sampler)
+    }
+
+    /** Bind a copied RAM image to this game's sampler before queueing its decode. A task from a replaced game
+     * must not configure the new sampler, even if its worker only starts after reset. */
+    fun deferredRefresh(reader: MemoryReader): () -> SnapshotView? {
         val gen = generation
+        val source = sampler
+        return {
+            synchronized(refreshLock) {
+                if (gen != generation) null
+                else refreshLocked(reader, gen, source).takeIf { gen == generation }
+            }
+        }
+    }
+
+    private fun refreshLocked(reader: MemoryReader, gen: Int, source: TelemetrySampler): SnapshotView {
         samplesTaken++
-        val s = sampler.sample(reader)
-        if (gen != generation) return@synchronized s   // a new ROM started while this one was read: it's the last game's
+        val s = source.sample(reader)
+        if (gen != generation) return s   // a new ROM started while this one was read: it's the last game's
         val c = cached
         if (c != null) {
             // Live replaces the saved copy once it has data (or won't get any); until then the copy stays.
@@ -131,10 +147,10 @@ class TelemetryStore {
             } else {
                 // The sampler sets FireRed while it's still detecting: keep the copy's look.
                 activeGame = c.game ?: activeGame
-                return@synchronized s
+                return s
             }
         }
-        if (LightCompanion.on && !lightPublishes(s)) return@synchronized s
+        if (LightCompanion.on && !lightPublishes(s)) return s
         _snapshot.value = s
         lastPublish = TimeSource.Monotonic.markNow()
         if (logCount++ % 5 == 0) {
@@ -151,7 +167,7 @@ class TelemetryStore {
                     "items=${s.items.size} pockets=$pockets iconTables=${com.pokedaisy.app.companion.data.DecompIconSource.tables.present}",
             )
         }
-        s
+        return s
     }
 
     /** What a savestate made now should carry beside it: the live data, else the saved copy still showing. */

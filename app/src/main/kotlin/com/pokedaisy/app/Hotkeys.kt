@@ -1,13 +1,12 @@
 package com.pokedaisy.app
 
-import com.pokedaisy.app.companion.NewFeatures
 import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.data.KeyCodes
 import com.pokedaisy.app.companion.data.Logs
 import com.pokedaisy.app.companion.data.PropertiesText
 import com.pokedaisy.app.companion.data.isFile
 import com.pokedaisy.app.companion.data.readText
-import com.pokedaisy.app.companion.data.writeText
+import com.pokedaisy.app.companion.data.writeTextAtomically
 import com.pokedaisy.app.companion.i18n.tk
 import kotlin.concurrent.Volatile
 import okio.Path
@@ -55,18 +54,11 @@ class Hotkeys private constructor(
          * it takes its keys from the other hotkeys on them - L2 / R2, SPEED CYCLE's and FF HOLD's in every other game. */
         val dsOnly get() = this == TOUCH_SCREEN || this == DS_LAYOUT
 
+        /** Hold actions remain active until their last bound chord is released. */
+        val isHold get() = this == FF_HOLD || this == SLOWMO_HOLD || this == REWIND_HOLD
+
         val prop get() = name.lowercase()
 
-        /** The NEW tag on its row in HOTKEYS (both screens). */
-        val badge: String? get() = when (this) {
-            RESTART_GAME, CLOSE_APP -> NewFeatures.badge(NewFeatures.GAME_HOTKEYS)
-            QUICK_MENU -> NewFeatures.badge(NewFeatures.QUICK_MENU)
-            COMPANION -> NewFeatures.badge(NewFeatures.COMPANION_HOTKEY)
-            MUTE -> NewFeatures.badge(NewFeatures.GAME_VOLUME)
-            FREE_FLIGHT -> NewFeatures.badge(NewFeatures.FREE_FLIGHT)
-            TOUCH_SCREEN, DS_LAYOUT -> NewFeatures.badge(NewFeatures.DS_LAYOUT)
-            else -> null
-        }
         val label get() = name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 
@@ -89,23 +81,40 @@ class Hotkeys private constructor(
         val out = ArrayList<Event>()
         // The DS hotkeys' chords while they're live: theirs, not the other hotkeys' on the same keys.
         val dsTaken = chords.filter { (a, _) -> a.dsOnly && dsActive(a) }.values.flatten().toSet()
-        for ((action, list) in chords) for (chord in list) {
-            if (keyCode !in chord) continue
-            val satisfied = held.containsAll(chord)
-            val key = action to chord
-            // Only a new press is turned away: a chord already down still gets its release (an FF HOLD let go after
-            // the screen turned).
-            val off = if (action.dsOnly) !dsActive(action) else chord in dsTaken
-            if (off && key !in activeChords) continue
-            if (satisfied && activeChords.add(key)) {
-                out.add(Event(action, true))
-                // A held-back key that fired a chord was the hotkey's: the game never gets it.
-                for (k in chord) if (k in heldBack) heldBack[k] = true
-            } else if (!satisfied && activeChords.remove(key)) out.add(Event(action, false))
+        for ((action, list) in chords) {
+            val wasHeld = action.isHold && activeChords.any { it.first == action }
+            for (chord in list) {
+                if (keyCode !in chord) continue
+                val satisfied = held.containsAll(chord)
+                val key = action to chord
+                // Only a new press is turned away: a chord already down still gets its release (an FF HOLD let go after
+                // the screen turned).
+                val off = if (action.dsOnly) !dsActive(action) else chord in dsTaken
+                if (off && key !in activeChords) continue
+                if (satisfied && activeChords.add(key)) {
+                    if (!action.isHold) out.add(Event(action, true))
+                    // A held-back key that fired a chord was the hotkey's: the game never gets it.
+                    for (k in chord) if (k in heldBack) heldBack[k] = true
+                } else if (!satisfied && activeChords.remove(key) && !action.isHold) out.add(Event(action, false))
+            }
+            if (action.isHold) {
+                val isHeld = activeChords.any { it.first == action }
+                if (wasHeld != isHeld) out.add(Event(action, isHeld))
+            }
         }
         toTap.remove(keyCode)
         if (!down) heldBack.remove(keyCode)?.let { spent -> if (!spent) toTap.add(keyCode) }
         return out
+    }
+
+    /** A platform exposes only actions it can perform; unavailable chords must not consume game buttons. */
+    fun forActions(actions: Collection<Action>): Hotkeys = Hotkeys(rawBindings.filterKeys { it in actions })
+
+    /** End holds and partial chords at a capture, modal or background boundary. No deferred taps survive. */
+    fun releaseAll(): List<Event> {
+        val releases = activeChords.map { it.first }.distinct().map { Event(it, false) }
+        held.clear(); activeChords.clear(); heldBack.clear(); toTap.clear()
+        return releases
     }
 
     /** Keys held back from the game while they're held ([gameKey]) -> whether a chord took them since. */
@@ -225,11 +234,9 @@ class Hotkeys private constructor(
             return props
         }
 
-        private fun writeProps(filesDir: Path, props: Map<String, String>) {
-            runCatching {
-                file(filesDir).writeText(PropertiesText.format(props, "PokeDaisy hotkeys — comma-separated chords, '+' joins keys of one chord"))
-            }
-        }
+        private fun writeProps(filesDir: Path, props: Map<String, String>): Boolean = runCatching {
+            file(filesDir).writeTextAtomically(PropertiesText.format(props, "PokeDaisy hotkeys — comma-separated chords, '+' joins keys of one chord"))
+        }.isSuccess
 
         fun load(filesDir: Path): Hotkeys {
             val props = readProps(filesDir)
@@ -247,7 +254,8 @@ class Hotkeys private constructor(
          * Replace [action]'s binding with the chord [keyNames] (KEYCODE_ suffixes) and persist; the same
          * chord comes off each of [takeFrom] (the player said MOVE to [clashes]), their other chords stay.
          */
-        fun setBindingNamed(filesDir: Path, action: Action, keyNames: Collection<String>, takeFrom: Collection<Action> = emptyList()) {
+        fun setBindingNamed(filesDir: Path, action: Action, keyNames: Collection<String>, takeFrom: Collection<Action> = emptyList()): Boolean {
+            if (keyNames.isEmpty() || keyNames.any { KeyCodes.code(it) == null }) return false
             val props = readProps(filesDir)
             val chord = chordOf(keyNames.joinToString("+"))
             for (other in takeFrom) if (other != action) {
@@ -256,11 +264,12 @@ class Hotkeys private constructor(
                 props[other.prop] = kept.joinToString(", ")
             }
             props[action.prop] = keyNames.joinToString("+")
-            writeProps(filesDir, props)
+            return writeProps(filesDir, props)
         }
 
         /** The key [keyName] alone comes off every hotkey that was just that key (its chords with other keys stay). */
-        fun releaseKey(filesDir: Path, keyName: String) {
+        fun releaseKey(filesDir: Path, keyName: String): Boolean {
+            if (KeyCodes.code(keyName) == null) return false
             val props = readProps(filesDir)
             val chord = chordOf(keyName)
             var changed = false
@@ -269,14 +278,14 @@ class Hotkeys private constructor(
                 val kept = chords.filter { chordOf(it) != chord }
                 if (kept.size != chords.size) { props[a.prop] = kept.joinToString(", "); changed = true }
             }
-            if (changed) writeProps(filesDir, props)
+            return !changed || writeProps(filesDir, props)
         }
 
         /** Unbinds [action] (an empty value, so the default doesn't come back). */
-        fun clearBinding(filesDir: Path, action: Action) {
+        fun clearBinding(filesDir: Path, action: Action): Boolean {
             val props = readProps(filesDir)
             props[action.prop] = ""
-            writeProps(filesDir, props)
+            return writeProps(filesDir, props)
         }
 
         /**

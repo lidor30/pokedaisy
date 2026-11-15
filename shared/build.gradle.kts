@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest
 
 // The companion's data and language code (app/.../companion/data and companion/i18n) as a Kotlin Multiplatform
 // module, compiled where it lives: Android for the app, iOS for the iPad app. Nothing in those folders may use
@@ -7,14 +8,37 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
-    // The Compose compiler infers which of these classes are stable (ItemView, LocationView, ...), as it did while
-    // the app compiled them: a class from a module built without it counts as unstable, and a composable taking one
-    // would never skip when a new sample brings an equal copy.
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val appSrc = rootDir.resolve("app/src/main/kotlin/com/pokedaisy/app/companion")
+val appSrc = rootDir.resolve("app/src/main/kotlin")
+@Suppress("UNCHECKED_CAST")
+val sharedCoreSources = rootProject.extra["sharedCoreSources"] as List<String>
 val appTest = rootDir.resolve("app/src/test/kotlin/com/pokedaisy/app/companion")
+
+// The emulator core for iOS (pk_api.h: mGBA + the app's portable C), built with Xcode's tools by
+// native/build_ios_core.sh into build/pkcore/<slice>/libpkcore.a, reached from iosMain through cinterop (PkApiCore).
+// So the iOS compile needs a Mac; the Android build never runs it.
+val pkCoreDir = layout.buildDirectory.dir("pkcore")
+val buildIosCore by tasks.registering(Exec::class) {
+    description = "Builds the emulator core (pk_api.h) for the iPad and the iPad simulator."
+    val cpp = rootDir.resolve("app/src/main/cpp")
+    inputs.files(fileTree(cpp) { include("pk_*.c", "pk_*.h", "pk_api.cmake") })
+    inputs.files(fileTree(projectDir.resolve("native")))
+    outputs.dir(pkCoreDir)
+    commandLine(projectDir.resolve("native/build_ios_core.sh").path, pkCoreDir.get().asFile.path)
+}
+
+// linux/make_diagnostic.py's two test ROMs (no commercial content) for the iOS core's test (PkApiCoreTest).
+val diagnosticDir = layout.buildDirectory.dir("diagnostic")
+val diagnosticRoms by tasks.registering(Exec::class) {
+    val script = rootDir.resolve("linux/make_diagnostic.py")
+    inputs.file(script)
+    outputs.dir(diagnosticDir)
+    doFirst { diagnosticDir.get().asFile.mkdirs() }
+    workingDir(diagnosticDir)
+    commandLine("python3", script.path)
+}
 
 // The data / i18n tests that also use the app's own classes stay the app's (root build.gradle.kts).
 @Suppress("UNCHECKED_CAST")
@@ -24,13 +48,19 @@ kotlin {
     androidTarget {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
-    iosArm64()
-    iosSimulatorArm64()
+    listOf(iosArm64() to "ios-arm64", iosSimulatorArm64() to "ios-arm64-simulator").forEach { (target, slice) ->
+        target.compilations.getByName("main").cinterops.create("pkapi") {
+            definitionFile.set(project.file("src/nativeInterop/cinterop/pkapi.def"))
+            includeDirs(rootDir.resolve("app/src/main/cpp"))
+            extraOpts("-libraryPath", pkCoreDir.get().dir(slice).asFile.path)
+        }
+    }
 
     sourceSets {
         commonMain {
-            kotlin.srcDir(appSrc.resolve("data"))
-            kotlin.srcDir(appSrc.resolve("i18n"))
+            kotlin.srcDir(appSrc)
+            kotlin.include(sharedCoreSources)
+            kotlin.include("com/pokedaisy/app/game/**")
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
                 implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
@@ -83,6 +113,20 @@ tasks.withType<Test> {
         filter { excludeTestsMatching("*BestEffortTest") }
         maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
     }
+}
+
+// The cinterop step embeds the library: rerun it when the library changes.
+tasks.matching { it.name.startsWith("cinteropPkapi") }.configureEach {
+    dependsOn(buildIosCore)
+    inputs.dir(pkCoreDir)
+}
+
+tasks.withType<KotlinNativeSimulatorTest>().configureEach {
+    dependsOn(diagnosticRoms)
+    val dir = diagnosticDir.get().asFile.path
+    // The simulator passes a SIMCTL_CHILD_ variable on to the test without its prefix.
+    environment("SIMCTL_CHILD_PK_DIAGNOSTIC_DIR", dir)
+    environment("PK_DIAGNOSTIC_DIR", dir)
 }
 
 // -PcomposeReports: the Compose compiler's stability report (build/compose-reports/*-classes.txt).

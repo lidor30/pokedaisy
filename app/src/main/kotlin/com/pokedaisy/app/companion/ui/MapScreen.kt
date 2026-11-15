@@ -208,7 +208,7 @@ fun MapScreen(
             ) { zoomed, toggleZoom ->
                 val m = rememberGbaTextMetrics(1f)
                 OptionButton(tr("PLACES"), m, onClick = { placesOpen = true })
-                if (openFly != null) FlyButton(openFly)
+                if (openFly != null) FlyButton(openFly, badge = fly?.actionBadge)
                 if (takeOff != null) TakeOffButton(takeOff, flyingNow)
                 if (selection != null) OptionButton(tr("ME"), m, onClick = { selection = null; cursorTile = null; shownOverride = null }, emphasis = true)
                 Spacer(Modifier.weight(1f))
@@ -265,7 +265,7 @@ fun MapScreen(
                         regionLabel = if (model.images.size > 1) regionName(model.images, (shown + 1) % model.images.size) else null,
                         awayFromPlayer = selection != null || (playerRegion != null && shown != playerRegion),
                         onPlaces = { placesOpen = true },
-                        onFly = openFly,
+                        onFly = openFly, flyBadge = fly?.actionBadge,
                         onTakeOff = takeOff, flying = flyingNow,
                         onRegion = { selection = null; cursorTile = null; shownOverride = (shown + 1) % model.images.size },
                         onMe = { selection = null; cursorTile = null; shownOverride = null },
@@ -681,6 +681,7 @@ private fun BoxScope.MapButtons(
     onMe: () -> Unit,
     /** FLY's button; null = none. */
     onFly: (() -> Unit)? = null,
+    flyBadge: String? = null,
     /** FREE FLIGHT's TAKE OFF / LAND, under FLY; null = none. */
     onTakeOff: (() -> Unit)? = null,
     flying: Boolean = false,
@@ -704,7 +705,7 @@ private fun BoxScope.MapButtons(
             if (onArea != null) OptionButton(tr("AREA MAP"), m, onClick = onArea, emphasis = true, modifier = toMap(up = true))
             if (regionLabel != null) OptionButton(regionLabel, m, onClick = onRegion, modifier = toMap(up = true))
             OptionButton(tr("PLACES"), m, onClick = onPlaces, modifier = toMap(up = true))
-            if (onFly != null) FlyButton(onFly, toMap(up = true))
+            if (onFly != null) FlyButton(onFly, toMap(up = true), badge = flyBadge)
             if (onTakeOff != null) TakeOffButton(onTakeOff, flying, toMap(up = true))
             if (awayFromPlayer) OptionButton(tr("ME"), m, onClick = onMe, emphasis = true, modifier = toMap(up = true))
         }
@@ -727,7 +728,7 @@ private fun BoxScope.MapButtons(
             if (regionLabel != null) OptionButton(regionLabel, m, onClick = onRegion, modifier = toMap(left = true, down = lowest == "TOP"))
             OptionButton(tr("PLACES"), m, onClick = onPlaces, modifier = toMap(left = regionLabel == null, down = lowest == "TOP"))
         }
-        if (onFly != null) FlyButton(onFly, toMap(left = true, down = lowest == "FLY"))
+        if (onFly != null) FlyButton(onFly, toMap(left = true, down = lowest == "FLY"), badge = flyBadge)
         if (onTakeOff != null) TakeOffButton(onTakeOff, flying, toMap(left = true, down = lowest == "TAKE OFF"))
         if (awayFromPlayer) OptionButton(tr("ME"), m, onClick = onMe, emphasis = true, modifier = toMap(left = true, down = true))
     }
@@ -736,10 +737,10 @@ private fun BoxScope.MapButtons(
 /** FLY in the party menu's field-move blue, at the companion's full text size (the other map buttons are the denser
  * 1x): the button that does something in the game. */
 @Composable
-private fun FlyButton(onFly: () -> Unit, modifier: Modifier = Modifier) {
+private fun FlyButton(onFly: () -> Unit, modifier: Modifier = Modifier, badge: String? = null) {
     val big = rememberGbaTextMetrics()
     OptionButton(
-        tr("FLY"), big, onClick = onFly, modifier = modifier.widthIn(min = big.u * 56),
+        tr("FLY"), big, onClick = onFly, modifier = modifier.widthIn(min = big.u * 56), labelBadge = badge,
         labelColors = OptionColors.fieldMove to OptionColors.fieldMoveShadow, frameLayers = OptionColors.fieldMoveLayers,
     )
 }

@@ -453,7 +453,7 @@ class BattleInputControllerTest {
     // ---- HIDE BATTLE MENU: the D-pad round the companion's buttons (FIGHT over BAG / RUN / POKéMON) ----
 
     @Test fun hiddenMenuSteerFollowsTheCompanionsLayout() {
-        val k = CoreKey
+        val k = com.pokedaisy.app.companion.data.CoreKey
         // 0 FIGHT, 1 BAG, 2 POKéMON, 3 RUN: FIGHT on top, BAG / RUN / POKéMON left to right under it.
         assertEquals(3, HiddenMenuSteer.next(0, k.DOWN))
         assertEquals(1, HiddenMenuSteer.next(0, k.LEFT))
@@ -475,18 +475,18 @@ class BattleInputControllerTest {
         direct.onState(1, BATTLE_INPUT_ACTION_SELECT)
         direct.tick()
         assertTrue(direct.canSteerAction)
-        direct.steerAction(CoreKey.DOWN)
+        direct.steerAction(com.pokedaisy.app.companion.data.CoreKey.DOWN)
         direct.tick()
         assertEquals(3, game.actionCursor[1])
         assertEquals(3, direct.menuCursor)
-        direct.steerAction(CoreKey.RIGHT)
+        direct.steerAction(com.pokedaisy.app.companion.data.CoreKey.RIGHT)
         direct.tick()
         assertEquals(2, game.actionCursor[1])
         assertEquals(0, input.mask)
         // On another menu it does nothing.
         direct.onState(1, BATTLE_INPUT_MOVE_SELECT)
         assertFalse(direct.canSteerAction)
-        direct.steerAction(CoreKey.UP)
+        direct.steerAction(com.pokedaisy.app.companion.data.CoreKey.UP)
         direct.tick()
         assertEquals(2, game.actionCursor[1])
     }

@@ -1,6 +1,11 @@
 package com.pokedaisy.app
 
-import android.util.Log
+import com.pokedaisy.app.companion.data.Logs
+import com.pokedaisy.app.companion.data.isGen1
+import com.pokedaisy.app.companion.data.isGen2
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import kotlin.concurrent.Volatile
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_BUSY
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
@@ -16,7 +21,7 @@ import com.pokedaisy.app.companion.data.MemoryReader
 /**
  * Drives the real in-game battle menu (FIGHT/BAG/POKEMON/RUN, then a move, or
  * a Pokémon to switch to) via synthetic button presses injected through
- * [GbaInput.setScript] - exclusively: while a sequence runs, the player's own
+ * [ScriptInput.setScript] - exclusively: while a sequence runs, the player's own
  * keys are ignored so they can't throw it off. No ROM patch involved: this
  * just presses buttons a real player could press. See PLAN.md
  * Phase 5 for the full design (why this works unchanged under any GAME SPEED /
@@ -31,9 +36,9 @@ import com.pokedaisy.app.companion.data.MemoryReader
  * on different threads.
  */
 class BattleInputController(
-    private val input: GbaInput,
+    private val input: ScriptInput,
     private val reader: MemoryReader = InProcessReader,
-    private val log: (String) -> Unit = { Log.i("pokedaisy-battle", it) },
+    private val log: (String) -> Unit = { Logs.i(it, "pokedaisy-battle") },
     /** Writes the game's RAM (the emu thread, between frames): a pick puts the menu's cursor on its cell and presses A
      * once, so the game plays one select sound, not one per cursor step too. Null = the cursor is walked there. */
     private val writer: ((addr: Long, bytes: ByteArray) -> Boolean)? = null,
@@ -191,7 +196,7 @@ class BattleInputController(
 
     private data class Step(val bits: Int, val frames: Int)
 
-    private val lock = Any()
+    private val lock = SynchronizedObject()
     private val queue = ArrayDeque<Step>()
     private var currentBits = 0
     private var framesLeft = 0
@@ -997,6 +1002,142 @@ class BattleInputController(
         CoreKey.DOWN -> "DOWN"
         else -> "?$bit"
     }
+}
+
+/** The verified party-menu layouts, shared by Android and iPad. A header alone never admits an unknown hack. */
+fun battleSwitchAddrsFor(
+    telemetry: com.pokedaisy.app.companion.TelemetryStore,
+    game: com.pokedaisy.app.companion.data.GameKind?,
+    romCode: String?,
+    romRev: Int,
+): BattleInputController.SwitchAddrs? = when {
+    // Yellow and the Gen 2 games: their own party menus, read through GbPartySwitch (no gPartyMenu, no personality).
+    game.isGen1 || game.isGen2 ->
+        telemetry.gbPartySwitch()?.let { BattleInputController.SwitchAddrs(gb = it) }
+    // A hack nothing knows by its hash whose code proves it kept retail's engine (RetailEngine): retail's gPartyMenu and
+    // list, read through BEST EFFORT as retail FireRed / Emerald.
+    telemetry.retailEnginePartyMenu() != null ->
+        telemetry.retailEnginePartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
+    game == com.pokedaisy.app.companion.data.GameKind.FIRERED && romCode == "BPRE" && romRev == 1 ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
+    // Recharged Emerald runs as Emerald (BPEE) but is a rebuild with its own RAM: its config carries gPartyMenu (Emerald's
+    // list; headless on all three builds: a written POKéMON cell, DOWN, A, SHIFT sent party slot 1 in).
+    game == com.pokedaisy.app.companion.data.GameKind.EMERALD && com.pokedaisy.app.companion.data.runningEmeraldHack != null ->
+        telemetry.knownPartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
+    // Japanese Emerald: its own RAM (NATIVE_EMERALD_JA).
+    game == com.pokedaisy.app.companion.data.GameKind.EMERALD && romCode == "BPEJ" ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203CB94L, party = 0x02024190L)
+    // Emerald Legacy keeps retail's header but is its own build: gPartyMenu from its config (NATIVE_EMERALD_LEGACY),
+    // retail's one-column list. Before retail's BPEE line, which would hand it retail's address.
+    game == com.pokedaisy.app.companion.data.GameKind.EMERALD && com.pokedaisy.app.companion.data.emeraldLegacy ->
+        telemetry.knownPartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
+    game == com.pokedaisy.app.companion.data.GameKind.EMERALD &&
+        (romCode == "BPEE" || romCode in com.pokedaisy.app.companion.data.EMERALD_EUROPEAN_CODES) ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203CEC8L, party = 0x020244ECL)
+    // Orange Islands is retail FireRed rev 0's RAM and party menu, edited in place.
+    game == com.pokedaisy.app.companion.data.GameKind.ORANGE_ISLANDS ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
+    // Let's Go Pikachu / Eevee: rev 0's gPartyMenu under a two-column grid (headless in its battle: DOWN 0 -> 2 -> 4,
+    // RIGHT 0 -> 1; A, SHIFT on slot 3 sent it in).
+    game == com.pokedaisy.app.companion.data.GameKind.FIRERED && com.pokedaisy.app.companion.data.runningLetsGo ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L, grid = true)
+    // So are Ultra Violet, Rocket Edition, Ash Gray and Ghost Grey (FireRed 1.0 edited in place, ActiveTables' fireRedHack;
+    // their fixtures' READMEs: a written POKéMON cell + DOWN, A, SHIFT sent party slot 1 in).
+    game == com.pokedaisy.app.companion.data.GameKind.FIRERED && com.pokedaisy.app.companion.data.runningFireRedHack != null ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
+    game == com.pokedaisy.app.companion.data.GameKind.TMT2 ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203242CL, party = 0x02032C94L)
+    // Elite Redux (both builds): gPartyMenu from its config, a two-column grid (DOWN 0 -> 2, RIGHT 2 -> 3), its packed
+    // 0x4C-byte party mons (the personality first, as the switch reads it). Headless: A, SHIFT on slot 2 put it out.
+    game == com.pokedaisy.app.companion.data.GameKind.ELITE_REDUX ->
+        telemetry.knownPartyMenu()?.let { (menu, party) ->
+            BattleInputController.SwitchAddrs(partyMenu = menu, party = party, monStride = 0x4C, grid = true)
+        }
+    // Team Rocket Edition 2026: Emerald's layout at its own gPartyMenu, from its config (NATIVE_TEAM_ROCKET_V3: the battle's
+    // POKéMON menu walked slotId 0 -> 7, CANCEL, on DOWN with one Pokémon). Before v1.5's line, which has v1.5's addresses.
+    game == com.pokedaisy.app.companion.data.GameKind.TEAM_ROCKET && com.pokedaisy.app.companion.data.teamRocketV3 ->
+        telemetry.knownPartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
+    // Team Rocket Edition: Dragonsden: Emerald's one-column list at its own gPartyMenu (NATIVE_TEAM_ROCKET). Headless: a
+    // written POKéMON cell + A opened it, DOWN, A, SHIFT sent slot 1 in (gBattlerPartyIndexes[0] = 1).
+    game == com.pokedaisy.app.companion.data.GameKind.TEAM_ROCKET ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203DE64L, party = 0x02025170L)
+    // Wishes of Tomorrow: Emerald's list at its own gPartyMenu (NATIVE_WISHES). Headless: a written POKéMON cell + A
+    // opened it, DOWN, A, SHIFT sent slot 1 in (gBattlerPartyIndexes[0] = 1).
+    game == com.pokedaisy.app.companion.data.GameKind.WISHES ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x02031BB0L, party = 0x02031EBCL)
+    game == com.pokedaisy.app.companion.data.GameKind.AMETHYST ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L, grid = true)
+    // Unbound (EN / FR): FireRed's gPartyMenu / gPlayerParty (CFRU keeps its EWRAM) under CFRU's two-column party
+    // grid - slot 0 top-left, 1 top-right, 2 below: RIGHT 0 -> 1, DOWN 0 -> 2, then CANCEL (7). Headless on the
+    // user's save with the lead copied into slots 2-3: DOWN, A, SHIFT put party slot 2 into gBattlerPartyIndexes[0].
+    game == com.pokedaisy.app.companion.data.GameKind.UNBOUND ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L, grid = true)
+    // Radical Red: the same CFRU grid at FireRed's addresses (radical_red_battle's README).
+    game == com.pokedaisy.app.companion.data.GameKind.RADICAL_RED ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L, grid = true)
+    // Gaia: FireRed's addresses and FireRed's own one-column list (DOWN 0 -> 1; gaia_battle's README).
+    game == com.pokedaisy.app.companion.data.GameKind.GAIA ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
+    // Odyssey, Sword and Shield and GS Chronicles: CFRU's grid at FireRed's addresses, like Unbound (their fixtures' READMEs).
+    game == com.pokedaisy.app.companion.data.GameKind.ODYSSEY || game == com.pokedaisy.app.companion.data.GameKind.SWORD_SHIELD ||
+        game == com.pokedaisy.app.companion.data.GameKind.GS_CHRONICLES ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L, grid = true)
+    // Heart and Soul: gPartyMenu found by its slotId walking 0 -> 7 -> 0 with one Pokémon (CANCEL at 7); a list
+    // (DOWN 0 -> 1 with three). Headless: a written POKéMON cell opened it, DOWN, A, SHIFT sent slot 1 in.
+    game == com.pokedaisy.app.companion.data.GameKind.HEART_AND_SOUL ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x020341FCL, party = 0x02034764L)
+    // Celia: gPartyMenu found by its slotId (0 -> 7 -> 0 with one Pokémon), a list; its gPlayerParty is
+    // FireRed's moved (NATIVE_CELIA). Headless: DOWN, A, SHIFT with three put slot 1 into gBattlerPartyIndexes[0].
+    game == com.pokedaisy.app.companion.data.GameKind.CELIA ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B368L, party = 0x0202433CL)
+    game == com.pokedaisy.app.companion.data.GameKind.ROWE ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203E774L, party = 0x02025128L, monStride = 0x4C, grid = true)
+    // Quetzal: Emerald's list (DOWN walks slotId 0 -> 1), gPartyMenu by release - Alpha 9's 0x0203E9FC, 0.8.4's
+    // 0x0203EA08 (its config; headless on all four 0.8.4 builds: DOWN, A, SHIFT sent slot 1 in).
+    game == com.pokedaisy.app.companion.data.GameKind.QUETZAL ->
+        telemetry.knownPartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party, monStride = 0x68) }
+    game == com.pokedaisy.app.companion.data.GameKind.IMPERIUM ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x020370E0L, party = 0x020375F8L, grid = true)
+    // Dreamstone Mysteries: a two-column grid (NATIVE_DREAMSTONE). Headless: a written POKéMON cell + A opened it, DOWN
+    // (slotId 0 -> 2), A, SHIFT put slot 2 into gBattlerPartyIndexes[0].
+    game == com.pokedaisy.app.companion.data.GameKind.DREAMSTONE ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x02031E04L, party = 0x02032314L, grid = true)
+    // Monomyth: a two-column grid at its own gPartyMenu (NATIVE_MONOMYTH). Headless: a written POKéMON cell + A opened
+    // it, DOWN (slotId 0 -> 2), A, SHIFT put slot 2 into gBattlerPartyIndexes[0].
+    game == com.pokedaisy.app.companion.data.GameKind.MONOMYTH ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203D8D0L, party = 0x02025908L, grid = true)
+    // Glazed is retail Emerald's RAM and party menu code (NATIVE_GLAZED).
+    game == com.pokedaisy.app.companion.data.GameKind.GLAZED ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203CEC8L, party = 0x020244ECL)
+    game == com.pokedaisy.app.companion.data.GameKind.LAZARUS ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0201B67CL, party = 0x0201B960L, grid = true)
+    game == com.pokedaisy.app.companion.data.GameKind.EMERALD_SEAGLASS ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x02019964L, party = 0x02019C20L)
+    // Recharged Yellow: FireRed's one-column party menu (DOWN steps gPartyMenu.slotId 0, 1, 2 in battle),
+    // at each release's own address - its config carries it.
+    game == com.pokedaisy.app.companion.data.GameKind.RECHARGED_YELLOW ->
+        telemetry.knownPartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
+    // Super Mariomon: two RAM layouts across its releases (NATIVE_MARIOMON_*); a 2-column grid
+    // (DOWN walks 0 -> 2 -> 4 -> 5 -> CANCEL, headless).
+    game == com.pokedaisy.app.companion.data.GameKind.MARIOMON ->
+        telemetry.knownPartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party, grid = true) }
+    game == com.pokedaisy.app.companion.data.GameKind.SOULGOLD ->
+        // Its builds sit at different addresses: their configs carry them. Its shape is the player's OPTIONS > PARTY
+        // MENU (the config's partyMenuStyleOff): CUSTOM is one column of six (DOWN wraps 5 -> 0, no CANCEL row), HGSS
+        // and BW a two-column grid - steered as a list, the cursor bounced between two slots (GitHub #316). Headless
+        // on every build with the real controller: each style, a switch from POKéMON and the pick after a faint.
+        telemetry.knownPartyMenu()?.let { (menu, party) ->
+            BattleInputController.SwitchAddrs(
+                partyMenu = menu, party = party, monStride = 96,
+                gridOption = telemetry.knownPartyMenuStyle()?.let { (ptr, off) -> BattleInputController.GridOption(ptr, off) },
+            )
+        }
+    // The other-language FireRed / LeafGreen (RETAIL_PORTS): their mapped gPartyMenu, checked by
+    // scripts/verify_ports.py's party step. (Ruby / Sapphire have no battle input.)
+    game == com.pokedaisy.app.companion.data.GameKind.FIRERED &&
+        com.pokedaisy.app.companion.data.RETAIL_PORTS.containsKey("$romCode$romRev") ->
+        telemetry.knownPartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
+    else -> null
 }
 
 /**
