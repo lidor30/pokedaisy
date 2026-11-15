@@ -97,10 +97,10 @@ tasks.withType<KotlinCompile>().configureEach {
 java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 dependencies {
     api("org.jetbrains.compose.desktop:desktop-jvm-$desktopTarget:$cmp")
-    // The co-op invite as a QR code (CoopQr).
-    implementation("com.google.zxing:core:3.5.3")
-    // CoopPairs reads and writes pairs.json.
+    // DeltaSkin and CoopLockStore read JSON.
     implementation("org.json:json:20240303")
+    // CoopPairs reads and writes pairs.json.
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     // CoopRelaySocket (the relay over WebSocket).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Byte buffers, files and hashes in the data code shared with the iPad app (okio is Kotlin Multiplatform).

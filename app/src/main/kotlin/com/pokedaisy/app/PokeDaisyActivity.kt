@@ -3384,7 +3384,7 @@ class PokeDaisyActivity : Activity() {
             private fun saveId(): com.pokedaisy.app.companion.coop.CoopSaveId? {
                 coopSaveId?.let { return it }
                 val r = rom ?: return null
-                return com.pokedaisy.app.companion.coop.CoopSaveId.read(SavesLocation.saveFor(this@PokeDaisyActivity, Prefs(this@PokeDaisyActivity), r))
+                return com.pokedaisy.app.companion.coop.CoopSaveId.read(SavesLocation.saveFor(this@PokeDaisyActivity, Prefs(this@PokeDaisyActivity), r).toOkioPath())
                     ?.also { coopSaveId = it }
             }
             override fun identity(): com.pokedaisy.app.companion.data.coop.CoopIdentity {
@@ -3511,7 +3511,7 @@ class PokeDaisyActivity : Activity() {
 
     /** One [CoopLock] for the game just started, when its save has a pairing (off the UI thread: [gen] tells a stop from a late start). */
     private fun startCoopLock(sha1: String?, save: File, cheatsLoaded: Boolean, gen: Int) {
-        val id = com.pokedaisy.app.companion.coop.CoopSaveId.read(save) ?: return
+        val id = com.pokedaisy.app.companion.coop.CoopSaveId.read(save.toOkioPath()) ?: return
         if (com.pokedaisy.app.companion.coop.CoopSession.gate(sha1, id, true, cheatsLoaded) != null) return
         val pair = com.pokedaisy.app.companion.coop.CoopSession.pairsList(this).firstOrNull { it.ownSave.key == id.key } ?: return
         val link = com.pokedaisy.app.companion.coop.CoopSession.link

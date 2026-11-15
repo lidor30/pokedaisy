@@ -1,14 +1,29 @@
 package com.pokedaisy.app.companion.coop
 
 import com.pokedaisy.app.companion.data.Gen3Text
-import java.io.File
-import java.io.IOException
-import java.nio.file.AtomicMoveNotSupportedException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
+import com.pokedaisy.app.companion.data.isFile
+import com.pokedaisy.app.companion.data.mkdirs
+import com.pokedaisy.app.companion.data.moveTo
+import com.pokedaisy.app.companion.data.readBytes
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
+import kotlinx.serialization.json.put
+import okio.FileSystem
+import okio.IOException
+import okio.Path
+import okio.Path.Companion.toPath
 
 /**
  * The pairings, one partner per save, in `filesDir/coop/pairs.json` (a JSON array, written to a
@@ -16,44 +31,43 @@ import org.json.JSONObject
  * empty, so it is never overwritten while unread.
  */
 class CoopPairs(
-    private val file: File,
-    private val read: (File) -> String = { it.readText(Charsets.UTF_8) },
-    private val moveAside: (File, File) -> Boolean = { from, to -> from.renameTo(to) },
+    private val file: Path,
+    private val read: (Path) -> String = { it.readBytes().decodeToString() },
+    private val moveAside: (Path, Path) -> Boolean = { from, to -> from.moveTo(to); true },
 ) {
+    private val lock = SynchronizedObject()
+
     /** Set when the file exists but could be neither read nor moved aside: nothing may be written over it. */
     private var blocked = false
 
-    @Synchronized
-    fun all(): List<CoopPair> = load()
+    fun all(): List<CoopPair> = synchronized(lock) { load() }
 
-    @Synchronized
-    fun forSave(save: CoopSaveId): CoopPair? = load().firstOrNull { it.ownSave == save }
+    fun forSave(save: CoopSaveId): CoopPair? = synchronized(lock) { load().firstOrNull { it.ownSave == save } }
 
     /** False (nothing written) when that save already has a partner. Throws [IOException] while the file is unreadable. */
-    @Synchronized
-    fun add(pair: CoopPair): Boolean {
+    fun add(pair: CoopPair): Boolean = synchronized(lock) {
         val list = loadForWrite()
-        if (list.any { it.ownSave == pair.ownSave }) return false
+        if (list.any { it.ownSave == pair.ownSave }) return@synchronized false
         store(list + pair)
-        return true
+        true
     }
 
-    @Synchronized
-    fun updateTicket(save: CoopSaveId, ticket: String) {
+    fun updateTicket(save: CoopSaveId, ticket: String) = synchronized(lock) {
         val list = loadForWrite()
-        if (list.none { it.ownSave == save }) return
+        if (list.none { it.ownSave == save }) return@synchronized
         store(list.map { if (it.ownSave == save) it.copy(lastTicket = ticket) else it })
     }
 
-    @Synchronized
-    fun remove(save: CoopSaveId) {
+    fun remove(save: CoopSaveId) = synchronized(lock) {
         val list = loadForWrite()
-        if (list.none { it.ownSave == save }) return
+        if (list.none { it.ownSave == save }) return@synchronized
         store(list.filterNot { it.ownSave == save })
     }
 
-    @Synchronized
-    fun allowedPeers(): Set<CoopPeerId> = load().map { it.partner.peer }.toSet()
+    fun allowedPeers(): Set<CoopPeerId> = synchronized(lock) { load().map { it.partner.peer }.toSet() }
+
+    /** [name] beside the pairings file. */
+    private fun sibling(name: String): Path = file.parent?.div(name) ?: name.toPath()
 
     private fun loadForWrite(): List<CoopPair> {
         val list = load()
@@ -71,36 +85,30 @@ class CoopPairs(
             return emptyList()
         }
         return try {
-            val array = JSONArray(text)
-            List(array.length()) { decode(array.getJSONObject(it)) }
+            Json.parseToJsonElement(text).jsonArray.map { decode(it.jsonObject) }
                 .filter { it.lastTicket == null || CoopInvite.isTicket(it.lastTicket) }   // tickets of an older build are no use now
-        } catch (e: JSONException) {
-            keepAside()
-        } catch (e: IllegalArgumentException) {   // includes NumberFormatException
+        } catch (e: IllegalArgumentException) {   // includes kotlinx's SerializationException and NumberFormatException
             keepAside()
         }
     }
 
     /** Moves the unreadable file to the first free `pairs.json.bad[.N]`; never overwrites one. */
     private fun keepAside(): List<CoopPair> {
-        val dir = file.parentFile
-        var bad = File(dir, file.name + ".bad")
+        var bad = sibling(file.name + ".bad")
         var n = 1
-        while (bad.exists()) bad = File(dir, file.name + ".bad." + n++)
+        while (FileSystem.SYSTEM.exists(bad)) bad = sibling(file.name + ".bad." + n++)
         if (!(runCatching { moveAside(file, bad) }.getOrDefault(false))) blocked = true
         return emptyList()
     }
 
     private fun store(list: List<CoopPair>) {
-        file.parentFile?.mkdirs()
-        val array = JSONArray()
-        list.forEach { array.put(encode(it)) }
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        writeDurably(tmp, array.toString().toByteArray(Charsets.UTF_8))
+        file.parent?.mkdirs()
+        val tmp = sibling(file.name + ".tmp")
+        writeDurably(tmp, JsonArray(list.map { encode(it) }).toString().encodeToByteArray())
         replaceFile(tmp, file)
     }
 
-    private fun encode(p: CoopPair) = JSONObject().apply {
+    private fun encode(p: CoopPair) = buildJsonObject {
         put("ownSave", p.ownSave.key)
         put("ownLabel", p.ownLabel)
         put("peer", p.partner.peer.hex)
@@ -108,27 +116,32 @@ class CoopPairs(
         put("partnerTrainerId", p.partner.trainerId)
         put("partnerFemale", p.partner.female)
         put("partnerSave", p.partner.save.key)
-        put("lastTicket", p.lastTicket ?: JSONObject.NULL)
+        put("lastTicket", p.lastTicket)
         put("pairedAt", p.pairedAt)
     }
 
-    private fun decode(o: JSONObject): CoopPair {
-        val partnerSave = parseKey(o.getString("partnerSave"))
+    private fun decode(o: JsonObject): CoopPair {
+        val partnerSave = parseKey(o.string("partnerSave"))
         val partner = CoopPartner(
-            peer = CoopPeerId(o.getString("peer")),
+            peer = CoopPeerId(o.string("peer")),
             name = Gen3Text.decode(partnerSave.name, 0, 7),
-            trainerId = o.getInt("partnerTrainerId"),
-            female = o.getBoolean("partnerFemale"),
+            trainerId = o.value("partnerTrainerId").int,
+            female = o.value("partnerFemale").boolean,
             save = partnerSave,
         )
         return CoopPair(
-            ownSave = parseKey(o.getString("ownSave")),
-            ownLabel = o.getString("ownLabel"),
+            ownSave = parseKey(o.string("ownSave")),
+            ownLabel = o.string("ownLabel"),
             partner = partner,
-            lastTicket = if (o.isNull("lastTicket")) null else o.getString("lastTicket"),
-            pairedAt = o.getLong("pairedAt"),
+            lastTicket = o["lastTicket"].let { if (it == null || it is JsonNull) null else o.string("lastTicket") },
+            pairedAt = o.value("pairedAt").long,
         )
     }
+
+    /** [key]'s value, which must be there and not an array or object (as org.json's getters asked). */
+    private fun JsonObject.value(key: String): JsonPrimitive = requireNotNull(this[key]) { "no $key" }.jsonPrimitive
+
+    private fun JsonObject.string(key: String): String = value(key).also { require(it.isString) { "$key: not a string" } }.content
 
     /** The inverse of [CoopSaveId.key]: `%04x%04x-` and 16 hex characters. */
     private fun parseKey(key: String): CoopSaveId {
@@ -138,20 +151,15 @@ class CoopPairs(
     }
 }
 
-/** Moves [tmp] over [dest] atomically where the file system can, else by a plain replace. */
-internal fun replaceFile(tmp: File, dest: File) {
-    try {
-        Files.move(tmp.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-    } catch (e: AtomicMoveNotSupportedException) {
-        Files.move(tmp.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING)
-    }
-}
+/** Moves [tmp] over [dest] in one step (okio's atomicMove: a rename that replaces [dest]). */
+internal fun replaceFile(tmp: Path, dest: Path) = FileSystem.SYSTEM.atomicMove(tmp, dest)
 
-/** Writes [bytes] to [tmp] and forces them to disk, so a rename over the real file never leaves an empty one after a crash. */
-internal fun writeDurably(tmp: File, bytes: ByteArray) {
-    java.io.FileOutputStream(tmp).use { out ->
-        out.write(bytes)
-        out.flush()
-        out.fd.sync()
+/** Writes [bytes] to [tmp] and forces them to disk (okio's FileHandle.flush syncs), so a rename over the real file
+ * never leaves an empty one after a crash. */
+internal fun writeDurably(tmp: Path, bytes: ByteArray) {
+    FileSystem.SYSTEM.openReadWrite(tmp).use { h ->
+        h.resize(0)
+        h.write(0, bytes, 0, bytes.size)
+        h.flush()
     }
 }

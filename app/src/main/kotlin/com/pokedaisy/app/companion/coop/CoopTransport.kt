@@ -16,11 +16,5 @@ interface CoopTransport {
     fun close()
 }
 
-/** A log line that never throws (the JVM tests have no android.util.Log). */
-internal fun coopLog(message: String) {
-    try {
-        android.util.Log.w("pokedaisy/coop", message)
-    } catch (_: RuntimeException) {
-    } catch (_: LinkageError) {
-    }
-}
+/** A co-op log line (the data code's [com.pokedaisy.app.companion.data.Logs]: Android's Log in the app, standard output in tests). */
+internal fun coopLog(message: String) = com.pokedaisy.app.companion.data.Logs.w(message, tag = "pokedaisy/coop")

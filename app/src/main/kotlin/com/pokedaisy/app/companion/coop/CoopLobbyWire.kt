@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.coop
 
-import java.io.ByteArrayOutputStream
+import okio.Buffer
 
 /**
  * The relay's lobby messages (`/v1/lobby`), the app's side: the server's `LobbyWire` (server/coop-relay) with the
@@ -54,7 +54,7 @@ object CoopLobbyWire {
         fun string(): String {
             val n = u8()
             if (i + n > bytes.size) throw IndexOutOfBoundsException()
-            return String(bytes, i, n, Charsets.UTF_8).also { i += n }
+            return bytes.decodeToString(i, i + n).also { i += n }
         }
         return try {
             val a = when (bytes[i++]) {
@@ -102,14 +102,14 @@ object CoopLobbyWire {
     }
 
     private class Writer(kind: Byte) {
-        private val out = ByteArrayOutputStream().apply { write(kind.toInt()) }
-        fun u8(v: Int) = apply { out.write(v) }
+        private val out = Buffer().apply { writeByte(kind.toInt()) }
+        fun u8(v: Int) = apply { out.writeByte(v) }
         fun string(s: String) = apply {
-            val raw = s.toByteArray(Charsets.UTF_8)
+            val raw = s.encodeToByteArray()
             require(raw.size <= 255) { "string over 255 bytes" }
-            out.write(raw.size)
+            out.writeByte(raw.size)
             out.write(raw)
         }
-        fun bytes(): ByteArray = out.toByteArray()
+        fun bytes(): ByteArray = out.readByteArray()
     }
 }

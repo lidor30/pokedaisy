@@ -338,8 +338,6 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")
 
-    // QR codes for co-op invites (encoding only).
-    implementation("com.google.zxing:core:3.5.3")
 
     // Crash reports, opt-in (CrashReports.kt). -ndk catches native crashes too (mGBA, JNI),
     // which is where most of this app's crashes have been.
@@ -350,6 +348,8 @@ dependencies {
     // Decode-logic regression tests (app/src/test) - see scripts/capture_fixture.sh
     // for how the fixtures they read (app/src/test/resources/fixtures/) get made.
     testImplementation("junit:junit:4.13.2")
+    // CoopQrTest reads the invite codes back (the app draws them with its own encoder, CoopQr).
+    testImplementation("com.google.zxing:core:3.5.3")
     // The real org.json (android.jar's is a stub in unit tests): ScreenScraperTest and DocsSearchTest parse JSON.
     testImplementation("org.json:json:20240303")
     // The co-op relay server (its sources are on the test path) for CoopRelayIntegrationTest.

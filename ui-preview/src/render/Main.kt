@@ -1180,7 +1180,7 @@ internal fun coopSettings(
     prefs.coopRelayUrl = relay
     val file = File(File(ctx.filesDir, "coop"), "pairs.json")
     file.delete()
-    if (paired) com.pokedaisy.app.companion.coop.CoopPairs(file).add(coopPair())
+    if (paired) com.pokedaisy.app.companion.coop.CoopPairs(okio.Path.Companion.run { file.toOkioPath() }).add(coopPair())
     return SettingsActivity().also { it.coop.preview = preview }
 }
 

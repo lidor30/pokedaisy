@@ -134,9 +134,6 @@ The app shows every license below in full under Settings > LICENSES.
 - OkHttp and Okio, Copyright (c) Square, Inc., Apache License 2.0
   (third_party/licenses/Apache-2.0.txt) - https://square.github.io/okhttp/ - the
   co-op link's WebSocket to the relay.
-- ZXing core, Copyright (c) ZXing authors, Apache License 2.0
-  (third_party/licenses/Apache-2.0.txt) - https://github.com/zxing/zxing - QR
-  encoding for co-op invites.
 - Some decoders and layouts follow the community decompilations of the games
   (pret's pokered / pokeyellow / pokegold / pokecrystal / pokefirered /
   pokeemerald / pokeruby / pokeplatinum / pokeheartgold, pokeemerald-expansion,
