@@ -420,7 +420,7 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
     val m = rememberGbaTextMetrics(1f)
     val u = m.u
     CompanionBackHandler(enabled = state.open) { if (state.fly != null || state.repels != null || state.confirm != null) state.back() else state.close() }
-    CompositionLocalProvider(LocalHudLook provides look) {
+    CompositionLocalProvider(LocalHudLook provides look.resolved()) {
         BoxWithConstraints(
             Modifier.fillMaxSize().drawBehind { drawRect(Color(0x55000000).copy(alpha = 0x55 / 255f * fan)) }
                 .pointerInput(Unit) { detectTapGestures { state.close() } },
@@ -847,9 +847,33 @@ fun quickMenuRows(
             QuickAction.TURBO -> NewFeatures.badge(NewFeatures.QUICK_TURBO)
             else -> null
         }
-        SettingRow(a.label, onOff(a in shown), labelBadge = badge) {
+        SettingRow(a.label, onOff(a in shown), labelBadge = badge, labelIcon = quickRowIcon(a), iconPixels = ROW_ICON_PIXELS) {
             setShown(if (a in shown) shown - a else shown + a)
         }
+    }
+}
+
+/** [action]'s icon on its SHOW row: the tile's own pixel art, a stand-in where the tile shows the game's (SettingIcons.kt);
+ * the plain glyphs in the row's text colour. */
+private fun quickRowIcon(action: QuickAction): @Composable () -> Unit = {
+    val fill = Modifier.fillMaxSize()
+    val text = OptionColors.label
+    when (action) {
+        QuickAction.PC -> PixelArt(PC_ICON, PC_COLORS, fill)
+        QuickAction.HEAL -> PixelArt(HEAL_ICON, HEAL_COLORS, fill)
+        QuickAction.FLY -> PixelArt(FLY_ROW_ICON, FLY_ROW_COLORS, fill)
+        QuickAction.FLIGHT -> PixelArt(TAKE_OFF_ICON, WING_COLORS, fill)
+        QuickAction.REPEL -> PixelArt(REPEL_ROW_ICON, REPEL_ROW_COLORS, fill)
+        QuickAction.BIKE -> PixelArt(BIKE_ROW_ICON, BIKE_ROW_COLORS, fill)
+        QuickAction.ROD -> PixelArt(ROD_ROW_ICON, ROD_ROW_COLORS, fill)
+        QuickAction.WILD -> PixelArt(GRASS_ICON, GRASS_COLORS, fill)
+        QuickAction.FLASH -> PixelArt(FLASH_ICON, FLASH_COLORS, fill)
+        QuickAction.SAVE_STATE -> PixelArt(SAVE_STATE_ICON, STATE_COLORS, fill)
+        QuickAction.LOAD_STATE -> PixelArt(LOAD_STATE_ICON, STATE_COLORS, fill)
+        QuickAction.FF -> PixelIcon(FF_ICON, text, fill)
+        QuickAction.TURBO -> PixelIcon(TURBO_ICON, text, fill)
+        QuickAction.TOUCH_SCREEN -> PixelArt(TOUCH_ICON, TOUCH_COLORS, fill)
+        QuickAction.COMPANION -> PixelIcon(COMPANION_ICON, text, Modifier.fillMaxSize(0.75f))
     }
 }
 
@@ -1032,7 +1056,7 @@ fun HealedAnimation(
     val allFull = HEAL_FILL_START_MS + (party.size - 1).coerceAtLeast(0) * HEAL_STAGGER_MS + HEAL_FILL_MS
     val m = rememberGbaTextMetrics(1f)
     val u = m.u
-    CompositionLocalProvider(LocalHudLook provides look) {
+    CompositionLocalProvider(LocalHudLook provides look.resolved()) {
         Box(
             Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }.pointerInput(show.id) { detectTapGestures { onDone() } },
             contentAlignment = Alignment.Center,

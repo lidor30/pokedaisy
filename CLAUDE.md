@@ -332,6 +332,14 @@ its size / its shadow (`pixelFontFamily`, `gbaTextStyle`, `GbaText`), button fac
 window / text colours (`SkinColors`). `CompanionSkins.forGame` picks one (`PIXEL` = the look above, every game's unless named),
 only while a game is open (`OptionColors.inGame`). A new skin: its `CompanionSkin` (colours sampled off the game's menus), a line in
 `forGame`, its bag palette, and a render of every tab; screens with the game's own art keep their per-game drawing.
+**DS and GBA skins** (2026-11-16, NEW tag `GAME_LOOK`): `HEARTGOLD` (HG / SS), `PLATINUM`, `UNOVA` (B / W), `UNOVA2` (B2 / W2),
+`FIRERED` (FR / LG), `EMERALD`, `RUBY_SAPPHIRE` (they run as EMERALD: told apart by `romHeaderCode`, the cart's header code the Poller
+sets once), sampled headless off each game's menus (nds_dump / menu-shots); pixel corners, Pixel Operator and the GBA shadow kept.
+`SkinColors.button*` = OptionButton's own face (HG's orange, Black's plates); `flatFaces` = one-colour buttons (FR / LG, Emerald, R / S, Platinum: HG's two tones clashed there); `darkToo = false` = a light skin gives way to the app's dark
+windows in DARK MODE (`activeColors`). `CompanionSkin.hud` (`SkinHud`) is HUD > LOOK **GAME** (the new default; GLASS for a game without
+one, `FieldHudLook.resolved`): drawn by WINDOW's paths with the skin's panels (`drawRingedBox`: rings round a see-through fill),
+`hudSelected` its cursor colour. SCREEN > COMPANION LOOK GAME / CLASSIC, under THEME on both screens (`Prefs.gameLook`, `CompanionSkins.enabled`, `gameLookRow`):
+CLASSIC turns them all off, X / Y included. `GameSkinsScreenshotTest` / `GameSkinsHudScreenshotTest` render every one.
 **SETTINGS' group tabs sit outside the card** (both screens, the user's call): `RailedWindow` leaves the window to the `GroupedRows` inside, which draws it round the list alone, the `TabRail` on the backdrop beside it.
 **Buttons are HeartGold's two-tone (2026-11-05, the user's call)**: every companion button is a face in two colours with two soft lines between them (`drawTwoTone`, GbaText.kt): `PlatinumButton` (a thick dark outline, a thin white ring, `fill` over `frame`) and, through `drawLayeredBox(twoTone = true)`, `OptionButton`, the tab chips, SETTINGS' group chips, the DEX's sections, MORE's tiles and the bag's PC and sort; the quick menu's tiles (`quickTileFace`) add a thick outline. The BATTLE tab takes HeartGold's layout by proportion (`ActionButtons`' `ds`: a DS pixel from the pane's width, so a tall pane leaves room rather than stretching the buttons), `BattlePlaceholder`'s four move places behind FIGHT, and its move cards (`hgMovePanel`); RUN stays whole, not cut by the screen's edge as in the game.
 **DARK MODE** (SETTINGS on either screen, SCREEN group; `Prefs.darkMode` OFF default / ON / AUTO = the device's uiMode;

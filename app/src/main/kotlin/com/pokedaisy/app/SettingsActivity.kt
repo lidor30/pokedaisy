@@ -900,6 +900,8 @@ class SettingsActivity : ComponentActivity() {
                     badge = { l -> tk("LIMITED").takeIf { themes.firstOrNull { it.label == l }?.season != null } },
                 ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(this@SettingsActivity, it) } }
             },
+            // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
+            com.pokedaisy.app.companion.ui.gameLookRow { revision++ },
             // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
             SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
                 DarkMode.set(this@SettingsActivity, DarkMode.setting.next())
