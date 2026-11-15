@@ -396,7 +396,7 @@ open class CompanionScreenshotTest {
         val rom = java.io.File(java.io.File(java.io.File(RETAIL_ROM_DIR).parentFile, "nds"), "Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced).nds")
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            if (rom.isFile && com.pokedaisy.app.companion.data.NdsArt.extractTo(rom, dir)) com.pokedaisy.app.companion.data.NdsArt.dir = dir
+            if (rom.isFile && com.pokedaisy.app.companion.data.NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath())) com.pokedaisy.app.companion.data.NdsArt.dir = dir.toOkioPath()
             val t = com.pokedaisy.app.companion.data.readGen5Telemetry(FixtureMemoryReader.load("black2"), com.pokedaisy.app.companion.data.GEN5_BLACK2)
             val v = buildSnapshotView(t).copy(game = GameKind.BLACK2)
             v.party.forEach { m -> m.iconAsset?.let { GameArt.get(paparazzi.context, it) } }
