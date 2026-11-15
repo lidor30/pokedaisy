@@ -231,7 +231,7 @@ Every game plays, but the companion only reads the games it knows. The library t
 - `NOT SUPPORTED`: the game plays, and the companion shows a notice instead of its tabs.
 - `PARTIALLY SUPPORTED`: a ROM PokeDaisy matched to a game it knows. The party, bag, map and battles work, and whatever didn't match is switched off.
 
-From a linked folder, the library lists the supported games plus any unsupported hacks of FireRed, LeafGreen, Emerald, Ruby or Sapphire (tagged), so you can try them. When PokeDaisy can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
+From a linked folder, the library lists the supported games and every other Pokémon game it finds, Game Boy and DS ones too, tagged `NOT SUPPORTED`: they play as any game, without the companion. Games that aren't Pokémon games stay out. For an unsupported hack of FireRed, LeafGreen, Emerald, Ruby or Sapphire, PokeDaisy can try to work out which game it's built on. When PokeDaisy can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
 
 Turn on `SUPPORTED ONLY` in Settings, in the `LIBRARY` group, to leave games the companion can't read out of the library.
 
