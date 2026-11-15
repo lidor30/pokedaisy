@@ -331,7 +331,6 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.runtime:runtime")
 
     // ROMs in .7z archives (RomArchive; .zip is java.util.zip). xz is 7z's LZMA / LZMA2.
@@ -357,8 +356,9 @@ dependencies {
     testImplementation("org.slf4j:slf4j-nop:2.0.20")
     // The relay uses the JDK's HttpServer, which android.jar hides at compile time (the JDK has it at run time).
     testImplementation(files(jdkHttpServerJar))
-    // Co-op transport crypto: X25519 (rfc7748) for keys and the Noise IK handshake (MIT).
-    implementation("org.bouncycastle:bcprov-jdk18on:1.79")
+    // Co-op transport crypto: X25519 (rfc7748) for keys and the Noise IK handshake is Bouncy Castle's own code, copied
+    // into companion/coop/x25519/ (MIT); the whole library stays a test dependency, which X25519Test checks the copy against.
+    testImplementation("org.bouncycastle:bcprov-jdk18on:1.87")
     // The relay WebSocket (Apache 2.0, with Okio).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Byte buffers, files and hashes in the data code shared with the iPad app (okio is Kotlin Multiplatform).
