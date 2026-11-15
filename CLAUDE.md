@@ -895,6 +895,31 @@ CB2_ReturnToField, controls locked first, from the field only. Which Pokémon ge
 bytes put back (a held-item evolution's item would be spent otherwise). Records `TRADE_EVO_*` in gamedata (retail English FireRed
 rev 1, LeafGreen rev 0 / 1 - found in retail by the shifted `$DECOMPS` build's masked code - and Emerald); hacks / Kaizo / Legacy off.
 **INSTANT TEXT** (GitHub #111, GAMEPLAY on the companion, `Prefs.instantText` OFF, NEW tag; `InstantText.kt`): a game-option patch like REUSABLE TMS (`pkRomPatch` in 4-byte pieces, `EmulatorEngine.applyTmPatch` does both). RenderFont rewritten in its own 40 bytes (no free ROM): it goes on past RENDER_PRINT until a control code, textSpeed 0; Ruby / Sapphire: UpdateWindowText's delay turned into a `b` back to PrintNextChar. A delay of 0 (the game's own instant path) would lose everything after a page break. Found in the ROM's first 64 KB by code; gcc builds: N/A. TEXT SPEED stays: it's the emulator's speed, stops at what the device runs.
+**NO HMS NEEDED** (2026-11-14, GAMEPLAY on the companion, `Prefs.hmFree` OFF, NEW tag; `HmFree.kt`): the field moves with the badge
+alone, a game-option patch beside INSTANT TEXT's. Every field-move script runs `checkpartymove` after its badge check: ScrCmd_checkpartymove
+is rewritten in its own 124 bytes (`scripts/hm_free.s`, assembled with clang `--target=thumbv4t-none-eabi`; calls and literals filled per
+ROM) to answer the first Pokémon that isn't an egg when nobody knows the move (a knower still first; MOVE_SECRET_POWER keeps the game's
+rule), and PartyHasMonWithSurf's `beq` becomes a `nop` (the A press on water). Both found by agbcc's code, all or nothing, cross-checked
+(same GetMonData / MonKnowsMove / gPlayerParty, gSpecialVar_Result = 0x8004 + 0x10). `HmFree.active` makes FLY / FREE FLIGHT / FLASH's
+`flyer` / `flasher` fall back the same way. Played headless with `rompatch` (FireRed Cut / Surf, Emerald Rock Smash, Ruby by calls).
+**EXP SHARE** (2026-11-14, GAMEPLAY on the companion, `Prefs.expShare` OFF / SPLIT / FULL EXP, NEW tag; `ExpShare.kt`): Gen 3's getexp pays the
+Pokémon in gSentPokesToOpponent (nothing else reads it), the EXP divided by their count. SPLIT: the engine writes the party's non-egg slots there
+every frame (`ExpShare.mark`, mask from each sample; per frame because the battle's first turn resets it after the intro). FULL EXP: also the two
+`bl __divsi3` after `adds r1, r5` `nop`ed, a game-option patch with the others. Pauses RetroAchievements (`setExpShareActive`, like SHINY ODDS).
+**LEVEL CAP** (2026-11-14, GAMEPLAY on the companion, `Prefs.levelCap` OFF, NEW tag; `LevelCap.kt`): no Pokémon past the top level of
+the first boss NEXT BOSS has ahead (`LevelCap.next`: the guide's bosses and the ROM's trainer table, worked out on the activity's
+`level-cap` thread every 2 s at most). getexp's two `cmp r0, #100` (before the EXP message; before each one-level step of
+Task_GiveExpToMon, which hands the rest back) become `cmp r0, #cap` + `bcc` / `bcs`, a game-option patch re-applied as the cap moves.
+Both it and EXP SHARE take getexp from `ExpShare.getexp`, which wants its address in a command table the code loads: CFRU's hacks keep
+the old getexp but run their own (N/A there). N/A without a NEXT BOSS list (`LevelCap.hasBosses`). Doesn't pause achievements.
+**POKéMON CENTER anywhere** (2026-11-14; the summary's pink CENTER button + the QUICK MENU's HEAL, NEW tag `POKEMON_CENTER`; `PokemonCenter.kt`):
+HEAL THE PARTY / RELEARN A MOVE / FORGET A MOVE / NICKNAME, each the game's own special (HealPlayerParty, the Move Tutor's screen,
+MoveDeleterForgetMove, ChangePokemonNickname) on the summary's Pokémon (gSpecialVar_0x8004), run as a short script at 0x0203FFD8 like PC
+anywhere's; found in gSpecials by masked code (HealPlayerParty = entry 0, the relearner three after the deleter), so every language. The
+games' rules kept (eggs, the last move, IsMonOTIDNotPlayers for traded ones, the party's last Surf unless NO HMS NEEDED). RELEARN opens in
+two steps like the TM screen (`centerRelearnStart` / `Finish`: fade, then cleanup + gFieldCallback + SetMainCallback2) and, on FireRed,
+LoadStdWindowFrameGfx first: the relearner never loads the message box palette (15), which a loaded save's recap leaves dark (black word
+boxes). Offered only when `relearnableMoves` (DexDetails.levelUp) has some.
 **PLAYER LOOK** (2026-10-22, the companion's MAKEOVER group - first, a blue-framed `featuredGroupTitle`, only in a game it works in; per ROM: `Prefs.playerLookFor`, NEW tag; `PlayerLook.kt`,
 `PlayerLookRunner.kt`, docs/DEVELOPMENT.md's "PLAYER LOOK"): play retail FireRed / LeafGreen / Ruby / Sapphire / Emerald (and Kaizo, Legacy, Imperium, Ultra
 Violet: `PlayerLook.HACKS`) as another game's hero, picked from tiles of the heroes walking (`PlayerLookPicker`),

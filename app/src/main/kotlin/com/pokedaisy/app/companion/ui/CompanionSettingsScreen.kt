@@ -642,6 +642,45 @@ private fun homeRows(
         ) {
             if (s.reusableTmsSupported) { s.setReusableTms(!s.reusableTms); changed() }
         },
+        // The field moves (a tree, a rock, the water...) with the badge alone: the game's own move check patched to take
+        // the first Pokémon when nobody knows the move (HmFree.kt); the companion's FLY and FLASH follow it.
+        SettingRow(
+            tk("NO HMS NEEDED"), if (s.hmFreeSupported) onOff(s.hmFree) else tk("N/A"),
+            enabled = s.hmFreeSupported, labelBadge = NewFeatures.badge(NewFeatures.HM_FREE),
+            subtitle = "Field moves with the badge alone",
+        ) {
+            if (s.hmFreeSupported) { s.setHmFree(!s.hmFree); changed() }
+        },
+        // The whole party gains EXP from a win (ExpShare.kt: getexp's sent-out bits set, FULL also its division skipped).
+        // Three values: a pick-list.
+        SettingRow(
+            tk("EXP SHARE"), if (s.expShareSupported) s.expShare.label else tk("N/A"),
+            enabled = s.expShareSupported, labelBadge = NewFeatures.badge(NewFeatures.EXP_SHARE),
+            subtitle = "The whole party gains EXP from a win",
+        ) {
+            if (s.expShareSupported) {
+                val modes = com.pokedaisy.app.companion.data.ExpShare.Mode.entries
+                select(
+                    Selector(tk("EXP SHARE"), modes.map { it.label }, s.expShare.label, note = EXP_SHARE_NOTE) { l ->
+                        modes.firstOrNull { it.label == l }?.let(s::setExpShare)
+                    },
+                )
+            }
+        },
+        // No Pokémon past the next boss's top level (LevelCap.kt: getexp's two level-100 checks patched to the cap); the
+        // value shows the cap now. Two values: a tap flips it.
+        SettingRow(
+            tk("LEVEL CAP"),
+            when {
+                !s.levelCapSupported -> tk("N/A")
+                !s.levelCap -> tk("OFF")
+                else -> s.levelCapLevel?.let { tr("LV {0}", it) } ?: tk("ON")
+            },
+            enabled = s.levelCapSupported, labelBadge = NewFeatures.badge(NewFeatures.LEVEL_CAP),
+            subtitle = "Stops at the next boss's top level",
+        ) {
+            if (s.levelCapSupported) { s.setLevelCap(!s.levelCap); changed() }
+        },
         // A Pokémon that evolves by trading evolves from its summary, through the game's own evolution (TradeEvolution.kt).
         SettingRow(
             tk("TRADE EVOS"), if (s.tradeEvolutionsSupported) onOff(s.tradeEvolutions) else tk("N/A"),
@@ -1141,3 +1180,6 @@ private fun shinyOddsLabel(odds: Int): String =
 
 /** SHINY ODDS' pick-list disclaimer: what a save checker may say, and the achievements' pause. */
 private const val SHINY_ODDS_NOTE = "Save checkers may flag these shinies. Achievements pause."
+
+/** EXP SHARE's pick-list: what the two ways do. */
+private const val EXP_SHARE_NOTE = "SPLIT shares a win's EXP across the party. FULL EXP gives each one all of it. Achievements pause."

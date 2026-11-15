@@ -243,6 +243,19 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val reusableTms get() = reusableTmsOn
     override fun setReusableTms(on: Boolean) { reusableTmsOn = on }
     override val reusableTmsSupported get() = true
+    private var hmFreeOn = false
+    override val hmFree get() = hmFreeOn
+    override fun setHmFree(on: Boolean) { hmFreeOn = on }
+    override val hmFreeSupported get() = true
+    private var expShareMode = com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
+    override val expShare get() = expShareMode
+    override fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) { expShareMode = mode }
+    override val expShareSupported get() = true
+    private var levelCapOn = false
+    override val levelCap get() = levelCapOn
+    override fun setLevelCap(on: Boolean) { levelCapOn = on }
+    override val levelCapSupported get() = true
+    override val levelCapLevel get() = 14
     private var shinyOddsValue = com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
     override val shinyOdds get() = shinyOddsValue
     override fun setShinyOdds(odds: Int) { shinyOddsValue = odds }
@@ -504,6 +517,9 @@ fun companion(
     content
 }
 
+/** The preview party with personalities (the POKéMON CENTER's button needs one to check it against). */
+fun centerSnapshot() = snapshot().let { s -> s.copy(party = s.party.mapIndexed { i, m -> m.copy(personality = 0x1000L + i, moves = m.moves.mapIndexed { j, mv -> mv.copy(id = 33 + j) }) }) }
+
 /**
  * USE / GIVE as retail FireRed rev 1 answers them (FieldItems.kt), for every game's preview - so each
  * BagPalette shows the row mark, though the app has it on FireRed rev 1 only so far. The lead holds
@@ -519,6 +535,11 @@ class PreviewItemUse(private val party: List<MonView>, private val bagFull: Bool
         done(com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED)
     override fun withdrawFromBox(box: Int, slot: Int, boxPersonality: Long, done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit) =
         done(com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED)
+    // The POKéMON CENTER: every service; HEAL and FORGET go through, NICKNAME / RELEARN would open the game's screens.
+    override fun center() = com.pokedaisy.app.companion.CenterSupport(heal = true, nickname = true, forget = true, relearn = true)
+    override fun centerHeal(done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) = done(com.pokedaisy.app.companion.data.CenterResult.OK)
+    override fun centerForget(slot: Int, personality: Long, moveIndex: Int, move: Int, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.CenterResult.OK)
     // PC anywhere: the button shows; a tap answers "not now" (a menu open), as the BAG pops it up.
     override fun canPc() = true
     override fun openPc(done: (com.pokedaisy.app.companion.data.ItemUseOutcome) -> Unit) =
@@ -1550,6 +1571,24 @@ fun main(args: Array<String>) {
         // The second Pokémon's summary with its QUICK CLAW: TAKE, or BAG FULL where the bag has no room for it.
         Shot("$g-party-detail-take", bw, bh, bd, companion("PARTY", mon = 1, items = true)),
         Shot("$g-party-detail-bagfull", bw, bh, bd, companion("PARTY", mon = 1, items = true, bagFull = true)),
+        // The POKéMON CENTER: the summary's CENTER button, its list, FORGET's moves and question, then HEAL's notice.
+        Shot("$g-party-detail-center", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::centerSnapshot)) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("CENTER")).performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("$g-party-detail-center-forget", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::centerSnapshot)) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("CENTER")).performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("FORGET A MOVE")).performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("$g-party-detail-center-forget-ask", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::centerSnapshot)) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("CENTER")).performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("FORGET A MOVE")).performSemanticsAction(SemanticsActions.OnClick)
+            val move = snapshot().party[1].moves.first().name
+            onAllNodesWithText(move).onLast().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("$g-party-detail-center-healed", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::centerSnapshot)) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("CENTER")).performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("HEAL THE PARTY")).performSemanticsAction(SemanticsActions.OnClick)
+        },
         Shot("$g-expand-offer", bw, bh, bd, companion("PARTY", expandOffer = true)),
         Shot("$g-party-detail", bw, bh, bd, companion("PARTY", mon = 0)),
         Shot("$g-party-detail-next", bw, bh, bd, companion("PARTY", mon = 0)) {
@@ -1940,6 +1979,21 @@ fun main(args: Array<String>) {
         Shot("$g-settings-reusable-tms", bw, bh, bd, companion("SETTINGS")) {
             // Scrolled to AUTO-RUN, the row under it: a greyed row (Unbound's, Radical Red's: BUILT_IN) won't scroll to itself here.
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("AUTO-RUN")).performScrollTo()
+        },
+        // NO HMS NEEDED under REUSABLE TMS (OFF), then flipped ON.
+        Shot("$g-settings-hm-free", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo()
+        },
+        // EXP SHARE's pick-list (OFF / SPLIT / FULL EXP, the note on what each does).
+        Shot("$g-settings-exp-share", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("EXP SHARE")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // LEVEL CAP turned on: the row shows the cap now (the preview's LV 14).
+        Shot("$g-settings-level-cap", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("LEVEL CAP")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("$g-settings-hm-free-on", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
         // PLAYER LOOK under REUSABLE TMS, then its tiles (OFF = the player's own hero, then the other games' heroes).
         Shot("$g-settings-player-look", bw, bh, bd, companion("SETTINGS")) {

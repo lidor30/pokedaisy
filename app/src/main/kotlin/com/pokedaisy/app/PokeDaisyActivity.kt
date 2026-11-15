@@ -182,6 +182,66 @@ class PokeDaisyActivity : Activity() {
     private var tmSites: List<com.pokedaisy.app.companion.data.ReusableTms.Site> = emptyList()
     /** INSTANT TEXT: the ROM's patch ([com.pokedaisy.app.companion.data.InstantText]; null = the row shows N/A). */
     private var textPatch: com.pokedaisy.app.companion.data.InstantText.Patch? = null
+    /** The POKéMON CENTER's specials in this ROM ([com.pokedaisy.app.companion.data.PokemonCenter]; null = none). */
+    @Volatile private var centerFound: com.pokedaisy.app.companion.data.PokemonCenter.Found? = null
+    /** EXP SHARE: the game's getexp ([com.pokedaisy.app.companion.data.ExpShare]; null = the row shows N/A). */
+    private var expShareFound: com.pokedaisy.app.companion.data.ExpShare.Found? = null
+
+    /** EXP SHARE on the engine, and RetroAchievements paused while it's on. */
+    private fun syncExpShare() {
+        val mode = if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(Prefs(this).expShare)
+        else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
+        if (::engine.isInitialized) engine.setExpShare(expShareFound, mode)
+        runCatching { com.pokedaisy.app.achievements.RetroAchievements.setExpShareActive(mode != com.pokedaisy.app.companion.data.ExpShare.Mode.OFF) }
+    }
+
+    /** LEVEL CAP: getexp's level checks ([com.pokedaisy.app.companion.data.LevelCap]; null = the row shows N/A), the cap
+     * now (worked out from the save on [levelCapThread], at most every [LEVEL_CAP_EVERY_MS]) and whether it's on. */
+    @Volatile private var levelCapFound: com.pokedaisy.app.companion.data.LevelCap.Found? = null
+    @Volatile private var levelCapNow: com.pokedaisy.app.companion.data.LevelCap.Cap? = null
+    @Volatile private var levelCapOn = false
+    /** The running game has a NEXT BOSS list to follow (null = not known yet); without one the row shows N/A. */
+    @Volatile private var levelCapBosses: Boolean? = null
+    @Volatile private var levelCapAt = 0L
+    private val levelCapBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val levelCapThread by lazy { java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "level-cap") } }
+
+    /** LEVEL CAP on the engine: the cap now while it's on and known, else none. */
+    private fun syncLevelCap() {
+        levelCapOn = levelCapFound != null && levelCapBosses != false && Prefs(this).levelCap
+        if (::engine.isInitialized) engine.setLevelCap(levelCapFound, if (levelCapOn) levelCapNow?.level ?: 0 else 0)
+    }
+
+    /** A fresh sample: the cap worked out again off the emu thread (the first time reads the bosses' teams from the ROM). */
+    private fun updateLevelCap(snap: com.pokedaisy.app.companion.data.SnapshotView) {
+        if (levelCapFound == null) return
+        if (levelCapBosses == null) com.pokedaisy.app.companion.data.LevelCap.hasBosses(snap)?.let { levelCapBosses = it; syncLevelCap() }
+        if (!levelCapOn || !snap.connected || snap.progress == null) return
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - levelCapAt < LEVEL_CAP_EVERY_MS || !levelCapBusy.compareAndSet(false, true)) return
+        levelCapAt = now
+        levelCapThread.execute {
+            try {
+                val cap = runCatching { com.pokedaisy.app.companion.data.LevelCap.next(snap) }.getOrNull()
+                if (cap != levelCapNow) {
+                    levelCapNow = cap
+                    Log.i("pokedaisy", "level cap: ${cap?.let { "${it.level} (${it.boss})" } ?: "none"}")
+                    syncLevelCap()
+                }
+            } finally {
+                levelCapBusy.set(false)
+            }
+        }
+    }
+
+    /** NO HMS NEEDED: the ROM's patch ([com.pokedaisy.app.companion.data.HmFree]; null = the row shows N/A). */
+    private var hmPatch: com.pokedaisy.app.companion.data.HmFree.Patch? = null
+
+    /** NO HMS NEEDED on the engine, and FLY / FREE FLIGHT / FLASH told whether to ask for the move (HmFree.active). */
+    private fun syncHmFree(on: Boolean = Prefs(this).hmFree) {
+        com.pokedaisy.app.companion.data.HmFree.active = on && hmPatch != null
+        if (::engine.isInitialized) engine.setHmFree(hmPatch, on)
+    }
     /** EXPAND's one-time offer is up on the companion ([CompanionSettings.expandOffer]). */
     private val expandOfferUp = androidx.compose.runtime.mutableStateOf(false)
     private var states: SaveStates? = null
@@ -749,6 +809,57 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.data.withdrawFromBox(fields, fns, box, slot, boxPersonality, busy, calls)
         }
 
+        override fun center(): com.pokedaisy.app.companion.CenterSupport? {
+            val c = centerFound ?: return null
+            val fns = fieldItemSupport()?.fns?.takeIf { it.pc != null && it.party != null } ?: return null
+            return com.pokedaisy.app.companion.CenterSupport(
+                heal = true, nickname = c.nickname != null, forget = c.forget != null,
+                relearn = c.relearn != null && tmFns() != null && fns.party != null,
+            )
+        }
+
+        private fun onCenter(
+            done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit, screen: Boolean = false,
+            work: (com.pokedaisy.app.companion.data.FieldItemFns, com.pokedaisy.app.companion.data.PokemonCenter.Found,
+                   com.pokedaisy.app.companion.data.GameCalls, Boolean) -> com.pokedaisy.app.companion.data.CenterResult,
+        ) {
+            val c = centerFound ?: return done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
+            val inBattle = telemetry.snapshot.value.inBattle
+            onGame(com.pokedaisy.app.companion.data.CenterResult.FAILED, { r ->
+                // A screen of the game's (naming, the Move Tutor's) is the game's to show: the window over it goes.
+                if (screen && r == com.pokedaisy.app.companion.data.CenterResult.OK) closeCompanionWindow()
+                done(if (inBattle && r == com.pokedaisy.app.companion.data.CenterResult.NOT_NOW) com.pokedaisy.app.companion.data.CenterResult.IN_BATTLE else r)
+            }) { s, calls, busy -> work(s.fns, c, calls, busy) }
+        }
+
+        override fun centerHeal(done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+            onCenter(done) { fns, c, calls, busy -> com.pokedaisy.app.companion.data.centerHeal(fns, c, busy, calls) }
+
+        override fun centerNickname(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+            onCenter(done, screen = true) { fns, c, calls, busy -> com.pokedaisy.app.companion.data.centerNickname(fns, c, slot, personality, busy, calls) }
+
+        override fun centerForget(slot: Int, personality: Long, moveIndex: Int, move: Int, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+            onCenter(done) { fns, c, calls, busy -> com.pokedaisy.app.companion.data.centerForget(fns, c, slot, personality, moveIndex, move, busy, calls) }
+
+        /** The Move Tutor's screen in two steps, like the TM screen's: the checks and the fade, then once it's black the screen. */
+        override fun centerRelearn(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) {
+            val tm = tmFns() ?: return done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
+            onCenter(done, screen = true) { fns, c, calls, busy ->
+                val r = com.pokedaisy.app.companion.data.centerRelearnStart(fns, c, tm, slot, personality, busy, calls)
+                if (r == com.pokedaisy.app.companion.data.CenterResult.OK) {
+                    engine.requestFieldItemJob(false, com.pokedaisy.app.companion.data.TM_FADE_FRAMES) { g, leftField ->
+                        val ok = com.pokedaisy.app.companion.data.centerRelearnFinish(fns, c, tm, slot, personality, g, leftField)
+                        Log.i("pokedaisy", "move relearner for slot $slot: ${when {
+                            ok -> "open"
+                            leftField -> "the game left the field during the fade, not taken"
+                            else -> "failed, field handed back"
+                        }}")
+                    }
+                }
+                r
+            }
+        }
+
         override fun canTradeEvolve() = Prefs(this@PokeDaisyActivity).tradeEvolutions && tradeEvoFns() != null
 
         override fun tradeEvolveTargets(done: (Map<Long, Int>) -> Unit) {
@@ -826,11 +937,13 @@ class PokeDaisyActivity : Activity() {
     private val quickActions = object : com.pokedaisy.app.companion.ui.QuickActions {
         override fun offered(action: com.pokedaisy.app.companion.QuickAction) = when (action) {
             com.pokedaisy.app.companion.QuickAction.PC -> itemUse.canPc()
+            com.pokedaisy.app.companion.QuickAction.HEAL -> itemUse.center()?.heal == true
             com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.canFly()
             com.pokedaisy.app.companion.QuickAction.FLIGHT -> flightSupport() != null
-            // Only while a party Pokémon knows it (the snapshot's moves): the tile isn't there otherwise.
+            // Only while a party Pokémon knows it (the snapshot's moves), or anyone with NO HMS NEEDED: the tile isn't there otherwise.
             com.pokedaisy.app.companion.QuickAction.FLASH -> flashFns() != null && fieldItemSupport()?.fns?.party != null &&
-                telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLASH_MOVE } }
+                (com.pokedaisy.app.companion.data.HmFree.active ||
+                    telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLASH_MOVE } })
             com.pokedaisy.app.companion.QuickAction.REPEL ->
                 dsRepelKnown() ||
                     fieldItemSupport()?.let { s -> s.fns.repelItems.any { s.canUse(it) } } == true
@@ -872,6 +985,10 @@ class PokeDaisyActivity : Activity() {
         when (action) {
             com.pokedaisy.app.companion.QuickAction.PC -> itemUse.openPc { o ->
                 if (o.result != com.pokedaisy.app.companion.data.ItemUseResult.USED) showHud(com.pokedaisy.app.companion.ui.itemUseMessage(o))
+            }
+            com.pokedaisy.app.companion.QuickAction.HEAL -> itemUse.centerHeal { r ->
+                showHud(if (r == com.pokedaisy.app.companion.data.CenterResult.OK) com.pokedaisy.app.companion.i18n.tr("Your POKéMON are fully healed.")
+                else com.pokedaisy.app.companion.ui.centerMessage(r, ""))
             }
             com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.targets { t ->
                 if (t.result == com.pokedaisy.app.companion.data.FlyResult.OK) quickMenu.fly = t
@@ -1790,6 +1907,29 @@ class PokeDaisyActivity : Activity() {
             if (::engine.isInitialized) engine.setInstantText(textPatch, on)
         }
         override val instantTextSupported get() = textPatch != null
+        override val hmFree get() = Prefs(this@PokeDaisyActivity).hmFree
+        override fun setHmFree(on: Boolean) {
+            if (coopRefuses()) return
+            Prefs(this@PokeDaisyActivity).hmFree = on
+            syncHmFree(on)
+        }
+        override val hmFreeSupported get() = hmPatch != null
+        override val expShare get() = com.pokedaisy.app.companion.data.ExpShare.Mode.of(Prefs(this@PokeDaisyActivity).expShare)
+        override fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) {
+            if (coopRefuses()) return
+            Prefs(this@PokeDaisyActivity).expShare = mode.id
+            syncExpShare()
+        }
+        override val expShareSupported get() = expShareFound != null
+        override val levelCap get() = Prefs(this@PokeDaisyActivity).levelCap
+        override fun setLevelCap(on: Boolean) {
+            if (coopRefuses()) return
+            Prefs(this@PokeDaisyActivity).levelCap = on
+            levelCapAt = 0L
+            syncLevelCap()
+        }
+        override val levelCapSupported get() = levelCapFound != null && levelCapBosses != false
+        override val levelCapLevel get() = levelCapNow?.level
         override val dsResolution get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsResolution else null
         override val dsGpuAvailable get() = GlCaps.gles32(this@PokeDaisyActivity) && MgbaCore.pkNdsGpuSupported() != 0
         override val dsMelonDs get() = !dsperate
@@ -2598,6 +2738,16 @@ class PokeDaisyActivity : Activity() {
         if (::engine.isInitialized) engine.setReusableTms(tmSites, false)
         textPatch = null
         if (::engine.isInitialized) engine.setInstantText(null, false)
+        hmPatch = null
+        syncHmFree(false)
+        centerFound = null
+        expShareFound = null
+        syncExpShare()
+        levelCapFound = null
+        levelCapNow = null
+        levelCapBosses = null
+        levelCapAt = 0L
+        syncLevelCap()
         shinyTarget = null
         if (::engine.isInitialized) engine.setShinyTarget(null)
         syncShinyAchievements()
@@ -2610,6 +2760,17 @@ class PokeDaisyActivity : Activity() {
             val tms = com.pokedaisy.app.companion.data.ReusableTms.find(r.toOkioPath())
             Log.i("pokedaisy", "reusable TMs: ${tms.size} site(s)")
             val text = com.pokedaisy.app.companion.data.InstantText.find(r.toOkioPath())
+            // NO HMS NEEDED: the field move check and Surf's, by their code (none = the row shows N/A).
+            val hm = com.pokedaisy.app.companion.data.HmFree.find(r.toOkioPath())
+            Log.i("pokedaisy", "no HMs needed: ${if (hm != null) "found" else "not found"}")
+            // POKéMON CENTER: the nurse's, the Move Tutor's, the Move Deleter's and the Name Rater's specials, by their code.
+            val expShare = com.pokedaisy.app.companion.data.ExpShare.find(r.toOkioPath())
+            Log.i("pokedaisy", "exp share: ${if (expShare != null) "found" else "not found"}")
+            // LEVEL CAP: the same getexp's two level checks.
+            val levelCap = com.pokedaisy.app.companion.data.LevelCap.find(r.toOkioPath())
+            Log.i("pokedaisy", "level cap: ${if (levelCap != null) "found" else "not found"}")
+            val center = com.pokedaisy.app.companion.data.PokemonCenter.find(r.toOkioPath())
+            Log.i("pokedaisy", "pokemon center: ${center?.let { "heal, nickname ${it.nickname != null}, forget ${it.forget != null}, relearn ${it.relearn != null}" } ?: "not found"}")
             runOnUiThread {
                 if (romData != r) return@runOnUiThread
                 wildFlag = flag
@@ -2618,6 +2779,13 @@ class PokeDaisyActivity : Activity() {
                 if (::engine.isInitialized) engine.setReusableTms(tms, Prefs(this).reusableTms)
                 textPatch = text
                 if (::engine.isInitialized) engine.setInstantText(text, Prefs(this).instantText)
+                hmPatch = hm
+                syncHmFree()
+                centerFound = center
+                expShareFound = expShare
+                syncExpShare()
+                levelCapFound = levelCap
+                syncLevelCap()
             }
         }, "wild-encounters").start()
         Prefs(this).let { p ->
@@ -2749,6 +2917,10 @@ class PokeDaisyActivity : Activity() {
                         nowPlaying()
                     }
                 }
+                // EXP SHARE: the party slots that aren't eggs, for getexp's bits (ExpShare.mark, every frame).
+                if (snap.connected && snap.party.isNotEmpty()) engine.expShareMask = com.pokedaisy.app.companion.data.ExpShare.maskOf(snap.party)
+                // LEVEL CAP: the next boss's top level, from the save's flags.
+                updateLevelCap(snap)
                 // SMART FF reads the game's own gMain once the game is known (no scan
                 // guesswork), and learns the field's main callback from the player moving.
                 telemetry.knownGMain()?.let { (addr, inBattleOff) -> FfMenuWatch.useKnownGMain(addr, inBattleOff) }
@@ -2950,6 +3122,9 @@ class PokeDaisyActivity : Activity() {
         e.ndsCpuBoost = p.dsCpuBoost
         e.setReusableTms(tmSites, p.reusableTms)
         e.setInstantText(textPatch, p.instantText)
+        e.setHmFree(hmPatch, p.hmFree)
+        e.setExpShare(expShareFound, if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(p.expShare) else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF)
+        e.setLevelCap(levelCapFound, if (levelCapFound != null && p.levelCap) levelCapNow?.level ?: 0 else 0)
         e.setShinyTarget(shinyTarget)
         e.shinyOdds = shinyOddsPref()
     }
@@ -5783,6 +5958,8 @@ class PokeDaisyActivity : Activity() {
          *  CONTINUE already change it two or three times (Too Many Types 2 fills it in on the title), so a couple of
          *  steps more. */
         private const val PLAY_POSITIONS = 5
+        /** LEVEL CAP: how often a sample may work the cap out again (a badge moves it). */
+        private const val LEVEL_CAP_EVERY_MS = 2000L
         /** How long a NUZLOCKE notice stays on the game screen: long enough to read in a battle's opening. */
         private const val NUZLOCKE_NOTICE_MS = 3500L
 

@@ -12,6 +12,8 @@ import com.pokedaisy.app.companion.i18n.tk
  */
 enum class QuickAction(val label: String) {
     PC(tk("PC")),
+    /** The POKéMON CENTER's heal (companion.data.PokemonCenter): the whole party, with the nurse's jingle. */
+    HEAL(tk("HEAL")),
     FLY(tk("FLY")),
     /** FREE FLIGHT (Flight.kt): up on the FLY bird, over anything, until LAND (or B). */
     FLIGHT(tk("TAKE OFF")),

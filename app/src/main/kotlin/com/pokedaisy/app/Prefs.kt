@@ -201,6 +201,21 @@ class Prefs(context: Context) {
         get() = p.getBoolean("reusable_tms", false)
         set(v) = p.edit().putBoolean("reusable_tms", v).apply()
 
+    /** EXP SHARE: OFF / SPLIT / FULL, by [com.pokedaisy.app.companion.data.ExpShare.Mode.id]. */
+    var expShare: Int
+        get() = p.getInt("exp_share", 0)
+        set(v) = p.edit().putInt("exp_share", v).apply()
+
+    /** LEVEL CAP: no Pokémon goes past the next boss's top level (LevelCap.kt). */
+    var levelCap: Boolean
+        get() = p.getBoolean("level_cap", false)
+        set(v) = p.edit().putBoolean("level_cap", v).apply()
+
+    /** NO HMS NEEDED: the field moves work without a Pokémon that knows them, once the badge is in (HmFree.kt). */
+    var hmFree: Boolean
+        get() = p.getBoolean("hm_free", false)
+        set(v) = p.edit().putBoolean("hm_free", v).apply()
+
     /** INSTANT TEXT: a text box's words appear at once (InstantText.kt). */
     var instantText: Boolean
         get() = p.getBoolean("instant_text", false)
