@@ -41,8 +41,8 @@ fun aspectLabel(aspect: GameAspect) = aspect.label
 /** DS RESOLUTION's value: ORIGINAL (the DS's own, [scale] 1) or how many times it ("4x"). */
 fun dsResolutionLabel(scale: Int) = if (scale <= 1) tk("ORIGINAL") else "${scale}x"
 
-/** DS RESOLUTION's choices, scale 1 first ([com.pokedaisy.app.DS_RESOLUTION_MAX] of them). */
-fun dsResolutionLabels() = (1..com.pokedaisy.app.DS_RESOLUTION_MAX).map(::dsResolutionLabel)
+/** DS RESOLUTION's choices, scale 1 first ([com.pokedaisy.app.companion.DS_RESOLUTION_MAX] of them). */
+fun dsResolutionLabels() = (1..com.pokedaisy.app.companion.DS_RESOLUTION_MAX).map(::dsResolutionLabel)
 
 /**
  * The top-screen Settings' ASPECT picker: ORIGINAL, STRETCH and WIDE side by

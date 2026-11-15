@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.pad
 import androidx.compose.ui.graphics.ImageBitmap
 import com.pokedaisy.app.companion.i18n.stripAccents
 import androidx.compose.ui.graphics.RectangleShape
@@ -341,7 +342,7 @@ private fun DexRow(
     }
 }
 
-private fun dexNo(n: Int) = "No.%03d".format(n)
+private fun dexNo(n: Int) = "No.${n.pad(3)}"
 
 internal val caughtBall = mapOf(
     'K' to Color(0xFF202020), 'R' to Color(0xFFE83028), 'W' to Color.White, 'H' to Color(0xFFF8A8A0),
@@ -595,7 +596,7 @@ private fun genderLabel(ratio: Int): String = when (ratio) {
         // The data is PERCENT_FEMALE(x) = x * 255 / 100 and every Gen 3 ratio
         // is a multiple of 12.5%: round back to it (31 -> 12.5%, not 12.1%).
         val female = Math.round(ratio * 100 / 255.0 / 12.5).toInt() * 125 // tenths of a percent
-        "♂ %s%%  ♀ %s%%".format(pct(1000 - female), pct(female))
+        "♂ ${pct(1000 - female)}%  ♀ ${pct(female)}%"
     }
 }
 

@@ -4,6 +4,7 @@ import android.content.Context
 import com.pokedaisy.app.companion.data.EMERALD_LOCALIZED_CODES
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
 import com.pokedaisy.app.companion.data.RETAIL_PORT_TITLES
+import com.pokedaisy.app.companion.data.RomCategory
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
 import okio.source
@@ -451,6 +452,3 @@ object GameTitles {
         }
     }
 }
-
-/** What kind of game a ROM is, for the library's tag when it has no cover art: its platform, or a hack. */
-enum class RomCategory(val label: String) { GB("GB"), GBC("GBC"), GBA("GBA"), NDS("NDS"), HACK("HACK") }

@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.DsCore
 import java.io.File
 import java.util.zip.CRC32
 
@@ -70,11 +71,11 @@ class SaveStates(filesDir: File, romCrc: String) {
         const val SLOT_MIN = 0
         const val SLOT_MAX = 9
 
-        /** Where a DS game's resume state ([resumeFile]) waits for DS CORE's [core] (MgbaCore.NDS_CORE_*) while the other
+        /** Where a DS game's resume state ([resumeFile]) waits for DS CORE's [core] (DsCore.CORE_*) while the other
          * core runs the game: states don't cross cores, so the engine sets it aside here and the next start on that core
          * resumes it (PokeDaisyActivity.startGame), if the save file still matches it as any resume must. */
         fun parkedResume(resume: File, core: Int): File =
-            File(resume.parentFile, if (core == MgbaCore.NDS_CORE_DSPERATE) "resume.dsperate" else "resume.melonds")
+            File(resume.parentFile, if (core == DsCore.CORE_DSPERATE) "resume.dsperate" else "resume.melonds")
 
         /** CRC32 of the ROM file (an archive's ROM, see [RomArchive]), as 8 lowercase hex digits. */
         fun crc32(rom: File): String {

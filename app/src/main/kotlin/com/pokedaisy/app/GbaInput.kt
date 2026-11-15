@@ -3,6 +3,7 @@ package com.pokedaisy.app
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import com.pokedaisy.app.companion.data.CoreKey
 import kotlin.math.abs
 
 /**
@@ -149,15 +150,15 @@ class GbaInput : Hotkeys.GameKeys {
     }
 
     private fun keyToBit(keyCode: Int): Int? = when (keyCode) {
-        KeyEvent.KEYCODE_DPAD_UP -> MgbaCore.Key.UP
-        KeyEvent.KEYCODE_DPAD_DOWN -> MgbaCore.Key.DOWN
-        KeyEvent.KEYCODE_DPAD_LEFT -> MgbaCore.Key.LEFT
-        KeyEvent.KEYCODE_DPAD_RIGHT -> MgbaCore.Key.RIGHT
+        KeyEvent.KEYCODE_DPAD_UP -> CoreKey.UP
+        KeyEvent.KEYCODE_DPAD_DOWN -> CoreKey.DOWN
+        KeyEvent.KEYCODE_DPAD_LEFT -> CoreKey.LEFT
+        KeyEvent.KEYCODE_DPAD_RIGHT -> CoreKey.RIGHT
         // Some controllers (8BitDo, GameSir in a few modes) send a diagonal as one key.
-        KeyEvent.KEYCODE_DPAD_UP_LEFT -> MgbaCore.Key.UP or MgbaCore.Key.LEFT
-        KeyEvent.KEYCODE_DPAD_UP_RIGHT -> MgbaCore.Key.UP or MgbaCore.Key.RIGHT
-        KeyEvent.KEYCODE_DPAD_DOWN_LEFT -> MgbaCore.Key.DOWN or MgbaCore.Key.LEFT
-        KeyEvent.KEYCODE_DPAD_DOWN_RIGHT -> MgbaCore.Key.DOWN or MgbaCore.Key.RIGHT
+        KeyEvent.KEYCODE_DPAD_UP_LEFT -> CoreKey.UP or CoreKey.LEFT
+        KeyEvent.KEYCODE_DPAD_UP_RIGHT -> CoreKey.UP or CoreKey.RIGHT
+        KeyEvent.KEYCODE_DPAD_DOWN_LEFT -> CoreKey.DOWN or CoreKey.LEFT
+        KeyEvent.KEYCODE_DPAD_DOWN_RIGHT -> CoreKey.DOWN or CoreKey.RIGHT
         else -> controls[keyCode]   // remappable face/shoulder/menu buttons
     }
 
@@ -175,21 +176,21 @@ class GbaInput : Hotkeys.GameKeys {
             val x = if (abs(hx) > 0.5f) hx else event.getAxisValue(MotionEvent.AXIS_X)
             val y = if (abs(hy) > 0.5f) hy else event.getAxisValue(MotionEvent.AXIS_Y)
             var bits = 0
-            if (x < -DEAD) bits = bits or MgbaCore.Key.LEFT
-            if (x > DEAD) bits = bits or MgbaCore.Key.RIGHT
-            if (y < -DEAD) bits = bits or MgbaCore.Key.UP
-            if (y > DEAD) bits = bits or MgbaCore.Key.DOWN
+            if (x < -DEAD) bits = bits or CoreKey.LEFT
+            if (x > DEAD) bits = bits or CoreKey.RIGHT
+            if (y < -DEAD) bits = bits or CoreKey.UP
+            if (y > DEAD) bits = bits or CoreKey.DOWN
             return bits
         }
 
         private val DEFAULT_CONTROLS = mapOf(
-            KeyEvent.KEYCODE_BUTTON_A to MgbaCore.Key.A, KeyEvent.KEYCODE_Z to MgbaCore.Key.A,
-            KeyEvent.KEYCODE_BUTTON_B to MgbaCore.Key.B, KeyEvent.KEYCODE_X to MgbaCore.Key.B,
-            KeyEvent.KEYCODE_BUTTON_L1 to MgbaCore.Key.L, KeyEvent.KEYCODE_A to MgbaCore.Key.L,
-            KeyEvent.KEYCODE_BUTTON_R1 to MgbaCore.Key.R, KeyEvent.KEYCODE_S to MgbaCore.Key.R,
-            KeyEvent.KEYCODE_BUTTON_START to MgbaCore.Key.START, KeyEvent.KEYCODE_ENTER to MgbaCore.Key.START,
-            KeyEvent.KEYCODE_BUTTON_SELECT to MgbaCore.Key.SELECT,
-            KeyEvent.KEYCODE_BACKSLASH to MgbaCore.Key.SELECT, KeyEvent.KEYCODE_SHIFT_RIGHT to MgbaCore.Key.SELECT,
+            KeyEvent.KEYCODE_BUTTON_A to CoreKey.A, KeyEvent.KEYCODE_Z to CoreKey.A,
+            KeyEvent.KEYCODE_BUTTON_B to CoreKey.B, KeyEvent.KEYCODE_X to CoreKey.B,
+            KeyEvent.KEYCODE_BUTTON_L1 to CoreKey.L, KeyEvent.KEYCODE_A to CoreKey.L,
+            KeyEvent.KEYCODE_BUTTON_R1 to CoreKey.R, KeyEvent.KEYCODE_S to CoreKey.R,
+            KeyEvent.KEYCODE_BUTTON_START to CoreKey.START, KeyEvent.KEYCODE_ENTER to CoreKey.START,
+            KeyEvent.KEYCODE_BUTTON_SELECT to CoreKey.SELECT,
+            KeyEvent.KEYCODE_BACKSLASH to CoreKey.SELECT, KeyEvent.KEYCODE_SHIFT_RIGHT to CoreKey.SELECT,
         )
     }
 }

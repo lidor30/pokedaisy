@@ -1,5 +1,8 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.CoreKey
+import okio.Path
+import okio.Path.Companion.toOkioPath
 import android.view.KeyEvent
 import com.pokedaisy.app.GbaControls.Btn
 import org.junit.Assert.assertEquals
@@ -16,36 +19,36 @@ class GbaControlsDpadTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
-    private fun input(dir: File, ds: Boolean) = GbaInput().apply { setControls(GbaControls.load(dir)); this.ds = ds }
+    private fun input(dir: Path, ds: Boolean) = GbaInput().apply { setControls(GbaControls.load(dir)); this.ds = ds }
 
     @Test fun unboundByDefaultAndTheDpadStillMoves() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         val raw = GbaControls.rawBindings(dir)
         for (b in listOf(Btn.UP, Btn.DOWN, Btn.LEFT, Btn.RIGHT)) assertEquals(emptyList<String>(), raw[b])
         val gba = input(dir, ds = false)
-        assertEquals(MgbaCore.Key.UP, gba.buttonFor(KeyEvent.KEYCODE_DPAD_UP))
+        assertEquals(CoreKey.UP, gba.buttonFor(KeyEvent.KEYCODE_DPAD_UP))
         assertNull(gba.buttonFor(KeyEvent.KEYCODE_C))
     }
 
     @Test fun aLetterBecomesADirectionInEveryGame() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         GbaControls.setBindingNamed(dir, Btn.UP, "C")
         GbaControls.setBindingNamed(dir, Btn.DOWN, "D")
         GbaControls.setBindingNamed(dir, Btn.LEFT, "E")
         GbaControls.setBindingNamed(dir, Btn.RIGHT, "F")
         for (ds in listOf(false, true)) {
             val i = input(dir, ds)
-            assertEquals(MgbaCore.Key.UP, i.buttonFor(KeyEvent.KEYCODE_C))
-            assertEquals(MgbaCore.Key.DOWN, i.buttonFor(KeyEvent.KEYCODE_D))
-            assertEquals(MgbaCore.Key.LEFT, i.buttonFor(KeyEvent.KEYCODE_E))
-            assertEquals(MgbaCore.Key.RIGHT, i.buttonFor(KeyEvent.KEYCODE_F))
+            assertEquals(CoreKey.UP, i.buttonFor(KeyEvent.KEYCODE_C))
+            assertEquals(CoreKey.DOWN, i.buttonFor(KeyEvent.KEYCODE_D))
+            assertEquals(CoreKey.LEFT, i.buttonFor(KeyEvent.KEYCODE_E))
+            assertEquals(CoreKey.RIGHT, i.buttonFor(KeyEvent.KEYCODE_F))
             // The D-pad itself is unchanged.
-            assertEquals(MgbaCore.Key.UP, i.buttonFor(KeyEvent.KEYCODE_DPAD_UP))
+            assertEquals(CoreKey.UP, i.buttonFor(KeyEvent.KEYCODE_DPAD_UP))
         }
     }
 
     @Test fun theKeyLeavesAHotkeyThatWasItAlone() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         // ZOOM is R3 and C by default: C goes to the D-pad, R3 stays ZOOM's.
         assertTrue("C" in Hotkeys.load(dir).rawBindings[Hotkeys.Action.ZOOM].orEmpty())
         GbaControls.setBindingNamed(dir, Btn.UP, "C")
@@ -56,7 +59,7 @@ class GbaControlsDpadTest {
     }
 
     @Test fun cleared() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         GbaControls.setBindingNamed(dir, Btn.UP, "C")
         assertTrue(Btn.UP.canClear)
         GbaControls.clearBinding(dir, Btn.UP)

@@ -3,6 +3,10 @@ package com.pokedaisy.app.companion.ui
 import androidx.compose.ui.graphics.ImageBitmap
 import kotlin.concurrent.Volatile
 import com.pokedaisy.app.companion.data.LockedMap
+import com.pokedaisy.app.companion.data.isFile
+import com.pokedaisy.app.companion.data.readBytes
+import com.pokedaisy.app.companion.data.writeAtomically
+import okio.Path
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -66,17 +70,17 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 
 /**
  * Achievement badges (64x64 PNGs on RetroAchievements' media server), fetched
- * once into [dir] and decoded once. [dir] is set by the game's activity; null
+ * once into [dir] and decoded once. [dir] and [download] are set by the game's activity; [dir] null
  * (screenshot tests) = no downloads, every badge draws [PixelIcons.trophy].
  */
 object AchievementBadges {
-    @Volatile var dir: File? = null
+    @Volatile var dir: Path? = null
+
+    /** The badge's bytes off the network (blocking, IO thread), null when it can't be had: the platform's HTTP. */
+    @Volatile var download: (url: String) -> ByteArray? = { null }
     private val cache = LockedMap<String, ImageBitmap>()
 
     fun cached(url: String): ImageBitmap? = cache[url]
@@ -87,19 +91,8 @@ object AchievementBadges {
         val d = dir ?: return null
         val name = url.substringAfterLast('/').filter { it.isLetterOrDigit() || it == '_' || it == '.' }
         if (name.isEmpty()) return null
-        val f = File(d, name)
-        if (!f.isFile) runCatching {
-            d.mkdirs()
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 10000
-                readTimeout = 15000
-            }
-            val bytes = conn.inputStream.use { it.readBytes() }
-            conn.disconnect()
-            val tmp = File(d, "$name.part")
-            tmp.writeBytes(bytes)
-            tmp.renameTo(f)
-        }
+        val f = d / name
+        if (!f.isFile) runCatching { download(url)?.let { f.writeAtomically(it) } }
         val bmp = runCatching { decodeImage(f.readBytes()) }.getOrNull() ?: return null
         cache[url] = bmp
         return bmp

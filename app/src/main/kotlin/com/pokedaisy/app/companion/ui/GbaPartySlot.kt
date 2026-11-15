@@ -121,8 +121,8 @@ fun GbaPartySlot(
             // Both halves move with the (stretched) bar's right end - they share
             // the slash, so they must stay together.
             // (NUM_PAD: the game's right-align pad character, not a plain space.)
-            px.text(assets, "%3d/".format(mon.hp).replace(' ', NUM_PAD), px.end(st.hpX), px.textY(st.hpY), st.text, st.textShadow)
-            px.text(assets, "/%3d".format(mon.maxHp).replace(' ', NUM_PAD), px.end(st.maxHpX), px.textY(st.hpY), st.text, st.textShadow)
+            px.text(assets, "${mon.hp.toString().padStart(3)}/".replace(' ', NUM_PAD), px.end(st.hpX), px.textY(st.hpY), st.text, st.textShadow)
+            px.text(assets, "/${mon.maxHp.toString().padStart(3)}".replace(' ', NUM_PAD), px.end(st.maxHpX), px.textY(st.hpY), st.text, st.textShadow)
             px.hpBar(mon.hp, mon.maxHp)
         }
         if (statusIdx >= 0) {

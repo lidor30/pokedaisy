@@ -139,7 +139,7 @@ fun CompanionScreen(
     /** WHICH GAME IS THIS? ([com.pokedaisy.app.companion.data.BestEffort]): the player's answers; null = no picker. */
     gamePick: com.pokedaisy.app.companion.GamePickActions? = null,
     /** The match notice's SHARE (the player's yes): sends exactly what it lists. Null = no ask. */
-    shareBestEffort: ((com.pokedaisy.app.companion.data.BestEffortReport) -> Unit)? = null,
+    shareBestEffort: com.pokedaisy.app.companion.data.BestEffortSharing? = null,
 ) {
     // Everything below is keyed on the snapshot's game: the per-game look
     // (backdrops, party slots, bag) reads the plain `activeGame` global, which

@@ -1,9 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
-import androidx.compose.ui.graphics.asImageBitmap
 import kotlin.concurrent.Volatile
 import com.pokedaisy.app.companion.data.LockedLru
-import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -54,7 +52,6 @@ import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.DocsApi
 import com.pokedaisy.app.DocsApi.Block
 import com.pokedaisy.app.DocsSearch
-import com.pokedaisy.app.DocsStore
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.ui.theme.pixelFontFamily
 import com.pokedaisy.app.companion.i18n.tr
@@ -63,29 +60,22 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Where the manual comes from: the website's docs API, kept on disk ([StoreDocsSource]); ui-preview reads
+ * Where the manual comes from: the website's docs API, kept on disk (`StoreDocsSource`); ui-preview reads
  * the site's local build instead.
  */
 interface DocsSource {
     /** The copy kept from last time, or null. Blocking. */
     fun cached(): DocsApi.Manual?
     /** Asks the site for a newer manual. Blocking. */
-    fun refresh(): DocsStore.Refresh
+    fun refresh(): DocsApi.Refresh
     /** An image block's picture, or null (offline and never shown before). Blocking. */
     fun image(manual: DocsApi.Manual, image: Block.Image): ImageBitmap?
 }
 
-/** The source both screens read: the docs API through [DocsStore], unless [override] (ui-preview's local build) is set. */
+/** The source both screens read: the host's (the docs API through `StoreDocsSource` on Android, ui-preview's local build), set at start. */
 object DocsSources {
-    @Volatile var override: DocsSource? = null
-    fun of(context: Context): DocsSource = override ?: StoreDocsSource(context)
-}
-
-class StoreDocsSource(context: Context) : DocsSource {
-    private val app = context.applicationContext
-    override fun cached() = DocsStore.cached(app)
-    override fun refresh() = DocsStore.refresh(app).also { if (it is DocsStore.Refresh.Updated) DocsStore.pruneImages(app, it.manual) }
-    override fun image(manual: DocsApi.Manual, image: Block.Image) = DocsStore.image(app, manual, image)?.asImageBitmap()
+    @Volatile var current: DocsSource? = null
+    fun get(): DocsSource = checkNotNull(current) { "DocsSources.current isn't set" }
 }
 
 /**
@@ -149,9 +139,9 @@ fun DocsReader(
             if (kept != null && ui.manual == null) { ui.manual = kept; ui.search = null }
             if (kept != null) ui.status = DocsUiState.Status.READY
             when (val r = withContext(Dispatchers.IO) { source.refresh() }) {
-                is DocsStore.Refresh.Updated -> { ui.manual = r.manual; ui.search = null; ui.status = DocsUiState.Status.READY }
-                DocsStore.Refresh.Unchanged -> ui.status = DocsUiState.Status.READY
-                is DocsStore.Refresh.Failed -> if (ui.manual == null) ui.status = DocsUiState.Status.OFFLINE
+                is DocsApi.Refresh.Updated -> { ui.manual = r.manual; ui.search = null; ui.status = DocsUiState.Status.READY }
+                DocsApi.Refresh.Unchanged -> ui.status = DocsUiState.Status.READY
+                is DocsApi.Refresh.Failed -> if (ui.manual == null) ui.status = DocsUiState.Status.OFFLINE
             }
         }
     }

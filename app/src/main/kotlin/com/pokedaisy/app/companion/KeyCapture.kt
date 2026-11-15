@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion
 
-import android.view.KeyEvent
+import com.pokedaisy.app.companion.data.KeyCodes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -79,11 +79,10 @@ class KeyCapture {
         onActiveChanged?.invoke(false)
     }
 
-    /** A key event; true when it's the capture's (the caller passes it on otherwise). */
-    fun onKey(event: KeyEvent): Boolean {
-        if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) return active && event.keyCode !in SYSTEM_KEYS
-        return onKey(event.keyCode, event.action == KeyEvent.ACTION_DOWN, event.repeatCount)
-    }
+    /** A key event that's neither a press nor a release (Android's ACTION_MULTIPLE): the capture's while it waits. */
+    fun onOtherKey(keyCode: Int): Boolean = active && keyCode !in SYSTEM_KEYS
+
+    /** A press or release ([repeatCount] > 0: held down); true when it's the capture's (the caller passes it on otherwise). */
 
     fun onKey(keyCode: Int, down: Boolean, repeatCount: Int = 0): Boolean {
         val r = request
@@ -96,7 +95,7 @@ class KeyCapture {
         if (down) {
             swallowUp.remove(keyCode)
             if (repeatCount > 0) return true
-            if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (keyCode == KeyCodes.BACK) {
                 end()
                 swallowUp += keyCode
                 return true
@@ -128,25 +127,25 @@ class KeyCapture {
             ltDown = l; rtDown = r
             return false
         }
-        if (l != ltDown) { ltDown = l; onKey(KeyEvent.KEYCODE_BUTTON_L2, l) }
-        if (r != rtDown) { rtDown = r; onKey(KeyEvent.KEYCODE_BUTTON_R2, r) }
+        if (l != ltDown) { ltDown = l; onKey(KeyCodes.BUTTON_L2, l) }
+        if (r != rtDown) { rtDown = r; onKey(KeyCodes.BUTTON_R2, r) }
         return true
     }
 
     companion object {
         /** Left to Android while capturing: volume, power, HOME, recents. */
         private val SYSTEM_KEYS = setOf(
-            KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE,
-            KeyEvent.KEYCODE_POWER, KeyEvent.KEYCODE_HOME, KeyEvent.KEYCODE_APP_SWITCH,
+            KeyCodes.VOLUME_UP, KeyCodes.VOLUME_DOWN, KeyCodes.VOLUME_MUTE,
+            KeyCodes.POWER, KeyCodes.HOME, KeyCodes.APP_SWITCH,
         )
         /** The GBA's D-pad is fixed to these (GbaInput): a GBA button can't take one. */
         private val DPAD = setOf(
-            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
-            KeyEvent.KEYCODE_DPAD_UP_LEFT, KeyEvent.KEYCODE_DPAD_UP_RIGHT, KeyEvent.KEYCODE_DPAD_DOWN_LEFT, KeyEvent.KEYCODE_DPAD_DOWN_RIGHT,
+            KeyCodes.DPAD_UP, KeyCodes.DPAD_DOWN, KeyCodes.DPAD_LEFT, KeyCodes.DPAD_RIGHT,
+            KeyCodes.DPAD_UP_LEFT, KeyCodes.DPAD_UP_RIGHT, KeyCodes.DPAD_DOWN_LEFT, KeyCodes.DPAD_DOWN_RIGHT,
         )
 
         /** A key's name as stored ("BUTTON_A", "Z"). */
-        fun keyName(keyCode: Int): String = KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
+        fun keyName(keyCode: Int): String = KeyCodes.name(keyCode)
 
         /** A stored key name as the player reads it: "BUTTON_L1" -> "L1", "SHIFT_RIGHT" -> "SHIFT RIGHT". */
         fun label(name: String) = name.replace("BUTTON_", "").replace('_', ' ')

@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.pad
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.RectangleShape
@@ -233,7 +234,7 @@ fun evoReqText(r: EvoReq): String = when (r) {
         else tr("defeat {0} holding {1}", r.count, itemName(r.item))
     is EvoReq.UsedMove -> tr("use {0} {1} times", lookupMove(r.move).name, r.times)
     is EvoReq.Region -> (if (r.not) tr("outside {0}", regionName(r.region)) else tr("in {0}", regionName(r.region)))
-    is EvoReq.Hours -> "%02d:00-%02d:00".format(r.from, r.to)
+    is EvoReq.Hours -> "${r.from.pad(2)}:00-${r.to.pad(2)}:00"
     EvoReq.Spin -> tr("Spin around")
     EvoReq.AfterBattle -> tr("After a battle")
     EvoReq.InBattle -> tr("in battle")

@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.ui.PortraitLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -155,7 +156,7 @@ class PortraitLayoutTest {
     fun diagonalKeysPressBothDirections() {
         val input = GbaInput()
         input.onKey(android.view.KeyEvent.KEYCODE_DPAD_UP_LEFT, true)
-        assertEquals(MgbaCore.Key.UP or MgbaCore.Key.LEFT, input.mask)
+        assertEquals(CoreKey.UP or CoreKey.LEFT, input.mask)
         input.onKey(android.view.KeyEvent.KEYCODE_DPAD_UP_LEFT, false)
         assertEquals(0, input.mask)
     }
