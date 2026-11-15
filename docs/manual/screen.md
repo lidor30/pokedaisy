@@ -238,6 +238,25 @@ The dates follow your device's calendar. If two holidays overlap (`LUNAR NEW YEA
 
 Tap the readout to open a longer panel with frame times, late frames, the screen's refresh and pacing, audio underruns, battery temperature, thermal state and memory. It's useful when a game feels choppy; see [Troubleshooting](troubleshooting.md#the-game-feels-choppy-or-the-device-runs-hot).
 
+## Game look
+
+`COMPANION LOOK`, right under `THEME`, picks how the companion and the HUD look in a game. On `GAME` (the default), they take on the style of the game you're playing, from the colors of its own menus:
+
+| Game | Companion | HUD |
+| --- | --- | --- |
+| HeartGold, SoulSilver | Grey blue windows with a dark line, red values, orange buttons | The green menu window, with a red cursor |
+| Platinum | White windows in a brown wooden frame, cream lists | Dark slate panels with a silver line |
+| Black, White | Navy windows with a cyan rim, charcoal lists and buttons | Navy panels with a cyan rim and a magenta cursor |
+| Black 2, White 2 | Violet windows with a white rim, teal values | Violet panels with a pink cursor |
+| FireRed, LeafGreen | The bag's cream list in its gold frame | The bag's window |
+| Emerald | The bag's cream list in its steel blue frame | The bag's window |
+| Ruby, Sapphire | Emerald's frame with their bag's warmer peach list | The bag's window |
+| X, Y | Smooth green windows and a rounded font | Their own buttons and panels |
+
+Hacks that run on one of these games wear its look. Other games keep the app's own look. Your theme and `DARK MODE` still apply around them: in dark mode the light looks give way to the app's dark windows, while Black and White's darker looks stay as they are.
+
+Pick `CLASSIC` to keep the app's own look in every game, X and Y included. The HUD's own `LOOK` setting picks `GAME` for the game's style or one of the app's looks; see [HUD](hud.md).
+
 ## Light companion for slow devices
 
 On a slower handheld, the companion can keep the device so busy that your button presses reach the game late: you press a button and nothing happens for a moment, often right after `FIGHT` while the companion draws your moves. `LIGHT COMPANION` makes the companion easier on the device:

@@ -907,6 +907,8 @@ private fun homeRows(
                 ) { l -> themes.firstOrNull { it.label == l }?.let { s.setAppTheme(it.id); com.pokedaisy.app.companion.ui.theme.AppColors.applyTheme(it) } })
             }
         },
+        // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
+        gameLookRow(changed),
         // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
         SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
             val pick = DarkMode.setting.next()

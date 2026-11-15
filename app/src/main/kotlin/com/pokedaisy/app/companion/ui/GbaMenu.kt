@@ -99,7 +99,7 @@ object OptionColors {
     private val gen1 get() = inGame && activeGame.isGameBoyGame
 
     /** A game's skin's own palette ([CompanionSkins.current]), or null: OptionColors' own. */
-    private val sk: SkinColors? get() = CompanionSkins.current.colors
+    private val sk: SkinColors? get() = CompanionSkins.current.activeColors
 
     /** A game's screens are up (PokeDaisyActivity resumed); Compose state, so the look follows at once. */
     var inGame: Boolean
@@ -423,6 +423,8 @@ fun OptionLine(
     labelBadge: String? = null,
     /** Pixel art before the label (RetroAchievements' trophy), a line high. */
     labelIcon: (@Composable () -> Unit)? = null,
+    /** [labelIcon]'s square, when not a line high (HUD's / QUICK MENU's SHOW rows: their parts' 16-pixel icons). */
+    labelIconSize: Dp? = null,
     /** An [OptionBadge] after the value. */
     valueBadge: String? = null,
     /** False greys the row out and ignores taps (a setting another one has turned off). */
@@ -469,7 +471,7 @@ fun OptionLine(
             // The label and value columns stay where they are with or without a chevron, so values line up down a list.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(labelWeight), verticalAlignment = Alignment.CenterVertically) {
-                    labelIcon?.let { Box(Modifier.size(m.lineHeight)) { it() }; Spacer(Modifier.width(m.u * 4)) }
+                    labelIcon?.let { Box(Modifier.size(labelIconSize ?: m.lineHeight)) { it() }; Spacer(Modifier.width(m.u * 4)) }
                     val labelColor = if (enabled) OptionColors.label else OptionColors.muted
                     val labelShadow = if (enabled) OptionColors.labelShadow else OptionColors.mutedShadow
                     GbaText(tr(label), labelColor, labelShadow, m)
@@ -638,11 +640,15 @@ fun OptionButton(
     // colours of its own (a field move's blue), greyed out or asked to stay plain keeps the usual look.
     val rainbowSlot = remember { OptionColors.nextRainbowSlot() }
     val colors = if (!rainbow || !enabled || labelColors != null || frameLayers != null) null else OptionColors.rainbow(rainbowSlot)
+    // A game's skin's own buttons (HeartGold's orange, Black's charcoal plates), where it has them and nothing above asks
+    // for another look.
+    val skin = CompanionSkins.current.activeColors?.takeIf { colors == null && labelColors == null && frameLayers == null && it.buttonFill != null }
     val fg = when {
         !enabled -> OptionColors.muted
         labelColors != null -> labelColors.first
         colors != null -> colors.text
         emphasis -> OptionColors.value
+        skin?.buttonText != null -> skin.buttonText
         else -> OptionColors.label
     }
     val shadow = when {
@@ -650,6 +656,7 @@ fun OptionButton(
         labelColors != null -> labelColors.second
         colors != null -> colors.shadow
         emphasis -> OptionColors.valueShadow
+        skin?.buttonShadow != null -> skin.buttonShadow
         else -> OptionColors.labelShadow
     }
     Row(
@@ -662,9 +669,10 @@ fun OptionButton(
             .heightIn(min = m.rowHeight)
             .drawBehind {
                 drawLayeredBox(
-                    (frameLayers ?: colors?.frame ?: OptionColors.titleLayers).inPx(u.toPx()),
+                    (frameLayers ?: colors?.frame ?: skin?.buttonLayers ?: OptionColors.titleLayers).inPx(u.toPx()),
                     when {
                         colors != null -> if (focused) colors.focusFill else colors.fill
+                        skin?.buttonFill != null -> if (focused) androidx.compose.ui.graphics.lerp(skin.buttonFill, Color.White, 0.25f) else skin.buttonFill
                         focused -> OptionColors.listFill
                         else -> OptionColors.titleFill
                     },

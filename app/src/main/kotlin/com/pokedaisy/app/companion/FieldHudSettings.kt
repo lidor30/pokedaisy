@@ -22,6 +22,10 @@ enum class FieldHudLayout(val label: String) {
 
 /** How the HUD's windows are drawn. */
 enum class FieldHudLook(val label: String) {
+    /** The running game's own look (its companion skin's HUD: HeartGold's green menu window, Black's navy panels...);
+     * GLASS for a game without one. The default. */
+    GAME(tk("GAME")),
+
     /** See-through dark panels with light text: as little of the game hidden as can be. */
     GLASS(tk("GLASS")),
 
@@ -56,7 +60,7 @@ enum class FieldHudPart(val label: String) {
 /** The player's choices for the HUD (SETTINGS > HUD). */
 data class FieldHudStyle(
     val layout: FieldHudLayout = FieldHudLayout.CORNERS,
-    val look: FieldHudLook = FieldHudLook.GLASS,
+    val look: FieldHudLook = FieldHudLook.GAME,
     val size: FieldHudSize = FieldHudSize.NORMAL,
     val hidden: Set<FieldHudPart> = emptySet(),
 ) {

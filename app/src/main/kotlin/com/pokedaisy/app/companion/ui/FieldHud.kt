@@ -172,7 +172,7 @@ fun fieldHudRows(
         ) {
             if (!FieldHudFit.tight) setStyle(style.copy(layout = style.layout.next()))
         },
-        SettingRow(tk("LOOK"), style.look.label, enabled = on) {
+        SettingRow(tk("LOOK"), style.look.label, enabled = on, labelBadge = NewFeatures.badge(NewFeatures.GAME_LOOK)) {
             setStyle(style.copy(look = style.look.next()))
         },
         SettingRow(tk("SIZE"), style.size.label, enabled = on) {
@@ -184,9 +184,27 @@ fun fieldHudRows(
             FieldHudPart.PC -> NewFeatures.badge(NewFeatures.HUD_PC)
             FieldHudPart.REPEL -> NewFeatures.badge(NewFeatures.HUD_REPEL)
             else -> null
-        }) {
+        }, labelIcon = hudPartIcon(p), iconPixels = ROW_ICON_PIXELS) {
             setStyle(style.copy(hidden = if (style.shows(p)) style.hidden + p else style.hidden - p))
         }
+    }
+}
+
+/** The SHOW rows' icons' size (HUD and QUICK MENU), in GBA pixels: the HUD buttons' own. */
+internal const val ROW_ICON_PIXELS = 16
+
+/** [part]'s icon on its SHOW row: the HUD's own where it draws pixel art, a stand-in where it shows the game's
+ * (SettingIcons.kt). */
+private fun hudPartIcon(part: FieldHudPart): @Composable () -> Unit = {
+    val fill = Modifier.fillMaxSize()
+    when (part) {
+        FieldHudPart.PARTY -> PixelArt(PARTY_ROW_ICON, PARTY_ROW_COLORS, fill)
+        FieldHudPart.MAP -> PixelArt(MAP_ICON, MAP_COLORS, fill)
+        FieldHudPart.BALLS -> TabIcons.forTab("PARTY")?.let { PixelArt(it.bitmap, it.palette, fill) }
+        FieldHudPart.REPEL -> PixelArt(REPEL_ROW_ICON, REPEL_ROW_COLORS, fill)
+        FieldHudPart.PC -> PixelArt(PC_ICON, PC_COLORS, fill)
+        FieldHudPart.BAG -> PixelArt(BAG_ICON, BAG_COLORS, fill)
+        FieldHudPart.WILD -> PixelArt(GRASS_ICON, GRASS_COLORS, fill)
     }
 }
 
@@ -247,12 +265,51 @@ private fun hudShadow(look: FieldHudLook): Color = when (look) {
     FieldHudLook.GLASS -> Color(0x80060810)
     FieldHudLook.WHITE_GLASS -> Color(0x4C141820)
     FieldHudLook.WINDOW -> OptionColors.titleLayers.first().first
+    FieldHudLook.GAME -> gameHud?.dropShadow ?: Color(0x80060810)
 }
 
 internal val LocalHudLook = staticCompositionLocalOf { FieldHudLook.GLASS }
 
-/** A see-through look (GLASS or WHITE GLASS), not the app's windows. */
-internal val FieldHudLook.glass get() = this != FieldHudLook.WINDOW
+/** A see-through look (GLASS or WHITE GLASS), not the app's windows (WINDOW, or GAME: the game's own, whose summary and
+ * map titles are the skinned companion's windows). */
+internal val FieldHudLook.glass get() = this == FieldHudLook.GLASS || this == FieldHudLook.WHITE_GLASS
+
+/** The running game's HUD palette (its [CompanionSkin.hud]); null for a game without one. */
+internal val gameHud: SkinHud? get() = CompanionSkins.current.hud
+
+/** LOOK as drawn: GAME is the game's own HUD where its skin has one, else GLASS (a hack in the app's look). */
+internal fun FieldHudLook.resolved(): FieldHudLook = if (this == FieldHudLook.GAME && gameHud == null) FieldHudLook.GLASS else this
+
+/**
+ * A GAME look window: [fill] (see-through) inside rings of [layers] (GBA pixels each, outside in), so a translucent fill
+ * isn't painted over the frame's inner colour as [drawLayeredBox] would. With [low], a button's face: [fill] over [low].
+ */
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRingedBox(
+    layers: List<Pair<Color, Int>>, fill: Color, radius: Float, px: Float, low: Color? = null,
+) {
+    val total = layers.sumOf { it.second } * px
+    val inner = Size(size.width - 2 * total, size.height - 2 * total)
+    val innerR = (radius - total).coerceAtLeast(px)
+    if (low == null) drawPixelRoundRect(fill, Offset(total, total), inner, radius = innerR, step = px)
+    else {
+        // Each band painted once (see-through), the two soft lines between them.
+        val split = total + inner.height * 0.47f
+        fun band(c: Color, from: Float, to: Float) = clipRect(top = from, bottom = to) {
+            drawPixelRoundRect(c, Offset(total, total), inner, radius = innerR, step = px)
+        }
+        band(fill, 0f, split)
+        band(androidx.compose.ui.graphics.lerp(fill, low, 0.35f), split, split + px)
+        band(androidx.compose.ui.graphics.lerp(fill, low, 0.7f), split + px, split + 2 * px)
+        band(low, split + 2 * px, size.height)
+    }
+    var inset = 0f
+    var r = radius
+    for ((color, width) in layers) repeat(width) {
+        drawPixelRoundFrame(color, Offset(inset, inset), Size(size.width - 2 * inset, size.height - 2 * inset), r.coerceAtLeast(px), px, step = px)
+        inset += px
+        r -= px
+    }
+}
 
 internal val ink: HudInk
     @Composable get() = when (LocalHudLook.current) {
@@ -264,6 +321,9 @@ internal val ink: HudInk
             OptionColors.muted,
             OptionColors.listFill, if (OptionColors.dark) OptionColors.rowSelected else Color(0xFFFFE9A8), OptionColors.divider,
         )
+        FieldHudLook.GAME -> gameHud?.let { h ->
+            HudInk(h.text, h.shadow, h.accent, h.accentShadow, h.onAccent, h.muted, h.cell, h.cellOn, h.divider)
+        } ?: GLASS_INK
     }
 
 /**
@@ -275,11 +335,13 @@ internal val ink: HudInk
 internal fun Modifier.hudPanel(u: Dp, radius: Int = 3, shadow: Boolean = true): Modifier {
     val look = LocalHudLook.current
     val shade = hudShadow(look)
+    val hud = gameHud
     return drawBehind {
         val px = u.toPx()
         if (shadow) drawPixelRoundRect(shade, Offset(HUD_SHADOW * px, HUD_SHADOW * px), size, radius = (radius + 1) * px, step = px)
         when (look) {
             FieldHudLook.WINDOW -> drawLayeredBox(OptionColors.titleLayers.inPx(px), OptionColors.titleFill, radius = radius * px)
+            FieldHudLook.GAME -> hud?.let { drawRingedBox(it.layers, it.fill, (radius + 1) * px, px) }
             FieldHudLook.GLASS -> {
                 drawPixelRoundRect(GLASS_FILL, radius = (radius + 1) * px, step = px)
                 drawPixelRoundFrame(GLASS_EDGE, Offset.Zero, size, (radius + 1) * px, px, step = px)
@@ -302,12 +364,16 @@ internal fun Modifier.hudPanel(u: Dp, radius: Int = 3, shadow: Boolean = true): 
 internal fun Modifier.hudButtonFace(u: Dp, selected: Boolean = false, solid: Boolean = true, shadow: Boolean = false): Modifier {
     val look = LocalHudLook.current
     val shade = hudShadow(look)
+    val hud = gameHud
+    val flat = CompanionSkins.current.flatFaces
+    val pick = hudSelected(look)
     return drawBehind {
         val px = u.toPx()
         val r = 4 * px
         if (shadow) drawPixelRoundRect(shade, Offset(HUD_SHADOW * px, HUD_SHADOW * px), size, radius = r, step = px)
         when (look) {
             FieldHudLook.WINDOW -> drawLayeredBox(OptionColors.titleLayers.inPx(px), OptionColors.titleFill, radius = 3 * px, twoTone = true)
+            FieldHudLook.GAME -> hud?.let { drawRingedBox(it.buttonLayers, it.buttonTop, r, px, low = it.buttonLow.takeUnless { flat }) }
             FieldHudLook.GLASS, FieldHudLook.WHITE_GLASS -> {
                 val (top, low, edge) = when {
                     look == FieldHudLook.GLASS -> if (solid) HudGlassButton else HudGlassFace
@@ -324,14 +390,28 @@ internal fun Modifier.hudButtonFace(u: Dp, selected: Boolean = false, solid: Boo
                 drawPixelRoundFrame(edge, Offset.Zero, size, r, px, step = px)
             }
         }
-        if (selected) drawPixelRoundFrame(HUD_SELECTED, Offset(px, px), Size(size.width - 2 * px, size.height - 2 * px), r - px, px, step = px)
+        if (selected && look == FieldHudLook.GAME) {
+            // A game's look: its frame is two coloured rings already, so a one-pixel line inside it got lost (FireRed's
+            // gold, Emerald's blue). The face tinted with the cursor colour and a ring two pixels thick over the frame.
+            drawPixelRoundRect(pick.copy(alpha = 0.22f), Offset(2 * px, 2 * px), Size(size.width - 4 * px, size.height - 4 * px), radius = r - 2 * px, step = px)
+            drawPixelRoundFrame(pick, Offset.Zero, size, r, px, step = px)
+            drawPixelRoundFrame(pick, Offset(px, px), Size(size.width - 2 * px, size.height - 2 * px), r - px, px, step = px)
+        } else if (selected) drawPixelRoundFrame(pick, Offset(px, px), Size(size.width - 2 * px, size.height - 2 * px), r - px, px, step = px)
     }
 }
 
+/** The look's "this one" rim: the party screen's orange, or the game's own cursor colour under GAME. */
+internal fun hudSelected(look: FieldHudLook): Color = if (look == FieldHudLook.GAME) gameHud?.selected ?: HUD_SELECTED else HUD_SELECTED
+
 /** The picked one of a panel's cells (BAG's item): the party screen's orange round its edge. */
-private fun Modifier.hudPicked(u: Dp, picked: Boolean): Modifier = if (!picked) this else drawBehind {
-    val px = u.toPx()
-    drawPixelRoundFrame(HUD_SELECTED, Offset.Zero, size, 3 * px, px, step = px)
+@Composable
+private fun Modifier.hudPicked(u: Dp, picked: Boolean): Modifier {
+    if (!picked) return this
+    val c = hudSelected(LocalHudLook.current)
+    return drawBehind {
+        val px = u.toPx()
+        drawPixelRoundFrame(c, Offset.Zero, size, 3 * px, px, step = px)
+    }
 }
 
 /** A small button inside a HUD panel: [label] (or [icon]) on [hudButtonFace]. */
@@ -354,7 +434,11 @@ private fun HudPanelButton(
 /** How much deeper the look's window edge reaches in than the glass's one GBA pixel: WINDOW's frame layers. Content
  * against an edge (the minimap's name, a button's label) adds it, so it keeps the same room in every look. */
 @Composable
-internal fun hudEdge(u: Dp): Dp = if (LocalHudLook.current == FieldHudLook.WINDOW) u * 2 else 0.dp
+internal fun hudEdge(u: Dp): Dp = when (LocalHudLook.current) {
+    FieldHudLook.WINDOW -> u * 2
+    FieldHudLook.GAME -> u * ((gameHud?.layers?.sumOf { it.second } ?: 1) - 1).coerceAtLeast(0)
+    else -> 0.dp
+}
 
 /** Whole screen pixels per party-icon pixel: one a GBA pixel (3 on the Thor). */
 private fun hudIconScale(m: GbaTextMetrics): Int = max(1, m.px)
@@ -493,7 +577,7 @@ fun FieldHud(
     val hudDensity = remember(k, base.fontScale) { Density(k * 16f / 20f, base.fontScale) }
     val scale = HUD_SCALE
 
-    CompositionLocalProvider(LocalHudLook provides style.look) {
+    CompositionLocalProvider(LocalHudLook provides style.look.resolved()) {
         BoxWithConstraints(modifier.fillMaxSize().alpha(alpha)) {
             // The picture's insets from this box's edges (px): what the HUD keeps to.
             val boxW = with(base) { maxWidth.toPx() }
@@ -1396,14 +1480,20 @@ internal fun HudSummaryPanel(
     val look = when (LocalHudLook.current) {
         FieldHudLook.GLASS -> HudGlassLook
         FieldHudLook.WHITE_GLASS -> HudWhiteGlassLook
-        FieldHudLook.WINDOW -> HudWindowLook
+        FieldHudLook.WINDOW, FieldHudLook.GAME -> HudWindowLook
     }
     HudPanelScrim(onClose, Alignment.Center) { window ->
         BoxWithConstraints(Modifier.fillMaxSize().padding(u * 10), contentAlignment = Alignment.Center) {
             // The companion's own proportions (the Thor's bottom screen), as tall as there's room for, up to the companion
             // window's height.
             val h = minOf(maxHeight, OVERLAY_MAX_HEIGHT_DP.dp)
-            Box(Modifier.width(minOf(maxWidth, h * 1.15f)).height(h).then(window)) {
+            // No taller than four moves need (the summary's own text: name, then type / PWR / PP, with a little air): the
+            // moves share the window's height, and at the full height each row was mostly empty. As wide as before.
+            val sm = rememberGbaTextMetrics()
+            val moveRow = sm.lineHeight + rememberGbaTextMetrics(1f).lineHeight + sm.u * 16
+            // The summary's buttons under the window (STATS, LEARN, CENTER...), where it may have some.
+            val buttons = if (learn != null || itemUse != null || snapshot.party.getOrNull(index)?.stats != null) SummaryButtonSize + 8.dp else 0.dp
+            Box(Modifier.width(minOf(maxWidth, h * 1.15f)).height(minOf(h, moveRow * 4 + sm.u * 24 + buttons)).then(window)) {
                 CompositionLocalProvider(LocalOptionLook provides look) {
                     MonDetailScreen(
                         snapshot.party, index.coerceIn(0, (snapshot.party.size - 1).coerceAtLeast(0)),

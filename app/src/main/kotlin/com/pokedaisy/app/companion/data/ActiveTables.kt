@@ -56,6 +56,11 @@ var romLanguage = 'E'
 /** The running retail ROM's game code when it has names of its own ("BPED", "AXVF"); else "". */
 var romGameCode = ""
 
+/** The running cart's own header game code ("AXVE", "BPGE", ...), whatever names it has: the companion's look tells
+ * Ruby / Sapphire (which run as EMERALD) from Emerald by it. Set by the Poller once it knows the game; "" before. */
+@Volatile
+var romHeaderCode = ""
+
 /** The running game's own names (EmeraldLanguages.kt); null for English and every game without them. */
 val localText: GameText? get() = if (romGameCode.isEmpty()) null else gameText(romGameCode)
 
