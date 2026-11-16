@@ -27,6 +27,7 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
+        commonTest { dependencies { implementation(kotlin("test")) } }
         commonMain {
             kotlin.srcDir(app)
             kotlin.include(sharedUiSources)

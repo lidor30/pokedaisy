@@ -22,7 +22,7 @@ val desktopTarget = System.getProperty("os.name").lowercase().let { os ->
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appSrc = fileTree(app) {
-    listOf("companion/data/**", "companion/*.kt", "companion/i18n/**", "companion/coop/**", "FeatureFlags.kt", "MgbaCore.kt", "Prefs.kt", "cheats/Cheats.kt", "GbaControls.kt", "Hotkeys.kt", "GameVolume.kt")
+    listOf("companion/data/**", "companion/*.kt", "companion/i18n/**", "companion/coop/**", "FeatureFlags.kt", "MgbaCore.kt", "Prefs.kt", "PrefsAndroid.kt", "cheats/Cheats.kt", "GbaControls.kt", "Hotkeys.kt", "GameVolume.kt")
         .forEach { include(it) }
 }
 sourceSets["main"].kotlin.srcDir("shims")

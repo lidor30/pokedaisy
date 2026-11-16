@@ -263,7 +263,15 @@ data class TouchControlsStyle(
         /** FF and the QUICK MENU to start with (a phone has no other way to open it), ZOOM and REWIND (no R3, no hotkey). */
         val DEFAULT_EXTRAS = setOf(TouchButton.FF, TouchButton.QUICK_MENU, TouchButton.ZOOM, TouchButton.REWIND)
     }
+
+    /** Draw only controls a host can act on, preserving the stored choices for future capabilities. */
+    fun forButtons(available: Set<TouchButton>) = copy(
+        extras = extras.intersect(available), xyButtons = xyButtons && TouchButton.X in available && TouchButton.Y in available,
+    )
 }
+
+/** The docked companion's first width, as a fraction of the window (Prefs.sidePanelWidth's default; the iPad's). */
+const val SIDE_PANEL_DEFAULT_WIDTH = 0.5f
 
 /**
  * The game screen as the touch controls see it, in px: its size, the game's picture, the companion (a phone held

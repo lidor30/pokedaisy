@@ -58,12 +58,11 @@ gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt, t
 	python3 scripts/gen_nds_ports.py
 	python3 scripts/gen_area_maps.py
 
-# Unfiltered runs cover both modules. A focused run (T='*FooTest') goes to the module(s) whose tests the filter names
-# (scripts/test_module.py; MODULE=app / MODULE=shared forces one), so a misspelled filter still fails in Gradle.
+# Unfiltered runs cover all three modules; focused filters discover their owning modules.
 MODULE ?= $(if $(strip $(T)),$(shell python3 scripts/test_module.py '$(T)'))
-UNIT_TESTS = $(if $(strip $(T)),$(foreach m,$(MODULE),:$(m):testDebugUnitTest --tests '$(T)'),:app:testDebugUnitTest :shared:testDebugUnitTest)
+UNIT_TESTS = $(if $(strip $(T)),$(foreach m,$(MODULE),:$(m):testDebugUnitTest --tests '$(T)'),:app:testDebugUnitTest :shared:testDebugUnitTest :shared-ui:testDebugUnitTest)
 
-test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (T='*FooTest' to pick)
+test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (MODULE=shared T='*FooTest' to pick)
 	./gradlew $(UNIT_TESTS) -Pquick
 
 test: ## All JVM unit tests, Paparazzi renders included (CLAUDE.md: agents ask first)

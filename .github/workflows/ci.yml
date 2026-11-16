@@ -63,7 +63,7 @@ jobs:
       # ROM-backed tests skip here (no ROMs in CI - they run on the release runner);
       # fixtures, guards, Paparazzi renders and everything else run.
       - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest :shared:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:testDebugUnitTest :shared:testDebugUnitTest :shared-ui:testDebugUnitTest --stacktrace
 
       - name: Debug APK (Kotlin + the native mGBA / rcheevos build)
         run: ./gradlew :app:assembleDebug --stacktrace
@@ -76,6 +76,7 @@ jobs:
           path: |
             app/build/reports/tests/
             shared/build/reports/tests/
+            shared-ui/build/reports/tests/
           retention-days: 7
 
   # The companion's data and language code (shared/) for the iPad: Kotlin/Native's iOS compile runs on Linux too
@@ -160,7 +161,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
 
       - name: Run shared platform smoke tests on iOS
-        run: ./gradlew :shared:iosSimulatorArm64Test --stacktrace
+        run: ./gradlew :shared:iosSimulatorArm64Test :shared-ui:iosSimulatorArm64Test --stacktrace
 
       - name: Simulator test reports
         if: failure()
