@@ -306,8 +306,9 @@ class N3dsSession(
                     seen = now
                     // The game holding the player (talking, a scene, a door): the HUD's bottom row steps away at once and
                     // comes back after a few free reads (no blink between two lines or through a door).
-                    val heldNow = onField && config.fieldHold != 0 &&
-                        (N3dsNative.readMemory(intArrayOf(config.fieldHold, 4))?.takeIf { it.size == 4 }?.let { it[0].toInt() and config.fieldHoldMask != 0 } == true)
+                    val holdAt = if (onField && config.fieldHold != 0) Gen6Reader.chained(config.fieldHold, config.fieldHoldPath, ::readInt) else null
+                    val heldNow = holdAt != null &&
+                        (N3dsNative.readMemory(intArrayOf(holdAt, 4))?.takeIf { it.size == 4 }?.let { it[0].toInt() and config.fieldHoldMask != 0 } == true)
                     freeReads = if (heldNow) 0 else freeReads + 1
                     val held = heldNow || freeReads < FIELD_FREE_READS
                     if (held != fieldHeld) { fieldHeld = held; ui.post { onFieldHeld(held) } }
@@ -317,10 +318,7 @@ class N3dsSession(
                     zoomable = canZoom
                     readBattle(config, if (modules.split('\n').contains(config.battleModule)) modules else null)
                 }
-                if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) {
-                    fieldShot()
-                    if (layout.family == N3dsLayout.Family.SM) rotomMapShot()
-                }
+                if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) fieldShot()
                 if (com.pokedaisy.app.BuildConfig.DEBUG) debugCommands(pass % FIELD_SHOT_EVERY == 1)
             }
             try { Thread.sleep(SCENE_MS) } catch (_: InterruptedException) { break }
@@ -545,7 +543,9 @@ class N3dsSession(
                 Gen6Reader.Battle(Gen6Reader.battleInput(ui), player, foe)
             }
             config.battleMenu != 0 -> {
-                val bytes = N3dsNative.readMemory(intArrayOf(config.battleMenu, 1, config.battleSubmenu, 1))
+                val menuAt = Gen6Reader.chained(config.battleMenu, config.battleMenuPath, ::readInt)
+                val subAt = Gen6Reader.chained(config.battleSubmenu, config.battleSubmenuPath, ::readInt)
+                val bytes = if (menuAt == null || subAt == null) null else N3dsNative.readMemory(intArrayOf(menuAt, 1, subAt, 1))
                 val input = if (bytes != null && bytes.size >= 2)
                     Gen6Reader.battleInputSm(bytes[0].toInt() and 0xFF, bytes[1].toInt() and 0xFF)
                     else com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
@@ -634,7 +634,11 @@ class N3dsSession(
 
     /** The field menu's bytes ([Gen6Reader.sceneOf]): the field's object from its root, then the pointer and flag in it. */
     private fun fieldMenu(config: Gen6Reader.Config): ByteArray? {
-        if (config.fieldMenuWord != 0) return N3dsNative.readMemory(intArrayOf(config.fieldMenuWord, 1, config.fieldHold, 1))
+        if (config.fieldMenuWord != 0) {
+            val menu = Gen6Reader.chained(config.fieldMenuWord, config.fieldMenuPath, ::readInt) ?: return null
+            val hold = Gen6Reader.chained(config.fieldHold, config.fieldHoldPath, ::readInt) ?: return null
+            return N3dsNative.readMemory(intArrayOf(menu, 1, hold, 1))
+        }
         if (config.fieldMenuRoot == 0) return null
         val root = N3dsNative.readMemory(intArrayOf(config.fieldMenuRoot, 4))?.takeIf { it.size == 4 } ?: return null
         val obj = java.nio.ByteBuffer.wrap(root).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(0)
@@ -661,25 +665,6 @@ class N3dsSession(
         ui.post { onFieldShot(bmp) }
     }
 
-    /**
-     * Sun / Moon: Rotom's map off the field's touch screen (the game's own, the player in the middle), for the HUD's
-     * minimap and MAP while there's no Town Map read from the cart. Kept from the last bright frame.
-     */
-    private fun rotomMapShot() {
-        val px = screenshot(BOTTOM_W, BOTTOM_H, bottom = true) ?: return
-        var sum = 0L
-        for (i in px.indices step 11) { val c = px[i]; sum += ((c shr 16) and 0xFF) + ((c shr 8) and 0xFF) + (c and 0xFF) }
-        if (sum / (3 * ((px.size + 10) / 11)) < FIELD_SHOT_DARK) return
-        val crop = IntArray(ROTOM_MAP_W * ROTOM_MAP_H)
-        for (y in 0 until ROTOM_MAP_H) System.arraycopy(px, (ROTOM_MAP_Y + y) * BOTTOM_W + ROTOM_MAP_X, crop, y * ROTOM_MAP_W, ROTOM_MAP_W)
-        val bmp = runCatching {
-            android.graphics.Bitmap.createBitmap(crop, ROTOM_MAP_W, ROTOM_MAP_H, android.graphics.Bitmap.Config.ARGB_8888)
-        }.getOrNull() ?: return
-        mapHere = com.pokedaisy.app.companion.ui.XyMapSpot(
-            "", null, ROTOM_MAP_W, ROTOM_MAP_H, ROTOM_MAP_W / 2f, ROTOM_PLAYER_Y, 0f, 0f, live = bmp,
-        )
-    }
-
     // ---- the companion's snapshot -------------------------------------------------------------------------------
 
     private val sampler = Thread({
@@ -688,12 +673,18 @@ class N3dsSession(
             if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile(), layout)) com.pokedaisy.app.companion.data.RomArt.announce()
         }.onFailure { Log.w(TAG, "icons failed", it) }
         // The Town Map's picture and pin (once per cart), and every zone's place on it (X / Y, Omega Ruby / Alpha
-        // Sapphire: Sun / Moon's isn't read yet).
+        // Sapphire); Sun / Moon's islands' pictures, the pin following the player ([SmTownMap]).
         val townMap = Gen6TownMap.specFor(layout)
         val townSpots = if (townMap == null) emptyMap() else runCatching {
             if (Gen6TownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile(), layout)) com.pokedaisy.app.companion.data.RomArt.announce()
             Gen6TownMap.spots(rom, layout)
         }.onFailure { Log.w(TAG, "town map failed", it) }.getOrDefault(emptyMap())
+        val smZones = if (layout.family != N3dsLayout.Family.SM) null else runCatching {
+            if (SmTownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile())) com.pokedaisy.app.companion.data.RomArt.announce()
+            SmTownMap.zones(rom)
+        }.onFailure { Log.w(TAG, "town map failed", it) }.getOrNull()
+        var smLast: com.pokedaisy.app.companion.ui.XyMapSpot? = null
+        var smLastIsland = 0
         val config = Gen6Reader.configFor(titleId)
         var textLanguage = -1
         val zones = Gen6Zones.load(rom, layout)
@@ -718,6 +709,23 @@ class N3dsSession(
                                 townMap.map, townMap.pinAsset, townMap.width, townMap.height, it.x, it.y, it.w, it.h,
                             )
                         }
+                    }
+                    if (smZones != null && config.playerPos != 0) {
+                        // Outdoors: the player's position on its island's picture; indoors: the last outdoor spot there.
+                        val island = smZones.island.getOrElse(sample.zone) { 0 }
+                        if (island != 0 && smZones.outdoor[sample.zone]) {
+                            N3dsNative.readMemory(intArrayOf(config.playerPos, 12))?.takeIf { it.size == 12 }?.let { pos ->
+                                val b = java.nio.ByteBuffer.wrap(pos).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                                val (x, y) = SmTownMap.spot(b.getFloat(0), b.getFloat(8))
+                                if (x in 0f..SmTownMap.SIZE.toFloat() && y in 0f..SmTownMap.SIZE.toFloat()) {
+                                    smLast = com.pokedaisy.app.companion.ui.XyMapSpot(
+                                        SmTownMap.asset(island), null, SmTownMap.SIZE, SmTownMap.SIZE, x, y, 10f, 10f,
+                                    )
+                                    smLastIsland = island
+                                }
+                            }
+                        }
+                        mapHere = if (island != 0 && island == smLastIsland) smLast else null
                     }
                     val view = SnapshotView(
                         connected = true,
@@ -768,15 +776,6 @@ class N3dsSession(
         private const val STICK_DEAD = 0.12f
         private const val SAMPLE_MS = 1000L
         private const val SCENE_MS = 100L
-        /** The touch screen, and where Rotom's map shows on it in Sun / Moon's field (under Rotom's eyes, inside its
-         * frame; the player's arrow in the middle across, [ROTOM_PLAYER_Y] down: Sun's field, headless). */
-        private const val BOTTOM_W = 320
-        private const val BOTTOM_H = 240
-        private const val ROTOM_MAP_X = 30
-        private const val ROTOM_MAP_Y = 100
-        private const val ROTOM_MAP_W = 260
-        private const val ROTOM_MAP_H = 124
-        private const val ROTOM_PLAYER_Y = 58f
         /** The field's picture every this many scene reads (a second), at the 3DS's own top-screen size. */
         private const val FIELD_SHOT_EVERY = 10
         /** Scene reads the field must hold coming out of one of the game's screens (see the scene thread). */

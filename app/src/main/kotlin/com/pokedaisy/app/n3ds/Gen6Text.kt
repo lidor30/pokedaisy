@@ -490,7 +490,9 @@ object Gen6Wild {
     private fun sunMoon(fs: RomFs): List<List<Table>>? {
         val zoneFiles = fs.read("a/0/7/7")?.let { Gen6Text.garcFiles(it) } ?: return null
         val zoneCount = Gen6Text.unlz(zoneFiles.getOrNull(0) ?: return null).size / N3dsLayout.SM.zoneRecord
+        // Each area's zones, in the order the world lists them (the order of the area's per-zone event lists).
         val areaOf = HashMap<Int, Int>()
+        val zonesOf = HashMap<Int, MutableList<Int>>()
         fs.read("a/0/9/1")?.let { Gen6Text.garcFiles(it) }?.forEach { f ->
             val e = Gen6Text.packed(Gen6Text.unlz(f)).firstOrNull() ?: return@forEach
             if (e.size < 16) return@forEach
@@ -498,26 +500,73 @@ object Gen6Wild {
             var k = b.getInt(8)
             val end = minOf(b.getInt(12), e.size)
             while (k + 4 <= end) {
-                areaOf[b.getShort(k).toInt() and 0xFFFF] = b.getShort(k + 2).toInt() and 0xFFFF
+                val zone = b.getShort(k).toInt() and 0xFFFF
+                val area = b.getShort(k + 2).toInt() and 0xFFFF
+                areaOf[zone] = area
+                zonesOf.getOrPut(area) { ArrayList() }.add(zone)
                 k += 4
             }
         }
         // Sun's archive or Moon's (the other path is an empty file): one area's file at a time, never the whole archive.
         val enc = SM_ENCOUNTERS.firstOrNull { p -> fs.garcFile(p, 9) != null } ?: return null
-        val byArea = HashMap<Int, List<Table>>()
+        val byZone = HashMap<Int, List<Table>>()
+        val done = HashSet<Int>()
         return (0 until zoneCount).map { z ->
             val area = areaOf[z] ?: return@map emptyList()
-            byArea.getOrPut(area) { smArea(fs.garcFile(enc, 11 * area + 9) ?: ByteArray(0)) }
+            if (done.add(area)) {
+                val sets = Gen6Text.packed(Gen6Text.unlz(fs.garcFile(enc, 11 * area + 9) ?: ByteArray(0)))
+                val events = Gen6Text.packed(Gen6Text.unlz(fs.garcFile(enc, 11 * area) ?: ByteArray(0)))
+                val zones = zonesOf[area].orEmpty()
+                val picks = smZoneTables(sets, events, zones.size)
+                zones.forEachIndexed { i, zone -> byZone[zone] = smArea(sets, picks[i]) }
+            }
+            byZone[z].orEmpty()
+        }
+    }
+
+    /**
+     * Which of an area's encounter tables ([sets]) each of its [zoneCount] zones has, from the area's event lists
+     * ([events], each a pack of one list a zone, in the world's zone order): list 6 places the grass / water patches,
+     * each naming its table (type 6, the table at +4); fishing tables (kind 6) go to the zones with fishing spots (lists
+     * 12 / 13), and the tables no patch names (berry piles, rustling spots) to the zones with list 5's other points.
+     * Checked on Sun's areas: Kala'e Bay gets the Bagon / Slowpoke table and surfing, Route 3 the Cutiefly / Delibird
+     * ones; Hau'oli Outskirts the Slowpoke / Wingull, Route 1 its three level ranges, Melemele Sea the surfing.
+     */
+    private fun smZoneTables(sets: List<ByteArray>, events: List<ByteArray>, zoneCount: Int): List<Set<Int>> {
+        if (zoneCount <= 1) return List(zoneCount) { sets.indices.toSet() }
+        fun perZone(list: Int): List<ByteArray> = events.getOrNull(list)?.let(Gen6Text::packed).orEmpty()
+        fun count(z: ByteArray) = if (z.size < 4) 0 else ByteBuffer.wrap(z).order(ByteOrder.LITTLE_ENDIAN).getInt(0)
+        val patches = perZone(6)
+        val named = List(zoneCount) { HashSet<Int>() }
+        for (zi in 0 until zoneCount) {
+            val z = patches.getOrNull(zi) ?: continue
+            val b = ByteBuffer.wrap(z).order(ByteOrder.LITTLE_ENDIAN)
+            val n = count(z)
+            for (r in 0 until n) {
+                val o = 4 + r * 28
+                if (o + 8 > z.size) break
+                val table = b.getInt(o + 4)
+                if (b.getInt(o) == 6 && table in sets.indices) named[zi] += table
+            }
+        }
+        if (named.all { it.isEmpty() }) return List(zoneCount) { sets.indices.toSet() }
+        val fishing = sets.indices.filter { sets[it].size >= 4 && ByteBuffer.wrap(sets[it]).order(ByteOrder.LITTLE_ENDIAN).getInt(0) == 6 }
+        val rest = sets.indices.filter { i -> named.none { i in it } && i !in fishing }
+        val fishSpots = (0 until zoneCount).filter { zi -> count(perZone(12).getOrNull(zi) ?: ByteArray(0)) > 0 || count(perZone(13).getOrNull(zi) ?: ByteArray(0)) > 0 }
+        val points = (0 until zoneCount).filter { zi -> count(perZone(5).getOrNull(zi) ?: ByteArray(0)) > 0 }
+        return (0 until zoneCount).map { zi ->
+            named[zi] + (if (fishSpots.isEmpty() || zi in fishSpots) fishing.filter { named.none { s -> it in s } } else emptyList()) +
+                (if (points.isEmpty() || zi in points) rest else emptyList())
         }
     }
 
     private class Met(var percent: Int, var min: Int, var max: Int, val form: Int)
 
-    private fun smArea(f: ByteArray): List<Table> {
-        val sets = Gen6Text.packed(Gen6Text.unlz(f))
+    private fun smArea(sets: List<ByteArray>, only: Set<Int>): List<Table> {
         val day = LinkedHashMap<String, LinkedHashMap<Int, Met>>()
         val night = LinkedHashMap<Int, Met>()
-        for (e in sets) {
+        for ((i, e) in sets.withIndex()) {
+            if (i !in only) continue
             if (e.size < SM_SET) continue
             val b = ByteBuffer.wrap(e).order(ByteOrder.LITTLE_ENDIAN)
             val method = when (b.getInt(0)) {

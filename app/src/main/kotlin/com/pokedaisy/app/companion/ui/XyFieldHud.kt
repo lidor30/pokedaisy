@@ -57,12 +57,7 @@ import com.pokedaisy.app.companion.i18n.tr
 
 /** Where the player is on the game's Town Map (the 3DS session reads it from the cart, Gen6TownMap): the picture's
  * rom-art path and size, and the place's middle and size in its pixels. */
-data class XyMapSpot(
-    val asset: String, val pin: String?, val mapW: Int, val mapH: Int, val x: Float, val y: Float, val w: Float, val h: Float,
-    /** A picture of the game's own map taken live (Sun / Moon: Rotom's map off the touch screen, the player already on it)
-     * instead of [asset]: drawn whole, no pin of ours. */
-    val live: android.graphics.Bitmap? = null,
-)
+data class XyMapSpot(val asset: String, val pin: String?, val mapW: Int, val mapH: Int, val x: Float, val y: Float, val w: Float, val h: Float)
 
 /** A wild Pokemon of the zone the player is in, ready to draw: the 3DS session builds these from the cart (Gen6Wild). */
 data class XyWildRow(val method: String, val name: String, val iconAsset: String?, val minLevel: Int, val maxLevel: Int, val percent: Int)
@@ -200,21 +195,13 @@ private fun rememberXyArt(path: String?): androidx.compose.ui.graphics.ImageBitm
     return remember(path, gen) { path?.let { GameArt.get(it) } }
 }
 
-/** [map]'s picture: its live one, else the rom-art one. */
-@Composable
-private fun rememberXyMap(map: XyMapSpot): androidx.compose.ui.graphics.ImageBitmap? {
-    val art = rememberXyArt(if (map.live != null) null else map.asset)
-    val live = remember(map.live) { map.live?.asImageBitmap() }
-    return live ?: art
-}
-
 /** The minimap: a window on the Town Map round the player's place, in the HUD's frame (X's green, Y's red), the pin in the middle. */
 @Composable
 private fun XyMinimap(map: XyMapSpot, frame: Rect, p: Float, tint: XyTint, onClick: () -> Unit) {
     val density = LocalDensity.current
     fun dp(px: Float) = with(density) { px.toDp() }
-    val picture = rememberXyMap(map)
-    val pin = if (map.live != null) null else rememberXyArt(map.pin)
+    val picture = rememberXyArt(map.asset)
+    val pin = rememberXyArt(map.pin)
     val w = 86f * p
     val h = 54f * p
     val border = 2.6f * p
@@ -229,9 +216,8 @@ private fun XyMinimap(map: XyMapSpot, frame: Rect, p: Float, tint: XyTint, onCli
             val rim = Rect(0.8f * p, 0.8f * p, size.width - 0.8f * p, size.height - 0.8f * p)
             drawRoundRect(Brush.verticalGradient(listOf(tint.rimTop, tint.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(6.2f * p))
             val inner = Rect(border, border, size.width - border, size.height - border)
-            // About a third of Kalos across, the place in the middle (moved in at the map's edges); a live map most of
-            // its width.
-            val k = inner.width / (if (map.live != null) map.mapW * 0.8f else 110f)
+            // About a third of Kalos across, the place in the middle (moved in at the map's edges).
+            val k = inner.width / 110f
             val cw = inner.width / k
             val ch = inner.height / k
             val cx = (map.x - cw / 2).coerceIn(0f, (map.mapW - cw).coerceAtLeast(0f))
@@ -250,8 +236,7 @@ private fun XyMinimap(map: XyMapSpot, frame: Rect, p: Float, tint: XyTint, onCli
                     )
                 }
                 val c = Offset(inner.left + (map.x - cx) * k, inner.top + (map.y - cy) * k)
-                if (map.live != null) Unit
-                else if (pin != null) {
+                if (pin != null) {
                     val ps = 15f * p
                     drawImage(
                         pin, dstOffset = androidx.compose.ui.unit.IntOffset((c.x - ps / 2).toInt(), (c.y - ps * 0.92f).toInt()),
@@ -269,8 +254,8 @@ private fun XyMinimap(map: XyMapSpot, frame: Rect, p: Float, tint: XyTint, onCli
 private fun XyMapPanel(map: XyMapSpot, place: String, frame: Rect, p: Float, bottomRoom: Float, tint: XyTint, onClose: () -> Unit) {
     val density = LocalDensity.current
     fun dp(px: Float) = with(density) { px.toDp() }
-    val picture = rememberXyMap(map)
-    val pin = if (map.live != null) null else rememberXyArt(map.pin)
+    val picture = rememberXyArt(map.asset)
+    val pin = rememberXyArt(map.pin)
     Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, null, onClick = onClose))
     // As large as fits over the top screen above the buttons, the picture's own shape.
     val border = 4f * p
@@ -298,8 +283,7 @@ private fun XyMapPanel(map: XyMapSpot, place: String, frame: Rect, p: Float, bot
                     dstSize = androidx.compose.ui.unit.IntSize(inner.width.toInt(), inner.height.toInt()),
                 )
             }
-            // The place's area, lit and pulsing (a live map shows the player itself).
-            if (map.live != null) return@Canvas
+            // The place's area, lit and pulsing.
             val aw = maxOf(map.w, 8f) * k
             val ah = maxOf(map.h, 8f) * k
             val c = Offset(inner.left + map.x * k, inner.top + map.y * k)

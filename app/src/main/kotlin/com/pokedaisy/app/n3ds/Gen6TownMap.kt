@@ -198,6 +198,9 @@ object Gen6TownMap {
 
     /** A BCLIM as ARGB: ETC1 (10) and ETC1A4 (11) in 8 x 8 tiles of four 4 x 4 blocks; the picture is the first [h]
      * stored rows, top first, of a power-of-two store. Other formats: null (the map and pin are ETC). */
+    /** ETC1 (10) / ETC1A4 (11) [data] of a [w] x [h] picture, as [decode] reads a BCLIM's (Sun / Moon's BFLIMs too). */
+    internal fun decodeEtc(data: ByteArray, w: Int, h: Int, format: Int): RomArt.Image? = decode(Clim(w, h, format, data))
+
     private fun decode(c: Clim): RomArt.Image? {
         if (c.format != 10 && c.format != 11) return null
         val sw = pow2(c.w)

@@ -334,6 +334,8 @@ headless with n3ds_dump on the players' saves (`~/Downloads/3ds-saves/main (1)`,
   Growl), so ORAS has the battle buttons; its touch screen's buttons cover X's points (`N3dsBattleTaps.ORAS`).
 - The camera: the field object +0xE8, +0x5C, +0xAF8 is X's controller, its setup at +0x64 (pitch -40.74, FOV 30): a distance
   and a yaw written there moved the camera (`Gen6Reader.Camera`), so ZOOM and the free camera work.
+- Save's question loads `DllReport` beside the field, as X's (the window floats in for it); the field's touch screen is the
+  PlayNav, a plain field like X's PSS. The camera's chain holds from Route 101 into Littleroot.
 - Getting there headless: a save edited to stand in grass. The situation is in the save twice (0x1400 and +0xF4, the second is
   what a load reads); +6 is 0 outdoors, 3 indoors (a house's 3 kept outdoors hung the field's load). Easiest: walk out, save
   in game on the route, then move that save's coordinates (scratch tools: `place.py`, the block CRC16s fixed).
@@ -384,13 +386,24 @@ Sun boots that Moon save too and reads it at every address below (party, bag, My
   same chain on every Moon dump): the pitch in radians at +0x10, the yaw at +0x14, the distance at +0x20 (756.8, the camera's
   distance from its target). Written there, it pulled back, turned and tilted. The game walks relative to the yaw by itself
   (turned 0.8, DOWN walked diagonally), so the circle pad isn't turned for it (`Camera.turnsPad`).
-- The map: the HUD's minimap and MAP show Rotom's own map, cropped off the field's touch screen once a second
-  (`N3dsSession.rotomMapShot`, `XyMapSpot.live`: the player's arrow is the game's, in the middle). The cart's Town Map is
-  `a/2/3/4`'s two ALYT archives (a SARC inside: `TownMap_MAP_LOW_000.bflyt` with each island's `land_0N` picture and an
-  `Area_II_NN` pane per map area, `zone_II_NN.bflim` the areas' highlights); which area a zone is in wasn't found (the zone
-  records carry the island at +0x4E, not the area), so it isn't read yet.
-- Wild Pokemon stay per area: an area's encounter pack holds one table per grass patch (Route 1's area: 17 tables for its 3
-  zones), and which patch is in which zone is in the map's own data.
+- The Town Map (`SmTownMap`): `a/2/3/4`'s first file (LZ11, an ALYT with a SARC inside) has each island's picture,
+  `timg/land_0N.bflim` (1 Melemele, 2 Akala, 3 Ula'ula, 4 Poni; 256 x 256 ETC1A4 stored transposed, the BFLIM's swizzle 8).
+  The pin is the player's live world position (0x30001B2C, x / y / z floats) on its island's picture, one scale and offset
+  for every island (0.0059 a unit, -11.99 / -26.09): fitted on Sun standing at Heahea City's Pokemon Center, then every
+  island's zone arrival points (`a/0/7/7` +0x10 / +0x18) fall on their places and the Moon save's Seafolk Village on its
+  Pokemon Center. A zone's island is its record's +0x4E; outdoors = its island's main world (`a/0/7/7`'s second file); indoors
+  the pin stays where the player went in. The layout's `Area_II_NN` panes and `zone_II_NN` highlights aren't used: which
+  area a zone is in wasn't found.
+- Wild Pokemon per zone (`Gen6Wild.smZoneTables`): an area's encounter pack holds a table per patch, and the area's event
+  file (`11 * area`, "ED", 16 lists each a pack of one list a zone, in the world's zone order) places them: list 6's records
+  (28 bytes, type 6, the table at +4) are the grass / water patches; fishing tables go to the zones with fishing spots
+  (lists 12 / 13), the tables no patch names to the zones with list 5's other points. Checked: Kala'e Bay gets the Bagon /
+  Slowpoke table and surfing, Route 3 the Cutiefly / Delibird ones; Route 1's outskirts the beach's Slowpoke / Wingull.
+- The X menu and the hold byte move with the heap from save to save (Sun's own save: 0x300064AD, not the Moon save's
+  0x30004D1D), so they're read through pointer chains from the heap's fixed start, the same on every dump of both saves
+  (`Gen6Reader.chained`): the menu byte [0x300002A0] +0x2A8, +0x235 (the camera's object: +0x374), the hold [0x30001A9C]
+  +0x7C, +0x14C; the battle's menu and bag / party bytes [0x30000380] +0x1D0, +0xC08 and +0x1B8, +0x170. Save's question
+  keeps the menu byte at 1 (the window stays). Party, MyStatus, bag and zone are fixed (checked on Sun's own save too).
 - Headless: Sun / Moon walk with the circle pad (n3ds_dump's `CUP` / `CDOWN` / `CLEFT` / `CRIGHT`); their D-pad only turns
   the player. Route 4 from Heahea City: round the hotel's garden to its east, then north.
 - The cart (`N3dsLayout.SM`): text `a/0/3/<0 kana, 1 kanji, 2 English, 3 French, 4 Italian, 5 German, 6 Spanish, 7 Korean, 8 / 9
@@ -399,7 +412,7 @@ Sun boots that Moon save too and reads it at every address below (party, bag, My
   record, the place line a u16 at +0x1C); icons `a/0/6/2` (1134 BFLIM: 64 x 32 RGBA5551 stored turned, `Gen6Icons.decode7`).
 - Wild Pokemon (`Gen6Wild.sunMoon`): a zone's area from `a/0/9/1`'s (zone, area) pairs, the area's tables in the encounter
   archive (Sun `a/0/8/2`, Moon `a/0/8/3`, 348 MB: read one file at a time, `RomFs.garcFile`), day and night tables of 10 slots
-  plus SOS sets. An area holds several zones' tables and which patch is which zone's is in the map, so a zone lists its area's.
+  plus SOS sets; split by zone below.
 - The look: `CompanionSkins.POKEMON_SM` (the X menu's indigo bands round white rows over its cyan), `SmBag`, the party screen and
   the HUD in Sun's orange / Moon's indigo (`XyTint.SUN` / `MOON`).
 

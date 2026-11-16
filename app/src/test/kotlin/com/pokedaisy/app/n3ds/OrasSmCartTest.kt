@@ -117,14 +117,45 @@ class OrasSmCartTest {
         assertEquals("Route 1", Gen6Zones.placeName(zones, t, 0))
         assertEquals("Iki Town", Gen6Zones.placeName(zones, t, 10))
         val wild = Gen6Wild.load(sun, l) ?: throw AssertionError("no wild", Gen6Wild.lastError)
-        val route1 = wild[0].first { it.method == "GRASS / CAVE" }.slots.map { it.species }.toSet()
+        // Per zone, from the area's patches: Route 1 (zone 1) its grass, Route 1's outskirts (zone 0) the beach's
+        // Slowpoke / Wingull and surfing, Melemele Sea (zone 6) the surfing alone.
+        fun species(z: Int, method: String) = wild[z].firstOrNull { it.method == method }?.slots?.map { it.species }?.toSet().orEmpty()
+        val route1 = species(1, "GRASS / CAVE")
         assertTrue(route1.containsAll(setOf(734, 731, 10, 165))) // Yungoos, Pikipek, Caterpie, Ledyba
-        assertTrue(wild[0].first { it.method == "AT NIGHT" }.slots.any { it.species == 19 && it.form == 1 }) // Alolan Rattata
+        assertTrue(79 !in route1) // no Slowpoke
+        assertTrue(wild[1].first { it.method == "AT NIGHT" }.slots.any { it.species == 19 && it.form == 1 }) // Alolan Rattata
+        assertTrue(species(0, "GRASS / CAVE").containsAll(setOf(79, 278))) // Slowpoke, Wingull
+        assertEquals(setOf(72, 456, 278), species(6, "SURFING")) // Tentacool, Finneon, Wingull
+        assertTrue(species(6, "GRASS / CAVE").isEmpty())
+        // Route 3 (zone 2) and Kala'e Bay (zone 4), one area: Delibird on the route, Bagon in the bay.
+        assertTrue(225 in species(2, "GRASS / CAVE") && 371 !in species(2, "GRASS / CAVE").minus(species(4, "GRASS / CAVE")))
+        assertTrue(371 in species(4, "GRASS / CAVE") && 225 !in species(4, "GRASS / CAVE"))
         assertEquals(1, l.iconIndex(1, 0, false))
         val icons = RomFs(sun).use { it.read(l.iconPath) }!!.let { Gen6Text.garcFiles(it) }
         assertEquals(1134, icons.size)
         val bulbasaur = Gen6Icons.decode7(icons[1])!!
         assertTrue(bulbasaur.argb.count { it != 0 } > 150)
+    }
+
+    /** Sun's islands' maps and where the pin goes: Heahea City's Pokemon Center (where Sun's save stands) on its icon,
+     * every island's main-world zones on land. Writes Akala with the pin to build/n3ds-sm-akala.png. */
+    @Test fun sunsTownMap() {
+        assumeTrue(sun.isFile)
+        val pictures = SmTownMap.readPictures(sun)
+        assertEquals(setOf(1, 2, 3, 4), pictures.keys)
+        assertTrue(pictures.values.all { it.width == 256 && it.height == 256 })
+        val zones = SmTownMap.zones(sun)!!
+        assertEquals(2, zones.island[77])
+        assertTrue(zones.outdoor[77])   // Heahea City
+        assertTrue(!zones.outdoor[134]) // its Pokemon Center
+        assertEquals(4, zones.island[238])
+        val (x, y) = SmTownMap.spot(15253f, 30524f)
+        assertEquals(78, x.toInt())
+        assertEquals(154, y.toInt())
+        val akala = pictures.getValue(2)
+        assertTrue((akala.argb[y.toInt() * 256 + x.toInt()] ushr 24) > 128)
+        for (dx in -2..2) for (dy in -2..2) akala.argb[(y.toInt() + dy) * 256 + x.toInt() + dx] = 0xFFFF0000.toInt()
+        File("build/n3ds-sm-akala.png").writeBytes(akala.png())
     }
 
     @Test fun moonHasItsOwnWildPokemon() {
@@ -177,6 +208,19 @@ class SmReaderTest {
         assertEquals(19, mon.species)
         assertEquals(11, mon.level)
         assertEquals(listOf(39, 98, 116, 44), mon.moves.map { it.id })
+    }
+
+    /** The X menu's and the hold's bytes through their chains: Sun's own save (the field object at 0x30006278, its menu
+     * byte 0x300064AD) and the Moon save (0x30004AE8 / 0x30004D1D) read the same way. */
+    @Test fun menuBytesFollowTheirChains() {
+        fun mem(vararg words: Pair<Int, Int>): (Int) -> Int? = { a -> words.toMap()[a] }
+        val sun = mem(0x300002A0 to 0x3000760C, 0x3000760C + 0x2A8 to 0x30006278)
+        assertEquals(0x300064AD, Gen6Reader.chained(c.fieldMenuWord, c.fieldMenuPath, sun))
+        val moon = mem(0x300002A0 to 0x30005E7C, 0x30005E7C + 0x2A8 to 0x30004AE8)
+        assertEquals(0x30004D1D, Gen6Reader.chained(c.fieldMenuWord, c.fieldMenuPath, moon))
+        assertEquals(null, Gen6Reader.chained(c.fieldMenuWord, c.fieldMenuPath, mem()))
+        // X / ORAS: a plain address.
+        assertEquals(0x08D1E3FC, Gen6Reader.chained(0x08D1E3FC, null, mem()))
     }
 
     @Test fun cameraIsMapped() {

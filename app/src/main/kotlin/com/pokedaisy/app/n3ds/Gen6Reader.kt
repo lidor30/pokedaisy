@@ -50,8 +50,13 @@ object Gen6Reader {
          * records ([battlerPlayer] / [battlerFoe]). */
         val battleMenu: Int = 0,
         val battleSubmenu: Int = 0,
+        /** [battleMenu] / [battleSubmenu] as roots with these paths ([chained]), where the bytes move with the heap. */
+        val battleMenuPath: IntArray? = null,
+        val battleSubmenuPath: IntArray? = null,
         val battlerPlayer: Int = 0,
         val battlerFoe: Int = 0,
+        /** Sun / Moon: the player's live world position (floats x, y, z), for the Town Map's pin ([SmTownMap]). */
+        val playerPos: Int = 0,
         /** Where a battler's four moves start in its record ([battleMon]): X / ORAS +0x116, Sun / Moon +0x1FC. */
         val battleMovesAt: Int = 0x116,
         /** The field camera ([Camera]); null where it isn't mapped (no ZOOM or free camera there). */
@@ -73,9 +78,26 @@ object Gen6Reader {
         val fieldMenuWord: Int = 0,
         /** [fieldHold]'s bits that mean held (X / ORAS [FIELD_HELD]; Sun / Moon bit 0). */
         val fieldHoldMask: Int = FIELD_HELD,
+        /** Sun / Moon: [fieldMenuWord] and [fieldHold] are roots, not the bytes ([chained]): their objects move with the
+         * heap from save to save, so the pointers are followed each read. */
+        val fieldMenuPath: IntArray? = null,
+        val fieldHoldPath: IntArray? = null,
     )
 
     class Pocket(val offset: Int, val capacity: Int, val companionPocket: Int)
+
+    /** The address [path] leads to from [root] ([readWord] reads the game's memory): the word at [root], then for each
+     * offset but the last the word that far into the last object, and the last offset added; [root] itself without a
+     * path. Null where a pointer isn't one into the heap. */
+    fun chained(root: Int, path: IntArray?, readWord: (Int) -> Int?): Int? {
+        if (path == null || path.isEmpty()) return root
+        var a = readWord(root) ?: return null
+        for (off in path.dropLast(1)) {
+            if (!inHeap(a)) return null
+            a = readWord(a + off) ?: return null
+        }
+        return if (inHeap(a)) a + path.last() else null
+    }
 
     /**
      * Where a game keeps its field camera's settings and how: the word at [root] is an object, then each of [path]
@@ -191,10 +213,16 @@ object Gen6Reader {
             Pocket(0xD68, 30, com.pokedaisy.app.companion.data.POCKET_KEY_ITEMS),
         ),
         staticModule = 0x00869000,
-        fieldMenuWord = 0x30004D1D,
-        // 2 on the field and in the X menu, 3 with a text box up (Sun, the Ride Pokemon's "can't call it here" box twice,
-        // field / box / field / box dumps); the menu byte above is 1 under a text box as well.
-        fieldHold = 0x300046C8,
+        // The X menu's byte: in the field object the camera's in ([0x300002A0] +0x2A8, then +0x235): 1 while the menu
+        // or Save's question is up, 0 on the field. First found at a fixed 0x30004D1D in the Moon save; Sun's own save
+        // has it elsewhere (0x300064AD), so the chain, which reads the same on every dump of both saves.
+        fieldMenuWord = 0x300002A0,
+        fieldMenuPath = intArrayOf(0x2A8, 0x235),
+        // The hold byte ([0x30001A9C] +0x7C, then +0x14C; the Moon save's 0x300046C8): 2 on the field and in the X menu,
+        // 3 with a text box up (Sun, the Ride Pokemon's "can't call it here" box twice, field / box / field / box
+        // dumps); the menu byte above is 1 under a text box as well.
+        fieldHold = 0x30001A9C,
+        fieldHoldPath = intArrayOf(0x7C, 0x14C),
         fieldHoldMask = 1,
         languageAt = 0x35,
         bagGen7 = true,
@@ -213,11 +241,19 @@ object Gen6Reader {
         fieldTouch = emptySet(),
         // The battle (Sun, headless, two wild battles on Route 4 - a Grubbin, an Alolan Rattata - each at the command
         // menu, the moves, back, the cursor moved, the bag, the party and mid-turn): the same bytes in both.
-        battleMenu = 0x3003D508,
-        battleSubmenu = 0x302E13E0,
+        // The bytes sat at 0x3003D508 / 0x302E13E0 in both battles; read through the heap's fixed start
+        // ([0x30000380] +0x1D0, +0xC08 and +0x1B8, +0x170: the same in every dump of both) since the X menu's moved
+        // between saves.
+        battleMenu = 0x30000380,
+        battleMenuPath = intArrayOf(0x1D0, 0xC08),
+        battleSubmenu = 0x30000380,
+        battleSubmenuPath = intArrayOf(0x1B8, 0x170),
         battlerPlayer = 0x30000404,
         battlerFoe = 0x30000420,
         battleMovesAt = 0x1FC,
+        // Rewritten every frame from the player's object outdoors (Sun: walking moved it, written by 0x725E9C); indoors
+        // it holds something else, so it's read only on the island's main world.
+        playerPos = 0x30001B2C,
     )
 
     /** What the game's two screens show, for where the touch screen goes ([sceneOf]). */

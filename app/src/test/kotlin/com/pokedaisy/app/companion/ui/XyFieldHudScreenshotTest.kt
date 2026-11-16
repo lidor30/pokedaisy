@@ -46,21 +46,9 @@ abstract class XyFieldHudShots(w: Int, h: Int, density: Density = Density.XHIGH)
     @Test fun hudOmegaRuby() = shot(GameKind.POKEMON_OMEGA_RUBY, openWild = true)
     @Test fun hudAlphaSapphire() = shot(GameKind.POKEMON_ALPHA_SAPPHIRE)
     @Test fun hudSun() = shot(GameKind.POKEMON_SUN, openWild = true)
-    @Test fun hudMoon() = shot(GameKind.POKEMON_MOON, liveMap = true)
+    @Test fun hudMoon() = shot(GameKind.POKEMON_MOON)
 
-    /** Sun / Moon's live map (Rotom's off the touch screen): a drawn stand-in, roads on grass, the player's arrow. */
-    private fun rotomStandIn(): android.graphics.Bitmap {
-        val b = android.graphics.Bitmap.createBitmap(260, 124, android.graphics.Bitmap.Config.ARGB_8888)
-        val c = android.graphics.Canvas(b)
-        c.drawColor(0xFF4C8A3C.toInt())
-        val road = android.graphics.Paint().apply { color = 0xFF8C8C8C.toInt() }
-        c.drawRect(40f, 50f, 260f, 66f, road)
-        c.drawRect(122f, 0f, 138f, 124f, road)
-        c.drawCircle(130f, 58f, 7f, android.graphics.Paint().apply { color = 0xFFF2C21A.toInt() })
-        return b
-    }
-
-    private fun shot(game: GameKind, openWild: Boolean = false, liveMap: Boolean = false) = paparazzi.snapshot {
+    private fun shot(game: GameKind, openWild: Boolean = false) = paparazzi.snapshot {
         BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
             val w = constraints.maxWidth.toFloat()
             val h = constraints.maxHeight.toFloat()
@@ -73,8 +61,7 @@ abstract class XyFieldHudShots(w: Int, h: Int, density: Density = Density.XHIGH)
                 XyFieldHud(
                     snap(game), true, frame, openWild = openWild,
                     wild = listOf(XyWildRow("GRASS / CAVE", "Pidgey", null, 2, 3, 40)),
-                    map = if (liveMap) XyMapSpot("", null, 260, 124, 130f, 58f, 0f, 0f, live = rotomStandIn())
-                        else XyMapSpot("missing.png", null, 320, 210, 212f, 145f, 15f, 8f),
+                    map = XyMapSpot("missing.png", null, 320, 210, 212f, 145f, 15f, 8f),
                     onTouchScreen = {}, onOpenCompanion = {},
                 )
             }
