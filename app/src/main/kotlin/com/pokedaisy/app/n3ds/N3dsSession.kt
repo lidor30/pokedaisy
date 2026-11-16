@@ -317,7 +317,10 @@ class N3dsSession(
                     zoomable = canZoom
                     readBattle(config, if (modules.split('\n').contains(config.battleModule)) modules else null)
                 }
-                if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) fieldShot()
+                if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) {
+                    fieldShot()
+                    if (layout.family == N3dsLayout.Family.SM) rotomMapShot()
+                }
                 if (com.pokedaisy.app.BuildConfig.DEBUG) debugCommands(pass % FIELD_SHOT_EVERY == 1)
             }
             try { Thread.sleep(SCENE_MS) } catch (_: InterruptedException) { break }
@@ -658,6 +661,25 @@ class N3dsSession(
         ui.post { onFieldShot(bmp) }
     }
 
+    /**
+     * Sun / Moon: Rotom's map off the field's touch screen (the game's own, the player in the middle), for the HUD's
+     * minimap and MAP while there's no Town Map read from the cart. Kept from the last bright frame.
+     */
+    private fun rotomMapShot() {
+        val px = screenshot(BOTTOM_W, BOTTOM_H, bottom = true) ?: return
+        var sum = 0L
+        for (i in px.indices step 11) { val c = px[i]; sum += ((c shr 16) and 0xFF) + ((c shr 8) and 0xFF) + (c and 0xFF) }
+        if (sum / (3 * ((px.size + 10) / 11)) < FIELD_SHOT_DARK) return
+        val crop = IntArray(ROTOM_MAP_W * ROTOM_MAP_H)
+        for (y in 0 until ROTOM_MAP_H) System.arraycopy(px, (ROTOM_MAP_Y + y) * BOTTOM_W + ROTOM_MAP_X, crop, y * ROTOM_MAP_W, ROTOM_MAP_W)
+        val bmp = runCatching {
+            android.graphics.Bitmap.createBitmap(crop, ROTOM_MAP_W, ROTOM_MAP_H, android.graphics.Bitmap.Config.ARGB_8888)
+        }.getOrNull() ?: return
+        mapHere = com.pokedaisy.app.companion.ui.XyMapSpot(
+            "", null, ROTOM_MAP_W, ROTOM_MAP_H, ROTOM_MAP_W / 2f, ROTOM_PLAYER_Y, 0f, 0f, live = bmp,
+        )
+    }
+
     // ---- the companion's snapshot -------------------------------------------------------------------------------
 
     private val sampler = Thread({
@@ -691,7 +713,7 @@ class N3dsSession(
                         wildZone = sample.zone
                         wildLanguage = textLanguage
                         wildHere = N3dsCompanionData.wild(Gen6Wild.load(rom, layout)?.getOrNull(sample.zone).orEmpty(), text, layout)
-                        mapHere = if (townMap == null) null else townSpots[sample.zone]?.let {
+                        if (townMap != null) mapHere = townSpots[sample.zone]?.let {
                             com.pokedaisy.app.companion.ui.XyMapSpot(
                                 townMap.map, townMap.pinAsset, townMap.width, townMap.height, it.x, it.y, it.w, it.h,
                             )
@@ -746,6 +768,15 @@ class N3dsSession(
         private const val STICK_DEAD = 0.12f
         private const val SAMPLE_MS = 1000L
         private const val SCENE_MS = 100L
+        /** The touch screen, and where Rotom's map shows on it in Sun / Moon's field (under Rotom's eyes, inside its
+         * frame; the player's arrow in the middle across, [ROTOM_PLAYER_Y] down: Sun's field, headless). */
+        private const val BOTTOM_W = 320
+        private const val BOTTOM_H = 240
+        private const val ROTOM_MAP_X = 30
+        private const val ROTOM_MAP_Y = 100
+        private const val ROTOM_MAP_W = 260
+        private const val ROTOM_MAP_H = 124
+        private const val ROTOM_PLAYER_Y = 58f
         /** The field's picture every this many scene reads (a second), at the 3DS's own top-screen size. */
         private const val FIELD_SHOT_EVERY = 10
         /** Scene reads the field must hold coming out of one of the game's screens (see the scene thread). */

@@ -384,6 +384,13 @@ Sun boots that Moon save too and reads it at every address below (party, bag, My
   same chain on every Moon dump): the pitch in radians at +0x10, the yaw at +0x14, the distance at +0x20 (756.8, the camera's
   distance from its target). Written there, it pulled back, turned and tilted. The game walks relative to the yaw by itself
   (turned 0.8, DOWN walked diagonally), so the circle pad isn't turned for it (`Camera.turnsPad`).
+- The map: the HUD's minimap and MAP show Rotom's own map, cropped off the field's touch screen once a second
+  (`N3dsSession.rotomMapShot`, `XyMapSpot.live`: the player's arrow is the game's, in the middle). The cart's Town Map is
+  `a/2/3/4`'s two ALYT archives (a SARC inside: `TownMap_MAP_LOW_000.bflyt` with each island's `land_0N` picture and an
+  `Area_II_NN` pane per map area, `zone_II_NN.bflim` the areas' highlights); which area a zone is in wasn't found (the zone
+  records carry the island at +0x4E, not the area), so it isn't read yet.
+- Wild Pokemon stay per area: an area's encounter pack holds one table per grass patch (Route 1's area: 17 tables for its 3
+  zones), and which patch is in which zone is in the map's own data.
 - Headless: Sun / Moon walk with the circle pad (n3ds_dump's `CUP` / `CDOWN` / `CLEFT` / `CRIGHT`); their D-pad only turns
   the player. Route 4 from Heahea City: round the hotel's garden to its east, then north.
 - The cart (`N3dsLayout.SM`): text `a/0/3/<0 kana, 1 kanji, 2 English, 3 French, 4 Italian, 5 German, 6 Spanish, 7 Korean, 8 / 9
