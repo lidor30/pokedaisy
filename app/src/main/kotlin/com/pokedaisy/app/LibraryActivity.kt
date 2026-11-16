@@ -464,13 +464,13 @@ class LibraryActivity : ComponentActivity() {
             com.pokedaisy.app.companion.ui.LibraryTool("LINK", "LINK PLAY", "Trade and battle between your games", nf.badge(nf.LINK_PLAY)) {
                 startActivity(Intent(this, LinkActivity::class.java))
             },
-            com.pokedaisy.app.companion.ui.LibraryTool("EDIT", "SAVE EDITOR", "Change a game's Pokémon, bag and Pokédex", nf.badge(nf.SAVE_EDITOR_GEN5) ?: nf.badge(nf.SAVE_MISSING) ?: nf.badge(nf.SAVE_EDITOR_PLUS)) {
+            com.pokedaisy.app.companion.ui.LibraryTool("EDIT", "SAVE EDITOR", "Change a game's Pokémon, bag and Pokédex", nf.badge(nf.SAVE_EDITOR_DP) ?: nf.badge(nf.SAVE_EDITOR_GEN5) ?: nf.badge(nf.SAVE_MISSING) ?: nf.badge(nf.SAVE_EDITOR_PLUS)) {
                 startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_PICK, true))
             },
-            com.pokedaisy.app.companion.ui.LibraryTool("TRADE", "TRADE SAVES", "Move Pokémon between your games' saves", nf.badge(nf.SAVE_EDITOR_GEN5) ?: nf.badge(nf.TRADE_BACK) ?: nf.badge(nf.SAVE_EDITOR_PLUS)) {
+            com.pokedaisy.app.companion.ui.LibraryTool("TRADE", "TRADE SAVES", "Move Pokémon between your games' saves", nf.badge(nf.SAVE_EDITOR_DP) ?: nf.badge(nf.SAVE_EDITOR_GEN5) ?: nf.badge(nf.TRADE_BACK) ?: nf.badge(nf.SAVE_EDITOR_PLUS)) {
                 startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_TRADE, true))
             },
-            com.pokedaisy.app.companion.ui.LibraryTool("PALPARK", "PAL PARK", "Bring GBA Pokémon to HeartGold, SoulSilver or Platinum", nf.badge(nf.PAL_PARK)) {
+            com.pokedaisy.app.companion.ui.LibraryTool("PALPARK", "PAL PARK", "Bring GBA Pokémon to Sinnoh and Johto", nf.badge(nf.PAL_PARK)) {
                 startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_PAL_PARK, true))
             },
             com.pokedaisy.app.companion.ui.LibraryTool("TRANSFER", "POKé TRANSFER", "Send DS Pokémon on to Black and White", nf.badge(nf.POKE_TRANSFER)) {
@@ -1204,8 +1204,8 @@ class LibraryActivity : ComponentActivity() {
             }
             add(RomMenuItem(tr("LOAD SAVE"), LibraryIcons.FileOpen, opens = true) { saveTarget = rom; pickSaveFile.launch(arrayOf("*/*")) })
             add(RomMenuItem(tr("RESTORE BACKUP"), LibraryIcons.History, opens = true) { showBackups(rom) })
-            // The save's party and PC boxes, read (and edited) from the file: Gen 3's, HeartGold / SoulSilver / Platinum's
-            // and Black / White's (with their sequels).
+            // The save's party and PC boxes, read (and edited) from the file: Gen 3's, Diamond / Pearl / Platinum / HeartGold /
+            // SoulSilver's and Black / White's (with their sequels).
             if (rom.extension.lowercase() !in setOf("gb", "gbc", "nds") || SaveFileEdits.isDsEditable(rom) || SaveFileEdits.isGen5(rom)) {
                 add(RomMenuItem(tr("SAVE EDITOR"), LibraryIcons.Inventory2, opens = true) {
                     startActivity(Intent(this@LibraryActivity, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_ROM, rom.absolutePath))

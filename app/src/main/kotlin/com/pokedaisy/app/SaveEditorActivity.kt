@@ -178,7 +178,7 @@ class SaveEditorActivity : ComponentActivity() {
             val from = readableGames(onlyDs = true)
             val to = gen5Games()
             runOnUiThread {
-                if (from.isEmpty() || to.isEmpty()) page = Page.Message(tr("POKé TRANSFER needs HeartGold, SoulSilver or Platinum and Black, White, Black 2 or White 2, each with a save it can read, saved once in the game."))
+                if (from.isEmpty() || to.isEmpty()) page = Page.Message(tr("POKé TRANSFER needs Diamond, Pearl, HeartGold, SoulSilver or Platinum and Black, White, Black 2 or White 2, each with a save it can read, saved once in the game."))
                 else transferFromPick = from
             }
         }.start()
@@ -391,7 +391,7 @@ class SaveEditorActivity : ComponentActivity() {
         Thread {
             val list = readableGames(gen5 = true)
             runOnUiThread {
-                if (list.size < 2) page = Page.Message(tr("TRADE SAVES needs two games with a save it can read, each saved once in the game: FireRed, LeafGreen, Emerald, Ruby and Sapphire trade with each other, HeartGold, SoulSilver and Platinum with each other, Black, White, Black 2 and White 2 with each other."))
+                if (list.size < 2) page = Page.Message(tr("TRADE SAVES needs two games with a save it can read, each saved once in the game: FireRed, LeafGreen, Emerald, Ruby and Sapphire trade with each other, Diamond, Pearl, Platinum, HeartGold and SoulSilver with each other, Black, White, Black 2 and White 2 with each other."))
                 else firstPick = list
             }
         }.start()
@@ -404,7 +404,7 @@ class SaveEditorActivity : ComponentActivity() {
             val gba = readableGames(onlyDs = false)
             val ds = readableGames(onlyDs = true)
             runOnUiThread {
-                if (gba.isEmpty() || ds.isEmpty()) page = Page.Message(tr("PAL PARK needs a GBA game (FireRed, LeafGreen, Emerald, Ruby or Sapphire) and HeartGold, SoulSilver or Platinum, each with a save it can read, saved once in the game."))
+                if (gba.isEmpty() || ds.isEmpty()) page = Page.Message(tr("PAL PARK needs a GBA game (FireRed, LeafGreen, Emerald, Ruby or Sapphire) and Diamond, Pearl, HeartGold, SoulSilver or Platinum, each with a save it can read, saved once in the game."))
                 else palFromPick = gba
             }
         }.start()
@@ -542,7 +542,7 @@ class SaveEditorActivity : ComponentActivity() {
         if (SaveFileEdits.isDsEditable(rom)) return openDs(rom)
         if (SaveFileEdits.isGen5(rom)) return openGen5Editor(rom)
         val format = SaveFileEdits.formatFor(rom)
-            ?: return tr("The save editor reads FireRed, LeafGreen, Emerald, Ruby, Sapphire, HeartGold, SoulSilver and Platinum saves (and builds that keep their save layout). This game's isn't one yet.")
+            ?: return tr("The save editor reads FireRed, LeafGreen, Emerald, Ruby, Sapphire, Diamond, Pearl, HeartGold, SoulSilver and Platinum saves (and builds that keep their save layout). This game's isn't one yet.")
         val save = SavesLocation.saveFor(this, prefs, rom)
         if (!save.isFile) return tr("No save yet - save once in the game first.")
         val bytes = runCatching { save.readBytes() }.getOrNull() ?: return tr("Can't read the save {0}", save.path)
@@ -563,7 +563,7 @@ class SaveEditorActivity : ComponentActivity() {
         val bytes = runCatching { save.readBytes() }.getOrNull() ?: return tr("Can't read the save {0}", save.path)
         val cart = RomArchive.playable(rom, cacheDir) ?: rom
         val game = runCatching { com.pokedaisy.app.companion.data.NdsArt.readSaveTables(cart.toOkioPath()) }.getOrNull()
-            ?: return tr("The save editor reads FireRed, LeafGreen, Emerald, Ruby, Sapphire, HeartGold, SoulSilver and Platinum saves (and builds that keep their save layout). This game's isn't one yet.")
+            ?: return tr("The save editor reads FireRed, LeafGreen, Emerald, Ruby, Sapphire, Diamond, Pearl, HeartGold, SoulSilver and Platinum saves (and builds that keep their save layout). This game's isn't one yet.")
         return when (val parsed = com.pokedaisy.app.companion.data.save.Gen4SaveFile.parse(bytes)) {
             is com.pokedaisy.app.companion.data.save.Gen4SaveFile.Parsed.Failed -> parsed.reason
             is com.pokedaisy.app.companion.data.save.Gen4SaveFile.Parsed.Ok -> {

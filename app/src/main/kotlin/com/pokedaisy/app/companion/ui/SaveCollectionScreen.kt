@@ -175,7 +175,7 @@ fun CollectionScreen(
                                 subtitle = tr("To another of your saves")) { state.picked = null; onTrade(item) }
                             if (state.canPalPark(item)) {
                                 OptionLine(tk("PAL PARK"), null, selected = false, m, height = rowHeight, divider = true, chevron = true,
-                                    subtitle = tr("To HeartGold, SoulSilver or Platinum")) { state.picked = null; onPalPark(item) }
+                                    subtitle = tr("To Sinnoh or Johto")) { state.picked = null; onPalPark(item) }
                             }
                             OptionLine(tk("CANCEL"), null, selected = false, m) { state.picked = null }
                         }
