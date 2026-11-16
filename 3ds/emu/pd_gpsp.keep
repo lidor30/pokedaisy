@@ -19,3 +19,8 @@ pd_gpsp_save_state
 pd_gpsp_load_state
 pd_gpsp_threaded
 pd_gpsp_render_us
+pd_gpsp_call
+pd_gpsp_call_safe
+pd_gpsp_call_set_cap
+pd_gpsp_rest_note
+pd_gpsp_rest_reset

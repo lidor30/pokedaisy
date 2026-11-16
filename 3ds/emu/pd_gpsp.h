@@ -2,9 +2,7 @@
 // recompiler is the fastest of the three on an Old 3DS (gpSP 3D's own claim: full speed there; not yet measured in
 // this app), its drawing on another core (pd_gpsp_host.threaded). Like armGBA it sits behind an mGBA-shaped `struct mCore` (pd_gpsp_core.c, its board a view of gpSP's
 // memory: RAM, ROM, VRAM, and io / palette / OAM copied after each frame, no renderer), so the companion's readers run
-// unchanged. What it doesn't do yet: calls into the game (pk_call: PC anywhere, FLY, the bag's USE, one-press battle
-// picks, the field reads' calls), the native m4a mixer, cheats - pk_call_safe says no, and those stay off as for a game
-// the app doesn't know.
+// unchanged. What it doesn't do yet: the native m4a mixer and cheats.
 //
 // Two halves: pd_gpsp.c (the only file that sees gpSP's headers; built into one object with gpSP whose only globals are
 // the pd_gpsp_* below, emu/gpsp.cmake) and pd_gpsp_core.c (the mCore, mGBA's headers).
@@ -82,6 +80,13 @@ bool pd_gpsp_rom_write(uint32_t addr, const void* data, size_t len);
 // The save file (mGBA's layout: the save memory, then a 16-byte clock armGBA and mGBA keep, kept as it was).
 int pd_gpsp_save_dirty(void);
 void pd_gpsp_flush_save(void);
+
+// pk_call.h on gpSP (3ds/emu/pd_dispatch.c picks): a game function run to its return between frames.
+int pd_gpsp_call(uint32_t fn, const uint32_t args[4], uint32_t* r0);
+int pd_gpsp_call_safe(void);
+void pd_gpsp_call_set_cap(long steps);
+void pd_gpsp_rest_note(void);
+void pd_gpsp_rest_reset(void);
 
 enum pd_gpsp_state {
     PD_GPSP_STATE_OK,

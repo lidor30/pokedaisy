@@ -529,6 +529,122 @@ bool pd_gpsp_rom_write(uint32_t addr, const void* data, size_t len) {
     return true;
 }
 
+// --- pk_call.h: the game's own Thumb functions called between frames ---
+// As pd_armgba_call.c / the mGBA hosts' pk_call.c: the CPU run from the function to its return (on gpSP's interpreter,
+// in the recompiler's build too: gpsp-pokedaisy.patch's execute_arm_until, the GBA's hardware not run meanwhile), IRQs
+// masked, on the main stack in System mode, then every register put back.
+
+#define CALL_SENTINEL 0x080000C0u // the cartridge header's: never code a game runs
+#define CALL_CAP 2000000
+static long callCap = CALL_CAP;
+
+void pd_gpsp_call_set_cap(long steps) {
+    callCap = steps > 0 ? steps : CALL_CAP;
+}
+
+// Where the game's main loop waits for VBlank, as a stack depth and the PC it was at (see pk_call.c): a call is safe
+// there. gpSP ends a frame wherever its CPU is when the frame's time is up - FireRed in its wait loop, Emerald mostly in
+// the middle of its work - so a call first runs the game on (gpsp_advance) to its wait: halted in VBlankIntrWait, or at
+// the place most frames end in.
+#define REST_SLOTS 8
+#define REST_FADE 120 // notes between two halvings of the counts: the boot's screens don't outweigh the field's for long
+static uint32_t restSp[REST_SLOTS], restPc[REST_SLOTS], restCount[REST_SLOTS], restNotes;
+
+// gpSP keeps User / System's r13 in reg_mode[0] while another mode is in.
+static uint32_t sys_sp(void) {
+    return (reg[CPU_MODE] & 0xF) == (MODE_USER & 0xF) ? reg[REG_SP] : REG_MODE(MODE_USER)[5];
+}
+
+void pd_gpsp_rest_reset(void) {
+    memset(restSp, 0, sizeof(restSp));
+    memset(restPc, 0, sizeof(restPc));
+    memset(restCount, 0, sizeof(restCount));
+    restNotes = 0;
+}
+
+void pd_gpsp_rest_note(void) {
+    if (!G.loaded || reg[CPU_MODE] == MODE_IRQ) return;
+    if (++restNotes % REST_FADE == 0)
+        for (int i = 0; i < REST_SLOTS; i++) restCount[i] /= 2;
+    uint32_t sp = sys_sp();
+    int low = 0;
+    for (int i = 0; i < REST_SLOTS; i++) {
+        if (restSp[i] == sp) {
+            if (restCount[i] < 100000) restCount[i]++;
+            restPc[i] = reg[REG_PC];
+            return;
+        }
+        if (restCount[i] < restCount[low]) low = i;
+    }
+    restSp[low] = sp;
+    restPc[low] = reg[REG_PC];
+    restCount[low] = 1;
+}
+
+static int rest_slot(void) {
+    int best = 0;
+    for (int i = 1; i < REST_SLOTS; i++)
+        if (restCount[i] > restCount[best]) best = i;
+    return restCount[best] >= 30 ? best : -1;
+}
+
+// At the game's wait: halted (VBlankIntrWait), or on the stack depth most frames end at; never in an interrupt.
+static bool at_rest(void) {
+    if (reg[CPU_MODE] == MODE_IRQ) return false;
+    if (reg[CPU_HALT_STATE] != CPU_ACTIVE) return true;
+    int r = rest_slot();
+    return r >= 0 && sys_sp() == restSp[r];
+}
+
+// Thumb `b .` at the PC: a parked game (the music renderer's).
+static bool parked(void) {
+    return (reg[REG_CPSR] & 0x20) && (read_memory8(reg[REG_PC]) | read_memory8(reg[REG_PC] + 1) << 8) == 0xE7FE;
+}
+
+#define ADVANCE_CAP 400000
+// The game's own code run on (the GBA's hardware not: no new interrupt, no line drawn) until it waits: it halts, or
+// reaches the PC most frames end at. What it does there it would have done before the next VBlank anyway.
+static bool gpsp_advance(void) {
+    if (at_rest()) return true;
+    int r = rest_slot();
+    execute_arm_until(r >= 0 ? restPc[r] : CALL_SENTINEL, ADVANCE_CAP);
+    return at_rest();
+}
+
+int pd_gpsp_call_safe(void) {
+    // Anywhere but an interrupt: the call runs the game on to its wait first (gpsp_advance).
+    return G.loaded && (parked() || reg[CPU_MODE] != MODE_IRQ);
+}
+
+int pd_gpsp_call(uint32_t fn, const uint32_t args[4], uint32_t* r0) {
+    if (!pd_gpsp_call_safe()) return 0;
+    if (!parked() && !gpsp_advance()) return 0; // it didn't reach its wait: the next frame tries again
+    static u32 savedReg[64], savedMode[7][7], savedSpsr[6];
+    memcpy(savedReg, reg, sizeof(savedReg));
+    memcpy(savedMode, reg_mode, sizeof(savedMode));
+    memcpy(savedSpsr, spsr, sizeof(savedSpsr));
+
+    reg[CPU_HALT_STATE] = CPU_ACTIVE;
+    // On the main stack, in System mode (see pk_call.c: the IRQ stack is 160 bytes), IRQs masked, Thumb.
+    if ((reg[CPU_MODE] & 0xF) != (MODE_USER & 0xF)) set_cpu_mode(MODE_SYSTEM);
+    reg[REG_CPSR] = (reg[REG_CPSR] & ~0x1Fu) | (reg[CPU_MODE] == MODE_USER ? 0x10 : 0x1F);
+    reg[REG_CPSR] |= 0x80 | 0x20;
+    for (int i = 0; i < 4; i++) reg[i] = args[i];
+    reg[REG_LR] = CALL_SENTINEL | 1;
+    reg[REG_PC] = fn & ~1u;
+    int ok = execute_arm_until(CALL_SENTINEL, (u32) callCap);
+    if (r0) *r0 = reg[0];
+
+    // What the call drew stays marked for the renderer (VRAM, the palette); everything else as it was.
+    u32 vramUpdated = reg[REG_VRAM_UPDATED], palUpdated = reg[REG_PAL_UPDATED];
+    memcpy(reg, savedReg, sizeof(savedReg));
+    memcpy(reg_mode, savedMode, sizeof(savedMode));
+    memcpy(spsr, savedSpsr, sizeof(savedSpsr));
+    reg[REG_VRAM_UPDATED] |= vramUpdated;
+    reg[REG_PAL_UPDATED] |= palUpdated;
+    return ok;
+}
+
 // --- states: "PGSP", the version, the game's CRC, retro_serialize's bytes ---
 
 bool pd_gpsp_save_state(const char* path) {

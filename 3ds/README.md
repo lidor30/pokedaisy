@@ -281,13 +281,20 @@ registers, palette and OAM and draws a few lines behind the game - the same pict
 FLIGHT read a finished frame as ever), on the New 3DS's third core or an Old 3DS's system core at 80%, its frame hook
 converting the picture there too; the dev build's `armgba/nothreads` keeps it on the game's core, and `pdlink stat`'s
 `gp_render_us` / `gp_wait_us` give its last frame. gpSP 3D's deferred finish (a drawn frame not waited for when the next
-are skipped) isn't used: everything after a frame here reads its finished picture at once. What it doesn't do yet:
-calls into the game (`pk_call_safe` says no: PC anywhere, FLY, FREE FLIGHT, the bag's USE, TM teaching, the scripted
-wild battles of the tests), the native m4a mixer, the H-blank shortcut, cheats. Checked in the simulator
+are skipped) isn't used: everything after a frame here reads its finished picture at once. Calls into the game (pk_call:
+PC anywhere, FLY, FREE FLIGHT, the bag's USE, TM teaching) run the function to its return on gpSP's interpreter, in the
+recompiler's build too (the patch's `execute_arm_until`: stopped at the return address or a cap, the GBA's hardware not
+run), every register put back after. gpSP ends a frame wherever its CPU is when the time is up - FireRed in its wait loop,
+Emerald mostly mid-work - so a call first runs the game on to its wait (`gpsp_advance`: halted in VBlankIntrWait, or the
+stack depth and PC most frames end at, the counts halved every 120 frames so the boot's screens don't decide it). What
+it doesn't do yet: the native m4a mixer, the H-blank shortcut, cheats. Checked in the simulator
 (`PD_SIM_CORE=gpsp`, gpSP's interpreter there; `PD_SIM_THREADED_VIDEO=1` its render thread): FireRed and Emerald boot
 from their saves to the field with the companion, HUD and EXPAND right; the picture with the render thread equals the one
 without, frame for frame (`framesum` over walking, the START menu, a state saved and loaded); an in-game save written,
-then booted by both gpSP and armGBA to the same place. Not run on a console yet.
+then booted by both gpSP and armGBA to the same place; `make sim-test`'s scripts with `PD_SIM_CORE=gpsp`: FireRed's run,
+GEN 5 and FREE FLIGHT pass, Emerald's battle, GEN 5 and FREE FLIGHT - the other two start their scripted battles and
+fail later only because those scripts count on armGBA's random rolls (FireRed's first move knocks the foe out on gpSP).
+Not run on a console yet.
 
 **mGBA** (Game Boy games, and the comparison above): half of a frame on a New 3DS is the game's own sound mixer, the m4a
 engine's `SoundMainRAM`. `host/pd_mixer.c` runs it natively:

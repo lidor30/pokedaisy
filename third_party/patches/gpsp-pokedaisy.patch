@@ -1,3 +1,84 @@
+diff --git a/cpu.cc b/cpu.cc
+index c12c751..37eba01 100644
+--- a/cpu.cc
++++ b/cpu.cc
+@@ -1498,6 +1498,16 @@ u8 vram[1024 * 96];
+ u16 io_registers[512];
+ #endif
+ 
++/* PokeDaisy: a call into the game between frames (the 3DS port's pk_call):
++ * the interpreter runs from the CPU as it is until the PC reaches
++ * gpsp_stop_pc (the call's return) or gpsp_stop_left instructions have run,
++ * and returns there without running the GBA's hardware (no update_gba). */
++u32 gpsp_stop_pc = 0;
++u32 gpsp_stop_left = 0;
++#define gpsp_check_stop()                                                     \
++  if (gpsp_stop_pc && (reg[REG_PC] == gpsp_stop_pc || !gpsp_stop_left--))     \
++    return 0;
++
+ static u32 execute_arm_internal(u32 cycles, bool vram_only)
+ {
+   u32 opcode;
+@@ -1519,6 +1529,8 @@ static u32 execute_arm_internal(u32 cycles, bool vram_only)
+   {
+     /* Do not execute until CPU is active */
+     if (reg[CPU_HALT_STATE] != CPU_ACTIVE) {
++       if (gpsp_stop_pc)
++          return 0; /* a call that halted the CPU: it's over */
+        u32 ret = update_gba(cycles_remaining);
+        if (completed_frame(ret))
+           return ret;
+@@ -1539,6 +1551,7 @@ arm_loop:
+        collapse_flags();
+        if (vram_only && (reg[REG_PC] >> 24) != 0x06)
+           return cycles_remaining > 0 ? (u32)cycles_remaining : update_gba(cycles_remaining);
++       gpsp_check_stop();
+ 
+        /* Process cheats if we are about to execute the cheat hook */
+        if (reg[REG_PC] == cheat_master_hook)
+@@ -3105,6 +3118,7 @@ thumb_loop:
+        collapse_flags();
+        if (vram_only && (reg[REG_PC] >> 24) != 0x06)
+           return cycles_remaining > 0 ? (u32)cycles_remaining : update_gba(cycles_remaining);
++       gpsp_check_stop();
+ 
+        /* Process cheats if we are about to execute the cheat hook */
+        if (reg[REG_PC] == cheat_master_hook)
+@@ -3591,6 +3605,20 @@ void execute_arm(u32 cycles)
+   execute_arm_internal(cycles, false);
+ }
+ 
++/* PokeDaisy: see gpsp_stop_pc. 1 when the PC reached stop_pc. */
++int execute_arm_until(u32 stop_pc, u32 max_instructions)
++{
++  gpsp_stop_pc = stop_pc;
++  gpsp_stop_left = max_instructions;
++  execute_arm_internal(0x7FFFFFF0u, false);
++  gpsp_stop_pc = 0;
++#ifdef HAVE_DYNAREC
++  /* as execute_arm_vram: what the interpreter wrote over compiled RAM code */
++  flush_translation_cache_ram_after_interp();
++#endif
++  return reg[REG_PC] == stop_pc;
++}
++
+ u32 function_cc execute_arm_vram(u32 cycles)
+ {
+   /* VRAM instructions are never cached. This also covers code rewritten by
+diff --git a/cpu.h b/cpu.h
+index ef07a52..5e77fd6 100644
+--- a/cpu.h
++++ b/cpu.h
+@@ -114,6 +114,9 @@ typedef enum
+ extern u32 instruction_count;
+ 
+ void execute_arm(u32 cycles);
++/* PokeDaisy: from the CPU as it is until the PC is stop_pc (1) or
++ * max_instructions have run (0), the hardware not run meanwhile. */
++int execute_arm_until(u32 stop_pc, u32 max_instructions);
+ /* Interpret mutable VRAM until execution leaves it or a frame completes.
+  * Returns the same cycle-count/frame-complete encoding as update_gba(). */
+ u32 function_cc execute_arm_vram(u32 cycles);
 diff --git a/gba_memory.c b/gba_memory.c
 index e75e9a8..e3678c4 100644
 --- a/gba_memory.c
