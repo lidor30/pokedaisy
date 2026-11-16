@@ -22,6 +22,10 @@ struct pd_settings;
 #define PD_LIBRARY_MAX 256
 
 enum pd_console { PD_CONSOLE_GBA, PD_CONSOLE_GB, PD_CONSOLE_GBC };
+// Which emulator plays a GBA game, picked per game (X on it in the library): AUTO is armGBA today; mGBA is slower but
+// the one to try when a game misbehaves on armGBA. A Game Boy game is always mGBA's.
+enum pd_game_core { PD_CORE_AUTO, PD_CORE_ARMGBA, PD_CORE_MGBA, PD_CORE_COUNT };
+const char* pd_core_name(int core);
 
 // The keys the host passes (its own buttons mapped to these).
 enum {
@@ -58,6 +62,7 @@ struct pd_library_game {
     bool hack;      // a ROM hack, not a retail cart
     bool supported; // the companion knows it
     bool named;     // its title and tags are settled (by file name or hash)
+    uint8_t core;   // enum pd_game_core
 };
 
 // The host's side: files on the SD card. Every path is the host's (the ROM's file name is the key).
@@ -136,7 +141,10 @@ void pd_library_select(struct pd_library* l, const char* file);
 // The game was started (for RECENT and LAST PLAYED).
 void pd_library_played(struct pd_library* l, int game, uint32_t now);
 
-// The identification cache the host keeps (one line a game: sha1, code, size, last played, file name).
+// The core picked for this file (PD_CORE_AUTO when it has none).
+int pd_library_core(const struct pd_library* l, const char* file);
+// The identification cache the host keeps (one line a game: sha1, code, size, last played, file name, and its core
+// when one was picked).
 void pd_library_cache_read(struct pd_library* l, const char* text);
 size_t pd_library_cache_write(const struct pd_library* l, char* out, size_t len);
 

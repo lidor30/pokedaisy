@@ -449,12 +449,17 @@ static int stick_angle(void) {
 struct game_files {
     char base[256];
     char saveSd[520];
+    bool mgbaGba; // a GBA game on mGBA (its GBA CORE picked): its states apart from armGBA's
 };
 
-// mGBA's 3DS VFile takes the path on the SD card; stdio wants the sdmc: in front.
+// The GBA CORE picked in the library for the game it starts (enum pd_game_core).
+static int pickedCore;
+
+// mGBA's 3DS VFile takes the path on the SD card; stdio wants the sdmc: in front. A state never crosses cores (neither
+// reads the other's): a GBA game's on mGBA are <game>.mgba.ss1 ..., armGBA's (the default's) <game>.ss1 ...
 static void state_path(void* ctx, int slot, char* vf, size_t vfLen, char* path, size_t pathLen) {
     const struct game_files* f = ctx;
-    snprintf(vf, vfLen, STATE_DIR "/%s.ss%d", f->base, slot + 1);
+    snprintf(vf, vfLen, STATE_DIR "/%s%s.ss%d", f->base, f->mgbaGba ? ".mgba" : "", slot + 1);
     snprintf(path, pathLen, "sdmc:%s", vf);
 }
 
@@ -576,6 +581,8 @@ static bool run_game(const char* file) {
     size_t nameLen = strlen(file);
     bool gbName = (nameLen > 3 && !strcasecmp(file + nameLen - 3, ".gb")) || (nameLen > 4 && !strcasecmp(file + nameLen - 4, ".gbc"));
     bool armgba = !gbName && pd_armgba_wants(header, sizeof(header));
+    // The game's GBA CORE (X in the library): MGBA plays it on mGBA; AUTO and ARMGBA on armGBA.
+    if (armgba && pickedCore == PD_CORE_MGBA) armgba = false;
 #ifdef PD_DEV
     // The dev build's switch for comparing the cores: sdmc:/pokedaisy-dev/armgba/mgba runs GBA games on mGBA.
     {
@@ -597,7 +604,9 @@ static bool run_game(const char* file) {
     audioRate = audioRateSet = audioMade = 1.0f;
     audioLast = 0;
     if (armgba) {
-        // armGBA: its recompiler, its renderer on the New 3DS's third and fourth cores and its mixer on the fourth.
+        // armGBA: its recompiler, its renderer on the New 3DS's third and fourth cores and its mixer on the fourth. Not on
+        // an Old 3DS's system core: tried (2026-11-17, a New 3DS playing an Old one), the game waited on it a third of
+        // each second, 36 game frames a second on FireRed's field against 45 with the renderer on the game's core.
         rom->close(rom);
         dspBase = ARMGBA_RATE;
         if (hasSound) ndspChnSetRate(0, dspBase);
@@ -670,7 +679,7 @@ static bool run_game(const char* file) {
             }
         }
         core->reset(core);
-        host_log("game: %s on mGBA", file);
+        host_log("game: %s on mGBA%s", file, core->platform(core) == mPLATFORM_GBA ? " (its GBA CORE)" : "");
     }
     unsigned videoW = 240, videoH = 160;
     core->desiredVideoDimensions(core, &videoW, &videoH);
@@ -686,6 +695,7 @@ static bool run_game(const char* file) {
     struct game_files gameFiles;
     snprintf(gameFiles.base, sizeof(gameFiles.base), "%s", base);
     snprintf(gameFiles.saveSd, sizeof(gameFiles.saveSd), "%s", saveSd);
+    gameFiles.mgbaGba = !armgba && core->platform(core) == mPLATFORM_GBA;
     bool wideThread = gpu_wide_thread(pd_session_wide_finish);
     struct pd_session_host files = { state_path, backup_for_load, settings_changed, cheat_path, &gameFiles,
                                      wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL, NULL, flight_area_path,
@@ -733,7 +743,49 @@ static bool run_game(const char* file) {
     u64 loopStart = svcGetSystemTick();
 #endif
 
+    // An Old 3DS that can't run a frame in a refresh: what it's behind by builds up over the loops, and each whole refresh
+    // of it is a frame run undrawn next loop (two at most), as gpSP 3D's frame skip keeps the game and its sound at full
+    // speed there. A New 3DS keeps every frame drawn. A long pause (HOME, a load) owes nothing.
+    int catchUpMax = armgba && !host_is_new_3ds() ? 2 : 0;
+#ifdef PD_DEV
+    // The dev build's switch: sdmc:/pokedaisy-dev/catchup holding 0, 1 or 2, the most frames a loop may run undrawn.
+    {
+        FILE* f = fopen("sdmc:" BASE_DIR "/catchup", "rb");
+        if (f) {
+            int c = fgetc(f);
+            fclose(f);
+            if (c >= '0' && c <= '2') catchUpMax = c - '0';
+        }
+    }
+#endif
+    const bool catchUpOn = catchUpMax > 0;
+    const s64 refreshTicks = (s64) (SYSCLOCK_ARM11 / SCREEN_HZ);
+    s64 behindTicks = 0;
+    u64 loopTick = 0;
+    host_log("game: %s", catchUpOn ? "frames skipped to keep up (an Old 3DS)" : "every frame drawn");
+    // No SD card writes for the log while the game runs (host_log_hold).
+    host_log_hold(true);
+
     while ((appRunning = aptMainLoop())) {
+        int catchUp = 0;
+        if (catchUpOn) {
+            u64 t = svcGetSystemTick();
+            if (loopTick) {
+                s64 over = (s64) (t - loopTick) - refreshTicks;
+                if (over > 6 * refreshTicks) {
+                    behindTicks = 0;
+                } else {
+                    behindTicks += over;
+                    if (behindTicks < 0) behindTicks = 0;
+                    if (behindTicks > 2 * refreshTicks) behindTicks = 2 * refreshTicks;
+                }
+                if (behindTicks >= refreshTicks) {
+                    catchUp = behindTicks >= 2 * refreshTicks && catchUpMax >= 2 ? 2 : 1;
+                    behindTicks -= catchUp * refreshTicks;
+                }
+            }
+            loopTick = t;
+        }
         hidScanInput();
         u32 injected = devlink_keys();
         u32 held = hidKeysHeld() | injected, down = hidKeysDown() | (injected & ~lastInjected);
@@ -835,7 +887,7 @@ static bool run_game(const char* file) {
 
         struct pd_input in = { .held = gba_keys(held & ~withheld), .down = gba_keys(down & ~withheld),
                                .quickMenu = (down & KEY_Y) && !uiPtr->keyFocus,
-                               .ffHeld = held & KEY_ZR, .stickAngle = stick_angle() };
+                               .ffHeld = held & KEY_ZR, .stickAngle = stick_angle(), .catchUp = catchUp };
         DEV_MARK(coreStart);
         u64 busyStart = svcGetSystemTick();
         u64 tickNow = osGetTime();
@@ -967,6 +1019,12 @@ static bool run_game(const char* file) {
                 dev.gaps = audioGaps;
                 dev.drops = audioDrops;
                 dev.rate = (unsigned) (audioRate * 1000);
+                {
+                    static unsigned skippedWas;
+                    dev.skipped = session.catchUpFrames - skippedWas;
+                    skippedWas = session.catchUpFrames;
+                }
+                dev.drawCore = gpu_draw_core();
                 audioGaps = audioDrops = 0;
                 devlink_report(&dev);
                 memset(&dev, 0, sizeof(dev));
@@ -976,6 +1034,8 @@ static bool run_game(const char* file) {
 #endif
     }
 
+    host_log_hold(false);
+    if (catchUpOn) host_log("game: %u frames skipped to keep up", session.catchUpFrames);
     // A save the game is writing finishes, unheard, before the core stops; then deinit writes it back (the 3DS
     // VFile's unmap flushes it).
     audioMuted = true;
@@ -1294,6 +1354,7 @@ static bool pick_rom(char* out, size_t outLen) {
     view = library.view;
     if (picked) {
         pd_library_played(&library, library.picked, (uint32_t) time(NULL));
+        pickedCore = library.games[library.picked].core;
         write_cache();
         snprintf(out, outLen, "%s", library.games[library.picked].file);
         snprintf(lastFile, sizeof lastFile, "%s", out);
@@ -1310,13 +1371,15 @@ int main(void) {
         gfxExit();
         return 1;
     }
-    // The New 3DS's 804 MHz mode (a no-op on the original models).
-    osSetSpeedupEnable(true);
+    // The New 3DS's 804 MHz mode (a no-op on the original models; off for the dev build's Old 3DS stand-in).
+    if (!host_old_3ds_stand_in()) osSetSpeedupEnable(true);
     mLogSetDefaultLogger(&silentLogger);
     make_dirs();
     host_log_open(LOG_FILE);
     if (!arena) host_log("no memory for the ROM buffer");
-    host_log("PokeDaisy: %s, heap %lu KiB free", host_is_new_3ds() ? "New 3DS" : "3DS", (unsigned long) host_heap_free() >> 10);
+    host_log("PokeDaisy: %s, heap %lu KiB free", host_is_new_3ds() ? "New 3DS" : host_old_3ds_stand_in() ? "New 3DS playing an Old 3DS" : "3DS",
+             (unsigned long) host_heap_free() >> 10);
+    host_log("screens drawn on core %d", gpu_draw_core() >= 0 ? gpu_draw_core() : 0);
     pd_settings_load(&settings, SETTINGS_FILE);
     audio_init();
     mcuHwcInit();

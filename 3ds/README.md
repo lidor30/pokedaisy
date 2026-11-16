@@ -51,7 +51,8 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   it; 2x / 3x / 4x in SETTINGS. The game is muted meanwhile.
 - **Save state**: one slot per game (`sdmc:/pokedaisy/states/`). Loading one keeps the save memory as it is, so it
   can't write an old copy over the save file; the save is backed up before every load anyway. A GBA game's states are
-  armGBA's own: one made by an earlier (mGBA) build is turned away with a notice and left where it is.
+  armGBA's own: one made by an earlier (mGBA) build is turned away with a notice and left where it is. A GBA game whose
+  GBA CORE is MGBA keeps its states apart (`<game>.mgba.ss1`), so a state never reaches the other core.
 - `sdmc:/pokedaisy/log.txt` says what the last run did (`log-prev.txt`: the run before): memory, whether armGBA's
   recompiler and its render thread started, each save written. Attach it to a bug report. `armgba/` keeps each game's
   warm list (the code the recompiler translated, so a second run translates it ahead of need); `system/gba_bios.bin` is
@@ -159,7 +160,9 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   screen does: player, time, Pokédex, the badges, money, the place, and the party with its icons (from the save itself where
   the save editor reads it, the rest from `cards/<game>.card`, what the game looked like when it was last left). SETTINGS
   holds the settings that aren't a game's: the library's LAYOUT (LIST / GRID) and SORT, THEME, DARK MODE, VIEW, the sound, the
-  battle buttons, HUD and FLY STYLE.
+  battle buttons, HUD and FLY STYLE. X on a GBA game picks its **GBA CORE** (AUTO / ARMGBA / MGBA, `enum pd_game_core`, the
+  pick-list SETTINGS uses): AUTO is armGBA; MGBA is slower but the one to try when a game misbehaves on armGBA. Kept per
+  file as `library.tsv`'s sixth column (only when picked); the top screen's hint says the pick (X: MGBA).
 - **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported, round two
   included): a game's save file opened with the game closed, the app's three pages as tabs (SELECT steps them). POKéMON: the
   party and the 14 boxes (L / R), A picks a Pokémon up and puts it down (party <-> PC by the PC's rules: mail, the last one
@@ -447,9 +450,22 @@ not used; nor is render-to-texture.
 
 - **New 3DS / New 3DS XL / New 2DS XL** (804 MHz, 256 MB): the target; the app
   turns on the faster clock (`osSetSpeedupEnable`).
-- **3DS / 3DS XL / 2DS** (268 MHz, 128 MB): not tried with armGBA (no cores to spare there); mGBA alone was close to its limit
-  there, and the companion's drawing shares the CPU. Expect slowdowns; PIXEL 1x
-  is the cheapest screen mode, and fast-forward may not get past 1x.
+- **3DS / 3DS XL / 2DS** (268 MHz, 128 MB): not tried on one yet, only on a New 3DS playing one (below). There the app
+  borrows the system's core (core 1, 80% of its time, `host_core1_take` in `ctr/host.c`; 30% while the app is in the
+  background, as gpSP 3D does it) for the screens' draw thread (`ctr/gpu.c`), so the game no longer waits for the refresh
+  itself. armGBA's renderer stays on the game's core: on core 1 the game waited on it a third of each second. EXPAND's
+  margins stay there too (no fourth core). A game that falls a refresh or two behind runs the frames it owes undrawn next
+  loop, two at most (`pd_input.catchUp`, main.c's `behindTicks`; armGBA leaves an undrawn frame's picture out, which is most
+  of what a frame costs), so it and its sound keep closer to full speed while the picture skips; a New 3DS keeps every
+  frame drawn. While a game runs the log waits in memory (`host_log_hold`): gpSP 3D's Old 3DS freezes were its log written
+  to the SD card mid-game. Measured 2026-11-17 on FireRed's Route 21 at SHARP 1.5x, game frames a second / shown: before
+  (everything on the game's core) 22-27 / all, the sound at its 85% floor with ~19 gaps a second; the draw thread on core 1
+  30 / all; with up to one frame skipped 34 / 17; up to two (the default) 45 / 15, the sound at full rate with ~10 gaps.
+  armGBA's own code is what's slow at 268 MHz: no full speed yet. The dev build plays an Old 3DS on a New one with
+  `sdmc:/pokedaisy-dev/old3ds` (no 804 MHz mode or L2 cache, no third or fourth core): close to one, not the same (its
+  memory and GPU stay a New 3DS's); `catchup` (holding 0, 1 or 2) sets the most frames skipped, `draw0` keeps the drawing
+  on the game's core, and `armgba/nothreads` (already there) armGBA's renderer. `pdlink stat`'s `skipped` and
+  `draw_core` say what it did.
 
 ## Next steps
 

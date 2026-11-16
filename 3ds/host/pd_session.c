@@ -1850,6 +1850,10 @@ void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned m
     s->speedDebt += quarter;
     int count = s->speedDebt / 4;
     s->speedDebt %= 4;
+    if (count == 1 && quarter == 4 && in->catchUp > 0) {
+        count += in->catchUp;
+        s->catchUpFrames += (unsigned) in->catchUp;
+    }
     for (int i = 0; i < count; i++) pd_session_run_frame(s, keys, i == count - 1);
     field_jobs(s);
     item_jobs(s);
