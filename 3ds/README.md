@@ -268,7 +268,12 @@ for a quiet measurement read the running totals (`tot_loops`, `tot_late` split b
 memory); `PD_SIM_CORE=mgba` puts a GBA game on mGBA there too.
 
 **gpSP** (GBA CORE: GPSP, EXPERIMENTAL; `emu/pd_gpsp.c`, `emu/pd_gpsp_core.c`, `emu/gpsp.cmake`): bheppe's gpSP 3D
-(GPL-2.0-or-later), whose ARM11 recompiler is said to hold full speed on an Old 3DS - not measured in this app yet. A
+(GPL-2.0-or-later), whose ARM11 recompiler is said to hold full speed on an Old 3DS - not measured there yet. On a New 3DS
+(2026-11-17, FireRed on Route 21 with the companion): 60 FPS, the game's own work 5.1 ms a frame against armGBA's 6.5-6.7, CPU 37%
+against 46%; PC anywhere, FLY (scenic), WILD ENCOUNTERS, the battle buttons, states and the native mixer all worked there. Its
+recompiler's caches are one heap block made executable in place (the patch's retro_init: MEMOP_PROT, as armGBA's jitmem.c,
+made read-write again before it's freed): stock gpSP 3D maps them at a fixed address under 0x02000000, which this app's own
+static data covers, and the first translated block crashed the console; refused, it runs its interpreter. A
 libretro core like armGBA, behind the same kind of mGBA-shaped view (`pd_gpsp_core.c`: RAM, ROM, VRAM, and io / palette /
 OAM copied after each frame, no renderer, so EXPAND takes the hookless path). gpSP's objects and our glue are linked
 into one object whose only globals are `pd_gpsp.keep`'s names (its globals - `reg`, `ewram`, `retro_run` ... - clash

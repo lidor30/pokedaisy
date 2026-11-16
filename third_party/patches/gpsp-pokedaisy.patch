@@ -168,7 +168,7 @@ index c12c751..2e96ebe 100644
  {
    /* VRAM instructions are never cached. This also covers code rewritten by
 diff --git a/cpu.h b/cpu.h
-index ef07a52..d69b8a1 100644
+index ef07a52..2ffbd9d 100644
 --- a/cpu.h
 +++ b/cpu.h
 @@ -114,6 +114,14 @@ typedef enum
@@ -186,11 +186,40 @@ index ef07a52..d69b8a1 100644
  /* Interpret mutable VRAM until execution leaves it or a frame completes.
   * Returns the same cycle-count/frame-complete encoding as update_gba(). */
  u32 function_cc execute_arm_vram(u32 cycles);
+@@ -148,8 +156,11 @@ bool translate_block_thumb(u32 pc, bool ram_region);
+ extern u8* rom_translation_cache;
+ extern u8* ram_translation_cache;
+ #elif defined(_3DS)
+-#define rom_translation_cache ((u8*)0x02000000 - ROM_TRANSLATION_CACHE_SIZE)
+-#define ram_translation_cache (rom_translation_cache - RAM_TRANSLATION_CACHE_SIZE)
++/* PokeDaisy: one block from the heap made executable in place (libretro.c's
++ * retro_init), not a map at a fixed address below 0x02000000, which a larger
++ * app's own static data covers. NULL = no recompiler (the interpreter runs). */
++extern u8* rom_translation_cache;
++extern u8* ram_translation_cache;
+ extern u8* rom_translation_cache_ptr;
+ extern u8* ram_translation_cache_ptr;
+ #elif defined(VITA)
 diff --git a/cpu_threaded.c b/cpu_threaded.c
-index 605f84f..4c6a26f 100644
+index 605f84f..1fe8617 100644
 --- a/cpu_threaded.c
 +++ b/cpu_threaded.c
-@@ -225,6 +225,11 @@ typedef struct
+@@ -46,10 +46,12 @@ u8 *rom_translation_ptr;
+ u8 *ram_translation_ptr;
+ int sceBlock;
+ #elif defined(_3DS) 
++u8* rom_translation_cache;
++u8* ram_translation_cache;
+ u8* rom_translation_cache_ptr;
+ u8* ram_translation_cache_ptr;
+-u8 *rom_translation_ptr = rom_translation_cache;
+-u8 *ram_translation_ptr = ram_translation_cache;
++u8 *rom_translation_ptr;
++u8 *ram_translation_ptr;
+ #else
+ u8 *rom_translation_ptr = rom_translation_cache;
+ u8 *ram_translation_ptr = ram_translation_cache;
+@@ -225,6 +227,11 @@ typedef struct
    #include "x86/x86_emit.h"
  #endif
  
@@ -202,7 +231,7 @@ index 605f84f..4c6a26f 100644
  /* Cache invalidation */
  
  #if defined(PSP)
-@@ -2135,6 +2140,11 @@ void translate_icache_sync() {
+@@ -2135,6 +2142,11 @@ void translate_icache_sync() {
        thumb_block_memory(store, push_lr, push_lr, 13);                        \
        break;                                                                  \
                                                                                \
@@ -265,10 +294,129 @@ index e75e9a8..e3678c4 100644
  
    if (gamepak_mini_rom)
    {
+diff --git a/libretro/libretro.c b/libretro/libretro.c
+index 30f3acb..8cfe0ba 100644
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -653,24 +653,47 @@ void retro_init(void)
+   #elif defined(_3DS)
+    if (__ctr_svchax && !translation_caches_inited)
+    {
+-      uint32_t currentHandle;
++      /* PokeDaisy: both caches as one block from the heap, made
++       * read-write-execute where it is (MEMOP_PROT), as armGBA's recompiler
++       * gets its code memory in the same app. The stock MEMOP_MAP to a fixed
++       * address below 0x02000000 landed inside PokeDaisy's own static data,
++       * and its result wasn't checked: the first translated block crashed
++       * the 3DS. The ROM cache first, the RAM cache right after it, so the
++       * RAM code's calls to the divide routines at the ROM cache's start
++       * stay within a branch's reach. Refused = the interpreter runs. */
++      const u32 size = ROM_TRANSLATION_CACHE_SIZE + RAM_TRANSLATION_CACHE_SIZE;
++      uint32_t self = 0;
++      int32_t rc = -1;
+       check_rosalina();
+-      
+-      rom_translation_cache_ptr  = memalign(0x1000, ROM_TRANSLATION_CACHE_SIZE);
+-      ram_translation_cache_ptr  = memalign(0x1000, RAM_TRANSLATION_CACHE_SIZE);
+-
+-      svcDuplicateHandle(&currentHandle, 0xFFFF8001);
+-      svcControlProcessMemory(currentHandle,
+-                              rom_translation_cache, rom_translation_cache_ptr,
+-                              ROM_TRANSLATION_CACHE_SIZE, MEMOP_MAP, 0b111);
+-      svcControlProcessMemory(currentHandle,
+-                              ram_translation_cache, ram_translation_cache_ptr,
+-                              RAM_TRANSLATION_CACHE_SIZE, MEMOP_MAP, 0b111);
+-      svcCloseHandle(currentHandle);
+-      rom_translation_ptr = rom_translation_cache;
+-      ram_translation_ptr = ram_translation_cache;
+-      ctr_flush_invalidate_cache();
+-      translation_caches_inited = 1;
++      rom_translation_cache_ptr = memalign(0x1000, size);
++      ram_translation_cache_ptr = NULL;
++      if (rom_translation_cache_ptr &&
++          svcDuplicateHandle(&self, 0xFFFF8001) >= 0)
++      {
++         /* 0b111: read, write, execute. */
++         rc = svcControlProcessMemory(self, rom_translation_cache_ptr, NULL,
++               size, MEMOP_PROT, 0b111);
++         svcCloseHandle(self);
++      }
++      if (rc >= 0)
++      {
++         rom_translation_cache = rom_translation_cache_ptr;
++         ram_translation_cache = rom_translation_cache + ROM_TRANSLATION_CACHE_SIZE;
++         rom_translation_ptr = rom_translation_cache;
++         ram_translation_ptr = ram_translation_cache;
++         ctr_flush_invalidate_cache();
++         translation_caches_inited = 1;
++      }
++      else
++      {
++         if (log_cb)
++            log_cb(RETRO_LOG_ERROR,
++                   "No executable memory for the recompiler (%08lX): "
++                   "the interpreter runs\n", (unsigned long)rc);
++         free(rom_translation_cache_ptr);
++         rom_translation_cache_ptr = NULL;
++         rom_translation_cache = ram_translation_cache = NULL;
++      }
+    }
+   #elif defined(VITA)
+    if(!translation_caches_inited){
+@@ -757,17 +780,21 @@ void retro_deinit(void)
+ 
+    if (__ctr_svchax && translation_caches_inited)
+    {
+-      uint32_t currentHandle;
+-      svcDuplicateHandle(&currentHandle, 0xFFFF8001);
+-      svcControlProcessMemory(currentHandle,
+-                              rom_translation_cache, rom_translation_cache_ptr,
+-                              ROM_TRANSLATION_CACHE_SIZE, MEMOP_UNMAP, 0b111);
+-      svcControlProcessMemory(currentHandle,
+-                              ram_translation_cache, ram_translation_cache_ptr,
+-                              RAM_TRANSLATION_CACHE_SIZE, MEMOP_UNMAP, 0b111);
+-      svcCloseHandle(currentHandle);
++      /* PokeDaisy: read-write again before it goes back to the heap (a
++       * process ending with memory still executable hangs the 3DS on
++       * "Closing software", armGBA's jitmem.c found). */
++      uint32_t self = 0;
++      if (svcDuplicateHandle(&self, 0xFFFF8001) >= 0)
++      {
++         /* 0b011: read, write. */
++         svcControlProcessMemory(self, rom_translation_cache_ptr, NULL,
++               ROM_TRANSLATION_CACHE_SIZE + RAM_TRANSLATION_CACHE_SIZE,
++               MEMOP_PROT, 0b011);
++         svcCloseHandle(self);
++      }
+       free(rom_translation_cache_ptr);
+-      free(ram_translation_cache_ptr);
++      rom_translation_cache_ptr = ram_translation_cache_ptr = NULL;
++      rom_translation_cache = ram_translation_cache = NULL;
+       translation_caches_inited = 0;
+    }
+ #endif
+@@ -973,7 +1000,7 @@ static void check_variables(bool started_from_load)
+    else
+       dynarec_enable = 1;
+ 
+-#if defined(MMAP_JIT_CACHE)
++#if defined(MMAP_JIT_CACHE) || defined(_3DS)
+    /* Without a translation cache the dynarec cannot run; pin the
+     * interpreter regardless of the core option. */
+    if (!rom_translation_cache)
 diff --git a/main.c b/main.c
-index 64210b1..4398993 100644
+index 64210b1..e243822 100644
 --- a/main.c
 +++ b/main.c
+@@ -113,7 +113,7 @@ void init_main(void)
+   video_count = 960;
+ 
+ #ifdef HAVE_DYNAREC
+-#if defined(MMAP_JIT_CACHE)
++#if defined(MMAP_JIT_CACHE) || defined(_3DS)
+   /* No cache was mapped: the dynarec is pinned off and its state must
+    * not be touched (init_emitter emits the BIOS SWI entry point). */
+   if (rom_translation_cache)
 @@ -125,6 +125,13 @@ void init_main(void)
  #endif
  }
