@@ -291,6 +291,26 @@ void* readFile(const char* path, size_t* size) {
     return data;
 }
 
+// armGBA's render worker (jitmem.c's is renamed away, ctr/CMakeLists.txt): the New 3DS's third core, else the system core
+// at the app's 80% - jitmem.c kept it off an Old 3DS. There it runs One Frame Late (main.c's lateVideo): drawing each
+// frame in step, the game waited on it a third of every second. At the game thread's priority, below the draw thread.
+#define RENDER_STACK (256 * 1024)
+bool renderThreadHostCreate(pthread_t* thread, void* (*function)(void*), void* argument) {
+    s32 priority = 0x30;
+    svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
+    int core = host_is_new_3ds() ? 2 : 1;
+    Thread t = NULL;
+    if (core == 2) t = threadCreate((ThreadFunc) (void*) function, argument, RENDER_STACK, priority, 2, false);
+    if (!t && host_core1_take(HOST_CORE1_PERCENT)) {
+        core = 1;
+        t = threadCreate((ThreadFunc) (void*) function, argument, RENDER_STACK, priority, 1, false);
+    }
+    host_log("armGBA's renderer on core %d: %s", core, t ? "started" : "couldn't start, drawn with the game");
+    if (!t) return false;
+    *thread = (pthread_t) t; // libctru's pthread_t is its Thread, so pthread_join waits for this one
+    return true;
+}
+
 // armGBA's second render worker (jitmem.c's is renamed away, ctr/CMakeLists.txt): none. It would share the fourth core
 // with the companion's draw thread and EXPAND's, and beside them one of the two starved (43-48 FPS on FireRed's title).
 bool renderThreadHostCreateSecond(pthread_t* thread, void* (*function)(void*), void* argument) {

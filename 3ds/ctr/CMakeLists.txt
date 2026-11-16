@@ -72,9 +72,11 @@ target_include_directories(pd_armgba_archive PRIVATE "${PORTLIBS}/include")
 target_link_directories(pd_armgba PUBLIC "${PORTLIBS}/lib")
 target_compile_options(pd_armgba PRIVATE -flto)
 set_source_files_properties("${ARMGBA_3DS}/svc.s" PROPERTIES COMPILE_OPTIONS "-x;assembler-with-cpp")
-# armGBA's second render worker goes on the fourth core, the companion's draw thread's and EXPAND's: host.c's own hook
-# declines it, so one worker on the third core draws every line.
-set_source_files_properties("${ARMGBA_3DS}/jitmem.c" PROPERTIES COMPILE_DEFINITIONS "renderThreadHostCreateSecond=armgbaSecondWorkerUnused")
+# armGBA's render workers are host.c's: one on the New 3DS's third core, or on an Old 3DS's system core (jitmem.c kept it
+# off there); the second would go on the fourth core, the companion's draw thread's and EXPAND's, so host.c declines it
+# and one worker draws every line.
+set_source_files_properties("${ARMGBA_3DS}/jitmem.c" PROPERTIES COMPILE_DEFINITIONS
+    "renderThreadHostCreate=armgbaRenderWorkerUnused;renderThreadHostCreateSecond=armgbaSecondWorkerUnused")
 
 file(GLOB CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../core/*.c")
 

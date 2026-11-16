@@ -110,7 +110,7 @@ static const char* option_value(const char* key) {
         { "armgba_player1_saves", "retroarch" },
         { "armgba_video_threads", "1" },
     };
-    if (!strcmp(key, "armgba_threaded_video")) return E.host.threaded ? "enabled" : "disabled";
+    if (!strcmp(key, "armgba_threaded_video")) return !E.host.threaded ? "disabled" : E.host.lateVideo ? "one frame late" : "enabled";
     if (!strcmp(key, "armgba_threaded_audio")) return "disabled";
     for (size_t i = 0; i < sizeof(FIXED) / sizeof(*FIXED); i++)
         if (!strcmp(key, FIXED[i].key)) return FIXED[i].value;

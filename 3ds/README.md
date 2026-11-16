@@ -453,18 +453,22 @@ not used; nor is render-to-texture.
 - **3DS / 3DS XL / 2DS** (268 MHz, 128 MB): not tried on one yet, only on a New 3DS playing one (below). There the app
   borrows the system's core (core 1, 80% of its time, `host_core1_take` in `ctr/host.c`; 30% while the app is in the
   background, as gpSP 3D does it) for the screens' draw thread (`ctr/gpu.c`), so the game no longer waits for the refresh
-  itself. armGBA's renderer stays on the game's core: on core 1 the game waited on it a third of each second. EXPAND's
-  margins stay there too (no fourth core). A game that falls a refresh or two behind runs the frames it owes undrawn next
-  loop, two at most (`pd_input.catchUp`, main.c's `behindTicks`; armGBA leaves an undrawn frame's picture out, which is most
-  of what a frame costs), so it and its sound keep closer to full speed while the picture skips; a New 3DS keeps every
-  frame drawn. While a game runs the log waits in memory (`host_log_hold`): gpSP 3D's Old 3DS freezes were its log written
-  to the SD card mid-game. Measured 2026-11-17 on FireRed's Route 21 at SHARP 1.5x, game frames a second / shown: before
-  (everything on the game's core) 22-27 / all, the sound at its 85% floor with ~19 gaps a second; the draw thread on core 1
-  30 / all; with up to one frame skipped 34 / 17; up to two (the default) 45 / 15, the sound at full rate with ~10 gaps.
-  armGBA's own code is what's slow at 268 MHz: no full speed yet. The dev build plays an Old 3DS on a New one with
-  `sdmc:/pokedaisy-dev/old3ds` (no 804 MHz mode or L2 cache, no third or fourth core): close to one, not the same (its
-  memory and GPU stay a New 3DS's); `catchup` (holding 0, 1 or 2) sets the most frames skipped, `draw0` keeps the drawing
-  on the game's core, and `armgba/nothreads` (already there) armGBA's renderer. `pdlink stat`'s `skipped` and
+  itself, and for armGBA's renderer, run One Frame Late (`pd_armgba_host.lateVideo`, host.c's `renderThreadHostCreate` in
+  place of jitmem.c's, which kept it off an Old 3DS): drawn in step there, the game waited on it a third of each second.
+  A late picture is a frame behind the game's memory, which EXPAND's margins can't be (the middle split from them at the
+  seam while walking), so a game started in EXPAND keeps the renderer on the game's core; an Old 3DS's first start is
+  SHARP 1.5x for that. Fades, FREE FLIGHT's bird and a held battle frame are a frame off at worst. A game that falls a
+  refresh or two behind runs the frames it owes undrawn next loop, two at most (`pd_input.catchUp`, main.c's
+  `behindTicks`), so it and its sound keep closer to full speed while the picture skips; a New 3DS keeps every frame
+  drawn. While a game runs the log waits in memory (`host_log_hold`): gpSP 3D's Old 3DS freezes were its log written to
+  the SD card mid-game. Measured 2026-11-17 on FireRed's Route 21 at SHARP 1.5x, game frames a second / shown / sound:
+  before (everything on the game's core) 22-27 / all / its 85% floor, ~19 gaps a second; the draw thread on core 1 30 /
+  all; the renderer on core 1 in step 36 / 12; on the game's core with up to two frames skipped 45 / 15 / full rate, ~10
+  gaps; the renderer on core 1 late with up to two skipped (the default) 52 / 18 / full rate, 0-3 gaps; late without
+  skipping 33 / all / 85%. armGBA's own code is what's slow at 268 MHz: no full speed yet. The dev build plays an Old 3DS
+  on a New one with `sdmc:/pokedaisy-dev/old3ds` (no 804 MHz mode or L2 cache, no third or fourth core): close to one,
+  not the same (its memory and GPU stay a New 3DS's); `catchup` (holding 0, 1 or 2) sets the most frames skipped, `draw0`
+  keeps the drawing on the game's core, and `armgba/nothreads` armGBA's renderer. `pdlink stat`'s `skipped` and
   `draw_core` say what it did.
 
 ## Next steps

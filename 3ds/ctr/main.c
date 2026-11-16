@@ -604,17 +604,21 @@ static bool run_game(const char* file) {
     audioRate = audioRateSet = audioMade = 1.0f;
     audioLast = 0;
     if (armgba) {
-        // armGBA: its recompiler, its renderer on the New 3DS's third and fourth cores and its mixer on the fourth. Not on
-        // an Old 3DS's system core: tried (2026-11-17, a New 3DS playing an Old one), the game waited on it a third of
-        // each second, 36 game frames a second on FireRed's field against 45 with the renderer on the game's core.
+        // armGBA: its recompiler, its renderer on the New 3DS's third and fourth cores and its mixer on the fourth. An Old
+        // 3DS's renderer goes on the system core One Frame Late (host.c's renderThreadHostCreate): drawing each frame in
+        // step there, the game waited on it a third of each second (FireRed's field, a New 3DS playing an Old one: 36
+        // game frames a second, 45 with the renderer on the game's core, 52 late). Not when the game starts in EXPAND:
+        // its margins are built from the frame just run, and a picture a frame older split at the seam while walking -
+        // the renderer stays on the game's core then.
+        bool oldExpand = !host_is_new_3ds() && settings.aspect == PD_ASPECT_EXPAND;
         rom->close(rom);
         dspBase = ARMGBA_RATE;
         if (hasSound) ndspChnSetRate(0, dspBase);
         char romSd[520];
         snprintf(romSd, sizeof(romSd), "sdmc:%s", romPath);
         struct pd_armgba_host emuHost = { .audio = armgba_audio, .log = host_emu_log, .systemDir = "sdmc:" SYSTEM_DIR,
-                                          .workDir = "sdmc:" WORK_DIR, .threaded = host_is_new_3ds(), .romBuffer = host_rom_arena,
-                                          .knownCrc = romId.known ? romId.crc : 0 };
+                                          .workDir = "sdmc:" WORK_DIR, .threaded = !oldExpand, .romBuffer = host_rom_arena,
+                                          .knownCrc = romId.known ? romId.crc : 0, .lateVideo = !host_is_new_3ds() };
 #ifdef PD_DEV
         // The dev build's switch: sdmc:/pokedaisy-dev/armgba/nothreads draws on the game's core.
         FILE* noThreads = fopen("sdmc:" WORK_DIR "/nothreads", "rb");
@@ -1380,7 +1384,9 @@ int main(void) {
     host_log("PokeDaisy: %s, heap %lu KiB free", host_is_new_3ds() ? "New 3DS" : host_old_3ds_stand_in() ? "New 3DS playing an Old 3DS" : "3DS",
              (unsigned long) host_heap_free() >> 10);
     host_log("screens drawn on core %d", gpu_draw_core() >= 0 ? gpu_draw_core() : 0);
-    pd_settings_load(&settings, SETTINGS_FILE);
+    // An Old 3DS's first start: SHARP 1.5x rather than EXPAND, which keeps armGBA's renderer on the game's core there
+    // (run_game's oldExpand) and costs the margins on top. EXPAND stays one pick away in VIEW.
+    if (!pd_settings_load(&settings, SETTINGS_FILE) && !host_is_new_3ds()) settings.aspect = PD_ASPECT_ORIGINAL;
     audio_init();
     mcuHwcInit();
     ptmuInit(); // the battery's charge state (a bolt by the battery)
