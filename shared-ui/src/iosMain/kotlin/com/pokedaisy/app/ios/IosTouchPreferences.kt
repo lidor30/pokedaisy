@@ -62,7 +62,7 @@ internal object IosTouchPreferences {
         }
     }
 
-    val buttons = TouchButton.entries.toSet() - setOf(TouchButton.QUICK_MENU, TouchButton.ZOOM)
+    val buttons = TouchButton.entries.toSet() - TouchButton.ZOOM
     val drawingStyle: TouchControlsStyle get() = style.forButtons(buttons)
 
     fun feel(strength: Int) {

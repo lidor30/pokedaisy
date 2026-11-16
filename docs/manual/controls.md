@@ -112,7 +112,7 @@ The speed hotkeys are explained in [Fast-forward and game speed](fast-forward.md
 
 ### iPhone and iPad hotkeys
 
-On iPhone and iPad, `HOTKEYS` starts off so your existing trigger buttons still press L and R. Turn it on to use the speed, state, slot, `EXIT GAME`, `RESTART GAME`, `COMPANION` and `MUTE` shortcuts. The defaults in the table apply to these actions. Actions that need a feature still being ported are omitted.
+On iPhone and iPad, `HOTKEYS` starts off so your existing trigger buttons still press L and R. Turn it on to use the speed, state, slot, `EXIT GAME`, `RESTART GAME`, `COMPANION`, `QUICK MENU` and `MUTE` shortcuts. The defaults in the table apply to these actions. Actions that need a feature still being ported are omitted.
 
 `FF HOLD` and `SLOWMO HOLD` stop when you release their keys, open a companion window or button capture, focus a text box, or put the app in the background. Fast-forward takes priority over half speed. The touch FF button keeps its own hold. On both platforms, releasing touch leaves a controller hold active, and releasing the controller leaves touch active. Changing bindings or turning hotkeys off releases the old hotkey holds. `SPEED CYCLE` goes through 1x, 1.5x, 2x, 3x and 4x, then back to 1x. From half or quarter speed it returns to 1x, using the same policy as Android.
 
@@ -175,6 +175,10 @@ Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROL
 `LABELS` (on to start with) puts each action's name under its icon. Turn it off for icons alone, smaller and closer together: the highlighted one is then named under the row, or in the middle of the ring.
 
 To use another button, change the `QUICK MENU` hotkey.
+
+On iPhone and iPad, the same menu offers `PC`, `FLY`, the keep-away spray, `WILD ENCOUNTERS`, the current state's save and load, and `FF` where supported. Held sideways, `COMPANION` opens the companion too. The game's own checks still decide when a field action can run. Other actions are omitted until their features are available on iOS.
+
+You can open it with the `QUICK MENU` touch button, even with `HOTKEYS` off. With hotkeys on, L3 or your chosen key opens and closes it. Use the D-pad, a hardware keyboard's game bindings, or the ring's left stick to choose, then press `A`. `B` returns from a destination or item list, then closes the menu. Held buttons stay out of the game until released after closing.
 
 ## Touch controls
 
@@ -365,9 +369,9 @@ The preview and `EDIT LAYOUT` use the same arrangement as the game screen.
 choose `DONE`. Upright and sideways layouts are kept separately. `SHOW` > `AUTO` hides the controls while a gamepad is
 connected; `ALWAYS` and `NEVER` let you choose for yourself.
 
-You can enable `FF`, `TURBO A`, `TURBO B`, `SAVE STATE` and `LOAD STATE` under `EXTRA BUTTONS`. A short tap on `FF`
+You can enable `FF`, `QUICK MENU`, `TURBO A`, `TURBO B`, `SAVE STATE` and `LOAD STATE` under `EXTRA BUTTONS`. A short tap on `FF`
 toggles it; holding it speeds up the game until you release it. The state buttons use the current slot in `STATES`.
-Skin import, the quick menu, zoom, rewind and X/Y bindings are not available on iPad yet.
+`QUICK MENU` opens the same ring or grid as on Android. `REWIND` and `X AND Y` also use the shared bindings and controls. Skin import and zoom remain unavailable on iPad.
 
 You can also open `TOUCH CONTROLS` from the library's `SETTINGS`, with no game running. The editor uses a stand-in of
 the same game and controls panels. It keeps the layout for the orientation you are editing, ready for your next game.

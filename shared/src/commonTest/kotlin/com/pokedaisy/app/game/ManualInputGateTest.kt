@@ -6,6 +6,30 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ManualInputGateTest {
+    @Test fun aClosingAimingStickMustCentreBeforeAnyDirectionCanPlay() {
+        val gate = ManualInputGate()
+        gate.quarantineUntilNeutral()
+        assertEquals(0, gate.filter(1, neutral = false))
+        assertEquals(0, gate.filter(2, neutral = false)) // Turning a held stick is not a fresh press.
+        assertEquals(0, gate.filter(0, neutral = false)) // A diagonal can project to no game direction.
+        assertTrue(gate.awaitingNeutral)
+        assertEquals(0, gate.filter(0, neutral = true))
+        assertFalse(gate.awaitingNeutral)
+        assertEquals(2, gate.filter(2, neutral = false))
+    }
+    @Test fun aMenusOwnShortcutStillYieldsToEditorsCaptureAndBackground() {
+        val gate = ManualInputGate()
+        gate.setBlocked(ManualInputGate.Owner.COMPANION, true, 0)
+        assertFalse(gate.blockedExcept(ManualInputGate.Owner.COMPANION))
+        for (owner in listOf(ManualInputGate.Owner.EDITOR, ManualInputGate.Owner.BINDING, ManualInputGate.Owner.BACKGROUND)) {
+            gate.setBlocked(owner, true, 1)
+            assertTrue(gate.blockedExcept(ManualInputGate.Owner.COMPANION))
+            gate.setBlocked(owner, false, 1)
+            assertFalse(gate.blockedExcept(ManualInputGate.Owner.COMPANION))
+        }
+        assertTrue(gate.blocked)
+        assertEquals(0, gate.filter(1))
+    }
     @Test fun modalOwnsHeldAndNewlyPressedButtonsUntilRelease() {
         val gate = ManualInputGate()
         assertEquals(1, gate.filter(1))

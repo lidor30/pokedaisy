@@ -84,7 +84,7 @@ From the command line (no signing, the simulator):
 
 ```sh
 xcodebuild -project iosApp/PokeDaisy.xcodeproj -scheme PokeDaisy -sdk iphonesimulator \
-  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+  -destination 'generic/platform=iOS Simulator' ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build
 ```
 
 ## Cheats
@@ -96,6 +96,12 @@ Files imports are bounded to 1 MiB, start disabled and pause the game/pad while 
 entry uses shared keyboard-focus ownership, so typing does not trigger gameplay or hotkeys. GB cheats stay hidden.
 
 ## Shared touch customization
+
+QUICK MENU reuses Android's ring, grid, destination/item lists and settings page. It opens from the shared touch
+extra or a bound hotkey (L3 by default, with HOTKEYS enabled). PC, classic FLY, Repel, encounter toggling, state
+save/load and FF use one `GameQuickActions` policy on both hosts; unsupported actions are omitted. Landscape
+also offers COMPANION. Controller/keyboard menu keys and stick aiming stay out of gameplay until released after
+closing. Binding capture, the editor and background ownership take precedence over the menu shortcut.
 
 The companion's TOUCH CONTROLS page, preview and EDIT LAYOUT are the existing shared Compose screens. Preferences use
 TouchStyleCodec, also used by Android, backed by NSUserDefaults. The game, controls and companion share one Compose host;
@@ -140,7 +146,7 @@ SPEED OPTIONS uses the shared settings page and `PlaybackPolicy` from Android. `
 menu, shop and map watchers per emulated frame. The portable C API observes existing GBA field tables without
 enabling patches, for text, bike and surf speeds. Unknown field layouts remain N/A; Game Boy still supports battle
 speed through the shared battle controller. A scene change stops a fast frame batch immediately. Menu callback
-learning and scene-speed choices persist in NSUserDefaults. Steady music and speed hotkeys remain later work.
+learning and scene-speed choices persist in NSUserDefaults. Steady music remains later work.
 
 ## Game-option patches
 

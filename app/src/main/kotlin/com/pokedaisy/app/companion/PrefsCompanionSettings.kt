@@ -12,6 +12,12 @@ class PrefsCompanionSettings(
 ) : StoredCompanionSettings {
     enum class Change { PLAYBACK, FIELD_OPTIONS }
     var changed: (Change) -> Unit = {}
+    override val quickMenuActions get() = prefs.quickMenuActions
+    override fun setQuickMenuActions(actions: Set<QuickAction>) { prefs.quickMenuActions = actions }
+    override val quickMenuStyle get() = prefs.quickMenuStyle
+    override fun setQuickMenuStyle(style: QuickMenuStyle) { prefs.quickMenuStyle = style }
+    override val quickMenuLabels get() = prefs.quickMenuLabels
+    override fun setQuickMenuLabels(on: Boolean) { prefs.quickMenuLabels = on }
     override val showHints get() = prefs.showHints
     override fun setShowHints(on: Boolean) { prefs.showHints = on }
     override val showFoeIvs get() = prefs.showFoeIvs

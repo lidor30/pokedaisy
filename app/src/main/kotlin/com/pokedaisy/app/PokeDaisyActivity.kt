@@ -239,17 +239,13 @@ class PokeDaisyActivity : Activity() {
     /** The QUICK MENU (companion.ui.QuickMenu, the QUICK MENU hotkey) and the actions it shows (SETTINGS > QUICK MENU). */
     private val quickMenu = com.pokedaisy.app.companion.ui.QuickMenuState().also { q ->
         q.onRun = { runQuickAction(it) }
-        q.onRepel = { id -> itemUse.use(id) { o -> showHud(com.pokedaisy.app.companion.ui.itemUseMessage(o)) } }
+        q.onRepel = { id -> quickActions.repel(id) }
         // The stick onto another tile: a light tick, like a game's weapon wheel (the D-pad's steps stay silent).
         // The stick still tilted when it closes (the ring is aimed with it): kept from the game until it's let go, or the
         // player rides off - and a bike at full speed ignores the SELECT that BIKE / ROD press.
         q.onClose = { if (quickStickOff) quickStickHold = true }
         q.onAimMove = { if (::view.isInitialized) view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK) }
-        q.onFly = { mapsec, targets ->
-            flyAction.fly(mapsec, targets) { r ->
-                if (r != com.pokedaisy.app.companion.data.FlyResult.OK) showHud(com.pokedaisy.app.companion.ui.flyMessage(r))
-            }
-        }
+        q.onFly = { mapsec, targets -> quickActions.flyTo(mapsec, targets) }
     }
     private val quickShown = androidx.compose.runtime.mutableStateOf(com.pokedaisy.app.companion.QuickAction.entries.toSet())
     /** The joystick's directions while the QUICK MENU is open, so a new one is a press. */
@@ -832,95 +828,59 @@ class PokeDaisyActivity : Activity() {
     }
 
     /** What the QUICK MENU's tiles do here ([quickMenu]). */
-    private val quickActions = object : com.pokedaisy.app.companion.ui.QuickActions {
-        override fun offered(action: com.pokedaisy.app.companion.QuickAction) = when (action) {
-            com.pokedaisy.app.companion.QuickAction.PC -> itemUse.canPc()
-            com.pokedaisy.app.companion.QuickAction.HEAL -> itemUse.center()?.heal == true
-            com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.canFly()
-            com.pokedaisy.app.companion.QuickAction.FLIGHT -> flightSupport() != null
-            // Only while a party Pokémon knows it (the snapshot's moves), or anyone with NO HMS NEEDED: the tile isn't there otherwise.
-            com.pokedaisy.app.companion.QuickAction.FLASH -> flashFns() != null && fieldItemSupport()?.fns?.party != null &&
-                (com.pokedaisy.app.companion.data.HmFree.active ||
-                    telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLASH_MOVE } })
-            com.pokedaisy.app.companion.QuickAction.REPEL ->
-                dsRepelKnown() ||
-                    fieldItemSupport()?.let { s -> s.fns.repelItems.any { s.canUse(it) } } == true
-            com.pokedaisy.app.companion.QuickAction.BIKE, com.pokedaisy.app.companion.QuickAction.ROD -> keyItemsWork()
-            com.pokedaisy.app.companion.QuickAction.WILD -> companionSettings.wildEncountersSupported
-            com.pokedaisy.app.companion.QuickAction.SAVE_STATE, com.pokedaisy.app.companion.QuickAction.LOAD_STATE,
-            com.pokedaisy.app.companion.QuickAction.FF -> true
-            // A DS / 3DS game whose touch screen floats in on this layout (the TOUCH SCREEN hotkey's rule).
-            com.pokedaisy.app.companion.QuickAction.TOUCH_SCREEN -> dsFloats.value || n3dsFloats
-            // One screen held sideways: the companion's window or side panel (upright, it's always open).
-            com.pokedaisy.app.companion.QuickAction.COMPANION -> hudSingleScreen.value && !hudUpright.value
-        }
+    private val quickActions: com.pokedaisy.app.companion.ui.GameQuickActions by lazy {
+        com.pokedaisy.app.companion.ui.GameQuickActions(
+            quickMenu, Prefs(this), companionSettings, { telemetry.snapshot.value }, { itemUse }, { flyAction },
+            ::handleHotkey, { showHud(it) }, active = { ::engine.isInitialized && !isDestroyed },
+            extra = object : com.pokedaisy.app.companion.ui.QuickActions {
+                override fun offered(action: com.pokedaisy.app.companion.QuickAction) = when (action) {
+                    com.pokedaisy.app.companion.QuickAction.FLIGHT -> flightSupport() != null
+                    // Only while a party Pokémon knows it (the snapshot's moves), or anyone with NO HMS NEEDED: the tile isn't there otherwise.
+                    com.pokedaisy.app.companion.QuickAction.FLASH -> flashFns() != null && fieldItemSupport()?.fns?.party != null &&
+                        (com.pokedaisy.app.companion.data.HmFree.active ||
+                            telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLASH_MOVE } })
+                    com.pokedaisy.app.companion.QuickAction.REPEL -> dsRepelKnown() ||
+                        fieldItemSupport()?.let { s -> s.fns.repelItems.any { s.canUse(it) } } == true
+                    com.pokedaisy.app.companion.QuickAction.BIKE, com.pokedaisy.app.companion.QuickAction.ROD -> keyItemsWork()
+                    // A DS / 3DS game whose touch screen floats in on this layout (the TOUCH SCREEN hotkey's rule).
+                    com.pokedaisy.app.companion.QuickAction.TOUCH_SCREEN -> dsFloats.value || n3dsFloats
+                    // One screen held sideways: the companion's window or side panel (upright, it's always open).
+                    com.pokedaisy.app.companion.QuickAction.COMPANION -> hudSingleScreen.value && !hudUpright.value
+                    else -> false
+                }
 
-        override fun run(action: com.pokedaisy.app.companion.QuickAction) = runQuickAction(action)
+                override fun run(action: com.pokedaisy.app.companion.QuickAction) = runPlatformQuickAction(action)
 
-        override fun flyTo(mapsec: Int, targets: com.pokedaisy.app.companion.data.FlyTargets) = quickMenu.onFly(mapsec, targets)
+                override fun riding() = ::engine.isInitialized && engine.riding
 
-        override fun repel(itemId: Int) = quickMenu.onRepel(itemId)
+                override fun flying() = ::engine.isInitialized && engine.flightState != MgbaCore.FLIGHT_IDLE
 
-        override fun riding() = ::engine.isInitialized && engine.riding
+                override fun flashDark(): Boolean? {
+                    val flash = flashFns() ?: return null
+                    val progress = telemetry.snapshot.value.progress
+                    return com.pokedaisy.app.companion.data.flashDark(flash, { a, n -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(a, n) }) { f ->
+                        progress?.flag(f)
+                    }
+                }
 
-        override fun flying() = ::engine.isInitialized && engine.flightState != MgbaCore.FLIGHT_IDLE
-
-        override fun wildEncounters() = Prefs(this@PokeDaisyActivity).wildEncounters
-
-        override fun flashDark(): Boolean? {
-            val flash = flashFns() ?: return null
-            val progress = telemetry.snapshot.value.progress
-            return com.pokedaisy.app.companion.data.flashDark(flash, { a, n -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(a, n) }) { f ->
-                progress?.flag(f)
-            }
-        }
-
-        override fun repelSteps() = telemetry.snapshot.value.repelSteps
-            ?: itemUse.repelVar?.let { telemetry.snapshot.value.progress?.variable(it) }?.let(itemUse::repelSteps) ?: 0
+        })
     }
 
-    private fun runQuickAction(action: com.pokedaisy.app.companion.QuickAction) {
+    private fun runQuickAction(action: com.pokedaisy.app.companion.QuickAction) = quickActions.run(action)
+
+    private fun runPlatformQuickAction(action: com.pokedaisy.app.companion.QuickAction) {
         if (!::engine.isInitialized) return
         val snap = telemetry.snapshot.value
         when (action) {
-            com.pokedaisy.app.companion.QuickAction.PC -> itemUse.openPc { o ->
-                if (o.result != com.pokedaisy.app.companion.data.ItemUseResult.USED) showHud(com.pokedaisy.app.companion.ui.itemUseMessage(o))
-            }
-            com.pokedaisy.app.companion.QuickAction.HEAL -> itemUse.centerHeal { r ->
-                showHud(if (r == com.pokedaisy.app.companion.data.CenterResult.OK) com.pokedaisy.app.companion.i18n.tr("Your POKéMON are fully healed.")
-                else com.pokedaisy.app.companion.ui.centerMessage(r, ""))
-            }
-            com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.targets { t ->
-                if (t.result == com.pokedaisy.app.companion.data.FlyResult.OK) quickMenu.fly = t
-                else {
-                    quickMenu.close()
-                    showHud(com.pokedaisy.app.companion.ui.flyMessage(t.result))
-                }
-            }
             com.pokedaisy.app.companion.QuickAction.FLASH -> useFlash()
             com.pokedaisy.app.companion.QuickAction.FLIGHT -> toggleFlight()
-            // The menu picks the kind (QuickMenuState.onRepel): here only if asked straight, the weakest one held.
-            com.pokedaisy.app.companion.QuickAction.REPEL ->
-                com.pokedaisy.app.companion.ui.repelKindsIn(snap).firstOrNull()?.let { quickMenu.onRepel(it) }
-            // OFF, or back to what it was before (NORMAL if it was never set).
-            com.pokedaisy.app.companion.QuickAction.WILD -> {
-                val prefs = Prefs(this)
-                val now = prefs.wildEncounters
-                val next = if (now != 0) { prefs.wildEncountersBeforeOff = now; 0 } else prefs.wildEncountersBeforeOff.takeIf { it > 0 } ?: 100
-                companionSettings.setWildEncounters(next)
-                showHud(com.pokedaisy.app.companion.i18n.tr("WILD ENCOUNTERS") + ": " +
-                    com.pokedaisy.app.companion.i18n.tr(com.pokedaisy.app.companion.ui.wildEncountersLabel(next)))
-            }
             com.pokedaisy.app.companion.QuickAction.BIKE ->
                 com.pokedaisy.app.companion.data.KeyItems.firstIn(snap.items, com.pokedaisy.app.companion.data.KeyItems.BIKES)?.let(::useKeyItem)
             com.pokedaisy.app.companion.QuickAction.ROD ->
                 com.pokedaisy.app.companion.data.KeyItems.firstIn(snap.items, com.pokedaisy.app.companion.data.KeyItems.RODS)?.let(::useKeyItem)
-            // The hotkeys' own way (a 3DS game's states and speed are its session's, not the idle engine's).
-            com.pokedaisy.app.companion.QuickAction.SAVE_STATE -> handleHotkey(Hotkeys.Event(Hotkeys.Action.SAVE_STATE, true))
-            com.pokedaisy.app.companion.QuickAction.LOAD_STATE -> handleHotkey(Hotkeys.Event(Hotkeys.Action.LOAD_STATE, true))
-            com.pokedaisy.app.companion.QuickAction.FF -> handleHotkey(Hotkeys.Event(Hotkeys.Action.FF_TOGGLE, true))
             com.pokedaisy.app.companion.QuickAction.TOUCH_SCREEN -> toggleDsTouch()
             com.pokedaisy.app.companion.QuickAction.COMPANION -> if (::sidePanel.isInitialized) sidePanel.openPanel()
+            else -> Unit
         }
     }
 
@@ -1851,18 +1811,9 @@ class PokeDaisyActivity : Activity() {
             Prefs(this@PokeDaisyActivity).fieldHudStyle = style
             runOnUiThread { syncGameScreen() }
         }
-        override val quickMenuActions get() = Prefs(this@PokeDaisyActivity).quickMenuActions
         override fun setQuickMenuActions(actions: Set<com.pokedaisy.app.companion.QuickAction>) {
-            Prefs(this@PokeDaisyActivity).quickMenuActions = actions
+            stored.setQuickMenuActions(actions)
             quickShown.value = actions
-        }
-        override val quickMenuStyle get() = Prefs(this@PokeDaisyActivity).quickMenuStyle
-        override fun setQuickMenuStyle(style: com.pokedaisy.app.companion.QuickMenuStyle) {
-            Prefs(this@PokeDaisyActivity).quickMenuStyle = style
-        }
-        override val quickMenuLabels get() = Prefs(this@PokeDaisyActivity).quickMenuLabels
-        override fun setQuickMenuLabels(on: Boolean) {
-            Prefs(this@PokeDaisyActivity).quickMenuLabels = on
         }
         override val showPerformance get() = Prefs(this@PokeDaisyActivity).showPerformance
         override fun setShowPerformance(on: Boolean) {

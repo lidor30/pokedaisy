@@ -261,6 +261,7 @@ fun CompanionSettingsScreen(
                         setStyle = { settings.setQuickMenuStyle(it); tick++ },
                         setLabels = { settings.setQuickMenuLabels(it); tick++ },
                         onHotkey = { page = Page.HOTKEYS },
+                        available = settings.quickMenuSupportedActions,
                     ) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.TOUCH -> touchControlsRows(
                         settings.touchStyle, set = { settings.setTouchStyle(it); tick++ },
@@ -1003,7 +1004,7 @@ private fun homeRows(
         SettingRow(tk("GAME BUTTONS"), null, labelBadge = s.gameButtonsBadge, subtitle = "Key bindings: which button presses A, B, START...", opensPage = true) { navigate(Page.BUTTONS) },
         SettingRow(tk("HOTKEYS"), onOff(s.hotkeysEnabled), labelBadge = s.hotkeysBadge, opensPage = true, subtitle = "Button combos for states, FF and more") { navigate(Page.HOTKEYS) },
         // PC, FLY, a Repel, the bike, a rod, states, FF... on a held button (L3 by default): its own page.
-        SettingRow(tk("QUICK MENU"), null, subtitle = "Actions on a held button", labelBadge = quickMenuBadge(), opensPage = true) { navigate(Page.QUICK_MENU) },
+        SettingRow(tk("QUICK MENU"), null, subtitle = "Actions on a held button", labelBadge = s.quickMenuBadge ?: quickMenuBadge(), opensPage = true) { navigate(Page.QUICK_MENU) },
         // The on-screen buttons: when they show, layouts, size, extras, EDIT LAYOUT - its own page, with a preview.
         SettingRow(tk("TOUCH CONTROLS"), s.touchStyle.show.label, labelBadge = s.touchBadge, opensPage = true, subtitle = "The on-screen buttons: layout, look, skins") { navigate(Page.TOUCH) },
         groupTitle(tk("APP")),

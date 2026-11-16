@@ -95,6 +95,7 @@ object PokeDaisyHost {
         val currentSettings = settings
         val currentSlots = slots
         val currentRuntime = playback
+        var quickActions: com.pokedaisy.app.companion.ui.GameQuickActions? = null
         if (currentSettings != null && currentSlots != null && currentRuntime != null) {
             currentSettings.rewindUnavailable = panels::showRewindUnavailable
             val shortcuts = currentRuntime.bindActions(currentSettings, currentSlots,
@@ -109,7 +110,22 @@ object PokeDaisyHost {
                 })
             currentSettings.actions = shortcuts
             touch.actions = shortcuts
-            game?.onHotkey = { shortcuts.hotkey(it) }
+            panels.canOpenQuickMenu = { game === current && game?.isRunning == true && !currentRuntime.blocked }
+            quickActions = com.pokedaisy.app.companion.ui.GameQuickActions(
+                panels.quickMenu, iosPreferences, currentSettings, { telemetry.snapshot.value }, { items }, { fly },
+                shortcuts::hotkey, panels::showQuickNotice,
+                active = { game === current && game?.isRunning == true && !currentRuntime.blocked },
+                extra = object : com.pokedaisy.app.companion.ui.QuickActions {
+                    override fun offered(action: com.pokedaisy.app.companion.QuickAction) =
+                        action == com.pokedaisy.app.companion.QuickAction.COMPANION && !panels.portrait
+                    override fun run(action: com.pokedaisy.app.companion.QuickAction) {
+                        if (action == com.pokedaisy.app.companion.QuickAction.COMPANION) panels.toggleCompanion()
+                    }
+                })
+            game?.onHotkey = {
+                if (it.action == com.pokedaisy.app.Hotkeys.Action.QUICK_MENU) panels.triggerQuickMenu(it.pressed)
+                else if (!it.pressed || !panels.quickMenu.open) shortcuts.hotkey(it)
+            }
         }
         return ComposeUIViewController(configure = { configureUiAutomation() }) {
             AppTheme {
@@ -117,7 +133,14 @@ object PokeDaisyHost {
                     panels.Content(
                         gameContent = { UIKitViewController(factory = { current }, modifier = Modifier.fillMaxSize(),
                             properties = UIKitInteropProperties(interactionMode = null)) },
-                        companion = { Companion(panels) })
+                        companion = { Companion(panels) },
+                        gameOverlay = {
+                            val snapshot by telemetry.snapshot.collectAsState()
+                            quickActions?.let { actions ->
+                                com.pokedaisy.app.companion.ui.QuickMenu(panels.quickMenu, snapshot, actions,
+                                    currentSettings!!.quickMenuActions, iosPreferences.fieldHudStyle.look)
+                            }
+                        })
                     touch.EditorOverlay()
                 }
             }

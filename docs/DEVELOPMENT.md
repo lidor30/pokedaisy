@@ -4433,3 +4433,16 @@ thread and lets an accepted transaction finish if its Compose host is disposed, 
 
 The library/setup follow-up plan is in `docs/specs/shared-library-setup-coordination.md`. Android permissions,
 picker effects and launcher media remain native adapters.
+
+### Shared quick-menu actions
+
+`GameQuickActions` connects the existing `QuickMenuState` and ring/grid UI to `ItemUse`, `FlyAction`, settings and
+the hosts' state/speed shortcuts. Android and iOS use this same dispatch and availability policy for PC, healing,
+classic FLY, Repel, encounters and state/FF actions. Platform extras retain Android's flight, FLASH, registered
+items and extra screens; iOS omits capabilities it has not ported. Delayed destinations belong to one menu visit,
+and retired hosts cannot publish a result into a later game. Existing queued field transactions remain unchanged.
+
+Menu choices use `PrefsCompanionSettings` and the installed keys. On iOS the native poller reuses a second
+`PolledGameKeys` view filtered to QUICK MENU while the menu owns input. Opening/closing, capture, editing and
+background transitions quarantine held keys. Other actions' releases still reach the shared held-action owner.
+The common screen's overlay slot renders the menu; UIKit continues to own only the game surface and native input.

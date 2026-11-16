@@ -58,7 +58,7 @@ internal class IosCompanionSettings(
     override val hasRunningGame get() = game != null
     override val gamePickBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_GAME_PICKER)
     override val shownRows: Set<String> get() = setOf("BATTLE HINTS", "FOE IVS", "TAB BAR", "DARK MODE", "THEME", "LANGUAGE", "HELP",
-        "FF", "FF SPEED", "GAME SPEED", "GAME VOLUME", "MUTE GAME", "ONE-TAP MOVES", "BATTLE INFO", "BATTLE STYLE", "BATTLE VIEW", "BATTLE FOCUS", "RESUME GAMES", "TOUCH CONTROLS", "COMPANION VIEW", "SPEED OPTIONS", "INSTANT TEXT", "REUSABLE TMS", "AUTO-RUN", "RUN INDOORS", "WILD ENCOUNTERS", "GAME BUTTONS", "HOTKEYS", "REWIND", "CHEATS")
+        "FF", "FF SPEED", "GAME SPEED", "GAME VOLUME", "MUTE GAME", "ONE-TAP MOVES", "BATTLE INFO", "BATTLE STYLE", "BATTLE VIEW", "BATTLE FOCUS", "RESUME GAMES", "TOUCH CONTROLS", "COMPANION VIEW", "SPEED OPTIONS", "INSTANT TEXT", "REUSABLE TMS", "AUTO-RUN", "RUN INDOORS", "WILD ENCOUNTERS", "GAME BUTTONS", "HOTKEYS", "QUICK MENU", "REWIND", "CHEATS")
         .let { if (game == null) it - "GAME SPEED" - "FF" else it }
         .let { if (cheatHost()?.supported != true) it - "CHEATS" else it }
 
@@ -201,7 +201,13 @@ internal class IosCompanionSettings(
     override fun clearGbaControlBinding(btn: GbaControls.Btn) {
         bindings.clearGameButton(btn)
     }
-    override val hotkeyActions get() = com.pokedaisy.app.companion.GameActions.BASIC_ACTIONS
+    override val hotkeyActions get() = com.pokedaisy.app.companion.GameActions.BASIC_ACTIONS + com.pokedaisy.app.Hotkeys.Action.QUICK_MENU
+    override val quickMenuSupportedActions get() = setOf(
+        com.pokedaisy.app.companion.QuickAction.PC, com.pokedaisy.app.companion.QuickAction.FLY,
+        com.pokedaisy.app.companion.QuickAction.REPEL, com.pokedaisy.app.companion.QuickAction.WILD,
+        com.pokedaisy.app.companion.QuickAction.SAVE_STATE, com.pokedaisy.app.companion.QuickAction.LOAD_STATE,
+        com.pokedaisy.app.companion.QuickAction.FF, com.pokedaisy.app.companion.QuickAction.COMPANION)
+    override val quickMenuBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_QUICK_MENU)
     override val hotkeysBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_GAME_HOTKEYS)
     // Preserve the old triggers as L/R until the player opts in to emulator shortcuts.
     override fun setHotkeysEnabled(on: Boolean) { stored.setHotkeysEnabled(on); reloadBindings() }

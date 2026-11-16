@@ -39,6 +39,8 @@ internal class IosTouchControls(
 
     @Composable fun EditorOverlay() = editor.Content()
     var actions: GameActions? = null
+    var quickMenu: com.pokedaisy.app.companion.ui.QuickMenuState? = null
+    var triggerQuickMenu: (Boolean) -> Unit = {}
     private var inputEpoch by mutableIntStateOf(0)
     var previewStage: ((Boolean) -> TouchStage?)? = null
     var beforeEdit: () -> Unit = {}
@@ -98,6 +100,11 @@ internal class IosTouchControls(
     }
 
     private fun action(button: TouchButton, down: Boolean) {
+        if (button == TouchButton.QUICK_MENU) {
+            if (game()?.let { it.isRunning && !it.uiPaused && (!it.companionInputCaptured || quickMenu?.open == true) } == true)
+                triggerQuickMenu(down)
+            return
+        }
         if (game()?.let { it.isRunning && !it.uiPaused && !it.companionInputCaptured } != true) return
         if (settings() == null || actions?.touch(button, down) == true) return
         when (button) {

@@ -15,6 +15,26 @@ import okio.SYSTEM
 
 /** The real file-backed chord engine and mapper, on JVM and iOS. */
 class PolledGameHotkeysTest {
+    @Test fun menuOnlyShortcutCannotFireGameActionsAndNeedsAFreshPressAfterCapture() = withDirectory { dir ->
+        Hotkeys.setBindingNamed(dir, Hotkeys.Action.QUICK_MENU, listOf("BUTTON_R2"))
+        val menu = keys(dir, Hotkeys.Action.QUICK_MENU)
+        val events = mutableListOf<Hotkeys.Event>()
+        menu.onHotkey = { events += it }
+        menu.quarantine(setOf(trigger)) // The same held key opened the menu through the gameplay mapper.
+        menu.poll(setOf(trigger), false)
+        assertEquals(emptyList(), events)
+        menu.poll(emptySet(), false)
+        menu.poll(setOf(trigger), false)
+        assertEquals(listOf(Hotkeys.Event(Hotkeys.Action.QUICK_MENU, true)), events)
+        menu.quarantine(setOf(trigger)) // Closing with the hotkey must not retrigger when gameplay resumes.
+        menu.poll(setOf(trigger), false)
+        assertEquals(listOf(true, false), events.map { it.pressed })
+        assertEquals(0, menu.input.mask)
+        assertEquals(0, menu.input.tapMask())
+        menu.poll(emptySet(), true)
+        menu.poll(setOf(trigger), true) // Editors, binding capture and background own even the menu shortcut.
+        assertEquals(2, events.size)
+    }
     private val select = KeyCodes.BUTTON_SELECT
     private val right = KeyCodes.BUTTON_R1
     private val trigger = KeyCodes.BUTTON_R2

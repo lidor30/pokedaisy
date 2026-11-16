@@ -81,7 +81,7 @@ interface QuickActions {
     fun run(action: QuickAction)
 
     /** FLY to [mapsec], one of [targets]' destinations. */
-    fun flyTo(mapsec: Int, targets: FlyTargets)
+    fun flyTo(mapsec: Int, targets: FlyTargets) {}
 
     /** Uses one [itemId] of the bag's REPEL kinds ([REPEL_KINDS]). */
     fun repel(itemId: Int) {}
@@ -108,6 +108,9 @@ interface QuickActions {
  * activity while it's open ([key], [aim], [trigger]), withheld from the game like the companion window's.
  */
 class QuickMenuState {
+    /** Async destinations belong to one visit, never a later reopening or return from a list. */
+    var visit = 0L
+        private set
     var open by mutableStateOf(false)
         private set
 
@@ -168,6 +171,7 @@ class QuickMenuState {
     fun trigger(pressed: Boolean) {
         if (!pressed) return
         if (open) close() else {
+            visit++
             open = true
             fly = null
             repels = null
@@ -176,6 +180,7 @@ class QuickMenuState {
 
     fun close() {
         val was = open
+        visit++
         open = false
         fly = null
         repels = null
@@ -184,6 +189,7 @@ class QuickMenuState {
 
     /** From a list back to the tiles. */
     fun back() {
+        visit++
         fly = null
         repels = null
     }
@@ -606,6 +612,11 @@ internal fun ringPlaces(n: Int, w: Float, h: Float, gap: Float, limW: Float, lim
         ry = ((limH - h) / 2).coerceAtLeast(h)
         rx = minOf(ry * bisect(1f, 8f) { overrun(ry * it, ry, g) }, ((limW - w) / 2).coerceAtLeast(ry))
     }
+    // Both screen limits can clamp the oval before the original gap fits. Refit that gap too;
+    // otherwise an odd count walks past the bottom and its mirrored last pair overlaps.
+    if (overrun(rx, ry, g) && !overrun(rx, ry, 0f)) {
+        g = (bisect(0f, g) { !overrun(rx, ry, it) } - .01f).coerceAtLeast(0f)
+    }
     val t = walk(rx, ry, g)
     // The right half as walked (a clamped oval squeezed to end at the bottom), then the left as its mirror.
     val squeeze = if (n % 2 == 0 && t[half] > PI) PI / t[half] else 1.0
@@ -755,6 +766,7 @@ private fun QuickIcon(action: QuickAction, s: SnapshotView, actions: QuickAction
 fun quickMenuRows(
     shown: Set<QuickAction>, binding: String, style: QuickMenuStyle, labels: Boolean,
     setShown: (Set<QuickAction>) -> Unit, setStyle: (QuickMenuStyle) -> Unit, setLabels: (Boolean) -> Unit, onHotkey: () -> Unit,
+    available: Set<QuickAction> = QuickAction.entries.toSet(),
 ): List<SettingRow> {
     fun onOff(b: Boolean) = if (b) tk("ON") else tk("OFF")
     return listOf(
@@ -765,7 +777,7 @@ fun quickMenuRows(
         },
         SettingRow(tk("LABELS"), onOff(labels), subtitle = "Each action's name under its icon") { setLabels(!labels) },
         groupTitle(tk("SHOW")),
-    ) + QuickAction.entries.map { a ->
+    ) + QuickAction.entries.filter { it in available }.map { a ->
         val badge = when (a) {
             QuickAction.FLASH -> NewFeatures.badge(NewFeatures.QUICK_FLASH)
             QuickAction.FLIGHT -> NewFeatures.badge(NewFeatures.FREE_FLIGHT)

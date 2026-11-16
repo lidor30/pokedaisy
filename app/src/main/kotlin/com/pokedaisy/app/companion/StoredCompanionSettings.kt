@@ -3,6 +3,12 @@ package com.pokedaisy.app.companion
 /** Persisted choices used by the shared settings UI, independent of a running game's actions and capabilities.
  * Defaults retain the existing UI contract for hosts which do not expose every choice. */
 interface StoredCompanionSettings {
+    val quickMenuActions: Set<QuickAction> get() = QuickAction.entries.toSet()
+    fun setQuickMenuActions(actions: Set<QuickAction>) {}
+    val quickMenuStyle: QuickMenuStyle get() = QuickMenuStyle.RING
+    fun setQuickMenuStyle(style: QuickMenuStyle) {}
+    val quickMenuLabels: Boolean get() = true
+    fun setQuickMenuLabels(on: Boolean) {}
     /** Fast-forward speed cap. 0 = unlimited. */
     val ffMaxSpeed: Float
     fun setFfMaxSpeed(v: Float)

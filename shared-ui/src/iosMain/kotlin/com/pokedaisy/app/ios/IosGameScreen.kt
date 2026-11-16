@@ -44,18 +44,48 @@ internal class IosGameScreen(
     private val aspect = if (gameBoy) 160f / 144 else 1.5f
     private var frames by mutableStateOf<GameScreenFrames?>(null)
     private var rewindUnavailable by mutableStateOf(false)
-    fun showRewindUnavailable() {
-        touch.releaseKeys()
-        game?.companionInputCaptured = true
-        rewindUnavailable = true
+    private var quickNotice by mutableStateOf<String?>(null)
+    val quickMenu = QuickMenuState().also { it.onClose = ::syncInputCapture }
+    var canOpenQuickMenu: () -> Boolean = { false }
+    fun showQuickNotice(message: String) {
+        captureButtons()
+        quickNotice = message
+        syncInputCapture()
     }
-    val state = GameScreenState(prefs,
+    private fun captureButtons() {
+        menuSuppressed = game?.controllerButtons ?: 0
+        previousButtons = 0
+        nextRepeat = menuTime() + .35
+    }
+    private fun syncInputCapture() {
+        game?.quickMenuInputCaptured = quickMenu.open
+        game?.companionInputCaptured = quickMenu.open || state.side.windowOpen || rewindUnavailable || quickNotice != null
+        touch.releaseKeys()
+    }
+    fun triggerQuickMenu(pressed: Boolean) {
+        if (!pressed) return
+        if (!quickMenu.open && (!canOpenQuickMenu() || state.side.windowOpen || rewindUnavailable ||
+                quickNotice != null || game?.keyCapture?.active == true || game?.keyboardInputCaptured == true ||
+                game?.uiPaused == true)) return
+        quickMenu.trigger(true)
+        if (quickMenu.open) {
+            quickMenu.labels = prefs.quickMenuLabels
+            quickMenu.ring = prefs.quickMenuStyle == com.pokedaisy.app.companion.QuickMenuStyle.RING
+            captureButtons()
+            syncInputCapture()
+        }
+    }
+    fun showRewindUnavailable() {
+        quickMenu.close()
+        captureButtons()
+        rewindUnavailable = true
+        syncInputCapture()
+    }
+    val state: GameScreenState = GameScreenState(prefs,
         windowChanged = { on ->
-            menuSuppressed = game?.controllerButtons ?: 0
-            previousButtons = 0
-            nextRepeat = menuTime() + .35
-            game?.companionInputCaptured = on
-            touch.releaseKeys()
+            if (on) quickMenu.close()
+            captureButtons()
+            syncInputCapture()
         },
         companionHidden = { releaseFocus() },
     )
@@ -66,12 +96,16 @@ internal class IosGameScreen(
 
     init {
         game?.onCompanionButtons = ::controllerInput
+        game?.onCompanionAim = quickMenu::aim
+        touch.quickMenu = quickMenu
+        touch.triggerQuickMenu = ::triggerQuickMenu
         touch.previewStage = ::previewStage
-        touch.beforeEdit = { if (state.side.windowOpen) state.hide() }
+        touch.beforeEdit = { quickMenu.close(); if (state.side.windowOpen) state.hide() }
     }
 
     @Composable
-    fun Content(gameContent: @Composable () -> Unit, companion: @Composable () -> Unit) {
+    fun Content(gameContent: @Composable () -> Unit, companion: @Composable () -> Unit,
+                gameOverlay: @Composable () -> Unit = {}) {
         val focus = LocalFocusManager.current
         DisposableEffect(focus) {
             releaseFocus = { focus.clearFocus(force = true) }
@@ -91,6 +125,7 @@ internal class IosGameScreen(
             GameScreen(state, gameHeight = { (it / aspect).roundToInt() },
                 game = { GamePicture(aspect, upright, Modifier.fillMaxSize(), gameContent) },
                 controls = { if (visible) touch.Controls(gameBoy, upright) },
+                gameOverlay = { CompositionLocalProvider(LocalCompanionBack provides back, content = gameOverlay) },
                 companion = {
                     CompositionLocalProvider(LocalCompanionTopInset provides (frames?.portrait?.topInset(state.gripHeight) ?: 0),
                         LocalCompanionBack provides back, LocalCompanionKeys provides keys, LocalTextInputFocus provides textInputFocus) {
@@ -104,10 +139,15 @@ internal class IosGameScreen(
                     if (rewindUnavailable) {
                         val dismiss = {
                             rewindUnavailable = false
-                            game?.companionInputCaptured = state.side.windowOpen
+                            syncInputCapture()
                         }
                         OptionConfirm(tr("REWIND"), tr("Rewind is off - turn it on in SETTINGS"), tr("OK"),
                             rememberGbaTextMetrics(), onConfirm = dismiss, onDismiss = dismiss, cancelLabel = null)
+                    }
+                    quickNotice?.let { message ->
+                        val dismiss = { quickNotice = null; syncInputCapture() }
+                        OptionConfirm(tr("QUICK MENU"), message, tr("OK"), rememberGbaTextMetrics(),
+                            onConfirm = dismiss, onDismiss = dismiss, cancelLabel = null)
                     }
                 },
                 dismissSideOnGameTap = !visible,
@@ -138,7 +178,7 @@ internal class IosGameScreen(
     }
 
     private fun controllerInput(buttons: Int) {
-        if (!state.side.windowOpen) return
+        if (!state.side.windowOpen && !quickMenu.open && !rewindUnavailable && quickNotice == null) return
         menuSuppressed = menuSuppressed and buttons
         val current = buttons and menuSuppressed.inv()
         val pressed = current and previousButtons.inv()
@@ -146,8 +186,10 @@ internal class IosGameScreen(
         val repeated = if (now >= nextRepeat) current and DIRECTIONS else 0
         if (pressed != 0) nextRepeat = now + .35 else if (repeated != 0) nextRepeat = now + .1
         previousButtons = current
+        val menuVisit = quickMenu.visit
         for ((bit, key) in BUTTONS) {
-            if (!state.side.windowOpen) break
+            if (quickMenu.visit != menuVisit) break // A selection/back cannot feed another key into its new owner.
+            if (!state.side.windowOpen && !quickMenu.open && !rewindUnavailable && quickNotice == null) break
             when {
                 pressed and bit != 0 -> menuKey(key, false)
                 repeated and bit != 0 -> menuKey(key, true)
@@ -155,6 +197,13 @@ internal class IosGameScreen(
         }
     }
     private fun menuKey(key: MenuKey, repeat: Boolean) {
+        if (rewindUnavailable || quickNotice != null) {
+            if (!repeat && key in listOf(MenuKey.A, MenuKey.B, MenuKey.START)) {
+                rewindUnavailable = false; quickNotice = null; syncInputCapture()
+            }
+            return
+        }
+        if (quickMenu.open) { quickMenu.key(key); return }
         when (key) {
             MenuKey.B -> if (!repeat && !back.back()) state.hide()
             MenuKey.START -> if (!repeat) state.hide()
@@ -167,12 +216,18 @@ internal class IosGameScreen(
     }
 
     fun close() {
+        canOpenQuickMenu = { false }
+        quickMenu.close()
         textInputFocus.clear()
         state.setSide(state.side.withEnabled(false))
         game?.onCompanionButtons = {}
+        game?.onCompanionAim = { _, _ -> false }
+        game?.quickMenuInputCaptured = false
         game?.companionInputCaptured = false
         touch.previewStage = null
         touch.beforeEdit = {}
+        touch.quickMenu = null
+        touch.triggerQuickMenu = {}
         releaseFocus()
     }
     private companion object {
