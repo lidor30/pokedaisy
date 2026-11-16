@@ -3,7 +3,7 @@ package com.pokedaisy.app.companion.data.save
 import com.pokedaisy.app.companion.data.NdsArt
 import com.pokedaisy.app.companion.data.RETAIL_ROM_DIR
 import java.io.File
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -19,7 +19,7 @@ import org.junit.Test
  * saves and, when they're on this machine, the player's own Emerald and HeartGold saves.
  */
 class PalParkTest {
-    private val today = LocalDate.of(2026, 11, 16)
+    private val today = LocalDate(2026, 11, 16)
 
     private fun ds(national: Boolean = true) =
         Gen4SaveEditor((Gen4SaveFile.parse(SyntheticGen4.save(national)) as Gen4SaveFile.Parsed.Ok).save, SyntheticGen4.demoGame())

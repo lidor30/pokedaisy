@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.data.save
 
 import com.pokedaisy.app.companion.i18n.tr
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 
 /**
  * POKé TRANSFER: six Pokémon from a HeartGold / SoulSilver / Platinum save's PC into a Black / White (or Black 2 /
@@ -99,7 +100,7 @@ object PokeTransfer {
         for (i in 0x1A..0x1F) n[b + i] = 0              // hidden ability / sparkle flags, Pt / HGSS locations
         // Met at Poké Transfer, today, at its level; the HeartGold / SoulSilver ball byte moved to Gen 5's.
         putU16(n, d + 0x18, MET_LOCATION)
-        n[d + 0x13] = (today.year - 2000).toByte(); n[d + 0x14] = today.monthValue.toByte(); n[d + 0x15] = today.dayOfMonth.toByte()
+        n[d + 0x13] = (today.year - 2000).toByte(); n[d + 0x14] = today.month.number.toByte(); n[d + 0x15] = today.day.toByte()
         n[d + 0x1C] = ((n[d + 0x1C].toInt() and 0x80) or mon.level).toByte()
         val ball = maxOf(n[d + 0x1B].toInt() and 0xFF, n[d + 0x1E].toInt() and 0xFF)
         n[d + 0x1B] = ball.toByte()

@@ -14,7 +14,7 @@ static void copy_name(char* to, const char* from) {
 }
 
 static void event(struct pd_nuz_events* e, const char* text) {
-    if (e && e->count < PD_NUZ_EVENTS) snprintf(e->text[e->count++], sizeof(e->text[0]), "%s", text);
+    if (e && e->count < PD_NUZ_EVENTS) snprintf(e->text[e->count++], sizeof(e->text[0]), "%.*s", (int)sizeof(e->text[0]) - 1, text);
 }
 
 const struct pd_nuz_encounter* pd_nuz_encounter_at(const struct pd_nuz_run* r, int area) {

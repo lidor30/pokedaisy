@@ -195,7 +195,7 @@ int main(void) {
     struct pd_settings back;assert(pd_settings_load(&back,path));
     assert(back.aspect==PD_ASPECT_ZOOM_OUT && !back.autoZoom && back.ffSpeed==settings.ffSpeed);
     FILE* old=fopen(path,"w");fputs("screen=1\nff=3\nguide=0\n",old);fclose(old);
-    assert(pd_settings_load(&back,path) && back.aspect==PD_ASPECT_ORIGINAL && back.autoZoom && back.ffSpeed==3);
+    assert(pd_settings_load(&back,path) && back.aspect==PD_ASPECT_EXPAND && back.autoZoom && back.ffSpeed==3);
     remove(path);
     // PARTY at a Linux canvas size: Android's slot, edge to edge, three columns past 2:1 (426x240's tab).
     // The selected look (orange outline) follows the host's D-pad focus, else slot 0; empty slots are

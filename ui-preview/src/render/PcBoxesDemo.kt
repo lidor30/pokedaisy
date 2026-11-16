@@ -104,7 +104,7 @@ fun transferDemo(): com.pokedaisy.app.companion.ui.PokeTransferState {
     )
     return com.pokedaisy.app.companion.ui.PokeTransferState(
         "Pokémon HeartGold", com.pokedaisy.app.companion.data.save.Gen4SaveEditor(hgFile, sv.demoGame()), "Pokémon Black", black,
-    ).apply { today = { java.time.LocalDate.of(2026, 11, 16) } }
+    ).apply { today = { kotlinx.datetime.LocalDate(2026, 11, 16) } }
 }
 
 /** COLLECTION's shots: the made-up FireRed, Emerald and HeartGold saves read together. */

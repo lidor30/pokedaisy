@@ -19,10 +19,6 @@
   · <strong><a href="https://pokedaisy.com/feedback/#bug">Report a problem</a></strong>
 </p>
 
-<img src="website/public/media/readme-free-flight.webp" width="100%" alt="FireRed on PokeDaisy: flying over Kanto on a bird, the map drawn past the GBA's edges, the party and buttons in the corners">
-
-<sub>FireRed on an AYN Thor: TAKE OFF, EXPAND and the HUD. Every picture here is the real app.</sub>
-
 </div>
 
 PokeDaisy plays Game Boy, Game Boy Color, GBA and Nintendo DS games on Android handhelds, made for the Pokemon games
@@ -31,6 +27,8 @@ play: your party, bag, map, battle matchups, Pokedex and a spoiler-free guide, d
 a dual-screen handheld it gets the bottom screen; on one screen it opens over the game.
 
 ## The companion
+
+<sub>Every picture here is the real app.</sub>
 
 <table>
   <tr>

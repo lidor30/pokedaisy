@@ -1,7 +1,9 @@
 package com.pokedaisy.app.companion.data.save
 
 import com.pokedaisy.app.companion.i18n.tr
-import java.time.LocalDate
+import com.pokedaisy.app.companion.data.localNow
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 
 /**
  * PAL PARK: six Pokémon from a GBA game's PC brought into HeartGold / SoulSilver / Platinum, the way the DS games' own
@@ -74,7 +76,7 @@ object PalPark {
      */
     fun migrate(
         gba: Gen3SaveEditor, gbaGameCode: String, gbaLabel: String, picks: List<BoxSlot>,
-        ds: Gen4SaveEditor, dsLabel: String, today: LocalDate = LocalDate.now(),
+        ds: Gen4SaveEditor, dsLabel: String, today: LocalDate = localNow().date,
     ): List<BoxSlot> {
         linkBlocker(gba, gbaGameCode, gbaLabel, ds, dsLabel)?.let { throw SaveEditRefused(it) }
         if (picks.size != COUNT || picks.toSet().size != COUNT) throw SaveEditRefused(tr("Pick six Pokémon"))
@@ -149,8 +151,8 @@ object PalPark {
         // Block D
         convertName(mon.otNameBytes, 7, mon.language).codes.copyInto(d, dd, 0, 16)
         d[dd + 0x13] = (today.year - 2000).toByte()
-        d[dd + 0x14] = today.monthValue.toByte()
-        d[dd + 0x15] = today.dayOfMonth.toByte()
+        d[dd + 0x14] = today.month.number.toByte()
+        d[dd + 0x15] = today.day.toByte()
         putU16(d, dd + 0x18, MET_LOCATION)  // MetLocation_DP
         d[dd + 0x1A] = mon.pokerus.toByte()
         d[dd + 0x1B] = mon.ball.toByte()
