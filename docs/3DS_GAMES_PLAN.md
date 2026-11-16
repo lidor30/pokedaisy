@@ -327,9 +327,18 @@ headless with n3ds_dump on the players' saves (`~/Downloads/3ds-saves/main (1)`,
   0x08C6B89E (265 = Slateport City, 224 = Littleroot: both saves read the place they stand in).
 - The X menu: the field object's root 0x08C57660, the menu's pointer at +0x4C (X's +0x40) and its byte at +0x24 (menu closed /
   open / closed dumps). The hold word 0x08D1E3FC: 0x3D1 on the field, 0x3D3 with the menu up, as X's.
-- Not mapped yet: the camera (the field object's +0xD8 chain isn't X's: no ZOOM / free camera there), the battle's controller
-  (no battle buttons yet: walking to grass headless took too many runs), the Town Map (the PokeNav's Hoenn map is `a/0/6/7`'s
-  `poke_navi_map.bclim`, 380 x 270 ETC1; the zone -> spot table wasn't found).
+- The live zone is 0x08C6A7B2 (the save's situation above keeps the last save's place: Alpha Sapphire walked out of a Littleroot
+  house, 224, into the town, 6, and up Route 101, 23, while it still read 224).
+- The battle (Alpha Sapphire, a wild Zigzagoon on Route 101): X's controller at 0x0852FCF0, read the same way (+0x17 1 at the
+  command menu, 2 at the moves; the bag's 1 at +0x10 with the panels zeroed; the foe's record Zigzagoon Lv2 14 / 14, Tackle /
+  Growl), so ORAS has the battle buttons; its touch screen's buttons cover X's points (`N3dsBattleTaps.ORAS`).
+- The camera: the field object +0xE8, +0x5C, +0xAF8 is X's controller, its setup at +0x64 (pitch -40.74, FOV 30): a distance
+  and a yaw written there moved the camera (`Gen6Reader.Camera`), so ZOOM and the free camera work.
+- Getting there headless: a save edited to stand in grass. The situation is in the save twice (0x1400 and +0xF4, the second is
+  what a load reads); +6 is 0 outdoors, 3 indoors (a house's 3 kept outdoors hung the field's load). Easiest: walk out, save
+  in game on the route, then move that save's coordinates (scratch tools: `place.py`, the block CRC16s fixed).
+- Not mapped yet: the Town Map (the PokeNav's Hoenn map is `a/0/6/7`'s `poke_navi_map.bclim`, 380 x 270 ETC1; the zone ->
+  spot table wasn't found).
 - The cart (`N3dsLayout.ORAS`): text `a/0/7/<1 kana, 2 kanji, 3 English, 4 French, 5 Italian, 6 German, 7 Spanish, 8 Korean>`,
   files 98 / 14 / 114 / 37 / 51 / 18 / 90 (species / moves / items / abilities / natures / types / places); moves `a/1/8/9` (one
   packed "WD" file of X's 36-byte records); personal `a/1/9/5` (0x50 a record); zones `a/0/1/3` (the "ZO" bundles, the records
@@ -361,8 +370,20 @@ Sun boots that Moon save too and reads it at every address below (party, bag, My
   text box as well (the Ride Pokemon's "can't call it here" box, field / box / field / box dumps), so it counts only while the
   hold byte 0x300046C8 isn't held: 2 on the field and in the menu, 3 with a text box (`fieldHold`, `fieldHoldMask` 1), which
   also steps the HUD's bottom row away.
-- A battle has no battle buttons yet (its controller isn't mapped): it reads as a screen of the game's own, both screens side
-  by side on ONE SCREEN, so the touch screen's commands are there (ORAS's too). No camera or battle controller mapped yet.
+- The live zone is 0x300019AC (the save's situation keeps the last save's place): 263 in the Moon save, and in Sun 77 (Heahea
+  City), 134 in its Pokemon Center, 68 on Route 4.
+- The battle (Sun, two wild battles on Route 4, each at the command menu, the moves, back, the cursor moved, the bag, the party
+  and mid-turn): 0x3003D508 is 5 at the command menu, 2 at the moves, 1 in the bag or the party, 3 while a turn plays, 0 on the
+  field; 0x302E13E0 tells the bag (3) from the party (2). The battlers' records (X's shape, the moves at +0x1FC instead of
+  +0x116) through 0x30000404 (the player's) and 0x30000420 (the foe's): Sylveon Lv100 and the Grubbin / Rattata. The touch
+  screen: FIGHT the big plate right, POKEMON / BAG on the left, RUN at the bottom, the moves a column of four
+  (`N3dsBattleTaps.SM`; FIGHT and the first move tapped there used it).
+- The camera: [0x300002A0] +0x2A8, then +0x374 is the field camera's controller (outdoors 0x300065EC, indoors 0x30004E5C, the
+  same chain on every Moon dump): the pitch in radians at +0x10, the yaw at +0x14, the distance at +0x20 (756.8, the camera's
+  distance from its target). Written there, it pulled back, turned and tilted. The game walks relative to the yaw by itself
+  (turned 0.8, DOWN walked diagonally), so the circle pad isn't turned for it (`Camera.turnsPad`).
+- Headless: Sun / Moon walk with the circle pad (n3ds_dump's `CUP` / `CDOWN` / `CLEFT` / `CRIGHT`); their D-pad only turns
+  the player. Route 4 from Heahea City: round the hotel's garden to its east, then north.
 - The cart (`N3dsLayout.SM`): text `a/0/3/<0 kana, 1 kanji, 2 English, 3 French, 4 Italian, 5 German, 6 Spanish, 7 Korean, 8 / 9
   Chinese>` (Chinese species names use the game font's own characters: English stands in), files 55 / 113 / 36 / 96 / 87 / 107 /
   67; moves `a/0/1/1` (packed, 40-byte records: Tackle 40); personal `a/0/1/7` (0x54); zones `a/0/7/7` (file 0, LZ11, 0x54 a

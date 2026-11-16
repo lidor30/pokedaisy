@@ -12,6 +12,7 @@ import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
 class N3dsBattleTaps(
     private val state: () -> Int,
     private val touch: (down: Boolean, x: Int, y: Int) -> Unit,
+    private val layout: Layout = XY,
 ) {
     /** Where Pokemon X's battle panels have their buttons (touch-screen pixels, read off its screens on the RP6). */
     class Layout(val actions: List<Pair<Int, Int>>, val moves: List<Pair<Int, Int>>, val cancel: Pair<Int, Int>)
@@ -23,16 +24,16 @@ class N3dsBattleTaps(
 
     /** 0 FIGHT (the move list opens), 1 BAG, 2 POKéMON, 3 RUN. */
     fun selectAction(index: Int) {
-        val at = XY.actions.getOrNull(index) ?: return
+        val at = layout.actions.getOrNull(index) ?: return
         run { tap(at) }
     }
 
     /** FIGHT and move [index] (0-3: the list's 2 x 2, left to right then down), or just the move with the list up. */
     fun selectMove(index: Int) {
-        val move = XY.moves.getOrNull(index) ?: return
+        val move = layout.moves.getOrNull(index) ?: return
         run {
             if (state() != BATTLE_INPUT_MOVE_SELECT) {
-                tap(XY.actions[0])
+                tap(layout.actions[0])
                 if (!waitFor(BATTLE_INPUT_MOVE_SELECT)) return@run
             }
             tap(move)
@@ -41,7 +42,7 @@ class N3dsBattleTaps(
 
     /** The move list's way back. */
     fun back() {
-        if (state() == BATTLE_INPUT_MOVE_SELECT) run { tap(XY.cancel) }
+        if (state() == BATTLE_INPUT_MOVE_SELECT) run { tap(layout.cancel) }
     }
 
     private fun run(steps: () -> Unit) {
@@ -77,6 +78,24 @@ class N3dsBattleTaps(
             moves = listOf(76 to 67, 241 to 67, 76 to 129, 241 to 129),
             cancel = 294 to 217,
         )
+        /** Omega Ruby / Alpha Sapphire: X's places (Alpha Sapphire's command menu and move list, headless, 2026-11-17:
+         * every button covers X's point). */
+        val ORAS = XY
+        /** Sun / Moon: FIGHT the big plate on the right, POKéMON / BAG down the left, RUN at the bottom; the moves a
+         * column of four on the right, the return arrow at the bottom left (Sun's touch screen, headless, 2026-11-17:
+         * FIGHT and the first move tapped there used it). */
+        val SM = Layout(
+            actions = listOf(280 to 115, 35 to 170, 35 to 80, 160 to 222),
+            moves = listOf(240 to 50, 240 to 100, 240 to 150, 240 to 200),
+            cancel = 15 to 222,
+        )
+
+        fun forTitle(titleId: Long): Layout = when (titleId) {
+            N3dsCart.POKEMON_SUN_USA, N3dsCart.POKEMON_MOON_USA -> SM
+            N3dsCart.POKEMON_OR_USA, N3dsCart.POKEMON_AS_USA -> ORAS
+            else -> XY
+        }
+
         /** The stylus down this long: several of the game's frames. */
         private const val TAP_MS = 110L
         private const val GAP_MS = 60L

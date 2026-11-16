@@ -65,6 +65,10 @@ const std::map<std::string, int> BUTTONS = {
     {"HOME", Settings::NativeButton::Home},
 };
 
+// The circle pad, pushed all the way (Sun / Moon walk with it alone: their D-pad only turns the player), as keyboard
+// keys of their own through Azahar's analog_from_button.
+const std::map<std::string, int> PAD = {{"CUP", 200}, {"CDOWN", 201}, {"CLEFT", 202}, {"CRIGHT", 203}};
+
 std::vector<int> held;
 
 void setKeys(const std::string& spec) {
@@ -75,13 +79,15 @@ void setKeys(const std::string& spec) {
     std::stringstream in(spec);
     std::string name;
     while (std::getline(in, name, ',')) {
-        auto it = BUTTONS.find(name);
-        if (it == BUTTONS.end()) {
+        int code = -1;
+        if (auto it = BUTTONS.find(name); it != BUTTONS.end()) code = it->second;
+        else if (auto p = PAD.find(name); p != PAD.end()) code = p->second;
+        if (code < 0) {
             std::fprintf(stderr, "unknown key %s\n", name.c_str());
             continue;
         }
-        keyboard->PressKey(it->second);
-        held.push_back(it->second);
+        keyboard->PressKey(code);
+        held.push_back(code);
     }
 }
 
@@ -240,6 +246,8 @@ int main(int argc, char** argv) {
     for (const auto& [name, code] : BUTTONS)
         Settings::values.current_input_profile.buttons[code] = InputCommon::GenerateKeyboardParam(code);
     Settings::values.current_input_profile.touch_device = "engine:emu_window"; // the window's touches
+    Settings::values.current_input_profile.analogs[Settings::NativeAnalog::CirclePad] =
+        InputCommon::GenerateAnalogParamFromKeys(200, 201, 202, 203, 204, 1.0f);
     InputCommon::Init();
     // Every system module emulated (HLE), none loaded from a console's NAND (there's none): a front end fills this
     // from its config, and Service::Init looks each one up.
@@ -422,6 +430,36 @@ int main(int argc, char** argv) {
             }
         } else if (cmd == "frames") {
             std::printf("frames %llu\n", static_cast<unsigned long long>(emuWindow.frames));
+        } else if (cmd == "echo") {
+            // echo TEXT: prints TEXT (a marker for a script driven live from another program).
+            std::string t;
+            for (const auto& w : a) t += (t.empty() ? "" : " ") + w;
+            std::printf("echo %s\n", t.c_str());
+        } else if (cmd == "peekf") {
+            const u32 addr = number(a.at(0));
+            const u32 bits = mem.Read32(addr);
+            float f;
+            std::memcpy(&f, &bits, 4);
+            std::printf("peekf %08x = %g\n", addr, f);
+        } else if (cmd == "hex") {
+            // hex ADDR LEN: LEN bytes (default 0x40) as 16-byte lines.
+            const u32 addr = number(a.at(0)), len = a.size() > 1 ? number(a[1]) : 0x40;
+            for (u32 o = 0; o < len; o += 16) {
+                std::printf("hex %08x:", addr + o);
+                for (u32 i = 0; i < 16 && o + i < len; i++) std::printf(" %02x", mem.Read8(addr + o + i));
+                std::printf("\n");
+            }
+        } else if (cmd == "search32") {
+            // search32 V [MAX]: every 4-aligned word equal to V in the game's memory (at most MAX, 64).
+            const u32 want = number(a.at(0)), most = a.size() > 1 ? number(a[1]) : 64;
+            u32 n = 0;
+            for (const auto& vma : process()->vm_manager.vma_map) {
+                const auto& v = vma.second;
+                if (v.type != Kernel::VMAType::BackingMemory) continue;
+                for (u32 p = v.base; p + 4 <= v.base + v.size && n < most; p += 4)
+                    if (mem.Read32(p) == want) std::printf("search32 %08x\n", p), n++;
+            }
+            std::printf("search32 done %u\n", n);
         } else {
             std::fprintf(stderr, "unknown command %s\n", cmd.c_str());
         }

@@ -121,11 +121,43 @@ class SmReaderTest {
         assertEquals(Gen6Reader.Scene.MENU, Gen6Reader.sceneOf("FieldRo\nFieldMenu", word(1), c))
         // A text box sets the menu byte too: held, so the field.
         assertEquals(Gen6Reader.Scene.FIELD, Gen6Reader.sceneOf("FieldRo\nFieldMenu", word(1, hold = 3), c))
-        // No battle controller mapped: both screens side by side.
-        assertEquals(Gen6Reader.Scene.SCREEN, Gen6Reader.sceneOf("Battle\nBackground", null, c))
+        assertEquals(Gen6Reader.Scene.BATTLE, Gen6Reader.sceneOf("Battle\nBackground", null, c))
         assertEquals(Gen6Reader.Scene.BATTLE, Gen6Reader.sceneOf("DllBattle\nDllBackGround", null, Gen6Reader.POKEMON_X_USA))
         assertEquals(Gen6Reader.Scene.SCREEN, Gen6Reader.sceneOf("Bag", null, c))
         assertEquals(null, Gen6Reader.sceneOf("TitleMenu", null, c))
+    }
+
+    @Test fun battleMenusFromTheirBytes() {
+        assertEquals(com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT, Gen6Reader.battleInputSm(5, 0))
+        assertEquals(com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT, Gen6Reader.battleInputSm(2, 1))
+        assertEquals(com.pokedaisy.app.companion.data.BATTLE_INPUT_BAG_OPEN, Gen6Reader.battleInputSm(1, 3))
+        assertEquals(com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN, Gen6Reader.battleInputSm(1, 2))
+        // A turn playing (3) and the field (0).
+        assertEquals(com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE, Gen6Reader.battleInputSm(3, 1))
+        assertEquals(com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE, Gen6Reader.battleInputSm(0, 0))
+    }
+
+    @Test fun battlerRecordsHaveTheirMovesLater() {
+        // Sun's foe in the second battle: an Alolan Rattata Lv11, 30 / 30, Tackle / Tail Whip / Quick Attack... (its
+        // record's moves at +0x1FC).
+        val rec = ByteArray(Gen6Reader.battleMonBytes(c))
+        val b = java.nio.ByteBuffer.wrap(rec).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        b.putShort(0xC, 19); b.putShort(0xE, 30); b.putShort(0x10, 30); rec[0x18] = 11
+        for ((i, m) in listOf(39, 98, 116, 44).withIndex()) {
+            b.putShort(0x1FC + i * 14, m.toShort()); rec[0x1FE + i * 14] = 30; rec[0x1FF + i * 14] = 30
+        }
+        val mon = Gen6Reader.battleMon(rec, c.battleMovesAt)!!
+        assertEquals(19, mon.species)
+        assertEquals(11, mon.level)
+        assertEquals(listOf(39, 98, 116, 44), mon.moves.map { it.id })
+    }
+
+    @Test fun cameraIsMapped() {
+        val cam = c.camera!!
+        assertTrue(cam.radians)
+        assertEquals(false, cam.turnsPad)
+        assertTrue(Gen6Reader.POKEMON_ORAS_USA.camera!!.turnsPad)
+        assertTrue(Gen6Reader.inHeap(0x300065EC))
     }
 
     @Test fun bagIsGen7s() {

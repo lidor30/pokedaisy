@@ -44,9 +44,18 @@ object Gen6Reader {
         val battleUi: Int = 0,
         val panelPlayer: Int = 0xDC,
         val panelFoe: Int = 0xE4,
-        /** The field camera's setup from the field object ([CAMERA_PATH]); null where it isn't mapped (no ZOOM or free
-         * camera there). */
-        val cameraPath: IntArray? = null,
+        /** Sun / Moon's battle instead of [battleUi] ([battleInputSm]): a byte for the menu up ([battleMenu]: 5 the
+         * command menu, 2 the moves, 1 the bag or the party, 3 a turn playing, 0 out of battle), a byte telling the
+         * bag (3) from the party (2) ([battleSubmenu]), and words pointing at the player's and the foe's battler
+         * records ([battlerPlayer] / [battlerFoe]). */
+        val battleMenu: Int = 0,
+        val battleSubmenu: Int = 0,
+        val battlerPlayer: Int = 0,
+        val battlerFoe: Int = 0,
+        /** Where a battler's four moves start in its record ([battleMon]): X / ORAS +0x116, Sun / Moon +0x1FC. */
+        val battleMovesAt: Int = 0x116,
+        /** The field camera ([Camera]); null where it isn't mapped (no ZOOM or free camera there). */
+        val camera: Camera? = null,
         /** MyStatus' language byte (X / ORAS +0x2D, Sun / Moon +0x35). */
         val languageAt: Int = 0x2D,
         /** The bag's entries: Gen 6's u16 item + u16 count, or Gen 7's u32 (item 10 bits, count the next 10). */
@@ -67,6 +76,24 @@ object Gen6Reader {
     )
 
     class Pocket(val offset: Int, val capacity: Int, val companionPocket: Int)
+
+    /**
+     * Where a game keeps its field camera's settings and how: the word at [root] is an object, then each of [path]
+     * is the next pointer's offset in the last, and the settings sit [setupAt] past the last object. In them the
+     * pitch (negative = looking down), the yaw and the distance at their offsets, in degrees or [radians]. Written
+     * there, a value sticks and the camera follows. [turnsPad]: the game walks the tile grid as it was (X / Y,
+     * Omega Ruby / Alpha Sapphire), so the circle pad is turned with the camera; Sun / Moon turn it themselves.
+     */
+    class Camera(
+        val root: Int,
+        val path: IntArray,
+        val setupAt: Int,
+        val pitch: Int,
+        val yaw: Int,
+        val distance: Int,
+        val radians: Boolean = false,
+        val turnsPad: Boolean = true,
+    )
 
     /** The modules that are the title and the start menu, and the field's: a screen is any other. */
     val NOT_SCREENS = setOf("DllTitle", "DllBackGround", "DllSequence", "DllStartMenu")
@@ -100,7 +127,7 @@ object Gen6Reader {
         fieldMenuRoot = 0x08C54044,
         fieldHold = 0x08D03400,
         battleUi = 0x08515980,
-        cameraPath = intArrayOf(0xD8, 0x21C, 0xB0C), // CAMERA_PATH
+        camera = Camera(root = 0x08C54044, path = intArrayOf(0xD8, 0x21C, 0xB0C), setupAt = CAMERA_SETUP, pitch = 0x4, yaw = 0x8, distance = CAMERA_DISTANCE),
     )
 
     /**
@@ -110,7 +137,13 @@ object Gen6Reader {
      * pockets at X's offsets from the bag, MyStatus (the name at +0x48), the save's situation (the zone at +2, then the
      * coordinates). The X menu: the field object's root at 0x08C57660, its menu pointer at +0x4C (X's +0x40) with the
      * byte at +0x24 that's 1 while it's open (menu open / closed dumps). The hold word reads 0x3D1 on the field and 0x3D3
-     * with the menu up, as X's. The camera's chain from the field object isn't X's: not mapped yet.
+     * with the menu up, as X's.
+     * The zone: the save's situation (0x08C6B89E) keeps the place of the last save; the live one is 0x08C6A7B2 (Alpha
+     * Sapphire walked out of a Littleroot house, 224, into the town, 6, and up Route 101, 23).
+     * The battle's controller is X's at 0x0852FCF0 (Alpha Sapphire, a wild battle on Route 101: +0x17 1 at the command
+     * menu, 2 at the moves, the bag's 1 at +0x10; the foe's record Zigzagoon Lv2 14 / 14 with Tackle / Growl, as X's).
+     * The camera: the field object +0xE8, +0x5C, +0xAF8 = X's controller, its setup at +0x64 (pitch -40.74, FOV 30;
+     * a distance and a yaw written there moved the camera).
      */
     val POKEMON_ORAS_USA = Config(
         party = 0x08CF727C,
@@ -118,12 +151,17 @@ object Gen6Reader {
         partyStatsAt = 0x158,
         myStatus = 0x08C7D350,
         bag = 0x08C6A880,
-        zone = 0x08C6B89E,
+        zone = 0x08C6A7B2,
         pockets = POKEMON_X_USA.pockets,
         staticModule = 0x01307000,
         fieldMenuRoot = 0x08C57660,
         fieldMenuOffset = 0x4C,
         fieldHold = 0x08D1E3FC,
+        battleUi = 0x0852FCF0,
+        camera = Camera(
+            root = 0x08C57660, path = intArrayOf(0xE8, 0x5C, 0xAF8), setupAt = CAMERA_SETUP,
+            pitch = 0x4, yaw = 0x8, distance = CAMERA_DISTANCE,
+        ),
     )
 
     /**
@@ -141,7 +179,9 @@ object Gen6Reader {
         partyStatsAt = 0x158,
         myStatus = 0x330D67D0,
         bag = 0x330D5934,
-        zone = 0x330D6736,
+        // The live zone (the save's situation at 0x330D6736 keeps the last save's place): 263 in the Moon save's dumps,
+        // 77 / 134 walking out of / into Heahea City's Pokemon Center in Sun's.
+        zone = 0x300019AC,
         pockets = listOf(
             Pocket(0x000, 430, com.pokedaisy.app.companion.data.POCKET_ITEMS),
             Pocket(0x6B8, 184, com.pokedaisy.app.companion.data.POCKET_KEY_ITEMS),
@@ -160,8 +200,24 @@ object Gen6Reader {
         bagGen7 = true,
         fieldModule = "FieldRo",
         battleModule = "Battle",
+        // The field camera (Sun, headless, 2026-11-17: Heahea City at night and in its Pokemon Center; the same chain on
+        // every Moon dump): its controller (outdoors 0x300065EC, indoors 0x30004E5C) holds the pitch (radians) at
+        // +0x10, the yaw at +0x14 and the distance at +0x20 (756.8 = the camera's distance from its target, -0.613 =
+        // its -35.1 degrees); written there, the camera pulled back, turned and tilted. The game walks relative to
+        // the yaw by itself (turned 0.8, DOWN walked diagonally).
+        camera = Camera(
+            root = 0x300002A0, path = intArrayOf(0x2A8), setupAt = 0x374,
+            pitch = 0x10, yaw = 0x14, distance = 0x20, radians = true, turnsPad = false,
+        ),
         notScreens = setOf("Title", "TitleMenu", "Background", "SequencePlayer", "LangSelect", "HeroSelect", "Object", "FieldMenu"),
         fieldTouch = emptySet(),
+        // The battle (Sun, headless, two wild battles on Route 4 - a Grubbin, an Alolan Rattata - each at the command
+        // menu, the moves, back, the cursor moved, the bag, the party and mid-turn): the same bytes in both.
+        battleMenu = 0x3003D508,
+        battleSubmenu = 0x302E13E0,
+        battlerPlayer = 0x30000404,
+        battlerFoe = 0x30000420,
+        battleMovesAt = 0x1FC,
     )
 
     /** What the game's two screens show, for where the touch screen goes ([sceneOf]). */
@@ -217,7 +273,7 @@ object Gen6Reader {
         }
         // A battle whose controller isn't mapped ([Config.battleUi] 0: Omega Ruby / Alpha Sapphire, Sun / Moon so far) has
         // no battle buttons to stand for its touch screen: both screens side by side, as a screen of the game's own.
-        if (c.battleModule in names) return if (c.battleUi != 0) Scene.BATTLE else Scene.SCREEN
+        if (c.battleModule in names) return if (c.battleUi != 0 || c.battleMenu != 0) Scene.BATTLE else Scene.SCREEN
         return if (names.all { it in c.notScreens }) null else Scene.SCREEN
     }
 
@@ -248,11 +304,27 @@ object Gen6Reader {
         }
     }
 
+    /** Sun / Moon's battle state from [Config.battleMenu]'s and [Config.battleSubmenu]'s bytes. */
+    fun battleInputSm(menu: Int, submenu: Int): Int = when (menu) {
+        5 -> com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT
+        2 -> com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
+        1 -> when (submenu) {
+            3 -> com.pokedaisy.app.companion.data.BATTLE_INPUT_BAG_OPEN
+            2 -> com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
+            else -> com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
+        }
+        else -> com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
+    }
+
+    /** What [battleMon] reads of a battler's record in [c]'s game. */
+    fun battleMonBytes(c: Config): Int = c.battleMovesAt + 4 * 14
+
     /** The command panel's address in [ui] (0 = none), where the battlers' record pointers are. */
     fun commandPanel(ui: ByteArray?): Int =
         if (ui == null || ui.size < 4) 0 else ByteBuffer.wrap(ui).order(ByteOrder.LITTLE_ENDIAN).getInt(0).takeIf { inHeap(it) } ?: 0
 
-    fun inHeap(a: Int): Boolean = a in 0x08000000 until 0x10000000
+    /** A pointer into the game's heap: Gen 6's at 0x08000000, Sun / Moon's at 0x30000000. */
+    fun inHeap(a: Int): Boolean = a in 0x08000000 until 0x10000000 || a in 0x30000000 until 0x40000000
 
     data class BattleMove(val id: Int, val pp: Int, val maxPp: Int)
     data class BattleMon(val species: Int, val level: Int, val hp: Int, val maxHp: Int, val moves: List<BattleMove>)
@@ -260,13 +332,13 @@ object Gen6Reader {
 
     /** A battler's record: +0xC species, +0xE max HP, +0x10 HP, +0x18 level, from +0x116 four 14-byte moves (id, PP,
      * max PP, then the move as it was). Null for an empty or broken one. */
-    fun battleMon(rec: ByteArray?): BattleMon? {
-        if (rec == null || rec.size < BATTLE_MON_BYTES) return null
+    fun battleMon(rec: ByteArray?, movesAt: Int = 0x116): BattleMon? {
+        if (rec == null || rec.size < movesAt + 4 * 14) return null
         val b = ByteBuffer.wrap(rec).order(ByteOrder.LITTLE_ENDIAN)
         val species = b.getShort(0xC).toInt() and 0xFFFF
         if (species == 0 || species > 809) return null
         val moves = (0 until 4).mapNotNull { i ->
-            val o = 0x116 + i * 14
+            val o = movesAt + i * 14
             val id = b.getShort(o).toInt() and 0xFFFF
             if (id == 0 || id > 1000) null else BattleMove(id, rec[o + 2].toInt() and 0xFF, rec[o + 3].toInt() and 0xFF)
         }
