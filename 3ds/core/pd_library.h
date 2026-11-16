@@ -23,8 +23,9 @@ struct pd_settings;
 
 enum pd_console { PD_CONSOLE_GBA, PD_CONSOLE_GB, PD_CONSOLE_GBC };
 // Which emulator plays a GBA game, picked per game (X on it in the library): AUTO is armGBA today; mGBA is slower but
-// the one to try when a game misbehaves on armGBA. A Game Boy game is always mGBA's.
-enum pd_game_core { PD_CORE_AUTO, PD_CORE_ARMGBA, PD_CORE_MGBA, PD_CORE_COUNT };
+// the one to try when a game misbehaves on armGBA; gpSP (EXPERIMENTAL) is the fastest on an Old 3DS but can't call into
+// the game yet (no PC anywhere, FLY, bag USE, one-press picks there). A Game Boy game is always mGBA's.
+enum pd_game_core { PD_CORE_AUTO, PD_CORE_ARMGBA, PD_CORE_MGBA, PD_CORE_GPSP, PD_CORE_COUNT };
 const char* pd_core_name(int core);
 
 // The keys the host passes (its own buttons mapped to these).

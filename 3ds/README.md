@@ -3,7 +3,8 @@
 A homebrew port of PokeDaisy: the game runs on the top screen and the companion lives on the touch screen. GBA games
 run on **armGBA** (`third_party/armgba`: a GBA core with a recompiler for the 3DS's ARM11, at ratherDashing's
 `3ds-v0.0.3-alpha`), Game Boy and Game Boy Color games on **libmgba** (the same mGBA 0.10.5 submodule the Android app
-uses). It is a rewrite, not a recompile - the Android app is Kotlin
+uses). A GBA game can be put on mGBA or on **gpSP** (`third_party/gpsp`, bheppe's gpSP 3D at v0.1.7, EXPERIMENTAL) by
+its GBA CORE in the library. It is a rewrite, not a recompile - the Android app is Kotlin
 and Jetpack Compose, which the 3DS can't run - so this folder holds a small,
 portable C core that re-implements the companion's reading and drawing, plus a
 3DS host and a desktop preview tool around it.
@@ -52,7 +53,8 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
 - **Save state**: one slot per game (`sdmc:/pokedaisy/states/`). Loading one keeps the save memory as it is, so it
   can't write an old copy over the save file; the save is backed up before every load anyway. A GBA game's states are
   armGBA's own: one made by an earlier (mGBA) build is turned away with a notice and left where it is. A GBA game whose
-  GBA CORE is MGBA keeps its states apart (`<game>.mgba.ss1`), so a state never reaches the other core.
+  GBA CORE is MGBA keeps its states apart (`<game>.mgba.ss1`), on GPSP `<game>.gpsp.ss1` (gpSP's own, "PGSP" and the
+  game's CRC first), so a state never reaches another core.
 - `sdmc:/pokedaisy/log.txt` says what the last run did (`log-prev.txt`: the run before): memory, whether armGBA's
   recompiler and its render thread started, each save written. Attach it to a bug report. `armgba/` keeps each game's
   warm list (the code the recompiler translated, so a second run translates it ahead of need); `system/gba_bios.bin` is
@@ -160,8 +162,9 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   screen does: player, time, Pokédex, the badges, money, the place, and the party with its icons (from the save itself where
   the save editor reads it, the rest from `cards/<game>.card`, what the game looked like when it was last left). SETTINGS
   holds the settings that aren't a game's: the library's LAYOUT (LIST / GRID) and SORT, THEME, DARK MODE, VIEW, the sound, the
-  battle buttons, HUD and FLY STYLE. X on a GBA game picks its **GBA CORE** (AUTO / ARMGBA / MGBA, `enum pd_game_core`, the
-  pick-list SETTINGS uses): AUTO is armGBA; MGBA is slower but the one to try when a game misbehaves on armGBA. Kept per
+  battle buttons, HUD and FLY STYLE. X on a GBA game picks its **GBA CORE** (AUTO / ARMGBA / MGBA / GPSP, `enum pd_game_core`,
+  the pick-list SETTINGS uses): AUTO is armGBA; MGBA is slower but the one to try when a game misbehaves on armGBA; GPSP
+  (EXPERIMENTAL, "Sound and speed"). Kept per
   file as `library.tsv`'s sixth column (only when picked); the top screen's hint says the pick (X: MGBA).
 - **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported, round two
   included): a game's save file opened with the game closed, the app's three pages as tabs (SELECT steps them). POKéMON: the
@@ -263,6 +266,21 @@ game after another had run. The dev build's `sdmc:/pokedaisy-dev/armgba/mgba` ru
 for a quiet measurement read the running totals (`tot_loops`, `tot_late` split by `tot_late_core` / `_draw` / `_rest`,
 `tot_gaps`, the sound queue's `queue_min`) twice, a stretch of play apart. The sim runs armGBA's interpreter (a desktop recompiler would need its own executable
 memory); `PD_SIM_CORE=mgba` puts a GBA game on mGBA there too.
+
+**gpSP** (GBA CORE: GPSP, EXPERIMENTAL; `emu/pd_gpsp.c`, `emu/pd_gpsp_core.c`, `emu/gpsp.cmake`): bheppe's gpSP 3D
+(GPL-2.0-or-later), whose ARM11 recompiler is said to hold full speed on an Old 3DS - not measured in this app yet. A
+libretro core like armGBA, behind the same kind of mGBA-shaped view (`pd_gpsp_core.c`: RAM, ROM, VRAM, and io / palette /
+OAM copied after each frame, no renderer, so EXPAND takes the hookless path). gpSP's objects and our glue are linked
+into one object whose only globals are `pd_gpsp.keep`'s names (its globals - `reg`, `ewram`, `retro_run` ... - clash
+with armGBA's): `objcopy --keep-global-symbols`, Apple's `ld -r -exported_symbols_list` for the simulator.
+`third_party/patches/gpsp-pokedaisy.patch` puts its cartridge in the arena (`gpsp_host_rom_arena`). Its recompiler's
+caches (10.5 MB) live only while it runs; its static arrays and code cost every player ~3.8 MB of heap. The save file is
+mGBA's layout (the save memory, then the 16-byte clock armGBA and mGBA keep, left as it was), written 15 frames after
+the game's writes stop. What it doesn't do yet: calls into the game (`pk_call_safe` says no: PC anywhere, FLY, FREE
+FLIGHT, the bag's USE, TM teaching, the scripted wild battles of the tests), the native m4a mixer, the H-blank
+shortcut, cheats; drawing on another core. Checked in the simulator (`PD_SIM_CORE=gpsp`, gpSP's interpreter there):
+FireRed and Emerald boot from their saves to the field with the companion, HUD and EXPAND right; a state saved and
+loaded; an in-game save written, then booted by both gpSP and armGBA to the same place. Not run on a console yet.
 
 **mGBA** (Game Boy games, and the comparison above): half of a frame on a New 3DS is the game's own sound mixer, the m4a
 engine's `SoundMainRAM`. `host/pd_mixer.c` runs it natively:

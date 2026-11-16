@@ -3,7 +3,7 @@
 # Configure with mGBA's 3DS toolchain file (it sets up devkitARM and the `3DS`
 # variable mGBA keys its platform code on) - `make 3ds` in ../ does it in Docker.
 cmake_minimum_required(VERSION 3.18)
-project(pokedaisy C ASM)
+project(pokedaisy C CXX ASM)
 
 get_filename_component(MGBA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/mgba" ABSOLUTE)
 if(NOT EXISTS "${MGBA_DIR}/CMakeLists.txt")
@@ -78,10 +78,15 @@ set_source_files_properties("${ARMGBA_3DS}/svc.s" PROPERTIES COMPILE_OPTIONS "-x
 set_source_files_properties("${ARMGBA_3DS}/jitmem.c" PROPERTIES COMPILE_DEFINITIONS
     "renderThreadHostCreate=armgbaRenderWorkerUnused;renderThreadHostCreateSecond=armgbaSecondWorkerUnused")
 
+# gpSP (GBA CORE: GPSP) with its ARM11 recompiler (emu/gpsp.cmake): one object, only pd_gpsp.h's names global.
+set(GPSP_DYNAREC ON)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../emu/gpsp.cmake")
+target_compile_options(pd_gpsp_objs PRIVATE -march=armv6k -mtune=mpcore -mfloat-abi=hard -mword-relocations -fomit-frame-pointer)
+
 file(GLOB CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../core/*.c")
 
 file(GLOB HOST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../host/*.c")
-add_executable(pokedaisy.elf main.c gpu.c devlink.c host.c ${CORE_SOURCES} ${HOST_SOURCES} ${PD_ARMGBA_GLUE}
+add_executable(pokedaisy.elf main.c gpu.c devlink.c host.c ${CORE_SOURCES} ${HOST_SOURCES} ${PD_ARMGBA_GLUE} ${PD_GPSP_GLUE}
     ../../app/src/main/cpp/pk_host.c ../../app/src/main/cpp/pk_call.c ../../app/src/main/cpp/pk_wide.c
     ../../app/src/main/cpp/pk_gb_audio.c ../../app/src/main/cpp/pk_cheats.c ../../app/src/main/cpp/pk_gb_field.c
     ../../app/src/main/cpp/pk_wide_gb.c ../../linux/fly.c ../../linux/flash.c ../../linux/flight.c ../../app/src/main/cpp/pk_flight.c ../../linux/tm_teach.c ../../linux/field_items.c ../../linux/gb_field.c ../../linux/wild.c ../../linux/hud.c
@@ -106,7 +111,7 @@ if(PD_DEV)
     target_compile_definitions(pokedaisy.elf PRIVATE PD_DEV)
 endif()
 # citro2d draws the screens (gpu.c); citro3d and libctru come with libmgba too.
-target_link_libraries(pokedaisy.elf pd_armgba mgba citro2d citro3d ctru z m)
+target_link_libraries(pokedaisy.elf pd_armgba pd_gpsp mgba citro2d citro3d ctru z m)
 pd_mgba_renames(pokedaisy.elf)
 target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3 -Wl,--wrap=free)
 

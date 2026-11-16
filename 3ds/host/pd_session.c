@@ -5,6 +5,7 @@
 #include "../../linux/gb_field.h"
 #include "pd_mixer.h"
 #include "../emu/pd_armgba.h"
+#include "../emu/pd_gpsp.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -101,8 +102,9 @@ bool pd_session_write(void* ctx, uint32_t addr, const void* data, size_t len) {
         for (size_t i = 0; i < len; i++) s->core->busWrite8(s->core, addr + (uint32_t) i, ((const uint8_t*) data)[i]);
         return true;
     }
-    // armGBA throws out code it compiled from RAM that changes.
+    // armGBA and gpSP throw out code they compiled from RAM that changes.
     if (pd_armgba_is(s->core)) return pd_armgba_write(addr, data, len);
+    if (pd_gpsp_is(s->core)) return pd_gpsp_write(addr, data, len);
     if (addr >= 0x02000000 && addr - 0x02000000 + len <= s->ewramSize) {
         memcpy(s->ewram + (addr - 0x02000000), data, len);
         return true;
@@ -118,6 +120,7 @@ bool pd_session_write(void* ctx, uint32_t addr, const void* data, size_t len) {
 
 static bool rom_write(struct pd_session* s, uint32_t addr, const uint8_t* data, int len) {
     if (pd_armgba_is(s->core)) return pd_armgba_rom_write(addr, data, (size_t) len);
+    if (pd_gpsp_is(s->core)) return pd_gpsp_rom_write(addr, data, (size_t) len);
     // mGBA (the dev build's switch): its cartridge is plain memory, nothing recompiled.
     if (addr < 0x08000000u || addr - 0x08000000u + (uint32_t) len > s->romSize) return false;
     memcpy((uint8_t*) s->rom + (addr - 0x08000000u), data, (size_t) len);
@@ -245,6 +248,8 @@ bool pd_session_save_state(struct pd_session* s, int slot) {
     pd_mixer_release(s->core); // a state never holds the hook
     if (pd_armgba_is(s->core)) {
         ok = pd_armgba_save_state(path);
+    } else if (pd_gpsp_is(s->core)) {
+        ok = pd_gpsp_save_state(path);
     } else {
         struct VFile* vf = VFileOpen(vfPath, O_CREAT | O_TRUNC | O_RDWR);
         if (!vf) return false;
@@ -275,6 +280,10 @@ static void write_state(struct pd_session* s, const char* vfPath, const char* pa
     if (pd_armgba_is(s->core)) {
         pd_mixer_release(s->core);
         pd_armgba_save_state(path);
+        return;
+    }
+    if (pd_gpsp_is(s->core)) {
+        pd_gpsp_save_state(path);
         return;
     }
     struct VFile* vf = VFileOpen(vfPath, O_CREAT | O_TRUNC | O_RDWR);
@@ -308,6 +317,13 @@ static bool load_state_file(struct pd_session* s, const char* vfPath, const char
         else if (r == PD_ARMGBA_STATE_OTHER_GAME) pd_session_show(s, "THAT STATE IS ANOTHER GAME'S");
         else if (r == PD_ARMGBA_STATE_BAD) pd_session_show(s, "THAT STATE DIDN'T LOAD");
         return r == PD_ARMGBA_STATE_OK;
+    }
+    if (pd_gpsp_is(s->core)) {
+        enum pd_gpsp_state r = pd_gpsp_load_state(path);
+        if (r == PD_GPSP_STATE_FOREIGN) pd_session_show(s, "THAT STATE IS ANOTHER CORE'S");
+        else if (r == PD_GPSP_STATE_OTHER_GAME) pd_session_show(s, "THAT STATE IS ANOTHER GAME'S");
+        else if (r == PD_GPSP_STATE_BAD) pd_session_show(s, "THAT STATE DIDN'T LOAD");
+        return r == PD_GPSP_STATE_OK;
     }
     struct VFile* vf = VFileOpen(vfPath, O_RDONLY);
     if (!vf) return false;
@@ -928,8 +944,9 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
         s->gameKeyFrames--;
     }
     s->core->setKeys(s->core, keys);
-    // Fast-forward's frames that aren't shown: armGBA needn't draw them.
+    // Fast-forward's frames that aren't shown: armGBA and gpSP needn't draw them.
     if (pd_armgba_is(s->core)) pd_armgba_skip_video(!last);
+    else if (pd_gpsp_is(s->core)) pd_gpsp_skip_video(!last);
     uint64_t start = s->files.clock ? s->files.clock() : 0;
     s->core->runFrame(s->core);
     uint64_t ran = s->files.clock ? s->files.clock() : 0;

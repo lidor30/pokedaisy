@@ -37,6 +37,7 @@
 #include "../host/pd_session.h"
 #include "../host/pd_mixer.h"
 #include "../emu/pd_armgba.h"
+#include "../emu/pd_gpsp.h"
 #include "host.h"
 #include "../../app/src/main/cpp/pk_gb_audio.h"
 #include "../../app/src/main/cpp/pk_host.h"
@@ -114,6 +115,7 @@ static float audioRate = 1.0f, audioRateSet = 1.0f, audioMade = 1.0f;
 static float dspBase = DSP_RATE;
 #define SCREEN_HZ (268111856.0 / 4481136.0)
 #define ARMGBA_RATE ((float) (PD_ARMGBA_SAMPLE_RATE * SCREEN_HZ / PD_ARMGBA_FPS))
+#define GPSP_RATE ((float) (PD_GPSP_SAMPLE_RATE * SCREEN_HZ / PD_GPSP_FPS))
 static u64 audioLast;
 static unsigned audioGaps, audioDrops; // the queue ran dry / had no room, for the dev build's stat
 static unsigned audioGapsTotal, audioQueueMin = 99;
@@ -449,17 +451,18 @@ static int stick_angle(void) {
 struct game_files {
     char base[256];
     char saveSd[520];
-    bool mgbaGba; // a GBA game on mGBA (its GBA CORE picked): its states apart from armGBA's
+    const char* stateTag; // a GBA game not on armGBA (its GBA CORE picked): ".mgba" / ".gpsp", its states apart from armGBA's
 };
 
 // The GBA CORE picked in the library for the game it starts (enum pd_game_core).
 static int pickedCore;
 
 // mGBA's 3DS VFile takes the path on the SD card; stdio wants the sdmc: in front. A state never crosses cores (neither
-// reads the other's): a GBA game's on mGBA are <game>.mgba.ss1 ..., armGBA's (the default's) <game>.ss1 ...
+// reads the other's): a GBA game's on mGBA are <game>.mgba.ss1 ..., on gpSP <game>.gpsp.ss1, armGBA's (the default's)
+// <game>.ss1 ...
 static void state_path(void* ctx, int slot, char* vf, size_t vfLen, char* path, size_t pathLen) {
     const struct game_files* f = ctx;
-    snprintf(vf, vfLen, STATE_DIR "/%s%s.ss%d", f->base, f->mgbaGba ? ".mgba" : "", slot + 1);
+    snprintf(vf, vfLen, STATE_DIR "/%s%s.ss%d", f->base, f->stateTag ? f->stateTag : "", slot + 1);
     snprintf(path, pathLen, "sdmc:%s", vf);
 }
 
@@ -581,8 +584,9 @@ static bool run_game(const char* file) {
     size_t nameLen = strlen(file);
     bool gbName = (nameLen > 3 && !strcasecmp(file + nameLen - 3, ".gb")) || (nameLen > 4 && !strcasecmp(file + nameLen - 4, ".gbc"));
     bool armgba = !gbName && pd_armgba_wants(header, sizeof(header));
-    // The game's GBA CORE (X in the library): MGBA plays it on mGBA; AUTO and ARMGBA on armGBA.
-    if (armgba && pickedCore == PD_CORE_MGBA) armgba = false;
+    // The game's GBA CORE (X in the library): MGBA plays it on mGBA, GPSP on gpSP; AUTO and ARMGBA on armGBA.
+    bool gpsp = armgba && pickedCore == PD_CORE_GPSP;
+    if (armgba && (pickedCore == PD_CORE_MGBA || gpsp)) armgba = false;
 #ifdef PD_DEV
     // The dev build's switch for comparing the cores: sdmc:/pokedaisy-dev/armgba/mgba runs GBA games on mGBA.
     {
@@ -637,6 +641,28 @@ static bool run_game(const char* file) {
         }
         core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
         host_log("game: running on %s; heap %lu KiB free", pd_armgba_recompiling() ? "armGBA's recompiler" : "armGBA's INTERPRETER",
+                 (unsigned long) host_heap_free() >> 10);
+        gpu_double_game(true);
+        gpu_set_bars(0);
+    } else if (gpsp) {
+        // gpSP: its ARM11 recompiler, everything on the game's core (no render thread yet), the cartridge in the arena.
+        rom->close(rom);
+        dspBase = GPSP_RATE;
+        if (hasSound) ndspChnSetRate(0, dspBase);
+        char romSd[520];
+        snprintf(romSd, sizeof(romSd), "sdmc:%s", romPath);
+        struct pd_gpsp_host emuHost = { .audio = armgba_audio, .log = host_emu_log, .systemDir = "sdmc:" SYSTEM_DIR,
+                                        .romBuffer = host_rom_arena, .knownCrc = romId.known ? romId.crc : 0 };
+        char error[96] = "";
+        host_log("game: %s on gpSP, heap %lu KiB free", file, (unsigned long) host_heap_free() >> 10);
+        core = pd_gpsp_load(romSd, saveSd, &emuHost, error, sizeof(error));
+        if (!core) {
+            host_log("game: didn't load: %s", error);
+            show_message("The game didn't start:", error);
+            return true;
+        }
+        core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
+        host_log("game: running on %s; heap %lu KiB free", pd_gpsp_recompiling() ? "gpSP's recompiler" : "gpSP's INTERPRETER",
                  (unsigned long) host_heap_free() >> 10);
         gpu_double_game(true);
         gpu_set_bars(0);
@@ -699,7 +725,7 @@ static bool run_game(const char* file) {
     struct game_files gameFiles;
     snprintf(gameFiles.base, sizeof(gameFiles.base), "%s", base);
     snprintf(gameFiles.saveSd, sizeof(gameFiles.saveSd), "%s", saveSd);
-    gameFiles.mgbaGba = !armgba && core->platform(core) == mPLATFORM_GBA;
+    gameFiles.stateTag = gpsp ? ".gpsp" : !armgba && core->platform(core) == mPLATFORM_GBA ? ".mgba" : NULL;
     bool wideThread = gpu_wide_thread(pd_session_wide_finish);
     struct pd_session_host files = { state_path, backup_for_load, settings_changed, cheat_path, &gameFiles,
                                      wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL, NULL, flight_area_path,
@@ -750,7 +776,7 @@ static bool run_game(const char* file) {
     // An Old 3DS that can't run a frame in a refresh: what it's behind by builds up over the loops, and each whole refresh
     // of it is a frame run undrawn next loop (two at most), as gpSP 3D's frame skip keeps the game and its sound at full
     // speed there. A New 3DS keeps every frame drawn. A long pause (HOME, a load) owes nothing.
-    int catchUpMax = armgba && !host_is_new_3ds() ? 2 : 0;
+    int catchUpMax = (armgba || gpsp) && !host_is_new_3ds() ? 2 : 0;
 #ifdef PD_DEV
     // The dev build's switch: sdmc:/pokedaisy-dev/catchup holding 0, 1 or 2, the most frames a loop may run undrawn.
     {
@@ -1012,7 +1038,7 @@ static bool run_game(const char* file) {
                     }
                     gpuWideTicks = gpuDrawTicks = 0;
                 }
-                if (core->platform(core) == mPLATFORM_GBA && !armgba) {
+                if (core->platform(core) == mPLATFORM_GBA && !armgba && !gpsp) {
                     // Whether mGBA still skips the game's wait loop (a scene that stops it costs twice the CPU).
                     const struct GBA* gba = core->board;
                     dev.idleMode = gba->idleOptimization;

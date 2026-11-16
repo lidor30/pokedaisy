@@ -256,7 +256,7 @@ void pd_library_tick(struct pd_library* l) {
 // --- the cache: "sha1 \t code \t size \t last played \t file [\t core]" a line ---
 
 const char* pd_core_name(int core) {
-    static const char* NAMES[PD_CORE_COUNT] = { "AUTO", "ARMGBA", "MGBA" };
+    static const char* NAMES[PD_CORE_COUNT] = { "AUTO", "ARMGBA", "MGBA", "GPSP" };
     return core >= 0 && core < PD_CORE_COUNT ? NAMES[core] : "";
 }
 

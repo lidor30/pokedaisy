@@ -20,6 +20,7 @@
 #include <mgba/internal/gba/gba.h>
 
 #include "../emu/pd_armgba.h"
+#include "../emu/pd_gpsp.h"
 
 #define HOOK 0xD7
 #define HOOK_OP (0xBE00 | HOOK)
@@ -1097,6 +1098,8 @@ bool pd_mixer_attach(struct mCore* core) {
     stock = hq = NULL;
     if (pd_armgba_is(core)) pd_armgba_set_bkpt(NULL); // a game before may have left it in
     if (core->platform(core) != mPLATFORM_GBA) return false;
+    // gpSP has no BKPT hook yet: its game mixes its own sound.
+    if (pd_gpsp_is(core)) return false;
     struct GBA* gba = core->board;
     const uint8_t* rom = (const uint8_t*) gba->memory.rom;
     size_t size = gba->memory.romSize;

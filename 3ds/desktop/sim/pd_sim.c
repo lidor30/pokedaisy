@@ -34,6 +34,7 @@
 #include <mgba/core/log.h>
 #include "../../host/pd_mixer.h"
 #include "../../emu/pd_armgba.h"
+#include "../../emu/pd_gpsp.h"
 #include <mgba/internal/gba/gba.h>
 
 #include "../../../app/src/main/cpp/pk_call.h"
@@ -367,7 +368,8 @@ static void command(char* line) {
             const struct pd_hit* h = &session.ui.hits[i];
             printf("hit %d at %d,%d %dx%d\n", h->id, h->x, h->y, h->w, h->h);
         }
-    } else if (!strcmp(cmd, "idle") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core)) {
+    } else if (!strcmp(cmd, "idle") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core) &&
+               !pd_gpsp_is(session.core)) {
         // idle detect | remove | ignore: mGBA's busy-loop skipping, as the console sets it (detect) or not; bare, the state.
         struct GBA* gba = session.core->board;
         if (*args)
@@ -387,12 +389,15 @@ static void command(char* line) {
         double core = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
         // The same frames with mGBA's renderer skipped: what the game's own code costs, apart from drawing it.
         double bare = 0;
-        if (pd_armgba_is(session.core)) {
-            pd_armgba_skip_video(true);
+        if (pd_armgba_is(session.core) || pd_gpsp_is(session.core)) {
+            bool gp = pd_gpsp_is(session.core);
+            if (gp) pd_gpsp_skip_video(true);
+            else pd_armgba_skip_video(true);
             clock_gettime(CLOCK_MONOTONIC, &t0);
             for (int i = 0; i < n; i++) session.core->runFrame(session.core);
             clock_gettime(CLOCK_MONOTONIC, &t1);
-            pd_armgba_skip_video(false);
+            if (gp) pd_gpsp_skip_video(false);
+            else pd_armgba_skip_video(false);
             bare = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
         } else if (session.core->platform(session.core) == mPLATFORM_GBA) {
             struct GBA* gba = session.core->board;
@@ -622,7 +627,8 @@ static void command(char* line) {
             uint8_t v = (uint8_t) value;
             pd_session_write(&session, addr, &v, 1);
         }
-    } else if (!strcmp(cmd, "io") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core)) {
+    } else if (!strcmp(cmd, "io") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core) &&
+               !pd_gpsp_is(session.core)) {
         // The display registers as the frame ended, and the DMAs set to run each line (a scene's drawing cost).
         struct GBA* gba = session.core->board;
         const uint16_t* io = gba->memory.io;
@@ -722,9 +728,21 @@ int main(int argc, char** argv) {
     fclose(romFile);
     pd_game_detect(&session.game, romBytes, romLen);
     struct mCore* core = NULL;
-    // A GBA game on armGBA, as the 3DS runs it; PD_SIM_CORE=mgba keeps it on mGBA (to compare the two).
+    // A GBA game on armGBA, as the 3DS runs it; PD_SIM_CORE=mgba keeps it on mGBA, =gpsp on gpSP's interpreter (GBA
+    // CORE's other two).
     const char* coreName = getenv("PD_SIM_CORE");
-    if (pd_armgba_wants(romBytes, romLen) && !(coreName && !strcmp(coreName, "mgba"))) {
+    if (pd_armgba_wants(romBytes, romLen) && coreName && !strcmp(coreName, "gpsp")) {
+        struct pd_gpsp_host host = { 0 };
+        char error[128] = "";
+        core = pd_gpsp_load(argv[1], savePath, &host, error, sizeof(error));
+        if (!core) {
+            fprintf(stderr, "gpSP: %s\n", error);
+            return 1;
+        }
+        core->setVideoBuffer(core, video, STRIDE);
+        core->reset(core);
+        free(romBytes);
+    } else if (pd_armgba_wants(romBytes, romLen) && !(coreName && !strcmp(coreName, "mgba"))) {
         struct pd_armgba_host host = { .threaded = getenv("PD_SIM_THREADED_VIDEO") != NULL };
         char error[128] = "";
         core = pd_armgba_load(argv[1], savePath, &host, error, sizeof(error));

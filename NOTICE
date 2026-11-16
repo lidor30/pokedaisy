@@ -41,6 +41,13 @@ The app shows every license below in full under Settings > LICENSES.
   pokedaisy-3ds fork; third_party/patches/armgba-pokedaisy.patch (a BKPT hook in
   its interpreter, an H-blank interrupt hook) is our change to it, under the MPL 2.0. Its libretro layer links RetroArch's libretro-common (MIT)
   and the 7-Zip LZMA SDK (public domain), and the 3DS build zlib (zlib License).
+- 3DS build only: gpSP 3D (third_party/gpsp, bheppe's gpSP 3D at v0.1.7), gpSP by
+  Exophase with later work by notaz, davidgfnet, the libretro team and bheppe, GNU
+  GPL 2.0 or later (used here under the GPL 3.0) - https://github.com/bheppe/gpsp-3d.
+  The library's GBA CORE: GPSP. Its arm/arm_codegen.h and arm_dpimacros.h are Wild
+  West Software's (MIT-style notice in the files); its libretro layer links
+  RetroArch's libretro-common (MIT). third_party/patches/gpsp-pokedaisy.patch (the
+  cartridge in the host's buffer) and the glue (3ds/emu/pd_gpsp*.c) are ours.
 - rcheevos (third_party/rcheevos), Copyright (c) 2018 RetroAchievements.org,
   MIT License - https://github.com/RetroAchievements/rcheevos
 - The libretro GBA core over armGBA (libretro/armgba):

@@ -1,0 +1,51 @@
+diff --git a/gba_memory.c b/gba_memory.c
+index e75e9a8..e3678c4 100644
+--- a/gba_memory.c
++++ b/gba_memory.c
+@@ -2672,11 +2672,31 @@ u8 *load_gamepak_page(u32 physical_index)
+   return swap_location;
+ }
+ 
++/* PokeDaisy: a host that keeps one cartridge buffer for every game (the 3DS
++ * port's 32 MB arena, reserved at start) hands it over here; gpSP's own 1MB
++ * blocks otherwise. The arena is never freed (memory_term). */
++u8 *(*gpsp_host_rom_arena)(size_t size) = NULL;
++static int gamepak_arena;
++
+ void init_gamepak_buffer(void)
+ {
+   unsigned i;
+-  // Try to allocate up to 32 blocks of 1MB each
+   gamepak_buffer_count = 0;
++  gamepak_arena = 0;
++  if (gpsp_host_rom_arena)
++  {
++    u8 *arena = gpsp_host_rom_arena((size_t)ROM_BUFFER_SIZE * gamepak_buffer_blocksize);
++    if (arena)
++    {
++      while (gamepak_buffer_count < ROM_BUFFER_SIZE)
++      {
++        gamepak_buffers[gamepak_buffer_count] = arena + (size_t)gamepak_buffer_count * gamepak_buffer_blocksize;
++        gamepak_buffer_count++;
++      }
++      gamepak_arena = 1;
++    }
++  }
++  // Try to allocate up to 32 blocks of 1MB each
+   while (gamepak_buffer_count < ROM_BUFFER_SIZE)
+   {
+     void *ptr = malloc(gamepak_buffer_blocksize);
+@@ -2779,10 +2799,13 @@ void memory_term(void)
+     gamepak_file_large = NULL;
+   }
+ 
++  if (gamepak_arena)
++    gamepak_buffer_count = 0;
+   while (gamepak_buffer_count)
+   {
+     free(gamepak_buffers[--gamepak_buffer_count]);
+   }
++  gamepak_arena = 0;
+ 
+   if (gamepak_mini_rom)
+   {
