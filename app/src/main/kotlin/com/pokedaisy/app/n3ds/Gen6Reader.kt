@@ -59,8 +59,11 @@ object Gen6Reader {
         val notScreens: Set<String> = NOT_SCREENS,
         /** Field modules that wait on the touch screen alone ([FIELD_TOUCH]). */
         val fieldTouch: Set<String> = FIELD_TOUCH,
-        /** Sun / Moon: a byte that's non-zero while the X menu is open (instead of [fieldMenuRoot]'s object). */
+        /** Sun / Moon: a byte that's non-zero while the X menu is open (instead of [fieldMenuRoot]'s object). It's set
+         * under a text box too, so it counts only while [fieldHold] isn't. */
         val fieldMenuWord: Int = 0,
+        /** [fieldHold]'s bits that mean held (X / ORAS [FIELD_HELD]; Sun / Moon bit 0). */
+        val fieldHoldMask: Int = FIELD_HELD,
     )
 
     class Pocket(val offset: Int, val capacity: Int, val companionPocket: Int)
@@ -149,6 +152,10 @@ object Gen6Reader {
         ),
         staticModule = 0x00869000,
         fieldMenuWord = 0x30004D1D,
+        // 2 on the field and in the X menu, 3 with a text box up (Sun, the Ride Pokemon's "can't call it here" box twice,
+        // field / box / field / box dumps); the menu byte above is 1 under a text box as well.
+        fieldHold = 0x300046C8,
+        fieldHoldMask = 1,
         languageAt = 0x35,
         bagGen7 = true,
         fieldModule = "FieldRo",
@@ -199,7 +206,10 @@ object Gen6Reader {
             if (names.any { it in c.fieldTouch }) return Scene.MENU
             if (c.fieldMenuWord != 0) {
                 // Sun / Moon: one word, set while the menu is open.
-                return if (fieldMenu != null && fieldMenu.isNotEmpty() && fieldMenu[0].toInt() != 0) Scene.MENU else Scene.FIELD
+                // [fieldMenu] here: the menu byte, then the hold byte (a text box sets the menu byte too).
+                val open = fieldMenu != null && fieldMenu.isNotEmpty() && fieldMenu[0].toInt() != 0 &&
+                    !(fieldMenu.size >= 2 && fieldMenu[1].toInt() and c.fieldHoldMask != 0)
+                return if (open) Scene.MENU else Scene.FIELD
             }
             if (fieldMenu == null || fieldMenu.size < FIELD_MENU_BYTES) return Scene.FIELD
             val open = ByteBuffer.wrap(fieldMenu).order(ByteOrder.LITTLE_ENDIAN).getInt(0) != 0 && fieldMenu[0x24].toInt() == 1

@@ -114,11 +114,13 @@ class OrasSmCartTest {
 class SmReaderTest {
     private val c = Gen6Reader.POKEMON_SM_USA
 
-    private fun word(v: Int) = byteArrayOf(v.toByte())
+    private fun word(v: Int, hold: Int = 2) = byteArrayOf(v.toByte(), hold.toByte())
 
     @Test fun scenesFromItsModules() {
         assertEquals(Gen6Reader.Scene.FIELD, Gen6Reader.sceneOf("FieldRo\nFieldMenu\nFieldGimmickPokecen", word(0), c))
         assertEquals(Gen6Reader.Scene.MENU, Gen6Reader.sceneOf("FieldRo\nFieldMenu", word(1), c))
+        // A text box sets the menu byte too: held, so the field.
+        assertEquals(Gen6Reader.Scene.FIELD, Gen6Reader.sceneOf("FieldRo\nFieldMenu", word(1, hold = 3), c))
         // No battle controller mapped: both screens side by side.
         assertEquals(Gen6Reader.Scene.SCREEN, Gen6Reader.sceneOf("Battle\nBackground", null, c))
         assertEquals(Gen6Reader.Scene.BATTLE, Gen6Reader.sceneOf("DllBattle\nDllBackGround", null, Gen6Reader.POKEMON_X_USA))

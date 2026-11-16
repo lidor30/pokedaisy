@@ -357,9 +357,12 @@ Sun boots that Moon save too and reads it at every address below (party, bag, My
   map showed it).
 - The X menu (on the touch screen): the byte at 0x30004D1D is 1 while it's open, 0 on the field (Sun closed / open / closed /
   open, Moon closed / open / closed: the one steady byte of the kind in the statics and the heap's first megabyte):
-  `Config.fieldMenuWord`. (0x083FE170, the first try from Moon alone, was set on Sun's field too.)
+  `Config.fieldMenuWord`. (0x083FE170, the first try from Moon alone, was set on Sun's field too.) That byte is 1 under a
+  text box as well (the Ride Pokemon's "can't call it here" box, field / box / field / box dumps), so it counts only while the
+  hold byte 0x300046C8 isn't held: 2 on the field and in the menu, 3 with a text box (`fieldHold`, `fieldHoldMask` 1), which
+  also steps the HUD's bottom row away.
 - A battle has no battle buttons yet (its controller isn't mapped): it reads as a screen of the game's own, both screens side
-  by side on ONE SCREEN, so the touch screen's commands are there (ORAS's too). No hold word, camera or battle controller mapped yet.
+  by side on ONE SCREEN, so the touch screen's commands are there (ORAS's too). No camera or battle controller mapped yet.
 - The cart (`N3dsLayout.SM`): text `a/0/3/<0 kana, 1 kanji, 2 English, 3 French, 4 Italian, 5 German, 6 Spanish, 7 Korean, 8 / 9
   Chinese>` (Chinese species names use the game font's own characters: English stands in), files 55 / 113 / 36 / 96 / 87 / 107 /
   67; moves `a/0/1/1` (packed, 40-byte records: Tackle 40); personal `a/0/1/7` (0x54); zones `a/0/7/7` (file 0, LZ11, 0x54 a
