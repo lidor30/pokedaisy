@@ -31,7 +31,7 @@ PokeDaisy는 닌텐도 3DS에서도 홈브루 앱으로 실행돼요. 위 화면
 `sdmc:/`는 3DS가 SD 카드의 맨 위를 부르는 이름이에요. 컴퓨터에서 보면 `sdmc:/3ds/`는 그냥 카드의 `3ds` 폴더예요.
 
 > [!TIP]
-> HOME 메뉴에서 PokeDaisy를 실행하고 싶다면, 릴리스마다 `pokedaisy.cia`도 있어요. 3DS에서 FBI를 열고(커스텀 펌웨어를 설치할 때 함께 들어가요) **Remote Install**, **Scan QR Code**를 차례로 고른 뒤 릴리스 페이지의 QR 코드를 찍으세요. 아니면 `pokedaisy.cia`를 SD 카드에 복사하고 FBI의 **SD** 목록에서 설치해요. 아래 단계는 똑같고, PokeDaisy는 HOME 메뉴의 아이콘으로 시작해요.
+> HOME 메뉴에서 PokeDaisy를 실행하고 싶다면, 릴리스마다 `pokedaisy.cia`도 있어요. 3DS에서 FBI를 열고(커스텀 펌웨어를 설치할 때 함께 들어가요) **Remote Install**을 고르고 **Scan QR Code**를 고른 뒤 릴리스 페이지의 QR 코드를 찍으세요. 아니면 `pokedaisy.cia`를 SD 카드에 복사하고 FBI의 **SD** 목록에서 설치해요. 아래 단계는 똑같고, PokeDaisy는 HOME 메뉴의 아이콘으로 시작해요.
 
 ## 3단계: 게임과 세이브 데이터 넣기
 
