@@ -52,3 +52,11 @@ hosts through `SetupFlow`, with platform-specific steps and entry/exit effects. 
 Android's library/launcher and iOS through `LibraryProjection`. E4 shares bounded reads and picker/read/confirmation
 ownership through `SaveImportFlow`, retaining the existing `GameSaves` transaction and native picker/backup
 capabilities. Each capability remains a separate layer for upstream mirroring. Historical migration refs are preserved.
+
+## Setup follow-up: game buttons on iOS
+
+iOS now includes Android's shared `SetupButtonsPage`, filtered to its supported GBA/Game Boy controls.
+Setup and Settings use the same capture request and existing `GameBindings` persistence/reload adapter.
+The iOS host owns only capture polling and application lifecycle cancellation. Leaving a step, finishing
+setup, disposing its host or backgrounding cancels capture. Folder linking, media and covers retain their
+existing platform capability requirements.

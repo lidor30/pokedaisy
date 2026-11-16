@@ -15,6 +15,7 @@ import com.pokedaisy.app.GameSaves
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import com.pokedaisy.app.companion.gameButtonRequest
 import com.pokedaisy.app.companion.SetupFlow
 import com.pokedaisy.app.companion.LibraryPreferences
 import com.pokedaisy.app.companion.LibrarySort
@@ -71,6 +72,21 @@ internal class IosLibraryHost(
                 }
             }
             DisposableEffect(Unit) { onDispose { saveImports.close(); setup?.close() } }
+            val capturing = appSettings.keyCapture.active
+            LaunchedEffect(capturing) {
+                if (capturing) while (true) {
+                    kotlinx.coroutines.delay(16)
+                    appSettings.pollKeyCapture()
+                }
+            }
+            androidx.compose.runtime.DisposableEffect(appSettings) {
+                val center = platform.Foundation.NSNotificationCenter.defaultCenter
+                val observer = center.addObserverForName(platform.UIKit.UIApplicationWillResignActiveNotification, null, null) {
+                    appSettings.keyCapture.cancel()
+                }
+                onDispose { center.removeObserver(observer); appSettings.keyCapture.cancel() }
+            }
+
             AppTheme { CompactTextOnSmallWindows {
                 CompositionLocalProvider(LocalCompanionBack provides back) {
                     val density = androidx.compose.ui.platform.LocalDensity.current.density
@@ -115,21 +131,6 @@ internal class IosLibraryHost(
 
     @Composable
     private fun Library() {
-        val capturing = appSettings.keyCapture.active
-        LaunchedEffect(capturing) {
-            if (capturing) while (true) {
-                kotlinx.coroutines.delay(16)
-                appSettings.pollKeyCapture()
-            }
-        }
-        androidx.compose.runtime.DisposableEffect(appSettings) {
-            val center = platform.Foundation.NSNotificationCenter.defaultCenter
-            val observer = center.addObserverForName(platform.UIKit.UIApplicationWillResignActiveNotification, null, null) {
-                appSettings.keyCapture.cancel()
-            }
-            onDispose { center.removeObserver(observer); appSettings.keyCapture.cancel() }
-        }
-
         val m = rememberGbaTextMetrics()
         val small = rememberGbaTextMetrics(1f)
         val all = entries()
@@ -155,7 +156,7 @@ internal class IosLibraryHost(
                                 NSURL.URLWithString(url)?.let { UIApplication.sharedApplication.openURL(it) }
                             } },
                             homeExtras = listOf(SettingRow("RUN SETUP", null, opensPage = true,
-                                labelBadge = NewFeatures.badge(NewFeatures.IPAD_APP_UI)) { setup?.close(); setup = newSetup(fromSettings = true) }))
+                                labelBadge = NewFeatures.badge(NewFeatures.IOS_SETUP_BUTTONS)) { setup?.close(); setup = newSetup(fromSettings = true) }))
                     }
                 }
             }) { game, up ->
@@ -180,7 +181,8 @@ internal class IosLibraryHost(
     }
 
     private fun newSetup(fromSettings: Boolean = false): SetupFlow<Int> =
-        SetupFlow(listOf(0, 1), fromSettings, exited = { reason ->
+        SetupFlow(listOf(0, 1, 2), fromSettings, entered = { appSettings.keyCapture.cancel() }, exited = { reason ->
+            appSettings.keyCapture.cancel()
             if (reason == SetupFlow.Exit.COMPLETE) iosPreferences.setupDone = true
             setup = null
         })
@@ -189,6 +191,8 @@ internal class IosLibraryHost(
     private fun Setup(flow: SetupFlow<Int>) {
         val page = flow.visit
         val step = page.step
+        var bindingsRevision by remember(flow) { mutableIntStateOf(0) }
+        DisposableEffect(flow) { onDispose { appSettings.keyCapture.cancel() } }
         val m = rememberGbaTextMetrics()
         val small = rememberGbaTextMetrics(1f)
         SetupFrame(flow.index, flow.steps.size, flow.canGoBack, busy = flow.busy, last = flow.last,
@@ -196,7 +200,13 @@ internal class IosLibraryHost(
             onBack = { flow.back(page) }, onNext = { flow.next(page) }) {
             if (step == 0) SetupRomsPage(SetupRomsModel(if (paths.isEmpty()) emptyList() else listOf("PokeDaisy/roms"),
                 paths.map(::label), linked = false), m, small, onChoose = ::addGames)
-            else SetupSavesPage(SetupSavesModel(null), m, small, onChoose = null, onUse = {})
+            else if (step == 1) SetupSavesPage(SetupSavesModel(null), m, small, onChoose = null, onUse = {})
+            else {
+                val bindings = remember(bindingsRevision) { appSettings.gbaControlBindings() }
+                SetupButtonsPage(bindings, appSettings.keyCapture, m, small,
+                    request = { appSettings.gameButtonRequest(it) { bindingsRevision++ } },
+                    group = appSettings.buttonGroup, usesSecondScreen = appSettings.usesSecondScreen)
+            }
         }
     }
 

@@ -611,3 +611,9 @@ enum class BattleStyle(val id: Int, val label: String) {
 
 /** An EXPAND zoom step as the HUD and SETTINGS > ZOOM show it: how much more of the map it shows ("1x", "1.4x"). */
 fun zoomLabel(factor: Float): String = "${factor.toDouble().fixed(1)}x".replace(".0x", "x")
+
+/** One-button capture used by setup and application/game settings on either host. */
+fun CompanionSettings.gameButtonRequest(button: GbaControls.Btn, changed: () -> Unit = {}) =
+    KeyCapture.Request(button.title, chord = false,
+        onDone = { keys -> setGbaControlBinding(button, KeyCapture.keyName(keys.first())); changed() },
+        onClear = if (button.canClear) ({ clearGbaControlBinding(button); changed() }) else null)

@@ -175,16 +175,16 @@ fun SetupSavesPage(
 
 /** GAME BUTTONS (key bindings): what each GBA button is now; a tap on one waits for the device's button, right here. */
 @Composable
-fun SetupButtonsPage(buttons: Map<GbaControls.Btn, List<String>>, capture: KeyCapture, m: GbaTextMetrics, small: GbaTextMetrics, request: (GbaControls.Btn) -> KeyCapture.Request) {
+fun SetupButtonsPage(buttons: Map<GbaControls.Btn, List<String>>, capture: KeyCapture, m: GbaTextMetrics, small: GbaTextMetrics, request: (GbaControls.Btn) -> KeyCapture.Request, group: GbaControls.Group? = null, usesSecondScreen: Boolean = true) {
     Heading(tr("GAME BUTTONS"), m)
     Para(
         tr("Which button on your device presses each GBA button - key bindings, or remapping, in other emulators. Check A and B first: some devices print them the other way round."),
         small,
     )
     Para(tr("To change one, tap it and press the button you want for it. The D-pad and analog stick are fixed."), small, muted = true)
-    GbaControls.Group.entries.forEach { group ->
+    GbaControls.Group.entries.filter { group == null || it.overlaps(group) }.forEach { group ->
         com.pokedaisy.app.companion.ui.GroupTitleLine(group.title, m, first = group == GbaControls.Group.ALL)
-        val btns = GbaControls.Btn.entries.filter { it.group == group && !it.dpad }   // (the D-pad rows: SETTINGS only)
+        val btns = GbaControls.Btn.entries.filter { it.group == group && !it.dpad && (it != GbaControls.Btn.TO_COMPANION || usesSecondScreen) }   // (the D-pad rows: SETTINGS only)
         btns.forEachIndexed { i, btn ->
             KeyBindRow(
                 btn.title, buttons[btn], capture, m, small, divider = i < btns.lastIndex, subtitle = btn.subtitle,

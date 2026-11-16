@@ -114,7 +114,8 @@ turbo and state buttons use the existing playback/slot bridges; unsupported acti
 The library, setup and app-settings presenters are the same Compose components Android uses. Swift switches between
 controllers; Compose embeds the native Metal game surface and owns the panel layout. There is no separate Swift list,
 menus, settings UI or touch pad. The library is full-window when no game is open, with grid/list, search, sorting, favorites/recent views and save import. Settings
-and touch layout editing work before a game starts. Setup uses Files to copy games and keeps saves in Documents/saves;
+and touch layout editing work before a game starts. Setup reuses the shared GAME BUTTONS page and the same controller/keyboard bindings as Settings.
+It uses Files to copy games and keeps saves in Documents/saves;
 Android folder linking and platform-specific media/tool services remain outside shared UI.
 
 ## Game screen layout

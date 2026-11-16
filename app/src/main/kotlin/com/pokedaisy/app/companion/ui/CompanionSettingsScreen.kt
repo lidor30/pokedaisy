@@ -40,6 +40,7 @@ import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.companion.SCENE_SPEEDS
 import com.pokedaisy.app.companion.data.WildEncounters
 import com.pokedaisy.app.companion.COMPANION_TABS
+import com.pokedaisy.app.companion.gameButtonRequest
 import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.KeyCapture
 import com.pokedaisy.app.companion.BattleStyle
@@ -208,11 +209,7 @@ fun CompanionSettingsScreen(
                             val title = btn.title
                             SettingRow(title, bindingValue(capture, title, bindings[btn]), subtitle = btn.subtitle, labelBadge = settings.gameButtonsBadge ?: btn.badge) {
                                 capture?.toggle(title) {
-                                    KeyCapture.Request(
-                                        title, chord = false,
-                                        onDone = { keys -> settings.setGbaControlBinding(btn, KeyCapture.keyName(keys.first())); tick++ },
-                                        onClear = if (btn.canClear) ({ settings.clearGbaControlBinding(btn); tick++ }) else null,
-                                    )
+                                    settings.gameButtonRequest(btn) { tick++ }
                                 }
                             }
                         }

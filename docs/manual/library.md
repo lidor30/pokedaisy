@@ -282,6 +282,8 @@ Search ignores case and accents, whether you search by the displayed name or the
 Open `SETTINGS` from the library to change appearance, language, playback defaults and touch controls before playing.
 `RUN SETUP` reopens the shared setup pages. On iPad, games picked in Files are copied into PokeDaisy's `roms` folder,
 and battery saves stay in `saves`. You can reach both folders through Files.
+Setup also includes `GAME BUTTONS`: tap a row and press a controller or keyboard button to bind it,
+or keep the defaults and choose `DONE`. These are the same bindings used in Settings and while playing.
 
 To return to the library while playing, open the companion's `SETTINGS` and choose `CLOSE GAME`. Confirm to close it.
 

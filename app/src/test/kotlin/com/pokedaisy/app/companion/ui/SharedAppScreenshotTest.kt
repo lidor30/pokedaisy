@@ -61,9 +61,19 @@ class SharedAppScreenshotTest {
 
     @Test fun setup() = paparazzi.snapshot { AppTheme { CompactTextOnSmallWindows {
         val m = rememberGbaTextMetrics()
-        SetupFrame(0, 2, canGoBack = false, busy = false, last = false, skipping = false, m, {}, {}) {
+        SetupFrame(0, 3, canGoBack = false, busy = false, last = false, skipping = false, m, {}, {}) {
             SetupRomsPage(SetupRomsModel(listOf("PokeDaisy/roms"), games.map { it.label }, linked = false),
                 m, rememberGbaTextMetrics(1f), {})
+        }
+    } } }
+
+    @Test fun setupButtons() = paparazzi.snapshot { AppTheme { CompactTextOnSmallWindows {
+        val m = rememberGbaTextMetrics()
+        SetupFrame(2, 3, canGoBack = true, busy = false, last = true, skipping = false, m, {}, {}) {
+            SetupButtonsPage(com.pokedaisy.app.GbaControls.Btn.entries.associateWith { listOf("BUTTON_A") },
+                KeyCapture(), m, rememberGbaTextMetrics(1f),
+                request = { KeyCapture.Request(it.title, chord = false, onDone = {}) },
+                group = com.pokedaisy.app.GbaControls.Group.GBA, usesSecondScreen = false)
         }
     } } }
 
