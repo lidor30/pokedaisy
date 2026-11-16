@@ -347,7 +347,7 @@ Sun (`0004000000164800`, `CTR-P-BNDA`) and Moon (`0004000000175E00`, `CTR-P-BNEA
 (`isSm`), `Gen6Reader.POKEMON_SM_USA`. The save is X's format too (0x40000, seen when Sun made its own). Headless on the Mac, Sun's
 own save and two of three Moon saves crash the software renderer as the field loads (the interpreter too: a host crash, not the
 JIT); the third Moon save (`main Deadshot626.zip`, in Seafolk Village's Pokemon Center) plays, and everything below came from it.
-Sun is taken to share Moon's addresses (as Y shares X's): **not checked yet**.
+Sun boots that Moon save too and reads it at every address below (party, bag, MyStatus, zone, the menu byte).
 - The static module at 0x00869000; the modules have no "Dll": `FieldRo` (the field), `Battle`, `Title`, `TitleMenu`, `FieldMenu`
   (always with the field), `Bag`, `Box`, `Zukan`... (the cart's 140 `.cro`).
 - The live party 0x34195E10, X's shape (0x1E4, stats at +0x158: Mimikyu Lv100 251 / 251). The save's blocks packed as X's: the
@@ -355,8 +355,11 @@ Sun is taken to share Moon's addresses (as Y shares X's): **not checked yet**.
   at 0x6B8, TMs 108 at 0x998, medicine 64 at 0xB48, berries 72 at 0xC48, Z-Crystals 30 at 0xD68; the RAM copy equals the save's),
   MyStatus 0x330D67D0 (name +0x38, language +0x35), the situation's zone 0x330D6736 (263 = Seafolk Village; the bottom screen's
   map showed it).
-- The X menu (on the touch screen): 0x083FE170 holds a pointer while it's open, 0 on the field (closed / open / closed dumps):
-  `Config.fieldMenuWord`. No hold word, camera or battle controller mapped yet.
+- The X menu (on the touch screen): the byte at 0x30004D1D is 1 while it's open, 0 on the field (Sun closed / open / closed /
+  open, Moon closed / open / closed: the one steady byte of the kind in the statics and the heap's first megabyte):
+  `Config.fieldMenuWord`. (0x083FE170, the first try from Moon alone, was set on Sun's field too.)
+- A battle has no battle buttons yet (its controller isn't mapped): it reads as a screen of the game's own, both screens side
+  by side on ONE SCREEN, so the touch screen's commands are there (ORAS's too). No hold word, camera or battle controller mapped yet.
 - The cart (`N3dsLayout.SM`): text `a/0/3/<0 kana, 1 kanji, 2 English, 3 French, 4 Italian, 5 German, 6 Spanish, 7 Korean, 8 / 9
   Chinese>` (Chinese species names use the game font's own characters: English stands in), files 55 / 113 / 36 / 96 / 87 / 107 /
   67; moves `a/0/1/1` (packed, 40-byte records: Tackle 40); personal `a/0/1/7` (0x54); zones `a/0/7/7` (file 0, LZ11, 0x54 a

@@ -114,12 +114,14 @@ class OrasSmCartTest {
 class SmReaderTest {
     private val c = Gen6Reader.POKEMON_SM_USA
 
-    private fun word(v: Int) = java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN).putInt(0, v).array()
+    private fun word(v: Int) = byteArrayOf(v.toByte())
 
     @Test fun scenesFromItsModules() {
         assertEquals(Gen6Reader.Scene.FIELD, Gen6Reader.sceneOf("FieldRo\nFieldMenu\nFieldGimmickPokecen", word(0), c))
-        assertEquals(Gen6Reader.Scene.MENU, Gen6Reader.sceneOf("FieldRo\nFieldMenu", word(0x083FE4A4), c))
-        assertEquals(Gen6Reader.Scene.BATTLE, Gen6Reader.sceneOf("Battle\nBackground", null, c))
+        assertEquals(Gen6Reader.Scene.MENU, Gen6Reader.sceneOf("FieldRo\nFieldMenu", word(1), c))
+        // No battle controller mapped: both screens side by side.
+        assertEquals(Gen6Reader.Scene.SCREEN, Gen6Reader.sceneOf("Battle\nBackground", null, c))
+        assertEquals(Gen6Reader.Scene.BATTLE, Gen6Reader.sceneOf("DllBattle\nDllBackGround", null, Gen6Reader.POKEMON_X_USA))
         assertEquals(Gen6Reader.Scene.SCREEN, Gen6Reader.sceneOf("Bag", null, c))
         assertEquals(null, Gen6Reader.sceneOf("TitleMenu", null, c))
     }

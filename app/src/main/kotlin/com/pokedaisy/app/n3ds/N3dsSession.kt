@@ -594,7 +594,7 @@ class N3dsSession(
 
     /** The field menu's bytes ([Gen6Reader.sceneOf]): the field's object from its root, then the pointer and flag in it. */
     private fun fieldMenu(config: Gen6Reader.Config): ByteArray? {
-        if (config.fieldMenuWord != 0) return N3dsNative.readMemory(intArrayOf(config.fieldMenuWord, 4))
+        if (config.fieldMenuWord != 0) return N3dsNative.readMemory(intArrayOf(config.fieldMenuWord, 1))
         if (config.fieldMenuRoot == 0) return null
         val root = N3dsNative.readMemory(intArrayOf(config.fieldMenuRoot, 4))?.takeIf { it.size == 4 } ?: return null
         val obj = java.nio.ByteBuffer.wrap(root).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(0)

@@ -59,7 +59,7 @@ object Gen6Reader {
         val notScreens: Set<String> = NOT_SCREENS,
         /** Field modules that wait on the touch screen alone ([FIELD_TOUCH]). */
         val fieldTouch: Set<String> = FIELD_TOUCH,
-        /** Sun / Moon: a word that's non-zero while the X menu is open (instead of [fieldMenuRoot]'s object). */
+        /** Sun / Moon: a byte that's non-zero while the X menu is open (instead of [fieldMenuRoot]'s object). */
         val fieldMenuWord: Int = 0,
     )
 
@@ -148,7 +148,7 @@ object Gen6Reader {
             Pocket(0xD68, 30, com.pokedaisy.app.companion.data.POCKET_KEY_ITEMS),
         ),
         staticModule = 0x00869000,
-        fieldMenuWord = 0x083FE170,
+        fieldMenuWord = 0x30004D1D,
         languageAt = 0x35,
         bagGen7 = true,
         fieldModule = "FieldRo",
@@ -199,13 +199,15 @@ object Gen6Reader {
             if (names.any { it in c.fieldTouch }) return Scene.MENU
             if (c.fieldMenuWord != 0) {
                 // Sun / Moon: one word, set while the menu is open.
-                return if (fieldMenu != null && fieldMenu.size >= 4 && ByteBuffer.wrap(fieldMenu).order(ByteOrder.LITTLE_ENDIAN).getInt(0) != 0) Scene.MENU else Scene.FIELD
+                return if (fieldMenu != null && fieldMenu.isNotEmpty() && fieldMenu[0].toInt() != 0) Scene.MENU else Scene.FIELD
             }
             if (fieldMenu == null || fieldMenu.size < FIELD_MENU_BYTES) return Scene.FIELD
             val open = ByteBuffer.wrap(fieldMenu).order(ByteOrder.LITTLE_ENDIAN).getInt(0) != 0 && fieldMenu[0x24].toInt() == 1
             return if (open) Scene.MENU else Scene.FIELD
         }
-        if (c.battleModule in names) return Scene.BATTLE
+        // A battle whose controller isn't mapped ([Config.battleUi] 0: Omega Ruby / Alpha Sapphire, Sun / Moon so far) has
+        // no battle buttons to stand for its touch screen: both screens side by side, as a screen of the game's own.
+        if (c.battleModule in names) return if (c.battleUi != 0) Scene.BATTLE else Scene.SCREEN
         return if (names.all { it in c.notScreens }) null else Scene.SCREEN
     }
 
@@ -265,7 +267,7 @@ object Gen6Reader {
         // Y: X's code and memory, every address X's (headless on one save, 2026-11-15).
         N3dsCart.POKEMON_X_USA, N3dsCart.POKEMON_Y_USA -> POKEMON_X_USA
         N3dsCart.POKEMON_OR_USA, N3dsCart.POKEMON_AS_USA -> POKEMON_ORAS_USA
-        // Moon's addresses; Sun's are taken to be the same (the X / Y pair's were, and the carts' code is the same size).
+        // Moon's addresses: Sun reads the Moon save at every one of them (headless, 2026-11-17).
         N3dsCart.POKEMON_SUN_USA, N3dsCart.POKEMON_MOON_USA -> POKEMON_SM_USA
         else -> null
     }
