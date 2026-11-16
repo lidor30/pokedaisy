@@ -1065,7 +1065,7 @@ fun ItemsScreen(
             Column(verticalArrangement = Arrangement.spacedBy(u * 4), modifier = Modifier.padding(top = u * 2)) {
                 // PC anywhere (GitHub #85): the game's own PC over the field; a "not now" pops up over the bag.
                 if (itemUse?.canPc() == true) {
-                    PcButton(pal, m, width = tabWidth - u * 4) {
+                    PcButton(pal, m, width = tabWidth - u * 4, badge = itemUse.actionBadge) {
                         itemUse.openPc { o -> if (o.result != ItemUseResult.USED) notice = ItemNotice(0, itemUseMessage(o), ok = false) }
                     }
                 }
@@ -1472,7 +1472,7 @@ private fun SortButton(label: String, pal: BagPalette, m: GbaTextMetrics, width:
 
 /** PC: the game's own PC (WITHDRAW, DEPOSIT...) opened on the field, styled like [SortButton]. */
 @Composable
-private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, onClick: () -> Unit) {
+private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, badge: String? = null, onClick: () -> Unit) {
     val u = m.u
     val noRipple = remember { MutableInteractionSource() }
     val focused by noRipple.collectIsFocusedAsState()
@@ -1487,10 +1487,15 @@ private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, onClick: () 
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
             .padding(horizontal = u * 6, vertical = u * 6),
     ) {
-        GbaText(tr("PC"), pal.descText, pal.descTextShadow, m)
-        // It opens the game's own PC, not a companion page (the HUD's PC has the same mark).
-        Spacer(Modifier.width(u * 3))
-        ShadowedPixelIcon(PixelIcons.inGame, pal.descText, pal.descTextShadow, m, cell = m.fontPixel.let { with(LocalDensity.current) { it.toDp() } })
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            badge?.let { OptionBadge(it, m, fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GbaText(tr("PC"), pal.descText, pal.descTextShadow, m)
+                // It opens the game's own PC, not a companion page (the HUD's PC has the same mark).
+                Spacer(Modifier.width(u * 3))
+                ShadowedPixelIcon(PixelIcons.inGame, pal.descText, pal.descTextShadow, m, cell = m.fontPixel.let { with(LocalDensity.current) { it.toDp() } })
+            }
+        }
     }
 }
 

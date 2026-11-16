@@ -31,7 +31,7 @@ Since a DS game and a GBA game never run at the same time, a button can be in bo
 
 In a game, the companion's `GAME BUTTONS` shows the group for the game you're playing under `ALL GAMES`. The top screen's Settings shows all three.
 
-To change one, tap its row (it says `PRESS A BUTTON…`) and press the button you want on your device. That works the same on the top screen and on the companion: there, while a row waits, the game's screen shows a window asking for the button and the keys you hold. `CANCEL`, or `BACK`, leaves the button as it was. `TURBO A`, `TURBO B`, the D-pad rows and the GBA and Game Boy rows also get `CLEAR`, which takes them off every button again.
+To change one, tap its row (it says `PRESS A BUTTON…`) and press the button you want on your device. That works the same on the top screen and on the companion: there, while a row waits, the game's screen shows a window asking for the button and the keys you hold. `CANCEL`, `BACK` or Escape leaves the button as it was. `TURBO A`, `TURBO B`, the D-pad rows and the GBA and Game Boy rows also get `CLEAR`, which takes them off every button again.
 
 The new button replaces everything that row had, keyboard key included. A button can only do one thing in a game: put it on a new row and it leaves the old one in the same games. `TO COMPANION` is the exception: it shares its button with whatever else is on it.
 
@@ -41,6 +41,14 @@ The new button replaces everything that row had, keyboard key included. A button
 The D-pad and the analog stick always move; they can't be remapped. The four D-pad rows add another button to a direction, for a controller whose D-pad sends something else. The 8BitDo Micro does in its keyboard mode, where its D-pad types letters: put each direction on its row and they move again. A direction's button also comes off any hotkey that was that button alone (the Micro's up is the C key, `ZOOM`'s). First-time setup has a page listing these buttons too, and you change them right there the same way.
 
 ![The top screen's GAME BUTTONS page: ALL GAMES, DS GAMES and GBA AND GAME BOY, a row for each button with the keys it's on](shots/settings-buttons.png "GAME BUTTONS on the top screen")
+
+### iPhone and iPad bindings
+
+On iPhone and iPad, `GAME BUTTONS` uses the same binding rows and button capture. Connect a controller or hardware keyboard, tap a row, press its new key, then release it. `CANCEL` or Escape leaves the binding alone. The D-pad and left stick always move. You can bind another key to a D-pad row, `TURBO A`, `TURBO B`, `START 2` or `SELECT 2`.
+
+Your existing iOS defaults stay the same: X is A, Z is B, A and S are L and R, Return is START, and Backspace or right Shift is SELECT. A controller's shoulders and triggers press L and R. Extra X and Y bindings start empty. Changing a row replaces all its old keys. The keyboard letters keep working in text fields while the companion window is open.
+
+Bindings are kept in `PokeDaisy/bindings/controls.properties` in Files. The keys use the same canonical names as Android, so you can copy a binding file between platforms. Buttons held while a capture or companion window closes need a release before they can reach the game again.
 
 ## X takes your buttons to the companion
 
@@ -102,6 +110,14 @@ The speed hotkeys are explained in [Fast-forward and game speed](fast-forward.md
 
 ![The top screen's HOTKEYS page: the HOTKEYS switch, then each hotkey with its buttons](shots/settings-hotkeys.png "HOTKEYS on the top screen")
 
+### iPhone and iPad hotkeys
+
+On iPhone and iPad, `HOTKEYS` starts off so your existing trigger buttons still press L and R. Turn it on to use the speed, state, slot, `EXIT GAME`, `RESTART GAME`, `COMPANION` and `MUTE` shortcuts. The defaults in the table apply to these actions. Actions that need a feature still being ported are omitted.
+
+`FF HOLD` and `SLOWMO HOLD` stop when you release their keys, open a companion window or button capture, focus a text box, or put the app in the background. Fast-forward takes priority over half speed. The touch FF button keeps its own hold. On both platforms, releasing touch leaves a controller hold active, and releasing the controller leaves touch active. Changing bindings or turning hotkeys off releases the old hotkey holds. `SPEED CYCLE` goes through 1x, 1.5x, 2x, 3x and 4x, then back to 1x. From half or quarter speed it returns to 1x, using the same policy as Android.
+
+Use the shared key-capture rows to change a shortcut or chord. Escape cancels a capture. SELECT and START alone keep their game action after release; a completed shortcut takes the combination. `COMPANION` opens the shared panel, and hides or reveals it in portrait. In a companion window, B or START closes it. While you type in a text box, keyboard shortcuts and game buttons leave those keys to the text box. The binding file is `PokeDaisy/bindings/hotkeys.properties` in Files.
+
 ### Changing a hotkey
 
 Tap a hotkey, under Settings > `HOTKEYS` on the top screen or `SETTINGS` > `HOTKEYS` on the companion; it says `PRESS KEYS…`. Press one button, or hold several together and release, to set it. While a hotkey waits for keys:
@@ -113,7 +129,7 @@ On the companion, the game's screen shows a window while a hotkey waits, with th
 
 ![Over the game while a companion hotkey waits: SAVE STATE, the button held so far, CLEAR SAVE STATE and CANCEL](shots/game-capture.png "The game's screen while the companion waits for keys")
 
-The new buttons replace the hotkey's whole binding, keyboard key included.
+The new buttons replace the hotkey's whole binding, keyboard key included. A binding takes effect after it saves; an invalid button or a failed save leaves the active controls alone.
 
 ![The companion's HOTKEYS page with the HOTKEYS switch and every hotkey's buttons](shots/companion-settings-hotkeys.png "HOTKEYS on the companion")
 
@@ -177,7 +193,7 @@ To use another button, change the `QUICK MENU` hotkey.
 - **`EDIT LAYOUT`**: move the buttons yourself (see below).
 
 In a DS game the buttons get X and Y too, around A and B the way the DS has them: X on top, Y on the left.
-- **`POSITION`**: with the phone held upright, where the buttons sit in their space: `TOP`, `MIDDLE` (the default) or `BOTTOM`. Their space is the gap between the game and the companion, or the game itself when there's no gap. It doesn't move a `CUSTOM` layout, which keeps your own places. With `EXPAND` and `UNDER GAME` the buttons get a space that fits them exactly, so it's greyed out then.
+- **`POSITION`**: with the phone held upright, where the buttons sit in their space: `TOP`, `MIDDLE` (the default) or `BOTTOM`. With the companion `UNDER GAME`, their space is below the companion. With `AT BOTTOM`, it is the gap between the game and the companion, or the game itself when there's no gap. It doesn't move a `CUSTOM` layout, which keeps your own places. With `EXPAND` and `UNDER GAME` the buttons get a space that fits them exactly, so it's greyed out then.
 - **`COMPANION`**: with the phone held upright, the companion right `UNDER GAME` (the default), which leaves the space at the bottom of the screen for the buttons (when there's no room to spare, the companion and then the game get a little smaller to make that space), or `AT BOTTOM` of the screen. It's the same setting as the one in `DISPLAY OPTIONS`, and only on phones and other one-screen devices. With `EXPAND` on, the game fills everything above the companion, so `UNDER GAME` gives the buttons a strip of their own along the bottom of the screen instead, under the companion, where they never cover the game. With no touch controls on screen there's nothing to choose then, and the setting is greyed out.
 - **`SIZE`**: `SMALL`, `NORMAL`, `LARGE` or `X-LARGE`, for every button at once.
 - **`LOOK`**: how the buttons are drawn. `GLASS` (the default) is see-through with a light edge, `SOLID` fills them in, `OUTLINE` draws only their edges and words (a press fills one in), `CONSOLE` makes them look like a handheld's: raised, sinking a little when you press them, and `MODERN` draws smooth round buttons with plain lettering instead of pixels.
@@ -194,13 +210,15 @@ On a phone held upright the buttons sit between the game and the companion when 
 
 The `EXTRA BUTTONS` group adds buttons the GBA doesn't have. Turn each one on or off:
 
-- **`FF`** (on to start with): a tap turns fast-forward on or off; hold it for fast-forward only while you hold it. Its word lights up while fast-forward is on.
+- **`FF`** (on to start with): a tap turns fast-forward on or off; hold it for fast-forward only while you hold it. Its word lights up while fast-forward is on. Leaving the game or opening button capture cancels the touch hold without counting it as a tap.
 - **`QUICK MENU`** (on to start with): opens the [quick menu](#the-quick-menu). A phone has no button for it otherwise. Tap a tile to run it; a tap anywhere else closes it.
 - **`TURBO A`** and **`TURBO B`**: press A or B over and over while you hold them, like the [turbo buttons](#turbo-a-and-b).
 - **`SAVE STATE`** and **`LOAD STATE`**: save or load a state in the current slot, like the hotkeys. If you load one by mistake, the `UNDO LOAD` hotkey takes you back.
 - **`ZOOM`** (on to start with): steps the view out and back in, like the `ZOOM` hotkey. It only shows while `ASPECT` is on `EXPAND`, since that's when there's more map to see.
 - **`REWIND`** (on to start with): rewinds the game for as long as you hold it, in GBA and Game Boy games. Turn `REWIND` on in Settings first; until then a press tells you where.
 - **`X AND Y`** (on to start with): X and Y buttons in GBA and Game Boy games, which have none of their own, round A, B, X and Y as on a DS: X on top, A right, B below, Y left. They work like a controller's X and Y, so they do whatever you put on them: by default X is `START 2` and `TO COMPANION`, Y is `SELECT 2`, and you can give them a hotkey under `HOTKEYS`. A DS game always shows its own X and Y.
+
+On iPhone and iPad, `X AND Y` uses the same buttons, layouts and editor. Each touch goes through your `GAME BUTTONS` and `HOTKEYS` bindings, just like a controller's X or Y. Existing iOS bindings are kept: if these keys are unbound, assign `START 2`, `SELECT 2` or a hotkey before using them. Closing a window, changing bindings or opening the layout editor releases held touch keys.
 
 ### Skins
 
@@ -215,6 +233,9 @@ Held sideways, the skin fills the screen and the game moves into the skin's own 
 ### Moving and resizing buttons: EDIT LAYOUT
 
 `EDIT LAYOUT` shows every button at its real size with a dashed outline. In a game it opens over the game itself (from the companion's `SETTINGS`); from the top screen's Settings it opens over a picture of the game's screen.
+
+Android and iPad use the same editor. Editing one orientation keeps the other one's layout. Controls that your
+current game cannot show keep their saved positions too.
 
 ![EDIT LAYOUT on a phone held sideways: the buttons with dashed outlines in the bars beside the game, the bar with DONE, SNAP ON and RESET at the top](shots/settings-touch-edit.png "EDIT LAYOUT")
 
@@ -237,6 +258,12 @@ A phone held upright and held sideways each get their own layout: you edit the o
 
 Both show `N/A` on a game PokeDaisy can't read the field of yet.
 
+On iPhone and iPad, both options work in supported GBA games and remember your choices. Auto-run follows the same
+rules: it leaves menus, conversations, battles, bikes, surfing and the game's own auto-run alone. On a new game,
+walk around for a few seconds so the field can be recognized. Game Boy games show `N/A` for now.
+
+If you turn indoor running off while inside a building, leave and re-enter to restore that map's normal rule.
+
 ## WILD ENCOUNTERS
 
 `WILD ENCOUNTERS` turns wild Pokémon jumping out at you in grass, caves and water on or off. It's in the companion's `GAMEPLAY` group:
@@ -247,6 +274,10 @@ Both show `N/A` on a game PokeDaisy can't read the field of yet.
 Only random encounters change. Fishing, moves that lure wild Pokémon out and battles the story sets up still happen, and items that keep wild Pokémon away work as usual on top. The change applies at once, no restart needed.
 
 It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
+
+On iPhone and iPad, the toggle works where the GBA game's field and encounter switch are known. It can briefly show
+`N/A` while the game is checked. Your choice is remembered, including after resuming a saved state. Turning it back
+on restores random encounters when you return to the free field. Game Boy support is still to come on iOS.
 
 ## SHINY ODDS
 
@@ -318,3 +349,25 @@ Some handhelds and controllers (Retroid's, for example) send their L2 and R2 tri
 - **A hold** leaves the game and returns to the library (or to the frontend that launched it).
 
 This works from either screen. On a device with one screen, a tap also slides the companion panel in and out; see [Devices](devices.md).
+
+## Touch controls on iPad
+
+Open the companion's `SETTINGS` > `TOUCH CONTROLS` to change the same layouts, size, look, colors, opacity and D-pad
+options as on Android. Changes apply to the controls straight away and are kept when you reopen the app.
+
+Held upright, it works as on an Android phone. With `COMPANION` at `UNDER GAME` (the default), the game is at the top,
+the companion right under it and the buttons in a space of their own along the bottom; the companion and then the game
+get a little smaller to make that space. With `AT BOTTOM`, the companion goes along the bottom of the screen and the
+buttons sit in the gap above it, or over the game when there's no gap, as on an iPad. Held sideways, the game is centered beside the companion, with touch controls over the game area.
+The preview and `EDIT LAYOUT` use the same arrangement as the game screen.
+
+`EDIT LAYOUT` pauses the game and opens the shared editor over its picture. Drag controls, resize or hide them, then
+choose `DONE`. Upright and sideways layouts are kept separately. `SHOW` > `AUTO` hides the controls while a gamepad is
+connected; `ALWAYS` and `NEVER` let you choose for yourself.
+
+You can enable `FF`, `TURBO A`, `TURBO B`, `SAVE STATE` and `LOAD STATE` under `EXTRA BUTTONS`. A short tap on `FF`
+toggles it; holding it speeds up the game until you release it. The state buttons use the current slot in `STATES`.
+Skin import, the quick menu, zoom, rewind and X/Y bindings are not available on iPad yet.
+
+You can also open `TOUCH CONTROLS` from the library's `SETTINGS`, with no game running. The editor uses a stand-in of
+the same game and controls panels. It keeps the layout for the orientation you are editing, ready for your next game.

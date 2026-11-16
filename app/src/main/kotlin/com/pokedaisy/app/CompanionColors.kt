@@ -5,6 +5,12 @@ import android.graphics.RuntimeShader
 import android.os.Build
 import android.util.Log
 import android.view.View
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import com.pokedaisy.app.companion.ScreenFilter
 import java.util.Collections
 import java.util.WeakHashMap
@@ -30,6 +36,7 @@ object CompanionColors {
     private var grid = floatArrayOf(0f, 0f)
     /** The grid's cell in view px: the game's own pixel on screen ([setCell]), 6.75 on the Thor. */
     private var cell = 0f
+    private var revision by mutableIntStateOf(0)
     /** Views that are the game's own picture, a DS game's touch screen: FILTER whatever ON COMPANION says ([trackGame]). */
     private val gameViews: MutableSet<View> = Collections.synchronizedSet(Collections.newSetFromMap(WeakHashMap()))
     private var gameFilter = ScreenFilter.NONE
@@ -72,19 +79,30 @@ object CompanionColors {
     }
 
     private fun applyAll() {
+        revision++
         views.toList().forEach(::apply)
         gameViews.toList().forEach(::apply)
     }
 
     private fun apply(view: View) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val game = view in gameViews
+        view.setRenderEffect(effect(view, view in gameViews))
+    }
+
+    /** The same shader for Compose-owned chrome/HUD layers, kept off the native game surface and controls. */
+    @Composable
+    fun composeEffect(view: View): androidx.compose.ui.graphics.RenderEffect? {
+        val changed = revision
+        return remember(view, changed, view.resources.displayMetrics.density) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) effect(view, false)?.asComposeRenderEffect() else null
+        }
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun effect(view: View, game: Boolean): RenderEffect? {
         val filter = if (game) gameFilter else filter
         val colors = if (game) gameColors else gbaColors
-        if (!colors && filter == ScreenFilter.NONE) {
-            view.setRenderEffect(null)
-            return
-        }
+        if (!colors && filter == ScreenFilter.NONE) return null
         // Until the game is laid out: the Thor's 6.75 px, scaled to this display. Rounded to whole view
         // pixels (7 on the Thor): at 6.75 cells came out 6 or 7 px and the lines fell at different
         // sub-pixel phases, so some looked thicker than others.
@@ -93,12 +111,12 @@ object CompanionColors {
         // AGSL compiles here, on the device: a bad shader leaves the companion as it is, not a crash.
         val shader = runCatching { RuntimeShader(AGSL) }
             .onFailure { Log.w("pokedaisy", "companion shader failed to compile", it) }
-            .getOrNull() ?: return
+            .getOrNull() ?: return null
         shader.setFloatUniform("uColors", if (colors) 1f else 0f)
         shader.setFloatUniform("uFilter", filter.ordinal.toFloat())
         shader.setFloatUniform("uUnit", unit)
         shader.setFloatUniform("uGrid", grid[0], grid[1])
-        view.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "content"))
+        return RenderEffect.createRuntimeShaderEffect(shader, "content")
     }
 
     /**

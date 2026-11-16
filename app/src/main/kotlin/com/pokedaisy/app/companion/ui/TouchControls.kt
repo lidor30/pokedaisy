@@ -206,7 +206,11 @@ class TouchHits(val held: Int, val dpad: Int, val skin: Long) {
 }
 
 /** Where the buttons are, for a hit test off the UI thread: the drawn ones ([placed]) or a skin's ([fit]). */
-class TouchHitModel(val placed: TouchGeometry.Placed, val fit: SkinFit?, val eightWay: Boolean)
+class TouchHitModel(
+    val placed: TouchGeometry.Placed, val fit: SkinFit?, val eightWay: Boolean,
+    /** UI chrome in the controls' coordinates, also ignored when an already-held finger moves over it. */
+    val excluded: List<androidx.compose.ui.unit.IntRect> = emptyList(),
+)
 
 /** The [n] fingers at ([xs], [ys]) (the controls' own pixels) on [model]'s buttons. */
 fun touchHits(model: TouchHitModel, xs: FloatArray, ys: FloatArray, n: Int): TouchHits {
@@ -219,6 +223,7 @@ fun touchHits(model: TouchHitModel, xs: FloatArray, ys: FloatArray, n: Int): Tou
     for (k in 0 until n) {
         val x = xs[k]
         val y = ys[k]
+        if (model.excluded.any { x >= it.left && x < it.right && y >= it.top && y < it.bottom }) continue
         if (sf != null) {
             val (b, d) = sf.touch(x, y, model.eightWay)
             held = held or b
@@ -339,6 +344,8 @@ fun TouchControls(
     val skinImage by rememberSkinImage(skin, fit)
     val presses = tracker ?: remember { TouchPressTracker(TouchPressed()) }
     presses.input = input
+    // GBA/GB X/Y are remappable controller keys; only DS has native X/Y game bits. Both hosts use this mode.
+    presses.xyKeys = !ds
     val pressed = presses.pressed
     val currentFit by rememberUpdatedState(fit)
     val currentPlaced by rememberUpdatedState(active)

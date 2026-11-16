@@ -11,6 +11,15 @@ import com.pokedaisy.app.companion.i18n.tk
  * from the update. Every new feature gets one (CLAUDE.md): add its id to [ALL] and the badge to its row.
  */
 object NewFeatures {
+    /** Shared game-button capture and bindings on iPhone and iPad. */
+    const val IOS_GAME_BINDINGS = "ios_game_bindings"
+    const val IOS_GAME_HOTKEYS = "ios_game_hotkeys"
+    const val IOS_REWIND = "ios_rewind"
+    const val IOS_TOUCH_XY = "ios_touch_xy"
+    const val IOS_CHEATS = "ios_cheats"
+    const val IOS_FIELD_ITEMS = "ios_field_items"
+    const val IOS_CLASSIC_FLY = "ios_classic_fly"
+
     /** SETTINGS > HUD (companion.ui.FieldHud). */
     const val HUD = "hud"
 
@@ -207,7 +216,37 @@ object NewFeatures {
     /** TOUCH CONTROLS' ZOOM / REWIND extras and X AND Y for GBA / Game Boy games. */
     const val TOUCH_MORE_BUTTONS = "touch_more_buttons"
 
+    /** The iPad game loop now supports fast-forward and per-game speed. */
+    const val IPAD_PLAYBACK = "ipad_playback"
+
+    const val IPAD_STATES = "ipad_states"
+    const val IPAD_RESUME = "ipad_resume"
+    const val IPAD_TOUCH = "ipad_touch"
+    const val IPAD_APP_UI = "ipad_app_ui"
+    const val IOS_GAME_PICKER = "ios_game_picker"
+    const val IOS_FIELD_OPTIONS = "ios_field_options"
+    const val IOS_GAME_OPTIONS = "ios_game_options"
+    const val IOS_SCENE_SPEEDS = "ios_scene_speeds"
+    const val IOS_GAME_SCREEN = "ios_game_screen"
+
     val ALL = listOf(
+        IOS_GAME_BINDINGS,
+        IOS_GAME_HOTKEYS,
+        IOS_REWIND,
+        IOS_TOUCH_XY,
+        IOS_CHEATS,
+        IOS_FIELD_ITEMS,
+        IOS_CLASSIC_FLY,
+        IOS_FIELD_OPTIONS,
+        IOS_GAME_OPTIONS,
+        IOS_SCENE_SPEEDS,
+        IOS_GAME_SCREEN,
+        IOS_GAME_PICKER,
+        IPAD_APP_UI,
+        IPAD_TOUCH,
+        IPAD_RESUME,
+        IPAD_STATES,
+        IPAD_PLAYBACK,
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,

@@ -525,7 +525,7 @@ private fun Gen5Button(
                 }
             }
             .then(
-                if (enabled) Modifier.clickable(interactionSource = interaction, indication = null) {
+                if (enabled) Modifier.menuClickable(interactionSource = interaction, indication = null) {
                     onClick()
                     if (!pressesGame || gameSilent()) sound()
                 } else Modifier,

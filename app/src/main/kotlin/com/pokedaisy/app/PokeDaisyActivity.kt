@@ -78,11 +78,6 @@ import com.pokedaisy.app.companion.data.delete
 import okio.Path.Companion.toOkioPath
 import okio.source
 import com.pokedaisy.app.companion.data.lastModified
-import com.pokedaisy.app.companion.data.FfMenuWatch
-import com.pokedaisy.app.companion.data.RegionMapWatch
-import com.pokedaisy.app.companion.data.isGen2
-import com.pokedaisy.app.companion.data.isGen1
-
 
 /**
  * Phase 1 shell: full-screen GBA emulation with RetroArch-style savestate slots
@@ -95,11 +90,9 @@ class PokeDaisyActivity : Activity() {
 
     private val input = GbaInput()
     /** The companion's GAME BUTTONS / HOTKEYS rows waiting for keys: every key comes here (the Presentation forwards
-     * them), so the capture runs here and [keyCapturePopup] shows it over the game. */
+     * them), so the capture runs here and [keyCaptureShown] shows it over the game. */
     private val keyCapture = com.pokedaisy.app.companion.KeyCapture().apply { onActiveChanged = ::onKeyCapture }
-
-    private lateinit var keyCapturePopup: ComposeView
-
+    private var keyCaptureShown by androidx.compose.runtime.mutableStateOf(false)
     private lateinit var hotkeys: Hotkeys
     /** [Prefs.hotkeysEnabled], read on resume; off, every key goes to the game. */
     private var hotkeysOn = true
@@ -227,17 +220,13 @@ class PokeDaisyActivity : Activity() {
     private val portraitBack = com.pokedaisy.app.companion.ui.CompanionBack()
     /** BACK for the FIELD HUD's panels (map, bag, wild, summary): the first thing a BACK tap closes. */
     private val hudBack = com.pokedaisy.app.companion.ui.CompanionBack()
-
     /** The FIELD HUD over the game (see [buildFieldHud]) and what it follows: SETTINGS > HUD, the phone's
      * orientation (none upright, for now), the touch controls' rows it keeps clear of, the engine's [EmulatorEngine.onField]. */
-    private lateinit var fieldHud: ComposeView
-
+    private var fieldHudBounds by androidx.compose.runtime.mutableStateOf(androidx.compose.ui.geometry.Rect.Zero)
     /** DS LAYOUT's pieces on the stage ([syncDsStage]): the game's backdrop under the screens, the touch screen beside
      * or inset in the game, and the floating touch window over it ([com.pokedaisy.app.companion.ui.DsTouchWindow]). */
     private lateinit var dsBackdropView: ComposeView
     private lateinit var dsTouchView: FrameLayout
-
-    private lateinit var dsWindowView: ComposeView
 
     /** Pictures of the game for behind DS LAYOUT's screens ([DsShots]). */
     private lateinit var dsShots: DsShots
@@ -317,8 +306,8 @@ class PokeDaisyActivity : Activity() {
     private var debugMirror = false
     /** The game's stage (game, status bar, touch controls, HUD, side panel): the activity's
      * content, or the second screen's with SWAP SCREENS (see [syncPresentation]). */
-    private lateinit var stage: GameStageLayout
-
+    private lateinit var stage: GameScreenView
+    private var stageOwner: ComposeHostOwner? = null
 
     /**
      * The recomposer of every Compose view on [stage] (the FIELD HUD, the touch controls, BATTLE BUTTONS, the status
@@ -2172,17 +2161,17 @@ class PokeDaisyActivity : Activity() {
         // The HUD keeps to the game's picture (ORIGINAL / STRETCH / an overlay); EXPAND = the whole view.
         // DS LAYOUT lays the HUD over the whole area, the game's box somewhere in it: its rects move with the box.
         view.onGameRect = { r ->
-            val (dx, dy) = if (::stage.isInitialized) stage.dsGameOffset else 0 to 0
+            val (dx, dy) = if (::stage.isInitialized) stage.viewport.dsGameOffset else 0 to 0
             // (A DS layout: the game's box, even where it starts at the area's corner - LARGE + SMALL's game is at 0, 0 and
             // the HUD spread over its touch screen.)
-            val ds = ::stage.isInitialized && stage.dsArrange != null
-            dsHudClear.value = if (ds) stage.dsTouchOverGame else 0f
+            val ds = ::stage.isInitialized && stage.viewport.dsArrange != null
+            dsHudClear.value = if (ds) stage.viewport.dsTouchOverGame else 0f
             hudFrame.value = r?.let { androidx.compose.ui.geometry.Rect(it.left + dx, it.top + dy, it.right + dx, it.bottom + dy) }
                 ?: if (ds || dx != 0 || dy != 0) androidx.compose.ui.geometry.Rect(dx.toFloat(), dy.toFloat(), (dx + view.width).toFloat(), (dy + view.height).toFloat()) else null
         }
         // BATTLE BUTTONS keep right of the GBA's own picture (EXPAND's battle included).
         view.onCoreRect = { r ->
-            val (dx, dy) = if (::stage.isInitialized) stage.dsGameOffset else 0 to 0
+            val (dx, dy) = if (::stage.isInitialized) stage.viewport.dsGameOffset else 0 to 0
             coreFrame.value = androidx.compose.ui.geometry.Rect(r.left + dx, r.top + dy, r.right + dx, r.bottom + dy)
         }
         if (debugMirror) view.setZOrderMediaOverlay(true) // see EmulatorView's z-order note
@@ -2202,71 +2191,16 @@ class PokeDaisyActivity : Activity() {
             visibility = View.GONE
         }
         statusBar = buildStatusBar()
-        performance = buildPerformanceOverlay()
-        fieldHud = buildFieldHud()
         buildDsStageViews()
-        keyCapturePopup = ComposeView(this).apply {
+        n3dsDim = View(this).apply {
+            setBackgroundColor(0x99000000.toInt())
             visibility = View.GONE
-            setContent { com.pokedaisy.app.companion.ui.KeyCapturePopup(keyCapture) }
+            setOnClickListener { if (!n3dsBattleScreenUp) setN3dsFloating(false) }
         }
-        val root = GameStageLayout(this, view, statusBar, listOf(hud, performance), overGame = listOf(fieldHud, keyCapturePopup)).apply {
+        val root = GameScreenView(this, view, statusBar).apply {
             setBackgroundColor(Color.BLACK)
-            dsBackdrop = dsBackdropView
-            dsTouch = dsTouchView
-            // Shrink the game view to the left portion (instead of full-screen
-            // underneath the mirror) so the whole GBA frame is actually
-            // visible, aspect-fit within that narrower space, rather than half
-            // of it sitting hidden behind the companion panel.
-            val gameParams = if (debugMirror) {
-                FrameLayout.LayoutParams(-1, -1).apply { rightMargin = dp(DEBUG_MIRROR_WIDTH_DP) }
-            } else {
-                FrameLayout.LayoutParams(-1, -1)
-            }
-            // DS LAYOUT: the game's backdrop under the game, the touch screen over it, the floating window under the
-            // touch controls (which stay bright and tappable over its dim).
-            addView(dsBackdropView, FrameLayout.LayoutParams(-1, -1))
-            addView(view, gameParams)
-            // A 3DS game's floating touch screen sits over this dim (its surface punches through it).
-            n3dsDim = View(this@PokeDaisyActivity).apply {
-                setBackgroundColor(0x99000000.toInt())
-                visibility = View.GONE
-                setOnClickListener { if (!n3dsBattleScreenUp) setN3dsFloating(false) }
-            }
-            addView(n3dsDim, FrameLayout.LayoutParams(-1, -1))
-            addView(dsTouchView, FrameLayout.LayoutParams(-1, -1))
-            addView(statusBar, FrameLayout.LayoutParams(-2, -2))
-            addView(dsWindowView, FrameLayout.LayoutParams(-1, -1))
-            addView(touchControls, FrameLayout.LayoutParams(-1, -1))
-            // Over the touch controls: a tap on the HUD is the HUD's, anywhere else falls through to the pad.
-            addView(fieldHud, FrameLayout.LayoutParams(-1, -1))
-            // The HUD's messages top-right: FPS / CPU has the top-left corner.
-            addView(hud, FrameLayout.LayoutParams(-2, -2).apply {
-                gravity = Gravity.TOP or Gravity.END
-                topMargin = dp(12); rightMargin = dp(12)
-            })
-            // FPS / CPU: flush in the top-left corner, like other emulators. The view covers the stage (its words drawn at
-            // the corner, a touch elsewhere falling through): wrapped round its words, every reading that changed their
-            // width laid the whole stage out again, twice a second (most of a weak tablet's idle frames, 2026-11-08).
-            addView(performance, FrameLayout.LayoutParams(-1, -1))
-            // Over everything on the game: the companion's rebind asking for keys.
-            addView(keyCapturePopup, FrameLayout.LayoutParams(-1, -1))
-            if (debugMirror) {
-                addView(buildDebugCompanionMirror(), debugMirrorLayoutParams())
-                addView(
-                    TextView(this@PokeDaisyActivity).apply {
-                        text = "DEBUG MIRROR"
-                        setTextColor(Color.WHITE)
-                        setBackgroundColor(0xC0C02020.toInt())
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                        val p = dp(6)
-                        setPadding(p, dp(3), p, dp(3))
-                    },
-                    FrameLayout.LayoutParams(-2, -2).apply {
-                        gravity = Gravity.BOTTOM or Gravity.START
-                        bottomMargin = dp(8); leftMargin = dp(8)
-                    },
-                )
-            }
+            viewport.gameDim = n3dsDim
+            viewport.addView(n3dsDim, FrameLayout.LayoutParams(-1, -1))
         }
         stage = root
         // Compose on the stage runs on its own recomposer, for this activity's life (see stageRecomposer).
@@ -2279,23 +2213,36 @@ class PokeDaisyActivity : Activity() {
         // *is* the Presentation's own content root; here it's nested inside
         // this Activity's own (plain, non-Compose) root, so the root itself
         // needs the owner too.
-        val owner = ComposeHostOwner().apply { create(); resume() }
+        val owner = ComposeHostOwner().apply { create(); resume() }.also { stageOwner = it }
         root.setViewTreeLifecycleOwner(owner)
         root.setViewTreeSavedStateRegistryOwner(owner)
         root.setViewTreeViewModelStoreOwner(owner)
         // Its panel and tabs above the FIELD HUD (which sits above the touch controls).
         // A DS game's touch screen is on the stage held sideways (DS LAYOUT), so the panel is the companion alone.
-        sidePanel = SidePanel(root, view, touchControls, Prefs(this), panelBack, panelKeys, playClick, under = fieldHud, onWindow = ::onCompanionWindow, companion = {
+        sidePanel = SidePanel(root, Prefs(this), panelBack, panelKeys, playClick, onWindow = ::onCompanionWindow, companion = {
             val snap by telemetry.snapshot.collectAsState()
             CompanionScreen(snap, stateSlots, companionSettings, battleInput, back = panelBack, keys = panelKeys, clickSound = playClick, achievements = RetroAchievements, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort)
         })
-        portraitPanel = PortraitPanel(root, view, touchControls, Prefs(this), portraitBack, playClick) {
+        portraitPanel = PortraitPanel(root, Prefs(this), portraitBack) {
             dsOrCompanion {
                 val snap by telemetry.snapshot.collectAsState()
                 CompanionFocusHost(bottomFocus.value, bottomKeys) {
                     CompanionScreen(snap, stateSlots, companionSettings, battleInput, back = portraitBack, keys = bottomKeys, clickSound = playClick, achievements = RetroAchievements, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort)
                 }
             }
+        }
+        root.onCompanionHidden = { setBottomFocus(false) }
+        root.install(touchControls, dsBackdropView, dsTouchView, playClick,
+            underlay = { DsWindowContent() }, gameOverlay = { FieldHudContent() },
+            screenOverlay = { PerformanceContent() },
+            editorOverlay = { touchEditor.Content() },
+            pictureOverlay = { if (keyCaptureShown) com.pokedaisy.app.companion.ui.KeyCapturePopup(keyCapture) },
+            message = hud,
+            onPicture = { fieldHudBounds = it })
+        touchControls.inputExclusions = root::inputExclusions
+        if (debugMirror) {
+            root.reserveRendererRight(dp(DEBUG_MIRROR_WIDTH_DP))
+            root.addView(buildDebugCompanionMirror(), debugMirrorLayoutParams())
         }
         // Two screens: the game stays on the landscape top one. One screen (a phone): it turns
         // with the device (the user's rotation setting), the companion under the game upright.
@@ -2515,7 +2462,7 @@ class PokeDaisyActivity : Activity() {
                     // Here on the emu thread, before the first frame (see EmulatorView.bindCore).
                     view.bindCore(buf, MgbaCore.pkWideBuffer(), w, h)
                     runOnUiThread {
-                        stage.aspect = w.toFloat() / h   // 3:2, or a Game Boy's 10:9
+                        stage.viewport.aspect = w.toFloat() / h   // 3:2, or a Game Boy's 10:9
                         touchControls.shoulders = !gameBoy
                         touchControls.dsButtons = romIsNds
                         syncTouchControls()   // a Game Boy's controls (no L / R) are shorter: EXPAND's strip follows
@@ -3250,6 +3197,8 @@ class PokeDaisyActivity : Activity() {
         RetroAchievements.onUnlockSound = null
         unlockSound?.release()
         unlockSound = null
+        stageOwner?.destroy()
+        stageOwner = null
         stageRecomposer.cancel()
         stageRecomposing.cancel()
         stopCoopPresence()
@@ -3722,7 +3671,6 @@ class PokeDaisyActivity : Activity() {
         val prefs = Prefs(this)
         // STATUS BAR > COMPANION: the strip goes over the companion's tabs instead.
         statusBar.visibility = if (prefs.statusBar && !prefs.statusBarOnCompanion) View.VISIBLE else View.GONE
-        performance.visibility = if (prefs.showPerformance) View.VISIBLE else View.GONE
         performanceShown.value = prefs.showPerformance
         hudOn.value = prefs.fieldHud
         hudStyle.value = prefs.fieldHudStyle
@@ -3733,22 +3681,22 @@ class PokeDaisyActivity : Activity() {
         com.pokedaisy.app.companion.ui.AchievementIcons.shown = prefs.raIcons
         hudUpright.value = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
         com.pokedaisy.app.companion.ui.CompanionStatusBar.shown = prefs.statusBar && prefs.statusBarOnCompanion
-        val stageLayout = statusBar.parent as? GameStageLayout
+        val stageLayout = stage.viewport
         // WIDE on a game it doesn't know is ORIGINAL; otherwise the game takes the whole area and
         // the core draws the overworld into the room beside it.
         val aspect = prefs.gameAspect.let { if (it == GameAspect.WIDE && wideGame == WideScreen.OFF) GameAspect.ORIGINAL else it }
         // SCREEN > OVERLAY: not on a phone held upright, where the game is its own shape across the top, nor with
         // EXPAND, whose map fills the screen.
         // Nor on a DS game's layouts (DS LAYOUT), which put the game's own backdrop round it.
-        view.overlay = if (stageLayout?.topAligned == true || aspect == GameAspect.WIDE || dsStageOn) null else when (val c = OverlayChoice.of(prefs.overlay)) {
+        view.overlay = if (stageLayout.topAligned == true || aspect == GameAspect.WIDE || dsStageOn) null else when (val c = OverlayChoice.of(prefs.overlay)) {
             OverlayChoice.None -> null
             is OverlayChoice.BuiltIn -> EmulatorView.OverlaySource.BuiltIn(c.style)
             is OverlayChoice.Imported -> overlayStore.get(c.id)?.let { EmulatorView.OverlaySource.Imported(it) }
         }
         // With an overlay the view takes all the room and places the game in it itself.
-        stageLayout?.stretch = aspect != GameAspect.ORIGINAL || view.overlay != null
+        stageLayout.stretch = aspect != GameAspect.ORIGINAL || view.overlay != null
         // A phone upright: WIDE fills everything above the companion, the map going on above and below the game.
-        stageLayout?.expand = aspect == GameAspect.WIDE
+        stageLayout.expand = aspect == GameAspect.WIDE
         if (::portraitPanel.isInitialized) portraitPanel.expand = aspect == GameAspect.WIDE
         // EXPAND decides whether UNDER GAME gives the touch controls a strip of their own.
         syncTouchControls()
@@ -3783,7 +3731,7 @@ class PokeDaisyActivity : Activity() {
             resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_PORTRAIT
 
     /**
-     * SETTINGS > DS LAYOUT onto the stage ([GameStageLayout.dsArrange]): where the game and its touch screen go, the
+     * SETTINGS > DS LAYOUT onto the stage ([GameScreenView.dsArrange]): where the game and its touch screen go, the
      * game's backdrop around them ([aspect] ORIGINAL keeps the game alone at its 4:3; EXPAND / STRETCH fill), and whether
      * the touch screen floats in ([dsFloats]). Off: the stage as for any other game.
      */
@@ -3796,12 +3744,12 @@ class PokeDaisyActivity : Activity() {
         val layout = if (dsMenuUp && chosen.floats) com.pokedaisy.app.companion.DsLayout.SIDE_BY_SIDE else chosen
         // EXPAND / STRETCH fill the screen only where EXPAND has the scene to widen; elsewhere the backdrop's beside it.
         val fill = aspect != GameAspect.ORIGINAL && (dsWide || aspect == GameAspect.STRETCH)
-        stage.dsArrange = if (on) dsArranger(layout, fill) else null
+        stage.viewport.dsArrange = if (on) dsArranger(layout, fill) else null
         if (romIs3ds) { syncN3dsStage(on, layout); return }
         // PICTURE IN PICTURE's inset stands off the game behind a white edge.
         val pip = layout == com.pokedaisy.app.companion.DsLayout.PICTURE_IN_PICTURE
         val frame = if (on && pip) dp(2) else 0
-        stage.dsTouchFrame = frame
+        stage.viewport.dsTouchFrame = frame
         dsTouchView.setPadding(frame, frame, frame, frame)
         dsTouchView.setBackgroundColor(if (pip) Color.WHITE else Color.TRANSPARENT)
         dsTouchView.isClickable = false
@@ -3906,7 +3854,7 @@ class PokeDaisyActivity : Activity() {
      * A 3DS cart in place of [loadRom]'s GBA / DS set-up: none of their ROM scans (the cart is gigabytes, never read
      * whole), keyed by its title id. The engine is made but never started (the activity's guards and settings rows keep
      * working, idle); Azahar draws into [com.pokedaisy.app.n3ds.N3dsSession]'s two surfaces: the top screen laid exactly
-     * over the game's box ([GameStageLayout.gameCover]), the touch screen in DS LAYOUT's touch box ([dsTouchView]).
+     * over the game's box ([GameViewportView.gameCover]), the touch screen in DS LAYOUT's touch box ([dsTouchView]).
      */
     private fun load3ds(romFile: File) {
         val header = com.pokedaisy.app.n3ds.N3dsCart.header(romFile)
@@ -3947,17 +3895,17 @@ class PokeDaisyActivity : Activity() {
         n3ds = session
         // The idle engine's GL view stays laid out (the stage measures it) but draws nothing: its surface goes.
         view.visibility = View.INVISIBLE
-        stage.addView(session.topView, stage.indexOfChild(view) + 1, FrameLayout.LayoutParams(-1, -1))
+        stage.viewport.addView(session.topView, stage.viewport.indexOfChild(view) + 1, FrameLayout.LayoutParams(-1, -1))
         // The battle strip's picture: the top screen's box in the HUD's coordinates (the stage's area under the bar).
         session.topView.addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
-            val dx = if (::fieldHud.isInitialized) fieldHud.left else 0
-            val dy = if (::fieldHud.isInitialized) fieldHud.top else 0
+            val dx = fieldHudBounds.left - (stage.frames?.game?.left ?: 0f)
+            val dy = fieldHudBounds.top - (stage.frames?.game?.top ?: 0f)
             n3dsTopRect.value = androidx.compose.ui.geometry.Rect((l - dx).toFloat(), (t - dy).toFloat(), (r - dx).toFloat(), (b - dy).toFloat())
         }
-        stage.gameCover = session.topView
+        stage.viewport.gameCover = session.topView
         dsTouchView.getChildAt(0)?.visibility = View.GONE
         dsTouchView.addView(session.touchView, FrameLayout.LayoutParams(-1, -1))
-        stage.aspect = com.pokedaisy.app.companion.DsLayouts.N3DS_TOP_ASPECT
+        stage.viewport.aspect = com.pokedaisy.app.companion.DsLayouts.N3DS_TOP_ASPECT
         if (::touchControls.isInitialized) {
             touchControls.shoulders = true
             touchControls.dsButtons = true
@@ -3985,7 +3933,7 @@ class PokeDaisyActivity : Activity() {
         session.stop()
         (session.topView.parent as? android.view.ViewGroup)?.removeView(session.topView)
         (session.touchView.parent as? android.view.ViewGroup)?.removeView(session.touchView)
-        if (::stage.isInitialized) stage.gameCover = null
+        if (::stage.isInitialized) stage.viewport.gameCover = null
         if (::dsTouchView.isInitialized) dsTouchView.getChildAt(0)?.visibility = View.VISIBLE
         view.visibility = View.VISIBLE
         if (::n3dsDim.isInitialized) n3dsDim.visibility = View.GONE
@@ -4115,7 +4063,7 @@ class PokeDaisyActivity : Activity() {
         // ONE SCREEN's floating touch screen in a frame of the game's smooth look (side by side and the other layouts: none).
         val floating = on && layout == com.pokedaisy.app.companion.DsLayout.ONE_SCREEN && !n3dsBothScreens
         val frame = if (floating) (com.pokedaisy.app.n3ds.N3dsWindowFrame.FRAME_DP * resources.displayMetrics.density).toInt() else 0
-        stage.dsTouchFrame = frame
+        stage.viewport.dsTouchFrame = frame
         dsTouchView.setPadding(frame, frame, frame, frame)
         if (floating) {
             if (dsTouchView.background !is com.pokedaisy.app.n3ds.N3dsWindowFrame) {
@@ -4262,145 +4210,142 @@ class PokeDaisyActivity : Activity() {
             visibility = View.GONE
             addView(NdsTouchScreenView(this@PokeDaisyActivity), FrameLayout.LayoutParams(-1, -1))
         }
-        dsWindowView = ComposeView(this).apply {
-            setContent {
-                val engine by hudEngine.collectAsState()
-                val idle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
-                val wantedLive by (engine?.dsTouchWanted ?: idle).collectAsState()
-                val manual = dsWindowManual.value
-                val floats = dsFloats.value
-                // The game done with a window the player opened: it stays (their X closes it); the game wanting it
-                // again while it's up by hand: the game's now (no X - it goes when the game is done).
-                val menuIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
-                val menuLive by (engine?.dsMenuScreen ?: menuIdle).collectAsState()
-                val menuAppLive by (engine?.dsMenuApp ?: menuIdle).collectAsState()
-                val wideIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(true) }
-                val wideLive by (engine?.dsWideScene ?: wideIdle).collectAsState()
-                // A blank touch screen (a fade, the black between two screens) never shows: the window waits it out.
-                val blankLive by (engine?.dsTouchBlank ?: idle).collectAsState()
-                val darkLive by (engine?.dsDark ?: idle).collectAsState()
-                // A menu transition held (EmulatorEngine.dsHold): both screens keep their picture from before it, so the
-                // stage keeps its arrangement too - the window, the layout - until the next screen is up, then all at once.
-                val holding by (engine?.dsHolding ?: idle).collectAsState()
-                val latched = remember { arrayOfNulls<BooleanArray>(1) }
-                if (!holding || latched[0] == null) latched[0] = booleanArrayOf(wantedLive, menuLive, menuAppLive, wideLive, blankLive, darkLive)
-                val (wanted, menu, menuApp, wideScene) = latched[0]!!
-                val blank = latched[0]!![4]
-                val dark = latched[0]!![5]
-                androidx.compose.runtime.LaunchedEffect(menu, wideScene) {
-                    if (dsMenuUp != menu || dsWide != wideScene) { dsMenuUp = menu; dsWide = wideScene; syncGameScreen() }
-                }
-                // The held touch screen's picture: drawn over the live one as the hold ends, fading out (a crossfade).
-                val frozen = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
-                androidx.compose.runtime.LaunchedEffect(holding) {
-                    if (holding) frozen.value = runCatching { NdsBottomFrame.snapshot().asImageBitmap() }.getOrNull()
-                }
-                // (A page for both screens goes side by side, not in the window: at once, before the layout follows.)
-                val wantedNow = floats && (wanted || manual) && !menu
-                // A window already up when its touch screen goes black (the X menu into the party, the party back out) stays
-                // up with a loader in it - one modal loading its next page, not one closing and another opening a moment
-                // later. Only through the black between two screens, or a short blank: a touch screen left one colour
-                // longer (a picture of its own) isn't a wait.
-                val wasOpen = remember { booleanArrayOf(false) }
-                var blankLong by remember { androidx.compose.runtime.mutableStateOf(false) }
-                androidx.compose.runtime.LaunchedEffect(blank) {
-                    blankLong = false
-                    if (blank) { kotlinx.coroutines.delay(DS_BLANK_WAIT_MS); blankLong = true }
-                }
-                val loading = wantedNow && blank && wasOpen[0] && (dark || !blankLong)
-                val open = wantedNow && !blank || loading
-                androidx.compose.runtime.SideEffect { wasOpen[0] = open }
-                // PICTURE IN PICTURE: its inset goes while the touch screen is up large (the same screen twice otherwise).
-                androidx.compose.runtime.SideEffect { dsTouchView.alpha = if (open) 0f else 1f }
-                // A DS battle's menu (the HUD decides when: [dsStripShown]): kept on show behind the floating window - the
-                // bag, the party - under its dim, the keys the window's meanwhile. In the HUD's coordinates (the stage's
-                // area under the status bar).
-                if (romIsNds || romIs3ds) androidx.compose.runtime.CompositionLocalProvider(
-                    com.pokedaisy.app.companion.ui.LocalClickSound provides playClick,
-                    com.pokedaisy.app.companion.ui.LocalGameSilent provides { battleInput.gameSilent },
-                ) {
-                    val snap by telemetry.snapshot.collectAsState()
-                    androidx.compose.foundation.layout.Box(
-                        androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { translationY = (fieldHud.top - dsWindowView.top).toFloat() },
-                    ) {
-                        com.pokedaisy.app.companion.ui.DsBattleMenu(
-                            snap, dsBattleMenu, battleInput, if (romIs3ds) n3dsTopRect.value else coreFrame.value,
-                            shown = dsStripShown.value, active = dsStripActive.value,
-                            gameFills = !romIs3ds && dsFill.value, hints = battleHints.value,
-                            onTapArea = { touchControls.coverInWindow(it) },
-                        )
-                    }
-                    // The menu's D-pad: with no plain view focused, Android takes the first press after a touch to leave
-                    // touch mode (a ComposeView gets the focus) and the menu never sees it - so the game view holds it.
-                    val menuUp = dsBattleMenu.mode != 0
-                    androidx.compose.runtime.LaunchedEffect(menuUp) { if (menuUp && !view.isFocused) view.requestFocus() }
-                }
-                // The black between a menu and the overworld (or back to the X menu): the overworld's picture over it all,
-                // as the modal's backdrop draws it, going once the game shows something again - never empty frames. Under
-                // a window kept up through it (its loader is in the window then).
-                val field = dsShots.field.value
-                val cover = dark && field != null && (menu || menuApp || wanted || manual)
-                val coverAlpha by androidx.compose.animation.core.animateFloatAsState(
-                    if (cover) 1f else 0f,
-                    if (cover) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(DS_COVER_FADE_MS),
-                    label = "dsCover",
-                )
-                val lastField = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
-                if (cover) lastField.value = field
-                // (On at once, the same frame the window goes: an animation's first frame would be 0, a black flash.)
-                val coverShown = if (cover) 1f else coverAlpha
-                if (coverShown > 0f) lastField.value?.let { shot ->
-                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { alpha = coverShown }) {
-                        com.pokedaisy.app.companion.ui.DsShotBackdrop(shot, blurred = false, modal = null)
-                        // The game loading the next screen: something moving on the greyed-out picture.
-                        if (cover && !open) com.pokedaisy.app.companion.ui.DsLoader(ball = false)
-                    }
-                }
-                // Behind a window the game opened (not in a battle, whose own picture and buttons stay on show): the game as
-                // it was when the menus began, until the game is back on the field with nothing up - not the stage changing
-                // underneath as the game moves between its pages (EXPAND's field, the 4:3 of a menu page, a page on both
-                // screens and back: the user's report). Taken once, fresh, as the first window opens (full size, also the
-                // overworld the two-screen pages sit on), live until it's in; never again on the way back from a two-screen
-                // page, where the stage is still changing shape (a copy then caught it half resized, black round it).
-                val inBattle by remember { androidx.compose.runtime.derivedStateOf { telemetry.snapshot.value.inBattle } }
-                val sessionShot = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
-                val inSession = (open || wanted || menu || menuApp) && !inBattle
-                val freezeBehind = open && (wanted || menuApp) && !inBattle
-                androidx.compose.runtime.LaunchedEffect(inSession) { if (!inSession) sessionShot.value = null }
-                androidx.compose.runtime.LaunchedEffect(freezeBehind) {
-                    if (!freezeBehind || sessionShot.value != null) return@LaunchedEffect
-                    // (The companion's battle flag can be a sample behind: the field read's is this frame's.)
-                    if ((engine?.fieldState ?: 0) and MgbaCore.FIELD_BATTLE != 0) return@LaunchedEffect
-                    // A menu page already: the overworld it was opened from. Else the game now (the field under the X menu).
-                    if (menuApp) { sessionShot.value = dsShots.field.value; return@LaunchedEffect }
-                    repeat(DS_FREEZE_TRIES) {
-                        if (dsShots.capture(intoField = true, full = true) { if (sessionShot.value == null) sessionShot.value = it }) return@LaunchedEffect
-                        kotlinx.coroutines.delay(16)
-                    }
-                }
-                val frozenBehind = if (freezeBehind) sessionShot.value else null
-                com.pokedaisy.app.companion.ui.DsTouchWindow(
-                    open = open,
-                    onClose = if (manual && !wanted) ({ dsWindowManual.value = false }) else null,
-                    onDismiss = ::dismissDsTouch,
-                    behind = frozenBehind ?: if (menuApp) dsShots.field.value else null,
-                    loading = loading,
-                    // Over the cover: it's already the dimmed overworld.
-                    backdrop = !cover,
-                    held = holding,
-                    frozen = frozen.value,
-                    // (hudClear: re-read when the touch controls move.)
-                    clearFor = { l, r -> hudClear.value.let { touchControls.clearAcross(l, r) } },
-                ) { modifier ->
-                    androidx.compose.ui.viewinterop.AndroidView({ NdsTouchScreenView(it) }, modifier)
-                }
-                // Held with no window up (a page side by side, on its way back to the field): the same shade and dots
-                // over the stage's held pictures.
-                com.pokedaisy.app.companion.ui.DsHeldShade(holding && !open)
-            }
-        }
     }
 
+    @androidx.compose.runtime.Composable
+    private fun DsWindowContent() {
+        val engine by hudEngine.collectAsState()
+        val idle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+        val wantedLive by (engine?.dsTouchWanted ?: idle).collectAsState()
+        val manual = dsWindowManual.value
+        val floats = dsFloats.value
+        // The game done with a window the player opened: it stays (their X closes it); the game wanting it
+        // again while it's up by hand: the game's now (no X - it goes when the game is done).
+        val menuIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+        val menuLive by (engine?.dsMenuScreen ?: menuIdle).collectAsState()
+        val menuAppLive by (engine?.dsMenuApp ?: menuIdle).collectAsState()
+        val wideIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(true) }
+        val wideLive by (engine?.dsWideScene ?: wideIdle).collectAsState()
+        // A blank touch screen (a fade, the black between two screens) never shows: the window waits it out.
+        val blankLive by (engine?.dsTouchBlank ?: idle).collectAsState()
+        val darkLive by (engine?.dsDark ?: idle).collectAsState()
+        // A menu transition held (EmulatorEngine.dsHold): both screens keep their picture from before it, so the
+        // stage keeps its arrangement too - the window, the layout - until the next screen is up, then all at once.
+        val holding by (engine?.dsHolding ?: idle).collectAsState()
+        val latched = remember { arrayOfNulls<BooleanArray>(1) }
+        if (!holding || latched[0] == null) latched[0] = booleanArrayOf(wantedLive, menuLive, menuAppLive, wideLive, blankLive, darkLive)
+        val (wanted, menu, menuApp, wideScene) = latched[0]!!
+        val blank = latched[0]!![4]
+        val dark = latched[0]!![5]
+        androidx.compose.runtime.LaunchedEffect(menu, wideScene) {
+            if (dsMenuUp != menu || dsWide != wideScene) { dsMenuUp = menu; dsWide = wideScene; syncGameScreen() }
+        }
+        // The held touch screen's picture: drawn over the live one as the hold ends, fading out (a crossfade).
+        val frozen = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+        androidx.compose.runtime.LaunchedEffect(holding) {
+            if (holding) frozen.value = runCatching { NdsBottomFrame.snapshot().asImageBitmap() }.getOrNull()
+        }
+        // (A page for both screens goes side by side, not in the window: at once, before the layout follows.)
+        val wantedNow = floats && (wanted || manual) && !menu
+        // A window already up when its touch screen goes black (the X menu into the party, the party back out) stays
+        // up with a loader in it - one modal loading its next page, not one closing and another opening a moment
+        // later. Only through the black between two screens, or a short blank: a touch screen left one colour
+        // longer (a picture of its own) isn't a wait.
+        val wasOpen = remember { booleanArrayOf(false) }
+        var blankLong by remember { androidx.compose.runtime.mutableStateOf(false) }
+        androidx.compose.runtime.LaunchedEffect(blank) {
+            blankLong = false
+            if (blank) { kotlinx.coroutines.delay(DS_BLANK_WAIT_MS); blankLong = true }
+        }
+        val loading = wantedNow && blank && wasOpen[0] && (dark || !blankLong)
+        val open = wantedNow && !blank || loading
+        androidx.compose.runtime.SideEffect { wasOpen[0] = open }
+        // PICTURE IN PICTURE: its inset goes while the touch screen is up large (the same screen twice otherwise).
+        androidx.compose.runtime.SideEffect { dsTouchView.alpha = if (open) 0f else 1f }
+        // A DS battle's menu (the HUD decides when: [dsStripShown]): kept on show behind the floating window - the
+        // bag, the party - under its dim, the keys the window's meanwhile. In the HUD's coordinates (the stage's
+        // area under the status bar).
+        if (romIsNds || romIs3ds) androidx.compose.runtime.CompositionLocalProvider(
+            com.pokedaisy.app.companion.ui.LocalClickSound provides playClick,
+            com.pokedaisy.app.companion.ui.LocalGameSilent provides { battleInput.gameSilent },
+        ) {
+            val snap by telemetry.snapshot.collectAsState()
+            androidx.compose.foundation.layout.Box(
+                androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { translationY = fieldHudBounds.top - (stage.frames?.game?.top ?: 0f) },
+            ) {
+                com.pokedaisy.app.companion.ui.DsBattleMenu(
+                    snap, dsBattleMenu, battleInput, if (romIs3ds) n3dsTopRect.value else coreFrame.value, shown = dsStripShown.value, active = dsStripActive.value,
+                    gameFills = !romIs3ds && dsFill.value, hints = battleHints.value,
+                )
+            }
+            // The menu's D-pad: with no plain view focused, Android takes the first press after a touch to leave
+            // touch mode (a ComposeView gets the focus) and the menu never sees it - so the game view holds it.
+            val menuUp = dsBattleMenu.mode != 0
+            androidx.compose.runtime.LaunchedEffect(menuUp) { if (menuUp && !view.isFocused) view.requestFocus() }
+        }
+        // The black between a menu and the overworld (or back to the X menu): the overworld's picture over it all,
+        // as the modal's backdrop draws it, going once the game shows something again - never empty frames. Under
+        // a window kept up through it (its loader is in the window then).
+        val field = dsShots.field.value
+        val cover = dark && field != null && (menu || menuApp || wanted || manual)
+        val coverAlpha by androidx.compose.animation.core.animateFloatAsState(
+            if (cover) 1f else 0f,
+            if (cover) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(DS_COVER_FADE_MS),
+            label = "dsCover",
+        )
+        val lastField = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+        if (cover) lastField.value = field
+        // (On at once, the same frame the window goes: an animation's first frame would be 0, a black flash.)
+        val coverShown = if (cover) 1f else coverAlpha
+        if (coverShown > 0f) lastField.value?.let { shot ->
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { alpha = coverShown }) {
+                com.pokedaisy.app.companion.ui.DsShotBackdrop(shot, blurred = false, modal = null)
+                // The game loading the next screen: something moving on the greyed-out picture.
+                if (cover && !open) com.pokedaisy.app.companion.ui.DsLoader(ball = false)
+            }
+        }
+        // Behind a window the game opened (not in a battle, whose own picture and buttons stay on show): the game as
+        // it was when the menus began, until the game is back on the field with nothing up - not the stage changing
+        // underneath as the game moves between its pages (EXPAND's field, the 4:3 of a menu page, a page on both
+        // screens and back: the user's report). Taken once, fresh, as the first window opens (full size, also the
+        // overworld the two-screen pages sit on), live until it's in; never again on the way back from a two-screen
+        // page, where the stage is still changing shape (a copy then caught it half resized, black round it).
+        val inBattle by remember { androidx.compose.runtime.derivedStateOf { telemetry.snapshot.value.inBattle } }
+        val sessionShot = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+        val inSession = (open || wanted || menu || menuApp) && !inBattle
+        val freezeBehind = open && (wanted || menuApp) && !inBattle
+        androidx.compose.runtime.LaunchedEffect(inSession) { if (!inSession) sessionShot.value = null }
+        androidx.compose.runtime.LaunchedEffect(freezeBehind) {
+            if (!freezeBehind || sessionShot.value != null) return@LaunchedEffect
+            // (The companion's battle flag can be a sample behind: the field read's is this frame's.)
+            if ((engine?.fieldState ?: 0) and MgbaCore.FIELD_BATTLE != 0) return@LaunchedEffect
+            // A menu page already: the overworld it was opened from. Else the game now (the field under the X menu).
+            if (menuApp) { sessionShot.value = dsShots.field.value; return@LaunchedEffect }
+            repeat(DS_FREEZE_TRIES) {
+                if (dsShots.capture(intoField = true, full = true) { if (sessionShot.value == null) sessionShot.value = it }) return@LaunchedEffect
+                kotlinx.coroutines.delay(16)
+            }
+        }
+        val frozenBehind = if (freezeBehind) sessionShot.value else null
+        com.pokedaisy.app.companion.ui.DsTouchWindow(
+            open = open,
+            onClose = if (manual && !wanted) ({ dsWindowManual.value = false }) else null,
+            onDismiss = ::dismissDsTouch,
+            behind = frozenBehind ?: if (menuApp) dsShots.field.value else null,
+            loading = loading,
+            // Over the cover: it's already the dimmed overworld.
+            backdrop = !cover,
+            held = holding,
+            frozen = frozen.value,
+            // (hudClear: re-read when the touch controls move.)
+            clearFor = { l, r -> hudClear.value.let { touchControls.clearAcross(l, r) } },
+        ) { modifier ->
+            androidx.compose.ui.viewinterop.AndroidView({ NdsTouchScreenView(it) }, modifier)
+        }
+        // Held with no window up (a page side by side, on its way back to the field): the same shade and dots
+        // over the stage's held pictures.
+        com.pokedaisy.app.companion.ui.DsHeldShade(holding && !open)
+    }
 
     /**
      * The status bar ([com.pokedaisy.app.companion.ui.GameStatusBar]):
@@ -4414,73 +4359,67 @@ class PokeDaisyActivity : Activity() {
 
     /** SETTINGS > FPS / CPU: frames per second and CPU in the corner; a tap opens the rest (PerfReading). */
 
-    /** SETTINGS > FPS / CPU: frames per second and CPU in the corner; a tap opens the rest (PerfReading). */
-    private lateinit var performance: ComposeView
-
     /** The battery's temperature from its broadcast (°C), for the performance panel. */
     @Volatile private var batteryTempC: Float? = null
 
     /** FPS / CPU is on: off, the overlay composes nothing (its half-second readings went on behind a hidden view). */
     private val performanceShown = androidx.compose.runtime.mutableStateOf(false)
 
-
-    private fun buildPerformanceOverlay(): ComposeView = ComposeView(this).apply {
-        visibility = View.GONE
-        setContent {
-            if (!performanceShown.value) return@setContent
-            val reading by produceState(com.pokedaisy.app.companion.ui.PerfReading()) {
-                val cpu = CpuUsage()
-                val power = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-                val cores = Runtime.getRuntime().availableProcessors()
-                // Cumulative counters, read every half second: each reading is the difference.
-                var at = System.nanoTime()
-                var frames = 0L; var work = 0L; var shown = 0L; var late = 0L
-                var samples = 0L; var checks = 0L
-                fun take() {
-                    at = System.nanoTime()
-                    if (::engine.isInitialized) { frames = engine.framesRun; work = engine.workNanos; engine.takeMaxWorkNanos() }
-                    shown = view.framesShown; late = view.lateFrames
-                    samples = telemetry.samplesTaken; checks = telemetry.battleChecksTaken
-                }
-                take()
-                withContext(Dispatchers.IO) { cpu.sample() }
-                while (true) {
-                    delay(500)
-                    if (!::engine.isInitialized) continue
-                    val e = engine
-                    val secs = (System.nanoTime() - at) / 1e9
-                    val df = (e.framesRun - frames).coerceAtLeast(0)
-                    val dw = (e.workNanos - work).coerceAtLeast(0)
-                    val maxWork = e.takeMaxWorkNanos()
-                    val cpuPct = withContext(Dispatchers.IO) { cpu.sample() }
-                    val rt = Runtime.getRuntime()
-                    value = com.pokedaisy.app.companion.ui.PerfReading(
-                        fps = (df / secs).toFloat(),
-                        shownFps = ((view.framesShown - shown).coerceAtLeast(0) / secs).toFloat(),
-                        latePerSecond = ((view.lateFrames - late).coerceAtLeast(0) / secs).toFloat(),
-                        frameMs = if (df > 0) (dw / df / 1e6).toFloat() else 0f,
-                        frameMaxMs = (maxWork / 1e6).toFloat(),
-                        emulationLoad = (dw / 1e9 / secs * 100).toInt().coerceIn(0, 100),
-                        cpu = cpuPct, cores = cores,
-                        refreshHz = e.refreshHz, refreshesPerFrame = e.refreshesPerFrame, timerFallback = e.timerFallback,
-                        speed = e.currentSpeed,
-                        audioDropouts = e.audioUnderruns,
-                        batteryTempC = batteryTempC,
-                        thermal = if (android.os.Build.VERSION.SDK_INT >= 29) power.currentThermalStatus else -1,
-                        memoryMb = ((rt.totalMemory() - rt.freeMemory() + android.os.Debug.getNativeHeapAllocatedSize()) shr 20).toInt(),
-                        snapshotsPerSecond = ((telemetry.samplesTaken - samples).coerceAtLeast(0) / secs).toFloat(),
-                        battleChecksPerSecond = ((telemetry.battleChecksTaken - checks).coerceAtLeast(0) / secs).toFloat(),
-                    )
-                    frames = e.framesRun; work = e.workNanos; shown = view.framesShown; late = view.lateFrames
-                    samples = telemetry.samplesTaken; checks = telemetry.battleChecksTaken
-                    at = System.nanoTime()
-                }
+    @androidx.compose.runtime.Composable
+    private fun PerformanceContent() {
+        if (!performanceShown.value) return
+        val reading by produceState(com.pokedaisy.app.companion.ui.PerfReading()) {
+            val cpu = CpuUsage()
+            val power = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            val cores = Runtime.getRuntime().availableProcessors()
+            // Cumulative counters, read every half second: each reading is the difference.
+            var at = System.nanoTime()
+            var frames = 0L; var work = 0L; var shown = 0L; var late = 0L
+            var samples = 0L; var checks = 0L
+            fun take() {
+                at = System.nanoTime()
+                if (::engine.isInitialized) { frames = engine.framesRun; work = engine.workNanos; engine.takeMaxWorkNanos() }
+                shown = view.framesShown; late = view.lateFrames
+                samples = telemetry.samplesTaken; checks = telemetry.battleChecksTaken
             }
-            // The view fills the stage, and Compose hands its root that whole size as the least it may take: a Box
-            // takes it, so the overlay inside keeps its own size (else its tap, FPS / CPU's open / close, was everywhere).
-            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
-                com.pokedaisy.app.companion.ui.PerformanceOverlay(reading)
+            take()
+            withContext(Dispatchers.IO) { cpu.sample() }
+            while (true) {
+                delay(500)
+                if (!::engine.isInitialized) continue
+                val e = engine
+                val secs = (System.nanoTime() - at) / 1e9
+                val df = (e.framesRun - frames).coerceAtLeast(0)
+                val dw = (e.workNanos - work).coerceAtLeast(0)
+                val maxWork = e.takeMaxWorkNanos()
+                val cpuPct = withContext(Dispatchers.IO) { cpu.sample() }
+                val rt = Runtime.getRuntime()
+                value = com.pokedaisy.app.companion.ui.PerfReading(
+                    fps = (df / secs).toFloat(),
+                    shownFps = ((view.framesShown - shown).coerceAtLeast(0) / secs).toFloat(),
+                    latePerSecond = ((view.lateFrames - late).coerceAtLeast(0) / secs).toFloat(),
+                    frameMs = if (df > 0) (dw / df / 1e6).toFloat() else 0f,
+                    frameMaxMs = (maxWork / 1e6).toFloat(),
+                    emulationLoad = (dw / 1e9 / secs * 100).toInt().coerceIn(0, 100),
+                    cpu = cpuPct, cores = cores,
+                    refreshHz = e.refreshHz, refreshesPerFrame = e.refreshesPerFrame, timerFallback = e.timerFallback,
+                    speed = e.currentSpeed,
+                    audioDropouts = e.audioUnderruns,
+                    batteryTempC = batteryTempC,
+                    thermal = if (android.os.Build.VERSION.SDK_INT >= 29) power.currentThermalStatus else -1,
+                    memoryMb = ((rt.totalMemory() - rt.freeMemory() + android.os.Debug.getNativeHeapAllocatedSize()) shr 20).toInt(),
+                    snapshotsPerSecond = ((telemetry.samplesTaken - samples).coerceAtLeast(0) / secs).toFloat(),
+                    battleChecksPerSecond = ((telemetry.battleChecksTaken - checks).coerceAtLeast(0) / secs).toFloat(),
+                )
+                frames = e.framesRun; work = e.workNanos; shown = view.framesShown; late = view.lateFrames
+                samples = telemetry.samplesTaken; checks = telemetry.battleChecksTaken
+                at = System.nanoTime()
             }
+        }
+        // The view fills the stage, and Compose hands its root that whole size as the least it may take: a Box
+        // takes it, so the overlay inside keeps its own size (else its tap, FPS / CPU's open / close, was everywhere).
+        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+            com.pokedaisy.app.companion.ui.PerformanceOverlay(reading)
         }
     }
 
@@ -4489,163 +4428,158 @@ class PokeDaisyActivity : Activity() {
      * player is on the field and the snapshot agrees (a game read, no battle), SETTINGS > HUD is on and the
      * screen isn't held upright. Tracked by CompanionColors like the status bar: it sits on the game.
      */
-    private fun buildFieldHud(): ComposeView = CompanionColors.track(ComposeView(this)).apply {
-        setContent {
-            val snap by telemetry.snapshot.collectAsState()
-            val engine by hudEngine.collectAsState()
-            val idle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
-            val onField by (engine?.onField ?: idle).collectAsState()
-            // A 3DS game: its scene says the field (the engine stands idle there), the touch window down.
-            val field = if (romIs3ds) n3dsOnField.value && !n3dsFloating.value else onField
-            val shown = hudOn.value && !hudUpright.value && field && snap.hasData && !snap.unsupported && !snap.inBattle
-            // One screen, the companion's panel closed: its open button joins the HUD's, and the edge tab steps aside
-            // (for BATTLE BUTTONS' party window too, which sits in that corner). As the window it stays put while the
-            // window is up too (under its dim): it doesn't vanish from the HUD the player sees around it.
-            val panelClosed = ::sidePanel.isInitialized && (sidePanel.closed.value || sidePanel.enabled && sidePanel.windowMode)
-            // Read here, so the tab steps aside when the DS battle menu comes up (a read in the SideEffect wouldn't redraw).
-            val dsMenuMode = dsBattleMenu.mode
-            val cornerTaken = dsCornerTaken.value
-            androidx.compose.runtime.SideEffect {
-                // A DS battle's menu sits in that corner too: the tab goes to the top right meanwhile (GitHub #595). So
-                // does a touch screen there (LARGE + SMALL, PICTURE IN PICTURE) with no HUD to take the tab (a 3DS game).
-                if (::sidePanel.isInitialized) {
-                    sidePanel.tabInHud = shown && panelClosed || battlePicking.value
-                    sidePanel.tabRaised = dsMenuMode != 0 || cornerTaken
+    @androidx.compose.runtime.Composable
+    private fun FieldHudContent() {
+        val snap by telemetry.snapshot.collectAsState()
+        val engine by hudEngine.collectAsState()
+        val idle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+        val onField by (engine?.onField ?: idle).collectAsState()
+        val field = if (romIs3ds) n3dsOnField.value && !n3dsFloating.value else onField
+        val shown = hudOn.value && !hudUpright.value && field && snap.hasData && !snap.unsupported && !snap.inBattle
+        // One screen, the companion's panel closed: its open button joins the HUD's, and the edge tab steps aside
+        // (for BATTLE BUTTONS' party window too, which sits in that corner). As the window it stays put while the
+        // window is up too (under its dim): it doesn't vanish from the HUD the player sees around it.
+        val panelClosed = ::sidePanel.isInitialized && (sidePanel.closed.value || sidePanel.enabled && sidePanel.windowMode)
+        // Read here, so the tab steps aside when the DS battle menu comes up (a read in the SideEffect wouldn't redraw).
+        val dsMenuMode = dsBattleMenu.mode
+        androidx.compose.runtime.SideEffect {
+            // A DS battle's menu sits in that corner too: the tab goes to the top right meanwhile (GitHub #595).
+            if (::sidePanel.isInitialized) {
+                sidePanel.tabInHud = shown && panelClosed || battlePicking.value
+                sidePanel.tabRaised = dsMenuMode != 0 || dsCornerTaken.value
+            }
+        }
+        // BATTLE BUTTONS: one screen held sideways, a single battle the game's touch input can steer (its state read
+        // at least once this battle - it reads NONE in games without it).
+        var battleRead by remember { androidx.compose.runtime.mutableStateOf(false) }
+        androidx.compose.runtime.LaunchedEffect(snap.inBattle, snap.battleInputState) {
+            battleRead = snap.inBattle && (battleRead || snap.battleInputState != com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
+        }
+        // A DS game: only where DS LAYOUT floats its touch screen (the others, PICTURE IN PICTURE's inset too, show the
+        // game's own panel), and out of the way while the floating touch screen is up (a bag, a party, a prompt).
+        val dsIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+        val dsWanted by (engine?.dsTouchWanted ?: dsIdle).collectAsState()
+        val dsWindowUp = dsFloats.value && (dsWanted || dsWindowManual.value)
+        val buttonsWanted = battleButtonsOn.value && hudSingleScreen.value && !hudUpright.value && snap.hasData && !snap.unsupported &&
+            snap.inBattle && !snap.isDoubleBattle && (!romIsNds || dsFloats.value && !dsPip.value)
+        val buttons = buttonsWanted && battleRead && !dsWindowUp
+        // Where BATTLE BUTTONS can't stand in for a DS battle's command panel, that panel floats in too.
+        androidx.compose.runtime.SideEffect { engine?.dsBattleMenuFloats = dsFloats.value && !dsPip.value && !buttonsWanted }
+        androidx.compose.runtime.CompositionLocalProvider(
+            com.pokedaisy.app.companion.ui.LocalCompanionBack provides hudBack,
+            com.pokedaisy.app.companion.ui.LocalClickSound provides playClick,
+            com.pokedaisy.app.companion.ui.LocalGameSilent provides { battleInput.gameSilent },
+        ) {
+            // The QUICK MENU up: the HUD fades well back, so the menu is what stands out.
+            // The buttons on the other screen's companion (X): the HUD steps back too, under the strip pointing there.
+            val hudAlpha by androidx.compose.animation.core.animateFloatAsState(if (quickMenu.open || bottomFocus.value) 0.25f else 1f, label = "hudAlpha")
+            // A 3DS game: its own HUD, in the game's smooth look (party, WILD, TOUCH, COMPANION).
+            if (romIs3ds) com.pokedaisy.app.companion.ui.XyFieldHud(
+                snap, shown, n3dsTopRect.value,
+                modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
+                wild = n3ds?.wildHere.orEmpty(),
+                map = n3ds?.mapHere,
+                bottomHidden = n3dsFieldHeld.value,
+                itemUse = itemUse,
+                onTouchScreen = if (n3dsFloats) ::toggleDsTouch else null,
+                onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
+                onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
+                onPanel = { hudPanelOpen.value = it },
+            ) else com.pokedaisy.app.companion.ui.FieldHud(
+                snap, shown && !dsWindowUp, hudStyle.value,
+                modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
+                clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
+                itemUse = itemUse, fly = flyAction,
+                onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
+                onTouchScreen = if (romIsNds && dsFloats.value) ::toggleDsTouch else null,
+                dsCorner = dsCornerTaken.value,
+                dsClearBottom = dsHudClear.value,
+                frame = hudFrame.value ?: hudTouchFrame.value,
+                avoid = hudAvoid.value,
+                closePanels = hudCloseTick.intValue,
+                openPanel = hudOpenPanel.value, openTick = hudOpenTick.intValue,
+                onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
+                onPanel = { hudPanelOpen.value = it },
+            )
+            // A DS game: the game's own buttons over the end of its text box, driven like Gen 3's menus.
+            if (romIsNds) {
+                // A DS battle's menu is drawn by the floating window's view, under its dim ([buildDsStageViews]).
+                androidx.compose.runtime.SideEffect {
+                    dsStripShown.value = buttonsWanted && battleRead
+                    dsStripActive.value = !dsWindowUp
+                }
+            } else if (romIs3ds) {
+                androidx.compose.runtime.SideEffect {
+                    dsStripShown.value = battleButtonsOn.value && n3dsBattle.value && snap.inBattle
+                    dsStripActive.value = !n3dsFloating.value
+                }
+            } else com.pokedaisy.app.companion.ui.BattleButtons(
+                snap, buttons, battleInput, battleHints.value,
+                modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
+                core = coreFrame.value,
+                clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
+                onWindow = { battlePicking.value = it },
+            )
+            com.pokedaisy.app.companion.ui.QuickMenu(quickMenu, snap, quickActions, quickShown.value, hudStyle.value.look)
+            // Co-op joined battles: the join prompt, the waits, the notices - over the game, HUD on or off.
+            com.pokedaisy.app.companion.ui.CoopBattleOverlays(coopOverlay)
+            CoopLockLayer()
+            // X sent the buttons to the other screen's companion: the strip pointing there; the game leaving the
+            // field (a battle, its PC opened from the companion) wants them back.
+            val focused = bottomFocus.value
+            androidx.compose.runtime.LaunchedEffect(focused, onField, snap.inBattle) {
+                if (focused && !romIsNds && (!onField || snap.inBattle)) setBottomFocus(false)
+            }
+            CompanionFocusStripe(
+                focused, hudFrame.value, if (engine?.gba == false && engine?.nds == false) GB_ROWS else GBA_ROWS,
+                onClose = { setBottomFocus(false) },
+            )
+            // A feature tip over the game, when the companion has no screen of its own: top centre, clear of the
+            // minimap and the area's name.
+            androidx.compose.foundation.layout.BoxWithConstraints(androidx.compose.ui.Modifier.fillMaxSize()) {
+                val narrow = maxWidth < 600.dp
+                val clearTop = with(androidx.compose.ui.platform.LocalDensity.current) { hudClear.value.first.toDp() }
+                com.pokedaisy.app.companion.ui.FeatureTipHost(
+                    active = !tipsOnCompanion.value, roomy = false,
+                    modifier = androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp),
+                    cardModifier = androidx.compose.ui.Modifier.width(maxWidth * if (narrow) 0.94f else 0.54f),
+                    maxWidth = maxWidth, keys = ::tipKeys, onTry = ::tryTip,
+                )
+                com.pokedaisy.app.companion.ui.FlyStyleAskHost(
+                    active = !tipsOnCompanion.value, roomy = false,
+                    modifier = androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp),
+                    cardModifier = androidx.compose.ui.Modifier.width(maxWidth * if (narrow) 0.94f else 0.54f),
+                    maxWidth = maxWidth, onAnswer = ::answerFlyStyle,
+                )
+                // RetroAchievements' popups and challenge / tracker indicators, while no companion is on screen (a DS
+                // game's touch screen in its place, one screen's closed window): GitHub #500.
+                com.pokedaisy.app.companion.ui.AchievementPopupHost(
+                    RetroAchievements, androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp), overGame = true,
+                )
+                val companionSeen by androidx.compose.runtime.produceState(true) {
+                    while (true) {
+                        value = com.pokedaisy.app.companion.ui.AchievementPopupRoute.companionSeen()
+                        kotlinx.coroutines.delay(500)
+                    }
+                }
+                if (!companionSeen) {
+                    val clearBottom = with(androidx.compose.ui.platform.LocalDensity.current) { hudClear.value.second.toDp() }
+                    com.pokedaisy.app.companion.ui.AchievementIndicators(
+                        RetroAchievements,
+                        androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(end = 8.dp, bottom = clearBottom + 8.dp),
+                    )
                 }
             }
-            // BATTLE BUTTONS: one screen held sideways, a single battle the game's touch input can steer (its state read
-            // at least once this battle - it reads NONE in games without it).
-            var battleRead by remember { androidx.compose.runtime.mutableStateOf(false) }
-            androidx.compose.runtime.LaunchedEffect(snap.inBattle, snap.battleInputState) {
-                battleRead = snap.inBattle && (battleRead || snap.battleInputState != com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
-            }
-            // A DS game: only where DS LAYOUT floats its touch screen (the others, PICTURE IN PICTURE's inset too, show the
-            // game's own panel), and out of the way while the floating touch screen is up (a bag, a party, a prompt).
-            val dsIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
-            val dsWanted by (engine?.dsTouchWanted ?: dsIdle).collectAsState()
-            val dsWindowUp = dsFloats.value && (dsWanted || dsWindowManual.value)
-            val buttonsWanted = battleButtonsOn.value && hudSingleScreen.value && !hudUpright.value && snap.hasData && !snap.unsupported &&
-                snap.inBattle && !snap.isDoubleBattle && (!romIsNds || dsFloats.value && !dsPip.value)
-            val buttons = buttonsWanted && battleRead && !dsWindowUp
-            // Where BATTLE BUTTONS can't stand in for a DS battle's command panel, that panel floats in too.
-            androidx.compose.runtime.SideEffect { engine?.dsBattleMenuFloats = dsFloats.value && !dsPip.value && !buttonsWanted }
-            androidx.compose.runtime.CompositionLocalProvider(
-                com.pokedaisy.app.companion.ui.LocalCompanionBack provides hudBack,
-                com.pokedaisy.app.companion.ui.LocalClickSound provides playClick,
-                com.pokedaisy.app.companion.ui.LocalGameSilent provides { battleInput.gameSilent },
-            ) {
-                // The QUICK MENU up: the HUD fades well back, so the menu is what stands out.
-                // The buttons on the other screen's companion (X): the HUD steps back too, under the strip pointing there.
-                val hudAlpha by androidx.compose.animation.core.animateFloatAsState(if (quickMenu.open || bottomFocus.value) 0.25f else 1f, label = "hudAlpha")
-                // A 3DS game: its own HUD, in the game's smooth look (party, WILD, TOUCH, COMPANION).
-                if (romIs3ds) com.pokedaisy.app.companion.ui.XyFieldHud(
-                    snap, shown, n3dsTopRect.value,
-                    modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
-                    wild = n3ds?.wildHere.orEmpty(),
-                    map = n3ds?.mapHere,
-                    bottomHidden = n3dsFieldHeld.value,
-                    itemUse = itemUse,
-                    onTouchScreen = if (n3dsFloats) ::toggleDsTouch else null,
-                    onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
-                    onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
-                    onPanel = { hudPanelOpen.value = it },
-                ) else com.pokedaisy.app.companion.ui.FieldHud(
-                    snap, shown && !dsWindowUp, hudStyle.value,
-                    modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
-                    clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
-                    itemUse = itemUse, fly = flyAction,
-                    onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
-                    onTouchScreen = if (romIsNds && dsFloats.value) ::toggleDsTouch else null,
-                    dsCorner = dsCornerTaken.value,
-                    dsClearBottom = dsHudClear.value,
-                    frame = hudFrame.value ?: hudTouchFrame.value,
-                    avoid = hudAvoid.value,
-                    closePanels = hudCloseTick.intValue,
-                    openPanel = hudOpenPanel.value, openTick = hudOpenTick.intValue,
-                    onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
-                    onPanel = { hudPanelOpen.value = it },
-                )
-                // A DS game: the game's own buttons over the end of its text box, driven like Gen 3's menus.
-                if (romIsNds) {
-                    // A DS battle's menu is drawn by the floating window's view, under its dim ([buildDsStageViews]).
-                    androidx.compose.runtime.SideEffect {
-                        dsStripShown.value = buttonsWanted && battleRead
-                        dsStripActive.value = !dsWindowUp
-                    }
-                } else if (romIs3ds) {
-                    // A 3DS battle on ONE SCREEN: the same strip, its picks the game's touch buttons (N3dsBattleTaps).
-                    androidx.compose.runtime.SideEffect {
-                        dsStripShown.value = battleButtonsOn.value && n3dsBattle.value && snap.inBattle
-                        dsStripActive.value = !n3dsFloating.value
-                    }
-                } else com.pokedaisy.app.companion.ui.BattleButtons(
-                    snap, buttons, battleInput, battleHints.value,
-                    modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
-                    core = coreFrame.value,
-                    clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
-                    onWindow = { battlePicking.value = it },
-                )
-                com.pokedaisy.app.companion.ui.QuickMenu(quickMenu, snap, quickActions, quickShown.value, hudStyle.value.look)
-                // Co-op joined battles: the join prompt, the waits, the notices - over the game, HUD on or off.
-                com.pokedaisy.app.companion.ui.CoopBattleOverlays(coopOverlay)
-                CoopLockLayer()
-                // X sent the buttons to the other screen's companion: the strip pointing there; the game leaving the
-                // field (a battle, its PC opened from the companion) wants them back.
-                val focused = bottomFocus.value
-                androidx.compose.runtime.LaunchedEffect(focused, onField, snap.inBattle) {
-                    if (focused && !romIsNds && (!onField || snap.inBattle)) setBottomFocus(false)
-                }
-                CompanionFocusStripe(
-                    focused, hudFrame.value, if (engine?.gba == false && engine?.nds == false) GB_ROWS else GBA_ROWS,
-                    onClose = { setBottomFocus(false) },
-                )
-                // A feature tip over the game, when the companion has no screen of its own: top centre, clear of the
-                // minimap and the area's name.
-                androidx.compose.foundation.layout.BoxWithConstraints(androidx.compose.ui.Modifier.fillMaxSize()) {
-                    val narrow = maxWidth < 600.dp
-                    val clearTop = with(androidx.compose.ui.platform.LocalDensity.current) { hudClear.value.first.toDp() }
-                    com.pokedaisy.app.companion.ui.FeatureTipHost(
-                        active = !tipsOnCompanion.value, roomy = false,
-                        modifier = androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp),
-                        cardModifier = androidx.compose.ui.Modifier.width(maxWidth * if (narrow) 0.94f else 0.54f),
-                        maxWidth = maxWidth, keys = ::tipKeys, onTry = ::tryTip,
-                    )
-                    com.pokedaisy.app.companion.ui.FlyStyleAskHost(
-                        active = !tipsOnCompanion.value, roomy = false,
-                        modifier = androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp),
-                        cardModifier = androidx.compose.ui.Modifier.width(maxWidth * if (narrow) 0.94f else 0.54f),
-                        maxWidth = maxWidth, onAnswer = ::answerFlyStyle,
-                    )
-                    // RetroAchievements' popups and challenge / tracker indicators, while no companion is on screen (a DS
-                    // game's touch screen in its place, one screen's closed window): GitHub #500.
-                    com.pokedaisy.app.companion.ui.AchievementPopupHost(
-                        RetroAchievements, androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp), overGame = true,
-                    )
-                    val companionSeen by androidx.compose.runtime.produceState(true) {
-                        while (true) {
-                            value = com.pokedaisy.app.companion.ui.AchievementPopupRoute.companionSeen()
-                            kotlinx.coroutines.delay(500)
-                        }
-                    }
-                    if (!companionSeen) {
-                        val clearBottom = with(androidx.compose.ui.platform.LocalDensity.current) { hudClear.value.second.toDp() }
-                        com.pokedaisy.app.companion.ui.AchievementIndicators(
-                            RetroAchievements,
-                            androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(end = 8.dp, bottom = clearBottom + 8.dp),
-                        )
-                    }
-                }
-            }
-            // Tips' clock: field play time, the moments, whether the field is calm ([tickTips]).
-            androidx.compose.runtime.LaunchedEffect(Unit) {
-                var last = android.os.SystemClock.uptimeMillis()
-                while (true) {
-                    kotlinx.coroutines.delay(500)
-                    val now = android.os.SystemClock.uptimeMillis()
-                    runCatching { tickTips((now - last).coerceAtMost(1000)) }.onFailure { Log.w("pokedaisy", "tips", it) }
-                    runCatching { syncFlight() }.onFailure { Log.w("pokedaisy", "flight", it) }
-                    last = now
-                }
+        }
+        // Tips' clock: field play time, the moments, whether the field is calm ([tickTips]).
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            var last = android.os.SystemClock.uptimeMillis()
+            while (true) {
+                kotlinx.coroutines.delay(500)
+                val now = android.os.SystemClock.uptimeMillis()
+                runCatching { tickTips((now - last).coerceAtMost(1000)) }.onFailure { Log.w("pokedaisy", "tips", it) }
+                runCatching { syncFlight() }.onFailure { Log.w("pokedaisy", "flight", it) }
+                last = now
             }
         }
     }
@@ -4684,14 +4618,16 @@ class PokeDaisyActivity : Activity() {
     /** The touch controls' button rows, for the FIELD HUD to keep clear of. */
     private fun syncHudClear() {
         // EDIT LAYOUT hides the controls while their stand-ins move: the HUD stays where it was until DONE (GitHub #493).
-        if (touchEditor != null) return
+        if (touchEditor.isOpen) return
         if (!::touchControls.isInitialized) return
         hudClear.value = touchControls.clearTop to touchControls.clearBottom
         // EXPAND held sideways: the HUD keeps to the game's middle columns, where the clearance is measured, not under
         // the buttons in the margins beside them (GitHub #493). In the HUD's own coordinates.
-        if (!::fieldHud.isInitialized) return
+        if (!::stage.isInitialized) return
         val at = IntArray(2).also(touchControls::getLocationInWindow)
-        val hudAt = IntArray(2).also(fieldHud::getLocationInWindow)
+        val hudAt = IntArray(2).also(stage::getLocationInWindow).also {
+            it[0] += fieldHudBounds.left.toInt(); it[1] += fieldHudBounds.top.toInt()
+        }
         val dx = (at[0] - hudAt[0]).toFloat()
         val dy = (at[1] - hudAt[1]).toFloat()
         hudTouchFrame.value = touchControls.hudColumns()?.let { (l, r) ->
@@ -4737,14 +4673,14 @@ class PokeDaisyActivity : Activity() {
     private fun syncTouchControls() {
         if (!::touchControls.isInitialized) return
         val style = Prefs(this).touchControlsStyle
-        val show = touchEditor == null && when (style.show) {
+        val show = !touchEditor.isOpen && when (style.show) {
             com.pokedaisy.app.companion.TouchShow.ALWAYS -> true
             com.pokedaisy.app.companion.TouchShow.NEVER -> false
             com.pokedaisy.app.companion.TouchShow.AUTO -> !physicalPadUsed && !Controllers.anyConnected()
         }
         touchControls.style = style
         touchControls.portrait = touchUpright
-        touchControls.gameAspect = if (::stage.isInitialized) stage.aspect else 1.5f
+        touchControls.gameAspect = if (::stage.isInitialized) stage.viewport.aspect else 1.5f
         if (romIs3ds) touchControls.ffOn = n3dsFfOn
         else if (::engine.isInitialized) touchControls.ffOn = engine.fastForwardToggled
         touchControls.visibility = if (show) View.VISIBLE else View.GONE
@@ -4801,10 +4737,10 @@ class PokeDaisyActivity : Activity() {
         val skin = if (show) style.skinFor(system)?.let { skinStore.load(it) } else null
         touchControls.skin = skin
         if (!::stage.isInitialized) return
-        stage.skinHost = touchControls
+        stage.viewport.skinHost = touchControls
         if (skin == null || touchControls.portrait) {
             skinGameFor = null
-            stage.skinGame = null
+            stage.viewport.skinGame = null
             return
         }
         val fn = skinGameFor?.takeIf { it.first == skin.id + ":" + skin.dir.lastModified }?.second ?: run {
@@ -4814,7 +4750,7 @@ class PokeDaisyActivity : Activity() {
             skinGameFor = skin.id + ":" + skin.dir.lastModified to f
             f
         }
-        stage.skinGame = fn
+        stage.viewport.skinGame = fn
     }
 
     /** The touch controls' buttons: the game's, or the QUICK MENU's while it's open (each newly held one a press). Its
@@ -4849,7 +4785,7 @@ class PokeDaisyActivity : Activity() {
     /** Nothing a touch could be meant for is open over the game (UI thread): the touch controls' input windows may take
      * the fingers on the buttons ([TouchInputWindows]); else the drawn pad does, under whatever is open. */
     private fun touchWindowsAllowed(): Boolean {
-        if (touchEditor != null || keyCapture.request != null || quickMenu.open || hudPanelOpen.value || battlePicking.value) return false
+        if (touchEditor.isOpen || keyCapture.request != null || quickMenu.open || hudPanelOpen.value || battlePicking.value) return false
         if (::sidePanel.isInitialized && sidePanel.overGame) return false
         if (coopOverlay.takesKeys || coopOverlay.linkWait != null) return false
         if (coopLockState.value?.ui?.value?.let { it.waiting != null || it.partnerProposed } == true) return false
@@ -4861,7 +4797,7 @@ class PokeDaisyActivity : Activity() {
 
     /** Touch extras and hotkeys share their action policy. Android retains the extra menu and native key delivery. */
     private fun onTouchAction(button: com.pokedaisy.app.companion.TouchButton, down: Boolean) {
-        if (down && touchEditor != null) return
+        if (down && touchEditor.isOpen) return
         if (!::engine.isInitialized || gameActions.touch(button, down)) return
         when (button) {
             com.pokedaisy.app.companion.TouchButton.QUICK_MENU -> if (down) handleHotkey(Hotkeys.Event(Hotkeys.Action.QUICK_MENU, true))
@@ -4878,19 +4814,17 @@ class PokeDaisyActivity : Activity() {
         if (!::stage.isInitialized || stage.width == 0 || stage.height == 0) return null
         val w = stage.width.toFloat()
         val h = stage.height.toFloat()
-        val lp = touchControls.layoutParams as android.widget.FrameLayout.LayoutParams
-        val area = androidx.compose.ui.geometry.Rect(lp.leftMargin.toFloat(), lp.topMargin.toFloat(), w - lp.rightMargin, h - lp.bottomMargin)
-        val aspect = stage.aspect
+        val area = stage.frames?.controls ?: androidx.compose.ui.geometry.Rect(0f, 0f, w, h)
+        val picture = stage.gameBounds()
+        val aspect = stage.viewport.aspect
         val portrait = touchUpright
         // EXPAND: the map fills the game's whole view.
         val game = if (::portraitPanel.isInitialized && portraitPanel.expand) {
-            androidx.compose.ui.geometry.Rect(view.left.toFloat(), view.top.toFloat(), view.right.toFloat(), view.bottom.toFloat())
-        } else hudFrame.value?.translate(view.left.toFloat(), view.top.toFloat()) ?: run {
-            val gw = minOf(view.width.toFloat(), view.height * aspect)
-            val gh = gw / aspect
-            val l = view.left + (view.width - gw) / 2
-            val t = view.top + if (portrait) 0f else (view.height - gh) / 2
-            androidx.compose.ui.geometry.Rect(l, t, l + gw, t + gh)
+            picture
+        } else hudFrame.value?.translate(fieldHudBounds.left, fieldHudBounds.top) ?: run {
+            com.pokedaisy.app.companion.ui.fittedGamePicture(
+                view.width.toFloat(), view.height.toFloat(), aspect, topAligned = portrait)
+                .translate(picture.left, picture.top)
         }
         return com.pokedaisy.app.companion.TouchStage(
             w, h, resources.displayMetrics.density, portrait, game, area,
@@ -4905,47 +4839,24 @@ class PokeDaisyActivity : Activity() {
             ?.let { android.graphics.BitmapFactory.decodeFile(it.path) }?.asImageBitmap()
     }.getOrNull()
 
-    private val touchRev = androidx.compose.runtime.mutableIntStateOf(0)
     /** EDIT LAYOUT over the running game (TOUCH CONTROLS' row on the companion): the companion's window steps aside,
      * the controls themselves hide while their stand-ins are moved, and DONE / BACK keeps the layout. */
-    private var touchEditor: ComposeView? = null
+    private val touchRev = androidx.compose.runtime.mutableIntStateOf(0)
+    private val touchEditor = com.pokedaisy.app.companion.ui.TouchEditorState(
+        read = { Prefs(this).touchControlsStyle }, write = { Prefs(this).touchControlsStyle = it },
+        closed = { touchRev.intValue++; syncTouchControls() })
 
     private fun openTouchEditor() {
-        if (touchEditor != null) return
-        val st = measuredTouchStage() ?: return
+        if (touchEditor.isOpen) return
+        val measured = measuredTouchStage() ?: return
         if (::engine.isInitialized) gameActions.cancelTouch()
         if (::sidePanel.isInitialized) sidePanel.closeWindow()
-        val editor = ComposeView(this).apply {
-            setContent {
-                androidx.compose.runtime.CompositionLocalProvider(com.pokedaisy.app.companion.ui.LocalCompanionBack provides touchEditBack) {
-                    com.pokedaisy.app.companion.ui.TouchLayoutEditor(
-                        st, Prefs(this@PokeDaisyActivity).touchControlsStyle, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(),
-                        onDone = { layout ->
-                            val prefs = Prefs(this@PokeDaisyActivity)
-                            prefs.touchControlsStyle = prefs.touchControlsStyle.withLayout(st.portrait, layout)
-                            closeTouchEditor()
-                        },
-                    )
-                }
-            }
-        }
-        touchEditor = editor
         input.setTouchBits(0)
-        stage.addView(editor, android.widget.FrameLayout.LayoutParams(-1, -1))
+        touchEditor.open(measured)
         syncTouchControls()
     }
 
     // --- input ---------------------------------------------------------------
-
-    private val touchEditBack = com.pokedaisy.app.companion.ui.CompanionBack()
-
-    private fun closeTouchEditor() {
-        val editor = touchEditor ?: return
-        touchEditor = null
-        stage.removeView(editor)
-        touchRev.intValue++
-        syncTouchControls()
-    }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         noteKeyDelay(event)
@@ -5008,7 +4919,7 @@ class PokeDaisyActivity : Activity() {
         // The other screen, or the companion under the game on a phone held upright (GitHub discussion #308).
         if (presentation?.isShowing != true && !(::portraitPanel.isInitialized && portraitPanel.enabled)) return false
         if (!::engine.isInitialized || !engine.onField.value || engine.fieldLocked) return false
-        if (quickMenu.open || touchEditor != null || keyCapture.request != null) return false
+        if (quickMenu.open || touchEditor.isOpen || keyCapture.request != null) return false
         if (::sidePanel.isInitialized && sidePanel.windowOpen) return false
         val snap = telemetry.snapshot.value
         return snap.hasData && !snap.inBattle
@@ -5325,7 +5236,7 @@ class PokeDaisyActivity : Activity() {
 
     private fun companionBackTap() {
         // EDIT LAYOUT over the game: BACK is its DONE.
-        if (touchEditor != null) { touchEditBack.back(); return }
+        if (touchEditor.isOpen) { touchEditor.back.back(); return }
         // DS LAYOUT's touch screen opened by hand (and no companion window over it): BACK closes it first.
         if (dsWindowManual.value && !sidePanel.windowOpen) { dsWindowManual.value = false; return }
         // The companion was closed: BACK brings it back. Not while it opens over the game instead (closed while swapped):
@@ -5440,7 +5351,7 @@ class PokeDaisyActivity : Activity() {
      * FF / slow-mo / rewind, a half-pressed chord, the right stick's look-around - since their releases go to it. */
     private fun onKeyCapture(on: Boolean) {
         if (::engine.isInitialized) gameActions.cancelTouch()
-        if (::keyCapturePopup.isInitialized) keyCapturePopup.visibility = if (on) View.VISIBLE else View.GONE
+        keyCaptureShown = on
         input.releaseAll()
         rtDown = false; ltDown = false
         if (::view.isInitialized) { view.camera.stickX = 0f; view.camera.stickY = 0f }
@@ -5948,6 +5859,4 @@ class PokeDaisyActivity : Activity() {
         private const val IWRAM_BASE = 0x03000000L
         private const val IWRAM_SIZE = 0x8000
     }
-
-
 }

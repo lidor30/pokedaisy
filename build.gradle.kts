@@ -25,6 +25,7 @@ val appOnlyTests by extra(
         "RenegadePlatinumTest", "ShinyOddsTest",
     ),
 )
+// The input models are needed by the native iOS core, below shared-ui. All sources compile in place.
 val sharedCoreSources by extra(
     listOf(
         "com/pokedaisy/app/companion/data/**",
@@ -45,13 +46,13 @@ val sharedUiSources by extra(
         "com/pokedaisy/app/companion/*.kt",
         "com/pokedaisy/app/companion/coop/**",
         "com/pokedaisy/app/cheats/Cheats.kt",
-        "com/pokedaisy/app/InputBadges.kt",
-        "com/pokedaisy/app/BattleInputController.kt",
-        "com/pokedaisy/app/GameSaves.kt",
-        "com/pokedaisy/app/Prefs.kt",
         "com/pokedaisy/app/DocsApi.kt",
         "com/pokedaisy/app/DocsCache.kt",
         "com/pokedaisy/app/DocsSearch.kt",
+        "com/pokedaisy/app/InputBadges.kt",
+        "com/pokedaisy/app/Prefs.kt",
+        "com/pokedaisy/app/GameSaves.kt",
+        "com/pokedaisy/app/BattleInputController.kt",
     ),
 )
 val sharedUiAppOnly by extra(

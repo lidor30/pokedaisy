@@ -627,6 +627,7 @@ fun OptionButton(
     focusStart: Boolean = false,
     /** RAINBOW may colour it; false keeps the usual look (STATES' buttons). */
     rainbow: Boolean = true,
+    labelBadge: String? = null,
 ) {
     val u = m.u
     val interaction = remember { MutableInteractionSource() }
@@ -690,6 +691,9 @@ fun OptionButton(
         }
         if ((icon != null || pixelIcon != null) && label != null) Spacer(Modifier.width(u * 4))
         if (label != null) GbaText(tr(label), fg, shadow, m, bold = gameBoldLabels())
+        labelBadge?.let {
+            OptionBadge(it, m, Modifier.padding(start = u * 4), fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow)
+        }
     }
 }
 
@@ -1039,6 +1043,11 @@ fun OptionTextField(
     var shown by remember { androidx.compose.runtime.mutableStateOf(false) }
     // D-pad focus (the library's and Settings' search box) shows like every other control's: the focus ring.
     var focused by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val textFocus = LocalTextInputFocus.current
+    val fieldOwner = remember { Any() }
+    androidx.compose.runtime.DisposableEffect(textFocus, fieldOwner) {
+        onDispose { textFocus?.set(fieldOwner, false) }
+    }
     val hidden = password && !shown
     BasicTextField(
         value = value,
@@ -1056,7 +1065,10 @@ fun OptionTextField(
         cursorBrush = SolidColor(OptionColors.value),
         modifier = modifier
             .fillMaxWidth()
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged {
+                focused = it.isFocused
+                textFocus?.set(fieldOwner, it.isFocused)
+            }
             .gbaFocusRing(focused, PixelRoundedShape(u * 2))
             .drawBehind { drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
             .padding(horizontal = u * 6, vertical = u * 5),

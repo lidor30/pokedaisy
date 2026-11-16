@@ -67,4 +67,9 @@ class SharedAppScreenshotTest {
         }
     } } }
 
+    @Test fun editor() = paparazzi.snapshot { AppTheme {
+        val style = TouchControlsStyle(extras = setOf(TouchButton.FF, TouchButton.SAVE_STATE, TouchButton.LOAD_STATE), xyButtons = false)
+        val stage = gamePanelLayout(1536f, 2048f, 2f, style = com.pokedaisy.app.companion.TouchControlsStyle())
+        TouchLayoutEditor(stage, style, rememberGbaTextMetrics(), onDone = {}, drawBackdrop = true)
+    } }
 }

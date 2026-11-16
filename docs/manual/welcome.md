@@ -68,6 +68,9 @@ The top screen's copy has a search box: type what you're after ("fast-forward", 
 
 The app downloads the manual from the PokeDaisy website and keeps a copy, so after that it works offline. It needs the internet once: if the first open can't reach the website, it says so. Connect, then tap `RETRY`.
 
+This works the same on Android and iPad. A failed refresh keeps your last readable copy. Pictures you have opened
+stay available offline until a newer manual replaces them.
+
 ![The manual inside the app on the top screen: a search box and the list of sections and pages](shots/help-contents.png "The manual on the top screen")
 
 > [!TIP]

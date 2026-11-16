@@ -85,6 +85,7 @@ object ExportCore {
     }
 }
 tasks.withType<KotlinCompile>().configureEach {
+    // FieldItemUse reaches the shared frame-work queue; compile that same source here too.
     source(rootDir.resolve("../shared/src/commonMain/kotlin/com/pokedaisy/app/game/GameSession.kt"))
     if (gameExport) {
         dependsOn(stubCore)
