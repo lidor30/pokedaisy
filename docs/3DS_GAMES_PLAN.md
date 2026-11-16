@@ -337,8 +337,10 @@ headless with n3ds_dump on the players' saves (`~/Downloads/3ds-saves/main (1)`,
 - Getting there headless: a save edited to stand in grass. The situation is in the save twice (0x1400 and +0xF4, the second is
   what a load reads); +6 is 0 outdoors, 3 indoors (a house's 3 kept outdoors hung the field's load). Easiest: walk out, save
   in game on the route, then move that save's coordinates (scratch tools: `place.py`, the block CRC16s fixed).
-- Not mapped yet: the Town Map (the PokeNav's Hoenn map is `a/0/6/7`'s `poke_navi_map.bclim`, 380 x 270 ETC1; the zone ->
-  spot table wasn't found).
+- The Town Map (`Gen6TownMap.ORAS`): the PlayNav's Hoenn, `a/0/6/7`'s `poke_navi_map.bclim` (380 x 270, ETC1) with
+  `hero_obj` the pin and the panes in its `map_lower.bclyt`; the spot table is `a/0/6/6` (one LZ11 file of 0x3C-byte records:
+  the zone twice, then the pane's number, base 36 as X's), a zone off it through its outdoor zone (+0x1A of its record, as X's).
+  Every spot lands on its place (`OrasSmCartTest` writes the picture with them marked to `app/build/n3ds-oras-map.png`).
 - The cart (`N3dsLayout.ORAS`): text `a/0/7/<1 kana, 2 kanji, 3 English, 4 French, 5 Italian, 6 German, 7 Spanish, 8 Korean>`,
   files 98 / 14 / 114 / 37 / 51 / 18 / 90 (species / moves / items / abilities / natures / types / places); moves `a/1/8/9` (one
   packed "WD" file of X's 36-byte records); personal `a/1/9/5` (0x50 a record); zones `a/0/1/3` (the "ZO" bundles, the records

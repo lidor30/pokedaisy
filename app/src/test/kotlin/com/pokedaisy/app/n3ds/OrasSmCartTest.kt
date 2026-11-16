@@ -66,6 +66,33 @@ class OrasSmCartTest {
         assertNotNull(Gen6Icons.decode(icons[1]))
     }
 
+    /** Omega Ruby's Hoenn: Littleroot, Route 101 just north, Oldale above it, Ever Grande the far east; a house in
+     * Littleroot (224) on its town, Slateport's Pokemon Center (265) on Slateport. Writes the picture with every spot
+     * marked to build/n3ds-oras-map.png. */
+    @Test fun omegaRubysTownMap() {
+        assumeTrue(or.isFile)
+        val spots = Gen6TownMap.spots(or, N3dsLayout.ORAS)
+        fun at(zone: Int) = spots.getValue(zone).let { it.x.toInt() to it.y.toInt() }
+        assertEquals(83 to 186, at(6))
+        assertEquals(83 to 175, at(23))
+        assertEquals(83 to 164, at(7))
+        assertEquals(336 to 164, at(21))
+        assertEquals(at(6), at(224))
+        assertEquals(at(14), at(265))
+        val dir = java.nio.file.Files.createTempDirectory("oras-map").toFile()
+        assertTrue(Gen6TownMap.extractTo(or, dir, N3dsLayout.ORAS))
+        val png = File(dir, Gen6TownMap.ORAS.map)
+        assertTrue(png.length() > 1000)
+        val img = Gen6TownMap.picture(or, N3dsLayout.ORAS)!!
+        assertEquals(380, img.width)
+        for (s in spots.values) for (dx in -1..1) for (dy in -1..1) {
+            val x = s.x.toInt() + dx
+            val y = s.y.toInt() + dy
+            if (x in 0 until img.width && y in 0 until img.height) img.argb[y * img.width + x] = 0xFFFF0000.toInt()
+        }
+        File("build/n3ds-oras-map.png").writeBytes(img.png())
+    }
+
     @Test fun alphaSapphireIsOmegaRubysLayout() {
         assumeTrue(or.isFile && asCart.isFile)
         val l = N3dsLayout.ORAS

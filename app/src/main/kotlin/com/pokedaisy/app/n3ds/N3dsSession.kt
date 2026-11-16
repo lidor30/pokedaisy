@@ -665,11 +665,12 @@ class N3dsSession(
         runCatching {
             if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile(), layout)) com.pokedaisy.app.companion.data.RomArt.announce()
         }.onFailure { Log.w(TAG, "icons failed", it) }
-        // The Town Map's picture and pin (once per cart), and every zone's place on it.
-        // X / Y's only so far: the other games' maps aren't read yet.
-        val townSpots = if (layout.family != N3dsLayout.Family.XY) emptyMap() else runCatching {
-            if (Gen6TownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile())) com.pokedaisy.app.companion.data.RomArt.announce()
-            Gen6TownMap.spots(rom)
+        // The Town Map's picture and pin (once per cart), and every zone's place on it (X / Y, Omega Ruby / Alpha
+        // Sapphire: Sun / Moon's isn't read yet).
+        val townMap = Gen6TownMap.specFor(layout)
+        val townSpots = if (townMap == null) emptyMap() else runCatching {
+            if (Gen6TownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile(), layout)) com.pokedaisy.app.companion.data.RomArt.announce()
+            Gen6TownMap.spots(rom, layout)
         }.onFailure { Log.w(TAG, "town map failed", it) }.getOrDefault(emptyMap())
         val config = Gen6Reader.configFor(titleId)
         var textLanguage = -1
@@ -690,9 +691,9 @@ class N3dsSession(
                         wildZone = sample.zone
                         wildLanguage = textLanguage
                         wildHere = N3dsCompanionData.wild(Gen6Wild.load(rom, layout)?.getOrNull(sample.zone).orEmpty(), text, layout)
-                        mapHere = townSpots[sample.zone]?.let {
+                        mapHere = if (townMap == null) null else townSpots[sample.zone]?.let {
                             com.pokedaisy.app.companion.ui.XyMapSpot(
-                                Gen6TownMap.MAP, Gen6TownMap.PIN, Gen6TownMap.WIDTH, Gen6TownMap.HEIGHT, it.x, it.y, it.w, it.h,
+                                townMap.map, townMap.pinAsset, townMap.width, townMap.height, it.x, it.y, it.w, it.h,
                             )
                         }
                     }

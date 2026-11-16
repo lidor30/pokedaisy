@@ -18,10 +18,48 @@ import java.nio.ByteOrder
  *   picture pixel (160 + x, 105 - y). Checked: Vaniville (212, 180), Route 2 (212, 145), Lumiose's centre (166, 78).
  */
 object Gen6TownMap {
-    const val MAP = "n3ds/pokemonx/townmap.png"
-    const val PIN = "n3ds/pokemonx/townmap_pin.png"
-    const val WIDTH = 320
-    const val HEIGHT = 210
+    /**
+     * Where a game keeps its map: the UI archive ([archive]: its picture [image], [width] x [height], and the pin
+     * [pin]), the spot table ([spots]: [spotRecord] bytes a spot, the zone at +0 and the pane's number at +4) and
+     * where the picture goes in rom-art ([dir]). A pane's place is round the picture's middle, y up.
+     */
+    class Spec(
+        val dir: String,
+        val archive: String,
+        val image: String,
+        val pin: String,
+        val width: Int,
+        val height: Int,
+        val spots: String,
+        val spotRecord: Int,
+    ) {
+        val map: String get() = "$dir/townmap.png"
+        val pinAsset: String get() = "$dir/townmap_pin.png"
+    }
+
+    /** Pokemon X / Y: Kalos (above). */
+    val XY = Spec("n3ds/pokemonx", "a/0/6/9", "townmap_bg1.bclim", "hero_obj.bclim", 320, 210, "a/0/6/8", 0x40)
+
+    /**
+     * Omega Ruby / Alpha Sapphire: the PlayNav's Hoenn (2026-11-17, the US carts): `a/0/6/7`'s archive, `poke_navi_map`
+     * 380 x 270 (ETC1), `hero_obj` the pin, the panes in its `map_lower.bclyt`; the spot table `a/0/6/6` (one LZ11 file of
+     * 0x3C-byte records: the zone, again, then the pane's number). Checked: Littleroot (-106.5, -51.5), Route 101 just
+     * north (-106.5, -40.5), Oldale (-106.5, -29.5), Ever Grande the far east (146.5, -29.5).
+     */
+    val ORAS = Spec("n3ds/oras", "a/0/6/7", "poke_navi_map.bclim", "hero_obj.bclim", 380, 270, "a/0/6/6", 0x3C)
+
+    /** The game's map, or null where none is read yet (Sun / Moon). */
+    fun specFor(layout: N3dsLayout): Spec? = when (layout.family) {
+        N3dsLayout.Family.XY -> XY
+        N3dsLayout.Family.ORAS -> ORAS
+        N3dsLayout.Family.SM -> null
+    }
+
+    // X / Y's, for what reads them by name.
+    val MAP = XY.map
+    val PIN = XY.pinAsset
+    val WIDTH = XY.width
+    val HEIGHT = XY.height
     private const val VERSION = 1
 
     /** A place on the picture, its middle and size in the picture's pixels. */
@@ -32,51 +70,58 @@ object Gen6TownMap {
     private val cache = HashMap<String, Data?>()
 
     /** Each zone's place on the map (by zone number); empty when the cart can't be read that far. */
-    fun spots(cart: File): Map<Int, Spot> = load(cart)?.spots.orEmpty()
+    fun spots(cart: File, layout: N3dsLayout = N3dsLayout.XY): Map<Int, Spot> = load(cart, layout)?.spots.orEmpty()
+
+    /** The map's picture, as read (for tests). */
+    internal fun picture(cart: File, layout: N3dsLayout): RomArt.Image? = load(cart, layout)?.map
 
     /** Writes the map and the pin into [dir] once (a marker keeps the cart's size and [VERSION]); true when it wrote. */
-    fun extractTo(cart: File, dir: File): Boolean {
-        val marker = File(dir, "$MAP-built")
+    fun extractTo(cart: File, dir: File, layout: N3dsLayout = N3dsLayout.XY): Boolean {
+        val spec = specFor(layout) ?: return false
+        val marker = File(dir, "${spec.map}-built")
         val stamp = "v$VERSION ${cart.length()}"
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return false
-        val data = load(cart) ?: return false
-        write(dir, MAP, data.map.png())
-        data.pin?.let { write(dir, PIN, it.png()) }
+        val data = load(cart, layout) ?: return false
+        write(dir, spec.map, data.map.png())
+        data.pin?.let { write(dir, spec.pinAsset, it.png()) }
         marker.parentFile?.mkdirs()
         marker.writeText(stamp)
         return true
     }
 
-    private fun load(cart: File): Data? = synchronized(cache) {
-        val key = "${cart.absolutePath}:${cart.length()}"
+    private fun load(cart: File, layout: N3dsLayout): Data? = synchronized(cache) {
+        val spec = specFor(layout) ?: return null
+        val key = "${cart.absolutePath}:${cart.length()}:${spec.dir}"
         if (cache.containsKey(key)) return cache[key]
-        val data = runCatching { read(cart) }.getOrNull()
+        val data = runCatching { read(cart, spec, layout) }.getOrNull()
         cache[key] = data
         data
     }
 
-    private fun read(cart: File): Data? = RomFs(cart).use { fs ->
-        val arc = fs.read("a/0/6/9")?.let { Gen6Text.garcFiles(it).firstOrNull() }?.let(::unpack) ?: return@use null
+    private fun read(cart: File, spec: Spec, layout: N3dsLayout): Data? = RomFs(cart).use { fs ->
+        val arc = fs.read(spec.archive)?.let { Gen6Text.garcFiles(it).firstOrNull() }?.let(::unpack) ?: return@use null
         val names = archiveNames(arc) ?: return@use null
         val images = names.filter { it.endsWith(".bclim") }.zip(clims(arc)).toMap()
-        val map = images["townmap_bg1.bclim"]?.let { decode(it) } ?: return@use null
-        val pin = images["hero_obj.bclim"]?.let { decode(it) }
+        val map = images[spec.image]?.let { decode(it) } ?: return@use null
+        val pin = images[spec.pin]?.let { decode(it) }
         val panes = clyt(arc)?.let(::panes).orEmpty()
-        val spotFile = fs.read("a/0/6/8")?.let { Gen6Text.garcFiles(it).firstOrNull() }?.let(::unpack) ?: ByteArray(0)
-        val zoneFile = fs.read("a/0/1/2")?.let { Gen6Text.garcFiles(it).lastOrNull() }?.let(::unpack) ?: ByteArray(0)
+        val spotFile = fs.read(spec.spots)?.let { Gen6Text.garcFiles(it).firstOrNull() }?.let(::unpack) ?: ByteArray(0)
+        val zoneFiles = fs.read(layout.zonesPath)?.let { Gen6Text.garcFiles(it) }.orEmpty()
+        val zoneFile = (if (layout.zoneRecordsFile < 0) zoneFiles.getOrNull(zoneFiles.size + layout.zoneRecordsFile)
+            else zoneFiles.getOrNull(layout.zoneRecordsFile))?.let(::unpack) ?: ByteArray(0)
         val sb = le(spotFile)
         // The spots: their zone -> the pane's place.
         val byZone = HashMap<Int, Spot>()
-        for (i in 0 until spotFile.size / 0x40) {
-            val zone = sb.getInt(i * 0x40)
-            val pane = panes[base36(sb.getInt(i * 0x40 + 4))] ?: continue
-            byZone.putIfAbsent(zone, Spot(WIDTH / 2f + pane[0], HEIGHT / 2f - pane[1], pane[2], pane[3]))
+        for (i in 0 until spotFile.size / spec.spotRecord) {
+            val zone = sb.getInt(i * spec.spotRecord) and 0xFFFF
+            val pane = panes[base36(sb.getShort(i * spec.spotRecord + 4).toInt() and 0xFFFF)] ?: continue
+            byZone.putIfAbsent(zone, Spot(spec.width / 2f + pane[0], spec.height / 2f - pane[1], pane[2], pane[3]))
         }
         // Every zone through its outdoor zone (+0x1A).
         val zb = le(zoneFile)
         val spots = HashMap<Int, Spot>()
-        for (z in 0 until zoneFile.size / 0x38) {
-            val parent = zb.getShort(z * 0x38 + 0x1A).toInt() and 0xFFFF
+        for (z in 0 until zoneFile.size / layout.zoneRecord) {
+            val parent = zb.getShort(z * layout.zoneRecord + 0x1A).toInt() and 0xFFFF
             (byZone[parent] ?: byZone[z])?.let { spots[z] = it }
         }
         Data(map, pin, spots)
