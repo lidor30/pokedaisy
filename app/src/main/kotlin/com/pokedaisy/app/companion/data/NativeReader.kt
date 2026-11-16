@@ -1015,14 +1015,18 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
     val egg = if (layout.eggInIvWord) (raw[off + layout.plainBox + 0x28 + 3].toInt() and 0x40) != 0
         else (raw[off + layout.flags].toInt() and layout.eggMask) != 0
     if (egg) {
-        // Heart and Soul / Lazarus / SoulGold / Seaglass have no SPECIES_EGG 412, so an
-        // egg is flagged instead: "Egg", no HP bar, the egg's icon where [eggSpecies] is known.
-        // So does any config naming its egg (Emerald Legacy: 415, its 412-414 are Deoxys forms).
-        if (eggSpecies != 0 || activeGame in setOf(GameKind.HEART_AND_SOUL, GameKind.LAZARUS, GameKind.SOULGOLD, GameKind.EMERALD_SEAGLASS, GameKind.IMPERIUM,
-                GameKind.QUETZAL, GameKind.ROWE, GameKind.MARIOMON)) {
-            return copy(species = if (eggSpecies != 0) eggSpecies else species, genderSymbol = GENDER_SYMBOL_NONE, isEgg = true)
+        // The egg keeps its species: the summary draws the egg's name and icon from isEgg, but the species' own
+        // types and base stats let the companion show matchups and a STATS page before it hatches. [eggSpecies]
+        // replaces it only where a hack stores a placeholder instead of the real species; the hatch species'
+        // gender comes from the same ratio the game uses.
+        val r = if (eggSpecies == 0) ratios.getOrNull(species) ?: 255 else 255
+        val gender = when (r) {
+            255 -> GENDER_SYMBOL_NONE
+            0 -> GENDER_SYMBOL_MALE
+            254 -> GENDER_SYMBOL_FEMALE
+            else -> if ((raw[off].toInt() and 0xFF) < r) GENDER_SYMBOL_FEMALE else GENDER_SYMBOL_MALE
         }
-        return copy(species = SPECIES_EGG_VANILLA, genderSymbol = GENDER_SYMBOL_NONE)
+        return copy(species = if (eggSpecies != 0) eggSpecies else species, genderSymbol = gender, isEgg = true)
     }
     if (species !in ratios.indices) return this
     if (species == 29 || species == 32) {

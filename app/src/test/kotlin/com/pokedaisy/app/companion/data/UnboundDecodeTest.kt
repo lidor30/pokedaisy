@@ -27,9 +27,8 @@ class UnboundDecodeTest {
 
     @Test
     fun `native read shows an egg as an egg`() {
-        // Same save with party[0]'s BoxPokemon +0x13 isEgg bit set - the
-        // headless check of the game drew such a mon as the "Egg" box with
-        // the ROM's icon 412 (vanilla SPECIES_EGG, which CFRU kept).
+        // Same save with party[0]'s BoxPokemon +0x13 isEgg bit set - the headless check of the game drew such a mon as
+        // the "Egg" box with the ROM's icon 412; the hatch species stays in the reading for types and IVs.
         activeGame = GameKind.UNBOUND
         val fixture = FixtureMemoryReader.load("unbound")
         val flag = NATIVE_UNBOUND.playerParty + 0x13
@@ -44,8 +43,6 @@ class UnboundDecodeTest {
             }
         }
         val t = readNativeTelemetry(reader, NATIVE_UNBOUND)
-        assertEquals(SPECIES_EGG_VANILLA, t.party[0].species)
-        assertEquals(GENDER_SYMBOL_NONE, t.party[0].genderSymbol)
-        assertTrue(isVanillaEgg(t.party[0].species))
+        assertTrue(t.party[0].isEgg)
     }
 }

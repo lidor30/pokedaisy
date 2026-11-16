@@ -66,6 +66,7 @@ import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.data.PokedexSource
 import com.pokedaisy.app.companion.data.PokedexTables
 import com.pokedaisy.app.companion.data.TypeMatchup
+import com.pokedaisy.app.companion.data.eggHatchName
 import com.pokedaisy.app.companion.ui.theme.AppColors
 
 /**
@@ -652,6 +653,8 @@ internal fun InfoSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics,
                 if (mon.shiny) ShinySparkle(m, Modifier.padding(start = u * 3))
                 // A nickname of the player's own: the species after it, like the game's summary.
                 if (mon.renamed) GbaText("/" + mon.name, optionLook.label, optionLook.labelShadow, small, Modifier.padding(start = u * 3))
+                // An egg: the hatch species after "EGG", in the same place.
+                mon.eggHatchName?.let { GbaText("/" + it, optionLook.label, optionLook.labelShadow, small, Modifier.padding(start = u * 3)) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // The 32px icon at a whole multiple of the frame's GBA pixel, so it stays crisp.
