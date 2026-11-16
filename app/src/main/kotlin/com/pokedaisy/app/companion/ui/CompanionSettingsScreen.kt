@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.pokedaisy.app.badge
 import com.pokedaisy.app.GbaControls
 import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.companion.SCENE_SPEEDS

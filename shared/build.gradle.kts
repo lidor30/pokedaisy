@@ -13,7 +13,9 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val appSrc = rootDir.resolve("app/src/main/kotlin/com/pokedaisy/app/companion")
+val appSrc = rootDir.resolve("app/src/main/kotlin")
+@Suppress("UNCHECKED_CAST")
+val sharedCoreSources = rootProject.extra["sharedCoreSources"] as List<String>
 val appTest = rootDir.resolve("app/src/test/kotlin/com/pokedaisy/app/companion")
 
 // The data / i18n tests that also use the app's own classes stay the app's (root build.gradle.kts).
@@ -29,8 +31,9 @@ kotlin {
 
     sourceSets {
         commonMain {
-            kotlin.srcDir(appSrc.resolve("data"))
-            kotlin.srcDir(appSrc.resolve("i18n"))
+            kotlin.srcDir(appSrc)
+            kotlin.include(sharedCoreSources)
+            kotlin.include("com/pokedaisy/app/game/**")
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
                 implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")

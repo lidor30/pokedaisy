@@ -95,7 +95,7 @@ class KeyCapture {
         if (down) {
             swallowUp.remove(keyCode)
             if (repeatCount > 0) return true
-            if (keyCode == KeyCodes.BACK) {
+            if (keyCode == KeyCodes.BACK || keyCode == KeyCodes.ESCAPE) {
                 end()
                 swallowUp += keyCode
                 return true

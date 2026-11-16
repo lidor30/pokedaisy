@@ -5,6 +5,8 @@ import com.pokedaisy.app.companion.data.FlyTargets
 
 /** FLY from the MAP tab (Fly.kt); null where the game has no such support. Every [done] runs on the main thread. */
 interface FlyAction {
+    val actionBadge: String? get() = null
+
     /** Whether this ROM has FLY here at all (the button shows when a party Pokémon also knows the move). */
     fun canFly(): Boolean
 
