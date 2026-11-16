@@ -2331,17 +2331,23 @@ fun main(args: Array<String>) {
                 content
             })
         }.toTypedArray(),
-        // The HUD's WILD (WildPins.preview): its panel with a PIN on the GRASS / CAVE rows, one pinned, NUZLOCKE greyed;
-        // and the WILD button wearing the pinned species with its pin.
-        *listOf("pin" to 0, "pinned" to 1, "pin-nuzlocke" to 2, "pinned-button" to 3).map { (name, mode) ->
+        // The HUD's WILD (WildPins.preview): its panel with a PIN on every grass, surfing and rod row, one pinned (a grass
+        // one, then a fishing one: both rods' rows), NUZLOCKE greyed (its reason once); and the WILD button wearing the pin.
+        *listOf("pin" to 0, "pinned" to 1, "pin-nuzlocke" to 2, "pinned-button" to 3, "pinned-rod" to 4).map { (name, mode) ->
             Shot("hud-wild-$name", tw, th, td, {
                 val wild = listOf(
                     com.pokedaisy.app.companion.ui.HudWild("GRASS / CAVE", 16, 2, 4, 45, seen = true, caught = true),
                     com.pokedaisy.app.companion.ui.HudWild("GRASS / CAVE", 19, 2, 4, 45, seen = true, caught = false),
                     com.pokedaisy.app.companion.ui.HudWild("GRASS / CAVE", 63, 5, 5, 10, seen = false, caught = false),
                     com.pokedaisy.app.companion.ui.HudWild("SURFING", 72, 5, 30, 100, seen = true, caught = false),
+                    com.pokedaisy.app.companion.ui.HudWild("OLD ROD", 129, 5, 5, 100, seen = true, caught = true),
+                    com.pokedaisy.app.companion.ui.HudWild("SUPER ROD", 129, 25, 30, 60, seen = true, caught = true),
+                    com.pokedaisy.app.companion.ui.HudWild("SUPER ROD", 130, 25, 30, 40, seen = false, caught = false),
                 )
-                com.pokedaisy.app.companion.WildPins.preview(pinned = if (mode == 1 || mode == 3) 19 else 0, nuzlocke = mode == 2)
+                com.pokedaisy.app.companion.WildPins.preview(
+                    pinned = when (mode) { 1, 3 -> 19; 4 -> 129; else -> 0 }, nuzlocke = mode == 2,
+                    method = if (mode == 4) com.pokedaisy.app.companion.data.WildPin.Method.FISHING else com.pokedaisy.app.companion.data.WildPin.Method.LAND,
+                )
                 val s = snapshot()
                 val content: @Composable () -> Unit = {
                     com.pokedaisy.app.companion.ui.theme.AppTheme {
