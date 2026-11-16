@@ -958,7 +958,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
   (`CardStyle.SOULGOLD` / `.LAZARUS` / `.RECHARGED_YELLOW`): their art found from headless VRAM dumps of the open card and
   each card's code, their save fields and star rules poked in and checked against the game's card. Each matched the
   game's frames pixel for pixel on the save as it is and with everything the card shows poked in (`TrainerCardTest`).
-- **Wild pin**: GUIDE > HERE's and the HUD's PIN, the next grass / cave encounter on the map (`WildPin.kt`).
+- **Wild pin**: GUIDE > HERE's and the HUD's PIN, the next encounter that way (grass / cave, surfing, rock smash, a rod) on the map (`WildPin.kt`).
 
 ## Next up (from the table)
 
@@ -1056,11 +1056,13 @@ Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draw
     padding for a 16-byte trampoline), Brown, PureRed / PureBlue, Yellow Legacy, Crystal Clear (1 byte), Prism (27 bytes,
     under the 64 kept) and Polished Crystal (no .GetDPad). `GbRunningShoesTest`.
 
-58. WILD PIN (`WildPin.kt`): while a pin is on, the map's 12 land slots ({u8 min, u8 max, u16 species}, the
-    WildPokemonInfo's slot array, `GuideRomSource.landSlots`) are one ROM block beside PLAYER LOOK's (one `pkRomBlocks`
-    call: each replaces every block), every slot the pinned species at its own level range on the map, guarded by the
-    file's 48 bytes' CRC32. It goes out on the frame a battle starts with gBattleTypeFlags' TRAINER clear, on another
-    map and on UNPIN. Offered by the running GUIDE tables (`WildPin.offered`): retail English FireRed rev 1, LeafGreen
-    rev 0 / 1 and Emerald, so their randomized builds too (the ROM's own species), and Monomyth v1.0 / v1.1
-    (vanilla's wild headers and 12 land slots, checked on its ROUTE 1; not v1.2 yet); grass and caves only. Headless:
+58. WILD PIN (`WildPin.kt`): while a pin is on, the pinned method's slots on the map ({u8 min, u8 max, u16 species},
+    the WildPokemonInfo's slot array, `GuideRomSource.pinSlots`: `WildPin.Method` LAND 12, WATER 5, ROCK_SMASH 5,
+    FISHING 10 - all three rods' slots, so any rod catches it) are one ROM block beside PLAYER LOOK's (one `pkRomBlocks`
+    call: each replaces every block), every slot the pinned species at its own level range over that method's slots,
+    guarded by the file's bytes' CRC32. One pin at a time. It goes out on the frame a battle starts with
+    gBattleTypeFlags' TRAINER clear, on another map and on UNPIN. Offered by the running GUIDE tables
+    (`WildPin.offered`): retail English FireRed rev 1, LeafGreen rev 0 / 1 and Emerald, so their randomized builds too
+    (the ROM's own species), and Monomyth v1.0 / v1.1 (vanilla's wild headers; every v1.1 water / rock smash / fishing
+    table checked: 93 / 39 / 87, all valid 5 / 5 / 10 slots, like retail Emerald's 55 / 6 / 53; not v1.2 yet). Headless:
     mgba_dump `romblocks` takes `WildPin.Pin.toText()`'s line.
