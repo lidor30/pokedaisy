@@ -1,19 +1,19 @@
 package com.pokedaisy.app
 
-import android.content.Context
+import com.pokedaisy.app.companion.data.StateFiles
+import com.pokedaisy.app.companion.data.StateResume
+import com.pokedaisy.app.companion.data.writeTextAtomically
+import com.pokedaisy.app.companion.data.writeAtomically
 import com.pokedaisy.app.companion.i18n.tr
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlin.time.Clock
+import kotlin.time.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
+import kotlinx.datetime.toLocalDateTime
+import okio.*
 
-/**
- * Loading another save file into a game (the library menu's LOAD SAVE): the
- * current one is kept, renamed to a dated backup next to it, and the picked one
- * takes its place under the name the game looks for ([SavesLocation.resolve]).
- */
+/** Battery-save imports. Call off the UI thread, with the game's core stopped. */
 object GameSaves {
-
     /** Bigger than any GBA save (128 KB flash, plus mGBA's RTC footer) or a Pokémon DS game's (512 KB flash): at 256 KB,
      * SaveBackups skipped every DS save. */
     const val MAX_BYTES = 1024 * 1024
@@ -28,57 +28,84 @@ object GameSaves {
         else -> null
     }
 
-    /** `<game>.backup-20261006-113012.sav`: same folder and extension, so other emulators still read it. */
-    fun backupName(current: File, now: Long = System.currentTimeMillis()): String {
-        val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date(now))
-        return "${current.nameWithoutExtension}.backup-$stamp.${current.extension}"
+
+    fun backupName(saveName: String, now: Long = Clock.System.now().toEpochMilliseconds(),
+                   zone: TimeZone = TimeZone.currentSystemDefault()): String {
+        val date = Instant.fromEpochMilliseconds(now).toLocalDateTime(zone)
+        fun Int.digits(n: Int = 2) = toString().padStart(n, '0')
+        val stamp = "${date.year.digits(4)}${date.month.number.digits()}${date.day.digits()}-${date.hour.digits()}${date.minute.digits()}${date.second.digits()}"
+        return "${saveName.substringBeforeLast('.', saveName)}.backup-$stamp.${saveName.substringAfterLast('.', "")}"
     }
 
-    /** [romBaseName]'s backups in [dir], newest first. */
-    fun backups(dir: File, romBaseName: String): List<File> =
-        dir.listFiles { f -> f.isFile && f.name.startsWith("$romBaseName.backup-") }
-            ?.sortedByDescending { it.name }.orEmpty()
+    fun backups(dir: Path, romBaseName: String): List<Path> {
+        val fs = FileSystem.SYSTEM
+        fun stamp(path: Path) = path.name.substringAfterLast(".backup-").take(15)
+        fun index(path: Path) = path.name.substringAfterLast(".backup-").substringBeforeLast('.').drop(15)
+            .removePrefix("-").toIntOrNull() ?: 1
+        return fs.listOrNull(dir).orEmpty().filter {
+            fs.metadataOrNull(it)?.isRegularFile == true && it.name.startsWith("$romBaseName.backup-")
+        }.sortedWith(compareByDescending<Path>(::stamp).thenByDescending(::index).thenByDescending { it.name })
+    }
 
     sealed class Result {
-        /** [backup]: where the previous save went; null if there was none. */
-        class Loaded(val save: File, val backup: File?) : Result()
+        class Loaded(val save: Path, val backup: Path?) : Result()
         class Failed(val reason: String) : Result()
     }
 
-    /**
-     * Makes [bytes] [rom]'s save. Blocking (CRC32 of the ROM, file I/O) - off the UI
-     * thread, and only while the game isn't running (the library is in front, so its
-     * engine is stopped). The game boots from the new save next time instead of
-     * resuming ([SaveStates.freshBootFile]).
-     */
-    fun load(context: Context, prefs: Prefs, rom: File, picked: ByteArray): Result {
-        // RetroArch's compressed .srm goes in unpacked (RzipSave): mGBA reads only a plain save.
-        val bytes = when (val r = RzipSave.decode(picked)) {
-            RzipSave.Result.NotRzip -> picked
-            is RzipSave.Result.Unpacked -> r.bytes
-            is RzipSave.Result.Unreadable -> return Result.Failed(RzipSave.unreadableMessage())
+    /** Stage bytes first, commit fresh-boot intent before replacement, and restore the old save on commit failure.
+     * A second import in the same second gets a distinct backup, retaining the normal save extension. */
+    fun load(current: Path, picked: ByteArray, states: () -> StateFiles, beforeReplace: () -> Unit = {},
+             now: Long = Clock.System.now().toEpochMilliseconds(), fs: FileSystem = FileSystem.SYSTEM): Result {
+        if (picked.isEmpty() || picked.size > MAX_BYTES) return Result.Failed(tr("That isn't a game save"))
+        if (picked.size >= 6 && picked.copyOfRange(0, 6).decodeToString() == "#RZIPv") {
+            return Result.Failed(tr("That save is compressed: turn off RetroArch's save compression and save again"))
         }
-        val current = SavesLocation.saveFor(context, prefs, rom)
-        val dir = current.parentFile ?: SavesLocation.dir(context, prefs)
-        var backup: File? = null
-        if (current.exists()) {
-            val b = File(dir, backupName(current))
-            if (!current.renameTo(b)) return Result.Failed(tr("Can't rename the current save in {0} - no write access there", dir.absolutePath))
-            backup = b
+        val dir = current.parent ?: return Result.Failed(tr("Can't write the save"))
+        val tmp = dir / "${current.name}.tmp"
+        var backup: Path? = null
+        var stateFiles: StateFiles? = null
+        var markerBefore: ByteArray? = null
+        var marked = false
+        return try {
+            fs.createDirectories(dir)
+            fs.write(tmp) { write(picked) }
+            beforeReplace()
+            val state = states().also { stateFiles = it }
+            markerBefore = if (fs.exists(state.freshBootFile)) fs.read(state.freshBootFile) { readByteArray() } else null
+            state.freshBootFile.writeTextAtomically("fresh")
+            marked = true
+            if (fs.exists(current)) {
+                val name = backupName(current.name, now)
+                var target = dir / name
+                var index = 2
+                while (fs.exists(target)) {
+                    target = dir / "${name.substringBeforeLast('.')}-${index++}.${name.substringAfterLast('.')}"
+                }
+                fs.atomicMove(current, target)
+                backup = target
+            }
+            fs.atomicMove(tmp, current)
+            // A failed import must retain its old automatic state. Discard it only after the battery commits;
+            // the already committed marker still blocks it if this optional cleanup fails.
+            runCatching { StateResume.startFresh(state) }
+            Result.Loaded(current, backup)
+        } catch (_: Exception) {
+            runCatching { fs.delete(tmp) }
+            val restored = runCatching {
+                val old = backup
+                if (old == null) true
+                else if (fs.exists(current)) false
+                else { fs.atomicMove(old, current); true }
+            }.getOrDefault(false)
+            if (restored && marked) stateFiles?.let { state ->
+                runCatching {
+                    val previous = markerBefore
+                    if (previous == null) fs.delete(state.freshBootFile) else state.freshBootFile.writeAtomically(previous)
+                }
+            }
+            if (!restored && backup != null) return Result.Failed(
+                tr("Couldn't import the save. The previous save is kept as {0}", backup.name))
+            Result.Failed(tr("Can't write the save to {0}", dir.toString()))
         }
-        val tmp = File(dir, "${current.name}.tmp")
-        val ok = runCatching {
-            tmp.writeBytes(bytes)
-            tmp.renameTo(current)
-        }.getOrDefault(false)
-        if (!ok) {
-            tmp.delete()
-            backup?.renameTo(current)   // put the old save back
-            return Result.Failed(tr("Can't write the save to {0}", dir.absolutePath))
-        }
-        runCatching {
-            SaveStates(context.getExternalFilesDir(null) ?: context.filesDir, SaveStates.crc32(rom)).freshBootFile.createNewFile()
-        }
-        return Result.Loaded(current, backup)
     }
 }

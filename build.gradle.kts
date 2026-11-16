@@ -34,6 +34,7 @@ val sharedUiSources by extra(
         "com/pokedaisy/app/companion/*.kt",
         "com/pokedaisy/app/companion/coop/**",
         "com/pokedaisy/app/cheats/Cheats.kt",
+        "com/pokedaisy/app/GameSaves.kt",
         "com/pokedaisy/app/Prefs.kt",
         "com/pokedaisy/app/DocsApi.kt",
         "com/pokedaisy/app/DocsSearch.kt",
