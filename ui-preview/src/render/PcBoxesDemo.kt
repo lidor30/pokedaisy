@@ -11,6 +11,15 @@ import com.pokedaisy.app.companion.ui.TradeState
 /** PC BOXES' shots: the save tests' made-up FireRed save. */
 fun pcBoxesDemo(): PcBoxesState = PcBoxesState(Gen3SaveEditor(SyntheticSave.demoFireRed()))
 
+/** The DS editor's shots: a made-up HeartGold save (SyntheticGen4), names from the app's tables. */
+fun pcBoxesDsDemo(): PcBoxesState = PcBoxesState(
+    com.pokedaisy.app.companion.data.save.Gen4SaveEditor(
+        (com.pokedaisy.app.companion.data.save.Gen4SaveFile.parse(com.pokedaisy.app.companion.data.save.SyntheticGen4.save())
+            as com.pokedaisy.app.companion.data.save.Gen4SaveFile.Parsed.Ok).save,
+        com.pokedaisy.app.companion.data.save.SyntheticGen4.demoGame(),
+    ),
+)
+
 /**
  * Stand-ins for the icons the app reads from the player's ROM (no game art here): a 32x64 sheet whose first frame is
  * a dot in a colour of its own per species, outlined, so the cards' layout shows as it will with real icons.

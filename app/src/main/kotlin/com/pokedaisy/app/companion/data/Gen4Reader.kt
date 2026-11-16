@@ -860,13 +860,16 @@ val GEN4_REPEL_KINDS = listOf(79 to 100, 76 to 200, 77 to 250)
  * the field counts the steps down and says when it wore off by itself. Only with the field free ([fieldFree]) and no
  * Repel still working. Emu thread, between frames.
  */
-fun useGen4Repel(cfg: Gen4Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean): ItemUseOutcome {
+fun useGen4Repel(cfg: Gen4Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean, topUp: Boolean = false): ItemUseOutcome {
     if (!fieldFree) return ItemUseOutcome(ItemUseResult.NOT_NOW)
     val repelStepsOff = cfg.repelStepsOff ?: return ItemUseOutcome(ItemUseResult.FAILED)
     val ptr = u32(calls.read(cfg.saveDataPtr, 4), 0)
     if (ptr !in MAIN_RAM until MAIN_RAM_END - 0x20000) return ItemUseOutcome(ItemUseResult.FAILED)
     val body = ptr + cfg.bodyOff
-    if (u8(calls.read(body + repelStepsOff, 1), 0) > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
+    // AUTO REFILL (topUp): added to the 1..REFILL_AT steps left, the byte capped at 255; otherwise only with none left.
+    val stepsLeft = u8(calls.read(body + repelStepsOff, 1), 0)
+    if (topUp && stepsLeft !in 1..RepelRefill.REFILL_AT) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    if (!topUp && stepsLeft > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
     val pocket = body + cfg.bagOff   // ITEMS is the bag's first pocket
     val size = cfg.pocketSizes[0]
     val raw = calls.read(pocket, size * 4)
@@ -883,7 +886,7 @@ fun useGen4Repel(cfg: Gen4Config, calls: GameCalls, itemId: Int, steps: Int, fie
         for (i in (size - 1) * 4 until size * 4) out[i] = 0
     }
     if (!calls.write(pocket, out)) return ItemUseOutcome(ItemUseResult.FAILED)
-    if (!calls.write(body + repelStepsOff, byteArrayOf(steps.toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
+    if (!calls.write(body + repelStepsOff, byteArrayOf((if (topUp) minOf(255, stepsLeft + steps) else steps).toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
     return ItemUseOutcome(ItemUseResult.USED, steps = steps)
 }
 

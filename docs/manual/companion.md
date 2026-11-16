@@ -71,13 +71,15 @@ The gear opens the companion's SETTINGS, laid out like FireRed's OPTION screen. 
 
 ![The companion's SETTINGS tab, with the FF / SPEED group at the top](shots/companion-settings.png "The companion's SETTINGS")
 
+The first two rows change how this list looks, on both screens: `DESCRIPTIONS` hides the grey line under each setting, and `GROUP TABS` hides the group buttons beside the list, for a wider one. Both are `SHOWN` until you hide them.
+
 The options come in groups, the ones you change while playing first:
 
 - **MAKEOVER**: `PLAYER LOOK`, `RIVAL LOOK`, `TEXT LOOK`, `FOLLOWER`, `FLY ON`, `RIDE ON` and `DAY AND NIGHT`, fresh looks for your game. It sits at the top in a blue frame of its own, and only shows in a game it works in. See [MAKEOVER](#makeover) below.
 - **FF / SPEED**: `FF`, `FF SPEED`, `GAME SPEED`, `REWIND` and `SPEED OPTIONS` (a page with `SCENE SPEEDS`, `FF MODE` and `FF MUSIC`). See [Fast-forward](fast-forward.md).
-- **GAMEPLAY**: `WILD ENCOUNTERS`, `INSTANT TEXT`, `FLY STYLE`, `FLIGHT AREA`, `REUSABLE TMS`, `NO HMS NEEDED`, `EXP SHARE`, `LEVEL CAP`, `TRADE EVOS`, `SHINY ODDS`, `NUZLOCKE`, `AUTO-RUN`, `RUN INDOORS` and `CHEATS`. See [Controls](controls.md), [Party](party.md#trade-evolutions), [Bag](bag.md), [Nuzlocke](nuzlocke.md) and [Cheats](cheats.md).
+- **GAMEPLAY**: `WILD ENCOUNTERS`, `INSTANT TEXT`, `FLY STYLE`, `FLIGHT AREA`, `REUSABLE TMS`, `AUTO REFILL`, `NO HMS NEEDED`, `EXP SHARE`, `LEVEL CAP`, `TRADE EVOS`, `SHINY ODDS`, `SHINY ALERT`, `BOSS RETRY`, `LOW HP BEEP`, `FIELD POISON`, `NUZLOCKE`, `AUTO-RUN`, `RUN INDOORS` and `CHEATS`. See [Controls](controls.md), [Party](party.md#trade-evolutions), [Bag](bag.md), [Nuzlocke](nuzlocke.md) and [Cheats](cheats.md).
 - **SCREEN**: `ASPECT`, `HUD`, `DISPLAY OPTIONS` (a page with `STATUS BAR`, `SHADERS`, `OVERLAY` and `LIGHT COMPANION`), `THEME`, `DARK MODE`, `FONT`, `FPS / CPU` and, depending on your device, `HIDE BATTLE MENU`, `BATTLE BUTTONS`, `COMPANION VIEW`, `COMPANION BUTTON`, `SWAP SCREENS` or `SINGLE SCREEN`. See [Screen and display](screen.md).
-- **COMPANION**: `BATTLE INFO`, `BATTLE HINTS`, `BATTLE VIEW`, `ONE-TAP MOVES`, `BATTLE STYLE`, `FOE IVS`, `BATTLE FOCUS`, `TAB BAR`, `CLICK SOUND`, `CHALLENGE ICONS`, `ACHIEVEMENT POPUPS`, `PROGRESS POPUPS` and `TWEAKS`.
+- **COMPANION**: `BATTLE INFO`, `BATTLE HINTS`, `BATTLE VIEW`, `ONE-TAP MOVES`, `LAST BALL`, `BATTLE STYLE`, `FOE IVS`, `BATTLE FOCUS`, `TAB BAR`, `CLICK SOUND`, `CHALLENGE ICONS`, `ACHIEVEMENT POPUPS`, `PROGRESS POPUPS` and `TWEAKS`.
 - **CONTROLS**: `GAME BUTTONS`, `HOTKEYS`, `QUICK MENU` and `TOUCH CONTROLS`. See [Controls](controls.md).
 - **APP**: `TIPS`, `LANGUAGE` and `HELP` (this manual).
 

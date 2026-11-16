@@ -8,7 +8,7 @@ keywords: [flash, dark cave, light up cave, remap, rebind, keybind, key bindings
 
 PokeDaisy works out of the box on handhelds like the AYN Thor: the face buttons, shoulders, START and SELECT are the GBA's, and a few button combinations do emulator things like saving a state. Everything here is about changing that: which button presses what, which shortcuts exist, and what happens when you plug in a controller or play by touch.
 
-The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `WILD ENCOUNTERS`, `SHINY ODDS`, `EXP SHARE`, `LEVEL CAP` and `NO HMS NEEDED` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
+The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `WILD ENCOUNTERS`, `SHINY ODDS`, `SHINY ALERT`, `LOW HP BEEP`, `FIELD POISON`, `BOSS RETRY`, `EXP SHARE`, `LEVEL CAP` and `NO HMS NEEDED` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
 
 ## Game buttons
 
@@ -90,7 +90,7 @@ When SELECT or START is part of a chord, the game gets it when you let go rather
 | `RESTART GAME` | Starts the game again from its save, like `RESTART GAME` in the companion's `SETTINGS` | | |
 | `CLOSE APP` | Leaves the game (it saves as usual) and closes PokeDaisy completely, so it's gone from your recent apps | | |
 | `QUICK MENU` | Opens the [quick menu](#the-quick-menu), or closes it | L3 (shown as `THUMBL`) | |
-| `COMPANION` | Opens the companion over the game on one screen, where you can hide its edge button with `COMPANION BUTTON`. Also brings it back after `CLOSE COMPANION`. On a phone held upright it hides the companion or brings it back. In a DS game with two screens it swaps the second screen between the touch screen and the companion, and your buttons go with it | | |
+| `COMPANION` | Opens the companion over the game on one screen, where you can hide its buttons on the game screen with `COMPANION BUTTON`. Also brings it back after `CLOSE COMPANION`. On a phone held upright it hides the companion or brings it back. In a DS game with two screens it swaps the second screen between the touch screen and the companion, and your buttons go with it | | |
 | `FREE FLIGHT` | Takes off to [fly over the map](map.md#flying-over-the-map), or lands | | |
 | `MUTE` | Mutes the game, or brings its sound back (`MUTE GAME` in [SOUND](fast-forward.md#game-volume-and-mute-sound)) | | |
 | `TOUCH SCREEN` | In a DS game on one screen: brings its touch screen up over the game, or closes it (see [DS layout](devices.md#ds-layout-two-screens-on-one)) | L2 | T |
@@ -262,6 +262,29 @@ A shiny one you catch stays shiny when you set the odds back to `NORMAL`, and th
 While the odds are raised, [achievements](achievements.md) are paused, since some sets reward catching a shiny.
 
 It works in the original FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language and revision, and in these hacks: Unbound (French too), Radical Red, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Emerald Kaizo, Emerald Legacy, Recharged Emerald (Rebalanced too), Glazed, Ultra Violet, Orange Islands, FireRed Rocket Edition, Ash Gray, Recharged Yellow, Lazarus, Emerald Seaglass, Too Many Types 2, Emerald Imperium, Super Mariomon, SoulGold, Team Rocket Edition, Elite Redux and R.O.W.E. Many hacks have better odds of their own (1 in 4096 in Unbound, Glazed, the newer Amethyst and most of the hacks rebuilt from newer source code, about 1 in 1800 in Emerald Imperium, 1 in 256 in SoulGold, about 1 in 257 in Odyssey): there `NORMAL` keeps theirs, and a choice that isn't better changes nothing. Everywhere else, the Game Boy and DS games included, it shows `N/A`.
+
+## LOW HP BEEP and FIELD POISON
+
+Two of the games' old habits, each a switch in the companion's `GAMEPLAY` group. Both are `ON` (the game's own way) until you turn them off.
+
+- **`LOW HP BEEP`** `OFF`: no more beeping in battle while your Pokémon's health bar is in the red. Every other sound stays.
+- **`FIELD POISON`** `OFF`: a poisoned Pokémon no longer loses health while you walk around, and never faints from it on the way. In battle poison works as ever, and it stays poisoned until you heal it.
+
+They work in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. Elsewhere they show `N/A`. The change applies at once, no restart needed.
+
+## BOSS RETRY
+
+`BOSS RETRY` lets you take another go at a trainer battle you lost, without walking back from the Pokémon Center. Turn it on in the companion's `GAMEPLAY` group, and each time a trainer battle starts PokeDaisy keeps a save state of that moment, apart from your `STATES` slots. If you lose, a card asks whether to try that battle again: `RETRY` puts you back at its start, as if it never happened (your money and your Pokémon as they were then). `NO THANKS`, or letting the card's bar run out, leaves the game as it is.
+
+The battle starts over the same way, so try something different. Going back is a state load like any other: [`UNDO LOAD`](controls.md#hotkeys) takes you back to after the loss. It works in the GBA games and in Black, White, Black 2 and White 2, wherever the companion can tell a trainer's battle from a wild one.
+
+## SHINY ALERT
+
+`SHINY ALERT` is for shiny hunting. Turn it on in the companion's `GAMEPLAY` group and it counts your wild battles in this game, and the moment a shiny one shows up it says so: fast-forward and turbo stop, the game's level-up tune plays and a line on the game screen names the Pokémon and how many battles it took. The battle waits at its menu, so you can't miss your chance to catch it.
+
+While it's on, the row shows the count so far. It starts from 0 when you turn it on and again after each shiny, and each game keeps its own. Trainers' battles don't count.
+
+It works in the same games as `SHINY ODDS`, and the two go well together. Elsewhere it shows `N/A`.
 
 ## EXP SHARE
 

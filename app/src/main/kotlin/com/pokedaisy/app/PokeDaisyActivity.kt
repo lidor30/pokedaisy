@@ -234,6 +234,159 @@ class PokeDaisyActivity : Activity() {
         }
     }
 
+    /** BOSS RETRY: the option (cached for the emu thread); this battle's state taken / a loss seen; the battle before. */
+    @Volatile private var battleRetryOn = false
+    private var retryTaken = false
+    private var retryLost = false
+    private var retryInBattle = false
+
+    /** Each sample (emu thread): a state as a trainer battle begins, the party all fainted noted, and after a loss the card. */
+    private fun updateBattleRetry(snap: com.pokedaisy.app.companion.data.SnapshotView) {
+        if (!snap.connected || n3ds != null) return
+        if (snap.inBattle) {
+            if (!retryTaken && battleRetryOn && snap.isTrainerBattle == true) {
+                retryTaken = true
+                engine.requestRetrySave()
+            }
+            if (snap.party.isNotEmpty() && snap.party.all { it.isEgg || it.hp <= 0 }) retryLost = true
+        } else if (retryInBattle) {
+            if (retryTaken && retryLost && battleRetryOn) {
+                Log.i("pokedaisy", "boss retry: a trainer battle lost, asking")
+                runOnUiThread { com.pokedaisy.app.companion.ui.BattleRetryAsk.showing = true }
+            }
+            retryTaken = false
+            retryLost = false
+        }
+        retryInBattle = snap.inBattle
+    }
+
+    /** BattleRetryAsk's answer: RETRY loads the battle's start; no leaves the game as it is. */
+    private fun answerBattleRetry(retry: Boolean) {
+        if (retry && ::engine.isInitialized && !coopRefuses()) engine.requestRetryLoad()
+    }
+
+    /** LAST BALL ([com.pokedaisy.app.companion.data.BattleBall]): the game's functions (null = none, or not found yet), the
+     * config they were looked up for, the option (cached), the ball thrown last (per ROM) and the bag of the last sample. */
+    @Volatile private var ballFns: com.pokedaisy.app.companion.data.BattleBall.Fns? = null
+    private var ballFnsFor: com.pokedaisy.app.companion.data.NativeConfig? = null
+    @Volatile private var lastBallOn = true
+    @Volatile private var lastBallId: Int? = null
+    private var ballItemsBefore: List<com.pokedaisy.app.companion.data.ItemView> = emptyList()
+
+    /** Each sample (emu thread): the throw's functions looked up once the game's config is known, and the ball a battle used. */
+    private fun updateLastBall(snap: com.pokedaisy.app.companion.data.SnapshotView) {
+        if (!snap.connected) return
+        val cfg = com.pokedaisy.app.companion.data.activeNativeConfig
+        val rom = romData
+        if (cfg != null && cfg !== ballFnsFor && rom != null && romBlocked == null) {
+            ballFnsFor = cfg
+            levelCapThread.execute {
+                val f = com.pokedaisy.app.companion.data.BattleBall.find(rom.toOkioPath(), cfg.completeWhenChoseItem, cfg.battlerControllerFuncs)
+                Log.i("pokedaisy", "last ball: ${if (f != null) "found" else "not found"}")
+                if (romData == rom) ballFns = f
+            }
+        }
+        if (snap.inBattle) com.pokedaisy.app.companion.data.BattleBall.thrown(ballItemsBefore, snap.items)?.let { id ->
+            if (id != lastBallId) { lastBallId = id; Prefs(this).setLastBallFor(romKey, id) }
+        }
+        ballItemsBefore = snap.items
+    }
+
+    /** The ball the BATTLE tab's button throws now, or null for no button ([com.pokedaisy.app.companion.data.BattleBall.canThrow]). */
+    private fun lastBallNow(): com.pokedaisy.app.companion.data.ItemView? {
+        if (!lastBallOn || ballFns == null || !::engine.isInitialized || n3ds != null) return null
+        if ((fieldItemSupport()?.fns?.removeBagItem ?: 0L) == 0L) return null
+        val snap = telemetry.snapshot.value
+        if (!com.pokedaisy.app.companion.data.BattleBall.canThrow(snap)) return null
+        return com.pokedaisy.app.companion.data.BattleBall.pick(snap.items, lastBallId)
+    }
+
+    /** SHINY ALERT ([com.pokedaisy.app.companion.data.ShinyHunt]): the option (cached for the emu thread), the battle
+     * follower and this game's count of wild battles (Compose state: the row shows it). */
+    @Volatile private var shinyAlertOn = false
+    private val shinyHunt = com.pokedaisy.app.companion.data.ShinyHunt()
+    private val shinyHuntState = androidx.compose.runtime.mutableIntStateOf(0)
+
+    /** Each sample (emu thread): a wild battle counted, and a shiny foe announced, with FF and turbo stopped. */
+    private fun updateShinyHunt(snap: com.pokedaisy.app.companion.data.SnapshotView) {
+        if (!snap.connected || !shinyAlertOn || shinyTarget == null) return
+        val step = shinyHunt.sample(snap.inBattle, com.pokedaisy.app.companion.data.ShinyHunt.wild(snap), snap.battleOpponent)
+        val key = romKey
+        if (step.counted) {
+            val n = shinyHuntState.intValue + 1
+            shinyHuntState.intValue = n
+            Prefs(this).setShinyHuntFor(key, n)
+        }
+        val shiny = step.shiny ?: return
+        val after = shinyHuntState.intValue
+        Log.i("pokedaisy", "shiny alert: ${shiny.name} after $after wild battles")
+        shinyHuntState.intValue = 0
+        Prefs(this).setShinyHuntFor(key, 0)
+        runOnUiThread {
+            if (::engine.isInitialized) engine.setFastForwardToggled(false)
+            input.releaseAll()
+            unlockSound?.play()
+            showHud(com.pokedaisy.app.companion.i18n.tr("SHINY {0}! After {1} wild battles", shiny.shownName, after), SHINY_ALERT_MS)
+        }
+    }
+
+    /** AUTO REFILL ([com.pokedaisy.app.companion.data.RepelRefill]): the option (cached for the emu thread), the count the last
+     * sample read, the kind working (null = not known) and the one refill in flight. */
+    @Volatile private var repelRefillOn = false
+    private var repelPrev = 0
+    @Volatile private var repelKind: Int? = null
+    private val repelRefillBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Whether this game can take a REPEL from the companion: what AUTO REFILL needs (the quick menu's REPEL rule). */
+    private fun repelRefillSupported(): Boolean =
+        dsRepelKnown() || fieldItemSupport()?.let { s -> s.fns.repelItems.any { s.canUse(it) } } == true
+
+    /** Each sample (emu thread): the kind working followed, and one more of it put on while 1..REFILL_AT steps are left. */
+    private fun updateRepelRefill(snap: com.pokedaisy.app.companion.data.SnapshotView) {
+        if (!snap.connected) return
+        val steps = snap.repelSteps ?: itemUse.repelVar?.let { snap.progress?.variable(it) }?.let(itemUse::repelSteps) ?: 0
+        val kinds = com.pokedaisy.app.companion.REPEL_KINDS
+        if (steps == 0) repelKind = null
+        else if (repelPrev == 0) repelKind = com.pokedaisy.app.companion.data.RepelRefill.kindOf(kinds, steps)
+        repelPrev = steps
+        if (!repelRefillOn || snap.inBattle || steps !in 1..com.pokedaisy.app.companion.data.RepelRefill.REFILL_AT) return
+        val kind = com.pokedaisy.app.companion.data.RepelRefill.pick(kinds, { id -> snap.items.any { it.itemId == id && it.quantity > 0 } }, repelKind)
+            ?: return
+        if (!::engine.isInitialized || !repelRefillBusy.compareAndSet(false, true)) return
+        val dsCfg = if (dsRepelKnown()) snap.game else null
+        val support = if (dsCfg == null) fieldItemSupport()?.takeIf { it.canUse(kind.first) } else null
+        if (dsCfg == null && support == null) { repelRefillBusy.set(false); return }
+        engine.requestFieldItemJob(false) { calls, busy ->
+            val out = runCatching {
+                if (dsCfg != null) {
+                    val f = engine.fieldState
+                    val free = f and MgbaCore.FIELD_SCREEN != 0 && f and (MgbaCore.FIELD_LOCKED or MgbaCore.FIELD_MENU or MgbaCore.FIELD_BATTLE) == 0
+                    com.pokedaisy.app.companion.data.gen5ConfigFor(dsCfg)?.let { com.pokedaisy.app.companion.data.useGen5Repel(it, calls, kind.first, kind.second, free, topUp = true) }
+                        ?: com.pokedaisy.app.companion.data.useGen4Repel(com.pokedaisy.app.companion.data.gen4ConfigFor(dsCfg)!!, calls, kind.first, kind.second, free, topUp = true)
+                } else com.pokedaisy.app.companion.data.refillRepel(support!!.fns, kind.first, busy, calls)
+            }.getOrElse { Log.e("pokedaisy", "repel refill failed", it); null }
+            Log.i("pokedaisy", "repel refill: ${kind.first} -> $out")
+            if (out?.result == com.pokedaisy.app.companion.data.ItemUseResult.USED) {
+                repelKind = kind.first
+                val name = com.pokedaisy.app.companion.data.itemName(kind.first)
+                runOnUiThread { showHud(com.pokedaisy.app.companion.i18n.tr("Another {0} went on", name)) }
+            }
+            repelRefillBusy.set(false)
+        }
+    }
+
+    /** SETTINGS > COMPANION BUTTON: the buttons on the game screen that open the companion - the HUD's COMPANION and the white
+     * edge tab ([SidePanel.openTabShown]) - shown at all (Compose state: the HUD reads it). */
+    private val companionButtonShown = androidx.compose.runtime.mutableStateOf(true)
+
+    /** LOW HP BEEP / FIELD POISON: the ROM's patches ([com.pokedaisy.app.companion.data.QuietPatches]; null = both N/A). */
+    private var quietFound: com.pokedaisy.app.companion.data.QuietPatches.Found? = null
+
+    private fun syncQuietPatches() {
+        val p = Prefs(this)
+        if (::engine.isInitialized) engine.setQuietPatches(quietFound, !p.lowHpBeep, !p.fieldPoison)
+    }
+
     /** NO HMS NEEDED: the ROM's patch ([com.pokedaisy.app.companion.data.HmFree]; null = the row shows N/A). */
     private var hmPatch: com.pokedaisy.app.companion.data.HmFree.Patch? = null
 
@@ -467,6 +620,15 @@ class PokeDaisyActivity : Activity() {
             if (::engine.isInitialized) engine.battleBack()
         }
         override val canSwitch get() = ::engine.isInitialized && engine.battleSwitchAddrs != null
+        override val lastBall get() = lastBallNow()
+        override fun throwBall() {
+            val ball = lastBallNow() ?: return
+            val fns = ballFns ?: return
+            val remove = fieldItemSupport()?.fns?.removeBagItem?.takeIf { it != 0L } ?: return
+            closeCompanionWindow()
+            lastBallId = ball.itemId
+            engine.battleThrowBall(fns, ball.itemId, remove)
+        }
         override fun switchTo(personality: Long) {
             closeCompanionWindow()
             if (::engine.isInitialized) engine.battleSwitchTo(personality)
@@ -1940,6 +2102,20 @@ class PokeDaisyActivity : Activity() {
             syncHmFree(on)
         }
         override val hmFreeSupported get() = hmPatch != null
+        override val lowHpBeep get() = Prefs(this@PokeDaisyActivity).lowHpBeep
+        override fun setLowHpBeep(on: Boolean) {
+            if (coopRefuses()) return
+            Prefs(this@PokeDaisyActivity).lowHpBeep = on
+            syncQuietPatches()
+        }
+        override val lowHpBeepSupported get() = quietFound?.beep != null
+        override val fieldPoison get() = Prefs(this@PokeDaisyActivity).fieldPoison
+        override fun setFieldPoison(on: Boolean) {
+            if (coopRefuses()) return
+            Prefs(this@PokeDaisyActivity).fieldPoison = on
+            syncQuietPatches()
+        }
+        override val fieldPoisonSupported get() = quietFound?.poison != null
         override val expShare get() = com.pokedaisy.app.companion.data.ExpShare.Mode.of(Prefs(this@PokeDaisyActivity).expShare)
         override fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) {
             if (coopRefuses()) return
@@ -1956,6 +2132,33 @@ class PokeDaisyActivity : Activity() {
         }
         override val levelCapSupported get() = levelCapFound != null && levelCapBosses != false
         override val levelCapLevel get() = levelCapNow?.level
+        override val repelRefill get() = Prefs(this@PokeDaisyActivity).repelRefill
+        override fun setRepelRefill(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).repelRefill = on
+            repelRefillOn = on
+        }
+        override val repelRefillSupported get() = repelRefillSupported()
+        override val shinyAlert get() = Prefs(this@PokeDaisyActivity).shinyAlert
+        override fun setShinyAlert(on: Boolean) {
+            val p = Prefs(this@PokeDaisyActivity)
+            p.shinyAlert = on
+            // Turning it on starts a hunt: the count from 0.
+            if (on) { p.setShinyHuntFor(romKey, 0); shinyHuntState.intValue = 0 }
+            shinyAlertOn = on
+        }
+        override val shinyHuntCount get() = shinyHuntState.intValue
+        override val shinyAlertSupported get() = shinyTarget != null
+        override val battleRetry get() = Prefs(this@PokeDaisyActivity).battleRetry
+        override fun setBattleRetry(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).battleRetry = on
+            battleRetryOn = on
+        }
+        override fun answerBattleRetry(retry: Boolean) = this@PokeDaisyActivity.answerBattleRetry(retry)
+        override val lastBallButton get() = Prefs(this@PokeDaisyActivity).lastBallButton
+        override fun setLastBallButton(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).lastBallButton = on
+            lastBallOn = on
+        }
         override val dsResolution get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsResolution else null
         override val dsGpuAvailable get() = GlCaps.gles32(this@PokeDaisyActivity) && MgbaCore.pkNdsGpuSupported() != 0
         override val dsMelonDs get() = !dsperate
@@ -2305,7 +2508,7 @@ class PokeDaisyActivity : Activity() {
             if (::sidePanel.isInitialized && sidePanel.enabled) Prefs(this@PokeDaisyActivity).companionTab else null
         override fun setCompanionTab(on: Boolean) {
             Prefs(this@PokeDaisyActivity).companionTab = on
-            runOnUiThread { sidePanel.openTabShown = on }
+            runOnUiThread { sidePanel.openTabShown = on; companionButtonShown.value = on }
         }
         override fun setSwapScreens(on: Boolean) {
             Screens.setSwapped(this@PokeDaisyActivity, Prefs(this@PokeDaisyActivity), on)
@@ -2785,11 +2988,27 @@ class PokeDaisyActivity : Activity() {
         centerFound = null
         expShareFound = null
         syncExpShare()
+        quietFound = null
+        syncQuietPatches()
         levelCapFound = null
         levelCapNow = null
         levelCapBosses = null
         levelCapAt = 0L
         syncLevelCap()
+        repelRefillOn = Prefs(this).repelRefill
+        shinyAlertOn = Prefs(this).shinyAlert
+        lastBallOn = Prefs(this).lastBallButton
+        battleRetryOn = Prefs(this).battleRetry
+        retryTaken = false
+        retryLost = false
+        retryInBattle = false
+        lastBallId = Prefs(this).lastBallFor(crc)
+        ballFns = null
+        ballFnsFor = null
+        ballItemsBefore = emptyList()
+        shinyHuntState.intValue = Prefs(this).shinyHuntFor(crc)
+        repelPrev = 0
+        repelKind = null
         shinyTarget = null
         if (::engine.isInitialized) engine.setShinyTarget(null)
         syncShinyAchievements()
@@ -2811,6 +3030,9 @@ class PokeDaisyActivity : Activity() {
             // LEVEL CAP: the same getexp's two level checks.
             val levelCap = com.pokedaisy.app.companion.data.LevelCap.find(r.toOkioPath())
             Log.i("pokedaisy", "level cap: ${if (levelCap != null) "found" else "not found"}")
+            // LOW HP BEEP / FIELD POISON: the beep's call and the field poison's, by their code.
+            val quiet = com.pokedaisy.app.companion.data.QuietPatches.find(r.toOkioPath())
+            Log.i("pokedaisy", "quiet patches: beep ${quiet?.beep != null}, poison ${quiet?.poison != null}")
             val center = com.pokedaisy.app.companion.data.PokemonCenter.find(r.toOkioPath())
             Log.i("pokedaisy", "pokemon center: ${center?.let { "heal, nickname ${it.nickname != null}, forget ${it.forget != null}, relearn ${it.relearn != null}" } ?: "not found"}")
             runOnUiThread {
@@ -2828,6 +3050,8 @@ class PokeDaisyActivity : Activity() {
                 syncExpShare()
                 levelCapFound = levelCap
                 syncLevelCap()
+                quietFound = quiet
+                syncQuietPatches()
             }
         }, "wild-encounters").start()
         Prefs(this).let { p ->
@@ -2928,7 +3152,9 @@ class PokeDaisyActivity : Activity() {
             onStateResult = { action, slot, ok ->
                 val msg = when (action) {
                     Hotkeys.Action.SAVE_STATE -> if (ok) tr("Saved slot {0}", slot) else tr("Slot {0}: save failed", slot)
-                    Hotkeys.Action.LOAD_STATE -> if (ok) tr("Loaded slot {0}", slot) else if (CoopGuards.statesBlockedBy(CoopGuards.StateBlock.LOCK)) tr("Not while you play together only") else tr("Slot {0}: nothing to load", slot)
+                    // BOSS RETRY's state (slot -1): the battle's start.
+                    Hotkeys.Action.LOAD_STATE -> if (slot < 0) { if (ok) tr("Back to the battle's start") else tr("Can't go back to that battle") }
+                        else if (ok) tr("Loaded slot {0}", slot) else if (CoopGuards.statesBlockedBy(CoopGuards.StateBlock.LOCK)) tr("Not while you play together only") else tr("Slot {0}: nothing to load", slot)
                     Hotkeys.Action.UNDO_SAVE -> if (ok) tr("Undid save (slot {0})", slot) else tr("Nothing to undo")
                     Hotkeys.Action.UNDO_LOAD -> if (ok) tr("Undid load") else if (CoopGuards.statesBlockedBy(CoopGuards.StateBlock.LOCK)) tr("Not while you play together only") else tr("Nothing to undo")
                     else -> ""
@@ -2963,6 +3189,14 @@ class PokeDaisyActivity : Activity() {
                 if (snap.connected && snap.party.isNotEmpty()) engine.expShareMask = com.pokedaisy.app.companion.data.ExpShare.maskOf(snap.party)
                 // LEVEL CAP: the next boss's top level, from the save's flags.
                 updateLevelCap(snap)
+                // AUTO REFILL: another REPEL on before the one working runs out.
+                updateRepelRefill(snap)
+                // SHINY ALERT: the hunt's count, and a shiny foe said out loud.
+                updateShinyHunt(snap)
+                // LAST BALL: its functions once the game is known, and the ball a battle used.
+                updateLastBall(snap)
+                // BOSS RETRY: a state as a trainer battle starts, and the question after a loss.
+                updateBattleRetry(snap)
                 // SMART FF reads the game's own gMain once the game is known (no scan
                 // guesswork), and learns the field's main callback from the player moving.
                 telemetry.knownGMain()?.let { (addr, inBattleOff) -> FfMenuWatch.useKnownGMain(addr, inBattleOff) }
@@ -3167,6 +3401,7 @@ class PokeDaisyActivity : Activity() {
         e.setHmFree(hmPatch, p.hmFree)
         e.setExpShare(expShareFound, if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(p.expShare) else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF)
         e.setLevelCap(levelCapFound, if (levelCapFound != null && p.levelCap) levelCapNow?.level ?: 0 else 0)
+        e.setQuietPatches(quietFound, !p.lowHpBeep, !p.fieldPoison)
         e.setShinyTarget(shinyTarget)
         e.shinyOdds = shinyOddsPref()
     }
@@ -3212,6 +3447,11 @@ class PokeDaisyActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // COMPANION BUTTON may have changed in the top screen's Settings.
+        Prefs(this).companionTab.let { on ->
+            companionButtonShown.value = on
+            if (::sidePanel.isInitialized && sidePanel.openTabShown != on) sidePanel.openTabShown = on
+        }
         presentation?.let {
             SecondScreenHolder.open(this, it.display)
             it.watchBars()
@@ -4994,7 +5234,7 @@ class PokeDaisyActivity : Activity() {
                     bottomHidden = n3dsFieldHeld.value,
                     itemUse = itemUse,
                     onTouchScreen = if (n3dsFloats) ::toggleDsTouch else null,
-                    onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
+                    onOpenCompanion = if (panelClosed && companionButtonShown.value) ({ sidePanel.openPanel() }) else null,
                     onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
                     onPanel = { hudPanelOpen.value = it },
                 ) else com.pokedaisy.app.companion.ui.FieldHud(
@@ -5002,7 +5242,7 @@ class PokeDaisyActivity : Activity() {
                     modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
                     clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
                     itemUse = itemUse, fly = flyAction,
-                    onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
+                    onOpenCompanion = if (panelClosed && companionButtonShown.value) ({ sidePanel.openPanel() }) else null,
                     onTouchScreen = if (romIsNds && dsFloats.value) ::toggleDsTouch else null,
                     dsCorner = dsCornerTaken.value,
                     dsClearBottom = dsHudClear.value,
@@ -5063,6 +5303,12 @@ class PokeDaisyActivity : Activity() {
                         modifier = androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp),
                         cardModifier = androidx.compose.ui.Modifier.width(maxWidth * if (narrow) 0.94f else 0.54f),
                         maxWidth = maxWidth, onAnswer = ::answerFlyStyle,
+                    )
+                    com.pokedaisy.app.companion.ui.BattleRetryAskHost(
+                        active = !tipsOnCompanion.value, roomy = false,
+                        modifier = androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp),
+                        cardModifier = androidx.compose.ui.Modifier.width(maxWidth * if (narrow) 0.94f else 0.54f),
+                        maxWidth = maxWidth, onAnswer = ::answerBattleRetry,
                     )
                     // RetroAchievements' popups and challenge / tracker indicators, while no companion is on screen (a DS
                     // game's touch screen in its place, one screen's closed window): GitHub #500.
@@ -5304,6 +5550,7 @@ class PokeDaisyActivity : Activity() {
         if (expandOfferUp.value || bottomFocus.value || companionOverGame.value) return false
         if (!tipsOnCompanion.value && com.pokedaisy.app.companion.FeatureTips.scheduler?.current != null) return false
         if (!tipsOnCompanion.value && com.pokedaisy.app.companion.ui.FlyStyleAsk.showing) return false
+        if (!tipsOnCompanion.value && com.pokedaisy.app.companion.ui.BattleRetryAsk.showing) return false
         return true
     }
 
@@ -6404,6 +6651,8 @@ class PokeDaisyActivity : Activity() {
         private const val PLAY_POSITIONS = 5
         /** LEVEL CAP: how often a sample may work the cap out again (a badge moves it). */
         private const val LEVEL_CAP_EVERY_MS = 2000L
+        /** How long SHINY ALERT's line stays on the game screen. */
+        private const val SHINY_ALERT_MS = 8000L
         /** How long a NUZLOCKE notice stays on the game screen: long enough to read in a battle's opening. */
         private const val NUZLOCKE_NOTICE_MS = 3500L
 
