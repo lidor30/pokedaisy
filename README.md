@@ -191,6 +191,7 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | Yellow (GB)                    | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Yellow (GB)                    | DE / FR / IT / ES          |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Yellow Legacy (GB)             | 1.0.10                     |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
+| Brown (GB)                     | 6.0.1, 6.1.2               |  ✅   | ✅  |   ◐    | ✅  |    —    |   —   |
 | Gold / Silver (GBC)            | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Gold / Silver (GBC)            | DE (Goldene Edition, Silberne Edition) |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Crystal (GBC)                  | USA, USA/Europe rev 1, AU  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
@@ -218,7 +219,8 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | Black 2 (DS)                   | USA/Europe, every language |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | White 2 (DS)                   | USA/Europe, every language |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Origin HeartGold (DS)          | 4.0.3 English 1.0.0        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
-| Renegade Platinum (DS)         | 1.2.0, 1.3.0 (+ Classic)   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
+| Heartfelt Gold (DS)            | 1.0.15 (+ Zoomed In)       |  ✅   | ✅  |   ◐    | ✅  |    —    |   —   |
+| Renegade Platinum (DS)         | 1.2.0, 1.3.0 (+ patches)   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Blaze Black 2 Redux (DS)       | 1.4.1 (+ Classic, EVless)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Volt White 2 Redux (DS)        | 1.4.1 (+ Classic, EVless)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Unbound                        | 2.1.1.1                    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
@@ -251,12 +253,13 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | Super Mariomon                 | 1.2.1-1.3, 1.5.1, 1.5.2    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Recharged Emerald              | 2.2.5, 2.2.8, Rebalanced   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Modern Emerald                 | 3.6                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   —   |
+| Epsilon Emerald                | 1.0.0                      |  ✅   | ✅  |   ◐    |  ◐  |    —    |   —   |
 | Elite Redux                    | 2.65.3b, 2.65.4.1b         |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Team Rocket Dragonsden         | 1.5                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   ◐   |
 | Team Rocket Dragonsden         | 2026 3.0.9, 3.1 (Spanish)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Wishes of Tomorrow             | 1.2.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Dreamstone Mysteries           | the one release            |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
-| Monomyth                       | 1.0, 1.1                   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
+| Monomyth                       | 1.0, 1.1, 1.2              |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Emerald Rogue                  | 2.2.1-EX                   |  ✅   | ✅  |   ✅   | ✅  |   ✅    |   —   |
 | SoulGold                       | 1.1.4, 1.2 (3), 1.2.1 (2)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | R.O.W.E.                       | 2.1.9.1 Experimental       |  ✅   | ✅  |   ◐    | ✅  |    ◐    |   —   |

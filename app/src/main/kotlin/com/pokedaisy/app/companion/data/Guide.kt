@@ -187,7 +187,8 @@ enum class GuideId {
 /** [live]'s guide; else by [game] (a config whose tables didn't check out has no live tables). */
 fun guideId(game: GameKind?, live: GuideTables?): GuideId? = live?.guide ?: when (game) {
     GameKind.FIRERED -> GuideId.FIRERED
-    GameKind.EMERALD -> GuideId.EMERALD
+    // Epsilon Emerald runs as EMERALD, but its story, trainers and wild Pokémon are the remakes': no guide.
+    GameKind.EMERALD -> if (runningEmeraldHack === hackTextEpsilonEmerald) null else GuideId.EMERALD
     // A Game Boy game: no GBA tables; its guide carries its own (GameGuide.world).
     GameKind.POLISHED_CRYSTAL -> GuideId.POLISHED_CRYSTAL
     GameKind.YELLOW -> GuideId.YELLOW
@@ -200,7 +201,8 @@ fun guideId(game: GameKind?, live: GuideTables?): GuideId? = live?.guide ?: when
     // Renegade Platinum runs as PLATINUM, but its wild Pokémon and trainers are its own: no guide.
     GameKind.PLATINUM -> if (renegadePlatinum) null else GuideId.PLATINUM
     // Origin HeartGold runs as HEARTGOLD, but its world isn't HeartGold's (its own wild Pokémon, trainers, story): no guide.
-    GameKind.HEARTGOLD -> if (originHeartGold) null else GuideId.HEARTGOLD
+    // So does Heartfelt Gold (hg-engine over the US cart: its own wild Pokémon and trainers).
+    GameKind.HEARTGOLD -> if (originHeartGold || heartfeltGold) null else GuideId.HEARTGOLD
     GameKind.SOULSILVER -> GuideId.SOULSILVER
     GameKind.BLACK -> GuideId.BLACK
     GameKind.WHITE -> GuideId.WHITE

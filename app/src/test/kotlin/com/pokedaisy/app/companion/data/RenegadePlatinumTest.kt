@@ -146,6 +146,30 @@ class RenegadePlatinumTest {
         }
     }
 
+    /** v1.3.0's shiny rate and Speed Up patches: a few bytes of code, every table read the same as v1.3.0's. */
+    @Test
+    fun `the code patches - the same check, v1_3_0's tables`() {
+        if (!rom.isFile) return
+        val base = NdsArt.readRenegade(rom.toOkioPath())!!
+        for ((name, sha1) in listOf(
+                "Pokemon Renegade Platinum (v1.3.0) (Shiny 1 in 4096).nds" to RenegadePlatinum.V1_3_0_SHINY_4096_SHA1,
+                "Pokemon Renegade Platinum (v1.3.0) (Shiny 1 in 8192).nds" to RenegadePlatinum.V1_3_0_SHINY_8192_SHA1,
+                "Pokemon Renegade Platinum (v1.3.0) (Speed Up).nds" to RenegadePlatinum.V1_3_0_SPEED_UP_SHA1)) {
+            val other = File(rom.parentFile, name)
+            if (!other.isFile) continue
+            assertEquals(name, sha1, com.pokedaisy.app.RomIdentity.sha1(other))
+            assertTrue(name, RenegadePlatinum.matches(other.toOkioPath()))
+            val data = NdsArt.readRenegade(other.toOkioPath())!!
+            assertEquals(name, base.speciesTypes, data.speciesTypes)
+            assertEquals(name, base.moveData, data.moveData)
+            assertEquals(name, base.typeChart, data.typeChart)
+            assertTrue(name, base.machines.contentEquals(data.machines))
+            assertTrue(name, base.iconPalettes.contentEquals(data.iconPalettes))
+            assertTrue(name, base.wildRates.contentEquals(data.wildRates))
+            assertEquals(name, "Pokémon Renegade Platinum", com.pokedaisy.app.GameTitles.BY_SHA1[sha1])
+        }
+    }
+
     /** v1.2.0 and v1.3.0's Classic patch: v1.3.0's code and table places, their own species / move files. */
     @Test
     fun `the other builds - the same check and tables, their own data`() {

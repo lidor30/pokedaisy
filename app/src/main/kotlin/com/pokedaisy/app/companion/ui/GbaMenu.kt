@@ -117,8 +117,8 @@ object OptionColors {
 
     /** A Game Boy game's own black and white in light mode: Yellow's and Gen 2's GBC ones, Red / Blue's SGB ones,
      * PureRed / PureBlue's pure black (their Color palettes, sampled headless). */
-    fun gbInk(game: GameKind?): Color = if (game.isRedBlue) Color(0xFF181010) else if (game.isPureRgb) Color.Black else Color(0xFF181818)
-    fun gbPaper(game: GameKind?): Color = if (game.isRedBlue) Color(0xFFFFEFFF) else Color(0xFFFFFFFF)
+    fun gbInk(game: GameKind?): Color = if (game.isRedBlue || game == GameKind.BROWN) Color(0xFF181010) else if (game.isPureRgb) Color.Black else Color(0xFF181818)
+    fun gbPaper(game: GameKind?): Color = if (game.isRedBlue || game == GameKind.BROWN) Color(0xFFFFEFFF) else Color(0xFFFFFFFF)
     private val G1_FRAME get() = listOf(G1_PAPER to 2, G1_INK to 1, G1_PAPER to 1, G1_INK to 1, G1_PAPER to 1)
 
     // The top screen's light backdrop (DaisyBackdrop, every theme's but HALLOWEEN's and NEW YEAR's): text drawn
@@ -153,7 +153,7 @@ object OptionColors {
     )).map { (color, width) -> tint(color) to width })
     val listFill get() = sk?.listFill ?: (if (gen1) G1_PAPER else w(0xFFE0DFDF, 0xFF1D2128))
     /** The cursor row (Gen 1 marks it with its ▶; here a light grey band, a lighter slate in dark). */
-    val rowSelected get() = sk?.rowSelected ?: (if (gen1) (if (activeGame.isRedBlue) c(0xFFE6D6E6, 0xFF3A3A3A) else c(0xFFDCDCDC, 0xFF3A3A3A))
+    val rowSelected get() = sk?.rowSelected ?: (if (gen1) (if (activeGame.isRedBlue || activeGame == GameKind.BROWN) c(0xFFE6D6E6, 0xFF3A3A3A) else c(0xFFDCDCDC, 0xFF3A3A3A))
         else w(0xFFFFFFFF, 0xFF353C49))
     val label get() = sk?.label ?: (if (gen1) G1_INK else w(0xFF575656, 0xFFCDD1D9))
     val labelShadow get() = sk?.labelShadow ?: (if (gen1) Color.Transparent else w(0xFFBCBBB4, 0xFF3A404B))

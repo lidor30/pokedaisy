@@ -573,6 +573,8 @@ static const struct known_rom KNOWN_ROMS[] = {
      PD_GUIDE_MONOMYTH},
     {"eb660caffbc26e1f09f86714d03af4c3eccd9e4d", &PD_CONFIG_MONOMYTH_V1_1, PD_GAME_EMERALD, "Pokémon Monomyth",
      PD_GUIDE_MONOMYTH},
+    {"742e62ffa5a8d607171fdb8477eb1f417dc36086", &PD_CONFIG_MONOMYTH_V1_2, PD_GAME_EMERALD, "Pokémon Monomyth",
+     PD_GUIDE_MONOMYTH},
     {"79ee6df0869c1773c8c6a5f764afc1f8d833d8bb", &PD_CONFIG_HEART_AND_SOUL, PD_GAME_EMERALD, "Pokémon Heart and Soul",
      PD_GUIDE_HEART_AND_SOUL},
     {"d0658315da1e8827f66f15c3d3a000fe747e163e", &PD_CONFIG_QUETZAL_V9_0, PD_GAME_EMERALD, "Pokémon Quetzal",

@@ -1837,7 +1837,9 @@ far-off characters in EXPAND.
 pointing at RAM reads the same; v1.0's save is its fixtures'), the ROM moved, one table set for both (`gen_monomyth_tables.py` with both ROMs
 checks it). Its header's game code is **BPEE**, so it's found by hash with the big BPEE hacks, and anything going by game code sees Emerald:
 `fanfareSongId` turns it away by its title, so it borrows a fanfare like v1.0 (it has its own song table; which song is its level-up isn't mapped). The next build: map the ROM by word pairs (v1.0 word -> the word at
-the shifted place) before anything else; if the RAM words still agree, it's a config over this one.
+the shifted place) before anything else; if the RAM words still agree, it's a config over this one. **v1.2 (2026-11-16)**: they didn't all agree -
+a word went in before gMapHeader (it and the RAM after it +4, the battle globals not), so check every RAM word, not a sample; its one changed
+table entry is an overlay (`moveDataMonomythV1_2`, `monomythV1_2`, `gen_monomyth_tables.py`'s NEWER_DIFFS).
 **Emerald Legacy v1.1.4 (2026-10-14)**: BPEE, 16 MB, but a rebuild - its public source (`$DECOMPS/pokelegacy`, tag V1.1.4)
 built with agbcc is the release byte for byte, so take every address from that ELF (`nm`) and every struct offset / constant
 from agbcc compiling `offsetof` against its headers, never from retail. Runs as `GameKind.EMERALD` under `LEGACY_TEXT`
