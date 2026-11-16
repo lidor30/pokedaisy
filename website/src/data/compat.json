@@ -346,7 +346,7 @@
       {"game": "Super Mariomon", "version": "1.2.1-1.3, 1.5.1, 1.5.2", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Recharged Emerald", "version": "2.2.5, 2.2.8, Rebalanced", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Modern Emerald", "version": "3.6", "cells": ["yes", "yes", "part", "part", "no", "no"]},
-      {"game": "Epsilon Emerald", "version": "1.0.0", "cells": ["yes", "yes", "part", "part", "no", "no"]},
+      {"game": "Epsilon Emerald", "version": "1.0.0", "cells": ["yes", "yes", "part", "part", "yes", "part"]},
       {"game": "Elite Redux", "version": "2.65.3b, 2.65.4.1b", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Team Rocket Dragonsden", "version": "1.5", "cells": ["yes", "yes", "part", "part", "no", "part"]},
       {"game": "Team Rocket Dragonsden", "version": "2026 3.0.9, 3.1 (Spanish)", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},

@@ -988,6 +988,27 @@ val GUIDE_TABLES_ELITE_REDUX_V2_65_4_1B = GuideTables(
 )
 
 /**
+ * Pokémon Epsilon Emerald v1.0.0: HERE only. gWildMonHeaders 0x08FB3A18 (its code's literal pools; ROUTE 101 first, 145
+ * headers) are 24 bytes - land, water, rock smash, a three-Pokémon hidden set, fishing (HERE reads the four it knows;
+ * ROUTE 101's land is WURMPLE / POOCHYENA / ZIGZAGOON Lv2-3); gMapGroups 0x08E299DC (34 groups: gMapHeader's bytes found in
+ * the ROM, its group's table, the table of groups). gTrainers 0x08BFA624 is 0x24 bytes, the name at +4 (265 is Roxanne);
+ * its parties are 16-byte packed members, and its leaders draw theirs from a bigger pool (the size in bits 8-10 of +0x18,
+ * the pool in bits 11-15), so NEXT BOSS isn't given and no TrainerMon layout is set. Flags / vars are Emerald's (+0x1270 /
+ * +0x139C, as its GF header says).
+ */
+val GUIDE_TABLES_EPSILON_EMERALD = GUIDE_TABLES_EMERALD.copy(
+    trainers = 0x08BFA624L,
+    learnsets = 0,
+    wildHeaders = 0x08FB3A18L,
+    probeTrainer = 265,
+    probeName = "Roxanne",
+    guide = GuideId.EPSILON_EMERALD,
+    trainerStride = 0x24,
+    wildLayout = WildLayout(stride = 0x18, land = 0, water = 1, rockSmash = 2, fishing = 4),
+    mapGroups = 0x08E299DCL,
+)
+
+/**
  * Pokémon Team Rocket Edition: Dragonsden Version: HERE only. Vanilla-shaped tables: gWildMonHeaders 0x08C2A974 (20 bytes,
  * 443 headers, 14 literal-pool words; Route 101's land set decodes to its Lv70-85 Hoenn Pokémon), gTrainers 0x0857F588 (40
  * bytes; 415 is KANTO LEADER BROCK, whose four the headless trainer battle met, from 24-byte TrainerMons). SaveBlock1's flags / vars at +0x1CA8 /

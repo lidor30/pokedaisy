@@ -1302,6 +1302,32 @@ val POKEDEX_RECHARGED_EMERALD_REBALANCED_V2_2_8 = rechargedEmeraldDex(
 )
 
 /**
+ * Pokémon Epsilon Emerald v1.0.0: Emerald's dex grown to its own 440 national numbers (1-386, its Gen 4 additions and
+ * Galar forms from 387, its EVOLOTTO 440 in an old-unown slot; 423-439 unused) and a 241-entry Hoenn dex
+ * (sHoennToNationalOrder 0x08C14EA4: TREECKO .. DEOXYS with its additions mixed in, then the rest). The front pics,
+ * palettes (raw 16 colours), base stats and ability names (17 bytes) from the GF ROM header; gPokedexEntries 0x1C-byte
+ * records by dex number (no unused pointer: BULBASAUR "Seed" 7 / 69, No. 412 GALLADE "Blade"), base stats Super Mariomon's
+ * 36-byte shape (u16 abilities at +0x18, the hidden one +0x1C), sSpeciesToNationalPokedexNum through its literal pool
+ * (0x08890B04), the footprints by BULBASAUR's retail bytes. Evolutions 7 rows of 6 bytes per species ([EvoScheme.EPSILON_EMERALD]),
+ * level-up learnsets {u16 move, u16 level} lists. Its 118 TMs' per-species bits weren't found (MOVES is level-up only).
+ * Flags: struct Pokedex's arrays are 56 bytes (owned SaveBlock2 + 0x28, seen + 0x60): a wild GALLADE (No. 412) set bit 411
+ * of seen (and of SaveBlock1 + 0x988, the GF header's seen1 = seen2). Its dex screen counts a caught one as seen and doesn't
+ * check that copy: retail Emerald's save (read 4 bytes off, as the game reads it) shows Seen 083 / Own 028 in its Hoenn
+ * Pokédex, which seen | caught over its Hoenn list gives.
+ */
+val POKEDEX_EPSILON_EMERALD = POKEDEX_EMERALD.copy(
+    entries = 0x08FCFCA4L, frontPics = 0x08BED754L, palettes = 0x08BE56C0L, speciesInfo = 0x08C18C58L,
+    speciesToNational = 0x08C14A3CL, abilityNames = 0x08C0AA9CL, footprints = 0x08FD3164L, regionalOrder = 0x08C14EA4L,
+    abilityNameLength = 17, hiddenAbilityOff = 0x1C, entryStride = 0x1C,
+    baseStats = BaseStatsLayout(stride = 0x24, genderOff = 0x12, eggGroupsOff = 0x16, abilitiesOff = 0x18, abilityU16 = true),
+    speciesCount = 565, nationalCount = 440, regionalCount = 241,
+    evolutions = 0, evoLayout = EvoLayout(EvoScheme.EPSILON_EMERALD, table = 0x08C28FCEL, perMon = 7, record = 6),
+    levelUpLearnsets = 0x08C2EC80L, tmhmLearnsets = 0, tmhmMoves = 0,
+    categorySuffix = "Pokémon", probeCategory = "Seed",
+    flags = DexFlags(DexFlagBlock.SAVE_BLOCK_2, 0x60, 0x28, 56, seenOrCaught = true),
+)
+
+/**
  * Super Mariomon v1.5.1-Anniversary: vanilla-shaped tables (an old pokeemerald-expansion's), the
  * Mario species from 906 numbered 1..155 (sSpeciesToNationalPokedexNum: PIRANHA P. 906 = No.1,
  * BOB-OMB 912 = No.7). Its TATTLEDEX lists the WORLD dex (sHoennToNationalOrder, the national
