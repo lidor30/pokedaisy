@@ -83,7 +83,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ | ✅ |
 | Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ |
 | Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ |
-| Epsilon Emerald | 1.0.0 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| Epsilon Emerald | 1.0.0 | ✅ ³⁹ | ✅ | ✅ | ✅ | — | ✅ ³⁹ | — | ✅ ³⁹ | — | ✅ ³⁹ | ✅ ³⁹ | — | — | — | — | — | — |
 | Monomyth | 1.0, 1.1, 1.2 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — | — | — | ✅ |
 | Odyssey | 4.1.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
 | Orange Islands | Beta 5.7, an older beta | ◐ ³ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | — | ✅ ¹⁹ ²⁰ | ✅ | ✅ ³³ | ✅ |
@@ -638,6 +638,16 @@ change to any of the places listed under "Where it's decided" updates its rows h
     flights to GRAVEL TOWN, map 0x21 and 0xCA, its own Fly menu listing the same places in the same order; Route 67's path
     counted as grass (wGrassTile) met a battle on the second step at a rate of 255, at step 21 at the map's own 25, and none
     in 100 steps held at 0.
+39. Epsilon Emerald (1.0.0, a closed gcc pokeemerald; 2026-11-16), each checked headless on retail Emerald's save, which
+    it loads as it is. EXPAND and the field reads: its own family (`PK_WIDE_FAMILY_EX32`: Emerald's maps and expansion's
+    objects, but FireRed's u32 metatile attributes, the layer type in bits 29-30, and 6-byte subsprites: s16 x / y, a tile
+    byte, a shape / size / priority byte), verify_wide.py map 440/440, battle 1133/1133, two more towns 440/440 each (Petalburg's
+    door, opening as you walk in, is drawn shut, as on retail Emerald); no far-off people (its graphics records are 0x20
+    bytes). The field lock is a byte (0x03000F2C). WILD ENCOUNTERS: 0x020398E0, OFF walked 180 steps of Route 101's grass
+    with no battle. PC anywhere (gSpecials[63], the storage alone) and FLY (`FIELD_ITEMS_EPSILON_EMERALD`, found through
+    the game's own callers): flown to Rustboro, Fortree, Littleroot and Route 101 (it flies to the routes you've been to,
+    as the remakes do). No bag USE / GIVE / TAKE: its bag is packed its own way. Bike / surf, FREE FLIGHT and the AREA map
+    weren't tried.
 
 ## What each column is
 

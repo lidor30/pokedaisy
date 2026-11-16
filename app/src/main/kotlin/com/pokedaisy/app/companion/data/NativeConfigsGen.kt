@@ -3278,6 +3278,9 @@ val NATIVE_EMERALD_ROGUE = NATIVE_EMERALD.copy(
 // right after the 565 icons; the palette table its header names points into IWRAM, so the one before it (its first six,
 // the ROM's palettes) is the fallback; sItemIconTable is the pair table whose entry 1 is retail's MASTER BALL icon. Names, types,
 // moves, the chart: EpsilonEmeraldGen.kt (scripts/gen_epsilon_emerald_tables.py).
+// - DEX (POKEDEX_EPSILON_EMERALD, Pokedex.kt) and HERE (GUIDE_TABLES_EPSILON_EMERALD, GuideRom.kt): their tables from the ROM;
+// its dex flags are 56-byte arrays (a wild battle set SaveBlock2 + 0x60 and SaveBlock1 + 0x988, headless).
+// - PC anywhere and FLY (FIELD_ITEMS_EPSILON_EMERALD, FieldItems.kt): found through the game's own callers, checked headless.
 val NATIVE_EPSILON_EMERALD = NativeConfig(
     itemDescs = ItemDescTable(0x08FEE438L, 36, 0x14, count = 629),
     playerParty = 0x020251A0L,
@@ -3320,6 +3323,9 @@ val NATIVE_EPSILON_EMERALD = NativeConfig(
     actionCursor = 0x02025110L,
     moveCursor = 0x02025114L,
     partyMenu = 0x0203DE3CL,
+    pokedex = POKEDEX_EPSILON_EMERALD,
+    guideTables = GUIDE_TABLES_EPSILON_EMERALD,
+    fieldItems = FIELD_ITEMS_EPSILON_EMERALD,
 )
 
 // ---- gamedata/gen3/hacks/gaia.toml ----

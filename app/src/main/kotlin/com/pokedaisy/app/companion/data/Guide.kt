@@ -175,6 +175,7 @@ enum class GuideId {
     GS_CHRONICLES,
     RECHARGED_EMERALD,
     EMERALD_LEGACY,
+    EPSILON_EMERALD,
     POLISHED_CRYSTAL,
     // The DS games: HeartGold and SoulSilver share their text, not their wild Pokémon.
     PLATINUM, HEARTGOLD, SOULSILVER,
@@ -254,6 +255,7 @@ private fun wholeGuide(id: GuideId?): GameGuide? = when (id) {
     GuideId.WISHES -> GUIDE_WISHES
     GuideId.DREAMSTONE -> GUIDE_DREAMSTONE
     GuideId.MONOMYTH -> GUIDE_MONOMYTH
+    GuideId.EPSILON_EMERALD -> GUIDE_EPSILON_EMERALD
     GuideId.SWORD_SHIELD -> GUIDE_SWORD_SHIELD
     GuideId.GS_CHRONICLES -> GUIDE_GS_CHRONICLES
     GuideId.RECHARGED_YELLOW, GuideId.RECHARGED_YELLOW_V180, GuideId.RECHARGED_YELLOW_V190,

@@ -73,6 +73,10 @@ static const int32_t FAMILIES[][PK_WIDE_CONFIG_SIZE - PK_WIDE_ADDRS] = {
     // callback1 there), its sFieldCameraOffset is four s16, it has 80 sprites (its snow and rain sit past 64); its SaveBlock1
     // is its own (PK_WIDE_SB1_OFFSETS / _FLAGS_AT).
     [PK_WIDE_FAMILY_MM] = { 512, 0x10, 2, 12, 0xF, 0, 0, -0x17, 4, 4, 0, 0, 0, 6, 2, 1, 80 },
+    // Epsilon Emerald: EX (Emerald's map and tilesets, expansion's objects) whose tilesets keep FireRed's u32 attributes (the
+    // layer type in bits 29-30), still at the Emerald tileset's +0x10: the u16 reading scored 830 of 1000 on its field, this 1000.
+    // Its struct Subsprite is 6 bytes (s16 x, y; a tile offset byte; shape / size / priority in a byte: buildPieces).
+    [PK_WIDE_FAMILY_EX32] = { 512, 0x10, 4, 29, 3, 0, 0, 0x439, 6, 0x23, 0, 0, 0, 6, 3, 0, 64 },
 };
 
 // Every engine row and every ROM row fills its part of the config, no more, no less.
@@ -1538,15 +1542,18 @@ static int buildPieces(const struct Snap* s, struct Piece* out) {
         }
         int bx = x - cvx, by = y - cvy;
         int cnt = (int) r8(table);
-        int ss = C[PK_WIDE_SUBSPRITE_SIZE];   // 4: s8 x, y; 8 (Ruby / Sapphire): u16 x, y, read as s16, + 2 bytes' padding
+        // 4: s8 x, y; 8 (Ruby / Sapphire): u16 x, y, read as s16, + 2 bytes' padding; 6 (Epsilon Emerald): s16 x, y, a byte of
+        // tile offset, a byte of shape (bits 0-1) / size (2-3) / priority (4-5) - put into the usual bits here.
+        int ss = C[PK_WIDE_SUBSPRITE_SIZE];
         for (int j = 0; j < cnt && n < 256; j++) {
             const uint8_t* sub = mem(subs + (uint32_t) (ss * j), (uint32_t) ss);
             if (!sub) break;
-            uint32_t v = le16(sub + ss / 2);   // the shape / size / tile / priority bits
+            uint32_t v = ss == 6 ? (uint32_t) (sub[5] & 0xF) | (uint32_t) sub[4] << 4 | (uint32_t) ((sub[5] >> 4) & 3) << 14
+                                 : le16(sub + ss / 2);   // the shape / size / tile / priority bits
             if ((v & 3) > 2) continue;
             int w = OBJ_DIMS[v & 3][(v >> 2) & 3][0], h = OBJ_DIMS[v & 3][(v >> 2) & 3][1];
-            int sx = ss == 8 ? (int16_t) le16(sub) : (signed char) sub[0];
-            int sy = ss == 8 ? (int16_t) le16(sub + 2) : (signed char) sub[1];
+            int sx = ss >= 6 ? (int16_t) le16(sub) : (signed char) sub[0];
+            int sy = ss >= 6 ? (int16_t) le16(sub + 2) : (signed char) sub[1];
             if (base.hflip) sx = -(sx + w);
             if (base.vflip) sy = -(sy + h);
             out[n] = base;
@@ -2701,7 +2708,7 @@ static int playerGraphics(void) {
     int k = playerObject();
     const uint8_t* oe = k < 0 ? NULL : mem(F.objects + 0x24u * (uint32_t) k, 0x24);
     if (!oe) return -1;
-    bool wide = F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX;
+    bool wide = F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX || F.family == PK_WIDE_FAMILY_EX32;
     return wide ? (int) le16(oe + 4) : oe[5];
 }
 
@@ -2715,7 +2722,7 @@ static int playerGraphics(void) {
  */
 int pk_look_refresh(struct mCore* core, const uint8_t* pal) {
     if (!F.locked || !F.sprites || !F.gfxInfo || !core) return 0;
-    if (F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX) return 0;
+    if (F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX || F.family == PK_WIDE_FAMILY_EX32) return 0;
     G = (struct GBA*) core->board;
     int k = playerObject();
     const uint8_t* oe = k < 0 ? NULL : mem(F.objects + 0x24u * (uint32_t) k, 0x24);
@@ -3776,7 +3783,8 @@ static void partnerBegin(struct GBAVideoRenderer* r) {
     bool blob = partnerReq.blob >= 0;
     if (partnerReq.frame < 0 || partnerReq.frame >= PK_PARTNER_FRAMES || partnerReq.blob >= PK_PARTNER_FRAMES || partnerReq.blob < -1 ||
         partnerReq.bob < -64 || partnerReq.bob > 64) { partnerWhy = PK_PARTNER_BAD_FRAME; return; }
-    if (!hookGba || !F.objects || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX || !selfFine.valid) { partnerWhy = PK_PARTNER_NO_PLAYER; return; }
+    if (!hookGba || !F.objects || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX ||
+        F.family == PK_WIDE_FAMILY_EX32 || !selfFine.valid) { partnerWhy = PK_PARTNER_NO_PLAYER; return; }
     G = hookGba;
     int cx, cy, px, py;
     uint32_t spriteId;
@@ -3998,7 +4006,8 @@ static void allowRunning(void) {
     uint32_t off;
     uint8_t bit;
     if (F.family == PK_WIDE_FAMILY_FR || F.family == PK_WIDE_FAMILY_FR_EX) { off = 0x19; bit = 2; }
-    else if (F.family == PK_WIDE_FAMILY_EM || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_MM) { off = 0x1A; bit = 4; }
+    else if (F.family == PK_WIDE_FAMILY_EM || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_MM ||
+             F.family == PK_WIDE_FAMILY_EX32) { off = 0x1A; bit = 4; }
     else return;
     uint8_t* p = (uint8_t*) mem(F.mapHeader + off, 1);
     if (p && !(*p & bit)) *p |= bit;

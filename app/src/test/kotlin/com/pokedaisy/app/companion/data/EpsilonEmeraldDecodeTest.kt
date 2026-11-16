@@ -91,4 +91,84 @@ class EpsilonEmeraldDecodeTest {
         assertEquals(200, activeTypeEffectiveness[18 * 100 + 16])
         assertEquals(0, activeTypeEffectiveness[16 * 100 + 18])
     }
+
+    @Test
+    fun `DEX - the save's Hoenn counts and its pages`() {
+        use()
+        val t = POKEDEX_EPSILON_EMERALD
+        assertEquals(t, cfg.pokedex)
+        val dex = readPokedexState(FixtureMemoryReader.load("epsilon_emerald"), cfg, t)!!
+        assertFalse(dex.national)   // retail Emerald's save never got the National Dex
+        val rom = RomFileReader.load(RETAIL_ROM_DIR + "Pokemon Epsilon Emerald (v1.0.0).gba") ?: return
+        PokedexSource.reader = rom
+        assertTrue(pokedexMatchesRom(rom, t))
+        // Its Hoenn Pokédex on this save: Seen 083, Own 028 (the game's own screen, headless).
+        val hoenn = PokedexSource.regionalOrder(t)!!.toList()
+        assertEquals(241, hoenn.size)
+        assertEquals(252 to 386, hoenn.first() to hoenn.last())   // TREECKO .. DEOXYS
+        assertEquals(83 to 28, hoenn.count { it in dex.seen } to hoenn.count { it in dex.caught })
+        // Its own national numbers: No. 412 is GALLADE (species 430), No. 440 its EVOLOTTO; 423-439 unused.
+        assertEquals(430, PokedexSource.speciesFor(t, 412))
+        assertEquals(276, PokedexSource.speciesFor(t, 440))
+        assertEquals(0, PokedexSource.speciesFor(t, 430))
+        val gallade = PokedexSource.entry(t, 412)!!
+        assertEquals("Blade" to (16 to 520), gallade.category to (gallade.heightDm to gallade.weightHg))
+        assertTrue(gallade.description.startsWith("A master of courtesy and swordsmanship"))
+        val bulbasaur = PokedexSource.entry(t, 1)!!
+        assertEquals("Seed" to (7 to 69), bulbasaur.category to (bulbasaur.heightDm to bulbasaur.weightHg))
+        assertEquals(listOf("Overgrow") to "Chlorophyll", bulbasaur.abilities to bulbasaur.hiddenAbility)
+        assertEquals(12 to 3, bulbasaur.type1 to bulbasaur.type2)
+        // EVOLVE: BULBASAUR at 16; KIRLIA -> GALLADE with a DAWN STONE, male; its LINOONE form -> OBSTAGOON at 35 by night;
+        // its FARFETCH'D form after three critical hits; KOFFING -> its WEEZING form holding a SWEET TEA.
+        assertTrue(EvoLink(1, 2, listOf(EvoReq.Level(16))) in DexDetails.family(t, 1)!!)
+        assertTrue(EvoLink(393, 430, listOf(EvoReq.UseItem(99), EvoReq.Gender(female = false))) in DexDetails.family(t, 430)!!)
+        assertTrue(EvoLink(506, 445, listOf(EvoReq.Level(35), EvoReq.Time(EvoTime.NIGHT))) in DexDetails.family(t, 445)!!)
+        assertTrue(EvoLink(497, 441, listOf(EvoReq.Crits(3))) in DexDetails.family(t, 441)!!)
+        assertTrue(EvoLink(109, 498, listOf(EvoReq.LevelUp, EvoReq.Hold(88))) in DexDetails.family(t, 109)!!)
+        // MOVES: BULBASAUR's level-up list (TACKLE 1, GROWL 3, LEECH SEED 7 ...); no TMs (not located).
+        val moves = DexDetails.levelUp(t, cfg.guideTables, 1)!!
+        assertEquals(listOf(LevelMove(1, 33), LevelMove(3, 45), LevelMove(7, 73)), moves.take(3))
+        assertFalse(DexDetails.hasTeachable(t))
+    }
+
+    @Test
+    fun `GUIDE - HERE's wild Pokemon, no NEXT BOSS`() {
+        use()
+        val g = cfg.guideTables!!
+        assertEquals(GuideId.EPSILON_EMERALD, g.guide)
+        assertTrue(gameGuide(GuideId.EPSILON_EMERALD)!!.bosses.isEmpty())
+        val rom = RomFileReader.load(RETAIL_ROM_DIR + "Pokemon Epsilon Emerald (v1.0.0).gba") ?: return
+        PokedexSource.reader = rom
+        assertTrue(guideTablesMatchRom(rom, g))
+        // ROUTE 101 (0.16): WURMPLE, POOCHYENA and ZIGZAGOON at Lv2-3 in the grass, no water.
+        val r101 = GuideRomSource.encounters(g, 0, 16)!!
+        assertEquals(setOf(290, 286, 288), r101.grass.map { it.species }.toSet())
+        assertEquals(2 to 3, r101.grass.minOf { it.minLevel } to r101.grass.maxOf { it.maxLevel })
+        assertTrue(r101.water.isEmpty())
+        // ROUTE 102 (0.17) has water and fishing; the save's ROUTE 114 (0.29) has grass.
+        val r102 = GuideRomSource.encounters(g, 0, 17)!!
+        assertTrue(r102.water.isNotEmpty() && r102.oldRod.isNotEmpty())
+        assertTrue(GuideRomSource.encounters(g, 0, 29)!!.grass.isNotEmpty())
+        // AREA: ZIGZAGOON in ROUTE 101's grass (map section 0x10).
+        assertTrue(MapSections.known(g))
+        assertTrue(DexDetails.catchSpots(g, 288)!!.any { it.mapsec == 0x10 && it.method == WildMethod.GRASS })
+    }
+
+    @Test
+    fun `PC anywhere and FLY - its table matches the ROM, no bag USE`() {
+        assertEquals(FIELD_ITEMS_EPSILON_EMERALD, cfg.fieldItems)
+        val rom = RomFileReader.load(RETAIL_ROM_DIR + "Pokemon Epsilon Emerald (v1.0.0).gba") ?: return
+        val read = { a: Long, n: Int -> rom.readCoreMemory(a, n) }
+        val support = fieldItemSupport(FIELD_ITEMS_EPSILON_EMERALD, read)!!
+        assertTrue(support.canPc)
+        assertTrue(support.canFly)
+        assertFalse(support.canUse(86))   // a Repel: not from the bag
+        // Its sMapHealLocations: Littleroot {0, 9, heal 1}, Rustboro heal 6, Route 101 {0, 16, heal 23}, its last row 0xEE.
+        val rows = read(FIELD_ITEMS_EPSILON_EMERALD.fly!!.destinations, 0xEF * 3)
+        fun row(i: Int) = (0..2).map { rows[i * 3 + it].toInt() and 0xFF }
+        assertEquals(listOf(0, 9, 1), row(0))
+        assertEquals(6, row(0x0A)[2])
+        assertEquals(listOf(0, 16, 23), row(0x10))
+        assertEquals(listOf(0, 62, 62), row(0xEE))
+    }
 }
