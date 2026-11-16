@@ -60,7 +60,7 @@ export function linkEvent(href, where) {
   if (host === 'github.com' && /^\/lidor30\/pokedaisy\/releases\/(latest|download\/)/i.test(path) || path.endsWith('.apk')) {
     const version = path.match(/\/download\/v([\d.]+)\//)?.[1];
     // Which platform's file (the DOWNLOAD cards): the APK, a Linux package or the 3DS app; a release page link has none.
-    const platform = path.endsWith('.apk') ? 'android' : path.endsWith('.3dsx') ? '3ds' : path.endsWith('.zip') ? 'linux' : null;
+    const platform = path.endsWith('.apk') ? 'android' : path.endsWith('.3dsx') || path.endsWith('.cia') ? '3ds' : path.endsWith('.zip') ? 'linux' : null;
     return { name: 'download_apk', params: { where, ...(version && { version }), ...(platform && { platform }) } };
   }
   const to = host === 'github.com' && /^\/lidor30\/pokedaisy/i.test(path) ? 'github'

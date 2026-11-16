@@ -2,6 +2,7 @@
 #
 #   make preview   render the companion from the RAM fixtures into build/shots/
 #   make 3ds       build ctr/pokedaisy.3dsx (devkitARM, in Docker)
+#   make cia       also ctr/pokedaisy.cia, for the HOME Menu (needs makerom and bannertool on the PATH)
 #   make decomps   build pret's FireRed / Emerald (= retail) for the tabs that read a ROM
 #   make fixture-roms  build/fixture-*.gba: test ROMs holding a RAM fixture
 #   make azahar-test   run the .3dsx in the Azahar emulator, screenshots in build/azahar/
@@ -15,7 +16,7 @@ CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror
 CORE_SRC := $(wildcard core/*.c)
 DEVKITARM_IMAGE := devkitpro/devkitarm:latest
 
-.PHONY: preview library-preview docs-shots test-save 3ds-dev test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+.PHONY: preview library-preview docs-shots test-save 3ds-dev cia test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
 
 $(BUILD)/pd_font_test: core/pd_canvas.c core/pd_canvas.h core/pd_font.h core/pd_font_gen.c test/font_test.c
 	@mkdir -p $(BUILD)
@@ -177,6 +178,12 @@ tables:
 			-DCMAKE_TOOLCHAIN_FILE=/repo/third_party/mgba/src/platform/3ds/CMakeToolchain.txt \
 			&& cmake --build build -j$$(nproc) && cp build/pokedaisy.3dsx ."
 
+# The HOME Menu install (FBI): the same ELF packed with the banner and the permissions (tools/make_cia.sh). A release's
+# comes from .github/workflows/3ds.yml, which attaches it with its QR code.
+PD_APP_VERSION = $(shell sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' ../app/build.gradle.kts)
+cia: 3ds
+	tools/make_cia.sh ctr/build/pokedaisy.elf ctr/pokedaisy.cia $(PD_APP_VERSION)
+
 # The dev build: the Wi-Fi link (tools/pdlink.py) and an SD folder of its own. Never a player's build.
 3ds-dev:
 	docker run --rm -v "$(REPO):/repo" -w /repo/3ds/ctr $(DEVKITARM_IMAGE) \
@@ -286,7 +293,7 @@ azahar-battle-test: 3ds fixture-roms
 	for s in $(AZAHAR_BATTLE_SHOTS); do convert xwd:$(BUILD)/azahar-battle/$$s.xwd -crop 640x500+320+230 $(BUILD)/azahar-battle/$$s.png; done
 
 clean:
-	rm -rf $(BUILD) ctr/build ctr/build-dev ctr/pokedaisy.3dsx ctr/pokedaisy-dev.3dsx
+	rm -rf $(BUILD) ctr/build ctr/build-dev ctr/pokedaisy.3dsx ctr/pokedaisy.cia ctr/pokedaisy-dev.3dsx
 
 # Optional host capability: the default 3DS settings remain available.
 $(BUILD)/pd_host_display_test: $(CORE_SRC) $(wildcard core/*.h) test/host_display_test.c
