@@ -45,6 +45,8 @@ void smc_note_write(u32 address) {
 #define STATE_MAGIC 0x50534750u // "PGSP"
 #define STATE_VERSION 1
 
+static void hblank_find(void); // the H-blank stand-in (below), set up as a game opens
+
 static struct {
     bool loaded;
     struct pd_gpsp_host host;
@@ -390,6 +392,7 @@ bool pd_gpsp_open(const char* romPath, const char* savePath, const struct pd_gps
     }
     G.crc = host->knownCrc ? host->knownCrc : crc32_of(gamepak_buffers[0], gamepak_size);
     read_save();
+    hblank_find();
     emu_log("gpSP: %s, %s, %u KiB game", pd_gpsp_recompiling() ? "recompiler" : "interpreter",
             G.threaded ? "drawn on its own thread" : host->threaded ? "its render thread DIDN'T START, drawn with the game" : "drawn with the game",
             (unsigned) (gamepak_size >> 10));
@@ -404,6 +407,8 @@ void pd_gpsp_close(void) {
         video_thread_stop();
         G.threaded = false;
     }
+    pd_gpsp_set_bkpt(NULL);
+    gpsp_hblank_hook = NULL;
     retro_unload_game();
     retro_deinit();
     G.loaded = false;
@@ -643,6 +648,102 @@ int pd_gpsp_call(uint32_t fn, const uint32_t args[4], uint32_t* r0) {
     reg[REG_VRAM_UPDATED] |= vramUpdated;
     reg[REG_PAL_UPDATED] |= palUpdated;
     return ok;
+}
+
+// --- H-blank interrupts with nothing to do (pd_armgba.c's, the same handler found the same way) ---
+// A battle keeps the H-blank interrupt on with no callback set: 228 interrupts a frame that only set two flags. Where the
+// game has pret's stock HBlankIntr, gpsp-pokedaisy.patch's gpsp_hblank_hook asks here first: with no callback the flags
+// are set here and the interrupt isn't raised, its time (190 cycles, armGBA's) taken from the CPU's next run.
+
+static const uint8_t HBLANK_INTR[40] = {
+    0x10, 0xB5, 0x09, 0x4C, 0x20, 0x69, 0x00, 0x28, 0x01, 0xD0, 0x00, 0x00, 0x00, 0x00, 0x07, 0x4A, 0x10, 0x88, 0x02, 0x21,
+    0x08, 0x43, 0x10, 0x80, 0xA0, 0x8B, 0xA2, 0x8B, 0x01, 0x43, 0xA1, 0x83, 0x10, 0xBC, 0x01, 0xBC, 0x00, 0x47, 0x00, 0x00,
+};
+#define HBLANK_INTR_BL 10 // the bl to _call_via_r0, 4 bytes, masked
+#define INTR_CHECK 0x03007FF8u
+#define MAIN_HBLANK_CALLBACK 0x10
+#define MAIN_INTR_CHECK 0x1C
+#define IRQ_FLAG_HBLANK 2
+
+static uint32_t hblankMain; // gMain, where the game has the stock handler; 0: the interrupt runs as ever
+static bool hblankSkips = true;
+static int hblankCost = 190;
+
+static uint8_t* hblank_ram(uint32_t addr, uint32_t len) {
+    if (addr >= 0x02000000u && addr - 0x02000000u + len <= 0x40000) return ewram + (addr - 0x02000000u);
+    if (addr >= 0x03000000u && addr - 0x03000000u + len <= 0x8000) return iwram + 0x8000 + (addr - 0x03000000u);
+    return NULL;
+}
+
+static int hblank_hook(void) {
+    uint8_t* m = hblank_ram(hblankMain, 0x20);
+    uint8_t* check = hblank_ram(INTR_CHECK, 2);
+    if (!m || !check) return -1;
+    if (m[MAIN_HBLANK_CALLBACK] | m[MAIN_HBLANK_CALLBACK + 1] | m[MAIN_HBLANK_CALLBACK + 2] | m[MAIN_HBLANK_CALLBACK + 3]) return -1;
+    check[0] |= IRQ_FLAG_HBLANK;
+    m[MAIN_INTR_CHECK] |= IRQ_FLAG_HBLANK;
+    return hblankCost;
+}
+
+static void hblank_find(void) {
+    hblankMain = 0;
+    gpsp_hblank_hook = NULL;
+    const uint8_t* rom = gamepak_buffers[0];
+    size_t size = gamepak_size < 0x400000 ? gamepak_size : 0x400000; // it sits near the start
+    for (size_t at = 0; rom && at + 48 <= size; at += 4) {
+        if (rom[at] != 0x10 || rom[at + 1] != 0xB5 || memcmp(rom + at, HBLANK_INTR, HBLANK_INTR_BL) ||
+            memcmp(rom + at + HBLANK_INTR_BL + 4, HBLANK_INTR + HBLANK_INTR_BL + 4, sizeof(HBLANK_INTR) - HBLANK_INTR_BL - 4))
+            continue;
+        uint32_t main = (uint32_t) rom[at + 40] | (uint32_t) rom[at + 41] << 8 | (uint32_t) rom[at + 42] << 16 | (uint32_t) rom[at + 43] << 24;
+        uint32_t check = (uint32_t) rom[at + 44] | (uint32_t) rom[at + 45] << 8 | (uint32_t) rom[at + 46] << 16 | (uint32_t) rom[at + 47] << 24;
+        if (check != INTR_CHECK || !hblank_ram(main, 0x20)) continue;
+        hblankMain = main;
+        break;
+    }
+    if (hblankMain && hblankSkips) gpsp_hblank_hook = hblank_hook;
+    emu_log("gpSP H-blank handler: %s", hblankMain ? "the stock one, taken when it has no callback" : "not the stock one, left alone");
+}
+
+void pd_gpsp_hblank_skips(bool on) {
+    hblankSkips = on;
+    gpsp_hblank_hook = hblankMain && on ? hblank_hook : NULL;
+}
+
+void pd_gpsp_hblank_cost(int cycles) {
+    hblankCost = cycles;
+}
+
+// --- the BKPT hook (pd_mixer.c's native mixer): gpsp-pokedaisy.patch's gpsp_bkpt, from the interpreter and the recompiler ---
+
+static bool (*bkptHook)(uint32_t pc, unsigned immediate);
+
+static u32 on_bkpt(u32 pc, u32 immediate) {
+    return bkptHook && bkptHook(pc, immediate);
+}
+
+void pd_gpsp_set_bkpt(bool (*hook)(uint32_t pc, unsigned immediate)) {
+    bkptHook = hook;
+    gpsp_bkpt_hook = hook ? on_bkpt : NULL;
+}
+
+// The CPU as the hook sees it: reg[] holds every register while it runs (the recompiler's stub stored its cached ones).
+uint32_t pd_gpsp_reg(int n) {
+    return reg[n];
+}
+
+void pd_gpsp_set_reg(int n, uint32_t v) {
+    reg[n] = v;
+}
+
+// On from [to] (bit 0: Thumb) once the hook returns.
+void pd_gpsp_jump(uint32_t to) {
+    reg[REG_PC] = to & ~1u;
+    if (to & 1) reg[REG_CPSR] |= 0x20;
+    else reg[REG_CPSR] &= ~0x20u;
+}
+
+int pd_gpsp_vcount(void) {
+    return read_ioreg(REG_VCOUNT);
 }
 
 // --- states: "PGSP", the version, the game's CRC, retro_serialize's bytes ---

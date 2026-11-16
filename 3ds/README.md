@@ -286,14 +286,26 @@ PC anywhere, FLY, FREE FLIGHT, the bag's USE, TM teaching) run the function to i
 recompiler's build too (the patch's `execute_arm_until`: stopped at the return address or a cap, the GBA's hardware not
 run), every register put back after. gpSP ends a frame wherever its CPU is when the time is up - FireRed in its wait loop,
 Emerald mostly mid-work - so a call first runs the game on to its wait (`gpsp_advance`: halted in VBlankIntrWait, or the
-stack depth and PC most frames end at, the counts halved every 120 frames so the boot's screens don't decide it). What
-it doesn't do yet: the native m4a mixer, the H-blank shortcut, cheats. Checked in the simulator
+stack depth and PC most frames end at, the counts halved every 120 frames so the boot's screens don't decide it). The
+native m4a mixer (`host/pd_mixer.c`) runs on it as on armGBA: the patch hands a Thumb BKPT to the host (`gpsp_bkpt`, from
+the interpreter and from the recompiler through `arm_stub.S`'s `execute_bkpt_thumb`, which stores the cached registers
+and goes on from wherever the hook left the CPU). Cheats are mGBA's own parser and cheat device over the mCore view
+(`pd_gpsp_core.c`): RAM codes and ROM patches as on the other cores, but a master code's hook isn't put in (it would go
+through mGBA's own CPU), so its set runs at the frame's end like any other. The H-blank shortcut is armGBA's too: the
+patch's `gpsp_hblank_hook` asks `pd_gpsp.c` before raising the interrupt, the stock handler's flags set there and its 190
+cycles taken from the CPU's next run (Unbound's battles, where it fires 228 times a frame: 410 us a frame on the
+simulator's interpreter, 504 without; FireRed's and Emerald's scripted battles never turn the interrupt on). Checked in
+the simulator
 (`PD_SIM_CORE=gpsp`, gpSP's interpreter there; `PD_SIM_THREADED_VIDEO=1` its render thread): FireRed and Emerald boot
 from their saves to the field with the companion, HUD and EXPAND right; the picture with the render thread equals the one
 without, frame for frame (`framesum` over walking, the START menu, a state saved and loaded); an in-game save written,
-then booted by both gpSP and armGBA to the same place; `make sim-test`'s scripts with `PD_SIM_CORE=gpsp`: FireRed's run,
-GEN 5 and FREE FLIGHT pass, Emerald's battle, GEN 5 and FREE FLIGHT - the other two start their scripted battles and
-fail later only because those scripts count on armGBA's random rolls (FireRed's first move knocks the foe out on gpSP).
+then booted by both gpSP and armGBA to the same place; `make sim-test`'s scripts with `PD_SIM_CORE=gpsp`: seven of eight
+pass with the mixer check on (`PD_SIM_MIXER_CHECK`, the default: the native mixer against the game's own on every mix,
+2,500 to 7,700 mixes a script, none different), FireRed's battle failing late only because it counts on armGBA's random
+rolls (its first move knocks the foe out on gpSP); with the native mixer alone (`-DPD_SIM_MIXER_CHECK=OFF`, as the console
+runs) all eight pass, as on armGBA. `press-to-state` presses A every 41 frames (it was 40: all on one frame parity, which
+FireRed's GEN 5 battle on gpSP, reading the keys every other frame there, never saw); the sim's `cheats FILE`: a
+CodeBreaker RAM write, a set behind a master code and a GameShark ROM patch apply, and the ROM patch comes out again.
 Not run on a console yet.
 
 **mGBA** (Game Boy games, and the comparison above): half of a frame on a New 3DS is the game's own sound mixer, the m4a
@@ -377,7 +389,7 @@ in `roms/` (a new one shows after `restart`). Never in a release build.
 
 `make sim` builds `build/sim/pd_sim` (`desktop/sim/`): the real session (`host/`) and companion over the real mGBA,
 with no 3DS code, from a script of `run`, `press`, `quick`, `tap`, `hit ID`, `hits`, `shot`, `wild`, `wait-state`,
-`press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` / `noinfo` /
+`press-to-state`, `poke`, `peek`, `cheats FILE`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` / `noinfo` /
 `infofirst` (BATTLE STYLE, ONE-TAP MOVES, BATTLE INFO, BATTLE VIEW), `gameplay TMS TEXT EVOS` / `nuzlocke` / `scenespeed SCENE N` / `tab N` / `options` (GAMEPLAY's switches, a tab by number, and what this game has of them), `charging 0|1`, `script HEX` (script bytes run by the game: a warp),
 `teach SLOT INDEX MOVE` (the game's SetMonData), `flash` (FLASH picked), `idle detect|remove|ignore` (mGBA's busy-loop
 skipping; the console uses detect), `trace N [KEYS]` (N frames one by one, each with its tick, game, EXPAND, snapshot and companion redraw in us and EXPAND's scene; PD_TRACE_US hides the ones under it), `timeframes N` (the session's and a bare runFrame's cost a frame; PD_SIM_THREADED_VIDEO=1

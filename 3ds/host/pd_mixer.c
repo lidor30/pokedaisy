@@ -120,22 +120,28 @@ static void (*forward16)(struct ARMCore* cpu, int immediate);
 
 // The core the hook runs on: mGBA (its BKPT handler, the CPU it hands over) or armGBA (pd_armgba.h's BKPT hook, its CPU
 // through pd_armgba_reg / _set_reg / _jump). The game's RAM and ROM are where the core's struct GBA points either way.
-static bool onArmgba;
+static bool onArmgba, onGpsp;
 unsigned pd_mixer_mixes; // native mixes so far (the dev build's stat)
 static struct GBA* hookedGba;
 static struct ARMCore* mcpu;
 
 static uint32_t cpu_reg(int n) {
+    if (onGpsp) return pd_gpsp_reg(n);
     return onArmgba ? pd_armgba_reg(n) : (uint32_t) mcpu->gprs[n];
 }
 
 static void cpu_set(int n, uint32_t v) {
-    if (onArmgba) pd_armgba_set_reg(n, v);
+    if (onGpsp) pd_gpsp_set_reg(n, v);
+    else if (onArmgba) pd_armgba_set_reg(n, v);
     else mcpu->gprs[n] = (int32_t) v;
 }
 
 // To [to], Thumb with bit 0 set.
 static void cpu_jump(uint32_t to) {
+    if (onGpsp) {
+        pd_gpsp_jump(to);
+        return;
+    }
     if (onArmgba) {
         pd_armgba_jump(to);
         return;
@@ -147,6 +153,7 @@ static void cpu_jump(uint32_t to) {
 }
 
 static int cpu_vcount(void) {
+    if (onGpsp) return pd_gpsp_vcount();
     return onArmgba ? pd_armgba_vcount() : hookedGba->video.vcount;
 }
 
@@ -992,9 +999,10 @@ static void jump_thumb(uint32_t to) {
 
 // IWRAM code: on armGBA through its write, which throws out what it compiled there.
 static void put_hook(struct GBA* gba, uint32_t addr, uint16_t op) {
-    if (onArmgba) {
+    if (onArmgba || onGpsp) {
         uint8_t v[2] = { (uint8_t) op, (uint8_t) (op >> 8) };
-        pd_armgba_write(0x03000000u | (addr & 0x7FFF), v, 2);
+        if (onGpsp) pd_gpsp_write(0x03000000u | (addr & 0x7FFF), v, 2);
+        else pd_armgba_write(0x03000000u | (addr & 0x7FFF), v, 2);
         return;
     }
     uint8_t* p = (uint8_t*) gba->memory.iwram + (addr & 0x7FFF);
@@ -1085,6 +1093,11 @@ static bool armgba_hook(uint32_t address, unsigned immediate) {
     return on_hook((int) immediate);
 }
 
+static bool gpsp_hook(uint32_t address, unsigned immediate) {
+    (void) address;
+    return on_hook((int) immediate);
+}
+
 static const uint8_t* find_code(const uint8_t* rom, size_t size, const uint8_t* signature, size_t length, uint32_t crc) {
     for (size_t at = 0x1000; at + length < size; at += 2) {
         if (rom[at] == signature[0] && rom[at + 2] == signature[2] && !memcmp(rom + at, signature, 10) && doCrc32(rom + at, length) == crc) return rom + at;
@@ -1097,9 +1110,8 @@ bool pd_mixer_attach(struct mCore* core) {
     running = MIXER_NONE;
     stock = hq = NULL;
     if (pd_armgba_is(core)) pd_armgba_set_bkpt(NULL); // a game before may have left it in
+    if (pd_gpsp_is(core)) pd_gpsp_set_bkpt(NULL);
     if (core->platform(core) != mPLATFORM_GBA) return false;
-    // gpSP has no BKPT hook yet: its game mixes its own sound.
-    if (pd_gpsp_is(core)) return false;
     struct GBA* gba = core->board;
     const uint8_t* rom = (const uint8_t*) gba->memory.rom;
     size_t size = gba->memory.romSize;
@@ -1118,8 +1130,11 @@ bool pd_mixer_attach(struct mCore* core) {
     hq = find_code(rom, size, HQ_SIGNATURE, HQ_SIZE, HQ_CRC);
     if (!stock && !hq) return false;
     onArmgba = pd_armgba_is(core);
+    onGpsp = pd_gpsp_is(core);
     hookedGba = gba;
-    if (onArmgba) {
+    if (onGpsp) {
+        pd_gpsp_set_bkpt(gpsp_hook);
+    } else if (onArmgba) {
         pd_armgba_set_bkpt(armgba_hook);
     } else if (gba->cpu->irqh.bkpt16 != hook16) {
         forward16 = gba->cpu->irqh.bkpt16;

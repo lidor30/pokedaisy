@@ -1,5 +1,5 @@
 // The app's pk_call.h / pk_host.h / pk_cheats.h entry points the 3DS port uses, for whichever core runs the game: armGBA
-// (a GBA game, pd_armgba.h), gpSP (a GBA game whose GBA CORE is GPSP, pd_gpsp.h: no cheats yet) or mGBA (a Game Boy game, or a GBA one on MGBA). The 3DS builds compile the app's pk_call.c, pk_host.c and
+// (a GBA game, pd_armgba.h), gpSP (a GBA game whose GBA CORE is GPSP, pd_gpsp.h) or mGBA (a Game Boy game, or a GBA one on MGBA). The 3DS builds compile the app's pk_call.c, pk_host.c and
 // pk_cheats.c with these names given an _mgba ending (ctr/CMakeLists.txt, desktop/sim/CMakeLists.txt), so the app's
 // files stay as they are.
 #include "pd_armgba.h"
@@ -88,10 +88,11 @@ void pk_heal_rtc(struct mCore* core) {
 
 void pk_cheats_clear(struct mCore* core) {
     if (pd_armgba_is(core)) pd_armgba_cheats_clear();
-    else if (!pd_gpsp_is(core)) pk_cheats_clear_mgba(core);
+    else if (pd_gpsp_is(core)) pd_gpsp_cheats_clear();
+    else pk_cheats_clear_mgba(core);
 }
 
 int pk_cheats_apply(struct mCore* core, const char* text, size_t len) {
-    if (pd_gpsp_is(core)) return 0; // no cheats on gpSP yet
+    if (pd_gpsp_is(core)) return pd_gpsp_cheats_apply(text, len);
     return pd_armgba_is(core) ? pd_armgba_cheats_apply(text, len) : pk_cheats_apply_mgba(core, text, len);
 }

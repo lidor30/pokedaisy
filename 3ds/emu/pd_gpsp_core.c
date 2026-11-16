@@ -5,8 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <mgba/core/cheats.h>
 #include <mgba/core/core.h>
+#include <mgba/internal/gba/cheats.h>
 #include <mgba/internal/gba/gba.h>
+#include <mgba-util/vfs.h>
 
 
 static struct mCore gpCore;
@@ -15,6 +18,9 @@ static struct pd_gpsp_memory gpMem;
 static color_t* gpVideo;
 static size_t gpStride;
 static uint32_t gpFrames;
+// Cheats: mGBA's GBA cheat device over this view (pd_gpsp_cheats_apply), its sets applied at each frame's end.
+static struct mCheatDevice* gpCheats;
+static bool gpQuietWrites; // the arrays copied once after the cheats' writes, not after each
 
 static void refresh_view(void) {
     pd_gpsp_memory(&gpMem);
@@ -61,10 +67,13 @@ static uint32_t c_get_keys(struct mCore* core) {
     return pd_gpsp_keys();
 }
 
+static void cheats_refresh(void);
+
 static void c_run_frame(struct mCore* core) {
     (void) core;
     pd_gpsp_run_frame();
     gpFrames++;
+    cheats_refresh();
     copy_arrays();
 }
 
@@ -179,23 +188,98 @@ static uint32_t c_raw32(struct mCore* core, uint32_t a, int segment) {
 static void c_write8(struct mCore* core, uint32_t a, uint8_t v) {
     (void) core;
     pd_gpsp_write(a, &v, 1);
-    copy_arrays();
+    if (!gpQuietWrites) copy_arrays();
 }
 
 static void c_write16(struct mCore* core, uint32_t a, uint16_t v) {
     (void) core;
     pd_gpsp_write(a & ~1u, &v, 2);
-    copy_arrays();
+    if (!gpQuietWrites) copy_arrays();
 }
 
 static void c_write32(struct mCore* core, uint32_t a, uint32_t v) {
     (void) core;
     pd_gpsp_write(a & ~3u, &v, 4);
+    if (!gpQuietWrites) copy_arrays();
+}
+
+// The cheats' ROM patches go into the cartridge (its recompiled code dropped); RAM as a bus write.
+static void c_raw_write(uint32_t a, const void* v, size_t n) {
+    if (a >> 24 >= 0x08 && a >> 24 <= 0x0D) pd_gpsp_rom_write(0x08000000u | (a & 0x01FFFFFFu), v, n);
+    else pd_gpsp_write(a, v, n);
+}
+
+static void c_raw_write8(struct mCore* core, uint32_t a, int segment, uint8_t v) {
+    (void) core;
+    (void) segment;
+    c_raw_write(a, &v, 1);
+}
+
+static void c_raw_write16(struct mCore* core, uint32_t a, int segment, uint16_t v) {
+    (void) core;
+    (void) segment;
+    c_raw_write(a & ~1u, &v, 2);
+}
+
+static void c_raw_write32(struct mCore* core, uint32_t a, int segment, uint32_t v) {
+    (void) core;
+    (void) segment;
+    c_raw_write(a & ~3u, &v, 4);
+}
+
+// --- pk_cheats.h on gpSP: mGBA's own parser (GameShark, Action Replay, CodeBreaker, as on the other cores) ---
+// A hook code (a master code's "run the cheats from here") would put a BKPT in through mGBA's struct GBA, which this
+// view only borrows the shape of: the sets are parsed with no core attached (so no hook goes in) and their hooks
+// dropped, every set then applied at the frame's end, as mGBA does with a set that has none.
+
+static void cheats_refresh(void) {
+    if (!gpCheats || !mCheatSetsSize(&gpCheats->cheats)) return;
+    gpQuietWrites = true;
+    for (size_t i = 0; i < mCheatSetsSize(&gpCheats->cheats); i++) mCheatRefresh(gpCheats, *mCheatSetsGetPointer(&gpCheats->cheats, i));
+    gpQuietWrites = false;
+}
+
+void pd_gpsp_cheats_clear(void) {
+    if (!gpCheats) return;
+    // Last first, each switched off and refreshed so its ROM patches come out (mCheatRefresh's unpatch).
+    while (mCheatSetsSize(&gpCheats->cheats)) {
+        struct mCheatSet* set = *mCheatSetsGetPointer(&gpCheats->cheats, mCheatSetsSize(&gpCheats->cheats) - 1);
+        set->enabled = false;
+        mCheatRefresh(gpCheats, set);
+        mCheatRemoveSet(gpCheats, set);
+        mCheatSetDeinit(set);
+    }
     copy_arrays();
+}
+
+int pd_gpsp_cheats_apply(const char* text, size_t len) {
+    pd_gpsp_cheats_clear();
+    if (!gpMem.ewram || !text || !len) return 0;
+    if (!gpCheats) gpCheats = GBACheatDeviceCreate();
+    if (!gpCheats) return -1;
+    struct VFile* vf = VFileFromConstMemory(text, len);
+    if (!vf) return -1;
+    gpCheats->p = NULL;
+    bool ok = mCheatParseFile(gpCheats, vf);
+    vf->close(vf);
+    size_t n = mCheatSetsSize(&gpCheats->cheats);
+    for (size_t i = 0; i < n; i++) {
+        struct GBACheatSet* set = (struct GBACheatSet*) *mCheatSetsGetPointer(&gpCheats->cheats, i);
+        if (!set->hook) continue;
+        if (--set->hook->refs == 0) free(set->hook);
+        set->hook = NULL;
+    }
+    gpCheats->p = &gpCore;
+    return ok ? (int) n : -1;
 }
 
 static void c_deinit(struct mCore* core) {
     (void) core;
+    pd_gpsp_cheats_clear();
+    if (gpCheats) {
+        mCheatDeviceDestroy(gpCheats);
+        gpCheats = NULL;
+    }
     pd_gpsp_close();
     memset(&gpMem, 0, sizeof(gpMem));
     gpVideo = NULL;
@@ -236,6 +320,9 @@ struct mCore* pd_gpsp_load(const char* romPath, const char* savePath, const stru
     c->rawRead8 = c_raw8;
     c->rawRead16 = c_raw16;
     c->rawRead32 = c_raw32;
+    c->rawWrite8 = c_raw_write8;
+    c->rawWrite16 = c_raw_write16;
+    c->rawWrite32 = c_raw_write32;
     refresh_view();
     copy_arrays();
     return c;

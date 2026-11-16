@@ -17,6 +17,7 @@
 //   press-to-state S [MAX] the same, pressing A now and then through the game's messages
 //   poke ADDR VALUE    a byte of RAM
 //   peek ADDR [N]      N bytes of RAM
+//   cheats [FILE]      the cheats in FILE (mGBA's .cheats format) into the core as the app loads them; none: all out
 //   state              prints the battle's state, the party's HP, the place
 //   expect WHAT ...    the script fails unless it holds: state S / hp SLOT N / inbattle 0|1
 //
@@ -38,6 +39,7 @@
 #include <mgba/internal/gba/gba.h>
 
 #include "../../../app/src/main/cpp/pk_call.h"
+#include "../../../app/src/main/cpp/pk_cheats.h"
 #include "../../../app/src/main/cpp/pk_host.h"
 #include "../../../app/src/main/cpp/pk_wide.h"
 #include "../../core/pd_games.h"
@@ -460,10 +462,12 @@ static void command(char* line) {
         int max = 3000;
         sscanf(args, "%15s %d", name, &max);
         int want = state_id(name), i = 0;
-        // A message that waits for a button gets one, as a player would.
+        // A message that waits for a button gets one, as a player would: every 41 frames, so a game that reads the keys
+        // every other frame sees one (every 40 they all fell on the same parity: FireRed's GEN 5 battle on gpSP never
+        // got one). One frame each: a longer press reached into the menu as it opened and was taken as a pick.
         for (;;) {
             for (; i < max && (int) sim_state() != want; i++)
-                frames(1, heldKeys | (!strcmp(cmd, "press-to-state") && i % 40 == 39 ? PD_KEY_A : 0));
+                frames(1, heldKeys | (!strcmp(cmd, "press-to-state") && i % 41 == 40 ? PD_KEY_A : 0));
             // That A can land on the menu's first frame and be taken: only a state that stays counts.
             frames(8, heldKeys);
             if (i >= max || (int) sim_state() == want) break;
@@ -640,6 +644,25 @@ static void command(char* line) {
             const struct GBADMA* d = &gba->memory.dma[i];
             printf("DMA%d ctl %04X src %08X dst %08X count %u\n", i, d->reg, d->source, d->dest, d->count);
         }
+    } else if (!strcmp(cmd, "cheats")) {
+        char* text = NULL;
+        long n = 0;
+        FILE* f = *args ? fopen(args, "rb") : NULL;
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            n = ftell(f);
+            fseek(f, 0, SEEK_SET);
+            text = malloc((size_t) n + 1);
+            if (text) n = (long) fread(text, 1, (size_t) n, f);
+            fclose(f);
+        } else if (*args) {
+            printf("FAIL: no cheat file %s\n", args);
+            failures++;
+        }
+        int sets = pk_cheats_apply(session.core, text, text ? (size_t) n : 0);
+        printf("cheats %d\n", sets);
+        if (sets < 0) failures++;
+        free(text);
     } else if (!strcmp(cmd, "peek")) {
         unsigned addr;
         int count = 1;
@@ -659,7 +682,7 @@ static void command(char* line) {
                pd_mixer_stats.reversed, pd_mixer_stats.ended);
         if (pd_mixer_stats.differed) failures++;
 #else
-        printf("mixer: native alone (PD_SIM_MIXER_CHECK=OFF)\n");
+        printf("mixer: native alone (PD_SIM_MIXER_CHECK=OFF), %u mixes\n", pd_mixer_mixes);
 #endif
     } else if (!strcmp(cmd, "scene")) {
         // EXPAND's scene now (pk_wide.h: 0 field, 1 text, 2 overlay, 3 battle start, 4 off, 5 fade, 6 menu) and the screen mode.
@@ -743,6 +766,10 @@ int main(int argc, char** argv) {
         core->setVideoBuffer(core, video, STRIDE);
         core->reset(core);
         free(romBytes);
+        // PD_SIM_HBLANK=0: the game's empty H-blank interrupts raised as ever (pd_gpsp.c), to compare.
+        const char* hb = getenv("PD_SIM_HBLANK");
+        if (hb && !strcmp(hb, "0")) pd_gpsp_hblank_skips(false);
+        if (getenv("PD_SIM_HBLANK_COST")) pd_gpsp_hblank_cost(atoi(getenv("PD_SIM_HBLANK_COST")));
     } else if (pd_armgba_wants(romBytes, romLen) && !(coreName && !strcmp(coreName, "mgba"))) {
         struct pd_armgba_host host = { .threaded = getenv("PD_SIM_THREADED_VIDEO") != NULL };
         char error[128] = "";

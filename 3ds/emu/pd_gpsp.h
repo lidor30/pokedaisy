@@ -2,7 +2,8 @@
 // recompiler is the fastest of the three on an Old 3DS (gpSP 3D's own claim: full speed there; not yet measured in
 // this app), its drawing on another core (pd_gpsp_host.threaded). Like armGBA it sits behind an mGBA-shaped `struct mCore` (pd_gpsp_core.c, its board a view of gpSP's
 // memory: RAM, ROM, VRAM, and io / palette / OAM copied after each frame, no renderer), so the companion's readers run
-// unchanged. What it doesn't do yet: the native m4a mixer and cheats.
+// unchanged. Cheats are mGBA's parser and cheat device over that view (a hook code's sets run at the frame's end). The
+// game's empty H-blank interrupts are stood in for as on armGBA (pd_gpsp_hblank_skips).
 //
 // Two halves: pd_gpsp.c (the only file that sees gpSP's headers; built into one object with gpSP whose only globals are
 // the pd_gpsp_* below, emu/gpsp.cmake) and pd_gpsp_core.c (the mCore, mGBA's headers).
@@ -40,6 +41,9 @@ struct pd_gpsp_host {
 // The mCore (pd_gpsp_core.c): NULL with [error] when the game didn't load.
 struct mCore* pd_gpsp_load(const char* romPath, const char* savePath, const struct pd_gpsp_host* host, char* error, size_t errorLen);
 bool pd_gpsp_is(const struct mCore* core);
+// pk_cheats.h on gpSP (pd_gpsp_core.c): mGBA's parser and cheat device over the view, applied at each frame's end.
+void pd_gpsp_cheats_clear(void);
+int pd_gpsp_cheats_apply(const char* text, size_t len);
 
 // --- pd_gpsp.c: gpSP itself ---
 
@@ -87,6 +91,19 @@ int pd_gpsp_call_safe(void);
 void pd_gpsp_call_set_cap(long steps);
 void pd_gpsp_rest_note(void);
 void pd_gpsp_rest_reset(void);
+
+// A Thumb BKPT in the game's code to [hook] (pd_mixer.c), with the CPU between instructions: true when the hook has set
+// the CPU itself (pd_gpsp_set_reg / _jump), else the BKPT does nothing. NULL: none.
+void pd_gpsp_set_bkpt(bool (*hook)(uint32_t pc, unsigned immediate));
+uint32_t pd_gpsp_reg(int n);
+void pd_gpsp_set_reg(int n, uint32_t v);
+void pd_gpsp_jump(uint32_t to);
+int pd_gpsp_vcount(void);
+
+// The game's stock H-blank handler stood in for when it has nothing to call (on by default; the sim's PD_SIM_HBLANK=0
+// raises them as ever), and the cycles each is charged (190).
+void pd_gpsp_hblank_skips(bool on);
+void pd_gpsp_hblank_cost(int cycles);
 
 enum pd_gpsp_state {
     PD_GPSP_STATE_OK,
