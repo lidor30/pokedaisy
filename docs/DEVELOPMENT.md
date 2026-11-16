@@ -1796,8 +1796,9 @@ game (TRADE FROM) and then the partner (TRADE WITH), the same list PC BOXES > TR
   code. Hacks get their own layouts later, per `NativeConfig`.
 - **Box records** (`Gen3BoxMon`): the 80-byte BoxPokemon decrypted (personality ^ OT id) and
   reordered (personality % 24); `encode()` gives back the game's bytes. A record whose checksum
-  fails is a Bad Egg in the game and is never moved or re-encoded. Step one only moves records
-  byte for byte, between PC slots: the party (100-byte records with stats) is shown, not moved or traded.
+  fails is a Bad Egg in the game and is never moved or re-encoded. PC records move byte for byte; a party
+  Pokémon is the record plus status, level, mail, HP and stats (`Gen3SaveData.PARTY_*`), which the editor
+  recomputes as `CalculateMonStats` does whenever a party record changes (`Gen3StatCalc`).
 - **Tests**: `Gen3SaveFileTest` / `SaveFileEditsTest` build saves from scratch with their own
   writer (`SyntheticSave`: no real save can be in this public repo). Before trusting a change
   to the writer with real saves, boot an edited save headlessly (`mgba_dump`) and check the game
@@ -1831,6 +1832,86 @@ game (TRADE FROM) and then the partner (TRADE WITH), the same list PC BOXES > TR
   what it evolved from - learns by its level, by TM / HM or from the game's tutors (FR/LG add Cape Brink's three starter
   moves; Smeargle gets every move but Struggle). Egg / event moves stay if known but aren't offered. A kept move keeps its
   PP and PP Ups; a new one gets full base PP (`gBattleMoves`, `MoveStatsGen.kt`) and none. `Gen3SaveEditTest` covers them.
+- **Round two (2026-11-15; players' asks: natures / abilities / IVs, trading from the party, a FireRed save refused for
+  a party slot it had emptied)**. The editor has three pages (`PcBoxesState.Page`: POKéMON, BAG, TRAINER) and a
+  Pokémon's own page (`SaveMonPage.kt`: INFO / STATS / MOVES). The rule stays *only what the game could hold*:
+  - **The party** (`Gen3SaveEditor.move(MonRef, MonRef)`): PC to party is BoxMonToMon (full HP, no status, mail
+    0xFF), party to PC CompactPartySlots + ZeroMonData; refused as the PC refuses (`SaveEditRefused`, its reason
+    shown): a party Pokémon holding mail, the last one able to battle (`CountPartyAliveNonEggMonsExcept`), a full party.
+  - **Personality traits** (`Gen3Personality`, `Gen3MonRules.kt`): nature, gender, shininess and the ability bit all
+    come from the personality (and the OT's IDs), so changing one picks another personality that gives it and keeps
+    the rest, Unown's letter and Wurmple's branch too (`reroll`); the record is re-encrypted under the new key
+    (`withPersonality`). No PID-IV (RNG method) correlation: a wild Pokémon edited this way fails PKHeX's
+    stricter check, as PKForge's edits without its legality mod do.
+  - **Values**: IVs 0..31, EVs 255 a stat and 510 in all, friendship 0..255, a level from the one read up to 100
+    (EXP = the growth rate's, `levelAsRead`), a nickname only for the save's own OT (TID, SID and name: the Name Rater's
+    rule) in the Western charset (`Gen3Names`). Base stats, abilities and gender ratios: `SaveSpeciesGen.kt`
+    (`scripts/gen_save_species.py`, pokeemerald's `species_info.h`, checked equal to pokefirered's and pokeruby's).
+  - **Box tools**: rename (8 characters), sort (dex number, level, name; Bad Eggs last, eggs after Pokémon), release
+    (not an egg), search (party and boxes, by nickname or species).
+  - **TRAINER**: money, coins; the Pokédex counts and ADD MINE (`registerOwned`: what a received Pokémon does, every
+    party / PC one), ALL SEEN / ALL CAUGHT (`markDex`, the regional list until the National Dex); event tickets
+    (`Gen3Events.kt`): the key item plus exactly the flags its distribution script set (pokeemerald's
+    `gift_*_ticket.inc` / `CableClub_EventScript_DistributeEonTicket`, pokeruby's FLAG_SYS_HAS_EON_TICKET, pokefirered's
+    FLAG_ENABLE_SHIP_* + FLAG_RECEIVED_*), offered only while that script would (not held, not received, the Pokémon not
+    met).
+  - **Trades from the party** (`Gen3Trade.send` / `swap` over `MonRef`): a party slot past the last is the end of the
+    party; the leaving side keeps a Pokémon that isn't an egg (`partyBlocker`, trade.c's rule); a party Pokémon keeps
+    its HP and status, a PC one arrives at full HP.
+  - `Gen3PokemonEditTest` covers each, read back from the rebuilt file.
+- **HeartGold / SoulSilver and Platinum (2026-11-15; GitHub discussion #623)**. The screens take any generation through
+  `SaveModel.kt` (`SaveMon`, `MonSave`, `MonSaveEditor`, `SaveGameData`; BAG and TRAINER through `TrainerBagEditor`:
+  money, `SavePocket`s by `PocketKind`, `DexSummary`); Gen 3's coins and event tickets stay Gen 3's (`PcBoxesState.gen3`).
+  `Gen4Save.kt`, from pret/pokeheartgold's save.c / pokemon.c / party.c and pret/pokeplatinum's savedata.c, with every
+  offset on `Gen4Layout` (HGSS / PLATINUM):
+  - **The file**: two halves (0 / 0x40000), each a general block (0xF628 at 0) and the PC's (0x12310 at 0xF700), each
+    ending in a SaveChunkFooter {count, size, magic 0x20060623 (Korean 0x20070903), slot, CRC16-CCITT (0x1021 from
+    0xFFFF) of the block before it}. The game loads the newer half whose two blocks are valid with the same count; an
+    edit goes into the other half, count + 1. The game saves only the PC boxes it changed (PCStorage.boxModifiedFlag,
+    +0x12004): an edited save has every box flagged, so its next save ("Saving a lot of data...") rewrites them all.
+  - **Platinum's file**: two copies (0 / 0x40000) of a general block (0xCF2C at 0) and the PC's (0x121E4 right after,
+    boxes from +4, 30 x 136 bytes a box, names after the 18 boxes), each ending in a 20-byte SaveBlockFooter {global
+    count, block count, size, 0x20060623, block id, CRC16 at +18}. Each block's copy is picked on its own (the global
+    count, then the block's own: SaveCheckInfo_CompareSectors) and the two picked must share the global count, else the
+    game calls the save damaged. An edit is a full save: global + 1, each block's count + 1, each block into the copy it
+    wasn't loaded from. A save the game then makes on top keeps the global count and goes into the other copy, block by
+    block (seen on the Renegade Platinum save). Trainer at +0x68, party at +0x98, bag at +0x630 (TMs 100, balls 15), the
+    dex at +0x1328 with no Unown caught list, Pichu forms or international flag. Tables from USA rev 1's own files
+    (`pl_personal`, `wotbl`, `evo`, `pl_waza_tbl`, pl_msg 610 abilities, `gen4ItemPocketsPlatinum` from pokeplatinum's
+    res/items), Renegade Platinum's machines from its ROM; the editor reads Platinum USA rev 1 only (`SaveFileEdits.isDsEditable`).
+  - **Records**: 136-byte BoxPokemon, blocks shuffled by (PID >> 13) % 24 and XORed with the LCG seeded by the
+    checksum; a party record's 100 more bytes XORed with one seeded by the PID. Empty slots are ZeroBoxMonData's (zeroes
+    encrypted with checksum 0). The ability's id and the gender sit in the record (block A +0x0D, block B +0x18), so a new
+    personality rewrites them. Party_RemoveMon / CopyBoxPokemonToPokemon: the aprijuice bytes (Party.extra, 5 a slot)
+    move with a party Pokémon and reset on withdraw; a withdrawn one gets the blank letter (Mail_Init) another party
+    Pokémon of the same save carries.
+  - **The game's data** from the player's cart (`NdsArt.readSaveTables`: personal a/0/0/2, level-up a/0/3/3,
+    evolutions a/0/3/4 for pre-evolutions, move PP a/0/1/1 byte 6, the cart's names); Origin HeartGold is turned away.
+  - **Names**: `Gen4Text.encode` (the charmap's Western block first, space 0x1DE); a nickname is the codes, 0xFFFF, zeroes
+    after, the IVs' bit 31 set unless it's the species' own name (checked: the real save's nicknames rewrite byte for byte);
+    box names u16[20] the same way. Five characters for a Japanese / Korean Pokémon, ten else; eight for a box.
+  - **Held items** are GIVE / TAKE through the bag (bag.c): one stack per item, 999 a stack (TMs 99), PocketCompaction's
+    swaps, TMs and berries sorted. An item's pocket is its record's fieldPocket in the cart's item_data (a/0/1/7), found
+    through sItemNarcIds (`SaveGen4ItemsGen.kt`, `scripts/gen_save_gen4_items.py`): the records aren't in item id order.
+  - **Trades** (`Gen4Trade`, behind `TradeRules` with `Gen3Trade`; HG / SS / Platinum with each other): anything but a Bad
+    Egg, the Spiky-eared Pichu and a Pokémon holding an item the other game hasn't (HG / SS's newer ones in Platinum); a party one keeps its party bytes (and its letter, so a mail holder only goes party to
+    party); the last non-egg stays. What arrives goes through Pokedex_SetMonCaughtFlag (`registerCaught`: seen / caught,
+    seen genders, the forms' order, Unown's letters, Spinda, the caught language and the international flag), then
+    EVO_TRADE / EVO_TRADE_ITEM from the cart's evo data (the item used up, an Everstone stopping it, the ability slot
+    kept, renamed when not nicknamed) and the Pokédex again.
+  - **BAG / TRAINER**: the eight pockets in the game's order (item.h's POCKET_* = `PocketKind`'s), ADD ITEM from every
+    item the cart files in the pocket (HMs and key items stay), 999 a stack, TMs 99, TMs and berries sorted; money to
+    999,999 (PlayerProfile +0x14). The Pokédex counts the regional dex from the cart (Johto's a/1/3/8, Sinnoh's
+    pl_pokezukan, member 0) and marks it the way Pokedex_Encounter / _Capture do (`markAllDex`: the usual gender, the first
+    form, the game's language), only the regional ones until the save has the National Pokédex (its byte, +0x337 / +0x319).
+    Play time isn't read yet.
+  - **Checked**: `Gen4SaveTest` (a synthetic save by its own writer, `SyntheticGen4`, and the player's own HeartGold save
+    with tables from the cart when they're on the machine); an edited copy of that save booted headless in `nds_dump`
+    (no corrupted-save message, the party and summary as edited, stats the formula's), saved in the game and booted again;
+    the same for a HeartGold / SoulSilver trade with a rename and a GIVE (both games, and SoulSilver saved on top); a
+    HeartGold save with money, bag stacks and every Pokémon seen given in the editor (the trainer card, each pocket and the
+    National Pokédex showed them); the Renegade Platinum save edited (nickname, IVs, a box name), booted in Renegade
+    Platinum and saved on top, read back with the edits kept.
 - **Look at it**: `cd ui-preview && gradle render -Ponly=pc-boxes,trade` (made-up saves, `SyntheticSave.demoFireRed` /
   `demoTrade`, with stand-in dots for icons - no game art in the repo); `PcBoxesScreenshotTest` for Paparazzi.
 
