@@ -299,7 +299,8 @@ The step-by-step guide for players is [INSTALL.md](INSTALL.md), in every languag
 [한국어](INSTALL.ko.md), [Français](INSTALL.fr.md), [Deutsch](INSTALL.de.md), [Italiano](INSTALL.it.md),
 [Español](INSTALL.es.md), [Português (Brasil)](INSTALL.pt-br.md), [Português (Portugal)](INSTALL.pt.md) (the manual's
 `docs/manual/3ds.md` and its translations, also on pokedaisy.com/docs/3ds/). In short: a 3DS with custom firmware
-(Luma3DS) and the Homebrew Launcher; `pokedaisy.3dsx` in `sdmc:/3ds/`; your own `.gba` / `.gb` / `.gbc` files (and any
+(Luma3DS) and the Homebrew Launcher; `pokedaisy.3dsx` in `sdmc:/3ds/` (or `pokedaisy.cia` installed with FBI, for the HOME
+Menu: each release's notes have its QR code, `.github/workflows/3ds.yml`); your own `.gba` / `.gb` / `.gbc` files (and any
 `.sav` with the same name) in `sdmc:/pokedaisy/roms/`; the DSP firmware dumped once for sound (`sdmc:/3ds/dspfirm.cdc`,
 Rosalina's Miscellaneous options > Dump DSP firmware), without which the game runs silent. `make docs-shots` renders the
 guide's screenshots (`desktop/pd_docs_shots.c`: the library over made-up file names).
@@ -371,6 +372,7 @@ make preview       # the companion from the RAM fixtures -> build/shots/*.png
 make library-preview  # the library on real ROMs and saves (read, never written) -> build/library-shots/*.png
 make test-save     # the save tools' core on real saves
 make 3ds           # ctr/pokedaisy.3dsx (devkitpro/devkitarm image)
+make cia           # + ctr/pokedaisy.cia (tools/make_cia.sh: makerom and bannertool on the PATH; cia/pokedaisy.rsf)
 make fixture-roms  # build/fixture-*.gba test ROMs (below)
 make azahar-test   # the .3dsx in the Azahar 3DS emulator -> build/azahar/*.png
 make azahar-battle-test  # BATTLE in Azahar, a trainer battle -> build/azahar-battle/

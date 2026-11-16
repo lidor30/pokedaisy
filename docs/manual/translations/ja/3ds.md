@@ -30,6 +30,9 @@ PokeDaisyはニンテンドー3DSでも自作アプリ（homebrew）として動
 
 `sdmc:/` は3DSでのSDカードのいちばん上の呼び名です。パソコンから見ると、`sdmc:/3ds/` はカードの `3ds` フォルダのことです。
 
+> [!TIP]
+> HOMEメニューから起動したい場合は、各リリースにある `pokedaisy.cia` を使えます。3DSでFBIを開き（カスタムファームウェアの導入で入っています）、**Remote Install**、**Scan QR Code** の順に選んで、リリースページのQRコードを読み取ってください。または `pokedaisy.cia` をSDカードにコピーして、FBIの **SD** の一覧からインストールします。このあとの手順は同じで、PokeDaisyはHOMEメニューのアイコンから起動します。
+
 ## ステップ3：ゲームとセーブデータを入れる
 
 1. カードのいちばん上に `pokedaisy` フォルダを作り、その中に `roms` フォルダを作ります：`sdmc:/pokedaisy/roms/`。（先に一度PokeDaisyを起動すれば、どちらも自動で作られます。）

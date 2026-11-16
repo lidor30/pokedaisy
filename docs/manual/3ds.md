@@ -3,7 +3,7 @@ title: Install on a Nintendo 3DS
 summary: Put the PokeDaisy homebrew app on a 3DS step by step, add your games and saves, and turn on sound.
 section: start
 order: 80
-keywords: [3ds, new 3ds, 2ds, nintendo 3ds, homebrew, homebrew launcher, 3dsx, luma, luma3ds, rosalina, cfw, custom firmware, sd card, dspfirm, dsp firmware, no sound, install 3ds]
+keywords: [3ds, new 3ds, 2ds, nintendo 3ds, homebrew, homebrew launcher, 3dsx, cia, fbi, qr code, home menu, luma, luma3ds, rosalina, cfw, custom firmware, sd card, dspfirm, dsp firmware, no sound, install 3ds]
 ---
 
 PokeDaisy also runs on the Nintendo 3DS as a homebrew app: your game plays on the top screen and the companion lives on the touch screen, with its own game library, a save editor and trading between saves. This page takes you from a console with custom firmware to your first game.
@@ -31,6 +31,9 @@ PokeDaisy also runs on the Nintendo 3DS as a homebrew app: your game plays on th
 3. Copy `pokedaisy.3dsx` into it, so the card has `sdmc:/3ds/pokedaisy.3dsx`.
 
 `sdmc:/` is how the 3DS names the top of the SD card: on your computer, `sdmc:/3ds/` is just the `3ds` folder on the card.
+
+> [!TIP]
+> Rather start PokeDaisy from the HOME Menu? Each release also has `pokedaisy.cia`. Open FBI on the 3DS (your custom firmware setup installed it), pick **Remote Install**, then **Scan QR Code**, and scan the code on the release's page. Or copy `pokedaisy.cia` to the SD card and install it from FBI's **SD** list. The steps below are the same, and you start PokeDaisy from its HOME Menu icon.
 
 ## Step 3: add your games and saves
 

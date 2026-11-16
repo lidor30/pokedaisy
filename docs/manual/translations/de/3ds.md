@@ -30,6 +30,9 @@ PokeDaisy läuft auch auf dem Nintendo 3DS, als Homebrew-App: Dein Spiel läuft 
 
 `sdmc:/` ist der Name, den der 3DS der obersten Ebene der SD-Karte gibt: Auf deinem Computer ist `sdmc:/3ds/` einfach der Ordner `3ds` auf der Karte.
 
+> [!TIP]
+> Du möchtest PokeDaisy lieber aus dem HOME-Menü starten? Jede Version enthält auch `pokedaisy.cia`. Öffne FBI auf dem 3DS (die Einrichtung der Custom Firmware hat es installiert), wähle **Remote Install**, dann **Scan QR Code**, und scanne den Code auf der Seite der Version. Oder kopiere `pokedaisy.cia` auf die SD-Karte und installiere es aus FBIs Liste **SD**. Die Schritte unten bleiben gleich, und du startest PokeDaisy über sein Symbol im HOME-Menü.
+
 ## Schritt 3: Spiele und Speicherdateien hinzufügen
 
 1. Lege ganz oben auf der Karte einen Ordner `pokedaisy` an und darin einen Ordner `roms`: `sdmc:/pokedaisy/roms/`. (PokeDaisy legt beide beim ersten Start selbst an, falls du es lieber erst einmal startest.)

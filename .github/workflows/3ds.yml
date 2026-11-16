@@ -51,7 +51,7 @@ jobs:
       MAKEROM_URL: https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.19.0/makerom-v0.19.0-ubuntu_x86_64.zip
       MAKEROM_SHA256: 287b809dec064e0ad597e3d272c49ecb7eed41693d5ee6fef9d8a8aa24c2497e
       BANNERTOOL_URL: https://github.com/diasurgical/bannertool/releases/download/1.2.0/bannertool.zip
-      BANNERTOOL_SHA256: unknown
+      BANNERTOOL_SHA256: 69768596f836acb3e3aeaa66e47c6ba560dde813c6dfcd33c8afc25fe29b7524
     steps:
       # The source: the release's tag, else this commit.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
