@@ -17,3 +17,5 @@ pd_gpsp_save_dirty
 pd_gpsp_flush_save
 pd_gpsp_save_state
 pd_gpsp_load_state
+pd_gpsp_threaded
+pd_gpsp_render_us

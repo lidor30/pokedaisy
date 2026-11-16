@@ -1,6 +1,6 @@
 // gpSP (third_party/gpsp, bheppe's gpSP 3D) as the 3DS port's third GBA core: the library's GBA CORE GPSP. Its ARM11
 // recompiler is the fastest of the three on an Old 3DS (gpSP 3D's own claim: full speed there; not yet measured in
-// this app). Like armGBA it sits behind an mGBA-shaped `struct mCore` (pd_gpsp_core.c, its board a view of gpSP's
+// this app), its drawing on another core (pd_gpsp_host.threaded). Like armGBA it sits behind an mGBA-shaped `struct mCore` (pd_gpsp_core.c, its board a view of gpSP's
 // memory: RAM, ROM, VRAM, and io / palette / OAM copied after each frame, no renderer), so the companion's readers run
 // unchanged. What it doesn't do yet: calls into the game (pk_call: PC anywhere, FLY, the bag's USE, one-press battle
 // picks, the field reads' calls), the native m4a mixer, cheats - pk_call_safe says no, and those stay off as for a game
@@ -32,6 +32,11 @@ struct pd_gpsp_host {
     void* (*romBuffer)(size_t size);
     // The ROM's CRC-32 when the host knows it from an earlier start of the same file (0: worked out here).
     uint32_t knownCrc;
+    // gpSP's render thread (video_thread.cc): drawing a few lines behind the game, the same picture, no frame later.
+    // On [renderCore] (the New 3DS's third, an Old 3DS's system core with its time lent: host_core1_take; -1 = any, the
+    // simulator); off, the game's thread draws.
+    bool threaded;
+    int renderCore;
 };
 
 // The mCore (pd_gpsp_core.c): NULL with [error] when the game didn't load.
@@ -65,6 +70,9 @@ void pd_gpsp_set_video(uint32_t* buffer, size_t stride);
 void pd_gpsp_skip_video(bool skip);
 uint32_t pd_gpsp_crc(void);
 bool pd_gpsp_recompiling(void);
+bool pd_gpsp_threaded(void);
+// The render thread's last frame: its drawing and the game thread's wait for it (microseconds; 0 without the thread).
+void pd_gpsp_render_us(unsigned* render, unsigned* wait);
 // Any address, through gpSP's own memory map (what the view doesn't hold).
 uint32_t pd_gpsp_read8(uint32_t address);
 // RAM writes (EWRAM / IWRAM / io / palette / VRAM / OAM), any compiled code over them thrown out.

@@ -49,3 +49,51 @@ index e75e9a8..e3678c4 100644
  
    if (gamepak_mini_rom)
    {
+diff --git a/video_thread_sys.c b/video_thread_sys.c
+index 59a6ba4..32617f1 100644
+--- a/video_thread_sys.c
++++ b/video_thread_sys.c
+@@ -63,13 +63,35 @@ unsigned long long vt_now_us(void)
+ #include <pthread.h>
+ #include <semaphore.h>
+ #include <time.h>
++#ifdef __APPLE__
++/* PokeDaisy: macOS has no unnamed POSIX semaphores (sem_init fails), so the
++ * render thread's waits there are dispatch semaphores (the 3DS port's desktop
++ * simulator runs gpSP on a Mac). */
++#include <dispatch/dispatch.h>
++#endif
+ 
++#ifdef __APPLE__
++struct vt_sem { dispatch_semaphore_t s; };
++#else
+ struct vt_sem { sem_t s; };
++#endif
+ static pthread_t vt_thread;
+ static int vt_thread_running;
+ static void (*vt_fn)(void*);
+ static void *vt_arg;
+ 
++#ifdef __APPLE__
++vt_sem *vt_sem_create(void)
++{
++   vt_sem *s = (vt_sem*)malloc(sizeof(vt_sem));
++   if (s)
++      s->s = dispatch_semaphore_create(0);
++   return s;
++}
++void vt_sem_destroy(vt_sem *s) { if (s) { dispatch_release(s->s); free(s); } }
++void vt_sem_post(vt_sem *s) { dispatch_semaphore_signal(s->s); }
++void vt_sem_wait(vt_sem *s) { dispatch_semaphore_wait(s->s, DISPATCH_TIME_FOREVER); }
++#else
+ vt_sem *vt_sem_create(void)
+ {
+    vt_sem *s = (vt_sem*)malloc(sizeof(vt_sem));
+@@ -80,6 +102,7 @@ vt_sem *vt_sem_create(void)
+ void vt_sem_destroy(vt_sem *s) { if (s) { sem_destroy(&s->s); free(s); } }
+ void vt_sem_post(vt_sem *s) { sem_post(&s->s); }
+ void vt_sem_wait(vt_sem *s) { while (sem_wait(&s->s) != 0) ; }
++#endif
+ 
+ static void *vt_trampoline(void *p) { (void)p; vt_fn(vt_arg); return NULL; }
+ 

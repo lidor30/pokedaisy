@@ -38,6 +38,7 @@ struct devlink_stats {
     unsigned jobTexUs, jobBeginUs, jobCanvasUs, jobRestUs;   // the draw jobs in the last second (gpu.c)
     unsigned skipped;   // frames run undrawn to catch up with the refresh, in the last second (an Old 3DS)
     int drawCore;       // where the screens are drawn (gpu_draw_core: -1 the game's core)
+    unsigned gpRenderUs, gpWaitUs; // gpSP's render thread, its last frame: drawing it, and the game's wait for it
 };
 
 void devlink_start(void);

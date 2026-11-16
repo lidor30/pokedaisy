@@ -732,7 +732,8 @@ int main(int argc, char** argv) {
     // CORE's other two).
     const char* coreName = getenv("PD_SIM_CORE");
     if (pd_armgba_wants(romBytes, romLen) && coreName && !strcmp(coreName, "gpsp")) {
-        struct pd_gpsp_host host = { 0 };
+        // PD_SIM_THREADED_VIDEO=1: gpSP's renderer on a thread of its own, as on the console.
+        struct pd_gpsp_host host = { .threaded = getenv("PD_SIM_THREADED_VIDEO") != NULL, .renderCore = -1 };
         char error[128] = "";
         core = pd_gpsp_load(argv[1], savePath, &host, error, sizeof(error));
         if (!core) {

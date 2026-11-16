@@ -336,14 +336,14 @@ static bool cmd_stat(int fd) {
                      "ag_wait_us=%u ag_render_us=%u ag_compile_us=%u ag_flush_us=%u wide_thread_us=%u draw_job_us=%u "
                      "ag_stepped=%u ag_compiled=%u ag_invalidated=%u ag_code_writes=%u mixes=%u "
                      "tot_loops=%u tot_late=%u tot_late_core=%u tot_late_draw=%u tot_late_rest=%u tot_gaps=%u tot_frames=%u queue_min=%u "
-                     "job_tex_us=%u job_begin_us=%u job_canvas_us=%u job_rest_us=%u skipped=%u draw_core=%d\n",
+                     "job_tex_us=%u job_begin_us=%u job_canvas_us=%u job_rest_us=%u skipped=%u draw_core=%d gp_render_us=%u gp_wait_us=%u\n",
                      s.frames, s.coreUs, s.uiUs, s.drawUs, s.worstUs, s.late, (unsigned) linearSpaceFree(), isNew, gpu_frames_shown(), clockUs,
                      s.runUs, s.waitUs, s.wideUs, s.snapUs, s.gaps, s.drops, s.rate, s.redraws, s.redrawWorstUs,
                      s.idleMode, s.idleLoop, s.idleFails, s.flightState, s.flightTickUs, s.flightDrawUs,
                      s.agWaitUs, s.agRenderUs, s.agCompileUs, s.agFlushUs, s.wideThreadUs, s.drawJobUs,
                      s.agStepped, s.agCompiled, s.agInvalidated, s.agCodeWrites, s.mixes,
                      s.totLoops, s.totLate, s.totLateCore, s.totLateDraw, s.totLateRest, s.totGaps, s.totFrames, s.queueMin,
-                     s.jobTexUs, s.jobBeginUs, s.jobCanvasUs, s.jobRestUs, s.skipped, s.drawCore);
+                     s.jobTexUs, s.jobBeginUs, s.jobCanvasUs, s.jobRestUs, s.skipped, s.drawCore, s.gpRenderUs, s.gpWaitUs);
     return reply(fd, text, (size_t) n);
 }
 

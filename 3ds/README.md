@@ -276,11 +276,18 @@ with armGBA's): `objcopy --keep-global-symbols`, Apple's `ld -r -exported_symbol
 `third_party/patches/gpsp-pokedaisy.patch` puts its cartridge in the arena (`gpsp_host_rom_arena`). Its recompiler's
 caches (10.5 MB) live only while it runs; its static arrays and code cost every player ~3.8 MB of heap. The save file is
 mGBA's layout (the save memory, then the 16-byte clock armGBA and mGBA keep, left as it was), written 15 frames after
-the game's writes stop. What it doesn't do yet: calls into the game (`pk_call_safe` says no: PC anywhere, FLY, FREE
-FLIGHT, the bag's USE, TM teaching, the scripted wild battles of the tests), the native m4a mixer, the H-blank
-shortcut, cheats; drawing on another core. Checked in the simulator (`PD_SIM_CORE=gpsp`, gpSP's interpreter there):
-FireRed and Emerald boot from their saves to the field with the companion, HUD and EXPAND right; a state saved and
-loaded; an in-game save written, then booted by both gpSP and armGBA to the same place. Not run on a console yet.
+the game's writes stop. Its renderer runs on a thread of its own (gpSP 3D's `video_thread.cc`: it records each line's
+registers, palette and OAM and draws a few lines behind the game - the same picture, no frame later, so EXPAND and FREE
+FLIGHT read a finished frame as ever), on the New 3DS's third core or an Old 3DS's system core at 80%, its frame hook
+converting the picture there too; the dev build's `armgba/nothreads` keeps it on the game's core, and `pdlink stat`'s
+`gp_render_us` / `gp_wait_us` give its last frame. gpSP 3D's deferred finish (a drawn frame not waited for when the next
+are skipped) isn't used: everything after a frame here reads its finished picture at once. What it doesn't do yet:
+calls into the game (`pk_call_safe` says no: PC anywhere, FLY, FREE FLIGHT, the bag's USE, TM teaching, the scripted
+wild battles of the tests), the native m4a mixer, the H-blank shortcut, cheats. Checked in the simulator
+(`PD_SIM_CORE=gpsp`, gpSP's interpreter there; `PD_SIM_THREADED_VIDEO=1` its render thread): FireRed and Emerald boot
+from their saves to the field with the companion, HUD and EXPAND right; the picture with the render thread equals the one
+without, frame for frame (`framesum` over walking, the START menu, a state saved and loaded); an in-game save written,
+then booted by both gpSP and armGBA to the same place. Not run on a console yet.
 
 **mGBA** (Game Boy games, and the comparison above): half of a frame on a New 3DS is the game's own sound mixer, the m4a
 engine's `SoundMainRAM`. `host/pd_mixer.c` runs it natively:

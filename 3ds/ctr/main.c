@@ -645,14 +645,25 @@ static bool run_game(const char* file) {
         gpu_double_game(true);
         gpu_set_bars(0);
     } else if (gpsp) {
-        // gpSP: its ARM11 recompiler, everything on the game's core (no render thread yet), the cartridge in the arena.
+        // gpSP: its ARM11 recompiler, its renderer on the New 3DS's third core or an Old 3DS's system core (lent at 80%),
+        // drawing a few lines behind the game (the same picture, no frame later: EXPAND is fine), the cartridge in the arena.
         rom->close(rom);
         dspBase = GPSP_RATE;
         if (hasSound) ndspChnSetRate(0, dspBase);
         char romSd[520];
         snprintf(romSd, sizeof(romSd), "sdmc:%s", romPath);
+        bool renderCore = host_is_new_3ds() || host_core1_take(HOST_CORE1_PERCENT);
         struct pd_gpsp_host emuHost = { .audio = armgba_audio, .log = host_emu_log, .systemDir = "sdmc:" SYSTEM_DIR,
-                                        .romBuffer = host_rom_arena, .knownCrc = romId.known ? romId.crc : 0 };
+                                        .romBuffer = host_rom_arena, .knownCrc = romId.known ? romId.crc : 0,
+                                        .threaded = renderCore, .renderCore = host_is_new_3ds() ? 2 : 1 };
+#ifdef PD_DEV
+        // The dev build's switch, as armGBA's: sdmc:/pokedaisy-dev/armgba/nothreads draws on the game's core.
+        FILE* gpNoThreads = fopen("sdmc:" WORK_DIR "/nothreads", "rb");
+        if (gpNoThreads) {
+            fclose(gpNoThreads);
+            emuHost.threaded = false;
+        }
+#endif
         char error[96] = "";
         host_log("game: %s on gpSP, heap %lu KiB free", file, (unsigned long) host_heap_free() >> 10);
         core = pd_gpsp_load(romSd, saveSd, &emuHost, error, sizeof(error));
@@ -1024,6 +1035,12 @@ static bool run_game(const char* file) {
                         static unsigned mixesWas;
                         dev.mixes = pd_mixer_mixes - mixesWas;
                         mixesWas = pd_mixer_mixes;
+                    }
+                    if (gpsp) {
+                        unsigned r, w;
+                        pd_gpsp_render_us(&r, &w);
+                        dev.gpRenderUs = r;
+                        dev.gpWaitUs = w;
                     }
                     if (armgba) {
                         void pd_armgba_jit_counts(uint32_t out[4]);

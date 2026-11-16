@@ -16,6 +16,7 @@
 #ifdef HAVE_DYNAREC
 #include "cpu.h"
 #endif
+#include "video_thread.h"
 
 // gpSP's own (gba_memory.c, the patch's arena hook; libretro.c).
 extern u8* (*gpsp_host_rom_arena)(size_t size);
@@ -61,6 +62,8 @@ static struct {
     bool savePending;
     int saveQuiet;
     int frames;
+    bool threaded;
+    volatile bool hookDrew; // the render thread's frame hook already wrote this frame into [video]
 } G;
 
 static void emu_log(const char* format, ...) {
@@ -150,8 +153,7 @@ static bool environment(unsigned cmd, void* data) {
 }
 
 // The picture into PokeDaisy's buffer as mGBA's 32-bit renderer left it: 0x00BBGGRR, each channel widened c << 3 | c >> 2.
-static void video_refresh(const void* data, unsigned width, unsigned height, size_t pitch) {
-    if (!data || !G.video || G.skipVideo) return;
+static void convert(const void* data, unsigned width, unsigned height, size_t pitch) {
     if (width > G.stride) width = (unsigned) G.stride;
     for (unsigned y = 0; y < height; y++) {
         const uint16_t* in = (const uint16_t*) ((const uint8_t*) data + y * pitch);
@@ -165,6 +167,23 @@ static void video_refresh(const void* data, unsigned width, unsigned height, siz
             out[x] = b << 16 | g << 8 | r;
         }
     }
+}
+
+static void video_refresh(const void* data, unsigned width, unsigned height, size_t pitch) {
+    bool drew = G.hookDrew;
+    G.hookDrew = false;
+    if (!data || !G.video || G.skipVideo || drew) return;
+    convert(data, width, height, pitch);
+}
+
+// With the render thread: each finished frame converted there too (gpSP 3D's screen copy on core 2), before
+// video_thread_finish_frame lets the game's thread go on.
+static void frame_hook(const unsigned short* left, const unsigned short* right, unsigned pitch, void* arg) {
+    (void) right;
+    (void) arg;
+    if (!G.video || G.skipVideo) return;
+    convert(left, 240, 160, pitch * sizeof(unsigned short));
+    G.hookDrew = true;
 }
 
 static void audio_sample(int16_t left, int16_t right) {
@@ -365,15 +384,26 @@ bool pd_gpsp_open(const char* romPath, const char* savePath, const struct pd_gps
         return false;
     }
     G.loaded = true;
+    if (host->threaded && video_thread_start(host->renderCore) == 0) {
+        video_thread_set_frame_hook(frame_hook, NULL);
+        G.threaded = true;
+    }
     G.crc = host->knownCrc ? host->knownCrc : crc32_of(gamepak_buffers[0], gamepak_size);
     read_save();
-    emu_log("gpSP: %s, %u KiB game", pd_gpsp_recompiling() ? "recompiler" : "interpreter", (unsigned) (gamepak_size >> 10));
+    emu_log("gpSP: %s, %s, %u KiB game", pd_gpsp_recompiling() ? "recompiler" : "interpreter",
+            G.threaded ? "drawn on its own thread" : host->threaded ? "its render thread DIDN'T START, drawn with the game" : "drawn with the game",
+            (unsigned) (gamepak_size >> 10));
     return true;
 }
 
 void pd_gpsp_close(void) {
     if (!G.loaded) return;
     pd_gpsp_flush_save();
+    if (G.threaded) {
+        video_thread_set_frame_hook(NULL, NULL);
+        video_thread_stop();
+        G.threaded = false;
+    }
     retro_unload_game();
     retro_deinit();
     G.loaded = false;
@@ -382,6 +412,15 @@ void pd_gpsp_close(void) {
 
 bool pd_gpsp_loaded(void) {
     return G.loaded;
+}
+
+bool pd_gpsp_threaded(void) {
+    return G.loaded && G.threaded;
+}
+
+void pd_gpsp_render_us(unsigned* render, unsigned* wait) {
+    *render = G.threaded ? video_thread_last_render_us() : 0;
+    *wait = G.threaded ? video_thread_last_wait_us() : 0;
 }
 
 bool pd_gpsp_recompiling(void) {
