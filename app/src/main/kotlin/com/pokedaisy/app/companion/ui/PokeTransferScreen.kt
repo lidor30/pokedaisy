@@ -27,7 +27,8 @@ import com.pokedaisy.app.companion.data.save.PokeTransfer
 import com.pokedaisy.app.companion.data.save.SaveEditRefused
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
-import java.time.LocalDate
+import com.pokedaisy.app.companion.data.localNow
+import kotlinx.datetime.LocalDate
 
 /**
  * POKé TRANSFER: a HeartGold / SoulSilver / Platinum save's PC beside a Black / White (or sequel) one. Six Pokémon picked
@@ -54,7 +55,7 @@ class PokeTransferState(
     var confirmSave by mutableStateOf(false)
     var confirmDiscard by mutableStateOf(false)
     /** The day the Pokémon are met at Poké Transfer (the device's). */
-    var today: () -> LocalDate = { LocalDate.now() }
+    var today: () -> LocalDate = { localNow().date }
 
     val changed: Boolean get() { revision; return gen4.changed || gen5.changed }
     val linkBlocker: String? get() { revision; return PokeTransfer.linkBlocker(gen4, gen4Label, gen5, gen5Label) }

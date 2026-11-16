@@ -44,7 +44,7 @@ object Gen4Text {
     private val codes: Map<Char, Int> by lazy {
         HashMap<Char, Int>().also { m ->
             for ((code, v) in chars.entries.sortedBy { (c, _) -> if (c in 0x100..0x1FF) c - 0x10000 else c }) {
-                if (v.length == 1) m.putIfAbsent(v[0], code)
+                if (v.length == 1 && v[0] !in m) m[v[0]] = code
             }
             m[' '] = 0x1DE
         }

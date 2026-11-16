@@ -46,6 +46,7 @@ java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaV
 
 dependencies {
     implementation(project(":data"))
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")   // PokeTransferScreen's date, as in :data
     implementation("org.jetbrains.compose.material3:material3:$cmp")
     implementation("org.jetbrains.compose.material:material-icons-extended:$cmp")
     implementation("org.json:json:20260814")

@@ -3,7 +3,7 @@ package com.pokedaisy.app.companion.data.save
 import com.pokedaisy.app.companion.data.NdsArt
 import com.pokedaisy.app.companion.data.RETAIL_ROM_DIR
 import java.io.File
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -18,7 +18,7 @@ import org.junit.Test
  * converted the way the Poké Transfer Lab does it, both files written and read back.
  */
 class PokeTransferTest {
-    private val today = LocalDate.of(2026, 11, 16)
+    private val today = LocalDate(2026, 11, 16)
     private val nds = File(File(RETAIL_ROM_DIR).parentFile, "nds")
     private val hgRom = File(nds, "Pokemon - HeartGold Version (USA).nds")
     private val blackRom = File(nds, "Pokemon - Black Version (USA, Europe) (NDSi Enhanced).nds")
