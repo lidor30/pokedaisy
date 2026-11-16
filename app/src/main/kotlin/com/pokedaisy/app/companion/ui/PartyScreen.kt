@@ -533,6 +533,17 @@ private val RedBluePartyPaletteNight = redBluePartyPalette(Color(0xFFE8E8E8), Co
 val RedBluePartyPalette: PartyPalette get() = if (OptionColors.dark) RedBluePartyPaletteNight else RedBluePartyPaletteLight
 
 /**
+ * Pokémon Brown (a Super Game Boy, in mGBA; its own SGB palettes, sampled headless): Yellow's slots in pure black and white,
+ * Crystal's kind of "HP:" box (cream on a black frame), Red's HP bar colours.
+ */
+private fun brownPartyPalette(ink: Color, paper: Color, cursor: Color) = redBluePartyPalette(ink, paper, cursor).copy(
+    hpLabel = Color(0xFFF7D67B), hpLabelShade = Color(0xFFF7D67B),
+)
+private val BrownPartyPaletteLight = brownPartyPalette(Color.Black, Color.White, Color(0xFFDCDCDC))
+private val BrownPartyPaletteNight = brownPartyPalette(Color(0xFFE8E8E8), Color(0xFF181818), Color(0xFF3A3A3A))
+val BrownPartyPalette: PartyPalette get() = if (OptionColors.dark) BrownPartyPaletteNight else BrownPartyPaletteLight
+
+/**
  * PureRed / PureBlue on a Color (their default COLORS, OG: the Color's two-tone palettes, sampled headless): Yellow's
  * slots in pure black and white, every HP bar the screen's dark colour - PureRed's dark red, PureBlue's blue.
  */
@@ -630,7 +641,8 @@ fun partyPaletteFor(game: GameKind): PartyPalette = when (game) {
     GameKind.ROWE -> RowePartyPalette
     GameKind.SOULGOLD -> SoulGoldPartyPalette
     GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowPartyPalette
-    GameKind.RED, GameKind.BLUE, GameKind.BROWN -> RedBluePartyPalette
+    GameKind.RED, GameKind.BLUE -> RedBluePartyPalette
+    GameKind.BROWN -> BrownPartyPalette
     GameKind.PURE_RED -> PureRedPartyPalette
     GameKind.PURE_BLUE -> PureBluePartyPalette
     // Gold's and Silver's party menu is Crystal's, pixel for pixel (sampled headless in both).

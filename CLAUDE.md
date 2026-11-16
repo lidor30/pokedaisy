@@ -1099,7 +1099,7 @@ the same parity and never took). Its battle menus read every frame (one-frame RI
 offsets, headless), so FIGHT, moves and RUN keep one-frame presses. A mon that's gone, fainted or out is refused before any press; after SWITCH the list
 coming back means the game said no (Crystal's "can't be recalled") and the switch stops. The frame is held 20 frames past
 the pick (white, then the battle: ~8 frames Yellow, ~14 Crystal). Checked by driving the real controller and readers
-against mgba_dump's running game frame by frame (a local harness over its stdin; not committed): every case in
+against mgba_dump's running game frame by frame (`GbLiveGame` over its stdin, mgba_dump's `gbwram`; `BrownLiveControlsTest`, opt-in POKEDAISY_GB_LIVE=1): every case in
 docs/ROM_FEATURES.md's note 5; fixtures `yellow_battle_party` / `_switch_menu` / `_faint`, `crystal_battle_party` /
 `_switch_menu` / `_faint` (`GbPartySwitchTest`), the simulated menus in `BattleInputControllerGbTest`. RUN presses A to close "Got away safely!" (every 30 frames until the battle ends or the
 action menu returns), each only on a battle state read that same frame (`BattleInputController.stateNow`): A says YES to

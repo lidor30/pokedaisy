@@ -838,7 +838,8 @@ class TelemetrySampler {
             GAME_BOY_SUPPORT && hash == PURE_BLUE_V2_7_6_SHA1 -> { kind = GameKind.PURE_BLUE; gen1Cfg = GEN1_PURE_BLUE }
             GAME_BOY_SUPPORT && hash == YELLOW_LEGACY_V1_0_10_SHA1 -> { kind = GameKind.YELLOW_LEGACY; gen1Cfg = GEN1_YELLOW_LEGACY }
             // Pokémon Brown (Koolboyman's Rijon on Red's engine): Red's RAM, its own tables (GEN1_BROWN; 6.0.1: brownV601).
-            GAME_BOY_SUPPORT && (hash == BROWN_V6_1_2_SHA1 || hash == BROWN_V6_0_1_SHA1) -> { kind = GameKind.BROWN; gen1Cfg = GEN1_BROWN }
+            GAME_BOY_SUPPORT && hash == BROWN_V6_1_2_SHA1 -> { kind = GameKind.BROWN; gen1Cfg = GEN1_BROWN }
+            GAME_BOY_SUPPORT && hash == BROWN_V6_0_1_SHA1 -> { kind = GameKind.BROWN; gen1Cfg = GEN1_BROWN_V601 }
             GAME_BOY_SUPPORT && hash == CRYSTAL_LEGACY_V1_3_1_SHA1 -> { kind = GameKind.CRYSTAL_LEGACY; gen2Cfg = GEN2_CRYSTAL_LEGACY }
             GAME_BOY_SUPPORT && gen1ConfigFor(hash) != null -> { kind = GameKind.YELLOW; gen1Cfg = gen1ConfigFor(hash) }
             hash in CRYSTAL_SHA1S && GAME_BOY_SUPPORT -> { kind = GameKind.CRYSTAL; gen2Cfg = GEN2_CRYSTAL }

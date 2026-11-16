@@ -13,7 +13,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Yellow Legacy (GB) | 1.0.10 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Red / Blue (GB) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
-| Brown (GB) | 6.0.1, 6.1.2 | — | ◐ ³⁸ | — | — | — | — | — | n/a | n/a | — | — | — | n/a | n/a | — | — | — ³⁶ |
+| Brown (GB) | 6.0.1, 6.1.2 | — | ✅ ³⁸ | ✅ ³⁸ | ✅ ³⁸ | — | ✅ ³⁸ | — | n/a | n/a | ✅ ³⁸ | ✅ ³⁸ | — | n/a | n/a | — | — | — ³⁶ |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
 | Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
@@ -626,10 +626,18 @@ change to any of the places listed under "Where it's decided" updates its rows h
     OFF walked 160 steps of Route 29's grass with no battle, ON met one, and its maps' own rates (`HeartfeltGold.Data.wildRates`,
     its map headers' banks into its own `/a/0/3/7`) are what it puts back. Bike / surf weren't tried. Its battles are
     HeartGold's own battle system, read by the companion (a wild battle, headless).
-38. Pokémon Brown (6.1.2, 6.0.1; 2026-11-16) is a 2 MB hack of Red with Red's RAM (`GEN1_BROWN`) and Red's battle menus at
-    Red's places: its action menu reads as Red's on the `brown_battle` fixture (`BrownDecodeTest`). The controls' presses
-    weren't run on it, the POKéMON switch and the one-press picks weren't tried, and the field features (PC, FLY, WILD) go
-    by Red's code, which it rewrote: none yet.
+38. Pokémon Brown (6.1.2, 6.0.1; 2026-11-16) is a 2 MB hack of Red with Red's RAM (`GEN1_BROWN`) and Red's battle menus and
+    party menus at Red's places. Its controls were run through the app's own `BattleInputController` against the running
+    game (`BrownLiveControlsTest`, mgba_dump's `gbwram` read every frame; opt-in, POKEDAISY_GB_LIVE=1): FIGHT and a move from
+    the battle menu (that move's PP down, the others not), a move from the move list, RUN, the POKéMON switch from the
+    battle menu (237 frames, the frame held throughout) and the pick after a faint (one A, no SWITCH menu), on 6.1.2, and a
+    move and the switch on 6.0.1. PC anywhere, FLY and WILD ENCOUNTERS are `GB_FIELD_BROWN`: Red's PC routine, Bankswitch,
+    RAM and wild data code, but its own town map's Fly list (BuildFlyLocationsList, 1D:6BE0: 14 places from
+    wTownVisitedFlag in an order of its own, SENECA CAVERNS flying to map 0x21) and its own outside check for FLY (4:792C).
+    Checked headless with mgba_dump on the player's saves: the PC opened over the field and backed out of (both versions);
+    flights to GRAVEL TOWN, map 0x21 and 0xCA, its own Fly menu listing the same places in the same order; Route 67's path
+    counted as grass (wGrassTile) met a battle on the second step at a rate of 255, at step 21 at the map's own 25, and none
+    in 100 steps held at 0.
 
 ## What each column is
 
