@@ -25,7 +25,7 @@ class N3dsBattleTaps(
     /** 0 FIGHT (the move list opens), 1 BAG, 2 POKéMON, 3 RUN. */
     fun selectAction(index: Int) {
         val at = layout.actions.getOrNull(index) ?: return
-        run { tap(at) }
+        run { tapUntilLeft(at, BATTLE_INPUT_ACTION_SELECT) }
     }
 
     /** FIGHT and move [index] (0-3: the list's 2 x 2, left to right then down), or just the move with the list up. */
@@ -33,16 +33,16 @@ class N3dsBattleTaps(
         val move = layout.moves.getOrNull(index) ?: return
         run {
             if (state() != BATTLE_INPUT_MOVE_SELECT) {
-                tap(layout.actions[0])
+                tapUntilLeft(layout.actions[0], BATTLE_INPUT_ACTION_SELECT)
                 if (!waitFor(BATTLE_INPUT_MOVE_SELECT)) return@run
             }
-            tap(move)
+            tapUntilLeft(move, BATTLE_INPUT_MOVE_SELECT)
         }
     }
 
     /** The move list's way back. */
     fun back() {
-        if (state() == BATTLE_INPUT_MOVE_SELECT) run { tap(layout.cancel) }
+        if (state() == BATTLE_INPUT_MOVE_SELECT) run { tapUntilLeft(layout.cancel, BATTLE_INPUT_MOVE_SELECT) }
     }
 
     private fun run(steps: () -> Unit) {
@@ -58,6 +58,23 @@ class N3dsBattleTaps(
         Thread.sleep(TAP_MS)
         touch(false, 0, 0)
         Thread.sleep(GAP_MS)
+    }
+
+    /**
+     * [at], tapped again (at most [RETRIES] times) while the battle still shows [from] a while later: a menu still sliding in
+     * drops a tap (Sun / Moon headless, 2026-11-17: FIGHT, RUN and the moves' return arrow tapped as their menu appeared
+     * did nothing, the same taps a moment later worked), and the corner's buttons show as soon as the menu does.
+     */
+    private fun tapUntilLeft(at: Pair<Int, Int>, from: Int) {
+        repeat(RETRIES + 1) { i ->
+            tap(at)
+            val until = System.currentTimeMillis() + RETRY_MS
+            while (System.currentTimeMillis() < until) {
+                if (state() != from) return
+                Thread.sleep(POLL_MS)
+            }
+            if (i == RETRIES) return
+        }
     }
 
     /** Waits for the battle to show [want] (the move list slides in after FIGHT), then a moment for it to settle. */
@@ -101,6 +118,9 @@ class N3dsBattleTaps(
         private const val GAP_MS = 60L
         private const val WAIT_MS = 3000L
         private const val POLL_MS = 30L
+        /** A tap the battle hasn't answered this long is tapped again, at most this many times. */
+        private const val RETRY_MS = 700L
+        private const val RETRIES = 2
         /** The move list's cards take a touch once it has slid in. */
         private const val SETTLE_MS = 250L
     }

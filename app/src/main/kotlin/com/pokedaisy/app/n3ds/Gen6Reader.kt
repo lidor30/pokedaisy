@@ -57,6 +57,7 @@ object Gen6Reader {
         val battlerFoe: Int = 0,
         /** Sun / Moon: the player's live world position (floats x, y, z), for the Town Map's pin ([SmTownMap]). */
         val playerPos: Int = 0,
+        val playerPosPath: IntArray? = null,
         /** Where a battler's four moves start in its record ([battleMon]): X / ORAS +0x116, Sun / Moon +0x1FC. */
         val battleMovesAt: Int = 0x116,
         /** The field camera ([Camera]); null where it isn't mapped (no ZOOM or free camera there). */
@@ -251,9 +252,11 @@ object Gen6Reader {
         battlerPlayer = 0x30000404,
         battlerFoe = 0x30000420,
         battleMovesAt = 0x1FC,
-        // Rewritten every frame from the player's object outdoors (Sun: walking moved it, written by 0x725E9C); indoors
-        // it holds something else, so it's read only on the island's main world.
-        playerPos = 0x30001B2C,
+        // The field camera's target, the player's position a few units ahead ([0x300002A0] +0x2A8, +0x3A4 = the camera's
+        // object, its target at +0x68): Sun's own save had the player's own copy at 0x30001B2C, the Moon save 0x18 lower,
+        // so the camera's chain, which both read. Indoors it's the room's own: read only on the island's main world.
+        playerPos = 0x300002A0,
+        playerPosPath = intArrayOf(0x2A8, 0x3A4, 0x68),
     )
 
     /** What the game's two screens show, for where the touch screen goes ([sceneOf]). */

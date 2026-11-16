@@ -388,10 +388,11 @@ Sun boots that Moon save too and reads it at every address below (party, bag, My
   (turned 0.8, DOWN walked diagonally), so the circle pad isn't turned for it (`Camera.turnsPad`).
 - The Town Map (`SmTownMap`): `a/2/3/4`'s first file (LZ11, an ALYT with a SARC inside) has each island's picture,
   `timg/land_0N.bflim` (1 Melemele, 2 Akala, 3 Ula'ula, 4 Poni; 256 x 256 ETC1A4 stored transposed, the BFLIM's swizzle 8).
-  The pin is the player's live world position (0x30001B2C, x / y / z floats) on its island's picture, one scale and offset
+  The pin is the field camera's target (the player's position a few units ahead: [0x300002A0] +0x2A8, +0x3A4, then +0x68;
+  Sun's own copy of the position at 0x30001B2C sits 0x18 lower in the Moon save) on its island's picture, one scale and offset
   for every island (0.0059 a unit, -11.99 / -26.09): fitted on Sun standing at Heahea City's Pokemon Center, then every
-  island's zone arrival points (`a/0/7/7` +0x10 / +0x18) fall on their places and the Moon save's Seafolk Village on its
-  Pokemon Center. A zone's island is its record's +0x4E; outdoors = its island's main world (`a/0/7/7`'s second file); indoors
+  island's zone arrival points (`a/0/7/7` +0x10 / +0x18) fall on their places (Seafolk Village's on its Pokemon Center), and the
+  Moon save walked onto Poni Wilds lands on that route's. A zone's island is its record's +0x4E; outdoors = its island's main world (`a/0/7/7`'s second file); indoors
   the pin stays where the player went in. The layout's `Area_II_NN` panes and `zone_II_NN` highlights aren't used: which
   area a zone is in wasn't found.
 - Wild Pokemon per zone (`Gen6Wild.smZoneTables`): an area's encounter pack holds a table per patch, and the area's event
@@ -404,6 +405,17 @@ Sun boots that Moon save too and reads it at every address below (party, bag, My
   (`Gen6Reader.chained`): the menu byte [0x300002A0] +0x2A8, +0x235 (the camera's object: +0x374), the hold [0x30001A9C]
   +0x7C, +0x14C; the battle's menu and bag / party bytes [0x30000380] +0x1D0, +0xC08 and +0x1B8, +0x170. Save's question
   keeps the menu byte at 1 (the window stays). Party, MyStatus, bag and zone are fixed (checked on Sun's own save too).
+- Battles checked end to end (2026-11-17, headless, a driver reading what the app reads and tapping `N3dsBattleTaps.SM`'s
+  points): Sun on Route 4 (Sylveon against Lillipup, Pikipek, Yungoos, a trainer's Drifloon), Moon on Poni Wilds (Mimikyu
+  against a Gumshoos): the command menu, FIGHT, the moves' return arrow, BAG and POKEMON each read and tapped right, each of
+  the four move cards spent its own move's PP (Sun all four, Moon three in one battle), RUN left a wild battle; the foe's HP
+  read 0 as it fainted. `SmBattleDumpTest` (opt-in, POKEDAISY_SM_DUMPS) runs the app's reader over 14 dumps of those battles
+  (both saves, every menu and mid-turn). A tap made while a menu slides in is dropped (FIGHT, RUN, the arrow), so the
+  corner's picks are tapped again until the battle answers (`tapUntilLeft`, `N3dsBattleTapsTest`). A Z-Crystal holder's move
+  list takes longer to come in (its Z button), inside the 3 s the app waits. Not tried: a trainer battle's RUN (the game says
+  there's no running), a double battle.
+- `N3dsBattleOneScreenScreenshotTest` (opt-in, POKEDAISY_N3DS_FRAMES: 400 x 240 top-screen frames) draws the one-screen battle
+  corner over real frames of Sun, Moon and Alpha Sapphire.
 - Headless: Sun / Moon walk with the circle pad (n3ds_dump's `CUP` / `CDOWN` / `CLEFT` / `CRIGHT`); their D-pad only turns
   the player. Route 4 from Heahea City: round the hotel's garden to its east, then north.
 - The cart (`N3dsLayout.SM`): text `a/0/3/<0 kana, 1 kanji, 2 English, 3 French, 4 Italian, 5 German, 6 Spanish, 7 Korean, 8 / 9

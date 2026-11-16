@@ -714,7 +714,8 @@ class N3dsSession(
                         // Outdoors: the player's position on its island's picture; indoors: the last outdoor spot there.
                         val island = smZones.island.getOrElse(sample.zone) { 0 }
                         if (island != 0 && smZones.outdoor[sample.zone]) {
-                            N3dsNative.readMemory(intArrayOf(config.playerPos, 12))?.takeIf { it.size == 12 }?.let { pos ->
+                            val posAt = Gen6Reader.chained(config.playerPos, config.playerPosPath, ::readInt)
+                            if (posAt != null) N3dsNative.readMemory(intArrayOf(posAt, 12))?.takeIf { it.size == 12 }?.let { pos ->
                                 val b = java.nio.ByteBuffer.wrap(pos).order(java.nio.ByteOrder.LITTLE_ENDIAN)
                                 val (x, y) = SmTownMap.spot(b.getFloat(0), b.getFloat(8))
                                 if (x in 0f..SmTownMap.SIZE.toFloat() && y in 0f..SmTownMap.SIZE.toFloat()) {

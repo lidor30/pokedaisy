@@ -9,10 +9,10 @@ import java.nio.ByteOrder
  * Sun / Moon's Town Map, read from the player's cart (never bundled; found 2026-11-17 on the US carts):
  * - The pictures: RomFS `a/2/3/4`'s first file, LZ11, an ALYT archive with a SARC inside; `timg/land_0N.bflim` is island
  *   N's map (1 Melemele, 2 Akala, 3 Ula'ula, 4 Poni), 256 x 256 ETC1A4 stored transposed (the BFLIM's swizzle 8).
- * - Where the player is: the field's live position (world x / z, [Gen6Reader.Config.playerPos]) maps onto its island's
+ * - Where the player is: the field camera's target (world x / z, [Gen6Reader.Config.playerPos]) maps onto its island's
  *   picture by one scale and offset for every island ([SCALE], [OFFSET_X], [OFFSET_Y]): fitted on Akala (Sun standing at
  *   Heahea City's Pokemon Center, on its icon), then every island's zone arrival points (`a/0/7/7` +0x10 / +0x18) fall on
- *   their places, and the Moon save's Seafolk Village on its Pokemon Center beside the houseboats.
+ *   their places; the Moon save walked onto Poni Wilds lands on that route's arrival point.
  * - A zone's island is its record's +0x4E; it's outdoors while its world (`a/0/7/7`'s second file, a u16 a zone) is its
  *   island's main one (the world most of the island's zones are in). Indoors the position is the room's own.
  */
