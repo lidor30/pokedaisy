@@ -4797,6 +4797,7 @@ class PokeDaisyActivity : Activity() {
 
     /** Touch extras and hotkeys share their action policy. Android retains the extra menu and native key delivery. */
     private fun onTouchAction(button: com.pokedaisy.app.companion.TouchButton, down: Boolean) {
+        if (down && touchEditor.isOpen) return
         if (!::engine.isInitialized || gameActions.touch(button, down)) return
         when (button) {
             com.pokedaisy.app.companion.TouchButton.QUICK_MENU -> if (down) handleHotkey(Hotkeys.Event(Hotkeys.Action.QUICK_MENU, true))
@@ -4848,6 +4849,7 @@ class PokeDaisyActivity : Activity() {
     private fun openTouchEditor() {
         if (touchEditor.isOpen) return
         val measured = measuredTouchStage() ?: return
+        if (::engine.isInitialized) gameActions.cancelTouch()
         if (::sidePanel.isInitialized) sidePanel.closeWindow()
         input.setTouchBits(0)
         touchEditor.open(measured)
