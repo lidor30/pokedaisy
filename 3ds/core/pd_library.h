@@ -96,6 +96,7 @@ struct pd_library {
     struct pd_library_game games[PD_LIBRARY_MAX];
     int count;
     int batteryPct;  // the console's battery, -1 = unknown (the host sets it; every page's title shows it)
+    bool charging;   // ... charging: a bolt by it
     struct pd_settings* settings;
     const struct pd_library_host* host;
     int page;       // enum pd_library_page

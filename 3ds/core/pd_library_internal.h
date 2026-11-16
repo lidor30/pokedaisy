@@ -61,6 +61,7 @@ void lib_cartridge(struct pd_canvas* c, int x, int y, int scale, enum pd_console
 void lib_page_backdrop(struct pd_canvas* c);
 int lib_title(struct pd_canvas* c, const char* title, const char* right, bool logo);
 extern int lib_battery;   // what lib_title shows at its right (pd_library.batteryPct as the page is drawn)
+extern bool lib_charging; // ... and pd_library.charging
 int lib_battery_width(void);   // its icon and percentage, 0 = unknown
 void lib_battery_box(struct pd_canvas* c, int x, int y, int w, int h);   // in a title window of its own
 void lib_rail(struct pd_library* l, struct pd_canvas* c);

@@ -4427,12 +4427,15 @@ static bool cacheReady(int hofs, int vofs, int href, int vref, int* enabled) {
         if (lineRegs(y)[0] != (uint16_t) disp) return false;
     if (effectsUp()) return false;
     useLine(0);
-    int wl = windowLayers(0, 0);
+    // BG0 left out: the margins never draw it (their BGs are & 0x0E), so a window that only adds or takes BG0 - a field
+    // move's cut-in, a full-width band of BG0 inside WIN0 (WININ 0x3F, WINOUT 0x3E) - leaves them as they are. It used to
+    // send the whole cut-in down the full draw, which a 3DS couldn't keep up with (the surf's music broke up).
+    int wl = windowLayers(0, 0) & ~1;
     if (disp & 0xE000) {
         for (int y = 0; y < PK_WIDE_H; y++)
-            if (windowLayers(0, y) != wl || windowLayers(PK_WIDE_W - 1, y) != wl) return false;
+            if ((windowLayers(0, y) & ~1) != wl || (windowLayers(PK_WIDE_W - 1, y) & ~1) != wl) return false;
         for (int x = 0; x < PK_WIDE_W; x++)
-            if (windowLayers(x, 0) != wl || windowLayers(x, PK_WIDE_H - 1) != wl) return false;
+            if ((windowLayers(x, 0) & ~1) != wl || (windowLayers(x, PK_WIDE_H - 1) & ~1) != wl) return false;
     }
     *enabled = (disp >> 8) & wl & 0x0E;
     return *enabled != 0;
@@ -4599,6 +4602,7 @@ struct FullView {
     int bestSnap, bestCx, bestCy, bestH, bestV;
     uint32_t alpha;
     bool hold;   // FREE FLIGHT's crossing settling: the last window kept as it is (no glow)
+    bool fade;   // the frame is a fade between two maps: all black (or white)
 };
 
 /** FREE FLIGHT's smooth camera moves the window, the frame with it, so the map's name sign (BG0, the popup's corner:
@@ -4692,6 +4696,27 @@ static void fullDraw(const struct FullView* f) {
     int bestSnap = f->bestSnap, bestCx = f->bestCx, bestCy = f->bestCy, bestH = f->bestH, bestV = f->bestV;
     uint32_t alpha = f->alpha;
     PW_MARK(pw3);
+#ifdef PK_WIDE_CACHE
+    // A fade between two maps on a cached host (the 3DS): the frame is one colour, so the margins are that colour, as the
+    // game's own picture is - nothing drawn behind them (a black frame passes as a menu screen too) and the glow's mix left
+    // where it was. The per-pixel glow and the menu screen's backdrop cost a New 3DS 10-25 ms a frame there, longer than
+    // the frame, and every door, warp and battle start went through 15-30 of them (the game slowed, its music broke up).
+    if (f->fade && !valid && !battle && !overlayDim) {
+        uint32_t col = (frame[(PK_WIDE_H / 2) * PK_WIDE_W + PK_WIDE_W / 2] & 0xFFFFFF) | alpha;
+        for (int j = 0; j < v.h; j++) {
+            int Y = v.y + j;
+            uint32_t* row = out + j * v.w;
+            for (int i = 0; i < v.w; i++) row[i] = col;
+            if (holeLeft || Y < 0 || Y >= PK_WIDE_H) continue;
+            int x0 = v.x < 0 ? -v.x : 0, X0 = v.x > 0 ? v.x : 0, n = PK_WIDE_W - X0 < v.w - x0 ? PK_WIDE_W - X0 : v.w - x0;
+            if (n > 0) memcpy(row + x0, frame + Y * PK_WIDE_W + X0, (size_t) n * sizeof(uint32_t));
+        }
+        PW_MARK(pw5);
+        PW_ADD(3, pw3, pw5);
+        PW_REPORT();
+        return;
+    }
+#endif
     if (valid || battle || menu) {
         if (valid) {
             const struct Snap* s = &snaps[bestSnap];
@@ -4987,7 +5012,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
 #endif
     PW_MARK(pw3);
     PW_ADD(1, pw2, pw3);
-    struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha, flyHold };
+    struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha, flyHold, fade };
 #ifdef PK_WIDE_CACHE
     // Not while FREE FLIGHT's camera is offset: flyLabel puts the area sign back where it would be with no offset, over
     // the frame's own (moved) one - the host's copy of the frame would bring the moved one back (a doubled sign).
