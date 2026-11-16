@@ -4,26 +4,45 @@ import com.pokedaisy.app.companion.i18n.tk
 import java.util.zip.CRC32
 
 /**
- * WILD PIN (a PIN on each GUIDE > HERE grass / cave row and in the HUD's WILD; GAMEPLAY > WILD PIN hides them): the next
- * grass or cave encounter on this map is the pinned species. The game still makes the Pokémon (CreateWildMon: level from
- * the slot's range, its own personality and IVs); only which slot it can roll changes. While a pin is on, the map's 12
- * land slots ({u8 minLevel, u8 maxLevel, u16 species}, 48 bytes, the WildPokemonInfo's `wildPokemon` array) are put over
- * the running ROM as one block ([com.pokedaisy.app.MgbaCore.pkRomBlocks], like PLAYER LOOK's - the file is never
- * written, the Poller and RetroAchievements still read the file's bytes), every slot = the species at the lowest and
- * highest level its own slots on this map have. gEnemyParty is never touched.
+ * WILD PIN (a PIN on each GUIDE > HERE GRASS / CAVE, SURFING, ROCK SMASH and rod row and in the HUD's WILD; GAMEPLAY >
+ * WILD PIN hides them): the next encounter of that [Method] on this map is the pinned species. The game still makes the
+ * Pokémon (CreateWildMon: level from the slot's range, its own personality and IVs); only which slot it can roll changes.
+ * While a pin is on, the method's slot array on this map ({u8 minLevel, u8 maxLevel, u16 species} each, the
+ * WildPokemonInfo's `wildPokemon` array: 12 land, 5 water, 5 rock smash, 10 fishing) is put over the running ROM as one
+ * block ([com.pokedaisy.app.MgbaCore.pkRomBlocks], like PLAYER LOOK's - the file is never written, the Poller and
+ * RetroAchievements still read the file's bytes), every slot = the species at the lowest and highest level its own slots
+ * of that method have. Fishing's 10 slots are the three rods' (old 0-1, good 2-4, super 5-9): all 10 go in, so any rod
+ * catches it, at the levels its own rods' slots have. gEnemyParty is never touched.
  *
- * One encounter: the pin ends when a wild battle starts (gMain.inBattle rising with gBattleTypeFlags' TRAINER clear -
+ * One pin at a time, one encounter: the pin ends when a wild battle starts (any method's) (gMain.inBattle rising with gBattleTypeFlags' TRAINER clear -
  * the foe is made by then), when the player is on another map, or on UNPIN; then the blocks go back in without it.
  * RetroAchievements idle while one is on.
  *
  * First slice: retail English FireRed rev 1, LeafGreen rev 0 / 1 and Emerald ([offered], by their GUIDE tables, which the
- * Poller keeps only where the ROM matches), grass and caves. A headless check puts [Pin.toText]'s line in a `romblocks`
+ * Poller keeps only where the ROM matches). A headless check puts [Pin.toText]'s line in a `romblocks`
  * file for mgba_dump.
  */
 object WildPin {
-    const val LAND_SLOTS = 12
     const val SLOT_BYTES = 4
+    const val LAND_SLOTS = 12
+    /** The land block's size (the largest of the four). */
     const val BLOCK_BYTES = LAND_SLOTS * SLOT_BYTES
+
+    /** An encounter method: its pointer's place in the wild header ([index]: land, water, rock smash, fishing) and its
+     * slot count. [sections] are HERE's / the HUD's headings (English keys) whose rows it pins. */
+    enum class Method(val index: Int, val slots: Int, val sections: List<String>) {
+        LAND(0, 12, listOf("GRASS / CAVE")),
+        WATER(1, 5, listOf("SURFING")),
+        ROCK_SMASH(2, 5, listOf("ROCK SMASH")),
+        FISHING(3, 10, listOf("OLD ROD", "GOOD ROD", "SUPER ROD"));
+
+        val blockBytes: Int get() = slots * SLOT_BYTES
+
+        companion object {
+            /** The method a HERE / HUD heading's rows pin, or null (HEADBUTT, AT NIGHT ...: no PIN). */
+            fun forSection(name: String): Method? = entries.firstOrNull { name in it.sections }
+        }
+    }
 
     /** gBattleTypeFlags' BATTLE_TYPE_TRAINER (every Gen 3 game). */
     private const val BATTLE_TYPE_TRAINER = 0x0008
@@ -33,8 +52,8 @@ object WildPin {
     /** The reason PIN is greyed in a battle (it waits for the field). */
     val BATTLE_REASON = tk("NOT IN A BATTLE")
 
-    /** A map's land slot array as the file has it: [addr] (0x08xxxxxx) and its [BLOCK_BYTES] bytes. */
-    class LandSlots(val addr: Long, bytes: ByteArray) {
+    /** A map's slot array for [method] as the file has it: [addr] (0x08xxxxxx) and its [Method.blockBytes] bytes. */
+    class Slots(val addr: Long, bytes: ByteArray, val method: Method = Method.LAND) {
         private val raw = bytes.copyOf()
         val bytes: ByteArray get() = raw.copyOf()
     }
@@ -46,13 +65,15 @@ object WildPin {
         val size: Int get() = raw.size
     }
 
-    /** A pin: [species] on map [group].[num] (its wild set [set]), every slot at [minLevel]..[maxLevel]. */
+    /** A pin: [species] on map [group].[num] (its wild set [set]) for [slots]' method, every slot at [minLevel]..[maxLevel]. */
     class Pin internal constructor(
         val species: Int, val group: Int, val num: Int, val set: Int,
-        val slots: LandSlots, val minLevel: Int, val maxLevel: Int,
+        val slots: Slots, val minLevel: Int, val maxLevel: Int,
     ) {
-        /** The block that puts it in: the 12 slots rewritten, guarded by the file's 48 bytes' CRC32. */
-        val block: RomBlock = RomBlock(slots.addr.toInt(), crc(slots.bytes), blockBytes(species, minLevel, maxLevel))
+        val method: Method get() = slots.method
+
+        /** The block that puts it in: the method's slots rewritten, guarded by the file's bytes' CRC32. */
+        val block: RomBlock = RomBlock(slots.addr.toInt(), crc(slots.bytes), blockBytes(species, minLevel, maxLevel, slots.method.slots))
 
         fun onMap(group: Int, num: Int): Boolean = group == this.group && num == this.num
 
@@ -62,18 +83,18 @@ object WildPin {
 
     /** The species' level range over its own slots in [bytes] (slots that can't be real are skipped, as HERE does), or
      * null when it has none. */
-    fun levelRange(bytes: ByteArray, species: Int): IntRange? {
-        if (bytes.size != BLOCK_BYTES || species <= 0) return null
-        val mine = (0 until LAND_SLOTS).map { i -> slot(bytes, i) }.filter { it.valid && it.species == species }
+    fun levelRange(bytes: ByteArray, species: Int, method: Method = Method.LAND): IntRange? {
+        if (bytes.size != method.blockBytes || species <= 0) return null
+        val mine = (0 until method.slots).map { i -> slot(bytes, i) }.filter { it.valid && it.species == species }
         if (mine.isEmpty()) return null
         return mine.minOf { it.min }..mine.maxOf { it.max }
     }
 
-    /** 12 slots, each {min, max, species}. */
-    fun blockBytes(species: Int, minLevel: Int, maxLevel: Int): ByteArray {
+    /** [count] slots (12 = land), each {min, max, species}. */
+    fun blockBytes(species: Int, minLevel: Int, maxLevel: Int, count: Int = LAND_SLOTS): ByteArray {
         require(species in 1..0xFFFF && minLevel in 1..100 && maxLevel in minLevel..100) { "bad pin $species $minLevel-$maxLevel" }
-        val out = ByteArray(BLOCK_BYTES)
-        for (i in 0 until LAND_SLOTS) {
+        val out = ByteArray(count * SLOT_BYTES)
+        for (i in 0 until count) {
             val o = i * SLOT_BYTES
             out[o] = minLevel.toByte()
             out[o + 1] = maxLevel.toByte()
@@ -83,10 +104,10 @@ object WildPin {
         return out
     }
 
-    /** [species] pinned on map [group].[num] from its land [slots], or null when the map's slots don't hold it. */
-    fun pin(species: Int, group: Int, num: Int, set: Int, slots: LandSlots): Pin? {
-        if (!romAddr(slots.addr)) return null
-        val range = levelRange(slots.bytes, species) ?: return null
+    /** [species] pinned on map [group].[num] from its [slots] (one method's), or null when they don't hold it. */
+    fun pin(species: Int, group: Int, num: Int, set: Int, slots: Slots): Pin? {
+        if (!romAddr(slots.addr, slots.method.blockBytes)) return null
+        val range = levelRange(slots.bytes, species, slots.method) ?: return null
         return Pin(species, group, num, set, slots, range.first, range.last)
     }
 
@@ -127,7 +148,7 @@ object WildPin {
         return Slot(b[o].toInt() and 0xFF, b[o + 1].toInt() and 0xFF, (b[o + 2].toInt() and 0xFF) or ((b[o + 3].toInt() and 0xFF) shl 8))
     }
 
-    private fun romAddr(addr: Long) = addr in 0x08000000L..(0x0A000000L - BLOCK_BYTES)
+    private fun romAddr(addr: Long, size: Int) = addr in 0x08000000L..(0x0A000000L - size)
 
     private fun crc(b: ByteArray): Int = CRC32().apply { update(b) }.value.toInt()
 }

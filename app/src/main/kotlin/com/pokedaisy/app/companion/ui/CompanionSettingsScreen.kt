@@ -761,7 +761,7 @@ private fun homeRows(
         ) {
             if (s.tradeEvolutionsSupported) { s.setTradeEvolutions(!s.tradeEvolutions); changed() }
         },
-        // A PIN on GUIDE > HERE's and the HUD's grass rows: the next wild one on the map is the pick (WildPin.kt). OFF hides them.
+        // A PIN on GUIDE > HERE's and the HUD's wild rows (grass, surf, rock smash, rods): the next wild one that way is the pick (WildPin.kt). OFF hides them.
         SettingRow(
             tk("WILD PIN"), if (s.wildPinSupported) onOff(s.wildPin) else tk("N/A"), enabled = s.wildPinSupported,
             labelBadge = NewFeatures.badge(NewFeatures.WILD_PIN), subtitle = "Pick the next wild POKéMON from HERE",

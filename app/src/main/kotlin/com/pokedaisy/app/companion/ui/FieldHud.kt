@@ -101,6 +101,7 @@ import com.pokedaisy.app.companion.data.gameCase
 import com.pokedaisy.app.companion.data.speciesName
 import com.pokedaisy.app.companion.data.spriteAsset
 import com.pokedaisy.app.companion.WildPins
+import com.pokedaisy.app.companion.data.WildPin
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import kotlinx.coroutines.Dispatchers
@@ -1777,9 +1778,11 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
     val icon = hudIconSize(m)
     val (align, place) = panelPlace(dock, top, u, inset)
     val c = ink
-    // WILD PIN: a PIN on each GRASS / CAVE row (the panel a little wider for it), and why they're greyed, once.
-    val pins = wild.associate { w -> w to if (w.method == tk("GRASS / CAVE")) WildPins.control(snapshot, w.species) else null }
+    // WILD PIN: a PIN on each grass, surfing, rock smash and rod row (the panel a little wider for it), and why they're
+    // greyed, once, under the first heading that has them.
+    val pins = wild.associate { w -> w to WildPins.control(snapshot, WildPin.Method.forSection(w.method), w.species) }
     val pinWhy = wildPinReason(pins.values.toList())
+    val pinWhyAt = wild.firstOrNull { pins[it] != null }?.method
     HudPanelScrim(onClose, align, clear = kept) { window ->
         Column(place.width(u * (if (pins.values.any { it != null }) 222 else 200)).hudPanel(u).then(window).padding(u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) {
             PanelHeading(GRASS_ICON, GRASS_COLORS, tk("WILD POKéMON"), m, onClose) {
@@ -1791,7 +1794,7 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
                 if (wild.isEmpty()) GbaText(tr("No wild POKéMON on this map."), c.text, c.shadow, small)
                 wild.groupBy { it.method }.forEach { (method, list) ->
                     GbaText(tr(method), c.accent, c.accentShadow, small, Modifier.padding(top = u * 2))
-                    if (pinWhy != null && list.any { pins[it] != null }) GbaText(tr("PIN: {0}", pinWhy), c.muted, c.shadow, small)
+                    if (pinWhy != null && method == pinWhyAt) GbaText(tr("PIN: {0}", pinWhy), c.muted, c.shadow, small)
                     list.forEach { w ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             // An unseen Pokémon stays hidden, like GUIDE > HERE's.

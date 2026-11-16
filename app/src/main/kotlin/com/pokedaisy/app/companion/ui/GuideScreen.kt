@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.data.EncounterSlot
+import com.pokedaisy.app.companion.data.WildPin
 import com.pokedaisy.app.companion.PinControl
 import com.pokedaisy.app.companion.WildPins
 import com.pokedaisy.app.companion.data.hasAreaGuide
@@ -292,7 +293,7 @@ private fun GuidePageWindow(page: GuidePage?, ui: GuideUiState, ctx: GuideContex
                         val keys = ui.keys(page, section)
                         itemsIndexed(section.entries, key = { i, _ -> keys[i] }) { i, e ->
                             val key = keys[i]
-                            val pin = if (e.pinSpecies != 0) WildPins.control(snapshot, e.pinSpecies) else null
+                            val pin = if (e.pinSpecies != 0) WildPins.control(snapshot, e.pinMethod, e.pinSpecies) else null
                             EntryRow(e, ui.levelOf(key), e.owned || ctx.has(e.have), m, small, pin) { ui.tap(key, e.steps) }
                         }
                     }
@@ -403,7 +404,7 @@ private fun EntryRow(e: GuideEntry, level: Int, owned: Boolean, m: GbaTextMetric
                 else -> tr("ANSWER")
             }
             next?.let { GbaText(it, OptionColors.muted, OptionColors.mutedShadow, small, Modifier.padding(start = u * 6)) }
-            // WILD PIN: the next grass / cave encounter here is this one (its reason, when greyed, is over the list).
+            // WILD PIN: the next encounter here by this row's method is this one (its reason, when greyed, is over the list).
             // (UNPIN in red says it's the one pinned: a PINNED beside it squeezed the name onto two lines.)
             pin?.let { WildPinButton(it, small, Modifier.padding(start = u * 4)) }
         }
@@ -440,7 +441,7 @@ private fun herePage(
 ): GuidePage {
     val place = snapshot.location.mapSecName.ifEmpty { tk("THIS MAP") }.uppercase()
     fun national(species: Int) = dex?.let { PokedexSource.nationalOf(it.tables, guideDexSpecies(species)) } ?: 0
-    fun rows(slots: List<EncounterSlot>, pin: Boolean = false) = slots.map { s ->
+    fun rows(slots: List<EncounterSlot>, pin: WildPin.Method? = null) = slots.map { s ->
         val n = national(s.species)
         val seen = dex == null || n in dex.seen
         val lv = tr("LV {0}", if (s.minLevel == s.maxLevel) "${s.minLevel}" else "${s.minLevel}-${s.maxLevel}")
@@ -450,7 +451,8 @@ private fun herePage(
             detail = "$lv  ${s.percent}%",
             icon = s.species,
             owned = dex != null && n in dex.caught,
-            pinSpecies = if (pin) s.species else 0,
+            pinSpecies = if (pin != null) s.species else 0,
+            pinMethod = pin,
         )
     }
     val methods = if (!hasWild) emptyList() else enc?.let {
@@ -517,6 +519,8 @@ private fun herePage(
             }.joinToString(" ").ifEmpty { tr("Nothing listed for this area.") }
         },
     )
+    // WILD PIN: why the PINs are greyed (NUZLOCKE, a battle), said once, over the first section that has them.
+    val firstPinned = methods.firstOrNull { (name, l) -> WildPin.Method.forSection(name)?.let { m -> l.any { WildPins.control(snapshot, m, it.species) != null } } == true }?.first
     return GuidePage(
         HERE,
         listOfNotNull(
@@ -525,10 +529,10 @@ private fun herePage(
         ) + methods.map { (name, l) ->
             // Grass follows the game's clock (Polished Crystal's morning / day / night): which list this is.
             val grass = l === enc?.grass
-            // WILD PIN: grass and caves only; why its PINs are greyed (NUZLOCKE, a battle), once over them.
-            val pinWhy = if (grass) wildPinReason(l.map { WildPins.control(snapshot, it.species) }) else null
+            val pin = WildPin.Method.forSection(name)
+            val pinWhy = if (name == firstPinned) wildPinReason(l.map { WildPins.control(snapshot, pin, it.species) }) else null
             val clockNote = if (clock != null && grass) tr("For your game's clock: {0}.", tr(clock)) else null
-            GuideSection(name, rows(l, pin = grass), note = listOfNotNull(clockNote, pinWhy?.let { tr("PIN: {0}", it) }).joinToString(" ").ifEmpty { null })
+            GuideSection(name, rows(l, pin = pin), note = listOfNotNull(clockNote, pinWhy?.let { tr("PIN: {0}", it) }).joinToString(" ").ifEmpty { null })
         } + listOfNotNull(
             onlyThen.takeIf { it.isNotEmpty() }?.let {
                 if (otherIsNight) GuideSection(tk("AT NIGHT"), rows(it), note = tr("Only out at night."))

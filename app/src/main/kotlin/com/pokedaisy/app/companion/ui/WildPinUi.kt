@@ -15,7 +15,7 @@ import com.pokedaisy.app.companion.i18n.tr
 
 /*
  * WILD PIN's pieces ([com.pokedaisy.app.companion.data.WildPin]): the PIN button on GUIDE > HERE's and the HUD's WILD
- * GRASS / CAVE rows, the reason line when it's greyed, and the HUD WILD button's face while a pin is in.
+ * wild rows (grass, surfing, rock smash, the rods), the reason line when it's greyed, and the HUD WILD button's face while a pin is in.
  */
 
 /** A push pin: its round head over a short point (the pixel font's cap height, like [PixelIcons.star]). */
@@ -59,7 +59,7 @@ fun WildPinButton(control: PinControl, m: GbaTextMetrics, modifier: Modifier = M
     )
 }
 
-/** Why the PINs are greyed (once, under the GRASS / CAVE heading), or nothing. */
+/** Why the PINs are greyed (once, under the first heading with a PIN), or nothing. */
 fun wildPinReason(controls: List<PinControl?>): String? = controls.firstNotNullOfOrNull { it?.blocked }?.let { tr(it) }
 
 /**

@@ -11,8 +11,8 @@ import com.pokedaisy.app.companion.data.WildPin
  * activity ends it on another map. Previews set [preview] instead of a host.
  */
 object WildPins {
-    /** The activity: [pin] reads the map's land slots off the UI thread and puts the pin in; [unpin] takes it out. */
-    class Host(val pin: (species: Int) -> Unit, val unpin: () -> Unit)
+    /** The activity: [pin] reads the map's slots for the method off the UI thread and puts the pin in; [unpin] takes it out. */
+    class Host(val pin: (method: WildPin.Method, species: Int) -> Unit, val unpin: () -> Unit)
 
     private val onState = mutableStateOf(true)
     private val pinState = mutableStateOf<WildPin.Pin?>(null)
@@ -41,16 +41,17 @@ object WildPins {
         pinState.value = pin
     }
 
-    /** The PIN on a GRASS / CAVE row of [snapshot]'s map for [species], or null for none: WILD PIN off, a game outside the
-     * first slice ([WildPin.offered]) or no host. */
-    fun control(snapshot: SnapshotView, species: Int): PinControl? {
+    /** The PIN on a [method] row (GRASS / CAVE, SURFING, ROCK SMASH, a rod) of [snapshot]'s map for [species], or null for
+     * none: no method (HEADBUTT ...), WILD PIN off, a game outside the slice ([WildPin.offered]) or no host. */
+    fun control(snapshot: SnapshotView, method: WildPin.Method?, species: Int): PinControl? {
+        if (method == null) return null
         previewState.value?.let { p ->
-            return PinControl(species, pinned = species == p.pinned, blocked = WildPin.blocked(p.nuzlocke, inBattle = false))
+            return PinControl(method, species, pinned = species == p.pinned && method == p.method, blocked = WildPin.blocked(p.nuzlocke, inBattle = false))
         }
         if (!on || species <= 0 || host == null || snapshot.unsupported || !WildPin.offered(snapshot.guideTables)) return null
         val p = pinned
         return PinControl(
-            species, pinned = p != null && p.species == species && p.onMap(snapshot.mapGroup, snapshot.mapNum),
+            method, species, pinned = p != null && p.species == species && p.method == method && p.onMap(snapshot.mapGroup, snapshot.mapNum),
             blocked = WildPin.blocked(Nuzlocke.on, snapshot.inBattle),
         )
     }
@@ -66,20 +67,20 @@ object WildPins {
     fun toggle(control: PinControl) {
         if (control.blocked != null) return
         val h = host ?: return
-        if (control.pinned) h.unpin() else h.pin(control.species)
+        if (control.pinned) h.unpin() else h.pin(control.method, control.species)
     }
 
-    /** Paparazzi / ui-preview: every row offers PIN, [pinned] (0 = none) shows as pinned, [nuzlocke] greys them; null = off. */
-    fun preview(pinned: Int = 0, nuzlocke: Boolean = false) {
-        previewState.value = Preview(pinned, nuzlocke)
+    /** Paparazzi / ui-preview: every row offers PIN, [pinned] (0 = none) by [method] shows as pinned, [nuzlocke] greys them. */
+    fun preview(pinned: Int = 0, nuzlocke: Boolean = false, method: WildPin.Method = WildPin.Method.LAND) {
+        previewState.value = Preview(pinned, nuzlocke, method)
     }
 
     fun endPreview() {
         previewState.value = null
     }
 
-    private data class Preview(val pinned: Int, val nuzlocke: Boolean)
+    private data class Preview(val pinned: Int, val nuzlocke: Boolean, val method: WildPin.Method)
 }
 
-/** One row's PIN: [pinned] shows UNPIN; [blocked] (an English key, null = none) greys it and says why. */
-data class PinControl(val species: Int, val pinned: Boolean, val blocked: String?)
+/** One row's PIN ([species] by [method]): [pinned] shows UNPIN; [blocked] (an English key, null = none) greys it and says why. */
+data class PinControl(val method: WildPin.Method, val species: Int, val pinned: Boolean, val blocked: String?)

@@ -182,10 +182,10 @@ class PokeDaisyActivity : Activity() {
         .takeIf { it in com.pokedaisy.app.companion.data.ShinyOdds.choices(BuildConfig.DEBUG) }
         ?: com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
 
-    /** WILD PIN: [species] on the map the player is on - its land slots read off the UI thread, the pin handed to the
+    /** WILD PIN: [species] by [method] on the map the player is on - that method's slots read off the UI thread, the pin handed to the
      * engine (which puts it into the ROM at the next frame boundary). Only on a free field: never in a battle, never with
      * the NUZLOCKE tracker on (the PIN is greyed then). */
-    private fun pinWild(species: Int) {
+    private fun pinWild(method: com.pokedaisy.app.companion.data.WildPin.Method, species: Int) {
         val snap = telemetry.snapshot.value
         val t = snap.guideTables ?: return
         if (!com.pokedaisy.app.companion.data.WildPin.offered(t) || !::engine.isInitialized) return
@@ -195,11 +195,11 @@ class PokeDaisyActivity : Activity() {
         val set = t.wildSetOf(group, num, snap.progress)
         lookGender.launch {
             val pin = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                com.pokedaisy.app.companion.data.GuideRomSource.landSlots(t, group, num, set)
+                com.pokedaisy.app.companion.data.GuideRomSource.pinSlots(t, method, group, num, set)
                     ?.let { com.pokedaisy.app.companion.data.WildPin.pin(species, group, num, set, it) }
             }
             if (pin == null) {
-                Log.w("pokedaisy", "wild pin: species $species isn't in $group.$num's land slots")
+                Log.w("pokedaisy", "wild pin: species $species isn't in $group.$num's $method slots")
                 return@launch
             }
             // The player moved on while the slots were read: no pin for a map they've left.

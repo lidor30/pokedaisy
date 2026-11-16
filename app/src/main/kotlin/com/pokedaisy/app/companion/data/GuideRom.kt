@@ -341,21 +341,22 @@ object GuideRomSource {
             .getOrNull()?.also { encounters[key or (set shl 16)] = it }
     }
 
-    /** WILD PIN ([WildPin]): map [group].[num]'s land slot array (grass and caves) as the file has it - where it is and
-     * its 12 slots' 48 bytes - from the header [encounters] reads; null when the map has none. */
-    fun landSlots(t: GuideTables, group: Int, num: Int, set: Int = 0): WildPin.LandSlots? {
+    /** WILD PIN ([WildPin]): map [group].[num]'s slot array for [method] as the file has it - where it is and its slots'
+     * bytes - from the header [encounters] reads; null when the map has none. */
+    fun pinSlots(t: GuideTables, method: WildPin.Method, group: Int, num: Int, set: Int = 0): WildPin.Slots? {
         sync(t)
         return runCatching {
             val hdr = headerIndex(t)[group shl 8 or num]?.let { alternateHeader(t, it, set) } ?: return@runCatching null
             val h = rd(hdr, wildHeaderStride(t))
             val sets = listOf(t.wildSet) + (0 until t.wildSets).filter { it != t.wildSet }
-            val info = t.wildLayout?.let { l -> u32le(h, 4 + 4 * l.land) }
-                ?: sets.map { u32le(h, 4 + it * wildSetStride(t)) }.firstOrNull { it != 0L } ?: 0L
+            val m = method.index
+            val info = t.wildLayout?.let { l -> u32le(h, 4 + 4 * listOf(l.land, l.water, l.rockSmash, l.fishing)[m]) }
+                ?: sets.map { u32le(h, 4 + it * wildSetStride(t) + 4 * m) }.firstOrNull { it != 0L } ?: 0L
             if (!Gfx.inRom(info)) return@runCatching null
             val mons = u32le(rd(info + 4, 4), 0)
             if (!Gfx.inRom(mons)) return@runCatching null
-            WildPin.LandSlots(mons, rd(mons, WildPin.BLOCK_BYTES))
-        }.onFailure { android.util.Log.w("pokedaisy", "land slots $group.$num failed", it) }.getOrNull()
+            WildPin.Slots(mons, rd(mons, method.blockBytes), method)
+        }.onFailure { android.util.Log.w("pokedaisy", "$method slots $group.$num failed", it) }.getOrNull()
     }
 
     /** The header [set] places after the map's first ([first]), as the game counts them - only while it's still
