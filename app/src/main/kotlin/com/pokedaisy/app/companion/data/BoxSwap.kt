@@ -305,7 +305,7 @@ enum class BoxSortResult {
 fun sortBoxes(fields: FieldItemFns, fns: BoxSwapFns, busy: Boolean, g: GameCalls): BoxSortResult {
     val crcs = fns.codeCrcs.zip(listOf(fns.boxMonToMon, fns.boxMonRestorePP, fns.getBoxMonData))
     if (!fieldItemCodeMatches(fields, g::read) ||
-        crcs.any { (crc, fn) -> java.util.zip.CRC32().apply { update(g.read(fn, 32)) }.value != crc }) return BoxSortResult.FAILED
+        crcs.any { (crc, fn) -> crc32(g.read(fn, 32)) != crc }) return BoxSortResult.FAILED
     if (busy || g.call(fields.fieldControlsLocked) != 0L) return BoxSortResult.NOT_NOW
     return runCatching {
         val storage = u32le(g.read(fns.storagePtr, 4), 0)
