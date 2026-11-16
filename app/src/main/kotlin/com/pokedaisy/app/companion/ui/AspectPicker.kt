@@ -122,7 +122,7 @@ private fun AspectChoice(
     }
 }
 
-/** The top screen in miniature: black, the game placed as [com.pokedaisy.app.GameStageLayout] places it. */
+/** The top screen in miniature: black, the game fitted like the native renderer viewport. */
 @Composable
 internal fun ScreenPreview(aspect: GameAspect, statusBar: Boolean, shot: ImageBitmap?, modifier: Modifier) {
     val stretch = aspect != GameAspect.ORIGINAL   // WIDE takes the whole screen too, with more game in it
