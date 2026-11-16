@@ -125,8 +125,8 @@ int pd_title_box(struct pd_canvas* c, int x, int y, int w, int h, uint32_t fill)
 static const uint16_t BOLT[7] = { 0x18, 0x0C, 0x06, 0x1F, 0x0C, 0x06, 0x03 }; // bit 0 = left, 5 wide
 
 int pd_battery_width(int pct, bool charging) {
-    char text[8];
-    snprintf(text, sizeof text, "%d%%", pct > 100 ? 100 : pct);
+    char text[16];
+    snprintf(text, sizeof text, "%d%%", pct > 100 ? 100 : pct < 0 ? 0 : pct);
     return 24 + pd_text_width(text) + (charging ? 8 : 0);
 }
 
