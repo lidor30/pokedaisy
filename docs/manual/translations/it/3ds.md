@@ -111,6 +111,6 @@ Scarica il nuovo `pokedaisy.3dsx` e copialo sopra quello vecchio in `sdmc:/3ds/`
 - **PokeDaisy non è nell'Homebrew Launcher:** il file deve essere in `sdmc:/3ds/` e finire con `.3dsx`.
 - **Un gioco non è nell'elenco:** deve stare direttamente in `sdmc:/pokedaisy/roms/`, non in una cartella al suo interno e non compresso.
 - **Il mio salvataggio non è stato caricato:** deve avere esattamente il nome del gioco con `.sav` alla fine. A ogni avvio il salvataggio viene prima copiato in `sdmc:/pokedaisy/roms/pokedaisy-backups/`, quindi lì trovi una copia più vecchia se ti serve.
-- **Va lento:** un 3DS o 2DS originale è più lento dei modelli New. Nelle `SETTINGS` della libreria imposta `SCREEN` su `PIXEL 1x`, la modalità più leggera.
+- **Va lento:** un 3DS o 2DS originale è più lento dei modelli New. Nelle `SETTINGS` della libreria imposta `SCREEN` su `PIXEL 1x`, la modalità più leggera. Per un gioco GBA puoi anche premere `X` nella libreria e provare un altro `GBA CORE`: `GPSP` è uno sperimentale, pensato per il 3DS originale.
 
 Ancora bloccato? [Faccelo sapere](https://pokedaisy.com/it/feedback/#bug) e allega `sdmc:/pokedaisy/log.txt`.

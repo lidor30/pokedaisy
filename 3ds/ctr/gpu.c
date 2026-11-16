@@ -2,9 +2,11 @@
 
 #include <3ds.h>
 #include <citro2d.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "../core/pd_ui.h"
+#include "host.h"
 
 #define GBA_W 240
 #define GBA_H 160
@@ -34,7 +36,8 @@ static C3D_Tex upTex;
 static C3D_RenderTarget* upTarget;
 static C3D_Tex bottomTex, topTex, overlayTex, perfTex;
 
-// A New 3DS draws on its third core, so writing the textures and waiting for the refresh come off the game's time.
+// A New 3DS draws on its fourth core, an Old 3DS on the system's (core 1, lent at 80%: host_core1_take), so writing the
+// textures and waiting for the refresh come off the game's time.
 // gpu_draw hands a job over: what the frame needs is copied into the stage (the game runs on and rewrites its buffers),
 // and the thread takes it at the next refresh. One job at a time: a game that's ahead waits for the stage, which is
 // what paces it. Without that core gpu_draw runs the job itself.
@@ -474,7 +477,8 @@ static void wide_main(void* arg) {
 
 bool gpu_wide_thread(void (*work)(void)) {
     if (wideThread) return true;
-    if (!drawThread) return false;
+    // The New 3DS's fourth core only: an Old 3DS has none to spare, and EXPAND's margins are drawn with the game there.
+    if (!drawThread || !host_is_new_3ds()) return false;
     wideWork = work;
     LightEvent_Init(&wideStart, RESET_ONESHOT);
     LightEvent_Init(&wideDone, RESET_STICKY);
@@ -494,10 +498,24 @@ void gpu_wide_join(void) {
     if (wideThread) LightEvent_Wait(&wideDone);
 }
 
+static int drawCore = -1;
+
+int gpu_draw_core(void) {
+    return drawThread ? drawCore : -1;
+}
+
 static void draw_thread_start(void) {
-    bool isNew = false;
-    APT_CheckNew3DS(&isNew);
-    if (!isNew) return;
+    bool isNew = host_is_new_3ds();
+    // An Old 3DS: the system's core, when it lends it (else everything stays on the game's core, as before).
+#ifdef PD_DEV
+    // The dev build's switch: sdmc:/pokedaisy-dev/draw0 keeps an Old 3DS's drawing on the game's core.
+    FILE* draw0 = isNew ? NULL : fopen("sdmc:/pokedaisy-dev/draw0", "rb");
+    if (draw0) {
+        fclose(draw0);
+        return;
+    }
+#endif
+    if (!isNew && !host_core1_take(HOST_CORE1_PERCENT)) return;
     stageGame = linearAlloc(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t));
     stageBottom = linearAlloc(PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));
     stageTop = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
@@ -511,8 +529,14 @@ static void draw_thread_start(void) {
     svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
     // The New 3DS's fourth core, beside armGBA's mixer (it sleeps between batches); mGBA's renderer and armGBA's render
     // worker have the third. armGBA's second worker is kept off (pd_armgba.c): beside it this thread starved.
-    drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, 3, false);
-    if (!drawThread) drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, 2, false);
+    // An Old 3DS's system core: the job mostly waits for the refresh there, so the game no longer does.
+    static const int CORES_NEW[] = { 3, 2 }, CORES_OLD[] = { 1 };
+    const int* cores = isNew ? CORES_NEW : CORES_OLD;
+    int count = isNew ? 2 : 1;
+    for (int i = 0; i < count && !drawThread; i++) {
+        drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, cores[i], false);
+        drawCore = cores[i];
+    }
     if (drawThread) aptHook(&drawHook, draw_apt_hook, NULL);
 }
 

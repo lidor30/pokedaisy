@@ -70,8 +70,8 @@ jobs:
             3ds/ctr/icon.png
             3ds/tools/make_cia.sh
           sparse-checkout-cone-mode: false
-      - name: Submodules (mGBA, armGBA)
-        run: git -C src submodule update --init --depth 1 third_party/mgba third_party/armgba
+      - name: Submodules (mGBA, armGBA, gpSP)
+        run: git -C src submodule update --init --depth 1 third_party/mgba third_party/armgba third_party/gpsp
       - name: Build (devkitARM)
         run: |
           docker run --rm -v "$PWD/src:/repo" -w /repo/3ds/ctr "$DEVKITARM" bash -c \

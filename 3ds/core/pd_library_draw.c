@@ -581,6 +581,7 @@ static void games_page(struct pd_library* l, struct pd_canvas* c) {
     bool known = l->count > 0;
     lib_list_draw(l, c, &l->list, top, LIB_H - top - LIB_M, lib_grid(l), known ? "No games here." : "No games yet.",
                   known ? NULL : "Put them in /pokedaisy/roms/");
+    lib_pick_draw(l, c); // GBA CORE (X)
 }
 
 // --- SETTINGS ---
@@ -634,7 +635,12 @@ void lib_settings_draw(struct pd_library* l, struct pd_canvas* c) {
     }
     pd_unclip(c);
     lib_scroll_bar(c, x + w - f - BAR_W - 2, top + 1, view - 2, total, view, &l->settingsScroll);
+    lib_pick_draw(l, c);
+}
+
+void lib_pick_draw(struct pd_library* l, struct pd_canvas* c) {
     if (l->pickRow < 0) return;
+    int rowH = pd_list_row(18);
     // The pick-list (OptionSelector): the setting's choices over the dimmed page, the current one's value red.
     const char* value;
     bool group;
@@ -642,7 +648,9 @@ void lib_settings_draw(struct pd_library* l, struct pd_canvas* c) {
     const char* label = lib_settings_label(l, l->pickRow, &value, &group, &choices);
     lib_dim(c);
     lib_hit(0, 0, LIB_W, LIB_H, HIT_PICK_CLOSE);
-    int pw = 200, ph = 30 + choices * rowH + 10;
+    // Room for every choice inside the list window's frame (its layers take up to ~10 px a side): the old +10 left the
+    // last of a short list (GAME VOLUME's 100%, GBA CORE's MGBA) out.
+    int pw = 200, ph = 27 + choices * rowH + 24;
     if (ph > LIB_H - 16) ph = LIB_H - 16;
     int px = (LIB_W - pw) / 2 + RAIL_W / 2, py = (LIB_H - ph) / 2;
     int tf = pd_title_box(c, px, py, pw, 24, PD_TITLE_FILL);

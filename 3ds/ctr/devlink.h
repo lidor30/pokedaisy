@@ -36,6 +36,9 @@ struct devlink_stats {
     // the draw over 10 ms, else the rest of the loop), the sound queue running dry, its fewest chunks queued.
     unsigned totLoops, totLate, totLateCore, totLateDraw, totLateRest, totGaps, totFrames, queueMin;
     unsigned jobTexUs, jobBeginUs, jobCanvasUs, jobRestUs;   // the draw jobs in the last second (gpu.c)
+    unsigned skipped;   // frames run undrawn to catch up with the refresh, in the last second (an Old 3DS)
+    int drawCore;       // where the screens are drawn (gpu_draw_core: -1 the game's core)
+    unsigned gpRenderUs, gpWaitUs; // gpSP's render thread, its last frame: drawing it, and the game's wait for it
 };
 
 void devlink_start(void);

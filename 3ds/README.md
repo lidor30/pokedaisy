@@ -3,7 +3,8 @@
 A homebrew port of PokeDaisy: the game runs on the top screen and the companion lives on the touch screen. GBA games
 run on **armGBA** (`third_party/armgba`: a GBA core with a recompiler for the 3DS's ARM11, at ratherDashing's
 `3ds-v0.0.3-alpha`), Game Boy and Game Boy Color games on **libmgba** (the same mGBA 0.10.5 submodule the Android app
-uses). It is a rewrite, not a recompile - the Android app is Kotlin
+uses). A GBA game can be put on mGBA or on **gpSP** (`third_party/gpsp`, bheppe's gpSP 3D at v0.1.7, EXPERIMENTAL) by
+its GBA CORE in the library. It is a rewrite, not a recompile - the Android app is Kotlin
 and Jetpack Compose, which the 3DS can't run - so this folder holds a small,
 portable C core that re-implements the companion's reading and drawing, plus a
 3DS host and a desktop preview tool around it.
@@ -51,7 +52,9 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   it; 2x / 3x / 4x in SETTINGS. The game is muted meanwhile.
 - **Save state**: one slot per game (`sdmc:/pokedaisy/states/`). Loading one keeps the save memory as it is, so it
   can't write an old copy over the save file; the save is backed up before every load anyway. A GBA game's states are
-  armGBA's own: one made by an earlier (mGBA) build is turned away with a notice and left where it is.
+  armGBA's own: one made by an earlier (mGBA) build is turned away with a notice and left where it is. A GBA game whose
+  GBA CORE is MGBA keeps its states apart (`<game>.mgba.ss1`), on GPSP `<game>.gpsp.ss1` (gpSP's own, "PGSP" and the
+  game's CRC first), so a state never reaches another core.
 - `sdmc:/pokedaisy/log.txt` says what the last run did (`log-prev.txt`: the run before): memory, whether armGBA's
   recompiler and its render thread started, each save written. Attach it to a bug report. `armgba/` keeps each game's
   warm list (the code the recompiler translated, so a second run translates it ahead of need); `system/gba_bios.bin` is
@@ -159,7 +162,10 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   screen does: player, time, Pokédex, the badges, money, the place, and the party with its icons (from the save itself where
   the save editor reads it, the rest from `cards/<game>.card`, what the game looked like when it was last left). SETTINGS
   holds the settings that aren't a game's: the library's LAYOUT (LIST / GRID) and SORT, THEME, DARK MODE, VIEW, the sound, the
-  battle buttons, HUD and FLY STYLE.
+  battle buttons, HUD and FLY STYLE. X on a GBA game picks its **GBA CORE** (AUTO / ARMGBA / MGBA / GPSP, `enum pd_game_core`,
+  the pick-list SETTINGS uses): AUTO is armGBA; MGBA is slower but the one to try when a game misbehaves on armGBA; GPSP
+  (EXPERIMENTAL, "Sound and speed"). Kept per
+  file as `library.tsv`'s sixth column (only when picked); the top screen's hint says the pick (X: MGBA).
 - **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported, round two
   included): a game's save file opened with the game closed, the app's three pages as tabs (SELECT steps them). POKéMON: the
   party and the 14 boxes (L / R), A picks a Pokémon up and puts it down (party <-> PC by the PC's rules: mail, the last one
@@ -261,6 +267,47 @@ for a quiet measurement read the running totals (`tot_loops`, `tot_late` split b
 `tot_gaps`, the sound queue's `queue_min`) twice, a stretch of play apart. The sim runs armGBA's interpreter (a desktop recompiler would need its own executable
 memory); `PD_SIM_CORE=mgba` puts a GBA game on mGBA there too.
 
+**gpSP** (GBA CORE: GPSP, EXPERIMENTAL; `emu/pd_gpsp.c`, `emu/pd_gpsp_core.c`, `emu/gpsp.cmake`): bheppe's gpSP 3D
+(GPL-2.0-or-later), whose ARM11 recompiler is said to hold full speed on an Old 3DS - not measured in this app yet. A
+libretro core like armGBA, behind the same kind of mGBA-shaped view (`pd_gpsp_core.c`: RAM, ROM, VRAM, and io / palette /
+OAM copied after each frame, no renderer, so EXPAND takes the hookless path). gpSP's objects and our glue are linked
+into one object whose only globals are `pd_gpsp.keep`'s names (its globals - `reg`, `ewram`, `retro_run` ... - clash
+with armGBA's): `objcopy --keep-global-symbols`, Apple's `ld -r -exported_symbols_list` for the simulator.
+`third_party/patches/gpsp-pokedaisy.patch` puts its cartridge in the arena (`gpsp_host_rom_arena`). Its recompiler's
+caches (10.5 MB) live only while it runs; its static arrays and code cost every player ~3.8 MB of heap. The save file is
+mGBA's layout (the save memory, then the 16-byte clock armGBA and mGBA keep, left as it was), written 15 frames after
+the game's writes stop. Its renderer runs on a thread of its own (gpSP 3D's `video_thread.cc`: it records each line's
+registers, palette and OAM and draws a few lines behind the game - the same picture, no frame later, so EXPAND and FREE
+FLIGHT read a finished frame as ever), on the New 3DS's third core or an Old 3DS's system core at 80%, its frame hook
+converting the picture there too; the dev build's `armgba/nothreads` keeps it on the game's core, and `pdlink stat`'s
+`gp_render_us` / `gp_wait_us` give its last frame. gpSP 3D's deferred finish (a drawn frame not waited for when the next
+are skipped) isn't used: everything after a frame here reads its finished picture at once. Calls into the game (pk_call:
+PC anywhere, FLY, FREE FLIGHT, the bag's USE, TM teaching) run the function to its return on gpSP's interpreter, in the
+recompiler's build too (the patch's `execute_arm_until`: stopped at the return address or a cap, the GBA's hardware not
+run), every register put back after. gpSP ends a frame wherever its CPU is when the time is up - FireRed in its wait loop,
+Emerald mostly mid-work - so a call first runs the game on to its wait (`gpsp_advance`: halted in VBlankIntrWait, or the
+stack depth and PC most frames end at, the counts halved every 120 frames so the boot's screens don't decide it). The
+native m4a mixer (`host/pd_mixer.c`) runs on it as on armGBA: the patch hands a Thumb BKPT to the host (`gpsp_bkpt`, from
+the interpreter and from the recompiler through `arm_stub.S`'s `execute_bkpt_thumb`, which stores the cached registers
+and goes on from wherever the hook left the CPU). Cheats are mGBA's own parser and cheat device over the mCore view
+(`pd_gpsp_core.c`): RAM codes and ROM patches as on the other cores, but a master code's hook isn't put in (it would go
+through mGBA's own CPU), so its set runs at the frame's end like any other. The H-blank shortcut is armGBA's too: the
+patch's `gpsp_hblank_hook` asks `pd_gpsp.c` before raising the interrupt, the stock handler's flags set there and its 190
+cycles taken from the CPU's next run (Unbound's battles, where it fires 228 times a frame: 410 us a frame on the
+simulator's interpreter, 504 without; FireRed's and Emerald's scripted battles never turn the interrupt on). Checked in
+the simulator
+(`PD_SIM_CORE=gpsp`, gpSP's interpreter there; `PD_SIM_THREADED_VIDEO=1` its render thread): FireRed and Emerald boot
+from their saves to the field with the companion, HUD and EXPAND right; the picture with the render thread equals the one
+without, frame for frame (`framesum` over walking, the START menu, a state saved and loaded); an in-game save written,
+then booted by both gpSP and armGBA to the same place; `make sim-test`'s scripts with `PD_SIM_CORE=gpsp`: seven of eight
+pass with the mixer check on (`PD_SIM_MIXER_CHECK`, the default: the native mixer against the game's own on every mix,
+2,500 to 7,700 mixes a script, none different), FireRed's battle failing late only because it counts on armGBA's random
+rolls (its first move knocks the foe out on gpSP); with the native mixer alone (`-DPD_SIM_MIXER_CHECK=OFF`, as the console
+runs) all eight pass, as on armGBA. `press-to-state` presses A every 41 frames (it was 40: all on one frame parity, which
+FireRed's GEN 5 battle on gpSP, reading the keys every other frame there, never saw); the sim's `cheats FILE`: a
+CodeBreaker RAM write, a set behind a master code and a GameShark ROM patch apply, and the ROM patch comes out again.
+Not run on a console yet.
+
 **mGBA** (Game Boy games, and the comparison above): half of a frame on a New 3DS is the game's own sound mixer, the m4a
 engine's `SoundMainRAM`. `host/pd_mixer.c` runs it natively:
 a BKPT over its first instruction in IWRAM hands it to C, on every ROM that carries the stock routine (106 of the 136 GBA ROMs the app
@@ -342,7 +389,7 @@ in `roms/` (a new one shows after `restart`). Never in a release build.
 
 `make sim` builds `build/sim/pd_sim` (`desktop/sim/`): the real session (`host/`) and companion over the real mGBA,
 with no 3DS code, from a script of `run`, `press`, `quick`, `tap`, `hit ID`, `hits`, `shot`, `wild`, `wait-state`,
-`press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` / `noinfo` /
+`press-to-state`, `poke`, `peek`, `cheats FILE`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` / `noinfo` /
 `infofirst` (BATTLE STYLE, ONE-TAP MOVES, BATTLE INFO, BATTLE VIEW), `gameplay TMS TEXT EVOS` / `nuzlocke` / `scenespeed SCENE N` / `tab N` / `options` (GAMEPLAY's switches, a tab by number, and what this game has of them), `charging 0|1`, `script HEX` (script bytes run by the game: a warp),
 `teach SLOT INDEX MOVE` (the game's SetMonData), `flash` (FLASH picked), `idle detect|remove|ignore` (mGBA's busy-loop
 skipping; the console uses detect), `trace N [KEYS]` (N frames one by one, each with its tick, game, EXPAND, snapshot and companion redraw in us and EXPAND's scene; PD_TRACE_US hides the ones under it), `timeframes N` (the session's and a bare runFrame's cost a frame; PD_SIM_THREADED_VIDEO=1
@@ -447,9 +494,26 @@ not used; nor is render-to-texture.
 
 - **New 3DS / New 3DS XL / New 2DS XL** (804 MHz, 256 MB): the target; the app
   turns on the faster clock (`osSetSpeedupEnable`).
-- **3DS / 3DS XL / 2DS** (268 MHz, 128 MB): not tried with armGBA (no cores to spare there); mGBA alone was close to its limit
-  there, and the companion's drawing shares the CPU. Expect slowdowns; PIXEL 1x
-  is the cheapest screen mode, and fast-forward may not get past 1x.
+- **3DS / 3DS XL / 2DS** (268 MHz, 128 MB): not tried on one yet, only on a New 3DS playing one (below). There the app
+  borrows the system's core (core 1, 80% of its time, `host_core1_take` in `ctr/host.c`; 30% while the app is in the
+  background, as gpSP 3D does it) for the screens' draw thread (`ctr/gpu.c`), so the game no longer waits for the refresh
+  itself, and for armGBA's renderer, run One Frame Late (`pd_armgba_host.lateVideo`, host.c's `renderThreadHostCreate` in
+  place of jitmem.c's, which kept it off an Old 3DS): drawn in step there, the game waited on it a third of each second.
+  A late picture is a frame behind the game's memory, which EXPAND's margins can't be (the middle split from them at the
+  seam while walking), so a game started in EXPAND keeps the renderer on the game's core; an Old 3DS's first start is
+  SHARP 1.5x for that. Fades, FREE FLIGHT's bird and a held battle frame are a frame off at worst. A game that falls a
+  refresh or two behind runs the frames it owes undrawn next loop, two at most (`pd_input.catchUp`, main.c's
+  `behindTicks`), so it and its sound keep closer to full speed while the picture skips; a New 3DS keeps every frame
+  drawn. While a game runs the log waits in memory (`host_log_hold`): gpSP 3D's Old 3DS freezes were its log written to
+  the SD card mid-game. Measured 2026-11-17 on FireRed's Route 21 at SHARP 1.5x, game frames a second / shown / sound:
+  before (everything on the game's core) 22-27 / all / its 85% floor, ~19 gaps a second; the draw thread on core 1 30 /
+  all; the renderer on core 1 in step 36 / 12; on the game's core with up to two frames skipped 45 / 15 / full rate, ~10
+  gaps; the renderer on core 1 late with up to two skipped (the default) 52 / 18 / full rate, 0-3 gaps; late without
+  skipping 33 / all / 85%. armGBA's own code is what's slow at 268 MHz: no full speed yet. The dev build plays an Old 3DS
+  on a New one with `sdmc:/pokedaisy-dev/old3ds` (no 804 MHz mode or L2 cache, no third or fourth core): close to one,
+  not the same (its memory and GPU stay a New 3DS's); `catchup` (holding 0, 1 or 2) sets the most frames skipped, `draw0`
+  keeps the drawing on the game's core, and `armgba/nothreads` armGBA's renderer. `pdlink stat`'s `skipped` and
+  `draw_core` say what it did.
 
 ## Next steps
 

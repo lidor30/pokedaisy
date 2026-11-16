@@ -12,6 +12,8 @@
 
 bool gpu_init(void);
 void gpu_exit(void);
+// The core the draw thread runs on (3 or 2 on a New 3DS, 1 on an Old one), -1 = none: the game's core draws.
+int gpu_draw_core(void);
 
 // mGBA's video buffer: 32-bit pixels (0xXXBBGGRR), GPU_GAME_STRIDE x 160, in linear memory.
 uint32_t* gpu_game_buffer(void);

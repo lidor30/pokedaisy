@@ -111,6 +111,6 @@ PokeDaisyはニンテンドー3DSでも自作アプリ（homebrew）として動
 - **Homebrew LauncherにPokeDaisyがない：** ファイルが `sdmc:/3ds/` にあり、名前が `.3dsx` で終わっている必要があります。
 - **ゲームが一覧に出ない：** `sdmc:/pokedaisy/roms/` の中に直接置き、中のフォルダには入れず、zipのままにしないでください。
 - **セーブデータが読まれない：** セーブデータはゲームとまったく同じ名前で、最後が `.sav` である必要があります。起動のたびにセーブデータは `sdmc:/pokedaisy/roms/pokedaisy-backups/` にコピーされるので、古いコピーが必要ならそこにあります。
-- **動きが遅い：** ニンテンドー3DSや2DSは、Newの本体より遅くなります。ライブラリの `SETTINGS` で `SCREEN` を `PIXEL 1x` にしてください。いちばん軽いモードです。
+- **動きが遅い：** ニンテンドー3DSや2DSは、Newの本体より遅くなります。ライブラリの `SETTINGS` で `SCREEN` を `PIXEL 1x` にしてください。いちばん軽いモードです。GBAのゲームでは、ライブラリで `X` を押して別の `GBA CORE` を試すこともできます。`GPSP` はニンテンドー3DS向けで、まだテスト中です。
 
 それでも困ったら、`sdmc:/pokedaisy/log.txt` を添えて [お知らせください](https://pokedaisy.com/ja/feedback/#bug)。
