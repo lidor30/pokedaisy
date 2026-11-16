@@ -101,7 +101,7 @@ In a single battle all of that fits without scrolling. In a double battle the pa
 
 Scroll down the foe's column for more:
 
-- `ABILITY` and `HELD ITEM`.
+- `ABILITY`, `NATURE` and `HELD ITEM`.
 - Its stats as they stand in this battle. Any stat that's been raised or lowered gets a small pill (+2 in green, -1 in red), and accuracy and evasion show up once they've changed.
 - Its moves, each with a verdict on what it does to *your* Pokémon. A `SUPER` here is a warning.
 
@@ -115,7 +115,7 @@ When the wild Pokémon you're facing is shiny, the BATTLE tab says so with a gol
 
 Turn on `BATTLE FOCUS` in SETTINGS and `INFO` becomes one page that fits the screen, with nothing to scroll. It shows one Pokémon at a time:
 
-- Its sprite, its name with its types under it, and beside them its `ABILITY` and, under that, its `HELD ITEM`. HP and level are left out.
+- Its sprite, its name with its types under it, and beside them its `ABILITY`, its `NATURE` and, under those, its `HELD ITEM`. HP and level are left out.
 - Its stats, with the same stage pills.
 - Its four moves, two by two, each with its verdict.
 - What it's `WEAK TO`, what it `RESISTS` and what it's `IMMUNE TO`.
