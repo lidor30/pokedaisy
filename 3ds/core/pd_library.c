@@ -253,7 +253,18 @@ void pd_library_tick(struct pd_library* l) {
     l->dirty = true;
 }
 
-// --- the cache: "sha1 \t code \t size \t last played \t file" a line ---
+// --- the cache: "sha1 \t code \t size \t last played \t file [\t core]" a line ---
+
+const char* pd_core_name(int core) {
+    static const char* NAMES[PD_CORE_COUNT] = { "AUTO", "ARMGBA", "MGBA", "GPSP" };
+    return core >= 0 && core < PD_CORE_COUNT ? NAMES[core] : "";
+}
+
+int pd_library_core(const struct pd_library* l, const char* file) {
+    for (int i = 0; i < l->count; i++)
+        if (!strcmp(l->games[i].file, file)) return l->games[i].core;
+    return PD_CORE_AUTO;
+}
 
 void pd_library_cache_read(struct pd_library* l, const char* text) {
     while (text && *text) {
@@ -263,17 +274,17 @@ void pd_library_cache_read(struct pd_library* l, const char* text) {
         if (len < sizeof line) {
             memcpy(line, text, len);
             line[len] = 0;
-            char* f[5];
+            char* f[6];
             int n = 0;
             char* p = line;
-            while (n < 5) {
+            while (n < 6) {
                 f[n++] = p;
-                char* t = n < 5 ? strchr(p, '\t') : NULL;
+                char* t = n < 6 ? strchr(p, '\t') : NULL;
                 if (!t) break;
                 *t = 0;
                 p = t + 1;
             }
-            if (n == 5) {
+            if (n >= 5) {
                 for (int i = 0; i < l->count; i++) {
                     struct pd_library_game* g = &l->games[i];
                     if (strcmp(g->file, f[4])) continue;
@@ -285,6 +296,8 @@ void pd_library_cache_read(struct pd_library* l, const char* text) {
                     }
                     if (strlen(f[1]) == 4) snprintf(g->code, sizeof g->code, "%s", f[1]);
                     g->lastPlayed = (uint32_t) strtoul(f[3], NULL, 10);
+                    int core = n == 6 ? atoi(f[5]) : PD_CORE_AUTO;
+                    g->core = (uint8_t) (core > 0 && core < PD_CORE_COUNT ? core : PD_CORE_AUTO);
                 }
             }
         }
@@ -299,8 +312,11 @@ size_t pd_library_cache_write(const struct pd_library* l, char* out, size_t len)
     size_t at = 0;
     for (int i = 0; i < l->count && at < len; i++) {
         const struct pd_library_game* g = &l->games[i];
-        if (!g->sha1[0] && !g->code[0] && !g->lastPlayed) continue;
-        int n = snprintf(out + at, len - at, "%s\t%s\t%ld\t%lu\t%s\n", g->sha1, g->code, g->size, (unsigned long) g->lastPlayed, g->file);
+        if (!g->sha1[0] && !g->code[0] && !g->lastPlayed && !g->core) continue;
+        int n = g->core ? snprintf(out + at, len - at, "%s\t%s\t%ld\t%lu\t%s\t%d\n", g->sha1, g->code, g->size,
+                                   (unsigned long) g->lastPlayed, g->file, g->core)
+                        : snprintf(out + at, len - at, "%s\t%s\t%ld\t%lu\t%s\n", g->sha1, g->code, g->size,
+                                   (unsigned long) g->lastPlayed, g->file);
         if (n < 0 || (size_t) n >= len - at) break;
         at += (size_t) n;
     }
@@ -319,7 +335,17 @@ enum row {
     R_FIELD, R_HUD, R_FLY,
     R_APP, R_VERSION, R_DEV,
     R_ROWS,
+    R_CORE, // not a SETTINGS row: the GAMES page's pick-list for the game under the cursor (X)
 };
+
+// The game the GAMES page's cursor is on, NULL = none.
+static struct pd_library_game* selected_game(struct pd_library* l) {
+    return l->list.count ? &l->games[l->list.items[l->list.selected]] : NULL;
+}
+
+bool lib_core_pickable(const struct pd_library_game* g) {
+    return g && g->console == PD_CONSOLE_GBA;
+}
 
 static int themes(int* ids) {
     int n = 0;
@@ -348,6 +374,7 @@ const char* lib_settings_choice(const struct pd_library* l, int row, int choice)
     }
     case R_PICTURE: return pd_view_name(choice);
     case R_VOLUME: return choice >= 0 && choice < 5 ? VOLUMES[choice] : "";
+    case R_CORE: return pd_core_name(choice);
     default: return "";
     }
 }
@@ -394,6 +421,12 @@ const char* lib_settings_label(const struct pd_library* l, int row, const char**
         snprintf(text, sizeof text, "%s", l->host && l->host->devLine ? l->host->devLine : "");
         *value = text;
         return "DEV LINK";
+    case R_CORE: {
+        const struct pd_library_game* g = selected_game((struct pd_library*) l);
+        *value = pd_core_name(g ? g->core : PD_CORE_AUTO);
+        *choices = PD_CORE_COUNT;
+        return "GBA CORE";
+    }
     default: return "";
     }
 }
@@ -450,23 +483,46 @@ void lib_settings_pick(struct pd_library* l, int choice) {
     }
     case R_PICTURE: pd_view_set(s, choice, true); break;
     case R_VOLUME: s->gameVolume = (choice + 1) * 20; break;
+    case R_CORE: {
+        // The game's own pick, kept in the library's file (not the settings).
+        struct pd_library_game* g = selected_game(l);
+        if (g && choice < PD_CORE_COUNT && g->core != choice) {
+            g->core = (uint8_t) choice;
+            if (l->host && l->host->cache_changed) l->host->cache_changed(l->host->ctx);
+        }
+        return;
+    }
     default: return;
     }
     changed(l);
 }
 
+// The pick-list's keys, on whichever page opened it.
+static void pick_keys(struct pd_library* l, unsigned down) {
+    const char* value;
+    bool group;
+    int choices;
+    lib_settings_label(l, l->pickRow, &value, &group, &choices);
+    if (down & PD_LIB_UP && l->pickSelected > 0) l->pickSelected--;
+    if (down & PD_LIB_DOWN && l->pickSelected < choices - 1) l->pickSelected++;
+    if (down & PD_LIB_A) lib_settings_pick(l, l->pickSelected);
+    if (down & PD_LIB_B) lib_settings_pick(l, -1);
+    l->dirty = true;
+}
+
+// X on a GBA game: its GBA CORE pick-list.
+static void open_core_pick(struct pd_library* l) {
+    struct pd_library_game* g = selected_game(l);
+    if (!lib_core_pickable(g)) return;
+    l->pickRow = R_CORE;
+    l->pickSelected = g->core;
+    l->dirty = true;
+}
+
 static void settings_keys(struct pd_library* l, unsigned down) {
     int rows = lib_settings_rows(l);
     if (l->pickRow >= 0) {
-        const char* value;
-        bool group;
-        int choices;
-        lib_settings_label(l, l->pickRow, &value, &group, &choices);
-        if (down & PD_LIB_UP && l->pickSelected > 0) l->pickSelected--;
-        if (down & PD_LIB_DOWN && l->pickSelected < choices - 1) l->pickSelected++;
-        if (down & PD_LIB_A) lib_settings_pick(l, l->pickSelected);
-        if (down & PD_LIB_B) lib_settings_pick(l, -1);
-        l->dirty = true;
+        pick_keys(l, down);
         return;
     }
     int step = down & PD_LIB_UP ? -1 : down & PD_LIB_DOWN ? 1 : 0;
@@ -494,6 +550,14 @@ static void open_page(struct pd_library* l, int page) {
 }
 
 static void games_keys(struct pd_library* l, unsigned down) {
+    if (l->pickRow >= 0) {
+        pick_keys(l, down);
+        return;
+    }
+    if (down & PD_LIB_X) {
+        open_core_pick(l);
+        return;
+    }
     bool grid = lib_grid(l);
     int dx = !!(down & PD_LIB_RIGHT) - !!(down & PD_LIB_LEFT), dy = !!(down & PD_LIB_DOWN) - !!(down & PD_LIB_UP);
     if (!grid) dx = 0;
@@ -543,6 +607,11 @@ static void tap(struct pd_library* l, int hit) {
         return;
     }
     if (l->page == PD_PAGE_GAMES) {
+        if (l->pickRow >= 0) {
+            if (hit >= HIT_PICK && hit < HIT_PICK_CLOSE) lib_settings_pick(l, hit - HIT_PICK);
+            else if (hit == HIT_PICK_CLOSE || hit == HIT_NONE) lib_settings_pick(l, -1);
+            return;
+        }
         if (hit >= HIT_VIEW && hit < HIT_VIEW + PD_VIEW_COUNT) {
             l->view = hit - HIT_VIEW;
             l->list.selected = 0;
@@ -571,7 +640,7 @@ static void tap(struct pd_library* l, int hit) {
 }
 
 void pd_library_touch(struct pd_library* l, int x, int y, bool down) {
-    struct lib_list* list = l->page == PD_PAGE_GAMES ? &l->list : l->page == PD_PAGE_SETTINGS ? NULL : lib_saves_list(l);
+    struct lib_list* list = l->pickRow >= 0 ? NULL : l->page == PD_PAGE_GAMES ? &l->list : l->page == PD_PAGE_SETTINGS ? NULL : lib_saves_list(l);
     if (down) {
         if (!l->touching) {
             l->touching = true;

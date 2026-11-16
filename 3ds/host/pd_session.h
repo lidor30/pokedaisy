@@ -36,6 +36,9 @@ struct pd_input {
     bool quickMenu;  // QUICK MENU: pressed this loop
     bool ffHeld;     // FF HOLD
     int stickAngle;  // the left stick aims the ring: degrees clockwise from up, -1 = centred
+    // Frames run undrawn before this loop's own, at 1x only: an Old 3DS that fell a refresh or two behind catches up, so
+    // the game and its sound keep their speed while the picture skips (gpSP 3D's frame skip). 0 = none.
+    int catchUp;
 };
 
 // What the host does for the session.
@@ -101,6 +104,7 @@ struct pd_session {
     bool leave;
     bool wasBusy;
     int speedDebt; // quarters of a frame owed at GAME SPEED
+    unsigned catchUpFrames; // pd_input.catchUp's frames run so far (the dev build's stat)
 
     // The field read (pk_field_state) and EXPAND.
     uint32_t romCrc;

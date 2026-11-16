@@ -85,10 +85,23 @@ void __system_allocateHeaps(void) {
     fake_heap_end = fake_heap_start + __ctru_heap_size;
 }
 
+static bool playingOld; // host_old_3ds_stand_in
 static FILE* logFile;
 static u64 logStart;
+// While a game runs the lines wait here (host_log_hold): gpSP 3D found that writing its log to the SD card mid-game froze
+// an Old 3DS now and then. Written out when the game closes, the app goes to the HOME Menu or sleeps, or the buffer fills.
+#define LOG_HELD_BYTES (16 * 1024)
+static char logHeld[LOG_HELD_BYTES];
+static size_t logHeldUsed;
+static bool logHolding;
+static LightLock logLock;
+static bool logLockReady;
 
 void host_log_open(const char* path) {
+    if (!logLockReady) {
+        LightLock_Init(&logLock);
+        logLockReady = true;
+    }
     char prev[300];
     snprintf(prev, sizeof(prev), "%.*s-prev.txt", (int) (strlen(path) > 4 ? strlen(path) - 4 : strlen(path)), path);
     remove(prev);
@@ -97,12 +110,34 @@ void host_log_open(const char* path) {
     logStart = osGetTime();
 }
 
+// The held lines into the file; the lock is held.
+static void log_write_held(void) {
+    if (logFile && logHeldUsed) {
+        fwrite(logHeld, 1, logHeldUsed, logFile);
+        fflush(logFile);
+    }
+    logHeldUsed = 0;
+}
+
 static void log_va(const char* format, va_list args) {
     if (!logFile) return;
-    fprintf(logFile, "[%7.2f] ", (double) (osGetTime() - logStart) / 1000.0);
-    vfprintf(logFile, format, args);
-    fputc('\n', logFile);
-    fflush(logFile); // a crash leaves the lines so far
+    char line[600];
+    int n = snprintf(line, sizeof(line), "[%7.2f] ", (double) (osGetTime() - logStart) / 1000.0);
+    if (n < 0) n = 0;
+    int m = vsnprintf(line + n, sizeof(line) - (size_t) n - 1, format, args); // leaves room for the newline
+    size_t len = (size_t) n + (m > 0 ? (size_t) m : 0);
+    if (len > sizeof(line) - 2) len = sizeof(line) - 2;
+    line[len++] = '\n';
+    LightLock_Lock(&logLock);
+    if (logHolding) {
+        if (logHeldUsed + len > sizeof(logHeld)) log_write_held();
+        memcpy(logHeld + logHeldUsed, line, len);
+        logHeldUsed += len;
+    } else {
+        fwrite(line, 1, len, logFile);
+        fflush(logFile); // a crash leaves the lines so far
+    }
+    LightLock_Unlock(&logLock);
 }
 
 void host_log(const char* format, ...) {
@@ -112,7 +147,23 @@ void host_log(const char* format, ...) {
     va_end(args);
 }
 
+void host_log_hold(bool hold) {
+    if (!logLockReady) return;
+    LightLock_Lock(&logLock);
+    if (!hold) log_write_held();
+    logHolding = hold;
+    LightLock_Unlock(&logLock);
+}
+
+void host_log_flush(void) {
+    if (!logLockReady) return;
+    LightLock_Lock(&logLock);
+    log_write_held();
+    LightLock_Unlock(&logLock);
+}
+
 void host_log_close(void) {
+    host_log_hold(false);
     if (logFile) fclose(logFile);
     logFile = NULL;
 }
@@ -132,9 +183,59 @@ bool host_is_emulator(void) {
 }
 
 bool host_is_new_3ds(void) {
-    bool isNew = false;
-    APT_CheckNew3DS(&isNew);
-    return isNew;
+    static int known = -1;
+    if (known < 0) {
+        bool isNew = false;
+        APT_CheckNew3DS(&isNew);
+#ifdef PD_DEV
+        // The dev build's stand-in for an Old 3DS on a New one (sdmc:/pokedaisy-dev/old3ds): no 804 MHz mode, no
+        // third or fourth core, the system core lent as an Old 3DS lends it.
+        FILE* f = isNew ? fopen("sdmc:/pokedaisy-dev/old3ds", "rb") : NULL;
+        if (f) {
+            fclose(f);
+            isNew = false;
+            playingOld = true;
+        }
+#endif
+        known = isNew;
+    }
+    return known;
+}
+
+bool host_old_3ds_stand_in(void) {
+    host_is_new_3ds();
+    return playingOld;
+}
+
+// --- the Old 3DS's second core ---
+// The Old 3DS has two cores: the app's (core 0) and the system's (core 1), where an app may run threads for as much of
+// the core's time as it asks (APT_SetAppCpuTimeLimit, 5-89%). gpSP 3D draws there at 80% on an Old 3DS; it gives the
+// core back (30%) while the app is in the background, else the HOME Menu, which runs there, crawls.
+#define CORE1_BACKGROUND 30
+static u32 core1Limit; // what the app asked for, 0 = never
+static aptHookCookie core1Hook;
+
+static void core1_apt_hook(APT_HookType hook, void* param) {
+    (void) param;
+    // Not for sleep: nothing runs then, and it'd be a call to APT in the middle of its sleep handshake (gpSP 3D's note).
+    if (hook == APTHOOK_ONSUSPEND) {
+        host_log_flush();
+        if (core1Limit > CORE1_BACKGROUND) APT_SetAppCpuTimeLimit(CORE1_BACKGROUND);
+    } else if (hook == APTHOOK_ONRESTORE) {
+        if (core1Limit > CORE1_BACKGROUND) APT_SetAppCpuTimeLimit(core1Limit);
+    } else if (hook == APTHOOK_ONSLEEP || hook == APTHOOK_ONEXIT) {
+        host_log_flush();
+    }
+}
+
+bool host_core1_take(unsigned percent) {
+    if (!core1Hook.callback) aptHook(&core1Hook, core1_apt_hook, NULL);
+    if (percent <= core1Limit) return true;
+    Result rc = APT_SetAppCpuTimeLimit(percent);
+    host_log("core 1: %u%% of its time for the app (%08lX)", percent, (unsigned long) rc);
+    if (R_FAILED(rc)) return core1Limit > 0;
+    core1Limit = percent;
+    return true;
 }
 
 size_t host_heap_free(void) {
@@ -188,6 +289,26 @@ void* readFile(const char* path, size_t* size) {
     fclose(f);
     if (data) *size = (size_t) length;
     return data;
+}
+
+// armGBA's render worker (jitmem.c's is renamed away, ctr/CMakeLists.txt): the New 3DS's third core, else the system core
+// at the app's 80% - jitmem.c kept it off an Old 3DS. There it runs One Frame Late (main.c's lateVideo): drawing each
+// frame in step, the game waited on it a third of every second. At the game thread's priority, below the draw thread.
+#define RENDER_STACK (256 * 1024)
+bool renderThreadHostCreate(pthread_t* thread, void* (*function)(void*), void* argument) {
+    s32 priority = 0x30;
+    svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
+    int core = host_is_new_3ds() ? 2 : 1;
+    Thread t = NULL;
+    if (core == 2) t = threadCreate((ThreadFunc) (void*) function, argument, RENDER_STACK, priority, 2, false);
+    if (!t && host_core1_take(HOST_CORE1_PERCENT)) {
+        core = 1;
+        t = threadCreate((ThreadFunc) (void*) function, argument, RENDER_STACK, priority, 1, false);
+    }
+    host_log("armGBA's renderer on core %d: %s", core, t ? "started" : "couldn't start, drawn with the game");
+    if (!t) return false;
+    *thread = (pthread_t) t; // libctru's pthread_t is its Thread, so pthread_join waits for this one
+    return true;
 }
 
 // armGBA's second render worker (jitmem.c's is renamed away, ctr/CMakeLists.txt): none. It would share the fourth core

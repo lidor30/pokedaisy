@@ -170,7 +170,9 @@ the companion's reads (addresses generated from `gamedata/`: `pd_configs_gen.h`;
 draws it at 320x240 in the OPTION look; `3ds/ctr/` runs GBA games on armGBA (`third_party/armgba`, ratherDashing's 3DS
 fork at `3ds-v0.0.3-alpha`: a recompiler; MPL-2.0, its GPL-2.0-only Gambatte left out, `3ds/emu/gb_none.c`) and Game Boy
 games on libmgba (the same submodule). armGBA sits behind mGBA's own `struct mCore` (`3ds/emu/pd_armgba_core.c`), so the
-shared C (`pk_wide.c`, `linux/*.c`) needs no change for it; the app's `pk_call.c` / `pk_host.c` / `pk_cheats.c` are built
+shared C (`pk_wide.c`, `linux/*.c`) needs no change for it (a third, gpSP 3D at `third_party/gpsp`, EXPERIMENTAL, the library's GBA CORE
+GPSP, the same way: `3ds/emu/pd_gpsp*.c`, linked into one object with only `pd_gpsp.keep`'s names global; code that branches on
+`pd_armgba_is` and else assumes mGBA must check `pd_gpsp_is` too); the app's `pk_call.c` / `pk_host.c` / `pk_cheats.c` are built
 as `*_mgba` there and `3ds/emu/pd_dispatch.c` picks. Code that reaches into mGBA's CPU or renderer checks `pd_armgba_is()`
 first; armGBA's renderer can't be hooked (`pk_wide.c`'s `lineHookless`). 3ds/README.md's "Sound and speed" has the numbers. Its
 tables, font, map layouts, guides (`Guide*.kt` + `GuideAreas*Gen.kt`, by a Kotlin-subset parser in

@@ -23,6 +23,8 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
     set(ARMGBA_RENDER_SIMD render-x86.c)
 endif()
 include("${REPO}/3ds/emu/armgba.cmake")
+# gpSP's interpreter here (GBA CORE's GPSP; PD_SIM_CORE=gpsp), its recompiler only on the console.
+include("${REPO}/3ds/emu/gpsp.cmake")
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -32,7 +34,7 @@ add_executable(pd_sim pd_sim.c ${HOST_SOURCES} ${CORE_SOURCES} "${REPO}/3ds/desk
     "${REPO}/app/src/main/cpp/pk_host.c" "${REPO}/app/src/main/cpp/pk_call.c" "${REPO}/app/src/main/cpp/pk_cheats.c" "${REPO}/app/src/main/cpp/pk_gb_field.c"
     "${REPO}/app/src/main/cpp/pk_wide.c" "${REPO}/app/src/main/cpp/pk_wide_gb.c"
     "${REPO}/linux/fly.c" "${REPO}/linux/flash.c" "${REPO}/linux/flight.c" "${REPO}/app/src/main/cpp/pk_flight.c" "${REPO}/linux/tm_teach.c" "${REPO}/linux/field_items.c" "${REPO}/linux/gb_field.c" "${REPO}/linux/wild.c" "${REPO}/linux/hud.c"
-    "${REPO}/linux/quick_menu.c" ${PD_ARMGBA_GLUE})
+    "${REPO}/linux/quick_menu.c" ${PD_ARMGBA_GLUE} ${PD_GPSP_GLUE})
 target_include_directories(pd_sim PRIVATE "${REPO}/third_party/mgba/include" "${REPO}/third_party/mgba/src"
     "${CMAKE_CURRENT_BINARY_DIR}/mgba/include" "${REPO}/3ds/core" "${REPO}/linux" "${REPO}/app/src/main/cpp")
 target_compile_definitions(pd_sim PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_CACHE)
@@ -42,5 +44,5 @@ if(PD_SIM_MIXER_CHECK)
     target_compile_definitions(pd_sim PRIVATE PD_MIXER_CHECK)
 endif()
 target_compile_options(pd_sim PRIVATE -std=gnu11 -O2 -g -Wall -Wextra)
-target_link_libraries(pd_sim mgba pd_armgba ZLIB::ZLIB Threads::Threads m)
+target_link_libraries(pd_sim mgba pd_armgba pd_gpsp ZLIB::ZLIB Threads::Threads m)
 pd_mgba_renames(pd_sim)
