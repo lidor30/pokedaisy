@@ -106,7 +106,7 @@ extern const struct pd_text pd_text_soulgold_v1_2_1;
 // and the party icons. The FOE TEAM's addresses are known for rev 1 only. Retail FireRed rev 0 as the app
 // reads it: no POKéDEX / GUIDE tables (none on file for rev 0), its trainer card set in code (Poller.kt), the
 // quick menu from FIELD_ITEMS_PORTS["BPRE0"] (fieldItemsFor).
-// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec, tradeevo)
 static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260632, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -406,6 +406,12 @@ static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .dexTmhmMoves = 0x0845A604,
     .dexSpeciesCount = 412,
     .dexMapGroups = 0x08352718,
+    .tradeEvoTarget = 0x08042ED8,
+    .tradeEvoScene = 0x080CDDBC,
+    .tradeEvoAfter = 0x0300537C,
+    .tradeEvoReturn = 0x080567F0,
+    .tradeEvoLock = 0x08069954,
+    .tradeEvoCrcs = { 0xA970F637, 0xB9EDBA19, 0x95CA9A3E, 0x0111A86E },
 };
 
 // gamedata/gen3/retail/firered.toml: firered_rev0 (ram, icons, dex, card, fly, flight, flash, tm, field, battle, engine, boxes)
@@ -673,7 +679,7 @@ static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .pcStorage = &pd_pc_vanilla,
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec, tradeevo)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260068, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -968,9 +974,15 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .dexTmhmMoves = 0x08459FC4,
     .dexSpeciesCount = 412,
     .dexMapGroups = 0x08352688,
+    .tradeEvoTarget = 0x08042EC4,
+    .tradeEvoScene = 0x080CDD7C,
+    .tradeEvoAfter = 0x0300537C,
+    .tradeEvoReturn = 0x080567DC,
+    .tradeEvoLock = 0x08069940,
+    .tradeEvoCrcs = { 0xA970F637, 0x8B13D433, 0xB892BBB7, 0x0111A86E },
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec, tradeevo)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260180, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -1270,9 +1282,15 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .dexTmhmMoves = 0x0845A034,
     .dexSpeciesCount = 412,
     .dexMapGroups = 0x083526F8,
+    .tradeEvoTarget = 0x08042ED8,
+    .tradeEvoScene = 0x080CDD90,
+    .tradeEvoAfter = 0x0300537C,
+    .tradeEvoReturn = 0x080567F0,
+    .tradeEvoLock = 0x08069954,
+    .tradeEvoCrcs = { 0xA970F637, 0x8B13D433, 0x95CA9A3E, 0x0111A86E },
 };
 
-// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec, tradeevo)
 static const struct pd_config PD_CONFIG_EMERALD = {
     .itemDescs = &(const struct pd_item_descs){ .base = 139999648, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x020244EC,
@@ -1572,6 +1590,12 @@ static const struct pd_config PD_CONFIG_EMERALD = {
     .dexTmhmMoves = 0x08615B94,
     .dexSpeciesCount = 412,
     .dexMapGroups = 0x08486578,
+    .tradeEvoTarget = 0x0806D098,
+    .tradeEvoScene = 0x0813DA40,
+    .tradeEvoAfter = 0x030061E8,
+    .tradeEvoReturn = 0x080860C8,
+    .tradeEvoLock = 0x08098E54,
+    .tradeEvoCrcs = { 0xA970F637, 0x74E72426, 0x224FD691, 0xB9FB85A7 },
 };
 
 // plorpOS's Linux port: the hacks, as their records reach gen3/records/c_hacks.toml. Emerald Legacy v1.1.4: retail's

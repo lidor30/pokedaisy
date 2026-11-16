@@ -89,6 +89,12 @@ extern const struct pd_blob_sig pd_blob_sigs[PD_BLOB_COUNT];
 // Scans g's ROM for its family's blobs, once per ROM (about a second on a New
 // 3DS: the host does it while the game loads); later calls return at once.
 void pd_romart_scan(const struct pd_game* g);
+// Where pd_romart_scan keeps each ROM's blob offsets (by its SHA-1), so the next start skips the pass; "" = nowhere.
+void pd_romart_cache_dir(const char* dir);
+// A number found once per ROM by a pass over it (WILD ENCOUNTERS' switch ...), kept there too as "<sha1>.<name>": false
+// when it isn't kept yet.
+bool pd_romart_fact_get(const struct pd_game* g, const char* name, uint32_t* value);
+void pd_romart_fact_set(const struct pd_game* g, const char* name, uint32_t value);
 // The blob's decoded bytes (pd_blob_sigs[b].size of them), or NULL when the
 // ROM doesn't have it.
 const uint8_t* pd_romart_blob(const struct pd_game* g, enum pd_blob b);

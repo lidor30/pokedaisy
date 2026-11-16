@@ -38,6 +38,8 @@ struct pd_armgba_host {
     // Where the cartridge goes: a buffer of at least size bytes, zeroed, that armGBA may "free" (the host keeps it); NULL:
     // calloc'd for each game.
     void* (*romBuffer)(size_t size);
+    // The ROM's CRC-32 when the host knows it from an earlier start of the same file (0: worked out here, a pass over it).
+    uint32_t knownCrc;
 };
 
 // Whether a ROM of this name and header goes to armGBA (a GBA game: anything that isn't a Game Boy cart).
@@ -55,7 +57,9 @@ bool pd_armgba_threaded(void);
 // case for the recompiler's exact events (a save held the game at about 41 FPS for four seconds on a New 3DS). This
 // skips that timer: the save is the same. It changes four bytes of the ROM in memory, so call it once the ROM has been
 // identified by its hash (pd_session_open does), and before the game runs. False: not a game with those routines.
-bool pd_armgba_fast_flash_saves(void);
+// [start] / [stop]: where its two routines were in this ROM (from an earlier run), checked, no pass; *start -2 = not known
+// yet: found, and written back (-1 = not there).
+bool pd_armgba_fast_flash_saves(long* start, long* stop);
 // The frames from now on aren't shown (fast-forward's extra ones): armGBA needn't draw them.
 void pd_armgba_skip_video(bool skip);
 // The stock H-blank handler's interrupts with no callback taken by the host (pd_armgba.c, on by default; off to compare).
@@ -63,6 +67,8 @@ void pd_armgba_hblank_skips(bool on);
 void pd_armgba_hblank_cost(int cycles);
 // RAM writes (EWRAM / IWRAM), with any compiled code over them thrown out.
 bool pd_armgba_write(uint32_t addr, const void* data, size_t len);
+// The cartridge's bytes at [addr] (a game patch, between frames), the recompiled code there dropped.
+bool pd_armgba_rom_write(uint32_t addr, const void* data, size_t len);
 
 enum pd_armgba_state {
     PD_ARMGBA_STATE_OK,

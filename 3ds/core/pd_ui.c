@@ -13,9 +13,9 @@
 
 static void cycle_button(struct pd_settings* s, int row);
 
-#define CHIP_H 28
+#define CHIP_H TAB_BAR_H
 #define FF_W 28
-#define ICON_CHIP_W 30
+#define ICON_CHIP_W (pd_font_size_small() ? 24 : 30) // MORE / the gear: 12 px smoothed icons at SMALL
 #define CHIP_GAP 2
 #define SHOULDER_W 16
 // How far the stylus moves on a list before it scrolls instead of tapping.
@@ -53,7 +53,8 @@ bool ui_tab_available(const struct pd_ui* ui, const struct pd_game* g, enum pd_t
     case PD_TAB_CARD: return cfg && cfg->cardStyle;
     case PD_TAB_STATES: return ui->hostHasStates;
     case PD_TAB_BOXES: return ui->boxes != NULL;
-    case PD_TAB_NUZLOCKE: case PD_TAB_ACHIEVEMENTS: return false; // not ported yet
+    case PD_TAB_NUZLOCKE: return ui->nuzlockeAvailable; // the host's tracker follows this game (always under MORE)
+    case PD_TAB_ACHIEVEMENTS: return false; // not ported yet
     default: return true;
     }
 }
@@ -277,7 +278,11 @@ static void chip(struct pd_ui* ui, struct pd_canvas* c, int x, int w, bool open,
 
 static void icon_chip(struct pd_ui* ui, struct pd_canvas* c, int x, const struct pd_mono* icon, bool open, int id) {
     chip(ui, c, x, ICON_CHIP_W, open, id);
-    ui_mono(c, icon, x + (ICON_CHIP_W - icon->w) / 2, BAR_Y(c) + (CHIP_H - icon->h) / 2, 1, open ? PD_VALUE : PD_TITLE_TEXT);
+    uint32_t color = open ? PD_VALUE : PD_TITLE_TEXT;
+    if (pd_font_size_small()) {
+        const int size = 12;
+        ui_icon_smooth(c, NULL, icon, color, x + (ICON_CHIP_W - size) / 2, BAR_Y(c) + (CHIP_H - size) / 2, size);
+    } else ui_mono(c, icon, x + (ICON_CHIP_W - icon->w) / 2, BAR_Y(c) + (CHIP_H - icon->h) / 2, 1, color);
 }
 
 static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_host_info* host) {
@@ -389,6 +394,10 @@ static void focus_ring(struct pd_ui* ui, struct pd_canvas* c) {
 
 const struct pd_game* ui_game;
 
+void pd_ui_warm(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g) {
+    if (ui_gen5_style(ui, g)) ui_gen5_warm(c);
+}
+
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host) {
     const bool dexFont = ui->handheldDex && ui->tab == PD_TAB_DEX;
@@ -404,6 +413,7 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     ui->drawn = s;
     ui->drawnGame = g;
     ui->hostHasStates = host && host->hasStates;
+    ui->nuzlockeAvailable = host && host->nuzlockeSupported;
     // The BATTLE tab: the DS battle screens' mint and Poké Ball in place of the game's backdrop (a Game Boy game keeps its
     // own plain look).
     if (!ui->keepBackdrop) {
@@ -445,6 +455,8 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
         ui_card_tab(ui, c, g, s);
     } else if (ui->tab == PD_TAB_STATES) {
         ui_states_tab(ui, c, host);
+    } else if (ui->tab == PD_TAB_NUZLOCKE) {
+        ui_nuzlocke_tab(ui, c, g, host);
     } else if (ui->tab == PD_TAB_BOXES) {
         ui_boxes_tab(ui, c, g, s);
     } else {
@@ -458,6 +470,10 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
         ui_fly_overlay(ui, c);
     } else if (ui->overlay == PD_OVERLAY_GUIDE_NOTICE) {
         ui_guide_notice(ui, c);
+    } else if (ui->overlay == PD_OVERLAY_DEX_PICK) {
+        ui_dex_pick_overlay(ui, c);
+    } else if (ui->overlay == PD_OVERLAY_NUZ_PICK || ui->overlay == PD_OVERLAY_NUZ_CONFIRM) {
+        ui_nuzlocke_overlay(ui, c);
     } else if (ui->overlay != PD_OVERLAY_MORE) {
         ui_overlay(ui, c);
     }
@@ -472,6 +488,7 @@ static int* scroll_target(struct pd_ui* ui) {
     case PD_TAB_BAG: return &ui->bagScroll;
     case PD_TAB_DEX: return ui->dexOpen && ui->dexSection ? &ui->dexPageScroll : &ui->dexScroll;
     case PD_TAB_GUIDE: return &ui->guideScroll;
+    case PD_TAB_NUZLOCKE: return &ui->nuzScroll;
     case PD_TAB_SETTINGS: return &ui->settingsScroll;
     default: return NULL;
     }
@@ -501,7 +518,7 @@ bool ui_summary_learn(struct pd_ui* ui) {
 }
 
 static void act(struct pd_ui* ui, int id) {
-    if (ui_map_act(ui, id) || ui_dex_act(ui, id) || ui_guide_act(ui, id) || ui_battle_act(ui, id) || ui_card_act(ui, id) ||
+    if (ui_map_act(ui, id) || ui_dex_act(ui, id) || ui_nuzlocke_act(ui, id) || ui_guide_act(ui, id) || ui_battle_act(ui, id) || ui_card_act(ui, id) ||
         ui_battle_controls_act(ui, id, ui->drawn) || ui_states_act(ui, id) || ui_boxes_act(ui, id, ui->drawn) ||
         ui_bag_act(ui, id, ui->drawn)) {
         return;
@@ -530,7 +547,9 @@ static void act(struct pd_ui* ui, int id) {
             if (ui->overlay == PD_OVERLAY_PICK_SCREEN) ui->settings->screenMode = i + (ui->pixelOff ? 1 : 0);
             if (ui->overlay == PD_OVERLAY_PICK_FF && i < PD_FF_CHOICES) ui->settings->ffSpeed = PD_FF_SPEEDS[i];
             if (ui->overlay == PD_OVERLAY_PICK_ASPECT && i < PD_ASPECTS) ui->settings->aspect = i;
+            if (ui->overlay == PD_OVERLAY_PICK_VIEW) pd_view_set(ui->settings, i, ui->viewExpand);
             if (ui->overlay == PD_OVERLAY_PICK_SPEED) ui->settings->gameSpeed = i;
+            if (ui->overlay == PD_OVERLAY_PICK_SCENE && i < PD_SCENE_SPEED_COUNT) ui->settings->sceneSpeed[ui->scenePick] = i;
             if (ui->overlay == PD_OVERLAY_PICK_VOLUME) ui->settings->gameVolume = (i + 1) * 20;
             if (ui->overlay == PD_OVERLAY_PICK_FLY_ON && i < 4) ui->settings->flightVehicle = i;
             close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
@@ -575,6 +594,11 @@ static void act(struct pd_ui* ui, int id) {
         ui->overlay = PD_OVERLAY_PICK_VOLUME;
     } else if (id == HIT_SETTING + SETTING_THEME) {
         ui->overlay = PD_OVERLAY_PICK_THEME;
+    } else if (id >= HIT_SETTING + SETTING_SCENE && id < HIT_SETTING + SETTING_SCENE + PD_SCENES) {
+        ui->scenePick = id - HIT_SETTING - SETTING_SCENE;
+        ui->overlay = PD_OVERLAY_PICK_SCENE;
+    } else if (id == HIT_SETTING + SETTING_NUZLOCKE) {
+        ui->action = PD_ACTION_NUZLOCKE_TOGGLE;
     } else if (id == HIT_SETTING + SETTING_FLY_ON) {
         ui->overlay = PD_OVERLAY_PICK_FLY_ON;
     } else if (id == HIT_SETTING + SETTING_DARK || id == HIT_SETTING + SETTING_FF_MODE || id == HIT_SETTING + SETTING_CHEATS) {
@@ -590,18 +614,35 @@ static void act(struct pd_ui* ui, int id) {
                id == HIT_SETTING + SETTING_RUN_INDOORS || id == HIT_SETTING + SETTING_HINTS || id == HIT_SETTING + SETTING_ONE_TAP ||
                id == HIT_SETTING + SETTING_BATTLE_STYLE || id == HIT_SETTING + SETTING_BATTLE_INFO ||
                id == HIT_SETTING + SETTING_BATTLE_VIEW || id == HIT_SETTING + SETTING_FLY_STYLE ||
-               id == HIT_SETTING + SETTING_FLIGHT_AREA) {
+               id == HIT_SETTING + SETTING_FLIGHT_AREA || id == HIT_SETTING + SETTING_REUSABLE_TMS ||
+               id == HIT_SETTING + SETTING_INSTANT_TEXT || id == HIT_SETTING + SETTING_TRADE_EVOS) {
         struct pd_settings* st = ui->settings;
         bool* flag = id == HIT_SETTING + SETTING_MUTE ? &st->gameMuted : id == HIT_SETTING + SETTING_WILD ? &st->wildOff
             : id == HIT_SETTING + SETTING_AUTO_RUN ? &st->autoRun : id == HIT_SETTING + SETTING_RUN_INDOORS ? &st->runIndoors
             : id == HIT_SETTING + SETTING_HINTS ? &st->hideHints : id == HIT_SETTING + SETTING_ONE_TAP ? &st->oneTapMoves
             : id == HIT_SETTING + SETTING_BATTLE_INFO ? &st->noBattleInfo : id == HIT_SETTING + SETTING_BATTLE_VIEW ? &st->battleInfoFirst
             : id == HIT_SETTING + SETTING_FLY_STYLE ? &st->flyClassic : id == HIT_SETTING + SETTING_FLIGHT_AREA ? &st->flightAnywhere
+            : id == HIT_SETTING + SETTING_REUSABLE_TMS ? &st->reusableTms
+            : id == HIT_SETTING + SETTING_INSTANT_TEXT ? &st->instantText : id == HIT_SETTING + SETTING_TRADE_EVOS ? &st->tradeEvos
             : &st->battleGen5;
         *flag = !*flag;
         ui->action = PD_ACTION_SETTINGS_CHANGED;
     } else if (id == HIT_FF) {
         ui->action = PD_ACTION_TOGGLE_FF;
+    } else if (id == HIT_SUMMARY_EVOLVE) {
+        ui->action = PD_ACTION_TRADE_EVOLVE;
+    } else if (id == HIT_SUMMARY_SWITCH) {
+        ui->summarySwitching = true;
+    } else if (id == HIT_SWITCH_CANCEL) {
+        ui->summarySwitching = false;
+    } else if (ui->summarySwitching && id >= HIT_SLOT && id < HIT_SLOT + PD_PARTY_SIZE) {
+        // SWITCH's pick: the Pokemon tapped trades places with the summary's (itself = nothing to do).
+        ui->summarySwitching = false;
+        if (id - HIT_SLOT != ui->summarySlot) {
+            ui->switchFrom = ui->summarySlot;
+            ui->switchTo = id - HIT_SLOT;
+            ui->action = PD_ACTION_PARTY_SWAP;
+        }
     } else if (id >= HIT_SLOT && id < HIT_SLOT + PD_PARTY_SIZE) {
         ui->summarySlot = id - HIT_SLOT;
         ui->summaryStats = ui->summaryInfo = ui->summaryLearn = false;
@@ -639,6 +680,8 @@ static void act(struct pd_ui* ui, int id) {
     } else if (id == HIT_SETTING + SETTING_PERF) {
         ui->settings->showPerf = !ui->settings->showPerf;
         ui->action = PD_ACTION_SETTINGS_CHANGED;
+    } else if (id == HIT_SETTING + SETTING_VIEW) {
+        ui->overlay = PD_OVERLAY_PICK_VIEW;
     } else if (id == HIT_SETTING + SETTING_AUTO_ZOOM) {
         ui->settings->autoZoom = !ui->settings->autoZoom;
         ui->action = PD_ACTION_SETTINGS_CHANGED;
@@ -761,12 +804,12 @@ void pd_ui_tab_menu_choose(struct pd_ui* ui, int row) {
 }
 
 void pd_ui_next_tab(struct pd_ui* ui, int dir) {
-    if (ui->overlay != PD_OVERLAY_NONE &&
-        !(ui->shoulderTabs && ui->overlay == PD_OVERLAY_MORE)) return;
+    // MORE is a stop of its own (its chip sits on the bar whenever tabs are off it), and L / R go on from it.
+    if (ui->overlay != PD_OVERLAY_NONE && ui->overlay != PD_OVERLAY_MORE) return;
     enum pd_tab order[PD_MAX_BAR_TABS + 3];
     int n = chips(ui, ui->drawnGame, order);
     enum pd_tab more[UI_BAR_CHOICES];
-    const bool hasMore = ui->shoulderTabs && ui_more_tabs(ui, ui->drawnGame, more) > 0;
+    const bool hasMore = ui_more_tabs(ui, ui->drawnGame, more) > 0;
     const enum pd_tab current = hasMore && (ui->overlay == PD_OVERLAY_MORE || ui->moreOpened)
         ? PD_TAB_COUNT : ui->tab;
     if (hasMore) order[n++] = PD_TAB_COUNT;
@@ -835,6 +878,10 @@ bool pd_ui_back(struct pd_ui* ui) {
     }
     if (ui->tab == PD_TAB_BOXES && ui->boxSummary >= 0) {
         ui->boxSummary = -1;
+        return true;
+    }
+    if (ui->summarySwitching) {
+        ui->summarySwitching = false;
         return true;
     }
     if (ui->summarySlot >= 0) {
