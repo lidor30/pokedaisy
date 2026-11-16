@@ -8,7 +8,11 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->screenMode = PD_SCREEN_SHARP;
     s->ffSpeed = PD_FF_MIN;
     s->guideNotice = 0;
+#ifdef __3DS__
     s->aspect = PD_ASPECT_EXPAND; // with SHARP: VIEW's EXPAND 1.5x (the user's call, 2026-11-16); a game without EXPAND shows SHARP 1.5x
+#else
+    s->aspect = PD_ASPECT_ORIGINAL; // the Linux / libretro cores and the host tests keep ORIGINAL (the user's call, 2026-11-16)
+#endif
     s->autoZoom = true;
     s->wildOff = false;
     s->tabBar = PD_TAB_BAR_DEFAULT;
