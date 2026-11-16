@@ -1,0 +1,127 @@
+# The 3DS app as a release ships it: pokedaisy.3dsx for the Homebrew Launcher and pokedaisy.cia for the HOME Menu, built
+# in devkitARM's image (pinned: the one `make -C 3ds 3ds` builds with), the CIA packed by bannertool and makerom
+# (3ds/tools/make_cia.sh). Given a release tag (release.yml calls it with the tag it drafts; on a local release, run it by
+# hand: docs/RELEASING.md), it attaches pokedaisy.cia and its QR code (FBI > Remote Install > Scan QR Code) to that
+# release, a draft included, adds the code to its notes, and the .3dsx too when asked (upload_3dsx). On a 3DS change it
+# only builds, as a check.
+name: 3DS
+
+on:
+  push:
+    branches: [main, dev]
+    paths: ['3ds/**', 'third_party/armgba', 'third_party/mgba', 'third_party/patches/armgba*', '.github/workflows/3ds.yml']
+  pull_request:
+    paths: ['3ds/**', 'third_party/armgba', 'third_party/mgba', 'third_party/patches/armgba*', '.github/workflows/3ds.yml']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'A release tag (v1.6.0) to build and attach the CIA to; empty builds the branch only'
+        required: false
+        default: ''
+      upload_3dsx:
+        description: "Also replace the release's pokedaisy.3dsx with this build's"
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+      upload_3dsx:
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: 3ds-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 3dsx and CIA
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # attaching to the release
+    env:
+      TAG: ${{ inputs.tag }}
+      UPLOAD_3DSX: ${{ inputs.upload_3dsx && 'yes' || '' }}
+      DEVKITARM: devkitpro/devkitarm@sha256:116afba8df8453961de2936ffab20dd441edf4d682856c1ec8b0e53d7ed0bbf5
+      MAKEROM_URL: https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.19.0/makerom-v0.19.0-ubuntu_x86_64.zip
+      MAKEROM_SHA256: 287b809dec064e0ad597e3d272c49ecb7eed41693d5ee6fef9d8a8aa24c2497e
+      BANNERTOOL_URL: https://github.com/diasurgical/bannertool/releases/download/1.2.0/bannertool.zip
+      BANNERTOOL_SHA256: 69768596f836acb3e3aeaa66e47c6ba560dde813c6dfcd33c8afc25fe29b7524
+    steps:
+      # The source: the release's tag, else this commit.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.tag || github.sha }}
+          path: src
+          persist-credentials: false
+      # The packaging (banner, permissions, script) from this workflow's own commit, so a tag made before the CIA's files
+      # (v1.6.0) gets them too.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          path: pack
+          persist-credentials: false
+          sparse-checkout: |
+            3ds/ctr/cia
+            3ds/ctr/icon.png
+            3ds/tools/make_cia.sh
+          sparse-checkout-cone-mode: false
+      - name: Submodules (mGBA, armGBA)
+        run: git -C src submodule update --init --depth 1 third_party/mgba third_party/armgba
+      - name: Build (devkitARM)
+        run: |
+          docker run --rm -v "$PWD/src:/repo" -w /repo/3ds/ctr "$DEVKITARM" bash -c \
+            "git config --global --add safe.directory '*' && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_TOOLCHAIN_FILE=/repo/third_party/mgba/src/platform/3ds/CMakeToolchain.txt \
+              && cmake --build build -j\$(nproc)"
+      - name: makerom and bannertool
+        run: |
+          mkdir -p tools
+          curl -fsSL -o makerom.zip "$MAKEROM_URL"
+          curl -fsSL -o bannertool.zip "$BANNERTOOL_URL"
+          sha256sum makerom.zip bannertool.zip
+          echo "$MAKEROM_SHA256  makerom.zip" | sha256sum -c -
+          echo "$BANNERTOOL_SHA256  bannertool.zip" | sha256sum -c -
+          unzip -q makerom.zip -d tools/makerom
+          unzip -q bannertool.zip -d tools/bannertool
+          sudo install tools/makerom/makerom tools/bannertool/linux-x86_64/bannertool /usr/local/bin/
+      - name: CIA
+        run: |
+          version=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' src/app/build.gradle.kts)
+          mkdir -p out
+          pack/3ds/tools/make_cia.sh src/3ds/ctr/build/pokedaisy.elf out/pokedaisy.cia "$version"
+          cp src/3ds/ctr/build/pokedaisy.3dsx out/
+          ls -l out
+      - name: QR code
+        if: env.TAG != ''
+        run: |
+          sudo apt-get install -y -qq qrencode
+          qrencode -s 8 -m 3 -o out/pokedaisy-cia-qr.png "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/pokedaisy.cia"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pokedaisy-3ds
+          path: out/
+      - name: Attach to the release, with the QR code in its notes
+        if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files="out/pokedaisy.cia out/pokedaisy-cia-qr.png"
+          [ -n "$UPLOAD_3DSX" ] && files="$files out/pokedaisy.3dsx"
+          gh release upload "$TAG" $files --clobber -R "$GITHUB_REPOSITORY"
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
+          # The release's own text, then the code; a second run replaces the code, not the text.
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json body -q .body | sed '/<!-- qr -->/,$d' > body.md
+          {
+            echo '<!-- qr -->'
+            echo '## Install on a 3DS with FBI'
+            echo
+            echo "Scan this in FBI (Remote Install > Scan QR Code) to put PokeDaisy on the HOME Menu, or download [pokedaisy.cia]($base/pokedaisy.cia) and install it from the SD card. For the Homebrew Launcher, take [pokedaisy.3dsx]($base/pokedaisy.3dsx). The guide: https://pokedaisy.com/docs/3ds/"
+            echo
+            echo "![QR code of pokedaisy.cia]($base/pokedaisy-cia-qr.png)"
+          } >> body.md
+          gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --notes-file body.md

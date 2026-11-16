@@ -182,7 +182,9 @@ SHA1s, checked) into `3ds/build/decomps/`, the preview passes them in, and `fixt
 fixture ROM over the decomp's start (`fixture-*-rom.gba`: the tables sit past 0x08200000) - build/ only,
 never committed. Only retail English FireRed / LeafGreen / Emerald so far (ROM table addresses for FireRed
 rev 1 and Emerald only: rev 0 / LeafGreen get MAP but no POKéDEX, and GUIDE without wild / BOSS); runs on a New 3DS
-(first tried 2026-11-04: `3ds/README.md`). Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
+(first tried 2026-11-04: `3ds/README.md`). Every release carries `pokedaisy.cia` too (HOME Menu, FBI) and its QR code, from `.github/workflows/3ds.yml`
+(release.yml's last job; on a local release run by hand, docs/RELEASING.md): the same ELF packed by `3ds/tools/make_cia.sh` with
+`3ds/ctr/cia/` (armGBA's permissions, our banner). Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
 SUGGESTIONS + the FOE TEAM, ported from BattleInfoScreen / SuggestionsScreen / CompanionScreen's foe state), and
 SETTINGS (screen mode, FF, one save state slot - states never carry the save data), with the TRAINER CARD
 under it (`pd_card`: its renders match `TrainerCardTest`'s pinned CRCs - `make preview` prints them; keep it

@@ -34,6 +34,9 @@ PokeDaisy fonctionne aussi sur Nintendo 3DS, comme application homebrew : votre 
 
 `sdmc:/` est le nom que la 3DS donne à la racine de la carte SD : sur votre ordinateur, `sdmc:/3ds/` est simplement le dossier `3ds` de la carte.
 
+> [!TIP]
+> Vous préférez lancer PokeDaisy depuis le menu HOME ? Chaque version propose aussi `pokedaisy.cia`. Ouvrez FBI sur la 3DS (l'installation du firmware personnalisé l'a ajouté), choisissez **Remote Install**, puis **Scan QR Code**, et scannez le code sur la page de la version. Ou copiez `pokedaisy.cia` sur la carte SD et installez-le depuis la liste **SD** de FBI. Les étapes suivantes ne changent pas, et vous lancez PokeDaisy depuis son icône du menu HOME.
+
 ## Étape 3 : ajouter vos jeux et vos sauvegardes
 
 1. À la racine de la carte, créez un dossier `pokedaisy`, et dedans un dossier `roms` : `sdmc:/pokedaisy/roms/`. (PokeDaisy crée les deux la première fois qu'il démarre, si vous préférez le lancer une fois d'abord.)
