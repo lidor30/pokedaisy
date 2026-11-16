@@ -79,18 +79,43 @@ class PerformanceGuardsTest {
     @Test
     fun `main-core reads are guarded against teardown`() {
         // The companion's ROM readers call pkReadBytes from IO threads.
-        val jni = File(src.parentFile, "cpp/pokedaisy_jni.c").readText()
-        val readAny = jni.substring(jni.indexOf("static bool pk_read_any(")).substringBefore("\n}\n")
-        assertTrue("pk_read_any must hold pk_coreLock", "pthread_rwlock_rdlock(&pk_coreLock)" in readAny)
-        for (fn in listOf("pkReadBytes", "pkReadInto", "pkRomRead")) {
-            val body = jni.substring(jni.indexOf("MgbaCore_$fn(")).substringBefore("\n}\n")
-            assertTrue("$fn must hold pk_coreLock", "pthread_rwlock_rdlock(&pk_coreLock)" in body || "pk_read_any(" in body)
+        val cpp = File(src.parentFile, "cpp")
+        val jni = File(cpp, "pokedaisy_jni.c").readText()
+        val session = File(cpp, "pk_session.c").readText()
+        // JNI keeps the DS path; the portable C API owns the GBA / Game Boy path and its lock now.
+        val readAny = lambda(jni, "static bool pk_read_any(")
+        assertCoreLockCovers(readAny, "pthread_rwlock_rdlock(&pk_coreLock)", "pk_nds_read(", "DS reads")
+        assertTrue("pk_read_any must delegate GBA / GB reads to the guarded C API", "pk_api_read(" in readAny)
+        for (fn in listOf("pkReadBytes", "pkReadInto")) {
+            val body = lambda(jni, "MgbaCore_$fn(")
+            assertTrue("$fn must use the guarded reader", "pk_read_any(" in body)
         }
-        val teardown = jni.substring(jni.indexOf("static void pkTeardown(void) {")).substringBefore("\n}\n")
-        assertTrue("pkTeardown must take pk_coreLock for writing", "pthread_rwlock_wrlock(&pk_coreLock)" in teardown)
+        assertTrue("pkRomRead must use the guarded C API", "pk_api_rom_read(" in lambda(jni, "MgbaCore_pkRomRead("))
+        val readers = mapOf(
+            "pk_api_read" to listOf("pk_gb_read_banked(", "pk_read_rom_file(", "pk_read_range(", "pk_cheats_overlay("),
+            "pk_api_rom_read" to listOf("g.core->platform(", "memcpy("),
+        )
+        for ((fn, accesses) in readers) {
+            val body = lambda(session, "bool $fn(")
+            accesses.forEach { assertCoreLockCovers(body, "pthread_rwlock_rdlock(&pk_coreLock)", it, fn) }
+        }
+        val teardown = lambda(jni, "static void pkTeardown(void)")
+        assertCoreLockCovers(teardown, "pthread_rwlock_wrlock(&pk_coreLock)", "pk_nds_deinit()", "DS teardown")
+        assertTrue("pkTeardown must also close the portable core", "pk_api_deinit()" in teardown)
+        val portableTeardown = lambda(session, "void pk_api_deinit(void)")
+        for (access in listOf("g.core->deinit(g.core)", "g.romFileVf->unmap(", "free(g.video)")) {
+            assertCoreLockCovers(portableTeardown, "pthread_rwlock_wrlock(&pk_coreLock)", access, "GBA / GB teardown")
+        }
     }
 
-    /** The body of the lambda [start] opens in [src] (a DS game also hands its bottom screen over in these). */
+    private fun assertCoreLockCovers(body: String, acquire: String, access: String, operation: String) {
+        val lock = body.indexOf(acquire)
+        val use = body.indexOf(access)
+        val unlock = body.indexOf("pthread_rwlock_unlock(&pk_coreLock)")
+        assertTrue("$operation must hold pk_coreLock around $access", lock >= 0 && use > lock && unlock > use)
+    }
+
+    /** The brace-delimited body [start] opens in [src]: a Kotlin lambda or a native C function. */
     private fun lambda(src: String, start: String): String {
         val from = src.indexOf(start)
         if (from < 0) return ""

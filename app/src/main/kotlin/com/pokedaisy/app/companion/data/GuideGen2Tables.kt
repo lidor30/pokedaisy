@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.math.roundToInt
+
 /**
  * The generated wild and boss lines the Gen 2 guides share (Polished Crystal's GuidePolishedCrystalGen.kt, Crystal's
  * GuideCrystalGen.kt: one format, so one reader). Wild lines, `|`-separated:
@@ -52,7 +54,7 @@ internal class Gen2WildTables(raw: List<String>) {
     /** Rows of (species, level range, percent) merged by species, likeliest first. */
     fun merge(rows: List<Triple<Int, IntRange, Double>>): List<EncounterSlot> =
         rows.groupBy { it.first }.map { (species, g) ->
-            EncounterSlot(species, g.minOf { it.second.first }, g.maxOf { it.second.last }, Math.round(g.sumOf { it.third }).toInt())
+            EncounterSlot(species, g.minOf { it.second.first }, g.maxOf { it.second.last }, (g.sumOf { it.third }).roundToInt())
         }.sortedByDescending { it.percent }
 }
 

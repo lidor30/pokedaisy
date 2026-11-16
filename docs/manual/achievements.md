@@ -72,6 +72,13 @@ Tap an unlock or progress popup to open the ACHIEVEMENTS tab right on that achie
 
 When the companion isn't on screen (a DS game's touch screen in its place, or the companion closed on a one-screen handheld), popups show at the top of the game instead, and a tap there just closes them.
 
+### Turning popups off
+
+The top screen's Settings > RetroAchievements page has a `NOTIFICATIONS` section, and the companion's `SETTINGS` has the same two switches in its COMPANION group, so you can change them in game:
+
+- `ACHIEVEMENT POPUPS` (`ON` by default) turns every popup off, in the game and on the companion, and mutes the unlock fanfare. Achievements still unlock and count on your account, and the CHEEVOS tab still lists them.
+- `PROGRESS POPUPS` (`ON` by default) turns off only the progress notices (`PROGRESS`), while unlocks and the rest still show. It's greyed out while `ACHIEVEMENT POPUPS` is off.
+
 ## Leaderboards and challenges
 
 Some sets have leaderboards (fastest time, highest score). When the game has any, a `LEADERBOARDS` button appears on the ACHIEVEMENTS tab. Tap a board to see the top 10 and the players around your own entry, with your row highlighted.
@@ -86,8 +93,8 @@ Every save state keeps your achievement progress with it. Load a state and the p
 
 While any cheat is loaded, achievements are paused: nothing can unlock, and the ACHIEVEMENTS tab shows `PAUSED: CHEATS ON`. A popup tells you when cheats go on or off. Turn every cheat off and achievements pick up again. See [Cheats](cheats.md).
 
-Raising `SHINY ODDS` pauses them the same way, and the tab shows `PAUSED: SHINY ODDS` until you set it back to `NORMAL`. See [SHINY ODDS](controls.md#shiny-odds).
+Raising `SHINY ODDS` pauses them the same way, and the tab shows `PAUSED: SHINY ODDS` until you set it back to `NORMAL`. See [SHINY ODDS](controls.md#shiny-odds). So does `EXP SHARE` while it's on (`PAUSED: EXP SHARE`): see [EXP SHARE](controls.md#exp-share).
 
 ## When the site can't be reached
 
-If you're offline when a game starts, you stay signed in. The app keeps trying again by itself (more and more slowly, up to every few minutes), and the companion's tab says it can't reach RetroAchievements. Tap `TRY AGAIN` on the tab or in Settings to try right away.
+If you're offline when a game starts, you stay signed in. A notice says the achievements are off for now, so you know nothing unlocks until the site is back. The app keeps trying again by itself (more and more slowly, up to every few minutes) and turns them on once it gets through, and the companion's tab says it can't reach RetroAchievements. Tap `TRY AGAIN` on the tab or in Settings to try right away.

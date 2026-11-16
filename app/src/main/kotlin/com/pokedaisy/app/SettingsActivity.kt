@@ -44,7 +44,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import com.pokedaisy.app.companion.ui.LibraryIcons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -336,7 +336,7 @@ class SettingsActivity : ComponentActivity() {
                         Spacer(Modifier.width(nm.u * 4))
                         com.pokedaisy.app.companion.ui.OptionButton(
                             null, nm, onClick = { screen = Screen.HELP },
-                            icon = Icons.AutoMirrored.Filled.HelpOutline, contentDescription = tr("Help"),
+                            icon = LibraryIcons.HelpOutline, contentDescription = tr("Help"),
                         )
                     }
                     Spacer(Modifier.height(nm.u * 8))
@@ -479,6 +479,22 @@ class SettingsActivity : ComponentActivity() {
                     m = m,
                     onDismiss = { confirmReplaceAll = false },
                     onConfirm = { confirmReplaceAll = false; startCoverSync(replace = true) },
+                )
+            }
+
+            confirmReset?.let { r ->
+                OptionConfirm(
+                    title = if (r == Reset.HOTKEYS) tk("RESET HOTKEYS?") else tk("RESET GAME BUTTONS?"),
+                    message = if (r == Reset.HOTKEYS) tr("Every hotkey goes back to the keys it had at first.")
+                        else tr("Every game button goes back to the key it had at first."),
+                    confirmLabel = tk("RESET"),
+                    m = m,
+                    onDismiss = { confirmReset = null },
+                    onConfirm = {
+                        if (r == Reset.HOTKEYS) Hotkeys.resetBindings(filesRoot) else GbaControls.resetBindings(filesRoot)
+                        confirmReset = null
+                        revision++
+                    },
                 )
             }
 
@@ -728,8 +744,8 @@ class SettingsActivity : ComponentActivity() {
         // The themes on offer today: the limited-time ones only in their dates.
         val themes = com.pokedaisy.app.companion.ui.theme.availableThemes()
         fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
-        // The same groups and order as the bottom screen's SETTINGS where they overlap.
-        val rows = listOfNotNull(
+        // The same groups and order as the bottom screen's SETTINGS where they overlap; first how this list looks.
+        val rows = com.pokedaisy.app.companion.ui.settingsLookRows { revision++ } + listOfNotNull(
             groupTitle(tk("FF / SPEED")),
             SettingRow(tk("FF SPEED"), rateLabel(prefs.ffMaxSpeed)) {
                 selector = Selector(tk("FF SPEED"), rateLabels, rateLabel(prefs.ffMaxSpeed)) {
@@ -832,6 +848,14 @@ class SettingsActivity : ComponentActivity() {
             ) { dsLayoutPicker = true }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT && !usesSecondScreen },
             // The party, a minimap, the balls and BAG / WILD over the game on the field: its own page (layout, look, size, parts).
             SettingRow(tk("HUD"), onOff(prefs.fieldHud), labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.HUD), opensPage = true, subtitle = "Party, minimap and bag over the game") { screen = Screen.FIELD_HUD },
+            // Two screens: the game's own FIGHT / BAG and move menus off its screen, the companion's buttons pick.
+            SettingRow(
+                tk("HIDE BATTLE MENU"), onOff(prefs.hideBattleMenu), subtitle = "Pick from the companion, not the game",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.HIDE_BATTLE_MENU),
+            ) {
+                prefs.hideBattleMenu = !prefs.hideBattleMenu
+                revision++
+            }.takeIf { usesSecondScreen },
             // One screen: FIGHT, POKéMON and RUN in the room beside a battle (BattleButtons).
             SettingRow(
                 tk("BATTLE BUTTONS"), onOff(prefs.battleButtons), subtitle = "FIGHT, POKéMON and RUN beside a battle",
@@ -860,11 +884,11 @@ class SettingsActivity : ComponentActivity() {
                 prefs.foldLayout = !prefs.foldLayout
                 revision++
             }.takeIf { prefs.foldSeen && !usesSecondScreen },
-            // The white tab at the screen's right edge that opens it (BACK and the HUD's COMPANION still do).
+            // The buttons on the game screen that open it: the white edge tab and the HUD's COMPANION (BACK still does).
             SettingRow(
                 tk("COMPANION BUTTON"), onOff(prefs.companionTab),
                 labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.COMPANION_TAB),
-                subtitle = "The tab at the right edge that opens it",
+                subtitle = "The game screen's buttons that open it",
             ) {
                 prefs.companionTab = !prefs.companionTab
                 revision++
@@ -892,10 +916,27 @@ class SettingsActivity : ComponentActivity() {
                     badge = { l -> tk("LIMITED").takeIf { themes.firstOrNull { it.label == l }?.season != null } },
                 ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(this@SettingsActivity, it) } }
             },
+            // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
+            com.pokedaisy.app.companion.ui.gameLookRow { revision++ },
             // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
             SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
                 DarkMode.set(this@SettingsActivity, DarkMode.setting.next())
                 revision++
+            },
+            // The app's text: the pixel font or a smooth one, both screens at once.
+            SettingRow(
+                tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFonts.current.label, subtitle = "Pixel letters or smooth ones",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.APP_FONT),
+            ) {
+                selector = Selector(
+                    tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFont.entries.map { it.label },
+                    com.pokedaisy.app.companion.ui.theme.AppFonts.current.label,
+                ) { l ->
+                    com.pokedaisy.app.companion.ui.theme.AppFont.entries.firstOrNull { it.label == l }?.let {
+                        com.pokedaisy.app.companion.ui.theme.AppFonts.set(this@SettingsActivity, it)
+                        revision++
+                    }
+                }
             },
             // The game's frames per second and the app's CPU share, in the game's corner.
             SettingRow(tk("FPS / CPU"), onOff(prefs.showPerformance), subtitle = "Speed and CPU use in the game's corner") {
@@ -1403,6 +1444,7 @@ class SettingsActivity : ComponentActivity() {
      * kept (Prefs); the password goes straight to the login call. */
     @Composable
     private fun AchievementsScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
+        @Suppress("UNUSED_EXPRESSION") revision
         val user by RetroAchievements.user.collectAsState()
         val signingIn by RetroAchievements.signingIn.collectAsState()
         val state by RetroAchievements.state.collectAsState()
@@ -1410,6 +1452,7 @@ class SettingsActivity : ComponentActivity() {
         var password by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
         val savedName = prefs.raUsername.takeIf { prefs.raToken != null }
+        fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
 
         Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             Hint(
@@ -1458,6 +1501,31 @@ class SettingsActivity : ComponentActivity() {
                                 },
                             )
                         }
+                    }
+                }
+            }
+            // What shows over the game / companion; tracking and submissions carry on either way.
+            Spacer(Modifier.height(m.u * 4))
+            OptionListWindow(m, Modifier.fillMaxWidth()) {
+                Column {
+                    com.pokedaisy.app.companion.ui.GroupTitleLine(tk("NOTIFICATIONS"), m, first = true)
+                    OptionLine(
+                        tk("ACHIEVEMENT POPUPS"), onOff(prefs.raPopups), selected = false, m,
+                        height = m.rowHeight * 1.2f + m.lineHeight, divider = true,
+                        subtitle = "Unlocks, game complete, leaderboards and connection notices",
+                        labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RA_POPUPS),
+                    ) {
+                        prefs.raPopups = !prefs.raPopups
+                        revision++
+                    }
+                    OptionLine(
+                        tk("PROGRESS POPUPS"), onOff(prefs.raProgressPopups), selected = false, m,
+                        height = m.rowHeight * 1.2f + m.lineHeight, enabled = prefs.raPopups,
+                        subtitle = "A notice when a counting achievement gets closer",
+                        labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RA_POPUPS),
+                    ) {
+                        prefs.raProgressPopups = !prefs.raProgressPopups
+                        revision++
                     }
                 }
             }
@@ -1922,6 +1990,20 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }
+            ResetToDefaults(m) { confirmReset = Reset.HOTKEYS }
+        }
+    }
+
+    /** What RESET TO DEFAULTS asks about ([confirmReset]): the hotkeys or the game buttons. */
+    private enum class Reset { HOTKEYS, BUTTONS }
+
+    private var confirmReset by mutableStateOf<Reset?>(null)
+
+    /** A page's RESET TO DEFAULTS, under its list (GitHub discussion #923: a key rebound by mistake, nothing left to fix it with). */
+    @Composable
+    private fun ResetToDefaults(m: GbaTextMetrics, onClick: () -> Unit) {
+        Row(Modifier.fillMaxWidth().padding(top = m.u * 4), horizontalArrangement = Arrangement.End) {
+            OptionButton(tk("RESET TO DEFAULTS"), m, onClick = { capture.cancel(); onClick() })
         }
     }
 
@@ -1946,6 +2028,7 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }
+            ResetToDefaults(m) { confirmReset = Reset.BUTTONS }
         }
     }
 

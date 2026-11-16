@@ -201,7 +201,7 @@ private val platinumTownMap: RegionMapModel by lazy {
  * map may not show: a house's, a cave's), named by the cart. Arrived-at towns, Victory Road and Unity Tower get the
  * game's sprite (Unity Tower none before), Liberty Garden its island's once the bag holds the Liberty Pass.
  */
-internal val blackTownMap: RegionMapModel by lazy { gen5TownMap(townMapPlacesBlack) }
+val blackTownMap: RegionMapModel by lazy { gen5TownMap(townMapPlacesBlack) }
 
 /** White's: Black's picture (the same files in its cart), its own places - White Forest where Black City is. */
 internal val whiteTownMap: RegionMapModel by lazy { gen5TownMap(townMapPlacesWhite) }

@@ -198,6 +198,10 @@ fun CompanionSettingsScreen(
                                 }
                             }
                         }
+                    } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
+                        confirm = Confirm(
+                            tk("RESET GAME BUTTONS?"), tr("Every game button goes back to the key it had at first."), tk("RESET"),
+                        ) { settings.resetGbaControls(); tick++ }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     // Off, the binds stay as they are, greyed out, and every key goes to the game.
                     Page.HOTKEYS -> listOf(
@@ -226,6 +230,10 @@ fun CompanionSettingsScreen(
                                 )
                             }
                         }
+                    } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
+                        confirm = Confirm(
+                            tk("RESET HOTKEYS?"), tr("Every hotkey goes back to the keys it had at first."), tk("RESET"),
+                        ) { settings.resetHotkeys(); tick++ }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.SHADERS -> shaderRows(settings) { tick++ } + SettingRow(tk("CANCEL"), null) { page = Page.DISPLAY }
                     Page.FIELD_HUD -> fieldHudRows(
@@ -562,7 +570,8 @@ private fun homeRows(
             }
         } else null,
     )
-    return makeover + listOfNotNull(
+    // How this list looks (DESCRIPTIONS, GROUP TABS): first, the user's call.
+    return settingsLookRows(changed) + makeover + listOfNotNull(
         groupTitle(tk("FF / SPEED")),
         // On / off - the group's title already says fast-forward.
         SettingRow("FF", onOff(s.ffToggled)) { s.setFfToggled(!s.ffToggled); changed() },
@@ -642,6 +651,53 @@ private fun homeRows(
         ) {
             if (s.reusableTmsSupported) { s.setReusableTms(!s.reusableTms); changed() }
         },
+        // A REPEL running low gets another of its kind on top, from the bag (RepelRefill.kt). Two values: a tap flips it.
+        SettingRow(
+            tk("AUTO REFILL"), if (s.repelRefillSupported) onOff(s.repelRefill) else tk("N/A"),
+            enabled = s.repelRefillSupported, labelBadge = NewFeatures.badge(NewFeatures.REPEL_REFILL),
+            subtitle = "Another REPEL goes on before one runs out",
+        ) {
+            if (s.repelRefillSupported) { s.setRepelRefill(!s.repelRefill); changed() }
+        },
+        // The field moves (a tree, a rock, the water...) with the badge alone: the game's own move check patched to take
+        // the first Pokémon when nobody knows the move (HmFree.kt); the companion's FLY and FLASH follow it.
+        SettingRow(
+            tk("NO HMS NEEDED"), if (s.hmFreeSupported) onOff(s.hmFree) else tk("N/A"),
+            enabled = s.hmFreeSupported, labelBadge = NewFeatures.badge(NewFeatures.HM_FREE),
+            subtitle = "Field moves with the badge alone",
+        ) {
+            if (s.hmFreeSupported) { s.setHmFree(!s.hmFree); changed() }
+        },
+        // The whole party gains EXP from a win (ExpShare.kt: getexp's sent-out bits set, FULL also its division skipped).
+        // Three values: a pick-list.
+        SettingRow(
+            tk("EXP SHARE"), if (s.expShareSupported) s.expShare.label else tk("N/A"),
+            enabled = s.expShareSupported, labelBadge = NewFeatures.badge(NewFeatures.EXP_SHARE),
+            subtitle = "The whole party gains EXP from a win",
+        ) {
+            if (s.expShareSupported) {
+                val modes = com.pokedaisy.app.companion.data.ExpShare.Mode.entries
+                select(
+                    Selector(tk("EXP SHARE"), modes.map { it.label }, s.expShare.label, note = EXP_SHARE_NOTE) { l ->
+                        modes.firstOrNull { it.label == l }?.let(s::setExpShare)
+                    },
+                )
+            }
+        },
+        // No Pokémon past the next boss's top level (LevelCap.kt: getexp's two level-100 checks patched to the cap); the
+        // value shows the cap now. Two values: a tap flips it.
+        SettingRow(
+            tk("LEVEL CAP"),
+            when {
+                !s.levelCapSupported -> tk("N/A")
+                !s.levelCap -> tk("OFF")
+                else -> s.levelCapLevel?.let { tr("LV {0}", it) } ?: tk("ON")
+            },
+            enabled = s.levelCapSupported, labelBadge = NewFeatures.badge(NewFeatures.LEVEL_CAP),
+            subtitle = "Stops at the next boss's top level",
+        ) {
+            if (s.levelCapSupported) { s.setLevelCap(!s.levelCap); changed() }
+        },
         // A Pokémon that evolves by trading evolves from its summary, through the game's own evolution (TradeEvolution.kt).
         SettingRow(
             tk("TRADE EVOS"), if (s.tradeEvolutionsSupported) onOff(s.tradeEvolutions) else tk("N/A"),
@@ -664,6 +720,37 @@ private fun homeRows(
                     },
                 )
             }
+        },
+        // The game's beep with HP in the red, and poison's damage while walking: ON = the game's own, OFF = patched out
+        // (QuietPatches.kt). Two values: a tap flips them.
+        SettingRow(
+            tk("LOW HP BEEP"), if (s.lowHpBeepSupported) onOff(s.lowHpBeep) else tk("N/A"),
+            enabled = s.lowHpBeepSupported, labelBadge = NewFeatures.badge(NewFeatures.LOW_HP_BEEP),
+        ) {
+            if (s.lowHpBeepSupported) { s.setLowHpBeep(!s.lowHpBeep); changed() }
+        },
+        SettingRow(
+            tk("FIELD POISON"), if (s.fieldPoisonSupported) onOff(s.fieldPoison) else tk("N/A"),
+            enabled = s.fieldPoisonSupported, labelBadge = NewFeatures.badge(NewFeatures.FIELD_POISON),
+            subtitle = "Poison hurts while you walk",
+        ) {
+            if (s.fieldPoisonSupported) { s.setFieldPoison(!s.fieldPoison); changed() }
+        },
+        // A state as each trainer battle starts; after a loss the card asks to go back to it (BattleRetryAsk).
+        SettingRow(
+            tk("BOSS RETRY"), onOff(s.battleRetry),
+            labelBadge = NewFeatures.badge(NewFeatures.BOSS_RETRY), subtitle = "Lost a trainer battle? Try it again",
+        ) {
+            s.setBattleRetry(!s.battleRetry); changed()
+        },
+        // A shiny wild foe said out loud, FF and turbo stopped (ShinyHunt.kt); the subtitle counts the hunt's wild battles.
+        SettingRow(
+            tk("SHINY ALERT"), if (s.shinyAlertSupported) onOff(s.shinyAlert) else tk("N/A"),
+            enabled = s.shinyAlertSupported, labelBadge = NewFeatures.badge(NewFeatures.SHINY_ALERT),
+            subtitle = if (s.shinyAlertSupported && s.shinyAlert) tr("{0} wild battles since the last shiny", s.shinyHuntCount)
+                else "Stops FF when a shiny shows up",
+        ) {
+            if (s.shinyAlertSupported) { s.setShinyAlert(!s.shinyAlert); changed() }
         },
         // The NUZLOCKE tab and its tracker for this game (Nuzlocke.kt): first encounter per area, fainted = out of the run.
         SettingRow(
@@ -773,6 +860,13 @@ private fun homeRows(
         },
         // The party, a minimap, the balls and BAG / WILD over the game on the field: its own page (layout, look, size, parts).
         SettingRow(tk("HUD"), onOff(s.fieldHud), labelBadge = NewFeatures.badge(NewFeatures.HUD), opensPage = true, subtitle = "Party, minimap and bag over the game") { navigate(Page.FIELD_HUD) },
+        // Two screens: the game's own FIGHT / BAG and move menus off its screen, the companion's buttons pick.
+        s.hideBattleMenu?.let { hide ->
+            SettingRow(
+                tk("HIDE BATTLE MENU"), onOff(hide), subtitle = "Pick from the companion, not the game",
+                labelBadge = NewFeatures.badge(NewFeatures.HIDE_BATTLE_MENU),
+            ) { s.setHideBattleMenu(!hide); changed() }
+        },
         // One screen: FIGHT, POKéMON and RUN in the room beside a battle (BattleButtons).
         SettingRow(
             tk("BATTLE BUTTONS"), onOff(s.battleButtons), subtitle = "FIGHT, POKéMON and RUN beside a battle",
@@ -794,11 +888,11 @@ private fun homeRows(
                 subtitle = "Half open: the game on one side of the fold",
             ) { s.setFoldLayout(!fold); changed() }
         },
-        // The white tab at the screen's right edge that opens it (BACK and the HUD's COMPANION still do).
+        // The buttons on the game screen that open it: the white edge tab and the HUD's COMPANION (BACK still does).
         s.companionTab?.let { tab ->
             SettingRow(
                 tk("COMPANION BUTTON"), onOff(tab),
-                labelBadge = NewFeatures.badge(NewFeatures.COMPANION_TAB), subtitle = "The tab at the right edge that opens it",
+                labelBadge = NewFeatures.badge(NewFeatures.COMPANION_TAB), subtitle = "The game screen's buttons that open it",
             ) { s.setCompanionTab(!tab); changed() }
         },
         // Two screens: the game and the companion trade screens (this companion moves with them).
@@ -821,12 +915,25 @@ private fun homeRows(
                 ) { l -> themes.firstOrNull { it.label == l }?.let { s.setAppTheme(it.id); com.pokedaisy.app.companion.ui.theme.AppColors.applyTheme(it) } })
             }
         },
+        // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
+        gameLookRow(changed),
         // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
         SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
             val pick = DarkMode.setting.next()
             DarkMode.setting = pick
             s.setDarkMode(pick.ordinal)
             changed()
+        },
+        // The app's text: the pixel font or a smooth one, both screens at once.
+        com.pokedaisy.app.companion.ui.theme.AppFonts.current.let { now ->
+            SettingRow(tk("FONT"), now.label, subtitle = "Pixel letters or smooth ones", labelBadge = NewFeatures.badge(NewFeatures.APP_FONT)) {
+                select(Selector(tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFont.entries.map { it.label }, now.label) { l ->
+                    com.pokedaisy.app.companion.ui.theme.AppFont.entries.firstOrNull { it.label == l }?.let {
+                        com.pokedaisy.app.companion.ui.theme.AppFonts.setting = it
+                        s.setAppFont(it.ordinal)
+                    }
+                })
+            }
         },
         // The game's frames per second and the app's CPU share, in the game's corner.
         SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },
@@ -856,6 +963,11 @@ private fun homeRows(
             }.takeIf { s.battleInfo }
         },
         SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
+        // A ball button on the battle menu: the last ball thrown, in one tap, without the bag (BattleBall.kt).
+        SettingRow(
+            tk("LAST BALL"), onOff(s.lastBallButton), subtitle = "Throw your last ball in one tap",
+            labelBadge = NewFeatures.badge(NewFeatures.LAST_BALL),
+        ) { s.setLastBallButton(!s.lastBallButton); changed() },
         // The battle buttons' look: GEN 4 (coloured buttons) or GEN 5 (dark plates round a red and white ball).
         SettingRow(
             tk("BATTLE STYLE"), s.battleStyle.label, subtitle = "The battle buttons' look",
@@ -879,6 +991,16 @@ private fun homeRows(
             tk("CHALLENGE ICONS"), onOff(s.raIcons), subtitle = "RetroAchievements' icons in the corner",
             labelBadge = NewFeatures.badge(NewFeatures.RA_ICONS),
         ) { s.setRaIcons(!s.raIcons); changed() },
+        // RetroAchievements' popups; tracking and submissions carry on with them off (the top screen's RetroAchievements
+        // page has these too).
+        SettingRow(
+            tk("ACHIEVEMENT POPUPS"), onOff(s.raPopups), subtitle = "Unlocks, game complete, leaderboards and connection notices",
+            labelBadge = NewFeatures.badge(NewFeatures.RA_POPUPS),
+        ) { s.setRaPopups(!s.raPopups); changed() },
+        SettingRow(
+            tk("PROGRESS POPUPS"), onOff(s.raProgressPopups), enabled = s.raPopups,
+            subtitle = "A notice when a counting achievement gets closer", labelBadge = NewFeatures.badge(NewFeatures.RA_POPUPS),
+        ) { s.setRaProgressPopups(!s.raProgressPopups); changed() },
         // Small on / off preferences: the icons' bounce, the map cursor's blink, tab slides, the battle jump.
         SettingRow(tk("TWEAKS"), null, opensPage = true, subtitle = "Small animations and the battle jump") { navigate(Page.TWEAKS) },
     ) + coopRows(s, changed, navigate, pick = { title, choices, current, onPick -> select(Selector(title, choices, current) { onPick(it); changed() }) }, askLock = askLock) + listOfNotNull(
@@ -1124,3 +1246,6 @@ private fun shinyOddsLabel(odds: Int): String =
 
 /** SHINY ODDS' pick-list disclaimer: what a save checker may say, and the achievements' pause. */
 private const val SHINY_ODDS_NOTE = "Save checkers may flag these shinies. Achievements pause."
+
+/** EXP SHARE's pick-list: what the two ways do. */
+private const val EXP_SHARE_NOTE = "SPLIT shares a win's EXP across the party. FULL EXP gives each one all of it. Achievements pause."

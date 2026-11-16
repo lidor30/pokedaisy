@@ -39,8 +39,10 @@ object SyntheticSave {
         sb1[format.partyCountOff] = 2
         mon(personality = 0x1234_5678L, otId = 0x0BAD_F00DL, species = 6, exp = 125_000).copyInto(sb1, format.partyOff)
         sb1[format.partyOff + 0x54] = 50
+        partyHp(sb1, format.partyOff, 150)
         mon(personality = 0x0000_0017L, otId = 0x0BAD_F00DL, species = 25, exp = 1000, item = 13).copyInto(sb1, format.partyOff + 100)
         sb1[format.partyOff + 100 + 0x54] = 10
+        partyHp(sb1, format.partyOff + 100, 30)
         val storage = ByteArray(format.storageSize)
         storage[0] = 1
         // Box 1: three mons; box 2: one. Every personality % 24 shows up across the tests' records.
@@ -122,7 +124,7 @@ object SyntheticSave {
         val (sb2, sb1, storage) = blocks(f)
         fun exp(species: Int, level: Int) = gen3ExperienceTables[gen3GrowthRates[species].toInt()][level].toLong()
         fun mon(i: Int, species: Int, level: Int, name: String, item: Int = 0, egg: Boolean = false, game: Int = 4) = mon(
-            personality = 0x2468_0000L + i * 7919L, otId = 0x0BAD_3039L, species = species, exp = exp(species, level), item = item,
+            personality = 0x2468_0000L + i * 7919L, otId = (54321L shl 16) or 12345L, species = species, exp = exp(species, level), item = item,
             moves = intArrayOf(53, 17, 89, 0), isEgg = egg, nickname = if (egg) "EGG" else name, ot = "RED", metGame = game,
         )
         val names = mapOf(
@@ -139,6 +141,7 @@ object SyntheticSave {
             sb1.fill(0, o, o + 100)
             mon(i, s, l, names.getValue(s), item = if (i == 0) 200 else 0).copyInto(sb1, o)
             sb1[o + 0x54] = l.toByte()
+            partyHp(sb1, o, 40 + l)
         }
         storage.fill(0, 4, 4 + 14 * 30 * 80)
         listOf(1, 4, 7, 16, 19, 35, 39, 41, 52, 54, 63, 66, 74, 92, 95, 129, 133, 147, 277, 280, 283).forEachIndexed { i, s ->
@@ -176,6 +179,9 @@ object SyntheticSave {
         return parse(fr.format, file(fr.format, Slot(fr.counter, fr.rotation, frSb2, frSb1, fr.storage), null)) to
             parse(e, file(e, Slot(12, 5, sb2, sb1, storage), null))
     }
+
+    /** A party Pokémon's HP and max HP (the rest of its stats left 0): enough to count as able to battle. */
+    fun partyHp(sb1: ByteArray, off: Int, hp: Int) { le16(sb1, off + 0x56, hp); le16(sb1, off + 0x58, hp); sb1[off + 0x55] = 0xFF.toByte() }
 
     /** The National Dex (and FireRed's Sevii Islands) in a save's blocks. */
     fun progress(f: Gen3SaveFormat, sb2: ByteArray, sb1: ByteArray) {

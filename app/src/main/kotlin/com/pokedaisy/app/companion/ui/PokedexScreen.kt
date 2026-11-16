@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.data.DexEntry
 import com.pokedaisy.app.companion.data.GameKind
 import com.pokedaisy.app.companion.data.GuideTables
+import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.companion.data.activeGame
 import com.pokedaisy.app.companion.data.PokedexSource
 import com.pokedaisy.app.companion.data.PokedexState
@@ -373,7 +374,11 @@ private fun DexMark(caught: Boolean, seen: Boolean, modifier: Modifier) {
  * drawn while it animates out after Back.
  */
 @Composable
-fun PokedexEntryScreen(dex: PokedexState, ui: DexUiState, current: Int, modifier: Modifier = Modifier, guide: GuideTables? = null) {
+fun PokedexEntryScreen(
+    dex: PokedexState, ui: DexUiState, current: Int, modifier: Modifier = Modifier, guide: GuideTables? = null,
+    /** Back's way out; null = back to the dex list. A party summary's jump comes back to that summary instead. */
+    onBack: (() -> Unit)? = null,
+) {
     // Dense pages sized to Pixel Operator: a game font keeps its metrics here.
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -390,7 +395,7 @@ fun PokedexEntryScreen(dex: PokedexState, ui: DexUiState, current: Int, modifier
     LaunchedEffect(index) { if (index >= 0) ui.list.scrollToItem((index - 3).coerceAtLeast(0)) }
 
     SummaryFrame(
-        m, onBack = { ui.open = null }, modifier = modifier,
+        m, onBack = onBack ?: { ui.open = null }, modifier = modifier,
         buttons = {
             NavButton(PixelIcons.arrowUp, tr("Previous entry"), MonGreen, MonGreenDark, entries.size > 1) { step(-1) }
             NavButton(PixelIcons.arrowDown, tr("Next entry"), MonGreen, MonGreenDark, entries.size > 1) { step(1) }
@@ -599,10 +604,10 @@ private fun pct(tenths: Int) = if (tenths % 10 == 0) "${tenths / 10}" else "${te
 @Composable
 internal fun rememberRomBitmap(
     t: PokedexTables, species: Int,
-    cached: (PokedexTables, Int) -> Bitmap?, load: (PokedexTables, Int) -> Bitmap?,
+    cached: (PokedexTables, Int) -> RomArt.Image?, load: (PokedexTables, Int) -> RomArt.Image?,
 ): Bitmap? =
-    produceKeyedState(cached(t, species), t, species) {
-        if (value == null && species > 0) value = withContext(Dispatchers.IO) { load(t, species) }
+    produceKeyedState(cached(t, species)?.bitmap(), t, species) {
+        if (value == null && species > 0) value = withContext(Dispatchers.IO) { load(t, species)?.bitmap() }
     }.value
 
 /**

@@ -72,6 +72,17 @@ class Prefs(context: Context) {
         get() = p.getString("ra_token", null)
         set(v) = p.edit().putString("ra_token", v).apply()
 
+    /** Achievement popups (Settings > RetroAchievements): unlocks, game complete, leaderboards
+     * and the connection notices. Off also mutes the unlock fanfare. */
+    var raPopups: Boolean
+        get() = p.getBoolean("ra_popups", true)
+        set(v) = p.edit().putBoolean("ra_popups", v).apply()
+
+    /** PROGRESS popups only (the "38/50" notices); [raPopups] off hides these too. */
+    var raProgressPopups: Boolean
+        get() = p.getBoolean("ra_progress_popups", true)
+        set(v) = p.edit().putBoolean("ra_progress_popups", v).apply()
+
     /** Fast-forward speed cap. 0 = unlimited. */
     var ffMaxSpeed: Float
         get() = p.getFloat("ff_max_speed", 2f)
@@ -190,6 +201,48 @@ class Prefs(context: Context) {
         get() = p.getBoolean("reusable_tms", false)
         set(v) = p.edit().putBoolean("reusable_tms", v).apply()
 
+    /** EXP SHARE: OFF / SPLIT / FULL, by [com.pokedaisy.app.companion.data.ExpShare.Mode.id]. */
+    var expShare: Int
+        get() = p.getInt("exp_share", 0)
+        set(v) = p.edit().putInt("exp_share", v).apply()
+
+    /** GAME LOOK (DISPLAY OPTIONS on both screens, CompanionSkins.enabled): the companion and the HUD in the running game's
+     * own look. On by default. */
+    var gameLook: Boolean
+        get() = p.getBoolean("game_look", true)
+        set(v) = p.edit().putBoolean("game_look", v).apply()
+
+    /** SETTINGS' DESCRIPTIONS and GROUP TABS (both screens, SettingsLook): shown by default. */
+    var settingsDescriptions: Boolean
+        get() = p.getBoolean("settings_descriptions", true)
+        set(v) = p.edit().putBoolean("settings_descriptions", v).apply()
+    var settingsTabs: Boolean
+        get() = p.getBoolean("settings_tabs", true)
+        set(v) = p.edit().putBoolean("settings_tabs", v).apply()
+
+    /** LOW HP BEEP / FIELD POISON: the game's own (ON) or turned off by a patch (QuietPatches.kt). */
+    var lowHpBeep: Boolean
+        get() = p.getBoolean("low_hp_beep", true)
+        set(v) = p.edit().putBoolean("low_hp_beep", v).apply()
+    var fieldPoison: Boolean
+        get() = p.getBoolean("field_poison", true)
+        set(v) = p.edit().putBoolean("field_poison", v).apply()
+
+    /** AUTO REFILL: another REPEL of the kind working goes on before it runs out (RepelRefill.kt). */
+    var repelRefill: Boolean
+        get() = p.getBoolean("repel_refill", false)
+        set(v) = p.edit().putBoolean("repel_refill", v).apply()
+
+    /** LEVEL CAP: no Pokémon goes past the next boss's top level (LevelCap.kt). */
+    var levelCap: Boolean
+        get() = p.getBoolean("level_cap", false)
+        set(v) = p.edit().putBoolean("level_cap", v).apply()
+
+    /** NO HMS NEEDED: the field moves work without a Pokémon that knows them, once the badge is in (HmFree.kt). */
+    var hmFree: Boolean
+        get() = p.getBoolean("hm_free", false)
+        set(v) = p.edit().putBoolean("hm_free", v).apply()
+
     /** INSTANT TEXT: a text box's words appear at once (InstantText.kt). */
     var instantText: Boolean
         get() = p.getBoolean("instant_text", false)
@@ -227,10 +280,34 @@ class Prefs(context: Context) {
         set(v) = p.edit().putBoolean("rival_look", v).apply()
 
     /** Remembered speed-cycle index per ROM (keyed by CRC32). */
+    /** BOSS RETRY: a state as each trainer battle starts, offered back after a loss (BattleRetryAsk). */
+    var battleRetry: Boolean
+        get() = p.getBoolean("battle_retry", false)
+        set(v) = p.edit().putBoolean("battle_retry", v).apply()
+
+    /** SHINY ALERT: on, and its hunt's count of wild battles per ROM (since the last shiny, or since it was turned on). */
+    var shinyAlert: Boolean
+        get() = p.getBoolean("shiny_alert", false)
+        set(v) = p.edit().putBoolean("shiny_alert", v).apply()
+    fun shinyHuntFor(romKey: String): Int = p.getInt("shiny_hunt_$romKey", 0)
+    fun setShinyHuntFor(romKey: String, count: Int) = p.edit().putInt("shiny_hunt_$romKey", count).apply()
+
+    /** LAST BALL: the BATTLE tab's ball button (BattleBall.kt), and the ball last thrown per ROM (0 = none yet). */
+    var lastBallButton: Boolean
+        get() = p.getBoolean("last_ball_button", true)
+        set(v) = p.edit().putBoolean("last_ball_button", v).apply()
+    fun lastBallFor(romKey: String): Int? = p.getInt("last_ball_$romKey", 0).takeIf { it != 0 }
+    fun setLastBallFor(romKey: String, itemId: Int) = p.edit().putInt("last_ball_$romKey", itemId).apply()
+
     fun speedIndexFor(romKey: String): Int = p.getInt("speed_$romKey", 0)
     fun setSpeedIndexFor(romKey: String, index: Int) = p.edit().putInt("speed_$romKey", index).apply()
 
     /** The ZOOM step the player last picked on this ROM (WideCamera.level: 0 = 1x), put back when it's played again. */
+    /** SETTINGS > FONT: the app's text font by AppFont ordinal (0 PIXEL, the default; companion/ui/theme/AppFont.kt). */
+    var appFont: Int
+        get() = p.getInt("app_font", 0)
+        set(v) = p.edit().putInt("app_font", v).apply()
+
     fun zoomLevelFor(romKey: String): Int = p.getInt("zoom_$romKey", 0)
     fun setZoomLevelFor(romKey: String, level: Int) = p.edit().putInt("zoom_$romKey", level).apply()
 
@@ -496,6 +573,12 @@ class Prefs(context: Context) {
             ).apply()
     }
 
+    /** HIDE BATTLE MENU: two screens, the game's own FIGHT / BAG and move menus left off the game's screen (the
+     * companion's battle buttons pick), an arrow pointing at the companion instead (pk_wide.c's menuHideBegin). */
+    var hideBattleMenu: Boolean
+        get() = p.getBoolean("hide_battle_menu", true)
+        set(v) = p.edit().putBoolean("hide_battle_menu", v).apply()
+
     /** BATTLE BUTTONS (companion.ui.BattleButtons): one screen, FIGHT, POKéMON and RUN beside a battle. */
     var battleButtons: Boolean
         get() = p.getBoolean("battle_buttons", true)
@@ -694,8 +777,9 @@ class Prefs(context: Context) {
         get() = p.getBoolean("companion_window", true)
         set(v) = p.edit().putBoolean("companion_window", v).apply()
 
-    /** One screen held sideways: the white tab at the bottom of the screen's right edge that opens the companion (SETTINGS >
-     * COMPANION BUTTON). Off, BACK and the HUD's COMPANION button still open it. */
+    /** One screen held sideways: the buttons on the game screen that open the companion - the white tab at the bottom of the
+     * screen's right edge and the HUD's COMPANION (SETTINGS > COMPANION BUTTON). Off, BACK, the COMPANION hotkey and the QUICK
+     * MENU still open it. */
     var companionTab: Boolean
         get() = p.getBoolean("companion_tab", true)
         set(v) = p.edit().putBoolean("companion_tab", v).apply()

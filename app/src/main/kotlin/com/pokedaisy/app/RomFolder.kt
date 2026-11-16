@@ -3,11 +3,13 @@ package com.pokedaisy.app
 import android.content.Context
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * The player's linked ROMs folders ([Prefs.romsFolders]): every ROM in them that the
  * second screen supports ([CompanionSupport]) joins the library and plays from
- * where it is - nothing is copied. Checking a ROM can mean hashing 32 MB, so each
+ * where it is - nothing is copied. Unsupported Pokémon games join too, tagged NOT SUPPORTED
+ * ([CompanionSupport.looksPokemon]); other games don't. Checking a ROM can mean hashing 32 MB, so each
  * file's verdict is cached by path + size + modified time and a rescan (every
  * time the library opens) only looks at new or changed files. ROMs packed in
  * `.zip` / `.7z` archives count too ([RomArchive]).
@@ -15,7 +17,11 @@ import java.io.File
 object RomFolder {
 
     // A getter: ROM_EXTENSIONS follows the DS / Game Boy switches, which LibraryActivity sets after this object may load.
-    private val EXTENSIONS get() = RomArchive.ROM_EXTENSIONS + RomArchive.EXTENSIONS
+    private val EXTENSIONS get() = RomArchive.ROM_EXTENSIONS + RomArchive.EXTENSIONS +
+        // 3DS carts (FeatureFlags.n3ds): played in place, never unpacked or copied.
+        (if (FeatureFlags.n3ds()) com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS else emptySet())
+    /** A 3DS cart: up to 4 GB (Pokemon X is 2). */
+    private const val MAX_3DS_ROM_BYTES = 4L shl 30
     private const val MAX_ROM_BYTES = 32L shl 20
     /** A DS cart: 512 MB at most (Platinum and HeartGold are 128, Black 256). */
     private const val MAX_DS_ROM_BYTES = 512L shl 20
@@ -24,20 +30,22 @@ object RomFolder {
 
     /** A DS cart or an archive (which may hold one: GitHub #315, zipped DS games went missing) up to a DS cart's size. */
     private fun maxBytes(f: File): Long =
-        if (f.name.endsWith(".nds", ignoreCase = true) || RomArchive.isArchive(f)) MAX_DS_ROM_BYTES else MAX_ROM_BYTES
+        if (f.extension.lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS) MAX_3DS_ROM_BYTES
+        else if (f.name.endsWith(".nds", ignoreCase = true) || RomArchive.isArchive(f)) MAX_DS_ROM_BYTES else MAX_ROM_BYTES
 
     /** [partial]: read through a PARTIAL best-effort match ([CompanionSupport.Verdict.PARTIAL]) - listed, tagged. */
     /** [tryable]: unsupported but a Gen 3 Pokémon base game - listed, tagged NOT SUPPORTED, so TRY BEST EFFORT is reachable. */
+    /** [pokemon]: unsupported, any other Pokémon game ([CompanionSupport.looksPokemon]) - listed, tagged NOT SUPPORTED. */
     private class Entry(
         val size: Long, val modified: Long, val supported: Boolean,
-        val partial: Boolean = false, val matched: Boolean = false, val tryable: Boolean = false,
+        val partial: Boolean = false, val matched: Boolean = false, val tryable: Boolean = false, val pokemon: Boolean = false,
         /** Written before TRYABLE existed ("0"): checked again once. */
         val legacy: Boolean = false,
         /** A game on [com.pokedaisy.app.companion.data.BlockedGames]' list: its BLOCKED tag (written "B" while it plays
          * anyway, "X" while it's kept off). */
         val blocked: Boolean = false,
     ) {
-        val listed get() = supported || partial || tryable
+        val listed get() = supported || partial || tryable || pokemon
     }
 
     private fun entryOf(size: Long, modified: Long, f: File): Entry {
@@ -52,7 +60,8 @@ object RomFolder {
             CompanionSupport.Verdict.MATCHED -> Entry(size, modified, true, matched = true)
             CompanionSupport.Verdict.PARTIAL -> Entry(size, modified, false, partial = true)
             CompanionSupport.Verdict.TRYABLE -> Entry(size, modified, false, tryable = true)
-            CompanionSupport.Verdict.UNSUPPORTED -> Entry(size, modified, false)
+            CompanionSupport.Verdict.UNSUPPORTED ->
+                Entry(size, modified, false, pokemon = runCatching { CompanionSupport.looksPokemon(f) }.getOrDefault(false))
         }
 
     /** The library: imported ROMs (`files/roms/`), then the linked folders' supported
@@ -111,14 +120,20 @@ object RomFolder {
      * would only look through the same files twice. */
     fun coveredBy(folders: List<String>, path: String): String? {
         val p = File(path).absolutePath
-        return folders.firstOrNull { p == it || under(p, it) }
+        val c = canonical(p)
+        return folders.firstOrNull { p == it || under(p, it) || canonical(it).let { f -> c == f || under(c, f) } }
     }
 
     /** [folders] with [path] linked too (not [coveredBy] one of them): the folders inside it go, it covers them now. */
     fun withFolder(folders: List<String>, path: String): List<String> {
         val p = File(path).absolutePath
-        return folders.filterNot { under(it, p) } + p
+        val c = canonical(p)
+        return folders.filterNot { under(it, p) || under(canonical(it), c) } + p
     }
+
+    /** [path] with links resolved (/sdcard is /storage/emulated/0): two linked folders that are one folder under two names
+     * listed every ROM twice (a player's report after updating from 1.3, Discord 2026-11-14). */
+    internal fun canonical(path: String): String = runCatching { File(path).canonicalPath }.getOrDefault(File(path).absolutePath)
 
     /** What a [scan] saw: the supported ROMs it found that the previous one didn't
      * have, how many ROM files it looked at and how many of those are supported;
@@ -148,7 +163,7 @@ object RomFolder {
                         f.length() in 0x200L..maxBytes(f)
                 }
                 .toList()
-        }.distinctBy { it.absolutePath }
+        }.distinctBy { canonical(it.path) }   // one file reached through two linked names: listed once
         val old = load(context)
         val fresh = LinkedHashMap<String, Entry>()
         candidates.forEachIndexed { i, f ->
@@ -216,7 +231,7 @@ object RomFolder {
     /** Where best effort keeps its matches, and the verdicts to drop when one changes. Each activity's onCreate. */
     fun useBestEffortStore(context: Context) {
         val app = context.applicationContext
-        com.pokedaisy.app.companion.data.BestEffortStore.dir = app.filesDir
+        com.pokedaisy.app.companion.data.BestEffortStore.dir = app.filesDir.toOkioPath()
         com.pokedaisy.app.companion.data.BestEffortStore.onChanged = { forgetUnsupported(app) }
     }
 
@@ -242,7 +257,8 @@ object RomFolder {
      * takes as retail and the DS carts by code and revision: a ROM it turned away before is checked again - a Black cart
      * linked before Black was supported stayed out of the library). */
     private val SUPPORTED = "#supported\t" + Integer.toHexString(
-        (TelemetrySampler.SUPPORTED_HACK_SHA1S.sorted() + TelemetrySampler.SUPPORTED_GB_SHA1S.sorted() +
+        // "pokemon": the cache from before unsupported Pokémon games were listed ([Entry.pokemon]) read again once.
+        (listOf("pokemon") + TelemetrySampler.SUPPORTED_HACK_SHA1S.sorted() + TelemetrySampler.SUPPORTED_GB_SHA1S.sorted() +
             com.pokedaisy.app.companion.data.RETAIL_DUMPS.map { it.sha1 } +
             TelemetrySampler.NDS_GAMES.map { (code, rev) -> "$code:$rev" }.sorted() +
             com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1).hashCode(),
@@ -269,7 +285,7 @@ object RomFolder {
                 if (stale && p[3] != "1") return@mapNotNull null
                 p[0] to Entry(
                     size, modified, p[3] == "1" || p[3] == "M" || p[3] == "B", partial = p[3] == "P", matched = p[3] == "M",
-                    tryable = p[3] == "T", legacy = p[3] == "0", blocked = p[3] == "B" || p[3] == "X",
+                    tryable = p[3] == "T", pokemon = p[3] == "N", legacy = p[3] == "0", blocked = p[3] == "B" || p[3] == "X",
                 )
             }.toMap()
         }.getOrDefault(emptyMap())
@@ -280,7 +296,7 @@ object RomFolder {
         val tmp = File(f.parentFile, "${f.name}.tmp")
         runCatching {
             tmp.writeText(SUPPORTED + "\n" + BLOCKED + "\n" + entries.entries.joinToString("") { (path, e) ->
-                "$path\t${e.size}\t${e.modified}\t${if (e.blocked) (if (e.supported) "B" else "X") else if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else "U"}\n"
+                "$path\t${e.size}\t${e.modified}\t${if (e.blocked) (if (e.supported) "B" else "X") else if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else if (e.pokemon) "N" else "U"}\n"
             })
             tmp.renameTo(f)
         }

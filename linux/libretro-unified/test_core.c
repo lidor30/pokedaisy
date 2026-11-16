@@ -60,29 +60,24 @@ int main(int argc,char** argv){assert(argc==4);dir=argv[3];void* so=dlopen(argv[
  FILE* f=fopen(argv[2],"rb");assert(f);fseek(f,0,SEEK_END);size_t size=ftell(f);rewind(f);void* rom=malloc(size);assert(fread(rom,1,size,f)==size);fclose(f);
  struct retro_game_info game={.path=argv[2],.data=rom,.size=size};assert(retro_load_game_fn(&game));for(int n=0;n<120;n++)retro_run_fn();assert(w&&h);
  if(armgba_options){
-  assert(w==480 && h==320);
+  // Gameplay at the game's own pixels; the Quick Menu doubles them so its text draws at output resolution.
+  assert(w==240 && h==160);
   const unsigned before=geometry_updates;
-  unsigned char original[480*320*4];
   const size_t pixel_size=fmt==RETRO_PIXEL_FORMAT_RGB565?2:4;
-  const size_t row_size=w*pixel_size;
-  memcpy(original,frame,h*row_size);
-  assert(memcmp(original,original+2*pixel_size,pixel_size));
-  for(unsigned y=0;y<h;y+=2){
-   const unsigned char* row=original+y*row_size;
-   assert(!memcmp(row,row+row_size,row_size));
-   for(unsigned x=0;x<w;x+=2)
-    assert(!memcmp(row+x*pixel_size,row+(x+1)*pixel_size,pixel_size));
-  }
+  static unsigned char doubled[480*320*4];
+  for(unsigned y=0;y<320;y++)
+   for(unsigned x=0;x<480;x++)
+    memcpy(doubled+(y*480+x)*pixel_size,frame+((y/2)*240+x/2)*pixel_size,pixel_size);
   quick_pressed=true;
   retro_run_fn();
-  assert(w==480 && h==320 && geometry_updates==before);
-  assert(memcmp(frame,original,w*h*(fmt==RETRO_PIXEL_FORMAT_RGB565?2:4)));
+  assert(w==480 && h==320 && geometry_updates==before+1);
+  assert(memcmp(frame,doubled,w*h*pixel_size)); // the menu is drawn over the game
   quick_pressed=false;
   retro_run_fn();
   quick_pressed=true;
   retro_run_fn();
   quick_pressed=false;
-  assert(w==480 && h==320 && geometry_updates==before);
+  assert(w==240 && h==160 && geometry_updates==before+2);
  }
  size_t n=retro_serialize_size_fn();assert(n);void* state=malloc(n);assert(retro_serialize_fn(state,n));
  size_t ram_size=retro_get_memory_size_fn(RETRO_MEMORY_SYSTEM_RAM);void* ram=retro_get_memory_data_fn(RETRO_MEMORY_SYSTEM_RAM);void* copy=malloc(ram_size?ram_size:1);if(ram_size){assert(ram);memcpy(copy,ram,ram_size);}

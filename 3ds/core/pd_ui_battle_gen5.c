@@ -444,6 +444,7 @@ static void ball_render(struct pd_canvas* c, const struct g5* g, bool open) {
 // one too, ~1.5 ms a redraw on the 3DS).
 struct runs {
     int w, h;
+    int bar;       // the tab bar's height it was drawn for (TEXT SIZE moves the bar)
     int* rowStart; // h + 1 entries
     uint16_t* x;   // where each run starts
     uint32_t* color;
@@ -503,10 +504,11 @@ static void runs_draw(const struct runs* r, struct pd_canvas* c, uint32_t from, 
 // (nothing clipped) is kept; anything else is just rendered.
 static void runs_show(struct runs* r, struct pd_canvas* c, void (*render)(struct pd_canvas*, const void*), const void* arg,
                       uint32_t from, uint32_t to, int litTop, int litBottom) {
-    if (!(r->rowStart && r->w == c->w && r->h == c->h)) {
+    if (!(r->rowStart && r->w == c->w && r->h == c->h && r->bar == TAB_BAR_H)) {
         render(c, arg);
         bool whole = c->cx0 == 0 && c->cy0 == 0 && c->cx1 == c->w && c->cy1 == c->h;
         if (!whole || !runs_encode(r, c->px, c->w, c->h)) return;
+        r->bar = TAB_BAR_H;
         if (litBottom <= litTop) return;
     }
     runs_draw(r, c, from, to, litTop, litBottom);
@@ -547,7 +549,7 @@ static void party_screen(struct pd_canvas* c, const struct g5* g) {
 // them the band's lens again (a sliver at the sides, open in the middle).
 static void closed_ball_render(struct pd_canvas* c, const void* arg) {
     (void) arg;
-    struct g5 gg = g5_of(c->w, c->h - 32);
+    struct g5 gg = g5_of(c->w, BAR_Y(c) - 2);
     const struct g5* g = &gg;
     const int d = g->d;
     pd_fill(c, 0, 0, c->w, c->h, NIGHT);
@@ -920,7 +922,9 @@ void ui_battle_gen5(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     }
     // Between turns, or the game's bag / party up: the closed ball in the dark, the message, the way back.
     struct pd_canvas k = *c;
-    k.h += 32; // the closed ball is drawn for the whole companion, as its backdrop is
+    // The closed ball is drawn for the whole companion, as its backdrop is: the same size, so both use one kept copy (a
+    // flat + 32 made it 246 rows at TEXT SIZE SMALL against the backdrop's 240, and each redraw rendered it twice).
+    k.h += TAB_BAR_H + 4;
     if (k.cy1 > c->h) k.cy1 = c->h;
     ui_gen5_closed_ball(&k);
     if (st == PD_BATTLE_BAG_OPEN || st == PD_BATTLE_PARTY_OPEN) {
@@ -937,6 +941,18 @@ void ui_gen5_backdrop(struct pd_ui* ui, struct pd_canvas* c, const struct pd_sna
         !ui->battleInfoOpen && !ui->battlePane;
     if (covered) pd_fill(c, 0, BAR_Y(c) - 2, c->w, c->h - BAR_Y(c) + 2, NIGHT);
     else ui_gen5_closed_ball(c);
+}
+
+// The kept pictures made ahead (the open and shut balls, the closed one behind): rendered the first time, they cost the
+// first battle's screen several frames on a 3DS. [c] is the whole companion, drawn over by the next draw.
+void ui_gen5_warm(struct pd_canvas* c) {
+    struct pd_canvas view = *c;
+    view.h = BAR_Y(c) - 2;
+    if (view.cy1 > view.h) view.cy1 = view.h;
+    const struct g5 gg = g5_of(view.w, view.h);
+    ball_screen(&view, &gg, false, false);
+    ball_screen(&view, &gg, true, false);
+    ui_gen5_closed_ball(c);
 }
 
 bool ui_gen5_style(const struct pd_ui* ui, const struct pd_game* g) {

@@ -1,14 +1,14 @@
 ---
 title: Bag
-summary: Every pocket of your bag with icons and descriptions, favorite items, which Pokémon can use a TM, teaching a TM or HM, reusable TMs, and using an item from the bottom screen.
+summary: Every pocket of your bag with icons and descriptions, favorite items, which Pokémon can use a TM, teaching a TM or HM, reusable TMs, a keep-away item that never runs out, and using an item from the bottom screen.
 section: companion
 order: 4
-keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, hidden machine, teach move, learn move, forget move, description, sort, use item, berries, key items, star, starred, pin, favourite]
+keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, hidden machine, teach move, learn move, forget move, description, sort, use item, berries, key items, star, starred, pin, favourite, auto refill, refill, wore off, run out, use another, wild encounters, keep away, spray]
 ---
 
 The bag tab shows everything you're carrying, pocket by pocket, as the game has it right now. It's handy for a quick count before a long cave, or for reading what an item does without digging through the game's menus.
 
-The tab's name follows the game: `BAG` in most games, `ITEM` in Red, Blue, Yellow, Yellow Legacy, PureRed and PureBlue, `PACK` in Gold, Silver, Crystal, Crystal Legacy, Crystal Clear and Prism, `CUBE` in Unbound, `INVENTORY` in R.O.W.E. and `POCKETS` in Super Mariomon. The HUD's bag uses the same name. The screen itself is drawn like that game's bag.
+The tab's name follows the game: `BAG` in most games, `ITEM` in Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue and Brown, `PACK` in Gold, Silver, Crystal, Crystal Legacy, Crystal Clear and Prism, `CUBE` in Unbound, `INVENTORY` in R.O.W.E. and `POCKETS` in Super Mariomon. The HUD's bag uses the same name. The screen itself is drawn like that game's bag.
 
 ## Pockets and sorting
 
@@ -72,6 +72,15 @@ Everything else about TMs works as the game has it: which Pokémon can learn one
 > [!NOTE]
 > `REUSABLE TMS` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports), and in Emerald Kaizo, Emerald Legacy, Orange Islands, FireRed Rocket Edition, Ultra Violet and Celia's Stupid Romhack. In Radical Red, Unbound and SoulGold a TM already stays after use, so the setting shows `ON`, greyed out. Prism and Polished Crystal keep their TMs too, and Elite Redux keeps no counts at all. In other games it shows `N/A`.
 
+## AUTO REFILL
+
+Turn on `AUTO REFILL` in the companion's `SETTINGS`, `GAMEPLAY` group, and the item that keeps wild Pokémon away never runs out on you mid-cave. When the one working is down to its last few steps, another of the same kind goes on from your bag, its steps added to the ones left, so the game never stops to say it wore off. A short note on the game screen says so. If you're out of that kind, the smallest kind you still have goes on. When you have none left, it wears off as usual. It's `OFF` until you turn it on.
+
+It happens while you're walking around: not in a battle, a menu or a conversation. One that's still working when you turn it on is topped up the same way once it gets low.
+
+> [!NOTE]
+> `AUTO REFILL` works in the games where the companion can use these items from the bag (see the note under [Using an item from the companion](#using-an-item-from-the-companion)), SoulGold included, and in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2. In other games it shows `N/A`.
+
 ## Using an item from the companion
 
 In many games you can use an item, or hand one to a Pokémon, without opening the game's bag. Rows you can do something with carry a small ball mark, and the line under the list says so. Open the item's description and its bar has the buttons that apply:
@@ -91,7 +100,7 @@ It only works while you're walking around. If a menu, a conversation or a battle
 
 In FireRed, LeafGreen, Emerald, Ruby and Sapphire, the bag tab has a `PC` button above the sort button (its small arrow means it opens the game's own screen, not a companion page). Tap it and the game's own PC opens right where you're standing, with the same menu a PC in a Pokémon Center gives you: the Pokémon storage, your own PC with your stored items and mailbox, and the game's other PCs as you unlock them. The Pokémon storage lets you take Pokémon out, put them away and move them between boxes (and, outside Ruby and Sapphire, move their items). Back out of it as usual and you're on the field again.
 
-It works in every language. Most hacks that kept those games' code open the Pokémon storage alone, with no item storage: Glazed, Emerald Kaizo, Emerald Legacy, Gaia, Odyssey, Orange Islands, Ultra Violet, Let's Go and the CFRU hacks (Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus). Heart and Soul, SoulGold, Lazarus, Emerald Imperium, Emerald Seaglass, R.O.W.E., Super Mariomon (1.5.1 and 1.5.2), Quetzal (Alpha 9) and Monomyth have the `PC` button too, but not the bag's `USE`, `GIVE` and `TAKE` yet (SoulGold's `USE` for the keep-away spray aside). So do Red, Blue, Yellow (in every language), PureRed, PureBlue and Crystal on the Game Boy: the PC there is the whole one from their Pokémon Centers, with its other choices too, like the PC that stores your items.
+It works in every language. Most hacks that kept those games' code open the Pokémon storage alone, with no item storage: Glazed, Emerald Kaizo, Emerald Legacy, Gaia, Odyssey, Orange Islands, Ultra Violet, Let's Go and the CFRU hacks (Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus). Heart and Soul, SoulGold, Lazarus, Emerald Imperium, Emerald Seaglass, R.O.W.E., Super Mariomon (1.5.1 and 1.5.2), Quetzal (Alpha 9), Monomyth and Epsilon Emerald have the `PC` button too, but not the bag's `USE`, `GIVE` and `TAKE` yet (SoulGold's `USE` for the keep-away spray aside). So do Red, Blue, Yellow (in every language), PureRed, PureBlue, Brown and Crystal on the Game Boy: the PC there is the whole one from their Pokémon Centers, with its other choices too, like the PC that stores your items.
 
 On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2, with the same whole PC as their Pokémon Centers.
 

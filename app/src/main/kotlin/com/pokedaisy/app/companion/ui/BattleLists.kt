@@ -57,6 +57,8 @@ internal fun BattleMoveList(
     /** With no [battleInput] (the co-op partner's menu): a tap on row i calls this; [selected] is the cursor row. */
     onPick: ((Int) -> Unit)? = null,
     selected: Int = -1,
+    /** BATTLE STYLE GEN 5: the rows in the move plates' look. */
+    gen5: Boolean = false,
 ) {
     if (gen1Buttons && onPick == null) {
         Box(Modifier.width(width).height(rowH * 5 + gap * 4)) {
@@ -67,9 +69,16 @@ internal fun BattleMoveList(
     CompanionBackHandler(enabled = (battleInput != null || onPick != null) && !busy, onBack = onCancel)
     Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(gap)) {
         for (i in 0 until 4) {
-            MoveListRow(moves.getOrNull(i), i, battleInput, busy, showHints, edge, Modifier.focusStart(i == 0).fillMaxWidth().height(rowH), onPick, i == selected)
+            val rowMod = Modifier.focusStart(i == 0).fillMaxWidth().height(rowH)
+            if (gen5) {
+                val mv = moves.getOrNull(i)
+                Gen5MoveRow(
+                    mv, rememberGbaTextMetrics(1f).u, edge, enabled = mv != null && mv.pp > 0 && (battleInput != null || onPick != null) && !busy,
+                    pressesGame = onPick == null, cursor = i == selected, showHints = showHints, modifier = rowMod,
+                ) { if (onPick != null) onPick(i) else battleInput?.selectMove(i) }
+            } else MoveListRow(moves.getOrNull(i), i, battleInput, busy, showHints, edge, rowMod, onPick, i == selected)
         }
-        ListCancel((battleInput != null || onPick != null) && !busy, rowH * 0.7f, edge, onCancel)
+        ListCancel((battleInput != null || onPick != null) && !busy, rowH * 0.7f, edge, gen5, onCancel)
     }
 }
 
@@ -92,8 +101,8 @@ private fun MoveListRow(
         // The callback's cursor row: a gold frame (the party list's cursor is its selected colours).
         frame = if (cursor && mv != null) SuggestGold else mv?.let { AppColors.typeColors[it.type] } ?: AppColors.slotFrame,
         modifier = modifier, enabled = enabled, pressesGame = onPick == null,
-        // Clear of the bevel's side bands.
-        contentPadding = PaddingValues(start = u * 9, end = u * 4 + edge, top = u * 2, bottom = u * 2),
+        // Clear of the bevel's side bands; top and bottom, the frame's own layers are the margin.
+        contentPadding = PaddingValues(start = u * 9, end = u * 4 + edge),
         onClick = { if (onPick != null) onPick(index) else battleInput?.selectMove(index) },
     ) {
         if (mv == null) {
@@ -145,6 +154,8 @@ internal fun BattlePartyList(
     onPick: ((Int) -> Unit)? = null,
     selected: Int = -1,
     pickable: (Int) -> Boolean = { i -> party[i].let { !it.isEgg && it.hp > 0 } },
+    /** BATTLE STYLE GEN 5: the rows in the battle party slots' look. */
+    gen5: Boolean = false,
 ) {
     CompanionBackHandler(enabled = !busy, onBack = onBack)
     val callback = onPick != null
@@ -164,15 +175,22 @@ internal fun BattlePartyList(
             Box(
                 Modifier.focusStart(i == cursor).fillMaxWidth().height(rowH)
                     .slotClickable(sound = callback, enabled = pick) { if (onPick != null) onPick(i) else battleInput?.switchTo(mon.personality) },
-            ) { PartyListRow(palette, mon, selected = i == cursor, u, edge, tag) }
+            ) {
+                if (gen5) Gen5PartyRow(mon, selected = i == cursor, u, edge, tag)
+                else PartyListRow(palette, mon, selected = i == cursor, u, edge, tag)
+            }
         }
-        ListCancel(!busy, rowH * 0.7f, edge, onBack)
+        ListCancel(!busy, rowH * 0.7f, edge, gen5, onBack)
     }
 }
 
 @Composable
-private fun ListCancel(enabled: Boolean, h: Dp, edge: Dp, onClick: () -> Unit) {
+private fun ListCancel(enabled: Boolean, h: Dp, edge: Dp, gen5: Boolean, onClick: () -> Unit) {
     val m = rememberGbaTextMetrics(1f)
+    if (gen5) {
+        Gen5ListCancel(enabled, m.u, h, edge, onClick)
+        return
+    }
     PlatinumButton(
         fill = RunBlue, frame = RunBlueDark, modifier = Modifier.fillMaxWidth().height(h),
         enabled = enabled, pressesGame = false, contentPadding = PaddingValues(end = edge), onClick = onClick,

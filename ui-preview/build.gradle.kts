@@ -1,17 +1,23 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 // Compose Desktop build of the app's real UI sources, for rendering PNGs
 // without the Android SDK - see README.md.
 plugins {
-    kotlin("jvm") version "1.9.22"
-    id("org.jetbrains.compose") version "1.5.12"
+    // Kotlin and its Compose compiler as the app's (../build.gradle.kts). The Compose libraries stay
+    // Compose Multiplatform 1.5.12 (cmp in data/build.gradle.kts): 1.6+ need androidx jars only on Google Maven.
+    kotlin("jvm") version "2.4.21"
+    kotlin("plugin.compose") version "2.4.21"
 }
+
+// Compose Multiplatform's version, also read by data/build.gradle.kts.
+val cmp by extra("1.5.12")
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appIncludes = listOf(
     "companion/ui/**", "SettingsActivity.kt", "CoopSettingsPages.kt", "LibraryActivity.kt", "SavesLocation.kt",
     "CoverArtSync.kt", "CoverSync.kt", "DocsApi.kt", "DocsSearch.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSaves.kt", "RzipSave.kt", "SaveBackups.kt", "GameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt",
-    "BpsPatch.kt", "RomPatcher.kt", "RomPatchFlow.kt", "RomCrcs.kt",
+    "BpsPatch.kt", "RomPatcher.kt", "RomPatchFlow.kt", "RomCrcs.kt", "SpritePackFlow.kt", "n3ds/N3dsCart.kt",
     "ScreenScraperClient.kt", "ScreenScraperUi.kt", "GameMedia.kt", "LauncherScreen.kt",
     "achievements/**", "overlay/Overlays.kt", "overlay/OverlayLabels.kt",
 )
@@ -21,7 +27,7 @@ val appIncludes = listOf(
 val prepSrc = tasks.register<Sync>("prepSrc") {
     from(app) { appIncludes.forEach { include(it) } }
     // PC BOXES' demo save is built with the save tests' own writer.
-    from(rootDir.resolve("../app/src/test/kotlin/com/pokedaisy/app/companion/data/save")) { include("SyntheticSave.kt"); into("synthetic") }
+    from(rootDir.resolve("../app/src/test/kotlin/com/pokedaisy/app/companion/data/save")) { include("SyntheticSave.kt", "SyntheticGen4.kt", "SyntheticGen5.kt"); into("synthetic") }
     into(layout.buildDirectory.dir("appsrc"))
     filter { line: String ->
         line.replace("Icons.AutoMirrored.Filled.", "Icons.Filled.")
@@ -34,19 +40,19 @@ sourceSets["main"].kotlin.srcDir("src/shims")
 if (!project.hasProperty("gameExport")) sourceSets["main"].kotlin.exclude("**/GameExport.kt")
 tasks.withType<KotlinCompile>().configureEach {
     source(files(layout.buildDirectory.dir("appsrc")).builtBy(prepSrc))
-    kotlinOptions.jvmTarget = "17"
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
 }
 java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 
 dependencies {
     implementation(project(":data"))
-    implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
-    implementation(compose.materialIconsExtended)
-    implementation("org.json:json:20240303")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")   // PokeTransferScreen's date, as in :data
+    implementation("org.jetbrains.compose.material3:material3:$cmp")
+    implementation("org.jetbrains.compose.material:material-icons-extended:$cmp")
+    implementation("org.json:json:20260814")
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")
-    implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:1.5.12")
+    implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:$cmp")
 }
 
 // The game data the 3DS port builds from, with -PgameExport: every ROM under -Proms through the app's own detection.
@@ -56,6 +62,20 @@ tasks.register<JavaExec>("gameExport") {
     mainClass.set("render.GameExportKt")
     args = listOf((project.findProperty("roms") as String?) ?: "", (project.findProperty("out") as String?) ?: "")
     workingDir = rootDir.resolve("../app/src/main/assets")
+    maxHeapSize = "3g"
+    systemProperty("java.awt.headless", "true")
+}
+
+// SPRITE PACK: the makeover's graphics from your own ROMs (src/render/SpritePackTool.kt; `make sprite-pack`).
+tasks.register<JavaExec>("spritePack") {
+    description = "-Pmode=pack|sigs -Proms=<folder of your ROMs> -Pout=<file>: a sprite pack zip, or the follower Pokémon's CRC table."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("render.SpritePackToolKt")
+    args = listOf(
+        (project.findProperty("mode") as String?) ?: "pack",
+        (project.findProperty("roms") as String?) ?: "",
+        (project.findProperty("out") as String?) ?: "",
+    )
     maxHeapSize = "3g"
     systemProperty("java.awt.headless", "true")
 }

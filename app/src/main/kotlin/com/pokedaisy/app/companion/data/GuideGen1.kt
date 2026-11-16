@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import com.pokedaisy.app.companion.i18n.tr
+import kotlin.math.roundToInt
 
 /**
  * Yellow's, Red's and Blue's guides: HERE and NEXT BOSS from GuideGen1Gen.kt, which scripts/gen_gen1_guide.py reads out of
@@ -66,6 +67,8 @@ fun gen1GuideRam(cfg: Gen1Config): Gen1GuideRam? = when {
         YELLOW_GUIDE_RAM.shifted((cfg.badges - GEN1_YELLOW.badges).toInt())
     cfg === GEN1_RED -> RED_GUIDE_RAM
     cfg === GEN1_BLUE -> BLUE_GUIDE_RAM
+    cfg === GEN1_RED_DE -> RED_GUIDE_RAM.shifted((cfg.badges - GEN1_RED.badges).toInt())
+    cfg === GEN1_BLUE_DE -> BLUE_GUIDE_RAM.shifted((cfg.badges - GEN1_BLUE.badges).toInt())
     else -> null
 }
 
@@ -124,12 +127,12 @@ class Gen1World(wildRaw: List<String>, bossRaw: List<String>) : GuideWorld {
             TrainerMon(p[1].toInt(), p[0].toInt(), p[2].toInt(), p.getOrElse(3) { "" }.split(',').filter { it.isNotEmpty() }.map { it.toInt() })
         }
         val team = f[4].takeIf { it.isNotEmpty() }?.substringAfter('=')?.toInt()
-        Line(f[0], f[1], f[2], f[3].split('/').filter { it.isNotEmpty() }.map { Integer.decode(it) }, team, mons)
+        Line(f[0], f[1], f[2], f[3].split('/').filter { it.isNotEmpty() }.map { it.toInt() }, team, mons)
     }.toList()
 
     override fun encounters(group: Int, num: Int, progress: SaveProgress?): MapEncounters {
         fun merge(slots: List<Slot>) = slots.groupBy { it.species }.map { (species, g) ->
-            EncounterSlot(species, g.minOf { it.level }, g.maxOf { it.level }, Math.round(g.sumOf { it.odds }).toInt())
+            EncounterSlot(species, g.minOf { it.level }, g.maxOf { it.level }, (g.sumOf { it.odds }).roundToInt())
         }.sortedByDescending { it.percent }
         val fishes = num in water || num in superRod
         return MapEncounters(
@@ -171,7 +174,7 @@ class Gen1World(wildRaw: List<String>, bossRaw: List<String>) : GuideWorld {
 internal val YELLOW_WORLD = Gen1World(G1Y_WILD_RAW, G1Y_BOSSES_RAW)
 internal val RED_WORLD = Gen1World(G1R_WILD_RAW, G1R_BOSSES_RAW)
 internal val BLUE_WORLD = Gen1World(G1B_WILD_RAW, G1B_BOSSES_RAW)
-internal val YELLOW_LEGACY_WORLD = Gen1World(G1L_WILD_RAW, G1L_BOSSES_RAW)
+val YELLOW_LEGACY_WORLD = Gen1World(G1L_WILD_RAW, G1L_BOSSES_RAW)
 
 private fun gen1Guide(world: Gen1World) = GameGuide(verified = false, bosses = world.bosses, world = world, pages = emptyList())
 

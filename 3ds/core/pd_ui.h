@@ -109,7 +109,20 @@ struct pd_settings {
     int theme;       // THEME: a pd_themes[] id
     bool libraryGrid;    // the library's VIEW: GRID; off = LIST
     bool libraryRecent;  // the library's SORT: LAST PLAYED; off = NAME
+    bool reusableTms;    // REUSABLE TMS: a TM stays in the bag after it teaches (ReusableTms.kt's patch)
+    bool instantText;    // INSTANT TEXT: a text box's words at once (InstantText.kt's patch)
+    bool tradeEvos;      // TRADE EVOS: the summary's EVOLVE for a Pokémon that evolves by trading
+    int sceneSpeed[5];   // SCENE SPEEDS (BATTLE, TEXT, MENU, BIKE, SURF) while FF is off: an index into PD_SCENE_SPEEDS, 0 = SAME
 };
+
+// NUZLOCKE's changes from its tab (PD_ACTION_NUZLOCKE_EDIT).
+enum pd_nuz_edit { PD_NUZ_EDIT_OUTCOME = 1, PD_NUZ_EDIT_DEAD, PD_NUZ_EDIT_ALIVE, PD_NUZ_EDIT_NEW_RUN, PD_NUZ_EDIT_DUPES, PD_NUZ_EDIT_WARNINGS };
+struct pd_nuz_run;
+
+// SCENE SPEEDS' choices (the app's SCENE_SPEEDS): SAME = GAME SPEED's, then the speeds.
+#define PD_SCENE_SPEED_COUNT 6
+extern const char* const PD_SCENE_SPEEDS[PD_SCENE_SPEED_COUNT];
+enum pd_scene { PD_SCENE_BATTLE, PD_SCENE_TEXT, PD_SCENE_MENU, PD_SCENE_BIKE, PD_SCENE_SURF, PD_SCENES };
 
 enum pd_button { PD_BTN_X, PD_BTN_Y, PD_BTN_L2, PD_BTN_R2, PD_BTN_NONE, PD_BUTTONS };
 
@@ -152,6 +165,10 @@ enum pd_action {
     PD_ACTION_FLY_ASK,   // MAP's FLY: where it can go is wanted
     PD_ACTION_FLY_TO,    // ... and the pick: ui.flyPick
     PD_ACTION_FLIGHT,    // MAP's TAKE OFF / LAND (FREE FLIGHT)
+    PD_ACTION_PARTY_SWAP, // the summary's SWITCH: party slots ui.switchFrom and ui.switchTo trade places
+    PD_ACTION_TRADE_EVOLVE, // the summary's EVOLVE (TRADE EVOS): party slot ui.summarySlot evolves as a trade would
+    PD_ACTION_NUZLOCKE_TOGGLE, // SETTINGS' NUZLOCKE / the tab's TURN ON: this game's tracking on or off
+    PD_ACTION_NUZLOCKE_EDIT,   // the NUZLOCKE tab changed the run: ui.nuzEdit / nuzEditArg
 };
 
 // A party slot in USE / GIVE's pick: dimmed, or which of its moves it would help.
@@ -193,17 +210,28 @@ struct pd_host_info {
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
     bool fullSettings;  // Optional: SETTINGS' groups and the rows the 3DS has
     bool wildSupported, fieldSupported; // WILD ENCOUNTERS / the field read works on this game
+    bool hasCoreRows;    // the compact list adds AUTO-RUN (with fieldSupported), DARK MODE and RESET SETTINGS (the libretro cores)
     int batteryPct;     // -1 = unknown
+    bool charging;      // the battery is charging (a bolt by it)
     bool flyReady;      // MAP's FLY button: someone in the party can
     bool flightSupported; // FREE FLIGHT works in this game: FLY STYLE / FLIGHT AREA / FLY ON rows
     bool flightReady, flying; // MAP's TAKE OFF (someone knows FLY), and LAND while up
     bool canTake;       // the summary's TAKE
+    bool canSwitchParty; // the summary's SWITCH (MonDetailScreen's): the host can trade two party records
     bool (*itemCanUse)(int item);  // Optional: what the bag's USE / GIVE can do with an item
     bool (*itemCanGive)(int item);
     bool hasStates;     // Optional: the STATES tab's slots below (the 3DS)
     struct pd_state_slot slots[PD_STATE_SLOTS];
     bool undoSave, undoLoad; // STATES' UNDO has something to put back
     bool hasCheats;          // the game has a .cheats file
+    // GAMEPLAY's game patches and the trade evolutions, for this game: 0 = N/A, 1 = offered, 2 = the game's own already (ON, greyed).
+    int tmsSupported, textSupported;
+    bool tradeEvoSupported;
+    int evolveTo[6];   // TRADE EVOS: what each party slot would become by trading now (0 = nothing), while the summary's up
+    bool nuzlockeSupported, nuzlockeOn; // NUZLOCKE (per game: pd_nuzlocke): the tab and its row
+    const struct pd_nuz_run* nuzRun;    // ... its run, and the area the player stands in (HERE)
+    int nuzArea;
+    char nuzAreaName[32];
     int slotSelected;
 };
 
@@ -224,6 +252,7 @@ enum pd_overlay {
     PD_OVERLAY_PLACES,       // the MAP's list of places
     PD_OVERLAY_GUIDE_NOTICE, // the GUIDE's "AI-written, may be wrong" notice
     PD_OVERLAY_PICK_ASPECT,
+    PD_OVERLAY_PICK_VIEW,
     PD_OVERLAY_TAB_BAR, // SETTINGS > TAB BAR: each tab ON / OFF
     PD_OVERLAY_HUD,     // SETTINGS > HUD: the HUD and its parts ON / OFF
     PD_OVERLAY_MORE,    // the tabs off the bar
@@ -235,6 +264,11 @@ enum pd_overlay {
     PD_OVERLAY_PICK_FLY_ON, // FLY ON: what FREE FLIGHT flies on
     PD_OVERLAY_CONFIRM_RESTART,
     PD_OVERLAY_FLY,     // MAP's FLY: the towns
+    PD_OVERLAY_CONFIRM_RESET, // RESET SETTINGS asked
+    PD_OVERLAY_DEX_PICK,      // the DEX's TYPE / NAME filter: a grid of choices (dexPickKind)
+    PD_OVERLAY_PICK_SCENE,    // a SCENE SPEEDS row's speed (scenePick)
+    PD_OVERLAY_NUZ_PICK,      // NUZLOCKE: an encounter's outcome by hand
+    PD_OVERLAY_NUZ_CONFIRM,   // NUZLOCKE: FAINTED? / BRING BACK? / NEW RUN?
 };
 
 // Optional presentation data for another emulator; IDs stay native to that backend.
@@ -437,6 +471,11 @@ struct pd_ui {
     int summaryLearnRow, summaryLearnLast;
     bool summaryStats; // STATS replaces MOVES, as in MonDetailScreen
     bool summaryInfo;  // INFO (EXP, held item, type matchups) replaces them
+    bool summarySwitching; // SWITCH: the party in the summary's place, the Pokemon tapped trades places with it
+    bool summaryCanSwitch; // ... offered (set by the party tab from the host)
+    int switchFrom, switchTo; // PD_ACTION_PARTY_SWAP's slots
+    bool summaryEvolve;       // the summary's EVOLVE (TRADE EVOS): its Pokémon evolves by trading now
+    bool viewExpand; // VIEW's pick-list offers EXPAND (this game can)
     // BOXES: what the host read (NULL = the tab isn't here), the box asked for, the picked slot and the box summary.
     const struct pd_boxes* boxes;
     bool boxMoves;   // WITHDRAW / DEPOSIT / SWAP work here
@@ -464,6 +503,17 @@ struct pd_ui {
     int dexSection, dexPageScroll, dexPageMax; // the entry's INFO / EVOLVE / AREA / MOVES
     int dexReturn; // national number to focus on return, or -1 for the first filtered row
     unsigned dexPages;
+    int dexType;     // the DEX's TYPE filter: a type + 1, 0 = any
+    int dexLetter;   // its NAME filter: 'A'..'Z', 0 = any
+    int dexPickKind; // PD_OVERLAY_DEX_PICK's: 1 TYPE, 2 NAME
+    int scenePick;   // PD_OVERLAY_PICK_SCENE's row: enum pd_scene
+    // NUZLOCKE: its list's scroll, and the change PD_ACTION_NUZLOCKE_EDIT carries (enum pd_nuz_edit, the encounter's area
+    // or the Pokémon's personality, the outcome).
+    int nuzScroll;
+    bool nuzlockeAvailable; // the host follows this game (the tab, under MORE)
+    int nuzEdit, nuzArea, nuzValue;
+    uint32_t nuzPersonality;
+    char nuzTitle[48], nuzMessage[128], nuzWhere[32];
     int dexFilter, dexPage, dexDetailRow, dexLevelCount, dexMachineCount, dexLinkCount, dexSpotCount;
     // MAP: the page shown (-1 = the player's), the tapped place, the cursor's blink.
     int mapPage, mapSel, mapDungeon, mapSelTx, mapSelTy;
@@ -533,6 +583,9 @@ void pd_ui_party_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*,
 void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings);
 // Follows the game: a battle opens BATTLE, its end goes back.
 void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s);
+// Makes ahead what the BATTLE tab keeps (BATTLE STYLE GEN 5's ball screens), over [c] - the whole companion, which the next
+// draw paints over: done once a game is up, so the first battle's screen doesn't render them while the game waits.
+void pd_ui_warm(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g);
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host);
 // Stylus: down / held / up at (x, y). Returns true if the screen needs a redraw.
@@ -557,5 +610,13 @@ bool pd_ui_tick(struct pd_ui* ui, unsigned ms);
 
 const char* pd_screen_mode_name(int mode);
 const char* pd_aspect_name(int aspect);
+// VIEW: SCREEN and ASPECT as one pick-list - SHARP 1.5x and STRETCH (the game's own picture), then EXPAND 1.5x, 1.25x
+// and 1x (ASPECT's ZOOM OUT) where the game can EXPAND ([expand]). pd_view_set in a game without EXPAND sets the
+// picture's size alone. PIXEL 1x and SHARP 1.25x of the game's own picture are gone (pd_settings_load moves them).
+#define PD_VIEWS 5
+int pd_view_count(bool expand);
+const char* pd_view_name(int view);
+int pd_view_of(const struct pd_settings* s, bool expand);
+void pd_view_set(struct pd_settings* s, int view, bool expand);
 
 #endif

@@ -24,7 +24,7 @@ class RomNameTable(val base: Long, val stride: Int, val pointers: Boolean, val a
         return s >= 0 && names.readsAt(reader, s, key)
     }
 
-    override fun toString() = "0x%08X+%d*id%s %.2f".format(0x08000000L + base, stride, if (pointers) " (ptr)" else "", agrees)
+    override fun toString() = "0x${(0x08000000L + base).hex(8, upper = true)}+$stride*id${if (pointers) " (ptr)" else ""} ${agrees.fixed(2)}"
 }
 
 /**

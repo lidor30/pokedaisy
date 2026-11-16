@@ -210,6 +210,18 @@ object PixelIcons {
         ".11...11.",
     )
 
+    /** A map pin: the floor the player is on (the AREA map's floor chips). Cap-height of the pixel font. */
+    val pin = listOf(
+        "..111..",
+        ".11111.",
+        "11...11",
+        "11...11",
+        ".11111.",
+        "..111..",
+        "..111..",
+        "...1...",
+    )
+
     /** A four-point sparkle: a shiny Pokémon (the battle screen's and INFO's SHINY marks). The pixel font's cap height. */
     val sparkle = listOf(
         "...1...",

@@ -1,9 +1,11 @@
 package com.pokedaisy.app.companion.data
 
 import com.pokedaisy.app.companion.i18n.tr
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 data class MoveVsFoe(val vsName: String, val label: String, val pct: Int)
-data class MoveView(val name: String, val type: String, val pp: Int, val power: Int, val vs: List<MoveVsFoe> = emptyList(), val id: Int = 0)
+data class MoveView(val name: String, val type: String, val pp: Int, val power: Int, val vs: List<MoveVsFoe> = emptyList(), val id: Int = 0, val maxPp: Int = 0)
 
 /**
  * Doubles as the party-mon detail view: Types/Moves/Weaknesses/Resistances/
@@ -114,6 +116,8 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
         else if (activeGame.isPureRgb) gen1GrowthRatesPureRgb.getOrNull(species)
         // Yellow Legacy too (gen_gen1_tables.py yellow_legacy).
         else if (activeGame == GameKind.YELLOW_LEGACY) gen1GrowthRatesYellowLegacy.getOrNull(species)
+        // Brown's own, to Dex No. 252 (gen_gen1_tables.py brown).
+        else if (activeGame == GameKind.BROWN) gen1GrowthRatesBrown.getOrNull(species)
         // Dreamstone Mysteries too (expansion's curves are vanilla's; its rates from gSpeciesInfo, gen_expansion_tables.py).
         else if (activeGame == GameKind.DREAMSTONE) growthRatesDreamstone.getOrNull(species)?.takeIf { it <= 5 }
         // A randomized retail ROM's own (UPR can standardize the curves): read from its gBaseStats; and a FireRed hack's
@@ -396,7 +400,7 @@ const val DEX_IN_PARTY = 0
 fun dexHoldings(party: List<MonView>, boxes: BoxesView?): Map<Int, Int>? {
     if (boxes == null) return null
     val out = HashMap<Int, Int>()
-    boxes.boxes.forEachIndexed { i, box -> box.mons.forEach { m -> if (m != null && !m.isEgg) out.putIfAbsent(m.species, i + 1) } }
+    boxes.boxes.forEachIndexed { i, box -> box.mons.forEach { m -> if (m != null && !m.isEgg) out.getOrPut(m.species) { i + 1 } } }
     party.forEach { if (!it.isEgg) out[it.species] = DEX_IN_PARTY }
     return out
 }
@@ -404,7 +408,7 @@ fun dexHoldings(party: List<MonView>, boxes: BoxesView?): Map<Int, Int>? {
 // The last boxes turned into views: the reader hands back the same PcBoxes while the storage is unchanged.
 private var lastBoxes: Pair<PcBoxes, BoxesView>? = null
 
-private fun boxesView(b: PcBoxes): BoxesView = synchronized(PcBoxes::class) {
+private fun boxesView(b: PcBoxes): BoxesView = synchronized(pcBoxesLock) {
     lastBoxes?.takeIf { it.first === b }?.let { return it.second }
     BoxesView(b.currentBox, b.boxes.map { box -> BoxView(box.name, box.wallpaper, box.mons.map { it?.let(::partyMonView) }) })
         .also { lastBoxes = b to it }

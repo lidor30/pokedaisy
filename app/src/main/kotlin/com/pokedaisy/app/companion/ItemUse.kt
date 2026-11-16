@@ -88,9 +88,30 @@ interface ItemUse {
     fun tradeEvolve(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.TradeEvoResult) -> Unit) =
         done(com.pokedaisy.app.companion.data.TradeEvoResult.FAILED)
 
+    /** The POKéMON CENTER's services this game has (PokemonCenter.kt); null = none. */
+    fun center(): CenterSupport? = null
+
+    /** HEAL: the whole party, as the nurse does. */
+    fun centerHeal(done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) = done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
+
+    /** NICKNAME: party slot [slot] ([personality]) on the game's naming screen. */
+    fun centerNickname(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
+
+    /** FORGET: move [moveIndex] ([move]) of party slot [slot] ([personality]), as the Move Deleter does. */
+    fun centerForget(slot: Int, personality: Long, moveIndex: Int, move: Int, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
+
+    /** RELEARN: the Move Tutor's screen for party slot [slot] ([personality]). */
+    fun centerRelearn(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
+
     /** WITHDRAW: box [box]'s slot [slot] ([boxPersonality]) into the party in the game. */
     fun withdrawFromBox(
         box: Int, slot: Int, boxPersonality: Long,
         done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
     ) = done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
 }
+
+/** Which of the POKéMON CENTER's services the running game has ([ItemUse.center]). */
+data class CenterSupport(val heal: Boolean, val nickname: Boolean, val forget: Boolean, val relearn: Boolean)

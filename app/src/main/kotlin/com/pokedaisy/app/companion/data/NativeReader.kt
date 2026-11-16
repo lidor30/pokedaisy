@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+
 
 /**
  * Rebuilds a Telemetry snapshot by polling a Gen 3 game's own RAM globals: how
@@ -58,6 +59,9 @@ data class NativeConfig(
     val extraItemIconTable: Long = 0,
     // See IconTables.monIconPalettes (SoulGold's per-species icon palettes).
     val monIconPalettes: Long = 0,
+    // See IconTables.monIconPalStride / monIconShinyOff (Epsilon Emerald's per-species icon palettes).
+    val monIconPalStride: Int = 0,
+    val monIconShinyOff: Long = 4,
     val extraItemFirst: Int = 0,
     val extraItemCount: Int = 0,
     val extraItemStride: Int = 8,
@@ -167,6 +171,8 @@ data class NativeConfig(
     val bag4: Bag4Layout? = null,
     // A bag kept as one "owned" bit per item id in SaveBlock1, no counts (Elite Redux); null = gBagPockets.
     val itemFlagsBag: ItemFlagsBag? = null,
+    // gBagPockets packed another way, its TM pocket a bit per machine, pockets filtered by each item's own (Epsilon Emerald).
+    val packedBag: PackedBagLayout? = null,
     // Map groups whose sections are named from a second table (Quetzal's Johto): read as 0x100 + id.
     val altMapSecGroups: IntRange? = null,
     // The game's money cap: Gen 3's 999,999 (Glazed's AddMoney caps at 9,999,999); above it is a wrong read.
@@ -204,6 +210,8 @@ data class NativeConfig(
         // Shiny icons where the game's shiny check is known: recoloured through the battle palettes (decodeMonIcon).
         battlePalettes = if (shinyBelow > 0) pokedex?.palettes ?: monPalettes else 0L,
         monIconPacked = monIconPacked,
+        monIconPalStride = monIconPalStride,
+        monIconShinyOff = monIconShinyOff,
     )
     val hasBattleInputAddrs get() = battlerControllerFuncs != 0L && handleInputChooseAction != 0L && handleInputChooseMove != 0L
 }
@@ -317,7 +325,7 @@ const val RECHARGED_YELLOW_ITEMS = 409
  * 0x3D94 (FireRed's 0x3D68) - for code that runs before detection on the ROM file alone (the music
  * renderer, [RegionMapWatch]). */
 fun isRechargedYellowRom(head: ByteArray): Boolean = head.size >= GF_HEADER_SB1_SIZE + 4 &&
-    String(head, 0xAC, 3, Charsets.US_ASCII) == "BPR" && u32le(head, GF_HEADER_SB1_SIZE) == RECHARGED_YELLOW_SB1_SIZE
+    asciiString(head, 0xAC, 3) == "BPR" && u32le(head, GF_HEADER_SB1_SIZE) == RECHARGED_YELLOW_SB1_SIZE
 
 private const val GF_HEADER_SB1_SIZE = 0x18C // struct GFRomHeader.saveBlock1Size
 private const val RECHARGED_YELLOW_SB1_SIZE = 0x3D94L
@@ -340,6 +348,9 @@ private const val MAP_HEADER_REGION_MAPSEC_OFF = 0x14L
 private const val OBJECT_EVENT_FACING_OFF = 0x18L
 private const val BATTLE_TYPE_DOUBLE = 0x0001
 private const val BATTLE_TYPE_TRAINER = 0x0008
+/** FireRed / LeafGreen's BATTLE_TYPE_OLD_MAN_TUTORIAL, Emerald and Ruby / Sapphire's BATTLE_TYPE_WALLY_TUTORIAL (pret's
+ * constants/battle.h): the catching lesson, someone else's Pokémon. Read only where the game runs as one of those. */
+private const val BATTLE_TYPE_CATCH_TUTORIAL = 0x0200
 private const val BAG_POCKET_STRIDE = 8
 private const val BAG_POCKET_SLOTS = 255 // a pocket's u8 capacity (SoulGold's Items pocket holds 150)
 private const val BAG_MAX_ITEMS = 300
@@ -352,10 +363,10 @@ internal fun saveBlock2(c: MemoryReader, cfg: NativeConfig): Long =
     if (cfg.staticSaveBlocks) cfg.saveBlock2Ptr else u32le(c.readCoreMemory(cfg.saveBlock2Ptr, 4), 0)
 
 internal fun u16le(b: ByteArray, off: Int) =
-    ByteBuffer.wrap(b, off, 2).order(ByteOrder.LITTLE_ENDIAN).short.toInt() and 0xFFFF
+    (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8)
 
 internal fun u32le(b: ByteArray, off: Int) =
-    (ByteBuffer.wrap(b, off, 4).order(ByteOrder.LITTLE_ENDIAN).int.toLong()) and 0xFFFFFFFFL
+    s32le(b, off).toLong() and 0xFFFFFFFFL
 
 private const val BAG_REFRESH_EVERY = 6
 
@@ -418,9 +429,9 @@ private var bagValid = false
 /** Forget the cached bag: it's process-wide, so a newly launched game (or the
  * next game's test) would otherwise show the previous game's bag until the
  * next throttled refresh. */
-internal fun resetNativeBagCache() {
+fun resetNativeBagCache() {
     bagTick = 0; lastBag = emptyList(); bagValid = false
-    synchronized(PcBoxes::class) { lastStorageRaw = null; lastStorage = null }
+    synchronized(pcBoxesLock) { lastStorageRaw = null; lastStorage = null }
 }
 
 fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
@@ -442,6 +453,7 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
     var isDouble = false
     var isTrainer = false
     var trainerRead = false
+    var tutorial = false
     var foeBattler = -1
     // Which battler is at each position, so gBattlerPartyIndexes can be read by position.
     val battlerAt = IntArray(4) { -1 }
@@ -454,6 +466,8 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
                 isDouble = (u32le(it, 0).toInt() and BATTLE_TYPE_DOUBLE) != 0
                 isTrainer = (u32le(it, 0).toInt() and BATTLE_TYPE_TRAINER) != 0
                 trainerRead = cfg.battleTypeFlags != 0L
+                tutorial = (u32le(it, 0).toInt() and BATTLE_TYPE_CATCH_TUTORIAL) != 0 &&
+                    (activeGame == GameKind.FIRERED || activeGame == GameKind.EMERALD)
             }
         val nRaw = runCatching { client.readCoreMemory(cfg.battlersCount, 1) }.getOrNull()
         val posRaw = runCatching { client.readCoreMemory(cfg.battlerPositions, 4) }.getOrNull()
@@ -562,7 +576,9 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         guideTables = cfg.guideTables,
         enemyParty = enemyParty,
         battleFoes = battleFoes,
-        isTrainerBattle = if (inBattle && trainerRead) isTrainer else null,
+        // The catching lesson (Viridian's old man, Wally on Route 102) is no encounter of the player's: not judged
+        // (GitHub #829: LeafGreen's WEEDLE was counted).
+        isTrainerBattle = if (inBattle && trainerRead && !tutorial) isTrainer else null,
         enemyActive = enemyActive,
         enemyNext = enemyNext,
         battlerPartySlots = battlerPartySlots,
@@ -658,8 +674,9 @@ val GS_CHRONICLES_PC_STORAGE = cfruPcStorage(0x09D10BE3L, 0x09D13854L)
 
 // CFRU's gExperienceTables as read from the ROM (levels 0..100 of each row), by address.
 private val cfruExpTableCache = HashMap<Long, Array<IntArray>>()
+private val cfruExpTableLock = SynchronizedObject()
 
-private fun cfruExpTables(c: MemoryReader, at: Long): Array<IntArray>? = synchronized(cfruExpTableCache) {
+private fun cfruExpTables(c: MemoryReader, at: Long): Array<IntArray>? = synchronized(cfruExpTableLock) {
     cfruExpTableCache[at] ?: runCatching {
         Array(6) { r -> c.readCoreMemory(at + r * 256L * 4, 101 * 4).let { b -> IntArray(101) { u32le(b, 4 * it).toInt() } } }
             // A real table climbs from 0: anything else (no ROM on the bus) falls back to vanilla's.
@@ -669,6 +686,8 @@ private fun cfruExpTables(c: MemoryReader, at: Long): Array<IntArray>? = synchro
 
 // The last storage read and what it decoded to: the boxes only change while the player is at a PC, so a sample whose
 // bytes are the same hands back the same object (the BOXES tab then has nothing to redraw).
+/** Guards [lastStorageRaw] / [lastStorage] (SnapshotView's box views too). */
+internal val pcBoxesLock = SynchronizedObject()
 private var lastStorageRaw: ByteArray? = null
 private var lastStorage: PcBoxes? = null
 
@@ -698,7 +717,7 @@ internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatc
     val raw = ByteArray(layout.size + (cfru?.extraBoxes?.size ?: 0) * boxBytes)
     c.readInto(at, raw, 0, layout.size)
     cfru?.extraBoxes?.forEachIndexed { i, a -> c.readInto(a, raw, layout.size + i * boxBytes, boxBytes) }
-    synchronized(PcBoxes::class) {
+    synchronized(pcBoxesLock) {
         if (raw.contentEquals(lastStorageRaw)) lastStorage?.let { return it }
     }
     val dex = cfg.pokedex
@@ -738,7 +757,7 @@ internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatc
         )
     }
     PcBoxes(currentBox = (raw[0].toInt() and 0xFF).coerceIn(0, layout.boxes - 1), boxes = boxes).also {
-        synchronized(PcBoxes::class) { lastStorageRaw = raw; lastStorage = it }
+        synchronized(pcBoxesLock) { lastStorageRaw = raw; lastStorage = it }
     }
 }.getOrNull()
 
@@ -863,6 +882,46 @@ private fun readItemFlagsBag(c: MemoryReader, cfg: NativeConfig, b: ItemFlagsBag
     return out
 }
 
+/**
+ * Epsilon Emerald's gBagPockets: { *slots, u16 capacity } packed into [stride] bytes (6), in [order]. Its TM pocket
+ * ([flagPocket]) is one bit per machine, in [flagItems]' order, with no counts. Every other pocket shows only the items
+ * whose own pocket ([itemPockets], gItems') is that pocket, as its bag does: an Emerald save's Items pocket runs on over the
+ * old Key Items and Poké Balls slots there.
+ */
+class PackedBagLayout(
+    val stride: Int,
+    val flagPocket: Int,
+    val flagItems: IntArray,
+    val itemPockets: Map<Int, Int>,
+)
+
+private fun readPackedBag(c: MemoryReader, cfg: NativeConfig, b: PackedBagLayout, key: Int): List<Item> {
+    val pockets = c.readCoreMemory(cfg.bagPockets, cfg.bagPocketCount * b.stride)
+    val out = mutableListOf<Item>()
+    for (p in 0 until cfg.bagPocketCount) {
+        val slotsPtr = u32le(pockets, p * b.stride)
+        val capacity = u16le(pockets, p * b.stride + 4)
+        if (slotsPtr < 0x02000000L || slotsPtr >= 0x04000000L || capacity == 0) continue
+        val pocket = cfg.bagPocketOrder.getOrElse(p) { POCKET_ITEMS }
+        if (p == b.flagPocket) {
+            val n = minOf(capacity, b.flagItems.size)
+            val raw = c.readCoreMemory(slotsPtr, (n + 7) / 8)
+            for (i in 0 until n) {
+                if ((raw[i / 8].toInt() shr (i % 8)) and 1 != 0 && out.size < BAG_MAX_ITEMS) out.add(Item(b.flagItems[i], 1, pocket))
+            }
+            continue
+        }
+        val readSlots = minOf(capacity, BAG_POCKET_SLOTS)
+        val raw = c.readCoreMemory(slotsPtr, readSlots * 4)
+        for (i in 0 until readSlots) {
+            val id = u16le(raw, i * 4)
+            if (id == 0 || b.itemPockets[id] != pocket || out.size >= BAG_MAX_ITEMS) continue
+            out.add(Item(id, u16le(raw, i * 4 + 2) xor key, pocket))
+        }
+    }
+    return out
+}
+
 // gBagPockets: 5 pockets of { *itemSlots, u8 capacity }. Quantities XOR
 // SaveBlock2.encryptionKey (retail FireRed obfuscates them; Unbound leaves it 0).
 private fun readNativeBag(c: MemoryReader, cfg: NativeConfig): List<Item> {
@@ -877,6 +936,7 @@ private fun readNativeBag(c: MemoryReader, cfg: NativeConfig): List<Item> {
             key = u32le(c.readCoreMemory(sb2 + cfg.encryptionKeyOff, 4), 0).toInt() and 0xFFFF
         }
     }
+    cfg.packedBag?.let { return readPackedBag(c, cfg, it, key) }
     val pockets = c.readCoreMemory(cfg.bagPockets, cfg.bagPocketCount * BAG_POCKET_STRIDE)
     val out = mutableListOf<Item>()
     for (p in 0 until cfg.bagPocketCount) {
@@ -1024,9 +1084,9 @@ fun readNativeBattleInputFast(client: MemoryReader, cfg: NativeConfig): Pair<Int
         val fn0 = u32le(raw, 0) and thumbMask
         if (fn0 != lastLoggedFn0) {
             lastLoggedFn0 = fn0
-            android.util.Log.i(
-                "pokedaisy-battle",
-                "raw battler0 fn=0x${fn0.toString(16)} (wantAction=0x${wantAction.toString(16)} " +
+            Logs.i(
+                tag = "pokedaisy-battle",
+                message = "raw battler0 fn=0x${fn0.toString(16)} (wantAction=0x${wantAction.toString(16)} " +
                     "wantMove=0x${wantMove.toString(16)} wantBag=0x${wantBag.toString(16)} " +
                     "wantParty=0x${wantParty.toString(16)} wantTarget=0x${wantTarget.toString(16)})",
             )

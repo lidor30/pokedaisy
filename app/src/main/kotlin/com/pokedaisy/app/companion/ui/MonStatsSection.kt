@@ -62,7 +62,14 @@ private val IvPerfect = Color(0xFFE8B830)
  * struct's, which the game only recomputes on a level-up.
  */
 @Composable
-internal fun MonStatsSection(stats: MonStats, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier = Modifier) {
+internal fun MonStatsSection(
+    stats: MonStats,
+    m: GbaTextMetrics,
+    small: GbaTextMetrics,
+    modifier: Modifier = Modifier,
+    /** The individual's ability, when the summary read the data for it; null = no row. */
+    ability: String? = null,
+) {
     val u = m.u
     val up = natureRaises(stats.nature)
     val down = natureLowers(stats.nature)
@@ -99,6 +106,11 @@ internal fun MonStatsSection(stats: MonStats, m: GbaTextMetrics, small: GbaTextM
         Separator(m, Modifier.fillMaxWidth())
         InfoRow(tr("NATURE"), small) {
             GbaText(natureName(stats.nature), optionLook.value, optionLook.valueShadow, small)
+        }
+        ability?.let {
+            InfoRow(tr("ABILITY"), small) {
+                GbaText(it, optionLook.value, optionLook.valueShadow, small)
+            }
         }
         InfoRow(tr("HIDDEN POWER"), small) {
             TypeBadge(hiddenPowerType(stats.ivs))

@@ -1,9 +1,9 @@
 ---
 title: Party and summaries
-summary: Your team at a glance, each Pokémon's full summary, its exact IVs and EVs, and which new moves are worth learning.
+summary: Your team at a glance, each Pokémon's full summary, its exact IVs and EVs, which new moves are worth learning, and the POKéMON CENTER's services anywhere.
 section: companion
 order: 2
-keywords: [team, pokemon, summary, ivs, evs, nature, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade]
+keywords: [team, pokemon, summary, ivs, evs, nature, ability, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade, pokemon center, center, heal, heal anywhere, nurse, move relearner, move tutor, relearn, remember move, move deleter, delete move, forget move, name rater, nickname, rename]
 ---
 
 The `PARTY` tab is your team, live. Glance down and you know who's hurt, who's poisoned and who's about to level up, without pausing to open the game's menu.
@@ -38,6 +38,8 @@ If the Pokémon holds an item, its `ITEM` line shows it. In games where the comp
 
 Down the right side is a column with every Pokémon in your party, the one on show framed in red: tap another one to switch to its summary. The page you're on (moves, stats or learn) stays put while you switch, so you can compare the whole team's IVs one after another. The blue button under the column, or BACK, returns to the party.
 
+Tap the highlighted Pokémon again to open its Pokédex entry. That page's blue button, or BACK, returns to this summary; opening the `DEX` tab itself still starts at the list.
+
 ## DEPOSIT: into a PC box
 
 In the games where the [BOXES tab](boxes.md) can move Pokémon, the summary has a green `DEPOSIT` button, like the game's own PC. Tap it, then pick a box from the list, which shows how full each one is. The Pokémon goes into that box's first free slot, right there in your game, and the rest of your party moves up. Back on your party you see it fly over to the box, then a message says where it went.
@@ -53,12 +55,27 @@ The game decides, by its own rules: a Pokémon holding the item that stops evolu
 > [!NOTE]
 > `TRADE EVOS` works in the English FireRed (the later release), LeafGreen and Emerald. In other games it shows `N/A`. To trade for real between two of your games, see [Link play](link-play.md).
 
-## STATS: IVs, EVs and nature
+## CENTER: heal, relearn, forget, rename
+
+The services you'd normally walk to a town for are on every Pokémon's summary: tap `CENTER` (the pink button) and pick one.
+
+- `HEAL THE PARTY`: the whole party back to full health, PP and status included, with the nurse's jingle. It's also a tile in the [quick menu](controls.md#the-quick-menu), `HEAL`.
+- `RELEARN A MOVE`: the game's own screen for teaching this Pokémon a move it could have learned by now, as the move tutor does, free. It's only there when there's something to relearn.
+- `FORGET A MOVE`: pick one of its moves and confirm, and it's gone, as the move deleter does it, field moves included.
+- `NICKNAME`: the game's own naming screen for this Pokémon.
+
+The games' own rules stay: an egg gets none of these, a Pokémon keeps at least one move, and only the trainer who caught a Pokémon can rename it, so one from a trade can't be renamed. The last Pokémon in your party that can cross water can't forget that move, unless [`NO HMS NEEDED`](controls.md#no-hms-needed) is on. Everything works out on the field, with no menu, text or battle open. **Save in the game** to keep the changes.
+
+> [!NOTE]
+> `CENTER` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. In hacks that changed the naming screen (Unbound and other CFRU hacks), `NICKNAME` isn't offered. `RELEARN A MOVE` needs the game's move lists, which PokeDaisy reads for most games.
+
+## STATS: IVs, EVs, nature and ability
 
 Tap `STATS` to swap the moves for the numbers behind them, including the ones the game never shows you:
 
 - Each stat's current value, its **IV** (0 to 31, as a bar that turns gold at a perfect 31) and its **EV**, with totals underneath.
 - `NATURE`, with the stat it raises marked in red and the one it lowers in blue. Monomyth names its own natures, which raise and lower nothing, so none is marked there.
+- `ABILITY`: the ability this individual has, in FireRed, LeafGreen, Ruby, Sapphire and Emerald. Games with hidden abilities leave the row out.
 - `HIDDEN POWER`: the type that move would have for this Pokémon, and its power in FireRed, Emerald and the other original games.
 
 Tap `MOVES` to go back to the moves.

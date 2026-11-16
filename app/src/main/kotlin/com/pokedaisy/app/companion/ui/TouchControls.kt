@@ -313,6 +313,9 @@ fun TouchControls(
     onHitModel: (TouchHitModel) -> Unit = {},
     /** Extras switched on that do nothing in this game now: not drawn ([TouchControlsStyle.shown]). */
     unavailable: Set<TouchButton> = emptySet(),
+    /** Something of the game's to tap under the controls (a DS battle's menu, in this view's px): the buttons over it
+     * are neither drawn nor pressed while it's there, and the rest stay where they are. Not with a skin (one picture). */
+    covered: androidx.compose.ui.geometry.Rect? = null,
 ) {
     val density = LocalDensity.current
     var measured by remember { mutableStateOf(IntSize.Zero) }
@@ -322,13 +325,19 @@ fun TouchControls(
             ?: TouchGeometry.place(style, measured.width.toFloat(), measured.height.toFloat(), density.density, portrait, gameAspect, gameBoy, ds = ds, unavailable = unavailable)
     }
     LaunchedEffect(placed) { onPlaced(placed) }
-    LaunchedEffect(placed, fit, style.eightWay) { onHitModel(TouchHitModel(placed, fit, style.eightWay)) }
+    // What's drawn and pressed: [placed] less the buttons over [covered] (the HUD still keeps clear of all of [placed],
+    // so nothing moves while a DS battle's menu comes and goes).
+    val active = remember(placed, covered, fit) {
+        if (covered == null || fit != null) placed
+        else placed.uncovering(covered.left, covered.top, covered.right, covered.bottom)
+    }
+    LaunchedEffect(active, fit, style.eightWay) { onHitModel(TouchHitModel(active, fit, style.eightWay)) }
     val skinImage by rememberSkinImage(skin, fit)
     val presses = tracker ?: remember { TouchPressTracker(TouchPressed()) }
     presses.input = input
     val pressed = presses.pressed
     val currentFit by rememberUpdatedState(fit)
-    val currentPlaced by rememberUpdatedState(placed)
+    val currentPlaced by rememberUpdatedState(active)
     val currentStyle by rememberUpdatedState(style)
     // FADE WHEN IDLE: counts touches down; a few seconds after the last let-go, faint.
     var touches by remember { mutableIntStateOf(0) }
@@ -378,7 +387,7 @@ fun TouchControls(
         }
         if (skin != null && measured == IntSize.Zero) return@Canvas
         // The first frame draws before onSizeChanged's size has come round: place from the canvas's own.
-        val p = if (placed.w == size.width && placed.h == size.height) placed
+        val p = if (placed.w == size.width && placed.h == size.height) active
         else TouchGeometry.place(style, size.width, size.height, density.density, portrait, gameAspect, gameBoy, ds = ds, unavailable = unavailable)
         drawTouchControls(p, PadPaint(style), pressed, ffOn, measurer, font)
     }

@@ -52,8 +52,9 @@ companion opens with L2 and uses L1/R1 to switch tabs. Select + R2 opens the
 manual Pokétch panel. These are the default bindings.
 
 This package defaults to DSperate Auto frameskip and 512×384 battle output.
-Auto only skips rendering when the frontend reports that its audio buffer
-is running low. Reload the ROM after changing frameskip.
+Auto skips a frame's rendering only when the game is running late: NXRedux has
+no audio buffer report for the core to go by, so the DS core times its own
+frames (see the DS core's README). Reload the ROM after changing frameskip.
 
 ### Companion navigation on both cores
 
@@ -110,8 +111,8 @@ selected. An existing Off preference is kept and can be changed in the DS
 companion Settings. A new battle returns a temporary screen peek to One
 Screen. Use the D-pad and A to choose Fight,
 Bag, Pokémon or Run. Fight opens the move grid with move types and current/max
-PP. B returns from the move grid. Native Bag and party windows open full screen
-at twice the DS size, like the battle. Doubles and native prompts use the
+PP. B returns from the move grid. Native Bag and party windows open as a popup
+over the dimmed battle. Doubles and native prompts use the
 game's own controls. The picked button has the games' own red corner brackets.
 
 Platinum's compact battle buttons use the native lettering and tiles without

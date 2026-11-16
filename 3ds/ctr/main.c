@@ -30,6 +30,7 @@
 #include "../core/pd_games.h"
 #include "../core/pd_library.h"
 #include "../core/pd_menu.h"
+#include "../core/pd_romart.h"
 #include "../core/pd_save.h"
 #include "../core/pd_settings.h"
 #include "../core/pd_style.h"
@@ -56,6 +57,7 @@
 // An optional gba_bios.bin (else armGBA's own BIOS), and what armGBA keeps for itself: each game's warm list.
 #define SYSTEM_DIR BASE_DIR "/system"
 #define WORK_DIR BASE_DIR "/armgba"
+#define ROMART_DIR BASE_DIR "/rom-art" // where each ROM's art sits (pd_romart_cache_dir)
 #define LOG_FILE "sdmc:" BASE_DIR "/log.txt"
 #define SETTINGS_FILE "sdmc:" BASE_DIR "/settings.ini"
 #define MAX_BACKUPS 10
@@ -275,6 +277,8 @@ static void make_dirs(void) {
     mkdir("sdmc:" STATE_DIR, 0777);
     mkdir("sdmc:" SYSTEM_DIR, 0777);
     mkdir("sdmc:" WORK_DIR, 0777);
+    mkdir("sdmc:" ROMART_DIR, 0777);
+    pd_romart_cache_dir("sdmc:" ROMART_DIR);
 }
 
 // What the app plays: a GBA game, or a Game Boy / Color one.
@@ -479,6 +483,13 @@ static void cheat_path(void* ctx, uint32_t crc, char* path, size_t len) {
     snprintf(path, len, "sdmc:" BASE_DIR "/cheats/%08lX.cheats", (unsigned long) crc);
 }
 
+// NUZLOCKE's run for a ROM: whether it's on, and the app's own text for the run.
+static void nuzlocke_path(void* ctx, uint32_t crc, char* path, size_t len) {
+    (void) ctx;
+    mkdir("sdmc:" BASE_DIR "/nuzlocke", 0777);
+    snprintf(path, len, "sdmc:" BASE_DIR "/nuzlocke/%08lX.txt", (unsigned long) crc);
+}
+
 // FLIGHT AREA's maps for one save of a ROM (the app's flight-area/<rom>-<save>.txt).
 static void flight_area_path(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len) {
     (void) ctx;
@@ -489,6 +500,57 @@ static void flight_area_path(void* ctx, uint32_t crc, uint32_t key, char* path, 
 static void write_card(const char* file, const struct pd_game* g, const struct pd_snapshot* s);
 
 // Runs one game until the player leaves (true) or the app is closed (false).
+// What a game start works out over the whole ROM - its SHA-1 and CRC-32 - kept per file by its size and time
+// (rom-art/<file>.id: "size mtime sha1 crc"), so the next start of the same file skips both passes (~2.5 s of a 32 MB
+// hack's start). Any change to the file and they're worked out again.
+struct rom_id {
+    long size;
+    long long mtime;
+    char sha1[41];
+    uint32_t crc;
+    bool known; // read back and still the file's
+};
+
+static void rom_id_path(const char* file, char* path, size_t len) {
+    snprintf(path, len, "sdmc:" ROMART_DIR "/%s.id", file);
+}
+
+static void rom_id_read(const char* romSd, const char* file, struct rom_id* id) {
+    memset(id, 0, sizeof(*id));
+    struct stat st;
+    if (stat(romSd, &st)) return;
+    id->size = (long) st.st_size;
+    // stat's st_mtime is 0 on the SD card: libctru's own call has the file's time.
+    u64 modified = 0;
+    if (R_FAILED(archive_getmtime(romSd, &modified)) || !modified) return;
+    id->mtime = (long long) modified;
+    char path[400];
+    rom_id_path(file, path, sizeof(path));
+    FILE* f = fopen(path, "r");
+    if (!f) return;
+    long size = 0;
+    long long mtime = 0;
+    char sha1[41] = "";
+    unsigned crc = 0;
+    if (fscanf(f, "%ld %lld %40s %x", &size, &mtime, sha1, &crc) == 4 && size == id->size && mtime == id->mtime &&
+        strlen(sha1) == 40 && crc) {
+        memcpy(id->sha1, sha1, sizeof(sha1));
+        id->crc = crc;
+        id->known = true;
+    }
+    fclose(f);
+}
+
+static void rom_id_write(const char* file, const struct rom_id* id, const char* sha1, uint32_t crc) {
+    if (strlen(sha1) != 40 || !crc || !id->size || !id->mtime) return;
+    char path[400];
+    rom_id_path(file, path, sizeof(path));
+    FILE* f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "%ld %lld %s %08x\n", id->size, id->mtime, sha1, (unsigned) crc);
+    fclose(f);
+}
+
 static bool run_game(const char* file) {
     char romPath[512], savePath[512], base[256];
     snprintf(romPath, sizeof(romPath), ROM_DIR "/%s", file);
@@ -525,6 +587,12 @@ static bool run_game(const char* file) {
     }
 #endif
     struct mCore* core = NULL;
+    struct rom_id romId;
+    {
+        char romSdPath[520];
+        snprintf(romSdPath, sizeof(romSdPath), "sdmc:%s", romPath);
+        rom_id_read(romSdPath, file, &romId);
+    }
     backup_save(base, saveSd);
     audioRate = audioRateSet = audioMade = 1.0f;
     audioLast = 0;
@@ -536,7 +604,8 @@ static bool run_game(const char* file) {
         char romSd[520];
         snprintf(romSd, sizeof(romSd), "sdmc:%s", romPath);
         struct pd_armgba_host emuHost = { .audio = armgba_audio, .log = host_emu_log, .systemDir = "sdmc:" SYSTEM_DIR,
-                                          .workDir = "sdmc:" WORK_DIR, .threaded = host_is_new_3ds(), .romBuffer = host_rom_arena };
+                                          .workDir = "sdmc:" WORK_DIR, .threaded = host_is_new_3ds(), .romBuffer = host_rom_arena,
+                                          .knownCrc = romId.known ? romId.crc : 0 };
 #ifdef PD_DEV
         // The dev build's switch: sdmc:/pokedaisy-dev/armgba/nothreads draws on the game's core.
         FILE* noThreads = fopen("sdmc:" WORK_DIR "/nothreads", "rb");
@@ -611,12 +680,16 @@ static bool run_game(const char* file) {
     static struct pd_session session;
     memset(&session, 0, sizeof(session));
     session.game = game;
+    // This file's hash from its last start (rom-art/<file>.id), so the session needn't hash the whole ROM again.
+    if (romId.known) memcpy(session.game.sha1, romId.sha1, sizeof(romId.sha1));
+    else session.game.sha1[0] = 0;
     struct game_files gameFiles;
     snprintf(gameFiles.base, sizeof(gameFiles.base), "%s", base);
     snprintf(gameFiles.saveSd, sizeof(gameFiles.saveSd), "%s", saveSd);
     bool wideThread = gpu_wide_thread(pd_session_wide_finish);
     struct pd_session_host files = { state_path, backup_for_load, settings_changed, cheat_path, &gameFiles,
-                                     wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL, NULL, flight_area_path };
+                                     wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL, NULL, flight_area_path,
+                                     nuzlocke_path };
 #ifdef PD_DEV
     files.clock = svcGetSystemTick;
 #endif
@@ -626,6 +699,17 @@ static bool run_game(const char* file) {
     session.host.labels[1] = "SPEED";
     snprintf(session.host.values[1], sizeof(session.host.values[1]), "-");
     pd_session_start(&session, core, gpu_game_buffer(), &settings, &files);
+    if (!romId.known) rom_id_write(file, &romId, session.game.sha1, session.romCrc);
+#ifdef PD_DEV
+    {
+        char steps[300];
+        int n = 0;
+        for (int i = 0; i < session.prof.startSteps && n < (int) sizeof(steps) - 32; i++)
+            n += snprintf(steps + n, sizeof(steps) - (size_t) n, " %s %lu", session.prof.startName[i],
+                          (unsigned long) (session.prof.startTicks[i] / (SYSCLOCK_ARM11 / 1000)));
+        host_log("start (ms):%s", steps);
+    }
+#endif
     apply_volume();
     struct pd_ui* uiPtr = &session.ui;
     struct pd_host_info* hostPtr = &session.host;
@@ -777,8 +861,9 @@ static bool run_game(const char* file) {
             busyTicks = 0;
             fpsFrames = 0;
             fpsStart = now;
-            u8 battery = 0;
+            u8 battery = 0, charging = 0;
             if (R_SUCCEEDED(MCUHWC_GetBatteryLevel(&battery))) hostPtr->batteryPct = battery;
+            if (R_SUCCEEDED(PTMU_GetBatteryChargeState(&charging))) hostPtr->charging = charging != 0;
             if (uiPtr->tab == PD_TAB_SETTINGS) session.redraw = true;
         }
 
@@ -989,6 +1074,20 @@ static bool lib_write_saves(void* ctx, int n, const char* const* files, const ui
     return true;
 }
 
+// The console's own keyboard (libctru's swkbd applet) for the save editor's names: OK / CANCEL, never an empty name. The
+// characters are checked by the editor (the games' charset), which says so when one can't be written.
+static bool lib_edit_text(void* ctx, const char* hint, const char* initial, int max, char* out, size_t outLen) {
+    (void) ctx;
+    SwkbdState kb;
+    swkbdInit(&kb, SWKBD_TYPE_NORMAL, 2, max);
+    swkbdSetHintText(&kb, hint);
+    swkbdSetInitialText(&kb, initial);
+    swkbdSetValidation(&kb, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+    out[0] = 0;
+    SwkbdButton pressed = swkbdInputText(&kb, out, outLen);
+    return pressed == SWKBD_BUTTON_CONFIRM && out[0];
+}
+
 // The whole ROM in the arena the games use (no game runs while the library is up).
 static const uint8_t* lib_load_rom(void* ctx, const char* file, size_t* size) {
     (void) ctx;
@@ -1048,6 +1147,8 @@ static void lib_settings_changed(void* ctx) {
 static struct pd_library library;
 static bool cacheDirty;
 
+
+
 static void lib_cache_changed(void* ctx) {
     (void) ctx;
     cacheDirty = true;
@@ -1101,7 +1202,7 @@ static bool pick_rom(char* out, size_t outLen) {
     static struct pd_library_host host = {
         .read_rom = lib_read_rom, .read_save = lib_read_save, .write_saves = lib_write_saves, .load_rom = lib_load_rom,
         .read_card = lib_read_card, .settings_changed = lib_settings_changed, .cache_changed = lib_cache_changed,
-        .version = PD_VERSION " (3DS)",
+        .version = PD_VERSION " (3DS)", .edit_text = lib_edit_text,
     };
     int n = list_roms(names);
     pd_library_init(&library, &settings, &host);
@@ -1165,10 +1266,12 @@ static bool pick_rom(char* out, size_t outLen) {
             u64 now = osGetTime();
             if (!batteryAt || now - batteryAt >= 1000) {
                 batteryAt = now;
-                u8 level = 0;
+                u8 level = 0, charging = 0;
                 int pct = R_SUCCEEDED(MCUHWC_GetBatteryLevel(&level)) ? level : -1;
-                if (pct != library.batteryPct) library.dirty = true;
+                bool charge = R_SUCCEEDED(PTMU_GetBatteryChargeState(&charging)) && charging;
+                if (pct != library.batteryPct || charge != library.charging) library.dirty = true;
                 library.batteryPct = pct;
+                library.charging = charge;
             }
         }
 #ifdef PD_DEV
@@ -1194,6 +1297,7 @@ static bool pick_rom(char* out, size_t outLen) {
         write_cache();
         snprintf(out, outLen, "%s", library.games[library.picked].file);
         snprintf(lastFile, sizeof lastFile, "%s", out);
+
     }
     for (int i = 0; i < n; i++) free(names[i]);
     return running && picked;
@@ -1216,6 +1320,7 @@ int main(void) {
     pd_settings_load(&settings, SETTINGS_FILE);
     audio_init();
     mcuHwcInit();
+    ptmuInit(); // the battery's charge state (a bolt by the battery)
     devlink_start();
     char file[256];
     while (pick_rom(file, sizeof(file))) {
@@ -1229,6 +1334,7 @@ int main(void) {
 #ifdef PD_DEV
     if (restart) devlink_chainload();
 #endif
+    ptmuExit();
     mcuHwcExit();
     audio_exit();
     gpu_exit();

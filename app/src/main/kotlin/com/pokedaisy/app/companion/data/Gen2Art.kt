@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.security.MessageDigest
+import okio.Path
 
 /**
  * A Game Boy Color (Gen 2) Pokémon game's own art, rebuilt from the player's ROM on its first launch
@@ -545,19 +544,15 @@ object Gen2Art {
      * build's (at this [VERSION]); returns the paths written. A family's builds (Crystal's releases, Crystal Clear's
      * versions and colour builds) share their paths, so starting another of them rebuilds them.
      */
-    fun extractTo(rom: ByteArray, dir: File): List<String> {
-        val sha1 = MessageDigest.getInstance("SHA-1").digest(rom).joinToString("") { "%02x".format(it) }
+    fun extractTo(rom: ByteArray, dir: Path): List<String> {
+        val sha1 = sha1(rom).hex()
         val t = GAMES.firstOrNull { sha1 in it.sha1s } ?: return emptyList()
-        val marker = File(dir, "gen2/${t.name}-built")
+        val marker = dir / "gen2/${t.name}-built"
         val stamp = "v$VERSION $sha1"
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return emptyList()
         val wrote = ArrayList<String>()
         fun write(path: String, bytes: ByteArray) {
-            val out = File(dir, path)
-            out.parentFile?.mkdirs()
-            val tmp = File(out.path + ".tmp")
-            tmp.writeBytes(bytes)
-            tmp.renameTo(out)
+            (dir / path).writeAtomically(bytes)
             wrote += path
         }
         write(t.fontPath, font(rom, t))
@@ -565,19 +560,18 @@ object Gen2Art {
         write(t.holdIconsPath, holdIcons(rom, t).png())
         t.townMapPaths.forEachIndexed { i, path -> townMap(rom, t, i)?.let { write(path, it.png()) } }
         t.playerPaths.forEachIndexed { g, path -> write(path, player(rom, t, g).png()) }
-        marker.parentFile?.mkdirs()
         marker.writeText(stamp)
         return wrote
     }
 
     /** In the background, once per ROM file: a Game Boy Color cart is 2 MB. */
-    fun prefetch(filesDir: File, rom: File) {
-        Thread({
+    fun prefetch(filesDir: Path, rom: Path) {
+        background("pokedaisy-gen2-art") {
             runCatching {
-                val wrote = extractTo(rom.readBytes(), RomArt.dir(filesDir))
+                val wrote = extractTo(readRomFile(rom), RomArt.dir(filesDir))
                 if (wrote.isNotEmpty()) RomArt.announce()
-            }.onFailure { android.util.Log.w("pokedaisy", "Gen2Art: failed", it) }
-        }, "pokedaisy-gen2-art").apply { isDaemon = true; start() }
+            }.onFailure { Logs.w("Gen2Art: failed", it) }
+        }
     }
 
 }

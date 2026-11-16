@@ -1,12 +1,11 @@
 ---
-// The AYN Thor in pixels, in its black shell, drawn to its own proportions on a grid of handheld units
-// (--u, 160 across: handheldFit.js). The lid: the 6" 16:9 top screen under glass, thin bezels all round.
-// The hinge. The base: the 3.92" bottom screen (1240x1080, the companion's canvas) under glass between the
-// controls - left stick (with its light ring) over the d-pad, ABXY over the right stick - three small keys
-// under it and the speaker grilles. The top screen is HeroScene's overworld; the bottom one plays the
-// companion's PARTY, MAP and BAG tabs (CompanionDemo). A page can put its own pictures on either screen instead
-// (`slot="top"` / `slot="bottom"`: the game pages' real shots, ScreenShots).
-import Pixel from './Pixel.astro';
+// The AYN Thor at its real proportions (halves 150 x 94 mm: scripts/handheld-art.mjs draws it, a little pixelated, into
+// public/media/handheld-thor.png) on a grid of handheld units (--u, 160 across: handheldFit.js). The lid: the 6" 16:9 top screen under glass, thin bezels all round.
+// The hinge. The base: the 3.92" bottom screen (1240x1080, the companion's canvas) between the controls - the
+// left stick in its light ring over the d-pad, ABXY over the right stick - the small keys under it and the
+// speaker grilles. The screens are HTML over the drawing: the top one is HeroScene's overworld, the bottom one
+// plays the companion's PARTY, MAP and BAG tabs (CompanionDemo). A page can put its own pictures on either screen
+// instead (`slot="top"` / `slot="bottom"`: the homepage's and the game pages' real shots).
 import CompanionDemo from './CompanionDemo.astro';
 import HeroScene from './HeroScene.astro';
 
@@ -19,66 +18,31 @@ const tr = trFor(Astro.url);
 ---
 <div class="hh-box">
   <div class:list={['handheld', 'thor', still && 'still']} data-handheld data-units="160">
-    <div class="hh-part" style={at(0, 0, 160, 100)}>
-      <span class="hh-shell f-thorLid"></span>
-      <div class="hh-part glass f-glass" style={at(3, 3, 154, 94)}></div>
-      <div class="hh-part topscreen" style={at(8, 9, 144, 81)}>
-        <slot name="top"><HeroScene lines={[tr('Your party is on the bottom screen.'), tr('So are the map, the bag and your dex.'), tr('In a battle, every matchup is a glance away.')]} /></slot>
-      </div>
+    <img class="hh-art" src="/media/handheld-thor.png" width="240" height="309" alt="" aria-hidden="true" decoding="async" />
+    <div class="hh-part topscreen" style={at(9.15, 10.15, 141.7, 79.7)}>
+      <slot name="top"><HeroScene lines={[tr('Your party is on the bottom screen.'), tr('So are the map, the bag and your dex.'), tr('In a battle, every matchup is a glance away.')]} /></slot>
     </div>
-    <div class="hh-part thor-hinge" style={at(5, 100, 150, 7)}><i></i><i></i></div>
-    <div class="hh-part" style={at(0, 106, 160, 96)}>
-      <span class="hh-shell f-thorBase"></span>
-      <div class="hh-part glass f-glass" style={at(38, 6, 84, 74)}></div>
-      <div class="hh-part lowscreen" style={at(41, 9, 78, 68)}><slot name="bottom"><CompanionDemo /></slot></div>
-      <span class="hh-part" style={at(7, 9)}><Pixel name="thorStick2" scale={1} /></span>
-      <span class="hh-part" style={at(8, 46)}><Pixel name="thorDpad2" scale={1} /></span>
-      <span class="hh-part" style={at(122, 6)}><Pixel name="thorAbxy2" scale={1} /></span>
-      <span class="hh-part" style={at(127, 45)}><Pixel name="thorStick2" scale={1} /></span>
-      <i class="hh-part thor-key" style={at(64, 86, 9, 3)}></i>
-      <i class="hh-part thor-key home" style={at(77, 85, 6, 5)}></i>
-      <i class="hh-part thor-key" style={at(87, 86, 9, 3)}></i>
-      <i class="hh-part grille" style={at(10, 84, 16, 5)}></i>
-      <i class="hh-part grille" style={at(134, 84, 16, 5)}></i>
-      <i class="hh-part thor-led" style={at(151, 7, 2, 1)}></i>
-    </div>
+    <div class="hh-part lowscreen" style={at(40, 114, 80, 69.8)}><slot name="bottom"><CompanionDemo /></slot></div>
   </div>
 </div>
 
 <style is:global>
   /* Shared by both hero handhelds: their box (for the unit's fallback before the script measures it), the unit
-     as their sprites' pixel, and every part placed in units. */
+     the drawing and the screens are placed in, and every part placed in units. */
   .hh-box { container-type: inline-size; }
   .handheld { --u: calc(100cqw / var(--units, 160)); --px: var(--u); position: relative; margin: 0 auto; font-family: 'Pixel Operator', monospace; }
   .handheld .hh-part { position: absolute; left: calc(var(--x) * var(--u)); top: calc(var(--y) * var(--u)); }
   .handheld .hh-part[style*='--w'] { width: calc(var(--w) * var(--u)); height: calc(var(--h) * var(--u)); }
-  .handheld .hh-shell { position: absolute; inset: 0; }
+  /* The drawing: a small PNG scaled up with hard edges (its pixels are part of the look). */
+  .handheld .hh-art { position: absolute; left: 0; top: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; user-select: none; }
   .handheld .pixel { display: block; }
   .handheld .appcard { filter: none; }
   .handheld .appwrap { max-width: none; }
-  .handheld .topscreen, .handheld .lowscreen { overflow: hidden; background: #000; }
-  /* The glass over the screens: a faint sheen across its bezel, a diagonal band from the top left. */
-  .handheld .glass { background-clip: padding-box; }
-  .handheld .glass::after { content: ''; position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(118deg, transparent 0 58%, rgba(255, 255, 255, 0.06) 58% 66%, transparent 66% 72%, rgba(255, 255, 255, 0.04) 72% 75%, transparent 75%); }
+  .handheld .topscreen, .handheld .lowscreen { overflow: hidden; background: #000; border-radius: calc(var(--u) * 0.6); }
   .handheld.still * { animation: none !important; transition: none !important; }
 
-  .thor { --units: 160; width: calc(var(--u) * 160); height: calc(var(--u) * 202); filter: drop-shadow(calc(var(--u) * 2) calc(var(--u) * 3) 0 rgba(29, 27, 38, 0.18)); }
-  /* The hinge: one long barrel behind the lid's bottom edge, lit along its top, darker knuckles at the ends. */
-  .thor .thor-hinge {
-    background: linear-gradient(#62626e 0 calc(var(--u) * 1), #42424e calc(var(--u) * 1) calc(var(--u) * 3), #2a2a33 calc(var(--u) * 3) calc(var(--u) * 5), #121216 calc(var(--u) * 5));
-    box-shadow: 0 0 0 var(--u) #050507;
-  }
-  .thor .thor-hinge i { position: absolute; top: 0; bottom: 0; width: calc(var(--u) * 14); background: linear-gradient(#4e4e5a 0 calc(var(--u) * 1), #30303a calc(var(--u) * 1) calc(var(--u) * 4), #18181e calc(var(--u) * 4)); }
-  .thor .thor-hinge i:first-child { left: 0; box-shadow: var(--u) 0 0 #050507; }
-  .thor .thor-hinge i:last-child { right: 0; box-shadow: calc(var(--u) * -1) 0 0 #050507; }
-  /* The small keys under the bottom screen: two pills and the round one between them. */
-  .thor .thor-key { background: #24242c; box-shadow: 0 0 0 var(--u) #050507, inset 0 var(--u) 0 #50505c, inset 0 calc(var(--u) * -1) 0 #16161b; }
-  .thor .thor-key.home { clip-path: polygon(var(--u) 0, calc(100% - var(--u)) 0, 100% var(--u), 100% calc(100% - var(--u)), calc(100% - var(--u)) 100%, var(--u) 100%, 0 calc(100% - var(--u)), 0 var(--u));
-    background: #050507; }
-  .thor .thor-key.home::after { content: ''; position: absolute; inset: var(--u); background: #2a2a33; box-shadow: inset var(--u) var(--u) 0 #50505c; }
-  .handheld .grille { background: radial-gradient(circle, #08080a 0 calc(var(--u) * 0.55), transparent calc(var(--u) * 0.6)) 0 0 / calc(var(--u) * 2) calc(var(--u) * 2); }
-  .thor .thor-led { background: #6ef08a; box-shadow: 0 0 calc(var(--u) * 2) rgba(110, 240, 138, 0.6); }
+  .thor { --units: 160; width: calc(var(--u) * 160); height: calc(var(--u) * 206);
+    filter: drop-shadow(0 calc(var(--u) * 3) calc(var(--u) * 4) rgba(29, 27, 38, 0.28)); }
 </style>
 
 <script>

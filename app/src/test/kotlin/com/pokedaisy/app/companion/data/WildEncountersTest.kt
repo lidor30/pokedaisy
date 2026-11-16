@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.data
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * WILD ENCOUNTERS' switch, found in each ROM by StandardWildEncounter's code ([WildEncounters.find]). The retail
@@ -70,6 +71,9 @@ class WildEncountersTest {
         // the gcc shape at 0x081B3D64 loads 0xFFFF as an argument, not to compare (its byte 0x02020A44 sits at 1).
         "Pokemon Monomyth (v1.0).gba" to 0L,
         "Pokemon Monomyth (v1.1).gba" to 0L,
+        "Pokemon Monomyth (v1.2).gba" to 0L,
+        // Epsilon Emerald (gcc): OFF walked 180 steps of Route 101's grass without a battle, NORMAL met one within 20.
+        "Pokemon Epsilon Emerald (v1.0.0).gba" to 0x020398E0L,
         "Pokemon Emerald Rogue (v2.2.1-EX).gba" to 0L,
         "Pokemon Quetzal (Alpha 9.0) (English).gba" to 0L,
     )
@@ -79,7 +83,7 @@ class WildEncountersTest {
         for ((name, want) in cases) {
             val rom = File(RETAIL_ROM_DIR + name)
             if (!rom.isFile) continue
-            assertEquals(name, "%08X".format(want), "%08X".format(WildEncounters.find(rom)))
+            assertEquals(name, "%08X".format(want), "%08X".format(WildEncounters.find(rom.toOkioPath())))
         }
     }
 }

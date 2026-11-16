@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
@@ -117,6 +119,10 @@ internal fun Gen5BattleControls(
     }
     val movesKnown = activeMon?.moves?.isNotEmpty() == true
     val canSwitch = battleInput?.canSwitch == true
+    // HIDE BATTLE MENU: these buttons are the game's menu - its cursor shows on them from the start, and FIGHT / POKéMON
+    // press the game's own, so the D-pad, A and B act on what's shown.
+    val menuOnCompanion = battleInput?.menuOnCompanion == true
+    val gameCursor = rememberBattleCursor(battleInput)
     val picking = (battleInputState == BATTLE_INPUT_ACTION_SELECT && choosingMon) ||
         (battleInputState == BATTLE_INPUT_PARTY_OPEN && canSwitch)
     val page = when {
@@ -130,6 +136,9 @@ internal fun Gen5BattleControls(
     }
     val live = battleInput != null
     val enabled = live && !busy
+    // The game's cursor on these buttons, only while they're its menu, and only on the menu it's really on.
+    val actionCursor = if (menuOnCompanion && !busy && battleInputState == BATTLE_INPUT_ACTION_SELECT) gameCursor else -1
+    val moveCursor = if (menuOnCompanion && !busy && battleInputState == BATTLE_INPUT_MOVE_SELECT) gameCursor else -1
     // FIGHT grows the band's lens into the move plates' field, as the game does.
     val open by animateFloatAsState(if (page == Gen5Page.MOVES || page == Gen5Page.ONE_TAP) 1f else 0f, tween(200), label = "gen5-open")
     val dark by animateFloatAsState(if (page == Gen5Page.WAIT || page == Gen5Page.BACK) 1f else 0f, tween(240), label = "gen5-dark")
@@ -161,11 +170,12 @@ internal fun Gen5BattleControls(
                             // FIGHT!: the lens itself is the button (its hit box the lens's middle).
                             Gen5Button(
                                 g, Rect(g.x(48f), g.lensTop(0.5f) , g.w - g.x(48f), g.lensBottom(0.5f)),
-                                enabled = enabled, pressesGame = !movesKnown, focusFirst = true,
+                                enabled = enabled, pressesGame = !movesKnown || menuOnCompanion, focusFirst = true,
+                                highlighted = actionCursor == 0,
                                 // Black's cursor on FIGHT! frames the panel above the plates, edge to edge (headless).
                                 cursor = Rect(g.x(2f), g.y(9f), g.x(253f), g.y(127f)),
                                 onPress = { fightLit = it },
-                                onClick = { if (movesKnown) choosingMove = true else battleInput?.selectAction(0) },
+                                onClick = { if (movesKnown && !menuOnCompanion) choosingMove = true else battleInput?.selectAction(0) },
                             ) {
                                 Gen5Label(tr("FIGHT") + "!", G5FightRed, G5FightRed, Color.Black, g.fightFont)
                             }
@@ -175,9 +185,9 @@ internal fun Gen5BattleControls(
                             PartyBalls(g, party, centreY = 108f, small = false)
                         }
                         ActionDiscs(
-                            g, live, enabled, canSwitch,
-                            onPokemon = { if (canSwitch) choosingMon = true else battleInput?.selectAction(2) },
-                            pokemonPressesGame = !canSwitch,
+                            g, live, enabled, canSwitch, actionCursor,
+                            onPokemon = { if (canSwitch && !menuOnCompanion) choosingMon = true else battleInput?.selectAction(2) },
+                            pokemonPressesGame = !canSwitch || menuOnCompanion,
                             onBag = { battleInput?.selectAction(1) },
                             onRun = { battleInput?.selectAction(3) },
                         )
@@ -186,7 +196,7 @@ internal fun Gen5BattleControls(
                     Gen5Page.MOVES -> {
                         val cancel: (() -> Unit)? = if (battleInputState == BATTLE_INPUT_ACTION_SELECT) ({ choosingMove = false }) else null
                         CompanionBackHandler(enabled = enabled) { cancel?.invoke() ?: battleInput?.back() }
-                        MovePlates(g, activeMon, battleInput, busy, showHints, top = 5f, height = 112f)
+                        MovePlates(g, activeMon, battleInput, busy, showHints, top = 5f, height = 112f, cursor = moveCursor)
                         PartyBalls(g, party, centreY = 126f, small = false)
                         BackDisc(g, enabled, pressesGame = cancel == null) { cancel?.invoke() ?: battleInput?.back() }
                     }
@@ -484,6 +494,8 @@ private fun Gen5Button(
     enabled: Boolean,
     pressesGame: Boolean,
     focusFirst: Boolean = false,
+    /** The game's cursor is on it (HIDE BATTLE MENU: these buttons are the game's menu): its key cursor, as on focus. */
+    highlighted: Boolean = false,
     /** Where the game's cursor sits, in the tab's pixels, when it isn't round [rect] (FIGHT!'s frames the whole panel). */
     cursor: Rect? = null,
     onPress: (Boolean) -> Unit = {},
@@ -498,7 +510,8 @@ private fun Gen5Button(
     val focused by interaction.collectIsFocusedAsState()
     LaunchedEffect(pressed) { onPress(pressed) }
     // Black / White's own key cursor, breathing out and back like the game's.
-    val pulse = if (focused) rememberDsCursorPulse(2) else 0f
+    val lit = focused || highlighted
+    val pulse = if (lit) rememberDsCursorPulse(2) else 0f
     val density = LocalDensity.current
     Box(
         Modifier
@@ -508,7 +521,7 @@ private fun Gen5Button(
             .drawWithContent {
                 draw?.invoke(this, pressed)
                 drawContent()
-                if (focused) {
+                if (lit) {
                     val c = cursor ?: rect
                     translate(c.left - rect.left, c.top - rect.top) { drawUnovaCursor(g.d, pulse, c.size) }
                 }
@@ -568,16 +581,18 @@ private fun ActionDiscs(
     live: Boolean,
     enabled: Boolean,
     canSwitch: Boolean,
+    /** The game's action cursor shown on them ([Gen5Button]'s highlighted): 1 BAG, 3 RUN, 2 POKéMON; -1 none. */
+    cursor: Int,
     onPokemon: () -> Unit,
     pokemonPressesGame: Boolean,
     onBag: () -> Unit,
     onRun: () -> Unit,
 ) {
-    Disc(g, cxDs = 39.5f, cyDs = 154f, bar = -1, label = tr("BAG"), colors = BagColors, available = live, enabled = enabled, pressesGame = true, onClick = onBag)
-    Disc(g, cxDs = 127.5f, cyDs = 170f, bar = 0, label = tr("RUN"), colors = RunColors, available = live, enabled = enabled, pressesGame = true, cursorTop = 138f, onClick = onRun)
+    Disc(g, cxDs = 39.5f, cyDs = 154f, bar = -1, label = tr("BAG"), colors = BagColors, available = live, enabled = enabled, pressesGame = true, highlighted = cursor == 1, onClick = onBag)
+    Disc(g, cxDs = 127.5f, cyDs = 170f, bar = 0, label = tr("RUN"), colors = RunColors, available = live, enabled = enabled, pressesGame = true, highlighted = cursor == 3, cursorTop = 138f, onClick = onRun)
     Disc(
         g, cxDs = 215.5f, cyDs = 154f, bar = 1, label = tr("POKéMON"), colors = MonColors,
-        available = live, enabled = enabled, pressesGame = pokemonPressesGame, onClick = onPokemon,
+        available = live, enabled = enabled, pressesGame = pokemonPressesGame, highlighted = cursor == 2, onClick = onPokemon,
     )
 }
 
@@ -601,6 +616,7 @@ private fun Disc(
     available: Boolean,
     enabled: Boolean,
     pressesGame: Boolean,
+    highlighted: Boolean = false,
     radius: Float = 38f,
     /** The game's cursor box's top (this screen's game pixels): Black's sits 24 above a side plate's centre, RUN's 32. */
     cursorTop: Float = cyDs - 24f,
@@ -619,7 +635,7 @@ private fun Disc(
     val rect = Rect(left, top, right, g.h)
     val barTop = top + g.snap(0.63f * r)
     Gen5Button(
-        g, rect, enabled = enabled && available, pressesGame = pressesGame,
+        g, rect, enabled = enabled && available, pressesGame = pressesGame, highlighted = highlighted,
         // The game's cursor box: 36.5 left of the centre to 37.5 right, down to 2 above the screen's bottom.
         cursor = Rect(cx - g.len(radius - 1.5f), g.y(cursorTop), cx + g.len(radius - 0.5f), g.y(174f)),
         draw = { pressed ->
@@ -737,7 +753,11 @@ private fun PartyBalls(g: G5, party: List<MonView>, centreY: Float, small: Boole
 /** The four move plates, two by two from game row [top] (the field's), each its type's colour round the charcoal:
  * the name, the type and PP, then (ours) the power and, with BATTLE HINTS, the verdict. */
 @Composable
-private fun MovePlates(g: G5, activeMon: MonView?, battleInput: BattleInput?, busy: Boolean, showHints: Boolean, top: Float, height: Float) {
+private fun MovePlates(
+    g: G5, activeMon: MonView?, battleInput: BattleInput?, busy: Boolean, showHints: Boolean, top: Float, height: Float,
+    /** The game's move cursor shown on them (HIDE BATTLE MENU); -1 none. */
+    cursor: Int = -1,
+) {
     val plateW = (g.w - 3 * g.len(1.5f)) / 2
     val rowH = (g.y(top + height) - g.y(top)) / 2
     for (i in 0 until 4) {
@@ -745,12 +765,12 @@ private fun MovePlates(g: G5, activeMon: MonView?, battleInput: BattleInput?, bu
         val row = i / 2
         val l = g.snap(g.len(1.5f) + col * (plateW + g.len(1.5f)))
         val t = g.snap(g.y(top) + row * rowH)
-        MovePlate(g, Rect(l, t, l + g.snap(plateW), t + g.snap(rowH)), activeMon?.moves?.getOrNull(i), battleInput, i, busy, showHints)
+        MovePlate(g, Rect(l, t, l + g.snap(plateW), t + g.snap(rowH)), activeMon?.moves?.getOrNull(i), battleInput, i, busy, showHints, cursor == i)
     }
 }
 
 @Composable
-private fun MovePlate(g: G5, rect: Rect, mv: MoveView?, battleInput: BattleInput?, index: Int, busy: Boolean, showHints: Boolean) {
+private fun MovePlate(g: G5, rect: Rect, mv: MoveView?, battleInput: BattleInput?, index: Int, busy: Boolean, showHints: Boolean, highlighted: Boolean = false) {
     val d = g.d
     val usable = mv != null && mv.pp > 0
     val type = mv?.let { AppColors.typeColors[it.type] } ?: EmptyRim
@@ -758,7 +778,7 @@ private fun MovePlate(g: G5, rect: Rect, mv: MoveView?, battleInput: BattleInput
     val small = g5Metrics(g, 0.75f)
     Box(Modifier.fillMaxSize().alpha(if (mv == null || usable) 1f else 0.5f)) {
         Gen5Button(
-            g, rect, enabled = usable && battleInput != null && !busy, pressesGame = true, focusFirst = index == 0,
+            g, rect, enabled = usable && battleInput != null && !busy, pressesGame = true, focusFirst = index == 0, highlighted = highlighted,
             draw = { pressed ->
                 val w = size.width
                 val h = size.height
@@ -1033,28 +1053,36 @@ private fun FitText(g: G5, text: String, color: Color, shadow: Color, k: Float) 
  * at a time until it fits. Its semantics carry the text, so tests find it like any Text.
  */
 @Composable
-private fun Gen5Label(text: String, top: Color, bottom: Color, outline: Color, fp: Int, shrink: Boolean = false) {
+private fun Gen5Label(
+    text: String, top: Color, bottom: Color, outline: Color, fp: Int, shrink: Boolean = false,
+    /** Too wide even unspaced: narrowed to fit at [fp]'s height (down to half its width) before going a size down. */
+    narrow: Boolean = false,
+) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val family = pixelFontFamily()
     BoxWithConstraints(Modifier.semantics { this.text = AnnotatedString(text) }) {
         val maxW = constraints.maxWidth
-        val (layout, k) = remember(text, maxW, fp, density, family, shrink) {
+        val (layout, k) = remember(text, maxW, fp, density, family, shrink, narrow) {
             // Spaced a font pixel wider (the bold copy fills the font's own gap), then unspaced, then a size down.
             val tries = (fp downTo 1).flatMap { k -> listOf(k to k, k to 0) }
             var pick: Pair<TextLayoutResult, Int>? = null
             for ((k, spacing) in tries) {
                 val style = with(density) { TextStyle(fontFamily = family, fontSize = (16f * k).toSp(), letterSpacing = spacing.toFloat().toSp()) }
                 pick = measurer.measure(text, style, maxLines = 1, softWrap = false) to k
-                if (!shrink || pick.first.size.width + 3 * k <= maxW) break
+                val wide = pick.first.size.width + 3 * k
+                if (!shrink || wide <= maxW || narrow && spacing == 0 && wide <= maxW * 2) break
             }
             pick!!
         }
         val kf = k.toFloat()
         val w = layout.size.width + 3 * kf
         val hgt = layout.size.height + 2 * kf
+        // Narrowed by whole screen pixels' worth: the letters keep their height.
+        val sx = if (narrow && w > maxW) maxW / w else 1f
         Box(
-            Modifier.size(with(density) { w.toDp() }, with(density) { hgt.toDp() }).drawBehind {
+            Modifier.size(with(density) { (w * sx).toDp() }, with(density) { hgt.toDp() }).drawBehind {
+              scale(sx, 1f, pivot = Offset.Zero) {
                 for (dx in -1..2) for (dy in -1..1) {
                     if (dx in 0..1 && dy == 0) continue
                     drawText(layout, outline, Offset(kf + dx * kf, kf + dy * kf))
@@ -1066,6 +1094,7 @@ private fun Gen5Label(text: String, top: Color, bottom: Color, outline: Color, f
                 else Brush.verticalGradient(0f to top, 0.5f to top, 0.5f to bottom, 1f to bottom, startY = mid - 4.5f * kf, endY = mid + 4.5f * kf)
                 drawText(layout, brush, Offset(kf, kf))
                 drawText(layout, brush, Offset(2 * kf, kf))
+              }
             },
         )
     }
@@ -1153,7 +1182,8 @@ private val DimFace = listOf(Color(0xFF202020), Color(0xFF1C1C1C), Color(0xFF181
 private val PlateText = Color(0xFFFBFBFB)
 private val PlateTextShadow = Color(0xFF717171)
 private val PlateMuted = Color(0xFFC3C3CB)
-private val TagShadow = Color(0xFF515151)
+// The type tags' words' shadow: dark enough that white reads on the light types (ELECTRIC, NORMAL, ICE).
+private val TagShadow = Color(0xFF202020)
 private val EmptyRim = Color(0xFF828282)
 private val UTurnBlue = Color(0xFF28BAF3)
 private val UTurnLight = Color(0xFFA2DBFB)
@@ -1200,3 +1230,268 @@ private val MsgBoxFill = Color(0xFFFBFBFB)
 private val MsgBoxLine = Color(0xFF515151)
 private val MsgBoxText = Color(0xFF595151)
 private val MsgBoxShadow = Color(0xFFA2A2AA)
+
+// ---- BATTLE BUTTONS' GEN 5 look ------------------------------------------------------------------------------------
+
+/*
+ * One screen's BATTLE BUTTONS ([BattleButtons], [BattleMoveList], [BattlePartyList]) with BATTLE STYLE on GEN 5: the
+ * same buttons and lists, laid out as before, drawn from the pieces above - the charcoal dotted face, the white rim of
+ * the round plates, the type's rim of the move plates, the party slots' green rim and pale HP strip, the two-tone
+ * outlined words. A game pixel is the HUD's GBA pixel ([d], whole screen pixels). They run off the screen's right edge
+ * like the GEN 4 ones, so only their left corners are cut.
+ */
+
+/** The words' colours on the battle buttons: the game's BAG / RUN / POKéMON two-tones, FIGHT in the ball's red. */
+internal enum class Gen5Word(internal val top: Color, internal val bottom: Color) {
+    FIGHT(Color(0xFFFBA2AA), Color(0xFFF33849)),
+    POKEMON(MonColors.top, MonColors.bottom),
+    RUN(RunColors.top, RunColors.bottom),
+    CANCEL(UTurnLight, UTurnBlue),
+}
+
+/** One HUD game pixel in screen pixels: [u] whole. */
+@Composable
+private fun hudD(u: Dp): Float = with(LocalDensity.current) { u.toPx() }.roundToInt().coerceAtLeast(1).toFloat()
+
+/** A G5 whose game pixel is [d] screen pixels (the text helpers read only that). */
+private fun hudG5(d: Float) = G5(256f * d, 176f * d)
+
+/**
+ * A pressable Gen 5 plate filling [modifier]: [draw] paints it (pressed lights the face), D-pad focus shows the game's
+ * key cursor. [pressesGame] leaves the sound to the game's own select, as [PlatinumButton] does.
+ */
+@Composable
+private fun Gen5HudButton(
+    modifier: Modifier, d: Float, enabled: Boolean, pressesGame: Boolean, onClick: () -> Unit,
+    draw: DrawScope.(pressed: Boolean) -> Unit, content: @Composable BoxScope.() -> Unit,
+) {
+    val sound = LocalClickSound.current
+    val gameSilent = LocalGameSilent.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val focused by interaction.collectIsFocusedAsState()
+    val pulse = if (focused) rememberDsCursorPulse(2) else 0f
+    Box(
+        modifier
+            .drawWithContent {
+                draw(pressed)
+                drawContent()
+                if (focused) drawUnovaCursor(d, pulse)
+            }
+            .then(
+                Modifier.clickable(interactionSource = interaction, indication = null, enabled = enabled) {
+                    onClick()
+                    if (!pressesGame || gameSilent()) sound()
+                },
+            ),
+        contentAlignment = Alignment.Center,
+        content = content,
+    )
+}
+
+/** A rimmed plate: [bands] outside in round a dotted charcoal face, every edge a box with its left corners cut. */
+private fun DrawScope.drawHudPlate(d: Float, bands: List<Pair<Color, Float>>, dim: Boolean, lit: Boolean, cut: Float = 5f) {
+    var inset = 0f
+    for ((c, n) in bands) {
+        drawPath(slotPath(inset, inset, size.width - 2 * inset, size.height - 2 * inset, (cut * d - inset).coerceAtLeast(0f), d), c)
+        inset += n * d
+    }
+    val face = slotPath(inset, inset, size.width - 2 * inset, size.height - 2 * inset, (cut * d - inset).coerceAtLeast(0f), d)
+    drawFace(face, inset, size.height - inset, d, dim = dim, lit = lit)
+}
+
+/** FIGHT / POKéMON / RUN: the round plates' white rim round the charcoal, [icon] over the word in [word]'s colours. */
+@Composable
+internal fun Gen5ActionButton(
+    word: Gen5Word, label: String, iconH: Dp, icon: @Composable () -> Unit, u: Dp, h: Dp, wordRoom: Int,
+    enabled: Boolean, pressesGame: Boolean, edge: Dp, modifier: Modifier = Modifier, onClick: () -> Unit,
+) {
+    val d = hudD(u)
+    Gen5HudButton(
+        modifier.fillMaxWidth().height(h), d, enabled, pressesGame, onClick,
+        draw = { pressed -> drawHudPlate(d, if (enabled) RimBands else DimRimBands, dim = !enabled, lit = pressed) },
+    ) {
+        Column(
+            Modifier.fillMaxSize().padding(start = u * 5, end = u * 2 + edge, top = u * 5, bottom = u * 5),
+            verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (h >= iconH + u * wordRoom) Box(Modifier.alpha(if (enabled) 1f else 0.5f)) { icon() }
+            val (top, bottom) = if (enabled) word.top to word.bottom
+                else lerp(word.top, Color.Black, 0.5f) to lerp(word.bottom, Color.Black, 0.5f)
+            Gen5Label(label, top, bottom, LabelOutline, d.roundToInt(), shrink = true, narrow = true)
+        }
+    }
+}
+
+/**
+ * A move as one row in the move plates' look: black outline, the type's colour lit over the top half and a shade
+ * darker under it, the charcoal face; the name and PP on top, the type tag and power under them, and with BATTLE
+ * HINTS what it does to the foe bottom right.
+ */
+@Composable
+internal fun Gen5MoveRow(
+    mv: MoveView?, u: Dp, edge: Dp, enabled: Boolean, pressesGame: Boolean, cursor: Boolean, showHints: Boolean,
+    modifier: Modifier, onClick: () -> Unit,
+) {
+    val d = hudD(u)
+    val g = hudG5(d)
+    val m = rememberGbaTextMetrics(1f)
+    val small = rememberGbaTextMetrics(0.75f)
+    val type = when {
+        cursor && mv != null -> SuggestGold
+        mv != null -> AppColors.typeColors[mv.type] ?: EmptyRim
+        else -> EmptyRim
+    }
+    Gen5HudButton(
+        modifier.alpha(if (mv == null || mv.pp > 0) 1f else 0.5f), d, enabled, pressesGame, onClick,
+        draw = { pressed ->
+            val w = size.width
+            val h = size.height
+            drawPath(slotPath(0f, 0f, w, h, 5 * d, d), Color.Black)
+            val rim = slotPath(d, d, w - 2 * d, h - 2 * d, 4 * d, d)
+            clipRect(bottom = h / 2) { drawPath(rim, type) }
+            clipRect(top = h / 2) { drawPath(rim, lerp(type, Color.Black, 0.22f)) }
+            drawFace(slotPath(4 * d, 3 * d, w - 8 * d, h - 6 * d, 2 * d, d), 3 * d, h - 3 * d, d, dim = mv == null, lit = pressed)
+        },
+    ) {
+        if (mv == null) {
+            GbaText("-", EmptyRim, Color.Transparent, m)
+            return@Gen5HudButton
+        }
+        Column(
+            Modifier.fillMaxSize().padding(start = u * 9, end = u * 5 + edge, top = u * 4, bottom = u * 4),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { FitText(g, mv.name, PlateText, PlateTextShadow, 1f) }
+                GbaText(tr("PP {0}", mv.pp), PlateText, PlateTextShadow, small)
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(u * 3)) {
+                TypeTag(mv.type, small, d)
+                GbaText(tr("PWR {0}", powerLabel(mv.power)), PlateMuted, PlateTextShadow, small, Modifier.weight(1f))
+                val v = mv.vs.firstOrNull()
+                if (showHints && v != null) {
+                    val words = when {
+                        v.pct == 0 -> tr("IMMUNE {0}", v.label)
+                        v.pct > 100 -> tr("SUPER {0}", v.label)
+                        v.pct < 100 -> tr("RESISTED {0}", v.label)
+                        else -> tr("NEUTRAL {0}", v.label)
+                    }
+                    Gen5Tag(words, verdictColor(v.pct), small, d)
+                }
+            }
+        }
+    }
+}
+
+/** A tag like [TypeTag] in any colour: [c] in a darker line, white words. */
+@Composable
+private fun Gen5Tag(text: String, c: Color, m: GbaTextMetrics, d: Float, padY: Float = 1f) {
+    val density = LocalDensity.current
+    Box(
+        Modifier.drawBehind {
+            drawRect(lerp(c, Color.Black, 0.45f))
+            drawRect(c, Offset(d, d), Size(size.width - 2 * d, size.height - 2 * d))
+        }.padding(horizontal = with(density) { (d * 3).toDp() }, vertical = with(density) { (d * padY).toDp() }),
+    ) { GbaText(text, Color.White, TagShadow, m) }
+}
+
+/**
+ * One party member in the battle party slots' look: the green rim (grey once fainted), the charcoal face (lit for the
+ * cursor), the icon, the name with BEST / OUT, and the pale strip with the HP bar over the level and HP. Only the
+ * drawing: the row's tap is its caller's.
+ */
+@Composable
+internal fun Gen5PartyRow(mon: MonView, selected: Boolean, u: Dp, edge: Dp, tag: Pair<String, Color>?) {
+    val d = hudD(u)
+    val g = hudG5(d)
+    val density = LocalDensity.current
+    fun dp(px: Float) = with(density) { px.toDp() }
+    val fainted = mon.hp <= 0 && !mon.isEgg
+    val rim = if (fainted) FaintRim else GreenRim
+    val small = rememberGbaTextMetrics(0.75f)
+    val ratio = if (mon.maxHp > 0) mon.hp.toFloat() / mon.maxHp else 0f
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val w = constraints.maxWidth.toFloat()
+        val h = constraints.maxHeight.toFloat()
+        val edgePx = with(density) { edge.toPx() }
+        // The strip beside the name, its bar over the HP numbers (the game's slot has them under each other).
+        val stripTop = 8 * d
+        val barR = g5snap(w - edgePx - 6 * d, d)
+        val barL = g5snap(barR - (w - edgePx) * 0.30f, d)
+        val stripL = barL - 12 * d
+        Box(
+            Modifier.fillMaxSize().drawBehind {
+                val c = 5 * d
+                drawPath(slotPath(0f, 0f, w, h, c, d), SlotOutline)
+                drawPath(slotPath(d, d, w - 2 * d, h - 2 * d, c, d), rim[0])
+                clipRect(top = h * 0.55f) { drawPath(slotPath(d, d, w - 2 * d, h - 2 * d, c, d), rim[1]) }
+                drawPath(slotPath(3 * d, 3 * d, w - 6 * d, h - 6 * d, c - d, d), rim[2])
+                val face = slotPath(4 * d, 4 * d, w - 8 * d, h - 8 * d, c - 2 * d, d)
+                drawFace(face, 4 * d, h - 4 * d, d, dim = false, lit = selected)
+                if (!mon.isEgg) {
+                    drawRect(StripLine, Offset(stripL, stripTop), Size(barR + 2 * d - stripL, 7 * d))
+                    drawRect(Strip, Offset(stripL + d, stripTop + d), Size(barR - stripL, 5 * d))
+                    drawRect(BarFrame, Offset(barL, stripTop + 2 * d), Size(barR - barL, 3 * d))
+                    val fill = when { ratio > 0.5f -> HpGreen; ratio > 0.2f -> HpYellow; else -> HpRed }
+                    drawRect(fill, Offset(barL + d, stripTop + 3 * d), Size(g5snap((barR - barL - 2 * d) * ratio, d), d))
+                }
+                if (fainted) drawPath(face, Color.Black.copy(alpha = 0.35f))
+            },
+        )
+        val iconSize = g5snap(h * 0.9f, d)
+        SpeciesIcon(mon.iconAsset, size = dp(iconSize), modifier = Modifier.offset(x = dp(d * 3), y = dp((h - iconSize) / 2 - d)))
+        val textL = iconSize + 4 * d
+        // The name and gender on top, left of the strip.
+        Row(
+            Modifier.padding(start = dp(textL), top = dp(3 * d)).width(dp(stripL - 3 * d - textL)),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dp(2 * d)),
+        ) {
+            Box(Modifier.weight(1f, fill = false)) { FitText(g, if (mon.isEgg) tr("EGG") else mon.shownName, SlotText, SlotTextShadow, 1f) }
+            if (!mon.isEgg) when (mon.genderSymbol) {
+                GENDER_SYMBOL_MALE -> GbaText("♂", MaleBlue, Color.Transparent, small)
+                GENDER_SYMBOL_FEMALE -> GbaText("♀", FemaleRed, Color.Transparent, small)
+            }
+        }
+        // The level (or the status) and BEST / OUT under it.
+        Row(
+            Modifier.align(Alignment.BottomStart).padding(start = dp(textL), bottom = dp(4 * d)),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dp(3 * d)),
+        ) {
+            if (!mon.isEgg) {
+                val status = if (mon.hp == 0) "FNT" else mon.status
+                if (status.isNotEmpty()) StatusBadge(status) else GbaText(tr("Lv.{0}", mon.level), SlotText, SlotTextShadow, small, bold = true)
+            }
+            tag?.let { (t, c) -> Gen5Tag(t, c, g5Metrics(g, 0.6f), d, padY = 0f) }
+        }
+        if (!mon.isEgg) {
+            // "HP" on the strip, left of the bar.
+            Box(Modifier.offset { IntOffset((barL - 11 * d).roundToInt(), (stripTop - d).roundToInt()) }) {
+                GbaText(tr("HP"), HpLabel, HpLabelShadow, g5Metrics(g, 0.6f), bold = true)
+            }
+            // The HP numbers under the bar, right-aligned with it.
+            Box(Modifier.align(Alignment.BottomEnd).padding(end = dp(edgePx + 6 * d), bottom = dp(4 * d))) {
+                GbaText("${mon.hp}/${mon.maxHp}", SlotText, SlotTextShadow, small, bold = true)
+            }
+        }
+    }
+}
+
+/** The lists' way back: a plate in the round plates' rim, the game's blue U-turn and CANCEL in its blues. */
+@Composable
+internal fun Gen5ListCancel(enabled: Boolean, u: Dp, h: Dp, edge: Dp, onClick: () -> Unit) {
+    val d = hudD(u)
+    Gen5HudButton(
+        Modifier.fillMaxWidth().height(h), d, enabled, pressesGame = false, onClick = onClick,
+        draw = { pressed -> drawHudPlate(d, RimBands, dim = false, lit = pressed) },
+    ) {
+        Row(
+            Modifier.fillMaxSize().padding(start = u * 8, end = u * 4 + edge),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(u * 4, Alignment.CenterHorizontally),
+        ) {
+            val size = with(LocalDensity.current) { (d * 14).toDp() }
+            PixelArt(UTurn, mapOf('B' to UTurnBlue, 'L' to UTurnLight, 'D' to UTurnDeep, 'K' to UTurnOutline), Modifier.size(size))
+            Gen5Label(tr("CANCEL"), Gen5Word.CANCEL.top, Gen5Word.CANCEL.bottom, LabelOutline, d.roundToInt(), shrink = true)
+        }
+    }
+}

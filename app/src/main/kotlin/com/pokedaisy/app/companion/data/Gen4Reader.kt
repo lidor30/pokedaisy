@@ -33,9 +33,13 @@ data class Gen4Config(
     val pokedexOff: Int? = null,
     /** Its National Dex byte (Pokedex.nationalDexObtained) and the game's dex tables. */
     val nationalDexOff: Int = 0,
+    /** The game has the National Dex from the start whatever that byte says (Heartfelt Gold's check returns 1). */
+    val nationalDexAlways: Boolean = false,
     /** Bytes in each of its flag arrays (caught, seen, the genders'): a bit per species, 0x40 for 493 (Origin HeartGold's
      * 0xC8, for 1600). */
     val dexFlagBytes: Int = 0x40,
+    /** Where its seen bits start in the Pokédex (Heartfelt Gold's moved to +0x400); null = right after the caught bits. */
+    val dexSeenOff: Int? = null,
     val pokedexTables: PokedexTables? = null,
     /** Each map header's place name (its map label) - the English one: [placeName] reads the cart's own. */
     val mapPlaces: Map<Int, String>,
@@ -84,7 +88,7 @@ private const val GEN4_FLAG_BYTES = 2912 / 8
 
 /** The save's event flags and vars, as the GUIDE reads them ([Gen4Config.varsFlagsOff]), with the hour as
  * [GEN4_VAR_HOUR]; null without them. */
-fun readGen4Progress(r: MemoryReader, cfg: Gen4Config, body: Long, hour: Int = java.time.LocalTime.now().hour): SaveProgress? {
+fun readGen4Progress(r: MemoryReader, cfg: Gen4Config, body: Long, hour: Int = localNow().hour): SaveProgress? {
     if (cfg.varsFlagsOff < 0) return null
     val vars = r.readCoreMemory(body + cfg.varsFlagsOff, cfg.numVars * 2)
     val flags = r.readCoreMemory(body + cfg.varsFlagsOff + cfg.numVars * 2, GEN4_FLAG_BYTES)
@@ -412,6 +416,32 @@ val GEN4_ORIGIN_HEARTGOLD = gen4HeartGoldFamily(saveDataPtr = 0x021D11B4, fieldS
     formSpecies = { species, form -> OriginHeartGold.data?.formSpecies(species, form) ?: species },
 )
 
+/**
+ * Heartfelt Gold ([HeartfeltGold]): the US HeartGold's RAM and save, hg-engine's bag grown (Items 245, Key Items 92, Balls
+ * 26: include/bag.h's ITEM_POCKET_EXPANSION), so every section after it moved 0x1F0 - its SaveData's own table
+ * (arrayHeaders at +0x2F014, read live): the flags (VarsFlags) 0xFD4, the Location 0x1424, the Pokédex 0x14A8, the roamers
+ * 0x721C (REPEL's steps +0x65), the Pokégear 0xC458. Its Pokédex grew to 0x704 bytes: retail's caught bits (+0x04) and
+ * National Dex byte (+0x337, which the game no longer reads: its National Dex is always on) where they were, the seen bits at +0x400, each a bit per species id (its ARM9's Pokédex
+ * functions, edited in place: 0x02029FF8's caught check reads both); its DEX is the National Dex's 1025 from its cart
+ * ([POKEDEX_HEARTFELT]). Species to 1534 (personal records; its forms are ids of their own past the National Dex). No GUIDE.
+ */
+val GEN4_HEARTFELT_GOLD = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PTR).copy(
+    pocketSizes = intArrayOf(245, 92, 101, 12, 40, 64, 26, 30),
+    locationOff = 0x1424,
+    repelStepsOff = 0x721C + 0x65,
+    pokedexOff = 0x14A8,
+    nationalDexOff = 0x337,
+    // Pokedex_GetNatDexFlag (0x0202A55C) is `movs r0, #1` here: the dex opens on NATIONAL from the start.
+    nationalDexAlways = true,
+    dexFlagBytes = 0xC0,
+    dexSeenOff = 0x400,
+    pokedexTables = POKEDEX_HEARTFELT,
+    flagsOff = 0xFD4 + 0x170 * 2,
+    varsFlagsOff = 0xFD4,
+    pokegearWordOff = 0xC458 + 4,
+    maxSpecies = HeartfeltGold.LAST_SPECIES,
+)
+
 /** German SoulSilver rev 0 shares HeartGold's globals and save layout (IPGD, SHA-1 576cdb7e…). */
 val GEN4_SOULSILVER_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138, battleTemplate = 0x020FA438)
 
@@ -439,6 +469,7 @@ fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = wh
     }
     GameKind.HEARTGOLD -> when {
         originHeartGold -> GEN4_ORIGIN_HEARTGOLD
+        heartfeltGold -> GEN4_HEARTFELT_GOLD
         code == "IPKD" -> GEN4_HEARTGOLD_DE
         code == "IPKF" -> GEN4_HEARTGOLD_FR
         else -> DsPorts.byCode(code)?.let(DsPorts::gen4Config) ?: GEN4_HEARTGOLD_US
@@ -860,13 +891,16 @@ val GEN4_REPEL_KINDS = listOf(79 to 100, 76 to 200, 77 to 250)
  * the field counts the steps down and says when it wore off by itself. Only with the field free ([fieldFree]) and no
  * Repel still working. Emu thread, between frames.
  */
-fun useGen4Repel(cfg: Gen4Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean): ItemUseOutcome {
+fun useGen4Repel(cfg: Gen4Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean, topUp: Boolean = false): ItemUseOutcome {
     if (!fieldFree) return ItemUseOutcome(ItemUseResult.NOT_NOW)
     val repelStepsOff = cfg.repelStepsOff ?: return ItemUseOutcome(ItemUseResult.FAILED)
     val ptr = u32(calls.read(cfg.saveDataPtr, 4), 0)
     if (ptr !in MAIN_RAM until MAIN_RAM_END - 0x20000) return ItemUseOutcome(ItemUseResult.FAILED)
     val body = ptr + cfg.bodyOff
-    if (u8(calls.read(body + repelStepsOff, 1), 0) > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
+    // AUTO REFILL (topUp): added to the 1..REFILL_AT steps left, the byte capped at 255; otherwise only with none left.
+    val stepsLeft = u8(calls.read(body + repelStepsOff, 1), 0)
+    if (topUp && stepsLeft !in 1..RepelRefill.REFILL_AT) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    if (!topUp && stepsLeft > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
     val pocket = body + cfg.bagOff   // ITEMS is the bag's first pocket
     val size = cfg.pocketSizes[0]
     val raw = calls.read(pocket, size * 4)
@@ -879,11 +913,11 @@ fun useGen4Repel(cfg: Gen4Config, calls: GameCalls, itemId: Int, steps: Int, fie
         out[slot * 4 + 3] = (left shr 8).toByte()
     } else {
         // The empty slot to the end, the others moved up in order.
-        System.arraycopy(raw, (slot + 1) * 4, out, slot * 4, (size - slot - 1) * 4)
+        raw.copyInto(out, slot * 4, (slot + 1) * 4, size * 4)
         for (i in (size - 1) * 4 until size * 4) out[i] = 0
     }
     if (!calls.write(pocket, out)) return ItemUseOutcome(ItemUseResult.FAILED)
-    if (!calls.write(body + repelStepsOff, byteArrayOf(steps.toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
+    if (!calls.write(body + repelStepsOff, byteArrayOf((if (topUp) minOf(255, stepsLeft + steps) else steps).toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
     return ItemUseOutcome(ItemUseResult.USED, steps = steps)
 }
 

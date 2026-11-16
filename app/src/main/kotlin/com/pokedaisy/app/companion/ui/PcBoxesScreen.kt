@@ -40,90 +40,164 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.pokedaisy.app.companion.data.Gen3Text
 import com.pokedaisy.app.companion.data.natureName
-import com.pokedaisy.app.companion.data.save.BagPocket
+import com.pokedaisy.app.companion.data.save.PocketKind
+import com.pokedaisy.app.companion.data.save.TrainerBagEditor
 import com.pokedaisy.app.companion.data.save.BoxSlot
-import com.pokedaisy.app.companion.data.save.Gen3Legal
-import com.pokedaisy.app.companion.data.save.MonRef
 import com.pokedaisy.app.companion.data.save.Gen3BoxMon
+import com.pokedaisy.app.companion.data.save.Gen3Event
+import com.pokedaisy.app.companion.data.save.Gen3Gender
+import com.pokedaisy.app.companion.data.save.Gen3Legal
 import com.pokedaisy.app.companion.data.save.Gen3SaveData
 import com.pokedaisy.app.companion.data.save.Gen3SaveEditor
+import com.pokedaisy.app.companion.data.save.Gen3Species
+import com.pokedaisy.app.companion.data.save.MonRef
+import com.pokedaisy.app.companion.data.save.Gen3GameData
+import com.pokedaisy.app.companion.data.save.MonSave
+import com.pokedaisy.app.companion.data.save.MonSaveEditor
+import com.pokedaisy.app.companion.data.save.SaveGameData
+import com.pokedaisy.app.companion.data.save.SaveMon
 import com.pokedaisy.app.companion.data.save.SPECIES_EGG
+import com.pokedaisy.app.companion.data.save.SaveEditRefused
 import com.pokedaisy.app.companion.data.speciesNames
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 
 /**
- * PC BOXES (the library's game menu, top screen): a save's party and its 14 PC boxes, read from
- * the save file while the game is closed. A box Pokémon can be moved to any other slot (swapping
- * with what's there); a Pokémon's held item and moves, the money, coins and the bag can be changed
- * to what the game allows ([com.pokedaisy.app.companion.data.save.Gen3Legal]). SAVE writes it the
- * way the game saves ([Gen3SaveEditor.build]) through the activity's [onSave]. The party is shown,
- * not moved: party records carry stats the PC's don't.
+ * The SAVE EDITOR (a game's library menu, or TOOLS): a save file read while the game is closed, in three pages -
+ * POKéMON (the party and the 14 PC boxes: move any Pokémon between them, sort / rename / search the boxes, release, and
+ * a Pokémon's own page: [MonPage]), BAG and TRAINER (money, coins, the Pokédex and the event tickets). Every value
+ * offered is one the game itself could hold ([com.pokedaisy.app.companion.data.save.Gen3Legal], [Gen3SaveEditor]); an
+ * edit the game wouldn't make shows its reason as [PcBoxesState.notice]. SAVE writes it the way the game saves
+ * ([Gen3SaveEditor.build]) through the activity's [onSave].
  */
-class PcBoxesState(editor: Gen3SaveEditor) {
+class PcBoxesState(editor: MonSaveEditor) {
     var editor = editor
         private set
+    /** The Gen 3 editor behind it (coins and the event tickets are Gen 3's), or null for a DS save. */
+    val gen3: Gen3SaveEditor? get() = editor as? Gen3SaveEditor
+    /** BAG and TRAINER's side of the editor, read again on every edit. */
+    val bag: TrainerBagEditor get() { revision; return editor as TrainerBagEditor }
     /** Bumped on every edit: [data] is re-read from the editor's blocks. */
     var revision by mutableIntStateOf(0)
         private set
-    var box by mutableIntStateOf(editor.data.currentBox.coerceIn(0, Gen3SaveData.BOXES - 1))
+    var box by mutableIntStateOf(editor.data.currentBox.coerceIn(0, editor.data.boxCount - 1))
     var selected by mutableStateOf<MonRef?>(null)
-    /** MOVE was pressed on this box slot: the next slot tapped is where it goes. */
-    var moving by mutableStateOf<BoxSlot?>(null)
+    /** MOVE was pressed on this Pokémon: the next slot tapped (a box slot, or a party slot) is where it goes. */
+    var moving by mutableStateOf<MonRef?>(null)
+    /** The Pokémon whose page is open. */
+    var detail by mutableStateOf<MonRef?>(null)
+    var detailTab by mutableStateOf(DetailTab.INFO)
+    /** Why the last edit didn't happen (the game's rule), or what it did; cleared by the next tap. */
+    var notice by mutableStateOf<String?>(null)
     var confirmSave by mutableStateOf(false)
     var confirmDiscard by mutableStateOf(false)
-    var page by mutableStateOf(Page.BOXES)
+    var page by mutableStateOf(Page.POKEMON)
     /** The BAG page's open pocket. */
-    var pocket by mutableStateOf(BagPocket.ITEMS)
-    /** A pick-list or amount over the page, if one is open. */
+    var pocket by mutableStateOf(PocketKind.ITEMS)
+    /** A pick-list, amount, name or confirm over the page, if one is open. */
     var editing by mutableStateOf<Editing?>(null)
 
-    enum class Page { BOXES, BAG }
+    enum class Page { POKEMON, BAG, TRAINER }
+    enum class DetailTab { INFO, STATS, MOVES }
 
     sealed class Editing {
         object Money : Editing()
         object Coins : Editing()
         /** A stack's amount (stack [index] of [pocket]). */
-        data class Stack(val pocket: BagPocket, val index: Int) : Editing()
+        data class Stack(val pocket: PocketKind, val index: Int) : Editing()
         /** ADD ITEM's pick-list, then the amount of the [item] picked. */
-        data class AddItem(val pocket: BagPocket) : Editing()
-        data class NewStack(val pocket: BagPocket, val item: Int) : Editing()
+        data class AddItem(val pocket: PocketKind) : Editing()
+        data class NewStack(val pocket: PocketKind, val item: Int) : Editing()
         data class HeldItem(val at: MonRef) : Editing()
         /** Move [slot] (0-3; one past the last move = a new one) of the Pokémon at [at]. */
         data class Move(val at: MonRef, val slot: Int) : Editing()
+        data class Nature(val at: MonRef) : Editing()
+        data class Ability(val at: MonRef) : Editing()
+        data class Level(val at: MonRef) : Editing()
+        data class Friendship(val at: MonRef) : Editing()
+        data class Nickname(val at: MonRef) : Editing()
+        /** IV ([ev] false) or EV of stat [stat] (0-5, the game's order). */
+        data class Stat(val at: MonRef, val stat: Int, val ev: Boolean) : Editing()
+        data class Release(val at: BoxSlot) : Editing()
+        data class RenameBox(val box: Int) : Editing()
+        data class SortBox(val box: Int) : Editing()
+        object Search : Editing()
+        data class Dex(val kind: DexAction) : Editing()
+        data class Event(val event: Gen3Event) : Editing()
     }
 
-    /** Runs an edit on the save; one the editor refuses (never offered by the screens) changes nothing. Closes [editing]. */
-    fun edit(change: Gen3SaveEditor.() -> Unit) {
-        if (runCatching { editor.change() }.isSuccess) revision++
+    enum class DexAction { REGISTER_OWNED, ALL_SEEN, ALL_CAUGHT }
+
+    /** The TRAINER page's MISSING list, while it's open. */
+    var missing by mutableStateOf<MissingView?>(null)
+    var missingFilter by mutableStateOf(MissingFilter.ALL)
+
+    /**
+     * Runs an edit on the save. One the game wouldn't make changes nothing and says why in [notice] (a check the screens
+     * already make silently never gets there). Closes [editing].
+     */
+    fun edit(done: String? = null, change: MonSaveEditor.() -> Unit) {
+        notice = try {
+            editor.change()
+            revision++
+            done
+        } catch (e: SaveEditRefused) {
+            e.message
+        } catch (e: IllegalArgumentException) {
+            null
+        }
         editing = null
     }
 
-    val data: Gen3SaveData get() { revision; return editor.data }
+    val data: MonSave get() { revision; return editor.data }
+    /** The Gen 3 save (BAG, TRAINER). */
+    val data3: Gen3SaveData get() { revision; return gen3!!.data }
+
+    /** [edit] on the Gen 3 editor (BAG, TRAINER). */
+    fun edit3(done: String? = null, change: Gen3SaveEditor.() -> Unit) = edit(done) { (this as Gen3SaveEditor).change() }
     val changed: Boolean get() { revision; return editor.changed }
 
-    fun tap(at: BoxSlot) {
+    /** A tap on a slot: the end of a MOVE, or the Pokémon there selected (a party slot past the last is empty). */
+    fun tap(at: MonRef) {
+        notice = null
         val from = moving
         if (from != null) {
-            val target = data.mon(at)
-            if (at != from && !(target.isBadEgg && !target.isEmpty)) {
-                editor.move(from, at)
-                revision++
-            }
             moving = null
-            selected = MonRef.Pc(at)
+            if (at == from) return
+            val before = revision
+            edit { move(from, at) }
+            if (revision != before) {
+                // Where it went: a deposit closes the party up, a withdraw lands at its end.
+                selected = when {
+                    at is MonRef.Party -> MonRef.Party(at.index.coerceAtMost(data.partyCount - 1))
+                    else -> at
+                }
+            }
             return
         }
-        selected = if (data.mon(at).isEmpty) null else MonRef.Pc(at)
+        selected = if (editor.monAt(at) == null) null else at
     }
 
     /** Back to the save as read: a fresh editor over the same file. */
     fun undoAll() {
-        editor = Gen3SaveEditor(editor.file)
+        editor = editor.fresh()
         moving = null
         editing = null
+        detail = null
+        notice = null
         revision++
     }
+}
+
+/**
+ * The SAVE EDITOR's and TRADE SAVES' text size: the main text a font pixel smaller than the library's on any window
+ * ([LocalTextStep] -1), so more of a save fits on screen. Wrap the screens (and the [GbaTextMetrics] passed in) in it.
+ */
+@Composable
+fun SaveEditorText(content: @Composable () -> Unit) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalTextStep provides -1, content = content)
 }
 
 @Composable
@@ -139,61 +213,90 @@ fun PcBoxesScreen(
     icons: MonIconLoader? = null,
     /** TRADE: pick another game's save to trade with (only while nothing here is unsaved). */
     onTrade: (() -> Unit)? = null,
+    /** TRAINER's MISSING: read the other saves for what this Pokédex lacks ([PcBoxesState.missing]). */
+    onMissing: (() -> Unit)? = null,
+    /** A MISSING row tapped: open the trade or Pal Park that brings that Pokémon. */
+    onGet: ((com.pokedaisy.app.companion.data.save.MissingDex.Owned) -> Unit)? = null,
 ) {
     val small = rememberGbaTextMetrics(textScale = 1f)
     // The box's cards: a step denser, so ten-letter names fit six across.
     val cell = rememberGbaTextMetrics(textScale = 0.8f)
     val data = state.data
-    val leave = { if (state.moving != null) state.moving = null else if (state.changed) state.confirmDiscard = true else onBack() }
+    val leave = {
+        when {
+            state.missing != null -> state.missing = null
+            state.detail != null -> state.detail = null
+            state.moving != null -> state.moving = null
+            state.changed -> state.confirmDiscard = true
+            else -> onBack()
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         AppBackdrop()
-        Column(Modifier.fillMaxSize().padding(16.dp)) {
+        // A Pokémon's page takes the screen; the boxes come back as they were.
+        state.detail?.let { at -> MonPage(state, at, m, small, icons, onClose = { state.detail = null }) }
+        state.missing?.let { v -> if (state.detail == null) MissingPage(state, v, m, small, onGet = { onGet?.invoke(it) }, onClose = { state.missing = null }) }
+        if (state.detail == null && state.missing == null) Column(Modifier.fillMaxSize().padding(16.dp)) {
             OptionTitleWindow(tk("SAVE EDITOR"), m, trailing = gameName, onBack = leave)
             Spacer(Modifier.height(m.u * 4))
-            Row(horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
-                for (p in PcBoxesState.Page.entries) {
+            Row(horizontalArrangement = Arrangement.spacedBy(m.u * 4), verticalAlignment = Alignment.CenterVertically) {
+                // A DS save has its POKéMON page only (its bag and trainer come later).
+                for (p in PcBoxesState.Page.entries.filter { state.editor is TrainerBagEditor || it == PcBoxesState.Page.POKEMON }) {
                     OptionButton(
-                        if (p == PcBoxesState.Page.BOXES) tk("BOXES") else tk("BAG"), m,
-                        onClick = { state.page = p; state.moving = null }, emphasis = state.page == p,
+                        when (p) {
+                            PcBoxesState.Page.POKEMON -> tk("POKéMON")
+                            PcBoxesState.Page.BAG -> tk("BAG")
+                            PcBoxesState.Page.TRAINER -> tk("TRAINER")
+                        },
+                        m, onClick = { state.page = p; state.moving = null; state.notice = null }, emphasis = state.page == p,
+                        // The D-pad's first press lands here when no slot is selected.
+                        modifier = Modifier.focusStart(state.page == p),
                     )
                 }
+                Spacer(Modifier.weight(1f))
+                // Whose save it is, always in sight.
+                BackdropText("${data.trainerName} · ${tr("ID No.")} ${id5(data.trainerId)}", small)
             }
             Spacer(Modifier.height(m.u * 4))
-            if (state.page == PcBoxesState.Page.BAG) BagPage(state, data, m, Modifier.weight(1f).fillMaxWidth())
-            else BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                val wide = maxWidth > maxHeight * 1.1f
-                if (wide) {
-                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
-                        Column(Modifier.weight(0.32f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(m.u * 4)) {
-                            PartyList(state, data, cell, Modifier.fillMaxWidth())
-                            DetailWindow(state, data, small, Modifier.weight(1f).fillMaxWidth())
+            val content = Modifier.weight(1f).fillMaxWidth()
+            when (state.page) {
+                PcBoxesState.Page.BAG -> BagPage(state, state.bag, m, content)
+                PcBoxesState.Page.TRAINER -> TrainerPage(state, state.bag, m, small, content, onMissing)
+                PcBoxesState.Page.POKEMON -> BoxWithConstraints(content) {
+                    val wide = maxWidth > maxHeight * 1.1f
+                    if (wide) {
+                        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
+                            Column(Modifier.weight(0.34f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(m.u * 4)) {
+                                PartyWindow(state, data, cell, icons, Modifier.fillMaxWidth(), columns = 2)
+                                PreviewCard(state, data, small, icons, Modifier.weight(1f).fillMaxWidth())
+                            }
+                            BoxWindow(state, data, m, cell, icons, Modifier.weight(0.66f).fillMaxHeight())
                         }
-                        BoxWindow(state, data, m, cell, icons, Modifier.weight(0.68f).fillMaxHeight())
-                    }
-                } else {
-                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(m.u * 4)) {
-                        BoxWindow(state, data, m, cell, icons, Modifier.fillMaxWidth().weight(0.55f))
-                        PartyWindow(state, data, small, icons, Modifier.fillMaxWidth())
-                        DetailWindow(state, data, small, Modifier.weight(0.45f).fillMaxWidth())
+                    } else {
+                        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(m.u * 4)) {
+                            BoxWindow(state, data, m, cell, icons, Modifier.fillMaxWidth().weight(0.55f))
+                            PartyWindow(state, data, cell, icons, Modifier.fillMaxWidth(), columns = 3)
+                            PreviewCard(state, data, small, icons, Modifier.weight(0.45f).fillMaxWidth())
+                        }
                     }
                 }
             }
             Spacer(Modifier.height(m.u * 4))
             Row(horizontalArrangement = Arrangement.spacedBy(m.u * 4), verticalAlignment = Alignment.CenterVertically) {
-                // The trainer the save belongs to, unless there's something to say.
-                val boxes = state.page == PcBoxesState.Page.BOXES
                 val hint = when {
-                    state.moving != null -> tr("Tap where it goes - any box")
+                    state.notice != null -> state.notice!!
+                    state.moving != null -> tr("Tap where it goes: a box slot or a party slot")
                     state.changed -> tr("Not saved yet")
-                    boxes && state.selected?.let { data.mon(it)?.first?.let(::editableMon) } == true -> tr("Tap its item or a move to change it")
-                    else -> "${data.trainerName} · ${tr("ID No.")} ${id5(data.trainerId)} · ¥${data.money} · ${data.playTime}"
+                    state.page == PcBoxesState.Page.POKEMON && state.selected == null -> tr("Tap a Pokémon to see it, change it or move it")
+                    else -> ""
                 }
-                BackdropText(hint, small, Modifier.weight(1f))
-                val pick = (state.selected as? MonRef.Pc)?.at?.takeIf { boxes && data.mon(it).let { mon -> !mon.isEmpty && !mon.isBadEgg } }
+                GbaText(
+                    hint, if (state.notice != null) OptionColors.value else OptionColors.onBackdrop,
+                    if (state.notice != null) OptionColors.valueShadow else OptionColors.onBackdropShadow, small, Modifier.weight(1f), maxLines = 2,
+                )
                 if (state.moving != null) {
                     OptionButton(tk("CANCEL"), m, onClick = { state.moving = null })
                 } else {
-                    if (pick != null) OptionButton(tk("MOVE"), m, onClick = { state.moving = pick }, emphasis = true, enabled = !saving)
                     if (onTrade != null && !state.changed) OptionButton(tk("TRADE"), m, onClick = onTrade, enabled = !saving)
                     OptionButton(tk("UNDO ALL"), m, onClick = { state.undoAll() }, enabled = state.changed && !saving)
                     OptionButton(tk("SAVE"), m, onClick = { state.confirmSave = true }, emphasis = true, enabled = state.changed && !saving)
@@ -225,50 +328,44 @@ fun PcBoxesScreen(
     }
 }
 
-/** The party as two columns of three rows (wide screens): name and level, the selected one the white cursor row. */
+/** The party: six slots ([columns] across), the selected one framed; while a MOVE waits, the empty ones take it too. */
 @Composable
-private fun PartyList(state: PcBoxesState, data: Gen3SaveData, m: GbaTextMetrics, modifier: Modifier) {
-    val party = data.party
-    OptionListWindow(m, modifier) {
-        Column {
-            GbaText(tr("PARTY"), OptionColors.groupTitleText, OptionColors.groupTitleShadow, m, Modifier.padding(horizontal = m.u * 4))
-            for (row in 0 until 3) Row {
-                for (col in 0 until 2) {
-                    val i = row * 2 + col
-                    val p = party.getOrNull(i)
-                    val selected = state.selected == MonRef.Party(i)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f).height(m.lineHeight * 1.2f)
-                            .background(if (selected) OptionColors.rowSelected else androidx.compose.ui.graphics.Color.Transparent)
-                            .soundClickable { if (p != null && state.moving == null) state.selected = MonRef.Party(i) }
-                            .padding(horizontal = m.u * 4),
-                    ) {
-                        if (p != null) {
-                            GbaText(monLabel(p.mon), OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f))
-                            if (!p.mon.isEgg && !p.mon.isBadEgg) GbaText("Lv${p.level}", OptionColors.value, OptionColors.valueShadow, m)
-                        }
-                    }
-                }
-            }
-        }
-    }
+private fun PartyWindow(
+    state: PcBoxesState, data: MonSave, m: GbaTextMetrics, icons: MonIconLoader?, modifier: Modifier, columns: Int,
+) {
+    PartyStrip(
+        data, m, icons, modifier, columns = columns,
+        selected = { state.selected == it || state.moving == it },
+        target = { state.moving != null && state.moving != it },
+        onTap = { state.tap(it) },
+    )
 }
 
+/**
+ * A save's party as slots under a PARTY title: [columns] across (2 = three rows, 3 = two, 6 = one), the Pokémon's
+ * levels from the party records. Shared by the editor and TRADE. An empty slot is [MonRef.Party] past the last one.
+ */
 @Composable
-private fun PartyWindow(state: PcBoxesState, data: Gen3SaveData, m: GbaTextMetrics, icons: MonIconLoader?, modifier: Modifier) {
+internal fun PartyStrip(
+    data: MonSave, m: GbaTextMetrics, icons: MonIconLoader?, modifier: Modifier, columns: Int, title: String? = tr("PARTY"),
+    selected: (MonRef) -> Boolean, target: (MonRef) -> Boolean, onTap: (MonRef) -> Unit,
+) {
+    val party = data.partyMons
     OptionListWindow(m, modifier) {
-        Column {
-            GbaText(tr("PARTY"), OptionColors.groupTitleText, OptionColors.groupTitleShadow, m, Modifier.padding(horizontal = m.u * 4))
-            val party = data.party
-            for (row in 0 until 2) Row {
-                for (col in 0 until 3) {
-                    val i = row * 3 + col
+        Column(Modifier.fillMaxWidth()) {
+            title?.let { GbaText(it, OptionColors.groupTitleText, OptionColors.groupTitleShadow, m, Modifier.padding(horizontal = m.u * 4)) }
+            val rows = (Gen3SaveData.PARTY_SIZE + columns - 1) / columns
+            for (row in 0 until rows) Row(Modifier.fillMaxWidth().height(if (icons != null) m.lineHeight * 2.6f else m.lineHeight * 2 + m.u * 6)) {
+                for (col in 0 until columns) {
+                    val i = row * columns + col
                     val p = party.getOrNull(i)
+                    // An empty slot stands for the end of the party.
+                    val ref = MonRef.Party(if (p == null) party.size else i)
                     MonCell(
-                        p?.mon, p?.level, m, Modifier.weight(1f), icons,
-                        selected = state.selected == MonRef.Party(i),
-                        onClick = { if (p != null && state.moving == null) state.selected = MonRef.Party(i) },
+                        p?.mon, p?.level, m, Modifier.weight(1f).fillMaxHeight(), icons,
+                        selected = if (p == null) i == party.size && selected(ref) else selected(ref),
+                        target = if (p == null) i == party.size && target(ref) else target(ref),
+                        onClick = { onTap(ref) },
                     )
                 }
             }
@@ -277,13 +374,111 @@ private fun PartyWindow(state: PcBoxesState, data: Gen3SaveData, m: GbaTextMetri
 }
 
 @Composable
-private fun BoxWindow(state: PcBoxesState, data: Gen3SaveData, m: GbaTextMetrics, cell: GbaTextMetrics, icons: MonIconLoader?, modifier: Modifier) {
+private fun BoxWindow(state: PcBoxesState, data: MonSave, m: GbaTextMetrics, cell: GbaTextMetrics, icons: MonIconLoader?, modifier: Modifier) {
     BoxGrid(
-        data, state.box, { state.box = it }, m, cell, icons, modifier,
-        selected = { state.selected == MonRef.Pc(it) || state.moving == it },
-        target = { state.moving != null && state.moving != it },
-        onTap = { state.tap(it) },
+        data, state.box, { state.box = it; state.notice = null }, m, cell, icons, modifier,
+        selected = { state.selected == MonRef.Pc(it) || state.moving == MonRef.Pc(it) },
+        target = { state.moving != null && state.moving != MonRef.Pc(it) },
+        onTap = { state.tap(MonRef.Pc(it)) },
+        tools = {
+            val t = rememberGbaTextMetrics(textScale = 1f)
+            OptionButton(null, t, onClick = { state.editing = PcBoxesState.Editing.Search }, pixelIcon = PixelIcons.search,
+                sidePadding = 4, modifier = Modifier.semantics { contentDescription = tr("Search the boxes") })
+            OptionButton(tk("SORT"), t, onClick = { state.editing = PcBoxesState.Editing.SortBox(state.box) }, sidePadding = 4)
+            if (state.editor.canWriteNames) {
+                OptionButton(tk("RENAME"), t, onClick = { state.editing = PcBoxesState.Editing.RenameBox(state.box) }, sidePadding = 4)
+            }
+        },
     )
+}
+
+/**
+ * The selected Pokémon at a glance - its icon, name, gender and shiny star, level, nature, ability and item - with what
+ * can be done with it: SEE / CHANGE (its page), MOVE and, for a box Pokémon, RELEASE.
+ */
+@Composable
+private fun PreviewCard(state: PcBoxesState, data: MonSave, m: GbaTextMetrics, icons: MonIconLoader?, modifier: Modifier) {
+    val sel = state.selected
+    val found = sel?.let { data.mon(it) }
+    OptionListWindow(m, modifier) {
+        if (sel == null || found == null) {
+            GbaText(
+                tr("Pick a Pokémon from your party or a box."), OptionColors.muted, OptionColors.mutedShadow, m,
+                maxLines = Int.MAX_VALUE, modifier = Modifier.padding(m.u * 4),
+            )
+            return@OptionListWindow
+        }
+        val (mon, level) = found
+        Column(Modifier.fillMaxSize().padding(horizontal = m.u * 4, vertical = m.u * 2)) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                MonHeader(mon, level, m, icons, Modifier.fillMaxWidth())
+                if (!mon.isEgg && !mon.isBadEgg) {
+                    val f = rememberGbaTextMetrics(textScale = 0.8f)
+                    Spacer(Modifier.height(m.u * 2))
+                    InfoPair(tk("NATURE"), caps(natureName(mon.nature)), f)
+                    InfoPair(tk("ABILITY"), mon.game.abilityName(mon.ability), f)
+                    InfoPair(tk("ITEM"), if (mon.heldItem == 0) tk("NONE") else itemLabel(mon.game, mon.heldItem), f)
+                }
+            }
+            Spacer(Modifier.height(m.u * 2))
+            Row(horizontalArrangement = Arrangement.spacedBy(m.u * 3)) {
+                val movable = !mon.isBadEgg
+                OptionButton(
+                    if (editableMon(mon)) tk("CHANGE") else tk("SEE"), m, onClick = { state.detail = sel; state.detailTab = PcBoxesState.DetailTab.INFO },
+                    emphasis = true, enabled = !mon.isBadEgg, modifier = Modifier.weight(1f), sidePadding = 2,
+                )
+                OptionButton(tk("MOVE"), m, onClick = { state.moving = sel; state.notice = null }, enabled = movable, modifier = Modifier.weight(1f), sidePadding = 2)
+                if (sel is MonRef.Pc) {
+                    OptionButton(tk("RELEASE"), m, onClick = { state.editing = PcBoxesState.Editing.Release(sel.at) },
+                        enabled = !mon.isEgg && !mon.isBadEgg, modifier = Modifier.weight(1f), sidePadding = 2)
+                }
+            }
+        }
+    }
+}
+
+/** A Pokémon's icon (when the ROM gave icons) beside its name with gender and shiny marks, and "Lv52 · CHARIZARD" under it. */
+@Composable
+internal fun MonHeader(mon: SaveMon, level: Int, m: GbaTextMetrics, icons: MonIconLoader?, modifier: Modifier, iconLines: Float = 2.4f) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        if (icons != null && !mon.isBadEgg) {
+            BoxMonIcon(icons, mon, m.lineHeight * iconLines)
+            Spacer(Modifier.width(m.u * 3))
+        }
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GbaText(monLabel(mon), OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f, fill = false))
+                if (!mon.isEgg && !mon.isBadEgg) GenderAndShiny(mon, m)
+            }
+            if (!mon.isEgg && !mon.isBadEgg) {
+                GbaText("Lv$level · ${speciesLabel(mon.species, mon.game)}", OptionColors.value, OptionColors.valueShadow, m)
+            }
+        }
+    }
+}
+
+/** ♂ / ♀ (none for a genderless species) and a gold star for a shiny one. */
+@Composable
+internal fun GenderAndShiny(mon: SaveMon, m: GbaTextMetrics) {
+    val icon = m.lineHeight * 0.8f
+    when (mon.gender) {
+        Gen3Gender.MALE -> { Spacer(Modifier.width(m.u * 2)); PixelIcon(PixelIcons.male, GENDER_BLUE, Modifier.size(icon)) }
+        Gen3Gender.FEMALE -> { Spacer(Modifier.width(m.u * 2)); PixelIcon(PixelIcons.female, GENDER_RED, Modifier.size(icon)) }
+        Gen3Gender.GENDERLESS -> {}
+    }
+    if (mon.isShiny) { Spacer(Modifier.width(m.u * 2)); PixelIcon(PixelIcons.sparkle, OptionColors.favorite, Modifier.size(icon)) }
+}
+
+private val GENDER_BLUE = androidx.compose.ui.graphics.Color(0xFF3060D8)
+private val GENDER_RED = androidx.compose.ui.graphics.Color(0xFFD83838)
+
+/** A grey label over a value, one line each half: the preview card's facts. */
+@Composable
+private fun InfoPair(label: String, value: String, m: GbaTextMetrics) {
+    Row(Modifier.fillMaxWidth().padding(vertical = m.u * 0.5f), verticalAlignment = Alignment.CenterVertically) {
+        GbaText(label, OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(0.42f))
+        GbaText(value, OptionColors.value, OptionColors.valueShadow, m, Modifier.weight(0.58f))
+    }
 }
 
 /** Party icons, decoded on demand (blocking: called off the UI thread) and cached by whoever loads them. */
@@ -297,22 +492,26 @@ fun interface MonIconLoader {
  */
 @Composable
 internal fun BoxGrid(
-    data: Gen3SaveData, box: Int, onBox: (Int) -> Unit, m: GbaTextMetrics, cell: GbaTextMetrics, icons: MonIconLoader?,
+    data: MonSave, box: Int, onBox: (Int) -> Unit, m: GbaTextMetrics, cell: GbaTextMetrics, icons: MonIconLoader?,
     modifier: Modifier, title: String? = null,
     selected: (BoxSlot) -> Boolean, target: (BoxSlot) -> Boolean, onTap: (BoxSlot) -> Unit,
+    /** Buttons after the box's name (the editor's SEARCH / SORT / RENAME). */
+    tools: (@Composable () -> Unit)? = null,
 ) {
-    val b = data.boxes[box]
+    val boxMons = data.boxMons(box)
+    val boxName = data.boxName(box)
     OptionListWindow(cell, modifier) {
         Column(Modifier.fillMaxSize()) {
             title?.let { GbaText(it, OptionColors.groupTitleText, OptionColors.groupTitleShadow, cell, Modifier.padding(horizontal = m.u * 4)) }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
-                OptionButton(null, m, onClick = { onBox((box + Gen3SaveData.BOXES - 1) % Gen3SaveData.BOXES) },
+                OptionButton(null, m, onClick = { onBox((box + data.boxCount - 1) % data.boxCount) },
                     pixelIcon = PixelIcons.cursorLeft, modifier = Modifier.semantics { contentDescription = tr("Previous box") })
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    GbaText(b.name.ifBlank { "BOX ${box + 1}" }, OptionColors.label, OptionColors.labelShadow, m)
+                    GbaText(boxName.ifBlank { "BOX ${box + 1}" }, OptionColors.label, OptionColors.labelShadow, m)
                 }
-                OptionButton(null, m, onClick = { onBox((box + 1) % Gen3SaveData.BOXES) },
+                OptionButton(null, m, onClick = { onBox((box + 1) % data.boxCount) },
                     pixelIcon = PixelIcons.cursorRight, modifier = Modifier.semantics { contentDescription = tr("Next box") })
+                tools?.invoke()
             }
             Spacer(Modifier.height(cell.u * 2))
             Column(Modifier.weight(1f).fillMaxWidth()) {
@@ -320,7 +519,7 @@ internal fun BoxGrid(
                     for (col in 0 until 6) {
                         val at = BoxSlot(box, row * 6 + col)
                         MonCell(
-                            b.mons[at.slot].takeIf { !it.isEmpty }, null, cell, Modifier.weight(1f).fillMaxHeight(), icons,
+                            boxMons[at.slot].takeIf { !it.isEmpty }, null, cell, Modifier.weight(1f).fillMaxHeight(), icons,
                             selected = selected(at), target = target(at), onClick = { onTap(at) },
                         )
                     }
@@ -332,7 +531,7 @@ internal fun BoxGrid(
 
 /** A Pokémon's party icon from [loader], first frame, pixel-scaled to [size]. An egg is the egg's icon. */
 @Composable
-internal fun BoxMonIcon(loader: MonIconLoader, mon: Gen3BoxMon, size: Dp) {
+internal fun BoxMonIcon(loader: MonIconLoader, mon: SaveMon, size: Dp) {
     val species = if (mon.isEgg) SPECIES_EGG else mon.species
     val bmp by produceState<ImageBitmap?>(null, loader, species) {
         value = withContext(Dispatchers.IO) { runCatching { loader.load(species) }.getOrNull()?.let { cropToFirstFrame(it).asImageBitmap() } }
@@ -348,15 +547,19 @@ internal fun BoxMonIcon(loader: MonIconLoader, mon: Gen3BoxMon, size: Dp) {
  */
 @Composable
 internal fun MonCell(
-    mon: Gen3BoxMon?, partyLevel: Int?, m: GbaTextMetrics, modifier: Modifier, icons: MonIconLoader?,
+    mon: SaveMon?, partyLevel: Int?, m: GbaTextMetrics, modifier: Modifier, icons: MonIconLoader?,
     selected: Boolean, target: Boolean = false, onClick: () -> Unit,
 ) {
     val u = m.u
     val noRipple = remember { MutableInteractionSource() }
+    val focused by noRipple.collectIsFocusedAsState()
     val withIcon = icons != null && mon != null && !mon.isBadEgg
     Box(
         modifier
             .padding(u * 0.5f)
+            // The D-pad's cursor: the orange ring, and where it starts (the selected slot) when nothing has it yet.
+            .focusStart(selected)
+            .gbaFocusRing(focused, PixelRoundedShape(u * 2))
             .drawBehind {
                 val r = 2 * u.toPx()
                 when {
@@ -380,92 +583,39 @@ internal fun MonCell(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                     BoxMonIcon(icons!!, mon, iconSize)
                     Spacer(Modifier.weight(1f))
-                    if (level.isNotEmpty()) GbaText(level, OptionColors.value, OptionColors.valueShadow, m)
+                    Column(horizontalAlignment = Alignment.End) {
+                        if (level.isNotEmpty()) GbaText(level, OptionColors.value, OptionColors.valueShadow, m)
+                        if (mon.isShiny && !mon.isEgg) PixelIcon(PixelIcons.sparkle, OptionColors.favorite, Modifier.size(m.lineHeight * 0.7f))
+                    }
                 }
                 GbaText(monLabel(mon), OptionColors.label, OptionColors.labelShadow, m)
             }
         } else Column {
             GbaText(monLabel(mon), if (mon.isBadEgg) OptionColors.muted else OptionColors.label, OptionColors.labelShadow, m)
-            if (level.isNotEmpty()) GbaText(level, OptionColors.value, OptionColors.valueShadow, m)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (level.isNotEmpty()) GbaText(level, OptionColors.value, OptionColors.valueShadow, m)
+                if (mon.isShiny && !mon.isEgg && !mon.isBadEgg) PixelIcon(PixelIcons.sparkle, OptionColors.favorite, Modifier.size(m.lineHeight * 0.7f))
+            }
         }
     }
-}
-
-@Composable
-private fun DetailWindow(state: PcBoxesState, data: Gen3SaveData, m: GbaTextMetrics, modifier: Modifier) {
-    val sel = state.selected
-    val found = sel?.let { data.mon(it) }
-    val editable = sel != null && found != null && editableMon(found.first) && state.moving == null
-    MonDetail(
-        found?.first, found?.second, m, modifier, tr("Tap a Pokémon to see it, then MOVE to put it in another slot."),
-        onItem = if (editable && !Gen3Legal.isMail(found!!.first.heldItem)) ({ state.editing = PcBoxesState.Editing.HeldItem(sel!!) }) else null,
-        onMove = if (editable) ({ slot -> state.editing = PcBoxesState.Editing.Move(sel!!, slot) }) else null,
-    )
 }
 
 /** What PC BOXES lets you change: not an egg, not a Bad Egg. */
-internal fun editableMon(mon: Gen3BoxMon): Boolean = !mon.isEmpty && !mon.isBadEgg && !mon.isEgg
-
-/**
- * A Pokémon's details as `LABEL  VALUE` rows ([empty] when there's none). Shared by PC BOXES and TRADE. With [onItem] /
- * [onMove] the ITEM row and the moves (and an ADD MOVE row after them) can be tapped.
- */
-@Composable
-internal fun MonDetail(
-    mon: Gen3BoxMon?, level: Int?, m: GbaTextMetrics, modifier: Modifier, empty: String,
-    onItem: (() -> Unit)? = null, onMove: ((Int) -> Unit)? = null,
-) {
-    OptionListWindow(m, modifier) {
-        if (mon == null) {
-            GbaText(empty, OptionColors.muted, OptionColors.mutedShadow, m, maxLines = Int.MAX_VALUE, modifier = Modifier.padding(m.u * 4))
-            return@OptionListWindow
-        }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            val rows = buildList<Triple<String, String, (() -> Unit)?>> {
-                fun row(label: String, value: String, onClick: (() -> Unit)? = null) = add(Triple(label, value, onClick))
-                row(tk("NAME"), monLabel(mon))
-                if (mon.isBadEgg) {
-                    row(tk("STATE"), tk("BAD EGG"))
-                } else {
-                    // The species when a nickname hides it.
-                    if (!mon.isEgg && monLabel(mon) != speciesLabel(mon.species)) row(tk("SPECIES"), speciesLabel(mon.species))
-                    if (!mon.isEgg) {
-                        row(tk("LEVEL"), "${level ?: mon.level}")
-                        row(tk("NATURE"), caps(natureName(mon.nature)))
-                        row(tk("ITEM"), if (mon.heldItem == 0) tk("NONE") else bagItemLabel(mon.heldItem), onItem)
-                        val moves = mon.moves.filter { it != 0 }
-                        moves.forEachIndexed { i, id -> row(if (i == 0) tk("MOVES") else "", moveLabel(id), onMove?.let { { it(i) } }) }
-                        if (onMove != null && moves.size < 4) row(if (moves.isEmpty()) tk("MOVES") else "", tr("ADD MOVE"), { onMove(moves.size) })
-                    }
-                    row(tk("OT"), "${otName(mon)} · ${id5((mon.otId and 0xFFFF).toInt())}")
-                    row(tk("FROM"), gameLabel(mon.metGame))
-                }
-            }
-            rows.forEach { (label, value, onClick) ->
-                OptionLine(label, value, selected = false, m, height = m.lineHeight * 1.1f, labelWeight = 0.3f, onClick = onClick ?: {})
-            }
-        }
-    }
-}
+internal fun editableMon(mon: SaveMon): Boolean = !mon.isEmpty && !mon.isBadEgg && !mon.isEgg
 
 /** A trainer ID as the game prints it, five digits. (Not String.format around names: the games' charset has a %.) */
-private fun id5(id: Int): String = id.toString().padStart(5, '0')
+internal fun id5(id: Int): String = id.toString().padStart(5, '0')
 
 internal fun caps(s: String): String = buildString(s.length) { for (c in s) append(if (c == 'é') c else c.uppercaseChar()) }
 
-internal fun speciesLabel(id: Int): String = speciesNames[id]?.let(::caps) ?: "#$id"
+internal fun speciesLabel(id: Int, game: SaveGameData = Gen3GameData): String = game.speciesName(id)?.let(::caps) ?: "#$id"
 
-/** The nickname as the game shows it; a Japanese game's (language 1) is in kana the Western table can't read, so its species. */
-internal fun monLabel(mon: Gen3BoxMon): String = when {
+/** The nickname as the game shows it, else the species' name (a Japanese Gen 3 game's kana the Western table can't read). */
+internal fun monLabel(mon: SaveMon): String = when {
     mon.isBadEgg -> tk("BAD EGG")
     mon.isEgg -> tk("EGG")
-    mon.language == 1 -> speciesLabel(mon.species)
-    else -> Gen3Text.decode(mon.nicknameBytes, 0, 10).trim().ifEmpty { speciesLabel(mon.species) }
+    else -> mon.nickname ?: speciesLabel(mon.species, mon.game)
 }
 
-private fun otName(mon: Gen3BoxMon): String = if (mon.language == 1) "-" else Gen3Text.decode(mon.otNameBytes, 0, 7).trim()
-
-private fun gameLabel(game: Int): String = when (game) {
-    1 -> "SAPPHIRE"; 2 -> "RUBY"; 3 -> "EMERALD"; 4 -> "FIRERED"; 5 -> "LEAFGREEN"; 15 -> "COLOSSEUM / XD"
-    else -> "?"
-}
+/** An item's name in [game]'s words, in capitals. */
+internal fun itemLabel(game: SaveGameData, id: Int): String = game.itemName(id)?.let(::caps) ?: "#$id"

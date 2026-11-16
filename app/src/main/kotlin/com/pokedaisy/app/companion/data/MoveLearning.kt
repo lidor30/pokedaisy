@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import java.util.concurrent.ConcurrentHashMap
 
 /** A move a party Pokémon could learn: at [level] (a level-up), or from the bag's [tm] ("TM35", "HM03"). */
 data class LearnOption(val move: Int, val level: Int, val tm: String, val advice: MoveAdvice)
@@ -22,8 +21,8 @@ object MoveLearning {
     /** Upcoming level-up moves listed, at most. */
     private const val UPCOMING = 4
 
-    private val optionsCache = ConcurrentHashMap<List<Any?>, List<LearnOption>>()
-    private val learnersCache = ConcurrentHashMap<List<Any?>, List<TmLearner>>()
+    private val optionsCache = LockedMap<List<Any?>, List<LearnOption>>()
+    private val learnersCache = LockedMap<List<Any?>, List<TmLearner>>()
 
     /** Whether the running game gets advice at all (no ROM read). */
     fun available(t: PokedexTables?, g: GuideTables?): Boolean =
@@ -34,7 +33,7 @@ object MoveLearning {
     /** "TM06" / "HM01" for a TM item. */
     fun tmLabel(itemId: Int): String {
         val i = itemId - VANILLA_ITEM_TM01
-        return if (i < 50) "TM%02d".format(i + 1) else "HM%02d".format(i - 49)
+        return if (i < 50) "TM${(i + 1).pad(2)}" else "HM${(i - 49).pad(2)}"
     }
 
     /** The move TM / HM item [itemId] teaches; null = not a TM or the table isn't read. */

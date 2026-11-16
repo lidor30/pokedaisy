@@ -104,6 +104,7 @@ import androidx.compose.ui.unit.dp
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import okio.Path.Companion.toOkioPath
 
 /**
  * Paparazzi screenshots of the bottom-screen companion, one per tab, plus the
@@ -138,13 +139,13 @@ open class CompanionScreenshotTest {
         OptionColors.inGame = true
         RomItemText.use(null) // a retail() shot's game must not leave its descriptions to the next
         // The party menu art, backdrops and region maps come from the ROM too (RomArt).
-        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it }
+        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it.toOkioPath() }
         for (path in listOf(RomFileReader.FIRERED_REV1_PATH, RomFileReader.EMERALD_PATH)) {
-            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art) }
+            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art.toOkioPath()) }
         }
         // The CARD tab draws from these (normally loaded in the background).
-        TrainerCardArt.load(art, CardStyle.KANTO)
-        TrainerCardArt.load(art, CardStyle.HOENN)
+        TrainerCardArt.load(art.toOkioPath(), CardStyle.KANTO)
+        TrainerCardArt.load(art.toOkioPath(), CardStyle.HOENN)
         // The DEX tab's sprites and entries (and every mon icon) come from the
         // ROM: read the retail one when it's on this machine, else they stay blank.
         RomFileReader.load(RomFileReader.FIRERED_REV1_PATH)?.let { rom ->
@@ -1231,6 +1232,17 @@ open class CompanionScreenshotTest {
     @Test fun redMap() = yellow("red", "MAP", cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
     @Test fun redSettings() = yellow("red", "SETTINGS", cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
     @Test fun redDexEntry() = yellow("red", "DEX", dexEntry = 151, cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
+    // Pokémon Brown 6.1.2: its own save (the brown fixtures), its own Super Game Boy colours.
+    private val brownRom = "Pokemon Brown (v6.1.2).gb"
+    private fun brown(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null) = yellow(fixture, tab,
+        controls = controls, dexEntry = dexEntry, cfg = com.pokedaisy.app.companion.data.GEN1_BROWN, romFile = brownRom, game = GameKind.BROWN)
+    @Test fun brownParty() = brown("brown", "PARTY")
+    @Test fun brownItems() = brown("brown", "ITEMS")
+    @Test fun brownBattle() = brown("brown_battle", "BATTLE", controls = true)
+    @Test fun brownMap() = brown("brown", "MAP")
+    @Test fun brownSettings() = brown("brown", "SETTINGS")
+    @Test fun brownDex() = brown("brown", "DEX")
+    @Test fun brownDexEntry() = brown("brown", "DEX", dexEntry = 252)
     // PureRed / PureBlue v2.7.6: the retail Red save, converted by the game (the purered / pureblue fixtures).
     private val pureRedRom = "Pokemon PureRed (v2.7.6).gb"
     private val pureBlueRom = "Pokemon PureBlue (v2.7.6).gb"
@@ -1596,7 +1608,7 @@ open class CompanionScreenshotTest {
         if (art) RomArt.extractTo(java.io.File(RETAIL_ROM_DIR + romFile).readBytes(), RomArt.dirOverride!!)
         // A FireRed-engine hack's own region map, read from its ROM (the app does this on every launch).
         com.pokedaisy.app.companion.data.RomRegionMap.current =
-            if (romMap) com.pokedaisy.app.companion.data.RomRegionMap.loadNow(RomArt.dirOverride!!, fixture, java.io.File(RETAIL_ROM_DIR + romFile)) else null
+            if (romMap) com.pokedaisy.app.companion.data.RomRegionMap.loadNow(RomArt.dirOverride!!, fixture, java.io.File(RETAIL_ROM_DIR + romFile).toOkioPath()) else null
         activeGame = kind
         amethystV141 = cfg === NATIVE_AMETHYST_V1_4_1 // the Poller sets these with activeGame
         com.pokedaisy.app.companion.data.fireRedHack = com.pokedaisy.app.companion.data.fireRedHackFor(cfg)

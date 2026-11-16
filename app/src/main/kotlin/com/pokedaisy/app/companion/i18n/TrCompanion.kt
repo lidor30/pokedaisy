@@ -243,6 +243,9 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     // Map.
     "MAP {0}" to Tr(ja = "マップ {0}", fr = "CARTE {0}", de = "KARTE {0}", it = "MAPPA {0}", es = "MAPA {0}", br = "MAPA {0}", pt = "MAPA {0}", ko = "지도 {0}"),
     "ME" to Tr(ja = "じぶん", fr = "MOI", de = "ICH", it = "IO", es = "YO", br = "EU", pt = "EU", ko = "나"),
+    // AREA maps (AreaMapView.kt): the cave / building's own map, and back to the region's.
+    "AREA MAP" to Tr(ja = "このばしょ", fr = "CARTE ZONE", de = "ORTSKARTE", it = "MAPPA ZONA", es = "MAPA ZONA", br = "MAPA LOCAL", pt = "MAPA LOCAL", ko = "구역 지도"),
+    "REGION MAP" to Tr(ja = "タウンマップ", fr = "CARTE RÉGION", de = "REGIONSKARTE", it = "MAPPA REGIONE", es = "MAPA REGIÓN", br = "MAPA REGIÃO", pt = "MAPA REGIÃO", ko = "지방 지도"),
     "PLACES" to Tr(ja = "ばしょ", fr = "LIEUX", de = "ORTE", it = "LUOGHI", es = "LUGARES", br = "LUGARES", pt = "LUGARES", ko = "장소"),
     // FLY on the MAP tab (Fly.kt): the localized games' own word for the move.
     "FLY" to Tr(ja = "そらをとぶ", fr = "VOL", de = "FLIEGEN", it = "VOLO", es = "VUELO", br = "VOAR", pt = "VOAR", ko = "공중날기"),
@@ -377,4 +380,20 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     "FLY NOW" to Tr(ja = "そらをとぶ", fr = "VOLER", de = "FLIEGEN", it = "VOLA", es = "VOLAR", br = "VOAR", pt = "VOAR", ko = "지금 날기"),
     "RIGHT STICK" to Tr(ja = "みぎスティック", fr = "STICK DROIT", de = "RECHTER STICK", it = "STICK DESTRO", es = "STICK DERECHO", br = "ANALÓGICO DIREITO", pt = "ANALÓGICO DIREITO", ko = "오른쪽 스틱"),
     "LOOK AROUND" to Tr(ja = "みまわす", fr = "REGARDER", de = "UMSEHEN", it = "GUARDA INTORNO", es = "MIRAR", br = "OLHAR", pt = "OLHAR", ko = "둘러보기"),
+    "POKéMON CENTER" to Tr(ja = "ポケモンセンター", fr = "CENTRE POKéMON", de = "POKéMON-CENTER", it = "CENTRO POKéMON", es = "CENTRO POKéMON", br = "CENTRO POKéMON", pt = "CENTRO POKéMON", ko = "포켓몬센터"),
+    "CENTER" to Tr(ja = "センター", fr = "CENTRE", de = "CENTER", it = "CENTRO", es = "CENTRO", br = "CENTRO", pt = "CENTRO", ko = "센터"),
+    "HEAL" to Tr(ja = "かいふく", fr = "SOIGNER", de = "HEILEN", it = "CURA", es = "CURAR", br = "CURAR", pt = "CURAR", ko = "회복"),
+    "HEAL THE PARTY" to Tr(ja = "てもちを かいふく", fr = "SOIGNER L'ÉQUIPE", de = "TEAM HEILEN", it = "CURA LA SQUADRA", es = "CURAR EL EQUIPO", br = "CURAR A EQUIPE", pt = "CURAR A EQUIPA", ko = "파티 회복"),
+    "RELEARN A MOVE" to Tr(ja = "わざを おもいだす", fr = "RÉAPPRENDRE", de = "ATTACKE ERINNERN", it = "RICORDA MOSSA", es = "RECORDAR MOVIMIENTO", br = "RELEMBRAR GOLPE", pt = "RELEMBRAR GOLPE", ko = "기술 떠올리기"),
+    "FORGET A MOVE" to Tr(ja = "わざを わすれさせる", fr = "OUBLIER UNE CAPACITÉ", de = "ATTACKE VERGESSEN", it = "DIMENTICA MOSSA", es = "OLVIDAR MOVIMIENTO", br = "ESQUECER GOLPE", pt = "ESQUECER GOLPE", ko = "기술 잊기"),
+    "NICKNAME" to Tr(ja = "ニックネーム", fr = "SURNOM", de = "SPITZNAME", it = "SOPRANNOME", es = "MOTE", br = "APELIDO", pt = "ALCUNHA", ko = "닉네임"),
+    "Forget which move?" to Tr(ja = "どの わざを わすれさせる？", fr = "Oublier quelle capacité ?", de = "Welche Attacke vergessen?", it = "Quale mossa dimenticare?", es = "¿Qué movimiento olvidar?", br = "Esquecer qual golpe?", pt = "Esquecer qual golpe?", ko = "어떤 기술을 잊을까요?"),
+    "{0} forgets {1}?" to Tr(ja = "{0}は {1}を わすれる？", fr = "{0} oublie {1} ?", de = "{0} vergisst {1}?", it = "{0} dimentica {1}?", es = "¿{0} olvida {1}?", br = "{0} esquece {1}?", pt = "{0} esquece {1}?", ko = "잊을 기술: {1} ({0})"),
+    "{0} forgot {1}." to Tr(ja = "{0}は {1}を わすれた！", fr = "{0} a oublié {1}.", de = "{0} hat {1} vergessen.", it = "{0} ha dimenticato {1}.", es = "{0} olvidó {1}.", br = "{0} esqueceu {1}.", pt = "{0} esqueceu {1}.", ko = "잊은 기술: {1} ({0})"),
+    "Heal all your POKéMON?" to Tr(ja = "ポケモンを ぜんぶ かいふく しますか？", fr = "Soigner tous vos POKéMON ?", de = "Alle POKéMON heilen?", it = "Curare tutti i tuoi POKéMON?", es = "¿Curar a todos tus POKéMON?", br = "Curar todos os seus POKéMON?", pt = "Curar todos os teus POKéMON?", ko = "포켓몬을 모두 회복할까요?"),
+    "Your POKéMON are fully healed." to Tr(ja = "ポケモンは げんきに なった！", fr = "Vos POKéMON sont en pleine forme.", de = "Deine POKéMON sind wieder fit.", it = "I tuoi POKéMON sono in piena forma.", es = "Tus POKéMON están recuperados.", br = "Seus POKéMON estão recuperados.", pt = "Os teus POKéMON estão recuperados.", ko = "포켓몬이 모두 회복됐어요."),
+    "Not for an EGG." to Tr(ja = "タマゴには できない。", fr = "Pas pour un ŒUF.", de = "Nicht für ein EI.", it = "Non per un UOVO.", es = "No para un HUEVO.", br = "Não para um OVO.", pt = "Não para um OVO.", ko = "알에는 할 수 없어요."),
+    "Only the trainer who caught {0} can rename it." to Tr(ja = "{0}の なまえは つかまえた トレーナーしか かえられない。", fr = "Seul le Dresseur qui a attrapé {0} peut le renommer.", de = "Nur wer {0} gefangen hat, kann es umbenennen.", it = "Solo chi ha catturato {0} può rinominarlo.", es = "Solo quien capturó a {0} puede cambiarle el nombre.", br = "Só quem capturou {0} pode renomeá-lo.", pt = "Só quem capturou {0} o pode renomear.", ko = "잡은 트레이너만 이름을 바꿀 수 있어요: {0}"),
+    "{0} knows only one move." to Tr(ja = "{0}は わざを 1つしか おぼえていない。", fr = "{0} ne connaît qu'une capacité.", de = "{0} kennt nur eine Attacke.", it = "{0} conosce una sola mossa.", es = "{0} solo conoce un movimiento.", br = "{0} só conhece um golpe.", pt = "{0} só conhece um golpe.", ko = "기술이 하나뿐이에요: {0}"),
+    "{0} is the only one in your party that knows SURF." to Tr(ja = "てもちで なみのりを おぼえているのは {0}だけ。", fr = "{0} est le seul de l'équipe à connaître SURF.", de = "Nur {0} kennt im Team SURFER.", it = "Solo {0} conosce SURF nella squadra.", es = "Solo {0} conoce SURF en el equipo.", br = "Só {0} conhece SURFAR na equipe.", pt = "Só {0} conhece SURFAR na equipa.", ko = "파도타기를 아는 포켓몬은 하나뿐이에요: {0}"),
 )

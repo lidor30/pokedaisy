@@ -88,7 +88,7 @@ fun tmCandidatesFor(kind: GameKind?, gameCode: String, revision: Int, rebuild: B
 
 /** Whether the running ROM has [tm]'s functions where they're expected. */
 fun tmCodeMatches(tm: TmFns, read: (addr: Long, len: Int) -> ByteArray): Boolean =
-    tm.functions.zip(tm.codeCrcs).all { (fn, crc) -> java.util.zip.CRC32().apply { update(read(fn, 32)) }.value == crc }
+    tm.functions.zip(tm.codeCrcs).all { (fn, crc) -> crc32(read(fn, 32)) == crc }
 
 /** Frames [tmStart]'s fade takes to reach black before [tmFinish]: FadeScreen at delay 0, with room to spare. */
 const val TM_FADE_FRAMES = 30

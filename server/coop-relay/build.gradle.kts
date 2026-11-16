@@ -1,7 +1,7 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    kotlin("jvm") version "1.9.24"
+    kotlin("jvm") version "2.4.21"
     application
 }
 
@@ -10,8 +10,8 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    kotlinOptions.jvmTarget = "17"
+kotlin {
+    compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
 }
 
 application {
@@ -19,7 +19,7 @@ application {
 }
 
 dependencies {
-    implementation("org.java-websocket:Java-WebSocket:1.5.7")
-    runtimeOnly("org.slf4j:slf4j-nop:2.0.13")
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
+    runtimeOnly("org.slf4j:slf4j-nop:2.0.20")
     testImplementation("junit:junit:4.13.2")
 }

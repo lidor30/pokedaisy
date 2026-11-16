@@ -462,6 +462,54 @@ static void blend_overlay(const uint32_t *px, int w, int h, int scale, int x0, i
   }
 }
 
+/* One axis of an area-weighted resample: for each of n destination pixels, the source pixels it covers (at most 3, as
+ * the menu is spread by at most 2x) and their share of it out of 256. */
+struct area_tap { int i[3], w[3], n; };
+static void area_taps(struct area_tap *t, int n, int src) {
+  for (int d = 0; d < n; d++) {
+    // the destination pixel spans [d * src / n, (d + 1) * src / n) source pixels, in 1/n ths
+    const long a = (long)d * src, b = (long)(d + 1) * src;
+    int k = 0, left = 256;
+    for (long j = a / n; j * n < b && k < 3; j++) {
+      const long lo = j * n > a ? j * n : a, hi = (j + 1) * n < b ? (j + 1) * n : b;
+      int w = (int)(((hi - lo) * 256 + src / 2) / src);
+      if (w > left || (j + 1) * n >= b)
+        w = left;
+      if (w <= 0)
+        continue;
+      t[d].i[k] = j < src ? (int)j : src - 1;
+      t[d].w[k++] = w;
+      left -= w;
+    }
+    t[d].n = k;
+  }
+}
+/* The quick menu drawn at w x h laid over the whole canvas, each canvas pixel the area-weighted average of the menu
+ * pixels under it (alpha-weighted, so the menu's see-through parts don't darken its edges). Unlike nearest-neighbour
+ * at 1.5x it keeps the pixel font's strokes even, softened instead of alternately one and two pixels wide. */
+static void blend_overlay_area(const uint32_t *px, int w, int h, uint32_t *scratch) {
+  static struct area_tap tx[CANVAS_MAX_W], ty[CANVAS_MAX_H];
+  area_taps(tx, CW, w);
+  area_taps(ty, CH, h);
+  for (int y = 0; y < CH; y++)
+    for (int x = 0; x < CW; x++) {
+      uint32_t aw = 0, r = 0, g = 0, b = 0;
+      for (int ky = 0; ky < ty[y].n; ky++) {
+        const uint32_t *row = px + (size_t)ty[y].i[ky] * w;
+        for (int kx = 0; kx < tx[x].n; kx++) {
+          const uint32_t p = row[tx[x].i[kx]], wa = (p >> 24) * (uint32_t)(ty[y].w[ky] * tx[x].w[kx]);
+          aw += wa;
+          r += (p >> 16 & 255) * (wa >> 8);
+          g += (p >> 8 & 255) * (wa >> 8);
+          b += (p & 255) * (wa >> 8);
+        }
+      }
+      const uint32_t a = aw >> 16, d = aw >> 8; // alpha out of 255; the colours' common weight
+      scratch[(size_t)y * CW + x] = a && d ? a << 24 | (r / d) << 16 | (g / d) << 8 | (b / d) : 0;
+    }
+  blend_overlay(scratch, CW, CH, 1, 0, 0);
+}
+
 static void dim(int alpha) {
   for (size_t i = 0; i < (size_t)CW * CH; i++) {
     uint32_t p = cvs[i];
@@ -497,6 +545,9 @@ static int hudOx, hudOy, hudScale = 1; // where draw_hud last put the HUD on the
 static unsigned shortcutKeys, shortcutBlocked;
 static bool shortcutExclusive;
 static bool maskGame;     // while an overlay is up the game sees no keys
+/* AUTO-RUN (the 3DS's pd_session): B flipped for the game while the player walks their own field, set before each
+ * frame from the last one's field read. */
+static unsigned autoRunFlip;
 
 /* The pad buttons for the quick menu, the companion and the HUD cursor are PokeDaisy's own SETTINGS rows
  * (a core option is out of reach in plorpOS): each frame's key index, -1 for none. */
@@ -536,7 +587,7 @@ static int16_t masked_input(unsigned port, unsigned device, unsigned index, unsi
   if (port != 0 || device != RETRO_DEVICE_JOYPAD)
     return 0;
   const unsigned keys = shortcutExclusive ? shortcutKeys :
-      ((maskGame ? 0 : held & ~shortcutBlocked) | (gameKeyFrames > 0 ? gameKeys : 0));
+      (((maskGame ? 0 : held & ~shortcutBlocked) | (gameKeyFrames > 0 ? gameKeys : 0)) ^ autoRunFlip);
   if (id == RETRO_DEVICE_ID_JOYPAD_MASK) {
     int16_t m = 0;
     for (int k = A; k <= L; k++)
@@ -600,6 +651,7 @@ static bool repelList, bikeWasRiding, bikeTook;
 static uint16_t bikeOld;
 static char repelRows[REPEL_KINDS][48];
 static const char *repelNames[REPEL_KINDS];
+static uint32_t *ovScratch; // the quick menu spread over the canvas (blend_overlay_area)
 static uint32_t *ovPixels; // the quick menu's canvas, see-through where nothing is drawn
 static const unsigned char *romData;
 /* The Game Boy games' PC / FLY / WILD (gb_field.c, the app's GbField): the cart's config, the running frames left before
@@ -994,9 +1046,10 @@ static void canvas_update(bool notify) {
     h = (int)fh;
   } else if (panelW)
     canvas_for((int)fw, (int)fh, want_canvas(), &w, &h);
-  // Keep extra pixels available for the menu throughout gameplay. Double the game
-  // pixels exactly, then draw menu text and icons directly at output resolution.
-  if (PD_BE_IS_GBA() && !companion && (w < 320 || h < 240) && w <= CWMAX / 2 && h <= CHMAX / 2) {
+  // While the Quick Menu is open, double the game pixels exactly so menu text and icons
+  // draw at output resolution. Gameplay stays at 1x: a doubled canvas costs every frame
+  // four times the pixels (Brick: 4.5 -> 7.1 ms per shown frame).
+  if (PD_BE_IS_GBA() && !companion && quickOpen && (w < 320 || h < 240) && w <= CWMAX / 2 && h <= CHMAX / 2) {
     scale = 2;
     w *= scale;
     h *= scale;
@@ -1101,6 +1154,8 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
     snprintf(settingsPath, sizeof settingsPath, "pokedaisy-settings.ini");
   }
   pd_settings_load(&settings, settingsPath);
+  pd_look_apply(&game, &settings); // DARK MODE (pd_game_detect applied the game's windows with no settings)
+  autoRunFlip = 0;
   // A resident frontend loads the core again in the same process: nothing of the last game may survive.
   memset(&snap, 0, sizeof snap);
   memset(&hudState, 0, sizeof hudState);
@@ -1123,6 +1178,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   quickSel = 0;
   wideSupported = pk_wide_configure(crc) != 0;   // Polished Crystal 3.2.3 too (pk_wide_gb.c, by its CRC)
   wideReady = false;
+  quickOpen = flyList = repelList = false; // before the canvas: an open menu doubles it (canvas_update)
   canvas_update(false);
   fieldKnown = PD_BE_IS_GBA() && pk_field_configure(crc);
   wildSwitch = fieldKnown ? pk_wild_switch_find(rom, len) : 0;
@@ -1169,6 +1225,8 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   quick_set_grid(settings.quickGrid);
   if (!ovPixels)
     ovPixels = calloc((size_t)CWMAX * CHMAX, sizeof *ovPixels);
+  if (!ovScratch)
+    ovScratch = calloc((size_t)CWMAX * CHMAX, sizeof *ovScratch);
   pd_ui_init(&ui, &settings);
   ui.handheldDex = ui.handheldParty = ui.guideController = ui.shoulderTabs = true;
   if (polishedActions) {
@@ -1183,6 +1241,8 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   // The Game Boy games get the HUD where the field scene is known (English Yellow, Crystal: pk_wide_gb), as in the app.
   host.hasHud = PD_BE_IS_GBA() || wideSupported;
   host.hasExpand = true;
+  host.fieldSupported = fieldKnown; // AUTO-RUN (the field read tells walking from scripts, battles and bikes)
+  host.hasCoreRows = true; // AUTO-RUN, DARK MODE, RESET SETTINGS
   host.hasFlightArea = freeFlight;
   host.flightSupported = freeFlight; // FLY STYLE / FLIGHT AREA / FLY ON (SCENIC needs scenic_ok, else classic)
   host.itemCanUse = polishedActions ? polished_potion : NULL;
@@ -1265,13 +1325,15 @@ RETRO_API void retro_unload_game(void) {
   WIDE_CHECK_REPORT();
   CALL_TEST_REPORT();
   wideSupported = wideReady = false;
+  quickOpen = flyList = repelList = false;
   PD_BE_BEFORE_UNLOAD();
   mgba_retro_unload_game();
   free(cvs);
   free(out565);
   free(hudPixels);
   free(ovPixels);
-  ovPixels = NULL;
+  free(ovScratch);
+  ovPixels = ovScratch = NULL;
   cvs = NULL;
   out565 = NULL;
   hudPixels = NULL;
@@ -1317,13 +1379,29 @@ static void hud_press(int id) {
  * where it is, where it went down, and last frame's state. */
 static bool touchDown, touchWas;
 static int touchX, touchY, touchX0, touchY0;
-/* Use Companion's logical size in a GBA view that shows it at a whole scale (the same on both axes), so the pixel font
- * stays even; any other canvas draws the menu at its own size, 1:1. */
-static bool quick_use_menu_canvas(void) {
-  return PD_BE_IS_GBA() && menuW > 0 && menuH > 0 && CW % menuW == 0 && CH % menuH == 0 && CW / menuW == CH / menuH;
+/* The GBA Quick Menu's logical size: the same on-screen size in every view, the companion's (on the Brick a menu pixel is
+ * three of the panel's, as in the Game Boy core's menu and ZOOM OUT). The frontend fits the canvas to the panel, so the
+ * menu is the canvas shrunk by (companion's panel scale) / (this canvas's panel scale): ZOOM OUT's 341x256 is drawn 1:1,
+ * EXPAND's 512x384 and ORIGINAL's 480x320 at 341x256 and 341x227, spread over the canvas by blend_overlay_area. An
+ * unknown panel (no pokedaisy_panel) draws it 1:1. */
+static void quick_size(int *w, int *h) {
+  *w = CW;
+  *h = CH;
+  if (!PD_BE_IS_GBA() || !panelW || !panelH || menuW <= 0 || menuH <= 0)
+    return;
+  // canvas -> panel and companion -> panel, in 1/1024ths
+  const long fit = (long)panelW * 1024 / CW < (long)panelH * 1024 / CH ? (long)panelW * 1024 / CW : (long)panelH * 1024 / CH;
+  const long unit = (long)panelW * 1024 / menuW < (long)panelH * 1024 / menuH ? (long)panelW * 1024 / menuW : (long)panelH * 1024 / menuH;
+  if (fit >= unit) // shown no larger than the companion: 1:1 (scaling up would leave the menu bigger than it)
+    return;
+  const int qw = (int)((CW * fit + unit / 2) / unit), qh = (int)((CH * fit + unit / 2) / unit);
+  if (qw >= CW - 1 && qh >= CH - 1)
+    return;
+  *w = qw < 1 ? 1 : qw;
+  *h = qh < 1 ? 1 : qh;
 }
-static int quick_width(void) { return quick_use_menu_canvas() ? menuW : CW; }
-static int quick_height(void) { return quick_use_menu_canvas() ? menuH : CH; }
+static int quick_width(void) { int w, h; quick_size(&w, &h); return w; }
+static int quick_height(void) { int w, h; quick_size(&w, &h); return h; }
 
 static void touch_poll(void) {
   touchWas = touchDown;
@@ -1353,6 +1431,16 @@ static int hud_hit_at(int x, int y) {
         y < hudHits.at[i].y + hudHits.at[i].h)
       return hudHits.at[i].id;
   return -1;
+}
+
+/* Field frames in a row: the HUD comes up after 20. Also counted on a frame the frontend hides, so the HUD shows on the
+ * same frame with and without fast-forward's skipped frames. */
+static void hud_field_tick(void) {
+  const bool field = PD_BE_IS_GB()
+                         ? wideSupported && pk_wide_scene() == PK_WIDE_SCENE_FIELD && !snap.inBattle && flyStage == 0
+                         : (fieldFlags & PK_FIELD_KNOWN) && !(fieldFlags & (PK_FIELD_LOCKED | PK_FIELD_BATTLE)) &&
+                               (!wideSupported || pk_wide_scene() == PK_WIDE_SCENE_FIELD) && flyStage == 0;
+  hudFieldFrames = field ? hudFieldFrames + 1 : 0;
 }
 
 RETRO_API void retro_run(void) {
@@ -1791,6 +1879,7 @@ RETRO_API void retro_run(void) {
       break;
     case PD_ACTION_SETTINGS_CHANGED:
       pd_settings_save(&settings, settingsPath);
+      pd_look_apply(&game, &settings); // DARK MODE, or every setting after RESET SETTINGS
       pd_flight_area_resend(); // FLIGHT AREA may have flipped
       hudDrawnKey = 0;
       break;
@@ -1845,8 +1934,15 @@ RETRO_API void retro_run(void) {
       if (shortcutExclusive)
         shortcutBlocked |= held;
     }
+    // AUTO-RUN: never in a script, a battle, a menu, on a bike (the Acro Bike's wheelie is B) or with A held.
+    const unsigned dirs = 1u << UP | 1u << DOWN | 1u << LEFT | 1u << RIGHT;
+    autoRunFlip = settings.autoRun && fieldKnown && !maskGame && !shortcutExclusive && (held & dirs) && !(held & 1u << A) &&
+                  (fieldFlags & PK_FIELD_KNOWN) && !(fieldFlags & (PK_FIELD_LOCKED | PK_FIELD_BATTLE | PK_FIELD_BIKE)) &&
+                  (!wideSupported || pk_wide_scene() == PK_WIDE_SCENE_FIELD)
+                      ? 1u << B : 0;
     PF_T(pa);
     mgba_retro_run();
+    autoRunFlip = 0;
     if (freeFlight)
       pk_flight_tick(core);
     PF_T(pb);
@@ -2051,6 +2147,22 @@ RETRO_API void retro_run(void) {
     pf_frame();
     return;
   }
+  // A frame the frontend will not show (video bit clear, as diatom's fast-forward skip asks): the game and the layer's
+  // logic ran, the drawing is left out. Only the video bit counts: a fast-forward flag alone still shows its frames.
+  // A dupe needs what `repeat` needs: a frontend that takes one and a frame sent at this geometry (canvas_update clears
+  // it), else the frame is drawn and sent as usual.
+  int av = 3;
+  const bool hidden = realEnv && realEnv(RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE, &av) && !(av & 1);
+  if (hidden && canDupe && haveGameFrame) {
+    if (!companion && !(quickOpen && ovPixels))
+      hud_field_tick(); // as the game's own draw below would
+    if (messageFrames > 0)
+      messageFrames--; // as present() would: a notice lasts as many game frames hidden or shown
+    realVideo(NULL, (unsigned)CW, (unsigned)CH, (size_t)CW * 2);
+    PF_SKIPPED();
+    pf_frame();
+    return;
+  }
   PF_T(td0);
   if (companion) {
     pd_ui_update(&ui, &snap);
@@ -2095,7 +2207,10 @@ RETRO_API void retro_run(void) {
       drawn = quick_draw(&qc, &game, quick, quickN, quickSel, settings.hudLook);
     if (drawn) {
       quick_finish(&qc);
-      blend_overlay(ovPixels, qc.w, qc.h, CW / qc.w, 0, 0);
+      if (qc.w == CW && qc.h == CH)
+        blend_overlay(ovPixels, qc.w, qc.h, 1, 0, 0);
+      else
+        blend_overlay_area(ovPixels, qc.w, qc.h, ovScratch);
     }
   } else {
     direct565 = messageFrames == 0;
@@ -2103,11 +2218,8 @@ RETRO_API void retro_run(void) {
       draw_game_fast();
     else
       draw_game();
-    bool gb = PD_BE_IS_GB();
-    bool field = gb ? wideSupported && pk_wide_scene() == PK_WIDE_SCENE_FIELD && !snap.inBattle && flyStage == 0
-                    : (fieldFlags & PK_FIELD_KNOWN) && !(fieldFlags & (PK_FIELD_LOCKED | PK_FIELD_BATTLE)) &&
-                          (!wideSupported || pk_wide_scene() == PK_WIDE_SCENE_FIELD) && flyStage == 0;
-    hudFieldFrames = field ? hudFieldFrames + 1 : 0;
+    const bool gb = PD_BE_IS_GB();
+    hud_field_tick();
     if (settings.hud && game.cfg && host.hasHud && hudFieldFrames >= 20) {
       int steps = polishedActions ? polished_byte(PD_PC_REPEL_STEPS) : gb ? 0 : repel_steps(core, game.cfg);
       if (steps <= 0)

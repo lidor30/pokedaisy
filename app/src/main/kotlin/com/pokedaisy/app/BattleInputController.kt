@@ -36,6 +36,9 @@ class BattleInputController(
     /** Writes the game's RAM (the emu thread, between frames): a pick puts the menu's cursor on its cell and presses A
      * once, so the game plays one select sound, not one per cursor step too. Null = the cursor is walked there. */
     private val writer: ((addr: Long, bytes: ByteArray) -> Boolean)? = null,
+    /** Calls one of the game's functions between frames (r0-r3, r0 back; -1 = it never returned): LAST BALL's
+     * RemoveBagItem and fade ([throwBall]). Null = no throws. */
+    private val caller: ((fn: Long, a0: Int, a1: Int, a2: Int, a3: Int) -> Long)? = null,
 ) {
 
     /**
@@ -130,6 +133,40 @@ class BattleInputController(
 
     @Volatile
     var cursorAddrs: CursorAddrs? = null
+
+    /**
+     * HIDE BATTLE MENU's D-pad (two screens): the game's action menu is off its screen and the companion's buttons stand in
+     * for it, FIGHT over BAG / RUN / POKéMON - not the game's 2 x 2. A direction ([steerAction], from the UI thread) moves
+     * the game's cursor round them as they're laid out there ([HiddenMenuSteer]), written straight into
+     * gActionSelectionCursor on the next frame: the game reads it on A, which stays the player's own, and the companion
+     * lights that button ([menuCursor]). The moves need none of it: the game's grid and the companion's are both 2 x 2.
+     */
+    @Volatile
+    private var steerKey = 0
+
+    /** Whether [steerAction] can move the action menu's cursor now: the menu is up, its cursor known and writable, no pick
+     * of ours steering it. */
+    val canSteerAction: Boolean
+        get() = gameState == BATTLE_INPUT_ACTION_SELECT && writer != null && cursorAddrs?.menus == MenuCells.GEN3 &&
+            menuCursor in 0..3 && pickCell < 0
+
+    /** A D-pad press ([MgbaCore.Key] bits) for the action menu's cursor, applied on the next frame ([tick]). */
+    fun steerAction(key: Int) {
+        steerKey = key
+    }
+
+    private fun steerLocked() {
+        val key = steerKey
+        if (key == 0) return
+        steerKey = 0
+        if (lastKnownState != BATTLE_INPUT_ACTION_SELECT || pickCell >= 0 || queue.isNotEmpty() || framesLeft > 0) return
+        val addrs = cursorAddrs?.takeIf { it.menus == MenuCells.GEN3 } ?: return
+        val write = writer ?: return
+        val addr = addrs.action + lastBattler
+        val cur = runCatching { reader.readCoreMemory(addr, 1)[0].toInt() and 0xFF }.getOrNull()?.takeIf { it in 0..3 } ?: return
+        val next = HiddenMenuSteer.next(cur, key)
+        if (next != cur && !runCatching { write(addr, byteArrayOf(next.toByte())) }.getOrDefault(false)) log("steer to $next didn't write")
+    }
 
     /** The open menu's cursor, read each frame ([BattleInput.menuCursor]); -1 = no such menu, or a game whose cursor isn't known. */
     @Volatile
@@ -268,10 +305,13 @@ class BattleInputController(
     /** Call once per real emulated frame, before MgbaCore.pkSetKeys. */
     fun tick() {
         val (bitsToSend, exclusive) = synchronized(lock) {
+            steerLocked()
             readMenuCursorLocked()
             if (gbPickCell >= 0) gbPickFrames++
             // The closed-loop steps (party cursor, RUN's B) queue their next
             // presses only once the last ones have played out.
+            // LAST BALL: watched every frame (the bag's fade starts the frame BAG is taken).
+            driveThrowLocked()
             if (framesLeft <= 0 && queue.isEmpty()) {
                 drivePickLocked()
                 driveGbPickLocked()
@@ -312,7 +352,7 @@ class BattleInputController(
                 exclusiveFrames = 0
             }
             if (switchTarget == null && holdTail > 0) holdTail--
-            holdFrame = switchTarget != null || holdTail > 0
+            holdFrame = switchTarget != null || holdTail > 0 || throwFns != null
             if (!exclusiveLocked()) finalPress = false
             muteGame = (exclusiveLocked() || pendingMoveIndex != null) && !finalPress
             currentBits to exclusiveLocked()
@@ -655,7 +695,64 @@ class BattleInputController(
         exclusiveFrames = 0
         holdTail = 0
         holdFrame = false
+        throwFns = null
     }
+
+    /** LAST BALL in flight ([throwBall]): the game's functions, the ball, its RemoveBagItem, frames since BAG was picked. */
+    private var throwFns: com.pokedaisy.app.companion.data.BattleBall.Fns? = null
+    private var throwItem = 0
+    private var throwRemove = 0L
+    private var throwFrames = 0
+
+    /**
+     * LAST BALL ([com.pokedaisy.app.companion.data.BattleBall]): picks BAG as a tap on it would, then catches the controller
+     * at OpenBagAndChooseItem before the bag opens ([driveThrowLocked]) - the ball out of the bag ([removeBagItem], as the
+     * bag's own ItemUseInBattle_PokeBall does), into gSpecialVar_ItemId, the controller on CompleteWhenChoseItem, the fade
+     * turned round. The game throws it. If any of that can't be done the bag just opens, as BAG would.
+     */
+    fun throwBall(fns: com.pokedaisy.app.companion.data.BattleBall.Fns, itemId: Int, removeBagItem: Long) {
+        if (caller == null || writer == null) return
+        synchronized(lock) {
+            pendingMoveIndex = null
+            pickCellLocked(1, move = false)
+            throwFns = fns
+            throwItem = itemId
+            throwRemove = removeBagItem
+            throwFrames = 0
+        }
+    }
+
+    private fun driveThrowLocked() {
+        val f = throwFns ?: return
+        if (++throwFrames > THROW_TIMEOUT_FRAMES) return endThrowLocked("timed out")
+        val raw = runCatching { reader.readCoreMemory(f.controllerFuncs, MAX_BATTLERS * 4) }.getOrNull() ?: return
+        val want = (f.openBag or 1L).toInt()
+        val battler = (0 until MAX_BATTLERS).firstOrNull { le32(raw, it * 4) == want } ?: return
+        val call = caller ?: return endThrowLocked("no caller")
+        val write = writer ?: return endThrowLocked("no writer")
+        val removed = call(throwRemove, throwItem, 1, 0, 0)
+        if (removed == CALL_NOT_NOW) return   // mid-interrupt: the next frame (the bag's fade takes ~16)
+        if (removed != 1L) return endThrowLocked("RemoveBagItem said no: the bag opens")
+        val fade = runCatching { reader.readCoreMemory(f.paletteFade + 7, 1)[0].toInt() and 0xFF }.getOrDefault(0)
+        val ok = write(f.itemIdVar, byteArrayOf(throwItem.toByte(), (throwItem shr 8).toByte())) &&
+            write(f.controllerFuncs + battler * 4, le32bytes((f.completeWhenChose or 1L).toInt())) &&
+            write(f.paletteFade + 7, byteArrayOf((fade and 0x7F).toByte()))
+        // A fade from 0 to 0: the palettes as they were before BAG's fade began (its blend colour, on the stack, is
+        // never applied at 0).
+        if (ok) call(f.beginNormalPaletteFade, -1, 0, 0, 0)
+        holdTail = THROW_HOLD_FRAMES
+        endThrowLocked(if (ok) "thrown $throwItem (battler $battler)" else "a write didn't take")
+    }
+
+    private fun endThrowLocked(why: String) {
+        log("last ball: $why")
+        throwFns = null
+    }
+
+    private fun le32(b: ByteArray, o: Int) =
+        (b[o].toInt() and 0xFF) or ((b[o + 1].toInt() and 0xFF) shl 8) or ((b[o + 2].toInt() and 0xFF) shl 16) or (b[o + 3].toInt() shl 24)
+
+    private fun le32bytes(v: Int) = byteArrayOf(v.toByte(), (v shr 8).toByte(), (v shr 16).toByte(), (v shr 24).toByte())
 
     /** actionIndex: 0=FIGHT, 1=BAG, 2=POKEMON, 3=RUN — matches the ROM's own
      * gActionSelectionCursor values (B_ACTION_USE_MOVE/USE_ITEM/SWITCH/RUN). */
@@ -926,30 +1023,37 @@ class BattleInputController(
         queue.addLast(Step(0, 1))
     }
 
-    private companion object {
-        const val ACTION_RUN = 3
-        const val NUM_MOVE_ROWS = 3            // UPs that reach the top of a one-column move list from anywhere
-        const val PARTY_MENU_SLOT_ID = 9L      // struct PartyMenu.slotId, both games
-        const val PARTY_MENU_CANCEL = 7        // slotId on CANCEL (after the last mon), both games
-        const val MENU_TIMEOUT_FRAMES = 240    // the menu's fade-in drops presses for ~50 frames (headless, both games)
-        const val CURSOR_FRAMES = 3            // after each press, before reading the cursor again (it moves every 3)
-        const val MAX_PICK_PRESSES = 8         // a 2x2 grid needs two; the rest re-press dropped ones
-        const val MAX_CURSOR_PRESSES = 16      // steps the cursor took: two laps of six slots + CANCEL, then give up
-        const val SUBMENU_FRAMES = 8           // the SHIFT / SUMMARY / CANCEL menu opening (takes A after 6 on FireRed, 2 on Emerald)
-        const val CLOSE_TIMEOUT_FRAMES = 240
-        const val GB_PRESS_FRAMES = 2          // Prism's party menu reads keys every other frame (headless)
-        const val GB_SETTLE_FRAMES = 2        // after a Game Boy A: a taken pick has turned the cursor hollow by then
-        const val GB_REPRESS_FRAMES = 8        // a Game Boy menu still waiting this long after an A dropped it
-        const val MAX_GB_A_PRESSES = 12        // Crystal's SWITCH menu drops presses for ~30 frames after it shows (headless)
-        const val GB_PICK_SETTLE_FRAMES = 4    // after a battle menu's cursor step: Polished Crystal drops presses for 3 (headless)
-        const val MAX_GB_PICK_PRESSES = 12     // two steps at most; the rest re-press dropped ones
-        const val GB_HOLD_TAIL_FRAMES = 20     // white, then the battle back: ~8 frames on Yellow, ~14 on Crystal (headless)
-        const val RUN_PRESSES = 6
-        const val RUN_FIRST_GAP = 45           // the escape message starts printing
-        const val RUN_PRESS_GAP = 30
-        const val HOLD_TAIL_FRAMES = 12        // the ~4-frame state poll, and a little more
-        const val WATCH_TIMEOUT_FRAMES = 300   // a target screen / FIGHT that hasn't shown by then won't
-        const val EXCLUSIVE_TIMEOUT_FRAMES = 1200 // a switch's worst case (every step timing out) is ~800
+    companion object {
+        /** [caller]'s answer when a call can't run this frame (the CPU mid-interrupt). */
+        const val CALL_NOT_NOW = -2L
+        private const val ACTION_RUN = 3
+        private const val MAX_BATTLERS = 4
+        /** LAST BALL: frames from BAG to the bag's controller step (headless: the next frame, both games) before giving up. */
+        private const val THROW_TIMEOUT_FRAMES = 180
+        /** Frames the top screen keeps its picture after a throw went in (the fade's first step, turned round). */
+        private const val THROW_HOLD_FRAMES = 4
+        private const val NUM_MOVE_ROWS = 3            // UPs that reach the top of a one-column move list from anywhere
+        private const val PARTY_MENU_SLOT_ID = 9L      // struct PartyMenu.slotId, both games
+        private const val PARTY_MENU_CANCEL = 7        // slotId on CANCEL (after the last mon), both games
+        private const val MENU_TIMEOUT_FRAMES = 240    // the menu's fade-in drops presses for ~50 frames (headless, both games)
+        private const val CURSOR_FRAMES = 3            // after each press, before reading the cursor again (it moves every 3)
+        private const val MAX_PICK_PRESSES = 8         // a 2x2 grid needs two; the rest re-press dropped ones
+        private const val MAX_CURSOR_PRESSES = 16      // steps the cursor took: two laps of six slots + CANCEL, then give up
+        private const val SUBMENU_FRAMES = 8           // the SHIFT / SUMMARY / CANCEL menu opening (takes A after 6 on FireRed, 2 on Emerald)
+        private const val CLOSE_TIMEOUT_FRAMES = 240
+        private const val GB_PRESS_FRAMES = 2          // Prism's party menu reads keys every other frame (headless)
+        private const val GB_SETTLE_FRAMES = 2        // after a Game Boy A: a taken pick has turned the cursor hollow by then
+        private const val GB_REPRESS_FRAMES = 8        // a Game Boy menu still waiting this long after an A dropped it
+        private const val MAX_GB_A_PRESSES = 12        // Crystal's SWITCH menu drops presses for ~30 frames after it shows (headless)
+        private const val GB_PICK_SETTLE_FRAMES = 4    // after a battle menu's cursor step: Polished Crystal drops presses for 3 (headless)
+        private const val MAX_GB_PICK_PRESSES = 12     // two steps at most; the rest re-press dropped ones
+        private const val GB_HOLD_TAIL_FRAMES = 20     // white, then the battle back: ~8 frames on Yellow, ~14 on Crystal (headless)
+        private const val RUN_PRESSES = 6
+        private const val RUN_FIRST_GAP = 45           // the escape message starts printing
+        private const val RUN_PRESS_GAP = 30
+        private const val HOLD_TAIL_FRAMES = 12        // the ~4-frame state poll, and a little more
+        private const val WATCH_TIMEOUT_FRAMES = 300   // a target screen / FIGHT that hasn't shown by then won't
+        private const val EXCLUSIVE_TIMEOUT_FRAMES = 1200 // a switch's worst case (every step timing out) is ~800
     }
 
     private fun keyName(bit: Int) = when (bit) {
@@ -960,5 +1064,20 @@ class BattleInputController(
         MgbaCore.Key.UP -> "UP"
         MgbaCore.Key.DOWN -> "DOWN"
         else -> "?$bit"
+    }
+}
+
+/**
+ * HIDE BATTLE MENU's D-pad on the companion's action buttons - FIGHT on top, BAG / RUN / POKéMON left to right under it
+ * (both battle styles) - in the game's cursor cells: 0 FIGHT, 1 BAG, 2 POKéMON, 3 RUN. UP goes to FIGHT, DOWN from FIGHT to
+ * RUN under it; LEFT / RIGHT walk the bottom row, and from FIGHT reach its ends. Nothing wraps.
+ */
+object HiddenMenuSteer {
+    fun next(cell: Int, key: Int): Int = when {
+        key and MgbaCore.Key.UP != 0 -> 0
+        key and MgbaCore.Key.DOWN != 0 -> if (cell == 0) 3 else cell
+        key and MgbaCore.Key.LEFT != 0 -> when (cell) { 0, 3 -> 1; 2 -> 3; else -> cell }
+        key and MgbaCore.Key.RIGHT != 0 -> when (cell) { 0, 3 -> 2; 1 -> 3; else -> cell }
+        else -> cell
     }
 }

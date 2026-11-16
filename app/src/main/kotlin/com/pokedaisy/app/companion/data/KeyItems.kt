@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+
 /**
  * The QUICK MENU's BIKE and ROD: the key items the games let the player register to SELECT, used the way SELECT uses
  * them - the item written into SaveBlock1.registeredItem, SELECT pressed for the game, the player's own registered item

@@ -22,17 +22,21 @@ for name in ('fieldSystemPtr', 'battleTemplate'):
 for name in ('offChild', 'offAppData', 'offBattleType', 'offBattleCtx', 'offBattleMons'):
     fields['battle_' + name] = number(battle_defaults, name)
 dex = (data / 'Gen4Dex.kt').read_text()
-# Platinum's dex block size: the read's own, or its floor since other games' blocks came in (maxOf(size, 0x340)).
-fields['dexSize'] = int(re.search(r'val d = r.readCoreMemory\(body \+ off, (?:maxOf\(size, )?(0x[0-9A-Fa-f]+)\)', dex)[1], 0)
 fields['dexMagic'] = int(re.search(r'if \(magic != (0x[0-9A-Fa-f]+)L\)', dex)[1], 0)
 # Platinum's species count and flag size: its POKEDEX tables' nationalCount, Gen4Config's dexFlagBytes (Platinum keeps the
 # default), the seen flags after the caught ones (the reader went by config when Origin HeartGold came in).
 fields['dexMax'] = int(re.search(r'nationalCount = (\d+), regionalCount = \d+, regionName = "SINNOH"', dex)[1])
 flag_bytes = int(re.search(r'val dexFlagBytes: Int = (0x[0-9A-Fa-f]+|\d+)', reader)[1], 0)
 assert 'dexFlagBytes' not in config, 'Platinum sets its own dexFlagBytes'
-assert 'bit(4 + flagBytes, it)' in dex and 'bit(4, it)' in dex
+assert 'val seenOff = cfg.dexSeenOff ?: (4 + flagBytes)' in dex and 'bit(seenOff, it)' in dex and 'bit(4, it)' in dex
+assert 'dexSeenOff' not in config, 'Platinum sets its own dexSeenOff'
 fields['dexCaughtBase'] = 4
 fields['dexSeenBase'] = 4 + flag_bytes
+# Platinum's dex block size: the read's own size (seen flags right after the caught ones, so its second term is the first's
+# floor), whose rule is checked here as written.
+size_rule = re.search(r'val size = maxOf\(4 \+ 4 \* flagBytes \+ (0x[0-9A-Fa-f]+), seenOff \+ flagBytes, (0x[0-9A-Fa-f]+)\)', dex)
+assert size_rule and 'val d = r.readCoreMemory(body + off, size)' in dex, "Gen4Dex.kt's dex read changed"
+fields['dexSize'] = max(4 + 4 * flag_bytes + int(size_rule[1], 0), 4 + 2 * flag_bytes, int(size_rule[2], 0))
 fields['bodyOff'] = number(reader, 'bodyOff')
 fields['monSize'] = number(reader, 'GEN4_MON_SIZE')
 fields['boxSize'] = number(reader, 'GEN4_BOX_SIZE')

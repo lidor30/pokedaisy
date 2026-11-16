@@ -95,6 +95,12 @@ class GameStageLayout(
 
     private var skinLaid: android.graphics.Rect? = null
 
+    /**
+     * A view of its own in the game's place, laid out exactly over [game]'s box in every arrangement: a 3DS game's top
+     * screen (Azahar draws it into a SurfaceView of its own, [com.pokedaisy.app.n3ds.N3dsSession]); null = none.
+     */
+    var gameCover: View? = null
+
     /** The touch screen's view for [dsArrange] (a child of this layout, over [game]). */
     var dsTouch: View? = null
 
@@ -111,7 +117,7 @@ class GameStageLayout(
      * windowRecomposer" - issue #31, PortraitPanel enabled from onResume); its first layout corrects it. */
     fun gameHeightFor(width: Int): Int {
         val b = if (!barShown || !bar.isAttachedToWindow) 0 else bar.measuredHeight.takeIf { it > 0 } ?: run {
-            bar.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+            bar.measure(MeasureSpec.makeMeasureSpec(width.coerceAtLeast(0), MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
             bar.measuredHeight
         }
         return (width / aspect).toInt() + b
@@ -124,6 +130,7 @@ class GameStageLayout(
         val w = if (ds) dsBackdrop?.measuredWidth ?: game.measuredWidth else game.measuredWidth
         val h = if (ds) dsBackdrop?.measuredHeight ?: game.measuredHeight else game.measuredHeight
         overGame.forEach { if (it.visibility != GONE) it.measure(exactly(w), exactly(h)) }
+        gameCover?.takeIf { it.visibility != GONE }?.measure(exactly(game.measuredWidth), exactly(game.measuredHeight))
     }
 
     /** DS LAYOUT: where the game's box starts in the area [overGame] covers (px), to move the game's rects into it. */
@@ -150,8 +157,10 @@ class GameStageLayout(
         if (!topAligned && measureSkin()) return
         if (!barShown && !topAligned) return
         val lp = game.layoutParams as LayoutParams
-        val areaW = measuredWidth - lp.leftMargin - lp.rightMargin
-        val areaH = measuredHeight - lp.topMargin - lp.bottomMargin
+        // Margins can outgrow the stage for a pass (an upright companion's bottom margin still set as the phone turns
+        // sideways): a negative size made a MeasureSpec of 2^30 - 281, which the bar's ComposeView threw on (Crashlytics).
+        val areaW = (measuredWidth - lp.leftMargin - lp.rightMargin).coerceAtLeast(0)
+        val areaH = (measuredHeight - lp.topMargin - lp.bottomMargin).coerceAtLeast(0)
         barH = if (barShown) {
             bar.measure(
                 MeasureSpec.makeMeasureSpec(areaW, MeasureSpec.AT_MOST),
@@ -218,6 +227,7 @@ class GameStageLayout(
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         layoutStage(changed, left, top, right, bottom)
+        gameCover?.takeIf { it.visibility != GONE }?.layout(game.left, game.top, game.right, game.bottom)
         val area = dsBackdrop?.takeIf { dsLaid != null }
         overGame.forEach {
             if (it.visibility == GONE) return@forEach

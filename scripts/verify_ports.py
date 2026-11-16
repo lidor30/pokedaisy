@@ -153,7 +153,7 @@ def main():
                                refs[p["english"]]["path"], refs[p["english"]]["native"],
                                str(p["probe_trainer"]), p["file"], p["tables_path"], p["guide"]]) + "\n")
     contact_sheet([p["key"] for p in ports], os.path.join(PORTS, "fields.png"))
-    r = subprocess.run([os.path.join(ROOT, "gradlew"), "-p", ROOT, ":app:testDebugUnitTest", "--tests", "*PortsVerifyTest", "--rerun", "-q"])
+    r = subprocess.run([os.path.join(ROOT, "gradlew"), "-p", ROOT, ":shared:testDebugUnitTest", "--tests", "*PortsVerifyTest", "--rerun", "-q"])
     report = os.path.join(PORTS, "report.md")
     if os.path.exists(report):
         print(open(report, encoding="utf-8").read())

@@ -47,6 +47,7 @@ import com.pokedaisy.app.companion.ui.rememberArtGeneration
 import com.pokedaisy.app.companion.ui.soundClickable
 import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.i18n.tk
+import okio.Path.Companion.toOkioPath
 
 /**
  * A theme (Settings > THEME on both screens): the app's and the companion's look in its colours, the way DARK MODE
@@ -321,11 +322,13 @@ object AppColors {
         // PureRGB's own: NONE (STRUGGLE's), CRYSTAL (a hardened rock), FLOATING, MAGMA - ours (TRI is Prism's above).
         "None" to Color(0xFF68A090), "Crystal" to Color(0xFF8CC8D8), "Floating" to Color(0xFFB8A0D8),
         "Magma" to Color(0xFFC8481C),
+        // Pokémon Brown's own (with Prism's Gas, Sound and Tri): WOOD, WIND, ABNORMAL - ours; its BIRD as Flying.
+        "Wood" to Color(0xFF8C7A3C), "Wind" to Color(0xFF8CC8B0), "Abnormal" to Color(0xFFB0689C),
+        "Bird" to Color(0xFFA890F0),
     )
 
     /** By the game's own type name: title-cased ("Fire"), or Gen 1's capitals ("FIRE", and its unused BIRD as Flying). */
-    val typeColors = typeColorsTitled + typeColorsTitled.mapKeys { it.key.uppercase() } +
-        ("BIRD" to typeColorsTitled.getValue("Flying"))
+    val typeColors = typeColorsTitled + typeColorsTitled.mapKeys { it.key.uppercase() }
 
     fun statusColor(label: String): Color = when (label) {
         "SLP" -> statusSlp; "PSN" -> statusPsn; "BRN" -> statusBrn
@@ -362,8 +365,13 @@ object AppColors {
  */
 @Composable
 fun pixelFontFamily(): FontFamily {
-    LocalGameFont.current?.let { return it }
     val context = LocalContext.current
+    // SETTINGS > FONT: another font everywhere (a game's skin and a Game Boy game's own font included); PIXEL keeps the
+    // game's: its skin's font (CompanionSkin: Pokemon X's sans-serif), else a Game Boy game's own, else Pixel Operator.
+    val font = AppFonts.current
+    if (!font.pixel) return remember(font) { font.family(context) }
+    com.pokedaisy.app.companion.ui.CompanionSkins.current.font?.let { return it }
+    LocalGameFont.current?.let { return it }
     // Pixel Operator + its Japanese fallback (PixelTypeface.kt), one per process.
     return com.pokedaisy.app.pixelFontFamily(context)
 }
@@ -404,7 +412,9 @@ fun rememberGameFont(game: GameKind?): FontFamily? {
     return remember(game, gen, language) {
         val path = when (game) {
             GameKind.YELLOW -> com.pokedaisy.app.companion.data.Gen1Art.yellowFont(com.pokedaisy.app.companion.data.romLanguage)
-            GameKind.RED, GameKind.BLUE -> com.pokedaisy.app.companion.data.Gen1Art.RED_BLUE_FONT
+            GameKind.RED, GameKind.BLUE -> com.pokedaisy.app.companion.data.Gen1Art.redBlueFont(com.pokedaisy.app.companion.data.romLanguage)
+            // Brown kept Red's font, byte for byte (Gen1Art.BROWN builds it into Red's file).
+            GameKind.BROWN -> com.pokedaisy.app.companion.data.Gen1Art.redBlueFont('E')
             GameKind.PURE_RED, GameKind.PURE_BLUE -> com.pokedaisy.app.companion.data.Gen1Art.PURE_FONT
             GameKind.YELLOW_LEGACY -> com.pokedaisy.app.companion.data.Gen1Art.YELLOW_LEGACY_FONT
             GameKind.CRYSTAL_LEGACY -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_LEGACY_FONT
@@ -415,7 +425,7 @@ fun rememberGameFont(game: GameKind?): FontFamily? {
             GameKind.GOLD, GameKind.SILVER -> com.pokedaisy.app.companion.data.Gen2Art.GOLD_SILVER_FONT
             else -> null
         } ?: return@remember null
-        com.pokedaisy.app.companion.data.RomArt.file(context.filesDir, path)?.let { com.pokedaisy.app.gameFontFamily(context, it) }
+        com.pokedaisy.app.companion.data.RomArt.file(context.filesDir?.toOkioPath(), path)?.let { com.pokedaisy.app.gameFontFamily(context, it.toFile()) }
     }
 }
 
@@ -437,6 +447,7 @@ fun AppTheme(content: @Composable () -> Unit) {
         // runCatching: previews / screenshot tests may have no real prefs.
         runCatching { loadTheme(context) }
         runCatching { DarkMode.load(context) }
+        runCatching { AppFonts.load(context) }
     }
 
     val pixel = pixelFontFamily()

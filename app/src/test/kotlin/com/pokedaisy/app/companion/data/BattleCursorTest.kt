@@ -50,9 +50,13 @@ class BattleCursorTest {
             "dreamstone_battle" to NATIVE_DREAMSTONE, "dreamstone_trainer" to NATIVE_DREAMSTONE,
             "monomyth_battle" to NATIVE_MONOMYTH, "monomyth_trainer" to NATIVE_MONOMYTH,
             "monomyth_v1_1_battle" to NATIVE_MONOMYTH_V1_1, "monomyth_v1_1_trainer" to NATIVE_MONOMYTH_V1_1,
+            "monomyth_v1_2_battle" to NATIVE_MONOMYTH_V1_2, "monomyth_v1_2_trainer" to NATIVE_MONOMYTH_V1_2,
             // Modern Emerald: its build's gActionSelectionCursor / gMoveSelectionCursor (RIGHT / DOWN walk 0 -> 1 -> 3, a
             // written 2 + A opens the party, a written move 1 + A spent its PP: headless, 2026-11-09).
             "modern_emerald_battle" to NATIVE_MODERN_EMERALD,
+            // Epsilon Emerald: RIGHT / DOWN walk 0 -> 1 -> 3, a written 2 + A opens the party, a written move 1 + A spent its
+            // PP (headless, 2026-11-15).
+            "epsilon_emerald_battle" to NATIVE_EPSILON_EMERALD,
         ).forEach { (fixture, cfg) ->
             val ram = FixtureMemoryReader.load(fixture)
             assertEquals(fixture, 0, ram.readCoreMemory(cfg.actionCursor, 1)[0].toInt())
@@ -70,8 +74,14 @@ class BattleCursorTest {
         assertEquals(0x02001E50L to 0x02001E54L, NATIVE_SOULGOLD_V1_2C.actionCursor to NATIVE_SOULGOLD_V1_2C.moveCursor)
         assertEquals(0x02001E50L to 0x02001E54L, NATIVE_SOULGOLD_V1_2_1.actionCursor to NATIVE_SOULGOLD_V1_2_1.moveCursor)
         assertEquals(0x02024E60L to 0x02024E64L, NATIVE_RUBY.actionCursor to NATIVE_RUBY.moveCursor)
+        // Retail FireRed 1.0 and LeafGreen themselves (checked headless on the retail carts, 2026-11-14): their own configs,
+        // which the Poller picks on a retail hash only - the bases below carry the language ports and the hacks.
+        listOf(NATIVE_FIRERED_REV0_RETAIL, NATIVE_LEAFGREEN_REV0_RETAIL, NATIVE_LEAFGREEN_REV1_RETAIL).forEach {
+            assertEquals(0x02023FF8L to 0x02023FFCL, it.actionCursor to it.moveCursor)
+        }
         // Copies whose RAM differs (or isn't checked) are zeroed; the hacks' base configs never had them.
-        listOf(NATIVE_EMERALD_JA, NATIVE_LEAFGREEN_REV1, NATIVE_EMERALD, NATIVE_FIRERED_REV0, NATIVE_EMERALD_ROGUE).forEach {
+        (listOf(NATIVE_EMERALD_JA, NATIVE_LEAFGREEN_REV0, NATIVE_LEAFGREEN_REV1, NATIVE_EMERALD, NATIVE_FIRERED_REV0, NATIVE_EMERALD_ROGUE,
+        ) + listOf("BPGJ0", "BPGJ1", "BPGD0", "BPRJ0").map { RETAIL_PORTS.getValue(it)() }).forEach {
             assertEquals(0L to 0L, it.actionCursor to it.moveCursor)
         }
     }

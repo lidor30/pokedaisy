@@ -15,7 +15,7 @@
 #define FRAME 5
 #define MAX_RECTS 8
 // The most MapScreen stretches the map to fill the tab (MAX_MAP_STRETCH); past it the map keeps its shape.
-#define PLACE_ROW 18
+#define PLACE_ROW pd_list_row(18)
 #define CURSOR 0xFFFFFF
 #define CURSOR_ARM 5
 #define CURSOR_THICK 2
@@ -326,6 +326,7 @@ void ui_fly_overlay(struct pd_ui* ui, struct pd_canvas* c) {
         if (ry >= iy + ih) break;
         if (ui->pressedId == HIT_FLY_TOWN + i) pd_fill(c, ix, ry, iw, PLACE_ROW, PD_ROW_SELECTED);
         pd_text_fit(c, ix + 14, pd_text_y(ry, PLACE_ROW), iw - 28, ui->flyNames[i], PD_LABEL, PD_LABEL_SHADOW);
+        if (i < ui->flyCount - 1) ui_row_divider(c, ix + 2, ry + PLACE_ROW - 1, iw - 4);
         int top = ry < iy ? iy : ry;
         int bottom = ry + PLACE_ROW > iy + ih ? iy + ih : ry + PLACE_ROW;
         ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_FLY_TOWN + i);
@@ -367,6 +368,8 @@ void ui_places_overlay(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         if (pd_map_tiles(g, places[i].mapsec, &page, &r, 1) && page > 0) {
             pd_text_right(c, ix + iw - 10, ty, pd_map_page_name(g, page), PD_MUTED, PD_MUTED_SHADOW);
         }
+        // Between two places (not over a heading).
+        if (i < placeCount - 1 && places[i + 1].mapsec >= 0) ui_row_divider(c, ix + 2, ry + PLACE_ROW - 1, iw - 4);
         int top = ry < iy ? iy : ry;
         int bottom = ry + PLACE_ROW > iy + ih ? iy + ih : ry + PLACE_ROW;
         ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_PLACE + i);

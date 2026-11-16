@@ -179,7 +179,7 @@ fun flyVisitedTowns(fly: FlyFns, g: GameCalls): List<Int> =
 /** Whether the running ROM has [fly]'s functions where they're expected. */
 fun flyCodeMatches(fly: FlyFns, read: (addr: Long, len: Int) -> ByteArray): Boolean =
     fly.functions.zip(fly.codeCrcs).all { (fn, crc) ->
-        val got = java.util.zip.CRC32().apply { update(read(fn, 32)) }.value
+        val got = crc32(read(fn, 32))
         got == crc || fn == fly.getMapsecType && got == fly.getMapsecTypeAltCrc
     }
 
@@ -210,18 +210,22 @@ data class FlyTargets(
 
 private const val GET_MON_PERSONALITY = 0
 
-/** The first party Pokémon that knows Fly (not an egg): its slot and personality, or null. */
+/** The first party Pokémon that knows Fly (not an egg): its slot and personality, or null. With NO HMS NEEDED
+ * ([HmFree.active]) the first that isn't an egg, if nobody knows it: the game's own Fly checks no move after the menu. */
 private fun flyer(fns: FieldItemFns, fly: FlyFns, g: GameCalls): Pair<Int, Long>? {
     val p = fns.party ?: return null
     val count = (g.read(p.partyCount, 1)[0].toInt() and 0xFF).coerceAtMost(6)
+    var first: Int? = null
     for (slot in 0 until count) {
         val mon = (p.party + slot * p.monStride).toInt()
         if (g.call(p.getMonData, mon, fly.monEggField) != 0L) continue
+        if (first == null) first = slot
         if ((0 until 4).any { g.call(p.getMonData, mon, fly.monMoveField + it) == fly.flyMove.toLong() }) {
             return slot to g.call(p.getMonData, mon, GET_MON_PERSONALITY)
         }
     }
-    return null
+    val slot = first?.takeIf { HmFree.active } ?: return null
+    return slot to g.call(p.getMonData, (p.party + slot * p.monStride).toInt(), GET_MON_PERSONALITY)
 }
 
 /** Why FLY can't start now, or null: the party menu's own checks, in its order. */
