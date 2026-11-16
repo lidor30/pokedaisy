@@ -60,7 +60,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | White 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
 | White 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
 | Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁹ | — | — | — | ✅ ²⁹ | — | ✅ ²⁹ | ✅ ¹⁴ | ✅ ²⁹ | ✅ ²⁹ | — | n/a | — | — | — | — ³⁶ |
-| Heartfelt Gold (DS) | 1.0.15 (+ Zoomed In) | — ³⁷ | — ³⁷ | — | — | — | — ³⁷ | — | ✅ ³⁷ | — | — | ✅ ³⁷ | — | n/a | — | — | — | — ³⁶ |
+| Heartfelt Gold (DS) | 1.0.15 (+ Zoomed In) | ✅ ³⁷ | ✅ ³⁷ | — | — | — | ✅ ³⁷ | — | ✅ ³⁷ | — | ✅ ³⁷ | ✅ ³⁷ | — | n/a | — | — | — | — ³⁶ |
 | Renegade Platinum (DS) | 1.3.0 (+ Classic, shiny rate, Speed Up), 1.2.0 | ✅ ³² | ✅ ³² | — | — | — | ✅ ³² | — | ✅ ³² | ◐ ³² | ◐ ³² | ✅ ³² | — | n/a | — | — | — | — ³⁶ |
 | Blaze Black 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
 | Volt White 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
@@ -616,10 +616,16 @@ change to any of the places listed under "Where it's decided" updates its rows h
     hacks proven only by their code (no row: they'd need retail's, checked), and the Game Boy and DS games (other engines).
 37. Heartfelt Gold (1.0.15, and its Zoomed In camera patch; 2026-11-16) is hg-engine over the US HeartGold, its header the
     retail cart's (`IPKE` rev 0), so the native side runs it as HeartGold: told apart by its header's ARM9 size and overlay
-    count (`HeartfeltGold.matches`). Its RAM is the US cart's (sSaveDataPtr, sFieldSysPtr) and checked headless on the
-    player's save: the field read is right and PC anywhere opened the storage system. The other columns weren't tried yet
-    (EXPAND, FLY, battle buttons on its battle screens, WILD ENCOUNTERS: its maps' rates are its own and aren't read from
-    the cart). Its battles are HeartGold's own battle system, read by the companion (a wild battle, headless).
+    count (`HeartfeltGold.matches`). Its RAM is the US cart's (sSaveDataPtr, sFieldSysPtr), each column checked headless on
+    the player's save with `nds_dump`: the field read; PC anywhere opened the storage system; EXPAND's middle matches the
+    game's picture but for its two edge columns (x 0 and 255), which its own picture draws dark (its edge marking, on as
+    in retail, where polygons meet the screen's edge; retail HeartGold's frames have none there): the wider picture has
+    no edge there to outline (both builds, walking outdoors and indoors; its battles carried as HeartGold's); FLY landed in New Bark Town and
+    Violet City, whose arrival set retail's flypoint flag (2482), so the list read from those flags holds; the battle
+    buttons' taps at HeartGold's places (`NdsBattleTaps.GEN4`) opened its move panel and used the move; WILD ENCOUNTERS
+    OFF walked 160 steps of Route 29's grass with no battle, ON met one, and its maps' own rates (`HeartfeltGold.Data.wildRates`,
+    its map headers' banks into its own `/a/0/3/7`) are what it puts back. Bike / surf weren't tried. Its battles are
+    HeartGold's own battle system, read by the companion (a wild battle, headless).
 38. Pokémon Brown (6.1.2, 6.0.1; 2026-11-16) is a 2 MB hack of Red with Red's RAM (`GEN1_BROWN`) and Red's battle menus at
     Red's places: its action menu reads as Red's on the `brown_battle` fixture (`BrownDecodeTest`). The controls' presses
     weren't run on it, the POKéMON switch and the one-press picks weren't tried, and the field features (PC, FLY, WILD) go

@@ -771,6 +771,10 @@ It runs as `GameKind.HEARTGOLD` with `originHeartGold` set (`GEN4_ORIGIN_HEARTGO
 Fairy = 9, its type chart, icons, its DEX's pages): never bundled. Its battle engine is its own: the BATTLE tab reads its
 battle objects (`Gen4ManagedBattle`), no battle buttons, the touch screen floats in while its battle waits (`battleManagerPtr`).
 No GUIDE. Fixtures `origin_heartgold(_battle, _trainer)`; docs/DEVELOPMENT.md's "Origin HeartGold".
+**Heartfelt Gold v1.0.15 (2026-11-16)**: hg-engine over the *US* HeartGold (`HeartfeltGold.matches`: ARM9 / overlay table sizes),
+the US RAM and battle system, so the native side (EXPAND, FLY, PC, WILD, battle buttons) runs it as HeartGold unchanged. Its species ids are
+the Dex numbers to ARCEUS, then Dex + 50 (`HeartfeltGold.speciesOf` / `nationalOf`, `Gen4DexTables.speciesOf` / `dexOf`): anything keyed by
+Dex number goes through them. Its Pokédex's seen bits sit at +0x400 (`dexSeenOff`), its icons' palettes in `/a/0/2/8` member 9. docs/DEVELOPMENT.md.
 **Renegade Platinum v1.3.0 (2026-11-06)**: Drayano's hack, US Platinum rev 1 edited in place (header, RAM, save and ARM9 retail's,
 but the shiny odds' word), so it runs as `GameKind.PLATINUM` everywhere the header decides (native side included).
 `RenegadePlatinum.matches` (overlay 16's pointer to its moved type chart, cart 0x221060) sets `renegadePlatinum` (ActiveTables, by

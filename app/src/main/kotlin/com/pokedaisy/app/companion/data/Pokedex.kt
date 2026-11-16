@@ -1622,7 +1622,8 @@ object PokedexSource {
     fun cachedFootprint(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) footprints[species] else null
     fun cachedSpeciesMap(t: PokedexTables): IntArray? = when {
         // Gen 1's and 2's tables are by Dex number - but Prism's, by its own species ids in its own dex order.
-        t.cartDex -> IntArray(t.nationalCount + 1) { n -> t.gen2?.speciesOf(n) ?: n }
+        // (Heartfelt Gold's: its own species ids past ARCEUS, Gen4DexTables.speciesOf.)
+        t.cartDex -> IntArray(t.nationalCount + 1) { n -> t.gen2?.speciesOf(n) ?: t.gen4?.species(n) ?: n }
         cachedFor == t -> nationalToSpecies
         else -> null
     }
@@ -1652,7 +1653,7 @@ object PokedexSource {
     /** Species id for a national dex number (the first species that maps to it), or 0. */
     fun speciesFor(t: PokedexTables, national: Int): Int {
         // Its tables are by Dex number (Prism: its dex's order).
-        if (t.cartDex) return if (national !in 1..t.nationalCount) 0 else t.gen2?.speciesOf(national) ?: national
+        if (t.cartDex) return if (national !in 1..t.nationalCount) 0 else t.gen2?.speciesOf(national) ?: t.gen4?.species(national) ?: national
         sync(t)
         val map = nationalToSpecies ?: runCatching {
             if (t.nationalToSpecies != 0L) {
@@ -1673,7 +1674,7 @@ object PokedexSource {
 
     /** National dex number of a species id (Hoenn species aren't in national order), or 0. */
     fun nationalOf(t: PokedexTables, species: Int): Int {
-        if (t.cartDex) return t.gen2?.dexOf(species) ?: if (species in 1..t.nationalCount) species else 0
+        if (t.cartDex) return t.gen2?.dexOf(species) ?: t.gen4?.dexOf?.invoke(species) ?: if (species in 1..t.nationalCount) species else 0
         sync(t)
         val map = speciesToNational ?: runCatching { speciesNationals(t) }.getOrNull()?.also { speciesToNational = it } ?: return 0
         return map.getOrElse(species) { 0 }
