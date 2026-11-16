@@ -284,7 +284,7 @@
       {"game": "Yellow (GB)", "version": "USA/Europe", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Yellow (GB)", "version": "DE / FR / IT / ES", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Yellow Legacy (GB)", "version": "1.0.10", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
-      {"game": "Brown (GB)", "version": "6.0.1, 6.1.2", "cells": ["yes", "yes", "part", "yes", "no", "no"]},
+      {"game": "Brown (GB)", "version": "6.0.1, 6.1.2", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Gold / Silver (GBC)", "version": "USA/Europe", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Gold / Silver (GBC)", "version": "DE (Goldene Edition, Silberne Edition)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Crystal (GBC)", "version": "USA, USA/Europe rev 1, AU", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},

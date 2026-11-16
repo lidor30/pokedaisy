@@ -210,15 +210,19 @@ object Gen1Art {
      * Pokémon Brown 6.1.2 / 6.0.1 (pokered.sym mapped into it by scripts/port_gen1.py, each checked by its bytes): Red's
      * font and MonPartySpritePointers at Red's places, MonPartyData moved and grown to 252 species (2 a byte), its own
      * Rijon town map (CompressedMap 1C:7B9E) over WorldMapTileGraphics redrawn in place, its player at Red's. A DMG cart
-     * run as a Super Game Boy like Red: Red / Blue's colours.
+     * run as a Super Game Boy like Red, with SGB palettes of its own (sampled headless): the party menu's icons in two browns
+     * and black on white (OBP0 straight through: pixel 1 = D68463, 2 = 7B3939, 3 = black), the town map cream / sky blue /
+     * green / black (its Fly menu), the player there in its paper, water and black.
      */
     private fun brown(sha1: String) = redBlue(sha1).let {
         Gen1ArtTables(
             sha1 = sha1, font = it.font, fontPath = it.fontPath, iconPointers = it.iconPointers, iconPointerCount = it.iconPointerCount,
-            monPartyData = 0x1C to 0x5580, dexCount = 252, iconsDir = BROWN_ICONS, iconColors = it.iconColors,
+            monPartyData = 0x1C to 0x5580, dexCount = 252, iconsDir = BROWN_ICONS,
+            iconColors = intArrayOf(0xFFD68463.toInt(), 0xFF7B3939.toInt(), 0xFF000000.toInt()),
             townMap = 0x1C to 0x7B9E, townMapTiles = it.townMapTiles, townMapPath = "regionmap/$BROWN_TOWN_MAP_NAME.png",
-            townMapColors = it.townMapColors, playerSprite = it.playerSprite, playerPath = "regionmap/player_brown.png",
-            playerColors = it.playerColors,
+            townMapColors = intArrayOf(0xFFFFF7DE.toInt(), 0xFF84DEF7.toInt(), 0xFF8CBD52.toInt(), 0xFF000000.toInt()),
+            playerSprite = it.playerSprite, playerPath = "regionmap/player_brown.png",
+            playerColors = intArrayOf(0, 0xFFFFF7DE.toInt(), 0xFF84DEF7.toInt(), 0xFF000000.toInt()),
         )
     }
     val BROWN = brown(TelemetrySampler.BROWN_V6_1_2_SHA1)

@@ -231,9 +231,11 @@ val GEN1_YELLOW_LEGACY = GEN1_YELLOW.copy(
 /**
  * Pokémon Brown 6.1.2 / 6.0.1 (Koolboyman's Rijon, a 2 MB hack of Red with no source): Red's RAM, every address (each wram
  * symbol scripts/port_gen1.py maps from pokered.sym lands on Red's; checked headless on its own save, the `brown*`
- * fixtures), its own internal species order to Dex No. 252. No DEX yet (its pages aren't mapped).
+ * fixtures), its own internal species order to Dex No. 252, its own POKéDEX ([POKEDEX_BROWN]; the Poller gives 6.0.1
+ * [GEN1_BROWN_V601], so a dex cache never mixes the two carts' pages).
  */
-val GEN1_BROWN = GEN1_RED.copy(internalToDex = gen1InternalToDexBrown, pokedex = null)
+val GEN1_BROWN = GEN1_RED.copy(internalToDex = gen1InternalToDexBrown, pokedex = POKEDEX_BROWN)
+val GEN1_BROWN_V601 = GEN1_BROWN.copy(pokedex = POKEDEX_BROWN_V601)
 
 /** Pokémon Yellow, Red or Blue (every language), PureRed or PureBlue, Yellow Legacy, Brown: Gen 1's reader ([readGen1Telemetry]), tables and look. */
 val GameKind?.isGen1: Boolean get() = this == GameKind.YELLOW || isRedBlue || isPureRgb || this == GameKind.YELLOW_LEGACY ||

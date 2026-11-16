@@ -1232,6 +1232,17 @@ open class CompanionScreenshotTest {
     @Test fun redMap() = yellow("red", "MAP", cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
     @Test fun redSettings() = yellow("red", "SETTINGS", cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
     @Test fun redDexEntry() = yellow("red", "DEX", dexEntry = 151, cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
+    // Pokémon Brown 6.1.2: its own save (the brown fixtures), its own Super Game Boy colours.
+    private val brownRom = "Pokemon Brown (v6.1.2).gb"
+    private fun brown(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null) = yellow(fixture, tab,
+        controls = controls, dexEntry = dexEntry, cfg = com.pokedaisy.app.companion.data.GEN1_BROWN, romFile = brownRom, game = GameKind.BROWN)
+    @Test fun brownParty() = brown("brown", "PARTY")
+    @Test fun brownItems() = brown("brown", "ITEMS")
+    @Test fun brownBattle() = brown("brown_battle", "BATTLE", controls = true)
+    @Test fun brownMap() = brown("brown", "MAP")
+    @Test fun brownSettings() = brown("brown", "SETTINGS")
+    @Test fun brownDex() = brown("brown", "DEX")
+    @Test fun brownDexEntry() = brown("brown", "DEX", dexEntry = 252)
     // PureRed / PureBlue v2.7.6: the retail Red save, converted by the game (the purered / pureblue fixtures).
     private val pureRedRom = "Pokemon PureRed (v2.7.6).gb"
     private val pureBlueRom = "Pokemon PureBlue (v2.7.6).gb"
