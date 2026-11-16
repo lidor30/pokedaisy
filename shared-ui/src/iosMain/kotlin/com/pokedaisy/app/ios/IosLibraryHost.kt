@@ -43,6 +43,8 @@ internal class IosLibraryHost(
     private val prefs = LibraryPreferences({ defaults.stringForKey("library_preferences") },
         { defaults.setObject(it, "library_preferences") })
     private var paths by mutableStateOf(PokeDaisyHost.games())
+    private var savedGames by mutableStateOf<Set<String>>(emptySet())
+    private var saveRefresh by mutableIntStateOf(0)
     private val library = com.pokedaisy.app.companion.LibraryCoordinator({ prefs })
     private var setup by mutableStateOf<SetupFlow<Int>?>(
         if (!iosPreferences.setupDone && paths.isEmpty()) newSetup() else null)
@@ -62,6 +64,12 @@ internal class IosLibraryHost(
             onEditTouch = { touch.editStandalone(settingsStage()) }, readTouchStage = ::settingsStage)
         L10n.apply(appSettings.appLanguage, null)
         host = ComposeUIViewController(configure = { configureUiAutomation() }) {
+            LaunchedEffect(paths, saveRefresh) {
+                val listed = paths
+                savedGames = withContext(Dispatchers.Default) {
+                    listed.filter { RomPicker.savePathFor(it).toPath().length > 0 }.toSet()
+                }
+            }
             DisposableEffect(Unit) { onDispose { saveImports.close(); setup?.close() } }
             AppTheme { CompactTextOnSmallWindows {
                 CompositionLocalProvider(LocalCompanionBack provides back) {
@@ -85,6 +93,11 @@ internal class IosLibraryHost(
             underGame = IosTouchPreferences.underGame, style = IosTouchPreferences.style)
     }
 
+    private fun refreshGames() {
+        paths = PokeDaisyHost.games()
+        saveRefresh++
+    }
+
     private fun key(path: String) = path.substringAfterLast('/')
     private fun label(path: String) = key(path).substringBeforeLast('.')
     private fun category(path: String): RomCategory = when (path.substringAfterLast('.').lowercase()) {
@@ -95,7 +108,7 @@ internal class IosLibraryHost(
             val id = key(path)
             LibraryGame(path, label(path), "roms/$id", playing = prefs.last == id,
                 isNew = prefs.isNew(id),
-                hasSave = RomPicker.savePathFor(path).toPath().length > 0, favorite = id in prefs.favorites)
+                hasSave = path in savedGames, favorite = id in prefs.favorites)
         }.sortedBy { it.label.lowercase() }
         return prefs.ordered(games) { key(it.id) }
     }
@@ -132,7 +145,7 @@ internal class IosLibraryHost(
         val state = LibraryPresentation(shown, library.grid, library.section, views, view,
             projection.counts, games.isNotEmpty(), library.query,
             tr("Add your own GBA or Game Boy ROMs from Files. Copies are kept in PokeDaisy's folder."), tools)
-        val actions = library.actions(add = ::addGames, refresh = { paths = PokeDaisyHost.games() })
+        val actions = library.actions(add = ::addGames, refresh = { refreshGames() })
         LibraryScreen(state, actions, m, small, key = { it.id }, focus = focus,
             settings = {
                 key(library.settingsPage) {
@@ -201,7 +214,7 @@ internal class IosLibraryHost(
             }
             if (saveImports.finished(picked)) {
                 notice = tr("LOAD SAVE") to (result ?: tr("Save loaded"))
-                paths = PokeDaisyHost.games()
+                refreshGames()
             }
         }
         saveImports.pending?.let { picked ->
@@ -221,7 +234,7 @@ internal class IosLibraryHost(
         val known = paths.map(::key).toSet()
         PokeDaisyHost.addGames(host) { added ->
             prefs.recordAdded(added.map(::key).filter { it !in known })
-            paths = PokeDaisyHost.games()
+            refreshGames()
             if (added.isNotEmpty()) {
                 library.search("")
                 prefs.setView(LibraryView.ALL)
