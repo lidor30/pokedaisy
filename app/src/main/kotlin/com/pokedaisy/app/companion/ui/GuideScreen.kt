@@ -396,8 +396,17 @@ private fun EntryRow(e: GuideEntry, level: Int, owned: Boolean, m: GbaTextMetric
                 SpeciesPicture(e.icon, spriteAsset("pokemon", e.icon), size = u * 24, fit = true)
                 Spacer(Modifier.width(u * 4))
             }
-            GbaText(trGuide(e.title), OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f), maxLines = 2)
-            e.detail?.let { GbaText(it, OptionColors.value, OptionColors.valueShadow, small, Modifier.padding(start = u * 6)) }
+            if (pin != null) {
+                // A row with a PIN: the levels and odds go under the name, so the name keeps one line beside the button
+                // (side by side, the Thor's companion broke names like "Croagunk" over two lines).
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(u)) {
+                    GbaText(trGuide(e.title), OptionColors.label, OptionColors.labelShadow, m, maxLines = 1)
+                    e.detail?.let { GbaText(it, OptionColors.value, OptionColors.valueShadow, small, maxLines = 1) }
+                }
+            } else {
+                GbaText(trGuide(e.title), OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f), maxLines = 2)
+                e.detail?.let { GbaText(it, OptionColors.value, OptionColors.valueShadow, small, Modifier.padding(start = u * 6)) }
+            }
             val next = when {
                 e.steps == 0 || showAnswer -> null
                 e.hint != null && !showHint -> tr("HINT")
