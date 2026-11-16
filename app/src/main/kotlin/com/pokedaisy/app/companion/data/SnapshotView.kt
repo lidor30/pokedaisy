@@ -358,6 +358,15 @@ fun partyMonView(m: Mon): MonView {
         }
     }
     val isEgg = m.isEgg || isVanillaEgg(m.species)
+    // The egg keeps its hatch species for types / stats; its icon is the egg's, not the hatched Pokémon's.
+    val eggIcon = when {
+        isEgg && activeGame.isGen5 -> NdsArt.BLACK_EGG
+        isEgg && originHeartGold -> NdsArt.ORIGIN_EGG
+        isEgg && activeGame.isDsGame -> 494
+        isEgg && !activeGame.isGameBoyGame && !activeGame.isDsGame ->
+            activeNativeConfig?.eggSpecies?.takeIf { it != 0 } ?: SPECIES_EGG_VANILLA
+        else -> m.species
+    }
     return MonView(
         species = m.species,
         name = if (isEgg) gameCase("Egg") else speciesName(m.species),
@@ -367,13 +376,12 @@ fun partyMonView(m: Mon): MonView {
         maxHp = m.maxHp,
         status = statusLabel(m.status),
         types = monTypes(type1, type2),
-        // A DS game's eggs keep their species: the egg's own icon is NdsArt's 494.
-        iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", if (isEgg && activeGame.isGen5) NdsArt.BLACK_EGG else if (isEgg && originHeartGold) NdsArt.ORIGIN_EGG else if (isEgg && activeGame.isDsGame) 494 else m.species),
+        iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", eggIcon),
         genderSymbol = m.genderSymbol,
         moves = moves,
         exp = if (isEgg) null else expProgress(m.species, m.level, m.exp),
         personality = m.personality,
-        stats = if (isEgg) null else m.stats,
+        stats = m.stats,
         heldItemId = m.heldItem,
         nickname = if (isEgg) null else m.nickname,
         shiny = m.shiny && !isEgg,

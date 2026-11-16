@@ -354,12 +354,20 @@ fun decodeBoxMon(
         BoxRecordFormat.CFRU -> cfruBoxSubstructs(raw, off, movePp)
     } ?: return null
     if (dec.species == 0) return null
-    val egg = (dec.ivWord shr 30) and 1L == 1L
+    // Vanilla keeps the flag in the header byte too; CFRU's compressed record keeps only the IV word's bit.
+    val egg = (dec.ivWord shr 30) and 1L == 1L ||
+        (format != BoxRecordFormat.CFRU && (raw[off + layout.flags].toInt() and layout.eggMask) != 0)
     val rate = growthRate(dec.species)?.takeIf { it in expTables.indices } ?: gen3GrowthRates.getOrNull(dec.species)?.toInt()
     val level = boxMonLevel(expTables, rate, dec.exp)
     val ivs = List(6) { ((dec.ivWord shr (5 * it)) and 0x1F).toInt() }
     val nature = (u32(raw, off) % 25).toInt()
-    val stats = if (egg) null else baseStats(dec.species)?.takeIf { it.size >= 6 }?.let { gen3Stats(dec.species, it, ivs, dec.evs, nature, level) }
+    // An egg's own stats at the level it hatches at (5 in Gen 3), so its STATS page can show what it will become.
+    val stats = baseStats(dec.species)?.takeIf { it.size >= 6 }?.let { gen3Stats(dec.species, it, ivs, dec.evs, nature, if (egg) 5 else level) }
+    val monStats = when {
+        stats != null -> MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = stats, abilityNum = ((dec.ivWord shr 31) and 1L).toInt())
+        egg -> MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = List(6) { 0 }, abilityNum = ((dec.ivWord shr 31) and 1L).toInt())
+        else -> null
+    }
     return Mon(
         species = dec.species,
         level = level,
@@ -370,7 +378,7 @@ fun decodeBoxMon(
         pp = dec.pp,
         exp = dec.exp,
         personality = u32(raw, off),
-        stats = stats?.let { MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = it, abilityNum = ((dec.ivWord shr 31) and 1L).toInt()) },
+        stats = monStats,
         heldItem = dec.heldItem,
         nickname = gen3Nickname(raw, off, layout),
         shiny = layout.shinyBelow > 0 &&
