@@ -874,16 +874,22 @@ class SettingsActivity : ComponentActivity() {
                 prefs.companionWindow = !prefs.companionWindow
                 revision++
             }.takeIf { !usesSecondScreen },
-            // A foldable half open: the game on one side of the hinge, the companion on the other (once the device has
-            // shown a hinge).
+            // A foldable: OFF, HALF-OPEN, or ALWAYS.
             SettingRow(
-                tk("FOLD LAYOUT"), onOff(prefs.foldLayout),
+                tk("FOLD LAYOUT"), com.pokedaisy.app.companion.ui.foldModeLabel(prefs.foldMode),
                 labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.FOLD_LAYOUT),
-                subtitle = "Half open: the game on one side of the fold",
+                subtitle = "Off, half open, or always when unfolded",
             ) {
-                prefs.foldLayout = !prefs.foldLayout
+                prefs.foldMode = prefs.foldMode.next()
                 revision++
             }.takeIf { prefs.foldSeen && !usesSecondScreen },
+            SettingRow(
+                tk("TABLETOP CONTROLS"), if (prefs.tabletopControlsBottom) tk("BOTTOM SIDES") else tk("ON GAME"),
+                subtitle = "Position of touch controls in fold mode",
+            ) {
+                prefs.tabletopControlsBottom = !prefs.tabletopControlsBottom
+                revision++
+            }.takeIf { prefs.foldSeen && !usesSecondScreen && prefs.foldMode != com.pokedaisy.app.companion.FoldMode.OFF },
             // The buttons on the game screen that open it: the white edge tab and the HUD's COMPANION (BACK still does).
             SettingRow(
                 tk("COMPANION BUTTON"), onOff(prefs.companionTab),

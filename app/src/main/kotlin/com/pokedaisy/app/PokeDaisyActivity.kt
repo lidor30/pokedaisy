@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.compositionContext
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import androidx.window.layout.FoldingFeature
 import com.pokedaisy.app.achievements.RetroAchievements
 import com.pokedaisy.app.companion.ui.AchievementBadges
 import com.pokedaisy.app.companion.BatteryStatus
@@ -55,6 +56,8 @@ import com.pokedaisy.app.companion.ui.MenuKey
 import com.pokedaisy.app.overlay.OverlayChoice
 import com.pokedaisy.app.overlay.OverlayStore
 import com.pokedaisy.app.companion.FfMusicMode
+import com.pokedaisy.app.companion.FoldMode
+import com.pokedaisy.app.companion.FoldPosture
 import com.pokedaisy.app.companion.data.FfMenuWatch
 import com.pokedaisy.app.companion.TelemetryStore
 import com.pokedaisy.app.companion.TipId
@@ -2280,10 +2283,16 @@ class PokeDaisyActivity : Activity() {
             runOnUiThread { syncTouchControls() }
         }
         override val touchStage get() = measuredTouchStage()
-        override val foldLayout: Boolean?
-            get() = Prefs(this@PokeDaisyActivity).let { p -> if (p.foldSeen && secondScreen() == null) p.foldLayout else null }
-        override fun setFoldLayout(on: Boolean) {
-            Prefs(this@PokeDaisyActivity).foldLayout = on
+        override val foldMode: com.pokedaisy.app.companion.FoldMode?
+            get() = Prefs(this@PokeDaisyActivity).let { p -> if (p.foldSeen && secondScreen() == null) p.foldMode else null }
+        override fun setFoldMode(mode: com.pokedaisy.app.companion.FoldMode) {
+            Prefs(this@PokeDaisyActivity).foldMode = mode
+            runOnUiThread { if (::sidePanel.isInitialized) syncSingleScreen(singleScreen) }
+        }
+        override val tabletopControlsBottom: Boolean?
+            get() = Prefs(this@PokeDaisyActivity).let { p -> if (p.foldSeen && secondScreen() == null && p.foldLayout) p.tabletopControlsBottom else null }
+        override fun setTabletopControlsBottom(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).tabletopControlsBottom = on
             runOnUiThread { if (::sidePanel.isInitialized) syncSingleScreen(singleScreen) }
         }
         override val touchSkins get() = skinStore.list()
@@ -4283,20 +4292,23 @@ class PokeDaisyActivity : Activity() {
     }
 
     /** FOLD LAYOUT's posture now, in the stage's coordinates; null = off, no hinge, or not one to lay out around. */
-    private fun foldPosture(): com.pokedaisy.app.companion.FoldPosture? {
+    private fun foldPosture(): FoldPosture? {
+        val prefs = Prefs(this)
+        val mode = prefs.foldMode
+        if (!::stage.isInitialized || mode == FoldMode.OFF || debugMirror) return null
         val f = foldFeature ?: return null
-        if (!::stage.isInitialized || !Prefs(this).foldLayout || debugMirror) return null
         val at = IntArray(2)
         stage.getLocationInWindow(at)
         val w = stage.width.takeIf { it > 0 } ?: window.decorView.width
         val h = stage.height.takeIf { it > 0 } ?: window.decorView.height
         val b = f.bounds
-        return com.pokedaisy.app.companion.FoldPosture.of(
-            halfOpened = f.state == androidx.window.layout.FoldingFeature.State.HALF_OPENED,
+        return FoldPosture.of(
+            halfOpened = f.state == FoldingFeature.State.HALF_OPENED,
             separating = f.isSeparating,
-            horizontal = f.orientation == androidx.window.layout.FoldingFeature.Orientation.HORIZONTAL,
+            horizontal = f.orientation == FoldingFeature.Orientation.HORIZONTAL,
             left = b.left, top = b.top, right = b.right, bottom = b.bottom,
             stageX = at[0], stageY = at[1], stageW = w, stageH = h,
+            foldMode = mode,
         )
     }
 

@@ -548,9 +548,13 @@ interface CompanionSettings {
     val companionWindow: Boolean? get() = null
     fun setCompanionWindow(on: Boolean) {}
 
-    /** SETTINGS > FOLD LAYOUT ([com.pokedaisy.app.Prefs.foldLayout]); null = not a foldable (no row). */
-    val foldLayout: Boolean? get() = null
-    fun setFoldLayout(on: Boolean) {}
+    /** SETTINGS > FOLD LAYOUT ([com.pokedaisy.app.companion.FoldMode]); null = not a foldable (no row). */
+    val foldMode: FoldMode? get() = null
+    fun setFoldMode(mode: FoldMode) {}
+
+    /** SETTINGS > TABLETOP CONTROLS ([com.pokedaisy.app.Prefs.tabletopControlsBottom]); null = not a foldable (no row). */
+    val tabletopControlsBottom: Boolean? get() = null
+    fun setTabletopControlsBottom(on: Boolean) {}
 
     /** SETTINGS > COMPANION BUTTON: the edge tab that opens the companion ([com.pokedaisy.app.Prefs.companionTab]). Null
      * where [companionWindow] is (no row). */

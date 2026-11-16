@@ -203,9 +203,15 @@ class PortraitPanel(
             topInset.intValue = 0
             gripView?.visibility = View.GONE
             // Below the fold is the companion's whole half: shown even when it was put away upright.
-            panel?.let { setFrame(it, bottom, h - bottom); it.visibility = View.VISIBLE }
+            val controlsBottom = prefs.tabletopControlsBottom
+            val sideMargin = if (controlsBottom) (screenW * 0.22f).toInt().coerceIn(120, (screenW * 0.3f).toInt()) else 0
+            panel?.let { setFrame(it, bottom, h - bottom, sideMargin, sideMargin); it.visibility = View.VISIBLE }
             setMargins(game, 0, h - top)
-            setMargins(touchControls, 0, h - top)
+            if (controlsBottom) {
+                setMargins(touchControls, bottom, 0)
+            } else {
+                setMargins(touchControls, 0, h - top)
+            }
             return
         }
         gripView?.visibility = View.VISIBLE
@@ -215,7 +221,7 @@ class PortraitPanel(
         grip.value = a.grip
         topInset.intValue = a.topInset(gripH)
         panel?.let {
-            setFrame(it, a.companionTop, a.companionHeight)
+            setFrame(it, a.companionTop, a.companionHeight, 0, 0)
             it.visibility = if (hiddenNow) View.GONE else View.VISIBLE
         }
         gripView?.let { setMargins(it, a.gripTop, 0) }
@@ -223,11 +229,13 @@ class PortraitPanel(
         setMargins(touchControls, a.padTop, h - a.padBottom)
     }
 
-    private fun setFrame(v: View, top: Int, height: Int) {
+    private fun setFrame(v: View, top: Int, height: Int, leftMargin: Int = 0, rightMargin: Int = 0) {
         val lp = v.layoutParams as FrameLayout.LayoutParams
-        if (lp.topMargin == top && lp.height == height) return
+        if (lp.topMargin == top && lp.height == height && lp.leftMargin == leftMargin && lp.rightMargin == rightMargin) return
         lp.topMargin = top
         lp.height = height
+        lp.leftMargin = leftMargin
+        lp.rightMargin = rightMargin
         v.layoutParams = lp
     }
 
