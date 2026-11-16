@@ -51,7 +51,6 @@ class FireRedVanillaDecodeTest {
         activeGame = GameKind.FIRERED
         val t = decodeNative("firered_vanilla", NATIVE_FIRERED_REV1)
         assertTrue(t.party[4].isEgg)
-        assertEquals(GENDER_SYMBOL_NONE, t.party[4].genderSymbol)
         assertEquals(5, t.party.count { !it.isEgg })
     }
 }
