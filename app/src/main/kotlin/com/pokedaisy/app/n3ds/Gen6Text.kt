@@ -12,18 +12,19 @@ import java.nio.ByteOrder
  * Pokemon X / Y: species file 80, moves 13, items 96, abilities 34, natures 47, types 17, places 72 (checked on the
  * US cart, every language).
  */
-class Gen6Text private constructor(private val files: List<ByteArray>) {
-    val species: List<String> by lazy { lines(SPECIES) }
-    val moves: List<String> by lazy { lines(MOVES) }
-    val items: List<String> by lazy { lines(ITEMS) }
-    val abilities: List<String> by lazy { lines(ABILITIES) }
-    val natures: List<String> by lazy { lines(NATURES) }
-    val types: List<String> by lazy { lines(TYPES) }
-    val places: List<String> by lazy { lines(PLACES) }
+class Gen6Text private constructor(private val files: List<ByteArray>, private val layout: N3dsLayout) {
+    val species: List<String> by lazy { lines(layout.speciesFile) }
+    val moves: List<String> by lazy { lines(layout.movesFile) }
+    val items: List<String> by lazy { lines(layout.itemsFile) }
+    val abilities: List<String> by lazy { lines(layout.abilitiesFile) }
+    val natures: List<String> by lazy { lines(layout.naturesFile) }
+    val types: List<String> by lazy { lines(layout.typesFile) }
+    val places: List<String> by lazy { lines(layout.placesFile) }
 
     fun lines(file: Int): List<String> = files.getOrNull(file)?.let(::textLines).orEmpty()
 
     companion object {
+        /** X / Y's text files (the other games': [N3dsLayout]). */
         const val SPECIES = 80
         const val MOVES = 13
         const val ITEMS = 96
@@ -34,15 +35,7 @@ class Gen6Text private constructor(private val files: List<ByteArray>) {
 
         /** The save's language (MyStatus +0x2D: 1 Japanese, 2 English, 3 French, 4 Italian, 5 German, 7 Spanish,
          * 8 Korean) to its text archive in Pokemon X / Y's RomFS. Japanese is the kanji one. */
-        fun archiveFor(language: Int): String = "a/0/7/" + when (language) {
-            1 -> 3
-            3 -> 5
-            4 -> 6
-            5 -> 7
-            7 -> 8
-            8 -> 9
-            else -> 4
-        }
+        fun archiveFor(language: Int): String = N3dsLayout.XY.textArchive(language)
 
         /** The save's language as a game code's language letter (AUTO's app language follows it); null for none. */
         fun languageLetter(language: Int): Char? = when (language) {
@@ -59,11 +52,29 @@ class Gen6Text private constructor(private val files: List<ByteArray>) {
         private val cache = HashMap<String, Gen6Text>()
 
         /** [cart]'s text in [language]; null when the cart can't be read that far. Kept per cart and language. */
-        fun load(cart: File, language: Int): Gen6Text? = synchronized(cache) {
+        fun load(cart: File, language: Int, layout: N3dsLayout = N3dsLayout.XY): Gen6Text? = synchronized(cache) {
             val key = "${cart.absolutePath}:${cart.length()}:$language"
             cache[key] ?: runCatching {
-                RomFs(cart).use { fs -> fs.read(archiveFor(language))?.let { Gen6Text(garcFiles(it)) } }
+                RomFs(cart).use { fs -> fs.read(layout.textArchive(language))?.let { Gen6Text(garcFiles(it), layout) } }
             }.getOrNull()?.also { cache[key] = it }
+        }
+
+        /** A GARC file that's an LZ11 stream ("ZO" bundles, Sun / Moon's zones), unpacked; others as they are. */
+        fun unlz(f: ByteArray): ByteArray =
+            if (f.isNotEmpty() && f[0].toInt() == 0x11) com.pokedaisy.app.companion.data.Gen5Lz.decompress(f) ?: ByteArray(0) else f
+
+        /** A packed file ("WD", "EA": u16 count at +2, then count + 1 u32 offsets from +4, each from the file's start):
+         * its parts. */
+        fun packed(f: ByteArray): List<ByteArray> {
+            if (f.size < 8) return emptyList()
+            val b = le(f)
+            val n = b.getShort(2).toInt() and 0xFFFF
+            if (4 + 4 * (n + 1) > f.size) return emptyList()
+            return (0 until n).map { i ->
+                val a = b.getInt(4 + 4 * i)
+                val z = b.getInt(8 + 4 * i)
+                if (a < 0 || z > f.size || z < a) ByteArray(0) else f.copyOfRange(a, z)
+            }
         }
 
         private fun le(b: ByteArray) = ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN)
@@ -136,18 +147,21 @@ class Gen6Text private constructor(private val files: List<ByteArray>) {
  * Kept per cart.
  */
 object Gen6Zones {
-    private const val RECORD = 0x38
     private val cache = HashMap<String, IntArray>()
 
-    /** Each zone's line in the place names; null when the cart can't be read that far. */
-    fun load(cart: File): IntArray? = synchronized(cache) {
+    /** Each zone's line in the place names; null when the cart can't be read that far. Omega Ruby / Alpha Sapphire keep
+     * the records in their zone archive's second-to-last file, Sun / Moon in the first of theirs, compressed, 0x54 bytes
+     * each with a u16 line ([N3dsLayout]). */
+    fun load(cart: File, layout: N3dsLayout = N3dsLayout.XY): IntArray? = synchronized(cache) {
         val key = "${cart.absolutePath}:${cart.length()}"
         cache[key] ?: runCatching {
             RomFs(cart).use { fs ->
-                val files = fs.read("a/0/1/2")?.let { Gen6Text.garcFiles(it) } ?: return@use null
-                val all = files.lastOrNull()?.takeIf { it.isNotEmpty() && it.size % RECORD == 0 } ?: return@use null
+                val files = fs.read(layout.zonesPath)?.let { Gen6Text.garcFiles(it) } ?: return@use null
+                val at = if (layout.zoneRecordsFile < 0) files.size + layout.zoneRecordsFile else layout.zoneRecordsFile
+                val all = files.getOrNull(at)?.let(Gen6Text::unlz)?.takeIf { it.isNotEmpty() && it.size % layout.zoneRecord == 0 }
+                    ?: return@use null
                 val b = ByteBuffer.wrap(all).order(ByteOrder.LITTLE_ENDIAN)
-                IntArray(all.size / RECORD) { z -> b.getShort(z * RECORD + 0x1C).toInt() and 0x1FF }
+                IntArray(all.size / layout.zoneRecord) { z -> b.getShort(z * layout.zoneRecord + 0x1C).toInt() and layout.zonePlaceMask }
             }
         }.getOrNull()?.also { cache[key] = it }
     }
@@ -200,6 +214,52 @@ class RomFs(cart: File) : AutoCloseable {
 
     /** The file at [path] ("a/0/7/4"), whole; null when there's none. */
     fun read(path: String): ByteArray? {
+        val (at, size) = find(path) ?: return null
+        if (size > Int.MAX_VALUE) return null
+        return read(at, size.toInt())
+    }
+
+    /**
+     * One file of the GARC at [path] (its [index]th entry's first sub-file) without reading the rest: the archive's
+     * header and tables first, then that file alone. For archives far too big to hold (Sun / Moon's encounters, 348 MB).
+     */
+    fun garcFile(path: String, index: Int): ByteArray? {
+        val (at, size) = find(path) ?: return null
+        if (size < 0x1C) return null
+        val head = read(at, 0x1C)
+        if (String(head, 0, 4, Charsets.US_ASCII) != "CRAG") return null
+        val dataOff = le(head).getInt(0x10)
+        if (dataOff <= 0 || dataOff > size || dataOff > 0x400000) return null
+        val tables = read(at, dataOff)
+        val b = le(tables)
+        var o = b.getInt(4)
+        if (String(tables, o, 4, Charsets.US_ASCII) != "OTAF") return null
+        o += b.getInt(o + 4)
+        if (String(tables, o, 4, Charsets.US_ASCII) != "BTAF") return null
+        val count = b.getInt(o + 8)
+        if (index !in 0 until count) return null
+        var p = o + 12
+        for (i in 0 until count) {
+            val bits = b.getInt(p)
+            p += 4
+            var first = true
+            for (bit in 0 until 32) if ((bits ushr bit) and 1 != 0) {
+                if (i == index && first) {
+                    val start = b.getInt(p)
+                    val end = b.getInt(p + 4)
+                    if (end < start || dataOff.toLong() + end > size) return null
+                    return read(at + dataOff + start, end - start)
+                }
+                first = false
+                p += 12
+            }
+            if (i == index) return ByteArray(0)
+        }
+        return null
+    }
+
+    /** [path]'s data offset in the cart and its size; null when there's none. */
+    private fun find(path: String): Pair<Long, Long>? {
         val d = le(dirs)
         val f = le(files)
         var dir = 0
@@ -208,11 +268,7 @@ class RomFs(cart: File) : AutoCloseable {
             if (i == parts.lastIndex) {
                 var file = d.getInt(dir + 0x0C)
                 while (file != NONE) {
-                    if (name(files, file, 0x1C) == part) {
-                        val size = f.getLong(file + 0x10)
-                        if (size > Int.MAX_VALUE) return null
-                        return read(data + f.getLong(file + 0x08), size.toInt())
-                    }
+                    if (name(files, file, 0x1C) == part) return (data + f.getLong(file + 0x08)) to f.getLong(file + 0x10)
                     file = f.getInt(file + 0x04)
                 }
                 return null
@@ -248,11 +304,15 @@ object Gen6Moves {
 
     private val cache = HashMap<String, List<Move>>()
 
-    fun load(cart: File): List<Move>? = synchronized(cache) {
+    /** Omega Ruby / Alpha Sapphire and Sun / Moon pack every move's record into one file (36 / 40 bytes each, the same
+     * first fields: Tackle 50 / 40, Thunderbolt 90). */
+    fun load(cart: File, layout: N3dsLayout = N3dsLayout.XY): List<Move>? = synchronized(cache) {
         val key = "${cart.absolutePath}:${cart.length()}"
         cache[key] ?: runCatching {
             RomFs(cart).use { fs ->
-                fs.read("a/2/1/2")?.let { Gen6Text.garcFiles(it) }?.map { f ->
+                val files = fs.read(layout.movesPath)?.let { Gen6Text.garcFiles(it) } ?: return@use null
+                val records = if (layout.movesPacked) files.firstOrNull()?.let(Gen6Text::packed) ?: return@use null else files
+                records.map { f ->
                     if (f.size < 6) Move(0, 0, 0) else Move(f[0].toInt() and 0xFF, f[2].toInt() and 0xFF, f[3].toInt() and 0xFF)
                 }
             }
@@ -267,11 +327,11 @@ object Gen6Moves {
 object Gen6Personal {
     private val cache = HashMap<String, List<IntArray>>()
 
-    fun load(cart: File): List<IntArray>? = synchronized(cache) {
+    fun load(cart: File, layout: N3dsLayout = N3dsLayout.XY): List<IntArray>? = synchronized(cache) {
         val key = "${cart.absolutePath}:${cart.length()}"
         cache[key] ?: runCatching {
             RomFs(cart).use { fs ->
-                fs.read("a/2/1/8")?.let { Gen6Text.garcFiles(it) }?.map { f ->
+                fs.read(layout.personalPath)?.let { Gen6Text.garcFiles(it) }?.map { f ->
                     if (f.size < 8) intArrayOf(0, 0) else intArrayOf(f[6].toInt() and 0xFF, f[7].toInt() and 0xFF)
                 }
             }
@@ -328,11 +388,17 @@ object Gen6Types {
 }
 
 /**
- * Pokemon X / Y's wild Pokemon per zone, from the cart: each zone's bundle in `a/0/1/2` ("ZO", LZ11) has its encounter
- * table as its fourth section (0x188 bytes: a 0x10 header, then 94 slots of 4 bytes: u16 species (11 bits) + form (5;
- * 30 / 31 = any), level, level), in this order: grass, yellow / purple / red flowers, tall grass (12 each), surfing and
- * Rock Smash (5 each), the three rods (3 each), three hordes of 5. The rates are the games' fixed ones per slot. Zone 259
- * (Route 2): Bunnelby, Zigzagoon, Fletchling, Pidgey, Scatterbug, Weedle at 2-4 (2026-11-15).
+ * The wild Pokemon per zone, from the cart.
+ * - X / Y: each zone's bundle in `a/0/1/2` ("ZO", LZ11) has its encounter table as its fourth section (0x188 bytes: a
+ *   0x10 header, then 94 slots of 4 bytes: u16 species (11 bits) + form (5; 30 / 31 = any), level, level), in this
+ *   order: grass, yellow / purple / red flowers, tall grass (12 each), surfing and Rock Smash (5 each), the three rods
+ *   (3 each), three hordes of 5. Zone 259 (Route 2): Bunnelby, Zigzagoon, Fletchling, Pidgey, Scatterbug, Weedle at 2-4.
+ * - Omega Ruby / Alpha Sapphire: the same bundles in `a/0/1/3`, a 0x0E header, then 61 slots: grass, tall grass (12
+ *   each), 3 the DexNav's hidden ones (left out), surfing and Rock Smash (5), the rods (3 each), three hordes of 5.
+ *   Route 101: Wurmple, Zigzagoon, Poochyena at 2.
+ * - Sun / Moon ([sunMoon]): a zone's world (`a/0/7/7` file 1), the world's zone -> area pairs (`a/0/9/1`), the area's
+ *   tables (the encounter archive's file 11 x area + 9).
+ * The rates are the games' fixed ones per slot.
  */
 object Gen6Wild {
     class Slot(val species: Int, val form: Int, val minLevel: Int, val maxLevel: Int, val percent: Int)
@@ -348,37 +414,44 @@ object Gen6Wild {
         "TALL GRASS" to GRASS, "SURFING" to WATER, "ROCK SMASH" to WATER,
         "OLD ROD" to ROD, "GOOD ROD" to ROD, "SUPER ROD" to ROD,
     )
+    /** Omega Ruby / Alpha Sapphire's: null = slots read past and left out (the DexNav's hidden Pokemon). */
+    private val TABLES_ORAS = listOf(
+        "GRASS / CAVE" to GRASS, "TALL GRASS" to GRASS, null to intArrayOf(0, 0, 0), "SURFING" to WATER, "ROCK SMASH" to WATER,
+        "OLD ROD" to ROD, "GOOD ROD" to ROD, "SUPER ROD" to ROD,
+    )
     private const val HORDES = 3
     private const val HORDE_SIZE = 5
-    private const val HEADER = 0x10
     private const val SLOT = 4
 
     private val cache = HashMap<String, List<List<Table>>>()
 
     /** Each zone's tables (empty ones left out), by zone number; null when the cart can't be read that far. */
-    fun load(cart: File): List<List<Table>>? = synchronized(cache) {
+    fun load(cart: File, layout: N3dsLayout = N3dsLayout.XY): List<List<Table>>? = synchronized(cache) {
         val key = "${cart.absolutePath}:${cart.length()}"
         cache[key] ?: runCatching {
             RomFs(cart).use { fs ->
-                val files = fs.read("a/0/1/2")?.let { Gen6Text.garcFiles(it) } ?: return@use null
-                files.dropLast(1).map { f -> tables(unpack(f)) }
+                if (layout.family == N3dsLayout.Family.SM) return@use sunMoon(fs)
+                val files = fs.read(layout.zonesPath)?.let { Gen6Text.garcFiles(it) } ?: return@use null
+                val oras = layout.family == N3dsLayout.Family.ORAS
+                files.dropLast(if (oras) 2 else 1).map { f -> tables(Gen6Text.unlz(f), oras) }
             }
-        }.getOrNull()?.also { cache[key] = it }
+        }.onFailure { lastError = it }.getOrNull()?.also { cache[key] = it }
     }
 
-    private fun unpack(f: ByteArray): ByteArray =
-        if (f.isNotEmpty() && f[0].toInt() == 0x11) com.pokedaisy.app.companion.data.Gen5Lz.decompress(f) ?: ByteArray(0) else f
+    /** Why the last [load] read nothing (tests). */
+    @Volatile var lastError: Throwable? = null
 
     /** A zone bundle's encounter section read into its tables. */
-    fun tables(zo: ByteArray): List<Table> {
+    fun tables(zo: ByteArray, oras: Boolean = false): List<Table> {
         if (zo.size < 0x18 || String(zo, 0, 2, Charsets.US_ASCII) != "ZO") return emptyList()
         val b = ByteBuffer.wrap(zo).order(ByteOrder.LITTLE_ENDIAN)
         val sections = b.getShort(2).toInt() and 0xFFFF
         if (sections < 4) return emptyList()
         val start = b.getInt(4 + 3 * 4)
         val end = b.getInt(4 + 4 * 4)
-        if (end - start < HEADER + SLOT || end > zo.size) return emptyList()
-        var at = start + HEADER
+        val header = if (oras) 0x0E else 0x10
+        if (end - start < header + SLOT || end > zo.size) return emptyList()
+        var at = start + header
         fun slot(percent: Int): Slot? {
             if (at + SLOT > end) return null
             val raw = b.getShort(at).toInt() and 0xFFFF
@@ -389,13 +462,95 @@ object Gen6Wild {
             return if (species == 0) null else Slot(species, raw ushr 11, minOf(lo, hi), maxOf(lo, hi), percent)
         }
         val out = ArrayList<Table>()
-        for ((method, rates) in TABLES) {
+        for ((method, rates) in if (oras) TABLES_ORAS else TABLES) {
             val slots = rates.map { slot(it) }.filterNotNull()
-            if (slots.isNotEmpty()) out += Table(method, slots)
+            if (method != null && slots.isNotEmpty()) out += Table(method, slots)
         }
         // A horde is 5 Pokemon met together; its 60 / 35 / 5 is the horde's (as the rods'), each of its five carries it.
         val hordes = (0 until HORDES).flatMap { h -> (0 until HORDE_SIZE).mapNotNull { slot(ROD[h]) } }
         if (hordes.isNotEmpty()) out += Table("HORDES", hordes)
         return out
+    }
+
+    // ---- Sun / Moon ------------------------------------------------------------------------------------------------
+
+    /** Sun's encounter archive and Moon's (each cart has one, the other path empty). */
+    private val SM_ENCOUNTERS = listOf("a/0/8/2", "a/0/8/3")
+    private const val SM_TABLE = 0x164
+    private const val SM_SET = 4 + 2 * SM_TABLE
+
+    /**
+     * Sun / Moon, every zone: an area holds several zones' tables (which patch is which zone's is in the map, not read),
+     * so a zone lists its whole area's: per way of meeting them (a table set's +0 kind: 4 surfing, 6 fishing, the rest
+     * grass, caves, sand, flowers), each species once at its best chance in a table and its levels' range, by day; ones
+     * met only at night under AT NIGHT. A day table: min level, max level, 10 rates, then 8 sets of 10 u32 slots
+     * (species 11 bits, form 5; set 0 the wild table, the rest SOS calls), 6 weather slots; the night one follows.
+     * Route 1 (zone 0) by day: Yungoos, Pikipek, Caterpie, Ledyba; at night Alolan Rattata, Spinarak.
+     */
+    private fun sunMoon(fs: RomFs): List<List<Table>>? {
+        val zoneFiles = fs.read("a/0/7/7")?.let { Gen6Text.garcFiles(it) } ?: return null
+        val zoneCount = Gen6Text.unlz(zoneFiles.getOrNull(0) ?: return null).size / N3dsLayout.SM.zoneRecord
+        val areaOf = HashMap<Int, Int>()
+        fs.read("a/0/9/1")?.let { Gen6Text.garcFiles(it) }?.forEach { f ->
+            val e = Gen6Text.packed(Gen6Text.unlz(f)).firstOrNull() ?: return@forEach
+            if (e.size < 16) return@forEach
+            val b = ByteBuffer.wrap(e).order(ByteOrder.LITTLE_ENDIAN)
+            var k = b.getInt(8)
+            val end = minOf(b.getInt(12), e.size)
+            while (k + 4 <= end) {
+                areaOf[b.getShort(k).toInt() and 0xFFFF] = b.getShort(k + 2).toInt() and 0xFFFF
+                k += 4
+            }
+        }
+        // Sun's archive or Moon's (the other path is an empty file): one area's file at a time, never the whole archive.
+        val enc = SM_ENCOUNTERS.firstOrNull { p -> fs.garcFile(p, 9) != null } ?: return null
+        val byArea = HashMap<Int, List<Table>>()
+        return (0 until zoneCount).map { z ->
+            val area = areaOf[z] ?: return@map emptyList()
+            byArea.getOrPut(area) { smArea(fs.garcFile(enc, 11 * area + 9) ?: ByteArray(0)) }
+        }
+    }
+
+    private class Met(var percent: Int, var min: Int, var max: Int, val form: Int)
+
+    private fun smArea(f: ByteArray): List<Table> {
+        val sets = Gen6Text.packed(Gen6Text.unlz(f))
+        val day = LinkedHashMap<String, LinkedHashMap<Int, Met>>()
+        val night = LinkedHashMap<Int, Met>()
+        for (e in sets) {
+            if (e.size < SM_SET) continue
+            val b = ByteBuffer.wrap(e).order(ByteOrder.LITTLE_ENDIAN)
+            val method = when (b.getInt(0)) {
+                4 -> "SURFING"
+                6 -> "FISHING"
+                else -> "GRASS / CAVE"
+            }
+            for (t in 0 until 2) {
+                val o = 4 + t * SM_TABLE
+                val lo = e[o].toInt() and 0xFF
+                val hi = e[o + 1].toInt() and 0xFF
+                val chance = HashMap<Int, Int>()
+                val forms = HashMap<Int, Int>()
+                for (k in 0 until 10) {
+                    val v = b.getInt(o + 12 + k * 4)
+                    val species = v and 0x7FF
+                    if (species == 0) continue
+                    chance[species] = (chance[species] ?: 0) + (e[o + 2 + k].toInt() and 0xFF)
+                    forms.putIfAbsent(species, (v ushr 11) and 0x1F)
+                }
+                val into = if (t == 0) day.getOrPut(method) { LinkedHashMap() } else night
+                for ((species, pct) in chance) {
+                    val m = into.getOrPut(species) { Met(0, lo, hi, forms[species] ?: 0) }
+                    m.percent = maxOf(m.percent, pct)
+                    m.min = minOf(m.min, minOf(lo, hi))
+                    m.max = maxOf(m.max, maxOf(lo, hi))
+                }
+            }
+        }
+        val seenByDay = day.values.flatMap { it.keys }.toSet()
+        val out = day.map { (method, mets) -> Table(method, mets.map { (s, m) -> Slot(s, m.form, m.min, m.max, m.percent) }) }.toMutableList()
+        val nightOnly = night.filterKeys { it !in seenByDay }
+        if (nightOnly.isNotEmpty()) out += Table("AT NIGHT", nightOnly.map { (s, m) -> Slot(s, m.form, m.min, m.max, m.percent) })
+        return out.filter { it.slots.isNotEmpty() }
     }
 }

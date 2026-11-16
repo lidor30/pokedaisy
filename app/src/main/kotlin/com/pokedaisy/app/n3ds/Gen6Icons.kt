@@ -23,16 +23,17 @@ object Gen6Icons {
     /** [index]'s icon as a party-slot sheet's asset path. */
     fun asset(index: Int): String = "$DIR/$index.png"
 
-    /** Writes [cart]'s icons into [dir] once (a marker keeps the cart's size and [VERSION]); true when it wrote them. */
-    fun extractTo(cart: File, dir: File): Boolean {
-        val marker = File(dir, "$DIR-built")
+    /** Writes [cart]'s icons into [dir] once (a marker keeps the cart's size and [VERSION]); true when it wrote them.
+     * Each game into its own folder ([N3dsLayout.artDir]): X and Y share theirs. */
+    fun extractTo(cart: File, dir: File, layout: N3dsLayout = N3dsLayout.XY): Boolean {
+        val marker = File(dir, "${layout.artDir}/icons-built")
         val stamp = "v$VERSION ${cart.length()}"
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return false
-        val files = RomFs(cart).use { fs -> fs.read("a/0/9/3") }?.let { Gen6Text.garcFiles(it) } ?: return false
+        val files = RomFs(cart).use { fs -> fs.read(layout.iconPath) }?.let { Gen6Text.garcFiles(it) } ?: return false
         var wrote = 0
         files.forEachIndexed { i, f ->
-            val img = decode(f) ?: return@forEachIndexed
-            write(dir, asset(i), sheet(img).png())
+            val img = (if (layout.iconsGen7) decode7(f) else decode(f)) ?: return@forEachIndexed
+            write(dir, layout.iconAsset(i), sheet(img).png())
             wrote++
         }
         if (wrote == 0) return false
@@ -68,6 +69,34 @@ object Gen6Icons {
                 if (x < W && y < H && idx < n) img.argb[y * W + x] = pal[idx]
             }
         }
+        return img
+    }
+
+    /**
+     * Sun / Moon's icon file (compressed or not): a BFLIM, 4096 bytes of RGBA5551 (bit 0 the alpha) then a 0x28-byte
+     * footer ("FLIM"; 64 x 32, swizzle 4: stored turned, 32 wide x 64 tall in 8 x 8 Morton tiles). The icon (40 x 30) is
+     * icon(x, y) = stored[row x + 12][column 30 - y]: pixel for pixel Gen 6's (Bulbasaur, 0 of 251 pixels apart).
+     */
+    fun decode7(file: ByteArray): RomArt.Image? {
+        val d = if (file.isNotEmpty() && file[0].toInt() == 0x11) Gen5Lz.decompress(file) ?: return null else file
+        val foot = d.size - 0x28
+        if (foot < 0x1000 || String(d, foot, 4, Charsets.US_ASCII) != "FLIM") return null
+        val b = ByteBuffer.wrap(d).order(ByteOrder.LITTLE_ENDIAN)
+        val sw = 32
+        // stored[y][x] for the 32 x 64 texture, from its Morton tiles (4 across, 8 down)
+        fun stored(y: Int, x: Int): Int {
+            val t = (y / 8) * (sw / 8) + x / 8
+            val ix = x % 8
+            val iy = y % 8
+            var i = 0
+            for (bit in 0 until 3) {
+                i = i or (((ix shr bit) and 1) shl (2 * bit)) or (((iy shr bit) and 1) shl (2 * bit + 1))
+            }
+            val v = b.getShort((t * 64 + i) * 2).toInt() and 0xFFFF
+            return if (v and 1 == 0) 0 else (0xFF shl 24) or (c5(v shr 11) shl 16) or (c5(v shr 6) shl 8) or c5(v shr 1)
+        }
+        val img = RomArt.Image(W, H)
+        for (y in 0 until H) for (x in 0 until W) img.argb[y * W + x] = stored(x + 12, 30 - y)
         return img
     }
 

@@ -44,9 +44,39 @@ object Gen6Reader {
         val battleUi: Int = 0,
         val panelPlayer: Int = 0xDC,
         val panelFoe: Int = 0xE4,
+        /** The field camera's setup from the field object ([CAMERA_PATH]); null where it isn't mapped (no ZOOM or free
+         * camera there). */
+        val cameraPath: IntArray? = null,
+        /** MyStatus' language byte (X / ORAS +0x2D, Sun / Moon +0x35). */
+        val languageAt: Int = 0x2D,
+        /** The bag's entries: Gen 6's u16 item + u16 count, or Gen 7's u32 (item 10 bits, count the next 10). */
+        val bagGen7: Boolean = false,
+        /** The field's and the battle's modules ([sceneOf]): X / ORAS "DllField" / "DllBattle", Sun / Moon "FieldRo" /
+         * "Battle". */
+        val fieldModule: String = "DllField",
+        val battleModule: String = "DllBattle",
+        /** The title's / start's modules: no screen of the game's own. */
+        val notScreens: Set<String> = NOT_SCREENS,
+        /** Field modules that wait on the touch screen alone ([FIELD_TOUCH]). */
+        val fieldTouch: Set<String> = FIELD_TOUCH,
+        /** Sun / Moon: a word that's non-zero while the X menu is open (instead of [fieldMenuRoot]'s object). */
+        val fieldMenuWord: Int = 0,
     )
 
     class Pocket(val offset: Int, val capacity: Int, val companionPocket: Int)
+
+    /** The modules that are the title and the start menu, and the field's: a screen is any other. */
+    val NOT_SCREENS = setOf("DllTitle", "DllBackGround", "DllSequence", "DllStartMenu")
+
+    /** Field modules that wait on the touch screen alone, the top screen dimmed: MENU too. Save's "save the game?" with
+     * its Yes / No (the X menu's marker is cleared meanwhile), and START's PSS menu and its pages (headless, 2026-11-15:
+     * START loads DllPssMainMenu beside the field; the cart's other DllPss* are its pages). Not DllPssMessageWindow:
+     * the PSS's notes ride along on the plain field. */
+    val FIELD_TOUCH = setOf(
+        "DllReport", "DllPssMainMenu", "DllPssCharaMenu", "DllPssConfig", "DllPssFavorite", "DllPssIconSelect",
+        "DllPssPlaySelect", "DllPssRuleSelect", "DllPssAssistPower",
+    )
+
 
     /** Pokemon X (USA). */
     val POKEMON_X_USA = Config(
@@ -67,6 +97,64 @@ object Gen6Reader {
         fieldMenuRoot = 0x08C54044,
         fieldHold = 0x08D03400,
         battleUi = 0x08515980,
+        cameraPath = intArrayOf(0xD8, 0x21C, 0xB0C), // CAMERA_PATH
+    )
+
+    /**
+     * Omega Ruby / Alpha Sapphire (USA, Rev 2 carts): X's structures at their own addresses, the same in both (headless,
+     * 2026-11-17, n3ds_dump on the players' saves: an Omega Ruby one in Slateport's Pokemon Center, an Alpha Sapphire one
+     * in Littleroot). The live party (Azelf Lv100 219 / 300 HP decoded with its stats at +0x158, as X's), the bag's five
+     * pockets at X's offsets from the bag, MyStatus (the name at +0x48), the save's situation (the zone at +2, then the
+     * coordinates). The X menu: the field object's root at 0x08C57660, its menu pointer at +0x4C (X's +0x40) with the
+     * byte at +0x24 that's 1 while it's open (menu open / closed dumps). The hold word reads 0x3D1 on the field and 0x3D3
+     * with the menu up, as X's. The camera's chain from the field object isn't X's: not mapped yet.
+     */
+    val POKEMON_ORAS_USA = Config(
+        party = 0x08CF727C,
+        partyStride = 0x1E4,
+        partyStatsAt = 0x158,
+        myStatus = 0x08C7D350,
+        bag = 0x08C6A880,
+        zone = 0x08C6B89E,
+        pockets = POKEMON_X_USA.pockets,
+        staticModule = 0x01307000,
+        fieldMenuRoot = 0x08C57660,
+        fieldMenuOffset = 0x4C,
+        fieldHold = 0x08D1E3FC,
+    )
+
+    /**
+     * Sun / Moon (USA): Gen 7's game keeps its heap at 0x30000000 up (headless, 2026-11-17, n3ds_dump on a Moon save in
+     * Seafolk Village's Pokemon Center; Sun's saves crashed the Mac's software renderer as the field loaded). The live
+     * party is X's shape (0x1E4 a slot, the stats at +0x158: Mimikyu Lv100 251 / 251 decoded); the save's blocks packed
+     * as X's: the bag at the save's own offset 0 (six pockets of u32 entries, PKHeX's MyItem7SM: items 430, key items
+     * 184, TMs 108, medicine 64, berries 72, Z-Crystals 30), MyStatus (the language at +0x35, the name at +0x38), the
+     * situation (the zone at +2, 263 = Seafolk Village). The X menu: 0x083FE170 holds a pointer while it's open, 0 on
+     * the field (open / closed dumps). The modules have no "Dll": FieldRo the field, Battle the battle.
+     */
+    val POKEMON_SM_USA = Config(
+        party = 0x34195E10,
+        partyStride = 0x1E4,
+        partyStatsAt = 0x158,
+        myStatus = 0x330D67D0,
+        bag = 0x330D5934,
+        zone = 0x330D6736,
+        pockets = listOf(
+            Pocket(0x000, 430, com.pokedaisy.app.companion.data.POCKET_ITEMS),
+            Pocket(0x6B8, 184, com.pokedaisy.app.companion.data.POCKET_KEY_ITEMS),
+            Pocket(0x998, 108, com.pokedaisy.app.companion.data.POCKET_TM_HM),
+            Pocket(0xB48, 64, com.pokedaisy.app.companion.data.POCKET_MEDICINE),
+            Pocket(0xC48, 72, com.pokedaisy.app.companion.data.POCKET_BERRIES),
+            Pocket(0xD68, 30, com.pokedaisy.app.companion.data.POCKET_KEY_ITEMS),
+        ),
+        staticModule = 0x00869000,
+        fieldMenuWord = 0x083FE170,
+        languageAt = 0x35,
+        bagGen7 = true,
+        fieldModule = "FieldRo",
+        battleModule = "Battle",
+        notScreens = setOf("Title", "TitleMenu", "Background", "SequencePlayer", "LangSelect", "HeroSelect", "Object", "FieldMenu"),
+        fieldTouch = emptySet(),
     )
 
     /** What the game's two screens show, for where the touch screen goes ([sceneOf]). */
@@ -80,18 +168,6 @@ object Gen6Reader {
         /** A battle: full size, the app's strip for its commands, the game's bag / party floating in. */
         BATTLE,
     }
-
-    /** The modules that are the title and the start menu, and the field's: a screen is any other. */
-    private val NOT_SCREENS = setOf("DllTitle", "DllBackGround", "DllSequence", "DllStartMenu")
-
-    /** Field modules that wait on the touch screen alone, the top screen dimmed: MENU too. Save's "save the game?" with
-     * its Yes / No (the X menu's marker is cleared meanwhile), and START's PSS menu and its pages (headless, 2026-11-15:
-     * START loads DllPssMainMenu beside the field; the cart's other DllPss* are its pages). Not DllPssMessageWindow:
-     * the PSS's notes ride along on the plain field. */
-    private val FIELD_TOUCH = setOf(
-        "DllReport", "DllPssMainMenu", "DllPssCharaMenu", "DllPssConfig", "DllPssFavorite", "DllPssIconSelect",
-        "DllPssPlaySelect", "DllPssRuleSelect", "DllPssAssistPower",
-    )
 
     /**
      * The field camera's setup, from the field object ([Config.fieldMenuRoot]): +0xD8, then +0x21C (the camera system),
@@ -116,17 +192,21 @@ object Gen6Reader {
      * one stands. (The field's lower-screen object's flags, tried first, also read as the menu in dialogue and on
      * every door.)
      */
-    fun sceneOf(modules: String, fieldMenu: ByteArray?): Scene? {
+    fun sceneOf(modules: String, fieldMenu: ByteArray?, c: Config = POKEMON_X_USA): Scene? {
         val names = modules.split('\n').filter { it.isNotEmpty() }
         if (names.isEmpty()) return null
-        if ("DllField" in names) {
-            if (names.any { it in FIELD_TOUCH }) return Scene.MENU
+        if (c.fieldModule in names) {
+            if (names.any { it in c.fieldTouch }) return Scene.MENU
+            if (c.fieldMenuWord != 0) {
+                // Sun / Moon: one word, set while the menu is open.
+                return if (fieldMenu != null && fieldMenu.size >= 4 && ByteBuffer.wrap(fieldMenu).order(ByteOrder.LITTLE_ENDIAN).getInt(0) != 0) Scene.MENU else Scene.FIELD
+            }
             if (fieldMenu == null || fieldMenu.size < FIELD_MENU_BYTES) return Scene.FIELD
             val open = ByteBuffer.wrap(fieldMenu).order(ByteOrder.LITTLE_ENDIAN).getInt(0) != 0 && fieldMenu[0x24].toInt() == 1
             return if (open) Scene.MENU else Scene.FIELD
         }
-        if ("DllBattle" in names) return Scene.BATTLE
-        return if (names.all { it in NOT_SCREENS }) null else Scene.SCREEN
+        if (c.battleModule in names) return Scene.BATTLE
+        return if (names.all { it in c.notScreens }) null else Scene.SCREEN
     }
 
     // ---- battles (found on the RP6 with heap dumps, 2026-11-15: a wild battle at its command menu, its move list,
@@ -172,7 +252,7 @@ object Gen6Reader {
         if (rec == null || rec.size < BATTLE_MON_BYTES) return null
         val b = ByteBuffer.wrap(rec).order(ByteOrder.LITTLE_ENDIAN)
         val species = b.getShort(0xC).toInt() and 0xFFFF
-        if (species == 0 || species > 721) return null
+        if (species == 0 || species > 809) return null
         val moves = (0 until 4).mapNotNull { i ->
             val o = 0x116 + i * 14
             val id = b.getShort(o).toInt() and 0xFFFF
@@ -184,6 +264,9 @@ object Gen6Reader {
     fun configFor(titleId: Long): Config? = when (titleId) {
         // Y: X's code and memory, every address X's (headless on one save, 2026-11-15).
         N3dsCart.POKEMON_X_USA, N3dsCart.POKEMON_Y_USA -> POKEMON_X_USA
+        N3dsCart.POKEMON_OR_USA, N3dsCart.POKEMON_AS_USA -> POKEMON_ORAS_USA
+        // Moon's addresses; Sun's are taken to be the same (the X / Y pair's were, and the carts' code is the same size).
+        N3dsCart.POKEMON_SUN_USA, N3dsCart.POKEMON_MOON_USA -> POKEMON_SM_USA
         else -> null
     }
 
@@ -219,16 +302,20 @@ object Gen6Reader {
     fun ranges(c: Config): IntArray = intArrayOf(
         c.party, c.partyStride * 6,
         c.myStatus, 0x170,
-        c.bag + 0x400, 0xF68 - 0x400,
+        c.bag + bagStart(c), bagEnd(c) - bagStart(c),
         c.zone, 2,
     )
+
+    /** The bag's pockets from the first to the end of the last, from [Config.bag]. */
+    private fun bagStart(c: Config) = c.pockets.minOf { it.offset }
+    private fun bagEnd(c: Config) = c.pockets.maxOf { it.offset + it.capacity * 4 }
 
     class Sample(val party: List<Mon>, val language: Int, val bag: List<Item>, val zone: Int = -1)
 
     /** [bytes] is [ranges]' memory, one after another. */
     fun read(c: Config, bytes: ByteArray): Sample? {
         val partyLen = c.partyStride * 6
-        val zoneAt = partyLen + 0x170 + (0xF68 - 0x400)
+        val zoneAt = partyLen + 0x170 + (bagEnd(c) - bagStart(c))
         if (bytes.size < zoneAt) return null
         val party = (0 until 6).mapNotNull { slot ->
             val at = slot * c.partyStride
@@ -237,15 +324,23 @@ object Gen6Reader {
             System.arraycopy(bytes, at + c.partyStatsAt, raw, STORED_SIZE, PARTY_SIZE - STORED_SIZE)
             decode(raw)
         }
-        val language = bytes[partyLen + 0x2D].toInt() and 0xFF
+        val language = bytes[partyLen + c.languageAt].toInt() and 0xFF
         val bagAt = partyLen + 0x170
         val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val bag = c.pockets.flatMap { p ->
             val out = ArrayList<Item>()
             for (i in 0 until p.capacity) {
-                val o = bagAt + (p.offset - 0x400) + i * 4
-                val id = b.getShort(o).toInt() and 0xFFFF
-                val count = b.getShort(o + 2).toInt() and 0xFFFF
+                val o = bagAt + (p.offset - bagStart(c)) + i * 4
+                val id: Int
+                val count: Int
+                if (c.bagGen7) {
+                    val v = b.getInt(o)
+                    id = v and 0x3FF
+                    count = (v ushr 10) and 0x3FF
+                } else {
+                    id = b.getShort(o).toInt() and 0xFFFF
+                    count = b.getShort(o + 2).toInt() and 0xFFFF
+                }
                 if (id == 0) break
                 out += Item(id, count, p.companionPocket)
             }

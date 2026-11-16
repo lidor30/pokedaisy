@@ -38,6 +38,11 @@ SELECT ZL ZR HOME`, joined with commas (`A,UP`), or `NONE`. A frame is one the s
 | `pressuntil K M [N]` | K for 2 frames every 60 until module M is loaded, at most N frames. |
 | `watchw ADDR [N] [LEN]` | N frames (2) with ADDR's page watched: who wrote its LEN bytes (4), as PC / LR / value, counted (our Azahar patch's `Memory::pk_watch_write`). |
 | `frames` | Frames run so far. |
+| `findcrs` | Every page whose +0x80 reads "CRO0", with its chain: the static module's header for a new game. |
+| `modroot ADDR` | Where `modules` starts (each known game's is set at boot: X / Y 0x012B6000, OR / AS 0x01307000, Sun / Moon 0x00869000). |
+
+`N3DS_INTERP=1` runs Azahar's interpreter instead of the JIT. Sun's own save and two of three Moon saves crash this tool (a
+host crash in both CPU modes) as the field loads; `~/Downloads/3ds-saves/main Deadshot626.zip`'s Moon save plays.
 
 `N3DS_LOG` sets Azahar's log filter (default `*:Warning`, e.g. `N3DS_LOG='*:Info'`).
 

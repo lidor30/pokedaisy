@@ -286,8 +286,9 @@ class N3dsSession(
                 val modules = N3dsNative.modules(config.staticModule)
                 if (modules != null) {
                     if (modules != lastModules) { Log.d(TAG, "modules: ${modules.replace('\n', ',')}"); lastModules = modules }
-                    val menu = if ("DllField" in modules) fieldMenu(config) else null
-                    val now = Gen6Reader.sceneOf(modules, menu)
+                    val onField = modules.split('\n').contains(config.fieldModule)
+                    val menu = if (onField) fieldMenu(config) else null
+                    val now = Gen6Reader.sceneOf(modules, menu, config)
                     streak = if (now == seen) streak + 1 else 1
                     val needed = when {
                         scene == Gen6Reader.Scene.SCREEN && now == Gen6Reader.Scene.FIELD -> SCREEN_TO_FIELD_READS
@@ -305,16 +306,16 @@ class N3dsSession(
                     seen = now
                     // The game holding the player (talking, a scene, a door): the HUD's bottom row steps away at once and
                     // comes back after a few free reads (no blink between two lines or through a door).
-                    val heldNow = "DllField" in modules && config.fieldHold != 0 &&
+                    val heldNow = onField && config.fieldHold != 0 &&
                         (N3dsNative.readMemory(intArrayOf(config.fieldHold, 4))?.takeIf { it.size == 4 }?.let { it[0].toInt() and Gen6Reader.FIELD_HELD != 0 } == true)
                     freeReads = if (heldNow) 0 else freeReads + 1
                     val held = heldNow || freeReads < FIELD_FREE_READS
                     if (held != fieldHeld) { fieldHeld = held; ui.post { onFieldHeld(held) } }
                     // ZOOM's say: the field's module up and the scene the field (or the X menu over it).
-                    val canZoom = "DllField" in modules &&
+                    val canZoom = onField &&
                         (scene == Gen6Reader.Scene.FIELD || scene == Gen6Reader.Scene.MENU)
                     zoomable = canZoom
-                    readBattle(config, if ("DllBattle" in modules) modules else null)
+                    readBattle(config, if (modules.split('\n').contains(config.battleModule)) modules else null)
                 }
                 if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) fieldShot()
                 if (com.pokedaisy.app.BuildConfig.DEBUG) debugCommands(pass % FIELD_SHOT_EVERY == 1)
@@ -487,7 +488,7 @@ class N3dsSession(
     /** The field camera's setup ([Gen6Reader.cameraSetup]): the field object's pointers followed, 0 off the field. */
     private fun cameraSetup(config: Gen6Reader.Config): Int {
         var a = readInt(config.fieldMenuRoot) ?: return 0
-        for (off in Gen6Reader.CAMERA_PATH) {
+        for (off in config.cameraPath ?: return 0) {
             if (!Gen6Reader.inHeap(a)) return 0
             a = readInt(a + off) ?: return 0
         }
@@ -560,8 +561,10 @@ class N3dsSession(
         private set
     private var wildLanguage = -1
     @Volatile private var text: Gen6Text? = null
-    private val moveData by lazy { Gen6Moves.load(rom) }
-    private val personalData by lazy { Gen6Personal.load(rom) }
+    /** Where this cart keeps what the companion reads ([N3dsLayout]: X / Y, Omega Ruby / Alpha Sapphire, Sun / Moon). */
+    private val layout = N3dsLayout.forTitle(titleId)
+    private val moveData by lazy { Gen6Moves.load(rom, layout) }
+    private val personalData by lazy { Gen6Personal.load(rom, layout) }
 
     private fun withBattle(view: SnapshotView): SnapshotView {
         val b = battle ?: return view.copy(inBattle = false, battlePlayer = emptyList(), battleOpponent = emptyList(),
@@ -569,8 +572,8 @@ class N3dsSession(
         val t = text
         return view.copy(
             inBattle = true,
-            battlePlayer = listOfNotNull(b.player?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData, b.foe) }),
-            battleOpponent = listOfNotNull(b.foe?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData) }),
+            battlePlayer = listOfNotNull(b.player?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData, b.foe, layout) }),
+            battleOpponent = listOfNotNull(b.foe?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData, layout = layout) }),
             battleInputState = b.input,
         )
     }
@@ -591,6 +594,7 @@ class N3dsSession(
 
     /** The field menu's bytes ([Gen6Reader.sceneOf]): the field's object from its root, then the pointer and flag in it. */
     private fun fieldMenu(config: Gen6Reader.Config): ByteArray? {
+        if (config.fieldMenuWord != 0) return N3dsNative.readMemory(intArrayOf(config.fieldMenuWord, 4))
         if (config.fieldMenuRoot == 0) return null
         val root = N3dsNative.readMemory(intArrayOf(config.fieldMenuRoot, 4))?.takeIf { it.size == 4 } ?: return null
         val obj = java.nio.ByteBuffer.wrap(root).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(0)
@@ -622,22 +626,23 @@ class N3dsSession(
     private val sampler = Thread({
         // The cart's icons into rom-art once (a few hundred small files), before the first sample needs them.
         runCatching {
-            if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile())) com.pokedaisy.app.companion.data.RomArt.announce()
+            if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile(), layout)) com.pokedaisy.app.companion.data.RomArt.announce()
         }.onFailure { Log.w(TAG, "icons failed", it) }
         // The Town Map's picture and pin (once per cart), and every zone's place on it.
-        val townSpots = runCatching {
+        // X / Y's only so far: the other games' maps aren't read yet.
+        val townSpots = if (layout.family != N3dsLayout.Family.XY) emptyMap() else runCatching {
             if (Gen6TownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile())) com.pokedaisy.app.companion.data.RomArt.announce()
             Gen6TownMap.spots(rom)
         }.onFailure { Log.w(TAG, "town map failed", it) }.getOrDefault(emptyMap())
         val config = Gen6Reader.configFor(titleId)
         var textLanguage = -1
-        val zones = Gen6Zones.load(rom)
+        val zones = Gen6Zones.load(rom, layout)
         while (running) {
             if (config != null && !paused) {
                 val sample = N3dsNative.readMemory(Gen6Reader.ranges(config))?.let { Gen6Reader.read(config, it) }
                 if (sample != null) {
                     // Reloaded when the language changes: a read before the save is loaded (the title) has none yet.
-                    if (text == null || sample.language != textLanguage) text = Gen6Text.load(rom, sample.language)?.also { t ->
+                    if (text == null || sample.language != textLanguage) text = Gen6Text.load(rom, sample.language, layout)?.also { t ->
                         textLanguage = sample.language
                         Gen6Text.languageLetter(sample.language)?.let { l -> ui.post { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(l) } }
                         val names = t.items
@@ -647,7 +652,7 @@ class N3dsSession(
                     if (sample.zone != wildZone || wildLanguage != textLanguage) {
                         wildZone = sample.zone
                         wildLanguage = textLanguage
-                        wildHere = N3dsCompanionData.wild(Gen6Wild.load(rom)?.getOrNull(sample.zone).orEmpty(), text)
+                        wildHere = N3dsCompanionData.wild(Gen6Wild.load(rom, layout)?.getOrNull(sample.zone).orEmpty(), text, layout)
                         mapHere = townSpots[sample.zone]?.let {
                             com.pokedaisy.app.companion.ui.XyMapSpot(
                                 Gen6TownMap.MAP, Gen6TownMap.PIN, Gen6TownMap.WIDTH, Gen6TownMap.HEIGHT, it.x, it.y, it.w, it.h,
@@ -656,10 +661,9 @@ class N3dsSession(
                     }
                     val view = SnapshotView(
                         connected = true,
-                        game = if (titleId == N3dsCart.POKEMON_Y_USA) com.pokedaisy.app.companion.data.GameKind.POKEMON_Y
-                            else com.pokedaisy.app.companion.data.GameKind.POKEMON_X,
+                        game = N3dsCart.kindOf(titleId),
                         frameCounter = N3dsNative.frames(),
-                        party = N3dsCompanionData.party(sample, text, moveData, personalData),
+                        party = N3dsCompanionData.party(sample, text, moveData, personalData, layout),
                         items = N3dsCompanionData.bag(sample, text),
                         location = N3dsCompanionData.location(sample, text, zones),
                     )

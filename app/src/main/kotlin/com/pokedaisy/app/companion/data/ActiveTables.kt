@@ -31,11 +31,21 @@ enum class GameKind { FIRERED, EMERALD, UNBOUND, GAIA, RADICAL_RED, ODYSSEY, HEA
     GOLD, SILVER, RED, BLUE, ELITE_REDUX, POLISHED_CRYSTAL, PLATINUM, HEARTGOLD, SOULSILVER, TEAM_ROCKET, BLACK, WHITE, BLACK2, WHITE2,
     WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY, BROWN, RHYTHM, OOPS_ALL_EEVEES, CERULEUM, RECORDKEEPERS,
     /** A 3DS game (docs/3DS_GAMES_PLAN.md): its companion reads Azahar's memory, PARTY and BAG so far. Y is X's code
-     * with its own version's Pokemon ([isXy]: everything else the same). */
-    POKEMON_X, POKEMON_Y }
+     * with its own version's Pokemon ([isXy]: everything else the same). Omega Ruby / Alpha Sapphire run X's engine
+     * at their own addresses ([isOras]); Sun / Moon are Gen 7's ([isSm]). */
+    POKEMON_X, POKEMON_Y, POKEMON_OMEGA_RUBY, POKEMON_ALPHA_SAPPHIRE, POKEMON_SUN, POKEMON_MOON }
 
 /** Pokemon X or Y: one engine, one companion, one look (2026-11-15: Y's addresses all X's, headless). */
 val GameKind?.isXy: Boolean get() = this == GameKind.POKEMON_X || this == GameKind.POKEMON_Y
+
+/** Omega Ruby or Alpha Sapphire: X's engine at their own addresses, their own look. */
+val GameKind?.isOras: Boolean get() = this == GameKind.POKEMON_OMEGA_RUBY || this == GameKind.POKEMON_ALPHA_SAPPHIRE
+
+/** Sun or Moon (Gen 7). */
+val GameKind?.isSm: Boolean get() = this == GameKind.POKEMON_SUN || this == GameKind.POKEMON_MOON
+
+/** A 3DS game (any of them): the companion's 3DS tabs, the smooth look, the battle corner. */
+val GameKind?.isN3ds: Boolean get() = isXy || isOras || isSm
 
 /**
  * Games with an auto-run of their own, on by default: holding B walks there, so AUTO-RUN's flip of B walked and B ran
@@ -897,4 +907,8 @@ fun GameKind.displayName(): String = when (this) {
     GameKind.CRYSTAL_LEGACY -> "Pokémon Crystal Legacy"
     GameKind.POKEMON_X -> "Pokémon X"
     GameKind.POKEMON_Y -> "Pokémon Y"
+    GameKind.POKEMON_OMEGA_RUBY -> "Pokémon Omega Ruby"
+    GameKind.POKEMON_ALPHA_SAPPHIRE -> "Pokémon Alpha Sapphire"
+    GameKind.POKEMON_SUN -> "Pokémon Sun"
+    GameKind.POKEMON_MOON -> "Pokémon Moon"
 }

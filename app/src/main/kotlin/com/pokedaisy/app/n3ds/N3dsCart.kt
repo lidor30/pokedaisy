@@ -17,8 +17,28 @@ object N3dsCart {
     /** Pokemon Y (USA): X's code and memory, its own version's Pokemon (2026-11-15: every address X's, headless). */
     const val POKEMON_Y_USA = 0x0004000000055E00L
 
-    /** The carts the app plays so far: Pokemon X first, Y with it (docs/3DS_GAMES_PLAN.md). */
-    val SUPPORTED = setOf(POKEMON_X_USA, POKEMON_Y_USA)
+    /** Pokemon Omega Ruby / Alpha Sapphire (USA, Rev 2 carts): X's engine, their own addresses. */
+    const val POKEMON_OR_USA = 0x000400000011C400L
+    const val POKEMON_AS_USA = 0x000400000011C500L
+
+    /** Pokemon Sun / Moon (USA): Gen 7. */
+    const val POKEMON_SUN_USA = 0x0004000000164800L
+    const val POKEMON_MOON_USA = 0x0004000000175E00L
+
+    /** The carts the app plays so far (docs/3DS_GAMES_PLAN.md) and the game each one is. */
+    val KINDS = mapOf(
+        POKEMON_X_USA to com.pokedaisy.app.companion.data.GameKind.POKEMON_X,
+        POKEMON_Y_USA to com.pokedaisy.app.companion.data.GameKind.POKEMON_Y,
+        POKEMON_OR_USA to com.pokedaisy.app.companion.data.GameKind.POKEMON_OMEGA_RUBY,
+        POKEMON_AS_USA to com.pokedaisy.app.companion.data.GameKind.POKEMON_ALPHA_SAPPHIRE,
+        POKEMON_SUN_USA to com.pokedaisy.app.companion.data.GameKind.POKEMON_SUN,
+        POKEMON_MOON_USA to com.pokedaisy.app.companion.data.GameKind.POKEMON_MOON,
+    )
+
+    val SUPPORTED: Set<Long> get() = KINDS.keys
+
+    /** The game a cart's title id is; X for one the app doesn't know (never reached: only [SUPPORTED] carts boot). */
+    fun kindOf(titleId: Long) = KINDS[titleId] ?: com.pokedaisy.app.companion.data.GameKind.POKEMON_X
 
     class Header(val titleId: Long, val decrypted: Boolean)
 

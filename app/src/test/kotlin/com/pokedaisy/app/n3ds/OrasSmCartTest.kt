@@ -1,0 +1,141 @@
+package com.pokedaisy.app.n3ds
+
+import com.pokedaisy.app.companion.data.GameKind
+import com.pokedaisy.app.companion.data.RETAIL_ROM_DIR
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
+import org.junit.Test
+import java.io.File
+
+/**
+ * Omega Ruby / Alpha Sapphire and Sun / Moon read through the 3DS readers with their own [N3dsLayout] (docs/3DS_GAMES_PLAN.md):
+ * names, moves, types, zones, wild Pokemon and icons from the player's own carts (`3ds/` beside the GBA folder), checked
+ * against the games' known facts. Skipped without the carts.
+ */
+class OrasSmCartTest {
+    private val dir = File(File(RETAIL_ROM_DIR).parentFile, "3ds")
+    private val or = File(dir, "Pokemon Omega Ruby (USA) (En,Ja,Fr,De,Es,It,Ko) (Rev 2).3ds")
+    private val asCart = File(dir, "Pokemon Alpha Sapphire (USA) (En,Ja,Fr,De,Es,It,Ko) (Rev 2).3ds")
+    private val sun = File(dir, "Pokemon Sun (USA) (En,Ja,Fr,De,Es,It,Zh,Ko).3ds")
+    private val moon = File(dir, "Pokemon Moon (USA) (En,Ja,Fr,De,Es,It,Zh,Ko).3ds")
+
+    @Test fun cartsAreKnown() {
+        assertEquals(GameKind.POKEMON_OMEGA_RUBY, N3dsCart.kindOf(N3dsCart.POKEMON_OR_USA))
+        assertEquals(GameKind.POKEMON_MOON, N3dsCart.kindOf(N3dsCart.POKEMON_MOON_USA))
+        assertEquals(N3dsLayout.ORAS, N3dsLayout.forTitle(N3dsCart.POKEMON_AS_USA))
+        assertEquals(N3dsLayout.SM, N3dsLayout.forTitle(N3dsCart.POKEMON_SUN_USA))
+        assertNotNull(Gen6Reader.configFor(N3dsCart.POKEMON_OR_USA))
+        for ((cart, id) in listOf(or to N3dsCart.POKEMON_OR_USA, asCart to N3dsCart.POKEMON_AS_USA, sun to N3dsCart.POKEMON_SUN_USA, moon to N3dsCart.POKEMON_MOON_USA)) {
+            if (!cart.isFile) continue
+            assertEquals(id, N3dsCart.header(cart)!!.titleId)
+            assertTrue(N3dsCart.supported(cart))
+        }
+    }
+
+    @Test fun omegaRubyReadsItsCart() {
+        assumeTrue(or.isFile)
+        val l = N3dsLayout.ORAS
+        val t = Gen6Text.load(or, 2, l)!!
+        assertEquals("Bulbasaur", t.species[1])
+        assertEquals("Groudon", t.species[383])
+        assertEquals("Pound", t.moves[1])
+        assertEquals("Potion", t.items[17])
+        val moves = Gen6Moves.load(or, l)!!
+        assertEquals(50, moves[33].power)        // Tackle
+        assertEquals(90, moves[85].power)        // Thunderbolt
+        assertEquals(12, moves[85].type)         // ELECTRIC
+        val personal = Gen6Personal.load(or, l)!!
+        assertEquals(listOf(11, 3), personal[1].toList()) // Bulbasaur GRASS / POISON
+        val zones = Gen6Zones.load(or, l)!!
+        assertEquals("Littleroot Town", Gen6Zones.placeName(zones, t, 0))
+        assertEquals("Oldale Town", Gen6Zones.placeName(zones, t, 7))
+        assertEquals("Route 101", Gen6Zones.placeName(zones, t, 23))
+        // The players' saves stood in Slateport's Pokemon Center (zone 265) and a Littleroot house (224).
+        assertEquals("Slateport City", Gen6Zones.placeName(zones, t, 265))
+        assertEquals("Littleroot Town", Gen6Zones.placeName(zones, t, 224))
+        val wild = Gen6Wild.load(or, l)!!
+        assertEquals(setOf(265, 263, 261), wild[23].first { it.method == "GRASS / CAVE" }.slots.map { it.species }.toSet())
+        assertTrue(wild[23].any { it.method == "HORDES" })
+        assertEquals(1, l.iconIndex(1, 0, false))
+        assertEquals(4, l.iconIndex(3, 0, false))
+        assertEquals(3, l.iconIndex(3, 1, false))
+        val icons = RomFs(or).use { it.read(l.iconPath) }!!.let { Gen6Text.garcFiles(it) }
+        assertEquals(974, icons.size)
+        assertNotNull(Gen6Icons.decode(icons[1]))
+    }
+
+    @Test fun alphaSapphireIsOmegaRubysLayout() {
+        assumeTrue(or.isFile && asCart.isFile)
+        val l = N3dsLayout.ORAS
+        assertEquals(Gen6Text.load(or, 2, l)!!.species, Gen6Text.load(asCart, 2, l)!!.species)
+        assertEquals(Gen6Zones.load(or, l)!!.toList(), Gen6Zones.load(asCart, l)!!.toList())
+        assertEquals(Gen6Wild.load(or, l)!!.size, Gen6Wild.load(asCart, l)!!.size)
+    }
+
+    @Test fun sunReadsItsCart() {
+        assumeTrue(sun.isFile)
+        val l = N3dsLayout.SM
+        val t = Gen6Text.load(sun, 2, l)!!
+        assertEquals("Bulbasaur", t.species[1])
+        assertEquals("Rowlet", t.species[722])
+        assertEquals("Pound", t.moves[1])
+        assertEquals("Potion", t.items[17])
+        val moves = Gen6Moves.load(sun, l)!!
+        assertEquals(40, moves[33].power)        // Tackle, Gen 7's
+        val personal = Gen6Personal.load(sun, l)!!
+        assertEquals(listOf(11, 2), personal[722].toList()) // Rowlet GRASS / FLYING
+        val zones = Gen6Zones.load(sun, l)!!
+        assertEquals("Route 1", Gen6Zones.placeName(zones, t, 0))
+        assertEquals("Iki Town", Gen6Zones.placeName(zones, t, 10))
+        val wild = Gen6Wild.load(sun, l) ?: throw AssertionError("no wild", Gen6Wild.lastError)
+        val route1 = wild[0].first { it.method == "GRASS / CAVE" }.slots.map { it.species }.toSet()
+        assertTrue(route1.containsAll(setOf(734, 731, 10, 165))) // Yungoos, Pikipek, Caterpie, Ledyba
+        assertTrue(wild[0].first { it.method == "AT NIGHT" }.slots.any { it.species == 19 && it.form == 1 }) // Alolan Rattata
+        assertEquals(1, l.iconIndex(1, 0, false))
+        val icons = RomFs(sun).use { it.read(l.iconPath) }!!.let { Gen6Text.garcFiles(it) }
+        assertEquals(1134, icons.size)
+        val bulbasaur = Gen6Icons.decode7(icons[1])!!
+        assertTrue(bulbasaur.argb.count { it != 0 } > 150)
+    }
+
+    @Test fun moonHasItsOwnWildPokemon() {
+        assumeTrue(sun.isFile && moon.isFile)
+        val l = N3dsLayout.SM
+        val s = Gen6Wild.load(sun, l)!!
+        val m = Gen6Wild.load(moon, l)!!
+        assertEquals(s.size, m.size)
+        assertEquals(Gen6Text.load(sun, 2, l)!!.species, Gen6Text.load(moon, 2, l)!!.species)
+    }
+}
+
+/** Sun / Moon's scene and bag reads ([Gen6Reader.POKEMON_SM_USA]): no cart needed. */
+class SmReaderTest {
+    private val c = Gen6Reader.POKEMON_SM_USA
+
+    private fun word(v: Int) = java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN).putInt(0, v).array()
+
+    @Test fun scenesFromItsModules() {
+        assertEquals(Gen6Reader.Scene.FIELD, Gen6Reader.sceneOf("FieldRo\nFieldMenu\nFieldGimmickPokecen", word(0), c))
+        assertEquals(Gen6Reader.Scene.MENU, Gen6Reader.sceneOf("FieldRo\nFieldMenu", word(0x083FE4A4), c))
+        assertEquals(Gen6Reader.Scene.BATTLE, Gen6Reader.sceneOf("Battle\nBackground", null, c))
+        assertEquals(Gen6Reader.Scene.SCREEN, Gen6Reader.sceneOf("Bag", null, c))
+        assertEquals(null, Gen6Reader.sceneOf("TitleMenu", null, c))
+    }
+
+    @Test fun bagIsGen7s() {
+        val r = Gen6Reader.ranges(c)
+        val bytes = ByteArray(r[1] + r[3] + r[5] + r[7])
+        val b = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        val bagAt = r[1] + r[3]
+        b.putInt(bagAt, 17 or (999 shl 10))                // a Potion x999 in the items pocket
+        b.putInt(bagAt + 0x6B8, 1 or (1 shl 10) or (5 shl 20)) // a key item, with its free-space bits
+        bytes[r[1] + 0x35] = 2
+        b.putShort(bagAt + r[5], 263)
+        val s = Gen6Reader.read(c, bytes)!!
+        assertEquals(2, s.language)
+        assertEquals(263, s.zone)
+        assertEquals(listOf(17 to 999, 1 to 1), s.bag.map { it.id to it.count })
+    }
+}

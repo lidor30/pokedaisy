@@ -314,6 +314,59 @@ size with its code laid out differently past ~0x5F000: nothing of ours reads its
 RomFS (same layout): text, zones, Town Map, types and icons equal X's, the wild Pokemon are Y's (Route 2: Caterpie where X
 has Weedle; `Gen6Test.pokemonYReadsLikeX`). Its save is X's format. Not yet played on a device.
 
+## Omega Ruby / Alpha Sapphire (2026-11-17)
+
+OR (`000400000011C400`, `CTR-P-ECRA`) and AS (`000400000011C500`, `CTR-P-ECLA`), the US Rev 2 carts: `GameKind.POKEMON_OMEGA_RUBY`
+/ `POKEMON_ALPHA_SAPPHIRE` (`isOras`; `isN3ds` for everything any 3DS game has: tabs, the party screen, the battle corner),
+`Gen6Reader.POKEMON_ORAS_USA`. Their save is X's format (0x40000, one file, duplicated: seen when Omega Ruby made its own). Found
+headless with n3ds_dump on the players' saves (`~/Downloads/3ds-saves/main (1)`, an Omega Ruby one in Slateport's Pokemon Center;
+`5. After Elite 4`, Alpha Sapphire in Littleroot), every address the same in both carts:
+- The static module at 0x01307000 (`findcrs`); the modules are X's names (`DllField`, `DllBattle`, `DllPss*`...).
+- The live party 0x08CF727C, X's 0x1E4 a slot and stats at +0x158 (Azelf Lv100 219 / 300 decoded). MyStatus 0x08C7D350 (the
+  name at +0x48, the language at +0x2D), the bag 0x08C6A880 (X's pockets at X's offsets), the save's situation with the zone at
+  0x08C6B89E (265 = Slateport City, 224 = Littleroot: both saves read the place they stand in).
+- The X menu: the field object's root 0x08C57660, the menu's pointer at +0x4C (X's +0x40) and its byte at +0x24 (menu closed /
+  open / closed dumps). The hold word 0x08D1E3FC: 0x3D1 on the field, 0x3D3 with the menu up, as X's.
+- Not mapped yet: the camera (the field object's +0xD8 chain isn't X's: no ZOOM / free camera there), the battle's controller
+  (no battle buttons yet: walking to grass headless took too many runs), the Town Map (the PokeNav's Hoenn map is `a/0/6/7`'s
+  `poke_navi_map.bclim`, 380 x 270 ETC1; the zone -> spot table wasn't found).
+- The cart (`N3dsLayout.ORAS`): text `a/0/7/<1 kana, 2 kanji, 3 English, 4 French, 5 Italian, 6 German, 7 Spanish, 8 Korean>`,
+  files 98 / 14 / 114 / 37 / 51 / 18 / 90 (species / moves / items / abilities / natures / types / places); moves `a/1/8/9` (one
+  packed "WD" file of X's 36-byte records); personal `a/1/9/5` (0x50 a record); zones `a/0/1/3` (the "ZO" bundles, the records
+  in the second-to-last file); wild Pokemon in each bundle's fourth section (a 0x0E header, 61 slots: grass, tall grass, 3 of the
+  DexNav's, surfing, Rock Smash, three rods, three hordes); icons `a/0/9/1` (974, X's container).
+- Party icons for both games (and Sun / Moon's) come from a table in each game's own code: 16 bytes a species (icon, female
+  icon, a pointer to the forms' icons, their count), found by its first icons (`scripts/n3ds_icons/code_icon_table.py`). On X it
+  agrees with the table read off the game's party screen on 1481 of 1486 rows (Genesect's drives, identical pictures; Keldeo).
+- The look: the companion's skin `CompanionSkins.POKEMON_ORAS` (the X menu's grey panels in their dark grey frame, the PlayNav's
+  orange), `OrasBag`, the party screen and the HUD in each version's colour (`XyTint.RUBY` / `SAPPHIRE`).
+
+## Sun / Moon (2026-11-17)
+
+Sun (`0004000000164800`, `CTR-P-BNDA`) and Moon (`0004000000175E00`, `CTR-P-BNEA`): `GameKind.POKEMON_SUN` / `POKEMON_MOON`
+(`isSm`), `Gen6Reader.POKEMON_SM_USA`. The save is X's format too (0x40000, seen when Sun made its own). Headless on the Mac, Sun's
+own save and two of three Moon saves crash the software renderer as the field loads (the interpreter too: a host crash, not the
+JIT); the third Moon save (`main Deadshot626.zip`, in Seafolk Village's Pokemon Center) plays, and everything below came from it.
+Sun is taken to share Moon's addresses (as Y shares X's): **not checked yet**.
+- The static module at 0x00869000; the modules have no "Dll": `FieldRo` (the field), `Battle`, `Title`, `TitleMenu`, `FieldMenu`
+  (always with the field), `Bag`, `Box`, `Zukan`... (the cart's 140 `.cro`).
+- The live party 0x34195E10, X's shape (0x1E4, stats at +0x158: Mimikyu Lv100 251 / 251). The save's blocks packed as X's: the
+  bag 0x330D5934 (= the save's offset 0: six pockets of u32 entries, item 10 bits and count 10 bits: items 430 at 0, key items 184
+  at 0x6B8, TMs 108 at 0x998, medicine 64 at 0xB48, berries 72 at 0xC48, Z-Crystals 30 at 0xD68; the RAM copy equals the save's),
+  MyStatus 0x330D67D0 (name +0x38, language +0x35), the situation's zone 0x330D6736 (263 = Seafolk Village; the bottom screen's
+  map showed it).
+- The X menu (on the touch screen): 0x083FE170 holds a pointer while it's open, 0 on the field (closed / open / closed dumps):
+  `Config.fieldMenuWord`. No hold word, camera or battle controller mapped yet.
+- The cart (`N3dsLayout.SM`): text `a/0/3/<0 kana, 1 kanji, 2 English, 3 French, 4 Italian, 5 German, 6 Spanish, 7 Korean, 8 / 9
+  Chinese>` (Chinese species names use the game font's own characters: English stands in), files 55 / 113 / 36 / 96 / 87 / 107 /
+  67; moves `a/0/1/1` (packed, 40-byte records: Tackle 40); personal `a/0/1/7` (0x54); zones `a/0/7/7` (file 0, LZ11, 0x54 a
+  record, the place line a u16 at +0x1C); icons `a/0/6/2` (1134 BFLIM: 64 x 32 RGBA5551 stored turned, `Gen6Icons.decode7`).
+- Wild Pokemon (`Gen6Wild.sunMoon`): a zone's area from `a/0/9/1`'s (zone, area) pairs, the area's tables in the encounter
+  archive (Sun `a/0/8/2`, Moon `a/0/8/3`, 348 MB: read one file at a time, `RomFs.garcFile`), day and night tables of 10 slots
+  plus SOS sets. An area holds several zones' tables and which patch is which zone's is in the map, so a zone lists its area's.
+- The look: `CompanionSkins.POKEMON_SM` (the X menu's indigo bands round white rows over its cyan), `SmBag`, the party screen and
+  the HUD in Sun's orange / Moon's indigo (`XyTint.SUN` / `MOON`).
+
 ## Open
 
 - Shader cache and pipeline compiles on first play (stutter): Azahar's disk cache under our files dir.
