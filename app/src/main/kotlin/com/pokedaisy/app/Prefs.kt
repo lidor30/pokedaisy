@@ -206,6 +206,27 @@ class Prefs(context: Context) {
         get() = p.getInt("exp_share", 0)
         set(v) = p.edit().putInt("exp_share", v).apply()
 
+    /** SETTINGS' DESCRIPTIONS and GROUP TABS (both screens, SettingsLook): shown by default. */
+    var settingsDescriptions: Boolean
+        get() = p.getBoolean("settings_descriptions", true)
+        set(v) = p.edit().putBoolean("settings_descriptions", v).apply()
+    var settingsTabs: Boolean
+        get() = p.getBoolean("settings_tabs", true)
+        set(v) = p.edit().putBoolean("settings_tabs", v).apply()
+
+    /** LOW HP BEEP / FIELD POISON: the game's own (ON) or turned off by a patch (QuietPatches.kt). */
+    var lowHpBeep: Boolean
+        get() = p.getBoolean("low_hp_beep", true)
+        set(v) = p.edit().putBoolean("low_hp_beep", v).apply()
+    var fieldPoison: Boolean
+        get() = p.getBoolean("field_poison", true)
+        set(v) = p.edit().putBoolean("field_poison", v).apply()
+
+    /** AUTO REFILL: another REPEL of the kind working goes on before it runs out (RepelRefill.kt). */
+    var repelRefill: Boolean
+        get() = p.getBoolean("repel_refill", false)
+        set(v) = p.edit().putBoolean("repel_refill", v).apply()
+
     /** LEVEL CAP: no Pokémon goes past the next boss's top level (LevelCap.kt). */
     var levelCap: Boolean
         get() = p.getBoolean("level_cap", false)
@@ -253,6 +274,25 @@ class Prefs(context: Context) {
         set(v) = p.edit().putBoolean("rival_look", v).apply()
 
     /** Remembered speed-cycle index per ROM (keyed by CRC32). */
+    /** BOSS RETRY: a state as each trainer battle starts, offered back after a loss (BattleRetryAsk). */
+    var battleRetry: Boolean
+        get() = p.getBoolean("battle_retry", false)
+        set(v) = p.edit().putBoolean("battle_retry", v).apply()
+
+    /** SHINY ALERT: on, and its hunt's count of wild battles per ROM (since the last shiny, or since it was turned on). */
+    var shinyAlert: Boolean
+        get() = p.getBoolean("shiny_alert", false)
+        set(v) = p.edit().putBoolean("shiny_alert", v).apply()
+    fun shinyHuntFor(romKey: String): Int = p.getInt("shiny_hunt_$romKey", 0)
+    fun setShinyHuntFor(romKey: String, count: Int) = p.edit().putInt("shiny_hunt_$romKey", count).apply()
+
+    /** LAST BALL: the BATTLE tab's ball button (BattleBall.kt), and the ball last thrown per ROM (0 = none yet). */
+    var lastBallButton: Boolean
+        get() = p.getBoolean("last_ball_button", true)
+        set(v) = p.edit().putBoolean("last_ball_button", v).apply()
+    fun lastBallFor(romKey: String): Int? = p.getInt("last_ball_$romKey", 0).takeIf { it != 0 }
+    fun setLastBallFor(romKey: String, itemId: Int) = p.edit().putInt("last_ball_$romKey", itemId).apply()
+
     fun speedIndexFor(romKey: String): Int = p.getInt("speed_$romKey", 0)
     fun setSpeedIndexFor(romKey: String, index: Int) = p.edit().putInt("speed_$romKey", index).apply()
 
@@ -731,8 +771,9 @@ class Prefs(context: Context) {
         get() = p.getBoolean("companion_window", true)
         set(v) = p.edit().putBoolean("companion_window", v).apply()
 
-    /** One screen held sideways: the white tab at the bottom of the screen's right edge that opens the companion (SETTINGS >
-     * COMPANION BUTTON). Off, BACK and the HUD's COMPANION button still open it. */
+    /** One screen held sideways: the buttons on the game screen that open the companion - the white tab at the bottom of the
+     * screen's right edge and the HUD's COMPANION (SETTINGS > COMPANION BUTTON). Off, BACK, the COMPANION hotkey and the QUICK
+     * MENU still open it. */
     var companionTab: Boolean
         get() = p.getBoolean("companion_tab", true)
         set(v) = p.edit().putBoolean("companion_tab", v).apply()

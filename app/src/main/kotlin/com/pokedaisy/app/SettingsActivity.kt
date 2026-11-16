@@ -728,8 +728,8 @@ class SettingsActivity : ComponentActivity() {
         // The themes on offer today: the limited-time ones only in their dates.
         val themes = com.pokedaisy.app.companion.ui.theme.availableThemes()
         fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
-        // The same groups and order as the bottom screen's SETTINGS where they overlap.
-        val rows = listOfNotNull(
+        // The same groups and order as the bottom screen's SETTINGS where they overlap; first how this list looks.
+        val rows = com.pokedaisy.app.companion.ui.settingsLookRows { revision++ } + listOfNotNull(
             groupTitle(tk("FF / SPEED")),
             SettingRow(tk("FF SPEED"), rateLabel(prefs.ffMaxSpeed)) {
                 selector = Selector(tk("FF SPEED"), rateLabels, rateLabel(prefs.ffMaxSpeed)) {
@@ -868,11 +868,11 @@ class SettingsActivity : ComponentActivity() {
                 prefs.foldLayout = !prefs.foldLayout
                 revision++
             }.takeIf { prefs.foldSeen && !usesSecondScreen },
-            // The white tab at the screen's right edge that opens it (BACK and the HUD's COMPANION still do).
+            // The buttons on the game screen that open it: the white edge tab and the HUD's COMPANION (BACK still does).
             SettingRow(
                 tk("COMPANION BUTTON"), onOff(prefs.companionTab),
                 labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.COMPANION_TAB),
-                subtitle = "The tab at the right edge that opens it",
+                subtitle = "The game screen's buttons that open it",
             ) {
                 prefs.companionTab = !prefs.companionTab
                 revision++

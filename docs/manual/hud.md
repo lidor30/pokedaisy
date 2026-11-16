@@ -38,7 +38,7 @@ When the game's picture is too narrow for your party beside the buttons, for exa
 
 In a DS game on one screen, a `TOUCH` button joins them while `DS LAYOUT` floats the touch screen in: it brings the touch screen up over the game, and a second tap closes it (see [DS layout](devices.md#ds-layout-two-screens-on-one)).
 
-On a device with one screen, the button that opens the companion joins `BAG` and `WILD` as `COMPANION` while the HUD is up, instead of sitting on the screen's edge. It stays there while the companion's window is open. When the HUD steps aside (in a battle or a menu), the edge tab is back.
+On a device with one screen, the button that opens the companion joins `BAG` and `WILD` as `COMPANION` while the HUD is up, instead of sitting on the screen's edge. It stays there while the companion's window is open. When the HUD steps aside (in a battle or a menu), the edge tab is back. With `COMPANION BUTTON` off in SETTINGS, neither shows.
 
 ## Make it yours
 

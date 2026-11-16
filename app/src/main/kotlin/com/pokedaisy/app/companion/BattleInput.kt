@@ -34,6 +34,13 @@ interface BattleInput {
     /** Backs out of move-select to action-select (a single B press). */
     fun back()
 
+    /** LAST BALL: the ball [throwBall] would throw now (its icon and count on the button); null = no button (not a wild battle
+     * with one foe and room for a catch, no ball in the bag, a game it can't throw in, or the option off). */
+    val lastBall: com.pokedaisy.app.companion.data.ItemView? get() = null
+
+    /** Throws [lastBall] from the action menu, without the bag. */
+    fun throwBall() {}
+
     /** Whether [switchTo] works in this game (PokeDaisyActivity's switchAddrsFor knows it). */
     val canSwitch: Boolean get() = false
 
