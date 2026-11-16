@@ -60,12 +60,12 @@ class Gen3TradeTest {
     fun aSendMovesTheRecordAndFillsThePokedex() {
         val a = side(Gen3SaveFormat.EMERALD, "BPEE", listOf(mon(treecko)))
         val b = side(Gen3SaveFormat.EMERALD, "BPEE")
-        val record = a.editor.record(first)
-        assertFalse(b.editor.caught(treecko))
+        val record = a.ed3.record(first)
+        assertFalse(b.ed3.caught(treecko))
         Gen3Trade.send(a, first, b, free)
-        assertTrue(a.editor.data.mon(first).isEmpty)
-        assertArrayEquals(record, b.editor.record(free))
-        assertTrue(b.editor.caught(treecko))
+        assertTrue(a.ed3.data.mon(first).isEmpty)
+        assertArrayEquals(record, b.ed3.record(free))
+        assertTrue(b.ed3.caught(treecko))
         // Both still write and read back as the game would.
         for (s in listOf(a, b)) assertTrue(Gen3SaveFile.parse(s.editor.build(), s.format) is Gen3SaveFile.Parsed.Ok)
     }
@@ -103,7 +103,7 @@ class Gen3TradeTest {
         val b = side(Gen3SaveFormat.EMERALD, "BPEE")
         refused { Gen3Trade.send(a, first, b, free) }
         Gen3Trade.send(a, BoxSlot(0, 1), b, free)
-        assertEquals(mew, b.editor.data.mon(free).species)
+        assertEquals(mew, b.ed3.data.mon(free).species)
     }
 
     @Test
@@ -121,7 +121,7 @@ class Gen3TradeTest {
         ))
         val b = side(Gen3SaveFormat.FIRERED_LEAFGREEN, "BPRE")
         for (i in 0 until 5) Gen3Trade.send(a, BoxSlot(0, i), b, BoxSlot(1, i))
-        val got = (0 until 5).map { b.editor.data.mon(BoxSlot(1, it)) }
+        val got = (0 until 5).map { b.ed3.data.mon(BoxSlot(1, it)) }
         // KADABRA -> ALAKAZAM, its name with it (it was the species' own); a nickname stays.
         assertEquals(alakazam, got[0].species)
         assertEquals("ALAKAZAM", Gen3Text.decode(got[0].nicknameBytes, 0, 10))
@@ -133,7 +133,7 @@ class Gen3TradeTest {
         assertEquals(onix, got[3].species)
         // An EVERSTONE stops it.
         assertEquals(kadabra, got[4].species)
-        assertTrue(b.editor.caught(alakazam) && b.editor.caught(kadabra) && b.editor.caught(steelix))
+        assertTrue(b.ed3.caught(alakazam) && b.ed3.caught(kadabra) && b.ed3.caught(steelix))
         // Every changed record still reads (checksum, encryption).
         assertTrue(got.all { it.checksumOk })
     }
@@ -143,10 +143,10 @@ class Gen3TradeTest {
         val a = side(Gen3SaveFormat.EMERALD, "BPEE", listOf(mon(kadabra), mon(kadabra)))
         val english = side(Gen3SaveFormat.EMERALD, "BPEE")
         Gen3Trade.send(a, first, english, free, evolve = false)
-        assertEquals(kadabra, english.editor.data.mon(free).species)
+        assertEquals(kadabra, english.ed3.data.mon(free).species)
         // A French Emerald would rename it to its French name, which this doesn't know: it arrives as it was.
         val french = side(Gen3SaveFormat.EMERALD, "BPEF")
-        assertNull(Gen3Trade.evolution(a.editor.data.mon(BoxSlot(0, 1)), french))
+        assertNull(Gen3Trade.evolution(a.ed3.data.mon(BoxSlot(0, 1)), french))
     }
 
     @Test
@@ -154,10 +154,10 @@ class Gen3TradeTest {
         val ruby = side(Gen3SaveFormat.RUBY_SAPPHIRE, "AXVE", listOf(mon(treecko)), national = false)
         val sapphire = side(Gen3SaveFormat.RUBY_SAPPHIRE, "AXPE", national = false)
         Gen3Trade.send(ruby, first, sapphire, free)
-        assertFalse(ruby.editor.nationalDex)
-        assertFalse(sapphire.editor.nationalDex)
+        assertFalse(ruby.ed3.nationalDex)
+        assertFalse(sapphire.ed3.nationalDex)
         Gen3Trade.send(sapphire, free, side(Gen3SaveFormat.EMERALD, "BPEE"), free)
-        assertTrue(sapphire.editor.nationalDex)
+        assertTrue(sapphire.ed3.nationalDex)
     }
 
     @Test
@@ -167,12 +167,12 @@ class Gen3TradeTest {
         refused { Gen3Trade.swap(a, first, b, first) }
         assertFalse(a.editor.changed || b.editor.changed)
         val c = side(Gen3SaveFormat.EMERALD, "BPEE", listOf(mon(bulbasaur, pid = 0x77L)))
-        val recA = a.editor.record(first)
-        val recC = c.editor.record(first)
+        val recA = a.ed3.record(first)
+        val recC = c.ed3.record(first)
         Gen3Trade.swap(a, first, c, first)
-        assertArrayEquals(recA, c.editor.record(first))
-        assertArrayEquals(recC, a.editor.record(first))
-        assertTrue(a.editor.caught(bulbasaur) && c.editor.caught(treecko))
+        assertArrayEquals(recA, c.ed3.record(first))
+        assertArrayEquals(recC, a.ed3.record(first))
+        assertTrue(a.ed3.caught(bulbasaur) && c.ed3.caught(treecko))
     }
 
     @Test

@@ -518,12 +518,15 @@ private fun gen5ConfigForRetail(kind: GameKind?, code: String): Gen5Config? = wh
  * (an emptied slot to the pocket's end, the rest in order) and the steps into [Gen5Config.repelStepsOff], which the
  * field counts down by itself. Only with the field free ([fieldFree]) and no Repel still working. Emu thread.
  */
-fun useGen5Repel(cfg: Gen5Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean): ItemUseOutcome {
+fun useGen5Repel(cfg: Gen5Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean, topUp: Boolean = false): ItemUseOutcome {
     if (!fieldFree) return ItemUseOutcome(ItemUseResult.NOT_NOW)
     val repelOff = cfg.repelStepsOff ?: return ItemUseOutcome(ItemUseResult.FAILED)
     val img = gen5Image({ a, n -> calls.read(a, n) }, cfg)
     if (img < 0) return ItemUseOutcome(ItemUseResult.FAILED)
-    if (u8(calls.read(img + repelOff, 1), 0) > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
+    // AUTO REFILL (topUp): added to the 1..REFILL_AT steps left, the byte capped at 255; otherwise only with none left.
+    val stepsLeft = u8(calls.read(img + repelOff, 1), 0)
+    if (topUp && stepsLeft !in 1..RepelRefill.REFILL_AT) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    if (!topUp && stepsLeft > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
     val pocket = img + cfg.bagOff   // the items pocket is the bag's first
     val size = cfg.pocketSizes[0]
     val raw = calls.read(pocket, size * 4)
@@ -539,6 +542,6 @@ fun useGen5Repel(cfg: Gen5Config, calls: GameCalls, itemId: Int, steps: Int, fie
         for (i in (size - 1) * 4 until size * 4) out[i] = 0
     }
     if (!calls.write(pocket, out)) return ItemUseOutcome(ItemUseResult.FAILED)
-    if (!calls.write(img + repelOff, byteArrayOf(steps.toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
+    if (!calls.write(img + repelOff, byteArrayOf((if (topUp) minOf(255, stepsLeft + steps) else steps).toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
     return ItemUseOutcome(ItemUseResult.USED, steps = steps)
 }
