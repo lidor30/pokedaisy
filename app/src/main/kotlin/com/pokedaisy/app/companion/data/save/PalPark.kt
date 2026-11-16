@@ -141,7 +141,8 @@ object PalPark {
             else -> 0
         }
         d[b + 0x18] = ((if (mon.fatefulEncounter) 1 else 0) or (gender shl 1) or (form shl 3)).toByte()
-        putU16(d, b + 0x1E, MET_LOCATION)   // MetLocation_PtHGSS (egg location: none)
+        // MetLocation_PtHGSS (egg location: none); Diamond / Pearl have only block D's.
+        if (game.layout != Gen4Layout.DP) putU16(d, b + 0x1E, MET_LOCATION)
         // Block C
         name.codes.copyInto(d, c)
         d[c + 0x17] = mon.metGame.toByte()

@@ -161,6 +161,9 @@ object NdsArt {
     private fun isPlatinum(code: String, rev: Int) =
         code == "CPUE" && rev == 1 || code == "CPUF" && rev == 0 || portIs(code, rev, GameKind.PLATINUM)
 
+    /** English Diamond / Pearl (any revision): the save editor's only (their text banks, read off rev 5). */
+    private fun isDiamondPearl(code: String) = code == "ADAE" || code == "APAE"
+
     /** Carts on HeartGold / SoulSilver's files: USA, Germany and France, rev 0. */
     private fun isHgss(code: String, rev: Int) =
         code in setOf("IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF") && rev == 0 || DsPorts.of(code, rev)?.kind.isHgss
@@ -1061,6 +1064,10 @@ object NdsArt {
      * places, types. */
     private class NameBanks(val msg: String, val species: Int, val moves: Int, val items: Int, val places: Int, val types: Int)
     private val NAMES_PLATINUM = NameBanks("/msgdata/pl_msg.narc", 412, 647, 392, 433, 624)
+    private val NAMES_DIAMOND = NameBanks("/msgdata/msg.narc", 362, 588, 344, 382, 565)
+    /** Diamond / Pearl's items: ids 0..464. */
+    private const val DP_ITEMS = 465
+    private const val GRISEOUS_ORB = 112
     private val NAMES_HEARTGOLD = NameBanks("/a/0/2/7", 237, 750, 222, 279, 735)
     // The Korean HeartGold / SoulSilver's: renumbered (one species bank, not the Western carts' two, and banks fewer before
     // the rest: 233 species, 743 moves, 220 items, 274 places, 728 types; found by their line counts, read off the carts).
@@ -1100,6 +1107,7 @@ object NdsArt {
         val banks = when {
             code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> f.read(off, len) } -> NAMES_ORIGIN
             isPlatinum(code, rev) -> NAMES_PLATINUM
+            isDiamondPearl(code) -> NAMES_DIAMOND
             isHgss(code, rev) -> when (code[3]) { 'K' -> NAMES_HEARTGOLD_KO; 'J' -> NAMES_HEARTGOLD_JA; else -> NAMES_HEARTGOLD }
             else -> return null
         }
@@ -1156,8 +1164,8 @@ object NdsArt {
     }
 
     /**
-     * What the SAVE EDITOR needs from a HeartGold / SoulSilver cart ([com.pokedaisy.app.companion.data.save.Gen4GameData]),
-     * or null for another cart: the names (species, moves, items, abilities), each species' personal record (a/0/0/2),
+     * What the SAVE EDITOR needs from a HeartGold / SoulSilver, Platinum or English Diamond / Pearl cart
+     * ([com.pokedaisy.app.companion.data.save.Gen4GameData]), or null for another cart: the names (species, moves, items, abilities), each species' personal record (a/0/0/2),
      * level-up moves (a/0/3/3: level << 9 | move to 0xFFFF), pre-evolutions (a/0/3/4's targets) and each move's PP
      * (a/0/1/1, byte 6 of its 16).
      */
@@ -1171,24 +1179,37 @@ object NdsArt {
             val hgss = isHgss(code, rev) && !OriginHeartGold.matches(reader)
             // Platinum: USA rev 1 and Renegade Platinum (edited in place: its own machines).
             val platinum = code == "CPUE" && rev == 1
-            if (!hgss && !platinum) return null
+            // Diamond / Pearl: Platinum's kind of files under their older names (Pearl's personal data its own: Magmar's and
+            // Electabuzz's lines hold other items).
+            val dp = !hgss && !platinum && isDiamondPearl(code)
+            if (!hgss && !platinum && !dp) return null
+            if (dp && names.species.size != com.pokedaisy.app.companion.data.save.Gen4GameData.LAST_SPECIES + 3) return null
             val renegade = platinum && RenegadePlatinum.matches(reader)
-            val files = if (hgss) {
-                listOf("/a/0/2/7", "/a/0/0/2", "/a/0/3/3", "/a/0/3/4", "/a/0/1/1")
-            } else {
-                listOf("/msgdata/pl_msg.narc", "/poketool/personal/pl_personal.narc", "/poketool/personal/wotbl.narc",
+            val files = when {
+                hgss -> listOf("/a/0/2/7", "/a/0/0/2", "/a/0/3/3", "/a/0/3/4", "/a/0/1/1")
+                dp -> listOf("/msgdata/msg.narc",
+                    if (code == "APAE") "/poketool/personal_pearl/personal.narc" else "/poketool/personal/personal.narc",
+                    "/poketool/personal/wotbl.narc", "/poketool/personal/evo.narc", "/poketool/waza/waza_tbl.narc")
+                else -> listOf("/msgdata/pl_msg.narc", "/poketool/personal/pl_personal.narc", "/poketool/personal/wotbl.narc",
                     "/poketool/personal/evo.narc", "/poketool/waza/pl_waza_tbl.narc")
             }
-            val abilityBank = if (platinum) 610 else when (code[3]) { 'K' -> 715; 'J' -> 711; else -> 720 }
+            val abilityBank = if (platinum) 610 else if (dp) 552 else when (code[3]) { 'K' -> 715; 'J' -> 711; else -> 720 }
             val abilities = Narc(file(f, header, files[0]) ?: return null).member(abilityBank)?.let { Gen4Text.lines(it) } ?: return null
             val personal = Narc(file(f, header, files[1]) ?: return null)
             val learnsets = Narc(file(f, header, files[2]) ?: return null)
             val evolutions = Narc(file(f, header, files[3]) ?: return null)
             val moves = Narc(file(f, header, files[4]) ?: return null)
             // The regional dex's numbers (member 0, a u16 per species; 0 = not in it): Johto's a/1/3/8, Sinnoh's pl_pokezukan.
-            val regionalNumbers = file(f, header, if (platinum) "/poketool/pl_pokezukan.narc" else "/a/1/3/8")?.let { Narc(it).member(0) }
+            val regionalNumbers = file(f, header, when {
+                platinum -> "/poketool/pl_pokezukan.narc"
+                dp -> "/poketool/pokezukan.narc"
+                else -> "/a/1/3/8"
+            })?.let { Narc(it).member(0) }
             val itemPockets = if (platinum) {
                 com.pokedaisy.app.companion.data.save.gen4ItemPocketsPlatinum.copyOf().also { it[0] = -1 }
+            } else if (dp) {
+                // Platinum's items but the GRISEOUS ORB (112) and the three past 464, which Diamond / Pearl don't have.
+                com.pokedaisy.app.companion.data.save.gen4ItemPocketsPlatinum.copyOf(DP_ITEMS).also { it[0] = -1; it[GRISEOUS_ORB] = -1 }
             } else {
                 // Each item's field pocket: its record (save.gen4ItemDataIndexHeartGold) in item_data (a/0/1/7), bits 7-10 of +8.
                 val itemData = Narc(file(f, header, "/a/0/1/7") ?: return null)
@@ -1199,7 +1220,7 @@ object NdsArt {
             }
             val tmMoves = when {
                 renegade -> f.read(RenegadePlatinum.TM_MOVES_OFFSET, 100 * 2).let { t -> IntArray(100) { u16(t, it * 2) } }
-                platinum -> tmMovesPlatinum
+                platinum || dp -> tmMovesPlatinum
                 else -> tmMovesHeartGold
             }
             val last = com.pokedaisy.app.companion.data.save.Gen4GameData.LAST_SPECIES
@@ -1233,8 +1254,11 @@ object NdsArt {
                     }
                 },
                 gameLanguage = when (code[3]) { 'J' -> 1; 'F' -> 3; 'I' -> 4; 'D' -> 5; 'S' -> 7; 'K' -> 8; else -> 2 },
-                layout = if (platinum) com.pokedaisy.app.companion.data.save.Gen4Layout.PLATINUM
-                    else com.pokedaisy.app.companion.data.save.Gen4Layout.HGSS,
+                layout = when {
+                    platinum -> com.pokedaisy.app.companion.data.save.Gen4Layout.PLATINUM
+                    dp -> com.pokedaisy.app.companion.data.save.Gen4Layout.DP
+                    else -> com.pokedaisy.app.companion.data.save.Gen4Layout.HGSS
+                },
                 regional = regionalNumbers?.let { r -> IntArray(last + 1) { sp -> if (sp * 2 + 2 <= r.size) u16(r, sp * 2) else 0 } } ?: IntArray(0),
             )
         }

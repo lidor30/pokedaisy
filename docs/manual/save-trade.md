@@ -3,7 +3,7 @@ title: Save editor and save trades
 summary: Change a game's Pokémon, party, boxes, bag and Pokédex (HeartGold, SoulSilver, Platinum, Black and White too), see what your Pokédex is missing, trade Pokémon between two of your games' saves, bring GBA Pokémon to a DS game through Pal Park, send DS Pokémon on to Black and White through Poké Transfer, or see every save's Pokémon in one list, straight in the save files.
 section: player
 order: 8
-keywords: [3ds, nintendo 3ds, heartgold, soulsilver, platinum, ds save, nds save, save editor, edit save, editor, pc boxes, boxes, trade saves, trade, trading, transfer, move pokemon between games, bag, money, coins, held item, moves, save file, ivs, evs, nature, ability, shiny, gender, level, nickname, rename, friendship, pokedex, event, ticket, mystery gift, release, sort, search, party, pal park, migrate, migration, gba to ds, missing, what am i missing, complete pokedex, living dex, pokedex helper, trade back, trade and back, trade evolution, evolve by trade, collection, all my pokemon, every save, find a pokemon, poke transfer, poketransfer, black, white, black 2, white 2, gen 5, transfer lab]
+keywords: [3ds, nintendo 3ds, heartgold, soulsilver, platinum, diamond, pearl, ds save, nds save, save editor, edit save, editor, pc boxes, boxes, trade saves, trade, trading, transfer, move pokemon between games, bag, money, coins, held item, moves, save file, ivs, evs, nature, ability, shiny, gender, level, nickname, rename, friendship, pokedex, event, ticket, mystery gift, release, sort, search, party, pal park, migrate, migration, gba to ds, missing, what am i missing, complete pokedex, living dex, pokedex helper, trade back, trade and back, trade evolution, evolve by trade, collection, all my pokemon, every save, find a pokemon, poke transfer, poketransfer, black, white, black 2, white 2, gen 5, transfer lab]
 ---
 
 PokeDaisy can open a game's save file while the game is closed: you can tidy its PC, change your Pokémon, or move Pokémon between two of your games, the way a trade would. It works with FireRed, LeafGreen, Emerald, Ruby and Sapphire saves (and ROM hacks that kept their save layout), in English and the other Western languages, and with HeartGold, SoulSilver, Platinum, Black, White, Black 2 and White 2 saves on the DS (see [On the DS](#on-the-ds)). The 3DS app has it too (see [On the 3DS](#on-the-3ds)).
@@ -54,11 +54,11 @@ The `POKéDEX` window counts what you've seen and caught. `ADD MINE` marks every
 
 ## On the DS
 
-A HeartGold, SoulSilver or Platinum save (Platinum's US cart, and Renegade Platinum) opens the same way, with the same three pages. On `POKéMON` you get your party and all 18 boxes: move Pokémon between them, search, sort, rename boxes and release, and open a Pokémon's page to change its nickname, nature, ability, gender, shininess, IVs, EVs, level, friendship, moves and held item, with the same rules as above. The moves offered are the ones it could learn by level, TM or HM in your copy of the game (PokeDaisy reads them from it).
+A Diamond, Pearl, Platinum, HeartGold or SoulSilver save (the US carts of Diamond, Pearl and Platinum, and Renegade Platinum) opens the same way, with the same three pages. On `POKéMON` you get your party and all 18 boxes: move Pokémon between them, search, sort, rename boxes and release, and open a Pokémon's page to change its nickname, nature, ability, gender, shininess, IVs, EVs, level, friendship, moves and held item, with the same rules as above. The moves offered are the ones it could learn by level, TM or HM in your copy of the game (PokeDaisy reads them from it).
 
 A held item works like the game's `GIVE` and `TAKE`: the item comes out of the bag, and the one it held goes back in. So you can only give an item the bag has, and the bag needs room for the one coming back.
 
-`BAG` shows the game's eight pockets, medicine and battle items included, and `ADD ITEM` lists every item your copy of the game puts in that pocket. `TRAINER` has your money and the Pokédex: its counts for the region (Johto or Sinnoh) and the whole National Pokédex, and the same `ADD MINE`, `ALL SEEN` and `ALL CAUGHT`. Until your save has the National Pokédex, marking every Pokémon only marks the region's. These games have no coins or event tickets here, and the play time isn't shown yet.
+`BAG` shows the game's eight pockets, medicine and battle items included, and `ADD ITEM` lists every item your copy of the game puts in that pocket. `TRAINER` has your money and the Pokédex: its counts for the region (Johto or Sinnoh) and the whole National Pokédex, and the same `ADD MINE`, `ALL SEEN` and `ALL CAUGHT`. Until your save has the National Pokédex, marking every Pokémon only marks the region's. These games have no coins or event tickets here, and the play time isn't shown yet. Diamond and Pearl's Pokédex keeps the languages a Pokémon came in for only a few kinds of Pokémon, so a traded Pokémon from another language only shows there for those.
 
 Black, White, Black 2 and White 2 saves open the same way too, in any language. `POKéMON` has your party and all 24 boxes with the same moves, search, sort, renaming and release, and a Pokémon's page as above. In these games the nature is its own, so changing it changes nothing else. A Pokémon with its hidden ability keeps it. `BAG` shows the game's five pockets, where a TM is never used up, so you have one or none. `TRAINER` shows your money (up to 9,999,999), your play time and the Pokédex: Unova's and the National one. They trade with each other (see [Trade between saves](#trade-between-saves)) and get Pokémon from HeartGold, SoulSilver and Platinum through [Poké Transfer](#transfer-to-black-and-white).
 
@@ -80,7 +80,7 @@ Tap `TOOLS` in the library, then `TRADE SAVES`, and pick the game to trade from 
 
 Each game shows its party over its boxes. Pick a Pokémon on one side, then a Pokémon or an empty slot on the other, in the party or the PC: a Pokémon for a Pokémon (`TRADE`), or one sent over (`SEND`). An empty party slot puts the Pokémon at the end of that party. `SAVE` writes both saves together.
 
-HeartGold, SoulSilver and Platinum trade with each other (not with the GBA games). Any Pokémon can go, eggs too, except the Spiky-eared Pichu, and one holding mail can only go to the other game's party. A Pokémon holding an item Platinum doesn't have (some of HeartGold and SoulSilver's newer items) can't go to Platinum. What arrives is registered in the Pokédex, as in a real trade.
+Diamond, Pearl, Platinum, HeartGold and SoulSilver trade with each other (not with the GBA games). Any Pokémon can go, eggs too, except the Spiky-eared Pichu, and one holding mail can only go to the other game's party. A Pokémon holding an item Platinum doesn't have (some of HeartGold and SoulSilver's newer items) can't go to Platinum, and one holding an item Diamond and Pearl don't have, or in a form only Platinum has (Rotom's appliance forms, Shaymin's Sky Forme), can't go to Diamond or Pearl. What arrives is registered in the Pokédex, as in a real trade.
 
 Black, White, Black 2 and White 2 trade with each other the same way. A Pokémon holding an item Black and White don't have (some of the sequels' newer items) can't go to them. The pair that only evolves when traded for each other evolves when you trade one for the other with `TRADE`, not when one is just sent over.
 
@@ -92,7 +92,7 @@ Some Pokémon only evolve when they're traded. Pick one on its own (nothing on t
 
 ## Pal Park
 
-In HeartGold, SoulSilver and Platinum, Pal Park brings Pokémon over from a GBA game. PokeDaisy does it with the two saves: tap `TOOLS` in the library, then `PAL PARK`, pick the GBA game (FireRed, LeafGreen, Emerald, Ruby or Sapphire) and then the DS game.
+In Diamond, Pearl, Platinum, HeartGold and SoulSilver, Pal Park brings Pokémon over from a GBA game. PokeDaisy does it with the two saves: tap `TOOLS` in the library, then `PAL PARK`, pick the GBA game (FireRed, LeafGreen, Emerald, Ruby or Sapphire) and then the DS game.
 
 The GBA game's PC is on one side and the DS game's on the other. Tap six Pokémon in the GBA game's boxes (tap one again to put it back), then `MIGRATE`. They leave the GBA game and land in the DS game's PC, in the first free places from the box its PC is on, framed so you can see them. You can bring more sixes, `UNDO ALL` puts everything back, and `SAVE` writes both saves together.
 
@@ -106,7 +106,7 @@ Each one arrives the way the real Pal Park makes it: the same Pokémon with its 
 
 ## Transfer to Black and White
 
-Black, White, Black 2 and White 2 take Pokémon from HeartGold, SoulSilver and Platinum through the Poké Transfer Lab. PokeDaisy does it with the two saves: tap `TOOLS` in the library, then `POKé TRANSFER`, pick the game to send from (`SEND FROM`), then the one to send to (`SEND TO`).
+Black, White, Black 2 and White 2 take Pokémon from Diamond, Pearl, Platinum, HeartGold and SoulSilver through the Poké Transfer Lab. PokeDaisy does it with the two saves: tap `TOOLS` in the library, then `POKé TRANSFER`, pick the game to send from (`SEND FROM`), then the one to send to (`SEND TO`).
 
 It works like [Pal Park](#pal-park): tap six Pokémon in the first game's boxes, then `TRANSFER`. They land in the first free places of the other game's PC, from the box its PC is on, framed so you can see them. `UNDO ALL` puts everything back, and `SAVE` writes both saves together.
 
@@ -130,7 +130,7 @@ Tap a Pokémon for what you can do with it:
 
 - `OPEN` opens its game in the save editor, with that Pokémon picked.
 - `TRADE` asks which game to trade with (one of the same generation), then opens the trade with it picked. 
-- `PAL PARK` (a GBA game's Pokémon in a box, when you have HeartGold, SoulSilver or Platinum) asks which DS game, then opens Pal Park with it picked.
+- `PAL PARK` (a GBA game's Pokémon in a box, when you have Diamond, Pearl, Platinum, HeartGold or SoulSilver) asks which DS game, then opens Pal Park with it picked.
 
 `BACK` from any of them comes back to the collection, read again, so what you changed shows.
 

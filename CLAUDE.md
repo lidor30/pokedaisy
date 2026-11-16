@@ -2269,7 +2269,13 @@ docs/DEVELOPMENT.md's "Round two". **HeartGold / SoulSilver and Platinum USA rev
 which Gen 3's editor implements too); HG / SS's edit goes into the other half with every PC box flagged changed, Platinum's is a full save
 (global + 1, each block into its other copy). Checked by booting edited real saves in `nds_dump` and saving in the game on top. Nicknames /
 box names (`Gen4Text.encode`), GIVE / TAKE through the bag, and HG / SS / Platinum trades (`Gen4Trade`, `TradeRules`; Pokédex as pokedex.c
-registers a received one) too. Not yet: DS play time, Diamond / Pearl, Gen 5. The 3DS port has the Gen 3 editor (every page) and trades (party too) in C (`3ds/core/pd_save.c`,
+registers a received one) too. English **Diamond / Pearl** too (2026-11-16, `Gen4Layout.DP`, NEW tag `SAVE_EDITOR_DP`; pret/pokediamond and a new game played
+headless to the player's room, `Pokemon - Diamond Version (USA) (Rev 5).sav` beside the ROM): Platinum's save code with blocks of 0xC100 / 0x121E0,
+the general block's structs earlier, a Pokédex with Deoxys' forms in the flag arrays' top bits, no Rotom / Shaymin / Giratina forms and languages
+for 14 species only (`MEISTER_SPECIES`, `languageByte`); Pearl's personal data is its own file; Pal Park leaves Platinum's met-location field out;
+Platinum-only forms aren't traded to it. An edited save (a HeartGold Pokémon traded in, money, Potions) booted in nds_dump, shown by the bag and the
+trainer card, saved in game on top and read back (`aRealDiamondSave`, `DIAMOND_EDIT_OUT` / `DIAMOND_READBACK`). Not yet: DS play time, other
+languages' Diamond / Pearl. The 3DS port has the Gen 3 editor (every page) and trades (party too) in C (`3ds/core/pd_save.c`,
 `pd_library_saves.c`; names typed on the console's swkbd): its tables come from the app's generated Kotlin by `3ds/tools/gen_save_tables.py`
 (rerun it after changing `SaveTablesGen.kt` / `SaveSpeciesGen.kt` / `SpeciesDexGen.kt`; `make -C 3ds test-save` fails while it's stale). Its TRAINER > MISSING (`pd_missing_list` / `pd_missing_add`:
 the other GBA saves read one by one) lists the gaps and where to get each, without opening the trade for you (the library's pages would have to
