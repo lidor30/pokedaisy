@@ -28,7 +28,7 @@ You sign in on the top screen because typing needs a keyboard, and the bottom sc
 
 RetroAchievements recognises a ROM by its exact contents, so only ROMs it knows have achievements. The retail games (FireRed, Emerald and the others) have sets, as do some popular hacks like Unbound. A patched or rebuilt ROM usually doesn't, even if it's based on a game that does.
 
-This works with any game, not only the ones the companion supports, and with Game Boy and DS games too.
+This works with any game, not only the ones the companion supports, and with Game Boy and DS games too. A DS game has the same achievements whether you keep its ROM loose or in an archive.
 
 To check a game before playing it, long-press it in the library and open `INFO`. Its RetroAchievements section says whether there's a set for that exact ROM and, when you're signed in, how many achievements you've unlocked in it. See [Library](library.md).
 
@@ -93,7 +93,7 @@ Every save state keeps your achievement progress with it. Load a state and the p
 
 While any cheat is loaded, achievements are paused: nothing can unlock, and the ACHIEVEMENTS tab shows `PAUSED: CHEATS ON`. A popup tells you when cheats go on or off. Turn every cheat off and achievements pick up again. See [Cheats](cheats.md).
 
-Raising `SHINY ODDS` pauses them the same way, and the tab shows `PAUSED: SHINY ODDS` until you set it back to `NORMAL`. See [SHINY ODDS](controls.md#shiny-odds).
+Raising `SHINY ODDS` pauses them the same way, and the tab shows `PAUSED: SHINY ODDS` until you set it back to `NORMAL`. See [SHINY ODDS](controls.md#shiny-odds). So does `EXP SHARE` while it's on (`PAUSED: EXP SHARE`): see [EXP SHARE](controls.md#exp-share).
 
 ## When the site can't be reached
 

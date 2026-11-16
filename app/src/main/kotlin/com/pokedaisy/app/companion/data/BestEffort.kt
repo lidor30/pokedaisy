@@ -535,7 +535,21 @@ data class BestEffortReport(
     val matchedAs: String,
     val full: Boolean,
     val off: Set<BestEffort.Part>,
-)
+) {
+    /** Exactly what sharing sends, as the consent window lists it: (label, value). */
+    fun shareFields(appVersion: String): List<Pair<String, String>> = listOf(
+        "ROM SHA-1" to sha1,
+        "ROM SIZE" to "$size B",
+        "GAME CODE" to "$gameCode (rev $revision)",
+        "READ AS" to matchedAs,
+        "MATCH" to if (full) "FULL" else "PARTIAL",
+        "PARTS OFF" to off.joinToString(", ") { it.name }.ifEmpty { "-" },
+        "APP VERSION" to appVersion,
+    )
+}
+
+/** SHARE on the match notice: the app's version (one of the lines it lists) and what sends a report (BestEffortShare). */
+class BestEffortSharing(val appVersion: String, val send: (BestEffortReport) -> Unit)
 
 /**
  * What best effort found for each ROM, by the ROM's SHA-1 (an archive: the ROM inside):

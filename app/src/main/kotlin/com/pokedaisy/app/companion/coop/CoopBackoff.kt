@@ -1,7 +1,7 @@
 package com.pokedaisy.app.companion.coop
 
 /** Reconnect delays: 1 s, doubling to 60 s, each with up to 20% jitter either way. */
-class CoopBackoff(private val random: java.util.Random = java.util.Random()) {
+class CoopBackoff(private val random: kotlin.random.Random = kotlin.random.Random.Default) {
     private var base = START_MS
 
     fun next(): Long {

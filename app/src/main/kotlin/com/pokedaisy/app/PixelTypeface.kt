@@ -7,6 +7,8 @@ import android.graphics.fonts.FontFamily as AndroidFontFamily
 import android.os.Build
 import androidx.compose.ui.text.font.Font as ComposeFont
 import androidx.compose.ui.text.font.FontFamily
+import com.pokedaisy.app.companion.ui.theme.FontSource
+import okio.Path
 
 /**
  * The app's one font: Pixel Operator, with PixelMplusJP (scripts/gen_jp_font.py:
@@ -20,6 +22,15 @@ import androidx.compose.ui.text.font.FontFamily
  * ~1 MB and several ms of main thread per text - tens of MB per tab switch,
  * which ran the app out of memory when tabs were switched quickly (v1.1.0).
  */
+/** The screens' fonts on Android (companion.ui.theme.FontSource): the families below, from the app's assets. */
+class AndroidFonts(context: Context) : FontSource {
+    private val app = context.applicationContext
+    override fun pixel(): FontFamily = pixelFontFamily(app)
+    override fun smooth(bold: Boolean): FontFamily = atkinsonFamily(app, bold)
+    override fun reading(): FontFamily = readingFontFamily(app)
+    override fun game(file: Path): FontFamily? = gameFontFamily(app, file.toFile())
+}
+
 fun pixelFontFamily(context: Context): FontFamily {
     pixelFamily?.let { return it }
     return synchronized(fontLock) {
@@ -97,3 +108,16 @@ fun readingFontFamily(context: Context): FontFamily {
 }
 
 @Volatile private var readingFamily: FontFamily? = null
+
+/** Atkinson Hyperlegible alone, regular or bold (SETTINGS > FONT's SMOOTH / SMOOTH BOLD), one per process like the others. */
+fun atkinsonFamily(context: Context, bold: Boolean): FontFamily {
+    (if (bold) atkinsonBold else atkinsonRegular)?.let { return it }
+    return synchronized(fontLock) {
+        val assets = context.applicationContext.assets
+        if (bold) atkinsonBold ?: FontFamily(ComposeFont("fonts/AtkinsonHyperlegible-Bold.ttf", assets)).also { atkinsonBold = it }
+        else atkinsonRegular ?: FontFamily(ComposeFont("fonts/AtkinsonHyperlegible-Regular.ttf", assets)).also { atkinsonRegular = it }
+    }
+}
+
+@Volatile private var atkinsonRegular: FontFamily? = null
+@Volatile private var atkinsonBold: FontFamily? = null

@@ -1,12 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
 import Pixel from '../components/Pixel.astro';
-import Matrix from '../components/Matrix.astro';
 import RomCheck from '../components/RomCheck.astro';
+import Downloads from '../components/Downloads.astro';
 import HeroDevice from '../components/HeroDevice.astro';
 import HeroSingleDevice from '../components/HeroSingleDevice.astro';
-import BattleDemo from '../components/BattleDemo.astro';
-import PartyDemo from '../components/PartyDemo.astro';
 import data from '../data/compat.json';
 import { REPO_URL, formatDate, getReleases, getDownloads, highlights } from '../lib/releases.js';
 import { REDDIT_URL, DISCORD_URL, KOFI_URL, PATREON_URL, COFFEE_URL } from '../lib/links.js';
@@ -22,40 +20,39 @@ const downloads = await getDownloads();
 const gameCount = new Set(data.matrix.rows.map((r) => r.game)).size;
 const hackCount = new Set(data.hacks.map((h) => h.title)).size;
 
+// The companion's tabs, each a real shot of the bottom screen (FireRed on the Thor, website/public/media/).
+// In the app's own order: the tab bar's tabs, BATTLE (which takes the bar's last place in a fight), then MORE's.
 const companion = [
-  ['orb', msg('PARTY'), msg('Your team in your game\'s own party screen. Tap a Pokémon for its stats, moves, IVs and EVs.')],
-  ['bag', msg('BAG'), msg('Every pocket, with the game\'s item icons and descriptions.')],
-  ['battle', msg('BATTLE'), msg('Opens by itself in a fight: every matchup, the best pick, the foe\'s whole team.')],
-  ['map', msg('MAP'), msg('The region map with you on it. Tap a place to name it, or jump to any town.')],
+  ['party', msg('PARTY'), msg('Your team in your game\'s own party screen. Tap a Pokémon for its stats, moves, IVs and EVs.')],
   ['dex', msg('DEX'), msg('Seen and caught marks, with full entries: types, stats, abilities and dex text.')],
+  ['map', msg('MAP'), msg('The region map with you on it. Tap a place to name it, or jump to any town.')],
+  ['bag', msg('BAG'), msg('Every pocket, with the game\'s item icons and descriptions.')],
   ['guide', msg('GUIDE'), msg('Hints first, answers on a second tap: what\'s here, the next boss, evolutions.')],
-  ['card', msg('CARD'), msg('Your trainer card, drawn exactly like the game\'s, front and back.')],
-  ['states', msg('STATES'), msg('Ten save-state slots with screenshots, and undo.')],
+  ['battle-gen5', msg('BATTLE'), msg('Opens by itself in a fight: every matchup, the best pick, the foe\'s whole team.')],
+  ['boxes', msg('BOXES'), msg('Your PC\'s boxes, laid out like the game\'s. Tap a Pokémon for its summary.')],
+  ['nuzlocke', msg('NUZLOCKE'), msg('Keeps score of a Nuzlocke run: the first encounter in each area, and every fainted Pokémon out for good.')],
 ];
-const player = [
+// EXPAND in one game after another (the Thor's top screen). Game names stay as they are in every language.
+const expandShots = [
+  ['firered-field', 'FireRed'], ['soulgold-expand', 'SoulGold'], ['rogue-expand', 'Emerald Rogue'], ['lazarus-expand', 'Lazarus'],
+  ['monomyth-expand', 'Monomyth'], ['mariomon-expand', 'Super Mariomon'], ['recharged-yellow-expand', 'Recharged Yellow'], ['yellow-field', 'Yellow'],
+];
+// Everything else, short: the chores and the player.
+const more = [
+  ['pc', msg('PC ANYWHERE'), msg('Open your PC boxes from the bag, the HUD or the quick menu, wherever you stand. No walk back to a Pokémon Center.')],
   ['ff', msg('SMART FAST-FORWARD'), msg('Full speed on the road, normal speed in menus and on the map. Battles stay fast.')],
   ['music', msg('FF MUSIC'), msg('The song keeps its normal tempo while the game runs fast. No chipmunks.')],
-  ['tv', msg('SHADERS'), msg('An LCD grid, scanlines or a CRT, plus the colours the GBA\'s screen really showed, unlit backing and all.')],
-  ['clock', msg('STATUS BAR'), msg('Game, place, money, clock and battery in a strip above the game.')],
-  ['dpad', msg('CONTROLS'), msg('Remap every button and hotkey. Touch controls when no pad is connected.')],
-  ['star', msg('ACHIEVEMENTS'), msg('RetroAchievements while you play, with the game\'s own level-up fanfare.')],
-];
-const onGame = [
-  ['orb', msg('HUD'), msg('Your party, a minimap, your Poké Balls, the Repel\'s steps left and PC / BAG / WILD buttons on the game screen as you walk, like a modern Pokémon game. Tap any of it.')],
-  ['zoom', msg('EXPAND, ZOOM, LOOK AROUND'), msg('The map drawn past the game\'s edges to fill a wide screen, rebuilt every frame from the game itself. ZOOM steps out to see more of the area, and the right stick looks around.')],
-  ['ring', msg('QUICK MENU'), msg('One button opens a ring of shortcuts: your PC, FLY, REPEL, BIKE, ROD, wild encounters on and off, save states, fast-forward. Aim with the stick.')],
-  ['battle', msg('BATTLE INFO'), msg('Your moves rated against the foe and the best switch tagged: beside the battle on one screen, in the companion\'s BATTLE tab on two.')],
-  ['single', msg('COMPANION WINDOW'), msg('On one screen, every tab in a window over the game, or a panel locked beside it. The D-pad and A work it like the game\'s menus.')],
-  ['phone', msg('PHONES, UPRIGHT'), msg('The game across the top, the companion docked under it. Drag its edge to pick the size.')],
-];
-const qol = [
-  ['pc', msg('PC ANYWHERE'), msg('Open your PC boxes from the bag, the HUD or the quick menu, wherever you stand. No walk back to a Pokémon Center.')],
-  ['feather', msg('QUICK FLY'), msg('Pick a town on the companion\'s map or in the quick menu, and your Pokémon flies you there with the game\'s own animation.')],
-  ['spray', msg('REPEL IN ONE PRESS'), msg('Use a Repel from the quick menu or the bag in one press. The HUD counts down the steps it has left.')],
   ['grassOff', msg('WILD ENCOUNTERS OFF'), msg('One switch stops random encounters in the grass and on the water. Fishing and the story\'s battles still happen; switch it back any time.')],
   ['tmDisc', msg('REUSABLE TMS'), msg('A TM stays in your bag after it teaches a move, so one is enough for the whole team.')],
+  ['spray', msg('REPEL IN ONE PRESS'), msg('Use a Repel from the quick menu or the bag in one press. The HUD counts down the steps it has left.')],
   ['run', msg('AUTO-RUN'), msg('Run without holding B, and run inside buildings too.')],
+  ['tv', msg('SHADERS'), msg('An LCD grid, scanlines or a CRT, plus the colours the GBA\'s screen really showed, unlit backing and all.')],
+  ['dpad', msg('CONTROLS'), msg('Remap every button and hotkey. Touch controls when no pad is connected.')],
+  ['star', msg('ACHIEVEMENTS'), msg('RetroAchievements while you play, with the game\'s own level-up fanfare.')],
+  ['single', msg('COMPANION WINDOW'), msg('On one screen, every tab in a window over the game, or a panel locked beside it. The D-pad and A work it like the game\'s menus.')],
+  ['clock', msg('STATUS BAR'), msg('Game, place, money, clock and battery in a strip above the game.')],
 ];
+const media = (name: string) => `/media/${name}`;
 const deviceList = [
   ['dual', 'AYN THOR', msg('Made for it, tested daily.'), msg('TESTED'), 'f-pillGreen'],
   ['dual', 'RETROID POCKET DUO LITE', msg('Its 4:3 bottom screen gets a layout of its own. The original Duo should work too.'), msg('SUPPORTED'), 'f-pillGreen'],
@@ -64,7 +61,7 @@ const deviceList = [
   ['phone', msg('PHONES, UPRIGHT'), msg('Hold an Android phone upright: the game on top, the companion under it. New: so far checked in screenshots only.'), msg('NEW'), 'f-pillRed'],
   ['moreDevice', msg('COMING SOON'), msg('More handhelds, tablets and foldables. Want yours supported? Ask for it below.'), msg('SOON'), 'f-pillGrey'],
 ];
-const ticker = ['GB · GBC · GBA · DS', msg('TWO SCREENS OR ONE'), msg('PARTY'), msg('BAG'), msg('BATTLE'), msg('MAP'), msg('DEX'), msg('GUIDE'), msg('TRAINER CARD'), msg('SAVE STATES'), msg('HUD'), msg('QUICK MENU'), msg('EXPAND'), msg('PC ANYWHERE'), msg('QUICK FLY'), msg('FAST-FORWARD'), msg('SHADERS'), msg('ACHIEVEMENTS')]
+const ticker = ['GB · GBC · GBA · DS', msg('TWO SCREENS OR ONE'), msg('PARTY'), msg('BAG'), msg('BATTLE'), msg('MAP'), msg('DEX'), msg('GUIDE'), msg('TRAINER CARD'), msg('SAVE STATES'), msg('HUD'), msg('QUICK MENU'), msg('EXPAND'), msg('PC ANYWHERE'), msg('FREE FLIGHT'), msg('FAST-FORWARD'), msg('SHADERS'), msg('ACHIEVEMENTS')]
   .map((t) => tr(t)).concat(tr('{n} GAMES', { n: gameCount }));
 const title = 'POKEDAISY'.split('');
 ---
@@ -89,6 +86,11 @@ const title = 'POKEDAISY'.split('');
         <a class="btn f-primary h-primaryHot primary big" href={download}>
           <Pixel name="download" scale={1} /> {tr('DOWNLOAD')}{latest && <span class="ver">v{latest.version}</span>}
         </a>
+        <!-- The APK is one tap; Linux and the 3DS are a card each further down. -->
+        <a class="platforms" href="#download">
+          <Pixel name="android" scale={0.334} /><Pixel name="tux" scale={0.334} /><Pixel name="n3ds" scale={0.334} />
+          <span>{tr('ALL PLATFORMS')}</span>
+        </a>
       </div>
       <!-- The community: the Discord for help and chat, the subreddit. -->
       <div class="cta community">
@@ -104,15 +106,28 @@ const title = 'POKEDAISY'.split('');
     </div>
     <div class="hero-art">
       <div class="glow"></div>
-      <!-- Both at once: the Thor at the back, a one-screen handheld in front, its companion in a window over the game. -->
+      <!-- Both at once, with the real app on them: the Thor at the back (a flight on top, the companion's tabs
+           below), a one-screen handheld in front stepping through EXPAND in other games. -->
       <div class="duo">
         <div class="duo-dual">
-          <HeroDevice />
+          <HeroDevice>
+            <div slot="top" class="screen-shots">
+              <video class="on" src={media('free-flight.mp4')} poster={media('free-flight-poster.webp')} autoplay muted loop playsinline aria-label={tr('Take off and fly anywhere')} data-autoplay></video>
+            </div>
+            <div slot="bottom" class="screen-shots" data-cycle="3200">
+              {companion.slice(0, 5).map(([shot, name], i) => <img src={media(`companion-${shot}.webp`)} alt={tr('The companion\'s {tab}', { tab: tr(name) })} class:list={[i === 0 && 'on']} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />)}
+            </div>
+          </HeroDevice>
         </div>
         <div class="duo-single">
-          <HeroSingleDevice />
+          <HeroSingleDevice>
+            <div slot="screen" class="screen-shots" data-cycle="3200" data-offset="1600">
+              {expandShots.slice(1, 6).map(([shot, game], i) => <img src={media(`${shot}.webp`)} alt={tr('{game} with EXPAND', { game })} class:list={[i === 0 && 'on']} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />)}
+            </div>
+          </HeroSingleDevice>
         </div>
       </div>
+      <p class="tiny muted shot-note">{tr('Every picture here is the real app on real games. Pokémon and the games belong to their owners, and no games are included.')}</p>
     </div>
   </section>
 
@@ -123,72 +138,85 @@ const title = 'POKEDAISY'.split('');
     </div>
   </div>
 
-  <!-- On the game screen: on two screens or one -->
-  <section class="block container">
-    <div class="section-head center">
-      <span class="eyebrow">{tr('ON THE GAME SCREEN')}</span>
-      <h2 class="heading">{tr('Everything at hand, right on the game')}</h2>
-      <p class="lead">{tr('Your team, a minimap and your bag on the game as you walk, the map drawn past the screen\'s edges, and every shortcut one button away. On two screens or one.')}</p>
-    </div>
-    <div class="player-grid">
-      {onGame.map(([icon, name, text], i) => (
-        <article class="player-item" data-reveal style={`--i:${i % 3}`}>
-          <span class="player-icon f-card"><Pixel name={icon} scale={1} /></span>
-          <div>
-            <h3 class="player-name">{tr(name)}</h3>
-            <p class="small muted">{tr(text)}</p>
-          </div>
-        </article>
-      ))}
-    </div>
-  </section>
-
-  <!-- Companion -->
+  <!-- Companion: its tabs, one real shot at a time -->
   <section class="block container" id="features">
     <div class="section-head center">
       <span class="eyebrow">{tr('THE COMPANION')}</span>
       <h2 class="heading">{tr('A live companion that reads your game')}</h2>
       <p class="lead">{tr('On the bottom screen, or in a window over the game on one. Everything is read straight from the game as you play, and drawn in its own menu style. No typing, no alt-tabbing to a wiki.')}</p>
     </div>
-    <div class="feature-grid">
-      {companion.map(([icon, name, text], i) => (
-        <article class="feature f-card" data-reveal style={`--i:${i % 4}`}>
-          <span class="feature-icon"><Pixel name={icon} scale={1.334} /></span>
-          <h3 class="feature-name"><span class="fcur"><Pixel name="cursor" scale={1} /></span>{tr(name)}</h3>
-          <p class="small feature-text">{tr(text)}</p>
-        </article>
-      ))}
+    <div class="tabs-view" data-viewer data-auto="2500" data-reveal="fade">
+      <div class="tabs-screen f-card">
+        {companion.map(([shot, name], i) => <img src={media(`companion-${shot}.webp`)} alt={tr('The companion\'s {tab}', { tab: tr(name) })} class:list={[i === 0 && 'on']} loading="lazy" decoding="async" />)}
+      </div>
+      <div class="tabs-list" role="tablist" aria-label={tr('THE COMPANION')}>
+        {companion.map(([, name, text], i) => (
+          <button type="button" role="tab" class:list={['tab-item', i === 0 && 'on']} aria-selected={i === 0 ? 'true' : 'false'}>
+            <span class="tab-name"><span class="fcur"><Pixel name="cursor" scale={1} /></span>{tr(name)}</span>
+            <span class="small tab-text">{tr(text)}</span>
+          </button>
+        ))}
+      </div>
     </div>
   </section>
 
-  <!-- Quality of life -->
+  <!-- EXPAND, game after game -->
   <section class="block container">
     <div class="section-head center">
-      <span class="eyebrow">{tr('QUALITY OF LIFE')}</span>
-      <h2 class="heading">{tr('Less walking back, more playing')}</h2>
-      <p class="lead">{tr('The chores of a long playthrough, one press away, each the game\'s own way of doing it. The switches are in the companion\'s SETTINGS, and the manual lists the games each one works in.')}</p>
+      <span class="eyebrow">{tr('EXPAND')}</span>
+      <h2 class="heading">{tr('The whole screen, not black bars')}</h2>
+      <p class="lead">{tr('The map drawn past the game\'s edges to fill a wide screen, rebuilt every frame from the game itself. ZOOM steps out to see more of the area, and the right stick looks around.')}</p>
     </div>
-    <div class="player-grid">
-      {qol.map(([icon, name, text], i) => (
-        <article class="player-item" data-reveal style={`--i:${i % 3}`}>
-          <span class="player-icon f-card"><Pixel name={icon} scale={1} /></span>
-          <div>
-            <h3 class="player-name">{tr(name)}</h3>
-            <p class="small muted">{tr(text)}</p>
-          </div>
-        </article>
-      ))}
+    <div class="viewer" data-viewer data-reveal="fade">
+      <div class="viewer-tabs" role="tablist" aria-label={tr('EXPAND')}>
+        {expandShots.map(([, game], i) => <button type="button" role="tab" class:list={['btn f-btn h-btnHot small', i === 0 && 'on']} aria-selected={i === 0 ? 'true' : 'false'}>{game}</button>)}
+      </div>
+      <div class="viewer-screen f-card">
+        {expandShots.map(([shot, game], i) => <img src={media(`${shot}.webp`)} alt={tr('{game} with EXPAND', { game })} class:list={[i === 0 && 'on']} loading="lazy" decoding="async" />)}
+      </div>
     </div>
   </section>
 
-  <!-- Party -->
+  <!-- Quick menu + HUD -->
   <section class="block container demo-block">
-    <div class="demo-art" data-reveal="fade"><PartyDemo /></div>
+    <div class="demo-art clip f-card" data-reveal="fade">
+      <!-- Emerald on the Thor: the quick menu (FLY, TAKE OFF, BIKE, ROD, fast-forward) and the HUD's WILD, BAG and MAP. -->
+      <video src={media('on-the-game-screen.mp4')} poster={media('on-the-game-screen-poster.webp')} muted loop playsinline preload="none" aria-label={tr('Everything at hand, right on the game')} data-autoplay></video>
+    </div>
     <div class="demo-copy" data-reveal="fade" style="--i:1">
-      <span class="eyebrow">{tr('PARTY')}</span>
-      <h2 class="heading">{tr('Your whole team, always in view')}</h2>
-      <p class="lead">{tr('HP, levels and status for every Pokémon, in your game\'s own party screen. Tap one for its summary: stats and moves, EXP to the next level, and what it\'s weak to or resists.')}</p>
-      <p class="lead small">{tr('STATS shows its exact IVs and EVs, nature and Hidden Power.')}</p>
+      <span class="eyebrow">{tr('ON THE GAME SCREEN')}</span>
+      <h2 class="heading">{tr('Everything at hand, right on the game')}</h2>
+      <p class="lead">{tr('One button opens a ring of shortcuts: your PC, FLY, REPEL, BIKE, ROD, wild encounters on and off, save states, fast-forward. Aim with the stick.')}</p>
+      <p class="lead small">{tr('Your party, a minimap, your Poké Balls, the Repel\'s steps left and PC / BAG / WILD buttons on the game screen as you walk, like a modern Pokémon game. Tap any of it.')}</p>
+    </div>
+  </section>
+
+  <!-- Free flight -->
+  <section class="block container demo-block flip">
+    <div class="demo-copy" data-reveal="fade">
+      <span class="eyebrow">{tr('FREE FLIGHT')}</span>
+      <h2 class="heading">{tr('Take off and fly anywhere')}</h2>
+      <p class="lead">{tr('TAKE OFF from the map or the quick menu and fly over the whole region on your Pokémon\'s bird, the map drawn past the screen\'s edges. FLY then takes you to a town over the real map, not a cut.')}</p>
+    </div>
+    <div class="demo-art clip f-card" data-reveal="fade" style="--i:1">
+      <video src={media('free-flight.mp4')} poster={media('free-flight-poster.webp')} muted loop playsinline preload="none" aria-label={tr('Take off and fly anywhere')} data-autoplay></video>
+    </div>
+  </section>
+
+  <!-- Makeover -->
+  <section class="block container demo-block">
+    <div class="demo-art makeover" data-reveal="fade">
+      <div class="clip f-card">
+        <video src={media('fly-on.mp4')} poster={media('fly-on-poster.webp')} muted loop playsinline preload="none" aria-label={tr('Ride in style')} data-autoplay></video>
+      </div>
+      <div class="clip inset f-card" aria-hidden="true">
+        <video src={media('follower.mp4')} poster={media('follower-poster.webp')} muted loop playsinline preload="none" data-autoplay></video>
+      </div>
+    </div>
+    <div class="demo-copy" data-reveal="fade" style="--i:1">
+      <span class="eyebrow">{tr('MAKEOVER')}</span>
+      <h2 class="heading">{tr('Ride in style')}</h2>
+      <p class="lead">{tr('Swap the bird for a helicopter, a plane, a balloon or a zeppelin. Put your lead Pokémon behind you, ride a motorcycle, or play as another game\'s hero.')}</p>
     </div>
   </section>
 
@@ -200,18 +228,24 @@ const title = 'POKEDAISY'.split('');
       <p class="lead">{tr('When a fight starts the companion jumps to BATTLE. FIGHT shows each move\'s effect on the foe, INFO both Pokémon with the foe\'s weaknesses, and SUGGESTIONS the best Pokémon and move for this fight.')}</p>
       <p class="lead small">{tr('On FireRed and Emerald the buttons play the battle for you: fight, switch or run without reaching for the controls.')}</p>
     </div>
-    <div class="demo-art" data-reveal="fade" style="--i:1"><BattleDemo /></div>
+    <div class="demo-art battle-pair" data-reveal="fade" style="--i:1">
+      <img class="f-card" src={media('firered-battle.webp')} alt={tr('{game} on PokeDaisy: {shot}', { game: 'FireRed', shot: tr('IN BATTLE') })} loading="lazy" decoding="async" />
+      <!-- BATTLE STYLE's two looks taking turns: GEN 4's big buttons, then GEN 5's battle screen. -->
+      <div class="battle-styles f-card" data-cycle="2800">
+        <img class="on" src={media('companion-battle.webp')} alt={tr('The companion\'s {tab}', { tab: tr('BATTLE') })} loading="lazy" decoding="async" />
+        <img src={media('companion-battle-gen5.webp')} alt={tr('The companion\'s {tab}', { tab: tr('BATTLE') })} loading="lazy" decoding="async" />
+      </div>
+    </div>
   </section>
 
-  <!-- Player -->
+  <!-- Everything else -->
   <section class="block container">
     <div class="section-head center">
-      <span class="eyebrow">{tr('THE PLAYER')}</span>
-      <h2 class="heading">{tr('A Game Boy player built for Pokémon')}</h2>
-      <p class="lead">{tr('mGBA and melonDS under the hood play Game Boy, Color, Advance and DS, tuned for the long grind: fast where it\'s dull, normal where it matters.')}</p>
+      <span class="eyebrow">{tr('QUALITY OF LIFE')}</span>
+      <h2 class="heading">{tr('Less walking back, more playing')}</h2>
     </div>
     <div class="player-grid">
-      {player.map(([icon, name, text], i) => (
+      {more.map(([icon, name, text], i) => (
         <article class="player-item" data-reveal style={`--i:${i % 3}`}>
           <span class="player-icon f-card"><Pixel name={icon} scale={1} /></span>
           <div>
@@ -221,6 +255,17 @@ const title = 'POKEDAISY'.split('');
         </article>
       ))}
     </div>
+    <p class="center more-link"><a class="btn f-btn h-btnHot small" href="/docs/"><Pixel name="guide" scale={0.5} /> {tr('READ THE MANUAL')}</a></p>
+  </section>
+
+  <!-- Download, platform by platform -->
+  <section class="block container" id="download">
+    <div class="section-head center">
+      <span class="eyebrow">{tr('DOWNLOAD')}</span>
+      <h2 class="heading">{tr('Get PokeDaisy')}</h2>
+      <p class="lead">{tr('Free on every platform, and open source. Pick yours, then follow its install guide.')}</p>
+    </div>
+    <Downloads />
   </section>
 
   <!-- Devices -->
@@ -250,7 +295,10 @@ const title = 'POKEDAISY'.split('');
       <h2 class="heading">{tr('{n} games and counting', { n: gameCount })}</h2>
       <p class="lead">{tr('Red to Crystal on the Game Boy, FireRed, LeafGreen, Emerald, Ruby and Sapphire in six languages, Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2 on the DS, and {n} ROM hacks, with more on the way.', { n: hackCount })}</p>
     </div>
-    <div data-reveal="fade"><Matrix /></div>
+    <!-- The whole table is the compatibility page's: here it was most of the page's length. -->
+    <div class="cta" data-reveal="fade">
+      <a class="btn f-primary h-primaryHot primary" href={tr.path('/compatibility/')}><Pixel name="logo" scale={0.334} /> {tr('SEE ALL {n} GAMES', { n: gameCount })}</a>
+    </div>
   </section>
 
   <!-- ROM check -->
@@ -349,6 +397,9 @@ const title = 'POKEDAISY'.split('');
   .cta { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: center; }
   .ver { opacity: 0.85; font-size: var(--t-m); margin-left: 4px; }
   .community { margin-top: 18px; }
+  .platforms { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); text-decoration: none; font-size: var(--t-s); letter-spacing: 0.0625em; }
+  .platforms span { margin-left: 4px; }
+  .platforms:hover span { color: var(--red); text-decoration: underline; }
   /* Every APK download from GitHub releases: counted at build, refreshed in the browser. Big: it's the proof. */
   .downloads { display: inline-flex; align-items: center; gap: 14px; margin-top: 36px; text-decoration: none; color: var(--ink); }
   .downloads[hidden] { display: none; }
@@ -361,11 +412,11 @@ const title = 'POKEDAISY'.split('');
   .hero-meta > *::before { content: ''; width: var(--px); height: var(--px); padding: calc(var(--px) * 0.5); background: var(--red); }
 
   .hero-art { position: relative; }
-  /* Both handhelds at once: the Thor at the back on the right, the Retroid Pocket 5 in front, lower left,
+  /* Both handhelds at once: the Thor at the back on the right, the Retroid Pocket 6 in front, lower left,
      over only the Thor's bottom edge so both sets of controls show. */
   .duo { position: relative; display: grid; }
   .duo-dual { position: relative; width: 66%; margin-left: auto; }
-  .duo-single { position: relative; width: 82%; margin-top: -6%; z-index: 2; }
+  .duo-single { position: relative; width: 90%; margin-top: -2%; z-index: 2; }
   .glow { position: absolute; inset: -6% -4%; background: radial-gradient(closest-side, rgba(232, 48, 40, 0.18), rgba(61, 111, 224, 0.12) 60%, transparent); filter: blur(30px); }
 
   /* Ticker */
@@ -374,23 +425,50 @@ const title = 'POKEDAISY'.split('');
   .tick { display: inline-flex; align-items: center; gap: 24px; padding: 14px 12px 14px 24px; font-size: var(--t-m); white-space: nowrap; }
   @keyframes scroll { to { transform: translateX(-50%); } }
 
-  /* Companion features */
-  .feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
-  .feature { display: grid; align-content: start; gap: 12px; padding: calc(var(--px) * 7); filter: var(--hard-shadow); transition: transform 0.15s steps(2), filter 0.15s steps(2); }
-  .feature:hover { transform: translateY(calc(var(--px) * -2)); filter: drop-shadow(calc(var(--px) * 3) calc(var(--px) * 4) 0 rgba(29, 27, 38, 0.18)); }
-  .feature-icon { display: inline-flex; height: calc(var(--px) * 22); align-items: center; }
-  .feature:hover .feature-icon { animation: hop 0.4s steps(2); }
-  @keyframes hop { 50% { transform: translateY(calc(var(--px) * -3)); } }
-  .feature-name { font-size: var(--t-l); color: #cb0707; letter-spacing: 0.0625em; text-shadow: var(--bold), var(--px) var(--px) 0 #f0c8a0, calc(var(--px) + 0.0625em) var(--px) 0 #f0c8a0; display: flex; align-items: center; gap: 8px; }
-  .fcur { display: inline-flex; width: 0; overflow: hidden; transition: width 0.1s steps(1); }
-  .feature:hover .fcur { width: calc(var(--px) * 5); animation: blink 0.6s steps(1) infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-  .feature-text { color: var(--ink-2); }
+  /* The hero's screens: real shots stacked, one shown at a time, crossfading; the flight plays on top. */
+  .screen-shots { position: absolute; inset: 0; }
+  .screen-shots img, .screen-shots video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease; }
+  .screen-shots .on { opacity: 1; }
+  .shot-note { position: relative; text-align: center; margin-top: 14px; }
 
-  /* App demos */
-  .demo-block { display: grid; grid-template-columns: minmax(0, 560px) 1fr; gap: 56px; align-items: center; }
-  .demo-block.flip { grid-template-columns: 1fr minmax(0, 560px); }
-  .demo-art { filter: drop-shadow(calc(var(--px) * 3) calc(var(--px) * 3) 0 rgba(29, 27, 38, 0.18)); }
+  /* The companion's tabs: the shot on the left, the tabs as a list on the right. */
+  .fcur { display: inline-flex; width: 0; overflow: hidden; transition: width 0.1s steps(1); }
+  @keyframes blink { 50% { opacity: 0; } }
+  .tabs-view { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 420px); justify-content: center; gap: 48px; align-items: center; }
+  .tabs-screen { display: grid; padding: calc(var(--px) * 3); filter: var(--hard-shadow); }
+  .tabs-screen img { grid-area: 1 / 1; display: block; width: 100%; aspect-ratio: 1240 / 1080; opacity: 0; transition: opacity 0.3s ease; }
+  .tabs-screen img.on { opacity: 1; }
+  .tabs-list { display: grid; gap: 4px; }
+  .tab-item { display: grid; gap: 2px; text-align: left; font: inherit; color: inherit; background: none; border: 0; padding: 10px 14px; cursor: pointer; }
+  .tab-name { display: flex; align-items: center; gap: 8px; font-size: var(--t-m); letter-spacing: 0.0625em; color: var(--muted); }
+  .tab-text { display: none; color: var(--ink-2); }
+  .tab-item:hover .tab-name { color: var(--ink); }
+  .tab-item.on { background: var(--card, rgba(255, 255, 255, 0.7)); filter: var(--hard-shadow); }
+  .tab-item.on .tab-name { color: #cb0707; text-shadow: var(--bold); }
+  .tab-item.on .fcur { width: calc(var(--px) * 5); animation: blink 0.6s steps(1) infinite; }
+  .tab-item.on .tab-text { display: block; }
+
+  /* EXPAND, one game at a time under tabs (the game pages' viewer). */
+  .viewer { max-width: 1000px; margin: 0 auto; display: grid; gap: 18px; }
+  .viewer-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+  .viewer-tabs .btn.on { color: var(--red); text-shadow: var(--bold); }
+  .viewer-screen { display: grid; padding: calc(var(--px) * 3); filter: var(--hard-shadow); }
+  .viewer-screen img { grid-area: 1 / 1; display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; opacity: 0; transition: opacity 0.3s ease; }
+  .viewer-screen img.on { opacity: 1; }
+
+  /* The clips */
+  .demo-block { display: grid; grid-template-columns: minmax(0, 620px) 1fr; gap: 56px; align-items: center; }
+  .demo-block.flip { grid-template-columns: 1fr minmax(0, 620px); }
+  .clip { display: block; padding: calc(var(--px) * 3); filter: var(--hard-shadow); }
+  .clip video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+  .makeover { position: relative; padding-bottom: 14%; }
+  .makeover .inset { position: absolute; right: -4%; bottom: 0; width: 42%; }
+  .battle-pair { display: grid; gap: 16px; justify-items: center; }
+  .battle-pair > img { display: block; width: 100%; aspect-ratio: 16 / 9; padding: calc(var(--px) * 3); filter: var(--hard-shadow); }
+  .battle-styles { display: grid; width: 64%; padding: calc(var(--px) * 3); filter: var(--hard-shadow); }
+  .battle-styles img { grid-area: 1 / 1; display: block; width: 100%; aspect-ratio: 1240 / 1080; opacity: 0; transition: opacity 0.5s ease; }
+  .battle-styles img.on { opacity: 1; }
+  .more-link { margin-top: 40px; display: flex; justify-content: center; }
 
   /* Player */
   .player-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px 32px; }
@@ -422,11 +500,10 @@ const title = 'POKEDAISY'.split('');
   @keyframes steam { 50% { transform: translate(calc(var(--px) * 4), calc(var(--px) * -4)); } }
 
   @media (max-width: 1080px) {
-    .feature-grid { grid-template-columns: repeat(2, 1fr); }
     .player-grid { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 960px) {
-    .hero, .demo-block, .demo-block.flip { grid-template-columns: 1fr; }
+    .hero, .demo-block, .demo-block.flip, .tabs-view { grid-template-columns: 1fr; }
     .demo-block.flip .demo-copy { order: -1; }
     .hero { padding-top: 40px; }
     .support { grid-template-columns: 1fr; padding: calc(var(--px) * 8); }
@@ -435,7 +512,7 @@ const title = 'POKEDAISY'.split('');
     .hero-lead { font-size: var(--t-m); }
   }
   @media (max-width: 560px) {
-    .feature-grid, .player-grid { grid-template-columns: 1fr; }
+    .player-grid { grid-template-columns: 1fr; }
   }
 </style>
 
@@ -447,6 +524,55 @@ const title = 'POKEDAISY'.split('');
   // The one-screen handheld's companion window opens and closes as its demo plays (CompanionDemo); without
   // motion it just stays open.
   if (reduce) document.querySelector<HTMLElement>('[data-single-device]')?.classList.add('open');
+
+  // The device's screens step through their shots, the bottom one half a beat after the top.
+  for (const box of document.querySelectorAll<HTMLElement>('[data-cycle]')) {
+    const imgs = [...box.querySelectorAll('img')];
+    if (reduce || imgs.length < 2) continue;
+    let at = 0;
+    const step = () => { imgs[at].classList.remove('on'); at = (at + 1) % imgs.length; imgs[at].classList.add('on'); };
+    setTimeout(() => setInterval(step, Number(box.dataset.cycle)), Number(box.dataset.offset ?? 0));
+  }
+
+  // Tabs: the companion's (a list beside its shot) and EXPAND's games (buttons over the shot). A viewer with data-auto
+  // steps to the next tab by itself every that many ms while it's on screen and the pointer isn't over it; a pick starts
+  // the count again. Not with reduced motion.
+  for (const viewer of document.querySelectorAll<HTMLElement>('[data-viewer]')) {
+    const tabs = [...viewer.querySelectorAll<HTMLButtonElement>('[role=tab]')];
+    const imgs = [...viewer.querySelectorAll('.tabs-screen img, .viewer-screen img')];
+    let at = 0;
+    const show = (i: number) => {
+      at = i;
+      for (const list of [tabs, imgs]) list.forEach((el, j) => el.classList.toggle('on', i === j));
+      tabs.forEach((t, j) => t.setAttribute('aria-selected', String(i === j)));
+    };
+    const every = Number(viewer.dataset.auto ?? 0);
+    let timer = 0, visible = false, hovered = false;
+    const restart = () => {
+      clearInterval(timer);
+      if (every && !reduce && visible && !hovered) timer = window.setInterval(() => show((at + 1) % tabs.length), every);
+    };
+    tabs.forEach((tab, i) => tab.addEventListener('click', () => { show(i); restart(); }));
+    if (every && !reduce) {
+      viewer.addEventListener('pointerenter', () => { hovered = true; restart(); });
+      viewer.addEventListener('pointerleave', () => { hovered = false; restart(); });
+      new IntersectionObserver(([e]) => { visible = e.isIntersecting; restart(); }, { threshold: 0.3 }).observe(viewer);
+    }
+  }
+
+  // The clips play while they're on screen, silent and looping; with reduced motion they wait for a tap on play.
+  const clips = [...document.querySelectorAll<HTMLVideoElement>('video[data-autoplay]')];
+  if (reduce) {
+    for (const v of clips) { v.removeAttribute('autoplay'); v.pause(); v.controls = true; }
+  } else {
+    const watch = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const v = e.target as HTMLVideoElement;
+        if (e.isIntersecting) { v.preload = 'auto'; v.play().catch(() => {}); } else v.pause();
+      }
+    }, { threshold: 0.25 });
+    clips.forEach((v) => watch.observe(v));
+  }
 
   // The download count, fresh from GitHub (the build's number stays if that fails or is rate-limited).
   const dl = document.querySelector<HTMLElement>('[data-downloads]');

@@ -28,7 +28,8 @@ object MonArt {
     const val LAST = 386
     private const val FRAMES = 6 * 512
     private const val PIC = 0x800
-    private const val SIZE = FRAMES + 32 + PIC * 2 + 32
+    /** A kept species' file: its frames, overworld palette, front and back pictures and their palette. */
+    const val SIZE = FRAMES + 32 + PIC * 2 + 32
 
     /** A PLAYER LOOK pick that's a Pokémon ("MON:<national number>"), or null. */
     fun monOf(pick: String?): Int? = pick?.takeIf { it.startsWith("MON:") }?.removePrefix("MON:")?.toIntOrNull()
@@ -292,6 +293,11 @@ object MonArt {
     /** [available]'s last answer: SETTINGS asks it while it composes (FOLLOWER's row), and listing the folders there held a
      * weak tablet's tab switch up. Forgotten whenever a scan keeps something new. */
     @Volatile private var availableCache: Pair<String?, Set<Int>>? = null
+
+    /** Forgets [available]'s last answer (a SPRITE PACK added some). */
+    fun forget() {
+        availableCache = null
+    }
 
     /** The sources with something kept. */
     fun sources(filesDir: Path?): Set<Source> = Source.entries.filter { dir(filesDir, it).listFiles().any { f -> f.name.endsWith(".bin") } }.toSet()

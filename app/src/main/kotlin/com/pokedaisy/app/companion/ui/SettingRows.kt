@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.i18n.stripAccents
 import androidx.compose.foundation.layout.Column
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
@@ -152,6 +153,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "THEME" to "colors colours look background skin style themes cherry rainbow ocean mint lavender sunset forest lemon holiday seasonal christmas halloween easter valentine lunar new year limited",
     "FPS / CPU" to "fps frame rate framerate cpu usage performance speed overlay counter 60",
     "DARK MODE" to "dark night black theme light colors appearance auto system",
+    "FONT" to "font text letters typeface readable reading pixel smooth bold system size legible",
     "RESUME GAMES" to "auto resume continue launch boot",
     "FOLDERS" to "roms folder folders multiple add link saves directory path location storage retroarch syncthing save states backup backups restore",
     "COVER ART" to "box art boxart covers steamgriddb images thumbnails api key",
@@ -197,14 +199,16 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "FLY ON" to "fly on vehicle balloon hot air balloon helicopter zeppelin airship blimp plane airplane aeroplane propeller ride mount bird flight free flight take off",
     "FLIGHT AREA" to "flight area where you've been where you have been anywhere visited seen places limit restrict progress story skip sequence break free flight take off fly over map achievements",
     "FLY STYLE" to "fly style scenic classic flight animation flying over map travel town cutscene bird fly to",
+    "EXP SHARE" to "exp share experience all party team whole party level up faster grinding exp all split full bench",
+    "LEVEL CAP" to "level cap max level limit hard mode harder overlevel over leveled gym leader boss ace stop exp",
+    "NO HMS NEEDED" to "hm hms hidden machine machines free slave field moves cut surf strength rock smash waterfall dive fly flash without teaching badge only any pokemon",
     "REUSABLE TMS" to "reusable tm tms technical machine machines reuse infinite unlimited keep tm single use consumed used up teach moves",
     "SHINY ODDS" to "shiny shinies shiny odds shiny rate shiny hunting hunt shiny charm sparkle rare color colour chance",
     "TIPS" to "tips hints help popup pop up feature discovery introduce new features suggestions what can it do",
     "WILD ENCOUNTERS" to "wild encounters encounter rate random battles grass caves repel no encounters fewer battles",
 )
 
-private fun fold(s: String): String =
-    java.text.Normalizer.normalize(s.lowercase(), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+private fun fold(s: String): String = stripAccents(s.lowercase())
 
 /** A group's title row in [GroupedRows]. */
 fun groupTitle(label: String) = SettingRow(label, null, header = true) {}

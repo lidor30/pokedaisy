@@ -105,7 +105,7 @@ private fun ToolCard(tool: LibraryTool, m: GbaTextMetrics, small: GbaTextMetrics
 }
 
 /** The library's places, in its rail / bar ([LibraryNav]): the games, the tools, the app's settings. */
-enum class LibrarySection(val label: String) { GAMES("GAMES"), TOOLS("TOOLS"), SETTINGS("SETTINGS") }
+typealias LibrarySection = com.pokedaisy.app.companion.LibrarySection
 
 /**
  * GAMES / TOOLS / SETTINGS as a rail down the left of a wide screen ([vertical]) or a bar along the bottom of a tall one
@@ -304,11 +304,35 @@ internal object ToolIcons {
         ),
     )
 
+    /** SPRITE PACK: a trainer's head, red cap and all (our own drawing). */
+    private val sprites = TabIcons.TabIcon(
+        listOf(
+            "....kkkkkkk.....",
+            "...krrrrrrrk....",
+            "..krrrwwrrrrk...",
+            "..krrrwwrrrrk...",
+            ".kkkkkkkkkkkkkk.",
+            ".kddkssssssskk..",
+            ".kdkssssssssk...",
+            ".kdksksssskssk..",
+            ".kdksksssskssk..",
+            ".kdkssssssssk...",
+            "..kkssskksssk...",
+            "...kkssssssk....",
+            "....kkkkkkk.....",
+            "...kbbbbbbbbk...",
+            "..kbbbwbbwbbbk..",
+            "..kkkkkkkkkkkk..",
+        ),
+        mapOf('k' to OUTLINE, 'r' to Color(0xFFE04040), 'w' to WHITE, 's' to Color(0xFFF8C8A0), 'd' to Color(0xFF603820), 'b' to Color(0xFF3878E0)),
+    )
+
     fun of(id: String): TabIcons.TabIcon? = when (id) {
         "PATCH" -> patch
         "LINK" -> link
         "EDIT" -> edit
         "TRADE" -> trade
+        "SPRITES" -> sprites
         else -> null
     }
 

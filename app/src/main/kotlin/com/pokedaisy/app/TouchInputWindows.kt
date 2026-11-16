@@ -22,6 +22,8 @@ import com.pokedaisy.app.companion.ui.TouchHitModel
 import com.pokedaisy.app.companion.ui.TouchHits
 import com.pokedaisy.app.companion.ui.TouchPressTracker
 import com.pokedaisy.app.companion.ui.touchHits
+import com.pokedaisy.app.companion.ui.excludeTouchRegions
+import androidx.compose.ui.unit.IntRect
 import kotlin.math.roundToInt
 
 /**
@@ -54,11 +56,14 @@ import kotlin.math.roundToInt
 class TouchInputWindows(private val anchor: View, private val tracker: TouchPressTracker) {
     private val thread = HandlerThread("pokedaisy-touch", Process.THREAD_PRIORITY_URGENT_DISPLAY).apply { start() }
     private val handler = Handler(thread.looper)
-    private val wm = anchor.context.getSystemService(WindowManager::class.java)
+    // Window-manager ownership follows the anchor's display, not the Activity that originally made it (SWAP).
+    private var wm = anchor.context.getSystemService(WindowManager::class.java)
+    private var displayContext = anchor.context
+    private var sentDisplay = -1
 
     /** The windows' views' context: the activity's with resources of its own, frozen as they were when last set, so an
      * update of the activity's configuration never reads as a change to these windows (see the class doc). */
-    @Volatile private var padContext: Context = FrozenContext.of(anchor.context)
+    private var padContext: Context = FrozenContext.of(anchor.context)
 
     // UI thread: what [sync] last handed over.
     private var sentToken: IBinder? = null
@@ -67,6 +72,7 @@ class TouchInputWindows(private val anchor: View, private val tracker: TouchPres
     private var sentY = 0
     private var sentOn = false
     private var sentModel: TouchHitModel? = null
+    private var sentExcluded: List<IntRect> = emptyList()
     private var released = false
 
     // [thread] only from here down.
@@ -78,7 +84,7 @@ class TouchInputWindows(private val anchor: View, private val tracker: TouchPres
     private val ys = FloatArray(MAX_FINGERS)
 
     /** One window: its place in the controls' own pixels ([rect]) and the fingers on it now (the controls' pixels). */
-    private inner class Pad(val rect: Rect) : View(padContext) {
+    private inner class Pad(context: Context, val rect: Rect) : View(context) {
         val fx = FloatArray(MAX_FINGERS)
         val fy = FloatArray(MAX_FINGERS)
         var n = 0
@@ -107,18 +113,35 @@ class TouchInputWindows(private val anchor: View, private val tracker: TouchPres
     }
 
     /** UI thread: the windows for [model] (null: none), letting touches through unless [allowed]. Cheap when nothing changed. */
-    fun sync(model: TouchHitModel?, allowed: Boolean) {
+    fun sync(model: TouchHitModel?, allowed: Boolean, reservedInWindow: List<IntRect> = emptyList()) {
         if (released) return
         val token = if (anchor.isAttachedToWindow) anchor.windowToken else null
+        val display = anchor.display?.takeIf { it.isValid }
+        val displayChanged = (display?.displayId ?: -1) != sentDisplay
+        if (displayChanged) {
+            sentDisplay = display?.displayId ?: -1
+            displayContext = display?.let(anchor.context::createDisplayContext) ?: anchor.context
+            padContext = FrozenContext.of(displayContext)
+        }
         val loc = IntArray(2)
         if (token != null) anchor.getLocationInWindow(loc)
-        val rects = if (token != null && model != null) clusters(model, anchor.width, anchor.height) else emptyList()
+        val reserved = reservedInWindow.map { IntRect(it.left - loc[0], it.top - loc[1], it.right - loc[0], it.bottom - loc[1]) }
+        val excluded = if (model?.excluded.isNullOrEmpty()) reserved else model!!.excluded + reserved
+        val raw = if (token != null && model != null) clusters(model, anchor.width, anchor.height) else emptyList()
+        val rects = if (excluded.isEmpty()) raw else excludeTouchRegions(
+            raw.map { IntRect(it.left, it.top, it.right, it.bottom) }, excluded,
+        ).map { Rect(it.left, it.top, it.right, it.bottom) }
         val on = allowed && token != null && rects.isNotEmpty() && anchor.isShown
-        if (token == sentToken && rects == sentRects && loc[0] == sentX && loc[1] == sentY && on == sentOn && model === sentModel) return
+        if (!displayChanged && token == sentToken && rects == sentRects && loc[0] == sentX && loc[1] == sentY && on == sentOn && model === sentModel && excluded == sentExcluded) return
         sentToken = token; sentRects = rects; sentX = loc[0]; sentY = loc[1]; sentOn = on; sentModel = model
+        sentExcluded = excluded
+        val hitModel = model?.let { if (excluded.isEmpty()) it else TouchHitModel(it.placed, it.fit, it.eightWay, excluded) }
         val x = loc[0]
         val y = loc[1]
-        handler.post { apply(token, model, rects, x, y, on) }
+        // Capture both for this handoff: a rapid detach/reattach must not combine an old manager with a new context.
+        val manager = displayContext.getSystemService(WindowManager::class.java)
+        val context = padContext
+        handler.post { apply(token, hitModel, rects, x, y, on, manager, context) }
     }
 
     /** UI thread: every window gone, the thread ended (the activity's going). */
@@ -134,7 +157,7 @@ class TouchInputWindows(private val anchor: View, private val tracker: TouchPres
     /** UI thread, from the activity's onConfigurationChanged: windows added from now on start from the new
      * configuration, frozen in turn; the ones up keep theirs (see the class doc). */
     fun configurationChanged() {
-        if (!released) padContext = FrozenContext.of(anchor.context)
+        if (!released) padContext = FrozenContext.of(displayContext)
     }
 
     /** A context whose resources are its own and never updated: a copy of [base]'s, configuration and all. */
@@ -153,12 +176,14 @@ class TouchInputWindows(private val anchor: View, private val tracker: TouchPres
         }
     }
 
-    private fun apply(token: IBinder?, model: TouchHitModel?, rects: List<Rect>, x: Int, y: Int, on: Boolean) {
+    private fun apply(token: IBinder?, model: TouchHitModel?, rects: List<Rect>, x: Int, y: Int, on: Boolean,
+                      manager: WindowManager, context: Context) {
         this.model = model
-        if (token != this.token || rects != pads.map { it.rect }) {
+        if (manager !== wm || token != this.token || rects != pads.map { it.rect }) {
             removeAll()
+            wm = manager
             this.token = token
-            if (token != null) for (r in rects) add(Pad(Rect(r)), token, x, y, on)
+            if (token != null) for (r in rects) add(Pad(context, Rect(r)), token, x, y, on)
         } else if (token != null) {
             for (pad in pads) runCatching { wm.updateViewLayout(pad, params(pad.rect, token, x, y, on)) }
         }
@@ -248,4 +273,12 @@ class TouchInputWindows(private val anchor: View, private val tracker: TouchPres
 
         private const val MERGE_DP = 8f
     }
+}
+
+/** The native host's geometry bridge; shared hit testing and input-window clipping consume the result. */
+internal fun View.touchExclusionInWindow(): IntRect? {
+    if (!isAttachedToWindow || !isShown || width <= 0 || height <= 0) return null
+    val at = IntArray(2)
+    getLocationInWindow(at)
+    return IntRect(at[0], at[1], at[0] + width, at[1] + height)
 }

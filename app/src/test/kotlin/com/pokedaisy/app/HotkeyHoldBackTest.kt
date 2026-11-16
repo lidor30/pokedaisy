@@ -1,5 +1,7 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.CoreKey
+import okio.Path.Companion.toOkioPath
 import android.view.KeyEvent
 import com.pokedaisy.app.Hotkeys.Action
 import org.junit.Assert.assertEquals
@@ -22,12 +24,12 @@ class HotkeyHoldBackTest {
     private val r1 = KeyEvent.KEYCODE_BUTTON_R1
 
     private val input = GbaInput().apply {
-        setControls(mapOf(select to MgbaCore.Key.SELECT, start to MgbaCore.Key.START, a to MgbaCore.Key.A, r1 to MgbaCore.Key.R))
+        setControls(mapOf(select to CoreKey.SELECT, start to CoreKey.START, a to CoreKey.A, r1 to CoreKey.R))
     }
     private val fired = ArrayList<Action>()
 
     /** The defaults: EXIT GAME = SELECT + START, SAVE STATE = SELECT + R1. */
-    private val hotkeys by lazy { Hotkeys.load(tmp.newFolder()) }
+    private val hotkeys by lazy { Hotkeys.load(tmp.newFolder().toOkioPath()) }
 
     /** What dispatchKeyEvent does with a key: the hotkeys first, then the game. */
     private fun key(code: Int, down: Boolean) {
@@ -52,7 +54,7 @@ class HotkeyHoldBackTest {
         assertEquals(0, frames(1).single())
         key(select, false)
         val f = frames(GbaInput.TAP_FRAMES + 1)
-        assertTrue(f.take(GbaInput.TAP_FRAMES).all { it == MgbaCore.Key.SELECT })
+        assertTrue(f.take(GbaInput.TAP_FRAMES).all { it == CoreKey.SELECT })
         assertEquals(0, f.last())
         assertTrue(fired.isEmpty())
     }
@@ -60,9 +62,9 @@ class HotkeyHoldBackTest {
     @Test fun anotherGameButtonLetsItThroughHeld() {
         key(select, true)
         key(a, true)
-        assertEquals(MgbaCore.Key.SELECT or MgbaCore.Key.A, input.mask)
+        assertEquals(CoreKey.SELECT or CoreKey.A, input.mask)
         key(select, false)
-        assertEquals(MgbaCore.Key.A, input.mask)
+        assertEquals(CoreKey.A, input.mask)
         assertEquals(0, input.tapMask())
     }
 
@@ -70,14 +72,14 @@ class HotkeyHoldBackTest {
         // A and B held first: SELECT and START go straight through (EXIT GAME still fires on its chord, as before).
         key(a, true)
         key(select, true)
-        assertEquals(MgbaCore.Key.A or MgbaCore.Key.SELECT, input.mask)
+        assertEquals(CoreKey.A or CoreKey.SELECT, input.mask)
     }
 
     @Test fun startIsHeldBackToo() {
         key(start, true)
         assertEquals(0, input.mask)
         key(start, false)
-        assertEquals(MgbaCore.Key.START, input.tapMask())
+        assertEquals(CoreKey.START, input.tapMask())
     }
 
     @Test fun selectR1SavesWithoutSelect() {
@@ -95,12 +97,12 @@ class HotkeyHoldBackTest {
         key(select, true)   // the key's auto-repeat
         assertEquals(0, input.mask)
         key(select, false)
-        assertEquals(MgbaCore.Key.SELECT, input.tapMask())
+        assertEquals(CoreKey.SELECT, input.tapMask())
     }
 
     @Test fun aKeyInNoChordIsUntouched() {
         key(a, true)
-        assertEquals(MgbaCore.Key.A, input.mask)
+        assertEquals(CoreKey.A, input.mask)
         assertFalse(hotkeys.gameKey(a, false, input) {})
     }
 }

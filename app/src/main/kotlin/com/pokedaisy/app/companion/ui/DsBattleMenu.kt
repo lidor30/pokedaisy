@@ -54,6 +54,7 @@ import com.pokedaisy.app.companion.data.BATTLE_INPUT_BAG_OPEN
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import com.pokedaisy.app.companion.data.GameKind
+import com.pokedaisy.app.companion.data.isXy
 import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.data.SnapshotView
 import com.pokedaisy.app.companion.data.typeLabel
@@ -78,22 +79,38 @@ import com.pokedaisy.app.companion.i18n.tr
 class DsBattleMenuState {
     /** 0 nothing up (the keys go to the game), 1 the actions, 2 the moves. */
     var mode by mutableIntStateOf(0)
-        internal set
     /** FIGHT 0, BAG 1, POKéMON 2, RUN 3 (2 x 2: FIGHT BAG / POKéMON RUN). */
     var actionCursor by mutableIntStateOf(0)
     var moveCursor by mutableIntStateOf(0)
+    /** Pokemon X / Y's actions: FIGHT over BAG, RUN, POKéMON in a row ([XyBattleCorner]). */
+    internal var xy = false
 
-    internal var actionEnabled: (Int) -> Boolean = { true }
-    internal var moveEnabled: (Int) -> Boolean = { true }
-    internal var pickAction: (Int) -> Unit = {}
-    internal var pickMove: (Int) -> Unit = {}
-    internal var back: () -> Unit = {}
+    var actionEnabled: (Int) -> Boolean = { true }
+    var moveEnabled: (Int) -> Boolean = { true }
+    var pickAction: (Int) -> Unit = {}
+    var pickMove: (Int) -> Unit = {}
+    var back: () -> Unit = {}
 
     /** A button while the menu is up: true = it's the menu's (kept from the game). */
     fun key(k: MenuKey): Boolean {
         val moves = mode == 2
         if (mode == 0) return false
         val c = if (moves) moveCursor else actionCursor
+        if (xy && !moves) {
+            val row = listOf(1, 3, 2)
+            when (k) {
+                MenuKey.UP -> actionCursor = 0
+                MenuKey.DOWN -> if (c == 0) actionCursor = 3
+                MenuKey.LEFT, MenuKey.RIGHT -> if (c != 0) {
+                    val n = row[(row.indexOf(c) + if (k == MenuKey.LEFT) -1 else 1).coerceIn(0, 2)]
+                    if (actionEnabled(n)) actionCursor = n
+                }
+                MenuKey.A -> if (actionEnabled(c)) pickAction(c)
+                MenuKey.B -> {}
+                else -> return false
+            }
+            return true
+        }
         fun to(n: Int) {
             if (n == c || moves && !moveEnabled(n)) return
             if (moves) moveCursor = n else actionCursor = n
@@ -120,7 +137,9 @@ class DsBattleMenuState {
  * blue band from 146, its lines at 147 - 148 and 187 - 188, the words from 149.
  */
 enum class DsLook(val bandTop: Int, val textTop: Int) {
-    HEARTGOLD(144, 146), SOULSILVER(144, 146), PLATINUM(144, 146), UNOVA(145, 149), UNOVA2(146, 149);
+    HEARTGOLD(144, 146), SOULSILVER(144, 146), PLATINUM(144, 146), UNOVA(145, 149), UNOVA2(146, 149),
+    /** Pokemon X / Y: no strip, its buttons in the picture's corner ([XyBattleCorner]). */
+    XY(0, 0);
 
     companion object {
         fun of(game: GameKind?) = when (game) {
@@ -128,6 +147,7 @@ enum class DsLook(val bandTop: Int, val textTop: Int) {
             GameKind.PLATINUM -> PLATINUM
             GameKind.BLACK, GameKind.WHITE -> UNOVA
             GameKind.BLACK2, GameKind.WHITE2 -> UNOVA2
+            GameKind.POKEMON_X, GameKind.POKEMON_Y -> XY
             else -> HEARTGOLD
         }
     }
@@ -204,6 +224,7 @@ fun DsBattleMenu(
         state.pickAction = { if (!busy) { if (it == 3) leaving = true; battleInput?.selectAction(it) } }
         state.pickMove = { if (!busy) { leaving = true; battleInput?.selectMove(it) } }
         state.back = { if (!busy) battleInput?.back() }
+        state.xy = snapshot.game.isXy
     }
     // What the strip shows: the menu up, or - the keys the game's meanwhile - the last one held while the battle's bag or
     // party floats over it, and for a moment between two menus (FIGHT's panel sliding in), so the game's own text box
@@ -229,6 +250,15 @@ fun DsBattleMenu(
         0f, PULSE_PX + 0.99f, infiniteRepeatable(tween(PULSE_MS, easing = LinearEasing), RepeatMode.Reverse), label = "dsCursorPulse",
     )
     val step = kotlin.math.floor(pulse)
+    if (look == DsLook.XY) {
+        // Pokemon X / Y: the game's own buttons in the picture's bottom-right corner, nothing behind them - gone while the
+        // bag or the party floats in (the corner is drawn over that window).
+        if (holding || !active) return
+        // (Its cursor breathes smoothly: the pulse eased, 0 .. 1.)
+        val breath = (0.5f - 0.5f * kotlin.math.cos(kotlin.math.PI.toFloat() * pulse / (PULSE_PX + 0.99f)))
+        XyBattleCorner(state, picture, shownMode, idle, moves, snapshot.battlePlayer.getOrNull(0)?.iconAsset, breath, power = hints)
+        return
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val boxW = with(density) { maxWidth.toPx() }
         val ds = picture.height / 192f
@@ -342,7 +372,7 @@ private fun DsMessageWindow(text: String, m: GbaTextMetrics, ds: Float, silver: 
 /** Text at a DS font's size: Pixel Operator's capitals are 9 font pixels, as the DS games' are 9 DS pixels, so a font pixel is
  * [scale] DS pixels, rounded to whole screen pixels ([ds]: screen px a DS pixel). */
 @Composable
-private fun dsTextMetrics(ds: Float, scale: Float): GbaTextMetrics {
+internal fun dsTextMetrics(ds: Float, scale: Float): GbaTextMetrics {
     val density = LocalDensity.current
     return remember(density, ds, scale) {
         with(density) {
@@ -614,7 +644,7 @@ private fun DsBackButton(enabled: Boolean, ds: Float, modifier: Modifier, onClic
 }
 
 /** The battle bag's return arrow, cream on blue (headless, x 226 - 244, y 164 - 181 of its touch screen). */
-private val BACK_ARROW = listOf(
+internal val BACK_ARROW = listOf(
     "...............####",
     "...............####",
     "...............####",

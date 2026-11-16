@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.coop
 
 import java.io.File
-import java.util.Random
+import okio.Path.Companion.toOkioPath
+import kotlin.random.Random
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -38,7 +39,7 @@ class CoopLinkImplTest {
     private fun partner(peer: CoopPeerId, save: CoopSaveId) = CoopPartner(peer, "X", save.trainerId, false, save)
 
     private fun pairsWith(own: CoopSaveId, other: CoopSaveId, otherPeer: CoopPeerId, ticket: String?, name: String): CoopPairs {
-        val p = CoopPairs(File(tmp, "$name/pairs.json"))
+        val p = CoopPairs(File(tmp, "$name/pairs.json").toOkioPath())
         assertTrue(p.add(CoopPair(own, "Emerald", partner(otherPeer, other), ticket, 1L)))
         return p
     }
@@ -236,7 +237,7 @@ class CoopLinkImplTest {
     }
 
     @Test fun notPairedIsOff() {
-        val lonely = CoopLinkImpl(tA, CoopPairs(File(tmp, "none/pairs.json")), { null }, { now }, CoopBackoff())
+        val lonely = CoopLinkImpl(tA, CoopPairs(File(tmp, "none/pairs.json").toOkioPath()), { null }, { now }, CoopBackoff())
         lonely.startFor(saveA)
         assertEquals(CoopState.Off(CoopOffReason.NOT_PAIRED), lonely.state.value)
     }
@@ -261,7 +262,7 @@ class CoopLinkImplTest {
 
     @Test fun unreadablePairsFileNeverCrashesATicketRefresh() {
         var failReads = false
-        val pairs = CoopPairs(File(tmp, "c/pairs.json"), read = { if (failReads) throw java.io.IOException("gone") else it.readText() })
+        val pairs = CoopPairs(File(tmp, "c/pairs.json").toOkioPath(), read = { if (failReads) throw java.io.IOException("gone") else it.toFile().readText() })
         assertTrue(pairs.add(CoopPair(saveA, "Emerald", partner(tB.id, saveB), tickB, 1L)))
         val l = CoopLinkImpl(tA, pairs, { hello(saveA, tickA) }, { now }, CoopBackoff(Random(1)))
         tA.sink = { l.onEvent(it) }

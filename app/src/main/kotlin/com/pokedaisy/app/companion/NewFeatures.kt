@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion
 
-import com.pokedaisy.app.Prefs
+import kotlin.time.Clock
+import kotlin.concurrent.Volatile
 import com.pokedaisy.app.companion.i18n.tk
 
 /**
@@ -10,6 +11,15 @@ import com.pokedaisy.app.companion.i18n.tk
  * from the update. Every new feature gets one (CLAUDE.md): add its id to [ALL] and the badge to its row.
  */
 object NewFeatures {
+    /** Shared game-button capture and bindings on iPhone and iPad. */
+    const val IOS_GAME_BINDINGS = "ios_game_bindings"
+    const val IOS_GAME_HOTKEYS = "ios_game_hotkeys"
+    const val IOS_REWIND = "ios_rewind"
+    const val IOS_TOUCH_XY = "ios_touch_xy"
+    const val IOS_CHEATS = "ios_cheats"
+    const val IOS_FIELD_ITEMS = "ios_field_items"
+    const val IOS_CLASSIC_FLY = "ios_classic_fly"
+
     /** SETTINGS > HUD (companion.ui.FieldHud). */
     const val HUD = "hud"
 
@@ -60,6 +70,14 @@ object NewFeatures {
 
     /** SETTINGS > REUSABLE TMS: a TM stays in the bag after it teaches a move (companion.data.ReusableTms). */
     const val REUSABLE_TMS = "reusable_tms"
+    /** The POKéMON CENTER anywhere: the QUICK MENU's HEAL and the summary's CENTER (companion.data.PokemonCenter). */
+    const val POKEMON_CENTER = "pokemon_center"
+    /** SETTINGS > EXP SHARE: the whole party gains EXP from a win (companion.data.ExpShare). */
+    const val EXP_SHARE = "exp_share"
+    /** SETTINGS > LEVEL CAP: no Pokémon past the next boss's top level (companion.data.LevelCap). */
+    const val LEVEL_CAP = "level_cap"
+    /** SETTINGS > NO HMS NEEDED: the field moves without a Pokémon that knows them (companion.data.HmFree). */
+    const val HM_FREE = "hm_free"
     /** SETTINGS > TRADE EVOLUTIONS: a trade evolution from the Pokémon's summary (companion.data.TradeEvolution). */
     const val TRADE_EVOLUTIONS = "trade_evolutions"
     /** SETTINGS > SHINY ODDS: a wild foe shiny at the odds picked (companion.data.ShinyOdds). */
@@ -134,6 +152,8 @@ object NewFeatures {
 
     /** Settings > LIBRARY > PATCH A ROM and the library's + menu: a .bps patch applied to a ROM the library has (RomPatchFlow). */
     const val ROM_PATCH = "rom_patch"
+    /** TOOLS > SPRITE PACK: the makeover's graphics loaded from a pack file instead of the other games' ROMs (SpritePack). */
+    const val SPRITE_PACK = "sprite_pack"
     /** Settings > TOOLS > LINK PLAY (and a GBA game's library menu): two to four GBA games on one link cable (LinkActivity). */
     const val LINK_PLAY = "link_play"
     /** TOOLS > SAVE EDITOR / TRADE SAVES and a game's library menu > SAVE EDITOR: the save editor, out from behind its flag. */
@@ -173,6 +193,10 @@ object NewFeatures {
     const val BATTLE_STYLE = "battle_style"
     /** QUICK MENU > FLASH: the field move from the quick menu (companion.data.Flash); the QUICK MENU row carries it too. */
     const val QUICK_FLASH = "quick_flash"
+    /** QUICK MENU > TOUCH SCREEN: a DS / 3DS game's touch screen in by hand on one screen (a phone has no L2). */
+    const val QUICK_TOUCH = "quick_touch"
+    /** SETTINGS > FONT on both screens: the pixel font or a smooth one (ui.theme.AppFont). */
+    const val APP_FONT = "app_font"
     /** FREE FLIGHT: TAKE OFF / LAND (the QUICK MENU's tile and its row, the MAP tab, the FREE FLIGHT hotkey). */
     const val FREE_FLIGHT = "free_flight"
     /** SETTINGS > FLY STYLE: SCENIC flies over the field to the town. */
@@ -192,14 +216,45 @@ object NewFeatures {
     /** TOUCH CONTROLS' ZOOM / REWIND extras and X AND Y for GBA / Game Boy games. */
     const val TOUCH_MORE_BUTTONS = "touch_more_buttons"
 
+    /** The iPad game loop now supports fast-forward and per-game speed. */
+    const val IPAD_PLAYBACK = "ipad_playback"
+
+    const val IPAD_STATES = "ipad_states"
+    const val IPAD_RESUME = "ipad_resume"
+    const val IPAD_TOUCH = "ipad_touch"
+    const val IPAD_APP_UI = "ipad_app_ui"
+    const val IOS_GAME_PICKER = "ios_game_picker"
+    const val IOS_FIELD_OPTIONS = "ios_field_options"
+    const val IOS_GAME_OPTIONS = "ios_game_options"
+    const val IOS_SCENE_SPEEDS = "ios_scene_speeds"
+    const val IOS_GAME_SCREEN = "ios_game_screen"
+
     val ALL = listOf(
+        IOS_GAME_BINDINGS,
+        IOS_GAME_HOTKEYS,
+        IOS_REWIND,
+        IOS_TOUCH_XY,
+        IOS_CHEATS,
+        IOS_FIELD_ITEMS,
+        IOS_CLASSIC_FLY,
+        IOS_FIELD_OPTIONS,
+        IOS_GAME_OPTIONS,
+        IOS_SCENE_SPEEDS,
+        IOS_GAME_SCREEN,
+        IOS_GAME_PICKER,
+        IPAD_APP_UI,
+        IPAD_TOUCH,
+        IPAD_RESUME,
+        IPAD_STATES,
+        IPAD_PLAYBACK,
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
-        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU,
+        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP,
+        QUICK_TOUCH, APP_FONT,
     )
 
     private const val DAYS = 7
@@ -211,17 +266,21 @@ object NewFeatures {
     @Volatile
     private var started = false
 
-    /** App start: date every feature not seen before (now); the ones seen keep their date. */
-    fun init(prefs: Prefs, now: Long = System.currentTimeMillis()) {
-        val seen = prefs.newFeatureSince
+    /**
+     * App start: date every feature not seen before (now); the ones seen keep their date. [seen] is what the host kept
+     * (Prefs.newFeatureSince on Android); [save] gets the dates back when a feature was added.
+     */
+    fun init(seen: Map<String, Long>, save: (Map<String, Long>) -> Unit, now: Long = nowMillis()) {
         val all = seen + ALL.filter { it !in seen }.associateWith { now }
-        if (all != seen) prefs.newFeatureSince = all
+        if (all != seen) save(all)
         since = all
         started = true
     }
 
+    private fun nowMillis() = Clock.System.now().toEpochMilliseconds()
+
     /** Still new: dated less than [DAYS] days ago. Before [init] (screenshot tests, ui-preview) every feature is. */
-    fun isNew(id: String, now: Long = System.currentTimeMillis()): Boolean {
+    fun isNew(id: String, now: Long = nowMillis()): Boolean {
         if (!started) return true
         val at = since[id] ?: return false
         return now - at < DAYS * DAY_MS

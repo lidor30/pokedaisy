@@ -55,7 +55,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.Layout
@@ -108,6 +107,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlinx.coroutines.IO
 
 /*
  * FIELD HUD (SETTINGS > HUD, on by default): a modern game's heads-up display over the overworld - the party
@@ -611,7 +611,7 @@ private const val HUD_MIN_ROOM = 150
  * controls reaching [clearTop] / [clearBottom] down / up from the box's edges: both cut back by the same share where
  * they'd leave less than [minRoom] between them (or all the picture has, if less), so the HUD never squeezes into a strip.
  */
-internal fun hudClears(clearTop: Float, clearBottom: Float, inT: Float, inB: Float, boxH: Float, minRoom: Float): Pair<Float, Float> {
+fun hudClears(clearTop: Float, clearBottom: Float, inT: Float, inB: Float, boxH: Float, minRoom: Float): Pair<Float, Float> {
     val t = (clearTop - inT).coerceAtLeast(0f)
     val b = (clearBottom - inB).coerceAtLeast(0f)
     val picture = (boxH - inT - inB).coerceAtLeast(0f)
@@ -715,14 +715,14 @@ private fun CornersLayout(p: HudParts, swapped: Boolean, obstacles: List<Rect> =
 private enum class CornerPart { MAP, PARTY, BUTTONS }
 
 /** A part of CORNERS: its size and its corner. */
-internal data class HudCornerItem(val w: Float, val h: Float, val right: Boolean, val bottom: Boolean)
+data class HudCornerItem(val w: Float, val h: Float, val right: Boolean, val bottom: Boolean)
 
 /**
  * Where CORNERS' [items] go in [box] around the touch controls' buttons ([obstacles]): each in its corner where that's
  * clear, else stepped off the buttons ([hudCornerSpot]). Placed in every order, the one that leaves the most parts clear,
  * then moves them least, wins: one part going first can take the only clear place another had.
  */
-internal fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: List<Rect>, gap: Float): List<Rect> {
+fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: List<Rect>, gap: Float): List<Rect> {
     fun corner(it: HudCornerItem): Rect {
         val x = if (it.right) box.right - it.w else box.left
         val y = if (it.bottom) box.bottom - it.h else box.top
@@ -755,7 +755,7 @@ internal fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: L
  * controls) or [taken] (the parts already placed) is there, else the clear place nearest that corner - slid along its
  * edge or in from it past the buttons in the way, [gap] from them - inside [box]. Null: nowhere clear.
  */
-internal fun hudCornerSpot(
+fun hudCornerSpot(
     w: Float, h: Float, right: Boolean, bottom: Boolean, box: Rect, obstacles: List<Rect>, taken: List<Rect>, gap: Float,
 ): Rect? {
     val x0 = if (right) box.right - w else box.left
@@ -1228,17 +1228,28 @@ private fun HudMiniMap(
     val cursor = labelStyle.cursorColor
     val small = rememberGbaTextMetrics(0.75f)
     val name = snapshot.location.mapSecName
-    if ((model == null || bitmap == null) && name.isEmpty()) return
+    // In a cave / building with its own map (AreaMapView.kt), that map unless the player chose the region's.
+    val area = rememberPlayerArea(snapshot)?.takeIf { AreaMapChoice.showsArea(it) }
+    if ((model == null || bitmap == null) && area == null && name.isEmpty()) return
     Column(
         modifier.hudPanel(u).soundClickable(onClick = onClick).padding(u * 4 + hudEdge(u)).padding(bottom = u),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (model != null && bitmap != null) {
+        if (area != null) {
+            Box {
+                HudAreaMap(snapshot, mapW, mapH, u)
+                Box(
+                    Modifier.align(Alignment.BottomEnd).padding(u * 2).size(u * 11).background(Color(0x99000000), PixelRoundedShape(u * 2)),
+                    contentAlignment = Alignment.Center,
+                ) { PixelIcon(PixelIcons.expand, Color.White, Modifier.size(u * 7)) }
+            }
+            Spacer(Modifier.height(u * 3))
+        } else if (model != null && bitmap != null) {
             val tile = (if (black) snapshot.regionMapTile else null)
                 ?: PlayerMapTile.of(model, snapshot.regionMapSectionId, snapshot.x, snapshot.y, snapshot.mapWidth, snapshot.mapHeight, snapshot.mapType)
             val point = if (black && tile != null) model.pick(0, tile.first, tile.second)?.mapsec?.let { model.points[it] } else null
-            val image = remember(bitmap) { bitmap.asImageBitmap() }
-            val headImage = remember(head) { head?.asImageBitmap() }
+            val image = bitmap
+            val headImage = head
             val crop = remember(bitmap) { regionMapContentBounds(bitmap) }
             Box(Modifier.size(u * mapW, u * mapH).clip(PixelRoundedShape(u * 2))) {
                 Canvas(Modifier.fillMaxSize()) {
@@ -1296,7 +1307,9 @@ private fun HudMiniMap(
         }
         if (name.isNotEmpty()) {
             Box(Modifier.width(u * mapW)) {
-                GbaText(gameCase(name).uppercase().replace('É', 'é'), ink.text, ink.shadow, small, maxLines = nameLines)
+                val floor = area?.floors?.firstOrNull { it.id.group == snapshot.mapGroup && it.id.num == snapshot.mapNum }?.takeIf { it.floorNum != null }?.label
+                val text = gameCase(name).uppercase().replace('É', 'é') + (floor?.let { "  $it" } ?: "")
+                GbaText(text, ink.text, ink.shadow, small, maxLines = nameLines)
             }
         }
     }
@@ -1372,7 +1385,7 @@ private fun HudMapPanel(snapshot: SnapshotView, m: GbaTextMetrics, fly: FlyActio
 
 /** A party member's summary (the PARTY tab's), over the game; up / down step through the party. */
 @Composable
-private fun HudSummaryPanel(
+internal fun HudSummaryPanel(
     snapshot: SnapshotView, index: Int, onIndex: (Int) -> Unit, m: GbaTextMetrics, itemUse: ItemUse?, onClose: () -> Unit,
 ) {
     val u = m.u

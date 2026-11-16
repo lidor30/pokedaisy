@@ -3,7 +3,7 @@ title: Your game library
 summary: Add games, sort and favorite them, set covers, and use each game's menu for saves, info, cheats and more.
 section: start
 order: 4
-keywords: [shortcut, home screen, launcher icon, search, find a game, filter, support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch, tools, toolbox, rail, bottom bar, where is settings]
+keywords: [shortcut, home screen, launcher icon, search, find a game, filter, support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch, tools, toolbox, rail, bottom bar, where is settings, sprite pack]
 ---
 
 The library is the first thing you see when you open PokeDaisy: every game you've added, in the order you pick. Tap a game to play it.
@@ -39,6 +39,7 @@ Down the left edge of the library are three buttons: `GAMES`, `TOOLS` and `SETTI
 | `LINK PLAY` | Runs two to four GBA games joined as if by a link cable, to trade and battle between them (see [Link play](link-play.md)). |
 | `SAVE EDITOR` | Opens a game's save: rearrange the PC, change the bag, money and moves (see [Save editor and save trades](save-trade.md)). |
 | `TRADE SAVES` | Trades Pokémon between two of your games' save files (see [Save editor and save trades](save-trade.md)). |
+| `SPRITE PACK` | Loads a sprite pack file, so `MAKEOVER` has other games' looks without those games (see [Sprite packs](companion.md#sprite-packs)). |
 
 A green dot on `TOOLS` means one of them is new. `BACK` on the tools takes you back to your games.
 
@@ -263,3 +264,26 @@ A few things to know:
 - Starting another game from the frontend while one is open switches to it; the open one is suspended first.
 
 There are step-by-step guides for [ES-DE](https://github.com/lidor30/pokedaisy/blob/main/docs/es-de/README.md) and [iiSU](https://github.com/lidor30/pokedaisy/blob/main/docs/iisu/README.md).
+
+## On iPad
+
+On your Home Screen, look for the PokeDaisy flower icon on its blue patterned background to open the app.
+
+The library, setup and application settings use the same styled screens as Android. The library fills the window
+when no game is open. Use the header to add games from Files, search, change the order, switch between a list and a
+grid, or refresh after changing files. Hold a game to mark it as a favorite or choose `LOAD SAVE`.
+
+`FAVORITES` and `RECENT` keep the games you want close by. Your choices, display mode and game history are kept when
+you reopen the app. The platform views show the consoles your library contains.
+
+Favorites come first in every sort order, and `RECENT` lists the games you played most recently first.
+Search ignores case and accents, whether you search by the displayed name or the file name.
+
+Open `SETTINGS` from the library to change appearance, language, playback defaults and touch controls before playing.
+`RUN SETUP` reopens the shared setup pages. On iPad, games picked in Files are copied into PokeDaisy's `roms` folder,
+and battery saves stay in `saves`. You can reach both folders through Files.
+
+To return to the library while playing, open the companion's `SETTINGS` and choose `CLOSE GAME`. Confirm to close it.
+
+Only actions supported on iPad are offered. Folder linking, cover downloads and several Android tools still need
+platform support.

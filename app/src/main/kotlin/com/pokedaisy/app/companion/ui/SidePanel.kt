@@ -29,11 +29,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
@@ -149,9 +151,21 @@ fun SidePanelHost(
     val starts = remember { FocusStarts() }
     val overlays = remember { OverlayStack() }
     var hasFocus by remember { mutableStateOf(false) }
+    val focus = LocalFocusManager.current
     // Registered before the companion's own handlers, so it gets only what they leave.
     keys?.Handler(enabled = window) { key, repeat ->
-        focusKeys?.invoke(key, repeat) { if (!hasFocus) starts.focusNewest() } ?: false
+        if (focusKeys != null) focusKeys(key, repeat) { if (!hasFocus) starts.focusNewest() }
+        else {
+            if (!hasFocus) starts.focusNewest()
+            when (key) {
+                MenuKey.UP -> focus.moveFocus(FocusDirection.Up)
+                MenuKey.DOWN -> focus.moveFocus(FocusDirection.Down)
+                MenuKey.LEFT -> focus.moveFocus(FocusDirection.Left)
+                MenuKey.RIGHT -> focus.moveFocus(FocusDirection.Right)
+                MenuKey.A -> repeat || starts.activateFocused()
+                else -> false
+            }
+        }
     }
     BoxWithConstraints(
         Modifier.fillMaxSize().then(
@@ -265,8 +279,8 @@ internal fun WindowCloseButton(onClose: () -> Unit, alpha: Float = 1f, descripti
  * The tab on the side panel's edge: a white title-window tab running into the
  * panel (like a folder tab) with a padlock - open = the panel lies over the
  * game, shut = locked beside it - in OPTION's grey / red, with the text's
- * shadow. A tap locks / unlocks; dragging it sideways (handled by the view
- * around it, in screen coordinates, since the tab moves with the finger)
+ * shadow. A tap locks / unlocks; dragging it sideways (handled by [PanelResizeHandle]
+ * using accumulated pointer deltas, since the tab moves with the finger)
  * resizes the panel.
  */
 @Composable

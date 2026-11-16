@@ -1644,6 +1644,37 @@ entries showing its sprite's tiles (subsprites split it; parked entries sit at y
 mgba_dump: `follower FILE` (frames + palette), `followon 1`, `followinfo`; checked walking / turning / running in
 Emerald and FireRed, with EXPAND too.
 
+### Sprite packs (the makeover's graphics in one file)
+
+PLAYER LOOK, TEXT LOOK and FOLLOWER need the other games' graphics, which a scan of a ROM leaves decoded in
+`rom-art/look/` (`<hero>/<part>.bin`, `text/<style>/<part>.bin`, `mon/<source>/<national>.bin`). A sprite pack is those
+files in a zip, so a player without the other ROMs can load them: library > TOOLS > SPRITE PACK (`SpritePackFlow`, NEW tag
+`SPRITE_PACK`). The rule stays: nothing is bundled, nothing is downloaded, the repo never holds a pack and the app, manual and
+site never link to one. Whoever has the ROMs makes it:
+
+```bash
+make sprite-pack SPRITE_ROMS="<folder of your ROMs>" SPRITE_PACK=<out.zip>
+```
+
+(ui-preview's `spritePack` task, `src/render/SpritePackTool.kt`: every `.gba` under the folder through the app's own
+`PlayerLook.scan` / `LookArt.keep` / `TextArt.keep` / `MonArt.keep`, each ROM into a folder of its own; defaults: the test
+ROM folder, `~/Documents/PokeDaisy/pokedaisy-sprites.zip`.) The zip holds `pokedaisy-sprites.txt` (`pokedaisy-sprite-pack
+<format>`, `made <date>`, then `path size crc32` per file), a README and the files at their `rom-art/look/` paths.
+
+**Exact graphics only** (`SpritePack.kt`): a file goes in only where its path names a known graphic (`itemOf`: no `..`, no
+other names) and its size and CRC32 are that graphic's: the heroes' and text looks' fingerprints (`LookBlob`, `TextBlob`),
+the follower Pokémon's table (`MonArtSigsGen.kt`). So a pack can't put a byte into the running game that a scan of a known
+ROM wouldn't have; anything else is counted as refused and left out. The reader (`SpritePackFlow.read`) keeps only the
+manifest and `.bin` entries, 64 KB each, 4000 entries and 48 MB at most. A load never overwrites a kept file, then writes
+the region map heads of heroes now whole (`LookArt.keepHead`, as a scan does). The pack is the tool's output after
+`SpritePack.collect`, which applies the same check, so a pack never carries what the app would refuse.
+
+The follower Pokémon have no fingerprints, so their CRCs are generated from the hacks' ROMs (`make sprite-pack-sigs`, every
+version found: Recharged Yellow's versions draw a few species apart): rerun it after changing what `MonArt.keep` writes, or
+for a new follower source or version, and the next pack takes them. `SpritePackTest` (paths, refusals, round trips from
+FireRed / Emerald and the four follower hacks), `SpritePackFlowTest` (the zip reader, a real pack through it); ui-preview
+`library-sprite-pack-*`.
+
 ### Co-op: seeing each other (the partner on your map)
 
 Two linked players on retail English Emerald (BPEE, SHA-1 `f3ae0881...`, the same ROM on both) see each other's character
@@ -2118,7 +2149,7 @@ only keeps a 256x256 ring of tiles in VRAM (`field_camera.c`), so the rest would
   first-time setup), and once more on the companion the first time a game EXPAND knows opens while it's still off
   (`Prefs.expandGameOfferSeen`, `CompanionSettings.expandOffer`) - "NOT NOW" on the Library doesn't stop that one, but
   any answer to it settles both. TURN ON sets ASPECT > EXPAND. ui-preview: `library-expand-intro`, `*-expand-offer`.
-- **A phone upright** (`PortraitPanel.expand`, `GameStageLayout.expand`, `PortraitLayout.arrange(expand)`): the game
+- **A phone upright** (`PortraitPanel.expand`, `GameViewportView.expand`, `PortraitLayout.arrange(expand)`): the game
   takes everything above the companion (COMPANION's AT BOTTOM / UNDER GAME land in the same place then) and the touch
   pad lies over it; 1x is the frame at the view's full width (`levelsFor` takes the smaller fit), so the window goes
   on above and below it (a 1080-wide phone: 4.5 -> 3 / 2).
@@ -2269,6 +2300,51 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
   `MapHeaderPointers`), Red / Blue (Yellow's + 1 from 0xCF1B, SGB palettes: `palette` takes `sgbAttributes` there), Gold /
   Silver and Prism (Crystal's engine, their own addresses), Polished Crystal's other builds, battles past the edges, walking
   frames for Gen 1's off-screen NPCs.
+
+## AREA maps (`AreaMap.kt`, `AreaMapView.kt`)
+
+A cave or building's own map on the MAP tab and the HUD's minimap, with its floors: every GBA ROM with a row in
+`gamedata/gen3/area_maps.toml` (retail in every language and most hacks; docs/ROM_FEATURES.md's Area map column). Nothing
+bundled, nothing coded per game: the map is drawn from the ROM the way the game builds it, from a row per ROM by its CRC32
+(the activity sets `activeAreaMapCrc` to the CRC EXPAND looks up by, so a randomized retail cart uses retail's row). A row
+holds gMapGroups (+ Unbound's XOR) and its groups' sizes, and the engine's numbers: where secondary tiles and metatiles
+start and how many palettes the primary has (FireRed's engine 640 / 640 / 7, Emerald's 512 / 512 / 6; R.O.W.E. 512 /
+2048 / 6), MapHeader's floor byte (FireRed's engine +0x1A; Emerald's has none), the metatile size (24: Lazarus's and
+Monomyth's three layers), the grid's id mask (R.O.W.E. 0xFFF, SoulGold 0x7FF), SoulGold's u16 map section (`mapSecWide`),
+and for a ROM with two kinds of layout the other kind's numbers (`alt`: Heart and Soul's MapLayout +0x18 is 0 for its
+Emerald-style layouts, 512 / 512 / 6, and 2 for its FireRed-style ones, 640 / 640 / 7).
+`AreaMap.matches` checks a row against the ROM before anything is drawn.
+
+The rows are generated, never typed: `python3 scripts/gen_area_maps.py --scan <folder of GBA ROMs> [--report DIR]` takes
+gMapGroups and the engine's numbers from EXPAND's rows (`pk_wide_games.h`) where a ROM has one, else finds gMapGroups by
+its shape; sizes each group from the ROM (empty groups and deleted maps allowed: Rogue, Amethyst); and works out where
+secondary tiles start from the tile data (the split under which the maps' secondary metatiles land inside their tilesets'
+tiles, 98% at least). EXPAND rows whose ROM isn't on hand take a sibling build's row (same game, same gMapGroups).
+`--report` draws a few indoor maps of each ROM to look at (LZ77 only; `AreaMapTest`'s `every row reads its own ROM` writes
+one per ROM, smol included, to `app/build/area-maps/all/`). Its `LATER` list keeps out what passed the numbers but drew
+wrong (Team Rocket Edition 2026) or is blocked; the file ends with every ROM left out and why. Then
+`python3 scripts/gen_area_maps.py` (`make gamedata`) writes `AreaMapTablesGen.kt`; `make check` / CI fail while it's stale.
+
+What it reads, in every Gen 3 engine (the recipe for the 3DS / Linux C companion):
+
+- The area: from the player's map (SaveBlock1's location, which the companion has anyway), breadth first over MapEvents'
+  warps (+1 count, +8 list of 8-byte `{x, y, elevation, warpId, mapNum, mapGroup}`; group 0x7F = dynamic, skipped), keeping
+  maps that share the start's map section (MapHeader +0x14) and aren't outdoors (mapType +0x17 not 1, 2, 3, 5, 6). An elevator
+  leads nowhere (dynamic warps), so from one the floors are found the other way: the group's maps whose warps lead in.
+- The floors: numbered ones (floor byte != 0) lowest first, 127 = `RF`; unnumbered ones by map id (the decomps list a place's
+  maps in the game's order), numbered 1, 2, 3; in a numbered building an unnumbered room only when the player is in it.
+  Shown when there's more than one map or it's bigger than 15 x 10 metatiles.
+- The picture: MapLayout (+0 width, +4 height, +0xC grid of u16 - raw, or LZ77 when its header says so with exactly
+  width x height x 2 bytes: Monomyth's indoor maps - +0x10 / +0x14 tilesets); Tileset (+0 compressed, +4 tiles
+  raw, LZ77 or smol - pokeemerald-expansion's, `Smol.kt` / the 3DS core's `pd_smol.h` - +8 palettes, +0xC metatiles of 8
+  u16 tile entries, bottom layer then top, or 12 for three layers); palettes 0 until the primary count from the primary's
+  list, the rest to 13 from the secondary's; colour 0 of palette 0 under everything; grid ids & the mask, the mask itself =
+  undefined (see-through).
+
+It's the ROM's map, not RAM's: what changes as you play (a boulder pushed, a door opened, items picked up, people) isn't
+drawn. `AreaMapTest` checks FireRed's, Emerald's and Unbound's floors and labels and every row against its ROM; ui-preview
+`-Ponly=area-map -Prom=<ROM>` draws the tab (`areaMapSpot`), Paparazzi `FieldHudScreenshotTest.cornersAreaMap` the
+minimap. A new ROM: put it in the folder and rerun the scan (an EXPAND row first makes it surer), then look at its picture.
 
 ## FREE FLIGHT and the scenic FLY (`pk_flight.c`, `Flight.kt`, `ScenicFly.kt`)
 
@@ -2572,7 +2648,7 @@ built-in frames, storage + import - ui-preview compiles it, `OverlaysTest` cover
 - **Drawing** (`EmulatorView.FrameRenderer`): the overlay is a second texture, blended over the game
   (premultiplied, `GL_ONE, GL_ONE_MINUS_SRC_ALPHA`) or drawn before it when it's a background; the game's
   quad is its place in the window, so SHADERS' prescale and the companion's grid cell (`onGamePixel`)
-  follow the game's real size. With an overlay `GameStageLayout` gives the view all the room under the
+  follow the game's real size. With an overlay `GameViewportView` gives the view all the room under the
   status bar. Off on a phone held upright (`topAligned`), where the game is its own shape across the top.
 - **Previews**: `gradle render -Ponly=overlay` in ui-preview draws each built-in frame (Thor, Game Boy,
   half-screen side panel, 4:3) and an import of a drawn wooden frame (window found from alpha) around a
@@ -3268,7 +3344,7 @@ follow (engine A's registers, palettes, OAM) is a snapshot taken as line 192 sta
 the frame, it was already the game's VBlank handler's next frame - a battle's fade-in a step brighter than the screen,
 scroll and sprites a step on. `nds_dump`'s `look DX DY` moves the window a frame at a time, as the look-around does.
 
-**DS LAYOUT (one screen).** With no second screen, held sideways, `GameStageLayout.dsArrange` places the two screens by
+**DS LAYOUT (one screen).** With no second screen, held sideways, `GameViewportView.dsArrange` places the two screens by
 `DsLayouts.arrange` (the game in the top box, `NdsTouchScreenView` in the touch box, edge to edge; behind both the game's own
 picture, `DsShots`: a PixelCopy of the game view about once a second, the overworld kept apart while a menu screen is up and
 drawn sharp under its dim, else the newest drawn blurred; the HUD over the whole area, its rects moved by `dsGameOffset`). ONE SCREEN and PICTURE IN PICTURE float the touch
@@ -3312,7 +3388,7 @@ field, B to the menu (headless: the card's Cancel, the menu back for 11 frames, 
 screen), the screen's closing fade - black after it was lit, `menuLitFrames` - sets it to buttons
 (`pk_nds_field_keep_start_menu`), so the menu comes back with its cursor; the screen itself still opens as it was opened. LARGE + SMALL and PICTURE IN PICTURE give
 the HUD's CORNERS `DsCornerLayout` (FieldHud's `dsCorner`: the buttons bottom left, the party in two columns under the
-minimap, three to a row where `GameStageLayout.dsTouchOverGame` says PIP's inset would meet it). Outside the field and battles
+minimap, three to a row where `GameViewportView.dsTouchOverGame` says PIP's inset would meet it). Outside the field and battles
 (`EmulatorEngine.dsWideScene` off) EXPAND has nothing to widen, so the stage keeps the game's 4:3 with the backdrop beside it. A game without rules (the German HeartGold / SoulSilver) gets ONE SCREEN as PICTURE IN PICTURE (`DsLayout.forGame`).
 
 **Platinum's and Black / White's rules (2026-11-01).** Platinum (a new game played headless, given two Pokémon and a wild
@@ -3620,8 +3696,40 @@ The GBA / Game Boy game itself (starting and closing it, its frames, picture, so
 plain C API with no JNI in it: `pk_api.h`, implemented by `pk_session.c`. `pokedaisy_jni.c` calls it (and puts the DS
 games in front of it); the iPad app will call the same functions. `pk_api.cmake` builds it, mGBA included, as the
 static library `pk_api`, which the app's `CMakeLists.txt` links and any other host can too. The rest of the native code
-(states, cheats, EXPAND, REWIND, the render core, the game calls...) still reaches into its state as `g`
+(EXPAND, the render core...) still reaches into its state as `g`
 (`pk_session.h`, a transitional header) and moves under `pk_api.h` one area at a time.
+
+`GameSession` (`shared/src/commonMain/.../game/`) owns queued between-frame work, field-job delays,
+safe-call waits, menu/map observation and the settled on-field signal. Both `EmulatorEngine` and
+`GameRuntime` drive it from their existing loops. Posted work runs before dirty patches, then field
+work; a callback's newly queued work waits for the next batch. Co-op holds skip field service without
+advancing delays, and iOS rewind skips the forward-work hook. Close/reset drop both queues and field
+visibility so delayed calls cannot reach the next game. Render/audio and each host's state operations
+remain with the host. `GameSessionTest` exercises this ordering, waits, busy gates, failures, close and
+fade/field settling on JVM and iOS.
+
+`FieldItemSupportCache` shares Android's per-ROM code checks and retry-on-read-failure behavior.
+A live party is required before looking up even cached support: a title/intro can identify a map without
+having a running party yet. This avoids exposing PC/item calls before gameplay.
+`FieldItemUse` shares the bag/party actions and queued result delivery, including NOT_NOW becoming
+IN_BATTLE. Android delegates its standard actions and keeps DS, GB and TM orchestration; iOS supplies
+its live game session and main-thread result delivery. A result from a replaced session is dropped.
+iOS now uses Android's `RamSnapshot.capture` before background telemetry decoding, so a sample does
+not read live GBA RAM while frames or item calls run. GB sampling stays on the game thread, as on Android;
+the core read lock protects core lifetime and ROM mapping, not whole frames.
+
+`ClassicFlyAction` shares the GBA target checks and start/fade/finish sequence, using the same
+`FieldItemUse` result policy and `GameSession` queue. Android keeps its DS/GB/scenic routing and delegates
+the classic branch; iOS uses the classic adapter directly. A delayed finish observes the second frame's
+busy state and stays attached to the original session, so a new scene/game cannot inherit its warp.
+
+Field actions reach the existing call machinery through `pk_api_call_safe`, `pk_api_call`,
+`pk_api_gb_call_at` and `pk_api_write`, on the game thread between frames. Android JNI delegates to these;
+its DS write branch stays with the DS core. `PkApiCore` implements the existing `GameCalls` interface so
+shared PC / FLY / item actions can use it directly. Writes are restricted to scratch WRAM (including packed
+CGB banks), never ROM, I/O or battery RAM. GBA calls preserve CPU context and return unsigned r0 as a Long
+(`-1` means failure); GB calls return when scheduled. `pk_calls_api_test` covers real diagnostic calls,
+argument passing, unsigned results, timeout recovery and rejected ranges; `PkApiCoreTest` checks cinterop.
 
 Its host test runs it off Android on `linux/make_diagnostic.py`'s ROMs (CI's "Core C API (host)" job):
 
@@ -3638,11 +3746,44 @@ setup. Linked ROMs and saves folders are shared, so the same game played in both
 RetroArch. No crash reports (`BuildConfig.CRASHLYTICS` false: google-services.json has no client for its id). The
 adb-driven scripts (`scripts/roms.conf`, `run-as`) still name the release id.
 
+On iOS the shared module (`shared/`) reaches it through Kotlin/Native cinterop: `shared/native/build_ios_core.sh`
+(Gradle's `buildIosCore`, on a Mac with Xcode) builds `pk_api` for the iPad and the iPad simulator into
+`shared/build/pkcore/` (one `libpkcore.a` per slice, plus `PkCore.xcframework` for Xcode), and `PkApiCore` (iosMain)
+runs a game through it and is the data code's `EmulatorCore` there. `./gradlew :shared:iosSimulatorArm64Test` runs it
+in the iPad simulator on the same diagnostic ROMs (CI's "Shared code for iOS" job, on macOS).
+
+The game on the iPad is `GameViewController` (`shared/src/iosMain/.../game/`), a UIKit view controller in Kotlin
+the app shell embeds wherever the game goes, its own controls over it: `GameRenderer` draws the frame with Metal (sharp
+bilinear, its shape kept, a shader compiled at run time), `GameAudio` plays the sound through AVAudioEngine from a
+lock-free `AudioRing`, `GameInput` reads controllers (GameController) and a hardware keyboard and adds the shell's
+`touchKeys`. The display's refreshes drive the game on the main thread, `FramePacer` keeping its 59.73 frames a second
+on a 60 or 120 Hz screen. Their tests run in the simulator with the core's (`GameRendererTest` draws the diagnostic
+frame offscreen and checks every pixel, skipped where the machine has no Metal device). `RomPicker` adds games from Files
+(the system's document picker, .gba / .gb / .gbc), copying them into the app's `Documents/roms/`; a game's save is
+`Documents/saves/<name>.sav`.
+
 The generator scripts under `scripts/` and ui-preview's ROM-art rendering read
 built pret decomp checkouts (`pokefirered/`, `pokeemerald/`, `pokeruby/`,
 `pokehns/`, each built at its pinned commit) from the directory in the
 `DECOMPS` environment variable. Machine-local paths go in an untracked
 `local.mk`, which the Makefile includes (see `local.mk.example`).
+
+### Shared state files
+
+`StateFiles` (the shared data module) owns the `ss0` to `ss9` layout, thumbnails, companion caches, one-level save
+undo and newest-state selection. Android's `SaveStates` keeps its File-based API and existing CRC directory names,
+over the same layout. New state blobs write to a temporary sibling before replacing the slot. Optional sidecars are
+removed when unavailable, so a new state cannot keep an old screenshot. The iPad host can use a ROM-content key
+rather than its changing app-container path. `backupBattery` keeps distinct copies before an explicit state load.
+
+### The core's state API
+
+`pk_api_save_state`, `pk_api_load_state` and `pk_api_state_matches_save` are the GBA / Game Boy state functions,
+shared by Android's JNI dispatch and the iPad's `PkApiCore`. They use mGBA's extended state with battery data and
+RTC, on the game thread, between frames, under the core lock. A manual load rewinds the battery save too: back it
+up first. For automatic resume, establish a save match first; changed or unverifiable saves must boot from the file.
+State writes target a temporary file before the host atomically replaces its slot. The C host test `pk_state`
+checks round trips, invalid states, cross-platform refusal and detection of a changed battery save.
 
 ### The shared module (`shared/`, for the iPad app)
 
@@ -3654,14 +3795,176 @@ okio. What differs by platform comes in from outside: the emulator through `Emul
 `MgbaEmulatorCore` in `PokeDaisyApp`), logging through `Logs`' sink. Their tests stay in `app/src/test` too and run as
 `:shared:testDebugUnitTest` (from `app/`, as before), except the few that also use the app's classes (the root
 build's `appOnlyTests`), which run with the app's. Something the app uses from those folders must be public, not
-`internal` (another module now). `./gradlew :shared:compileKotlinIosArm64` compiles it for an iPad, on Linux too; CI's
-"Shared code for iOS" job does. The macOS "Shared code on the iOS simulator" job also links and runs the
-portable smoke tests in `shared/src/commonTest`: files, PNGs, background work / locks and a fake emulator.
+`internal` (another module now). `./gradlew :shared:compileKotlinIosArm64` compiles it for an iPad; since the
+emulator core comes in through cinterop (see "The core's C API"), that needs a Mac with Xcode. CI's macOS "Shared code
+for iOS" job compiles both iOS targets, then links and runs the iOS tests in the simulator: the core's (`PkApiCoreTest`)
+and the portable smoke tests in `shared/src/commonTest` (files, PNGs, background work / locks and a fake emulator).
 Run them locally with `./gradlew :shared:iosSimulatorArm64Test` on an Apple Silicon Mac with Xcode and an iOS simulator.
-For focused JVM tests, `make test-quick T='*RomFilesTest'` runs them in the module that has them
-(`scripts/test_module.py`; `MODULE=app` / `MODULE=shared` forces one). A filter that matches no test still fails in
-Gradle; unfiltered `make test-quick` runs both modules.
+For focused JVM tests, use `make test-quick MODULE=shared T='*RomFilesTest'` (`MODULE=app` for app tests).
+A filter must match a test in that module; unfiltered `make test-quick` still runs both modules.
 ui-preview still compiles the same files straight into its desktop build.
+
+The canonical key codes, `GbaControls`, `Hotkeys`, `GbaInput`, `ScriptInput` and `KeyCapture` also compile in
+`shared/`, from their existing app paths (`sharedCoreSources` in the root build). Both native hosts can use the same
+bindings, chord capture, deferred taps, turbo and script ownership. `AndroidGbaInput.kt` converts Android motion
+events to the common axis policy; UI badges stay in `shared-ui/`. The app excludes these files from its own compile.
+
+### The companion's screens (`shared-ui/`)
+
+`GameSaves` shares battery-save import transactions and dated backup names/listing. Hosts choose locations and
+their existing compression/extra-backup adapters. The common import rejects invalid input before opening state
+storage, stages bytes before touching the old save, commits fresh-boot intent before replacement, and rolls the
+old battery and marker back if publication fails. Automatic state/cache cleanup happens only after commit.
+If restoration is blocked too, the error names the retained battery backup. Same-second imports get distinct backups in newest-first order with the
+usual extension. Backup stamps use common date/time code in the device's timezone. Android keeps its RZIP decoder;
+iOS keeps its existing compressed-save refusal. A native host test verifies the iOS save/state paths and backup.
+
+`RomIdentityReader` shares header parsing, console detection, streaming SHA1/MD5 and the DS achievement hash.
+Raw paths use okio; Android's `RomIdentity` supplies its existing archive reader. Both game hosts use the same
+header parser. The DS hash consumes the contained cart too, rather than a compressed archive's bytes, and retains
+the header/code/icon ordering, SuperCard prefix handling, zero padding and code-size limit used for loose carts.
+No core is needed and whole-file fingerprints still stream through a bounded buffer.
+
+The battle menu driver (`BattleInputController.kt`) also compiles in `shared-ui/`, in place. The core module's
+`ScriptInput` interface delivers synthetic keys to the platform input (`GbaInput` on Android); logging uses `Logs` and its lock is
+multiplatform. The menu navigation and its tests stay the same when another platform supplies that input channel.
+
+`GameSampler` owns RAM capture, coroutine decoding, request coalescing and delivery for both game hosts.
+Captures stay between frames on the game thread, one RAM image remains in use until its decode ends,
+and a burst of requests queues one follow-up. Game Boy reads remain synchronous on the game thread.
+Android retains its frame-based cadence and dispatches results through the engine queue; iOS uses the
+same sampler with a coroutine timer and main-thread delivery. Closing prevents queued work or results
+from configuring another game. `TelemetryStore.deferredRefresh` binds an image to its original sampler
+and generation before queueing it, including when a worker starts after the next game has reset telemetry.
+
+`GameCheats` owns the per-game list, storage updates, enabled text and bounded import reader for
+both game hosts and Android's library cheat editor. Stores and formats remain `CheatStore`'s; imports
+stay off until enabled. The stream reader stops at 1 MiB plus one byte, including document providers
+with no size metadata, and rejects empty/oversized input before changing storage. Android retains its
+co-op vetoes and dirty-flag submission between frames; iOS submits only while its game is running.
+Library import completion is scoped to the selected session so a late result cannot replace another
+game's list. The iOS-only cheat class has been removed.
+
+`GameActions` dispatches the common hardware shortcuts and touch extras for both hosts, using
+`CompanionSettings` and `StateSlots`. It owns press/release policy, slot wrapping and touch FF's 300 ms tap
+threshold. Hosts receive hold effects with a hardware/touch source and retain their native input delivery
+and extra actions. Cancelling touch actions clears a pending FF tap before releasing holds. Android's
+slot adapter retains co-op refusal checks; native frame loops and input aggregation are unchanged.
+
+`StoredCompanionSettings` is the persisted-choice contract; `CompanionSettings` adds game actions and capabilities.
+`PrefsCompanionSettings` is a concrete persistence delegate, not a host superclass. Both hosts implement the full
+contract and use Kotlin interface delegation for stored choices. Android creates its adapter lazily after
+attachment and retains co-op/capability checks before delegating writes. iOS installs its playback/field-option
+change listener before exposing settings to the UI. Notifications observe committed values; ROM language and
+resume-disable permission are explicit providers. Shared speed choices serve UI and setter validation. The historical
+battle-style representations remain integer IDs on Android and names on iOS through the common Prefs codec;
+no installed value is rewritten merely by reading it.
+
+The follow-up ownership and host-reduction sequence is in [Shared host composition](specs/shared-host-composition.md).
+
+`Prefs` is common code too, compiled in place by `shared-ui`. `PreferenceStore` is its primitive
+storage interface: Android keeps the existing `pokedaisy` SharedPreferences file through `PrefsAndroid`,
+and iOS keeps its NSUserDefaults domain through `DefaultsPreferenceStore`. Existing Android `Prefs(context)`
+callers and file-name helpers stay source compatible. Shared getters, codecs and compound edits retain their
+keys and representations; host defaults preserve iOS's initial hotkey and companion-window choices.
+The device-performance default for DS CPU boost stays with Android. The iOS settings, touch preferences,
+theme store, NEW dates and learned fast-forward callbacks use this same implementation. Other settings
+orchestration and the library's historical format are consolidated separately, without resetting stored data.
+
+`shared-ui/` compiles the companion's screens for Android and iOS the same way, where they live: `companion/ui`, the
+`companion/*.kt` settings and state beside them, the co-op screens' model (`companion/coop`, without the transport and
+session files, which are Android / JVM only: sockets, Android NSD, Bouncy Castle, OkHttp), the manual reader
+(`DocsApi.kt`, `DocsSearch.kt`), `cheats/Cheats.kt` and the binding rows' NEW badges (`InputBadges.kt`), against
+`:shared` and Compose Multiplatform 1.7. The app links it and leaves those files out of its own compile and lint (the
+root build's `sharedUiSources` / `sharedUiAppOnly` name them for both); ui-preview still compiles them straight into its
+desktop build. Their tests stay the app's (Paparazzi and the rest under `app/src/test`), so a declaration the app or its
+tests reach is public, not `internal`. The same rule holds there (no `java.*` / `android.*`); what only the platform can do comes in through a
+host set at start, as `EmulatorCore` does for the data code: `FontSource` (fonts), `PictureCodec` (images), `ThemeStore`,
+`DocsSources`, `CheatParser` (mGBA's code check), `DeviceDates` (the device's date format). A new host is set in
+`PokeDaisyApp`, ui-preview's `installPreviewHosts` and the screenshot tests' `installTestHosts`. CI's "iPad app (simulator
+build)" job compiles it for the iPad (`./gradlew :shared-ui:compileKotlinIosArm64`) and links it for the simulator, on a Mac
+since the core under `shared/` needs Xcode (advisory for now).
+
+On iOS the hosts are `shared-ui/src/iosMain` (`IosHosts`: fonts from the app bundle, pictures through Skia, THEME / DARK
+MODE in NSUserDefaults, the manual kept in Application Support, NSDateFormatter's dates; CheatParser stays unset until the
+iOS core has mGBA's parser), and `PokeDaisyHost` is what Swift calls: `start()` once, then `companionViewController()`.
+The module links into one static framework, `PokeDaisyUI`.
+
+### The iPad app (`iosApp/`)
+
+A SwiftUI shell over that framework: `xcodegen` in `iosApp/` makes `PokeDaisy.xcodeproj` from `project.yml` (the
+generated project stays out of git), whose build runs `:shared-ui:embedAndSignAppleFrameworkForXcode`. Swift switches
+between the shared full-window library and shared game-screen controllers. `PokeDaisyHost.gameScreenViewController`
+embeds one native Metal `GameViewController` in the common `GameScreen`; rotating, hiding and resizing panels move
+that controller without replacing it. Files-based games/saves, the shared library/setup/settings, touch editor and
+resume/state bridges live in the Kotlin hosts. Settings expose only supported capabilities. Fonts come from the app's
+own assets. CI generates and builds the simulator app without signing; `iosApp/README.md` describes local builds.
+
+`GameBattleInput` owns the battle controller, fast state polling, transition notifications and detected menu/party
+configuration on both hosts. Android keeps its elapsed-time poll cadence, native script-input channel, RAM writer and
+DS stylus driver; it requests another full sample while battle data is still arriving. iOS uses its frame-based poll
+cadence and key mixer: `GameViewController.frameKeys` runs it before every emulated frame after combining touch,
+controller and keyboard input. Scripted presses own those keys only while a sequence is active. Fast iOS checks run
+every four game frames and request a full companion sample on a transition. Detected cursor and party-menu addresses configure its closed-loop navigation;
+without memory writes it walks the cursors. Party switching uses `battleSwitchAddrsFor`, the Android activity's verified mappings shared in place, including each hack's structure size and grid layout. It is offered only where those mappings support it.
+The shared battle view, style, focus, info and one-tap settings persist in `NSUserDefaults`.
+
+`GameOptions` owns option discovery, desired patch state and field/auto-run policy for both hosts. Coroutine
+discovery runs off the UI thread; cancellation and a generation check discard results from a replaced, closed or
+blocked game. UI setters atomically publish desired state, and each host applies it at its existing frame boundary
+through `GameOptionPatches`. A setting changed during a patch remains pending for the next frame. Android retains
+its co-op battle gate and core field configuration; iOS retains its verified field adapters. The shared transaction
+owns rollback for their combined patch set. Both JNI and
+Kotlin/Native reach `pk_api_rom_patch` / `pk_api_rom_unpatch`; those functions own the core write lock, validate
+expected and replacement byte ranges, and preserve the existing co-op uninstall behavior. Identity reads still
+see the original file bytes. Fault-injection tests cover partial edits and failed restoration of the other feature.
+
+The iPad playback settings update `GameViewController` on the main thread: `FramePacer` scales emulated time for a
+capped speed, with real-time catch-up bounded before scaling; unlimited FF runs batches with an 8 ms budget.
+`pk_api_set_audio_rate` requests fewer samples per emulated frame during FF (pitched audio at the device's 48 kHz).
+`GameAudio` sets mixer volume for GAME VOLUME / MUTE GAME. Normal speed is per ROM path; FF and volume are app-wide.
+`GameRuntime` shares watcher setup, learned menu callbacks, telemetry-fed position learning, live speed settings,
+requested speed, SMART gating and field readability. Both hosts use it with the existing `PlaybackPolicy`.
+Android retains its frame order, DS holds, rewind and scenic-flight overrides; iOS drives the same session from
+its display callbacks and maps common infinity to its native pacing sentinel. Learned menu callbacks stay under
+the existing per-CRC v2 key. Closing an older owner cannot remove the next game's callback or region-map watch;
+the stored callback captures preferences without retaining the old game host. A stale map scan cannot publish
+into the next game either. The iOS-only playback class has been removed.
+`pk_api_field_configure` and `pk_api_field_state` expose the existing GBA field tables for observation with game patches
+disabled. Unknown CRCs and Game Boy return no field state, so TEXT / BIKE / SURF rows remain N/A there. Bike/surf
+become available after a trustworthy avatar read. No new ROM address tables are maintained by iOS.
+`GameViewController.frameSpeed` resolves speed at a display callback, and `afterFrame` updates observations after
+each game frame. A scene change ends the current batch immediately, including uncapped FF, so a newly opened menu
+does not consume the remaining fast frames. Steady music and speed hotkeys are still unavailable on iOS.
+
+The GBA field options use `pk_api_field_wild` to bind the shared finder's verified EWRAM switch, then
+`pk_api_field_step` once per frame for the existing indoor/encounter policy. JNI delegates the same operations to
+that API; the DS path stays separate. Field stepping owns the core write lock. `pk_field_observe` reads flags
+without changing the encounter switch, ownership or RNG. A resumed OFF state keeps the original ownership rule.
+`AutoRunPolicy` is compiled in place for both hosts and runs on manual keys before battle scripts. The native
+table and field-callback guards remain required; Game Boy's separate field routines have not been wired on iOS.
+
+Both STATES bridges use common `StateSlotController` over `StateFiles`: slot saves, loads, delete and both
+undos, using the existing screen. Android services it on the emulator thread; iOS uses
+`GameViewController.withState`. Hosts supply native read/write callbacks, a thumbnail and a cached companion
+snapshot. Android's `.ra` achievement progress travels with the same staged state, previous-slot copy, undo load
+and delete transaction. A failed partial core write preserves the previous slot and clears staged sidecars.
+Android retains its co-op load and save restrictions and HUD result callbacks. `GameViewController.withState`
+stops queued audio, finishes a battery save, releases scripted input, then
+runs the operation between display callbacks. Loads require a battery backup and an undo snapshot before changing
+memory. Files live in Documents/states/<ROM SHA-256>, so a reinstall's new container path does not lose their identity.
+
+`StateResume` handles automatic capture and restore on both hosts. Android stages manual fallback with its
+companion cache and achievement progress, consumes only the automatic state and retains its distinct background
+sleep behavior. Other-core DS snapshots use a host rejection callback to park their entire bundle for that core.
+Initial core startup restores only a snapshot whose embedded
+battery data matches the live save; mismatched/unverifiable automatic snapshots are parked. Pausing captures before
+the core is closed, while a foreground return retains the in-memory core. Import, restart and disabling resume write
+`boot_fresh` before removing the old resume. That marker blocks even matching manual-slot fallback across crashes,
+and is cleared only after a new resume snapshot commits successfully, including on Android. Android's restart and
+RESUME GAMES-off launch use that same fresh marker; same-process sleep still retains the running core.
+The iPad's APP group exposes RESUME GAMES. Explicit close/restart first pauses and captures;
+failure resumes the running core and leaves the UI open rather than discarding the unsaved moment.
 
 ## ScreenScraper and the dual-screen launcher
 
@@ -3844,3 +4147,289 @@ pushing a different file (only one at a time for now). SRAM persists to
 | `scripts/capture_fixture.sh`, `scripts/roms.conf`       | Captures a live EWRAM+IWRAM memory fixture for one ROM off the device.                                                                                             |
 | `app/src/test/resources/fixtures/<key>/`                | Captured `{ewram,iwram}.bin` + `README.txt` per ROM — replayed by the JVM decode tests, not committed ROMs/saves themselves.                                       |
 | `app/src/test/kotlin/.../companion/data/*DecodeTest.kt` | One regression test per supported ROM, decoding its fixture and asserting the known-real values.                                                                   |
+
+### Shared touch-control preferences
+
+`TouchStyleCodec` reads and writes the existing Android touch keys through small typed storage callbacks. It keeps
+legacy vibration and extra-button migrations in one place, including the per-orientation custom layouts. Android
+`Prefs` supplies SharedPreferences callbacks and batches writes in one editor; other hosts can use their native
+preferences without duplicating the settings model or inventing a second encoding.
+
+The iPad's IosTouchPreferences supplies native storage, controller discovery and haptics to the shared model.
+IosTouchControls hosts the shared pad and layout editor; it measures the real pad's window coordinates rather than
+inventing a second layout. Editing blocks foreground resume, releases held keys and restores normal playback on DONE.
+The shared settings accept a host's supported buttons without dropping stored choices for unsupported actions.
+
+### Shared library presentation
+
+`companion/ui/LibraryScreen.kt` contains the library frame/rail, header buttons, list/grid layout, game cards, cover
+well and game menus extracted from LibraryActivity. The Android activity supplies LibraryGame data, asynchronously
+decoded covers and native action callbacks. Its external-screen launcher uses the same cards and menus. Native files,
+media fetching, permissions, scanning and launches stay outside shared UI. Both grid and list retain stable item keys
+and their existing UP-to-header focus behavior.
+
+`AppPages.kt` also shares Android's setup frame, ROM/save/button pages, progress bar and searchable app-settings home.
+Android retains its setup state, pickers and optional media services; the shared pages receive portable display models
+and callbacks. Hosts that copy picked games rather than linking folders can select that capability without presenting
+Android permission instructions. The settings host retains focus ownership and row actions while sharing the presenter.
+
+`LibraryScreen` is the shared presenter as well as the widgets: its display model, actions and focus record drive the
+header, quick views, empty states, search strip and collection. Hosts supply data and card/menu callbacks. App-settings
+title chrome and the about footer are shared too. Application-mode settings use the companion's page catalog and
+searchable home; hosts can omit game-only controls when no core is open.
+
+`GameScreen(GameScreenState, ...)` owns Android's one-screen composition: portrait/tabletop companion sizing,
+landscape/book/window placement, resize grips, open/close tabs, animation and layer order. It reuses `PortraitLayout`,
+`SidePanelState` and `PanelResizeHandle`; a hidden companion remains composed at a positive size without placement,
+so closing/reopening preserves navigation and does not feed zero dimensions into window typography.
+`GameScreenState` owns interaction and calls host callbacks for saved choices and modal input ownership. Renderer,
+controls and optional underlay/HUD/key-capture slots keep their identity while geometry changes. The root composes the
+existing HUD, DS window and performance presenters directly, avoiding full-screen native overlay interop views that
+would obscure the common chrome's accessibility semantics.
+
+Android's `GameScreenView` is an adapter around this shared root; the old `GameStageLayout` is removed. `SidePanel` and `PortraitPanel` retain only
+preferences, DS content, hardware keys and native focus/shader isolation; they contain no panel measurement, placement
+or resize implementation. `GameViewportView` fits the native GL surface/status strip and DS/skin pictures within the
+assigned renderer viewport. It measures each nested Compose leaf once per pass; measuring it full-size and then fitted
+inside interop causes repeated outer-layout invalidation. Its picture rectangle positions the shared HUD and key
+capture. Touch editing converts native view locations to stage pixels rather than assuming direct FrameLayout children.
+
+The Compose root and isolated companion views use the activity's recomposer and lifecycle, surviving a display swap
+or temporary window detach. The Android touch pad remains `TouchControlsView`, including its native urgent-thread
+`TouchInputWindows` and Samsung fallback. Common chrome reserves its actual minimum touch-target bounds; the adapter
+translates those into window coordinates. The pad windows also follow the anchor display and its manager across SWAP and display removal. `excludeTouchRegions` removes them from pad windows, and the common hit model
+releases held game keys when a finger enters a reserved area. `CompanionColors` applies the same shader to Compose-owned
+HUD/chrome layers while leaving native game rendering and controls independent.
+
+Tests cover state/input ownership, saved choices, viewport exclusions, folds and portrait grip/strip geometry in
+`GameScreenStateTest`, `SidePanelStateTest`, `GamePanelLayoutTest` and `PortraitLayoutTest`. The targeted
+`GameScreenScreenshotTest` renders the real shared root with a stand-in game surface. `GamePicture` shares intrinsic
+picture fitting between the Android renderer adapter and the native UIKit controller slot. `GamePanelLayout` remains
+only the stand-in geometry helper for application settings before a game is running; the legacy three-slot screen is removed.
+`LibraryPreferences` owns library choices, favorites, play history, ordering, quick views and search for both hosts.
+Android uses common `Prefs` over SharedPreferences and `LibraryAddedDates` over the existing `rom-added.tsv`;
+iOS uses the same model and preferences through a compatibility codec for its installed `library_preferences`
+JSON. No data migration is required. Initial-library NEW suppression, 24-hour arrival tags, recent-list fallback
+and favorites-first sorting share one policy. Platform discovery, game metadata, pickers and launches remain
+host adapters. JSON writes complete before observable choices change, and unknown JSON fields are retained.
+
+`DocsCache` owns manual refresh, conditional ETags, validated atomic publication, versioned image storage, nested
+image pruning and background prefetch for both platforms. Installed `docs/docs.json`, `docs.etag` and hashed image
+paths remain readable. Ktor supplies the HTTP client with Android and Darwin engines; connection/socket/request
+budgets are shared, with a request budget bounding Darwin's unsupported connection-timeout option. Hosts provide
+the cache directory, app version and native image decoder. Recreated hosts reuse one cache owner per directory
+and version. Invalid responses and network failures keep the previous manual, and a corrupt cache cannot claim
+its stale ETag. No UI source contains an HTTP implementation.
+
+The iPad uses these presenters for its full-window library, Files-based setup and application settings. Its native
+adapter supplies file operations, preferences and launch actions; Swift only switches application/game controllers.
+`IosGameScreen` supplies preferences and input/focus callbacks to the same `GameScreenState` and `GameScreen` used by
+Android, including modal/docked/unlocked/hidden landscape panels, portrait hiding/sizing and common chrome. Choices
+initialize and persist through `GameScreenState(Prefs)`, retaining the established iOS docked default and Android's
+separate DS portrait ratio. `PrefsThemeStore` is the same THEME/DARK MODE adapter on both platforms. Controller
+repeat timing uses Kotlin's monotonic clock; library key-capture polling uses a lifecycle-bound coroutine instead
+of an Apple timer. `ManualInputGate` independently captures
+window/editor owners and quarantines held keys until released; the native input poll applies it before scripted battle
+input. Controller buttons steer common companion keys/focus actions, while keyboard letters remain text input. Pointer
+ownership changes restart only the controls' gesture tracker. The native Metal controller is never replaced by a panel
+change. The open tab remains available because iOS has no hardware BACK recovery route. Layout and editor
+bounds are safe-area pixels throughout; there is no UIKit window-coordinate conversion or separate GAMES toolbar.
+Both global and in-game touch editing use the shared editor, with a settings revision published
+after layout writes so the preview and rows refresh when the editor closes.
+
+Hosts can supply touchStageInOtherOrientation when their rotated layout differs from the phone stand-in. The iPad
+uses its saved common panel state and measured screen/grip dimensions there too, so the rotated in-game preview matches the current layout.
+
+`TouchEditorState` owns the in-game/Apple library editor session, orientation-aware publication, shared back handling
+and full-screen Compose overlay. Android hosts it in the existing game root instead of adding a ComposeView;
+iOS hosts it in the current game/library composition instead of presenting another view controller. Hosts retain
+only native input release and their established pause/resume effects. Closing a game discards its unfinished edit
+without resuming that game. Saving keeps the other orientation and positions for controls unavailable in the
+current game or host. A callback from a replaced editor request cannot publish over its successor.
+
+
+### iOS game-button bindings
+
+`GameInput` converts GameController buttons and keyboard key codes to the shared `KeyCodes`; it takes one hardware
+snapshot per display refresh, even when slow-motion pacing owes no game frame. Fast batches reuse it; turbo and
+battle scripts still advance per game frame. `PolledGameKeys` turns the snapshot into events for the existing
+`GbaInput` and `KeyCapture`.
+Raw-key quarantine runs at both modal edges, including edges between frames, and capture callbacks invalidate the
+current poll. Touch and axes retain independent `ManualInputGate` owners. Turbo is filtered as a sustained hold
+before its frame pulse. The companion's controller navigation uses the player's mappings; keyboard letters stay
+with text fields while it owns input. App suspension cancels capture and quarantines held input on return.
+
+`IosGameInputBindings` seeds only the old iOS defaults, in `Documents/bindings/controls.properties`, then delegates
+reading, conflict removal and persistence to `GbaControls`. Existing files are never reseeded. The shared settings
+and capture popup are used in the game; library settings poll only while capture is active and stop on disposal.
+`Hotkeys.forActions` filters unavailable shortcuts out of both rows and consumption. `releaseAll` clears active
+holds, chord prefixes and deferred taps at ownership boundaries. `PolledGameKeys` feeds the existing `gameKey`
+policy, with an epoch guard after actions which can replace or pause the core. `GameActions` binds common actions
+to the existing settings and slot controller on both hosts. Playback speed priorities and the cycle order are shared with Android.
+The master switch starts off on iOS to preserve its legacy triggers; enabling it is explicit.
+
+`OptionTextField` reports focus through `TextInputFocus`; the iOS game host suppresses keyboard polling while a
+field owns it. Tokens keep a late disposal from releasing another field's keyboard. Entry/exit quarantines held
+keys and ends hotkey holds; controllers and touch retain their own channels. Key capture explicitly takes keyboard
+polling back while its prompt waits. Hotkey callbacks which release touch during a state operation are reflected
+in the current manual snapshot before the next core frame.
+
+
+### Shared rewind control
+
+`pk_api_set_rewind` / `pk_api_set_rewinding` expose the existing `pk_rewind.c` ring to JNI and Kotlin/Native.
+Configuration changes release the hold; successful manual/automatic state loads clear the old timeline while
+retaining the chosen capacity. Failed loads leave it alone. Controls and frames stay on the game thread; state
+loads already hold the core lock. No game addresses, state format or diff algorithm are duplicated.
+
+The native `pk_rewind_api` test uses original GB/GBA diagnostics to verify backwards frames, ring wrap/exhaustion,
+resume, resizing/off/no-core behavior and timeline resets. The Game Boy check changes its battery RAM after
+history capture, then checks both current RAM and the file retain the newer byte through rewind and close.
+iOS connects the shared REWIND row, the existing touch extra and REWIND HOLD to these controls. `RewindPolicy`
+keeps Android/iOS capacity identical. `GameViewController` owns transport: normal pace, no scripted keys, fresh
+picture uploads and muted/flushed sound while rewinding. It cancels queued battle commands on both edges.
+Touch and hardware holds have separate owners; state operations release both before changing the timeline, and
+background/editor transitions quarantine input. Starting rewind avoids `withState`, whose touch release would
+cancel the initiating finger. When rewind is off, its hold shows the existing translated settings hint through
+the shared confirmation UI. Chord holds stay active until their last alias releases, including capture cleanup.
+
+
+### iOS touch X/Y
+
+The shared touch controls' X/Y actions feed canonical `BUTTON_X` / `BUTTON_Y` keys into `GameInput`, alongside
+hardware keys. They reach the existing `PolledGameKeys`, `GbaInput`, key capture and hotkey chord engine rather
+than reimplementing their meaning in the touch host. The hardware and touch key sets are combined before edge
+detection, so releasing one source cannot release an alias held by the other. Text focus filters only the keyboard.
+Existing iOS bindings, including deliberately empty START 2 / SELECT 2, remain unchanged.
+
+Ownership changes quarantine virtual keys too. Touch release clears the virtual set; if a state/hotkey callback
+clears it mid-poll, a second edge pass releases it before the next core frame. Four native tests exercise mapped
+buttons, hotkey precedence, ownership, capture and callback-driven release through the real native poller.
+
+
+### Shared cheat parser and live apply
+
+`pk_api_cheats_check` exposes the existing GBA parser without a running core. Its malloc-owned ASCII answer keeps
+the directive/newline/per-line flags protocol used by `CheatCheck`; JNI and Kotlin/Native free it after copying.
+`pk_api_cheats_apply` owns the same write lock as the previous JNI body and delegates to `pk_cheats_apply`, including
+its separate cheat/game-option patch bookkeeping and original-ROM overlay for readers. No code parser, opcode
+rules or patch engine are copied. The current cheat engine is GBA-only; GB/no-core application is a no-op.
+
+The original-diagnostic `pk_cheats_api` test checks parser results, live RAM writes, replacement/clear, restoration
+of a cheated ROM byte, original-byte reads and preservation of a separate game-option patch. `PkApiCoreTest`
+checks parser/apply through cinterop. `CheatAddForm` is extracted from Android Settings and called there and by the shared companion's editable CHEATS
+page. Validation, normalization, code types, directives and import-result wording remain single implementations.
+Android's existing companion stays toggle-only; iOS exposes add/remove/import for a running GBA game. New codes
+start enabled, imports disabled, and the master switch controls native application.
+
+`GameCheats` stores `CheatStore` files by the ROM's original CRC under app support on iOS, applies enabled code text
+between frames and leaves the native lock/patch ownership to pk_api. `IosHosts` installs the stateless parser for
+`CheatCheck`. The Files picker reuses `RomPicker.pickData`, pauses input/frames, bounds imports to 1 MiB and binds
+its callback to the same running game. Shared text fields own keyboard input while typing codes.
+
+
+### Shared held-action ownership
+
+`GameActions` combines hardware and touch ownership for FF, slow motion and rewind before notifying native
+effects. Native adapters receive only aggregate edges. Touch cancellation releases touch; binding reloads release
+hardware before replacing the parser. Capture/close can clear every owner, and state changes can quarantine rewind
+without turning a cancelled FF tap into a toggle. Input delivery, capability gates and frame pacing stay native.
+The controller runs on each host's existing input thread and adds no work to the rendering path.
+
+
+### Shared observation lifetime
+
+`GameRuntime` now owns the playback watchers and sampler together. Both hosts configure sampling once with their
+core-thread dispatcher and current-game predicate; common delivery updates playback and battle metadata before
+host-specific sample effects. Android requests samples from its existing frame cadence, and iOS supplies its
+500 ms period. Capture, worker decode and generation checks remain in `GameSampler` and `TelemetryStore`.
+
+Closing stops sampling before cancelling battle commands and closing queued session work/watchers. It is
+idempotent, and delayed startup/sample triggers cannot restart a closed owner or replace a newer game's watcher.
+A native core may still stop and restart for the same loaded ROM without closing the owner. iOS core-start
+callbacks capture their own controllers and check game identity before startup. Native patch cleanup retains
+its existing between-frame ordering.
+
+`GameRuntime.options` creates the shared option controller from the host's native patch adapter. Quiescing stops
+sampling and invalidates option discovery before native shutdown. Final close retires the option controller and
+restores its patches, then cancels battle commands and closes queued work/watchers even if patch cleanup throws.
+Android retires portable option work without native unpatching: its engine owns core destruction, and a
+bounded stop wait may leave that thread alive. iOS restores option patches between frames. Native patch
+adapters own the core write lock. Core pause/restart keeps the loaded-game owner and desired settings alive.
+
+
+### Shared binding edits
+
+`GameBindings` validates supported hotkey actions and publishes reloads only after a successful edit. Both game
+hosts use it for shared settings. `GbaControls` and `Hotkeys` keep their installed properties formats and return
+write success; each file is replaced atomically. Invalid key names never reach disk. A D-pad edit also removes
+its single-key hotkey conflict; if that write fails, the controls edit is rolled back and no reload is published.
+The shared tests inject failed writes through blocked temporary paths and verify persisted files and publication.
+Android's adapter reloads game buttons and hotkeys together; iOS reloads its native poller. Runtime held actions
+are released before replacing their parser, while independent touch extras retain their ownership.
+
+
+### Runtime-owned actions and cheats
+
+`GameRuntime.bindActions` and `bindCheats` create one controller per loaded game. Both hosts use them, replacing
+Android's separate cheat-session key/cache and the iOS cheat owner. Close releases held actions and retires cheat
+edits/imports before patch/battle/watcher cleanup; every resource is visited even if an earlier cleanup throws.
+Delayed callbacks cannot save/load, toggle playback or edit a retired game's cheat file. Standalone library
+cheat editors can still use `GameCheats` directly. Android's input path reads the cached controller.
+
+iOS settings retain their own runtime provider; live effects no longer look up a replacement game's settings or
+controllers. Close/restart/editor callbacks check native game identity. Renderer, input delivery, file pickers
+and native core cleanup remain platform adapters.
+
+
+### Runtime-owned state slots
+
+Both native hosts bind their existing `StateSlotController` through `GameRuntime.bindStates`. The controller
+retains its native state transport and backup/achievement adapters; the shared runtime owns its loaded-game
+lifetime. Closing rejects new disk/core requests and slot selection, rechecks after entering the core transport,
+and suppresses late loaded/result/error callbacks. An in-progress state transaction may finish. Atomic binding
+also retires a controller first created after runtime close. The existing slot/undo tests now run from common
+tests on JVM and Native, with added delayed-close checks.
+
+`StateResume` remains a synchronous transaction helper rather than a background resource. Android creates it
+with each core-thread operation's rejection adapter; iOS retains it behind `withState`. Neither needs a second
+loaded-game lifecycle or a factory wrapper. The native exit save can finish after manual slots are retired.
+
+Android's REWIND setting also quarantines the common held-action ownership before changing ring capacity,
+matching iOS. A newly pressed input source can then start a fresh hold after the setting changes.
+
+The default Make unit-test targets and CI's JVM step include `shared-ui` alongside `app` and `shared`; failure
+reports include all three. Use `make test-quick MODULE=shared-ui T='*GameRuntimeTest'` for a focused common UI
+model check. Native CI already runs both shared modules' simulator tests.
+
+
+### Shared library coordination
+
+`LibraryCoordinator` owns section/help routing, query, search/sort modal selection and library preference actions
+for Android and iOS. Its optional Settings launcher supplies Android's external Activity effect; iOS presents
+the same destinations inline. Native launcher refresh effects run after shared preference writes. Preferences
+are supplied lazily so constructor-time preview/navigation state does not access an unattached Activity.
+`LibraryNavigationDialogs` renders both modals from that controller. Section/action contracts live with the
+common model; UI package aliases preserve existing Kotlin callers and the desktop data module's independence.
+
+`SetupFlow` owns one setup run's supported steps, progression, busy navigation guards and exactly-once exit.
+Both hosts capture its current visit when presenting a page; callbacks from earlier visits or retired runs are
+inert. Android's setup state composes the flow with its permissions, scans, button capture and optional media
+steps. iOS supplies ROM/save steps and retains Files-based import. Native exit effects preserve RUN SETUP return
+behavior and each platform's completion preference policy. Replacing or destroying Android setup retires its flow;
+save-folder suggestions only publish to their original active visit.
+
+`LibraryProjection` splits an ordered library into quick views for Android's library and launcher and for iOS.
+It shares counts, overlapping console/HACKS membership and fallback to ALL when a view disappears. Hosts supply
+cached platform/category metadata and apply their hidden/unsupported/search filters before projection. Its
+optional availability list preserves iOS's console pills while searching; Android retains pills for matching games.
+
+`SaveImportFlow` owns picker/read identity, bounded confirmation bytes and one accepted import at a time. Both
+hosts discard stale picker/read/dialog callbacks, retire the flow with the library host, and gate game launch
+while a confirmed transaction runs. `GameSaves.readPicked` closes native sources after a bounded read; Android URI
+and backup reads and iOS Files imports reuse it. `GameSaves.load` remains the shared backup/fresh-boot/rollback
+transaction. Android keeps its background thread and backup browser; iOS executes confirmed writes off the UI
+thread and lets an accepted transaction finish if its Compose host is disposed, without publishing a stale result.
+
+The library/setup follow-up plan is in `docs/specs/shared-library-setup-coordination.md`. Android permissions,
+picker effects and launcher media remain native adapters.

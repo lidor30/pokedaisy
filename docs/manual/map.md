@@ -1,22 +1,37 @@
 ---
 title: Map
-summary: The game's own region map with you on it, tapping a spot to name it, and finding any town or route from the PLACES list.
+summary: The game's own region map with you on it, a map of the cave or building you're in with all its floors, tapping a spot to name it, and finding any town or route from the PLACES list.
 section: companion
 order: 6
-keywords: [town map, region map, location, where am i, places, route, city, fly, sevii, islands, find, free flight, take off, land, fly over, scenic, bird, flight area, visited, where you've been, anywhere]
+keywords: [town map, region map, area map, cave map, dungeon map, building map, floor, floors, basement, upstairs, downstairs, inside, location, where am i, places, route, city, fly, sevii, islands, find, free flight, take off, land, fly over, scenic, bird, flight area, visited, where you've been, anywhere]
 ---
 
 The `MAP` tab is the game's town map, always open. It answers "where am I?" at a glance and "where is that town the guide mentioned?" in two taps, without digging the map out of your bag.
+
+On iPhone and iPad, supported GBA games can use `FLY` from the map with the game's own cut-in and landing. The same badge, party, destination and field checks apply as on Android. Scenic flight is coming with the expanded-rendering support.
 
 ## You on the map
 
 The map is drawn the way your game draws it: the region's own picture, your character's head on the tile where the game would put it, and the game's blinking cursor around the place you're in. The place's name sits in the game's own label: a dark strip in the top left in FireRed and its relatives, a framed window in the bottom right in Emerald and its relatives. In FireRed-style games a second strip names a cave or other place on that spot when there is one.
 
-Indoors and underground, the head stays on the last outdoor spot you were on, like the game does.
+Indoors and underground, the head stays on the last outdoor spot you were on, like the game does. In the games that have one, a cave or a building gets a map of its own instead: see below.
 
 ![The MAP tab: an island map with the player's head on DAISY TOWN, the town's name in a strip at the top left, and PLACES at the top right](shots/companion-map.png "The MAP tab")
 
 The cursor pulses between two sizes like the game's. To keep it still, turn off `MAP CURSOR BLINK` in SETTINGS > `TWEAKS`.
+
+## Caves and buildings: the AREA map
+
+In the GBA games (FireRed, LeafGreen, Emerald, Ruby, Sapphire in every language, and most hacks), walking into a cave or a building that's bigger than the screen, or that has more than one floor, switches the `MAP` tab to that place's own map: the whole floor you're on, drawn from the game itself, with your head where you stand. The place's name and the floor sit in the bar at the top.
+
+- A row of buttons under the map has one for each floor. Yours has a pin on it. Tap another floor to look around it, and `ME` to come back to yours. When you take the stairs, the map follows you.
+- Floors are named the way the game names them (`B1F`, `1F`, `5F`, `RF` for a rooftop). Where the game doesn't name them, they're numbered in the game's own order. Some caves have more than one part on the same floor: those show as `3F`, `3F-2` and so on.
+- The magnifier shows the map at the game's own size around you. Drag it to look around, and tap the magnifier again to see the whole floor.
+- `REGION MAP` takes you to the region map, and `AREA MAP` there takes you back. Your pick holds until you leave for somewhere else; the next cave or building starts on its own map again.
+
+The HUD's minimap follows the same pick: in a cave or building it shows the floor around you, with the floor's name next to the place's.
+
+A small room, like a single shop or a one-floor house, keeps the region map. So do the Game Boy and DS games, and a few hacks, for now.
 
 ## Tap a spot to name it
 
@@ -45,7 +60,7 @@ In the `PLACES` list, places that aren't on the first map say which map they're 
 
 ## Flying to a town
 
-When someone in your party knows the move that carries you between towns, a blue button for it appears under `PLACES`. Tap it for the towns you can fly to right now, pick one, and the game takes you there with its own animation, just as if you'd used the move from the party menu.
+When someone in your party knows the move that carries you between towns, a blue button for it appears under `PLACES`. Tap it for the towns you can fly to right now, pick one, and the game takes you there with its own animation, just as if you'd used the move from the party menu. With [`NO HMS NEEDED`](controls.md#no-hms-needed) on, the badge is enough: the button shows even when nobody knows the move, and your first Pokémon carries you.
 
 The game's own rules still apply: you need the badge that allows it and you have to be outdoors, walking around, with no menu or conversation open. If something's missing, the button tells you what instead of flying.
 
@@ -67,7 +82,7 @@ Press `B` (or tap the button again, which now says `LAND`) to come down. The bir
 
 In games where a Pokémon walks behind you, it goes back to its ball as you take off, as it does for the game's own flight, and comes out again at your first steps after landing.
 
-It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move, and being outdoors on foot (not surfing). On your bike, you get off first and then take off. It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
+It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move (any Pokémon with [`NO HMS NEEDED`](controls.md#no-hms-needed) on), and being outdoors on foot (not surfing). On your bike, you get off first and then take off. It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
 
 ## Where you can fly
 

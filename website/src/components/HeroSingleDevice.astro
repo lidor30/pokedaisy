@@ -1,12 +1,13 @@
 ---
-// The Retroid Pocket 5 in pixels, in its light grey "16-bit" shell with purple face buttons, drawn to its own
-// proportions on a grid of handheld units (--u, 200 across: handheldFit.js): the 5.5" 16:9 screen under glass
-// in the middle, the d-pad over the left stick, ABXY over the right one, the small keys under them, the
-// shoulder buttons over the top edge. The game fills the screen (HeroScene); the companion opens over it
-// as the app's window (SidePanel.kt's SidePanelHost: 88% of the screen's height, ~1.39:1 on 16:9, the
-// game dimmed under it, the X beside its top right corner) while the device has `.open` - CompanionDemo
-// opens it, plays its tabs and closes it with the X. A page can put its own pictures on the screen instead
-// (`slot="screen"`: the game pages' real shots, no window).
+// The Retroid Pocket 6 at its real proportions (205.5 x 80.5 mm, a 5.5" screen: scripts/handheld-art.mjs draws it, a
+// little pixelated, into public/media/handheld-rp6.png) on a grid of handheld units (--u, 200 across: handheldFit.js):
+// the off-white shell with its rounded grips, the 16:9 screen under glass in the middle with thin black bezels, the d-pad over the left stick, ABXY (blue, green, red, yellow) over the right one,
+// both sticks in a blue light ring, the round keys by the screen's top corners and the pills under the sticks,
+// the shoulder buttons over the top edge. The game fills the screen (HeroScene); the companion opens over it as the
+// app's window (SidePanel.kt's SidePanelHost: 88% of the screen's height, ~1.39:1 on 16:9, the game dimmed under
+// it, the X beside its top right corner) while the device has `.open` - CompanionDemo opens it, plays its tabs and
+// closes it with the X. A page can put its own pictures on the screen instead (`slot="screen"`: real shots, no
+// window).
 import Pixel from './Pixel.astro';
 import CompanionDemo from './CompanionDemo.astro';
 import HeroScene from './HeroScene.astro';
@@ -20,38 +21,27 @@ const tr = trFor(Astro.url);
 ---
 <div class="hh-box">
   <div class:list={['handheld', 'rp5', still && 'still open']} data-handheld data-units="200" data-single-device>
-    <i class="hh-part rp5-shoulder" style={at(18, -2, 34, 5)}></i>
-    <i class="hh-part rp5-shoulder" style={at(148, -2, 34, 5)}></i>
-    <span class="hh-shell f-rp5Shell"></span>
-    <div class="hh-part glass f-rp5Glass" style={at(35, 3, 130, 74)}></div>
-    <div class="hh-part topscreen" style={at(40, 6, 120, 68)}>
+    <img class="hh-art rp6-art" src="/media/handheld-rp6.png" width="300" height="122" alt="" aria-hidden="true" decoding="async" />
+    <div class="hh-part topscreen" style={at(40.75, 5.8, 118.5, 66.7)}>
       <slot name="screen">
         <HeroScene lines={[tr('Press a button and the companion opens.'), tr('It floats over the game, which keeps running.'), tr('Close it, and the whole screen is the game again.')]} />
         <div class="cwin-dim"></div>
-        <div class="hh-part cwin" style={at(18, 4, 84, 60)}>
+        <div class="hh-part cwin" style={at(18.5, 4, 81.6, 58.7)}>
           <div class="cwin-app"><CompanionDemo window order={['BAG', 'MAP']} /></div>
           <span class="cwin-frame f-winFrame"></span>
         </div>
-        <span class="hh-part cwin-x f-appBtn" style={at(104, 4, 6, 6)} data-close><Pixel name="winClose" scale={1} /></span>
+        <span class="hh-part cwin-x f-appBtn" style={at(101.4, 4, 5.6, 5.6)} data-close><Pixel name="winClose" scale={1} /></span>
       </slot>
     </div>
-    <span class="hh-part" style={at(6, 11)}><Pixel name="rp5Dpad" scale={1} /></span>
-    <span class="hh-part" style={at(10, 43)}><Pixel name="rp5Stick" scale={1} /></span>
-    <span class="hh-part" style={at(166, 9)}><Pixel name="rp5Abxy" scale={1} /></span>
-    <span class="hh-part" style={at(170, 43)}><Pixel name="rp5Stick" scale={1} /></span>
-    <i class="hh-part rp5-key round f-rp5Key" style={at(9, 67, 5, 5)}></i>
-    <i class="hh-part rp5-key f-rp5Key" style={at(22, 68, 8, 3)}></i>
-    <i class="hh-part rp5-key f-rp5Key" style={at(170, 68, 8, 3)}></i>
-    <i class="hh-part rp5-key round f-rp5Key" style={at(186, 67, 5, 5)}></i>
   </div>
 </div>
 
 <style is:global>
-  .rp5 { --units: 200; --cpx: calc(var(--u) * 84 / 340); width: calc(var(--u) * 200); height: calc(var(--u) * 80); filter: drop-shadow(calc(var(--u) * 2) calc(var(--u) * 3) 0 rgba(29, 27, 38, 0.22)); }
-  /* The shoulder buttons, peeking over the top edge behind the shell. */
-  .rp5 .rp5-shoulder { background: #8e8c9c; box-shadow: 0 0 0 var(--u) #1d1b26, inset 0 var(--u) 0 #c4c2cf;
-    clip-path: polygon(calc(var(--u) * -1) calc(var(--u) * 1), calc(var(--u) * 2) calc(var(--u) * -1), calc(100% - var(--u) * 2) calc(var(--u) * -1), calc(100% + var(--u)) calc(var(--u) * 1), calc(100% + var(--u)) 100%, calc(var(--u) * -1) 100%); }
-  .rp5 .rp5-key.round { border-radius: 0; }
+  .rp5 { --units: 200; --cpx: calc(var(--u) * 81.6 / 340); width: calc(var(--u) * 200); height: calc(var(--u) * 78.3);
+    filter: drop-shadow(0 calc(var(--u) * 3) calc(var(--u) * 4) rgba(29, 27, 38, 0.25)); }
+
+  /* The drawing starts 3 units over the shell: the shoulder buttons. */
+  .rp5 .rp6-art { top: calc(var(--u) * -3); height: calc(var(--u) * 81.3); }
 
   /* The companion window: the game dims under it, it and its X pop in, and go again when the X is pressed. */
   .rp5 .cwin-dim { position: absolute; inset: 0; z-index: 3; background: rgba(0, 0, 0, 0.55); opacity: 0; transition: opacity 0.24s steps(3); pointer-events: none; }
@@ -64,7 +54,7 @@ const tr = trFor(Astro.url);
   .rp5 .cwin-app { position: absolute; inset: 0; clip-path: inset(0 round calc(var(--cpx) * 4)); }
   .rp5 .cwin-frame { position: absolute; inset: 0; --px: var(--cpx); }
   .rp5 .cwin-x { display: grid; place-items: center; --px: var(--cpx); filter: drop-shadow(0 calc(var(--cpx) * 2) 0 rgba(0, 0, 0, 0.25)); }
-  .rp5 .cwin-x .pixel { width: calc(var(--u) * 2.4); height: calc(var(--u) * 2.4); }
+  .rp5 .cwin-x .pixel { width: calc(var(--u) * 2.2); height: calc(var(--u) * 2.2); }
   .rp5 .cwin-x.pressed { transform: translateY(var(--cpx)); filter: brightness(0.9); }
   /* Too narrow for the game's text box: the hero's own box says it. */
   @media (max-width: 560px) { .rp5 .textbox { display: none; } }

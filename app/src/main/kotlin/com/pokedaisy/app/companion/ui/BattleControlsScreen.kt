@@ -730,7 +730,7 @@ internal fun PlatinumButton(
             )
             .then(
                 if (enabled) {
-                    Modifier.clickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = {
+                    Modifier.menuClickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = {
                         onClick()
                         // The game sounds its own button - unless it can't be heard (FF's STEADY music mutes it).
                         if (!pressesGame || gameSilent()) sound()

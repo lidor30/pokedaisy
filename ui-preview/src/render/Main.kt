@@ -2,6 +2,8 @@
 
 package render
 
+import kotlinx.datetime.plus
+import kotlinx.datetime.todayIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toAwtImage
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.GbaControls
 import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.LibraryActivity
+import com.pokedaisy.app.SpritePackFlow
 import com.pokedaisy.app.Prefs
 import com.pokedaisy.app.SettingsActivity
 import com.pokedaisy.app.overlay.BuiltInFrames
@@ -242,6 +245,19 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val reusableTms get() = reusableTmsOn
     override fun setReusableTms(on: Boolean) { reusableTmsOn = on }
     override val reusableTmsSupported get() = true
+    private var hmFreeOn = false
+    override val hmFree get() = hmFreeOn
+    override fun setHmFree(on: Boolean) { hmFreeOn = on }
+    override val hmFreeSupported get() = true
+    private var expShareMode = com.pokedaisy.app.companion.data.ExpShare.Mode.OFF
+    override val expShare get() = expShareMode
+    override fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) { expShareMode = mode }
+    override val expShareSupported get() = true
+    private var levelCapOn = false
+    override val levelCap get() = levelCapOn
+    override fun setLevelCap(on: Boolean) { levelCapOn = on }
+    override val levelCapSupported get() = true
+    override val levelCapLevel get() = 14
     private var shinyOddsValue = com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
     override val shinyOdds get() = shinyOddsValue
     override fun setShinyOdds(odds: Int) { shinyOddsValue = odds }
@@ -503,6 +519,9 @@ fun companion(
     content
 }
 
+/** The preview party with personalities (the POKéMON CENTER's button needs one to check it against). */
+fun centerSnapshot() = snapshot().let { s -> s.copy(party = s.party.mapIndexed { i, m -> m.copy(personality = 0x1000L + i, moves = m.moves.mapIndexed { j, mv -> mv.copy(id = 33 + j) }) }) }
+
 /**
  * USE / GIVE as retail FireRed rev 1 answers them (FieldItems.kt), for every game's preview - so each
  * BagPalette shows the row mark, though the app has it on FireRed rev 1 only so far. The lead holds
@@ -518,6 +537,11 @@ class PreviewItemUse(private val party: List<MonView>, private val bagFull: Bool
         done(com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED)
     override fun withdrawFromBox(box: Int, slot: Int, boxPersonality: Long, done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit) =
         done(com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED)
+    // The POKéMON CENTER: every service; HEAL and FORGET go through, NICKNAME / RELEARN would open the game's screens.
+    override fun center() = com.pokedaisy.app.companion.CenterSupport(heal = true, nickname = true, forget = true, relearn = true)
+    override fun centerHeal(done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) = done(com.pokedaisy.app.companion.data.CenterResult.OK)
+    override fun centerForget(slot: Int, personality: Long, moveIndex: Int, move: Int, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.CenterResult.OK)
     // PC anywhere: the button shows; a tap answers "not now" (a menu open), as the BAG pops it up.
     override fun canPc() = true
     override fun openPc(done: (com.pokedaisy.app.companion.data.ItemUseOutcome) -> Unit) =
@@ -862,7 +886,7 @@ fun withCheats(seeded: Boolean = true, many: Int = 0, make: () -> SettingsActivi
     // [many]: an imported cheat file's worth (RetroArch's Platinum one has 2321), GitHub #786.
     val list = if (many > 0) List(many) { i -> com.pokedaisy.app.cheats.Cheat("CODE ${i + 1}", listOf("82025838 %04X".format(i)), enabled = i % 7 == 0) }
         else previewCheats()
-    if (seeded) com.pokedaisy.app.cheats.CheatStore.forCrc(ctx.filesDir, crc).save(list)
+    if (seeded) com.pokedaisy.app.cheats.CheatStore.forCrc(okio.Path.Companion.run { ctx.filesDir.toOkioPath() }, crc).save(list)
     Prefs(ctx).cheatsEnabled = seeded
     return make().apply { intent.putExtra(SettingsActivity.EXTRA_CHEATS_ROM, rom.absolutePath) }
 }
@@ -906,7 +930,7 @@ fun favoriteLibrary() {
  * [favoriteLibrary] with a game on every console (Yellow, Crystal, a Crystal hack, Platinum), so every quick
  * view has a pill, and a play history (Emerald last, then Crystal, Unbound, Yellow) for RECENT; [view] open.
  */
-fun platformLibrary(view: com.pokedaisy.app.LibraryView = com.pokedaisy.app.LibraryView.ALL) {
+fun platformLibrary(view: com.pokedaisy.app.companion.data.LibraryView = com.pokedaisy.app.companion.data.LibraryView.ALL) {
     favoriteLibrary()
     val ctx = android.content.Context()
     val prefs = Prefs(ctx)
@@ -975,18 +999,37 @@ val previewTheme: com.pokedaisy.app.companion.ui.theme.ThemeSpec =
     } ?: com.pokedaisy.app.companion.ui.theme.themeById(com.pokedaisy.app.companion.ui.theme.DAISY_THEME_ID)
 
 /** A day inside [t]'s next window (today's, if it's on now); null for a theme that's always there. */
-fun previewThemeDay(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec): java.time.LocalDate? {
-    val now = java.time.LocalDate.now()
+fun previewThemeDay(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec): kotlinx.datetime.LocalDate? {
+    val now = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
     return t.season?.let { s -> (now.year..now.year + 2).firstNotNullOf { y -> s.window(y)?.takeIf { it.endInclusive >= now } } }
-        ?.let { w -> if (now in w) now else w.start.plusDays(1) }
+        ?.let { w -> if (now in w) now else w.start.plus(kotlinx.datetime.DatePeriod(days = 1)) }
+}
+
+/** What PokeDaisyApp.onCreate hands the shared screens on Android: art files and theme storage over the shim Context. */
+fun installPreviewHosts() {
+    val context = android.content.Context()
+    com.pokedaisy.app.companion.data.RomArt.filesDir = okio.Path.Companion.run { context.filesDir.toOkioPath() }
+    val prefs = Prefs(context)
+    com.pokedaisy.app.companion.ui.theme.ThemeStore.current = object : com.pokedaisy.app.companion.ui.theme.ThemeStore {
+        override var appTheme by prefs::appTheme
+        override var themeBeforeSeasonal by prefs::themeBeforeSeasonal
+        override var darkMode by prefs::darkMode
+    }
+    com.pokedaisy.app.companion.ui.DocsSources.current = com.pokedaisy.app.StoreDocsSource(context)
+    com.pokedaisy.app.companion.ui.theme.FontSource.current = com.pokedaisy.app.PreviewFonts(context)
+    // The app's own codec, over the android.graphics shims.
+    com.pokedaisy.app.companion.ui.PictureCodec.current = com.pokedaisy.app.AndroidPictures
+    com.pokedaisy.app.companion.ui.DeviceDates.current = com.pokedaisy.app.JvmDeviceDates
+    com.pokedaisy.app.cheats.CheatParser.current = com.pokedaisy.app.cheats.PreviewCheatParser
 }
 
 /** Saves and puts on [t]; for a limited-time one the theme clock moves into its window (so it isn't put away). */
 fun wearPreviewTheme(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec) {
     val day = previewThemeDay(t)
     // The docs' shots on a day with no holiday theme, so they don't change with the date they're made on.
-    val quiet = java.time.LocalDate.of(java.time.LocalDate.now().year, 6, 15).takeIf { System.getProperty("docs") == "true" }
-    com.pokedaisy.app.companion.ui.theme.ThemeClock.today = { day ?: quiet ?: java.time.LocalDate.now() }
+    val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+    val quiet = kotlinx.datetime.LocalDate(today.year, 6, 15).takeIf { System.getProperty("docs") == "true" }
+    com.pokedaisy.app.companion.ui.theme.ThemeClock.today = { day ?: quiet ?: today }
     Prefs(android.content.Context()).appTheme = t.id
     com.pokedaisy.app.companion.ui.theme.AppColors.applyTheme(t)
 }
@@ -1067,7 +1110,7 @@ fun activity(expandIntro: Boolean = false, start: Boolean = false, battleStyleIn
     prefs.coopRelayOnly = false; prefs.coopRelayUrl = null
     prefs.touchControlsStyle = com.pokedaisy.app.companion.TouchControlsStyle()
     prefs.portraitCompanionUnderGame = false
-    prefs.libraryView = com.pokedaisy.app.LibraryView.ALL.id
+    prefs.libraryView = com.pokedaisy.app.companion.data.LibraryView.ALL.id
     prefs.lastRomPath = File(roms, names[0]).absolutePath
     names.take(3).reversed().forEach { prefs.pushRecentRom(File(roms, it).absolutePath) }
     make().also { a ->
@@ -1110,9 +1153,9 @@ private val COOP_TICKET = com.pokedaisy.app.companion.coop.CoopTicket(
 private val COOP_CHOICES by lazy {
     val dir = File(android.content.Context().filesDir, "coop-saves").apply { mkdirs() }
     listOf(
-        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "a.gba"), File(dir, "a.sav"), "Pokémon Emerald", coopSave("RED", 12345), null),
-        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "b.gba"), File(dir, "b.sav"), "Pokémon Emerald (second copy)", coopSave("MAY", 777), "LEAF"),
-        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "c.gba"), File(dir, "c.sav"), "Pokémon Emerald (never saved)", null, null),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(okio.Path.Companion.run { File(dir, "a.sav").toOkioPath() }, "Pokémon Emerald", coopSave("RED", 12345), null),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(okio.Path.Companion.run { File(dir, "b.sav").toOkioPath() }, "Pokémon Emerald (second copy)", coopSave("MAY", 777), "LEAF"),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(okio.Path.Companion.run { File(dir, "c.sav").toOkioPath() }, "Pokémon Emerald (never saved)", null, null),
     )
 }
 
@@ -1139,7 +1182,7 @@ internal fun coopSettings(
     prefs.coopRelayUrl = relay
     val file = File(File(ctx.filesDir, "coop"), "pairs.json")
     file.delete()
-    if (paired) com.pokedaisy.app.companion.coop.CoopPairs(file).add(coopPair())
+    if (paired) com.pokedaisy.app.companion.coop.CoopPairs(okio.Path.Companion.run { file.toOkioPath() }).add(coopPair())
     return SettingsActivity().also { it.coop.preview = preview }
 }
 
@@ -1313,6 +1356,38 @@ fun wearing(game: GameKind, content: () -> (@Composable () -> Unit)): () -> (@Co
 }
 
 /** The game's home town, which its own region map shows (Emerald has no Pallet Town rect). */
+/** Where the AREA map shots stand ([areaMapSpot]): a map, a square on it, a floor chip to tap. */
+class AreaSpot(val group: Int, val num: Int, val x: Int, val y: Int, val otherFloor: String)
+
+/** The AREA map shots' spot for [game], with -Prom; null otherwise. */
+fun areaMapSpot(game: GameKind): AreaSpot? {
+    if (System.getProperty("rom").isNullOrBlank()) return null
+    return when (game) {
+        GameKind.FIRERED -> AreaSpot(1, 2, 34, 35, "3")
+        GameKind.EMERALD -> AreaSpot(24, 16, 6, 7, "5")
+        GameKind.UNBOUND -> AreaSpot(53, 2, 40, 30, "3F")
+        else -> null
+    }
+}
+
+/** The snapshot for an AREA map shot: [spot]'s map, read from -Prom by its CRC's row (areas and pictures loaded first, as
+ * a player who walked in would have them), the AREA map chosen. */
+fun areaSnapshot(spot: AreaSpot): SnapshotView {
+    val bytes = File(System.getProperty("rom")).readBytes()
+    PokedexSource.reader = RomFile(bytes)
+    PokedexSource.romChanged()
+    com.pokedaisy.app.companion.data.activeAreaMapCrc = java.util.zip.CRC32().apply { update(bytes) }.value
+    val id = com.pokedaisy.app.companion.data.AreaMap.MapId(spot.group, spot.num)
+    val area = com.pokedaisy.app.companion.data.AreaMaps.area(id)
+    area?.floors?.forEach { com.pokedaisy.app.companion.data.AreaMaps.image(it.id) }
+    com.pokedaisy.app.companion.ui.AreaMapChoice.showArea()
+    val sec = area?.mapsec ?: homeMapsec(activeGame)
+    return snapshot().copy(
+        mapGroup = spot.group, mapNum = spot.num, x = spot.x, y = spot.y, mapType = 4,
+        location = lookupLocation(sec), regionMapSectionId = sec,
+    )
+}
+
 fun homeMapsec(game: GameKind) = when (game) {
     GameKind.EMERALD, GameKind.EMERALD_ROGUE -> 0x00 // MAPSEC_LITTLEROOT_TOWN
     GameKind.LAZARUS -> 0x5A // Acrisia City
@@ -1342,6 +1417,8 @@ fun ndsSnapshot(): SnapshotView {
 }
 
 fun main(args: Array<String>) {
+    // The app sets this at start (PokeDaisyApp): the screens find the art under it.
+    installPreviewHosts()
     // The docs' shots (gradle docsShots) never show a game's art: no ROM art, only the invented map.
     if (docsMode) installDocsArt() else romArt()
     // A DS game's art from its cart (-PndsRom): icons, item icons, the Pokégear map's pieces.
@@ -1549,6 +1626,24 @@ fun main(args: Array<String>) {
         // The second Pokémon's summary with its QUICK CLAW: TAKE, or BAG FULL where the bag has no room for it.
         Shot("$g-party-detail-take", bw, bh, bd, companion("PARTY", mon = 1, items = true)),
         Shot("$g-party-detail-bagfull", bw, bh, bd, companion("PARTY", mon = 1, items = true, bagFull = true)),
+        // The POKéMON CENTER: the summary's CENTER button, its list, FORGET's moves and question, then HEAL's notice.
+        Shot("$g-party-detail-center", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::centerSnapshot)) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("CENTER")).performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("$g-party-detail-center-forget", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::centerSnapshot)) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("CENTER")).performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("FORGET A MOVE")).performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("$g-party-detail-center-forget-ask", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::centerSnapshot)) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("CENTER")).performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("FORGET A MOVE")).performSemanticsAction(SemanticsActions.OnClick)
+            val move = snapshot().party[1].moves.first().name
+            onAllNodesWithText(move).onLast().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("$g-party-detail-center-healed", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::centerSnapshot)) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("CENTER")).performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("HEAL THE PARTY")).performSemanticsAction(SemanticsActions.OnClick)
+        },
         Shot("$g-expand-offer", bw, bh, bd, companion("PARTY", expandOffer = true)),
         Shot("$g-party-detail", bw, bh, bd, companion("PARTY", mon = 0)),
         Shot("$g-party-detail-next", bw, bh, bd, companion("PARTY", mon = 0)) {
@@ -1600,6 +1695,18 @@ fun main(args: Array<String>) {
             val at = if (game == GameKind.EMERALD || game == GameKind.EMERALD_ROGUE) Offset(0.45f, 0.125f) else Offset(0.4375f, 0.306f)
             onRoot().performTouchInput { click(Offset(37 + 1166 * at.x, 37 + 886 * at.y)) }
         },
+        // AREA maps (-Prom=<the game's ROM>): the player on a cave's second floor (FireRed's Mt. Moon B1F, Emerald's Mt. Pyre
+        // 2F, an Unbound cave's 2F) - the AREA map first, then REGION MAP, a floor chip, ZOOM.
+        *(areaMapSpot(game)?.let { spot ->
+            arrayOf(
+                Shot("$g-area-map", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }),
+                Shot("$g-area-map-region", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }) { onNodeWithText("REGION MAP").performClick() },
+                Shot("$g-area-map-floor", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }) {
+                    onNodeWithText(spot.otherFloor).performClick()
+                },
+                Shot("$g-area-map-zoom", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }) { onNodeWithContentDescription("ZOOM").performClick() },
+            )
+        } ?: emptyArray()),
         *(if (activeRegionMap() != null) arrayOf(
             Shot("$g-map-places", bw, bh, bd, companion("MAP")) { onNodeWithText("PLACES").performClick() },
         ) else emptyArray()),
@@ -1940,6 +2047,21 @@ fun main(args: Array<String>) {
             // Scrolled to AUTO-RUN, the row under it: a greyed row (Unbound's, Radical Red's: BUILT_IN) won't scroll to itself here.
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("AUTO-RUN")).performScrollTo()
         },
+        // NO HMS NEEDED under REUSABLE TMS (OFF), then flipped ON.
+        Shot("$g-settings-hm-free", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo()
+        },
+        // EXP SHARE's pick-list (OFF / SPLIT / FULL EXP, the note on what each does).
+        Shot("$g-settings-exp-share", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("EXP SHARE")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // LEVEL CAP turned on: the row shows the cap now (the preview's LV 14).
+        Shot("$g-settings-level-cap", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("LEVEL CAP")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("$g-settings-hm-free-on", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
         // PLAYER LOOK under REUSABLE TMS, then its tiles (OFF = the player's own hero, then the other games' heroes).
         Shot("$g-settings-player-look", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("RUN INDOORS")).performScrollTo()
@@ -2147,13 +2269,13 @@ fun main(args: Array<String>) {
         Shot("library-views-grid", tw, th, td, activity { platformLibrary(); LibraryActivity() }) {
             onNodeWithContentDescription("Toggle view").performClick()
         },
-        Shot("library-views-favorites", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.FAVORITES); LibraryActivity() }),
-        Shot("library-views-recent", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.RECENT); LibraryActivity() }),
-        Shot("library-views-gb", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GB); LibraryActivity() }),
-        Shot("library-views-gbc", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBC); LibraryActivity() }),
-        Shot("library-views-gba", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBA); LibraryActivity() }),
-        Shot("library-views-ds", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.DS); LibraryActivity() }),
-        Shot("library-views-hacks", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.HACKS); LibraryActivity() }),
+        Shot("library-views-favorites", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.FAVORITES); LibraryActivity() }),
+        Shot("library-views-recent", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.RECENT); LibraryActivity() }),
+        Shot("library-views-gb", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GB); LibraryActivity() }),
+        Shot("library-views-gbc", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GBC); LibraryActivity() }),
+        Shot("library-views-gba", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GBA); LibraryActivity() }),
+        Shot("library-views-ds", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.DS); LibraryActivity() }),
+        Shot("library-views-hacks", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.HACKS); LibraryActivity() }),
         // GAMES / TOOLS / SETTINGS: a rail down the left of a wide screen, a bar along the bottom of an upright one. Each with
         // the games, then TOOLS open.
         // A big game being got ready to start: the library dimmed under the rocking ball.
@@ -2182,7 +2304,7 @@ fun main(args: Array<String>) {
                 }
             }
         }),
-        Shot("library-views-phone", 1080, 2400, 2.625f, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBA); LibraryActivity() }) {
+        Shot("library-views-phone", 1080, 2400, 2.625f, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GBA); LibraryActivity() }) {
             mainClock.advanceTimeBy(500)   // the open pill scrolled into view
         },
         // A game with no cover art: its kind (CategoryArt), at a list row's size and a grid tile's.
@@ -2194,7 +2316,7 @@ fun main(args: Array<String>) {
                 ) {
                     for (size in listOf(44.dp, 120.dp)) {
                         androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
-                            for (c in com.pokedaisy.app.RomCategory.entries) {
+                            for (c in com.pokedaisy.app.companion.data.RomCategory.entries) {
                                 com.pokedaisy.app.companion.ui.CategoryArt(c, androidx.compose.ui.Modifier.size(size))
                             }
                         }
@@ -2581,7 +2703,8 @@ fun main(args: Array<String>) {
         Shot("library-load-save", tw, th, td, activity {
             LibraryActivity().apply {
                 val ctx = android.content.Context()
-                saveLoad = LibraryActivity.PendingSaveLoad(File(ctx.filesDir, "roms/firered-hack.gba"), ByteArray(131072), "FireRed - Hall of Fame.sav")
+                val pick = saveImports.begin(File(ctx.filesDir, "roms/firered-hack.gba"))!!
+                saveImports.ready(pick, ByteArray(131072), "FireRed - Hall of Fame.sav")
             }
         }),
         // The update offer on opening the app, and while its APK downloads.
@@ -2606,6 +2729,16 @@ fun main(args: Array<String>) {
         Shot("library-patch-not-found-unknown", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("unknown") } }),
         Shot("library-patch-looking", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("looking") } }),
         Shot("library-patch-failed", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("failed") } }),
+        // TOOLS > SPRITE PACK's window: loaded (everything new, some refused), nothing new, and a file that isn't one.
+        Shot("library-sprite-pack-done", tw, th, td, activity { LibraryActivity().apply { spritePack.step = SpritePackFlow.Step.Done(
+            com.pokedaisy.app.companion.data.SpritePack.Result("2026-11-15", com.pokedaisy.app.companion.data.LookChar.entries,
+                com.pokedaisy.app.companion.data.TextLook.STYLES, 386, added = 1676, kept = 0, refused = 2)) } }),
+        Shot("library-sprite-pack-nothing-new", tw, th, td, activity { LibraryActivity().apply { spritePack.step = SpritePackFlow.Step.Done(
+            com.pokedaisy.app.companion.data.SpritePack.Result("2026-11-15", emptyList(), emptyList(), 0, added = 0, kept = 1676, refused = 0)) } }),
+        Shot("library-sprite-pack-failed", tw, th, td, activity { LibraryActivity().apply { spritePack.step = SpritePackFlow.Step.Failed("This file isn't a sprite pack.") } }),
+        Shot("library-sprite-pack-phone", 1080, 2400, 2.625f, activity { LibraryActivity().apply { spritePack.step = SpritePackFlow.Step.Done(
+            com.pokedaisy.app.companion.data.SpritePack.Result("2026-11-15", com.pokedaisy.app.companion.data.LookChar.entries,
+                com.pokedaisy.app.companion.data.TextLook.STYLES, 386, added = 1676, kept = 0, refused = 2)) } }),
         // REPLACE COVER: a known game's icons, a search's game list, and no API key.
         Shot("library-cover-picker", tw, th, td, activity {
             LibraryActivity().apply { coverPickerFor = File("firered-hack.gba"); coverSourceOverride = FakeCoverSource(known = true) }

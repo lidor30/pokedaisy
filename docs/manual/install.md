@@ -29,6 +29,8 @@ Everything you pick here can be changed later in Settings, so don't overthink it
 
 If you keep your games in folders (say `ROMs/gba` and `ROMs/nds`), point PokeDaisy at them here. Tap `CHOOSE FOLDER` and pick a folder, then `ADD FOLDER` for each other one. PokeDaisy looks through them (`LOOKING FOR GAMES…`), then lists what it found under `FOUND 3 GAMES` or similar. `REMOVE` beside a folder takes it off again.
 
+While PokeDaisy is looking for games, wait for the scan to finish before going back or continuing setup.
+
 Pick just the folders your games are in rather than one big folder of everything: there's less to look through, so it's quicker.
 
 Games in these folders are played right where they are: nothing is copied. Every time you come back to the library, the folders are checked again for new games, so adding a game later is a matter of dropping it into one.

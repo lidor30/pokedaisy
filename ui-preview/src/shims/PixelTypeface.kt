@@ -31,3 +31,18 @@ fun readingFontFamily(context: android.content.Context): FontFamily = reading ?:
 ).also { reading = it }
 
 @Volatile private var reading: FontFamily? = null
+
+/** Desktop stand-in for the app's AndroidFonts: the shims' families above. */
+class PreviewFonts(private val context: android.content.Context) : com.pokedaisy.app.companion.ui.theme.FontSource {
+    override fun pixel(): FontFamily = pixelFontFamily(context)
+    override fun smooth(bold: Boolean): FontFamily = atkinsonFamily(context, bold)
+    override fun reading(): FontFamily = readingFontFamily(context)
+    override fun game(file: okio.Path): FontFamily? = gameFontFamily(context, file.toFile())
+}
+/** Desktop stand-in for the app's atkinsonFamily (SETTINGS > FONT's SMOOTH / SMOOTH BOLD). */
+fun atkinsonFamily(context: android.content.Context, bold: Boolean): FontFamily = (if (bold) atkBold else atkRegular) ?: FontFamily(
+    Font(if (bold) "fonts/AtkinsonHyperlegible-Bold.ttf" else "fonts/AtkinsonHyperlegible-Regular.ttf", context.assets),
+).also { if (bold) atkBold = it else atkRegular = it }
+
+@Volatile private var atkRegular: FontFamily? = null
+@Volatile private var atkBold: FontFamily? = null

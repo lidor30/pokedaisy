@@ -1,6 +1,6 @@
 // PokeDaisy — the running game's state behind pk_api.h (pk_session.c), for the parts of pokedaisy_jni.c that haven't
 // moved under pk_api.h yet: they still reach into it as `g`. Each area that moves takes its fields with it; when the
-// last has, this header goes and the state is pk_session.c's own. Only pk_session.c and pokedaisy_jni.c include it.
+// last has, this header goes and the state is pk_session.c's own. Portable helpers and JNI share it during migration.
 // GPL-3.0 (see NOTICE).
 #ifndef PK_SESSION_H
 #define PK_SESSION_H
@@ -55,6 +55,7 @@ extern struct pk_session pk_session;
 /** Guards g.core's lifetime, not its state: the emu thread owns frames, saves and teardown, but the companion's ROM
  * readers (Pokédex, GUIDE, icons) read from IO threads, and one in flight while the game closed read a core
  * pk_api_deinit had just freed. Readers share it; init / teardown take it alone. */
+/* State loads also take the write lock while replacing the game RAM readers inspect. */
 extern pthread_rwlock_t pk_coreLock;
 
 int pk_is_gba(const struct mCore* core);
@@ -64,5 +65,7 @@ void pk_gb_config(struct mCore* core);
 void pk_read_range(struct mCore* core, uint32_t addr, uint8_t* dst, int len);
 /** REWIND off, its buffer freed. */
 void pkRewindOff(void);
+/** Start a new history with the configured capacity after a successful state load. Game thread, core lock held. */
+void pkRewindReset(void);
 
 #endif
