@@ -14,6 +14,12 @@ class PokeDaisyApp : Application() {
         }
         // The NEW tags' week starts with the first launch of a build that has the feature.
         com.pokedaisy.app.companion.NewFeatures.init(Prefs(this))
+        // SETTINGS' DESCRIPTIONS / GROUP TABS, kept across launches.
+        Prefs(this).let { p ->
+            com.pokedaisy.app.companion.ui.SettingsLook.descriptions = p.settingsDescriptions
+            com.pokedaisy.app.companion.ui.SettingsLook.tabs = p.settingsTabs
+            com.pokedaisy.app.companion.ui.SettingsLook.onChange = { d, t -> p.settingsDescriptions = d; p.settingsTabs = t }
+        }
         val prefs = Prefs(this)
         prefs.appOpenCount = (prefs.appOpenCount + 1).coerceAtMost(1000)
         CrashReports.apply(prefs.crashReportsEnabled)

@@ -1014,6 +1014,30 @@ fun useFieldItem(fns: FieldItemFns, itemId: Int, busy: Boolean, g: GameCalls): I
     return ItemUseOutcome(ItemUseResult.USED, steps)
 }
 
+/**
+ * AUTO REFILL ([RepelRefill]): one more [itemId] on top of the steps left, while 1..[RepelRefill.REFILL_AT] are left, so the
+ * walking never stops being covered and the game's "wore off" never comes. The same calls as [useFieldItem], but past the
+ * game's own "still working" check: the steps added to what's left (a Lure's bit means none is left to add to).
+ * [ItemUseOutcome.steps] = the steps added. Emu thread.
+ */
+fun refillRepel(fns: FieldItemFns, itemId: Int, busy: Boolean, g: GameCalls): ItemUseOutcome {
+    if (itemId !in fns.repelItems || !fieldItemCodeMatches(fns, g::read)) return ItemUseOutcome(ItemUseResult.FAILED)
+    if (busy || g.call(fns.fieldControlsLocked) != 0L) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    val raw = g.call(fns.varGet, fns.repelVar).toInt()
+    val left = fns.repelSteps(raw)
+    if (left !in 1..RepelRefill.REFILL_AT || raw != left) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    if (g.call(fns.checkBagHasItem, itemId, 1) != 1L) return ItemUseOutcome(ItemUseResult.NONE_LEFT)
+    val steps = g.read(fns.items + itemId.toLong() * fns.itemSize + fns.itemParamOff, 1)[0].toInt() and 0xFF
+    if (steps == 0) return ItemUseOutcome(ItemUseResult.FAILED)
+    val total = left + steps
+    if (fns.repelLureBit != 0 && total >= fns.repelLureBit) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    val sets = listOf(fns.repelVar to total) + listOfNotNull(fns.lastRepelVar.takeIf { it != 0 }?.let { it to itemId })
+    if (sets.any { (v, value) -> g.call(fns.varSet, v, value) < 0 } || g.call(fns.removeBagItem, itemId, 1) != 1L) {
+        return ItemUseOutcome(ItemUseResult.FAILED)
+    }
+    return ItemUseOutcome(ItemUseResult.USED, steps)
+}
+
 /** Why [itemId] can't go to the party right now, or null if it can: the common checks of USE and GIVE. */
 private fun partyGate(fns: FieldItemFns, itemId: Int, allowed: Boolean, busy: Boolean, g: GameCalls): ItemUseResult? = when {
     fns.party == null || !allowed || !fieldItemCodeMatches(fns, g::read) -> ItemUseResult.FAILED

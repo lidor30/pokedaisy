@@ -920,6 +920,28 @@ the first boss NEXT BOSS has ahead (`LevelCap.next`: the guide's bosses and the 
 Task_GiveExpToMon, which hands the rest back) become `cmp r0, #cap` + `bcc` / `bcs`, a game-option patch re-applied as the cap moves.
 Both it and EXP SHARE take getexp from `ExpShare.getexp`, which wants its address in a command table the code loads: CFRU's hacks keep
 the old getexp but run their own (N/A there). N/A without a NEXT BOSS list (`LevelCap.hasBosses`). Doesn't pause achievements.
+**AUTO REFILL** (2026-11-15, GAMEPLAY on the companion, `Prefs.repelRefill` OFF, NEW tag; `RepelRefill.kt`): a REPEL with 1..20 steps left
+(samples come once a second out of battle, ~15 bike steps) gets one more on top, from the activity's `updateRepelRefill` (each sample, a
+field item job): GBA `refillRepel` (the field items' VarSet / RemoveBagItem past the "still working" check), DS `useGen4Repel` /
+`useGen5Repel(topUp = true)`. The kind working isn't kept by the game: `kindOf` the first count after none, else the smallest in the bag.
+**SHINY ALERT** (2026-11-15, GAMEPLAY on the companion, `Prefs.shinyAlert` OFF, NEW tag; `ShinyHunt.kt`): each sample's battle fed to
+`ShinyHunt.sample` (a wild battle counted once its foes are read, a shiny foe reported once a battle; `wild` = `isTrainerBattle`, else no
+FOE TEAM); the count per ROM (`Prefs.shinyHuntFor`, from 0 when turned on and after each shiny) is the row's subtitle. A shiny: FF off,
+`GbaInput.releaseAll` (turbo), the fanfare, an 8 s HUD line. Only where battlers read shiny (`shinyTarget`, SHINY ODDS' games). No pause:
+the battle waits at its menu.
+**LAST BALL** (2026-11-15, the BATTLE tab's ball button, COMPANION > LAST BALL `Prefs.lastBallButton` ON, NEW tag; `BattleBall.kt`): BAG picked
+(`BattleInputController.throwBall`), then each tick the controller funcs watched for `OpenBagAndChooseItem` (CWCI - 0x3C); there:
+RemoveBagItem (the bag's ItemUseInBattle_PokeBall would; `caller` returns `CALL_NOT_NOW` off `pkCallSafe`, retried next frame), the ball in
+`gSpecialVar_ItemId`, the func set to CWCI, gPaletteFade's active bit cleared + BeginNormalPaletteFade(all, 0, 0, 0). `BattleBall.find`
+reads the rest from CWCI's pool and PlayerHandleChooseItem's first call. Wild, one foe, room for a catch (`canThrow`); the last ball per ROM
+from a battle's ball count dropping (`thrown`, `Prefs.lastBallFor`). GEN 4 look only.
+**BOSS RETRY** (2026-11-15, GAMEPLAY on the companion, `Prefs.battleRetry` OFF, NEW tag): the activity's `updateBattleRetry` asks the engine
+for a state (`requestRetrySave` -> `SaveStates.retryFile`, never a slot) on a trainer battle's first sample; a battle that ends with the whole
+party fainted puts up `BattleRetryAsk` (FeatureTip.kt, hosted beside FlyStyleAsk on both screens); RETRY = `requestRetryLoad` (undoable,
+refused in co-op like any load).
+**LOW HP BEEP / FIELD POISON** (2026-11-15, GAMEPLAY on the companion, `Prefs.lowHpBeep` / `fieldPoison` ON = the game's, NEW tags;
+`QuietPatches.kt`): OFF = a game-option patch each (engine `setQuietPatches`): the low-HP SE's `bl PlaySE` nopped, UpdatePoisonStepCounter's
+DoPoisonFieldEffect call made `movs r0, #0`. Found by agbcc's code; N/A elsewhere.
 **POKéMON CENTER anywhere** (2026-11-14; the summary's pink CENTER button + the QUICK MENU's HEAL, NEW tag `POKEMON_CENTER`; `PokemonCenter.kt`):
 HEAL THE PARTY / RELEARN A MOVE / FORGET A MOVE / NICKNAME, each the game's own special (HealPlayerParty, the Move Tutor's screen,
 MoveDeleterForgetMove, ChangePokemonNickname) on the summary's Pokémon (gSpecialVar_0x8004), run as a short script at 0x0203FFD8 like PC
@@ -1181,6 +1203,7 @@ SCREEN > DISPLAY OPTIONS (STATUS BAR, SHADERS, OVERLAY, an upright phone's COMPA
 opens from DISPLAY OPTIONS, so BACK returns there (`Page.parent`, SettingsActivity's `goBack`). A row that opens a page of its own (not a pick-list) sets
 `SettingRow.opensPage`: a pixel chevron (`PixelIcons.chevronRight`) at its right end. Sub-pages and pick-lists get the title window's back arrow (`onBack`). The tabs not in the tab bar used to sit under the
 list as a second row of chips (TOOLS); they're the MORE tab now.
+**DESCRIPTIONS / GROUP TABS** (2026-11-15, the first two rows of HOME on both screens, NEW tag `SETTINGS_LOOK`; `SettingsLook` in SettingRows.kt, Compose state, `Prefs.settingsDescriptions` / `settingsTabs` loaded by PokeDaisyApp): `GroupedRows` drops rows' subtitles (a featured group's tagline stays) and its `GroupTabs`. ui-preview resets both before each shot.
 **Settings round (2026-11-01, the user's calls)**: the top-screen Settings draws a step smaller (`LocalTextStep` -1 for the whole
 activity); rows whose label says it all carry no subtitle; a row can be a slider (`SettingRow.slider` -> `SettingSlider` /
 `GbaSlider`, LEFT / RIGHT step it) and GAME VOLUME's opens `OptionSliderPopup` on a tap (a bigger bar, - / +, DONE); the tools
@@ -1532,7 +1555,7 @@ activities resumed); meanwhile the companion opens over the game there as on one
 around a move is skipped (`movePause`), so the game doesn't reload. The Thor's input dispatcher can drop the window's focus on a move (it
 asks while the window's input info still names the old display, then never again: no buttons reached the game after OPEN
 COMPANION), so `followDisplay` checks 600 ms later and flips FLAG_NOT_FOCUSABLE off and on to make it ask again (`refocus`). SETTINGS > COMPANION BUTTON (`Prefs.companionTab`, NEW
-tag) hides that white edge tab (`SidePanel.openTabShown`); BACK and the HUD's COMPANION still open the companion. Over the
+tag) hides that white edge tab (`SidePanel.openTabShown`) and the HUD's COMPANION (2026-11-15: `companionButtonShown`); BACK, the COMPANION hotkey and the QUICK MENU still open the companion. Over the
 game there the companion fills the screen (`SidePanel.setFullScreen` -> `SidePanelHost(fullScreen)`: window keys, no frame),
 whatever COMPANION VIEW says. The Thor's own controller focus mode decides where its pad goes: locked to the top screen
 (`screen_focus_lock`), touching the bottom moves Android's focus but not the pad; the user's fix was its Auto-Lock mode.
@@ -2223,7 +2246,17 @@ fateful bit, the Pokédex's three seen copies, trade evolutions + EvolutionRenam
 neither (`SaveFileEdits.writeBoth`). Icons come from the ROM file (`RomMonIcons`, known tables only - never guessed). Values
 (money, coins, the bag, a Pokémon's held item and moves) take only what `Gen3Legal` allows (`SaveTablesGen.kt` from
 `scripts/gen_save_tables.py`: each game's pocket items, learnsets, TM / tutor sets, pre-evolutions); the editor throws before a
-byte changes otherwise, and key items / HMs are never taken away. Event flags (ticket islands) come next.
+byte changes otherwise, and key items / HMs are never taken away. Round two (2026-11-15, NEW tag `SAVE_EDITOR_PLUS`; the user's call:
+*game-possible values only*): pages POKéMON / BAG / TRAINER and a Pokémon's page (`SaveMonPage.kt`); nature / gender / shiny /
+ability by a new personality keeping the rest (`Gen3Personality`), IVs, EVs (510), level up from the one read, friendship, a nickname
+for the save's own OT; party <-> PC moves and party trades with the PC's rules (`SaveEditRefused` carries the reason); box rename /
+sort / search / release; Pokédex marks and the event tickets as their distribution scripts gave them (`Gen3Events.kt`).
+docs/DEVELOPMENT.md's "Round two". **HeartGold / SoulSilver and Platinum USA rev 1** too (`Gen4Save.kt` behind `SaveModel.kt`'s interfaces,
+`Gen4Layout` for each game's offsets, the cart's own tables: `NdsArt.readSaveTables`): every page (BAG / TRAINER through `TrainerBagEditor`,
+which Gen 3's editor implements too); HG / SS's edit goes into the other half with every PC box flagged changed, Platinum's is a full save
+(global + 1, each block into its other copy). Checked by booting edited real saves in `nds_dump` and saving in the game on top. Nicknames /
+box names (`Gen4Text.encode`), GIVE / TAKE through the bag, and HG / SS / Platinum trades (`Gen4Trade`, `TradeRules`; Pokédex as pokedex.c
+registers a received one) too. Not yet: DS play time, Diamond / Pearl, Gen 5.
 **REWIND** (Settings, `Prefs.rewind`, off by default; REWIND HOLD hotkey, R on a keyboard): `pk_rewind.c` - mGBA's own
 diff ring (`mCoreRewindContext`, 600 entries, one every 2 frames: ~20 s, rewinds at 2x) but with states taken / loaded
 WITHOUT `SAVESTATE_SAVEDATA`: mGBA's `mCoreRewindRestore` would write the state's save over the save file every

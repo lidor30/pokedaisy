@@ -40,6 +40,19 @@ object Gen4Text {
         }
     }
 
+    // A character -> its code: the Western block (0x0100-0x01FF) first, where the games' naming screen types from.
+    private val codes: Map<Char, Int> by lazy {
+        HashMap<Char, Int>().also { m ->
+            for ((code, v) in chars.entries.sortedBy { (c, _) -> if (c in 0x100..0x1FF) c - 0x10000 else c }) {
+                if (v.length == 1) m.putIfAbsent(v[0], code)
+            }
+            m[' '] = 0x1DE
+        }
+    }
+
+    /** [s] as the games' codes (no terminator), or null when a character has none. */
+    fun encode(s: String): IntArray? = IntArray(s.length) { i -> codes[s[i]] ?: return null }
+
     /** A name in a Pokémon's record ([max] codes from [off], 0xFFFF-ended): the nickname. */
     fun name(b: ByteArray, off: Int, max: Int): String =
         decode(IntArray(max) { if (off + it * 2 + 1 < b.size) u16(b, off + it * 2) else 0xFFFF })

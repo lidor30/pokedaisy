@@ -1,9 +1,9 @@
 ---
 title: Bag
-summary: Every pocket of your bag with icons and descriptions, favorite items, which Pokémon can use a TM, teaching a TM or HM, reusable TMs, and using an item from the bottom screen.
+summary: Every pocket of your bag with icons and descriptions, favorite items, which Pokémon can use a TM, teaching a TM or HM, reusable TMs, a keep-away item that never runs out, and using an item from the bottom screen.
 section: companion
 order: 4
-keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, hidden machine, teach move, learn move, forget move, description, sort, use item, berries, key items, star, starred, pin, favourite]
+keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, hidden machine, teach move, learn move, forget move, description, sort, use item, berries, key items, star, starred, pin, favourite, auto refill, refill, wore off, run out, use another, wild encounters, keep away, spray]
 ---
 
 The bag tab shows everything you're carrying, pocket by pocket, as the game has it right now. It's handy for a quick count before a long cave, or for reading what an item does without digging through the game's menus.
@@ -71,6 +71,15 @@ Everything else about TMs works as the game has it: which Pokémon can learn one
 
 > [!NOTE]
 > `REUSABLE TMS` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports), and in Emerald Kaizo, Emerald Legacy, Orange Islands, FireRed Rocket Edition, Ultra Violet and Celia's Stupid Romhack. In Radical Red, Unbound and SoulGold a TM already stays after use, so the setting shows `ON`, greyed out. Prism and Polished Crystal keep their TMs too, and Elite Redux keeps no counts at all. In other games it shows `N/A`.
+
+## AUTO REFILL
+
+Turn on `AUTO REFILL` in the companion's `SETTINGS`, `GAMEPLAY` group, and the item that keeps wild Pokémon away never runs out on you mid-cave. When the one working is down to its last few steps, another of the same kind goes on from your bag, its steps added to the ones left, so the game never stops to say it wore off. A short note on the game screen says so. If you're out of that kind, the smallest kind you still have goes on. When you have none left, it wears off as usual. It's `OFF` until you turn it on.
+
+It happens while you're walking around: not in a battle, a menu or a conversation. One that's still working when you turn it on is topped up the same way once it gets low.
+
+> [!NOTE]
+> `AUTO REFILL` works in the games where the companion can use these items from the bag (see the note under [Using an item from the companion](#using-an-item-from-the-companion)), SoulGold included, and in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2. In other games it shows `N/A`.
 
 ## Using an item from the companion
 
