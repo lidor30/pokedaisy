@@ -32,11 +32,12 @@ class RelayCoopTransportTest {
         relayOnly: Boolean = true,
         autoStart: Boolean = true,
         clock: () -> Long = System::currentTimeMillis,
+        lanDiscovery: Boolean = true,
     ) {
         val secret = ByteArray(32).also { SecureRandom().nextBytes(it) }
         val id = CoopPeerId.of(CoopKeys.publicKey(secret))
         val lan = FakeCoopLan(network)
-        val transport = RelayCoopTransport(relay, lan, timings, clock, bindLoopback = true)
+        val transport = RelayCoopTransport(relay, if (lanDiscovery) lan else NoCoopLan, timings, clock, bindLoopback = true)
         val seen = CopyOnWriteArrayList<CoopEvent>()
         private val url = url
         private val relayOnly = relayOnly
@@ -64,9 +65,10 @@ class RelayCoopTransportTest {
             }
         }
 
-        fun connected(peer: CoopPeerId, from: Int = 0, direct: Boolean? = null): CoopEvent.Connected =
+        fun connected(peer: CoopPeerId, from: Int = 0, direct: Boolean? = null, outgoing: Boolean? = null): CoopEvent.Connected =
             waitFor(from, "Connected") {
-                it is CoopEvent.Connected && it.peer == peer && (direct == null || it.direct == direct)
+                it is CoopEvent.Connected && it.peer == peer && (direct == null || it.direct == direct) &&
+                    (outgoing == null || it.outgoing == outgoing)
             } as CoopEvent.Connected
 
         fun disconnected(peer: CoopPeerId, from: Int = 0, code: Int? = null): CoopEvent.Disconnected =
@@ -305,8 +307,11 @@ class RelayCoopTransportTest {
         val ta = a.ticket; val tb = b.ticket
         assertEquals(0, a.transport.connect(tb))
         assertEquals(0, b.transport.connect(ta))
-        a.connected(b.id, direct = true)
-        b.connected(a.id, direct = true)
+        // The first shared direct channel can be provisional: the lower-key dial may still be handshaking.
+        // Wait for both peers to select the policy winner before checking that it stays selected.
+        val aInitiates = a.id.hex < b.id.hex
+        a.connected(b.id, direct = true, outgoing = aInitiates)
+        b.connected(a.id, direct = true, outgoing = !aInitiates)
         await("one shared connection") {
             val ha = a.transport.channelHashFor(b.id)
             val hb = b.transport.channelHashFor(a.id)
@@ -318,6 +323,72 @@ class RelayCoopTransportTest {
         }
         assertTrue(a.transport.send(b.id, byteArrayOf(4)))
         assertArrayEquals(byteArrayOf(4), b.frame(a.id).bytes)
+    }
+
+    @Test fun preferredDialCanFinishAfterThePeersFirstShareAConnection() {
+        val timing = fast.copy(handshakeMs = 5_000, idleMs = 5_000)
+        val a = Node(timing, url = null, relayOnly = false, lanDiscovery = false)
+        val b = Node(timing, url = null, relayOnly = false, lanDiscovery = false)
+        // Tickets alone choose the paths here; LAN discovery must not bypass the delayed address.
+        pairUp(a, b)
+        val lower = if (a.id.hex < b.id.hex) a else b
+        val higher = if (lower === a) b else a
+        val ticket = CoopTicket.decode(higher.ticket)!!
+        DelayedTcpProxy(ticket.addresses.single()).use { proxy ->
+            val delayed = CoopTicket(ticket.peer, ticket.inviteSecret, listOf(proxy.address)).encode()
+            assertEquals(0, lower.transport.connect(delayed))
+            assertEquals(0, higher.transport.connect(lower.ticket))
+            lower.connected(higher.id, direct = true, outgoing = false)
+            higher.connected(lower.id, direct = true, outgoing = true)
+            await("provisional shared connection") {
+                lower.transport.channelHashFor(higher.id)?.contentEquals(higher.transport.channelHashFor(lower.id)) == true
+            }
+            val first = lower.transport.channelHashFor(higher.id)!!
+            proxy.requests.countDown()
+            higher.connected(lower.id, direct = true, outgoing = false)
+            // The responder has selected the preferred channel, while the initiator's reply is still held.
+            assertFalse(lower.transport.channelHashFor(higher.id)?.contentEquals(higher.transport.channelHashFor(lower.id)) == true)
+            proxy.replies.countDown()
+            lower.connected(higher.id, direct = true, outgoing = true)
+            await("preferred shared connection") {
+                lower.transport.channelHashFor(higher.id)?.contentEquals(higher.transport.channelHashFor(lower.id)) == true
+            }
+            val chosen = lower.transport.channelHashFor(higher.id)!!
+            assertFalse(first.contentEquals(chosen))
+            assertStays(1_000, "preferred connection") {
+                chosen.contentEquals(lower.transport.channelHashFor(higher.id)) &&
+                    chosen.contentEquals(higher.transport.channelHashFor(lower.id))
+            }
+            assertTrue(lower.transport.send(higher.id, byteArrayOf(7)))
+            assertArrayEquals(byteArrayOf(7), higher.frame(lower.id).bytes)
+            assertTrue(higher.transport.send(lower.id, byteArrayOf(8)))
+            assertArrayEquals(byteArrayOf(8), lower.frame(higher.id).bytes)
+        }
+    }
+
+    /** Hold each direction independently so the second handshake's completion order is deterministic. */
+    private class DelayedTcpProxy(target: CoopAddress) : java.io.Closeable {
+        private val server = java.net.ServerSocket(0, 1, InetAddress.getLoopbackAddress())
+        private val pool = java.util.concurrent.Executors.newCachedThreadPool { r -> Thread(r, "delayed-coop-dial").apply { isDaemon = true } }
+        private val client = java.util.concurrent.atomic.AtomicReference<java.net.Socket?>()
+        private val remote = java.util.concurrent.atomic.AtomicReference<java.net.Socket?>()
+        val requests = java.util.concurrent.CountDownLatch(1)
+        val replies = java.util.concurrent.CountDownLatch(1)
+        val address = CoopAddress(InetAddress.getLoopbackAddress().address, server.localPort)
+        init {
+            pool.execute {
+                runCatching {
+                    val incoming = server.accept().also { client.set(it) }
+                    val outgoing = java.net.Socket(InetAddress.getByAddress(target.ip), target.port).also { remote.set(it) }
+                    pool.execute { runCatching { requests.await(); incoming.getInputStream().copyTo(outgoing.getOutputStream()) } }
+                    pool.execute { runCatching { replies.await(); outgoing.getInputStream().copyTo(incoming.getOutputStream()) } }
+                }
+            }
+        }
+        override fun close() {
+            server.close(); client.get()?.close(); remote.get()?.close()
+            requests.countDown(); replies.countDown(); pool.shutdownNow()
+        }
     }
 
     @Test fun relayOnlyNeverListensOrAdvertises() {
