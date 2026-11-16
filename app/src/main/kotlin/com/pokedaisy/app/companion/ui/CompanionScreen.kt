@@ -260,7 +260,7 @@ fun CompanionScreen(
         val dexUi = remember { DexUiState(dexListState) }
         // BOXES tab: the box on show and its open summary, kept across tab switches.
         val boxesUi = remember { BoxesUiState() }
-        // SORT, offered from the DEX entry page (BOXES is where its result lands).
+        // SORT, offered from the BOXES tab's PKMN DATA panel.
         val boxSorter = itemUse?.takeIf { it.canSortBoxes() }
         val startBoxSort: (() -> Unit)? = boxSorter?.let { use ->
             {
@@ -722,8 +722,6 @@ fun CompanionScreen(
                             if (paneKey == "DEX/DETAIL") {
                                 PokedexEntryScreen(
                                     dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables,
-                                    onSort = boxSorter?.let { { boxesUi.confirmSort = true } },
-                                    sorting = boxesUi.sorting,
                                     onBack = dexBackToParty?.let { partySlot ->
                                         {
                                             dexUi.open = null
@@ -733,8 +731,6 @@ fun CompanionScreen(
                                         }
                                     },
                                 )
-                                if (startBoxSort != null) BoxSortConfirm(boxesUi, startBoxSort)
-                                BoxSwapNotice(boxesUi)
                             } else PokedexScreen(
                                 dex, dexUi,
                                 holdings = remember(snapshot.party, pcBoxes) { com.pokedaisy.app.companion.data.dexHoldings(snapshot.party, pcBoxes) },

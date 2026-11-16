@@ -3,7 +3,7 @@ title: PC boxes
 summary: The BOXES tab shows the Pokémon in your PC, box by box, and opens any of them in a full summary.
 section: companion
 order: 3
-keywords: [pc, box, boxes, storage, stored, deposited, wallpaper, pkmn data, swap, withdraw, deposit]
+keywords: [pc, box, boxes, storage, stored, deposited, wallpaper, pkmn data, swap, withdraw, deposit, sort, order, organise, pokedex number]
 ---
 
 The `BOXES` tab shows what's in your PC without walking to a Pokémon Center. Every box is there, laid out like your game's own PC: the box's name between two arrows, your Pokémon in their slots over the box's wallpaper, and the `PKMN DATA` window beside them. The screen is drawn by the companion in the game's own colours: each wallpaper has its frame and header sky, so a FOREST box is green with a leafy strip and a SNOW box is white.
@@ -46,6 +46,10 @@ A few things the game itself wouldn't allow are refused:
 - **Not now**: you have to be walking around, with no battle, menu or text box open. Close the game's own PC first too.
 
 The move happens in your game right away. **Save in the game** to keep it, just as you would after using a PC.
+
+## Sorting every box
+
+In the games where the boxes can move Pokémon, a `SORT` button sits beside the box's name. Tap it and confirm, and every box is rewritten in Pokédex-number order, from box 1's first slot: Pokémon of the same kind go lowest level first, Eggs count as the kind they will hatch into, and records the companion can't read go last. Nothing is re-created: the game's own stored Pokémon move whole, so held items, ribbons and checksums stay as they were. **Save in the game** to keep the new order. If a write can't be read back, every box goes back exactly as it was.
 
 ## Opening the BOXES tab
 
