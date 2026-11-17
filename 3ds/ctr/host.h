@@ -30,5 +30,12 @@ size_t host_heap_free(void);
 // (pd_armgba_host.romBuffer). armGBA frees it when a game closes: that free is skipped (host.c's __wrap_free).
 bool host_rom_arena_init(void);
 void* host_rom_arena(size_t size);
+bool host_rom_arena_ready(void);
+// The memory the app was given and where it went, for an error a player can photograph and the log: the model, CIA or
+// 3dsx, the app's memory and mode, the heap / linear split, the static data, the heap free before the arena and now.
+void host_memory_report(char* out, size_t len);
+// armGBA's code memory, lent from the game buffer's unused end, made read-write again: after a game's core is gone (a
+// process that exits with memory still read-write-execute hangs the 3DS on "Closing software").
+void host_lent_code_release(void);
 
 #endif

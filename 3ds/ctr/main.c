@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
@@ -410,6 +411,17 @@ static void show_message(const char* line1, const char* line2) {
     }
 }
 
+// A game that didn't start: why, then the memory report (host_memory_report), on the screen and in the log, so a
+// player's photo of it says what went wrong.
+static void game_failed(const char* title, const char* why) {
+    host_lent_code_release();
+    char report[256], detail[480];
+    host_memory_report(report, sizeof report);
+    snprintf(detail, sizeof detail, "%s. PokeDaisy %s: %s", why, PD_VERSION, report);
+    host_log("game: didn't load: %s", detail);
+    show_message(title, detail);
+}
+
 // The state file's time for LOAD STATE, or false if there's none. stat()
 // leaves the time 0 on the SD card; archive_getmtime reads it.
 // Where the frame's time goes, in the dev build (devlink.h's stats).
@@ -456,6 +468,7 @@ struct game_files {
 
 // The GBA CORE picked in the library for the game it starts (enum pd_game_core).
 static int pickedCore;
+static char pickedSha1[41]; // the library's hash of the picked game's file ("" until it has one): rom_id's check
 
 // mGBA's 3DS VFile takes the path on the SD card; stdio wants the sdmc: in front. A state never crosses cores (neither
 // reads the other's): a GBA game's on mGBA are <game>.mgba.ss1 ..., on gpSP <game>.gpsp.ss1, armGBA's (the default's)
@@ -540,8 +553,10 @@ static void rom_id_read(const char* romSd, const char* file, struct rom_id* id) 
     long long mtime = 0;
     char sha1[41] = "";
     unsigned crc = 0;
+    // A hash the library's (of the file itself) disagrees with is a bad one: 1.6.0's gpSP hashed a ROM in pieces when the
+    // game buffer was missing (GitHub #1054) and saved it here, and the game stayed "not a version the companion knows".
     if (fscanf(f, "%ld %lld %40s %x", &size, &mtime, sha1, &crc) == 4 && size == id->size && mtime == id->mtime &&
-        strlen(sha1) == 40 && crc) {
+        strlen(sha1) == 40 && crc && (!pickedSha1[0] || !strcasecmp(sha1, pickedSha1))) {
         memcpy(id->sha1, sha1, sizeof(sha1));
         id->crc = crc;
         id->known = true;
@@ -569,9 +584,16 @@ static bool run_game(const char* file) {
     char saveSd[520];
     snprintf(saveSd, sizeof(saveSd), "sdmc:%s", savePath);
 
+    // Every core reads the game into the buffer reserved at start: without it nothing can run, so say so plainly.
+    if (!host_rom_arena_ready()) {
+        game_failed("The game didn't start:", "there was no room for the 32 MB game buffer when PokeDaisy started");
+        return true;
+    }
     struct VFile* rom = VFileOpen(romPath, O_RDONLY);
     if (!rom) {
-        show_message("Couldn't open the game:", file);
+        char why[600];
+        snprintf(why, sizeof why, "couldn't open sdmc:%s (%s)", romPath, strerror(errno));
+        game_failed("Couldn't open the game:", why);
         return true;
     }
     uint8_t header[0x150] = { 0 }; // a GBA cart's header, and a Game Boy cart's (its logo at 0x104)
@@ -631,17 +653,17 @@ static bool run_game(const char* file) {
             emuHost.threaded = false;
         }
 #endif
-        char error[96] = "";
+        char error[256] = "";
         host_log("game: %s, heap %lu KiB free", file, (unsigned long) host_heap_free() >> 10);
         core = pd_armgba_load(romSd, saveSd, &emuHost, error, sizeof(error));
         if (!core) {
-            host_log("game: didn't load: %s", error);
-            show_message("The game didn't start:", error);
+            game_failed("The game didn't start (armGBA):", error);
             return true;
         }
         core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
-        host_log("game: running on %s; heap %lu KiB free", pd_armgba_recompiling() ? "armGBA's recompiler" : "armGBA's INTERPRETER",
-                 (unsigned long) host_heap_free() >> 10);
+        host_log("game: running on %s; heap %lu KiB free, linear %lu KiB free",
+                 pd_armgba_recompiling() ? "armGBA's recompiler" : "armGBA's INTERPRETER", (unsigned long) host_heap_free() >> 10,
+                 (unsigned long) linearSpaceFree() >> 10);
         gpu_double_game(true);
         gpu_set_bars(0);
     } else if (gpsp) {
@@ -664,12 +686,11 @@ static bool run_game(const char* file) {
             emuHost.threaded = false;
         }
 #endif
-        char error[96] = "";
+        char error[256] = "";
         host_log("game: %s on gpSP, heap %lu KiB free", file, (unsigned long) host_heap_free() >> 10);
         core = pd_gpsp_load(romSd, saveSd, &emuHost, error, sizeof(error));
         if (!core) {
-            host_log("game: didn't load: %s", error);
-            show_message("The game didn't start:", error);
+            game_failed("The game didn't start (gpSP):", error);
             return true;
         }
         core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
@@ -694,7 +715,10 @@ static bool run_game(const char* file) {
         // This closes rom.
         if (!mCorePreloadVF(core, rom)) {
             core->deinit(core);
-            show_message("The game didn't load (too big?):", file);
+            char why[320];
+            snprintf(why, sizeof why, "mGBA couldn't read %s into the game buffer (%s)", file,
+                     host_rom_arena_ready() ? "too big, or the SD card read failed" : "the buffer wasn't reserved at start");
+            game_failed("The game didn't start (mGBA):", why);
             return true;
         }
         // As mGBA's own 3DS front end has it (gui-runner.c): skips the busy loops games wait in.
@@ -750,7 +774,9 @@ static bool run_game(const char* file) {
     session.host.labels[1] = "SPEED";
     snprintf(session.host.values[1], sizeof(session.host.values[1]), "-");
     pd_session_start(&session, core, gpu_game_buffer(), &settings, &files);
-    if (!romId.known) rom_id_write(file, &romId, session.game.sha1, session.romCrc);
+    if (pickedSha1[0] && strcasecmp(session.game.sha1, pickedSha1))
+        host_log("game: the running ROM hashes to %s, its file to %s (not kept)", session.game.sha1, pickedSha1);
+    else if (!romId.known) rom_id_write(file, &romId, session.game.sha1, session.romCrc);
 #ifdef PD_DEV
     {
         char steps[300];
@@ -1095,6 +1121,7 @@ static bool run_game(const char* file) {
     write_card(file, &session.game, &session.snap);
     // armGBA writes the save if the game changed it, and its warm list; mGBA's VFile flushes on unmap.
     core->deinit(core);
+    host_lent_code_release();
     host_log("game: closed");
     return appRunning;
 }
@@ -1402,6 +1429,7 @@ static bool pick_rom(char* out, size_t outLen) {
     if (picked) {
         pd_library_played(&library, library.picked, (uint32_t) time(NULL));
         pickedCore = library.games[library.picked].core;
+        snprintf(pickedSha1, sizeof pickedSha1, "%s", library.games[library.picked].sha1);
         write_cache();
         snprintf(out, outLen, "%s", library.games[library.picked].file);
         snprintf(lastFile, sizeof lastFile, "%s", out);
@@ -1423,13 +1451,31 @@ int main(void) {
     mLogSetDefaultLogger(&silentLogger);
     make_dirs();
     host_log_open(LOG_FILE);
-    if (!arena) host_log("no memory for the ROM buffer");
+    if (!arena) {
+        char report[256];
+        host_memory_report(report, sizeof report);
+        host_log("no memory for the 32 MB game buffer: %s", report);
+    }
     host_log("PokeDaisy: %s, heap %lu KiB free", host_is_new_3ds() ? "New 3DS" : host_old_3ds_stand_in() ? "New 3DS playing an Old 3DS" : "3DS",
              (unsigned long) host_heap_free() >> 10);
     host_log("screens drawn on core %d", gpu_draw_core() >= 0 ? gpu_draw_core() : 0);
-    // An Old 3DS's first start: SHARP 1.5x rather than EXPAND, which keeps armGBA's renderer on the game's core there
-    // (run_game's oldExpand) and costs the margins on top. EXPAND stays one pick away in VIEW.
-    if (!pd_settings_load(&settings, SETTINGS_FILE) && !host_is_new_3ds()) settings.aspect = PD_ASPECT_ORIGINAL;
+    {
+        char report[256];
+        host_memory_report(report, sizeof report);
+        host_log("memory: %s", report);
+    }
+    // Games start at SHARP 1.5x (pd_settings_defaults). 1.6.0 put EXPAND on as the default: everyone's moved to SHARP 1.5x
+    // once (the user's call, 2026-11-17), and EXPAND stays one pick away in VIEW for whoever wants it back.
+    pd_settings_load(&settings, SETTINGS_FILE);
+    if (!settings.expandOff) {
+        if (settings.aspect != PD_ASPECT_ORIGINAL) {
+            host_log("VIEW moved from %s to SHARP 1.5x (once)", pd_aspect_name(settings.aspect));
+            settings.aspect = PD_ASPECT_ORIGINAL;
+            if (settings.screenMode == PD_SCREEN_PIXEL || settings.screenMode == PD_SCREEN_SHARP_125) settings.screenMode = PD_SCREEN_SHARP;
+        }
+        settings.expandOff = true;
+        pd_settings_save(&settings, SETTINGS_FILE);
+    }
     audio_init();
     mcuHwcInit();
     ptmuInit(); // the battery's charge state (a bolt by the battery)

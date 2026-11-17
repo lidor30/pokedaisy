@@ -11,9 +11,14 @@ struct mCore;
 /** Most GBA pixels drawn beside the game, per side (21:9 at 160 tall needs 67). */
 #define PK_WIDE_MAX_MARGIN 96
 /** The largest window pk_wide_view draws (ZOOM's farthest step: 640 x 360 on a 1080p screen, 360 x ~470 on a phone
- * held upright). */
+ * held upright). EXPAND's buffers (pk_wide.c, pk_wide_gb.c) are this size, ~10 MB at 800 x 800: a build whose window
+ * can't be as big sets its own (the 3DS: its 400 x 240 top screen, 3ds/ctr/CMakeLists.txt, which 1.6.0's memory needed). */
+#ifndef PK_WIDE_MAX_VIEW_W
 #define PK_WIDE_MAX_VIEW_W 800
+#endif
+#ifndef PK_WIDE_MAX_VIEW_H
 #define PK_WIDE_MAX_VIEW_H 800
+#endif
 
 /** Engines (the layouts below): FireRed / LeafGreen (and the CFRU hacks), Emerald, Ruby / Sapphire, every language and
  * revision, and pokeemerald-expansion. */

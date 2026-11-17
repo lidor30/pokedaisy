@@ -229,6 +229,11 @@ static bool read_path(const char* name, char* out, size_t size) {
         snprintf(out, size, "sdmc:/luma/dumps/arm11%s", name + 5);
         return true;
     }
+    // "release": the released app's folder (its log, settings.ini), to read what a CIA / .3dsx run did.
+    if (!strncmp(name, "release", 7) && (name[7] == 0 || name[7] == '/') && !strstr(name, "..")) {
+        snprintf(out, size, "sdmc:/pokedaisy%s", name + 7);
+        return true;
+    }
     return dev_path(name, out, size);
 }
 
@@ -245,7 +250,10 @@ static void make_parents(const char* path) {
 
 static bool cmd_put(int fd, const char* name, size_t size) {
     char path[320], temp[330];
-    if (!dev_path(name, path, sizeof(path))) return reply_error(fd, "outside the dev folder");
+    // "release/...": a game or save copied into the released app's folder for testing a CIA (never "self" there).
+    bool release = !strncmp(name, "release/", 8);
+    if (!(release ? read_path(name, path, sizeof(path)) : dev_path(name, path, sizeof(path))))
+        return reply_error(fd, "outside the dev folder");
     snprintf(temp, sizeof(temp), "%s.part", path);
     make_parents(path);
     FILE* f = fopen(temp, "wb");
