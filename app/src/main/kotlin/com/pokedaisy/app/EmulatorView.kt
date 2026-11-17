@@ -519,7 +519,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             if (fresh) unshownFrames++
             readyGpu = true
             readyWin = win
-            readyShowAt = showAtSource()
+            readyShowAt = pendingFrameShowAt(fresh, readyShowAt, showAtSource())
             fresh = true
             (frameLock as Object).notifyAll()
         }
@@ -541,7 +541,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             readyW = w
             readyH = h
             readyWin = if (wideSrc != null) win else null
-            readyShowAt = showAtSource()
+            readyShowAt = pendingFrameShowAt(fresh, readyShowAt, showAtSource())
             if (fresh) unshownFrames++
             fresh = true
             (frameLock as Object).notifyAll()
@@ -699,8 +699,6 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
         }
 
         override fun onDrawFrame(gl: GL10?) {
-            val wait = onVsync?.invoke() ?: 0L
-            if (wait > 0) awaitFresh(wait)
             synchronized(lock) { draw() }
         }
 
@@ -722,6 +720,9 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             // is held only for the copy into GL, not the passes below.
             synchronized(frameLock) {
                 val buf = ready ?: return  // set with buffer by bind
+                // A due frame must be consumed before the producer this tick wakes can replace it.
+                val wait = onVsync?.invoke() ?: 0L
+                if (wait > 0) awaitFresh(wait)
                 if (!fresh) repeatedDraws++
                 // Not this refresh's turn: the last frame stays up, as a held one does.
                 val held = holdFrame() || (fresh && vsyncNow() < readyShowAt)
@@ -1221,3 +1222,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
 /** Where [img] and the game go on a [viewW] x [viewH] view - shared by the GL thread's quads and the UI thread's game-pixel size. */
 private fun placement(img: OverlayImage, viewW: Int, viewH: Int, gameW: Int, gameH: Int, stretch: Boolean) =
     OverlayGeometry.layout(viewW, viewH, img.bitmap.width, img.bitmap.height, img.window, gameW, gameH, stretch, img.scale)
+
+/** A replacement must not postpone a frame the display has yet to consume (0 = immediate). */
+internal fun pendingFrameShowAt(fresh: Boolean, pending: Long, next: Long): Long =
+    if (fresh) minOf(pending, next) else next
