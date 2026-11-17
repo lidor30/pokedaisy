@@ -647,6 +647,10 @@ static const int GEN5_ACMD_PARTY = 5;
 // leaves the command ~12 frames on (headless, Black 2 on the player's state at that prompt, 2026-11-09).
 static const int GEN5_ACMD_SWITCH_ASK = 4;
 static int gen5SwitchAsked;   // the prompt was up during this GEN5_ACMD_SWITCH_ASK
+// Field reads since the battle's overlay went (-1: the field has been back since). GEN5_BATTLE_CLOSING of them are its
+// closing overlays'.
+static int gen5SinceBattle = -1;
+static const int GEN5_BATTLE_CLOSING = 16;
 // btlv_input's resource pointer: cleared while the move to forget is picked. A fifth move at a level-up asks FORGET / KEEP
 // OLD MOVES! (panel 4), then on FORGET the moves are a screen of their own: the input module torn down, the panel 0, the
 // adapter's command what it was (GitHub #916 / #1077: Black headless, CHARMELEON learning DRAGON RAGE on Route 1; the
@@ -863,6 +867,7 @@ void pk_nds_field_reset_wild(void)
 {
     holding = holding5 = checked = 0;
     gen5SwitchAsked = gen5ForgetAsked = 0;
+    gen5SinceBattle = -1;
 }
 
 static void gen5Wild(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), void (*write32)(uint32_t, uint32_t),
@@ -881,9 +886,19 @@ static int gen5FieldState(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t),
     uint32_t fieldMap = read32(gs + g->offFieldMap);
     uint32_t event = read32(gs + g->offEvent);
     const PkNdsGen5Touch* touch = gen5Touch(g);
-    if (overlay == g->battleOverlay)
+    if (overlay == g->battleOverlay) {
+        gen5SinceBattle = 0;
         return bits | PK_NDS_FIELD_BATTLE | PK_NDS_FIELD_LOCKED | (touch ? gen5BattleTouch(g, touch, read32, proc) : 0);
+    }
     gen5SwitchAsked = gen5ForgetAsked = 0;
+    // The way back from a battle: a few frames of its closing overlay (92 in Black), then the field's own overlay while
+    // its map loads (~95 frames). Neither is an app on the touch screen; read as one, the touch screen floated in empty,
+    // with its loading dots, after every battle (headless, Black on Route 1). The field's next app comes in as usual.
+    if (gen5SinceBattle >= 0 && gen5SinceBattle < 1000) gen5SinceBattle++;
+    const bool fieldReady = overlay == g->fieldOverlay && inMainRam(fieldMap);
+    if (fieldReady) gen5SinceBattle = -1;
+    else if (gen5SinceBattle >= 0 && (overlay == g->fieldOverlay || gen5SinceBattle <= GEN5_BATTLE_CLOSING))
+        return bits | PK_NDS_FIELD_LOCKED;
     if (overlay != g->fieldOverlay || !inMainRam(fieldMap)) {
         bits |= PK_NDS_FIELD_MENU | PK_NDS_FIELD_LOCKED;
         if (touch) {

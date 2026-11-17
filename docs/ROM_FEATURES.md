@@ -434,6 +434,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
     picked; it floats in right after that prompt, held over the 20 frames between them (`gen5ForgetAsked`, up to 48 field
     reads: on KEEP OLD MOVES / give up it stays that long into the next message). Black 2's wasn't reached headless (its
     btlv_input is read with Black's offsets, so the rule is the same there).
+    The way back from a battle (Black headless, 2026-11-18): about 5 frames of a closing overlay (92), then the field's
+    overlay 21 with no field map for ~95 frames while it loads. Both read as an app, so the touch screen floated in empty,
+    loading dots and all, after every battle (a player's report); they're the battle closing now (`gen5SinceBattle`: no
+    MENU / TOUCH until the field map is back, other overlays only for the first 16 reads), and the X menu right after
+    floats in as before.
 28. Let's Go Pikachu / Eevee (FireRed rev 0 edited in place; all four builds share rev 0's RAM, code and tables for these),
     checked headless on Let's Go Pikachu with its new game's save (the `lets_go` fixtures' READMEs): EXPAND by `verify_wide.py`
     on all four (map 440/440, battle 895/895 exact); a written action cell 2 + A opened the party menu and a written move
