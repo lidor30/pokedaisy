@@ -1099,6 +1099,10 @@ val POKEDEX_ROCKET_EDITION = POKEDEX_ULTRA_VIOLET.copy(abilityNames = 0x08950000
  * ability names at 0x08950000, its mixed-case text. */
 val POKEDEX_GHOST_GREY = POKEDEX_ROCKET_EDITION
 
+/** Pokémon Clover v1.3.3: rev 0's tables rewritten in place (its fakemon's entries), its ability names repointed to
+ * 0x0893A1C0, its mixed-case text ("Anal Plant Pokémon" for slot 1). */
+val POKEDEX_CLOVER = POKEDEX_ULTRA_VIOLET.copy(abilityNames = 0x0893A1C0L, categorySuffix = "Pokémon", probeCategory = "Anal Plant")
+
 /**
  * Pokémon Let's Go Pikachu / Eevee (both versions share these): FireRed's dex screens over 987 species, every table found
  * through rev 0's literal-pool words - entries 0x08AB7AF0 (No. 0-855: its own numbering, Kanto's 151 first; the newest

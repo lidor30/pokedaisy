@@ -226,6 +226,7 @@ fun fireRedHackFor(cfg: NativeConfig?): HackText? = when {
     cfg === NATIVE_GHOST_GREY_V1_0_1 -> fireRedHackGhostGreyV101
     cfg === NATIVE_LETS_GO_PIKACHU -> fireRedHackLetsGoPikachu
     cfg === NATIVE_LETS_GO_EEVEE -> fireRedHackLetsGoEevee
+    cfg === NATIVE_CLOVER -> fireRedHackClover
     else -> null
 }
 

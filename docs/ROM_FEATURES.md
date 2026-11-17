@@ -78,6 +78,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Gaia | 3.2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
 | Ghost Grey (blocked ¹¹) | 1.0.1, 1.0.2, 1.0.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹¹ ³⁴ | — | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | — | — | — | ✅ | ✅ ³³ | — ¹¹ |
 | Let's Go Pikachu / Eevee | English, Translation Only (4 builds) | ✅ ²⁸ | ✅ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ ³⁴ | — | ✅ ²⁸ | ◐ ²⁸ | ◐ ²⁸ | ✅ ²⁸ | — | — | — | ✅ | ✅ ³³ | ✅ |
+| Clover | 1.3.3 | ✅ ⁴¹ | ✅ | ✅ ⁴¹ | — | — ⁴¹ | — ⁴¹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — ⁴¹ | — | — | — | — | — | ✅ |
 | Glazed | 9.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁷ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | — ³⁶ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ | ✅ |
@@ -665,6 +666,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
     438) in the bag one that CanMonLearnTMTutor (0x089F3B6C) says can learn it. Before, the quick menu said "No one in your
     party knows FLY" while the game offered Fly (Discord). Checked headless on the user's save: HM02 given, then a Pidgey
     lead can learn it (0), a Pikachu can't (1); the flags read 0 there (no save with the device bought to try).
+41. Clover (1.3.3, 2026-11-18) is FireRed 1.0 edited in place, but its cart header says BPEE: it's found by its hash and
+    runs on FireRed's engine. Checked headless on retail FireRed's save booted in it: EXPAND exact (`verify_wide.py`), a
+    written move cell + A picked that move, a written POKéMON cell + A opened its party menu (FireRed's list; the switch
+    isn't hooked up yet). The field items, PC and FLY go by the header's code and turn themselves off (Emerald's tables
+    don't match its code); they'd need FireRed rev 0's tables picked by its hash.
 
 ## What each column is
 

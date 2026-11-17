@@ -5415,6 +5415,21 @@ val NATIVE_ASH_GRAY = NATIVE_ULTRA_VIOLET.copy(
     guideTables = GUIDE_TABLES_ASH_GRAY,
 )
 
+// ---- gamedata/gen3/hacks/clover.toml ----
+
+// Pokémon Clover v1.3.3 (16 MB, sha1 7eca3ef1…; poclo.net's BPS over FireRed 1.0 rev 0): FireRed 1.0 edited in place, no
+// source, but its header's game code is BPEE (title "POKEMON EMER"), so it's told apart by its hash in the small-BPEE check and
+// runs as FIRERED on the FireRed engine (Poller's fireRedEngine). Its literal pools still name rev 0's RAM, and retail FireRed's
+// save loads in it (`clover`: the save's party and bag, its own species' pictures). Its fakemon sit in FireRed's species
+// slots; names, types, moves (to 719, gMoveNames 0x08F46858 / gBattleMoves 0x08F44698), FAIRY (23) and growth rates in
+// CloverGen.kt (gen_firered_hack_tables.py clover). The POKéDEX keeps rev 0's tables in place but its ability names
+// (0x0893A1C0); HERE reads its own gWildMonHeaders (0x082CD614) over gMapGroups at rev 0's address, reshaped (43 groups).
+// Its region map is its own art on rev 0's region_map.c (RomRegionMap, let through for its CRC though the header says BPEE).
+val NATIVE_CLOVER = NATIVE_ULTRA_VIOLET.copy(
+    pokedex = POKEDEX_CLOVER,
+    guideTables = GUIDE_TABLES_CLOVER,
+)
+
 // ---- gamedata/gen3/hacks/ghost_grey.toml ----
 
 // Pokémon Ghost Grey (JoeyZeed; 32 MB, BPRE rev 0): v1.0.2 (sha1 74337272…) and v1.0.4 (0dafc011…) share every

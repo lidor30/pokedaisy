@@ -25,6 +25,7 @@ class HackGuidesTest {
     private val uvGame = Game("Pokemon Ultra Violet (v1.22).gba", GameKind.FIRERED, NATIVE_ULTRA_VIOLET, "ultra_violet")
     private val swordShield = Game("Pokemon Sword and Shield Ultimate Plus (v1.2.1.2).gba", GameKind.SWORD_SHIELD, NATIVE_SWORD_SHIELD, "sword_shield_up")
     private val rocket = Game("Pokemon FireRed Rocket Edition.gba", GameKind.FIRERED, NATIVE_ROCKET_EDITION, "rocket_edition")
+    private val clover = Game("Pokemon Clover (v1.3.3).gba", GameKind.FIRERED, NATIVE_CLOVER, "clover")
     private val ashGray = Game("Pokemon Ash Gray (v4.5.3).gba", GameKind.FIRERED, NATIVE_ASH_GRAY, "ash_gray")
     private val ashGrayFork = Game("Pokemon Ash Gray Fork Bug Fix (v1.0).gba", GameKind.FIRERED, NATIVE_ASH_GRAY, "ash_gray_fork")
     private val ghostGrey = Game("Pokemon Ghost Grey (v1.0.4).gba", GameKind.FIRERED, NATIVE_GHOST_GREY, "ghost_grey")
@@ -219,6 +220,15 @@ class HackGuidesTest {
         assertNotNull(generatedWhereIs(GuideId.ROCKET_EDITION, { "AREA $it" }) { false })
         val p = readSaveProgress(FixtureMemoryReader.load("rocket_edition"), NATIVE_ROCKET_EDITION, rocket.t)!!
         assertTrue(GUIDE_ROCKET_EDITION.bosses.all { it.isDone(p) })
+        fireRedHack = null
+    }
+
+    /** Clover: HERE only - its own wild headers over its own maps (TERRY is trainer 414 there: the tables' probe). */
+    @Test fun clover() {
+        val rom = load(clover) ?: return
+        assertTrue(guideTablesMatchRom(rom, clover.t))
+        assertTrue(GuideRomSource.wildMapKeys(clover.t).size > 20)
+        assertTrue(GUIDE_CLOVER.bosses.isEmpty())
         fireRedHack = null
     }
 

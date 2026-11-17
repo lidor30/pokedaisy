@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
@@ -16,6 +17,16 @@ class RomRegionMapTest {
         val f = File(ROMS, name)
         assumeTrue("no ROM at $f", f.isFile)
         return RomRegionMap.read(RomRegionMap.BytesRom(f.readBytes()))!!
+    }
+
+    /** Clover: FireRed 1.0's region map code under an Emerald header, let through by its GF header ([isFireRedUnderEmeraldHeader]). */
+    @Test fun cloverHasItsOwnRegion() {
+        val f = File(ROMS, "Pokemon Clover (v1.3.3).gba")
+        assumeTrue("no ROM at $f", f.isFile)
+        assertNull(RomRegionMap.read(RomRegionMap.BytesRom(f.readBytes()))) // BPEE: not read unless told it's FireRed's
+        assertTrue(isFireRedUnderEmeraldHeader(f.readBytes().copyOf(0x200)))
+        val m = RomRegionMap.read(RomRegionMap.BytesRom(f.readBytes()), fireRed = true)!!
+        assertEquals("Veepier Town", m.sections[0x58]!!.name)
     }
 
     @Test fun unboundHasBorrius() {

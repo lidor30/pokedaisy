@@ -21,6 +21,8 @@ class RegionMapWatchTest {
             "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
             "Pokemon Unbound (v2.1.1.1).gba", "Pokemon Odyssey (v4.1.1).gba",
             "Pokemon Gaia (v3.2).gba", "Pokemon Radical Red (v4.1).gba", "Pokemon Amethyst (v1.3.0).gba",
+            // FireRed 1.0 under Emerald's game code.
+            "Pokemon Clover (v1.3.3).gba",
         )) {
             assertEquals(name, listOf(RegionMapWatch.Watch(0x020399D4L)), find(rom(name)))
         }

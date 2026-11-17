@@ -613,6 +613,17 @@ floorNumOff = 26
 metatileSize = 16
 metatileMask = 0x3FF
 
+[rom.32a408cc]
+name = "Pokemon Clover (v1.3.3).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 79, 6, 7, 9, 11, 14, 9, 59, 32, 13, 2, 36, 4, 2, 2, 2, 3, 10, 2, 2, 3, 2, 3, 32, 5, 6, 1, 1, 20, 6, 22, 8, 9, 21, 120, 11, 2, 25, 18, 20]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
 [rom.dc343b57]
 name = "Pokemon Dreamstone Mysteries.gba"
 mapGroups = 0x09186E6C

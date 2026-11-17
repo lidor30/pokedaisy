@@ -155,6 +155,10 @@ HACKS = [
     # quest log recap needs firered_hack.txt's B presses). Both moved the object palettes (mapped from the pools).
     dict(name="FireRed Rocket Edition", sha1="033d05374ae34eb84fae62c693ca8f3da23dd1bd", family="FR", mapped=True,
          save="rocket_edition", boot_file="firered_hack.txt", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x0839FDB0)),
+    # Pokémon Clover v1.3.3: FireRed rev 0 edited in place under an Emerald header (BPEE): FireRed's family by hand. Its
+    # gMapGroups sits at rev 0's address (reshaped); the object graphics table moved (0x083BD450, its pool word).
+    dict(name="Clover v1.3.3", sha1="7eca3ef1580e21b96027b721ecd3ba1aa36a6ea2", family="FR", mapped=True,
+         save="clover", boot_file="firered_hack.txt", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x083BD450)),
     *[dict(name=f"Ash Gray {v}", sha1=sha, family="FR", mapped=True, save=save, boot_file="firered_hack.txt",
            a=dict(MAP_GROUPS=0x0873E2F4, OBJ_GFX_INFO=0x0839FDB0))
       for v, sha, save in [("v4.5.3", "1ee1557db1e4c2e0e94c6306efcc40506bc40cc9", "ash_gray"),

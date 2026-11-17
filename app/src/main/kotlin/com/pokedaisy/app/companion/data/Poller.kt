@@ -658,6 +658,14 @@ class TelemetrySampler {
                 nativeCfg = NATIVE_EMERALD_SEAGLASS
                 return
             }
+            // Pokémon Clover: FireRed 1.0 edited in place under an Emerald header - FireRed's engine, rev 0's RAM.
+            if (hash == CLOVER_V1_3_3_SHA1) {
+                kind = GameKind.FIRERED
+                fireRedEngine = true
+                nativeCfg = NATIVE_CLOVER
+                ramVerified = true   // rev 0's battle cursors: a written cell + A checked headless (the clover_battle README)
+                return
+            }
             // Emerald Kaizo: retail Emerald edited in place - retail's RAM, its own moves and wild table.
             if (hash == EMERALD_KAIZO_V2_0_SHA1) {
                 kind = GameKind.EMERALD
@@ -1144,6 +1152,10 @@ class TelemetrySampler {
             else -> null
         }
 
+        // Pokémon Clover v1.3.3 (poclo.net's BPS over FireRed 1.0): FireRed 1.0 edited in place, its header's game code
+        // BPEE. Host-side masked hash.
+        const val CLOVER_V1_3_3_SHA1 = "7eca3ef1580e21b96027b721ecd3ba1aa36a6ea2"
+
         // Pokémon Monomyth v1.0 (Team Monomyth; 32 MB, its own pokeemerald build under the game code MONE) - host-side
         // masked hash (GPIO bytes zero, so a plain `shasum`).
         const val MONOMYTH_V1_0_SHA1 = "ae1c4be9be8d706bb989602bc05731203d42860d"
@@ -1350,7 +1362,7 @@ class TelemetrySampler {
             ORANGE_ISLANDS_V5_7_BETA_SHA1, ORANGE_ISLANDS_UNVERSIONED_SHA1,
             FIRERED_ROCKET_EDITION_UNVERSIONED_SHA1, ASH_GRAY_V4_5_3_SHA1, ASH_GRAY_FORK_BUG_FIX_V1_0_SHA1,
             GHOST_GREY_V1_0_1_SHA1, GHOST_GREY_V1_0_2_SHA1, GHOST_GREY_V1_0_4_SHA1,
-            LETS_GO_PIKACHU_UNVERSIONED_SHA1, LETS_GO_PIKACHU_TRANSLATION_ONLY_UNVERSIONED_SHA1,
+            LETS_GO_PIKACHU_UNVERSIONED_SHA1, LETS_GO_PIKACHU_TRANSLATION_ONLY_UNVERSIONED_SHA1, CLOVER_V1_3_3_SHA1,
             LETS_GO_EEVEE_UNVERSIONED_SHA1, LETS_GO_EEVEE_TRANSLATION_ONLY_UNVERSIONED_SHA1,
             ELITE_REDUX_V2_65_3B_SHA1, ELITE_REDUX_V2_65_4_1B_SHA1, TEAM_ROCKET_DRAGONSDEN_V1_5_SHA1,
             TEAM_ROCKET_2026_V3_0_9_ES_SHA1, TEAM_ROCKET_2026_V3_1_ES_SHA1,

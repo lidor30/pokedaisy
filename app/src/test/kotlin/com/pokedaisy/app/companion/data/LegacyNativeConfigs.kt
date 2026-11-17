@@ -1604,6 +1604,12 @@ val LEGACY_NATIVE_ROCKET_EDITION = LEGACY_NATIVE_ULTRA_VIOLET.copy(
     guideTables = GUIDE_TABLES_ROCKET_EDITION,
 )
 
+// Pokémon Clover v1.3.3: FireRed 1.0 edited in place under an Emerald header; Ultra Violet's base (rev 0 + rev 1's cursors).
+val LEGACY_NATIVE_CLOVER = LEGACY_NATIVE_ULTRA_VIOLET.copy(
+    pokedex = POKEDEX_CLOVER,
+    guideTables = GUIDE_TABLES_CLOVER,
+)
+
 // Pokémon Ash Gray v4.5.3 (16 MB, BPRE rev 0, sha1 1ee1557d…; its Fork Bug Fix v1.0 build, 92ed8214…,
 // differs in 493 bytes of scripts and shares this): FireRed 1.0 edited in place, no source. Its tables
 // sit at rev 0's addresses, edited in place, but for gWildMonHeaders (0x088CD1F8), gMapGroups (0x0873E2F4)

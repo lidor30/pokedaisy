@@ -1950,6 +1950,7 @@ tiles, palette, grid and status icons (RomArt's `LGO_*` -> `partylg/`, `LetsGoPa
 fixtures are a new game played headless (setup through rev 0's ScriptContext_SetupScript), loading in all four builds; its intro
 takes ~1500 frames and its title wants held presses (`boot/lets_go.txt`). The manual can't name it in full (docs.test.js bans one
 of the names): it's "Let's Go" there.
+**Clover v1.3.3 (2026-11-18)**: FireRed 1.0 edited in place under an Emerald header (BPEE): found by hash in the small-BPEE check, run as FIRERED (`fireRedEngine` set by hand). Code that picks by the header's game code sees Emerald: check `isFireRedUnderEmeraldHeader` (its GF ROM header says "pokemon red version") where that matters (RegionMapWatch, the fanfare, RomRegionMap). It keeps its bag elsewhere, so retail FireRed's save boots with junk there: `boot/clover.txt` zeroes it and gives items with the game's own additem.
 **GS Chronicles v2.7.6 (2026-10-13)** (`GameKind.GS_CHRONICLES`, `NATIVE_GS_CHRONICLES`): Johto and Kanto on CFRU (32 MB BPRE
 rev 0, Ruki Studios), FireRed rev 0's RAM (every RAM global's pool word is rev 0's) with its tables repointed
 (`gen_cfru_tables.py gs_chronicles`; gBattleMoves at an odd 0x09D10BE3). Gotchas: its gItems is indexed by slot and the

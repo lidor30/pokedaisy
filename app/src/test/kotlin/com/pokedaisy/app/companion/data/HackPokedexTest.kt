@@ -474,6 +474,14 @@ class HackPokedexTest {
         }
 
     @Test
+    fun `Clover entries - rev 0's tables rewritten in place, its own ability names`() =
+        roms("Pokemon Clover (v1.3.3).gba", GameKind.FIRERED, POKEDEX_CLOVER) { t ->
+            val arabomb = PokedexSource.entry(t, 4)!!
+            assertEquals("Bomb" to (6 to 85), arabomb.category to (arabomb.heightDm to arabomb.weightHg))
+            assertTrue(arabomb.abilities.isNotEmpty())
+        }
+
+    @Test
     fun `Elite Redux entries - by dex number, its fakemon past Gen 9`() {
         for ((file, tables) in listOf("Pokemon Elite Redux (2.65.4.1b).gba" to POKEDEX_ELITE_REDUX_V2_65_4_1B,
                 "Pokemon Elite Redux (2.65.3b).gba" to POKEDEX_ELITE_REDUX_V2_65_3B)) {

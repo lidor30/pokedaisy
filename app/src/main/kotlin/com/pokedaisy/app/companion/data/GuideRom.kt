@@ -954,6 +954,15 @@ val GUIDE_TABLES_ROCKET_EDITION = GUIDE_TABLES_ULTRA_VIOLET.copy(
     probeName = "Brock",   // its text is mixed case
 )
 
+/** Pokémon Clover v1.3.3: rev 0's gTrainers and learnsets, its own gWildMonHeaders, gMapGroups at rev 0's address
+ * (reshaped: 43 groups); trainer 414 is TERRY there. HERE only (GuideClover.kt). */
+val GUIDE_TABLES_CLOVER = GUIDE_TABLES_ULTRA_VIOLET.copy(
+    wildHeaders = 0x082CD614L,
+    guide = GuideId.CLOVER,
+    mapGroups = 0x083526A8L,
+    probeName = "Terry",
+)
+
 /** Pokémon Ash Gray: rev 0's gTrainers / learnsets, its own gWildMonHeaders and gMapGroups (all their literal-pool words). */
 val GUIDE_TABLES_ASH_GRAY = GUIDE_TABLES_ULTRA_VIOLET.copy(
     wildHeaders = 0x088CD1F8L,

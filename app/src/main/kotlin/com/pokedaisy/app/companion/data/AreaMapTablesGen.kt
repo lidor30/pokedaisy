@@ -114,6 +114,8 @@ val AREA_MAP_TABLES: Map<Long, AreaMapTables> by lazy {
         0x63478921L to AreaMapTables(0x0873E2F4L, 0x0L, listOf(43, 129, 60, 132, 4, 10, 10, 11, 6, 9, 22, 10, 8, 2, 11, 4, 2, 4, 2, 1, 1, 2, 2, 4, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 2, 2, 1), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Celia's Stupid Romhack (v1.1.4).gba
         0x458c9fadL to AreaMapTables(0x089DCD7CL, 0x0L, listOf(25, 127, 67, 69, 7, 6, 8, 10, 8, 9, 27, 15, 11, 3, 12, 4, 2, 2, 2, 1, 1, 2, 2, 4, 3, 3, 3, 2, 1, 1, 2, 7, 5, 10, 8, 11, 7, 5, 1, 1, 1, 2, 1, 8, 3, 28, 20, 33, 16, 19), 640, 640, 7, 26, 16, 0x3FF),
+        // Pokemon Clover (v1.3.3).gba
+        0x32a408ccL to AreaMapTables(0x083526A8L, 0x0L, listOf(5, 123, 60, 79, 6, 7, 9, 11, 14, 9, 59, 32, 13, 2, 36, 4, 2, 2, 2, 3, 10, 2, 2, 3, 2, 3, 32, 5, 6, 1, 1, 20, 6, 22, 8, 9, 21, 120, 11, 2, 25, 18, 20), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Dreamstone Mysteries.gba
         0xdc343b57L to AreaMapTables(0x09186E6CL, 0x0L, listOf(28, 32, 40, 31, 30, 4, 57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1), 512, 512, 6, -1, 16, 0x3FF),
         // Pokemon Elite Redux (2.65.3b).gba

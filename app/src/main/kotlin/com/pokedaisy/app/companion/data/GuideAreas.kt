@@ -65,6 +65,7 @@ private fun rawAreas(guide: GuideId): List<String> = when (guide) {
     GuideId.GLAZED, GuideId.IMPERIUM, GuideId.QUETZAL, GuideId.QUETZAL_V084, GuideId.LAZARUS, GuideId.SEAGLASS, GuideId.TMT2, GuideId.SOULGOLD,
     GuideId.MARIOMON, GuideId.RECHARGED_EMERALD, GuideId.ELITE_REDUX, GuideId.TEAM_ROCKET,
     GuideId.WISHES -> emptyList()
+    GuideId.CLOVER -> emptyList()
     GuideId.DREAMSTONE -> emptyList()
     GuideId.MONOMYTH -> emptyList()
     GuideId.EPSILON_EMERALD -> emptyList()
