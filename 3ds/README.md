@@ -26,7 +26,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
 - Game list (`sdmc:/pokedaisy/roms/`: `.gba`, `.gb`, `.gbc`), D-pad or stylus.
 - The game on the top screen, with sound (ndsp), picked in SETTINGS > SCREEN > **VIEW** (SCREEN and ASPECT as one
   pick-list, `pd_view_*`): **SHARP 1.5x** (fills the height) and **STRETCH** (fills the screen), then where
-  the game can EXPAND **EXPAND 1.5x** (the default since 2026-11-16; SHARP 1.5x for a game without EXPAND), **EXPAND 1.25x** and **EXPAND 1x (EXPERIMENTAL)** (ASPECT's old ZOOM OUT: the whole screen, a
+  the game can EXPAND **EXPAND 1.5x** (the default in 1.6.0 only: since 1.6.1 games start at SHARP 1.5x, and 1.6.1 moves everyone off EXPAND once, `expandoff=` in settings.ini), **EXPAND 1.25x** and **EXPAND 1x (EXPERIMENTAL)** (ASPECT's old ZOOM OUT: the whole screen, a
   game pixel a screen pixel; AUTO ZOOM IN under it; picking it shows a notice that it may not run smoothly). PIXEL 1x and SHARP 1.25x of the game's own picture are gone (they looked
   bad; `pd_settings_load` moves them to SHARP 1.5x). The pictures use mGBA's own "sharp bilinear" look: the frame at 2x
   nearest, sampled linearly. Settings still keeps the two (`screen=`, `aspect=`). EXPAND 1x on the console, running
@@ -259,7 +259,17 @@ frame, the eighth reaching its battle menu a frame sooner (`PD_SIM_HBLANK=0` rai
 party menu 60 FPS (30), fast-forward 152 FPS at ORIGINAL and 141 with EXPAND (111). Gambatte, which armGBA runs Game Boy
 games on, is GPL-2.0-only and can't be distributed with this GPL-3.0 code: `emu/gb_none.c` stands in for it. The cartridge
 buffer is one 32 MB block reserved at start (`host_rom_arena`): a block per game left the heap too broken up for a 32 MB
-game after another had run. The dev build's `sdmc:/pokedaisy-dev/armgba/mgba` runs GBA games on mGBA, to compare;
+game after another had run. **The memory budget** (the CIA's 80 MB mode, `ctr/cia/pokedaisy.rsf`): the app's image (code,
+static data), 12 MB of linear memory, and the heap gets the rest, which has to hold that 32 MB block and, for armGBA's
+recompiler, ~10 MB more (`jitmem.c`'s HEAP_CODE_MIN + reserve; less and it runs its interpreter). 1.6.0's static data reached
+31 MB (gpSP's arrays on top of EXPAND's buffers at Android's 800 x 800) and left the heap under 32 MB: no game started on any
+3DS. EXPAND's buffers are the top screen's size now (`PK_WIDE_MAX_VIEW_W` / `_H` = 400 x 240 in `ctr/CMakeLists.txt` and the
+sim's; the same pictures, frame for frame), ~21 MB of static data in all: check `arm-none-eabi-size` on the ELF after adding a
+big static buffer (FREE FLIGHT's bird pictures and route grid come from the heap at the first flight for the same reason).
+What a game leaves of the 32 MB block is armGBA's code memory when it's 4 MB or more (`host.c`'s
+`__wrap_jitHostAllocCode`, made executable as jitmem.c does; LTO inlines jitmem.c's free, so `main.c` gives it back,
+`host_lent_code_release`): a 16 MB game then leaves the heap to everything else. A game that doesn't start says why on the top screen with `host_memory_report`'s numbers (model, CIA or
+3dsx, app memory and mode, heap / linear, static data, heap free at start and now), also in the log. The dev build's `sdmc:/pokedaisy-dev/armgba/mgba` runs GBA games on mGBA, to compare;
 `stat` adds armGBA's counters (`ag_wait_us` / `ag_render_us` / `ag_compile_us` / `ag_flush_us`) and the fourth core's
 (`wide_thread_us`, `draw_job_us`; its split `job_tex_us` / `job_begin_us`, the wait for the refresh / `job_canvas_us` /
 `job_rest_us`). Each `stat` busies the link's core ~25 ms (its `clock_us`), so a reading a second costs frames of its own:

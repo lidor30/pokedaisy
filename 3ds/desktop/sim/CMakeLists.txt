@@ -38,6 +38,8 @@ add_executable(pd_sim pd_sim.c ${HOST_SOURCES} ${CORE_SOURCES} "${REPO}/3ds/desk
 target_include_directories(pd_sim PRIVATE "${REPO}/third_party/mgba/include" "${REPO}/third_party/mgba/src"
     "${CMAKE_CURRENT_BINARY_DIR}/mgba/include" "${REPO}/3ds/core" "${REPO}/linux" "${REPO}/app/src/main/cpp")
 target_compile_definitions(pd_sim PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_CACHE)
+# EXPAND's buffers as the console has them (3ds/ctr/CMakeLists.txt).
+target_compile_definitions(pd_sim PRIVATE PK_WIDE_MAX_VIEW_W=400 PK_WIDE_MAX_VIEW_H=240)
 # Every native mix compared with the game's own (pd_mixer.c); off, the native one alone, as the console runs it.
 option(PD_SIM_MIXER_CHECK "compare the native mixer with the game's on every mix" ON)
 if(PD_SIM_MIXER_CHECK)

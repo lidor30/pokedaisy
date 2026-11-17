@@ -66,6 +66,7 @@ static struct {
     int frames;
     bool threaded;
     volatile bool hookDrew; // the render thread's frame hook already wrote this frame into [video]
+    char lastWarn[160];     // gpSP's last warning or error, for a failed load's message
 } G;
 
 static void emu_log(const char* format, ...) {
@@ -82,12 +83,14 @@ static void emu_log(const char* format, ...) {
 // --- what gpSP's libretro layer asks its frontend ---
 
 static void core_log(enum retro_log_level level, const char* format, ...) {
-    if (!G.host.log || level < RETRO_LOG_WARN) return;
+    if (level < RETRO_LOG_WARN) return;
     char line[480];
     va_list args;
     va_start(args, format);
     vsnprintf(line, sizeof(line), format, args);
     va_end(args);
+    line[strcspn(line, "\n")] = 0;
+    snprintf(G.lastWarn, sizeof(G.lastWarn), "%s", line);
     emu_log("gpSP: %s", line);
 }
 
@@ -361,6 +364,16 @@ static u8* own_arena(size_t size) {
     return arena;
 }
 
+// The cartridge must be one block: gpSP falls back to 1 MB pieces when it gets none, and everything that reads the ROM
+// through the view (the companion's hash, its tables and art) then read stray heap (GitHub #1054). Noted, and refused.
+static u8* (*arenaSource)(size_t size);
+static bool arenaMissing;
+static u8* one_block(size_t size) {
+    u8* p = arenaSource(size);
+    if (!p) arenaMissing = true;
+    return p;
+}
+
 bool pd_gpsp_open(const char* romPath, const char* savePath, const struct pd_gpsp_host* host, char* error, size_t errorLen) {
     if (G.loaded) {
         snprintf(error, errorLen, "a game is already running");
@@ -370,7 +383,9 @@ bool pd_gpsp_open(const char* romPath, const char* savePath, const struct pd_gps
     G.host = *host;
     snprintf(G.savePath, sizeof(G.savePath), "%s", savePath);
     // The cartridge in one block, which the view and the patches count on: the host's, else one of our own (kept).
-    gpsp_host_rom_arena = host->romBuffer ? (u8 * (*) (size_t)) host->romBuffer : own_arena;
+    arenaSource = host->romBuffer ? (u8 * (*) (size_t)) host->romBuffer : own_arena;
+    arenaMissing = false;
+    gpsp_host_rom_arena = one_block;
 
     retro_set_environment(environment);
     retro_set_video_refresh(video_refresh);
@@ -382,7 +397,14 @@ bool pd_gpsp_open(const char* romPath, const char* savePath, const struct pd_gps
     struct retro_game_info info = { romPath, NULL, 0, NULL };
     if (!retro_load_game(&info)) {
         retro_deinit();
-        snprintf(error, errorLen, "gpSP couldn't load it");
+        if (G.lastWarn[0]) snprintf(error, errorLen, "gpSP couldn't load it: %s", G.lastWarn);
+        else snprintf(error, errorLen, "gpSP couldn't load it (no reason given)");
+        return false;
+    }
+    if (arenaMissing) {
+        retro_unload_game();
+        retro_deinit();
+        snprintf(error, errorLen, "no one-block buffer for the game: gpSP would run it in 1 MB pieces the companion can't read");
         return false;
     }
     G.loaded = true;

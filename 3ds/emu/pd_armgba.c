@@ -5,6 +5,7 @@
 #include "pd_armgba_internal.h"
 
 #include <stdarg.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -582,7 +583,7 @@ bool ag_load(const char* romPath, const char* savePath, const struct ag_host* ho
     uint64_t t0 = load_ms();
     FILE* f = fopen(romPath, "rb");
     if (!f) {
-        snprintf(error, errorLen, "can't open the game");
+        snprintf(error, errorLen, "can't open %s (%s)", romPath, strerror(errno));
         return false;
     }
     fseek(f, 0, SEEK_END);
@@ -601,13 +602,26 @@ bool ag_load(const char* romPath, const char* savePath, const struct ag_host* ho
 #else
     uint8_t* rom = malloc((size_t) length);
 #endif
-    if (!rom || fread(rom, 1, (size_t) length, f) != (size_t) length) {
+    if (!rom) {
+        fclose(f);
+#if defined(__3DS__)
+        snprintf(error, errorLen, "no %lu KiB buffer for a %ld KiB game (%s)", (unsigned long) (bufferSize >> 10), length >> 10,
+                 hosts ? "the app's 32 MB game buffer wasn't reserved at start" : "malloc failed");
+#else
+        snprintf(error, errorLen, "no memory for a %ld KiB game", length >> 10);
+#endif
+        return false;
+    }
+    size_t got = fread(rom, 1, (size_t) length, f);
+    if (got != (size_t) length) {
+        int err = ferror(f) ? errno : 0;
         fclose(f);
 #if defined(__3DS__)
         if (!hosts)
 #endif
         free(rom);
-        snprintf(error, errorLen, "no memory for the game (%ld KiB), or it couldn't be read", length >> 10);
+        snprintf(error, errorLen, "read %lu of the game's %ld KiB from the SD card (%s)", (unsigned long) (got >> 10), length >> 10,
+                 err ? strerror(err) : "ended early");
         return false;
     }
     fclose(f);
@@ -639,7 +653,8 @@ bool ag_load(const char* romPath, const char* savePath, const struct ag_host* ho
     if (!ok || !gba) {
         if (ok) retro_unload_game();
         retro_deinit();
-        snprintf(error, errorLen, "armGBA couldn't start it");
+        snprintf(error, errorLen, "armGBA couldn't start it (retro_load_game %s, %ld KiB game)", ok ? "ok, no machine" : "failed",
+                 length >> 10);
         return false;
     }
     E.loaded = true;
