@@ -102,6 +102,7 @@ struct Ds {
     std::mutex sliceLock;
     int showHz = 0;                          // frames read back a second at most (0: all asked for)
     int64_t lastShown = 0;
+    bool promisedNext = true;                // the last frame's drawNext (EXPAND's slices drawn for this one)
 };
 
 // The game screen's window (pk_nds_set_window), any thread; taken on the emu thread before a frame goes out.
@@ -644,7 +645,11 @@ void pk_ndsb_run_frame(void)
     }
     // Uncapped fast-forward asks for every frame (its groups are for the capped speeds): past showHz frames a second
     // the frames between aren't read back (the screen can't show them; EXPAND's margins wait for a shown one too)
-    bool show = ds->draw;
+    // EXPAND's slices for this frame are drawn only after a frame that promised it (drawNext). Fast-forward breaks that
+    // promise when a group ends part-way (FF that can't keep its speed, 4x at DS RESOLUTION 4x; SMART's 1x; FF off):
+    // such a frame isn't shown, its margins would be the backdrop (a flat blue in Black), and the next one is (as
+    // pk_nds.cpp does with a frame whose 3D was skipped)
+    bool show = ds->draw && (!ds->wide || ds->promisedNext);
     if (show && ds->showHz > 0) {
         timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -652,6 +657,8 @@ void pk_ndsb_run_frame(void)
         if (now - ds->lastShown < 1000000000 / ds->showHz) show = false;
         else ds->lastShown = now;
     }
+    const bool drawNext = ds->drawNext || (ds->draw && !show);
+    ds->promisedNext = drawNext;
     // Fast-forward's frames nobody sees: the sound mixed less often (melonds-expand.patch's SPU::MixShift)
     nds->SPU.MixShift = show ? 0 : (u32) ds->coarseMix;
     nds->SetKeyMask(~ds->keys & 0xFFF);
@@ -692,7 +699,7 @@ void pk_ndsb_run_frame(void)
         // next of which is shown (drawNext) - called on the shown frames only, fast-forward's groups (4x: three frames
         // in four not drawn) left the slices undrawn before the shown one, and its margins showed the backdrop.
         if (hiTop && S == 1) memcpy(ds->topArgb, hiTop, sizeof(ds->topArgb));
-        pk_nds_wide_frame(nds, ds->topArgb, ds->drawn, overworld, ds->drawNext, battle);
+        pk_nds_wide_frame(nds, ds->topArgb, ds->drawn, overworld, drawNext, battle);
     }
     if (hiTop && S > 1) ds->presented = present(hiTop, S);
     if (ds->saveDirty && ++ds->saveQuiet >= SAVE_QUIET_FRAMES) pk_ndsb_flush_save();
