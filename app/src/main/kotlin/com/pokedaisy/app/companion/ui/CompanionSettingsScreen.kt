@@ -821,11 +821,11 @@ private fun homeRows(
         },
         // A DS game: its 3D at 2x to 8x the DS's own on the GPU, or ORIGINAL (the CPU's, pixel for pixel). melonDS only.
         s.dsResolution?.let { scale ->
-            val can = s.dsGpuAvailable && s.dsMelonDs
+            val can = s.dsGpuAvailable && DsCore.hasResolution(s.dsCoreRunning)
             SettingRow(
                 tk("DS RESOLUTION"), if (can) dsResolutionLabel(scale) else tk("N/A"), enabled = can,
                 labelBadge = NewFeatures.badge(NewFeatures.DS_RESOLUTION),
-                subtitle = if (!s.dsMelonDs) DsCore.unavailableOn(s.dsCoreRunning) else null,
+                subtitle = if (!DsCore.hasResolution(s.dsCoreRunning)) DsCore.unavailableOn(s.dsCoreRunning) else null,
             ) {
                 if (!can) return@SettingRow
                 val labels = dsResolutionLabels()

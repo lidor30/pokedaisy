@@ -7,6 +7,9 @@
 #include <GPU.h>
 #include <GPU3D.h>
 #include <GPU3D_Soft.h>
+#ifdef PK_NDS_BANANADS
+#include <GPU_Soft.h>
+#endif
 
 #include <algorithm>
 #include <atomic>
@@ -19,8 +22,24 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#ifdef PK_NDS_BANANADS_DBG
+#include <android/log.h>
+#endif
 
 using namespace melonDS;
+
+// Built twice: here against the app's melonDS (1.1), and into libpkbananads.so against BananaDS's (PK_NDS_BANANADS,
+// bananads/CMakeLists.txt), whose 2D units are GPU2D itself, whose master brightness sits in GPU and whose software 3D
+// renderer is SoftRenderer3D (a part of the software renderer, which it is handed; it never reads it).
+#ifdef PK_NDS_BANANADS
+using Unit2D = GPU2D;
+using Soft3D = SoftRenderer3D;
+static u16 masterBrightnessA(const GPU& gpu) { return gpu.MasterBrightnessA; }
+#else
+using Unit2D = GPU2D::Unit;
+using Soft3D = SoftRenderer;
+static u16 masterBrightnessA(const GPU& gpu) { return gpu.GPU2D_A.MasterBrightness; }
+#endif
 
 namespace {
 
@@ -89,7 +108,7 @@ struct Slice {
 
 // A renderer of its own and its scratch: one per helper thread.
 struct Drawer {
-    std::unique_ptr<SoftRenderer> renderer;
+    std::unique_ptr<Soft3D> renderer;
     std::vector<Polygon*> visible;   // a slice's polygons that reach what it draws
 };
 
@@ -166,7 +185,7 @@ Shown2D shown2D;
 
 void takeShown2D(Shown2D& d, const GPU& gpu)
 {
-    const GPU2D::Unit& u = gpu.GPU2D_A;
+    const Unit2D& u = gpu.GPU2D_A;
     d.DispCnt = u.DispCnt;
     for (int i = 0; i < 4; i++) {
         d.BGCnt[i] = u.BGCnt[i];
@@ -178,7 +197,7 @@ void takeShown2D(Shown2D& d, const GPU& gpu)
     d.EVA = u.EVA;
     d.EVB = u.EVB;
     d.EVY = u.EVY;
-    d.MasterBrightness = u.MasterBrightness;
+    d.MasterBrightness = masterBrightnessA(gpu);
     std::memcpy(d.Palette, gpu.Palette, sizeof(d.Palette));
     std::memcpy(d.OAM, gpu.OAM, sizeof(d.OAM));
     d.valid = true;
@@ -916,7 +935,7 @@ void drawSlice(Slice& s, Drawer& d)
 {
     int x0 = s.x0, x1 = s.x1, y0 = s.y0, y1 = s.y1;
     int ox = s.sx * (W3D - OVERLAP), oy = s.sy * (H3D - OVERLAP);   // screen pixel = slice pixel + (ox, oy)
-    SoftRenderer& r = *d.renderer;
+    Soft3D& r = *d.renderer;
     r.ColumnMin = std::clamp(x0 - ox, 0, W3D);
     r.ColumnMax = std::clamp(x1 - ox, 0, W3D);
     r.RowMin = std::clamp(y0 - oy, 0, H3D);
@@ -936,6 +955,18 @@ void drawSlice(Slice& s, Drawer& d)
     r.RenderPolygonList(wide.nds->GPU, d.visible.data(), (int) d.visible.size());
     for (int y = r.RowMin; y < r.RowMax; y++)
         memcpy(&s.image.px[y * W3D + r.ColumnMin], r.GetLine(y) + r.ColumnMin, (size_t) (r.ColumnMax - r.ColumnMin) * 4);
+#ifdef PK_NDS_BANANADS_DBG
+    {
+        static std::atomic<int> dbg {0};
+        if (dbg++ % 200 == 0) {
+            int nz = 0;
+            for (int y = r.RowMin; y < r.RowMax; y++)
+                for (int x = r.ColumnMin; x < r.ColumnMax; x++) nz += (s.image.px[y * W3D + x] & 0x00FFFFFF) != 0;
+            __android_log_print(4, "pokedaisy/bananads", "DBG slice %d,%d cols %d-%d rows %d-%d vis %zu nonzero %d abort %d",
+                s.sx, s.sy, r.ColumnMin, r.ColumnMax, r.RowMin, r.RowMax, d.visible.size(), nz, (int) wide.nds->GPU.GPU3D.AbortFrame);
+        }
+    }
+#endif
     s.image.x0 = r.ColumnMin + ox;
     s.image.x1 = r.ColumnMax + ox;
     s.image.y0 = r.RowMin + oy;
@@ -1056,8 +1087,13 @@ void pk_nds_wide_set(NDS* nds, bool on)
         return;
     }
     for (Drawer& d : wide.drawers) {
+#ifdef PK_NDS_BANANADS
+        d.renderer = std::make_unique<SoftRenderer3D>(nds->GPU.GPU3D, static_cast<SoftRenderer&>(nds->GetRenderer()));
+        d.renderer->Reset();
+#else
         d.renderer = std::make_unique<SoftRenderer>();
         d.renderer->Reset(nds->GPU);
+#endif
     }
     for (int i = 0; i < HELPERS; i++) wide.pool.threads.emplace_back(helperLoop, i);
     wide.out.assign((size_t) OW * OH, 0xFF000000u);
@@ -1168,6 +1204,17 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
     bool blackL[H3D] = {}, blackR[H3D] = {};
     // A layer blended over the 3D is drawn on into the margins instead (setupCompose).
     setupCompose(compose, nds, threeDOnTop);
+#ifdef PK_NDS_BANANADS_DBG
+    {
+        static int dbg = 0;
+        if (dbg++ % 300 == 0) {
+            u32 c = marginPixel(-10, 96);
+            __android_log_print(4, "pokedaisy/bananads", "DBG compose 3DonTop %d aOnTop %d draw %d mb %x count %d bright63 %d backdrop %x c %x composed %x cx %d..%d pow %x",
+                threeDOnTop, aOnTop, draw, compose.mb, compose.count, compose.bright[63], compose.backdrop, c,
+                composed(compose, -10, 96, c), wide.cx0, wide.cx1, nds->PowerControl9);
+        }
+    }
+#endif
     if (aOnTop && (threeDOnTop || battleBg)) {
         int mode = (int) (unitA.DispCnt & 7);
         int base = battleBg ? 3 : 0;

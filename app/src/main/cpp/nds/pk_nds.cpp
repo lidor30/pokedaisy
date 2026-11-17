@@ -29,6 +29,7 @@
 #include <AREngine.h>
 
 #include <android/log.h>
+#include <android/native_window.h>
 
 #include <algorithm>
 #include <atomic>
@@ -687,7 +688,12 @@ bool pk_ndsm_presented(void) { return ds && ds->presented; }
 
 bool pk_ndsm_gpu_frame_info(int64_t timestamp, int32_t out[6]) { return pk_nds_gl_frame_info(timestamp, out); }
 
-void pk_nds_set_window(ANativeWindow* window) { pk_nds_gl_set_window(window); }
+void pk_nds_set_window(ANativeWindow* window)
+{
+    if (window) ANativeWindow_acquire(window);   // a reference for BananaDS's too
+    pk_ndsb_set_window(window);
+    pk_nds_gl_set_window(window);
+}
 
 int pk_ndsm_wide_scene(void)
 {

@@ -44,6 +44,12 @@ enum class DsCore(val id: Int, val label: String) {
         fun unavailableOn(core: Int): String =
             if (core == MgbaCore.NDS_CORE_BANANADS) "Unavailable on BANANADS" else "Unavailable on DSPERATE"
 
+        /** DS RESOLUTION runs on this core: melonDS's OpenGL renderer, or BananaDS's own hires (up to 4x). */
+        fun hasResolution(core: Int) = core == MgbaCore.NDS_CORE_MELONDS || core == MgbaCore.NDS_CORE_BANANADS
+
+        /** EXPAND runs on this core: melonDS, or BananaDS (pk_nds_wide.cpp built against its melonDS). */
+        fun hasExpand(core: Int) = core == MgbaCore.NDS_CORE_MELONDS || core == MgbaCore.NDS_CORE_BANANADS
+
         /** DS CPU BOOST runs on this core (melonDS's and BananaDS's melonDS, not DSperate). */
         fun boosts(core: Int) = core != MgbaCore.NDS_CORE_DSPERATE
 

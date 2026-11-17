@@ -209,6 +209,8 @@ class SettingsActivity : ComponentActivity() {
     private val dsOnDsperate get() = prefs.dsCore.runs() != MgbaCore.NDS_CORE_MELONDS
     /** DS CPU BOOST runs on the DS CORE picked (not DSperate). */
     private val dsBoosts get() = com.pokedaisy.app.companion.DsCore.boosts(prefs.dsCore.runs())
+    /** DS RESOLUTION runs on the DS CORE picked (melonDS, BananaDS). */
+    private val dsResOk get() = com.pokedaisy.app.companion.DsCore.hasResolution(prefs.dsCore.runs())
     private val dsUnavailable get() = com.pokedaisy.app.companion.DsCore.unavailableOn(prefs.dsCore.runs())
 
     private val updates by lazy { AppUpdateFlow(this) }
@@ -813,10 +815,10 @@ class SettingsActivity : ComponentActivity() {
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
             // DS games: the 3D at 2x to 8x the DS's own, drawn on the GPU (nds/pk_nds_gl.h); ORIGINAL keeps the CPU's,
             // pixel for pixel. N/A without OpenGL ES 3.2, or on DSperate (melonDS's renderer).
-            (dsGpu && !dsOnDsperate).let { gpu ->
+            (dsGpu && dsResOk).let { gpu ->
                 SettingRow(
                     tk("DS RESOLUTION"), if (gpu) com.pokedaisy.app.companion.ui.dsResolutionLabel(prefs.dsResolution) else tk("N/A"),
-                    enabled = gpu, subtitle = if (dsOnDsperate) dsUnavailable else null,
+                    enabled = gpu, subtitle = if (!dsResOk) dsUnavailable else null,
                     labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_RESOLUTION),
                 ) {
                     if (!gpu) return@SettingRow

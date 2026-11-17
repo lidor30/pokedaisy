@@ -91,11 +91,10 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     add_library(pkbananads SHARED IMPORTED)
     set_target_properties(pkbananads PROPERTIES IMPORTED_LOCATION "${PKB_LIB}")
     add_dependencies(pkbananads pkbananads_build)
-    set(PKB_LINK pkbananads)
-    set(PKB_STUB "")
-else()
-    set(PKB_LINK "")
-    set(PKB_STUB nds/pk_nds_bnd_stub.cpp)
+    # libpokedaisy loads it at run time (nds/pk_nds_bnd_load.cpp: it needs Android 10's ELF TLS), so nothing links it;
+    # this empty library does, so that the build packages it into the APK beside the others.
+    add_library(pkbananads_pkg SHARED nds/pk_nds_bnd_pkg.c)
+    target_link_libraries(pkbananads_pkg pkbananads)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -103,7 +102,7 @@ endif()
 # ---------------------------------------------------------------------------
 add_library(pokedaisy SHARED pokedaisy_jni.c pokedaisy_ra.c pk_coop_lock_jni.c pk_link.c pk_link_jni.c pk_gb_field.c
     nds/pk_nds_core.cpp nds/pk_nds_dsp.cpp nds/pk_nds.cpp nds/pk_nds_platform.cpp nds/pk_nds_field.cpp nds/pk_nds_field_gpu.cpp nds/pk_nds_call.cpp nds/pk_nds_call_melonds.cpp nds/pk_nds_wide.cpp
-    nds/pk_nds_music.cpp nds/pk_nds_gl.cpp ${PKB_STUB})
+    nds/pk_nds_music.cpp nds/pk_nds_gl.cpp nds/pk_nds_bnd_load.cpp)
 set_target_properties(pokedaisy PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 # melonDS's headers test these (its own sources get them from its directory's add_definitions).
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
@@ -116,7 +115,6 @@ target_link_libraries(pokedaisy
     rcheevos
     core
     dsperate_core
-    ${PKB_LINK}
     z
     android
     log)

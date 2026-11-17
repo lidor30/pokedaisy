@@ -72,6 +72,9 @@ void pk_ndsb_deinit(void);
 bool pk_ndsb_active(void);
 // BananaDS keeps its own copy of the field read (its library's): WILD ENCOUNTERS' rates go to it too.
 void pk_ndsb_set_wild_rates(const int32_t* triples, int n);
+// DS RESOLUTION's window goes to BananaDS too (it puts its hires frames there itself); takes the reference.
+struct ANativeWindow;
+void pk_ndsb_set_window(struct ANativeWindow* window);
 
 // The magic word each core's states start with (pk_nds_state_matches_save tells another core's state from its own).
 #define PK_NDS_STATE_MAGIC_MELONDS 0x53444B50u   // "PKDS"

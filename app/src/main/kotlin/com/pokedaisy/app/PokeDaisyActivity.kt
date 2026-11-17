@@ -6543,7 +6543,7 @@ class PokeDaisyActivity : Activity() {
         dsCoreId = if (romIsNds) Prefs(this).dsCore.runs() else MgbaCore.NDS_CORE_MELONDS
         dsperate = dsCoreId != MgbaCore.NDS_CORE_MELONDS
         if (!romIsNds) return
-        wideGame = if (!dsperate && (WideScreen.ndsKnows(romCode, romRev) || romOrigin)) WideScreen.NDS else WideScreen.OFF
+        wideGame = if (com.pokedaisy.app.companion.DsCore.hasExpand(dsCoreId) && (WideScreen.ndsKnows(romCode, romRev) || romOrigin)) WideScreen.NDS else WideScreen.OFF
         if (::engine.isInitialized) engine.ndsCore = dsCoreId
     }
 
@@ -6569,9 +6569,9 @@ class PokeDaisyActivity : Activity() {
         waitForPlay()
         // DS CORE changed while the game ran: the restart is on the new one.
         if (romIsNds) {
-            val was = dsperate
+            val was = dsCoreId
             pickDsCore()
-            if (was != dsperate) syncGameScreen()
+            if (was != dsCoreId) syncGameScreen()
         }
         engine.start(romData ?: r, save, null)
         showHud(com.pokedaisy.app.companion.i18n.tr("Game restarted"))

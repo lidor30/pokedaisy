@@ -12,6 +12,7 @@
 
 #include "pk_nds_cores.h"
 #include "pk_nds_field.h"
+#include "pk_nds_wide.h"
 
 #include <NDS.h>
 #include <NDSCart.h>
@@ -27,6 +28,7 @@
 #include "gengis_renderer.h"
 
 #include <android/log.h>
+#include <android/native_window.h>
 
 #include <algorithm>
 #include <atomic>
@@ -35,6 +37,7 @@
 #include <cstring>
 #include <ctime>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -81,9 +84,34 @@ struct Ds {
     bool keepStartMenu = false;
     bool cpuBoost = false;
     int menuLitFrames = 0;
+    // DS RESOLUTION: BananaDS's own hires (Gengis + the Banana 2D engine at render.scale 2-4, as BananaOS's 4x), the
+    // top screen put into the app's SurfaceTexture window from the CPU; both screens at 1x as always for the rest.
+    int scale = 1;                           // in effect
+    int scaleWant = 1;
+    bool scalePending = false;
+    bool presented = false;
+    // EXPAND (pk_nds_wide.cpp, built against BananaDS's melonDS): the overworld past the screen's edges, from the game's
+    // own polygons drawn by melonDS's software 3D renderer in slices around the screen (Gengis draws the screen).
+    bool wide = false;
+    int winX = 0, winY = 0, winW = PK_NDS_W, winH = PK_NDS_H;   // EXPAND's window (the screen without it)
+    u32 topArgb[PK_NDS_W * PK_NDS_H] {};     // the top screen at 1x as melonDS draws it (EXPAND reads it) when hires
+    std::vector<u32> view;                   // EXPAND at 2x-4x: the window at 1x (pk_nds_wide_view)
 };
 
+// The game screen's window (pk_nds_set_window), any thread; taken on the emu thread before a frame goes out.
+struct Win {
+    std::mutex lock;
+    ANativeWindow* next = nullptr;
+    bool pending = false;
+    ANativeWindow* win = nullptr;
+    int w = 0, h = 0;
+    std::mutex infoLock;
+    int32_t info[6] = {};
+    bool infoValid = false;
+} win;
+
 Ds* ds = nullptr;
+bool geomReject = true;   // render.geom_reject as the console started (EXPAND turns it off while on)
 std::atomic<u32> touch {0};
 
 bool readFile(const char* path, std::vector<u8>& out)
@@ -157,6 +185,24 @@ void bananaEnv()
     setenv("MELONDS_GEOMTHREAD", "0", 0);
 }
 
+// The renderer at [scale]: render.renderer gengis on render.gengis_threads 3, render.2d banana; the 2D on its own
+// thread at 2x and up (render.2d_thread's default there).
+void setRenderer(NDS& n, int scale)
+{
+    n.SetRenderer(std::make_unique<bananads::GengisBananaRenderer>(n, 3, false, scale));
+    ds->banana = &static_cast<BananaRenderer&>(n.GetRenderer());
+    ds->banana->SetSplitRing(true);
+    ds->banana->SetMerge(true);
+    ds->banana->SetSkip(true);
+    ds->banana->SetOutSkip(true);
+    ds->banana->SetTestDelay(0);
+    ds->banana->SetKickBatch(64);
+    ds->banana->SetNice(0);
+    ds->banana->SetFenceWaitBlocking(true);
+    if (scale >= 2) ds->banana->SetThreaded2D(true);
+    ds->scale = ds->banana->Scale();
+}
+
 void bananaSetup(NDS& n)
 {
     NDSCart::NDSCartSlot::XferShift = 0;   // core.card_fast 0
@@ -201,17 +247,85 @@ void bananaSetup(NDS& n)
     GengisRenderer3D::Trim = 1;
     GengisRenderer3D::Reuse = 1;
     GengisRenderer3D::SetEffects(true, true);
-    // render.renderer gengis on render.gengis_threads 3, render.2d banana, 1x
-    n.SetRenderer(std::make_unique<bananads::GengisBananaRenderer>(n, 3, false, 1));
-    ds->banana = &static_cast<BananaRenderer&>(n.GetRenderer());
-    ds->banana->SetSplitRing(true);
-    ds->banana->SetMerge(true);
-    ds->banana->SetSkip(true);
-    ds->banana->SetOutSkip(true);
-    ds->banana->SetTestDelay(0);
-    ds->banana->SetKickBatch(64);
-    ds->banana->SetNice(0);
-    ds->banana->SetFenceWaitBlocking(true);
+    setRenderer(n, 1);
+}
+
+void takeWindow()
+{
+    std::lock_guard<std::mutex> l(win.lock);
+    if (!win.pending) return;
+    win.pending = false;
+    if (win.win) ANativeWindow_release(win.win);
+    win.win = win.next;
+    win.next = nullptr;
+    win.w = win.h = 0;
+}
+
+// melonDS's 0xAARRGGBB words as the window's RGBA bytes (0xAABBGGRR words).
+inline u32 toRgba(u32 p) { return 0xFF000000u | ((p & 0xFF) << 16) | (p & 0xFF00) | ((p >> 16) & 0xFF); }
+
+// The hires top screen ([S] texels a DS pixel) into the window; false without one. With EXPAND, the window shown
+// ([x, y, w, h] in DS pixels): the screen at its hires, the margins at 1x scaled up (melonDS's software renderer
+// draws them; Gengis the screen).
+bool present(const u32* hiTop, int S)
+{
+    takeWindow();
+    if (!win.win) return false;
+    const bool wide = ds->wide && ds->winW > 0 && ds->winH > 0;
+    const int vx = wide ? ds->winX : 0, vy = wide ? ds->winY : 0;
+    const int vw = wide ? ds->winW : PK_NDS_W, vh = wide ? ds->winH : PK_NDS_H;
+    if (wide) {
+        ds->view.resize((size_t) vw * vh);
+        pk_nds_wide_view(ds->view.data(), vx, vy, vw, vh);
+    }
+    const int w = vw * S, h = vh * S;
+    if (win.w != w || win.h != h) {
+        if (ANativeWindow_setBuffersGeometry(win.win, w, h, AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM) != 0) return false;
+        win.w = w;
+        win.h = h;
+    }
+    ANativeWindow_Buffer b;
+    if (ANativeWindow_lock(win.win, &b, nullptr) != 0) return false;
+    if (b.width < w || b.height < h) {
+        ANativeWindow_unlockAndPost(win.win);
+        return false;
+    }
+    const int hw = PK_NDS_W * S;
+    for (int y = 0; y < h; y++) {
+        u32* dst = (u32*) b.bits + (size_t) y * b.stride;
+        const int sy = vy * S + y;   // in the screen's texels
+        if (!wide) {
+            const u32* src = hiTop + (size_t) y * hw;
+            for (int x = 0; x < w; x++) dst[x] = toRgba(src[x]);
+            continue;
+        }
+        const u32* vrow = ds->view.data() + (size_t) (y / S) * vw;
+        const bool rowIn = sy >= 0 && sy < PK_NDS_H * S;
+        for (int x = 0; x < w; x++) {
+            const int sx = vx * S + x;
+            dst[x] = rowIn && sx >= 0 && sx < hw ? toRgba(hiTop[(size_t) sy * hw + sx]) : vrow[x / S];
+        }
+    }
+    ANativeWindow_unlockAndPost(win.win);
+    std::lock_guard<std::mutex> l(win.infoLock);
+    const int32_t v[6] = {vx, vy, vw, vh, w, h};
+    memcpy(win.info, v, sizeof(v));
+    win.infoValid = true;
+    return true;
+}
+
+// A hires screen at 1x (its texel at each DS pixel's top left); [argb] also as melonDS draws (EXPAND reads that).
+void downsample(const u32* hi, int S, u32* dst, u32* argb = nullptr)
+{
+    const int hw = PK_NDS_W * S;
+    for (int y = 0; y < PK_NDS_H; y++) {
+        const u32* row = hi + (size_t) y * S * hw;
+        for (int x = 0; x < PK_NDS_W; x++) {
+            const u32 p = row[x * S];
+            dst[y * PK_NDS_W + x] = toRgba(p);
+            if (argb) argb[y * PK_NDS_W + x] = p;
+        }
+    }
 }
 
 u32 mainRead32(u32 addr)
@@ -316,6 +430,7 @@ bool pk_ndsb_init(const char* romPath, const char* savePath, int sampleRate)
     setArm9Shift(boostShift());
     ds->nds->SetupDirectBoot("rom.nds");
     setClock();
+    geomReject = ds->nds->GPU.GPU3D.GeomReject;
     ds->nds->Start();
     if (const u8* mem = ds->nds->GetNDSSave()) ds->saveCopy.assign(mem, mem + ds->nds->GetNDSSaveLength());
     ds->audio.resize(8192 * 2);
@@ -332,6 +447,7 @@ void pk_ndsb_deinit(void)
     if (!ds) return;
     if (ds->nds) {
         pk_ndsb_flush_save();
+        pk_nds_wide_set(nullptr, false);
         ds->nds->Stop();
         delete ds->nds;
     }
@@ -358,6 +474,14 @@ void pk_ndsb_run_frame(void)
 {
     if (!ds) return;
     NDS* nds = ds->nds;
+    if (ds->scalePending) {
+        ds->scalePending = false;
+        if (ds->scaleWant != ds->scale) {
+            setRenderer(*nds, ds->scaleWant);
+            nds->GetRenderer().PostSavestate();   // (its copies of VRAM made again, as after a state)
+            LOGI("DS RESOLUTION: BananaDS at %dx", ds->scale);
+        }
+    }
     nds->SetKeyMask(~ds->keys & 0xFFF);
     u32 t = touch.load();
     if (t & 0x80000000u) nds->TouchScreen((u16) ((t >> 8) & 0xFF), (u16) (t & 0xFF));
@@ -365,15 +489,44 @@ void pk_ndsb_run_frame(void)
     nds->RunFrame();
     // Every frame is drawn (BananaDS's melonDS has no draw skip); a frame fast-forward won't show isn't copied out.
     ds->drawn = ds->draw;
+    ds->presented = false;
+    const u32* hiTop = nullptr;
+    int S = 1;
     if (ds->draw) {
         void *top = nullptr, *bottom = nullptr;
         if (nds->GPU.GetFramebuffers(&top, &bottom)) {
-            convert((const u32*) top, ds->top);
-            convert((const u32*) bottom, ds->bottom);
+            hiTop = (const u32*) top;
+            S = ds->banana->Scale();
+            if (S > 1) {
+                downsample((const u32*) top, S, ds->top, ds->topArgb);
+                downsample((const u32*) bottom, S, ds->bottom);
+            } else {
+                convert((const u32*) top, ds->top);
+                convert((const u32*) bottom, ds->bottom);
+            }
         }
     }
     ds->audioFrames = nds->SPU.ReadOutput(ds->audio.data(), (int) ds->audio.size() / 2);
     ds->fieldBits = pk_ndsb_field_bits();
+    if (ds->wide) {
+        // As pk_nds.cpp: the overworld only (the field map on screen with nothing over it, a text box keeps it), or a
+        // battle that's all 3D like it (Black's).
+        const bool inBattle = (ds->fieldBits & PK_NDS_FIELD_BATTLE) != 0;
+        const bool overworld = ((ds->fieldBits & PK_NDS_FIELD_SCREEN) &&
+                                   !(ds->fieldBits & (PK_NDS_FIELD_MENU | PK_NDS_FIELD_BATTLE))) ||
+            (inBattle && pk_nds_battle_3d(ds->field));
+        const bool battle = inBattle && pk_nds_battle_margins(ds->field);
+        const u32* frame = S > 1 ? ds->topArgb : hiTop;
+        static int dbgf = 0;
+        if (dbgf++ % 300 == 0) {
+            int c[8];
+            pk_nds_wide_counts(c);
+            LOGI("DBG wide_frame overworld=%d battle=%d bits=%x counts %d %d %d %d %d %d %d %d polys=%u", overworld, battle,
+                ds->fieldBits, c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], nds->GPU.GPU3D.RenderNumPolygons);
+        }
+        if (frame) pk_nds_wide_frame(nds, frame, ds->drawn, overworld, ds->drawNext, battle);
+    }
+    if (hiTop && S > 1) ds->presented = present(hiTop, S);
     if (ds->saveDirty && ++ds->saveQuiet >= SAVE_QUIET_FRAMES) pk_ndsb_flush_save();
 }
 
@@ -423,6 +576,7 @@ bool pk_ndsb_save_state(const char* path)
 {
     if (!ds) return false;
     Savestate st;
+    pk_nds_wide_sync();
     setArm9Shift(1);
     bool taken = ds->nds->DoSavestate(&st) && !st.Error;
     setArm9Shift(boostShift());
@@ -447,6 +601,7 @@ bool pk_ndsb_load_state(const char* path)
     memcpy(header, data.data(), sizeof(header));
     if (header[0] != STATE_MAGIC) return false;
     Savestate st(data.data() + 16, (u32) (data.size() - 16), false);
+    pk_nds_wide_sync();
     setArm9Shift(1);
     bool loaded = !st.Error && ds->nds->DoSavestate(&st) && !st.Error;
     setArm9Shift(boostShift());
@@ -588,10 +743,42 @@ int pk_ndsb_music_read(int16_t*, int) { return 0; }
 void pk_ndsb_music_fade_out(int) {}
 void pk_ndsb_music_stop(void) {}
 
-// EXPAND: none here.
-void pk_ndsb_wide_enable(bool) {}
-bool pk_ndsb_wide_draw(uint32_t*, int, int, int, int) { return false; }
-void pk_ndsb_wide_window(int, int, int, int) {}
+void pk_ndsb_wide_enable(bool on)
+{
+    LOGI("DBG wide_enable %d (ds %p, was %d)", on, (void*) ds, ds ? ds->wide : -1);
+    if (!ds || ds->wide == on) return;
+    ds->wide = on;
+    // render.geom_reject drops polygons wholly off the screen before EXPAND's hook sees them: off while it's on
+    ds->nds->GPU.GPU3D.GeomReject = on ? false : geomReject;
+    pk_nds_wide_set(ds->nds, on);
+}
+
+bool pk_ndsb_wide_draw(uint32_t* out, int x, int y, int w, int h)
+{
+    static int dbg = 0;
+    if (dbg++ % 300 == 0) LOGI("DBG wide_draw %d,%d %dx%d wide=%d", x, y, w, h, ds ? ds->wide : -1);
+    if (!ds || !ds->wide) return false;
+    pk_nds_wide_view(out, x, y, w, h);
+    if (dbg % 300 == 1) {
+        int nz = 0, n = 0;
+        for (int yy = 0; yy < h; yy++)
+            for (int xx = 0; xx < w && xx < -x; xx++, n++) nz += (out[yy * w + xx] & 0xFFFFFF) != 0;
+        int rx, ry, rw, rh;
+        pk_nds_wide_rect(&rx, &ry, &rw, &rh);
+        LOGI("DBG view left margin nonblack %d of %d, rect %d,%d %dx%d", nz, n, rx, ry, rw, rh);
+    }
+    return true;
+}
+
+void pk_ndsb_wide_window(int x, int y, int w, int h)
+{
+    pk_nds_wide_need(-x, x + w - PK_NDS_W, -y, y + h - PK_NDS_H);
+    if (!ds) return;
+    ds->winX = x;
+    ds->winY = y;
+    ds->winW = w;
+    ds->winH = h;
+}
 
 void pk_ndsb_set_draw(bool draw, bool drawNext)
 {
@@ -619,11 +806,33 @@ int pk_ndsb_fade(void)
     return fadeFactor(ds->nds->GPU.MasterBrightnessA) | (fadeFactor(ds->nds->GPU.MasterBrightnessB) << 8);
 }
 
-// DS RESOLUTION is the app's melonDS's OpenGL renderer: always the DS's own here.
-void pk_ndsb_set_scale(int) {}
-int pk_ndsb_scale(void) { return 1; }
-bool pk_ndsb_presented(void) { return false; }
-bool pk_ndsb_gpu_frame_info(int64_t, int32_t[6]) { return false; }
+// DS RESOLUTION: BananaDS's own hires, 2x to 4x (8x and the others between ask for its 4x).
+void pk_ndsb_set_scale(int scale)
+{
+    if (!ds) return;
+    ds->scaleWant = scale < 2 ? 1 : scale > 4 ? 4 : scale;
+    ds->scalePending = true;
+}
+
+int pk_ndsb_scale(void) { return ds ? ds->scale : 1; }
+bool pk_ndsb_presented(void) { return ds && ds->presented; }
+
+bool pk_ndsb_gpu_frame_info(int64_t, int32_t out[6])
+{
+    // Every frame is the whole top screen: whichever the timestamp, the newest's geometry is right.
+    std::lock_guard<std::mutex> l(win.infoLock);
+    if (!win.infoValid) return false;
+    memcpy(out, win.info, sizeof(win.info));
+    return true;
+}
+
+void pk_ndsb_set_window(ANativeWindow* window)
+{
+    std::lock_guard<std::mutex> l(win.lock);
+    if (win.next) ANativeWindow_release(win.next);
+    win.next = window;
+    win.pending = true;
+}
 
 bool pk_ndsb_rom_code(char out[5])
 {

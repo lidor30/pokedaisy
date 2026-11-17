@@ -31,7 +31,14 @@ file(GLOB MELONDS_PATCHES "${BANANADS_DIR}/patches/melonds/*.patch")
 list(SORT MELONDS_PATCHES)
 execute_process(COMMAND git -C "${MELONDS_PIN}" rev-parse HEAD OUTPUT_VARIABLE PIN_HEAD OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND git -C "${BANANADS_DIR}" rev-parse HEAD OUTPUT_VARIABLE BANANA_HEAD OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(STAMP_WANT "${PIN_HEAD} ${BANANA_HEAD}")
+# melonds-expand.patch: PokeDaisy's own melonDS changes EXPAND needs (third_party/patches/melonds-pokedaisy.patch's
+# GPU3D hooks, the line-192 hook, the software 3D renderer's column / row range), remade for this melonDS; no frame
+# skip and no OpenGL renderer (BananaDS draws with its own engines). After BananaDS's patches.
+set(PK_EXPAND_PATCH "${CMAKE_CURRENT_SOURCE_DIR}/melonds-expand.patch")
+file(SHA1 "${PK_EXPAND_PATCH}" PK_EXPAND_SHA)
+# (a changed patch makes the build configure again, so the copy is remade)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PK_EXPAND_PATCH}" ${MELONDS_PATCHES})
+set(STAMP_WANT "${PIN_HEAD} ${BANANA_HEAD} ${PK_EXPAND_SHA}")
 set(STAMP_HAVE "")
 if(EXISTS "${MSRC}/.pk-stamp")
     file(READ "${MSRC}/.pk-stamp" STAMP_HAVE)
@@ -55,6 +62,11 @@ if(NOT STAMP_HAVE STREQUAL STAMP_WANT)
         message(FATAL_ERROR "melonDS's GPU_Soft.h changed; the Banana 2D engine's friend declarations need updating")
     endif()
     file(WRITE "${MSRC}/src/GPU_Soft.h" "${SOFTTXT2}")
+    execute_process(COMMAND patch -p1 -s --no-backup-if-mismatch -i "${PK_EXPAND_PATCH}"
+        WORKING_DIRECTORY "${MSRC}" RESULT_VARIABLE R ERROR_VARIABLE E OUTPUT_VARIABLE O)
+    if(NOT R EQUAL 0)
+        message(FATAL_ERROR "melonds-expand.patch doesn't apply to BananaDS's melonDS: ${O} ${E}")
+    endif()
     file(WRITE "${MSRC}/.pk-stamp" "${STAMP_WANT}")
     list(LENGTH MELONDS_PATCHES NP)
     message(STATUS "BananaDS: melonDS ${PIN_HEAD} with ${NP} patches in ${MSRC}")
@@ -63,6 +75,12 @@ endif()
 # android_compat.h into every source here (C and C++): bionic / clang's differences from BananaDS's glibc / GCC build.
 # The Thor's CPUs (and every arm64 Android) have the CRC32 instructions Gengis's checksums use.
 add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/android_compat.h>" -march=armv8-a+crc)
+# Native ELF TLS, not the NDK's emulated TLS (its default below API 29): Gengis keeps its rasterizer's state in __thread
+# variables (gx.c's gx_ctx, fused.c, defer.c) and melonDS its NDS::Current in a thread_local, read all the time;
+# emulated, each read is a __emutls_get_address call. Needs Android 10 (API 29): the app dlopen()s this library
+# (nds/pk_nds_bnd_load.cpp), so on an older Android BananaDS just doesn't start.
+add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:-fno-emulated-tls>")
+add_link_options(-fno-emulated-tls)
 
 # Every object in this library hidden; pk_ndsb_* are exported by exports.map.
 set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -101,14 +119,16 @@ add_library(pkbananads SHARED
     bnd_platform.cpp
     "${BANANADS_DIR}/src/gengis_renderer.cpp"
     "${PD_NDS}/pk_nds_field.cpp"
-    "${PD_NDS}/pk_nds_field_gpu.cpp")
+    "${PD_NDS}/pk_nds_field_gpu.cpp"
+    "${PD_NDS}/pk_nds_wide.cpp")
 # (its own objects default-visible: exports.map keeps pk_ndsb_* and hides the rest; the static libraries stay hidden)
 set_target_properties(pkbananads PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_VISIBILITY_PRESET default)
 # gengis_renderer.cpp includes BananaDS's emu.h (headers only); the one function it calls is in pk_nds_bnd.cpp
 target_include_directories(pkbananads PRIVATE "${PD_NDS}" "${BANANADS_DIR}/src")
-target_compile_definitions(pkbananads PRIVATE BANANADS_GENGIS=1 ARCHITECTURE_ARM64=1)
-target_link_libraries(pkbananads PRIVATE banana2d gengis core log z)
+target_compile_definitions(pkbananads PRIVATE BANANADS_GENGIS=1 ARCHITECTURE_ARM64=1 PK_NDS_BANANADS=1 PK_NDS_BANANADS_DBG=1)
+target_link_libraries(pkbananads PRIVATE banana2d gengis core android log z)
 target_link_options(pkbananads PRIVATE
     "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map"
     -Wl,--exclude-libs,ALL
+    -Wl,-Bsymbolic
     -Wl,-z,max-page-size=16384)
