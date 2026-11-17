@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.asImageBitmap
@@ -5039,8 +5040,19 @@ class PokeDaisyActivity : Activity() {
                     com.pokedaisy.app.companion.ui.LocalGameSilent provides { battleInput.gameSilent },
                 ) {
                     val snap by telemetry.snapshot.collectAsState()
+                    // SHADERS' FILTER / GBA COLORS as the game gets them: the strip stands in for the game's own text box rows,
+                    // and kept no grid while the game around it had one (Discord, 2026-11-17).
+                    val fxVersion = CompanionColors.version.intValue
+                    val density = androidx.compose.ui.platform.LocalDensity.current.density
+                    val gameFx = remember(fxVersion, density) {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU)
+                            CompanionColors.gameEffect(density)?.asComposeRenderEffect() else null
+                    }
                     androidx.compose.foundation.layout.Box(
-                        androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { translationY = (fieldHud.top - dsWindowView.top).toFloat() },
+                        androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer {
+                            translationY = (fieldHud.top - dsWindowView.top).toFloat()
+                            renderEffect = gameFx
+                        },
                     ) {
                         com.pokedaisy.app.companion.ui.DsBattleMenu(
                             snap, dsBattleMenu, battleInput, if (romIs3ds) n3dsTopRect.value else coreFrame.value,
