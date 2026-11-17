@@ -194,8 +194,11 @@ private fun CellTable(rows: List<List<@Composable RowScope.() -> Unit>>, flex: I
         val g = gap.roundToPx()
         fun cell(r: Int, c: Int) = measurables[r * cols + c]
         val body = (if (header) 1 else 0) until rows.size
+        // The last column's title counts too: spilling left, a wider title (stat experience's EXP over 0s) ran into the
+        // flex column's own title (DV) on a narrow screen.
         val widths = IntArray(cols) { c ->
-            if (c == flex) 0 else body.maxOfOrNull { cell(it, c).maxIntrinsicWidth(Constraints.Infinity) } ?: 0
+            val counted = if (header && c == cols - 1) rows.indices else body
+            if (c == flex) 0 else counted.maxOfOrNull { cell(it, c).maxIntrinsicWidth(Constraints.Infinity) } ?: 0
         }
         widths[flex] = (constraints.maxWidth - widths.sum() - g * (cols - 1)).coerceAtLeast(0)
         val starts = IntArray(cols).also { for (c in 1 until cols) it[c] = it[c - 1] + widths[c - 1] + g }
