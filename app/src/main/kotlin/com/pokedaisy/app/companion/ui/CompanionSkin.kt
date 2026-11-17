@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.concurrent.Volatile
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import com.pokedaisy.app.companion.data.GameKind

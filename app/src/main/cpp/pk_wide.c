@@ -4063,9 +4063,13 @@ int pk_field_state(struct mCore* core, int runIndoors, int wildKeep) {
     int surf = surfing();
     if (surf > 0) s |= PK_FIELD_SURF;
     if (surf >= 0) s |= PK_FIELD_AVATAR;
-    wildRoll(s, wildKeep);
+    if (wildKeep >= 0) wildRoll(s, wildKeep);
     if (wildOwned) s |= PK_FIELD_WILD_HELD;
     return s;
+}
+
+int pk_field_observe(struct mCore* core) {
+    return pk_field_state(core, 0, -1);  // observation does not advance the encounter policy
 }
 
 void pk_wide_reset(void) {

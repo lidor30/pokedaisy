@@ -14,13 +14,13 @@ internal fun Long.hex(width: Int = 0, upper: Boolean = false): String = toULong(
 /** Two lower-case hex digits a byte, as `joinToString("") { "%02x".format(it) }` gave. */
 internal fun ByteArray.hex(upper: Boolean = false): String = joinToString("") { (it.toInt() and 0xFF).hex(2, upper) }
 
-/** This number zero-padded to [width] digits (`%02d`). */
-internal fun Int.pad(width: Int): String = if (this < 0) "-" + (-toLong()).toString().padStart(width - 1, '0') else toString().padStart(width, '0')
+/** This number zero-padded to [width] digits (`%02d`). Public: the screens use it too. */
+fun Int.pad(width: Int): String = if (this < 0) "-" + (-toLong()).toString().padStart(width - 1, '0') else toString().padStart(width, '0')
 
 internal fun Long.pad(width: Int): String = if (this < 0) "-" + (-this).toString().padStart(width - 1, '0') else toString().padStart(width, '0')
 
-/** [decimals] digits after the point, rounded half up (`%.2f`), always with a '.'. */
-internal fun Double.fixed(decimals: Int): String {
+/** [decimals] digits after the point, rounded half up (`%.2f`), always with a '.'. Public: the screens use it too. */
+fun Double.fixed(decimals: Int): String {
     var scale = 1L
     repeat(decimals) { scale *= 10 }
     val neg = this < 0

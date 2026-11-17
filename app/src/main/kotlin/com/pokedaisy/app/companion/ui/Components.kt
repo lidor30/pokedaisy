@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.size
@@ -63,10 +62,9 @@ private fun rememberTypeTags(): androidx.compose.ui.graphics.ImageBitmap? {
         game == com.pokedaisy.app.companion.data.GameKind.EMERALD -> com.pokedaisy.app.companion.data.RomArt.TYPE_TAGS_EMERALD
         else -> null
     } ?: return null
-    val context = androidx.compose.ui.platform.LocalContext.current
     val generation = rememberArtGeneration()
     return androidx.compose.runtime.remember(path, generation) {
-        GameArt.get(context, path)?.let { it.asImageBitmap() }
+        GameArt.get(path)
     }
 }
 

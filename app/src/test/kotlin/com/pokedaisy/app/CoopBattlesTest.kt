@@ -169,7 +169,7 @@ class CoopBattlesTest {
         val r = Rig()
         var cancels = 0
         r.ui.onCancelAsk = { cancels++ }
-        r.ui.cancelGraceNanos = 0L
+        r.ui.cancelGrace = kotlin.time.Duration.ZERO
         r.ui.hostWait = "ASH" to 20
         r.ui.key(MenuKey.A)
         assertEquals(0, cancels)

@@ -75,6 +75,10 @@ It changes the game while it runs, never your ROM file or your save, and you can
 > [!NOTE]
 > `INSTANT TEXT` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire and in many hacks built on their code. Where it can't work the row shows `N/A`.
 
+On iPhone and iPad, `INSTANT TEXT` is available in the same `GAMEPLAY` group. PokeDaisy checks the game's code
+before enabling it, so the row can briefly say `N/A` while a game opens. Your choice is remembered. Turning it off
+restores the game's normal text routine; the ROM file stays unchanged.
+
 ## Slow motion
 
 Hold the `SLOWMO HOLD` hotkey and the game runs at half speed until you let go, with the sound muted. It's handy for a tricky moment, like timing a button press or watching an animation you'd otherwise miss. On a keyboard it's the minus key; it has no controller button by default, so give it one under `HOTKEYS` if you want it.
@@ -117,3 +121,20 @@ A save copied off a real cartridge can carry that cartridge's clock with it, and
 ## Rewind
 
 Missed a jump or walked into the wrong trainer? With `REWIND` on, holding the `REWIND HOLD` hotkey plays the last 20 seconds or so backwards. It's off by default and never touches your save file. It works in Game Boy, Game Boy Color and Game Boy Advance games, not DS games. See [Saves](saves.md) for how it works.
+
+## On iPhone and iPad
+
+Use `FF` and `FF SPEED` in the companion's `SETTINGS` to switch fast-forward on and choose its pace. `GAME SPEED`
+sets your pace with FF off and remembers it for each game. You can also change `GAME VOLUME` or `MUTE GAME` there.
+Muting keeps your volume choice for when you turn the sound back on.
+
+Open `SPEED OPTIONS` for `FF MODE` and `SCENE SPEEDS`. `SMART` is the default: menus, the region map and a battle
+waiting for your command run at 1x, then your chosen speed returns. `NORMAL` keeps the chosen speed everywhere.
+Shops stay fast, just as on Android.
+
+`BATTLE SPEED` and `MENU SPEED` can have their own pace with FF off. On supported GBA games, `TEXT SPEED`,
+`BIKE SPEED` and `SURF SPEED` work too. A row says `N/A` if the game's field or riding state cannot be read;
+bike and surf become available once that state has been seen. `SAME` uses `GAME SPEED`.
+
+Sound speeds up with the game; `INFINITE` is silent while running uncapped. Steady music and speed hotkeys
+are not available yet.

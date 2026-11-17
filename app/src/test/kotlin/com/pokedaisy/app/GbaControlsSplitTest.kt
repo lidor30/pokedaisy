@@ -1,5 +1,8 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.CoreKey
+import okio.Path
+import okio.Path.Companion.toOkioPath
 import android.view.KeyEvent
 import com.pokedaisy.app.GbaControls.Btn
 import org.junit.Assert.assertEquals
@@ -21,25 +24,25 @@ class GbaControlsSplitTest {
     private val y = KeyEvent.KEYCODE_BUTTON_Y
     private val r3 = KeyEvent.KEYCODE_BUTTON_THUMBR
 
-    private fun input(dir: File, ds: Boolean) = GbaInput().apply { setControls(GbaControls.load(dir)); this.ds = ds }
+    private fun input(dir: Path, ds: Boolean) = GbaInput().apply { setControls(GbaControls.load(dir)); this.ds = ds }
 
     @Test fun theDefaultsKeepXAndYAsTheyWere() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         val gba = input(dir, ds = false)
-        assertEquals(MgbaCore.Key.START, gba.buttonFor(x))
-        assertEquals(MgbaCore.Key.SELECT, gba.buttonFor(y))
+        assertEquals(CoreKey.START, gba.buttonFor(x))
+        assertEquals(CoreKey.SELECT, gba.buttonFor(y))
         assertTrue(gba.isCompanion(x))
         assertFalse(gba.isCompanion(y))
         val ds = input(dir, ds = true)
-        assertEquals(MgbaCore.Key.X, ds.buttonFor(x))
-        assertEquals(MgbaCore.Key.Y, ds.buttonFor(y))
+        assertEquals(CoreKey.X, ds.buttonFor(x))
+        assertEquals(CoreKey.Y, ds.buttonFor(y))
         assertFalse(ds.isCompanion(x))
     }
 
     @Test fun aFileFromBeforeTheSplitGivesEachRowItsOldKeys() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         // X / Y moved to L3 / R3 when they were one row each.
-        File(dir, "controls.properties").writeText("start2=BUTTON_THUMBL\nselect2=BUTTON_THUMBR\n")
+        File(dir.toFile(), "controls.properties").writeText("start2=BUTTON_THUMBL\nselect2=BUTTON_THUMBR\n")
         val raw = GbaControls.rawBindings(dir)
         assertEquals(listOf("BUTTON_THUMBL"), raw[Btn.X])
         assertEquals(listOf("BUTTON_THUMBR"), raw[Btn.Y])
@@ -49,7 +52,7 @@ class GbaControlsSplitTest {
     }
 
     @Test fun startTwoMovesWithoutTakingTheDsX() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         GbaControls.setBindingNamed(dir, Btn.START_2, "BUTTON_THUMBR")
         val raw = GbaControls.rawBindings(dir)
         assertEquals(listOf("BUTTON_X"), raw[Btn.X])
@@ -60,35 +63,35 @@ class GbaControlsSplitTest {
         assertTrue(gba.isCompanion(x))
         assertTrue(gba.onKey(x, true))
         assertEquals(0, gba.mask)
-        assertEquals(MgbaCore.Key.START, gba.buttonFor(r3))
+        assertEquals(CoreKey.START, gba.buttonFor(r3))
         assertEquals(null, input(dir, ds = true).buttonFor(r3))
     }
 
     @Test fun toCompanionCanBeClearedLeavingStartTwo() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         GbaControls.clearBinding(dir, Btn.TO_COMPANION)
         val gba = input(dir, ds = false)
         assertFalse(gba.isCompanion(x))
-        assertEquals(MgbaCore.Key.START, gba.buttonFor(x))
+        assertEquals(CoreKey.START, gba.buttonFor(x))
     }
 
     @Test fun aSharedButtonTakesTheKeyFromBothGroupsButNotFromToCompanion() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         GbaControls.setBindingNamed(dir, Btn.B, "BUTTON_X")
         val raw = GbaControls.rawBindings(dir)
         assertEquals(emptyList<String>(), raw[Btn.X])
         assertEquals(emptyList<String>(), raw[Btn.START_2])
         assertEquals(listOf("BUTTON_X"), raw[Btn.TO_COMPANION])
         val gba = input(dir, ds = false)
-        assertEquals(MgbaCore.Key.B, gba.buttonFor(x))
+        assertEquals(CoreKey.B, gba.buttonFor(x))
         assertTrue(gba.isCompanion(x))
-        assertEquals(MgbaCore.Key.B, input(dir, ds = true).buttonFor(x))
+        assertEquals(CoreKey.B, input(dir, ds = true).buttonFor(x))
     }
 
     @Test fun theCompanionMarkNeverReachesTheGame() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         val gba = input(dir, ds = false)
         gba.onKey(x, true)
-        assertEquals(MgbaCore.Key.START, gba.mask)
+        assertEquals(CoreKey.START, gba.mask)
     }
 }

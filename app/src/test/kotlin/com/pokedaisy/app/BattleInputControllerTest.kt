@@ -6,6 +6,7 @@ import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_TARGET_SELECT
+import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.data.MemoryReader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -212,15 +213,15 @@ class BattleInputControllerTest {
     }
 
     @Test fun userKeysAreBlockedOnlyWhileASequenceRuns() {
-        input.setTouchBits(MgbaCore.Key.R) // the player holding R on the touch pad
+        input.setTouchBits(CoreKey.R) // the player holding R on the touch pad
         c.onState(0, BATTLE_INPUT_ACTION_SELECT)
         c.selectAction(0) // FIGHT
         c.tick()
         assertTrue(c.isBusy)
-        assertEquals(0, input.mask and MgbaCore.Key.R)
+        assertEquals(0, input.mask and CoreKey.R)
         run(200)
         assertFalse(c.isBusy)
-        assertEquals(MgbaCore.Key.R, input.mask and MgbaCore.Key.R)
+        assertEquals(CoreKey.R, input.mask and CoreKey.R)
     }
 
     @Test fun playerKeysComeBackWhileTheTurnPlaysOut() {
@@ -230,9 +231,9 @@ class BattleInputControllerTest {
         c.selectMove(1)
         run(200) { if (it == "A") c.onState(0, BATTLE_INPUT_BUSY) }
         assertEquals(listOf("LEFT", "UP", "RIGHT", "A"), game.presses)
-        input.setTouchBits(MgbaCore.Key.A)
+        input.setTouchBits(CoreKey.A)
         c.tick()
-        assertEquals(MgbaCore.Key.A, input.mask and MgbaCore.Key.A)
+        assertEquals(CoreKey.A, input.mask and CoreKey.A)
     }
 
     @Test fun aTargetScreenAfterAMoveIsStillConfirmed() {
@@ -452,7 +453,7 @@ class BattleInputControllerTest {
     // ---- HIDE BATTLE MENU: the D-pad round the companion's buttons (FIGHT over BAG / RUN / POKéMON) ----
 
     @Test fun hiddenMenuSteerFollowsTheCompanionsLayout() {
-        val k = MgbaCore.Key
+        val k = com.pokedaisy.app.companion.data.CoreKey
         // 0 FIGHT, 1 BAG, 2 POKéMON, 3 RUN: FIGHT on top, BAG / RUN / POKéMON left to right under it.
         assertEquals(3, HiddenMenuSteer.next(0, k.DOWN))
         assertEquals(1, HiddenMenuSteer.next(0, k.LEFT))
@@ -474,18 +475,18 @@ class BattleInputControllerTest {
         direct.onState(1, BATTLE_INPUT_ACTION_SELECT)
         direct.tick()
         assertTrue(direct.canSteerAction)
-        direct.steerAction(MgbaCore.Key.DOWN)
+        direct.steerAction(com.pokedaisy.app.companion.data.CoreKey.DOWN)
         direct.tick()
         assertEquals(3, game.actionCursor[1])
         assertEquals(3, direct.menuCursor)
-        direct.steerAction(MgbaCore.Key.RIGHT)
+        direct.steerAction(com.pokedaisy.app.companion.data.CoreKey.RIGHT)
         direct.tick()
         assertEquals(2, game.actionCursor[1])
         assertEquals(0, input.mask)
         // On another menu it does nothing.
         direct.onState(1, BATTLE_INPUT_MOVE_SELECT)
         assertFalse(direct.canSteerAction)
-        direct.steerAction(MgbaCore.Key.UP)
+        direct.steerAction(com.pokedaisy.app.companion.data.CoreKey.UP)
         direct.tick()
         assertEquals(2, game.actionCursor[1])
     }
@@ -645,8 +646,8 @@ class BattleInputControllerTest {
         const val SB1_PTR = 0x030040C4L
         const val SB1 = 0x020166C4L
         val KEYS = listOf(
-            MgbaCore.Key.A to "A", MgbaCore.Key.B to "B", MgbaCore.Key.LEFT to "LEFT",
-            MgbaCore.Key.RIGHT to "RIGHT", MgbaCore.Key.UP to "UP", MgbaCore.Key.DOWN to "DOWN",
+            CoreKey.A to "A", CoreKey.B to "B", CoreKey.LEFT to "LEFT",
+            CoreKey.RIGHT to "RIGHT", CoreKey.UP to "UP", CoreKey.DOWN to "DOWN",
         )
     }
 }

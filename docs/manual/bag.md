@@ -67,6 +67,10 @@ Like the other items, it only works while you're walking around, with no menu, c
 
 Normally a TM is gone once it teaches a move, so you think twice before using a rare one. Turn on `REUSABLE TMS` in the companion's `SETTINGS`, `GAMEPLAY` group, and a TM stays in your bag after it teaches a move, just like an HM. It's `OFF` until you turn it on.
 
+The same option works on iPhone and iPad. PokeDaisy checks the game's code first, so it may briefly show `N/A`
+while the game opens. Your choice is remembered and never changes the ROM file. A game that already keeps its
+TMs shows `ON` with the option greyed out.
+
 Everything else about TMs works as the game has it: which Pokémon can learn one, forgetting a move to make room, selling one at a shop. The change applies at once, no restart needed, and turning it off makes TMs single use again.
 
 > [!NOTE]
@@ -97,6 +101,8 @@ It only works while you're walking around. If a menu, a conversation or a battle
 > This works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (in every language PokeDaisy supports, except the Japanese Ruby, Sapphire and Emerald), and in Unbound, Radical Red, Gaia, Odyssey, Amethyst, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Sword and Shield Ultimate Plus, GS Chronicles, Glazed, Emerald Kaizo and Recharged Emerald. SoulGold has `USE` on the items that keep wild Pokémon away. In other games, use items in the game as normal; the bag tab updates by itself.
 
 ## The PC from anywhere
+
+On iPhone and iPad, supported GBA games also have the bag's `USE`, `GIVE`, `TAKE` and `PC` actions. They use the same game code and checks as Android. The PC closes a companion window so you can work it with the game's controls. Game Boy field actions and TM teaching are coming separately.
 
 In FireRed, LeafGreen, Emerald, Ruby and Sapphire, the bag tab has a `PC` button above the sort button (its small arrow means it opens the game's own screen, not a companion page). Tap it and the game's own PC opens right where you're standing, with the same menu a PC in a Pokémon Center gives you: the Pokémon storage, your own PC with your stored items and mailbox, and the game's other PCs as you unlock them. The Pokémon storage lets you take Pokémon out, put them away and move them between boxes (and, outside Ruby and Sapphire, move their items). Back out of it as usual and you're on the field again.
 

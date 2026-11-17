@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion
 
+import kotlinx.atomicfu.locks.synchronized
+import kotlinx.atomicfu.locks.SynchronizedObject
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -48,6 +50,7 @@ object LightCompanion {
     const val STRIKE_WINDOW_MS = 60_000L
 
     private val strikes = ArrayDeque<Long>()
+    private val strikesLock = SynchronizedObject()
 
     /**
      * A game button reached the game [delayMs] after it was pressed ([nowMs] = uptime). Returns true when that made
@@ -55,7 +58,7 @@ object LightCompanion {
      */
     fun noteKeyDelay(delayMs: Long, nowMs: Long): Boolean {
         if (delayMs < LATE_KEY_MS || deviceWeak) return false
-        synchronized(strikes) {
+        synchronized(strikesLock) {
             strikes.addLast(nowMs)
             while (strikes.isNotEmpty() && nowMs - strikes.first() > STRIKE_WINDOW_MS) strikes.removeFirst()
             if (strikes.size < STRIKES) return false

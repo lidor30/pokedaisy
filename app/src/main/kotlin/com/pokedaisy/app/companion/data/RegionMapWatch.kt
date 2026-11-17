@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
 import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import okio.Path
 
 /**
@@ -27,12 +29,17 @@ object RegionMapWatch {
     @Volatile
     private var watches = emptyList<Watch>()
 
+    private val lock = SynchronizedObject()
+    private var generation = 0
+
     /** Scans [rom] in the background for its map pointers. */
-    fun load(rom: Path) {
-        watches = emptyList()
+    fun load(rom: Path?) {
+        val current = synchronized(lock) { watches = emptyList(); ++generation }
+        if (rom == null) return
         background("pokedaisy-map-watch") {
             try {
-                watches = withRomFile(rom) { f -> find(f.readFully(0, minOf(f.size(), SCAN_END.toLong()).toInt())) }
+                val found = withRomFile(rom) { f -> find(f.readFully(0, minOf(f.size(), SCAN_END.toLong()).toInt())) }
+                synchronized(lock) { if (generation == current) watches = found }
             } catch (t: Throwable) {
                 Logs.w("RegionMapWatch: scan failed", t)
             }

@@ -4,6 +4,7 @@ import com.pokedaisy.app.companion.coop.CoopPairing.CoopPairFail
 import com.pokedaisy.app.companion.coop.CoopPairing.LanEntry
 import com.pokedaisy.app.companion.coop.CoopPairing.Step
 import java.io.File
+import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -24,8 +25,8 @@ class CoopPairingTest {
     private val tickB = ticketOf(0xB1)
     private val tA = net.node(0xA1, tickA)
     private val tB = net.node(0xB2, tickB)
-    private val pairsA = CoopPairs(File(tmp, "a/pairs.json"))
-    private val pairsB = CoopPairs(File(tmp, "b/pairs.json"))
+    private val pairsA = CoopPairs(File(tmp, "a/pairs.json").toOkioPath())
+    private val pairsB = CoopPairs(File(tmp, "b/pairs.json").toOkioPath())
 
     private fun hello(save: CoopSaveId, ticket: String) = CoopHello(1, "1.3.1", EMERALD_COOP_SHA1, save, false, ticket)
 
