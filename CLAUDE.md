@@ -1074,6 +1074,13 @@ Battlers get theirs by matching species / level / HP
 against the party and `Telemetry.battleFoes` (gEnemyParty, now read in wild battles too; `enemyParty` stays
 trainer-only for FOE TEAM). Hidden Power's power shows only on FIRERED/EMERALD kinds (expansion uses a flat
 60). Foe IVs sit behind SETTINGS > FOE IVS (`Prefs.showFoeIvs`, off): INFO's STATS button.
+The Game Boy games (2026-11-13) carry DVs in the same `MonStats` (`StatKind`: GEN1 / GEN2 = four DVs, HP's from their
+low bits, stat experience for EVs, Special in both special slots - Gen 1's one Special stat too; POLISHED = six DVs, EVs and
+its nature, the personality byte's low 5 bits, Gen 3's numbering), from the party struct and, for a wild foe, the battle
+struct's DVs (`gen1WildFoe` / `gen2WildFoe` -> `battleFoes`) with the stats from the unmodified copy - wEnemyMon's carry stat
+stages (a LEER halves Gen 1's Defense): Gen 1's wEnemyMonUnmodifiedMaxHP CD24 in every cart, Gen 2's wEnemyStats
+(`Gen2Config.enemyStats`: Crystal and hacks C6C1, Gold / Silver CB9F; Polished Crystal keeps stages out of its struct).
+`GbStatsTest` works every fixture's stats out again from base stats (the carts' own with `-DromDir`). Gen 2's Hidden Power (`gen2HiddenPower*`) only on Gold / Silver / Crystal / Crystal Clear; none on Gen 1 / Polished.
 **Battle POKéMON pane + automated input** (`BattleControlsScreen.PartyPicker`, `BattleInputController`):
 on FireRed rev 1 / Emerald (`switchAddrsFor`in`PokeDaisyActivity`; gPartyMenu
 FR `0x0203B0A0`/ EM`0x0203CEC8`, slotId at +9) and the hacks listed there (Unbound since

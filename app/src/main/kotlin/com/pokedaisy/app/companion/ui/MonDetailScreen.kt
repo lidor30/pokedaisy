@@ -243,7 +243,7 @@ fun MonDetailScreen(
                             val right = Modifier.weight(0.5f).fillMaxHeight().padding(start = gap)
                             val stats = mon.stats
                             if (showStats && stats != null) {
-                                MonStatsSection(stats, m, small, right, ability = individualAbility(mon, stats, dexTables))
+                                MonStatsSection(stats, m, right, ability = individualAbility(mon, stats, dexTables))
                             } else MovesSection(mon, m, small, right)
                         }
                     }
