@@ -1066,6 +1066,10 @@ into `Mon.stats` (`MonStats.kt`): EVs substruct, Misc +4's IV word (plaintext CF
 nature = PID % 25 XOR expansion's `hiddenNatureModifier` (+0x12 bits 3-7, 0 elsewhere: Mints), stats from the
 party fields. Checked on every fixture by recomputing the stored stats from the ROM's base stats (equal, or
 1 below where EVs came after the last level-up); SoulGold's 96-byte struct didn't add up, so it gets none.
+The DS games (2026-11-14) read theirs in `decodeGen4PartyMon` (every Gen 4 / 5 game): block B +0x10's IV word (Gen 3's order),
+block A +0x10's EVs, the party fields' stats; nature = personality % 25 in Gen 4, Gen 5's own byte at block B +0x19 (it can
+differ). `DsStatsTest`: Black 2 / White 2 fixtures against the carts' personal records (KYUREM's forms by hand), Platinum /
+SoulSilver by public base stats. Hidden Power's power on the retail carts only (`retailDsGame`: not Origin / Renegade / Redux).
 Battlers get theirs by matching species / level / HP
 against the party and `Telemetry.battleFoes` (gEnemyParty, now read in wild battles too; `enemyParty` stays
 trainer-only for FOE TEAM). Hidden Power's power shows only on FIRERED/EMERALD kinds (expansion uses a flat
