@@ -2125,7 +2125,10 @@ flipping back skips / repeats a frame; the `fps=` line says `paced=1 (slow: not 
 "up on the refresh that starts the next frame", never checked on a device) was taken out. With it, once a game went
 [slowFrames] (a GBA game within seconds on the Thor at 120 Hz, a DS game always) each frame was replaced before its refresh
 came: on the Thor at 120 Hz, 3,653 of 3,840 FireRed frames and about half of Black's never reached the screen (`unshown=` on
-the `fps=` line), 1 and 0 without it. Check pacing on a 120 Hz screen with a non-debuggable build (`assembleBenchmark`).
+the `fps=` line), 1 and 0 without it. The DS "top screen stuck white" reports (GitHub #1047) were the same: SoulSilver's boot
+at 120 Hz with DS RESOLUTION 2x left 109-120 of every 120 frames unshown, the top screen on one picture for 10 s and more (a
+white fade, when it stopped on one), 0 without it. Check pacing on a 120 Hz screen with a non-debuggable build
+(`assembleBenchmark`).
 **No method over 10,000 dex code units on a hot path**: ART compiles none past that (at install or in the JIT), so it runs
 interpreted for good - logcat's "Method exceeds compiler instruction limit". `EmulatorEngine.loop` was 7,784 in the 1.6.0
 release (18,500 in a debuggable build, which then ran every frame interpreted); it's `GameRun` now, a method per stage of a
