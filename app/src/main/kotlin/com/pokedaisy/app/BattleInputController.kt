@@ -1089,6 +1089,12 @@ fun battleSwitchAddrsFor(
         telemetry.retailEnginePartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
     game == com.pokedaisy.app.companion.data.GameKind.FIRERED && romCode == "BPRE" && romRev == 1 ->
         BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
+    // Retail English FireRed rev 0 and LeafGreen rev 0 / 1 (and their randomized builds): rev 1's RAM, checked headless on
+    // each retail cart (2026-11-18: POKéMON, DOWN, A, SHIFT sent party slot 1 in). By the retail hash only: the hacks edited
+    // in place share BPRE rev 0 and have lines of their own below.
+    game == com.pokedaisy.app.companion.data.GameKind.FIRERED && telemetry.retailRom() &&
+        (romCode == "BPRE" && romRev == 0 || romCode == "BPGE" && (romRev == 0 || romRev == 1)) ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
     // Recharged Emerald runs as Emerald (BPEE) but is a rebuild with its own RAM: its config carries gPartyMenu (Emerald's
     // list; headless on all three builds: a written POKéMON cell, DOWN, A, SHIFT sent party slot 1 in).
     game == com.pokedaisy.app.companion.data.GameKind.EMERALD && com.pokedaisy.app.companion.data.runningEmeraldHack != null ->
