@@ -69,6 +69,7 @@ static struct {
     int saveQuiet;
     int frames;
     bool threaded;
+    int threadStartError; // this open's attempt, not the previous game's worker
     volatile bool hookDrew; // the render thread's frame hook already wrote this frame into [video]
     char lastWarn[160];     // gpSP's last warning or error, for a failed load's message
 } G;
@@ -447,7 +448,7 @@ bool pd_gpsp_open(const char* romPath, const char* savePath, const struct pd_gps
         } else {
             static const char* const stages[] = { "unknown", "frame slot 0 allocation", "frame slot 1 allocation",
                 "line semaphore", "done semaphore", "sync semaphore", "VRAM snapshots", "thread creation" };
-            int err = video_thread_start_error();
+            int err = G.threadStartError = video_thread_start_error();
             unsigned stage = err < 0 && err >= -7 ? (unsigned) -err : 0;
             emu_log("gpSP render worker FAILED: %s (stage %d); see thread-create Results", stages[stage], err);
         }
@@ -494,7 +495,7 @@ void pd_gpsp_get_stats(struct pd_gpsp_stats* out) {
     memset(out, 0, sizeof(*out));
     out->threaded = G.threaded;
     out->workerCpu = G.threaded ? video_thread_worker_cpu() : -1;
-    out->startError = video_thread_start_error();
+    out->startError = G.threadStartError;
     out->snapshotBytes = video_thread_snapshot_bytes();
     if (G.threaded) {
         out->renderUs = video_thread_last_render_us();
