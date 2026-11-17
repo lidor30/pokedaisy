@@ -881,12 +881,18 @@ private fun homeRows(
                 labelBadge = NewFeatures.badge(NewFeatures.COMPANION_WINDOW), subtitle = "A window over the game, or a side panel",
             ) { s.setCompanionWindow(!window); changed() }
         },
-        // A foldable half open: the game on one side of the hinge, the companion on the other.
-        s.foldLayout?.let { fold ->
+        // A foldable: OFF, HALF-OPEN, or ALWAYS.
+        s.foldMode?.let { mode ->
             SettingRow(
-                tk("FOLD LAYOUT"), onOff(fold), labelBadge = NewFeatures.badge(NewFeatures.FOLD_LAYOUT),
-                subtitle = "Half open: the game on one side of the fold",
-            ) { s.setFoldLayout(!fold); changed() }
+                tk("FOLD LAYOUT"), foldModeLabel(mode), labelBadge = NewFeatures.badge(NewFeatures.FOLD_LAYOUT),
+                subtitle = "Off, half open, or always when unfolded",
+            ) { s.setFoldMode(mode.next()); changed() }
+        },
+        s.tabletopControlsBottom?.let { bottom ->
+            SettingRow(
+                tk("TABLETOP CONTROLS"), if (bottom) tk("BOTTOM SIDES") else tk("ON GAME"),
+                subtitle = "Position of touch controls in fold mode",
+            ) { s.setTabletopControlsBottom(!bottom); changed() }
         },
         // The buttons on the game screen that open it: the white edge tab and the HUD's COMPANION (BACK still does).
         s.companionTab?.let { tab ->

@@ -27,6 +27,14 @@ class FoldPostureTest {
         )
     }
 
+    @Test fun flatWithAlwaysFoldModeReturnsPosture() {
+        val p = FoldPosture.of(false, false, true, 0, 906, 2176, 906, 0, 0, 2176, 1812, foldMode = FoldMode.ALWAYS)
+        assertEquals(FoldPosture(FoldPosture.Kind.TABLETOP, 906, 906), p)
+
+        val off = FoldPosture.of(true, false, true, 0, 906, 2176, 906, 0, 0, 2176, 1812, foldMode = FoldMode.OFF)
+        assertNull(off)
+    }
+
     @Test fun inTheStagesCoordinates() {
         // The stage starts 40 px down the window (a cutout): the hinge moves up with it.
         assertEquals(FoldPosture(FoldPosture.Kind.TABLETOP, 866, 866), FoldPosture.of(true, false, true, 0, 906, 2176, 906, 0, 40, 2176, 1772))

@@ -121,6 +121,12 @@ private val WINDOW_SCRIM = Color(0x8C000000.toInt())
 /** SETTINGS > COMPANION VIEW's value: a window in the middle over the game, or the side panel. */
 fun companionViewLabel(window: Boolean) = if (window) tk("WINDOW") else tk("SIDE PANEL")
 
+fun foldModeLabel(mode: com.pokedaisy.app.companion.FoldMode) = when (mode) {
+    com.pokedaisy.app.companion.FoldMode.OFF -> tk("OFF")
+    com.pokedaisy.app.companion.FoldMode.HALF_OPEN -> tk("HALF-OPEN")
+    com.pokedaisy.app.companion.FoldMode.ALWAYS -> tk("ALWAYS")
+}
+
 /**
  * What the single-screen companion's view draws: the side panel, the companion filling it; or the window
  * ([window]), the companion framed like the game's windows in the middle of a dim over the game, the X that closes it

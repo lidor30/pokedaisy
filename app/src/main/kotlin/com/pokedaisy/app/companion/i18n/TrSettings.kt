@@ -101,6 +101,11 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "AT BOTTOM" to Tr(ja = "したはし", fr = "EN BAS", de = "UNTEN", it = "IN BASSO", es = "ABAJO", br = "EMBAIXO", pt = "EM BAIXO", ko = "아래쪽"),
     // SETTINGS > COMPANION VIEW, one screen held sideways (companionViewLabel).
     "COMPANION VIEW" to Tr(ja = "コンパニオンの ひょうじ", fr = "VUE COMPAGNON", de = "BEGLEITER-ANSICHT", it = "VISTA COMPAGNO", es = "VISTA COMPAÑERO", br = "VISTA COMPANHEIRO", pt = "VISTA COMPANHEIRO", ko = "컴패니언 보기"),
+    "HALF-OPEN" to Tr(ja = "はんぶん ひらいたとき", fr = "DEMI-OUVERT", de = "HALB GEÖFFNET", it = "SEMI APERTO", es = "SEMIABIERTO", br = "SEMIABERTO", pt = "SEMIABERTO", ko = "반쯤 폅"),
+    "ALWAYS" to Tr(ja = "いつも", fr = "TOUJOURS", de = "IMMER", it = "SEMPRE", es = "SIEMPRE", br = "SEMPRE", pt = "SEMPRE", ko = "항상"),
+    "TABLETOP CONTROLS" to Tr(ja = " tabletopのボタン", fr = "COMMANDES TABLETOP", de = "TABLETOP-STEUERUNG", it = "COMANDI TABLETOP", es = "CONTROLES TABLETOP", br = "CONTROLES TABLETOP", pt = "CONTROLOS TABLETOP", ko = "탁상 조작"),
+    "BOTTOM SIDES" to Tr(ja = "したの りょうわき", fr = "CÔTÉS DU BAS", de = "SEITEN UNTEN", it = "LATI IN BASSO", es = "LADOS DE ABAJO", br = "LADOS DE BAIXO", pt = "LADOS DE BAIXO", ko = "하단 양쪽"),
+    "ON GAME" to Tr(ja = "ゲームの うえ", fr = "SUR LE JEU", de = "AUF DEM SPIEL", it = "SUL GIOCO", es = "SOBRE EL JUEGO", br = "SOBRE O JOGO", pt = "SOBRE O JOGO", ko = "게임 위"),
     "COMPANION BUTTON" to Tr(ja = "コンパニオンの ボタン", fr = "BOUTON COMPAGNON", de = "BEGLEITER-TASTE", it = "PULSANTE COMPAGNO", es = "BOTÓN COMPAÑERO", br = "BOTÃO DO COMPANHEIRO", pt = "BOTÃO COMPANHEIRO", ko = "컴패니언 버튼"),
     "SIDE PANEL" to Tr(ja = "サイドパネル", fr = "PANNEAU LATÉRAL", de = "SEITENLEISTE", it = "PANNELLO LATERALE", es = "PANEL LATERAL", br = "PAINEL LATERAL", pt = "PAINEL LATERAL", ko = "사이드 패널"),
     "UNDER GAME" to Tr(ja = "ゲームの した", fr = "SOUS LE JEU", de = "UNTER SPIEL", it = "SOTTO IL GIOCO", es = "BAJO EL JUEGO", br = "SOB O JOGO", pt = "SOB O JOGO", ko = "게임 아래"),
