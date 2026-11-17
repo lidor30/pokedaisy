@@ -29,7 +29,7 @@ import kotlin.concurrent.Volatile
 // ROM-extracted tables (*Hns.kt / *Lazarus.kt, scripts/gen_expansion_tables.py).
 enum class GameKind { FIRERED, EMERALD, UNBOUND, GAIA, RADICAL_RED, ODYSSEY, HEART_AND_SOUL, LAZARUS, ROWE, EMERALD_ROGUE, AMETHYST, EMERALD_SEAGLASS, CELIA, TMT2, SOULGOLD, YELLOW, GLAZED, IMPERIUM, QUETZAL, ORANGE_ISLANDS, RECHARGED_YELLOW, MARIOMON, SWORD_SHIELD, GS_CHRONICLES, CRYSTAL, CRYSTAL_CLEAR, PRISM,
     GOLD, SILVER, RED, BLUE, ELITE_REDUX, POLISHED_CRYSTAL, PLATINUM, HEARTGOLD, SOULSILVER, TEAM_ROCKET, BLACK, WHITE, BLACK2, WHITE2,
-    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY, BROWN, RHYTHM, OOPS_ALL_EEVEES, CERULEUM,
+    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY, BROWN, RHYTHM, OOPS_ALL_EEVEES, CERULEUM, RECORDKEEPERS,
     /** A 3DS game (docs/3DS_GAMES_PLAN.md): its companion reads Azahar's memory, PARTY and BAG so far. Y is X's code
      * with its own version's Pokemon ([isXy]: everything else the same). */
     POKEMON_X, POKEMON_Y }
@@ -343,6 +343,8 @@ private inline val teamRocket get() = activeGame == GameKind.TEAM_ROCKET
 private inline val wishes get() = activeGame == GameKind.WISHES
 // Pokémon Ceruleum: pokeemerald-expansion 1.13.2, its own names (gen_expansion_tables.py ceruleum).
 private inline val ceruleum get() = activeGame == GameKind.CERULEUM
+// Pokémon RecordKeepers: a roguelike on a newer pokeemerald-expansion, its own names (gen_expansion_tables.py recordkeepers).
+private inline val recordKeepers get() = activeGame == GameKind.RECORDKEEPERS
 // Pokémon Dreamstone Mysteries: its own species / moves / items / types / map sections (gen_expansion_tables.py dreamstone).
 private inline val dreamstone get() = activeGame == GameKind.DREAMSTONE
 // Pokémon Monomyth: its own species / moves / items / types / map sections (gen_monomyth_tables.py).
@@ -399,6 +401,7 @@ val activeSpeciesNames: Map<Int, String> get() = localText?.species ?: when {
     teamRocket -> if (teamRocketV3) speciesNamesTeamRocketV3 else speciesNamesTeamRocket
     wishes -> speciesNamesWishes
     ceruleum -> speciesNamesCeruleum
+    recordKeepers -> speciesNamesRecordKeepers
     dreamstone -> speciesNamesDreamstone
     monomyth -> speciesNamesMonomyth
     else -> frHack?.speciesMerged ?: speciesNames
@@ -444,6 +447,7 @@ val activeMoveData: Map<Int, MoveInfo> get() = localText?.moveData ?: when {
     teamRocket -> if (teamRocketV3) moveDataTeamRocketV3 else moveDataTeamRocket
     wishes -> moveDataWishes
     ceruleum -> moveDataCeruleum
+    recordKeepers -> moveDataRecordKeepers
     dreamstone -> moveDataDreamstone
     monomyth -> if (monomythV1_2) moveDataMonomythV1_2 else moveDataMonomyth
     odyssey -> fireRedHackOdyssey.movesMerged
@@ -488,6 +492,7 @@ val activeItemNames: Map<Int, String> get() = localText?.items ?: when {
     teamRocket -> if (teamRocketV3) itemNamesTeamRocketV3 else itemNamesTeamRocket
     wishes -> itemNamesWishes
     ceruleum -> itemNamesCeruleum
+    recordKeepers -> itemNamesRecordKeepers
     dreamstone -> itemNamesDreamstone
     monomyth -> itemNamesMonomyth
     odyssey -> fireRedHackOdyssey.itemsMerged
@@ -531,6 +536,7 @@ val activeSpeciesTypeData: Map<Int, SpeciesTypes> get() = when {
     teamRocket -> if (teamRocketV3) speciesTypeDataTeamRocketV3 else speciesTypeDataTeamRocket
     wishes -> speciesTypeDataWishes
     ceruleum -> speciesTypeDataCeruleum
+    recordKeepers -> speciesTypeDataRecordKeepers
     dreamstone -> speciesTypeDataDreamstone
     monomyth -> speciesTypeDataMonomyth
     odyssey -> fireRedHackOdyssey.typesMerged   // its regional forms (GitHub #206)
@@ -575,6 +581,7 @@ val activeTypeEffectiveness: Map<Int, Int> get() = when {
     teamRocket -> if (teamRocketV3) typeEffectivenessTeamRocketV3 else typeEffectivenessTeamRocket
     wishes -> typeEffectivenessWishes
     ceruleum -> typeEffectivenessCeruleum
+    recordKeepers -> typeEffectivenessRecordKeepers
     dreamstone -> typeEffectivenessDreamstone
     monomyth -> typeEffectivenessMonomyth
     odyssey -> fireRedHackOdyssey.typeChart ?: typeEffectiveness
@@ -611,6 +618,7 @@ val activeTypeNames: Map<Int, String> get() = when {
     teamRocket -> if (teamRocketV3) typeNamesTeamRocketV3 else typeNamesTeamRocket
     wishes -> typeNamesWishes
     ceruleum -> typeNamesCeruleum
+    recordKeepers -> typeNamesRecordKeepers
     dreamstone -> typeNamesDreamstone
     monomyth -> typeNamesMonomyth
     else -> frHack?.typeNamesMerged ?: typeNames
@@ -654,6 +662,7 @@ val activeMapSecData: Map<Int, MapSecInfo> get() = localText?.mapSecData ?: when
     // Its own JOKAIM sections (Munen Village...) on its own region map; Emerald's / Kanto's leftovers off it.
     wishes -> mapSecDataWishes
     ceruleum -> mapSecDataCeruleum
+    recordKeepers -> mapSecDataRecordKeepers
     // Its own Cormoria sections (and Emerald's leftovers, off the map), on its own region map.
     dreamstone -> mapSecDataDreamstone
     // Athanto's sections; its map isn't drawn yet, so none is "on the map" (the MAP tab names the place).
@@ -779,6 +788,7 @@ val activeRegionMapImages: Array<String> get() = when {
     wishes -> regionMapImagesWishes
     // Its region map picture isn't read yet: the MAP tab names the place.
     ceruleum -> emptyArray()
+    recordKeepers -> emptyArray()
     // Dreamstone Mysteries' Cormoria map, rebuilt from its ROM (RomArt's DSM_REGION_*).
     dreamstone -> regionMapImagesDreamstone
     // Monomyth's ATHANTO MAP (its PokeNav's), rebuilt from its ROM (RomArt's MMY_REGION_*).
@@ -862,6 +872,7 @@ fun GameKind.displayName(): String = when (this) {
     GameKind.TEAM_ROCKET -> "Pokémon Team Rocket Edition: Dragonsden Version"
     GameKind.WISHES -> "Pokémon Wishes of Tomorrow"
     GameKind.CERULEUM -> "Pokémon Ceruleum"
+    GameKind.RECORDKEEPERS -> "Pokémon RecordKeepers"
     GameKind.DREAMSTONE -> "Pokémon Dreamstone Mysteries"
     GameKind.MONOMYTH -> "Pokémon Monomyth"
     GameKind.RECHARGED_YELLOW -> "Pokémon Recharged Yellow"

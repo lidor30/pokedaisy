@@ -4785,6 +4785,67 @@ val NATIVE_RECHARGED_YELLOW_V1_9_7 = NATIVE_RECHARGED_YELLOW_V1_9_4.copy(
     trainerCard = TRAINER_CARD_RECHARGED_YELLOW_V1_9_7,
 )
 
+// ---- gamedata/gen3/hacks/recordkeepers.toml ----
+
+// Pokémon RecordKeepers v1.2.1 (Eventide Devs; 32 MB, BPEE, sha1 8df1c972…; the Hackdex patch over Emerald): a roguelike on
+// a newer pokeemerald-expansion (its PRET x RHH splash) with no RHHEXP block or GF ROM header, gcc, no source. It deletes
+// retail Emerald's save, so it was mapped from a new game played headless (`recordkeepers`: the intro, then the game's own
+// createmon / additem through its ScriptContext_SetupScript 0x081D7BC5 - ScrCmd_createmon 0x0A1DA5E1 - saved through its
+// own START menu's SAVE in the player's room). Each RAM address is a literal-pool word whose reference count is near an
+// expansion 1.13.2 build's, checked in dumps:
+// - gPlayerParty 0x02029D8C / gPlayerPartyCount 0x02029B2D, gEnemyParty 0x02029B34: expansion's encrypted 100-byte mons;
+//   the egg is species 1530 (gSpeciesInfo's unnamed entry after the last).
+// - gSaveBlock1Ptr / 2Ptr 0x030050F8 / 0x030050F4; money SB1+0x490 XOR SB2+0x44 (3000). gMain 0x030065F4.
+// - gMapHeader 0x020017C0 (mapsec 61 for the room, a byte at +0x14), gObjectEvents 0x02006820 (the player's coords = pos + 7).
+// - gBagPockets 0x02006D78: Emerald's five pockets, each one slot in SaveBlock1 (POTION x5 / POKE BALL x10, as given).
+// - Battle (a scripted wild RATTATA): gBattleTypeFlags 0x020000BC, gBattlersCount 0x020000C2, gBattlerPositions 0x02000164,
+//   gBattlerPartyIndexes 0x02000168, gBattleMons 0x0200073C ([RECORDKEEPERS_BATTLE_MON]: 0x6C bytes). Its battle screen is its
+//   own (the moves at once, L / R switch the active battler): no battle input, and gBattleStruct isn't mapped (no NEXT pill).
+// - Icons: gSpeciesInfo 0x086BCFE8 (0x128-byte entries: iconSprite +0x6C, its own icon palette +0x100, the shiny one +0x104),
+//   gItemsInfo 0x0866C608 (0x50-byte entries: icon +0x48 LZ77, its palette +0x4C plain).
+// Names / types / moves / chart / map sections: scripts/gen_expansion_tables.py recordkeepers.
+val NATIVE_RECORDKEEPERS = NATIVE_EMERALD.copy(
+    itemDescs = ItemDescTable(0x0866C61CL, 0x50, -8),
+    playerParty = 0x02029D8CL,
+    playerPartyCount = 0x02029B2DL,
+    enemyParty = 0x02029B34L,
+    gMain = 0x030065F4L,
+    saveBlock1Ptr = 0x030050F8L,
+    saveBlock2Ptr = 0x030050F4L,
+    encryptionKeyOff = 0x44L,
+    moneyOff = 0x490L,
+    objectEvents = 0x02006820L,
+    mapHeader = 0x020017C0L,
+    bagPockets = 0x02006D78L,
+    bagPocketCount = 5,
+    bagPocketOrder = EMERALD_BAG_POCKET_ORDER,
+    speciesMask = 0x07FF,
+    moveMask = 0x07FF,
+    ppMask = 0x7F,
+    battleTypeFlags = 0x020000BCL,
+    battlersCount = 0x020000C2L,
+    battlerPartyIndexes = 0x02000168L,
+    battlerPositions = 0x02000164L,
+    battleMons = 0x0200073CL,
+    battleMonLayout = RECORDKEEPERS_BATTLE_MON,
+    battlerControllerFuncs = 0,
+    handleInputChooseAction = 0,
+    handleInputChooseMove = 0,
+    completeWhenChoseItem = 0,
+    waitForMonSelection = 0,
+    handleInputChooseTarget = 0,
+    eggSpecies = 1530,
+    monIconTable = 0x086BD054L, // gSpeciesInfo[0].iconSprite
+    monIconStride = 0x128,
+    monIconPaletteIndices = 0x086BD054L, // (unused: each species has its own palette, monIconPalettes)
+    monPalIdxStride = 0x128,
+    monPalIdxMask = 0x00,
+    monIconPalettes = 0x086BD0E8L, // gSpeciesInfo[0]'s own icon palette (+0x100; shiny +0x104)
+    itemIconTable = 0x0866C650L, // gItemsInfo[0].iconPic
+    itemIconStride = 0x50,
+    itemPalCompressed = false,
+)
+
 // ---- gamedata/gen3/hacks/rhythm.toml ----
 
 // Pokémon Rhythm v1.4.0 (invis292; 32 MB, Hackdex's xdelta over FireRed 1.0 rev 0, sha1 b0d6b913…): Vedeo on CFRU, no source.

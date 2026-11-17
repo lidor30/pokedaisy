@@ -74,7 +74,7 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
     // Gen 1's growth rates and curves are Gen 3's for the first 151 (Yellow's species are Dex numbers here).
     if (activeGame != GameKind.FIRERED && activeGame != GameKind.EMERALD && !activeGame.isGen1 &&
         activeGame != GameKind.ORANGE_ISLANDS && activeGame != GameKind.RECHARGED_YELLOW &&
-        activeGame != GameKind.MARIOMON && activeGame != GameKind.TEAM_ROCKET && activeGame != GameKind.WISHES && activeGame != GameKind.CERULEUM &&
+        activeGame != GameKind.MARIOMON && activeGame != GameKind.TEAM_ROCKET && activeGame != GameKind.WISHES && activeGame != GameKind.CERULEUM && activeGame != GameKind.RECORDKEEPERS &&
         activeGame != GameKind.DREAMSTONE && activeGame != GameKind.MONOMYTH &&
         // Crystal's growth rates for its 251 are Gen 3's, byte for byte, and its curves the same formulas (CrystalDecodeTest);
         // Crystal Clear, Gold and Silver kept Crystal's base data (gen_gen2_tables.py checks it).
@@ -114,6 +114,7 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
         else if (activeGame == GameKind.WISHES) growthRatesWishes.getOrNull(species)?.takeIf { it <= 5 }
         // Ceruleum (expansion 1.13.2) likewise.
         else if (activeGame == GameKind.CERULEUM) growthRatesCeruleum.getOrNull(species)?.takeIf { it <= 5 }
+        else if (activeGame == GameKind.RECORDKEEPERS) growthRatesRecordKeepers.getOrNull(species)?.takeIf { it <= 5 }
         // PureRGB moved 25 species to other curves: its own BaseStats' (gen_gen1_tables.py purered).
         else if (activeGame.isPureRgb) gen1GrowthRatesPureRgb.getOrNull(species)
         // Yellow Legacy too (gen_gen1_tables.py yellow_legacy).

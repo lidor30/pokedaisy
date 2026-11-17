@@ -378,6 +378,35 @@ GAMES = {
                     items={1: "Poké Ball", 28: "Potion", 43: "Antidote", 114: "Repel"},
                     moves={1: (1, 40), 33: (1, 40), 52: (11, 40), 57: (12, 90), 89: (5, 100), 585: (19, 95)}),
     ),
+    # Pokemon RecordKeepers v1.2.1 (Eventide Devs; BPEE, 32 MB, the Hackdex patch over Emerald): a roguelike on a newer
+    # pokeemerald-expansion (its PRET x RHH splash) with no RHHEXP block and no GF ROM header, so every table was found by its
+    # contents:
+    #  - species: 0x128-byte entries from 0x086BCFE8, the name inline at +0x33 ("Bulbasaur" 1, "Pikachu" 25), its base
+    #    stats at name-0x33, types name-0x2D, genderRatio name-0x21, growthRate name-0x1E, abilities from name-0x1B.
+    #  - items: 0x50-byte entries from 0x0866C608, the name inline at +0x14 ("Poke Ball" 1, "Potion" 28), the description
+    #    pointer at +0x0C, the icon +0x48 (LZ77) and its palette +0x4C.
+    #  - moves: 0x38-byte entries from 0x08691390, the name pointer first ("Pound" 1, "Tackle" 33), +0xA bits as before.
+    #  - chart: [21][21] u32 uq4.12 at 0x0839EB68 with its own multipliers: 1.5x where the games have 2x, 0.25x for their
+    #    immunities (NORMAL on GHOST, ELECTRIC on GROUND), 2x only for GHOST on PSYCHIC.
+    #  - mapsecs: Emerald's {x, y, w, h, name ptr} entries from 0x090DA02C (LITTLEROOT TOWN 0, Kanto's from 0x58); the
+    #    hub room reads 61 (its map header's section).
+    "recordkeepers": dict(
+        suffix="RecordKeepers",
+        label="Pokemon RecordKeepers v1.2.1",
+        sha1="8df1c9720842c668448d5ad880e9c48bb29d7200",
+        # Species end at 1529 (a MAMOSWINE form); 1530 is the egg (no name). Items end at 828 (STRANGE BALL): descriptions follow.
+        species_name1=0x086BD143, species_stride=0x128, species_max=1531,
+        species_types_off=-0x2D, species_gender_off=-0x21, species_growth_off=-0x1E,
+        items_base=0x0866C61C, items_stride=0x50, items_name_inline=True, items_desc_off=-8, items_max=829,
+        moves_base=0x08691390, moves_stride=0x38, move_bits_off=0x0A,
+        chart=0x0839EB68, chart_n=21, chart_checks={1 * 100 + 8: 25, 11 * 100 + 13: 150, 14 * 100 + 5: 25, 8 * 100 + 15: 200},
+        mapsec_base=0x090DA02C, mapsec_name_off=4,
+        checks=dict(species={1: "Bulbasaur", 4: "Charmander", 25: "Pikachu", 155: "Cyndaquil", 258: "Mudkip"},
+                    types={1: (13, 4), 4: (11, 11), 25: (14, 14)},
+                    gender={1: 31, 25: 127}, growth={1: 3, 25: 0},
+                    items={1: "Poké Ball", 28: "Potion", 43: "Antidote", 114: "Repel"},
+                    moves={1: (1, 40), 33: (1, 40), 52: (11, 40), 57: (12, 90), 89: (5, 100)}),
+    ),
     # Team Rocket Edition 2026, Spanish v3.1 (its START menu says V.3.1): v3.0.9's RAM word for word (gPlayerParty's 552
     # literal-pool words and the rest), its ROM tables moved: gSpeciesInfo and the icon palettes +0x4BD8 (its GF header's
     # 0x080001BC / 0x08000140), gMovesInfo and gItemsInfo +0x4BD0 (the header's 0x080001CC / 0x080001C8),
@@ -630,7 +659,9 @@ def main():
             v = rom.u32(g["chart"] + 4 * (atk * n + dfn))
             if atk in EXPANSION_TYPE_NAMES and dfn in EXPANSION_TYPE_NAMES and v != 0x1000:
                 chart[atk * 100 + dfn] = v * 100 // 0x1000
-    assert chart[1 * 100 + 8] == 0 and chart[11 * 100 + 13] == 200 and chart[14 * 100 + 5] == 0, "chart is wrong"
+    # chart_checks: a game with its own multipliers (RecordKeepers: 1.5x super effective, 0.25x for the games' immunities).
+    checks = g.get("chart_checks", {1 * 100 + 8: 0, 11 * 100 + 13: 200, 14 * 100 + 5: 0})
+    assert all(chart.get(k, 100) == v for k, v in checks.items()), "chart is wrong"
     write(f"TypeChart{sfx}.kt", header(g, "Newer pokeemerald-expansion type ids (NOT vanilla's):\n"
           "// 1-9 Normal..Steel, 11-19 Fire..Fairy. The chart is gTypeEffectiveness [n][n] u32 uq4.12;\n"
           "// key = atkType*100+defType -> percent, pairs not listed are 100.\n") +

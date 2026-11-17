@@ -72,6 +72,7 @@ class MoneyTest {
         assertEquals(3000L, money("wishes", NATIVE_WISHES))
         assertEquals(3000L, money("wishes_random", NATIVE_WISHES))
         assertEquals(258984L, money("ceruleum", NATIVE_CERULEUM))
+        assertEquals(3000L, money("recordkeepers", NATIVE_RECORDKEEPERS))
         // Dreamstone Mysteries' new game (its save screen and START menu): SaveBlock1 +0x490 XOR SaveBlock2 +0xAC.
         assertEquals(3000L, money("dreamstone", NATIVE_DREAMSTONE))
         // Ghost Grey's 1.0.3 save in each build (its trainer card: ₽163300).

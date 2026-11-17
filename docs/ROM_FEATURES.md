@@ -86,6 +86,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Rhythm | 1.4.0 | — | ✅ | ✅ ⁴⁴ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
 | Oops All Eevees! | 1.3.2 | — | ✅ | ✅ ⁴⁵ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
 | Ceruleum | 1.1.1 | — | ✅ ⁴⁶ | ✅ ⁴⁶ | ✅ ⁴⁶ | — | — | — | — | — | — ⁴⁶ | — | — | — | — | — | — | — ³⁶ |
+| RecordKeepers | 1.2.1 | — | — ⁴⁷ | — ⁴⁷ | — ⁴⁷ | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ | ✅ |
 | Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ |
 | Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ |
@@ -697,6 +698,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
     the five battle handlers read live (the target one in a double battle), a written move cell + A used that move, and
     the POKéMON switch (a two-column grid) sent party slot 2 in. Its wild-encounter switch, field reads, EXPAND, FLY and
     the rest weren't mapped yet.
+47. RecordKeepers (1.2.1, a roguelike on pokeemerald-expansion, `NATIVE_RECORDKEEPERS`; 2026-11-18): its battle screen is
+    its own (the moves shown at once, L / R switch the active battler), so the companion reads battles (INFO) but doesn't
+    press anything there. Field reads, EXPAND, FLY and the rest weren't mapped yet.
 
 ## What each column is
 
