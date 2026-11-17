@@ -341,6 +341,9 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
     var onVsync: (() -> Long)?
         get() = renderer.onVsync
         set(v) { renderer.onVsync = v }
+    var onDrawn: (() -> Unit)?
+        get() = renderer.onDrawn
+        set(v) { renderer.onDrawn = v }
 
     /** New game frames put on screen so far, and refreshes whose due frame came too late to wait for
      * (it showed a refresh later) - for FPS / CPU's performance panel. */
@@ -519,7 +522,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             if (fresh) unshownFrames++
             readyGpu = true
             readyWin = win
-            readyShowAt = showAtSource()
+            readyShowAt = nextShowAt()
             fresh = true
             (frameLock as Object).notifyAll()
         }
@@ -541,10 +544,19 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             readyW = w
             readyH = h
             readyWin = if (wideSrc != null) win else null
-            readyShowAt = showAtSource()
+            readyShowAt = nextShowAt()
             if (fresh) unshownFrames++
             fresh = true
             (frameLock as Object).notifyAll()
+        }
+
+        /** The refresh the frame being published may first show on (frameLock): its own ([showAtSource]), but a frame
+         * that replaces one not drawn yet keeps that one's when it's earlier. A fast core (BananaDS, ~3 ms a frame on the
+         * Thor) published the next frame before the refresh its last one was due on, and the new frame's later target
+         * held it back in turn: on a 120 Hz screen most frames were never drawn (15-20 pictures a second at 1x). */
+        private fun nextShowAt(): Long {
+            val own = showAtSource()
+            return if (fresh && readyShowAt in 1 until own) readyShowAt else own
         }
 
         /** GL thread: the frame this refresh started is on its way - wait for it (at most [nanos]), so it
@@ -702,7 +714,11 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             val wait = onVsync?.invoke() ?: 0L
             if (wait > 0) awaitFresh(wait)
             synchronized(lock) { draw() }
+            onDrawn?.invoke()
         }
+
+        /** After each refresh's draw (EmulatorEngine.onDrawn). */
+        @Volatile var onDrawn: (() -> Unit)? = null
 
         private fun draw() {
             if (gpuRehand) {

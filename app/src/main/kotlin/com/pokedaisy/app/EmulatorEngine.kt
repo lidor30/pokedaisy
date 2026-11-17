@@ -1067,7 +1067,12 @@ class EmulatorEngine(
         // More let the game race after a hiccup (4 were: a visible rush); the audio fill decides now (vsyncPace).
         // Fast-forward keeps one: its groups run on the tick.
         val n = pacedPerFrame
-        if (vsyncTicks.availablePermits() < (if (n == 0) 1 else 2 * n)) vsyncTicks.release()
+        // A frame drawn a refresh later ([nds] / [slowFrames]) gets its refresh once this one's draw has taken the frame
+        // due on it ([onDrawn]): released here, a fast core (BananaDS, ~3 ms a frame on the Thor) had the next frame
+        // published while the GL thread was still on its way to the draw, and the due one was never shown (every
+        // other frame lost at 1x on a 120 Hz screen).
+        if (n > 0 && (nds || slowFrames)) tickAfterDraw = true
+        else if (vsyncTicks.availablePermits() < (if (n == 0) 1 else 2 * n)) vsyncTicks.release()
         if (n == 0) return 0L
         if (CoopGuards.held) return 0L   // a hold runs no frame: nothing to wait for, no late draws to count
         // A DS frame takes 4-20 ms on the RP6 / Thor: waited for within ~60% of a refresh, every one past ~10 ms
@@ -1078,6 +1083,15 @@ class EmulatorEngine(
         if (nds || slowFrames) { ticksSinceFrame++; return 0L }
         return if (++ticksSinceFrame >= n) (vsyncPeriodNanos * 0.6).toLong() else 0L
     }
+
+    /** GL thread, after a refresh's draw: the refresh [onVsync] held back for it goes to the emu thread now. */
+    fun onDrawn() {
+        if (!tickAfterDraw) return
+        tickAfterDraw = false
+        val n = pacedPerFrame
+        if (vsyncTicks.availablePermits() < (if (n == 0) 1 else 2 * n)) vsyncTicks.release()
+    }
+    @Volatile private var tickAfterDraw = false
 
     /** Refreshes per game frame while the display paces 1x, or 0 for timer pacing. */
     private fun vsyncsPerFrame(): Int {
