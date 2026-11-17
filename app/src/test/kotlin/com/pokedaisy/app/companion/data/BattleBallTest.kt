@@ -32,6 +32,29 @@ class BattleBallTest {
         }
     }
 
+    /** Every retail FireRed / LeafGreen / Emerald cart here, in every language: its config's functions read from the cart
+     * (2026-11-18). FireRed rev 1 and Emerald were played headless; the others share agbcc's code, the shape checked. */
+    @Test
+    fun everyRetailCartFindsItsFunctions() {
+        var n = 0
+        retailRomFiles().forEach { rom ->
+            val h = rom.inputStream().use { it.readNBytes(0xC0) }
+            val code = String(h, 0xAC, 4, Charsets.ISO_8859_1)
+            if (!code.startsWith("BPR") && !code.startsWith("BPG") && !code.startsWith("BPE")) return@forEach
+            val rev = h[0xBC].toInt() and 0xFF
+            val cfg = when (code) {
+                "BPRE" -> if (rev == 1) NATIVE_FIRERED_REV1 else NATIVE_FIRERED_REV0_RETAIL
+                "BPEE" -> NATIVE_EMERALD_RETAIL
+                else -> TelemetrySampler.otherRetailConfig(code, rev)
+            } ?: return@forEach
+            val f = BattleBall.find(rom.toOkioPath(), cfg.completeWhenChoseItem, cfg.battlerControllerFuncs)
+            assertNotNull("${rom.name} ($code$rev)", f)
+            assertEquals(rom.name, (cfg.completeWhenChoseItem and 0xFFFFFFFEL) - 0x3C, f!!.openBag)
+            n++
+        }
+        if (File(RETAIL_ROM_DIR).isDirectory) assertTrue("only $n carts", n == 0 || n >= 20)
+    }
+
     @Test
     fun nothingInAnEmptyRom() {
         assertNull(BattleBall.find(LittleEndianBytes(ByteArray(0x40000)), 0x08030750L, 0x03004FE0L))
