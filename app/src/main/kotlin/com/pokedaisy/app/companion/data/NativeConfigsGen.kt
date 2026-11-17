@@ -2946,6 +2946,76 @@ val NATIVE_CELIA = NATIVE_FIRERED_REV0.copy(
     guideTables = GUIDE_TABLES_CELIA,
 )
 
+// ---- gamedata/gen3/hacks/ceruleum.toml ----
+
+// Pokémon Ceruleum v1.1.1 (selenol; 32 MB, BPEE, sha1 2b0b6086…; the PokeCommunity thread's xdelta over Emerald):
+// pokeemerald-expansion 1.13.2 (its RHHEXP block), gcc, no source. Mapped headless from a new game played in it (`ceruleum`:
+// the intro, then the game's own createmon / additem through its ScriptContext_SetupScript 0x081E2869, saved in game in
+// COUNCIL HQ), each RAM address also a literal-pool word whose reference count is near a plain build of expansion 1.13.2's
+// (scratch build of the tag, `nm`; its globals moved in blocks: the battle ones -4 past gBattlersCount, the field and party
+// ones far), and checked live:
+// - gPlayerParty 0x02037748 / gPlayerPartyCount 0x020374E9, gEnemyParty 0x020374F0: vanilla's 100-byte encrypted mons with
+//   expansion's packing; the egg is species 1525 (one species more than the reference: a PERSIAN form at 1524).
+// - gSaveBlock1Ptr / 2Ptr 0x03005220 / 0x0300521C; money SB1+0x490 XOR SB2+0xAC. gMain 0x0300671C.
+// - gMapHeader 0x02006808 (mapsec 13 COUNCIL HQ, regionMapSectionId +0x14 a byte), gObjectEvents 0x0200B864.
+// - gBagPockets 0x0200C46C: Emerald's five pockets (Potion x5, Repel x2 / Poke Ball x10, as given).
+// - Battle (a scripted wild RATTATA, and a double for the target screen): gBattleTypeFlags 0x0200009C, gBattlersCount
+//   0x020000A2, gBattlerPartyIndexes 0x02000134, gBattlerPositions 0x02000130, gBattleMons 0x0200054C (0x68 bytes,
+//   [TEAM_ROCKET_V3_BATTLE_MON]: offsetof on the reference), gBattleStruct 0x020000A4 with monToSwitchIntoId at +0x8B; the
+//   menus' cursors 0x020003C4 / 0x020003C8 (a written 0 + A opened the moves, a written 1 + A used AEROBLAST).
+//   gBattlerControllerFuncs 0x03002444: action / move / bag / party / target read live (0x08054719 / 0x08053741 /
+//   0x08052A65 / 0x08052AA5 / 0x08051F21: PSYCHIC in a double opened the target screen). gPartyMenu 0x020372F0 (slotId +9,
+//   a two-column grid: DOWN 0 -> 2 -> 3).
+// - Icons: gSpeciesInfo 0x08748C88 (0x104-byte entries, iconSprite +0x68, iconPalIndex +0x8A), gMonIconPaletteTable
+//   0x08CD27D8 (the GF header's); gItemsInfo 0x086FBCA8 (0x2C-byte entries: icon +0x24, its palette +0x28).
+// Names / types / moves / chart / map sections: scripts/gen_expansion_tables.py ceruleum.
+val NATIVE_CERULEUM = NATIVE_EMERALD.copy(
+    itemDescs = ItemDescTable(0x086FBCBCL, 0x2C, -8),
+    playerParty = 0x02037748L,
+    playerPartyCount = 0x020374E9L,
+    enemyParty = 0x020374F0L,
+    gMain = 0x0300671CL,
+    saveBlock1Ptr = 0x03005220L,
+    saveBlock2Ptr = 0x0300521CL,
+    encryptionKeyOff = 0xACL,
+    moneyOff = 0x490L,
+    objectEvents = 0x0200B864L,
+    mapHeader = 0x02006808L,
+    bagPockets = 0x0200C46CL,
+    bagPocketCount = 5,
+    bagPocketOrder = EMERALD_BAG_POCKET_ORDER,
+    speciesMask = 0x07FF,
+    moveMask = 0x07FF,
+    ppMask = 0x7F,
+    battleTypeFlags = 0x0200009CL,
+    battlersCount = 0x020000A2L,
+    battlerPartyIndexes = 0x02000134L,
+    battlerPositions = 0x02000130L,
+    battleMons = 0x0200054CL,
+    battleMonLayout = TEAM_ROCKET_V3_BATTLE_MON,
+    battleStructPtr = 0x020000A4L,
+    monToSwitchIntoOff = 0x8B,
+    actionCursor = 0x020003C4L,
+    moveCursor = 0x020003C8L,
+    battlerControllerFuncs = 0x03002444L,
+    handleInputChooseAction = 0x08054719L,
+    handleInputChooseMove = 0x08053741L,
+    completeWhenChoseItem = 0x08052A65L,
+    waitForMonSelection = 0x08052AA5L,
+    handleInputChooseTarget = 0x08051F21L,
+    partyMenu = 0x020372F0L,
+    eggSpecies = 1525,
+    monIconTable = 0x08748CF0L, // gSpeciesInfo[0].iconSprite
+    monIconStride = 0x104,
+    monIconPaletteIndices = 0x08748D12L, // gSpeciesInfo[0].iconPalIndex
+    monPalIdxStride = 0x104,
+    monPalIdxMask = 0x07,
+    monIconPaletteTable = 0x08CD27D8L,
+    itemIconTable = 0x086FBCCCL, // gItemsInfo[0].iconPic
+    itemIconStride = 0x2C,
+    itemPalCompressed = false,
+)
+
 // ---- gamedata/gen3/hacks/dreamstone.toml ----
 
 // Pokémon Dreamstone Mysteries (32 MB, BPEE, sha1 20e91aec…; dsmyst, no version shown in the game): the Cormoria region on

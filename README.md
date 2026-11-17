@@ -244,6 +244,7 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | GS Chronicles                  | 2.7.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Rhythm                         | 1.4.0                      |  ✅   | ✅  |   ◐    | ✅  |   —    |   —   |
 | Oops All Eevees!               | 1.3.2                      |  ✅   | ✅  |   ◐    | ✅  |   —    |   —   |
+| Ceruleum                       | 1.1.1                      |  ✅   | ✅  |   ◐    | ◐  |   —    |   —   |
 | Recharged Yellow               | 1.8.0, 1.9.0, 1.9.4, 1.9.7 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Emerald Legacy                 | 1.1.4                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Lazarus                        | 2.0                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |

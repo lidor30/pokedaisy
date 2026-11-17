@@ -108,6 +108,7 @@ class RomItemTextTest {
         Case("Pokemon Team Rocket Dragonsden Version.gba", GameKind.TEAM_ROCKET, NATIVE_TEAM_ROCKET, mapOf(121 to "a cave or a dungeon")),
         // Wishes of Tomorrow's POTION, as its bag screen prints it.
         Case("Pokemon Wishes of Tomorrow (v1.2.6).gba", GameKind.WISHES, NATIVE_WISHES, mapOf(28 to "by 20 points")),
+        Case("Pokemon Ceruleum (v1.1.1).gba", GameKind.CERULEUM, NATIVE_CERULEUM, mapOf(28 to "20 points")),
         // Monomyth's REPEL and ANTIDOTE, as its bag screen prints them (its own item ids, 32-byte gItems).
         Case("Pokemon Monomyth (v1.0).gba", GameKind.MONOMYTH, NATIVE_MONOMYTH, mapOf(93 to "for 100 steps", 33 to "poisoned")),
         Case("Pokemon Monomyth (v1.1).gba", GameKind.MONOMYTH, NATIVE_MONOMYTH_V1_1, mapOf(93 to "for 100 steps", 33 to "poisoned")),

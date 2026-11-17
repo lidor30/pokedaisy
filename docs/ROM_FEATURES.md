@@ -85,6 +85,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | — ³⁶ |
 | Rhythm | 1.4.0 | — | ✅ | ✅ ⁴⁴ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
 | Oops All Eevees! | 1.3.2 | — | ✅ | ✅ ⁴⁵ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
+| Ceruleum | 1.1.1 | — | ✅ ⁴⁶ | ✅ ⁴⁶ | ✅ ⁴⁶ | — | — | — | — | — | — ⁴⁶ | — | — | — | — | — | — | — ³⁶ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ | ✅ |
 | Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ |
 | Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ |
@@ -692,6 +693,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
 45. Oops All Eevees! (1.3.2, a CFRU hack with DPE; 2026-11-18): FireRed rev 0's RAM on a new game played headless (it deletes
     retail FireRed's save). A written move cell + A used that move, so one-press picks are on; the switch, field items, FLY,
     EXPAND and the rest weren't mapped yet.
+46. Ceruleum (1.1.1, pokeemerald-expansion 1.13.2, `NATIVE_CERULEUM`; 2026-11-18), checked headless on its new-game save:
+    the five battle handlers read live (the target one in a double battle), a written move cell + A used that move, and
+    the POKéMON switch (a two-column grid) sent party slot 2 in. Its wild-encounter switch, field reads, EXPAND, FLY and
+    the rest weren't mapped yet.
 
 ## What each column is
 

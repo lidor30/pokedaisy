@@ -350,6 +350,34 @@ GAMES = {
                     moves={1: (1, 40), 33: (1, 40), 44: (18, 60), 52: (11, 40), 57: (12, 90), 89: (5, 100),
                            585: (19, 95)}),
     ),
+    # Pokemon Ceruleum v1.1.1 (selenol; BPEE, 32 MB, the PokeCommunity thread's xdelta over Emerald): pokeemerald-expansion
+    # 1.13.2 (its RHHEXP block), gcc, no source. Its GF ROM header gives gSpeciesInfo 0x08748C88, gItemsInfo 0x086FBCA8 and
+    # gMovesInfo 0x08720074; the shapes are a plain build of expansion 1.13.2's (offsetof against its headers):
+    #  - species: 0x104-byte entries, the name at +0x2C, types +6, genderRatio +0x12, growthRate +0x15 (Wishes' offsets
+    #    from the name). National Dex ids, a few early slots its own (1 NATU, 6 CHARIZARD), one species more than the
+    #    reference (1524 a PERSIAN form): the egg is 1525.
+    #  - items: 0x2C-byte entries, the name pointer +0x14, the description pointer +0x0C ("Poke Ball" 1, "Potion" 28,
+    #    "Repel" 114 = the save's bag).
+    #  - moves: 0x30-byte entries, the name pointer first, +0xA bits as before.
+    #  - chart: the unique [21][21] u32 run whose Normal row is 1x except Rock/Steel 0.5x, Ghost 0x (0x083EC00C).
+    #  - mapsecs: {x, y, w, h, name ptr} from 0x08CE597C, its own region (SAPPHIRE CITY 0); the save's gMapHeader reads 13,
+    #    COUNCIL HQ. Its region map picture isn't read yet (the MAP tab names the place).
+    "ceruleum": dict(
+        suffix="Ceruleum",
+        label="Pokemon Ceruleum v1.1.1",
+        sha1="2b0b608666cc2d553ce08d88fa76dce1fa577e51",
+        species_name1=0x08748DB8, species_stride=0x104, species_max=1526,
+        species_types_off=-0x26, species_gender_off=-0x1A, species_growth_off=-0x17,
+        items_base=0x086FBCA8 + 0x14, items_stride=0x2C, items_desc_off=-8,
+        moves_base=0x08720074, moves_stride=0x30, move_bits_off=0x0A,
+        chart=0x083EC00C, chart_n=21,
+        mapsec_base=0x08CE597C, mapsec_name_off=4, mapsec_keep_case=True,
+        checks=dict(species={1: "Natu", 6: "Charizard", 25: "Pikachu", 151: "Mew", 155: "Cyndaquil"},
+                    types={1: (15, 3), 25: (14, 14), 151: (15, 15)},
+                    gender={1: 127, 25: 127, 151: 255}, growth={1: 3, 25: 0},
+                    items={1: "Poké Ball", 28: "Potion", 43: "Antidote", 114: "Repel"},
+                    moves={1: (1, 40), 33: (1, 40), 52: (11, 40), 57: (12, 90), 89: (5, 100), 585: (19, 95)}),
+    ),
     # Team Rocket Edition 2026, Spanish v3.1 (its START menu says V.3.1): v3.0.9's RAM word for word (gPlayerParty's 552
     # literal-pool words and the rest), its ROM tables moved: gSpeciesInfo and the icon palettes +0x4BD8 (its GF header's
     # 0x080001BC / 0x08000140), gMovesInfo and gItemsInfo +0x4BD0 (the header's 0x080001CC / 0x080001C8),
@@ -621,7 +649,9 @@ def main():
             break
         s = rom.text(p)
         if s is not None:  # some slots point at an empty string
-            mapsecs[i] = title(s)
+            # mapsec_keep_case: a game whose own names are mixed case (Ceruleum's "Council HQ") keeps them; only its
+            # all-caps leftovers (Emerald's / Kanto's) are title-cased.
+            mapsecs[i] = s if g.get("mapsec_keep_case") and s != s.upper() else title(s)
     rm = g.get("region_map")
     if "region_maps" in g:
         # Several region maps, each with its own cursor grid and its own range of mapsec ids (the game's map code

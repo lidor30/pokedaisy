@@ -1134,6 +1134,10 @@ fun battleSwitchAddrsFor(
     // opened it, DOWN, A, SHIFT sent slot 1 in (gBattlerPartyIndexes[0] = 1).
     game == com.pokedaisy.app.companion.data.GameKind.WISHES ->
         BattleInputController.SwitchAddrs(partyMenu = 0x02031BB0L, party = 0x02031EBCL)
+    // Ceruleum: a two-column grid at its own gPartyMenu (NATIVE_CERULEUM). Headless: a written POKéMON cell + A opened it,
+    // DOWN walked slotId 0 -> 2 -> 3.
+    game == com.pokedaisy.app.companion.data.GameKind.CERULEUM ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x020372F0L, party = 0x02037748L, grid = true)
     game == com.pokedaisy.app.companion.data.GameKind.AMETHYST ->
         BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L, grid = true)
     // Unbound (EN / FR): FireRed's gPartyMenu / gPlayerParty (CFRU keeps its EWRAM) under CFRU's two-column party
