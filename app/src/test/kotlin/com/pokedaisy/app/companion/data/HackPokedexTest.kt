@@ -73,6 +73,14 @@ class HackPokedexTest {
         assertEquals(setOf(225, 246, 361), dex.caught)
     }
 
+    /** Unbound IT: CFRU's flags, as English's - English's save booted in it; its dex said Seen 2 Borrius / 4 National, Caught 1. */
+    @Test
+    fun `Unbound IT - seen 4, caught 1`() {
+        val dex = state("unbound_it", NATIVE_UNBOUND_IT)
+        assertEquals(4 to 1, dex.seen.size to dex.caught.size)
+        assertEquals(setOf(443), dex.caught)
+    }
+
     /** Orange Islands: FireRed's flags - its continue screen said POKéDEX 2 (PIKACHU and the MEWTWO it starts with). */
     @Test
     fun `Orange Islands - two caught`() {

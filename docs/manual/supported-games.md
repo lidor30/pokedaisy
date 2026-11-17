@@ -53,7 +53,7 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 
 | Hack | Version |
 | --- | --- |
-| Pokémon Unbound | 2.1.1.1, and its French translation |
+| Pokémon Unbound | 2.1.1.1, and its French and Italian translations (the Italian one: patch v7) |
 | Pokémon Radical Red | 4.1 |
 | Pokémon Gaia | 3.2 |
 | Pokémon Odyssey | 4.1.1 |

@@ -3474,6 +3474,17 @@ metric = true
 decimalPoint = '.'
 probeCategory = 'Graine'
 
+# Unbound v2.1.1.1 IT: English's tables, the dex text translated in place, metric with a decimal comma (the game's
+# own page: "Alt." / "Peso ... kg"). BULBASAUR's category stayed English's "Seed".
+[record.POKEDEX_UNBOUND_IT]
+schema = 'gen3_pokedex'
+base = 'POKEDEX_UNBOUND'
+kotlin = false
+categoryPrefix = 'Pokémon'
+categorySuffix = ''
+metric = true
+probeCategory = 'Seed'
+
 #
 # Pokémon Wishes of Tomorrow v1.2.6 (expansion 1.15.3): the page from gSpeciesInfo (0x104-byte entries with Imperium's
 # field offsets: natDexNum +0x3C, category +0x1F, text +0x4C, smol front pic +0x58, a plain palette +0x60, footprint

@@ -581,6 +581,11 @@ name = 'UNBOUND_FR'
 parts = ['ram', 'foes', 'dex', 'card', 'guide', 'battle', 'icons', 'engine', 'boxes']
 values = { partyMenu = 0x0203B0A0, partyMenuGrid = true, monIconTable = 0x09A217FC, monIconRecord = true, itemIconTable = 0x0825A554 }
 
+[config.unbound_it]
+name = 'UNBOUND_IT'
+parts = ['ram', 'foes', 'dex', 'card', 'guide', 'battle', 'icons', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true, monIconTable = 0x09A217FC, monIconRecord = true, itemIconTable = 0x0825A554 }
+
 # pokeemerald-expansion family (and Recharged Yellow): PARTY / BAG / BATTLE from RAM, party and bag icons from the ROM.
 [config.imperium]
 name = 'IMPERIUM'
@@ -988,6 +993,14 @@ mapsecs = 'mapSecDataUnbound'
 mapsecsRom = true
 
 [text.unbound_fr]
+species = 'speciesNamesUnbound'
+items = 'itemNamesUnbound'
+moves = 'moveDataUnbound'
+genderRatios = 'genderRatiosUnbound'
+mapsecs = 'mapSecDataUnbound'
+mapsecsRom = true
+
+[text.unbound_it]
 species = 'speciesNamesUnbound'
 items = 'itemNamesUnbound'
 moves = 'moveDataUnbound'

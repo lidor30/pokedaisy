@@ -223,6 +223,7 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | Volt White 2 Redux (DS)        | 1.4.1 (+ Classic, EVless)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Unbound                        | 2.1.1.1                    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Unbound                        | 2.1.1.1 French             |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Unbound                        | 2.1.1.1 Italian (patch v7) |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Radical Red                    | 4.1                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Gaia                           | 3.2                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Odyssey                        | 4.1.1                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |

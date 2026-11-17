@@ -1220,6 +1220,18 @@ floorNumOff = 26
 metatileSize = 16
 metatileMask = 0x3FF
 
+[rom.71677a18]
+name = "Pokemon Unbound (v2.1.1.1) (Italian v7).gba"
+mapGroups = 0x08B70498
+mapGroupsXor = 0x00B749DE
+mapGroupSizes = [6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 4, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
 [rom.4b3d4957]
 name = "Pokemon Unbound (v2.1.1.1).gba"
 mapGroups = 0x08B70498
@@ -1301,6 +1313,8 @@ metatileMask = 0x3FF
 # Not yet (scripts/gen_area_maps.py --scan says why):
 #   Pokemon Epsilon Emerald (v1.0.0).gba: its tilesets are compressed some other way (not LZ77 or smol)
 #   Pokemon GS Chronicles (v2.7.6).gba: where secondary tiles start is unclear (best: 512, 86.5% of 66249 tile entries fit): its tilesets are laid out its own way
+#   Pokemon Generation 3 Evolved (v1.0.17).gba: where secondary tiles start is unclear (best: 640, 88.6% of 71181 tile entries fit): its tilesets are laid out its own way
+#   Pokemon Generation 3 Evolved (v1.0.22).gba: where secondary tiles start is unclear (best: 640, 88.6% of 71181 tile entries fit): its tilesets are laid out its own way
 #   Pokemon Ghost Grey (v1.0.1).gba: blocked at its developer's request (BlockedGames.kt)
 #   Pokemon Ghost Grey (v1.0.2).gba: blocked at its developer's request (BlockedGames.kt)
 #   Pokemon Ghost Grey (v1.0.4).gba: blocked at its developer's request (BlockedGames.kt)

@@ -152,6 +152,13 @@ val LEGACY_NATIVE_UNBOUND_FR = LEGACY_NATIVE_UNBOUND_WITH_DEX.copy(
     guideTables = GUIDE_TABLES_UNBOUND_FR,
 )
 
+// Pokémon Unbound v2.1.1.1 IT - the Italian fan translation (patch v7), English's code and RAM, Italian text.
+val LEGACY_NATIVE_UNBOUND_IT = LEGACY_NATIVE_UNBOUND_WITH_DEX.copy(
+    language = 'I',
+    gameCode = UNBOUND_IT_TEXT,
+    pokedex = POKEDEX_UNBOUND_IT,
+)
+
 // Pokémon Gaia v3.2 - another large (32 MB) BPRE hack, verified 2026-09-20 the
 // same way as Unbound above: static byte comparison against the same vanilla
 // rev-0 build, against the user's own Gaia v3.2 ROM (sha1 d5b1e779…, see

@@ -5534,6 +5534,18 @@ val NATIVE_UNBOUND_FR = NATIVE_UNBOUND_WITH_DEX.copy(
     guideTables = GUIDE_TABLES_UNBOUND_FR,
 )
 
+// Pokémon Unbound v2.1.1.1 IT - the Italian fan translation (giacomo-spadoni/pokemon-unbound-ita, patch v7 over
+// English: sha1 8114e0f8…, MD5 c0b35748…). Like the French one, only text and a few pictures changed, and in place:
+// every literal pool holds English's word (species, moves, gItems, natures and map names at English's addresses,
+// the header's revision byte kept at 0), and the user's English save boots in it (`unbound_it`). Names in Italian
+// (UNBOUND_IT_TEXT, gen_unbound_fr_tables.py); its POKéDEX page is metric with a decimal comma ("Alt." / "Peso",
+// headless); its trainers keep their English names, so English's guide tables check out as they are.
+val NATIVE_UNBOUND_IT = NATIVE_UNBOUND_WITH_DEX.copy(
+    language = 'I',
+    gameCode = UNBOUND_IT_TEXT,
+    pokedex = POKEDEX_UNBOUND_IT,
+)
+
 // ---- gamedata/gen3/hacks/wishes.toml ----
 
 // Pokémon Wishes of Tomorrow v1.2.6 (32 MB, BPEE, sha1 60182b93…; FlatFoot Labs): pokeemerald-expansion 1.15.3 (its RHHEXP

@@ -159,6 +159,7 @@ object GameTitles {
         "f1035f615c13c46394a18fa99181c24c3cd15e12" to "Moemon Quetzal",
         "ae5d88bb823a8f9d0d07e8784da2376ff7c1ae43" to "Moemon Quetzal",
         "0ce2a880aa097f1dce4e1db8ee513d0e82d15859" to "Pokémon Unbound",
+        "8114e0f81eb3581f699c74a5891c7b75a130269d" to "Pokémon Unbound",
         "8bac897de515f88e6ce92d0712ce2c018a394b37" to "Pokémon Orange Islands",
         "d2e3800e69e44c9649c3d9a15dc1cd12c1d90501" to "Pokémon Orange Islands",
         "3b6c51d8fb6b513bdd01b7bda3ed8965bc985d58" to "Pokémon Ultra Violet",

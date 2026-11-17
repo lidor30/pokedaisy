@@ -45,6 +45,7 @@ class MoneyTest {
         assertEquals(1_048_458L, money("quetzal_moemon_084", NATIVE_QUETZAL_MOEMON_V084))
         assertEquals(1_048_458L, money("quetzal_moemon_es_084", NATIVE_QUETZAL_MOEMON_V084_ES))
         assertEquals(1748L, money("unbound_fr", NATIVE_UNBOUND_FR))
+        assertEquals(3848L, money("unbound_it", NATIVE_UNBOUND_IT)) // English's save, booted in the Italian build
         assertEquals(2000L, money("orange_islands", NATIVE_ORANGE_ISLANDS))
         assertEquals(3080L, money("ultra_violet", NATIVE_ULTRA_VIOLET))
         // Retail FireRed's save, booted in FireRed Rocket Edition and Ash Gray.
