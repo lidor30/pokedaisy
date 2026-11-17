@@ -67,10 +67,22 @@ make -C 3ds test-old3ds
 make -C 3ds 3ds
 ```
 
-`test-old3ds` builds the host gpSP adapter and runs four ROM-free CTest cases:
+`test-old3ds` builds the host gpSP adapter and runs five CTest cases without
+external ROMs:
 poll timing/fast-forward/urgent updates; all 65,536 RGB565 colors and tiled
 canvas/overlay/native uploads; 3DS thread-priority retries with stubbed system
-calls; bounded deferred logging. The 3DS workflow runs them before cross-building.
+calls; bounded deferred logging; and cartridge/worker integration. The 3DS
+workflow runs them before cross-building.
+
+The integration case generates a 32 MiB diagnostic cartridge in the build
+directory from our own short ARM program and an address-dependent pattern.
+No game data, Nintendo logo, external BIOS or ARM assembler is needed. It
+checks the entire ROM's CRC, every 1 MiB boundary, executed RAM markers and
+every output pixel in both video formats. It reopens the core without and
+with a worker, including after an injected thread-creation failure on Linux.
+The generated cartridge is removed after a successful run. The startup error
+belongs to the current open, so an unthreaded reopen cannot report a previous
+worker's failure.
 
 An optional integration test uses a caller-provided ROM and a temporary save:
 
