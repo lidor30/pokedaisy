@@ -206,7 +206,10 @@ class SettingsActivity : ComponentActivity() {
     /** DS RESOLUTION's GPU renderer can run here (OpenGL ES 3.2). */
     private val dsGpu by lazy { GlCaps.gles32(this) }
     /** DS games start on DSperate (DS CORE): DS RESOLUTION and DS CPU BOOST are melonDS's, greyed out then. */
-    private val dsOnDsperate get() = prefs.dsCore.runs() == MgbaCore.NDS_CORE_DSPERATE
+    private val dsOnDsperate get() = prefs.dsCore.runs() != MgbaCore.NDS_CORE_MELONDS
+    /** DS CPU BOOST runs on the DS CORE picked (not DSperate). */
+    private val dsBoosts get() = com.pokedaisy.app.companion.DsCore.boosts(prefs.dsCore.runs())
+    private val dsUnavailable get() = com.pokedaisy.app.companion.DsCore.unavailableOn(prefs.dsCore.runs())
 
     private val updates by lazy { AppUpdateFlow(this) }
 
@@ -813,7 +816,7 @@ class SettingsActivity : ComponentActivity() {
             (dsGpu && !dsOnDsperate).let { gpu ->
                 SettingRow(
                     tk("DS RESOLUTION"), if (gpu) com.pokedaisy.app.companion.ui.dsResolutionLabel(prefs.dsResolution) else tk("N/A"),
-                    enabled = gpu, subtitle = if (dsOnDsperate) "Unavailable on DSPERATE" else null,
+                    enabled = gpu, subtitle = if (dsOnDsperate) dsUnavailable else null,
                     labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_RESOLUTION),
                 ) {
                     if (!gpu) return@SettingRow
@@ -825,11 +828,11 @@ class SettingsActivity : ComponentActivity() {
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
             // DS games: the emulated CPU at twice the DS's clock, so a game's own slow frames go.
             SettingRow(
-                tk("DS CPU BOOST"), if (dsOnDsperate) tk("N/A") else onOff(prefs.dsCpuBoost), enabled = !dsOnDsperate,
-                subtitle = if (dsOnDsperate) "Unavailable on DSPERATE" else "Fewer slowdowns in DS games",
+                tk("DS CPU BOOST"), if (!dsBoosts) tk("N/A") else onOff(prefs.dsCpuBoost), enabled = dsBoosts,
+                subtitle = if (!dsBoosts) dsUnavailable else "Fewer slowdowns in DS games",
                 labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CPU_BOOST),
             ) {
-                if (dsOnDsperate) return@SettingRow
+                if (!dsBoosts) return@SettingRow
                 prefs.dsCpuBoost = !prefs.dsCpuBoost
                 revision++
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },

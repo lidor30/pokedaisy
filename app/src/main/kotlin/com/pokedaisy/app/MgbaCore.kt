@@ -283,6 +283,9 @@ object MgbaCore {
     const val NDS_CORE_MELONDS = 0
     /** DSperate (nds/pk_nds_dsp.cpp): for weak devices; no EXPAND, DS RESOLUTION, PC / FLY calls, STEADY or DS CPU BOOST. */
     const val NDS_CORE_DSPERATE = 1
+    /** BananaDS (bananads/pk_nds_bnd.cpp, libpkbananads.so): BananaOS's DS emulator; no EXPAND, DS RESOLUTION, PC / FLY
+     *  calls or STEADY. AArch64 only. */
+    const val NDS_CORE_BANANADS = 2
     /** [pkStateMatchesSave]'s answer for a DS state the other core made: it won't load. */
     const val STATE_OTHER_CORE = 2
     /** A DS game's Action Replay codes ([words], [lengths] words per cheat: cheats.DsCheats) into melonDS's AREngine,

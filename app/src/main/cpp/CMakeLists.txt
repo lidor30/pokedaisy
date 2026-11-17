@@ -65,11 +65,45 @@ target_link_libraries(core PUBLIC GLESv3 EGL)
 include("${CMAKE_CURRENT_SOURCE_DIR}/nds/dsperate.cmake")
 
 # ---------------------------------------------------------------------------
+# BananaDS (third_party/bananads + third_party/melonds-bananads): the third DS core, its own shared library
+# (bananads/CMakeLists.txt says why), built as a project of its own with this build's toolchain. AArch64 only (Gengis
+# Engine's kernels are NEON / AArch64 assembly): other ABIs get nds/pk_nds_bnd_stub.cpp, a core that never starts.
+# ---------------------------------------------------------------------------
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    include(ExternalProject)
+    set(PKB_DIR "${CMAKE_CURRENT_BINARY_DIR}/pkbananads")
+    set(PKB_LIB "${PKB_DIR}/libpkbananads.so")
+    ExternalProject_Add(pkbananads_build
+        SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bananads"
+        BINARY_DIR "${PKB_DIR}"
+        CMAKE_ARGS
+            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+            -DANDROID_ABI=${ANDROID_ABI}
+            -DANDROID_PLATFORM=${ANDROID_PLATFORM}
+            -DANDROID_STL=${ANDROID_STL}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+            "-DCMAKE_C_FLAGS=-O2"
+            "-DCMAKE_CXX_FLAGS=-O2"
+        BUILD_ALWAYS ON
+        INSTALL_COMMAND ""
+        BUILD_BYPRODUCTS "${PKB_LIB}")
+    add_library(pkbananads SHARED IMPORTED)
+    set_target_properties(pkbananads PROPERTIES IMPORTED_LOCATION "${PKB_LIB}")
+    add_dependencies(pkbananads pkbananads_build)
+    set(PKB_LINK pkbananads)
+    set(PKB_STUB "")
+else()
+    set(PKB_LINK "")
+    set(PKB_STUB nds/pk_nds_bnd_stub.cpp)
+endif()
+
+# ---------------------------------------------------------------------------
 # Our JNI bridge.
 # ---------------------------------------------------------------------------
 add_library(pokedaisy SHARED pokedaisy_jni.c pokedaisy_ra.c pk_coop_lock_jni.c pk_link.c pk_link_jni.c pk_gb_field.c
     nds/pk_nds_core.cpp nds/pk_nds_dsp.cpp nds/pk_nds.cpp nds/pk_nds_platform.cpp nds/pk_nds_field.cpp nds/pk_nds_field_gpu.cpp nds/pk_nds_call.cpp nds/pk_nds_call_melonds.cpp nds/pk_nds_wide.cpp
-    nds/pk_nds_music.cpp nds/pk_nds_gl.cpp)
+    nds/pk_nds_music.cpp nds/pk_nds_gl.cpp ${PKB_STUB})
 set_target_properties(pokedaisy PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 # melonDS's headers test these (its own sources get them from its directory's add_definitions).
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
@@ -82,6 +116,7 @@ target_link_libraries(pokedaisy
     rcheevos
     core
     dsperate_core
+    ${PKB_LINK}
     z
     android
     log)

@@ -454,7 +454,7 @@ int pk_ndsm_state_matches_save(const char* path)
     u32 header[4];
     bool ok = fread(header, sizeof(header), 1, f) == 1;
     fclose(f);
-    if (ok && header[0] == PK_NDS_STATE_MAGIC_DSPERATE) return 2;   // DSperate's (pk_nds.h): never loaded here
+    if (ok && (header[0] == PK_NDS_STATE_MAGIC_DSPERATE || header[0] == PK_NDS_STATE_MAGIC_BANANADS)) return 2;   // another core's: never loaded here
     if (!ok || header[0] != STATE_MAGIC || header[3] == 0) return -1;
     if (ds->savePath.empty() || ds->saveReadOnly) return 1;
     std::vector<u8> file;
@@ -613,7 +613,11 @@ void pk_ndsm_set_cpu_boost(bool on)
     setArm9Shift(boostShift());
 }
 
-void pk_nds_set_wild_rates(const int32_t* triples, int n) { pk_nds_field_set_rates(triples, n); }
+void pk_nds_set_wild_rates(const int32_t* triples, int n)
+{
+    pk_nds_field_set_rates(triples, n);
+    pk_ndsb_set_wild_rates(triples, n);   // BananaDS's own copy of the field read
+}
 
 int pk_ndsm_set_cheats(const uint32_t* words, int nWords, const int32_t* lengths, int nCheats)
 {

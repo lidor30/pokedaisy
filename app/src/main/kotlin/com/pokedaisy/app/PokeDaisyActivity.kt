@@ -1870,6 +1870,8 @@ class PokeDaisyActivity : Activity() {
     /** A DS game on DSperate (DS CORE, companion.DsCore): no EXPAND, DS RESOLUTION, PC / FLY calls or DS CPU BOOST there.
      * Picked as the game loads and again on RESTART GAME (pickDsCore); the core keeps it until then. */
     @Volatile private var dsperate = false
+    /** The DS core picked for the loaded DS game (MgbaCore.NDS_CORE_*; [dsperate] = it isn't melonDS). */
+    @Volatile private var dsCoreId = MgbaCore.NDS_CORE_MELONDS
     /** The DS game's generated world (its wild rates for WILD ENCOUNTERS), or null. */
     /** The cart's own encounter rates, by map, for WILD ENCOUNTERS back on (MgbaCore.pkNdsWildRates). */
     @Volatile private var dsWildRates: (() -> IntArray)? = null
@@ -2183,6 +2185,7 @@ class PokeDaisyActivity : Activity() {
         override val dsResolution get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsResolution else null
         override val dsGpuAvailable get() = GlCaps.gles32(this@PokeDaisyActivity) && MgbaCore.pkNdsGpuSupported() != 0
         override val dsMelonDs get() = !dsperate
+        override val dsCoreRunning get() = dsCoreId
         override val dsCore get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsCore else null
         override fun setDsCore(core: com.pokedaisy.app.companion.DsCore) {
             Prefs(this@PokeDaisyActivity).dsCore = core
@@ -3844,7 +3847,7 @@ class PokeDaisyActivity : Activity() {
         AudioEffects.load(Prefs(this))
         AudioEffectsTrack.open(this)
         val save = SavesLocation.saveFor(this, Prefs(this), r)
-        engine.ndsCore = if (dsperate) MgbaCore.NDS_CORE_DSPERATE else MgbaCore.NDS_CORE_MELONDS   // DS CORE (pickDsCore)
+        engine.ndsCore = dsCoreId   // DS CORE (pickDsCore)
         // Cheats may have changed in the library's Settings since the game was last up.
         cheatCache = null
         syncCheats()
@@ -6537,10 +6540,11 @@ class PokeDaisyActivity : Activity() {
     /** DS CORE for the DS game that's loaded ([dsperate]), and what follows from it: EXPAND only on melonDS (a cart its
      * field read knows). The engine starts the game on it ([startGame], [restartGame]). */
     private fun pickDsCore() {
-        dsperate = romIsNds && Prefs(this).dsCore.runs() == MgbaCore.NDS_CORE_DSPERATE
+        dsCoreId = if (romIsNds) Prefs(this).dsCore.runs() else MgbaCore.NDS_CORE_MELONDS
+        dsperate = dsCoreId != MgbaCore.NDS_CORE_MELONDS
         if (!romIsNds) return
         wideGame = if (!dsperate && (WideScreen.ndsKnows(romCode, romRev) || romOrigin)) WideScreen.NDS else WideScreen.OFF
-        if (::engine.isInitialized) engine.ndsCore = if (dsperate) MgbaCore.NDS_CORE_DSPERATE else MgbaCore.NDS_CORE_MELONDS
+        if (::engine.isInitialized) engine.ndsCore = dsCoreId
     }
 
     /** RESTART GAME (SETTINGS, and its hotkey): the game booted again from its save, the resume state dropped. */

@@ -809,7 +809,7 @@ private fun homeRows(
         // A DS game: which emulator runs it (melonDS, or DSperate for weak devices); taken at the game's next start.
         s.dsCore?.let { core ->
             val now = core.valueLabel()
-            val pending = (core.runs() == com.pokedaisy.app.MgbaCore.NDS_CORE_DSPERATE) == s.dsMelonDs
+            val pending = core.runs() != s.dsCoreRunning
             SettingRow(
                 tk("DS CORE"), now, labelBadge = NewFeatures.badge(NewFeatures.DS_CORE),
                 subtitle = if (pending) "Takes effect when the game restarts" else "DSPERATE runs on weaker devices",
@@ -825,7 +825,7 @@ private fun homeRows(
             SettingRow(
                 tk("DS RESOLUTION"), if (can) dsResolutionLabel(scale) else tk("N/A"), enabled = can,
                 labelBadge = NewFeatures.badge(NewFeatures.DS_RESOLUTION),
-                subtitle = if (!s.dsMelonDs) "Unavailable on DSPERATE" else null,
+                subtitle = if (!s.dsMelonDs) DsCore.unavailableOn(s.dsCoreRunning) else null,
             ) {
                 if (!can) return@SettingRow
                 val labels = dsResolutionLabels()
@@ -834,11 +834,12 @@ private fun homeRows(
         },
         // A DS game: its CPU at twice the DS's clock, so the game's own slow frames go (HeartGold walking). melonDS only.
         s.dsCpuBoost?.let { on ->
+            val boost = DsCore.boosts(s.dsCoreRunning)
             SettingRow(
-                tk("DS CPU BOOST"), if (s.dsMelonDs) onOff(on) else tk("N/A"), enabled = s.dsMelonDs,
+                tk("DS CPU BOOST"), if (boost) onOff(on) else tk("N/A"), enabled = boost,
                 labelBadge = NewFeatures.badge(NewFeatures.DS_CPU_BOOST),
-                subtitle = if (s.dsMelonDs) "Fewer slowdowns in DS games" else "Unavailable on DSPERATE",
-            ) { if (s.dsMelonDs) { s.setDsCpuBoost(!on); changed() } }
+                subtitle = if (boost) "Fewer slowdowns in DS games" else DsCore.unavailableOn(s.dsCoreRunning),
+            ) { if (boost) { s.setDsCpuBoost(!on); changed() } }
         },
         // A DS game on two screens: its touch screen at its 4:3 with the COMPANION bar, or stretched over the second display.
         s.dsTouchFill?.let { on ->

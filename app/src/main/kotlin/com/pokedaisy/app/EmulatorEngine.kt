@@ -1136,7 +1136,7 @@ class EmulatorEngine(
                 // A DS game left on the other DS core (DS CORE changed since): its state can't load here. Kept for that
                 // core (SaveStates.parkedResume: the next start on it resumes it), and the game starts from its save file.
                 Log.w("pokedaisy", "resume skipped: the state is the other DS core's")
-                val other = if (dsCore == MgbaCore.NDS_CORE_DSPERATE) MgbaCore.NDS_CORE_MELONDS else MgbaCore.NDS_CORE_DSPERATE
+                val other = SaveStates.stateCore(resume)
                 resume.renameTo(SaveStates.parkedResume(resume, other))
                 SnapshotCache.fileFor(resume.toOkioPath()).delete()
                 startNotice = tr("This game was left on the other DS core, so it started from the save file")

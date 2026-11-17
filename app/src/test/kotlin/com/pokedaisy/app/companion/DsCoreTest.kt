@@ -20,6 +20,7 @@ class DsCoreTest {
         for (weak in listOf(false, true)) for (sixtyFour in listOf(false, true)) {
             assertEquals(MgbaCore.NDS_CORE_MELONDS, DsCore.MELONDS.runs(weak, sixtyFour))
             assertEquals(MgbaCore.NDS_CORE_DSPERATE, DsCore.DSPERATE.runs(weak, sixtyFour))
+            assertEquals(MgbaCore.NDS_CORE_BANANADS, DsCore.BANANADS.runs(weak, sixtyFour))
         }
     }
 
