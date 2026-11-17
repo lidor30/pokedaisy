@@ -60,6 +60,8 @@ class TelemetrySampler {
     private var dsRenegade = false
     /** The DS cart is Heartfelt Gold's ([HeartfeltGold]: the US HeartGold's header, its own tables). */
     private var dsHeartfelt = false
+    /** The DS cart is Sacred Gold / Storm Silver ([SacredGold]: the retail HeartGold's / SoulSilver's header, their own tables). */
+    private var dsSacredGold = false
     /** The Game Boy cart is Pokémon Brown 6.0.1 ([brownV601]). */
     private var gbBrownV601 = false
     private var dsRedux = false
@@ -368,6 +370,7 @@ class TelemetrySampler {
             originHeartGold = dsOrigin
             renegadePlatinum = dsRenegade
             heartfeltGold = dsHeartfelt
+            sacredGold = dsSacredGold
             black2Redux = dsRedux
             fireRedHack = fireRedHackFor(base)
             // Modern Emerald's tables follow the save's settings (a few bytes a sample).
@@ -791,6 +794,8 @@ class TelemetrySampler {
         dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         dsRenegade = code == RenegadePlatinum.CODE && RenegadePlatinum.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         dsHeartfelt = code == HeartfeltGold.CODE && HeartfeltGold.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
+        dsSacredGold = (code == SacredGold.CODE_SACRED_GOLD || code == SacredGold.CODE_STORM_SILVER) &&
+            SacredGold.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         dsRedux = (code == Black2Redux.CODE_BLACK2 || code == Black2Redux.CODE_WHITE2) &&
             Black2Redux.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         when {

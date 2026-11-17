@@ -45,7 +45,9 @@ object GameTitles {
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1,
-    ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S + com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
+    ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S + com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S +
+        com.pokedaisy.app.companion.data.SacredGold.SACRED_GOLD_SHA1S + com.pokedaisy.app.companion.data.SacredGold.STORM_SILVER_SHA1S +
+        com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
         com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
 
     private val RETAIL: Map<String, String> = mapOf(
@@ -75,6 +77,9 @@ object GameTitles {
     ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S.associateWith { "Pokémon Renegade Platinum" } +
         // Heartfelt Gold v1.0.15 (and its Zoomed In patch): hg-engine over the US HeartGold (HeartfeltGold).
         com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S.associateWith { "Pokémon Heartfelt Gold" } +
+        // Sacred Gold / Storm Silver v1.05 (Complete, and Sacred Gold's Classic): Drayano's, edited in place (SacredGold).
+        com.pokedaisy.app.companion.data.SacredGold.SACRED_GOLD_SHA1S.associateWith { "Pokémon Sacred Gold" } +
+        com.pokedaisy.app.companion.data.SacredGold.STORM_SILVER_SHA1S.associateWith { "Pokémon Storm Silver" } +
         // Blaze Black 2 / Volt White 2 Redux v1.4.1 (and their Classic / EVless patches), Black 2 / White 2 edited in place (Black2Redux).
         com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S.associateWith { "Pokémon Blaze Black 2 Redux" } +
         com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S.associateWith { "Pokémon Volt White 2 Redux" } + mapOf(

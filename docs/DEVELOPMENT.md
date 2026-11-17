@@ -3445,6 +3445,17 @@ machines by its own rule (the species' `/data/tutor_moves.narc` list or its lear
 `/data/pokepic_m.narc` (member 8 x species, 160 x 80, linear, unscrambled - a 37.6 MB archive, so `NdsArt.file` takes up to
 48 MB). The save's Pokedex keeps 0xC8-byte flag arrays (`Gen4Config.dexFlagBytes`). No GUIDE (its world isn't HeartGold's).
 
+**Sacred Gold / Storm Silver** (v1.05, Drayano's; Sacred Gold Complete SHA-1 `ddb83b93…`, its Classic `2f26ad81…`, Storm Silver
+Complete `a226e726…`; 2026-11-18): the US HeartGold / SoulSilver edited in place. Drayano's patches are **xdelta 1** (`%XDZ004%`),
+which `xdelta3` can't read: a gzip'd data block after the header and the two file names, then a gzip'd control (LEB128 numbers:
+the target's MD5 and length, the sources, then copy instructions of source, offset, length), its offset the u32 before the
+trailing magic. Decoding them against the No-Intro dumps (not the 2012 dumps they were made on) gives each patch's own target
+MD5 but Storm Silver Classic's. `SacredGold.matches` goes by the header's ARM9 size (0xBA148) and file name table offset
+(0xE6A00); `NdsArt.readSacredGold` reads the species' types (`/a/0/0/2`), the moves (`/a/0/1/1`) and the maps' wild rates (the
+map headers at 0xF6BE0 of the unpacked ARM9, `Gen5Lz.arm9`, into `/a/0/3/7` or SoulSilver's `/a/1/3/6`: proven equal to
+pokeheartgold's own rates on the retail cart). The save, RAM and field are retail's: fixtures `sacred_gold` / `storm_silver`
+are the player's HeartGold / SoulSilver saves booted in them, masked to the retail fixtures' blocks.
+
 **Heartfelt Gold** (v1.0.15, SHA-1 `b2b27aeb…`; its Zoomed In camera patch `2eaf49cc…`; 2026-11-16): hg-engine over the
 *US* HeartGold, so unlike Origin HeartGold it keeps the US cart's layout: overlays 0-128 where retail has them (23 more
 of hg-engine's after), an uncompressed ARM9 grown to 0x111EF8, the US RAM (sSaveDataPtr 0x021D2228, sFieldSysPtr

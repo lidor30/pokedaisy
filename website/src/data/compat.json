@@ -222,6 +222,8 @@
     {"code": "IPKJ", "rev": 0, "offset": 177980, "word": 35459504, "title": "Pokémon Origin HeartGold", "version": "v4.0.3 English 1.0.0"},
     {"code": "CPUE", "rev": 1, "offset": 2232416, "word": 35561345, "title": "Pokémon Renegade Platinum", "version": "v1.3.0"},
     {"code": "IPKE", "rev": 0, "offset": 44, "word": 1122040, "title": "Pokémon Heartfelt Gold", "version": "v1.0.15"},
+    {"code": "IPKE", "rev": 0, "offset": 44, "word": 762184, "title": "Pokémon Sacred Gold", "version": "v1.05"},
+    {"code": "IPGE", "rev": 0, "offset": 44, "word": 762184, "title": "Pokémon Storm Silver", "version": "v1.05"},
     {"code": "IREO", "rev": 0, "offset": 656100, "word": 35231552, "title": "Pokémon Blaze Black 2 Redux", "version": "v1.4.1"},
     {"code": "IRDO", "rev": 0, "offset": 656100, "word": 35231616, "title": "Pokémon Volt White 2 Redux", "version": "v1.4.1"}
   ],
@@ -317,6 +319,8 @@
       {"game": "White 2 (DS)", "version": "USA/Europe, every language", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Origin HeartGold (DS)", "version": "4.0.3 English 1.0.0", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Heartfelt Gold (DS)", "version": "1.0.15 (+ Zoomed In)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
+      {"game": "Sacred Gold (DS)", "version": "1.05 (+ Classic)", "cells": ["yes", "yes", "no", "yes", "yes", "no"]},
+      {"game": "Storm Silver (DS)", "version": "1.05", "cells": ["yes", "yes", "no", "yes", "yes", "no"]},
       {"game": "Renegade Platinum (DS)", "version": "1.2.0, 1.3.0 (+ patches)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Blaze Black 2 Redux (DS)", "version": "1.4.1 (+ Classic, EVless)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Volt White 2 Redux (DS)", "version": "1.4.1 (+ Classic, EVless)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},

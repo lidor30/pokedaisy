@@ -146,6 +146,12 @@ private inline val origin get() = originHeartGold && activeGame == GameKind.HEAR
 var heartfeltGold = false
 private inline val heartfelt get() = heartfeltGold && activeGame == GameKind.HEARTGOLD
 
+/** Sacred Gold / Storm Silver are running (they run as HEARTGOLD / SOULSILVER, their tables from the cart:
+ * [SacredGold.data]). Set with [activeGame] by the Poller. */
+@Volatile
+var sacredGold = false
+private inline val drayanoHgss get() = sacredGold && (activeGame == GameKind.HEARTGOLD || activeGame == GameKind.SOULSILVER)
+
 /** Renegade Platinum is running (it runs as PLATINUM, its tables from its cart: [RenegadePlatinum.data]). Set with
  * [activeGame] by the Poller. */
 @Volatile
@@ -393,6 +399,7 @@ val activeMoveData: Map<Int, MoveInfo> get() = localText?.moveData ?: when {
     black -> NdsArt.names?.movesMerged ?: moveDataBlack
     origin -> OriginHeartGold.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataPlatinum
     heartfelt -> HeartfeltGold.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataPlatinum
+    drayanoHgss -> SacredGold.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataPlatinum
     renegade -> RenegadePlatinum.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataPlatinum
     gen4 -> NdsArt.names?.movesMerged ?: moveDataPlatinum
     pureRgb -> moveDataPureRgb
@@ -476,6 +483,7 @@ val activeSpeciesTypeData: Map<Int, SpeciesTypes> get() = when {
     black -> speciesTypesBlack
     origin -> OriginHeartGold.data?.speciesTypes ?: speciesTypesPlatinum
     heartfelt -> HeartfeltGold.data?.speciesTypes ?: speciesTypesPlatinum
+    drayanoHgss -> SacredGold.data?.speciesTypes ?: speciesTypesPlatinum
     renegade -> RenegadePlatinum.data?.speciesTypes ?: speciesTypesPlatinum
     gen4 -> speciesTypesPlatinum
     pureRgb -> speciesTypeDataPureRgb

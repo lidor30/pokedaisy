@@ -207,8 +207,9 @@ fun guideId(game: GameKind?, live: GuideTables?): GuideId? = live?.guide ?: when
     GameKind.PLATINUM -> if (renegadePlatinum) null else GuideId.PLATINUM
     // Origin HeartGold runs as HEARTGOLD, but its world isn't HeartGold's (its own wild Pokémon, trainers, story): no guide.
     // So does Heartfelt Gold (hg-engine over the US cart: its own wild Pokémon and trainers).
-    GameKind.HEARTGOLD -> if (originHeartGold || heartfeltGold) null else GuideId.HEARTGOLD
-    GameKind.SOULSILVER -> GuideId.SOULSILVER
+    // So do Sacred Gold / Storm Silver (Drayano's: their own wild Pokémon and trainers).
+    GameKind.HEARTGOLD -> if (originHeartGold || heartfeltGold || sacredGold) null else GuideId.HEARTGOLD
+    GameKind.SOULSILVER -> if (sacredGold) null else GuideId.SOULSILVER
     GameKind.BLACK -> GuideId.BLACK
     GameKind.WHITE -> GuideId.WHITE
     // Blaze Black 2 / Volt White 2 Redux run as BLACK2 / WHITE2, but their wild Pokémon and trainers are their own: no guide.

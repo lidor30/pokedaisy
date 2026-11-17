@@ -2554,6 +2554,11 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.data.HeartfeltGold.matches(r.toOkioPath())) {
             // Heartfelt Gold: the US HeartGold's header, its own maps' rates (from its cart).
             { (com.pokedaisy.app.companion.data.HeartfeltGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readHeartfelt(r.toOkioPath()))?.wildRates ?: IntArray(0) }
+        } else if ((ndsCode == com.pokedaisy.app.companion.data.SacredGold.CODE_SACRED_GOLD ||
+                ndsCode == com.pokedaisy.app.companion.data.SacredGold.CODE_STORM_SILVER) &&
+            com.pokedaisy.app.companion.data.SacredGold.matches(r.toOkioPath())) {
+            // Sacred Gold / Storm Silver: the retail headers, their own maps' rates (from their cart).
+            { (com.pokedaisy.app.companion.data.SacredGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readSacredGold(r.toOkioPath()))?.wildRates ?: IntArray(0) }
         } else when (ndsCode) {
             "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates

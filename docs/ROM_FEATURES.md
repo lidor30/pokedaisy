@@ -61,6 +61,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | White 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
 | Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁹ | — | — | — | ✅ ²⁹ | — | ✅ ²⁹ | ✅ ¹⁴ | ✅ ²⁹ | ✅ ²⁹ | — | n/a | — | — | — | — ³⁶ |
 | Heartfelt Gold (DS) | 1.0.15 (+ Zoomed In) | ✅ ³⁷ | ✅ ³⁷ | — | — | — | ✅ ³⁷ | — | ✅ ³⁷ | — | ✅ ³⁷ | ✅ ³⁷ | — | n/a | — | — | — | — ³⁶ |
+| Sacred Gold (DS), Storm Silver (DS) | 1.05 (Sacred Gold's Classic too) | ✅ ⁴³ | ◐ ⁴³ | — | — | — | ◐ ⁴³ | — | ✅ ⁴³ | ◐ ⁴³ | ◐ ⁴³ | ◐ ⁴³ | — | n/a | — | — | — | — ³⁶ |
 | Renegade Platinum (DS) | 1.3.0 (+ Classic, shiny rate, Speed Up), 1.2.0 | ✅ ³² | ✅ ³² | — | — | — | ✅ ³² | — | ✅ ³² | ◐ ³² | ◐ ³² | ✅ ³² | — | n/a | — | — | — | — ³⁶ |
 | Blaze Black 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
 | Volt White 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
@@ -676,6 +677,13 @@ change to any of the places listed under "Where it's decided" updates its rows h
     retail FireRed's save, so its own new game played headless; Part B keeps retail FireRed's): EXPAND exact on both
     (`verify_wide.py`), a written move cell + A used that move (Part A), a written POKéMON cell + A opened the party (Part B).
     Part B's people graphics table sits at an odd address the far-off people can't be read from: EXPAND draws none there.
+43. Sacred Gold / Storm Silver (1.05, Drayano's; 2026-11-18) are the US HeartGold / SoulSilver edited in place: their RAM, save
+    and field are the retail carts' (the player's HeartGold / SoulSilver saves boot in them, `fieldinfo` reads the field as
+    retail's), so the native side runs them as HeartGold / SoulSilver. Checked headless: EXPAND's overlap check gives the
+    same counts as retail HeartGold's on the same save and walk. WILD ENCOUNTERS puts back their own maps' rates
+    (`SacredGold.Data.wildRates`, the reader proven on retail HeartGold against pokeheartgold's data); the rest (battle
+    buttons, FLY, PC, the bike) is HeartGold's code but wasn't run on them yet. Storm Silver's Classic patch didn't rebuild to
+    its own target MD5 from the user's SoulSilver dump, so it's left out.
 
 ## What each column is
 
