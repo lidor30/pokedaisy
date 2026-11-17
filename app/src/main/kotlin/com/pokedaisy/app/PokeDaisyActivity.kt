@@ -2747,8 +2747,6 @@ class PokeDaisyActivity : Activity() {
         view.holdFrame = { ::engine.isInitialized && engine.holdFrame }
         // 1x frames follow the game screen's refresh (EmulatorEngine.onVsync).
         view.onVsync = { if (::engine.isInitialized) engine.onVsync() else 0L }
-        view.showAtSource = { if (::engine.isInitialized) engine.frameShowAt() else 0L }
-        view.vsyncNow = { if (::engine.isInitialized) engine.vsyncNow() else 0L }
         // SHADERS on the companion: its grid at the game's own pixel size, so both screens match.
         view.onGamePixel = CompanionColors::setCell
         // The HUD keeps to the game's picture (ORIGINAL / STRETCH / an overlay); EXPAND = the whole view.
