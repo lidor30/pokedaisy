@@ -2926,8 +2926,15 @@ class PokeDaisyActivity : Activity() {
             return
         }
         freshLaunch = true
-        // An archive unpacks once (cached after) - ~0.5 s for 32 MiB, on the black screen.
-        val r = RomArchive.playable(romFile, cacheDir) ?: romFile
+        // An archive unpacks once (cached after) - ~0.5 s for 32 MiB, on the black screen. One with no game in it (a PC
+        // fan game's zip) is said so, not played: read as the ROM it threw on its CRC and closed the app (Crashlytics,
+        // 1.6.0: "No GBA ROM in Pokemon Uranium.zip").
+        val r = RomArchive.playable(romFile, cacheDir) ?: run {
+            Log.w("pokedaisy", "no game in ${romFile.name}")
+            Toast.makeText(this, tr("No GBA ROM in {0}", romFile.name), Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
         romData = r
         CrashReports.gameStarted(
             this, romFile, r,
@@ -3482,7 +3489,8 @@ class PokeDaisyActivity : Activity() {
                 rom = next
                 telemetry.reset()
                 loadRom(next)
-                if (running) startGame()
+                // (An archive with no game closed the screen: nothing to start.)
+                if (running && !isFinishing) startGame()
             }
         }
     }
