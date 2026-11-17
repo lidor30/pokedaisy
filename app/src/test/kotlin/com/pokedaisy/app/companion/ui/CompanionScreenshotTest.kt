@@ -393,7 +393,7 @@ open class CompanionScreenshotTest {
         activeGame = GameKind.BLACK2
         romLanguage = 'E'
         romGameCode = ""
-        val rom = java.io.File(java.io.File(java.io.File(RETAIL_ROM_DIR).parentFile, "nds"), "Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced).nds")
+        val rom = java.io.File(java.io.File(java.io.File(RETAIL_ROM_DIR).parentFile, "nds"), "Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced) [b].nds")
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
             if (rom.isFile && com.pokedaisy.app.companion.data.NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath())) com.pokedaisy.app.companion.data.NdsArt.dir = dir.toOkioPath()

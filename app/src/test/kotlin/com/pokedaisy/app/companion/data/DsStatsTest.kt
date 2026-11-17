@@ -43,12 +43,12 @@ class DsStatsTest {
 
     @Test
     fun `Black, White, Black 2 and White 2 - every fixture's stats from the cart's base stats`() {
-        val black2 = "Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced).nds"
+        val black2 = "Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced) [b].nds"
         // Black / White's species and base stats are Black 2's (Gen 5 changed none between them): their fixtures are checked
         // against Black 2's cart, read through their own configs.
         val carts = listOf(
             Triple(GameKind.BLACK2, black2, listOf("black2", "black2_nimbasa", "black2_wild")),
-            Triple(GameKind.WHITE2, "Pokemon - White Version 2 (USA, Europe) (NDSi Enhanced).nds", listOf("white2")),
+            Triple(GameKind.WHITE2, "Pokemon - White Version 2 (USA, Europe) (NDSi Enhanced) [b].nds", listOf("white2")),
             Triple(GameKind.BLACK, black2, listOf("black", "black_battle", "black_route1", "black_wild")),
             Triple(GameKind.WHITE, black2, listOf("white", "white_forest", "white_route1", "white_wild")),
         )
