@@ -60,7 +60,7 @@ struct draw_job {
     const uint32_t* top;
     const uint32_t* overlay;
 };
-#define DRAW_STACK (64 * 1024)
+#define DRAW_STACK GPU_DRAW_STACK
 static Thread drawThread;
 static Thread wideThread;
 static LightEvent wideStart, wideDone;

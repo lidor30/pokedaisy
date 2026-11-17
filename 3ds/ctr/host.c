@@ -313,6 +313,48 @@ bool host_core1_take(unsigned percent) {
     return true;
 }
 
+void host_core1_log(void) {
+    u32 limit = 0;
+    Result rc = APT_GetAppCpuTimeLimit(&limit);
+    host_log("core 1: %lu%% of its time asked for, the system says %lu%% (%08lX)", (unsigned long) core1Limit, (unsigned long) limit,
+             (unsigned long) rc);
+}
+
+// libctru's threadCreate only answers NULL, so a thread that failed is tried again by hand - the same core, priority and
+// stack size, its entry ending at once - for the system's own result code (1.6.1's Old 3DS logs: armGBA's and gpSP's
+// renderers never started on core 1 beside the draw thread, and nothing said why).
+static void probe_entry(void* arg) {
+    (void) arg;
+    svcExitThread();
+}
+
+void host_log_thread_failure(const char* who, int core, size_t stack) {
+    s32 priority = 0x30;
+    svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
+    u32 limit = 0;
+    Result limitRc = APT_GetAppCpuTimeLimit(&limit);
+    void* mem = memalign(8, stack);
+    Result rc = 0;
+    bool tried = mem != NULL;
+    if (mem) {
+        Handle h = 0;
+        rc = svcCreateThread(&h, probe_entry, 0, (u32*) ((uint8_t*) mem + stack), priority, core);
+        if (R_SUCCEEDED(rc)) {
+            svcWaitSynchronization(h, U64_MAX);
+            svcCloseHandle(h);
+        }
+        free(mem);
+    }
+    if (tried) {
+        host_log("%s on core %d didn't start: svcCreateThread %08lX (%u KiB stack, priority %02lX); core 1 %lu%% (%08lX), "
+                 "heap %lu KiB free", who, core, (unsigned long) rc, (unsigned) (stack >> 10), (unsigned long) priority,
+                 (unsigned long) limit, (unsigned long) limitRc, (unsigned long) host_heap_free() >> 10);
+    } else {
+        host_log("%s on core %d didn't start: no %u KiB for its stack (heap %lu KiB free)", who, core,
+                 (unsigned) (stack >> 10), (unsigned long) host_heap_free() >> 10);
+    }
+}
+
 size_t host_heap_free(void) {
     struct mallinfo m = mallinfo();
     return __ctru_heap_size > (u32) m.uordblks ? __ctru_heap_size - (u32) m.uordblks : 0;
@@ -381,7 +423,10 @@ bool renderThreadHostCreate(pthread_t* thread, void* (*function)(void*), void* a
         t = threadCreate((ThreadFunc) (void*) function, argument, RENDER_STACK, priority, 1, false);
     }
     host_log("armGBA's renderer on core %d: %s", core, t ? "started" : "couldn't start, drawn with the game");
-    if (!t) return false;
+    if (!t) {
+        host_log_thread_failure("armGBA's renderer", core, RENDER_STACK);
+        return false;
+    }
     *thread = (pthread_t) t; // libctru's pthread_t is its Thread, so pthread_join waits for this one
     return true;
 }
