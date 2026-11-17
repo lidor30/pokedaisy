@@ -3251,6 +3251,83 @@ val NATIVE_EMERALD_ROGUE = NATIVE_EMERALD.copy(
     pokedex = POKEDEX_EMERALD_ROGUE,
 )
 
+// ---- gamedata/gen3/hacks/epsilon_emerald.toml ----
+
+// Pokémon Epsilon Emerald v1.0.0 (pokemerrp's demake of the 3DS Hoenn remakes; BPEE, 32 MB, sha1 8decf057…, header title
+// "EPSILON EMER"): closed, a gcc pokeemerald with an older pokeemerald-expansion battle engine (Gen 9 moves, Fairy as type
+// 18, a 19 x 19 uq4.12 type chart) that kept Emerald's species and item ids and its save: retail Emerald's save loads as it
+// is (the `epsilon_emerald` fixtures: KADABRA Lv36 first of six on ROUTE 114, money 185,092 as in Emerald).
+// - RAM by dumps of that save (scratch boots and a scripted battle each time): gSaveBlock1Ptr / 2Ptr / gPokemonStoragePtr
+// 0x0300454C.. (985 / 886 / 42 pool references), gPlayerParty 0x020251A0 with its count 3 bytes before and gEnemyParty
+// + 0x258, gMain 0x03002BE0 (+0x20 and +0x24 counted 16 between dumps 16 frames apart), gMapHeader 0x02037F68 (mapsec
+// 0x1D ROUTE 114), gObjectEvents 0x02038020 (the player at pos + 7). Party mons, money (+0x490) and the key (+0xAC) are
+// retail's.
+// - The bag (PACKED_BAG_EPSILON_EMERALD): gBagPockets 0x0203AD44 holds { *slots, u16 capacity } in 6 bytes, five pockets in
+// Emerald's order - Items (72 slots, SaveBlock1 + 0x560, running on over the old Key Items and Poké Balls slots, which its
+// bag leaves out by each item's own pocket), Poké Balls (16, + 0x650), TMs & HMs (a bit per machine, SaveBlock1 + 0x3598),
+// Berries (46, + 0x790) and Key Items (60, outside the save block at 0x02032988). Each pocket checked against the game's
+// own bag screen headless.
+// - Battle (a scripted wild ZIGZAGOON: setwildbattle takes ten bytes, ScriptContext_SetupScript 0x088C6621): gBattleMons
+// 0x02024C50 is expansion's 0x60-byte BattlePokemon (EXPANSION_BATTLE_MON: personality +0x4C, otId +0x58 matched the
+// party's); gBattlersCount / gBattlerPartyIndexes / gBattlerPositions sit before it as in retail (a switch put slot 1 into
+// gBattlerPartyIndexes[0]); gBattleTypeFlags 0x02024BB8 (4 in a wild battle, 526 references); the gBattleStruct pointer
+// 0x02025100 with the cursors + 0x10 / + 0x14 (RIGHT / DOWN walked the action byte 0 -> 1 -> 3, RIGHT the move byte 0 -> 1).
+// gBattlerControllerFuncs 0x03004520 read in each menu; the bag and party handlers have retail's code shapes, the target
+// handler is the one the move handler's literal pool names. gPartyMenu 0x0203DE3C (slotId + 9 walked 0 -> 1: a list).
+// - ROM: the GF ROM header's icon table and gItems (36-byte records, the description at + 0x14); gMonIconPaletteIndices
+// right after the 565 icons; the palette table its header names points into IWRAM, so the one before it (its first six,
+// the ROM's palettes) is the fallback; sItemIconTable is the pair table whose entry 1 is retail's MASTER BALL icon. Names, types,
+// moves, the chart: EpsilonEmeraldGen.kt (scripts/gen_epsilon_emerald_tables.py).
+// - DEX (POKEDEX_EPSILON_EMERALD, Pokedex.kt) and HERE (GUIDE_TABLES_EPSILON_EMERALD, GuideRom.kt): their tables from the ROM;
+// its dex flags are 56-byte arrays (a wild battle set SaveBlock2 + 0x60 and SaveBlock1 + 0x988, headless).
+// - PC anywhere and FLY (FIELD_ITEMS_EPSILON_EMERALD, FieldItems.kt): found through the game's own callers, checked headless.
+val NATIVE_EPSILON_EMERALD = NativeConfig(
+    itemDescs = ItemDescTable(0x08FEE438L, 36, 0x14, count = 629),
+    playerParty = 0x020251A0L,
+    playerPartyCount = 0x0202519DL,
+    battleMons = 0x02024C50L,
+    battlerPositions = 0x02024C42L,
+    battlersCount = 0x02024C38L,
+    battleTypeFlags = 0x02024BB8L,
+    battleMonLayout = EXPANSION_BATTLE_MON,
+    gMain = 0x03002BE0L,
+    saveBlock1Ptr = 0x0300454CL,
+    saveBlock2Ptr = 0x03004550L,
+    objectEvents = 0x02038020L,
+    mapHeader = 0x02037F68L,
+    bagPockets = 0x0203AD44L,
+    bagPocketCount = 5,
+    bagPocketOrder = EMERALD_BAG_POCKET_ORDER,
+    packedBag = PACKED_BAG_EPSILON_EMERALD,
+    encryptionKeyOff = 0xACL,
+    moneyOff = 0x490L,
+    monIconTable = 0x08FE0464L,
+    monIconPaletteIndices = 0x08FE0D38L,
+    monIconPaletteTable = 0x08FE0F80L,
+    // Its party icons take each species' own palette: gMonPaletteTable's (the GF header's, raw 16 colours, 8-byte {palette, tag}
+    // entries; the party screen's OBJ palettes were these, byte for byte), its shiny ones gMonShinyPaletteTable's 565 entries on.
+    monIconPalettes = 0x08BE56C0L,
+    monIconPalStride = 8,
+    monIconShinyOff = 0x11A8L,
+    eggSpecies = 446,
+    itemIconTable = 0x090A304CL,
+    battlerControllerFuncs = 0x03004520L,
+    handleInputChooseAction = 0x08875859L,
+    handleInputChooseMove = 0x088762E9L,
+    completeWhenChoseItem = 0x088783D1L,
+    waitForMonSelection = 0x08878315L,
+    handleInputChooseTarget = 0x08875B85L,
+    enemyParty = 0x020253F8L,
+    battlerPartyIndexes = 0x02024C3AL,
+    battleStructPtr = 0x02025100L,
+    actionCursor = 0x02025110L,
+    moveCursor = 0x02025114L,
+    partyMenu = 0x0203DE3CL,
+    pokedex = POKEDEX_EPSILON_EMERALD,
+    guideTables = GUIDE_TABLES_EPSILON_EMERALD,
+    fieldItems = FIELD_ITEMS_EPSILON_EMERALD,
+)
+
 // ---- gamedata/gen3/hacks/gaia.toml ----
 
 // Pokémon Gaia v3.2 - another large (32 MB) BPRE hack, verified 2026-09-20 the
@@ -3994,6 +4071,33 @@ val NATIVE_MONOMYTH_V1_1 = NATIVE_MONOMYTH.copy(
     pokedex = POKEDEX_MONOMYTH_V1_1,
     fieldItems = FIELD_ITEMS_MONOMYTH_V1_1,
     guideTables = GUIDE_TABLES_MONOMYTH_V1_1,
+)
+
+// Pokémon Monomyth v1.2 (32 MB, BPEE, sha1 742e62ff…; released 2026-11-15, monomyth.jp's monomyth_v1_2.bps over retail
+// Emerald): v1.1 rebuilt again, mapped by word pairs (each v1.1 literal-pool word found at its place in v1.2's code). Its
+// RAM up to the battle globals is v1.1's, but a word was added before gMapHeader: gMapHeader, gObjectEvents, gBagPockets,
+// sLockFieldControls and gPartyMenu (and EXPAND's camera) sit 4 bytes later. Code moved by -0x1F8 around the battle
+// controllers (HandleInputChooseTarget's body changed: found by the two pool words naming it), +0x220 at the field
+// scripts; tables by -0x43C / -0x444 (gItems, the icons) and on to -0x3A8 (gItemIconTable). The user's v1.0 save loads as
+// it is (the monomyth_v1_2 fixtures: the same party, money and CATSEAR CITY building).
+val NATIVE_MONOMYTH_V1_2 = NATIVE_MONOMYTH.copy(
+    itemDescs = ItemDescTable(0x089F15ACL, 0x20, 0x18, count = 447),
+    handleInputChooseAction = 0x08048329L,
+    handleInputChooseMove = 0x08048C55L,
+    completeWhenChoseItem = 0x0804AAB9L,
+    waitForMonSelection = 0x0804A9F1L,
+    handleInputChooseTarget = 0x08048601L,
+    partyMenu = 0x0203D8D4L,
+    objectEvents = 0x02038284L,
+    mapHeader = 0x02038214L,
+    bagPockets = 0x0203C190L,
+    monIconTable = 0x089DF520L,
+    monIconPaletteIndices = 0x089DFB78L,
+    monIconPaletteTable = 0x089DFD10L,
+    itemIconTable = 0x08AAFA64L,
+    pokedex = POKEDEX_MONOMYTH_V1_2,
+    fieldItems = FIELD_ITEMS_MONOMYTH_V1_2,
+    guideTables = GUIDE_TABLES_MONOMYTH_V1_2,
 )
 
 // ---- gamedata/gen3/hacks/odyssey.toml ----

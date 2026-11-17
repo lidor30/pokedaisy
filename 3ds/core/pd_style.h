@@ -85,6 +85,12 @@ extern uint32_t pd_gb_ink, pd_gb_paper;
 // The white title window and the grey list window; each returns its frame's width.
 int pd_title_box(struct pd_canvas* c, int x, int y, int w, int h, uint32_t fill);
 int pd_list_box(struct pd_canvas* c, int x, int y, int w, int h);
+// The battery in a title window: a green bolt while [charging], the level drawn (red at 15% and under), the percentage,
+// ending at [end] with text at [ty]. pd_battery_width is how wide that is.
+// TEXT SIZE SMALL's line between a list's rows (the bag's divider, on the grey lists): a pixel at [y]. Nothing at NORMAL.
+void pd_row_divider(struct pd_canvas* c, int x, int y, int w);
+void pd_battery_draw(struct pd_canvas* c, int end, int ty, int pct, bool charging);
+int pd_battery_width(int pct, bool charging);
 void pd_backdrop(struct pd_canvas* c);
 // A coloured icon: 1 canvas pixel a pixel at scale 1, half size at 0 (every other pixel).
 struct pd_art;

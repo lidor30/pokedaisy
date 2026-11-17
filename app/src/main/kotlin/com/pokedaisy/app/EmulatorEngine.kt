@@ -547,6 +547,9 @@ class EmulatorEngine(
      * back. Emu thread. */
     private val dsHold = DsTransitionHold()
     @Volatile private var dsHeld = false
+    // The hold has seen the top screen fade or go dark ([DsTransitionHold.fast]): flat out and muted. Before that (the touch
+    // screen alone fading: Black's X menu) the game keeps its speed and sound behind the held pictures.
+    @Volatile private var dsHeldFast = false
 
     /** [dsHold]'s, for the UI (the window's frozen picture, its shade and dots). Set on the emu thread. */
     val dsHolding = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -777,7 +780,7 @@ class EmulatorEngine(
         // A DS game going to its next screen behind the held pictures (dsHold): the same, nothing to see or hear - unless
         // FF is on, whose music plays through it (muting it cut the FF music and skipped it ahead): FF's speed then, never
         // SMART's 1x (nothing to steer behind a held picture).
-        if (dsHeld) return if (s > 1f) s else Float.POSITIVE_INFINITY
+        if (dsHeld) return if (s > 1f) s else if (dsHeldFast) Float.POSITIVE_INFINITY else s
         // SMART: menus and the region map's cursor can't be steered sped up -
         // 1x while one is up, and FF (still on) picks up again when it closes.
         // A battle runs fast but where it waits for the player (its menus, bag and party).
@@ -788,6 +791,7 @@ class EmulatorEngine(
     private fun endDsHold() {
         dsHold.release()
         dsHeld = false
+        dsHeldFast = false
         NdsBottomFrame.held = false
         dsHolding.value = false
     }
@@ -797,6 +801,7 @@ class EmulatorEngine(
         val held = dsHold.step(
             MgbaCore.pkNdsFade(), fieldState, dsTouchWanted.value || dsMenuScreen.value || dsMenuApp.value, dsQuickLoads,
         )
+        dsHeldFast = held && dsHold.fast
         if (held == dsHeld) return
         val ran = dsHold.frames
         dsHeld = held
@@ -1016,12 +1021,28 @@ class EmulatorEngine(
     private var dsSkipDrawn = true    // this frame's plan: drawn
     private var dsSkipTimed = false   // this frame's core time goes to dsSkip
 
+    /** The GL thread's refreshes so far ([onVsync]). */
+    @Volatile private var vsyncCount = 0L
+    /**
+     * The refresh a frame drawn a refresh later ([nds] / [slowFrames]) may first show on: the one that starts the frame after
+     * it, so on a screen with two refreshes a frame (120 Hz) every frame is up for two. Shown on the first refresh after it
+     * was done, one finished within 8 ms showed for one refresh and a slower one for three (GitHub #638: HeartGold-based
+     * hacks judder at 1x on a Thor Max, smooth in fast-forward). 0 = show it as soon as it's done.
+     */
+    @Volatile private var showAtTick = 0L
+
+    /** Emu thread, as a frame is published: the refresh it may first show on ([showAtTick]); the view keeps it with the frame. */
+    fun frameShowAt(): Long = showAtTick
+    /** GL thread: the refreshes so far, to hold [frameShowAt] against. */
+    fun vsyncNow(): Long = vsyncCount
+
     /** The game screen's fastest display mode (Hz, 0 = unknown), for [VsyncCheck]: asked on the GL thread once a second. */
     @Volatile var displayMaxHz: () -> Float = { 0f }
 
     /** GL thread: the game's screen just refreshed (EmulatorView.onVsync). Returns how long the draw may
      * wait for the frame this refresh starts (~60% of a refresh), or 0 when none is due. */
     fun onVsync(): Long {
+        vsyncCount++
         val now = System.nanoTime()
         val d = now - lastVsyncNanos
         lastVsyncNanos = now
@@ -1399,6 +1420,10 @@ class EmulatorEngine(
                     }
                 }
                 val coreStart = System.nanoTime()
+                // Drawn a refresh later at 1x on a screen with several refreshes a frame: up on the refresh that
+                // starts the next frame, the same time on screen for each ([showAtTick], read as the frame is published).
+                val paced = pacedPerFrame
+                showAtTick = if (vsyncMode && paced >= 2 && (nds || slowFrames) && effectiveSpeed() == 1f) vsyncCount + paced else 0L
                 MgbaCore.pkRunFrame()
                 val coreEnd = System.nanoTime()
                 // Before the frame is shown: the frame a menu transition starts fading on is never seen.
@@ -1721,7 +1746,7 @@ class EmulatorEngine(
                 // only as SPED-UP (which STEADY falls back to only for a song or ROM it can't
                 // render). Slow-mo stays muted.
                 val spedUp = speed > 1f && clip == null && mode != FfMusicMode.OFF && !awaitingClip && !dsMusicOn
-                val wantPaused = rewinding || battleInput.holdFrame || dsHeld && !ffWanted ||
+                val wantPaused = rewinding || battleInput.holdFrame || dsHeldFast && !ffWanted ||
                     !((speed == 1f && clip == null) || spedUp || dsMusicOn)
                 // Refreshes per frame when the display paces 1x; 0 = the timer and blocking audio.
                 // A screen whose ticks don't follow its refresh (VsyncCheck, GitHub #350): the timer and blocking writes,

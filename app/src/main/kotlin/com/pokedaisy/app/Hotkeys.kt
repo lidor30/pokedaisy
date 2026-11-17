@@ -231,6 +231,12 @@ class Hotkeys private constructor(
             }
         }
 
+        /** Every hotkey back to [DEFAULTS] (GitHub discussion #923): the file goes, and the next read writes them. HOTKEYS
+         * ON / OFF is a setting of its own and stays. */
+        fun resetBindings(filesDir: File) {
+            file(filesDir).delete()
+        }
+
         fun load(filesDir: File): Hotkeys {
             val props = readProps(filesDir)
             val raw = Action.entries.associateWith { a ->

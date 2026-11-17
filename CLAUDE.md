@@ -332,6 +332,14 @@ its size / its shadow (`pixelFontFamily`, `gbaTextStyle`, `GbaText`), button fac
 window / text colours (`SkinColors`). `CompanionSkins.forGame` picks one (`PIXEL` = the look above, every game's unless named),
 only while a game is open (`OptionColors.inGame`). A new skin: its `CompanionSkin` (colours sampled off the game's menus), a line in
 `forGame`, its bag palette, and a render of every tab; screens with the game's own art keep their per-game drawing.
+**DS and GBA skins** (2026-11-16, NEW tag `GAME_LOOK`): `HEARTGOLD` (HG / SS), `PLATINUM`, `UNOVA` (B / W), `UNOVA2` (B2 / W2),
+`FIRERED` (FR / LG), `EMERALD`, `RUBY_SAPPHIRE` (they run as EMERALD: told apart by `romHeaderCode`, the cart's header code the Poller
+sets once), sampled headless off each game's menus (nds_dump / menu-shots); pixel corners, Pixel Operator and the GBA shadow kept.
+`SkinColors.button*` = OptionButton's own face (HG's orange, Black's plates); `flatFaces` = one-colour buttons (FR / LG, Emerald, R / S, Platinum: HG's two tones clashed there); `darkToo = false` = a light skin gives way to the app's dark
+windows in DARK MODE (`activeColors`). `CompanionSkin.hud` (`SkinHud`) is HUD > LOOK **GAME** (the new default; GLASS for a game without
+one, `FieldHudLook.resolved`): drawn by WINDOW's paths with the skin's panels (`drawRingedBox`: rings round a see-through fill),
+`hudSelected` its cursor colour. SCREEN > COMPANION LOOK GAME / CLASSIC, under THEME on both screens (`Prefs.gameLook`, `CompanionSkins.enabled`, `gameLookRow`):
+CLASSIC turns them all off, X / Y included. `GameSkinsScreenshotTest` / `GameSkinsHudScreenshotTest` render every one.
 **SETTINGS' group tabs sit outside the card** (both screens, the user's call): `RailedWindow` leaves the window to the `GroupedRows` inside, which draws it round the list alone, the `TabRail` on the backdrop beside it.
 **Buttons are HeartGold's two-tone (2026-11-05, the user's call)**: every companion button is a face in two colours with two soft lines between them (`drawTwoTone`, GbaText.kt): `PlatinumButton` (a thick dark outline, a thin white ring, `fill` over `frame`) and, through `drawLayeredBox(twoTone = true)`, `OptionButton`, the tab chips, SETTINGS' group chips, the DEX's sections, MORE's tiles and the bag's PC and sort; the quick menu's tiles (`quickTileFace`) add a thick outline. The BATTLE tab takes HeartGold's layout by proportion (`ActionButtons`' `ds`: a DS pixel from the pane's width, so a tall pane leaves room rather than stretching the buttons), `BattlePlaceholder`'s four move places behind FIGHT, and its move cards (`hgMovePanel`); RUN stays whole, not cut by the screen's edge as in the game.
 **DARK MODE** (SETTINGS on either screen, SCREEN group; `Prefs.darkMode` OFF default / ON / AUTO = the device's uiMode;
@@ -763,6 +771,10 @@ It runs as `GameKind.HEARTGOLD` with `originHeartGold` set (`GEN4_ORIGIN_HEARTGO
 Fairy = 9, its type chart, icons, its DEX's pages): never bundled. Its battle engine is its own: the BATTLE tab reads its
 battle objects (`Gen4ManagedBattle`), no battle buttons, the touch screen floats in while its battle waits (`battleManagerPtr`).
 No GUIDE. Fixtures `origin_heartgold(_battle, _trainer)`; docs/DEVELOPMENT.md's "Origin HeartGold".
+**Heartfelt Gold v1.0.15 (2026-11-16)**: hg-engine over the *US* HeartGold (`HeartfeltGold.matches`: ARM9 / overlay table sizes),
+the US RAM and battle system, so the native side (EXPAND, FLY, PC, WILD, battle buttons) runs it as HeartGold unchanged. Its species ids are
+the Dex numbers to ARCEUS, then Dex + 50 (`HeartfeltGold.speciesOf` / `nationalOf`, `Gen4DexTables.speciesOf` / `dexOf`): anything keyed by
+Dex number goes through them. Its Pokédex's seen bits sit at +0x400 (`dexSeenOff`), its icons' palettes in `/a/0/2/8` member 9. docs/DEVELOPMENT.md.
 **Renegade Platinum v1.3.0 (2026-11-06)**: Drayano's hack, US Platinum rev 1 edited in place (header, RAM, save and ARM9 retail's,
 but the shiny odds' word), so it runs as `GameKind.PLATINUM` everywhere the header decides (native side included).
 `RenegadePlatinum.matches` (overlay 16's pointer to its moved type chart, cart 0x221060) sets `renegadePlatinum` (ActiveTables, by
@@ -803,7 +815,9 @@ step). The cover carries `DsLoader` (three dots; after 160 ms). **Menu transitio
 one-screen DS stage only): from a menu flow's first faded frame (`pkNdsFade`: master brightness, read right after the
 frame and before it's published) until the touch screen has been lit 12 frames with no fade, both screens keep their last
 picture (`NdsBottomFrame.held`, the top's `holdFrame`), the window keeps its layout (the activity latches the flows), shaded
-with the dots (`DsLoader(ball = false)`), and the game runs flat out, muted (at FF's speed with its music while FF is on),
+with the dots (`DsLoader(ball = false)`), and the game runs flat out, muted (at FF's speed with its music while FF is on) - but only once
+the top screen fades or goes dark too (`DsTransitionHold.fast`): a fade of the touch screen alone (Black's X menu, GitHub #840) keeps the
+game's speed and sound behind the held pictures, else the music cut on every menu,
 drawing every 4th frame, keys and taps held back; the held picture then crossfades out. Never in a battle (its own rules).
 `DsTransitionHoldTest` replays HeartGold's and Black 2's real traces (`resources/ds_transitions/`: Black 2's party keeps its
 top screen one colour, so the touch screen decides). Without a hold, a window up when its touch screen goes black stays
@@ -1093,7 +1107,7 @@ the same parity and never took). Its battle menus read every frame (one-frame RI
 offsets, headless), so FIGHT, moves and RUN keep one-frame presses. A mon that's gone, fainted or out is refused before any press; after SWITCH the list
 coming back means the game said no (Crystal's "can't be recalled") and the switch stops. The frame is held 20 frames past
 the pick (white, then the battle: ~8 frames Yellow, ~14 Crystal). Checked by driving the real controller and readers
-against mgba_dump's running game frame by frame (a local harness over its stdin; not committed): every case in
+against mgba_dump's running game frame by frame (`GbLiveGame` over its stdin, mgba_dump's `gbwram`; `BrownLiveControlsTest`, opt-in POKEDAISY_GB_LIVE=1): every case in
 docs/ROM_FEATURES.md's note 5; fixtures `yellow_battle_party` / `_switch_menu` / `_faint`, `crystal_battle_party` /
 `_switch_menu` / `_faint` (`GbPartySwitchTest`), the simulated menus in `BattleInputControllerGbTest`. RUN presses A to close "Got away safely!" (every 30 frames until the battle ends or the
 action menu returns), each only on a battle state read that same frame (`BattleInputController.stateNow`): A says YES to
@@ -1301,7 +1315,7 @@ never committed), else a drawn stand-in.
 **QUICK MENU** (`companion/ui/QuickMenu.kt`, `QuickAction` / `QuickMenuStyle` in `companion/QuickMenuSettings.kt`; the QUICK MENU hotkey, L3 by
 default - the user's pick, which took L3 from SLOT PREV, migrated only where unchanged; SETTINGS > QUICK MENU on both screens: STYLE and the
 actions, `Prefs.quickMenuActions` stored as the ones switched off so a new action shows by itself, NEW tag): PC / FLY / REPEL / BIKE / ROD /
-WILD / SAVE STATE / LOAD STATE / FF / COMPANION as tiles over the game in the HUD's view (`QuickMenuState`), the HUD and BATTLE BUTTONS faded
+WILD / SAVE STATE / LOAD STATE / FF / TURBO A (`GbaInput.turboLatch`: holding A mashes it till tapped again; NEW tag `QUICK_TURBO`) / COMPANION as tiles over the game in the HUD's view (`QuickMenuState`), the HUD and BATTLE BUTTONS faded
 to 0.25 meanwhile and its open panel closed (`FieldHud(closePanels)`, bumped on open): a press opens it for the D-pad / stick + A (B / the button closes); no hold-and-release (tried, dropped - the user's
 call: a slip on letting go ran actions nobody meant).
 Every tile is the largest one's size (`UniformTiles`, a SubcomposeLayout: measured loose, then all at the max). STYLE RING (default; a tap flips
@@ -1379,6 +1393,9 @@ ball sprites are ours). Lengths are the game's pixels over the tab (`G5`: 256 x 
 every edge stepped in whole screen pixels of one game pixel, `rowsPath`); the lens / field, discs (`DISC`) and plates (`PLATE`) are profile
 tables from the frames. Edge to edge: CompanionScreen eases its margin away and docks the tab bar on `Gen5Dock` while the controls are up.
 D-pad focus is the game's key cursor (magenta corner brackets). Look at it with `gradle render -Ponly=battle-gen5` beside the game's frames.
+One screen's BATTLE BUTTONS follow it too (2026-11-16, players who picked GEN 4 on one screen saw no change): `BattleButtons(style)` ->
+`Gen5ActionButton` / `Gen5MoveRow` / `Gen5PartyRow` / `Gen5ListCancel` (end of BattleControlsGen5.kt: the same faces, rims and labels, a
+game pixel = the HUD's GBA pixel, laid out as the GEN 4 buttons and lists). `BattleButtonsScreenshotTest`'s `gen5*` renders them.
 **ASPECT** (SETTINGS on either screen, `Prefs.stretchGame`, ORIGINAL default / STRETCH): STRETCH fills
 the top screen - `EmulatorView.stretch` drops the quad's letterbox and `GameStageLayout.stretch` gives the
 game all the space under the status bar. The bottom screen flips it in place; the top-screen Settings opens
@@ -1832,7 +1849,9 @@ far-off characters in EXPAND.
 pointing at RAM reads the same; v1.0's save is its fixtures'), the ROM moved, one table set for both (`gen_monomyth_tables.py` with both ROMs
 checks it). Its header's game code is **BPEE**, so it's found by hash with the big BPEE hacks, and anything going by game code sees Emerald:
 `fanfareSongId` turns it away by its title, so it borrows a fanfare like v1.0 (it has its own song table; which song is its level-up isn't mapped). The next build: map the ROM by word pairs (v1.0 word -> the word at
-the shifted place) before anything else; if the RAM words still agree, it's a config over this one.
+the shifted place) before anything else; if the RAM words still agree, it's a config over this one. **v1.2 (2026-11-16)**: they didn't all agree -
+a word went in before gMapHeader (it and the RAM after it +4, the battle globals not), so check every RAM word, not a sample; its one changed
+table entry is an overlay (`moveDataMonomythV1_2`, `monomythV1_2`, `gen_monomyth_tables.py`'s NEWER_DIFFS).
 **Emerald Legacy v1.1.4 (2026-10-14)**: BPEE, 16 MB, but a rebuild - its public source (`$DECOMPS/pokelegacy`, tag V1.1.4)
 built with agbcc is the release byte for byte, so take every address from that ELF (`nm`) and every struct offset / constant
 from agbcc compiling `offsetof` against its headers, never from retail. Runs as `GameKind.EMERALD` under `LEGACY_TEXT`
@@ -2103,7 +2122,9 @@ frame (4-20 ms) is never waited for by the GL thread (`onVsync` returns 0 for `n
 latency - waited for within 60% of a refresh, 45 of 120 were late. (3) FF on the refresh fits its group to the device
 (`FfGroupFit`: a running average of group time; a frame goes only while the smaller group keeps 3/4 of the late one's
 throughput, frames are tried back with a doubling back-off) and SPED-UP divides by the group really run. DS audio is
-resampled by `NDS_FPS` (59.83), not the GBA's. (4) A GBA game whose frames keep missing the wait (3+ late draws in two 120-frame
+resampled by `NDS_FPS` (59.83), not the GBA's. On a screen with several refreshes a frame (120 Hz), a frame drawn a refresh later goes up only on the refresh that starts the
+next frame (`EmulatorEngine.showAtTick` stamped on each published frame, `EmulatorView.readyShowAt`; GitHub #638, 2026-11-16: done within 8 ms it showed for one refresh, slower ones for
+three - DS judder at 1x on a Thor Max, smooth in FF); not yet checked on a device. (4) A GBA game whose frames keep missing the wait (3+ late draws in two 120-frame
 windows: Radical Red, 5-9 ms frames with 12-14 ms ones, GitHub #63) goes the DS way until it closes (`slowFrames`, latched -
 flipping back skips / repeats a frame; the `fps=` line says `paced=1 (slow: not waited for)`).
 **FPS / CPU** (SETTINGS on either screen, SCREEN group, `Prefs.showPerformance`, off): flush in the game screen's
@@ -2260,7 +2281,50 @@ docs/DEVELOPMENT.md's "Round two". **HeartGold / SoulSilver and Platinum USA rev
 which Gen 3's editor implements too); HG / SS's edit goes into the other half with every PC box flagged changed, Platinum's is a full save
 (global + 1, each block into its other copy). Checked by booting edited real saves in `nds_dump` and saving in the game on top. Nicknames /
 box names (`Gen4Text.encode`), GIVE / TAKE through the bag, and HG / SS / Platinum trades (`Gen4Trade`, `TradeRules`; Pokédex as pokedex.c
-registers a received one) too. Not yet: DS play time, Diamond / Pearl, Gen 5.
+registers a received one) too. English **Diamond / Pearl** too (2026-11-16, `Gen4Layout.DP`, NEW tag `SAVE_EDITOR_DP`; pret/pokediamond and a new game played
+headless to the player's room, `Pokemon - Diamond Version (USA) (Rev 5).sav` beside the ROM): Platinum's save code with blocks of 0xC100 / 0x121E0,
+the general block's structs earlier, a Pokédex with Deoxys' forms in the flag arrays' top bits, no Rotom / Shaymin / Giratina forms and languages
+for 14 species only (`MEISTER_SPECIES`, `languageByte`); Pearl's personal data is its own file; Pal Park leaves Platinum's met-location field out;
+Platinum-only forms aren't traded to it. An edited save (a HeartGold Pokémon traded in, money, Potions) booted in nds_dump, shown by the bag and the
+trainer card, saved in game on top and read back (`aRealDiamondSave`, `DIAMOND_EDIT_OUT` / `DIAMOND_READBACK`). Not yet: DS play time, other
+languages' Diamond / Pearl. The 3DS port has the Gen 3 editor (every page) and trades (party too) in C (`3ds/core/pd_save.c`,
+`pd_library_saves.c`; names typed on the console's swkbd): its tables come from the app's generated Kotlin by `3ds/tools/gen_save_tables.py`
+(rerun it after changing `SaveTablesGen.kt` / `SaveSpeciesGen.kt` / `SpeciesDexGen.kt`; `make -C 3ds test-save` fails while it's stale). Its TRAINER > MISSING (`pd_missing_list` / `pd_missing_add`:
+the other GBA saves read one by one) lists the gaps and where to get each, without opening the trade for you (the library's pages would have to
+switch under it); TRADE AND BACK is `pd_trade_back`. No Pal Park there: the 3DS app reads no DS save.
+**PAL PARK** (TOOLS, `EXTRA_PAL_PARK`; `save/PalPark.kt`, `ui/PalParkScreen.kt`, NEW tag `PAL_PARK`, 2026-11-16): six Pokémon from a GBA save's PC into an
+HG / SS / Platinum save, by pret/pokeplatinum's own migration (decompiled: `src/main_menu/gba_migrator.c`'s rules, `gba_pokemon.c`'s
+BoxMonGBAToBoxMon, then scrcmd_catching_show.c's store with UpdateMonStatusAndTrainerInfo case 2 = met at Pal Park (55) today at its level;
+HG / SS's overlay isn't decompiled, its scrcmd_12.c stores the same way and its ball setter fills HGSS_Pokeball too). The National Pokédex and a
+GBA cart in the DS game's language (main_menu.c) gate it; the day's wait and the park itself are left out. Its item map, refused items, HMs,
+new-ability species and GBA -> DS charset are `PalParkTablesGen.kt` from `scripts/gen_pal_park_tables.py` (`$DECOMPS/pokeplatinum`, `--check`).
+**MISSING** (the editor's TRAINER > POKéDEX, `save/MissingDex.kt`, `ui/SaveMissingPage.kt`, NEW tag `SAVE_MISSING`): what a save's dex hasn't
+caught (regional until National, the dex's order) and the other saves' Pokémon that could fill it, each judged by `Gen3Trade` / `Gen4Trade` /
+`PalPark`; a row opens TRADE or PAL PARK with it picked (the editor must have no unsaved edits). Pal Park checked in HeartGold (2026-11-16: a real Emerald six
+booted in nds_dump, the memo "Arrived at", saved in game on top, read back); Platinum too (2026-11-16: the same six into a copy of
+the headless Platinum save with its National Pokédex switched on, its save window counting them, saved in game on top, read back; then on
+through POKé TRANSFER into Black, saved in game there and read back).
+**TRADE AND BACK** (TRADE, `save/TradeBack.kt`, NEW tag `TRADE_BACK`): a Pokémon picked alone that the other save would evolve goes there and
+straight back by two `TradeRules.send`s (waiting in the partner's first free PC slot; a party one steps back to its place), both editors put
+back (`MonSaveEditor.snapshot` / `restore`) if either leg is refused. MISSING lists it (`Way.TRADE_BACK`) and a pre-evolution in another save
+that evolves as it arrives (`Way.EVOLVES`).
+**COLLECTION** (TOOLS, `EXTRA_COLLECTION`; `save/SaveCollection.kt`, `ui/SaveCollectionScreen.kt`, NEW tag `SAVE_COLLECTION`): every readable save's party
+and PC in one list (search, game, shiny, order); OPEN (the editor on it, `load(focus)`), TRADE (`pickA`) and PAL PARK (`palPick`) all come back
+to it read again (`backToCollection`).
+**POKé TRANSFER** (TOOLS, `EXTRA_POKE_TRANSFER`; `save/PokeTransfer.kt`, `save/Gen5Save.kt`, `ui/PokeTransferScreen.kt`, NEW tag `POKE_TRANSFER`, 2026-11-16):
+six from an HG / SS / Pt PC into a Black / White / B2 / W2 PC by the Lab's rules (National Pokédex, one language, no egg / HM / Spiky-eared Pichu,
+items back to the Gen 4 bag) and PKHeX's PK4 -> PK5 with the game's own date (met at 30001 today at its level, friendship 70, nature byte,
+full PP). The Gen 5 file: two equal copies, a CRC16 per block inline and in the checksum block's table (`Gen5Layout`); the Pokédex
+registered PKHeX's SetDex way with its form / shiny-display slips fixed. Checked end to end 2026-11-16: an Emerald six through Pal Park
+into HeartGold, then six through Poké Transfer into the player's Black, booted in nds_dump (the memo "Apparently arrived at Lv. 30",
+Johto), saved in game, read back. **Black / White and their sequels in the editor** (`Gen5SaveEditor`: every page, NEW tag `SAVE_EDITOR_GEN5`, 2026-11-16): the blocks it
+touches (box names, the 24 boxes, bag 0x18400, party, trainer, the money block, the Pokédex) found by their CRCs in the player's Black and Black 2
+saves (`Gen5Layout.editedBlocks`); the cart gives level-up moves, evolutions, PP, item pockets (bits 7-10 of a/0/2/4's u16 at +8: items, medicine,
+TMs, berries, key) and the regional dex (a/0/1/6 member 668 / 709). Gen 5 keeps the nature in its own byte (any nature, any personality); the
+ability is personality bit 16, a hidden one kept; TMs are one each. MISSING on a Gen 5 save looks at the Gen 4 saves through Poké Transfer
+(`Way.POKE_TRANSFER`, a row opens the transfer with it picked); Gen 5 saves trade with each other (`Gen5Trade`, 2026-11-16: the cart's trade evolutions, method 7 = traded for that species, so `TradeRules.evolution` takes the swap's partner; an item Black / White lack refused; a real Black -> Black 2 trade booted, saved in game, every CRC checked). Checked 2026-11-16: an
+edited Black save (money, a level, IVs / EVs, a nature, PC -> party, an item given) booted in nds_dump, shown by the game's own party and trainer
+card, saved in game on top and read back (`Gen5SaveTest`, `POKE_TRANSFER_EDIT_OUT`).
 **REWIND** (Settings, `Prefs.rewind`, off by default; REWIND HOLD hotkey, R on a keyboard): `pk_rewind.c` - mGBA's own
 diff ring (`mCoreRewindContext`, 600 entries, one every 2 frames: ~20 s, rewinds at 2x) but with states taken / loaded
 WITHOUT `SAVESTATE_SAVEDATA`: mGBA's `mCoreRewindRestore` would write the state's save over the save file every
@@ -2391,7 +2455,7 @@ it; in game, `SnapshotView.unsupported` swaps every companion tab but SETTINGS f
 and its name to `GameTitles.BY_SHA1` (`GameTitlesTest` checks), its version in the `*_V<ver>_SHA1`
 constant's name, and regenerating the website's `website/src/data/compat.json` (`SiteDataExportTest`
 fails while it's stale: `UPDATE_SITE_DATA=1 ./gradlew :app:testDebugUnitTest --tests '*SiteDataExportTest'`).
-**Website** (`website/`, Astro, static, Node 22.12+): its ROM check (`src/lib/compat.js`) runs
+**Website** (`website/`, Astro, static, Node 22.23.4+): its ROM check (`src/lib/compat.js`) runs
 `isSupported`'s rules in the browser over that JSON - the ROM is never uploaded; keep the two in step.
 Deployed to Firebase Hosting (`pokedaisy.com`) by `.github/workflows/website.yml` **only with an app release**
 (the user's rule: the site never lists games the downloadable APK can't run): a published, non-pre-release release
@@ -2426,8 +2490,8 @@ The site's REPORT A BUG / REQUEST A GAME / SUGGEST A FEATURE go there (it links 
 **GitHub layout (2026-10-18)**: Issues are for bugs (and accepted work); game requests and ideas are Discussions
 (Game requests / Ideas, open-ended, upvoted). Labels: type `bug` / `game request` / `feature request` / `question`, topic
 (`companion`, `display / expand`, ...), status `fixed in next release` / `needs info` / `planned`. `rom_request.yml` stays
-only for older apps' ASK FOR SUPPORT; its issues get converted to Game requests. Astro needs Node 22.12+ (this Mac's
-default 22.1 can't build it: use `~/.nvm/versions/node/v22.23.3/bin`).
+only for older apps' ASK FOR SUPPORT; its issues get converted to Game requests. Astro needs Node 22.23.4+ (this Mac's
+default 22.1 can't build it: use `~/.nvm/versions/node/v22.23.5/bin`).
 **Answering GitHub issues** (the user's rules, gathered from every issue batch so far):
 - **Draft first, post after.** Show the user every reply (in a batch: all of them at once, issue by issue) and post
   only after a clear OK. Then post, add the label, and close if they say so ("post and close" is the usual).

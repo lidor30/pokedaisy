@@ -1,5 +1,6 @@
 #include "pd_romart.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -88,8 +89,9 @@ static bool decode(const uint8_t* rom, size_t romSize, size_t off, const struct 
 }
 
 // Scans the ROM once for every wanted blob; each found one is decoded into
-// out[i] (malloc'd, sig.size bytes), the rest left NULL.
-static void find_blobs(const uint8_t* rom, size_t size, const struct pd_blob_sig* const* sigs, int n, uint8_t** out) {
+// out[i] (malloc'd, sig.size bytes), the rest left NULL; [at] (when given) where each starts, -1 = not found.
+static void find_blobs(const uint8_t* rom, size_t size, const struct pd_blob_sig* const* sigs, int n, uint8_t** out, long* at) {
+    for (int i = 0; at && i < n; i++) at[i] = -1;
     static uint64_t bits[1024];
     memset(bits, 0, sizeof(bits));
     for (int i = 0; i < n; i++) {
@@ -115,6 +117,7 @@ static void find_blobs(const uint8_t* rom, size_t size, const struct pd_blob_sig
             uint8_t* buf = malloc(sig->size);
             if (buf && decode(rom, size, i - sig->headOff, sig, buf)) {
                 out[k] = buf;
+                if (at) at[k] = (long) (i - sig->headOff);
                 left--;
             } else {
                 free(buf);
@@ -124,7 +127,101 @@ static void find_blobs(const uint8_t* rom, size_t size, const struct pd_blob_sig
 }
 
 void pd_romart_find(const struct pd_game* g, const struct pd_blob_sig* const* sigs, int n, uint8_t** out) {
-    find_blobs(g->rom, g->romSize, sigs, n, out);
+    find_blobs(g->rom, g->romSize, sigs, n, out, NULL);
+}
+
+// Where a game's blobs sit, kept per ROM (by its SHA-1) once found: the pass over a 32 MB ROM cost a 3DS a second or more on
+// every start. A text file: "romart 1 <blob count> <signatures' key>", then a line a wanted blob, "<blob> <offset>" (-1: not in this ROM).
+// Each one read back is decoded and its CRC checked again; anything off and it's the scan as before.
+static char cacheDir[256];
+
+void pd_romart_cache_dir(const char* dir) {
+    snprintf(cacheDir, sizeof(cacheDir), "%s", dir ? dir : "");
+}
+
+// The signatures the offsets were found with: new ones (a regenerated table) mean a new scan.
+static uint32_t sig_key(void) {
+    uint32_t k = 2166136261u;
+    for (int i = 0; i < PD_BLOB_COUNT; i++) k = (k ^ pd_blob_sigs[i].crc ^ (uint32_t) pd_blob_sigs[i].size) * 16777619u;
+    return k;
+}
+
+static bool cache_path(const struct pd_game* g, char* path, size_t len) {
+    if (!cacheDir[0] || strlen(g->sha1) != 40) return false;
+    snprintf(path, len, "%s/%s.art", cacheDir, g->sha1);
+    return true;
+}
+
+static bool fact_path(const struct pd_game* g, const char* name, char* path, size_t len) {
+    if (!cacheDir[0] || strlen(g->sha1) != 40) return false;
+    snprintf(path, len, "%s/%s.%s", cacheDir, g->sha1, name);
+    return true;
+}
+
+bool pd_romart_fact_get(const struct pd_game* g, const char* name, uint32_t* value) {
+    char path[320];
+    if (!fact_path(g, name, path, sizeof(path))) return false;
+    FILE* f = fopen(path, "r");
+    if (!f) return false;
+    unsigned v = 0;
+    bool ok = fscanf(f, "%x", &v) == 1;
+    fclose(f);
+    if (ok) *value = v;
+    return ok;
+}
+
+void pd_romart_fact_set(const struct pd_game* g, const char* name, uint32_t value) {
+    char path[320];
+    if (!fact_path(g, name, path, sizeof(path))) return;
+    FILE* f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "%08x\n", (unsigned) value);
+    fclose(f);
+}
+
+static bool cache_read(const struct pd_game* g, const struct pd_blob_sig* const* sigs, const int* wanted, int n, uint8_t** out) {
+    char path[320];
+    if (!cache_path(g, path, sizeof(path))) return false;
+    FILE* f = fopen(path, "r");
+    if (!f) return false;
+    int version = 0, count = 0;
+    unsigned key = 0;
+    bool ok = fscanf(f, "romart %d %d %x", &version, &count, &key) == 3 && version == 1 && count == PD_BLOB_COUNT && key == sig_key();
+    for (int i = 0; i < n; i++) out[i] = NULL;
+    for (int i = 0; ok && i < n; i++) {
+        int blob = -1;
+        long off = -1;
+        if (fscanf(f, "%d %ld", &blob, &off) != 2 || blob != wanted[i] || off < -1 || (off >= 0 && (size_t) off >= g->romSize)) {
+            ok = false;
+            break;
+        }
+        if (off < 0) continue;
+        out[i] = malloc(sigs[i]->size);
+        if (!out[i] || !decode(g->rom, g->romSize, (size_t) off, sigs[i], out[i])) ok = false;
+    }
+    fclose(f);
+    if (!ok)
+        for (int i = 0; i < n; i++) {
+            free(out[i]);
+            out[i] = NULL;
+        }
+    return ok;
+}
+
+static void cache_write(const struct pd_game* g, const int* wanted, int n, const long* at) {
+    char path[320], temp[330];
+    if (!cache_path(g, path, sizeof(path))) return;
+    snprintf(temp, sizeof(temp), "%s.tmp", path);
+    FILE* f = fopen(temp, "w");
+    if (!f) return;
+    bool ok = fprintf(f, "romart 1 %d %08x\n", PD_BLOB_COUNT, (unsigned) sig_key()) > 0;
+    for (int i = 0; ok && i < n; i++) ok = fprintf(f, "%d %ld\n", wanted[i], at[i]) > 0;
+    ok = fclose(f) == 0 && ok;
+    if (ok) {
+        remove(path);
+        ok = rename(temp, path) == 0;
+    }
+    if (!ok) remove(temp);
 }
 
 // --- the cache: every blob of the game's family, found in one pass ---
@@ -165,7 +262,11 @@ void pd_romart_scan(const struct pd_game* g) {
             wanted[n++] = i;
         }
     }
-    find_blobs(g->rom, g->romSize, sigs, n, decoded);
+    if (!cache_read(g, sigs, wanted, n, decoded)) {
+        static long at[PD_BLOB_COUNT];
+        find_blobs(g->rom, g->romSize, sigs, n, decoded, at);
+        cache_write(g, wanted, n, at);
+    }
     for (int i = 0; i < n; i++) found[wanted[i]] = decoded[i];
 }
 

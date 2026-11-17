@@ -439,7 +439,7 @@ internal val NavButtonSize: androidx.compose.ui.unit.Dp
 /** The Pokémon summary's buttons (STATS / LEARN / the PC's, Back) and its party column: a little over a tab chip's height
  * (44 dp was a touch small to tap, the user's call, 2026-11-03; a short screen's stays 34, its STATS page has no width to
  * spare). The battle panes keep [NavButtonSize], whose bar holds the FOE TEAM's icons. */
-private val SummaryButtonSize: androidx.compose.ui.unit.Dp
+internal val SummaryButtonSize: androidx.compose.ui.unit.Dp
     @Composable get() = if (LocalShortCompanion.current) 34.dp else 48.dp
 
 @Composable

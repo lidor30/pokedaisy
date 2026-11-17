@@ -158,6 +158,24 @@ object NewFeatures {
     /** The save editor's second round (2026-11-15): a Pokémon's page (nature, ability, IVs / EVs, level, shiny...), the party
      * in the editor and in trades, box tools, TRAINER's Pokédex and event tickets. On the same TOOLS cards. */
     const val SAVE_EDITOR_PLUS = "save_editor_plus"
+    /** GAME BUTTONS' and HOTKEYS' RESET TO DEFAULTS (GitHub discussion #923). */
+    const val RESET_CONTROLS = "reset_controls"
+    /** TOOLS > PAL PARK: six Pokémon from a GBA game's PC into HeartGold / SoulSilver / Platinum (save.PalPark). */
+    const val PAL_PARK = "pal_park"
+    /** The save editor's TRAINER > MISSING: what a Pokédex lacks and which other save can send one (save.MissingDex). */
+    const val SAVE_MISSING = "save_missing"
+    /** TRADE SAVES' TRADE AND BACK, and MISSING's trade evolutions. */
+    const val TRADE_BACK = "trade_back"
+    /** TOOLS > COLLECTION: every save's Pokémon in one list (save.SaveCollection). */
+    const val SAVE_COLLECTION = "save_collection"
+    /** TOOLS > POKé TRANSFER: six Pokémon from HeartGold / SoulSilver / Platinum into Black / White and their sequels (save.PokeTransfer). */
+    const val POKE_TRANSFER = "poke_transfer"
+    /** The SAVE EDITOR on Black / White and their sequels' saves (save.Gen5SaveEditor): every page, MISSING through Poké Transfer, and their trades with each other (save.Gen5Trade). */
+    const val SAVE_EDITOR_GEN5 = "save_editor_gen5"
+    /** The SAVE EDITOR on Diamond / Pearl's saves (save.Gen4Layout.DP): every page, their trades with the other DS games, Pal Park and Poké Transfer. */
+    const val SAVE_EDITOR_DP = "save_editor_dp"
+    /** The QUICK MENU's TURBO A tile: holding A mashes it until it's tapped again (GbaInput.turboLatch). */
+    const val QUICK_TURBO = "quick_turbo"
 
     /** SETTINGS > DS LAYOUT: a DS game's two screens on one (companion.DsLayout), its touch screen floating in over the
      * game when wanted; the TOUCH SCREEN hotkey and the HUD's TOUCH button open it by hand. */
@@ -215,16 +233,19 @@ object NewFeatures {
     const val TOUCH_VIBRATION = "touch_vibration"
     /** TOUCH CONTROLS' ZOOM / REWIND extras and X AND Y for GBA / Game Boy games. */
     const val TOUCH_MORE_BUTTONS = "touch_more_buttons"
+    /** GAME LOOK: the companion and the HUD in each game's own look (CompanionSkins), and HUD > LOOK GAME. */
+    const val GAME_LOOK = "game_look"
 
     val ALL = listOf(
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
-        GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, SAVE_EDITOR_PLUS, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
+        GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, SAVE_EDITOR_PLUS, RESET_CONTROLS, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
         DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP, REPEL_REFILL, SHINY_ALERT, LAST_BALL, BOSS_RETRY, LOW_HP_BEEP, FIELD_POISON, SETTINGS_LOOK,
-        QUICK_TOUCH, APP_FONT,
+        QUICK_TOUCH, APP_FONT, PAL_PARK, SAVE_MISSING, TRADE_BACK, SAVE_COLLECTION, POKE_TRANSFER, SAVE_EDITOR_GEN5, SAVE_EDITOR_DP, QUICK_TURBO,
+        GAME_LOOK,
     )
 
     private const val DAYS = 7

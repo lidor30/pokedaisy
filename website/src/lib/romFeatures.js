@@ -16,6 +16,7 @@ export function romFeaturesFile() {
 export const FEATURE_GROUPS = [
   [msg('COMPANION'), [
     ['Trainer card', msg('TRAINER CARD'), msg('Your trainer card, drawn like the game\'s, front and back.')],
+    ['Area map', msg('AREA MAP'), msg('A cave\'s or a big building\'s own map, floor by floor, on the MAP tab and the HUD.')],
   ]],
   [msg('ON THE GAME SCREEN'), [
     ['EXPAND', msg('EXPAND'), msg('The map drawn past the game\'s edges to fill a wide screen.')],

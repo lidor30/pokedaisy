@@ -573,6 +573,8 @@ static const struct known_rom KNOWN_ROMS[] = {
      PD_GUIDE_MONOMYTH},
     {"eb660caffbc26e1f09f86714d03af4c3eccd9e4d", &PD_CONFIG_MONOMYTH_V1_1, PD_GAME_EMERALD, "Pokémon Monomyth",
      PD_GUIDE_MONOMYTH},
+    {"742e62ffa5a8d607171fdb8477eb1f417dc36086", &PD_CONFIG_MONOMYTH_V1_2, PD_GAME_EMERALD, "Pokémon Monomyth",
+     PD_GUIDE_MONOMYTH},
     {"79ee6df0869c1773c8c6a5f764afc1f8d833d8bb", &PD_CONFIG_HEART_AND_SOUL, PD_GAME_EMERALD, "Pokémon Heart and Soul",
      PD_GUIDE_HEART_AND_SOUL},
     {"d0658315da1e8827f66f15c3d3a000fe747e163e", &PD_CONFIG_QUETZAL_V9_0, PD_GAME_EMERALD, "Pokémon Quetzal",
@@ -651,10 +653,16 @@ static void identify(struct pd_game* g) {
         g->title = "Game Boy ROM";
         g->unsupported = "Not a Game Boy game the companion knows";
     }
-    struct pd_sha1 s;
-    pd_sha1_init(&s);
-    pd_sha1_update(&s, g->rom, g->romSize);
-    pd_sha1_hex(&s, g->sha1);
+    // A host that already knows the file's hash (the 3DS library's cache, by size and time) passes it in: hashing a
+    // 32 MB ROM took a 3DS about a second of every start.
+    bool known = strlen(g->sha1) == 40;
+    for (int i = 0; known && i < 40; i++) known = (g->sha1[i] >= '0' && g->sha1[i] <= '9') || (g->sha1[i] >= 'a' && g->sha1[i] <= 'f');
+    if (!known) {
+        struct pd_sha1 s;
+        pd_sha1_init(&s);
+        pd_sha1_update(&s, g->rom, g->romSize);
+        pd_sha1_hex(&s, g->sha1);
+    }
     g->shinyBelow = 0;
     g->retail = false;
     for (const struct pd_shiny_rom* r = pd_shiny_roms; r->sha1; r++)

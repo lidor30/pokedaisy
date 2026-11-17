@@ -97,3 +97,30 @@ itemIconTable = 0x08AAFE0C
 pokedex = 'POKEDEX_MONOMYTH_V1_1'
 fieldItems = 'FIELD_ITEMS_MONOMYTH_V1_1'
 guideTables = 'GUIDE_TABLES_MONOMYTH_V1_1'
+
+# Pokémon Monomyth v1.2 (32 MB, BPEE, sha1 742e62ff…; released 2026-11-15, monomyth.jp's monomyth_v1_2.bps over retail
+# Emerald): v1.1 rebuilt again, mapped by word pairs (each v1.1 literal-pool word found at its place in v1.2's code). Its
+# RAM up to the battle globals is v1.1's, but a word was added before gMapHeader: gMapHeader, gObjectEvents, gBagPockets,
+# sLockFieldControls and gPartyMenu (and EXPAND's camera) sit 4 bytes later. Code moved by -0x1F8 around the battle
+# controllers (HandleInputChooseTarget's body changed: found by the two pool words naming it), +0x220 at the field
+# scripts; tables by -0x43C / -0x444 (gItems, the icons) and on to -0x3A8 (gItemIconTable). The user's v1.0 save loads as
+# it is (the monomyth_v1_2 fixtures: the same party, money and CATSEAR CITY building).
+[config.monomyth_v1_2]
+base = 'monomyth'
+itemDescs = { base = 0x089F15AC, stride = 0x20, descOff = 0x18, count = 447 }
+handleInputChooseAction = 0x08048329
+handleInputChooseMove = 0x08048C55
+completeWhenChoseItem = 0x0804AAB9
+waitForMonSelection = 0x0804A9F1
+handleInputChooseTarget = 0x08048601
+partyMenu = 0x0203D8D4
+objectEvents = 0x02038284
+mapHeader = 0x02038214
+bagPockets = 0x0203C190
+monIconTable = 0x089DF520
+monIconPaletteIndices = 0x089DFB78
+monIconPaletteTable = 0x089DFD10
+itemIconTable = 0x08AAFA64
+pokedex = 'POKEDEX_MONOMYTH_V1_2'
+fieldItems = 'FIELD_ITEMS_MONOMYTH_V1_2'
+guideTables = 'GUIDE_TABLES_MONOMYTH_V1_2'

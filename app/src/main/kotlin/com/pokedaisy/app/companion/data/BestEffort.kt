@@ -441,7 +441,7 @@ object BestEffort {
     private fun monIconHolds(reader: MemoryReader, t: IconTables, species: Int, size: Long): Boolean {
         val tiles = u32(reader.readCoreMemory(t.monIconTable + species.toLong() * t.monIconStride, 4))
         val pal = if (t.monIconPalettes != 0L) {
-            u32(reader.readCoreMemory(t.monIconPalettes + species.toLong() * t.monIconStride, 4))
+            u32(reader.readCoreMemory(t.monIconPalettes + species.toLong() * (if (t.monIconPalStride > 0) t.monIconPalStride else t.monIconStride), 4))
         } else {
             val idx = (reader.readCoreMemory(t.monIconPaletteIndices + species.toLong() * t.monPalIdxStride, 1)[0].toInt() and t.monPalIdxMask)
             u32(reader.readCoreMemory(t.monIconPaletteTable + idx * 8L, 4))

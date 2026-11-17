@@ -19,6 +19,8 @@ class PokeDaisyApp : Application() {
             com.pokedaisy.app.companion.ui.SettingsLook.descriptions = p.settingsDescriptions
             com.pokedaisy.app.companion.ui.SettingsLook.tabs = p.settingsTabs
             com.pokedaisy.app.companion.ui.SettingsLook.onChange = { d, t -> p.settingsDescriptions = d; p.settingsTabs = t }
+            com.pokedaisy.app.companion.ui.CompanionSkins.enabled = p.gameLook
+            com.pokedaisy.app.companion.ui.CompanionSkins.onChange = { p.gameLook = it }
         }
         val prefs = Prefs(this)
         prefs.appOpenCount = (prefs.appOpenCount + 1).coerceAtMost(1000)

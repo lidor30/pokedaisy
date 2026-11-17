@@ -2,7 +2,7 @@ package com.pokedaisy.app.companion.coop
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import org.bouncycastle.math.ec.rfc7748.X25519
+import com.pokedaisy.app.companion.coop.x25519.X25519
 
 /**
  * The co-op link's X25519 key operations and the relay room ids derived from them. Pure functions
