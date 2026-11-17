@@ -25,15 +25,15 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Polished Crystal (GBC) | 3.2.0 - 3.2.3 (16 builds) | ◐ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
 | FireRed | USA/Europe rev 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
 | FireRed | USA/Europe rev 0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| FireRed | ES | ✅ | ✅ | ◐ ² | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| FireRed | DE / FR / IT / JP | ✅ | ✅ | — | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
+| FireRed | ES | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
+| FireRed | DE / FR / IT / JP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
 | LeafGreen | USA/Europe rev 0 and 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| LeafGreen | ES / DE / FR / IT / JP | ✅ | ✅ | — | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
+| LeafGreen | ES / DE / FR / IT / JP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
 | Emerald | USA/Europe | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
 | Emerald | ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Emerald | JP | ✅ | ✅ | — | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
+| Emerald | JP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
 | FireRed, randomized (UPR ZX 4.6.1) | USA/Europe rev 1 | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| FireRed, randomized (UPR ZX 4.6.1) | USA/Europe rev 0 | ✅ ²³ | ✅ | — | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | — | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
+| FireRed, randomized (UPR ZX 4.6.1) | USA/Europe rev 0 | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | — | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
 | Emerald, randomized (UPR ZX 4.6.1) | USA/Europe | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
 | Ruby / Sapphire | USA rev 1 and 2 | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
 | Ruby / Sapphire | USA rev 0, ES / DE / FR / IT | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
@@ -138,9 +138,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
    Yellow's columns (KMPF / ITEM 7, PkMn / FLUCHT 12): reads checked on `red_de_battle*` / `blue_de_battle`.
    PureRed / PureBlue keep Red's battle menus at Red's places (FIGHT / ITEM column 9, PkMn / RUN 15, the move list at
    (5, 12)): reads checked on the `purered_battle*` / `pureblue_battle` fixtures, the controls' timing not run on them.
-2. Spanish FireRed's port copies English rev 1's config, cursors included. Its battle RAM matches English byte for
-   byte (gBattleStruct 0x02023FE8, gEnemyParty 0x0202402C, the cursors sit between them), but it was never checked
-   headless.
+2. (No longer used: Spanish FireRed's cursors were checked headless with the other ports, 2026-11-18.)
 3. Mapped and checked, but `pending` in `gen_wide_tables.py` (the middle isn't exact yet), so the app doesn't offer
    EXPAND (the field reads use their rows anyway, `PK_FIELD_ONLY_ROMS`): Orange Islands (the top tile row once the walk turns north) and Quetzal (its own engine).
    R.O.W.E. was here until 2026-11-16: its gSprites, read off the symbol table its ROM carries, sat 58 entries past the
@@ -763,7 +761,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
   game, both menus hidden with the sign drawn (`battlemenuinfo`): FireRed rev 0 / 1, LeafGreen rev 0 / 1, Emerald, German / Spanish /
   French / Italian Emerald, Spanish FireRed / LeafGreen, Emerald Kaizo, Emerald Legacy, randomized FireRed rev 0 / 1 and Emerald,
   Modern Emerald, Recharged Emerald (three builds: its message box is a band with no right edge), Rocket Edition, Ash Gray and its
-  fork, Ghost Grey v1.0.1 / v1.0.4 (white on black text with no shadow colour), Let's Go Pikachu / Eevee. Ruby / Sapphire are left out: their cursor is
+  fork, Ghost Grey v1.0.1 / v1.0.4 (white on black text with no shadow colour), Let's Go Pikachu / Eevee; then (2026-11-18, once their
+  cursors were mapped) German / French / Italian / Japanese FireRed and LeafGreen and Japanese Emerald. The Japanese boxes draw an inner
+  edge with the frame's T + 6 tile, so the plain middle is T + 7 (the Western ones' too). Ruby / Sapphire are left out: their cursor is
   drawn apart and stayed over the empty box.
 - **One-press picks**: `NativeConfig.actionCursor` / `moveCursor`, handed out only for a hash-verified ROM
   (`TelemetrySampler.knownCursorAddrs`; a randomized retail ROM's masked hash counts, `RandomizedRetail`), or for a hack
@@ -852,9 +852,6 @@ change to any of the places listed under "Where it's decided" updates its rows h
 
 ## Next up (from the table)
 
-- One-press picks for the retail releases that still walk blind: English LeafGreen, FireRed rev 0, Japanese Emerald
-  and the other-language FireRed / LeafGreen (each needs its gActionSelectionCursor / gMoveSelectionCursor checked
-  headless, as `unbound_battle`'s README describes).
 - Battle buttons for Emerald Rogue; the POKéMON switch for Ruby / Sapphire (their party cursor lives in a sprite).
 
 ## Linux / 3DS companion: tabs read per hack

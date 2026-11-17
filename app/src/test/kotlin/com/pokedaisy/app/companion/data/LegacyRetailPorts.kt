@@ -1611,6 +1611,8 @@ private val LEGACY_PORT_BPGD0 by lazy {
         waitForMonSelection = 0x08030584L,
         itemDescs = vanillaItems(0x083DA354L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x0824FB40L,
             entries = 0x0844E940L,
@@ -1676,6 +1678,8 @@ private val LEGACY_PORT_BPGF0 by lazy {
         waitForMonSelection = 0x0803055CL,
         itemDescs = vanillaItems(0x083D3160L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x0824A06CL,
             entries = 0x08446D30L,
@@ -1741,6 +1745,8 @@ private val LEGACY_PORT_BPGI0 by lazy {
         waitForMonSelection = 0x08030570L,
         itemDescs = vanillaItems(0x083D1D24L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x08248CFCL,
             entries = 0x08445098L,
@@ -1807,6 +1813,8 @@ private val LEGACY_PORT_BPGJ0 by lazy {
         waitForMonSelection = 0x0802FE04L,
         itemDescs = japaneseItems(0x083A0568L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x0820C250L,
             entries = 0x0840E258L,
@@ -1875,6 +1883,8 @@ private val LEGACY_PORT_BPGJ1 by lazy {
         waitForMonSelection = 0x0802FD70L,
         itemDescs = japaneseItems(0x0839BD28L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x08207A68L,
             entries = 0x08409B88L,
@@ -2015,6 +2025,8 @@ private val LEGACY_PORT_BPRD0 by lazy {
         waitForMonSelection = 0x08030584L,
         itemDescs = vanillaItems(0x083DA518L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0824FB64L,
             entries = 0x0844F73CL,
@@ -2081,6 +2093,8 @@ private val LEGACY_PORT_BPRF0 by lazy {
         waitForMonSelection = 0x0803055CL,
         itemDescs = vanillaItems(0x083D3324L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0824A090L,
             entries = 0x08447F70L,
@@ -2147,6 +2161,8 @@ private val LEGACY_PORT_BPRI0 by lazy {
         waitForMonSelection = 0x08030570L,
         itemDescs = vanillaItems(0x083D1EE8L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x08248D20L,
             entries = 0x08445868L,
@@ -2214,6 +2230,8 @@ private val LEGACY_PORT_BPRJ0 by lazy {
         waitForMonSelection = 0x0802FE04L,
         itemDescs = japaneseItems(0x083A06F8L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0820C274L,
             entries = 0x0840E2D0L,
@@ -2283,6 +2301,8 @@ private val LEGACY_PORT_BPRJ1 by lazy {
         waitForMonSelection = 0x0802FD70L,
         itemDescs = japaneseItems(0x0839BEB8L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x08207A8CL,
             entries = 0x08409C00L,

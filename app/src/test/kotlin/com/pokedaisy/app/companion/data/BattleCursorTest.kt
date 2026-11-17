@@ -83,9 +83,19 @@ class BattleCursorTest {
         listOf(NATIVE_FIRERED_REV0_RETAIL, NATIVE_LEAFGREEN_REV0_RETAIL, NATIVE_LEAFGREEN_REV1_RETAIL).forEach {
             assertEquals(0x02023FF8L to 0x02023FFCL, it.actionCursor to it.moveCursor)
         }
-        // Copies whose RAM differs (or isn't checked) are zeroed; the hacks' base configs never had them.
-        (listOf(NATIVE_EMERALD_JA, NATIVE_LEAFGREEN_REV0, NATIVE_LEAFGREEN_REV1, NATIVE_EMERALD, NATIVE_FIRERED_REV0, NATIVE_EMERALD_ROGUE,
-        ) + listOf("BPGJ0", "BPGJ1", "BPGD0", "BPRJ0").map { RETAIL_PORTS.getValue(it)() }).forEach {
+        // Japanese Emerald and the FireRed / LeafGreen language ports (2026-11-18): mapped through the handlers' pools, a written
+        // POKéMON cell + A and a written move cell + A checked headless on each cart.
+        assertEquals(0x02024150L to 0x02024154L, NATIVE_EMERALD_JA.actionCursor to NATIVE_EMERALD_JA.moveCursor)
+        listOf("BPRD0", "BPRF0", "BPRI0", "BPRS0", "BPGD0", "BPGF0", "BPGI0", "BPGS0").forEach {
+            val p = RETAIL_PORTS.getValue(it)()
+            assertEquals(it, 0x02023FF8L to 0x02023FFCL, p.actionCursor to p.moveCursor)
+        }
+        listOf("BPRJ0", "BPRJ1", "BPGJ0", "BPGJ1").forEach {
+            val p = RETAIL_PORTS.getValue(it)()
+            assertEquals(it, 0x02023F58L to 0x02023F5CL, p.actionCursor to p.moveCursor)
+        }
+        // The bases the hacks copy are zeroed; the hacks' base configs never had them.
+        listOf(NATIVE_LEAFGREEN_REV0, NATIVE_LEAFGREEN_REV1, NATIVE_EMERALD, NATIVE_FIRERED_REV0, NATIVE_EMERALD_ROGUE).forEach {
             assertEquals(0L to 0L, it.actionCursor to it.moveCursor)
         }
     }

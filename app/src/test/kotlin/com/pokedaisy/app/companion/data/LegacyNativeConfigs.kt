@@ -394,7 +394,7 @@ val LEGACY_NATIVE_EMERALD_IT = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 val LEGACY_NATIVE_EMERALD_JA = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005AF4L,
     itemDescs = japaneseItems(0x0855CEE8L),
-    actionCursor = 0, moveCursor = 0, // its RAM moved; not located yet
+    actionCursor = 0x02024150L, moveCursor = 0x02024154L,
 
     language = 'J', gameCode = "BPEJ", trainerCard = null,
     playerParty = 0x02024190L, playerPartyCount = 0x0202418DL,

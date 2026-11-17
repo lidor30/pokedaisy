@@ -137,8 +137,11 @@ guideTables = 'GUIDE_TABLES_EMERALD_IT'
 [config.emerald_ja]
 base = 'emerald_retail'
 itemDescs = { preset = 'japanese', base = 0x0855CEE8 }
-actionCursor = 0
-moveCursor = 0  # its RAM moved; not located yet
+# The battle menus' cursors: gActionSelectionCursor / gMoveSelectionCursor through HandleInputChooseAction's / Move's pools
+# (English's 0x020244AC / B0 - 0x35C), checked headless on its own save (2026-11-18): a written POKéMON cell + A opened the
+# party menu, a written move cell + A used that move.
+actionCursor = 0x02024150
+moveCursor = 0x02024154
 language = 'J'
 gameCode = 'BPEJ'
 trainerCard = 'none'

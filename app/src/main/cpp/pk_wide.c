@@ -3057,7 +3057,7 @@ static bool onBike(void);
 // window's tiles (not on screen while the menus are up). Taken out after the
 // last line like the follower (cells and pixels the game wrote meanwhile kept): VRAM, the game and states never see it.
 // Found by shape alone, no per-game address: both layouts' left parts equal, a box beside the prompt, the frame's
-// 15-tile set (corner T .. T + 14, T + 6 its plain inside) - FireRed's and Emerald's alike. Only the battle type is read
+// 15-tile set (corner T .. T + 14, T + 7 its plain middle) - FireRed's and Emerald's alike, every language. Only the battle type is read
 // from the game (its address passed in): a double battle or the Safari Zone keeps its menus.
 static int menuHideRow = -1;              // the first tilemap row swapped this frame, -1 = none
 static uint16_t menuHideSaved[6][30];
@@ -3243,8 +3243,9 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
         if (ask[row * 32] != msg[row * 32]) return;
         if ((row == 0 || row == 5) && memcmp(ask + row * 32, msg + row * 32, (size_t) split * 2)) return;
     }
-    // T + 6 must be plain: one colour all over (the inside of the box).
-    const uint8_t* fill = vram + charOff + (T + 6) * 32;
+    // T + 7, the middle of the frame's 5 x 3 tiles, must be plain: one colour all over (the inside of the box). The Western
+    // carts' T + 6 / T + 8 are plain too; the Japanese ones draw an inner edge there (2026-11-18).
+    const uint8_t* fill = vram + charOff + (T + 7) * 32;
     for (int i = 1; i < 32; i++) if (fill[i] != fill[0] || ((fill[0] ^ (fill[0] >> 4)) & 15)) return;
     int paper = fill[0] & 15;
     uint16_t want[6][30];
@@ -3253,7 +3254,7 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
             if (c < split) { want[row][c] = ask[row * 32 + c]; continue; }
             uint16_t src = msg[row * 32 + c];
             int t = src & 0x3FF;
-            want[row][c] = t >= T && t <= T + 14 ? src : (uint16_t) (pal | (T + 6));
+            want[row][c] = t >= T && t <= T + 14 ? src : (uint16_t) (pal | (T + 7));
         }
     }
     // The sign, at the box's right: as far from its right edge as from its top and bottom edges (the frame's own
@@ -3335,7 +3336,7 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
     if (arrow) {
         int counts[16] = { 0 };
         for (int t = T; t <= T + 14; t++) {
-            if (t == T + 6) continue;
+            if (t == T + 7) continue;
             const uint8_t* tp = vram + charOff + t * 32;
             for (int i = 0; i < 32; i++) { counts[tp[i] & 15]++; counts[tp[i] >> 4]++; }
         }

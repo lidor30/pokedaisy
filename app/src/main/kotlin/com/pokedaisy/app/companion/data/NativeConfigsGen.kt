@@ -297,8 +297,11 @@ val NATIVE_EMERALD_IT = NATIVE_EMERALD_RETAIL.copy(
 // fonts aren't the Western ones the slot art is drawn with).
 val NATIVE_EMERALD_JA = NATIVE_EMERALD_RETAIL.copy(
     itemDescs = japaneseItems(0x0855CEE8L),
-    actionCursor = 0,
-    moveCursor = 0, // its RAM moved; not located yet
+    // The battle menus' cursors: gActionSelectionCursor / gMoveSelectionCursor through HandleInputChooseAction's / Move's pools
+    // (English's 0x020244AC / B0 - 0x35C), checked headless on its own save (2026-11-18): a written POKéMON cell + A opened the
+    // party menu, a written move cell + A used that move.
+    actionCursor = 0x02024150L,
+    moveCursor = 0x02024154L,
     language = 'J',
     gameCode = "BPEJ",
     trainerCard = null,
@@ -437,6 +440,8 @@ private val NATIVE_PORT_BPRD0 by lazy {
         waitForMonSelection = 0x08030584L,
         itemDescs = vanillaItems(0x083DA518L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0824FB64L,
@@ -503,6 +508,8 @@ private val NATIVE_PORT_BPRF0 by lazy {
         waitForMonSelection = 0x0803055CL,
         itemDescs = vanillaItems(0x083D3324L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0824A090L,
@@ -569,6 +576,8 @@ private val NATIVE_PORT_BPRI0 by lazy {
         waitForMonSelection = 0x08030570L,
         itemDescs = vanillaItems(0x083D1EE8L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x08248D20L,
@@ -636,6 +645,8 @@ private val NATIVE_PORT_BPRJ0 by lazy {
         waitForMonSelection = 0x0802FE04L,
         itemDescs = japaneseItems(0x083A06F8L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokemonStoragePtr = 0x03005050L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0820C274L,
@@ -705,6 +716,8 @@ private val NATIVE_PORT_BPRJ1 by lazy {
         waitForMonSelection = 0x0802FD70L,
         itemDescs = japaneseItems(0x0839BEB8L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokemonStoragePtr = 0x03004FB0L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x08207A8CL,
@@ -847,6 +860,8 @@ private val NATIVE_PORT_BPGD0 by lazy {
         waitForMonSelection = 0x08030584L,
         itemDescs = vanillaItems(0x083DA354L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x0824FB40L,
             entries = 0x0844E940L,
@@ -912,6 +927,8 @@ private val NATIVE_PORT_BPGF0 by lazy {
         waitForMonSelection = 0x0803055CL,
         itemDescs = vanillaItems(0x083D3160L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x0824A06CL,
             entries = 0x08446D30L,
@@ -977,6 +994,8 @@ private val NATIVE_PORT_BPGI0 by lazy {
         waitForMonSelection = 0x08030570L,
         itemDescs = vanillaItems(0x083D1D24L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x08248CFCL,
             entries = 0x08445098L,
@@ -1043,6 +1062,8 @@ private val NATIVE_PORT_BPGJ0 by lazy {
         waitForMonSelection = 0x0802FE04L,
         itemDescs = japaneseItems(0x083A0568L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x0820C250L,
             entries = 0x0840E258L,
@@ -1111,6 +1132,8 @@ private val NATIVE_PORT_BPGJ1 by lazy {
         waitForMonSelection = 0x0802FD70L,
         itemDescs = japaneseItems(0x0839BD28L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x08207A68L,
             entries = 0x08409B88L,
