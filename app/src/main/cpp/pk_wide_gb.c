@@ -55,18 +55,15 @@ static const struct GbGame { uint32_t crc; int gen; uint32_t a[GB_CONFIG]; } GB_
     // Pokémon Yellow Legacy v1.0.10: its pokeyellow.sym (its build is the patched cart byte for byte).
     { 0xE7D07A3Fu, 1, { 0xC100, 0xC200, 0xC6E8, 0xD3AC, 0xD3AE, 0xD3B0, 0xD3B4, 0xD3B5, 0xD3BD, 0xD578, 0xD3FA, 0xD057,
                         0xCFC3, 0xD5F3, 0xD61B, GB_LINEAR(0x3F, 0x41F2), GB_LINEAR(0x3F, 0x43E4), 0xCC2D, 0xD746 } },
-    // Pokémon Yellow Gen II Graphics V1.1: Yellow's addresses and MapHeaderPointers/Banks in Bank 3F.
-    { 0x2C98B82Du, 1, { 0xC100, 0xC200, 0xC6E8, 0xD35E, 0xD360, 0xD362, 0xD366, 0xD367, 0xD36F, 0xD52A, 0xD3AC, 0xD056,
-                        0xCFC3, 0xD5A5, 0xD5CD, GB_LINEAR(0x3F, 0x41F2), GB_LINEAR(0x3F, 0x43E4), 0xCC2D, 0xD746 } },
-    // Pokémon Red / Blue (USA, Europe) & Pokémon Red Gen II Graphics V2.0:
-    // pret/pokered's symbols; MapHeaderPointers in Bank 0 (0x01AE), MapHeaderBanks in Bank 3 (0x423D).
+    // Pokémon Red / Blue (USA, Europe): pret/pokered's symbols; MapHeaderPointers in Bank 0 (0x01AE), MapHeaderBanks in
+    // Bank 3 (0x423D). Checked headless (widecheck): every field frame exact but the first frame of each step of a door's fade - a Super Game
+    // Boy cart fades by BGP, which the torn-frame check doesn't see.
 #define GB_RED_BLUE { 0xC100, 0xC200, 0xC6E8, 0xD35F, 0xD361, 0xD363, 0xD367, 0xD368, 0xD370, 0xD52B, 0xD3AD, 0xD057, \
                       0xCFC4, 0xD5A6, 0xD5CE, 0x01AEu, GB_LINEAR(0x03, 0x423D), 0xCC2D, 0xD747 }
     { 0x9F7FDD53u, 1, GB_RED_BLUE },
     { 0xD6DA8A1Au, 1, GB_RED_BLUE },
-    { 0xF2ECF7BAu, 1, GB_RED_BLUE },
 #undef GB_RED_BLUE
-    // Pokémon Gold / Silver (USA, Europe): pret/pokegold's symbols, the same in both builds.
+    // Pokémon Gold / Silver (USA, Europe): pret/pokegold's symbols, the same in both builds (widecheck: every field frame exact).
 #define GB_GOLD_SILVER { 0, 0, 0xC700, 0xD07D, 0xDA02, 0xD07F, 0xD082, 0xD087, 0xD091, 0xD0C5, 0xD086, 0xD116, 0xD182, 0, 0, \
                          GB_LINEAR(0x25, 0x40ED), 0, 0xCEBF, 0xD7B7, 0xD0CF, 0x02, 0xD1FD, 0xD445, 0xD545, 0xD05D, 0xD555, \
                          GB_LINEAR(0x05, 0x43C1), GB_LINEAR(0x01, 0x4274), 0xFF9E, 0xFFCF, 0xD157, 0xFF94 }

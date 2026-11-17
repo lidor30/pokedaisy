@@ -11,11 +11,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Yellow (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Yellow (GB) | DE / FR / IT / ES | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Yellow Legacy (GB) | 1.0.10 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
-| Red / Blue (GB) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
+| Red / Blue (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Brown (GB) | 6.0.1, 6.1.2 | — | ✅ ³⁸ | ✅ ³⁸ | ✅ ³⁸ | — | ✅ ³⁸ | — | n/a | n/a | ✅ ³⁸ | ✅ ³⁸ | — | n/a | n/a | — | — | — ³⁶ |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
-| Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
+| Gold / Silver (GBC) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
 | Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
 | Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ |
 | Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ |
