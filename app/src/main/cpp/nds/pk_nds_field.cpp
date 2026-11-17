@@ -647,6 +647,19 @@ static const int GEN5_ACMD_PARTY = 5;
 // leaves the command ~12 frames on (headless, Black 2 on the player's state at that prompt, 2026-11-09).
 static const int GEN5_ACMD_SWITCH_ASK = 4;
 static int gen5SwitchAsked;   // the prompt was up during this GEN5_ACMD_SWITCH_ASK
+// btlv_input's resource pointer: cleared while the move to forget is picked. A fifth move at a level-up asks FORGET / KEEP
+// OLD MOVES! (panel 4), then on FORGET the moves are a screen of their own: the input module torn down, the panel 0, the
+// adapter's command what it was (GitHub #916 / #1077: Black headless, CHARMELEON learning DRAGON RAGE on Route 1; the
+// word is set again as a move is picked and stays set through the battle's end).
+static const int GEN5_OFF_INPUT_RES = 0x48;
+static const int GEN5_ACMD_MESSAGES = 8;   // the battle playing out: its messages, the level-up's prompts and the moves
+static int gen5ForgetAsked;  // the FORGET prompt (panel 4) was up during this command
+static int gen5ForgetCommand;
+// Frames since that prompt went: the list takes 20 to come up after FORGET (headless), so the touch screen stays up that
+// long rather than closing and opening again; a prompt that leads on to messages (KEEP OLD MOVES, then "stop learning")
+// keeps it up these few frames more at most.
+static int gen5ForgetGap;
+static const int GEN5_FORGET_GAP = 48;   // field reads (one a frame in the app; nds_dump makes two)
 
 static const PkNdsGen5Touch* gen5Touch(const PkNdsFieldGame* g)
 {
@@ -660,7 +673,7 @@ static const PkNdsGen5Touch* gen5Touch(const PkNdsFieldGame* g)
 static int byteAt(uint32_t (*read32)(uint32_t), uint32_t a) { return (int) ((read32(a & ~3u) >> ((a & 3) * 8)) & 0xFF); }
 
 static int gen5BattlePanel(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uint32_t (*read32)(uint32_t), uint32_t proc,
-                           int* panel, int* waiting, int* subscreen)
+                           int* panel, int* waiting, int* subscreen, int* inputDown = nullptr)
 {
     uint32_t main = read32(proc + g->offProcWork);
     uint32_t client = inMainRam(main) ? read32(main + g->offClient) : 0;
@@ -671,6 +684,7 @@ static int gen5BattlePanel(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uin
     *panel = byteAt(read32, input + GEN5_OFF_PANEL);
     *waiting = byteAt(read32, scd + GEN5_OFF_WAITING) && !read32(input + GEN5_OFF_SLIDE);
     *subscreen = byteAt(read32, scd + t->offSubscreen);
+    if (inputDown) *inputDown = read32(input + GEN5_OFF_INPUT_RES) == 0;
     return 1;
 }
 
@@ -815,9 +829,15 @@ int pk_nds_gen5_battle_panel(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_
 // other panel (a prompt, a double's or triple's choice of target: panel 3) is the touch screen's.
 static int gen5BattleTouch(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uint32_t (*read32)(uint32_t), uint32_t proc)
 {
-    int panel = 0, waiting = 0, sub = 0;
-    if (!gen5BattlePanel(g, t, read32, proc, &panel, &waiting, &sub)) return 0;
+    int panel = 0, waiting = 0, sub = 0, inputDown = 0;
+    if (!gen5BattlePanel(g, t, read32, proc, &panel, &waiting, &sub, &inputDown)) return 0;
     int command = gen5BattleCommand(g, read32);
+    // The move to forget: only right after the FORGET prompt under the same command, so the input module's gaps elsewhere
+    // (it's rebuilt as a battle starts) never float anything in.
+    if (command != gen5ForgetCommand) gen5ForgetAsked = 0;
+    gen5ForgetCommand = command;
+    if (command == GEN5_ACMD_MESSAGES && panel == 4 && !inputDown) gen5ForgetAsked = 1, gen5ForgetGap = 0;
+    else if (gen5ForgetAsked && panel == 0 && (inputDown || ++gen5ForgetGap <= GEN5_FORGET_GAP)) return PK_NDS_FIELD_TOUCH;
     if (command == g->battleSelecting) {
         if (panel == 1 || panel == 2) return waiting ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
         if (sub == 2 || sub == 3) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
@@ -842,7 +862,7 @@ static int holding5;
 void pk_nds_field_reset_wild(void)
 {
     holding = holding5 = checked = 0;
-    gen5SwitchAsked = 0;
+    gen5SwitchAsked = gen5ForgetAsked = 0;
 }
 
 static void gen5Wild(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), void (*write32)(uint32_t, uint32_t),
@@ -863,7 +883,7 @@ static int gen5FieldState(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t),
     const PkNdsGen5Touch* touch = gen5Touch(g);
     if (overlay == g->battleOverlay)
         return bits | PK_NDS_FIELD_BATTLE | PK_NDS_FIELD_LOCKED | (touch ? gen5BattleTouch(g, touch, read32, proc) : 0);
-    gen5SwitchAsked = 0;
+    gen5SwitchAsked = gen5ForgetAsked = 0;
     if (overlay != g->fieldOverlay || !inMainRam(fieldMap)) {
         bits |= PK_NDS_FIELD_MENU | PK_NDS_FIELD_LOCKED;
         if (touch) {
