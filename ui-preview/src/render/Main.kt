@@ -147,8 +147,12 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
                    coop: com.pokedaisy.app.companion.coop.CoopState? = null,
                    coopPairList: List<com.pokedaisy.app.companion.coop.CoopPair> = emptyList(),
                    lock: com.pokedaisy.app.companion.coop.lock.CoopLockUi? = null,
-                   style: com.pokedaisy.app.companion.BattleStyle = com.pokedaisy.app.companion.BattleStyle.GEN4) : CompanionSettings {
+                   style: com.pokedaisy.app.companion.BattleStyle = com.pokedaisy.app.companion.BattleStyle.GEN4,
+                   private val dsperate: Boolean = false) : CompanionSettings {
     private var battleFocusOn = battleFocus
+    // A DS game on DS CORE DSPERATE (no EXPAND): the `*-settings-expand-dsperate` shot.
+    override val dsCore get() = if (dsperate) com.pokedaisy.app.companion.DsCore.DSPERATE else null
+    override val dsMelonDs get() = !dsperate
     override val battleFocus get() = battleFocusOn
     override fun setBattleFocus(on: Boolean) { battleFocusOn = on }
     override val coopLock = lock
@@ -525,6 +529,7 @@ fun companion(
     coop: com.pokedaisy.app.companion.coop.CoopState? = null,
     coopPairList: List<com.pokedaisy.app.companion.coop.CoopPair> = emptyList(),
     lock: com.pokedaisy.app.companion.coop.lock.CoopLockUi? = null,
+    dsperate: Boolean = false,
     snap: () -> SnapshotView = ::snapshot,
 ): () -> (@Composable () -> Unit) = {
     previewCapture = com.pokedaisy.app.companion.KeyCapture()
@@ -533,7 +538,7 @@ fun companion(
     val back = com.pokedaisy.app.companion.ui.CompanionBack().also { previewBack = it }
     val content: @Composable () -> Unit = {
         CompanionScreen(
-            sv, FakeSlots(), FakeSettings(hints, initialTabs = barTabs, oneTap = oneTap, expandOffer = expandOffer, expand = expand, battleFocus = battleFocus, coop = coop, coopPairList = coopPairList, lock = lock, style = style), FakeBattleInput(busy), initialTab = tab,
+            sv, FakeSlots(), FakeSettings(hints, initialTabs = barTabs, oneTap = oneTap, expandOffer = expandOffer, expand = expand, battleFocus = battleFocus, coop = coop, coopPairList = coopPairList, lock = lock, style = style, dsperate = dsperate), FakeBattleInput(busy), initialTab = tab,
             initialMonIndex = mon, initialCardBack = cardBack, back = back, initialSettingsRow = settingsRow, itemUse = if (items) PreviewItemUse(sv.party, bagFull) else null,
         )
     }
@@ -2037,6 +2042,10 @@ fun main(args: Array<String>) {
         // ASPECT on EXPAND: its AUTO ZOOM IN row under it.
         Shot("$g-settings-expand", bw, bh, bd, companion("SETTINGS", expand = true)) {
             onNodeWithText("AUTO ZOOM IN").performScrollTo()
+        },
+        // A DS game on DSPERATE: ASPECT's EXPAND says it's unavailable there, not NOT YET (GitHub #1064).
+        Shot("$g-settings-expand-dsperate", bw, bh, bd, companion("SETTINGS", expand = true, dsperate = true)) {
+            onNodeWithText("ASPECT").performScrollTo()
         },
         // SETTINGS > ZOOM's pick-list (no right stick needed).
         Shot("$g-settings-zoom", bw, bh, bd, companion("SETTINGS", expand = true)) {
