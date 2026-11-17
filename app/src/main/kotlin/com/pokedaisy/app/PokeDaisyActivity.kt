@@ -28,6 +28,8 @@ import android.widget.TextView
 import android.widget.Toast
 import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.data.showsBattle
+import com.pokedaisy.app.companion.data.isGen2
+import com.pokedaisy.app.companion.data.isDsGame
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -272,8 +274,13 @@ class PokeDaisyActivity : Activity() {
     private val shinyHuntState = androidx.compose.runtime.mutableIntStateOf(0)
 
     /** Each sample (emu thread): a wild battle counted, and a shiny foe announced, with FF and turbo stopped. */
+    /** SHINY ALERT works here: a GBA game SHINY ODDS knows (its battlers' shiny read), or a Game Boy Color / DS game whose
+     * reader works shininess out the game's way - Gen 2's DVs (not Polished Crystal's own shiny bit), Gen 4 / 5's IDs. */
+    private fun shinyAlertWorks(game: com.pokedaisy.app.companion.data.GameKind? = telemetry.snapshot.value.game): Boolean =
+        shinyTarget != null || romBlocked == null && ((game.isGen2 && game != com.pokedaisy.app.companion.data.GameKind.POLISHED_CRYSTAL) || game.isDsGame)
+
     private fun updateShinyHunt(snap: com.pokedaisy.app.companion.data.SnapshotView) {
-        if (!snap.connected || !shinyAlertOn || shinyTarget == null) return
+        if (!snap.connected || !shinyAlertOn || !shinyAlertWorks(snap.game)) return
         val step = shinyHunt.sample(snap.inBattle, com.pokedaisy.app.companion.data.ShinyHunt.wild(snap), snap.battleOpponent)
         val key = romKey
         if (step.counted) {
@@ -1824,7 +1831,7 @@ class PokeDaisyActivity : Activity() {
             shinyAlertOn = on
         }
         override val shinyHuntCount get() = shinyHuntState.intValue
-        override val shinyAlertSupported get() = shinyTarget != null
+        override val shinyAlertSupported get() = shinyAlertWorks()
         override val battleRetry get() = Prefs(this@PokeDaisyActivity).battleRetry
         override fun setBattleRetry(on: Boolean) {
             Prefs(this@PokeDaisyActivity).battleRetry = on

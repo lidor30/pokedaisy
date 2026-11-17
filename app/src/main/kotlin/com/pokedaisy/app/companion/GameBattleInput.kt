@@ -58,7 +58,8 @@ class GameBattleInput(
     /** Only detected addresses enable switching; disconnected samples retain the last trusted mapping. */
     fun sampled() {
         val snapshot = telemetry.snapshot.value
-        controller.runAsksFirst = snapshot.battleOpponent.any { it.shiny }
+        // CFRU's "run away?" on a shiny foe (Unbound): a GBA question - the Game Boy and DS games read shinies too, and ask nothing.
+        controller.runAsksFirst = !snapshot.game.isGameBoyGame && !snapshot.game.isDsGame && snapshot.battleOpponent.any { it.shiny }
         if (!snapshot.connected) return
         controller.gen1 = snapshot.game.isGen1 || snapshot.game.isGen2
         controller.cursorAddrs = telemetry.knownCursorAddrs()?.let { (action, move) ->

@@ -585,6 +585,8 @@ fun decodeGen4PartyMon(
         exp = u32(blocks, a + 8),
         personality = personality,
         isEgg = (ivWord ushr 30) and 1L != 0L,
+        // Shiny: the trainer ID and secret ID (block A +0x0C) XORed with the personality's halves under 8 (Gen 4 and 5).
+        shiny = (ivWord ushr 30) and 1L == 0L && gen45Shiny(personality, u32(blocks, a + 0x0C)),
         heldItem = u16(blocks, a + 2),
         nickname = nickname.takeIf { it.isNotBlank() },
         stats = MonStats(
@@ -633,6 +635,10 @@ private fun decodeGen4BattleMon(b: ByteArray, o: Int): BattleMon {
         statStages = IntArray(7) { u8(b, o + 0x19 + it) },
     )
 }
+
+/** Gen 4 / 5's shiny rule: (trainer ID ^ secret ID ^ the personality's two halves) < 8. */
+fun gen45Shiny(personality: Long, otId: Long): Boolean =
+    ((otId and 0xFFFF) xor (otId ushr 16) xor (personality and 0xFFFF) xor ((personality ushr 16) and 0xFFFF)) < 8
 
 /** The battle running now ([Gen4Battle]): its battlers (and their personalities), the foe's party, whether it's a
  * trainer's / a double. */
@@ -879,7 +885,11 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
         facingDirection = u32(location, 16).toInt(),
         partyCount = party.size,
         party = party,
-        battleMons = battle?.mons ?: List(4) { EMPTY_BATTLE_MON },
+        // A battler is shiny when its party record is (the foe's party, or the player's), matched by personality.
+        battleMons = battle?.let { bt ->
+            val shinies = (bt.foes + party).filter { it.shiny }.map { it.personality }.toSet()
+            bt.mons.mapIndexed { i, m -> if (bt.personalities.getOrNull(i)?.let { it != 0L && it in shinies } == true) m.copy(shiny = true) else m }
+        } ?: List(4) { EMPTY_BATTLE_MON },
         itemCount = items.size,
         items = items,
         money = u32(trainer, 0x14).takeIf { it <= 999_999 },

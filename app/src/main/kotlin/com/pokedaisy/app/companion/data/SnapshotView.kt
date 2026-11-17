@@ -345,7 +345,10 @@ fun spriteAsset(kind: String, id: Int): String? {
 }
 
 /** A shiny Pokémon's party icon: `<dir>/shiny/<id>.png`, drawn in its species' shiny palette (DecompIconSource). */
-fun shinyIconAsset(species: Int): String? = spriteAsset("pokemon", species)?.let { it.substringBeforeLast('/') + "/shiny/" + it.substringAfterLast('/') }
+fun shinyIconAsset(species: Int): String? =
+    // The Game Boy and DS party icons don't change for a shiny one (and nothing makes shiny ones for them).
+    if (activeGame.isGameBoyGame || activeGame.isDsGame) spriteAsset("pokemon", species)
+    else spriteAsset("pokemon", species)?.let { it.substringBeforeLast('/') + "/shiny/" + it.substringAfterLast('/') }
 
 /** A party (or PC box) Pokémon as the PARTY tab and the summary show it. */
 fun partyMonView(m: Mon): MonView {
