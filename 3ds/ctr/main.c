@@ -61,7 +61,10 @@
 #define SYSTEM_DIR BASE_DIR "/system"
 #define WORK_DIR BASE_DIR "/armgba"
 #define ROMART_DIR BASE_DIR "/rom-art" // where each ROM's art sits (pd_romart_cache_dir)
-#define LOG_FILE "sdmc:" BASE_DIR "/log.txt"
+#ifndef PD_LOG_NAME
+#define PD_LOG_NAME "log.txt"
+#endif
+#define LOG_FILE "sdmc:" BASE_DIR "/" PD_LOG_NAME
 #define SETTINGS_FILE "sdmc:" BASE_DIR "/settings.ini"
 #define MAX_BACKUPS 10
 #define MAX_ROMS 256
@@ -1502,6 +1505,7 @@ int main(void) {
     host_log_open(LOG_FILE);
     host_log("PokeDaisy %s: ROM arena %s; heap %lu KiB", PD_VERSION, arena ? "ready" : "unavailable",
              (unsigned long) (host_heap_free() >> 10));
+    host_log("log session: tick %llu; file %s", (unsigned long long) svcGetSystemTick(), LOG_FILE);
     if (!gpu_init()) {
         host_log("graphics initialization failed; heap %lu KiB, linear %lu KiB free",
                  (unsigned long) (host_heap_free() >> 10), (unsigned long) (linearSpaceFree() >> 10));

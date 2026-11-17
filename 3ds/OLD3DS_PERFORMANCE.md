@@ -119,3 +119,13 @@ After closing the game, collect `sdmc:/pokedaisy/log.txt`. `perf:` reports
 emulated/presented rates and frontend work; `gpSP perf:` reports actual worker
 CPU, last-frame render/wait/conversion times, period cache flushes and native
 sound mixes. A `core 1` budget line alone does not prove gpSP's renderer started.
+
+For ambiguous hardware reports, configure with `-DPD_BUILD_TAG=CHECK11`.
+The version shown in library SETTINGS > APP and startup logs then contains
+`[CHECK11]`, and this build writes `sdmc:/pokedaisy/log-CHECK11.txt`
+(or the same name under `pokedaisy-dev` for a dev build). The old `log.txt`
+cannot be mistaken for this run. The startup session line records the system
+tick and actual log path. The tag accepts up to 24 letters, digits, underscores
+or hyphens. An empty tag retains release behavior. A separate
+test CIA can also have a distinct SMDH name and homebrew Title ID when packed;
+the normal release's identity and version are not changed by this option.
