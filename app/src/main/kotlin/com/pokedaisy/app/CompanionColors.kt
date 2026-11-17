@@ -71,34 +71,46 @@ object CompanionColors {
         applyAll()
     }
 
+    /** Bumped each time the effects change: a Compose layer drawn with [gameEffect] reads it to follow them. */
+    val version = androidx.compose.runtime.mutableIntStateOf(0)
+
     private fun applyAll() {
         views.toList().forEach(::apply)
         gameViews.toList().forEach(::apply)
+        version.intValue++
     }
+
+    /**
+     * What [trackGame]'s views are drawn through, for a Compose layer that stands in for the game's own screen: a DS
+     * battle's strip on one screen (its buttons and message over the game's text box rows), which kept no grid while the
+     * game around it had one (Discord, 2026-11-17). Null = none (or Android 12 and older). Read [version] to follow it.
+     */
+    fun gameEffect(density: Float): RenderEffect? = effect(game = true, density)
 
     private fun apply(view: View) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val game = view in gameViews
+        view.setRenderEffect(effect(view in gameViews, view.resources.displayMetrics.density))
+    }
+
+    private fun effect(game: Boolean, density: Float): RenderEffect? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return null
         val filter = if (game) gameFilter else filter
         val colors = if (game) gameColors else gbaColors
-        if (!colors && filter == ScreenFilter.NONE) {
-            view.setRenderEffect(null)
-            return
-        }
+        if (!colors && filter == ScreenFilter.NONE) return null
         // Until the game is laid out: the Thor's 6.75 px, scaled to this display. Rounded to whole view
         // pixels (7 on the Thor): at 6.75 cells came out 6 or 7 px and the lines fell at different
         // sub-pixel phases, so some looked thicker than others.
-        val unit = (if (cell > 0f) cell else 6.75f * view.resources.displayMetrics.density / 2.3f)
+        val unit = (if (cell > 0f) cell else 6.75f * density / 2.3f)
             .roundToInt().coerceAtLeast(2).toFloat()
         // AGSL compiles here, on the device: a bad shader leaves the companion as it is, not a crash.
         val shader = runCatching { RuntimeShader(AGSL) }
             .onFailure { Log.w("pokedaisy", "companion shader failed to compile", it) }
-            .getOrNull() ?: return
+            .getOrNull() ?: return null
         shader.setFloatUniform("uColors", if (colors) 1f else 0f)
         shader.setFloatUniform("uFilter", filter.ordinal.toFloat())
         shader.setFloatUniform("uUnit", unit)
         shader.setFloatUniform("uGrid", grid[0], grid[1])
-        view.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "content"))
+        return RenderEffect.createRuntimeShaderEffect(shader, "content")
     }
 
     /**
