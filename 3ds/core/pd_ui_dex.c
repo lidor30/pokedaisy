@@ -13,7 +13,7 @@
 
 #define TITLE_H 24
 #define LIST_Y (CONTENT_Y + TITLE_H + 4)
-#define DEX_ROW 18
+#define DEX_ROW pd_list_row(18)
 #define TOGGLE_W 78
 
 // Whether the National Dex shows: the player's pick, else the save's own.
@@ -78,8 +78,19 @@ static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
 // game at hand: the toggle flips what shows, up / down step through it.
 static int lastList[PD_DEX_BYTES * 8], lastCount;
 static bool lastNational;
+static int allList[PD_DEX_BYTES * 8], allCount; // before the filters
+
+// A species name's first letter, A-Z, else 0.
+static int dex_initial(const struct pd_game* g, int species) {
+    char buf[40];
+    const char* name = pd_species_name(g, species, buf, sizeof buf);
+    int ch = name ? (unsigned char) name[0] : 0;
+    if (ch >= 'a' && ch <= 'z') ch -= 32;
+    return ch >= 'A' && ch <= 'Z' ? ch : 0;
+}
 
 enum dex_filter { DEX_ALL, DEX_CAUGHT, DEX_SEEN, DEX_UNSEEN, DEX_FILTERS };
+static const struct pd_game* dexGame; // the game ui_dex_tab last drew (the filters' TYPE names)
 
 static int filter_of(const struct pd_snapshot* s,int national){
     if(pd_dex_caught(s,national))return DEX_CAUGHT;
@@ -92,22 +103,43 @@ int pd_ui_dex_filters(struct pd_ui* ui, struct pd_canvas* c, const int counts[4]
     const int w = (c->w - 3 * MARGIN) * 36 / 100;
     const int x = MARGIN, y = CONTENT_Y;
     const bool tall = c->h >= 252;
-    const int headingH = 46, rowH = tall ? 23 : 18;
+    // The 3DS's sidebar (PokedexScreen's left column): TYPE and NAME under the four, rows as dense as the lists'.
+    const bool extra = ui && !ui->handheldDex;
+    const int rowH = tall ? 23 : extra ? pd_list_row(18) : 18, lineStep = 16;
     int f = pd_title_box(c, x, y, w, TITLE_H, PD_TITLE_FILL);
+    int lf = 0; // the list window's frame (thicker than the title's)
+    for (int i = 0; i < pd_cur->listCount; i++) lf += pd_cur->list[i].width;
+    int headingH = extra ? 2 * lf + rowH + 2 : 46; // the 3DS's: SEEN and OWN on one line
+    const int gap = extra ? 2 : 3, buttonH = 18;
+    // The 3DS's column: SEEN / OWNED only while everything fits over the tab bar (TEXT SIZE NORMAL's rows don't
+    // leave it room; ALL and CAUGHT still say the counts).
+    if (extra && y + TITLE_H + gap + headingH + gap + 2 * lf + 2 + (DEX_FILTERS + 2) * rowH + (region ? gap + buttonH : 0) > c->h - MARGIN)
+        headingH = 0;
     pd_text(c, x + f + 5, pd_text_y(y, TITLE_H), "POKéDEX", PD_TITLE_TEXT, PD_TITLE_SHADOW);
-    const int countsY = y + TITLE_H + 3;
-    f = pd_list_box(c, x, countsY, w, headingH);
+    const int countsY = y + TITLE_H + gap;
+    f = headingH ? pd_list_box(c, x, countsY, w, headingH) : lf;
     const int innerX = x + f, innerW = w - 2 * f;
     const int right = innerX + innerW - 4;
     char text[24];
-    for (int i = 0; i < 2; i++) {
-        const int line = countsY + f + 1 + i * 16;
+    if (extra && headingH) {
+        const int line = pd_text_y(countsY + f + 1, rowH);
+        int tx = innerX + 3 + pd_text(c, innerX + 3, line, "SEEN ", PD_LABEL, PD_LABEL_SHADOW);
+        snprintf(text, sizeof text, "%d", counts[DEX_CAUGHT] + counts[DEX_SEEN]);
+        pd_text(c, tx, line, text, PD_VALUE, PD_VALUE_SHADOW);
+        snprintf(text, sizeof text, "%d", counts[DEX_CAUGHT]);
+        pd_text_right(c, right, line, text, PD_VALUE, PD_VALUE_SHADOW);
+        pd_text_right(c, right - pd_text_width(text), line, "OWN ", PD_LABEL, PD_LABEL_SHADOW);
+    }
+    for (int i = 0; headingH && !extra && i < 2; i++) {
+        const int line = extra ? pd_text_y(countsY + f + 1 + i * rowH, rowH) : countsY + f + 1 + i * lineStep;
         pd_text(c, innerX + 3, line, i ? "OWNED" : "SEEN", PD_LABEL, PD_LABEL_SHADOW);
         snprintf(text, sizeof text, "%d", i ? counts[DEX_CAUGHT] : counts[DEX_CAUGHT] + counts[DEX_SEEN]);
         pd_text_right(c, right, line, text, PD_VALUE, PD_VALUE_SHADOW);
     }
-    const int filterY = countsY + headingH + 4;
-    pd_list_box(c, x, filterY, w, c->h - filterY - MARGIN);
+    const int filterY = countsY + (headingH ? headingH + (extra ? gap : 4) : 0);
+    // The 3DS's: the box as tall as its rows, the region's button under it (PokedexScreen's).
+    const int filterH = extra ? 2 * f + 2 + (DEX_FILTERS + 2) * rowH : c->h - filterY - MARGIN;
+    pd_list_box(c, x, filterY, w, filterH);
     for (int i = 0; i < DEX_FILTERS; i++) {
         const int line = filterY + f + 1 + i * rowH, ty = pd_text_y(line, rowH);
         if (i == (focus < 0 ? active : focus)) pd_fill(c, innerX, line, innerW, rowH, PD_ROW_SELECTED);
@@ -117,9 +149,23 @@ int pd_ui_dex_filters(struct pd_ui* ui, struct pd_canvas* c, const int counts[4]
         pd_text_fit(c, innerX + 3, ty, innerW - pd_text_width(text) - 9, names[i], ink, shadow);
         pd_text_right(c, right, ty, text, ink, shadow);
         if (ui) ui_add_hit(ui, innerX, line, innerW, rowH, HIT_DEX_FILTER + i);
+        if (extra) ui_row_divider(c, innerX + 2, line + rowH - 1, innerW - 4);
+    }
+    for (int i = 0; extra && i < 2; i++) {
+        const int line = filterY + f + 1 + (DEX_FILTERS + i) * rowH, ty = pd_text_y(line, rowH), id = i ? HIT_DEX_NAME : HIT_DEX_TYPE;
+        if (ui->pressedId == id) pd_fill(c, innerX, line, innerW, rowH, PD_ROW_SELECTED);
+        const bool on = i ? ui->dexLetter != 0 : ui->dexType != 0;
+        char letter[2] = { (char) ui->dexLetter, 0 };
+        const char* value = !on ? "ALL" : i ? letter : pd_type_name(dexGame, ui->dexType - 1);
+        pd_text(c, innerX + 3, ty, i ? "NAME" : "TYPE", PD_LABEL, PD_LABEL_SHADOW);
+        pd_text_right(c, right, ty, value, on ? PD_VALUE : PD_MUTED, on ? PD_VALUE_SHADOW : PD_MUTED_SHADOW);
+        ui_add_hit(ui, innerX, line, innerW, rowH, id);
+        if (!i) ui_row_divider(c, innerX + 2, line + rowH - 1, innerW - 4);
     }
     if (tall) pd_text_fit(c, innerX + 3, c->h - 47, innerW - 6, "SELECT  FILTER", PD_MUTED, PD_MUTED_SHADOW);
-    if (region) {
+    if (region && extra) {
+        ui_button(ui, c, x, filterY + filterH + gap, w, buttonH, region, HIT_DEX_TOGGLE);
+    } else if (region) {
         const int by = c->h - MARGIN - f - 25;
         if (ui) ui_button(ui, c, innerX + 1, by, innerW - 2, 22, region, HIT_DEX_TOGGLE);
         else {
@@ -127,7 +173,7 @@ int pd_ui_dex_filters(struct pd_ui* ui, struct pd_canvas* c, const int counts[4]
             pd_text_fit(c, innerX + 7, pd_text_y(by, 22), innerW - 14, region, PD_TITLE_TEXT, PD_TITLE_SHADOW);
         }
         if (focus == DEX_FILTERS) pd_fill(c, innerX + 5, by + 17, innerW - 10, 2, PD_VALUE);
-    } else {
+    } else if (!extra) {
         pd_text_fit(c, innerX + 3, c->h - 27, innerW - 6, "NATIONAL DEX", PD_MUTED, PD_MUTED_SHADOW);
     }
     return x + w + MARGIN;
@@ -155,7 +201,7 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
     const int* list = lastList;
     int n = ui->dexSource?ui->dexSource->count:lastCount;
     bool national = ui->dexSource?true:lastNational;
-    const bool sidebar=ui->handheldDex && !ui->dexSource;
+    const bool sidebar = !ui->dexSource; // the filters down the left (PokedexScreen's), the list beside them
     int x=MARGIN, y=LIST_Y;
     if (sidebar) {
         const char* region = !g->cfg->gb && g->cfg->regionalCount > 0
@@ -198,7 +244,7 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
         bool caught = ui->dexSource?ui->dexSource->caught(ui->dexSource->ctx,nat):pd_dex_caught(s,nat);
         if (sidebar && caught) seen = true;
         const int number = shown_number(g, national, nat);
-        if (sidebar) {
+        if (sidebar && ui->handheldDex) {
             const int species = pd_dex_species(g, nat);
             const uint32_t* icon = seen ? pd_mon_icon_pixels(g, species, false) : NULL;
             const bool selected = ui->focusId == HIT_DEX_ROW + nat || ui->focusId == HIT_DEX_READ_ONLY + nat;
@@ -212,11 +258,12 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
             pd_text(c, ix + 22, ty, num, PD_MUTED, PD_MUTED_SHADOW);
             const char* name = ui->dexSource ? (seen ? ui->dexSource->name(ui->dexSource->ctx, nat) : "???")
                                              : pd_species_name(g, pd_dex_species(g, nat), buf, sizeof buf);
-            pd_text(c, ix + 74, ty, name, seen ? PD_LABEL : PD_MUTED, seen ? PD_LABEL_SHADOW : PD_MUTED_SHADOW);
+            pd_text_fit(c, ix + 74, ty, iw - 80, name, seen ? PD_LABEL : PD_MUTED, seen ? PD_LABEL_SHADOW : PD_MUTED_SHADOW);
+            ui_row_divider(c, ix + 2, ry + DEX_ROW - 1, iw - 4);
         }
         int top = ry < iy ? iy : ry;
         int bottom = ry + DEX_ROW > iy + ih ? iy + ih : ry + DEX_ROW;
-        const bool canOpen = !ui->dexSource && (!g->cfg->gb || pd_gb_dex_pages(g) || sidebar) && (!sidebar || seen);
+        const bool canOpen = !ui->dexSource && (!g->cfg->gb || pd_gb_dex_pages(g) || ui->handheldDex) && (!ui->handheldDex || seen);
         if (canOpen || sidebar) {
             const int id = (canOpen ? HIT_DEX_ROW : HIT_DEX_READ_ONLY) + nat;
             ui_add_scroll_hit(ui, ix, top, iw, bottom - top, id);
@@ -257,7 +304,7 @@ static void info_page(struct pd_canvas* c, const struct pd_dex_entry* e, int ix,
         int aw = pd_text(c, ix, dy, "ABILITY", PD_MUTED, PD_MUTED_SHADOW);
         pd_text_fit(c, ix + aw + 6, dy, iw - aw - 6, ab, PD_LABEL, PD_LABEL_SHADOW);
     }
-    pd_text_wrap(c, ix, dy + 16, iw, 15, lines - 1, e->description, PD_LABEL, PD_LABEL_SHADOW);
+    pd_text_wrap(c, ix, dy + 16, iw, pd_lh(15), lines - 1, e->description, PD_LABEL, PD_LABEL_SHADOW);
 }
 
 // A line of a section's page, kept to the page.
@@ -271,9 +318,9 @@ static void page_line(struct pd_canvas* c, int x, int* y, int top, int bottom, i
 
 static void section_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_dex_entry* e, int x, int top, int w, int h) {
     char left[64], right[32];
-    // Room for the rail when the page ran past its window last time.
-    const bool railed = ui->dexPageMax > 0;
-    if (railed) w -= 10;
+    // Room for the rail: always, so a page's first draw (before its height is known) doesn't put text under it.
+    const bool railed = true;
+    w -= 10;
     if (ui->dexPageScroll > ui->dexPageMax) ui->dexPageScroll = ui->dexPageMax;
     if (ui->dexPageScroll < 0) ui->dexPageScroll = 0;
     int bottom = top + h, y = top - ui->dexPageScroll;
@@ -682,15 +729,28 @@ void ui_dex_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     }
     lastNational = national_view(ui, s);
     lastCount = dex_list(g, lastNational, lastList);
+    dexGame = g;
     int counts[DEX_FILTERS]={lastCount};
-    if(ui->handheldDex){
+    // The whole dex, kept for the TYPE / NAME pickers' choices.
+    memcpy(allList, lastList, sizeof(int) * (size_t) lastCount);
+    allCount = lastCount;
+    {
         int matching=0;
         for(int i=0;i<lastCount;i++){
             const int id=lastList[i],filter=filter_of(s,id);
             counts[filter]++;
-            if((ui->dexOpen && filter!=DEX_UNSEEN && (ui->dexFilter==DEX_ALL || filter==ui->dexFilter)) ||
-               (!ui->dexOpen && (ui->dexFilter==DEX_ALL || filter==ui->dexFilter)))
-                lastList[matching++]=id;
+            // Opened from the list (Linux's handheld page), an unseen entry has nothing to show; the 3DS's page does.
+            const bool status = ui->dexFilter==DEX_ALL || filter==ui->dexFilter;
+            if (!status || (ui->handheldDex && ui->dexOpen && filter==DEX_UNSEEN)) continue;
+            // TYPE: known once seen, as in the games' own dex search; NAME: the species name's first letter.
+            const int species = pd_dex_species(g, id);
+            if (ui->dexType) {
+                int t1 = -1, t2 = -1;
+                pd_species_type_pair(g, species, &t1, &t2);
+                if (filter == DEX_UNSEEN || (t1 != ui->dexType - 1 && t2 != ui->dexType - 1)) continue;
+            }
+            if (ui->dexLetter && dex_initial(g, species) != ui->dexLetter) continue;
+            lastList[matching++]=id;
         }
         lastCount=matching;
     }
@@ -698,6 +758,76 @@ void ui_dex_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         entry_view(ui, c, g, s);
     } else {
         list_view(ui,c,g,s,counts);
+    }
+}
+
+// TYPE / NAME's choices: ALL, then the types of the entries seen (by name) or the letters names start with.
+static int pickValues[40], pickCount;
+
+static void pick_values(const struct pd_ui* ui) {
+    const struct pd_game* g = dexGame;
+    pickCount = 0;
+    pickValues[pickCount++] = 0;
+    if (!g) return;
+    if (ui->dexPickKind == 1) {
+        bool has[64] = { false };
+        const struct pd_snapshot* s = ui->drawn;
+        for (int i = 0; i < allCount; i++) {
+            if (!s || !pd_dex_seen(s, allList[i])) continue;
+            int t1 = -1, t2 = -1;
+            pd_species_type_pair(g, pd_dex_species(g, allList[i]), &t1, &t2);
+            if (t1 >= 0 && t1 < 64) has[t1] = true;
+            if (t2 >= 0 && t2 < 64) has[t2] = true;
+        }
+        int n = pd_type_count(g);
+        for (int t = 0; t < n && t < 64 && pickCount < 40; t++) {
+            if (!has[t]) continue;
+            // Sorted by name, as the app's.
+            int at = pickCount;
+            while (at > 1 && strcmp(pd_type_name(g, pickValues[at - 1] - 1), pd_type_name(g, t)) > 0) {
+                pickValues[at] = pickValues[at - 1];
+                at--;
+            }
+            pickValues[at] = t + 1;
+            pickCount++;
+        }
+    } else {
+        bool has[26] = { false };
+        for (int i = 0; i < allCount; i++) {
+            int ch = dex_initial(g, pd_dex_species(g, allList[i]));
+            if (ch) has[ch - 'A'] = true;
+        }
+        for (int k = 0; k < 26 && pickCount < 40; k++)
+            if (has[k]) pickValues[pickCount++] = 'A' + k;
+    }
+}
+
+// The TYPE / NAME pick: a grid of choices (types three a row, letters six), the current one lit.
+void ui_dex_pick_overlay(struct pd_ui* ui, struct pd_canvas* c) {
+    pick_values(ui);
+    pd_dim(c, 0xE6);
+    ui_add_hit(ui, 0, 0, c->w, c->h, HIT_SCRIM);
+    const bool type = ui->dexPickKind == 1;
+    const int current = type ? ui->dexType : ui->dexLetter;
+    int x = MARGIN, w = c->w - 2 * MARGIN, y = CONTENT_Y;
+    int f = pd_title_box(c, x, y, w, TITLE_H, PD_TITLE_FILL);
+    pd_text(c, x + f + 6, pd_text_y(y, TITLE_H), type ? "TYPE" : "NAME", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    y += TITLE_H + 4;
+    const int cols = type ? 3 : 6, rows = (pickCount + cols - 1) / cols, cellH = pd_list_row(20);
+    int lf = pd_list_box(c, x, y, w, rows * cellH + 14);
+    const int ix = x + lf + 3, iw = w - 2 * (lf + 3), iy = y + lf + 2;
+    ui->startId = HIT_DEX_PICK;
+    for (int i = 0; i < pickCount; i++) {
+        const int cx = ix + (i % cols) * iw / cols, cw = ix + (i % cols + 1) * iw / cols - cx, cy = iy + (i / cols) * cellH;
+        const bool on = pickValues[i] == current;
+        if (on) ui->startId = HIT_DEX_PICK + i;
+        if (on || ui->pressedId == HIT_DEX_PICK + i) pd_fill(c, cx, cy, cw, cellH, PD_ROW_SELECTED);
+        char letter[2] = { (char) pickValues[i], 0 };
+        const char* label = !pickValues[i] ? "ALL" : type ? pd_type_name(dexGame, pickValues[i] - 1) : letter;
+        pd_text(c, cx + (cw - pd_text_width(label)) / 2, pd_text_y(cy, cellH), label, on ? PD_VALUE : PD_LABEL,
+                on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
+        ui_add_hit(ui, cx, cy, cw, cellH, HIT_DEX_PICK + i);
+        if (i % cols == 0 && i / cols < rows - 1) ui_row_divider(c, ix, cy + cellH - 1, iw);
     }
 }
 
@@ -711,8 +841,28 @@ bool ui_dex_act(struct pd_ui* ui, int id) {
         ui->dexPageScroll = 0;
         return true;
     }
+    if (ui->overlay == PD_OVERLAY_DEX_PICK) {
+        if (id >= HIT_DEX_PICK && id < HIT_DEX_PICK + pickCount) {
+            const int v = pickValues[id - HIT_DEX_PICK];
+            if (ui->dexPickKind == 1) ui->dexType = v;
+            else ui->dexLetter = v;
+            ui->dexScroll = 0;
+            ui->overlay = PD_OVERLAY_NONE;
+            return true;
+        }
+        if (id == HIT_SCRIM) {
+            ui->overlay = PD_OVERLAY_NONE;
+            return true;
+        }
+        return false;
+    }
     if (ui->tab != PD_TAB_DEX || ui->overlay != PD_OVERLAY_NONE) return false;
-    if (ui->handheldDex && id >= HIT_DEX_FILTER && id < HIT_DEX_FILTER+DEX_FILTERS) {
+    if (id == HIT_DEX_TYPE || id == HIT_DEX_NAME) {
+        ui->dexPickKind = id == HIT_DEX_TYPE ? 1 : 2;
+        ui->overlay = PD_OVERLAY_DEX_PICK;
+        return true;
+    }
+    if (id >= HIT_DEX_FILTER && id < HIT_DEX_FILTER+DEX_FILTERS) {
         ui->dexFilter=id-HIT_DEX_FILTER;
         ui->dexScroll=0;
         return true;

@@ -26,7 +26,11 @@ class TradeSide(
     val gameCode: String,
 ) {
     /** The rules of this side's generation (two saves of one generation trade). */
-    val rules: TradeRules get() = if (editor is Gen4SaveEditor) Gen4Trade else Gen3Trade
+    val rules: TradeRules get() = when (editor) {
+        is Gen5SaveEditor -> Gen5Trade
+        is Gen4SaveEditor -> Gen4Trade
+        else -> Gen3Trade
+    }
     internal val ed3: Gen3SaveEditor get() = editor as Gen3SaveEditor
     val format: Gen3SaveFormat get() = ed3.file.format
     /** English text: a trade evolution renames by the English species name, so only English games evolve on arrival. */
@@ -71,7 +75,7 @@ object Gen3Trade : TradeRules {
         else speciesHoennDex.getOrNull(species)?.let { it in 1..HOENN_DEX_COUNT } == true
 
     /** The trade evolution [mon] would go through on arriving in [to] (GetEvolutionTargetSpecies, EVO_MODE_TRADE), or null. */
-    override fun evolution(mon: SaveMon, to: TradeSide): TradeEvolution? {
+    override fun evolution(mon: SaveMon, to: TradeSide, partner: SaveMon?): TradeEvolution? {
         if (mon.isEmpty || mon.isBadEgg || mon.isEgg || !to.english) return null
         if (mon.heldItem == ITEM_EVERSTONE) return null
         return tradeEvolutions.firstOrNull { it.species == mon.species && (it.item == 0 || it.item == mon.heldItem) }
@@ -197,8 +201,8 @@ interface TradeRules {
     fun linkBlocker(a: TradeSide, b: TradeSide): String?
     /** The "last Pokémon" rule for a party Pokémon about to leave [side]'s party. */
     fun partyBlocker(side: TradeSide, at: MonRef): String?
-    /** The evolution [mon] would go through on arriving in [to], or null. */
-    fun evolution(mon: SaveMon, to: TradeSide): TradeEvolution?
+    /** The evolution [mon] would go through on arriving in [to] (traded for [partner], when it's a swap), or null. */
+    fun evolution(mon: SaveMon, to: TradeSide, partner: SaveMon? = null): TradeEvolution?
     /** [src]'s Pokémon at [at] to [dest]'s empty [to]; throws [TradeRefused] and changes nothing if the games wouldn't. */
     fun send(src: TradeSide, at: MonRef, dest: TradeSide, to: MonRef, evolve: Boolean = true)
     fun swap(a: TradeSide, atA: MonRef, b: TradeSide, atB: MonRef, evolveA: Boolean = true, evolveB: Boolean = true)

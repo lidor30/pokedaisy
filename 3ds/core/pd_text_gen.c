@@ -152488,6 +152488,17 @@ const struct pd_text pd_text_monomyth_v1_1 = {
     .mapsecs = pd_mapSecDataMonomyth, .mapsecsCount = 206,
 };
 
+const struct pd_text pd_text_monomyth_v1_2 = {
+    .species = pd_speciesNamesMonomyth, .speciesCount = 405,
+    .items = pd_itemNamesMonomyth, .itemsCount = 447,
+    .moves = pd_moveDataMonomyth, .movesCount = 680,
+    .typeNames = pd_typeNamesMonomyth, .typeNamesCount = 19,
+    .typeChart = pd_typeEffectivenessMonomyth, .typeChartCount = 120,
+    .speciesTypes = pd_speciesTypeDataMonomyth, .speciesTypesCount = 405,
+    .genderRatios = pd_genderRatiosMonomyth, .genderRatiosCount = 405,
+    .mapsecs = pd_mapSecDataMonomyth, .mapsecsCount = 206,
+};
+
 const struct pd_text pd_text_soulgold_v1_2_1 = {
     .species = pd_speciesNamesSoulGold, .speciesCount = 1578,
     .items = pd_itemNamesSoulGold, .itemsCount = 930,

@@ -240,12 +240,11 @@ static void settings_top(struct pd_library* l, struct pd_canvas* c) {
     const char* label = lib_settings_label(l, l->settingsSelected, &value, &group, &choices);
     pd_text(c, x + df + 8, TOP_BODY_Y + df + 6, label, PD_VALUE, PD_VALUE_SHADOW);
     static const char* const HELP[][2] = {
-        { "VIEW", "The games as a LIST of rows, or a GRID of tiles." },
+        { "LAYOUT", "The games as a LIST of rows, or a GRID of tiles." },
         { "SORT", "By NAME, or the last one played first." },
         { "THEME", "The colours of every window, here and in the companion." },
         { "DARK MODE", "Darker windows and backdrops." },
-        { "SCREEN", "How large the game is drawn on the top screen." },
-        { "ASPECT", "EXPAND draws the map past the GBA's edges." },
+        { "VIEW", "How the game is drawn on the top screen: its own picture at a size, or EXPAND's map past its edges." },
         { "GAME VOLUME", "How loud the game plays." },
         { "MUTE GAME", "No game sound at all." },
         { "BATTLE STYLE", "The battle buttons as HeartGold's or Black's." },
@@ -264,6 +263,7 @@ static void settings_top(struct pd_library* l, struct pd_canvas* c) {
 
 void pd_library_draw_top(struct pd_library* l, struct pd_canvas* c) {
     pd_font_set(NULL, 0); // the library's own font (a Game Boy game leaves its own installed)
+    pd_font_size_set(1); // the small pixel font, as in the companion
     switch (l->page) {
     case PD_PAGE_GAMES: game_top(l, c); break;
     case PD_PAGE_SETTINGS: settings_top(l, c); break;
@@ -282,6 +282,7 @@ void pd_library_draw_top(struct pd_library* l, struct pd_canvas* c) {
 void pd_library_draw_loading(struct pd_library* l, struct pd_canvas* bottom, struct pd_canvas* top) {
     if (l->picked < 0) return;
     pd_font_set(NULL, 0);
+    pd_font_size_set(1);
     const struct pd_library_game* g = &l->games[l->picked];
     l->page = PD_PAGE_GAMES;
     pd_library_select(l, g->file);

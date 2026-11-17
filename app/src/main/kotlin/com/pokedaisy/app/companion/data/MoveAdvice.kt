@@ -38,6 +38,10 @@ fun moveKind(mv: MoveView): MoveKind? = when {
         black2Redux && activeGame.isBw2 -> Black2Redux.data?.moveCategories?.get(mv.id)?.let {
             when (it) { 0 -> MoveKind.PHYSICAL; 1 -> MoveKind.SPECIAL; 2 -> MoveKind.STATUS; else -> null }
         }
+        // Heartfelt Gold (hg-engine): every move's own, from its cart.
+        heartfeltGold && activeGame == GameKind.HEARTGOLD -> HeartfeltGold.data?.moveCategories?.get(mv.id)?.let {
+            when (it) { 0 -> MoveKind.PHYSICAL; 1 -> MoveKind.SPECIAL; 2 -> MoveKind.STATUS; else -> null }
+        }
         originHeartGold || mv.id !in 1..559 -> null
         mv.id in dsStatusMoves -> MoveKind.STATUS
         mv.id in dsSpecialMoves -> MoveKind.SPECIAL

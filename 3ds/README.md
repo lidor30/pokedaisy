@@ -23,10 +23,30 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
 ## What works
 
 - Game list (`sdmc:/pokedaisy/roms/`: `.gba`, `.gb`, `.gbc`), D-pad or stylus.
-- The game on the top screen, with sound (ndsp), in three SCREEN modes:
-  **PIXEL 1x** (pixel for pixel, centred), **SHARP 1.5x** (fills the height;
-  the default) and **STRETCH** (fills the screen). The smooth two use mGBA's
-  own "sharp bilinear" look: the frame at 2x nearest, sampled linearly.
+- The game on the top screen, with sound (ndsp), picked in SETTINGS > SCREEN > **VIEW** (SCREEN and ASPECT as one
+  pick-list, `pd_view_*`): **SHARP 1.5x** (fills the height) and **STRETCH** (fills the screen), then where
+  the game can EXPAND **EXPAND 1.5x** (the default since 2026-11-16; SHARP 1.5x for a game without EXPAND), **EXPAND 1.25x** and **EXPAND 1x (EXPERIMENTAL)** (ASPECT's old ZOOM OUT: the whole screen, a
+  game pixel a screen pixel; AUTO ZOOM IN under it; picking it shows a notice that it may not run smoothly). PIXEL 1x and SHARP 1.25x of the game's own picture are gone (they looked
+  bad; `pd_settings_load` moves them to SHARP 1.5x). The pictures use mGBA's own "sharp bilinear" look: the frame at 2x
+  nearest, sampled linearly. Settings still keeps the two (`screen=`, `aspect=`). EXPAND 1x on the console, running
+  through grass on FireRed's Route 21: 57-59 FPS (SHARP 1.5x 60), its margins ~5 ms a frame on the fourth core and the
+  top texture ~5.5 ms on the third (1.25x: ~1.7 and ~2.7). Past a map's edge EXPAND shows the game's border block, cut
+  straight where the map ends: clouds there were tried (2026-11-15) and dropped, as they cost frames at the edges.
+  A field move's cut-in (SURF, CUT, STRENGTH...: a band of BG0 inside window 0) stays on EXPAND's cache: its windows differ
+  only in BG0, which the margins never draw (`cacheReady`); it used to rebuild the margins every frame of the cut-in, which
+  broke up the music.
+  A fade between two maps (a door, a warp, the black before a battle) fills the margins with the faded frame's colour
+  (`fullDraw`, PK_WIDE_CACHE only): its per-pixel glow cost the console 10-25 ms a frame, and Unbound's area changes and
+  battle starts slowed with their music. BATTLE STYLE GEN 5's ball screens are rendered on the companion's first draw
+  (`pd_ui_warm`), not by the first battle.
+- **Starting a game**: what a start works out over the whole ROM is kept for the next one: its SHA-1 and CRC-32 by the
+  file's name, size and time (`rom-art/<file>.id`; `archive_getmtime`, since `stat` gives the SD card's files no time),
+  where the ROM art sits (`rom-art/<sha1>.art`, each blob CRC-checked when read back), WILD ENCOUNTERS' switch and Fast
+  Flash Saves' two routines (`rom-art/<sha1>.wild` / `.flash1` / `.flash2`, the routines checked against the ROM's bytes).
+  armGBA's own passes are faster in `armgba-pokedaisy.patch`: its CRC-32 a table that skips ROMs past 16 MB (every
+  cartridge it knows by checksum is 16 MB; bit by bit it cost ~1.4 s), Fast Flash Saves one pass with a word compare and a
+  way to be told the places. Unbound on a New 3DS, tap to running: about 12 s before, 6 s the first time now, 3.5 s after,
+  3 s of it reading the 32 MB file. The dev build logs each step (`load (ms)` and `start (ms)` in `log.txt`).
 - **Fast-forward**: the ▶▶ chip on the companion toggles it, ZR (New 3DS) holds
   it; 2x / 3x / 4x in SETTINGS. The game is muted meanwhile.
 - **Save state**: one slot per game (`sdmc:/pokedaisy/states/`). Loading one keeps the save memory as it is, so it
@@ -43,6 +63,18 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
 - Settings kept in `sdmc:/pokedaisy/settings.ini`.
 - The companion, in the app's FireRed OPTION-screen look with 1.5.0's buttons: every tab chip, button and tile has
   HeartGold's two-tone face (`pd_two_tone`, the app's drawTwoTone).
+  - **One text size**: the companion's, the library's, the HUD's and the QUICK MENU's text are all one font, our own drawn pixel font (`pd_font_small_glyphs`: linux/hud.c's
+    place-name font with the characters it lacked drawn in `tools/gen_font.py`; capitals 8 tall against Pixel Operator's 9,
+    letters 5 wide), the outside of its diagonal steps softened. Lists (SETTINGS, DEX, the bag, GUIDE, PLACES) sit on 16 px
+    rows instead of 18 (`pd_list_row`) with a line between rows like the bag's (`ui_row_divider`), wrapped text 13 / 16 as
+    far apart (`pd_lh`), the tab bar is 22 px instead of 28 (`TAB_BAR_H`) with its MORE and gear icons 12 px and smoothed,
+    MORE's tiles are squares four to a row, their icons smoothed (`ui_icon_smooth`: Scale2x, then averaged down), the
+    PARTY's cards keep the other tabs' margins, the QUICK MENU's ring tiles are squares on a round ring 82% of the screen's height (smaller gaps
+    rather than an oval) with their labels in a smaller drawn pixel font of our own (quick_menu.c's `MINI_FONT`: capitals 6 tall, whole pixels, the small font's softened steps; 3/4 of the small font read blurry), the HUD's party sprites 30 px (15/16) on 22 px tiles 3 apart, and the library follows it too.
+    Big labels (FIGHT, BAG, RUN ...) and a Game Boy game's own font stay as they were. A TEXT SIZE row (SMALL / NORMAL, the
+    bigger Pixel Operator) was there for a while and went (the user's call, 2026-11-15): an old `bigtext=` in settings.ini is
+    ignored. Tried and left: Atkinson Hyperlegible smoothed at 9-11 px; Pixel Operator
+    for the lists beside the small font (two fonts).
   - **PARTY**: two columns of three across the whole width, each card the game's own where
     the app has its art: its own height and paddings, widened only, shown as big as three
     rows allow (4/3 or 5/4 in sharp bilinear like the game on the top screen, 1x under the
@@ -50,7 +82,9 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     `pd_party_art` rebuilds the frames, Poke Ball, status icons, FONT_SMALL and the
     backdrop from your ROM, by RomArt's fingerprints. Any other game keeps the slot in its
     palette (`PartySlot` / `SlotGeometry`), edge to edge like
-    `PartyGrid`; tap one for its summary (moves, type, PP).
+    `PartyGrid`; tap one for its summary (moves, type, PP). The summary's SWITCH (MonDetailScreen's) shows the party
+    and trades the two records whole on the field (`swap_jobs`, the app's swapPartySlots). Its STATS draws each IV as a
+    bar with the number inside.
   - **BATTLE**: opens by itself in a battle and goes back after it, over the DS battle screens' mint and Poké Ball.
     The controls are HeartGold's layout and buttons: FIGHT over the four pale move places, BAG and POKéMON in the
     corners with RUN between them a little lower, the moves as HeartGold's cards (the type's colour round white over
@@ -93,7 +127,8 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     side by side until the save settles one. A first-open notice says the guide is
     AI-written and may be wrong, as in the app.
   - **POKéDEX**: seen / caught from the save, in Kanto / Hoenn or National
-    order (the save's own, or the other with a tap); an entry has the game's
+    order (the save's own, or the other with the button under the filters); the app's filters down the left (SEEN / OWN,
+    ALL / CAUGHT / SEEN ONLY / NOT SEEN with their counts, TYPE and NAME, each a grid to pick from), the list beside them; an entry has the game's
     picture, category, types, height / weight, text and base stats. On every Game
     Boy game too, one list each, read from the cart (`core/pd_gb_dex.c`: Gen 1's
     sprite compression, Gen 2's LZ, Crystal Clear's dictionary, Prism's packed text,
@@ -123,20 +158,43 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   `unbound.gba` shows as Pokémon Unbound, a HACK. The top screen shows the game under the cursor the way the games' CONTINUE
   screen does: player, time, Pokédex, the badges, money, the place, and the party with its icons (from the save itself where
   the save editor reads it, the rest from `cards/<game>.card`, what the game looked like when it was last left). SETTINGS
-  holds the settings that aren't a game's: the library's VIEW and SORT, THEME, DARK MODE, SCREEN, ASPECT, the sound, the
+  holds the settings that aren't a game's: the library's LAYOUT (LIST / GRID) and SORT, THEME, DARK MODE, VIEW, the sound, the
   battle buttons, HUD and FLY STYLE.
-- **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported): a game's
-  save file opened with the game closed, its PC boxes on the touch screen (A picks a Pokémon up and puts it down, L / R the
-  box), MONEY and COINS, SAVE. The top screen shows the Pokémon on the cursor. Written the game's way (the other slot,
-  counter + 1, read back before it's handed out), backed up first and checked again on the SD card before it replaces the
-  file. Retail English / European FireRed, LeafGreen, Ruby, Sapphire and Emerald saves, as in the app; no bag, held items or
-  moves yet (the app's `Gen3Legal` tables).
-- **TRADE SAVES**: two games' saves, PC box to PC box, by the games' own rules (`Gen3Trade`: FireRed / LeafGreen only after the
-  Sevii Islands, no National Dex = no eggs or Pokémon outside the regional dex, Mew / Deoxys from an event only, no mail;
-  trade evolutions, the Pokédex, Ruby / Sapphire's National Dex). A tab per side over its box, a Pokémon (or an empty place)
-  picked on each, Y trades; both saves written or neither. `make test-save` runs `core/pd_save.c` on real saves.
+- **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported, round two
+  included): a game's save file opened with the game closed, the app's three pages as tabs (SELECT steps them). POKéMON: the
+  party and the 14 boxes (L / R), A picks a Pokémon up and puts it down (party <-> PC by the PC's rules: mail, the last one
+  able to battle, a full party), Y / EDIT opens its page - level (never below what it was), nature / gender / shiny / ability
+  (another personality keeping the rest, Unown's letter and Wurmple's branch), friendship, IVs, EVs (510), nickname (its OT
+  only, typed on the console's keyboard: libctru's swkbd through the host's `edit_text`), held item, moves (what it could
+  learn by level, TM / HM or tutor, its pre-evolutions' too), RELEASE - with ◀ / ▶ stepping a value and A a pick-list or a
+  number; BOX renames or sorts the box (Pokédex, level, name). BAG: the five pockets, a stack's count (0 takes it out), ADD
+  ITEM from what the game files there; key items and HMs stay. TRAINER: money, coins, the Pokédex (register what the save
+  holds, all seen / caught, the regional dex until the National one) and the event tickets as their distributions gave them.
+  The top screen shows the Pokémon (its stats with IVs / EVs on its page), the item or the trainer. Every value only one
+  `Gen3Legal` allows (`core/pd_save_tables_gen.c`, `tools/gen_save_tables.py` from the app's generated tables). Written the
+  game's way (the other slot, counter + 1, read back before it's handed out), backed up first and checked again on the SD
+  card before it replaces the file. Retail English / European FireRed, LeafGreen, Ruby, Sapphire and Emerald saves, as in the
+  app (no DS saves: the 3DS can't play them).
+- **TRADE SAVES**: two games' saves, party or PC, by the games' own rules (`Gen3Trade`: FireRed / LeafGreen only after the
+  Sevii Islands, no National Dex = no eggs or Pokémon outside the regional dex, Mew / Deoxys from an event only, no mail, a
+  party keeps one that isn't an egg; trade evolutions, the Pokédex, Ruby / Sapphire's National Dex). A tab per side over its
+  party or a box, a Pokémon (or an empty place) picked on each, Y trades - a trade evolution asks EVOLVE / DON'T first, as
+  the app does - and trades pile up in both saves until SAVE (SELECT) writes the two together, both or neither; UNDO ALL drops
+  them, and leaving or START with trades not saved asks first. `make test-save`
+  runs `core/pd_save.c` on real saves (every edit, then written and read back).
 - **Battle controls**: FIGHT / BAG / RUN / POKéMON, the moves, the party to send in (BEST / OUT), ONE-TAP MOVES,
   on the GBA games with their handlers known and on every Game Boy game (its 2x2 menu in the cart's own words).
+- **GAMEPLAY**, as in the app: **REUSABLE TMS** (the `bhi` before each TM's RemoveBagItem turned into a `b`; ON, greyed,
+  where the game's TMs never run out: Unbound, Radical Red, SoulGold) and **INSTANT TEXT** (RenderFont rewritten in its own
+  40 bytes, or Ruby / Sapphire's text delay turned into a `b`), both found in the game's own code (`host/pd_rom_options.c`,
+  ReusableTms.kt / InstantText.kt ported; the TM sites kept per ROM in `rom-art/`) and written into the cartridge between
+  frames, armGBA's recompiled code there dropped (`pd_armgba_rom_write`); off puts the bytes back. **TRADE EVOS**: the
+  summary's EVOLVE for a party Pokémon that evolves by trading, through the game's own trade evolution (the config's
+  TRADE_EVO record, `[part.tradeevo]` in `gamedata/targets/3ds.toml`: retail English FireRed rev 1, LeafGreen and Emerald);
+  each slot asked with its 100 bytes put back. **NUZLOCKE** (`core/pd_nuzlocke.c`, the app's tracker rule for rule;
+  `core/pd_ui_nuzlocke.c`, its tab under MORE: HERE, TEAM, ENCOUNTERS, GRAVEYARD, RULES, each row put right by hand), per
+  game in `nuzlocke/<CRC32>.txt` (the app's text, an `on` line first). **SCENE SPEEDS** under FF / SPEED: BATTLE, TEXT, MENU,
+  BIKE and SURF SPEED (SAME, 1x ... 4x) while FF is off, from the battle state and the field read.
 - **QUICK MENU** (Y): PC, FLY, FLASH (English FireRed, LeafGreen, Emerald, Ruby, Sapphire: the game's own cut-in and light,
   dimmed outside a dark cave; `linux/flash.c`), REPEL, BIKE, WILD, states, FF. The Game Boy games have PC, FLY and WILD (`GbField`).
 - **FREE FLIGHT** (retail English FireRed, LeafGreen and Emerald, as in the app): TAKE OFF from the QUICK MENU or under the
@@ -145,9 +203,14 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   EXPAND, and lands at the town's FLY spot; a town that isn't joined to where you are gets the game's own FLY. FLIGHT AREA
   VISITED (the default; the app's WHERE YOU'VE BEEN) keeps both to the maps your save has seen, kept per save in
   `sdmc:/pokedaisy/flight-area/`. The flying is the app's own `pk_flight.c`; `linux/flight.c` has its gates, the area and the
-  route (a breadth-first search over the joined maps, about a millisecond on a desktop).
+  route (a breadth-first search over the joined maps, about a millisecond on a desktop). Clouds drift under the bird while
+  it's up, over the frame and EXPAND's margins, as in the app: drawn from the sheet's lit runs, two channels a multiply
+  (`flDrawCloudsAt`): ~3.5x cheaper than when they were switched off for costing ~3.5 ms a frame on the game's core (pd_sim,
+  every pixel the same). Not the clouds at a map's edge, which stay gone.
+  In a view without EXPAND (SHARP 1.5x, STRETCH) the D-pad flies one way at a time, the newer of two held
+  (`flight_one_way`): a diagonal there was the game camera's staircase, which only EXPAND's glide smooths.
 - **EXPAND / ZOOM OUT** on the games the app has it for, Game Boy too, and the **HUD** (party, minimap, balls,
-  Repel steps), kept to the game's picture without EXPAND, in the app's battle HP box look: every window with its
+  Repel steps; during a FREE FLIGHT the minimap alone), kept to the game's picture without EXPAND, in the app's battle HP box look: every window with its
   shadow down and right, the party as sprite and HP bar (status tags in a row of their own), the QUICK MENU's tiles
   two-tone glass with the party screen's orange on the picked one.
 - **BOXES**: the PC's boxes live, in FireRed's and Emerald's colours and wallpapers; encrypted, plain and CFRU
@@ -279,9 +342,9 @@ in `roms/` (a new one shows after `restart`). Never in a release build.
 `make sim` builds `build/sim/pd_sim` (`desktop/sim/`): the real session (`host/`) and companion over the real mGBA,
 with no 3DS code, from a script of `run`, `press`, `quick`, `tap`, `hit ID`, `hits`, `shot`, `wild`, `wait-state`,
 `press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` / `noinfo` /
-`infofirst` (BATTLE STYLE, ONE-TAP MOVES, BATTLE INFO, BATTLE VIEW), `script HEX` (script bytes run by the game: a warp),
+`infofirst` (BATTLE STYLE, ONE-TAP MOVES, BATTLE INFO, BATTLE VIEW), `gameplay TMS TEXT EVOS` / `nuzlocke` / `scenespeed SCENE N` / `tab N` / `options` (GAMEPLAY's switches, a tab by number, and what this game has of them), `charging 0|1`, `script HEX` (script bytes run by the game: a warp),
 `teach SLOT INDEX MOVE` (the game's SetMonData), `flash` (FLASH picked), `idle detect|remove|ignore` (mGBA's busy-loop
-skipping; the console uses detect), `timeframes N` (the session's and a bare runFrame's cost a frame; PD_SIM_THREADED_VIDEO=1
+skipping; the console uses detect), `trace N [KEYS]` (N frames one by one, each with its tick, game, EXPAND, snapshot and companion redraw in us and EXPAND's scene; PD_TRACE_US hides the ones under it), `timeframes N` (the session's and a bare runFrame's cost a frame; PD_SIM_THREADED_VIDEO=1
 puts the renderer on a thread of its own, as on a New 3DS), `bench` (times the companion's redraw). `make sim-test` runs
 `test/sim_*.txt` on FireRed and Emerald (`ROM_DIR`, `SAVE_DIR`), `make sim-test-gb` the Game Boy script on Yellow; saves
 are copied first, never written.
@@ -359,8 +422,8 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
 
 | Path | What |
 |---|---|
-| `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass; `pd_party_art`: the party's slot art and backdrop; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables and front pics; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the library (`pd_library*`: its games and pages, the touch screen, the top screen, the save tools, the card a session leaves), the save file (`pd_save`) and the settings file (`pd_settings`) |
-| `core/*_gen.c` | Generated: names / moves / type chart / map sections / item text / gender ratios from the app's Kotlin tables (`tools/gen_tables.py`), the ROM art's fingerprints (map and card) and the cursor grids (`tools/gen_map_tables.py`), the guides and area data (`tools/gen_guide.py`), Pixel Operator as a 1-bit font plus drawn ♂ ♀ (`tools/gen_font.py`) |
+| `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass, its offsets kept per ROM in `rom-art/<sha1>.art` so a start reads them back instead (a 32 MB hack's pass cost 3.6 s), each CRC-checked again; `pd_party_art`: the party's slot art and backdrop; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables and front pics; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the library (`pd_library*`: its games and pages, the touch screen, the top screen, the save tools, the card a session leaves), the save file (`pd_save`) and the settings file (`pd_settings`) |
+| `core/*_gen.c` | Generated: names / moves / type chart / map sections / item text / gender ratios from the app's Kotlin tables (`tools/gen_tables.py`), the ROM art's fingerprints (map and card) and the cursor grids (`tools/gen_map_tables.py`), the guides and area data (`tools/gen_guide.py`), Pixel Operator as a 1-bit font plus drawn ♂ ♀ and the companion's small pixel font (`tools/gen_font.py`, needs Pillow) |
 | `ctr/` | The 3DS host: `main.c` (game loop, ndsp audio, HID, files, states), `gpu.c` (citro2d: the game and canvases written into textures in the GPU's tiled order, drawn as quads), `host.c` (the heap split, the ROM buffer, the log, what armGBA's 3DS code asks of its frontend), and the CMake build against the armGBA and mGBA submodules |
 | `emu/` | armGBA behind mGBA's `struct mCore` (`pd_armgba*.c`), the dispatch to whichever core runs the game (`pd_dispatch.c`), no Game Boy side in armGBA (`gb_none.c`), and its build (`armgba.cmake`) |
 | `host/` | What a running game needs on any host: the session (`pd_session`), USE / GIVE / TAKE and the PC's moves (`pd_items`), the Game Boy games' field actions through the Linux host's `linux/gb_field.c` |

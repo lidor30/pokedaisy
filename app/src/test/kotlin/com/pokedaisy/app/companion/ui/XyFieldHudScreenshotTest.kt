@@ -20,7 +20,8 @@ import org.junit.Test
 /**
  * Pokemon X's field HUD (XyFieldHud) with a full party of six, the minimap and all four buttons, where the top screen
  * is the whole height: 16:9, a 4:3 screen (the 5:3 picture letterboxed), and a small dense 640 x 480 one (the cells
- * shrink to fit). Its pictures (map, icons) come from the cart, so blanks here.
+ * shrink to fit); and Pokemon Y's, in its red (XyTint), with and without the WILD panel. Its pictures (map, icons) come
+ * from the cart, so blanks here.
  *
  *     ./gradlew :app:recordPaparazziDebug --tests '*XyFieldHudScreenshotTest'
  */
@@ -34,12 +35,16 @@ abstract class XyFieldHudShots(w: Int, h: Int, density: Density = Density.XHIGH)
     private fun mon(n: String, hp: Int, st: String = "") =
         MonView(species = 1, name = n, level = 50, hp = hp, maxHp = 100, status = st, types = emptyList(), iconAsset = null)
 
-    private val snap = SnapshotView(
-        connected = true, game = GameKind.POKEMON_X,
+    private fun snap(game: GameKind) = SnapshotView(
+        connected = true, game = game,
         party = listOf(mon("A", 100), mon("B", 40, "PAR"), mon("C", 10), mon("D", 0), mon("E", 100, "PSN"), mon("F", 75)),
     )
 
-    @Test fun hud() = paparazzi.snapshot {
+    @Test fun hud() = shot(GameKind.POKEMON_X)
+    @Test fun hudY() = shot(GameKind.POKEMON_Y)
+    @Test fun hudYWild() = shot(GameKind.POKEMON_Y, openWild = true)
+
+    private fun shot(game: GameKind, openWild: Boolean = false) = paparazzi.snapshot {
         BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
             val w = constraints.maxWidth.toFloat()
             val h = constraints.maxHeight.toFloat()
@@ -50,7 +55,7 @@ abstract class XyFieldHudShots(w: Int, h: Int, density: Density = Density.XHIGH)
             Box(Modifier.fillMaxSize()) {
                 androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) { drawRect(Color(0xFF5E8A54), frame.topLeft, frame.size) }
                 XyFieldHud(
-                    snap, true, frame,
+                    snap(game), true, frame, openWild = openWild,
                     wild = listOf(XyWildRow("GRASS / CAVE", "Pidgey", null, 2, 3, 40)),
                     map = XyMapSpot("missing.png", null, 320, 210, 212f, 145f, 15f, 8f),
                     onTouchScreen = {}, onOpenCompanion = {},

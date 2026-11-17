@@ -97,6 +97,7 @@ extern const struct pd_text pd_text_lets_go_pikachu;
 extern const struct pd_text pd_text_lets_go_eevee;
 extern const struct pd_text pd_text_monomyth;
 extern const struct pd_text pd_text_monomyth_v1_1;
+extern const struct pd_text pd_text_monomyth_v1_2;
 extern const struct pd_text pd_text_soulgold_v1_2_1;
 
 // The configs, each with the parts the port reads for it so far (`name` is the C's: PD_CONFIG_<name>) and the
@@ -105,7 +106,7 @@ extern const struct pd_text pd_text_soulgold_v1_2_1;
 // and the party icons. The FOE TEAM's addresses are known for rev 1 only. Retail FireRed rev 0 as the app
 // reads it: no POKéDEX / GUIDE tables (none on file for rev 0), its trainer card set in code (Poller.kt), the
 // quick menu from FIELD_ITEMS_PORTS["BPRE0"] (fieldItemsFor).
-// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec, tradeevo)
 static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260632, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -405,6 +406,12 @@ static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .dexTmhmMoves = 0x0845A604,
     .dexSpeciesCount = 412,
     .dexMapGroups = 0x08352718,
+    .tradeEvoTarget = 0x08042ED8,
+    .tradeEvoScene = 0x080CDDBC,
+    .tradeEvoAfter = 0x0300537C,
+    .tradeEvoReturn = 0x080567F0,
+    .tradeEvoLock = 0x08069954,
+    .tradeEvoCrcs = { 0xA970F637, 0xB9EDBA19, 0x95CA9A3E, 0x0111A86E },
 };
 
 // gamedata/gen3/retail/firered.toml: firered_rev0 (ram, icons, dex, card, fly, flight, flash, tm, field, battle, engine, boxes)
@@ -672,7 +679,7 @@ static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .pcStorage = &pd_pc_vanilla,
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec, tradeevo)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260068, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -967,9 +974,15 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .dexTmhmMoves = 0x08459FC4,
     .dexSpeciesCount = 412,
     .dexMapGroups = 0x08352688,
+    .tradeEvoTarget = 0x08042EC4,
+    .tradeEvoScene = 0x080CDD7C,
+    .tradeEvoAfter = 0x0300537C,
+    .tradeEvoReturn = 0x080567DC,
+    .tradeEvoLock = 0x08069940,
+    .tradeEvoCrcs = { 0xA970F637, 0x8B13D433, 0xB892BBB7, 0x0111A86E },
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec, tradeevo)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260180, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -1269,9 +1282,15 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .dexTmhmMoves = 0x0845A034,
     .dexSpeciesCount = 412,
     .dexMapGroups = 0x083526F8,
+    .tradeEvoTarget = 0x08042ED8,
+    .tradeEvoScene = 0x080CDD90,
+    .tradeEvoAfter = 0x0300537C,
+    .tradeEvoReturn = 0x080567F0,
+    .tradeEvoLock = 0x08069954,
+    .tradeEvoCrcs = { 0xA970F637, 0x8B13D433, 0x95CA9A3E, 0x0111A86E },
 };
 
-// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, icons, dex, guide, card, fly, flight, flash, tm, field, battle, engine, boxes, dexsec, tradeevo)
 static const struct pd_config PD_CONFIG_EMERALD = {
     .itemDescs = &(const struct pd_item_descs){ .base = 139999648, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x020244EC,
@@ -1571,6 +1590,12 @@ static const struct pd_config PD_CONFIG_EMERALD = {
     .dexTmhmMoves = 0x08615B94,
     .dexSpeciesCount = 412,
     .dexMapGroups = 0x08486578,
+    .tradeEvoTarget = 0x0806D098,
+    .tradeEvoScene = 0x0813DA40,
+    .tradeEvoAfter = 0x030061E8,
+    .tradeEvoReturn = 0x080860C8,
+    .tradeEvoLock = 0x08098E54,
+    .tradeEvoCrcs = { 0xA970F637, 0x74E72426, 0x224FD691, 0xB9FB85A7 },
 };
 
 // plorpOS's Linux port: the hacks, as their records reach gen3/records/c_hacks.toml. Emerald Legacy v1.1.4: retail's
@@ -16758,6 +16783,96 @@ static const struct pd_config PD_CONFIG_MONOMYTH_V1_1 = {
     .pcStorage = &pd_pc_vanilla,
     .partyMenuGrid = true,
     .text = &pd_text_monomyth_v1_1,
+};
+
+// gamedata/gen3/hacks/monomyth.toml: monomyth_v1_2 (ram, foes, icons, battle, engine, boxes)
+static const struct pd_config PD_CONFIG_MONOMYTH_V1_2 = {
+    .itemDescs = &(const struct pd_item_descs){ .base = 144643500, .stride = 32, .descOff = 24, .count = 447, .idOff = -1 },
+    .playerParty = 0x02025908,
+    .partyLayout = &pd_party_layout_monomyth,
+    .playerPartyCount = 0x02025905,
+    .speciesMask = 0xFFFF,
+    .moveMask = 0xFFFF,
+    .ppMask = 0xFF,
+    .battleMons = 0x0202541C,
+    .battleLayout = &pd_battle_layout_monomyth,
+    .battlerPositions = 0x0202540B,
+    .battlersCount = 0x020253FF,
+    .battleTypeFlags = 0x0202538C,
+    .gMain = 0x02020618,
+    .saveBlock1Ptr = 0x03001240,
+    .saveBlock2Ptr = 0x03001244,
+    .mapHeader = 0x02038214,
+    .encryptionKeyOff = 0x40,
+    .moneyOff = 0x494,
+    .maxMoney = 999999,
+    .staticSaveBlocks = false,
+    .bagPockets = 0x0203C190,
+    .bagOrder = { PD_POCKET_ITEMS, PD_POCKET_ITEMS, PD_POCKET_BALLS, PD_POCKET_ITEMS, PD_POCKET_TMHM, PD_POCKET_BERRIES, PD_POCKET_KEY, PD_POCKET_ITEMS },
+    .bagCount = 8,
+    .dexSeenCopy1 = 0,
+    .dexSeenCopy2 = 0,
+    .dexBlock = PD_DEX_SB1,
+    .dexFirstBit = 1,
+    .dexSeenLevels = false,
+    .dexBySpecies = false,
+    .dexSeenOrCaught = false,
+    .dexBytes = 0x33,
+    .dexSeenOff = 0x37F4,
+    .dexCaughtOff = 0x3827,
+    .dexCaughtRegion1 = 0,
+    .dexCaughtRegion2 = 0,
+    .dexCaughtRegion3 = 0,
+    .dexCaughtFromLevel = false,
+    .nationalCount = 362,
+    .nationalMagicOff = -1,
+    .nationalMagic = 0xB9,
+    .flagsOff = 0x18C4,
+    .varsOff = 0x19FC,
+    .flagBytes = 0x138,
+    .enemyParty = 0x02025B60,
+    .battlerPartyIndexes = 0x02025400,
+    .battleStructPtr = 0,
+    .battleStructStatic = false,
+    .monToSwitchIntoOff = 0,
+    .eggSpecies = 0,
+    .speciesCount = 405,
+    .monIconTable = 0x089DF520,
+    .monIconPaletteIndices = 0x089DFB78,
+    .monIconPaletteTable = 0x089DFD10,
+    .itemIconTable = 0x08AAFA64,
+    .itemIconStride = 8,
+    .monIconStride = 4,
+    .monPalIdxStride = 1,
+    .monPalIdxMask = 0xFF,
+    .itemPalCompressed = true,
+    .monIconPalettes = 0,
+    .dexPalettes = 0x084880B0,
+    .monPalettes = 0,
+    .inBattleOff = -23,
+    .battlerControllerFuncs = 0x020258EC,
+    .handleInputChooseAction = 0x08048329,
+    .handleInputChooseMove = 0x08048C55,
+    .handleInputChooseTarget = 0x08048601,
+    .completeWhenChoseItem = 0x0804AAB9,
+    .waitForMonSelection = 0x0804A9F1,
+    .actionCursor = 0x02025820,
+    .moveCursor = 0x02025824,
+    .partyMenu = 0x0203D8D4,
+    .monStride = 100,
+    .saveBlock1PosOff = 4,
+    .playerGenderOff = 8,
+    .frameCounterOff = 0x20,
+    .mapSecWide = false,
+    .monIconPacked = true,
+    .extraItemIconTable = 0,
+    .extraItemFirst = 0,
+    .extraItemCount = 0,
+    .extraItemStride = 8,
+    .pokemonStoragePtr = 0,
+    .pcStorage = &pd_pc_vanilla,
+    .partyMenuGrid = true,
+    .text = &pd_text_monomyth_v1_2,
 };
 
 // gamedata/gen3/hacks/soulgold.toml: soulgold_v1_2_1 (ram, foes, icons, dex, card, guide, battle, engine, boxes)

@@ -41,6 +41,61 @@ void ui_mono(struct pd_canvas* c, const struct pd_mono* icon, int x, int y, int 
             if (icon->rows[r][col] == '1') pd_fill(c, x + col * scale, y + r * scale, scale, scale, color);
 }
 
+void ui_row_divider(struct pd_canvas* c, int x, int y, int w) { pd_row_divider(c, x, y, w); }
+
+void ui_icon_smooth(struct pd_canvas* c, const struct pd_art* art, const struct pd_mono* mono, uint32_t color, int x, int y, int size) {
+    enum { MAX = 32 };
+    const int w = art ? art->w : mono->w, h = art ? art->h : mono->h;
+    if (w > MAX || h > MAX || size <= 0) return;
+    // The picture, 0 = see-through (else 0xFF000000 | rgb), then Scale2x.
+    uint32_t src[MAX * MAX], big[2 * MAX * 2 * MAX];
+    for (int r = 0; r < h; r++)
+        for (int col = 0; col < w; col++) {
+            uint32_t p = 0;
+            char k = art ? art->rows[r][col] : mono->rows[r][col];
+            if (art) {
+                const char* at = k && k != '.' ? strchr(art->keys, k) : NULL;
+                if (at) p = 0xFF000000u | (art->colors[at - art->keys] & 0xFFFFFF);
+            } else if (k == '1') p = 0xFF000000u | (color & 0xFFFFFF);
+            src[r * w + col] = p;
+        }
+    const int bw = 2 * w, bh = 2 * h;
+    for (int r = 0; r < h; r++)
+        for (int col = 0; col < w; col++) {
+            uint32_t e = src[r * w + col];
+            uint32_t b = r > 0 ? src[(r - 1) * w + col] : e, hh = r < h - 1 ? src[(r + 1) * w + col] : e;
+            uint32_t d = col > 0 ? src[r * w + col - 1] : e, f = col < w - 1 ? src[r * w + col + 1] : e;
+            bool on = b != hh && d != f;
+            big[(2 * r) * bw + 2 * col] = on && d == b ? d : e;
+            big[(2 * r) * bw + 2 * col + 1] = on && b == f ? f : e;
+            big[(2 * r + 1) * bw + 2 * col] = on && d == hh ? d : e;
+            big[(2 * r + 1) * bw + 2 * col + 1] = on && hh == f ? f : e;
+        }
+    // Down to size x size (the picture's longer side), 4 x 4 samples a pixel.
+    const int side = bw > bh ? bw : bh;
+    for (int oy = 0; oy < size; oy++) {
+        int py = y + oy;
+        if (py < c->cy0 || py >= c->cy1) continue;
+        for (int ox = 0; ox < size; ox++) {
+            int px = x + ox;
+            if (px < c->cx0 || px >= c->cx1) continue;
+            unsigned ra = 0, ga = 0, ba = 0, aa = 0;
+            for (int j = 0; j < 4; j++)
+                for (int i = 0; i < 4; i++) {
+                    int sx = ((ox * 4 + i) * 2 + 1) * side / (size * 8), sy = ((oy * 4 + j) * 2 + 1) * side / (size * 8);
+                    if (sx >= bw || sy >= bh) continue;
+                    uint32_t p = big[sy * bw + sx];
+                    if (!p) continue;
+                    ra += p >> 16 & 0xFF; ga += p >> 8 & 0xFF; ba += p & 0xFF; aa++;
+                }
+            if (!aa) continue;
+            uint32_t rgb = (ra / aa) << 16 | (ga / aa) << 8 | (ba / aa);
+            uint32_t* d = &c->px[py * c->w + px];
+            *d = aa >= 16 ? rgb : pd_mix(*d & 0xFFFFFF, rgb, (int) (aa * 16));
+        }
+    }
+}
+
 void ui_art(struct pd_canvas* c, const struct pd_art* art, int x, int y, int scale) {
     for (int r = 0; r < art->h; r++) {
         for (int col = 0; art->rows[r][col]; col++) {

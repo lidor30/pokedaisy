@@ -198,6 +198,10 @@ fun CompanionSettingsScreen(
                                 }
                             }
                         }
+                    } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
+                        confirm = Confirm(
+                            tk("RESET GAME BUTTONS?"), tr("Every game button goes back to the key it had at first."), tk("RESET"),
+                        ) { settings.resetGbaControls(); tick++ }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     // Off, the binds stay as they are, greyed out, and every key goes to the game.
                     Page.HOTKEYS -> listOf(
@@ -226,6 +230,10 @@ fun CompanionSettingsScreen(
                                 )
                             }
                         }
+                    } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
+                        confirm = Confirm(
+                            tk("RESET HOTKEYS?"), tr("Every hotkey goes back to the keys it had at first."), tk("RESET"),
+                        ) { settings.resetHotkeys(); tick++ }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.SHADERS -> shaderRows(settings) { tick++ } + SettingRow(tk("CANCEL"), null) { page = Page.DISPLAY }
                     Page.FIELD_HUD -> fieldHudRows(
@@ -907,6 +915,8 @@ private fun homeRows(
                 ) { l -> themes.firstOrNull { it.label == l }?.let { s.setAppTheme(it.id); com.pokedaisy.app.companion.ui.theme.AppColors.applyTheme(it) } })
             }
         },
+        // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
+        gameLookRow(changed),
         // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
         SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
             val pick = DarkMode.setting.next()

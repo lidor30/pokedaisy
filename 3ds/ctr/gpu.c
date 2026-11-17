@@ -249,15 +249,25 @@ static void write_tiles(C3D_Tex* tex, const uint32_t* px, int w, int h, int stri
             int wide = w - x0 < across ? w - x0 : across;
             bool inHole = x0 >= hole->x && x0 + wide <= hole->x + hole->w, offHole = x0 + wide <= hole->x || x0 >= hole->x + hole->w;
             for (int j = 0; j < down; j++) {
+                // The row's source for this tile: the game's frame inside the hole, EXPAND's picture outside it; only a
+                // tile the hole's edge cuts picks pixel by pixel.
                 const uint32_t* row = rows[j];
                 const uint32_t* inGame = gameRows[j];
                 if (inGame && inHole) row = inGame;
                 if (!inGame || inHole || offHole) inGame = NULL;
-                if (inGame && offHole) inGame = NULL;
+                uint16_t* tt = t16 + tile;
+                const uint8_t* m = morton[j];
+                if (!inGame && wide == 8) {
+                    // A whole row of the tile: (2k, 2k + 1) sit side by side in Morton order, so two texels a store.
+                    const uint32_t* p = row + x0;
+                    for (int k = 0; k < 8; k += 2)
+                        *(uint32_t*) (tt + m[k]) = (uint32_t) to565(p[k]) | (uint32_t) to565(p[k + 1]) << 16;
+                    continue;
+                }
                 for (int i = 0; i < wide; i++) {
                     int x = x0 + i;
                     uint32_t p = inGame && x >= hole->x && x < hole->x + hole->w ? inGame[x] : row[x];
-                    t16[tile + morton[j][i]] = to565(p);
+                    tt[m[i]] = to565(p);
                 }
             }
         }

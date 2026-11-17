@@ -68,6 +68,28 @@ class DsTransitionHoldTest {
         checkShape(frames, holds)
     }
 
+    /** The frames a trace runs flat out and muted ([DsTransitionHold.fast]). */
+    private fun fastFrames(frames: List<Frame>): List<Int> {
+        val hold = DsTransitionHold()
+        return frames.indices.filter { i -> hold.step(frames[i].fade, frames[i].state, inFlow = true, on = true) && hold.fast }
+    }
+
+    @Test fun blackTouchScreenAloneKeepsItsSound() {
+        // Black's X menu fades only the touch screen in and out: the pictures are held, but never a frame flat out and
+        // muted (GitHub #840: the music cut each time the menu opened or closed).
+        val frames = trace("black_xmenu")
+        assertEquals(2, holds(frames).size)
+        assertEquals(emptyList<Int>(), fastFrames(frames))
+    }
+
+    @Test fun heartGoldGoesFastOnceTheTopScreenFades() {
+        // Out of the party: the touch screen fades alone from 162, the top screen goes dark at 173.
+        val fast = fastFrames(trace("heartgold"))
+        assertEquals(5, fast.first())
+        assertTrue(fast.none { it in 162..172 })
+        assertTrue(173 in fast)
+    }
+
     @Test fun nothingOutsideAMenuFlow() {
         // A door, a warp: the field fades too, but nothing of DS LAYOUT's is on its way.
         assertEquals(emptyList<Pair<Int, Int>>(), holds(trace("heartgold"), inFlow = false))

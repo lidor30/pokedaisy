@@ -3,7 +3,7 @@ title: Controls, hotkeys and touch
 summary: Remap the game's buttons, set up turbo, change or turn off the hotkeys, set up the touch controls or an external controller, and what the BACK button does.
 section: player
 order: 2
-keywords: [flash, dark cave, light up cave, remap, rebind, keybind, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors, hm, hms, hm slave, hidden machine, field moves, no hms, without hms, exp share, exp all, experience, share exp, party exp, grinding, level up faster, level cap, max level, hard mode, overleveled]
+keywords: [flash, dark cave, light up cave, remap, rebind, keybind, reset controls, reset buttons, default buttons, reset hotkeys, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors, hm, hms, hm slave, hidden machine, field moves, no hms, without hms, exp share, exp all, experience, share exp, party exp, grinding, level up faster, level cap, max level, hard mode, overleveled]
 ---
 
 PokeDaisy works out of the box on handhelds like the AYN Thor: the face buttons, shoulders, START and SELECT are the GBA's, and a few button combinations do emulator things like saving a state. Everything here is about changing that: which button presses what, which shortcuts exist, and what happens when you plug in a controller or play by touch.
@@ -35,6 +35,8 @@ To change one, tap its row (it says `PRESS A BUTTON…`) and press the button yo
 
 The new button replaces everything that row had, keyboard key included. A button can only do one thing in a game: put it on a new row and it leaves the old one in the same games. `TO COMPANION` is the exception: it shares its button with whatever else is on it.
 
+Got in a muddle, or put `A` somewhere you can't reach? `RESET TO DEFAULTS` at the bottom of the page puts every game button back the way it came, after asking first. You can tap it, so it works even when your buttons don't.
+
 > [!NOTE]
 > Buttons go by Android's names, which follow an Xbox controller's layout. On AYN and Retroid devices, `A` is the bottom face button even where the printed label says something else. If A and B feel swapped, swap them here.
 
@@ -48,7 +50,7 @@ On a handheld with two screens, or a phone held upright with a controller, press
 
 While your buttons are down there, the game keeps running but doesn't see them:
 
-- The D-pad moves the cursor and `A` picks what it's on.
+- The D-pad moves the cursor and `A` picks what it's on. Hold a direction to keep moving.
 - `L` and `R` move between the tabs.
 - `B` goes back, and when there's nothing left to go back from, it gives your buttons back to the game.
 - `X` or `START` give them back from anywhere. So does a tap on the silver strip.
@@ -127,6 +129,8 @@ If you pick exactly the buttons another hotkey already has (the same buttons in 
 
 The `HOTKEYS` switch at the top of the page turns every hotkey off at once. The bindings stay as they are (greyed out) and every button goes straight to the game. It's handy if a game needs a combination that clashes with a hotkey, and you'd rather not rebind anything.
 
+`RESET TO DEFAULTS` at the bottom of the page puts every hotkey back the way it came, after asking first. The `HOTKEYS` switch stays as you set it.
+
 ## The quick menu
 
 The quick menu puts the things you'd otherwise dig through menus for under one button. Press L3 (the left stick, pushed in) and your actions pop up over the game, as a ring or in rows (see `STYLE` below). The rest of the HUD fades back while it's open, and any HUD panel you had open (a summary, the map, the bag, the wild list) closes:
@@ -134,7 +138,7 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | Action | What it does |
 | --- | --- |
 | `PC` | Opens your game's own PC right where you stand, as in the [bag](bag.md). |
-| `HEAL` | Heals the whole party, as the nurse at a POKéMON CENTER does. The other services are on a Pokémon's summary: see [CENTER](party.md#center-heal-relearn-forget-rename). |
+| `HEAL` | Heals the whole party, as the nurse at a POKéMON CENTER does. It asks first (`YES` / `NO`), then shows each Pokémon's HP bar filling up. The other services are on a Pokémon's summary: see [CENTER](party.md#center-heal-relearn-forget-rename). |
 | `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move, or any Pokémon with [`NO HMS NEEDED`](#no-hms-needed) on. |
 | `TAKE OFF` | Takes off on your Pokémon's bird and lets you [fly over the map](map.md#flying-over-the-map); while you're up it says `LAND` and brings you down. The original games in every language, Emerald Legacy and the hacks listed in [Map](map.md#flying-over-the-map). |
 | `FLASH` | Lights up a dark cave, the way the move does from the game's party menu: the Pokémon that knows it shows up and the cave lights up. It only shows while a Pokémon in your party knows `FLASH` (any Pokémon will do with [`NO HMS NEEDED`](#no-hms-needed) on), and it's greyed out where it isn't dark. In Emerald it also opens the sealed wall in the ancient tomb when you stand where the game asks. It needs the same badge as in the game. |
@@ -144,6 +148,7 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | `WILD` | Turns `WILD ENCOUNTERS` off, and back on the next time. An `OFF` tag on its corner says they're off. It shows in games where `WILD ENCOUNTERS` works. |
 | `SAVE STATE`, `LOAD STATE` | Saves or loads the current state slot. |
 | `FF` | Turns fast-forward on or off. |
+| `TURBO A` | Makes your A button a turbo button: hold it and A is pressed over and over, like [`TURBO A`](#turbo-a-and-b) without binding a button. Tap it again to switch it off; it's off each time you open a game. |
 | `TOUCH SCREEN` | In a DS game on one screen: brings its touch screen up over the game, or closes it, like L2. Handy on a phone, which has no L2. |
 | `COMPANION` | Opens the companion (on a device with one screen). |
 
@@ -151,7 +156,7 @@ Press L3 and the menu stays open: move with the D-pad or the left stick (on the 
 
 An action you can't use right now is greyed out and says why, like a battle going on or nothing for it in your bag. `BIKE` and `ROD` use the game's own way of using a registered item, so the game decides the rest: where you can't ride or fish, it tells you so. They work in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in Emerald Kaizo and Ultra Violet, which run on those games, and in SoulGold, through its own `SELECT` wheel (it borrows the wheel's bottom slot for a moment, then puts back what you had there). `PC`, `FLY` and the spray show only in games where the [bag](bag.md) and [map](map.md) offer them. `FLASH` works in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language PokeDaisy supports, and in Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Ultra Violet, Gaia, Odyssey, Orange Islands, Let's Go, Glazed, Emerald Kaizo, Emerald Legacy, Recharged Emerald, Lazarus, Emerald Imperium, Heart and Soul, SoulGold and the randomized games. It asks for the badge the game's own menu asks for (Unbound, Gaia and Orange Islands ask for none).
 
-Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROLS` group of Settings on either screen). Its `STYLE` picks how they're laid out (tap it to switch):
+Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROLS` group of Settings on either screen): each action's row carries the icon of its tile. Its `STYLE` picks how they're laid out (tap it to switch):
 
 - `RING` (to start with): the actions round a circle, like the weapon wheel in a modern game, each the same distance from the next. Point the left stick at one, and its name shows in the middle, with a light tick of vibration each time you move onto another one. The D-pad steps round it too.
 - `GRID`: rows of tiles, all the same size. The D-pad steps through them.
@@ -246,7 +251,7 @@ Both show `N/A` on a game PokeDaisy can't read the field of yet.
 
 Only random encounters change. Fishing, moves that lure wild Pokémon out and battles the story sets up still happen, and items that keep wild Pokémon away work as usual on top. The change applies at once, no restart needed.
 
-It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
+It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Brown, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
 
 ## SHINY ODDS
 

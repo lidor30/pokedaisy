@@ -17,7 +17,163 @@
 #define RING_GAP 8       // between two ring tiles' facing edges (QuickMenu.kt's 10u, a little closer on 240 rows)
 #define LABEL_LINE 11    // a label line: the capitals, their shadow and a row
 #define ONE_LINE_MAX 50  // a ring label wider than this (with its 5 px each side) goes on two lines, at its space
+// TEXT SIZE SMALL (the 3DS): square ring tiles, so the ring stays a circle on 240 rows.
+// Their labels a size under the small font: MINI_FONT, our own drawing, capitals 6 tall in whole pixels, the outside of
+// each diagonal step at MINI_STEP of the colour (the small font's smoothing); lines MINI_LINE apart. A label with a
+// character it lacks is the small font scaled to 3/4 (pd_text_mini), as before. Scaling every label that way read blurry.
+#define MINI_N 3
+#define MINI_D 4
+#define MINI_LINE 8
+#define MINI_H 6
+#define MINI_TOP 4 // the capitals' top under the line's y (where pd_text_mini put them)
+#define MINI_STEP 88
+static bool square(void);
+static int label_w(const char *s);
 // Windows, tiles and their colours are the HUD's (hud_style.h): its LOOK, GLASS by default.
+
+// MINI_FONT: (character, width, rows from the capitals' top; '#' lit). The advance is the width + 1.
+struct mini_glyph {
+  char ch;
+  int w;
+  const char *rows[MINI_H];
+};
+static const struct mini_glyph MINI_FONT[] = {
+  {' ', 2, {"..", "..", "..", "..", "..", ".."}},
+  {'A', 4, {".##.", "#..#", "#..#", "####", "#..#", "#..#"}},
+  {'B', 4, {"###.", "#..#", "###.", "#..#", "#..#", "###."}},
+  {'C', 4, {".###", "#...", "#...", "#...", "#...", ".###"}},
+  {'D', 4, {"###.", "#..#", "#..#", "#..#", "#..#", "###."}},
+  {'E', 4, {"####", "#...", "###.", "#...", "#...", "####"}},
+  {'F', 4, {"####", "#...", "###.", "#...", "#...", "#..."}},
+  {'G', 4, {".###", "#...", "#...", "#.##", "#..#", ".###"}},
+  {'H', 4, {"#..#", "#..#", "####", "#..#", "#..#", "#..#"}},
+  {'I', 3, {"###", ".#.", ".#.", ".#.", ".#.", "###"}},
+  {'J', 4, {"..##", "...#", "...#", "...#", "#..#", ".##."}},
+  {'K', 4, {"#..#", "#.#.", "##..", "#.#.", "#..#", "#..#"}},
+  {'L', 4, {"#...", "#...", "#...", "#...", "#...", "####"}},
+  {'M', 5, {"#...#", "##.##", "#.#.#", "#...#", "#...#", "#...#"}},
+  {'N', 4, {"#..#", "##.#", "#.##", "#..#", "#..#", "#..#"}},
+  {'O', 4, {".##.", "#..#", "#..#", "#..#", "#..#", ".##."}},
+  {'P', 4, {"###.", "#..#", "#..#", "###.", "#...", "#..."}},
+  {'Q', 4, {".##.", "#..#", "#..#", "#..#", "#.#.", ".#.#"}},
+  {'R', 4, {"###.", "#..#", "#..#", "###.", "#.#.", "#..#"}},
+  {'S', 4, {".###", "#...", ".##.", "...#", "...#", "###."}},
+  {'T', 5, {"#####", "..#..", "..#..", "..#..", "..#..", "..#.."}},
+  {'U', 4, {"#..#", "#..#", "#..#", "#..#", "#..#", ".##."}},
+  {'V', 5, {"#...#", "#...#", "#...#", ".#.#.", ".#.#.", "..#.."}},
+  {'W', 5, {"#...#", "#...#", "#...#", "#.#.#", "##.##", "#...#"}},
+  {'X', 4, {"#..#", "#..#", ".##.", ".##.", "#..#", "#..#"}},
+  {'Y', 5, {"#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."}},
+  {'Z', 4, {"####", "...#", "..#.", ".#..", "#...", "####"}},
+  {'0', 4, {".##.", "#..#", "#.##", "##.#", "#..#", ".##."}},
+  {'1', 3, {".#.", "##.", ".#.", ".#.", ".#.", "###"}},
+  {'2', 4, {".##.", "#..#", "...#", "..#.", ".#..", "####"}},
+  {'3', 4, {"###.", "...#", ".##.", "...#", "...#", "###."}},
+  {'4', 4, {"#..#", "#..#", "####", "...#", "...#", "...#"}},
+  {'5', 4, {"####", "#...", "###.", "...#", "...#", "###."}},
+  {'6', 4, {".##.", "#...", "###.", "#..#", "#..#", ".##."}},
+  {'7', 4, {"####", "...#", "..#.", ".#..", ".#..", ".#.."}},
+  {'8', 4, {".##.", "#..#", ".##.", "#..#", "#..#", ".##."}},
+  {'9', 4, {".##.", "#..#", "#..#", ".###", "...#", ".##."}},
+  {'.', 1, {".", ".", ".", ".", ".", "#"}},
+  {',', 1, {".", ".", ".", ".", "#", "#"}},
+  {'-', 3, {"...", "...", "###", "...", "...", "..."}},
+  {'\'', 1, {"#", "#", ".", ".", ".", "."}},
+  {'!', 1, {"#", "#", "#", "#", ".", "#"}},
+  {'?', 4, {".##.", "#..#", "..#.", ".#..", "....", ".#.."}},
+  {':', 1, {".", "#", ".", ".", "#", "."}},
+  {'/', 3, {"..#", "..#", ".#.", ".#.", "#..", "#.."}},
+  {'&', 5, {".##..", "#..#.", ".##..", "#.#.#", "#..#.", ".##.#"}},
+  {'(', 2, {".#", "#.", "#.", "#.", "#.", ".#"}},
+  {')', 2, {"#.", ".#", ".#", ".#", ".#", "#."}},
+};
+
+static const struct mini_glyph *mini_glyph(char ch) {
+  for (size_t i = 0; i < sizeof(MINI_FONT) / sizeof(MINI_FONT[0]); i++)
+    if (MINI_FONT[i].ch == ch)
+      return &MINI_FONT[i];
+  return NULL;
+}
+
+// Whether MINI_FONT has every character of [s].
+static bool mini_has(const char *s) {
+  for (; *s; s++)
+    if (!mini_glyph(*s))
+      return false;
+  return true;
+}
+
+static int mini_width(const char *s) {
+  if (!mini_has(s))
+    return pd_text_mini_width(s, MINI_N, MINI_D);
+  int w = 0;
+  for (; *s; s++)
+    w += mini_glyph(*s)->w + 1;
+  return w > 0 ? w - 1 : 0;
+}
+
+static void mini_put(struct pd_canvas *c, int x, int y, uint32_t col, int k) {
+  if (x < c->cx0 || x >= c->cx1 || y < c->cy0 || y >= c->cy1)
+    return;
+  uint32_t *p = c->px + y * c->w + x;
+  *p = k >= 255 ? col : pd_mix(*p, col, k);
+}
+
+// [s] in MINI_FONT with its capitals' top at [y] + MINI_TOP, its shadow right, under and between (the pixel font's).
+static void mini_text(struct pd_canvas *c, int x, int y, const char *s, uint32_t color, uint32_t shadow) {
+  if (!mini_has(s)) {
+    pd_text_mini(c, x, y, s, color, shadow, MINI_N, MINI_D);
+    return;
+  }
+  enum { W = 160 };
+  static uint8_t lit[MINI_H + 2][W + 2];
+  memset(lit, 0, sizeof lit);
+  int w = 0;
+  for (const char *p = s; *p; p++) {
+    const struct mini_glyph *g = mini_glyph(*p);
+    for (int r = 0; r < MINI_H; r++)
+      for (int i = 0; i < g->w && w + i < W; i++)
+        if (g->rows[r][i] == '#')
+          lit[r + 1][w + i + 1] = 1;
+    w += g->w + 1;
+  }
+  // Each cell's coverage: lit 255, the outside of a diagonal step MINI_STEP (as gen_font.py's small()).
+  static uint8_t a[MINI_H + 2][W + 2];
+  memset(a, 0, sizeof a);
+  for (int r = 0; r < MINI_H + 2; r++)
+    for (int i = 0; i < W + 2; i++) {
+      if (lit[r][i]) {
+        a[r][i] = 255;
+        continue;
+      }
+#define L(dr, di) (r + (dr) >= 0 && r + (dr) < MINI_H + 2 && i + (di) >= 0 && i + (di) < W + 2 && lit[r + (dr)][i + (di)])
+      int around = 0;
+      for (int dr = -1; dr <= 1; dr++)
+        for (int di = -1; di <= 1; di++)
+          around += L(dr, di);
+      for (int dr = -1; dr <= 1 && !a[r][i]; dr += 2)
+        for (int di = -1; di <= 1; di += 2)
+          if (around <= 3 && L(0, di) && L(dr, 0) && !L(dr, di))
+            a[r][i] = MINI_STEP;
+#undef L
+    }
+  int ox = x - 1, oy = y + MINI_TOP - 1; // the cells' origin (one of padding round the letters)
+  if (shadow != PD_NO_SHADOW)
+    for (int r = 0; r < MINI_H + 2; r++)
+      for (int i = 0; i < W + 2; i++) {
+        int k = 0;
+        for (int dr = 0; dr <= 1; dr++)
+          for (int di = 0; di <= 1; di++)
+            if ((dr || di) && r - dr >= 0 && i - di >= 0 && a[r - dr][i - di] > k)
+              k = a[r - dr][i - di];
+        if (k && a[r][i] < 255)
+          mini_put(c, ox + i, oy + r, shadow, k);
+      }
+  for (int r = 0; r < MINI_H + 2; r++)
+    for (int i = 0; i < W + 2; i++)
+      if (a[r][i])
+        mini_put(c, ox + i, oy + r, color, a[r][i]);
+}
 
 // QuickMenu.kt's icons: one character a pixel, '.' clear.
 const char *const quick_icon_grass[] = {
@@ -171,6 +327,7 @@ static int hit_find(int px, int py) {
 int quick_hit(int x, int y) { return hit_find(x, y); }
 int quick_list_hit(int x, int y) { return hit_find(x, y); }
 void quick_set_grid(bool grid) { gridMode = grid; }
+static bool square(void) { return !gridMode && pd_font_text_small(); }
 static void grid_shape(int n, int w, int *cols, int *rows) {
   int fit = (w - 24 + TILE_GAP) / (TILE_W + TILE_GAP);
   if (fit < 1)
@@ -259,6 +416,14 @@ static void ring_places(int n, int w, int h, int limW, int limH) {
       g = bisect(RING_GAP, 2 * M_PI * minR, GROW_GAP, n, minR, 0);
   }
   double rx = ry;
+  if (square() && n > 1 && 2 * ry + h > limH) {
+    // SMALL: a circle as tall as the canvas allows, its gaps smaller to fit (an oval only if they'd go under 3 px).
+    double fit = (limH * 82 / 100 - h) / 2.0, fg = bisect(0, RING_GAP, GROW_GAP, n, fit, 0);
+    if (fit >= minR * 0.75 && fg >= 3) {
+      ry = rx = fit;
+      g = fg;
+    }
+  }
   if (2 * ry + h > limH) {
     // Too tall: as tall as the canvas allows, the oval as wide as it then needs.
     ry = (limH - h) / 2.0 > h ? (limH - h) / 2.0 : h;
@@ -287,12 +452,14 @@ static void place(int n, int i, int w, int h, int *x, int *y) {
   *y = (int)lround(h / 2.0 + ring.py[i] - ringH / 2.0);
 }
 
+static int label_w(const char *s) { return square() ? mini_width(s) : pd_text_width(s); }
+
 // A ring label's lines: on two at its space when it's wider than ONE_LINE_MAX; their count.
 static int label_lines(const char *label, char a[32], char b[32]) {
   snprintf(a, 32, "%s", label);
   b[0] = 0;
   const char *space = strchr(label, ' ');
-  if (gridMode || !space || pd_text_width(label) + 10 <= ONE_LINE_MAX)
+  if (gridMode || !space || label_w(label) + 10 <= (square() ? 40 : ONE_LINE_MAX))
     return 1;
   // At the space nearest the middle.
   const char *best = space;
@@ -307,20 +474,25 @@ static int label_lines(const char *label, char a[32], char b[32]) {
 
 // The ring's tile size for these items: the widest label line with 5 px each side, at least 38 (QuickTile's).
 static void measure(const struct quick_item *items, int n) {
-  int w = 38, lines = 1;
+  int w = square() ? 30 : 38, lines = 1;
   for (int i = 0; i < n; i++) {
     const char *label = items[i].label ? items[i].label : quick_label(items[i].action);
     char a[32], b[32];
     int k = label_lines(label, a, b);
     if (k > lines)
       lines = k;
-    int lw = pd_text_width(a) > pd_text_width(b) ? pd_text_width(a) : pd_text_width(b);
-    if (lw + 10 > w)
-      w = lw + 10;
+    int lw = label_w(a) > label_w(b) ? label_w(a) : label_w(b);
+    if (lw + (square() ? 6 : 10) > w)
+      w = lw + (square() ? 6 : 10);
   }
   ringW = gridMode ? TILE_W : w > TILE_W ? TILE_W : w;
   ringH = gridMode ? TILE_H : 24 + lines * LABEL_LINE + 3;
   ringLines = gridMode ? 1 : lines;
+  if (square()) {
+    // The icon (16, 3 above), a pixel, the label's lines, 3 under them - as wide as tall, or as the widest line needs.
+    int side = 3 + 16 + 1 + lines * MINI_LINE + 3;
+    ringW = ringH = side > w ? side : w;
+  }
 }
 
 int quick_step(int n, int sel, int dx, int dy, int w, int h) {
@@ -366,7 +538,7 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
     // as QuickIcon draws them.
     bool art = false;
     // The icon's middle: GRID's tiles as before; a ring tile's 8 px down from its top edge's padding.
-    int iconY = gridMode ? y + 16 : y + 14;
+    int iconY = gridMode ? y + 16 : square() ? y + 11 : y + 14;
     if (items[i].action == QUICK_FLY)
       art = pd_draw_mon_icon(c, g, items[i].species, x + (TW - PD_ICON) / 2, iconY - 17, dim);
     else if (items[i].item)
@@ -378,10 +550,18 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
     int lines = label_lines(label, la, lb);
     uint32_t col = dim ? ink->muted : items[i].lit ? ink->accent : text;
     // The label's lines at the tile's bottom (a one-line label on a two-line ring sits on the lower line's place).
-    int ly = gridMode ? y + TH - 16 : y + TH - 3 - lines * LABEL_LINE - 4;
-    pd_text(c, x + (TW - pd_text_width(la)) / 2, ly, la, col, shadow);
-    if (lines > 1)
-      pd_text(c, x + (TW - pd_text_width(lb)) / 2, ly + LABEL_LINE, lb, col, shadow);
+    if (square()) {
+      // The last line's capitals (rows MINI_TOP to MINI_TOP + 5 under its y) end 3 above the tile's bottom.
+      int my = y + TH - 13 - (lines - 1) * MINI_LINE;
+      mini_text(c, x + (TW - label_w(la)) / 2, my, la, col, shadow);
+      if (lines > 1)
+        mini_text(c, x + (TW - label_w(lb)) / 2, my + MINI_LINE, lb, col, shadow);
+    } else {
+      int ly = gridMode ? y + TH - 16 : y + TH - 3 - lines * LABEL_LINE - 4;
+      pd_text(c, x + (TW - pd_text_width(la)) / 2, ly, la, col, shadow);
+      if (lines > 1)
+        pd_text(c, x + (TW - pd_text_width(lb)) / 2, ly + LABEL_LINE, lb, col, shadow);
+    }
     if (items[i].off) { // WILD switched off: an OFF tag on its corner
       int tw = pd_text_width("OFF") + 6;
       pd_round_rect(c, x + TW - tw - 2, y + 2, tw, 13, 2, ink->accent);

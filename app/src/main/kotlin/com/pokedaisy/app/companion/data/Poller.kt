@@ -58,6 +58,10 @@ class TelemetrySampler {
     private var dsOrigin = false
     /** The DS cart is Renegade Platinum's ([RenegadePlatinum]: the retail Platinum header, its own tables). */
     private var dsRenegade = false
+    /** The DS cart is Heartfelt Gold's ([HeartfeltGold]: the US HeartGold's header, its own tables). */
+    private var dsHeartfelt = false
+    /** The Game Boy cart is Pokémon Brown 6.0.1 ([brownV601]). */
+    private var gbBrownV601 = false
     private var dsRedux = false
     /** The DS cart's language letter before its text is read: its header's, but English for Origin HeartGold. */
     private val dsLanguage: Char? get() = if (dsOrigin) 'E' else dsGameCode.getOrNull(3)
@@ -351,6 +355,7 @@ class TelemetrySampler {
                 (nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language
                     ?: dsLanguage)?.let { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(it) }
                 RomItemText.use(itemTable(reader))
+                romHeaderCode = runCatching { EmulatorCore.current.romCode() }.getOrNull().orEmpty()
             }
             activeGame = kind ?: GameKind.FIRERED
             val base = baseCfg ?: unmarkedCfg
@@ -358,9 +363,11 @@ class TelemetrySampler {
                 base === NATIVE_SOULGOLD_V1_2_1
             amethystV141 = base === NATIVE_AMETHYST_V1_4_1
             eliteRedux265_3 = base === NATIVE_ELITE_REDUX_V2_65_3B
+            monomythV1_2 = base === NATIVE_MONOMYTH_V1_2
             teamRocketV3 = base === NATIVE_TEAM_ROCKET_V3 || base === NATIVE_TEAM_ROCKET_V3_1
             originHeartGold = dsOrigin
             renegadePlatinum = dsRenegade
+            heartfeltGold = dsHeartfelt
             black2Redux = dsRedux
             fireRedHack = fireRedHackFor(base)
             // Modern Emerald's tables follow the save's settings (a few bytes a sample).
@@ -370,6 +377,7 @@ class TelemetrySampler {
             randomizedRetail = randomizedText
             mariomonV13 = base === NATIVE_MARIOMON_V1_3 || base === NATIVE_MARIOMON_V1_2_2 || base === NATIVE_MARIOMON_V1_2_1
             quetzalV084 = base?.quetzalV084 == true
+            brownV601 = gbBrownV601
             quetzalV1 = base?.quetzalV1 == true
             gen2Cfg?.let { activeGen2 = it }
             // A DS cart: its own text's language (NdsArt.names: a French Sacred Gold is an IPKE HeartGold, GitHub #230).
@@ -382,7 +390,8 @@ class TelemetrySampler {
             val telemetry = when (kind) {
                 // English Unbound leaves nativeCfg null (see detect()); its French translation sets its own.
                 GameKind.UNBOUND -> readNativeTelemetry(reader, nativeCfg ?: unboundCfg)
-                GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.PURE_RED, GameKind.PURE_BLUE, GameKind.YELLOW_LEGACY ->
+                GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.PURE_RED, GameKind.PURE_BLUE, GameKind.YELLOW_LEGACY,
+                GameKind.BROWN ->
                     readGen1Telemetry(reader, gen1Cfg ?: GEN1_YELLOW)
                 GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.POLISHED_CRYSTAL,
                 GameKind.CRYSTAL_LEGACY ->
@@ -618,9 +627,12 @@ class TelemetrySampler {
                 WISHES_OF_TOMORROW_V1_2_6_SHA1 -> { kind = GameKind.WISHES; nativeCfg = NATIVE_WISHES }
                 DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1 -> { kind = GameKind.DREAMSTONE; nativeCfg = NATIVE_DREAMSTONE }
                 MONOMYTH_V1_1_SHA1 -> { kind = GameKind.MONOMYTH; nativeCfg = NATIVE_MONOMYTH_V1_1 }
+                MONOMYTH_V1_2_SHA1 -> { kind = GameKind.MONOMYTH; nativeCfg = NATIVE_MONOMYTH_V1_2 }
                 // Modern Emerald: a gcc build of pokeemerald on Emerald's ids, run as Emerald with its own RAM and tables
                 // (ModernEmerald: its types follow the save's settings).
                 ModernEmerald.V3_6_SHA1 -> { kind = GameKind.EMERALD; nativeCfg = NATIVE_MODERN_EMERALD }
+                // Epsilon Emerald: a gcc pokeemerald on Emerald's ids with an expansion battle engine (EpsilonEmerald).
+                EpsilonEmerald.V1_0_0_SHA1 -> { kind = GameKind.EMERALD; nativeCfg = NATIVE_EPSILON_EMERALD }
                 else -> {
                     kind = GameKind.EMERALD
                     unsupportedRom(reader, code, size, hash, "unrecognized Emerald-based ROM hack " +
@@ -769,6 +781,7 @@ class TelemetrySampler {
         val rev = runCatching { reader0x1E() }.getOrDefault(-1)
         dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         dsRenegade = code == RenegadePlatinum.CODE && RenegadePlatinum.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
+        dsHeartfelt = code == HeartfeltGold.CODE && HeartfeltGold.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         dsRedux = (code == Black2Redux.CODE_BLACK2 || code == Black2Redux.CODE_WHITE2) &&
             Black2Redux.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         when {
@@ -780,7 +793,7 @@ class TelemetrySampler {
                 gen5Cfg = DsPorts.gen5Config(port)
             }
             ndsSupported(code, rev) -> when (code) {
-                "IPKE" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_US }
+                "IPKE" -> { kind = GameKind.HEARTGOLD; gen4Cfg = if (dsHeartfelt) GEN4_HEARTFELT_GOLD else GEN4_HEARTGOLD_US }
                 "IPKD" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_DE }
                 "IPKF" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_FR }
                 "IPGD" -> { kind = GameKind.SOULSILVER; gen4Cfg = GEN4_SOULSILVER_DE }
@@ -815,6 +828,7 @@ class TelemetrySampler {
             off += len
         }
         val hash = if (off == size && size > 0) digest.digest().hex() else null
+        gbBrownV601 = hash == BROWN_V6_0_1_SHA1
         when {
             GAME_BOY_SUPPORT && hash == RED_SHA1 -> { kind = GameKind.RED; gen1Cfg = GEN1_RED }
             GAME_BOY_SUPPORT && hash == BLUE_SHA1 -> { kind = GameKind.BLUE; gen1Cfg = GEN1_BLUE }
@@ -823,6 +837,9 @@ class TelemetrySampler {
             GAME_BOY_SUPPORT && hash == PURE_RED_V2_7_6_SHA1 -> { kind = GameKind.PURE_RED; gen1Cfg = GEN1_PURE_RED }
             GAME_BOY_SUPPORT && hash == PURE_BLUE_V2_7_6_SHA1 -> { kind = GameKind.PURE_BLUE; gen1Cfg = GEN1_PURE_BLUE }
             GAME_BOY_SUPPORT && hash == YELLOW_LEGACY_V1_0_10_SHA1 -> { kind = GameKind.YELLOW_LEGACY; gen1Cfg = GEN1_YELLOW_LEGACY }
+            // Pokémon Brown (Koolboyman's Rijon on Red's engine): Red's RAM, its own tables (GEN1_BROWN; 6.0.1: brownV601).
+            GAME_BOY_SUPPORT && hash == BROWN_V6_1_2_SHA1 -> { kind = GameKind.BROWN; gen1Cfg = GEN1_BROWN }
+            GAME_BOY_SUPPORT && hash == BROWN_V6_0_1_SHA1 -> { kind = GameKind.BROWN; gen1Cfg = GEN1_BROWN_V601 }
             GAME_BOY_SUPPORT && hash == CRYSTAL_LEGACY_V1_3_1_SHA1 -> { kind = GameKind.CRYSTAL_LEGACY; gen2Cfg = GEN2_CRYSTAL_LEGACY }
             GAME_BOY_SUPPORT && gen1ConfigFor(hash) != null -> { kind = GameKind.YELLOW; gen1Cfg = gen1ConfigFor(hash) }
             hash in CRYSTAL_SHA1S && GAME_BOY_SUPPORT -> { kind = GameKind.CRYSTAL; gen2Cfg = GEN2_CRYSTAL }
@@ -1129,6 +1146,8 @@ class TelemetrySampler {
         const val MONOMYTH_V1_0_SHA1 = "ae1c4be9be8d706bb989602bc05731203d42860d"
         // v1.1: v1.0 rebuilt under Emerald's own game code (BPEE), so it's told apart with the big BPEE hacks.
         const val MONOMYTH_V1_1_SHA1 = "eb660caffbc26e1f09f86714d03af4c3eccd9e4d"
+        // v1.2 (released 2026-11-15): BPEE too, its RAM 4 bytes later from gMapHeader on.
+        const val MONOMYTH_V1_2_SHA1 = "742e62ffa5a8d607171fdb8477eb1f417dc36086"
         const val MONOMYTH_CODE = "MONE"
 
         /** Hacks under a game code of their own that detect() reads as their base game (by hash). */
@@ -1157,6 +1176,9 @@ class TelemetrySampler {
 
         // Pokémon Modern Emerald (resetes12; BPEE, 32 MB, a pokeemerald build with its source public): NATIVE_MODERN_EMERALD.
         const val MODERN_EMERALD_V3_6_SHA1 = "ab3bc012598d73dce965450df79893aeff97c834"
+
+        // Pokémon Epsilon Emerald (pokemerrp; BPEE, 32 MB, closed): NATIVE_EPSILON_EMERALD (EpsilonEmerald).
+        const val EPSILON_EMERALD_V1_0_0_SHA1 = "8decf0571ba3f17d31c76168346e240a14e248ce"
 
         /** Recharged Emerald's config for a build's hash; null for any other ROM. */
         fun rechargedEmeraldConfig(hash: String?): NativeConfig? = when (hash) {
@@ -1191,6 +1213,9 @@ class TelemetrySampler {
 
         // PureRed / PureBlue v2.7.6 (Vortyne/pureRGB): its source at tag v2.7.6 builds both byte for byte.
         const val PURE_RED_V2_7_6_SHA1 = "2e94d09c1e16a57eb079404c030f26fdeeac949d"
+        // Pokémon Brown (Koolboyman's; 2 MB Game Boy carts, a hack of Red): GEN1_BROWN.
+        const val BROWN_V6_1_2_SHA1 = "24eeda80ee78fa214a6f4a85164a2492d2b017ad"
+        const val BROWN_V6_0_1_SHA1 = "2d6d1f1a6010f578d67045802611a288ebd8748b"
         // Yellow Legacy v1.0.10 and Crystal Legacy v1.3.1: the release BPS patches over retail (Crystal Legacy's two patches, one
         // for each retail revision, make the same ROM) = `make` at their tags (rgbds 0.6.1 / 0.5.2).
         const val YELLOW_LEGACY_V1_0_10_SHA1 = "2ac87de42afc70ef6016805acb3b206644417f97"
@@ -1275,7 +1300,8 @@ class TelemetrySampler {
         val SUPPORTED_GB_SHA1S = setOf(YELLOW_SHA1, YELLOW_DE_SHA1, YELLOW_FR_SHA1, YELLOW_IT_SHA1, YELLOW_ES_SHA1, RED_SHA1, BLUE_SHA1,
             RED_DE_SHA1, BLUE_DE_SHA1) +
             CRYSTAL_SHA1S + CRYSTAL_DE_SHA1 + CRYSTAL_CLEAR_SHA1S + PRISM_V0_95_254_SHA1 + GOLD_SHA1 + SILVER_SHA1 + GOLD_DE_SHA1 + SILVER_DE_SHA1 + POLISHED_CRYSTAL_SHA1S +
-            PURE_RED_V2_7_6_SHA1 + PURE_BLUE_V2_7_6_SHA1 + YELLOW_LEGACY_V1_0_10_SHA1 + CRYSTAL_LEGACY_V1_3_1_SHA1
+            PURE_RED_V2_7_6_SHA1 + PURE_BLUE_V2_7_6_SHA1 + YELLOW_LEGACY_V1_0_10_SHA1 + CRYSTAL_LEGACY_V1_3_1_SHA1 +
+            BROWN_V6_1_2_SHA1 + BROWN_V6_0_1_SHA1
 
         /**
          * Game Boy / Color (Pokémon Yellow): the library, folder scan, frontend launch and
@@ -1326,13 +1352,14 @@ class TelemetrySampler {
             ELITE_REDUX_V2_65_3B_SHA1, ELITE_REDUX_V2_65_4_1B_SHA1, TEAM_ROCKET_DRAGONSDEN_V1_5_SHA1,
             TEAM_ROCKET_2026_V3_0_9_ES_SHA1, TEAM_ROCKET_2026_V3_1_ES_SHA1,
             WISHES_OF_TOMORROW_V1_2_6_SHA1,
-            DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1, MONOMYTH_V1_0_SHA1, MONOMYTH_V1_1_SHA1,
+            DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1, MONOMYTH_V1_0_SHA1, MONOMYTH_V1_1_SHA1, MONOMYTH_V1_2_SHA1,
             ULTRA_VIOLET_V1_22_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_CASUAL_SHA1,
             SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_PERFORMANCE_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_CASUAL_PERFORMANCE_SHA1,
             RECHARGED_YELLOW_V1_8_0_SHA1, RECHARGED_YELLOW_V1_9_0_SHA1, RECHARGED_YELLOW_V1_9_4_SHA1,
             RECHARGED_YELLOW_V1_9_7_SHA1,
             RECHARGED_EMERALD_V2_2_5_SHA1, RECHARGED_EMERALD_V2_2_8_SHA1, RECHARGED_EMERALD_REBALANCED_V2_2_8_SHA1,
             ModernEmerald.V3_6_SHA1,
+            EpsilonEmerald.V1_0_0_SHA1,
             MARIOMON_V1_2_1_SHA1, MARIOMON_V1_2_2_SHA1, MARIOMON_V1_3_SHA1, MARIOMON_V1_5_1_Anniversary_SHA1,
             MARIOMON_V1_5_2_Anniversary_SHA1,
             GS_CHRONICLES_V2_7_6_SHA1,

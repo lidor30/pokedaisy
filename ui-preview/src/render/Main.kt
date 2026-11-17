@@ -992,13 +992,22 @@ fun platformLibrary(view: com.pokedaisy.app.LibraryView = com.pokedaisy.app.Libr
     prefs.libraryView = view.id
 }
 
-fun pcBoxes(icons: Boolean = false, ds: Boolean = false): () -> (@Composable () -> Unit) = {
-    val state = if (ds) pcBoxesDsDemo() else pcBoxesDemo()
+/** The SAVE EDITOR's D-pad starts, as SaveEditorActivity provides them (the `pc-boxes-focus` shot). */
+val pcBoxesStarts = com.pokedaisy.app.companion.ui.FocusStarts()
+
+fun pcBoxes(
+    icons: Boolean = false, ds: Boolean = false, missing: Boolean = false, black: Boolean = false,
+    setup: com.pokedaisy.app.companion.ui.PcBoxesState.() -> Unit = {},
+): () -> (@Composable () -> Unit) = {
+    val state = (if (black) pcBoxesBlackDemo() else if (ds) pcBoxesDsDemo() else if (missing) missingTargetDemo() else pcBoxesDemo()).apply(setup)
     val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
-        com.pokedaisy.app.companion.ui.PcBoxesScreen(
-            state, if (ds) "Pokémon HeartGold" else "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
-            icons = if (icons) demoIcons else null, onTrade = {},
-        )
+        androidx.compose.runtime.CompositionLocalProvider(com.pokedaisy.app.companion.ui.LocalFocusStarts provides pcBoxesStarts) {
+            com.pokedaisy.app.companion.ui.PcBoxesScreen(
+                state, if (black) "Pokémon Black" else if (ds) "Pokémon HeartGold" else "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
+                icons = if (icons) demoIcons else null, onTrade = if (black) null else ({}),
+                onMissing = { state.missing = if (black) missingBlackDemo(state) else missingDemo(state) },
+            )
+        }
     } }
     content
 }
@@ -1006,6 +1015,35 @@ fun pcBoxes(icons: Boolean = false, ds: Boolean = false): () -> (@Composable () 
 /** A PC slot as a trade pick. */
 fun pc(box: Int, slot: Int): com.pokedaisy.app.companion.data.save.MonRef =
     com.pokedaisy.app.companion.data.save.MonRef.Pc(com.pokedaisy.app.companion.data.save.BoxSlot(box, slot))
+
+fun palPark(setup: com.pokedaisy.app.companion.ui.PalParkState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
+    val state = palParkDemo().apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        com.pokedaisy.app.companion.ui.PalParkScreen(
+            state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {}, iconsGba = demoIcons, iconsDs = demoIcons,
+        )
+    } }
+    content
+}
+
+fun transfer(setup: com.pokedaisy.app.companion.ui.PokeTransferState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
+    val state = transferDemo().apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        com.pokedaisy.app.companion.ui.PokeTransferScreen(state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {})
+    } }
+    content
+}
+
+fun collection(setup: com.pokedaisy.app.companion.ui.CollectionState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
+    val state = collectionDemo().apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        com.pokedaisy.app.companion.ui.CollectionScreen(
+            state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, icons = { demoIcons },
+            onOpen = {}, onTrade = {}, onPalPark = {},
+        )
+    } }
+    content
+}
 
 fun trade(setup: com.pokedaisy.app.companion.ui.TradeState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
     val state = tradeDemo().apply(setup)
@@ -1377,7 +1415,7 @@ fun areaMapSpot(game: GameKind): AreaSpot? {
     if (System.getProperty("rom").isNullOrBlank()) return null
     return when (game) {
         GameKind.FIRERED -> AreaSpot(1, 2, 34, 35, "3")
-        GameKind.EMERALD -> AreaSpot(24, 16, 6, 7, "5")
+        GameKind.EMERALD -> AreaSpot(24, 8, 16, 13, "3")
         GameKind.UNBOUND -> AreaSpot(53, 2, 40, 30, "3F")
         else -> null
     }
@@ -1393,7 +1431,7 @@ fun areaSnapshot(spot: AreaSpot): SnapshotView {
     val id = com.pokedaisy.app.companion.data.AreaMap.MapId(spot.group, spot.num)
     val area = com.pokedaisy.app.companion.data.AreaMaps.area(id)
     area?.floors?.forEach { com.pokedaisy.app.companion.data.AreaMaps.image(it.id) }
-    com.pokedaisy.app.companion.ui.AreaMapChoice.showArea()
+    com.pokedaisy.app.companion.ui.AreaMapChoice.reset()
     val sec = area?.mapsec ?: homeMapsec(activeGame)
     return snapshot().copy(
         mapGroup = spot.group, mapNum = spot.num, x = spot.x, y = spot.y, mapType = 4,
@@ -1706,8 +1744,8 @@ fun main(args: Array<String>) {
             val at = if (game == GameKind.EMERALD || game == GameKind.EMERALD_ROGUE) Offset(0.45f, 0.125f) else Offset(0.4375f, 0.306f)
             onRoot().performTouchInput { click(Offset(37 + 1166 * at.x, 37 + 886 * at.y)) }
         },
-        // AREA maps (-Prom=<the game's ROM>): the player on a cave's second floor (FireRed's Mt. Moon B1F, Emerald's Mt. Pyre
-        // 2F, an Unbound cave's 2F) - the AREA map first, then REGION MAP, a floor chip, ZOOM.
+        // AREA maps (-Prom=<the game's ROM>): the player on a cave's second floor (FireRed's Mt. Moon B1F, Emerald's Granite Cave
+        // B1F, an Unbound cave's 2F) - the AREA map first, then REGION MAP, a floor chip, ZOOM.
         *(areaMapSpot(game)?.let { spot ->
             arrayOf(
                 Shot("$g-area-map", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }),
@@ -2433,6 +2471,12 @@ fun main(args: Array<String>) {
         // SAVE EDITOR (a game's library menu): the save's party and boxes, then a Pokémon picked, moved and saved.
         Shot("pc-boxes", tw, th, td, pcBoxes()),
         Shot("pc-boxes-selected", tw, th, td, pcBoxes()) { onAllNodesWithText("ABRA")[0].performClick() },
+        // A controller's first D-pad press: the orange cursor ring on the selected slot (SaveEditorActivity's FocusStarts).
+        Shot("pc-boxes-focus", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("ABRA")[0].performClick()
+            waitForIdle()
+            runOnIdle { pcBoxesStarts.focusNewest() }
+        },
         Shot("pc-boxes-moving", tw, th, td, pcBoxes()) {
             onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("MOVE").performClick()
         },
@@ -2495,6 +2539,15 @@ fun main(args: Array<String>) {
         Shot("pc-boxes-release", tw, th, td, pcBoxes()) { onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("RELEASE").performClick() },
         // A DS save (HeartGold): its POKéMON page and a Pokémon's page.
         Shot("pc-boxes-ds", tw, th, td, pcBoxes(ds = true)) { onAllNodesWithText("MEGANIUM")[0].performClick() },
+        Shot("pc-boxes-black", tw, th, td, pcBoxes(black = true)) { onAllNodesWithText("SNIVY")[0].performClick() },
+        Shot("pc-boxes-black-page", tw, th, td, pcBoxes(black = true)) {
+            onAllNodesWithText("SNIVY")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+        },
+        Shot("pc-boxes-black-bag", tw, th, td, pcBoxes(black = true)) { onNodeWithText("BAG").performClick() },
+        Shot("pc-boxes-black-trainer", tw, th, td, pcBoxes(black = true)) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-black-missing", tw, th, td, pcBoxes(black = true)) {
+            onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick()
+        },
         Shot("pc-boxes-ds-page", tw, th, td, pcBoxes(ds = true)) {
             onAllNodesWithText("MEGANIUM")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
         },
@@ -2539,6 +2592,35 @@ fun main(args: Array<String>) {
         // From FireRed's party to the end of Emerald's.
         Shot("trade-party", tw, th, td, trade { selA = com.pokedaisy.app.companion.data.save.MonRef.Party(1); selB = com.pokedaisy.app.companion.data.save.MonRef.Party(2) }),
         Shot("trade-phone", 1080, 2400, 2.625f, trade { selA = pc(0, 0); selB = pc(0, 0) }),
+        // TRADE AND BACK: Emerald's KADABRA picked alone (FireRed would evolve it), its confirm, and back home as ALAKAZAM.
+        Shot("trade-back", tw, th, td, trade { selB = pc(0, 3) }),
+        Shot("trade-back-confirm", tw, th, td, trade { selB = pc(0, 3) }) { onNodeWithText("TRADE AND BACK").performClick() },
+        Shot("trade-back-done", tw, th, td, trade { selB = pc(0, 3); tradeBack() }),
+        // POKé TRANSFER: HeartGold's PC into Black's, six picked and sent; Black without its National Pokédex.
+        Shot("poke-transfer", tw, th, td, transfer()),
+        Shot("poke-transfer-picked", tw, th, td, transfer { (2 until 8).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        Shot("poke-transfer-sent", tw, th, td, transfer { (2 until 8).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) }; transfer() }),
+        Shot("poke-transfer-phone", 1080, 2400, 2.625f, transfer { (2 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        // COLLECTION: the three made-up saves' Pokémon in one list; by level, one game, a search; a Pokémon's choices.
+        Shot("collection", tw, th, td, collection()),
+        Shot("collection-level", tw, th, td, collection { sort = com.pokedaisy.app.companion.data.save.SaveCollection.Sort.LEVEL }),
+        Shot("collection-search", tw, th, td, collection { query = "tr" }),
+        Shot("collection-game", tw, th, td, collection()) { onNodeWithText("ALL GAMES").performClick() },
+        Shot("collection-picked", tw, th, td, collection { picked = shown().first { it.palParkable } }),
+        Shot("collection-phone", 1080, 2400, 2.625f, collection()),
+        // PAL PARK: FireRed's PC into HeartGold's, six picked and brought over; the egg refused.
+        Shot("pal-park", tw, th, td, palPark()),
+        Shot("pal-park-picked", tw, th, td, palPark { (0 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        Shot("pal-park-migrated", tw, th, td, palPark { (0 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) }; migrate() }),
+        Shot("pal-park-refused", tw, th, td, palPark { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, 23)) }),
+        Shot("pal-park-phone", 1080, 2400, 2.625f, palPark { (0 until 4).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        // MISSING: what FireRed's Pokédex lacks, and the made-up Emerald save's Pokémon that could fill it.
+        Shot("pc-boxes-missing-button", tw, th, td, pcBoxes(missing = true)) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-missing", tw, th, td, pcBoxes(missing = true)) { onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick() },
+        Shot("pc-boxes-missing-can-come", tw, th, td, pcBoxes(missing = true)) {
+            onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick(); onNodeWithText("IN MY SAVES").performClick()
+        },
+        Shot("pc-boxes-missing-phone", 1080, 2400, 2.625f, pcBoxes(missing = true)) { onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick() },
         Shot("library-expand-intro", tw, th, td, activity(expandIntro = true) { LibraryActivity() }),
         Shot("library-battle-style", tw, th, td, activity(battleStyleIntro = true) { LibraryActivity() }),
         // Picking GEN 5 closes it and saves the choice.

@@ -13,6 +13,8 @@ object Gen4Trade : TradeRules {
     private val TradeSide.ed4: Gen4SaveEditor get() = editor as Gen4SaveEditor
 
     private const val PICHU = 172
+    private const val ROTOM = 479
+    private const val SHAYMIN = 492
 
     override fun blocker(mon: SaveMon, from: TradeSide, to: TradeSide): String? {
         if (mon.isEmpty) return null
@@ -20,6 +22,10 @@ object Gen4Trade : TradeRules {
         if (mon.species == PICHU && (mon as Gen4BoxMon).form == 1) return tr("This Pichu can't be traded")
         // HeartGold / SoulSilver's newer items (Apricorns, the Pokéwalker's) don't exist in Platinum.
         if (!to.ed4.game.hasItem(mon.heldItem)) return tr("{0} doesn't have the item it holds", to.label)
+        // Diamond / Pearl have no Rotom appliance or Sky Forme Shaymin (Platinum's forms; Giratina's needs Platinum's orb).
+        if (to.ed4.game.layout == Gen4Layout.DP && (mon as Gen4BoxMon).form != 0 && mon.species in setOf(ROTOM, SHAYMIN)) {
+            return tr("{0} doesn't have this form", to.label)
+        }
         return null
     }
 
@@ -31,7 +37,7 @@ object Gen4Trade : TradeRules {
         return if (others == 0) tr("That's {0}'s last Pokémon that isn't an egg: it stays in the party", side.label) else null
     }
 
-    override fun evolution(mon: SaveMon, to: TradeSide): TradeEvolution? {
+    override fun evolution(mon: SaveMon, to: TradeSide, partner: SaveMon?): TradeEvolution? {
         if (mon.isEmpty || mon.isBadEgg || mon.isEgg) return null
         return to.ed4.game.tradeEvolution(mon.species, mon.heldItem)
     }

@@ -27,7 +27,7 @@ val appIncludes = listOf(
 val prepSrc = tasks.register<Sync>("prepSrc") {
     from(app) { appIncludes.forEach { include(it) } }
     // PC BOXES' demo save is built with the save tests' own writer.
-    from(rootDir.resolve("../app/src/test/kotlin/com/pokedaisy/app/companion/data/save")) { include("SyntheticSave.kt", "SyntheticGen4.kt"); into("synthetic") }
+    from(rootDir.resolve("../app/src/test/kotlin/com/pokedaisy/app/companion/data/save")) { include("SyntheticSave.kt", "SyntheticGen4.kt", "SyntheticGen5.kt"); into("synthetic") }
     into(layout.buildDirectory.dir("appsrc"))
     filter { line: String ->
         line.replace("Icons.AutoMirrored.Filled.", "Icons.Filled.")
@@ -46,9 +46,10 @@ java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaV
 
 dependencies {
     implementation(project(":data"))
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")   // PokeTransferScreen's date, as in :data
     implementation("org.jetbrains.compose.material3:material3:$cmp")
     implementation("org.jetbrains.compose.material:material-icons-extended:$cmp")
-    implementation("org.json:json:20240303")
+    implementation("org.json:json:20260814")
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")
     implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:$cmp")

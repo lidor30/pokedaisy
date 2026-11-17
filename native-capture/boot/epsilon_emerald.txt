@@ -1,0 +1,69 @@
+# Pokémon Epsilon Emerald v1.0.0 from retail Emerald's save (~/Documents/RetroArch/saves/mGBA/Pokemon - Emerald Version
+# (USA, Europe).srm, which it loads as it is): default.txt's title / CONTINUE, then A through its clock and daily-events
+# messages to the field on ROUTE 114 (~frame 1900). See the epsilon_emerald fixture's README.
+wait 120
+press START
+wait 30
+press A
+wait 60
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 60
+wait 300

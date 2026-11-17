@@ -63,8 +63,8 @@ object SyntheticGen4 {
         SyntheticSave.le16(out, f + 12, slot); SyntheticSave.le16(out, f + 14, crc(out, off, size - 16))
     }
 
-    /** Both halves: half 0 (counter 7) and the newer half 1 (counter 8), which the game loads. */
-    fun save(): ByteArray {
+    /** Both halves: half 0 (counter 7) and the newer half 1 (counter 8), which the game loads; [national]: its National Pokédex. */
+    fun save(national: Boolean = false): ByteArray {
         val out = ByteArray(Gen4SaveFile.SIZE)
         for ((half, count) in listOf(0 to 7L, 1 to 8L)) {
             val base = half * 0x40000
@@ -90,6 +90,7 @@ object SyntheticGen4 {
                 val codes = listOf(0x12C, 0x139, 0x142, 0x1DE) + (bx + 1).toString().map { 0x121 + (it - '0') } + 0xFFFF
                 codes.forEachIndexed { i, c -> SyntheticSave.le16(out, pc + 0x12008 + bx * 40 + i * 2, c) }
             }
+            if (national) out[base + 0x12B8 + 0x337] = 1
             footer(out, base, 0xF628, count, 0)
             footer(out, pc, 0x12310, count, 1)
         }

@@ -138,6 +138,17 @@ kotlin = 'Long'
 type = 'long'
 default = 0
 
+# See IconTables.monIconPalStride / monIconShinyOff (Epsilon Emerald's per-species icon palettes).
+[field.monIconPalStride]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
+[field.monIconShinyOff]
+kotlin = 'Long'
+type = 'long'
+default = 4
+
 [field.extraItemFirst]
 kotlin = 'Int'
 type = 'int'
@@ -419,6 +430,12 @@ default = 'none'
 # A bag kept as one "owned" bit per item id in SaveBlock1, no counts (Elite Redux); null = gBagPockets.
 [field.itemFlagsBag]
 kotlin = 'ItemFlagsBag?'
+type = 'ref'
+default = 'none'
+
+# gBagPockets packed another way, its TM pocket a bit per machine, pockets filtered by each item's own (Epsilon Emerald).
+[field.packedBag]
+kotlin = 'PackedBagLayout?'
 type = 'ref'
 default = 'none'
 

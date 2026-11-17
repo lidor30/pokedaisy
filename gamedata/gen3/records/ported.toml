@@ -3780,6 +3780,26 @@ learnsets = 0x08506AD4
 wildHeaders = 0x089C3284
 mapGroups = 0x0886F3A8
 
+[record.POKEDEX_MONOMYTH_V1_2]
+schema = 'gen3_pokedex'
+base = 'POKEDEX_MONOMYTH'
+kotlin = false
+entries = 0x089D376C
+frontPics = 0x0849F6F4
+abilityNames = 0x084EE5DF
+palettes = 0x084880B0
+speciesInfo = 0x084F6DA0
+speciesToNational = 0x084F4504
+
+[record.GUIDE_TABLES_MONOMYTH_V1_2]
+schema = 'gen3_guide'
+base = 'GUIDE_TABLES_MONOMYTH'
+kotlin = false
+trainers = 0x084B6C60
+learnsets = 0x08506630
+wildHeaders = 0x089C2E40
+mapGroups = 0x0886EF64
+
 # SoulGold v1.2.1: v1.2's dex moved.
 #
 # From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
