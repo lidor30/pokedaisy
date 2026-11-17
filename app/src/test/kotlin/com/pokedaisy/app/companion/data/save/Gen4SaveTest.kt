@@ -531,6 +531,79 @@ class Gen4SaveTest {
         assertEquals(31, after.partyMons[0].mon.ivs[0])
         assertEquals(d.partyMons.map { it.mon.species }, after.partyMons.map { it.mon.species })
     }
+
+    // ---- Diamond / Pearl: a new game played headless to the player's room and saved (no party yet) ----
+
+    private val diamondRom = File(nds, "Pokemon - Diamond Version (USA) (Rev 5).nds")
+    private val pearlRom = File(nds, "Pokemon - Pearl Version (USA) (Rev 5).nds")
+    private val diamondSav = File(nds, "Pokemon - Diamond Version (USA) (Rev 5).sav")
+
+    @Test
+    fun diamondAndPearlCarts() {
+        assumeTrue(diamondRom.isFile && pearlRom.isFile)
+        for (rom in listOf(diamondRom, pearlRom)) {
+            val g = NdsArt.readSaveTables(rom.toOkioPath())!!
+            assertEquals(Gen4Layout.DP, g.layout)
+            assertEquals("BULBASAUR", g.speciesName(1))
+            assertEquals(listOf(45, 49, 49, 45, 65, 65), g.baseStats(1).toList())
+            assertEquals(1, g.regional[387])        // TURTWIG opens Sinnoh's dex
+            assertEquals(0, g.regional[1])
+            assertTrue(!g.hasItem(112))              // no GRISEOUS ORB before Platinum
+            assertTrue(g.hasItem(1))
+        }
+    }
+
+    /** DIAMOND_EDIT_OUT=<file> writes the edited save for booting in nds_dump. */
+    @Test
+    fun aRealDiamondSave() {
+        val hgRom = File(nds, "Pokemon - HeartGold Version (USA).nds")
+        val hgSav = realSave()
+        assumeTrue(diamondRom.isFile && diamondSav.isFile && hgRom.isFile && hgSav != null)
+        val g = NdsArt.readSaveTables(diamondRom.toOkioPath())!!
+        val s = parse(diamondSav.readBytes())
+        assertEquals(Gen4Layout.DP, s.layout)
+        val d = Gen4SaveData(g, s.general, s.pc, s.layout)
+        assertNull(d.mismatch())
+        assertEquals("AA", d.trainerName)
+        assertEquals(3000L, d.money)
+        assertEquals(0, d.partyCount)
+        assertEquals("BOX 1", d.boxName(0))
+
+        // A Pokémon from the player's HeartGold, traded in, then into the party; money, an item, the dex.
+        val hgGame = NdsArt.readSaveTables(hgRom.toOkioPath())!!
+        val hg = TradeSide("HG", Gen4SaveEditor(parse(hgSav!!.readBytes()), hgGame), "IPKE")
+        val dp = TradeSide("D", Gen4SaveEditor(s, g), "ADAE")
+        val box = (0 until 30).first { (hg.editor as Gen4SaveEditor).data.mon(BoxSlot(0, it)).let { m -> !m.isEmpty && !m.isEgg && hgGame.hasItem(m.heldItem) && g.hasItem(m.heldItem) } }
+        val sent = (hg.editor as Gen4SaveEditor).data.mon(BoxSlot(0, box))
+        Gen4Trade.send(hg, MonRef.Pc(BoxSlot(0, box)), dp, MonRef.Pc(BoxSlot(0, 0)), evolve = false)
+        val ed = dp.editor as Gen4SaveEditor
+        ed.move(MonRef.Pc(BoxSlot(0, 0)), MonRef.Party(0))
+        ed.setMoney(123_456)
+        ed.addItem(PocketKind.MEDICINE, 17, 5)       // POTION x5
+        val built = ed.build()
+        System.getenv("DIAMOND_EDIT_OUT")?.let { File(it).writeBytes(built) }
+        val out = parse(built)
+        assertEquals(Gen4Layout.DP, out.layout)
+        assertNotEquals(s.half, out.half)
+        val after = Gen4SaveData(g, out.general, out.pc, out.layout)
+        assertNull(after.mismatch())
+        assertEquals(1, after.partyCount)
+        assertEquals(sent.species, after.partyMons[0].mon.species)
+        assertEquals(123_456L, after.money)
+        assertTrue(Gen4SaveEditor(out, g).caughtInDex(sent.species))
+        // Nothing outside the Pokédex's 0x13C bytes moved in the dex's part of the block.
+        assertEquals(0xBEEFCAFEL, u32(out.general, Gen4Layout.DP.dex))
+        // DIAMOND_READBACK=<file>: that save after the game saved over it (nds_dump) still holds every change.
+        System.getenv("DIAMOND_READBACK")?.let { path ->
+            val game = parse(File(path).readBytes())
+            assertEquals(Gen4Layout.DP, game.layout)
+            assertNotEquals(out.half, game.half)
+            val back = Gen4SaveData(g, game.general, game.pc, game.layout)
+            assertNull(back.mismatch())
+            assertEquals(after.partyMons[0].mon.personality, back.partyMons[0].mon.personality)
+            assertEquals(after.partyMons[0].stats.toList(), back.partyMons[0].stats.toList())
+            assertEquals(123_456L, back.money)
+            assertTrue(Gen4SaveEditor(game, g).caughtInDex(sent.species))
+        }
+    }
 }
-
-

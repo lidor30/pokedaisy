@@ -51,9 +51,16 @@ class Gen3BoxMon private constructor(
     override val ivs: IntArray get() = IntArray(6) { ((ivWord shr (it * 5)) and 0x1F).toInt() }
     override val isEgg: Boolean get() = (ivWord shr 30) and 1L == 1L
     override val abilityNum: Int get() = ((ivWord shr 31) and 1L).toInt()
-    private val ribbons: Long get() = u32(data, 44)
+    /** The ribbons word: five contest ranks (3 bits each), the twelve others' bits, then the fateful-encounter bit. */
+    val ribbons: Long get() = u32(data, 44)
     /** The top ribbon bit: the "fateful encounter" the trade code checks on Mew and Deoxys (obedience). */
     val fatefulEncounter: Boolean get() = (ribbons shr 31) and 1L == 1L
+    /** The summary's marks (circle, square, triangle, heart). */
+    val markings: Int get() = header[0x1B].toInt() and 0xFF
+    /** Condition: cool, beauty, cute, smart, tough, then sheen. */
+    val contest: IntArray get() = IntArray(6) { data[30 + it].toInt() and 0xFF }
+    /** The original trainer's gender (1 = female). */
+    val otGender: Int get() = (origins shr 15) and 1
 
     override val isEmpty: Boolean get() = checksumOk && species == 0
     override val nature: Int get() = (personality % 25).toInt()

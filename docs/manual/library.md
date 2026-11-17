@@ -37,8 +37,11 @@ Down the left edge of the library are three buttons: `GAMES`, `TOOLS` and `SETTI
 | --- | --- |
 | `PATCH A ROM` | Turns a `.bps` patch into a game (see [Patch a ROM hack](#patch-a-rom-hack)). |
 | `LINK PLAY` | Runs two to four GBA games joined as if by a link cable, to trade and battle between them (see [Link play](link-play.md)). |
-| `SAVE EDITOR` | Opens a game's save (a GBA game, or HeartGold / SoulSilver / Platinum): move Pokémon between the party and the PC, change a Pokémon's nature, IVs, EVs, level and moves, the bag, money and Pokédex (see [Save editor and save trades](save-trade.md)). |
-| `TRADE SAVES` | Trades Pokémon between two of your games' save files, from the party or the PC (see [Save editor and save trades](save-trade.md)). |
+| `SAVE EDITOR` | Opens a game's save (a GBA game, Diamond / Pearl / Platinum / HeartGold / SoulSilver, or Black / White and their sequels): move Pokémon between the party and the PC, change a Pokémon's nature, IVs, EVs, level and moves, the bag, money and Pokédex, and see what the Pokédex is missing (see [Save editor and save trades](save-trade.md)). |
+| `TRADE SAVES` | Trades Pokémon between two of your games' save files, from the party or the PC, or sends one away and back to evolve it (see [Save editor and save trades](save-trade.md)). |
+| `PAL PARK` | Brings six Pokémon from a GBA game's PC to Diamond, Pearl, Platinum, HeartGold or SoulSilver, the way the DS games' Pal Park does (see [Pal Park](save-trade.md#pal-park)). |
+| `POKé TRANSFER` | Sends six Pokémon from Diamond, Pearl, Platinum, HeartGold or SoulSilver to Black, White or their sequels, the way the Poké Transfer Lab does (see [Transfer to Black and White](save-trade.md#transfer-to-black-and-white)). |
+| `COLLECTION` | Every Pokémon in all your saves in one list, to search, sort and open, trade or send to Pal Park (see [Collection](save-trade.md#collection)). |
 | `SPRITE PACK` | Loads a sprite pack file, so `MAKEOVER` has other games' looks without those games (see [Sprite packs](companion.md#sprite-packs)). |
 
 A green dot on `TOOLS` means one of them is new. `BACK` on the tools takes you back to your games.
@@ -228,7 +231,7 @@ Every game plays, but the companion only reads the games it knows. The library t
 - `NOT SUPPORTED`: the game plays, and the companion shows a notice instead of its tabs.
 - `PARTIALLY SUPPORTED`: a ROM PokeDaisy matched to a game it knows. The party, bag, map and battles work, and whatever didn't match is switched off.
 
-From a linked folder, the library lists the supported games plus any unsupported hacks of FireRed, LeafGreen, Emerald, Ruby or Sapphire (tagged), so you can try them. When PokeDaisy can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
+From a linked folder, the library lists the supported games and every other Pokémon game it finds, Game Boy and DS ones too, tagged `NOT SUPPORTED`: they play as any game, without the companion. Games that aren't Pokémon games stay out. For an unsupported hack of FireRed, LeafGreen, Emerald, Ruby or Sapphire, PokeDaisy can try to work out which game it's built on. When PokeDaisy can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
 
 Turn on `SUPPORTED ONLY` in Settings, in the `LIBRARY` group, to leave games the companion can't read out of the library.
 

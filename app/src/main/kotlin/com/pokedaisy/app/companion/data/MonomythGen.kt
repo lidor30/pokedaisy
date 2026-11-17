@@ -1510,6 +1510,11 @@ internal val moveDataMonomyth: Map<Int, MoveInfo> by lazy { mapOf(
     679 to MoveInfo("Encrypt", 9, 40),
 ) }
 
+// v1.2's moves: v1.0's with these changed (its gBattleMoves).
+internal val moveDataMonomythV1_2: Map<Int, MoveInfo> by lazy { moveDataMonomyth + mapOf(
+    508 to MoveInfo("Liftoff", 0, 150),
+) }
+
 internal val itemNamesMonomyth: Map<Int, String> by lazy { mapOf(
     1 to "Master Ball",
     2 to "Ultra Ball",

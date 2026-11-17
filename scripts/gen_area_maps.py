@@ -28,6 +28,7 @@ FAMILIES = {
     'PK_WIDE_FAMILY_RS_JA': (512, 6, -1),
     'PK_WIDE_FAMILY_EX': (512, 6, -1),
     'PK_WIDE_FAMILY_MM': (512, 6, -1),
+    'PK_WIDE_FAMILY_EX32': (512, 6, -1),
 }
 # pk_wide.h's PK_WIDE_* indexes the generator reads.
 A_MAP_GROUPS, A_XOR, A_METATILE_SIZE, A_METATILE_MASK, A_PRIMARY_OVERRIDE, A_LAYOUT_VERSIONED = 2, 17, 19, 20, 21, 29

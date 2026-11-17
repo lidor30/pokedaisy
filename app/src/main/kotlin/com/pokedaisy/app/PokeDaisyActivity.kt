@@ -454,6 +454,8 @@ class PokeDaisyActivity : Activity() {
         }
     }
     private val quickShown = androidx.compose.runtime.mutableStateOf(com.pokedaisy.app.companion.QuickAction.entries.toSet())
+    /** The QUICK MENU's HEAL done: its animation over the game until it fades ([com.pokedaisy.app.companion.ui.HealedAnimation]). */
+    private val healShow = androidx.compose.runtime.mutableStateOf<com.pokedaisy.app.companion.ui.HealShow?>(null)
     /** The joystick's directions while the QUICK MENU is open, so a new one is a press. */
     private var quickHat = 0
     /** The stick / hat off centre at the QUICK MENU's last motion event; then, once it closed, held from the game until centred. */
@@ -1125,7 +1127,7 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.QuickAction.BIKE, com.pokedaisy.app.companion.QuickAction.ROD -> keyItemsWork()
             com.pokedaisy.app.companion.QuickAction.WILD -> companionSettings.wildEncountersSupported
             com.pokedaisy.app.companion.QuickAction.SAVE_STATE, com.pokedaisy.app.companion.QuickAction.LOAD_STATE,
-            com.pokedaisy.app.companion.QuickAction.FF -> true
+            com.pokedaisy.app.companion.QuickAction.FF, com.pokedaisy.app.companion.QuickAction.TURBO -> true
             // A DS / 3DS game whose touch screen floats in on this layout (the TOUCH SCREEN hotkey's rule).
             com.pokedaisy.app.companion.QuickAction.TOUCH_SCREEN -> dsFloats.value || n3dsFloats
             // One screen held sideways: the companion's window or side panel (upright, it's always open).
@@ -1143,6 +1145,8 @@ class PokeDaisyActivity : Activity() {
         override fun flying() = ::engine.isInitialized && engine.flightState != MgbaCore.FLIGHT_IDLE
 
         override fun wildEncounters() = Prefs(this@PokeDaisyActivity).wildEncounters
+
+        override fun turbo() = input.turboLatch != 0
 
         override fun flashDark(): Boolean? {
             val flash = flashFns() ?: return null
@@ -1163,9 +1167,13 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.QuickAction.PC -> itemUse.openPc { o ->
                 if (o.result != com.pokedaisy.app.companion.data.ItemUseResult.USED) showHud(com.pokedaisy.app.companion.ui.itemUseMessage(o))
             }
-            com.pokedaisy.app.companion.QuickAction.HEAL -> itemUse.centerHeal { r ->
-                showHud(if (r == com.pokedaisy.app.companion.data.CenterResult.OK) com.pokedaisy.app.companion.i18n.tr("Your POKéMON are fully healed.")
-                else com.pokedaisy.app.companion.ui.centerMessage(r, ""))
+            // Asked first in the menu (QuickMenuState.confirm); healed = the party's bars filling up (HealedAnimation).
+            com.pokedaisy.app.companion.QuickAction.HEAL -> {
+                val before = snap.party
+                itemUse.centerHeal { r ->
+                    if (r == com.pokedaisy.app.companion.data.CenterResult.OK) healShow.value = com.pokedaisy.app.companion.ui.HealShow(before)
+                    else showHud(com.pokedaisy.app.companion.ui.centerMessage(r, ""))
+                }
             }
             com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.targets { t ->
                 if (t.result == com.pokedaisy.app.companion.data.FlyResult.OK) quickMenu.fly = t
@@ -1196,6 +1204,11 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.QuickAction.SAVE_STATE -> handleHotkey(Hotkeys.Event(Hotkeys.Action.SAVE_STATE, true))
             com.pokedaisy.app.companion.QuickAction.LOAD_STATE -> handleHotkey(Hotkeys.Event(Hotkeys.Action.LOAD_STATE, true))
             com.pokedaisy.app.companion.QuickAction.FF -> handleHotkey(Hotkeys.Event(Hotkeys.Action.FF_TOGGLE, true))
+            com.pokedaisy.app.companion.QuickAction.TURBO -> {
+                input.turboLatch = if (input.turboLatch != 0) 0 else MgbaCore.Key.A
+                showHud(com.pokedaisy.app.companion.i18n.tr("TURBO A") + ": " +
+                    com.pokedaisy.app.companion.i18n.tr(if (input.turboLatch != 0) "ON" else "OFF"))
+            }
             com.pokedaisy.app.companion.QuickAction.TOUCH_SCREEN -> toggleDsTouch()
             com.pokedaisy.app.companion.QuickAction.COMPANION -> if (::sidePanel.isInitialized) sidePanel.openPanel()
         }
@@ -2289,6 +2302,14 @@ class PokeDaisyActivity : Activity() {
             GbaControls.clearBinding(getExternalFilesDir(null) ?: filesDir, btn)
             input.setControls(GbaControls.load(getExternalFilesDir(null) ?: filesDir))
         }
+        override fun resetGbaControls() {
+            GbaControls.resetBindings(getExternalFilesDir(null) ?: filesDir)
+            input.setControls(GbaControls.load(getExternalFilesDir(null) ?: filesDir))
+        }
+        override fun resetHotkeys() {
+            Hotkeys.resetBindings(getExternalFilesDir(null) ?: filesDir)
+            hotkeys = Hotkeys.load(getExternalFilesDir(null) ?: filesDir)
+        }
         override val buttonGroup get() = if (romIsNds) GbaControls.Group.DS else GbaControls.Group.GBA
         override val hotkeysEnabled get() = hotkeysOn
         override fun setHotkeysEnabled(on: Boolean) {
@@ -2712,6 +2733,8 @@ class PokeDaisyActivity : Activity() {
         view.holdFrame = { ::engine.isInitialized && engine.holdFrame }
         // 1x frames follow the game screen's refresh (EmulatorEngine.onVsync).
         view.onVsync = { if (::engine.isInitialized) engine.onVsync() else 0L }
+        view.showAtSource = { if (::engine.isInitialized) engine.frameShowAt() else 0L }
+        view.vsyncNow = { if (::engine.isInitialized) engine.vsyncNow() else 0L }
         // SHADERS on the companion: its grid at the game's own pixel size, so both screens match.
         view.onGamePixel = CompanionColors::setCell
         // The HUD keeps to the game's picture (ORIGINAL / STRETCH / an overlay); EXPAND = the whole view.
@@ -2948,6 +2971,10 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.data.Black2Redux.matches(r.toOkioPath())) {
             // Blaze Black 2 / Volt White 2 Redux: retail Black 2's / White 2's header, their own zones' rates (from the cart).
             { (com.pokedaisy.app.companion.data.Black2Redux.data ?: com.pokedaisy.app.companion.data.NdsArt.readRedux(r.toOkioPath()))?.wildRateWords() ?: IntArray(0) }
+        } else if (ndsCode == com.pokedaisy.app.companion.data.HeartfeltGold.CODE &&
+            com.pokedaisy.app.companion.data.HeartfeltGold.matches(r.toOkioPath())) {
+            // Heartfelt Gold: the US HeartGold's header, its own maps' rates (from its cart).
+            { (com.pokedaisy.app.companion.data.HeartfeltGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readHeartfelt(r.toOkioPath()))?.wildRates ?: IntArray(0) }
         } else when (ndsCode) {
             "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
@@ -5272,8 +5299,10 @@ class PokeDaisyActivity : Activity() {
                     core = coreFrame.value,
                     clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
                     onWindow = { battlePicking.value = it },
+                    style = battleStyle.value,
                 )
                 com.pokedaisy.app.companion.ui.QuickMenu(quickMenu, snap, quickActions, quickShown.value, hudStyle.value.look)
+                com.pokedaisy.app.companion.ui.HealedAnimation(healShow.value, hudStyle.value.look) { healShow.value = null }
                 // Co-op joined battles: the join prompt, the waits, the notices - over the game, HUD on or off.
                 com.pokedaisy.app.companion.ui.CoopBattleOverlays(coopOverlay)
                 CoopLockLayer()
@@ -5739,6 +5768,7 @@ class PokeDaisyActivity : Activity() {
         // The player's held keys let go in the game (which runs on), and the other way round.
         input.releaseAll()
         bottomHat = 0
+        hatRepeat.stop()
         if (on && ::view.isInitialized) view.camera.let { it.stickX = 0f; it.stickY = 0f }
     }
 
@@ -5792,8 +5822,13 @@ class PokeDaisyActivity : Activity() {
         val pressed = bits and bottomHat.inv()
         bottomHat = bits
         menuKeyFor(pressed)?.let { bottomKeys.key(it) }
+        // Held: it repeats, as a held key does (a hat's axes never do by themselves).
+        hatRepeat.update(bits, pressed) { bit -> if (bottomFocus.value) menuKeyFor(bit)?.let { bottomKeys.key(it, repeat = true) } else hatRepeat.stop() }
         return true
     }
+
+    /** A hat / stick direction held while the buttons steer the companion (the window or the other screen's), repeated. */
+    private val hatRepeat = HatRepeat()
 
     // --- the companion's window (one screen, SidePanel) -----------------------------
 
@@ -5807,6 +5842,7 @@ class PokeDaisyActivity : Activity() {
     private fun onCompanionWindow(open: Boolean) {
         input.releaseAll()
         menuHat = 0
+        hatRepeat.stop()
         if (open) view.camera.let { it.stickX = 0f; it.stickY = 0f }
     }
 
@@ -6014,6 +6050,7 @@ class PokeDaisyActivity : Activity() {
         val pressed = bits and menuHat.inv()
         menuHat = bits
         menuKeyFor(pressed)?.let { sidePanel.menuKey(it) }
+        hatRepeat.update(bits, pressed) { bit -> if (sidePanel.windowOpen) menuKeyFor(bit)?.let { sidePanel.menuKey(it, repeat = true) } else hatRepeat.stop() }
         return true
     }
 

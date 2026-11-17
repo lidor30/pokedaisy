@@ -44,6 +44,9 @@ class SettingRow(
     val label: String, val value: String?, val badge: String? = null, val header: Boolean = false,
     val enabled: Boolean = true, val labelBadge: String? = null,
     val labelIcon: (@Composable () -> Unit)? = null,
+    /** [labelIcon]'s size in GBA pixels, when it isn't a line high (the HUD's / QUICK MENU's 16-pixel icons): the row grows
+     * to fit it. 0 = a line high. */
+    val iconPixels: Int = 0,
     /** A line under the label saying what the row is for (English, translated where it's drawn). */
     val subtitle: String? = null,
     /** Hidden words Settings' search also matches (English, space-separated): the terms players use elsewhere. */
@@ -137,6 +140,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "DS RESOLUTION" to "internal resolution upscale upscaling scale scaling hd high definition sharp sharper crisp 3d render renderer gpu opengl 2x 4x 6x 8x jaggies jagged blurry nintendo ds platinum heartgold soulsilver",
     "DS LAYOUT" to "screen layout screens dual screen two screens bottom screen touch screen touchscreen side by side stacked vertical hybrid picture in picture pip large small single screen one screen floating window popup nintendo ds heartgold soulsilver",
     "SHADERS" to "filter lcd crt scanlines grid gba colors color correction effects screen look smoothing xbr xbrz scalefx upscale hd edges unlit pixel transparency backlight",
+    "COMPANION LOOK" to "skin skins theme style look game heartgold soulsilver platinum black white firered leafgreen emerald ruby sapphire menus colors classic",
     "LIGHT COMPANION" to "lag laggy slow slowdown stutter performance weak device low end battery buttons late input delay unresponsive animations smooth",
     "UNLIT SCREEN" to "pixel transparency transparent backlight backlit no backlight unlit reflective backing shadow drop shadow original gba screen white",
     "SMOOTHING" to "xbr xbrz scalefx upscale upscaler hd edges smooth anti alias filter",
@@ -461,7 +465,9 @@ private fun GroupedRowsList(
     // DESCRIPTIONS hidden ([SettingsLook]): rows go without their grey line.
     val descriptions = SettingsLook.descriptions
     fun subtitleOf(row: SettingRow) = row.subtitle?.takeIf { descriptions }
-    fun heightOf(row: SettingRow) = if (subtitleOf(row) != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA
+    fun heightOf(row: SettingRow) = (if (subtitleOf(row) != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA)
+        // A big icon: its size and a few pixels over and under it.
+        .let { if (row.iconPixels > 0) maxOf(it, m.u * (row.iconPixels + 8)) else it }
     @Composable fun RowAt(i: Int, row: SettingRow) {
         if (row.header && row.featured) {
             val track = if (tops == null) Modifier else Modifier.onGloballyPositioned { tops[i] = it.positionInParent().y.toInt() }
@@ -481,6 +487,7 @@ private fun GroupedRowsList(
                 height = heightOf(row),
                 bottomPadding = if (subtitleOf(row) != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
                 divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
+                labelIconSize = if (row.iconPixels > 0) m.u * row.iconPixels else null,
                 valueBadge = row.badge, enabled = row.enabled, subtitle = subtitleOf(row), labelWeight = row.labelWeight ?: labelWeight,
                 chevron = row.opensPage, slider = row.slider,
                 onFocus = onFocused?.let { f -> { f(i) } },
@@ -615,6 +622,14 @@ fun tipsRow(on: Boolean, set: (Boolean) -> Unit): SettingRow = SettingRow(
     tk("TIPS"), if (on) tk("ON") else tk("OFF"), subtitle = "Now and then, a feature you haven't tried yet",
     labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.TIPS),
 ) { set(!on) }
+
+/** COMPANION LOOK (SCREEN, under THEME, both screens): GAME = the companion and the HUD in the running game's own look
+ * where it has one ([CompanionSkins]), CLASSIC = the app's own in every game. [changed] redraws the page. */
+fun gameLookRow(changed: () -> Unit): SettingRow = SettingRow(
+    tk("COMPANION LOOK"), if (CompanionSkins.enabled) tk("GAME") else tk("CLASSIC"),
+    labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.GAME_LOOK),
+    subtitle = "The game's own style, or the app's classic one",
+) { CompanionSkins.change(!CompanionSkins.enabled); changed() }
 
 /**
  * DISPLAY OPTIONS > LIGHT COMPANION, on both screens ([com.pokedaisy.app.companion.LightCompanion]): AUTO / ON / OFF

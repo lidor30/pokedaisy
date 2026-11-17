@@ -66,6 +66,8 @@ import kotlin.math.floor
  * ([BattleInput.selectMove]), a Pokémon switches in ([BattleInput.switchTo]); RUN is the action menu's (wild battles
  * only).
  *
+ * BATTLE STYLE's GEN 5 draws them all in Black / White's look instead (the pieces in BattleControlsGen5.kt).
+ *
  * PokeDaisyActivity shows it in single battles of games with touch battle input, on one screen held sideways.
  * BattleButtonsScreenshotTest renders it.
  */
@@ -92,6 +94,8 @@ fun BattleButtons(
     /** A window opened / closed (one screen: the side panel's edge tab steps aside for it). */
     onWindow: (Boolean) -> Unit = {},
     initialWindow: BattleButtonsWindow? = null,
+    /** BATTLE STYLE: GEN 5 draws the buttons and lists in Black / White's look (Gen 1 / 2 keep their own). */
+    style: com.pokedaisy.app.companion.BattleStyle = com.pokedaisy.app.companion.BattleStyle.GEN4,
 ) {
     var window by remember { mutableStateOf(initialWindow) }
     val state = snapshot.battleInputState
@@ -118,6 +122,7 @@ fun BattleButtons(
     val m = rememberGbaTextMetrics(1f)
     val u = m.u
     val density = LocalDensity.current
+    val gen5 = style == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons
     BoxWithConstraints(modifier.fillMaxSize()) {
         val boxW = with(density) { maxWidth.toPx() }
         val boxH = with(density) { maxHeight.toPx() }
@@ -150,16 +155,16 @@ fun BattleButtons(
                 // Short buttons (a wide phone's, between the touch controls' rows): its icon the size of the others'.
                 val fightIcon = if (h >= u * (24 + WORD_ROOM)) u * 24 else u * 16
                 ActionButton(
-                    tr("FIGHT"), fightIcon, { HudSpecies(active?.iconAsset, fightIcon) }, FightRed, FightRedDark, m, h,
+                    tr("FIGHT"), fightIcon, { HudSpecies(active?.iconAsset, fightIcon) }, FightRed, FightRedDark, m, h, gen5, Gen5Word.FIGHT,
                     enabled = enabled && moves.isNotEmpty() && (actions || state == BATTLE_INPUT_MOVE_SELECT), pressesGame = false, edge = u * EDGE,
                 ) { window = BattleButtonsWindow.MOVES }
                 ActionButton(
-                    tr("POKéMON"), u * 16, { PixelArt(PixelIcons.pokeBall, POKE_BALL, Modifier.size(u * 16)) }, MonGreen, MonGreenDark, m, h,
+                    tr("POKéMON"), u * 16, { PixelArt(PixelIcons.pokeBall, POKE_BALL, Modifier.size(u * 16)) }, MonGreen, MonGreenDark, m, h, gen5, Gen5Word.POKEMON,
                     enabled = enabled && actions && battleInput?.canSwitch == true && snapshot.party.size > 1,
                     pressesGame = false, edge = u * EDGE,
                 ) { window = BattleButtonsWindow.PARTY }
                 ActionButton(
-                    tr("RUN"), u * 16, { PixelArt(RUN_ICON, RUN_COLORS, Modifier.size(u * 16)) }, RunBlue, RunBlueDark, m, h,
+                    tr("RUN"), u * 16, { PixelArt(RUN_ICON, RUN_COLORS, Modifier.size(u * 16)) }, RunBlue, RunBlueDark, m, h, gen5, Gen5Word.RUN,
                     enabled = enabled && actions && wild, edge = u * EDGE,
                 ) { battleInput?.selectAction(3) }
             }
@@ -167,14 +172,14 @@ fun BattleButtons(
         val close = { window = null }
         // A list down the right side, over the dimmed game (no window behind it), as big as the room allows.
         if (movesIn > 0f) BattleList(movesIn, window == BattleButtonsWindow.MOVES, top, close, MOVE_LIST_W, 4 * MOVE_ROW + 3 * MOVE_GAP + MOVE_ROW * 0.7f) { u2 ->
-            BattleMoveList(moves, battleInput, busy, showHints, u2 * MOVE_LIST_W, u2 * MOVE_ROW, u2 * MOVE_GAP, u2 * EDGE, onCancel = close)
+            BattleMoveList(moves, battleInput, busy, showHints, u2 * MOVE_LIST_W, u2 * MOVE_ROW, u2 * MOVE_GAP, u2 * EDGE, onCancel = close, gen5 = gen5)
         }
         if (partyIn > 0f) {
             val n = snapshot.party.size.coerceAtLeast(1)
             BattleList(partyIn, window == BattleButtonsWindow.PARTY, top, close, PARTY_LIST_W, n * PARTY_ROW + n * PARTY_GAP + PARTY_ROW * 0.7f) { u2 ->
                 BattlePartyList(
                     snapshot.party, snapshot.battleOpponent.getOrNull(0), snapshot.battlePlayer, battleInput, busy, showHints,
-                    u2 * PARTY_LIST_W, u2 * PARTY_ROW, u2 * PARTY_GAP, u2, u2 * EDGE, onBack = close,
+                    u2 * PARTY_LIST_W, u2 * PARTY_ROW, u2 * PARTY_GAP, u2, u2 * EDGE, onBack = close, gen5 = gen5,
                 )
             }
         }
@@ -213,12 +218,18 @@ private const val MAX_BUTTON = 56
 @Composable
 private fun ActionButton(
     label: String, iconH: Dp, icon: @Composable () -> Unit, fill: Color, frame: Color, m: GbaTextMetrics, h: Dp,
+    /** BATTLE STYLE GEN 5: Black / White's plate, the word in [word]'s colours. */
+    gen5: Boolean, word: Gen5Word,
     enabled: Boolean, pressesGame: Boolean = true,
     /** How far it runs past the screen's right edge: its content keeps clear of that part. */
     edge: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
     val u = m.u
+    if (gen5) {
+        Gen5ActionButton(word, label, iconH, icon, u, h, WORD_ROOM, enabled, pressesGame, edge, onClick = onClick)
+        return
+    }
     PlatinumButton(
         fill = fill, frame = frame, modifier = Modifier.fillMaxWidth().height(h),
         enabled = enabled, pressesGame = pressesGame,

@@ -40,6 +40,7 @@
 #include "../../../app/src/main/cpp/pk_host.h"
 #include "../../../app/src/main/cpp/pk_wide.h"
 #include "../../core/pd_games.h"
+#include "../../core/pd_romart.h"
 #include "../../core/pd_settings.h"
 #include "../../core/pd_style.h"
 #include "../../core/pd_gb.h"
@@ -82,6 +83,11 @@ static uint64_t sim_clock(void) {
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
     return (uint64_t) t.tv_sec * 1000000000u + (uint64_t) t.tv_nsec;
+}
+
+static void nuzlocke_path(void* ctx, uint32_t crc, char* path, size_t len) {
+    (void) ctx;
+    snprintf(path, len, "%s/nuzlocke-%08X.txt", outDir, crc);
 }
 
 static void flight_area_path(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len) {
@@ -305,6 +311,33 @@ static void command(char* line) {
     } else if (!strcmp(cmd, "dark")) {
         settings.darkMode = atoi(args) != 0;
         pd_look_apply(&session.game, &settings);
+    } else if (!strcmp(cmd, "gameplay") && sscanf(args, "%d %d %d", &a, &b, &a3) == 3) {
+        // REUSABLE TMS, INSTANT TEXT, TRADE EVOS (as SETTINGS' rows set them).
+        settings.reusableTms = a != 0;
+        settings.instantText = b != 0;
+        settings.tradeEvos = a3 != 0;
+        pd_session_action(&session, PD_ACTION_SETTINGS_CHANGED);
+    } else if (!strcmp(cmd, "tab")) {
+        // A tab by its enum pd_tab (one off the bar, as MORE opens it).
+        session.ui.tab = (enum pd_tab) atoi(args);
+        session.ui.overlay = PD_OVERLAY_NONE;
+        session.redraw = true;
+    } else if (!strcmp(cmd, "nuzlocke")) {
+        // NUZLOCKE on / off for this game (SETTINGS' row).
+        pd_session_action(&session, PD_ACTION_NUZLOCKE_TOGGLE);
+    } else if (!strcmp(cmd, "scenespeed") && sscanf(args, "%d %d", &a, &b) == 2 && a >= 0 && a < PD_SCENES) {
+        settings.sceneSpeed[a] = b;
+    } else if (!strcmp(cmd, "options")) {
+        // The game patches and the trade evolutions: found, in, and what EVOLVE would do for each party slot.
+        printf("options: tms %d (%s) text %d (%s) tradeevo %d evolveTo %d %d %d %d %d %d nuzlocke %d/%d enc %d mons %d\n",
+               session.tmCount, session.tmApplied ? "in" : "out", session.textCount, session.textApplied ? "in" : "out",
+               session.tradeEvoOk, session.host.evolveTo[0], session.host.evolveTo[1], session.host.evolveTo[2],
+               session.host.evolveTo[3], session.host.evolveTo[4], session.host.evolveTo[5], session.nuzSupported, session.nuzOn,
+               session.nuz.run.encCount, session.nuz.run.monCount);
+    } else if (!strcmp(cmd, "charging")) {
+        // charging 0|1: the battery's bolt
+        session.host.charging = atoi(args) != 0;
+        session.redraw = true;
     } else if (!strcmp(cmd, "gen5")) {
         settings.battleGen5 = atoi(args) != 0;
     } else if (!strcmp(cmd, "noinfo")) {
@@ -373,6 +406,34 @@ static void command(char* line) {
             bare = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
         }
         printf("timeframes: %.1f us a session frame, %.1f us a bare runFrame, %.1f us undrawn\n", us, core, bare);
+    } else if (!strcmp(cmd, "trace")) {
+        // trace N [KEYS]: N frames as the console's loop runs them (a tick, then the companion's redraw when it asks for
+        // one), each printed with what it cost on this host in us: the tick, its game / EXPAND / snapshot parts, the
+        // redraw, and EXPAND's scene. Only lines over the threshold (PD_TRACE_US, default 0) are printed.
+        char keys[64] = "";
+        int n = 0;
+        sscanf(args, "%d %63s", &n, keys);
+        uint32_t held = keys[0] ? parse_keys(keys) : 0;
+        const char* env = getenv("PD_TRACE_US");
+        double floorUs = env ? atof(env) : 0;
+        for (int i = 0; i < n; i++) {
+            struct pd_session_prof before = session.prof;
+            uint64_t t0 = sim_clock();
+            frames(1, held);
+            uint64_t t1 = sim_clock();
+            bool drew = session.redraw;
+            if (drew) {
+                redraw();
+                session.redraw = false;
+            }
+            uint64_t t2 = sim_clock();
+            double tick = (t1 - t0) / 1e3, draw = (t2 - t1) / 1e3;
+            if (tick + draw < floorUs) continue;
+            printf("trace %d tick %.0f (run %.0f wide %.0f snap %.0f) draw %.0f%s scene %d tab %d\n", i, tick,
+                   (session.prof.run - before.run) / 1e3, (session.prof.wide - before.wide) / 1e3,
+                   (session.prof.snap - before.snap) / 1e3, draw, drew ? "" : " (none)",
+                   session.wideKnown ? pk_wide_scene() : -1, (int) session.ui.tab);
+        }
     } else if (!strcmp(cmd, "bench")) {
         // The companion's draw, timed: N redraws of what's up now (a host's cost, not a 3DS's: compare screens with it).
         int n = atoi(args) > 0 ? atoi(args) : 200;
@@ -475,7 +536,9 @@ static void command(char* line) {
             for (int k = 0; k < ww * wh; k++) h = (h ^ (filled[k] & 0xFFFFFF)) * 16777619u;
             int fdx = 0, fdy = 0;
             pk_wide_flight_offset(&fdx, &fdy);
-            printf("wide %d %08X %dx%d glide %d,%d\n", i, h, ww, wh, fdx, fdy);
+            int sh = 0, sv = 0;
+            pk_wide_bg2_scroll(session.core, &sh, &sv);
+            printf("wide %d %08X %dx%d glide %d,%d scroll %d,%d\n", i, h, ww, wh, fdx, fdy, sh, sv);
         }
     } else if (!strcmp(cmd, "signpos")) {
         // signpos N [KEYS]: N frames, where the area sign's white box is in each composed top-screen picture (its first
@@ -695,9 +758,11 @@ int main(int argc, char** argv) {
         core->reset(core);
     }
     pk_heal_rtc(core);
-    struct pd_session_host files = { .statePath = state_path, .backupSave = no_backup, .flightAreaPath = flight_area_path,
+    struct pd_session_host files = { .statePath = state_path, .backupSave = no_backup, .flightAreaPath = flight_area_path, .nuzlockePath = nuzlocke_path,
                                      .clock = sim_clock };
     session.host.batteryPct = 76;
+    // PD_ROMART_DIR: keep / read the ROM art's offsets there, as the 3DS does (pd_romart_cache_dir).
+    if (getenv("PD_ROMART_DIR")) pd_romart_cache_dir(getenv("PD_ROMART_DIR"));
     pd_session_start(&session, core, video, &settings, &files);
     printf("%s (%s rev %d): %s\n", session.game.title, session.game.code, session.game.revision,
            session.game.cfg ? "supported" : session.game.unsupported);

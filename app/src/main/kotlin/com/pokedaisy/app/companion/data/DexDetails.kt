@@ -48,6 +48,10 @@ enum class EvoScheme {
     /** pokeemerald-expansion 1.12+ (TMT2, Heart and Soul, SoulGold): EVO_LEVEL / TRADE / ITEM / ...
      * plus a list of {condition, arg1, arg2, arg3} (IF_GENDER, IF_TIME, IF_HOLD_ITEM, ...). */
     EXPANSION_PARAMS,
+    /** Pokémon Epsilon Emerald: [EXPANSION]'s 1-30 (read off its GetEvolutionTargetSpecies' jump table, 0x088900E0), then its
+     * own 31 = a level-up holding item [param] (KOFFING + SWEET TEA) and 33 = critical hits (its FARFETCH'D form); its 32
+     * isn't on the level-up path (HAPPINY's second OVAL STONE row, beside a 21). Rows are 6 bytes {method, param, target}. */
+    EPSILON_EMERALD,
     /** Recharged Yellow: vanilla's, plus 16 = use item [param] (its LINKING CORD) while holding the
      * row's 4th u16 - the trade-with-an-item evolutions (POLIWHIRL + KING'S ROCK, ONIX + METAL COAT). */
     RECHARGED_YELLOW,
@@ -56,7 +60,7 @@ enum class EvoScheme {
 /**
  * Where a game keeps its evolutions for the DEX's EVOLVE section, when it isn't
  * [PokedexTables.evolutions]' vanilla table: a species-indexed [table] of
- * [perMon] 8-byte rows {method, param, target, extra}, or (table 0) a list per
+ * [perMon] [record]-byte rows {method, param, target, extra} (6-byte rows have no extra), or (table 0) a list per
  * species from gSpeciesInfo ([SpeciesInfoDex.evolutionsOff]) of [record]-byte
  * entries ending at method 0xFFFF - 12 bytes once a params pointer follows,
  * whose lists end at [conditionsEnd] (the enum grew with releases).
@@ -251,13 +255,14 @@ object DexDetails {
         val layout = t.evoLayout ?: if (t.evolutions != 0L) EvoLayout(EvoScheme.VANILLA, table = t.evolutions) else return null
         val out = HashMap<Int, List<EvoLink>>()
         if (layout.table != 0L) {
-            val row = 8
+            val row = layout.record
             val raw = rd(layout.table, t.speciesCount * layout.perMon * row)
             for (s in 1 until t.speciesCount) {
                 val links = (0 until layout.perMon).mapNotNull { i ->
                     val o = (s * layout.perMon + i) * row
                     val m = u16le(raw, o)
-                    if (m == 0) null else link(s, layout.scheme, m, u16le(raw, o + 2), u16le(raw, o + 4), u16le(raw, o + 6), t)
+                    val extra = if (row >= 8) u16le(raw, o + 6) else 0
+                    if (m == 0) null else link(s, layout.scheme, m, u16le(raw, o + 2), u16le(raw, o + 4), extra, t)
                 }.distinct()
                 if (links.isNotEmpty()) out[s] = knownFirst(links)
             }
@@ -341,6 +346,12 @@ object DexDetails {
             EvoScheme.ROWE -> if (m <= 31) expansion(m, p) else null
             EvoScheme.MONOMYTH -> vanilla(m, p) ?: if (m in setOf(23, 25, 27, 32)) expansion(m, p) else null
             EvoScheme.EXPANSION_PARAMS -> null
+            EvoScheme.EPSILON_EMERALD -> when (m) {
+                in 1..30 -> expansion(m, p)
+                31 -> listOf(EvoReq.LevelUp, EvoReq.Hold(p))
+                33 -> listOf(EvoReq.Crits(p))
+                else -> null
+            }
             EvoScheme.RECHARGED_YELLOW -> vanilla(m, p) ?: if (m == 16) listOf(EvoReq.UseItem(p), EvoReq.Hold(extra)) else null
         } ?: listOf(EvoReq.Special)
         return EvoLink(from, target, reqs)

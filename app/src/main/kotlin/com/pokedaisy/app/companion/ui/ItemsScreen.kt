@@ -624,6 +624,19 @@ private val RedBlueBag = YellowBag.copy(
     backdrop = Color(0xFFFFEFFF) to Color(0xFFFFEFFF),
 )
 
+/**
+ * Pokémon Brown: its ITEM window in pure black on white, its own text box frame - black, cream, green, black (the game's
+ * are two pixels each of cream and green; its party screen's colours, sampled headless; over the field the frame takes the
+ * map's two middle colours), a pixel each here so the pocket tabs keep their room.
+ */
+private val BrownBag = YellowBag.copy(
+    panelLayers = listOf(Color.Black to 1, Color(0xFFF7D67B) to 1, Color(0xFF4AA55A) to 1, Color.Black to 1, Color.White to 1),
+    tabLayerCount = 4,
+    text = Color.Black, tabText = Color.Black, tabUnderline = Color.Black,
+    descLayers = listOf(Color.Black to 1, Color(0xFFF7D67B) to 1, Color(0xFF4AA55A) to 1, Color.Black to 1),
+    descText = Color.Black, iconBoxEdge = Color.Black,
+)
+
 /** PureRed / PureBlue (on a Color, headless): Yellow's ITEM window in pure black on white. */
 private val PureRgbBag = YellowBag.copy(
     panelLayers = listOf(Color.Black to 1, Color.White to 1, Color.Black to 1, Color.White to 1),
@@ -767,6 +780,7 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.SOULGOLD -> SoulGoldBag
     GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowBag
     GameKind.RED, GameKind.BLUE -> RedBlueBag
+    GameKind.BROWN -> BrownBag
     GameKind.PURE_RED, GameKind.PURE_BLUE -> PureRgbBag
     // Gold's and Silver's PACK is Crystal's, pixel for pixel (sampled headless in both).
     GameKind.CRYSTAL, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY -> CrystalBag

@@ -76,6 +76,9 @@ struct pd_library_host {
     void (*cache_changed)(void* ctx);    // write pd_library_cache_write's text
     const char* version;                 // SETTINGS > APP
     const char* devLine;                 // the dev build's link address, else NULL
+    // A name typed on the console's keyboard (the 3DS's swkbd): [initial] shown first, at most [max] characters. false =
+    // cancelled, or no keyboard (the editor's names then can't be changed).
+    bool (*edit_text)(void* ctx, const char* hint, const char* initial, int max, char* out, size_t outLen);
 };
 
 enum pd_library_page { PD_PAGE_GAMES, PD_PAGE_EDITOR, PD_PAGE_TRADE, PD_PAGE_SETTINGS, PD_PAGE_COUNT };
@@ -93,6 +96,7 @@ struct pd_library {
     struct pd_library_game games[PD_LIBRARY_MAX];
     int count;
     int batteryPct;  // the console's battery, -1 = unknown (the host sets it; every page's title shows it)
+    bool charging;   // ... charging: a bolt by it
     struct pd_settings* settings;
     const struct pd_library_host* host;
     int page;       // enum pd_library_page

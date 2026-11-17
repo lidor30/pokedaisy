@@ -12,8 +12,8 @@ plugins {
     id("app.cash.paparazzi") version "1.3.5" apply false
     // Crash reports (opt-in, off by default): applied by app/ only when its
     // google-services.json is there - see CrashReports.kt.
-    id("com.google.gms.google-services") version "4.4.2" apply false
-    id("com.google.firebase.crashlytics") version "3.0.2" apply false
+    id("com.google.gms.google-services") version "4.4.4" apply false
+    id("com.google.firebase.crashlytics") version "3.0.8" apply false
 }
 
 // The companion's data / i18n tests that also use the app's own classes: they compile with the app, the rest

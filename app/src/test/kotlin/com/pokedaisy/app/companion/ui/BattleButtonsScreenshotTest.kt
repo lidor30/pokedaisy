@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import app.cash.paparazzi.DeviceConfig
+import com.pokedaisy.app.companion.BattleStyle
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.ScreenOrientation
 import com.pokedaisy.app.companion.BattleInput
@@ -67,6 +68,15 @@ class BattleButtonsScreenshotTest {
     @Test fun moveWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.MOVES) }
 
     @Test fun partyWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.PARTY) }
+
+    /** BATTLE STYLE GEN 5: the buttons and both lists in Black / White's look. */
+    @Test fun gen5() = paparazzi.snapshot { BattleScene(style = BattleStyle.GEN5) }
+
+    @Test fun gen5MoveWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.MOVES, style = BattleStyle.GEN5) }
+
+    @Test fun gen5PartyWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.PARTY, style = BattleStyle.GEN5) }
+
+    @Test fun gen5Original() = paparazzi.snapshot { BattleScene(expand = false, style = BattleStyle.GEN5) }
 
     @Test fun dark() {
         com.pokedaisy.app.companion.ui.theme.DarkMode.override = true
@@ -129,6 +139,12 @@ class BattleButtonsCloseUpScreenshotTest {
 
     @Test fun partyWindow() = paparazzi.snapshot { Right { BattleScene(window = BattleButtonsWindow.PARTY) } }
 
+    @Test fun gen5() = paparazzi.snapshot { Right { BattleScene(style = BattleStyle.GEN5) } }
+
+    @Test fun gen5MoveWindow() = paparazzi.snapshot { Right { BattleScene(window = BattleButtonsWindow.MOVES, style = BattleStyle.GEN5) } }
+
+    @Test fun gen5PartyWindow() = paparazzi.snapshot { Right { BattleScene(window = BattleButtonsWindow.PARTY, style = BattleStyle.GEN5) } }
+
     @Composable
     private fun Right(content: @Composable () -> Unit) {
         val px = LocalDensity.current
@@ -170,6 +186,7 @@ internal fun BattleScene(
     width: Int = 1920,
     clearTop: Int = 0,
     clearBottom: Int = 0,
+    style: BattleStyle = BattleStyle.GEN4,
 ) {
     val left = (width - 1620) / 2f
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -177,7 +194,7 @@ internal fun BattleScene(
         BattleButtons(
             snap, shown = true, BattleButtonsScreenshotTest.input, showHints = true,
             core = if (expand) null else Rect(left, 0f, left + 1620f, 1080f),
-            initialWindow = window, clearTop = clearTop, clearBottom = clearBottom,
+            initialWindow = window, clearTop = clearTop, clearBottom = clearBottom, style = style,
         )
     }
 }

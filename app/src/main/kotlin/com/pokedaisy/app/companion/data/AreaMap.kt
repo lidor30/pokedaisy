@@ -25,16 +25,31 @@ object AreaMap {
     data class MapId(val group: Int, val num: Int)
 
     /** One map of an area: its size in metatiles, the floor the header says (null = none), the label its chip shows. */
-    data class Floor(val id: MapId, val width: Int, val height: Int, val floorNum: Int?, val label: String)
+    data class Floor(val id: MapId, val width: Int, val height: Int, val floorNum: Int?, val label: String) {
+        /**
+         * Big enough to need a map: at least two screens across (30 metatiles) or down (20), or more than three screens
+         * of room (450). The line, from every indoor map of FireRed and Emerald: a Pokémon Center (15 x 10, Indigo
+         * Plateau's 25 x 18), a mart, a house, a department store floor (19 x 16), a museum or lab hall (28 x 11) and the
+         * small gyms stay under it; caves, hideouts, Silph Co.'s floors (36 x 22), Pokémon Tower (24 x 20), the ship's
+         * decks and the puzzle gyms (Fuchsia's 15 x 23, Saffron's 29 x 25, Sootopolis's 17 x 26) are over it.
+         */
+        val large: Boolean get() = width >= 2 * SCREEN_W || height >= 2 * SCREEN_H || width * height > 3 * SCREEN_W * SCREEN_H
+    }
 
     /** The maps of the area around [here], in the order their chips go (lowest floor first). */
     class Area(val here: MapId, val mapsec: Int, val floors: List<Floor>) {
         fun indexOf(id: MapId) = floors.indexOfFirst { it.id == id }
 
-        /** Worth a map of its own: more than one floor, or a map bigger than the screen (15 x 10 metatiles). A plain
-         * Pokémon Center or a one-room house keeps the region map. */
+        /** Worth a map of its own: one of its floors is [Floor.large]. A Pokémon Center, a mart, a house or a department
+         * store keeps the region map, however many floors it has. */
         val worthShowing: Boolean
-            get() = floors.size > 1 || floors.any { it.width > SCREEN_W || it.height > SCREEN_H }
+            get() = floors.any { it.large }
+
+        /** The AREA map is what [id]'s floor opens on: the place is [worthShowing] and the floor bigger than the screen
+         * (Silph Co.'s 10F, 17 x 19, with the rest of the building). A room of a screen or less (a ship's cabin, an
+         * elevator, a cave's stair room) opens on the region map, the AREA map a button away. */
+        fun opensOn(id: MapId): Boolean =
+            worthShowing && floors.getOrNull(indexOf(id))?.let { it.width > SCREEN_W || it.height > SCREEN_H } == true
     }
 
     internal class MapInfo(
@@ -213,6 +228,25 @@ object AreaMap {
         img
     }.getOrNull()
 
+    /**
+     * [img] [f] times smaller, each pixel the average of its f x f block (the HUD minimap's floor: a metatile 4 pixels, so
+     * a GBA pixel each and nothing dropped, as a nearest-neighbour shrink would). A block mostly see-through stays so.
+     */
+    fun shrink(img: RomArt.Image, f: Int): RomArt.Image {
+        val out = RomArt.Image(maxOf(1, img.width / f), maxOf(1, img.height / f))
+        for (oy in 0 until out.height) for (ox in 0 until out.width) {
+            var r = 0; var g = 0; var b = 0; var n = 0
+            for (y in oy * f until oy * f + f) for (x in ox * f until ox * f + f) {
+                val c = img.argb[y * img.width + x]
+                if (c ushr 24 == 0) continue
+                r += (c shr 16) and 0xFF; g += (c shr 8) and 0xFF; b += c and 0xFF; n++
+            }
+            if (n * 2 < f * f) continue
+            out.argb[oy * out.width + ox] = (0xFF shl 24) or ((r / n) shl 16) or ((g / n) shl 8) or (b / n)
+        }
+        return out
+    }
+
     private class Tileset(val tiles: ByteArray, val palettes: ByteArray, val metatiles: ByteArray)
 
     /** A layout's grid, [w] x [h] u16s: raw, or LZ77 when its header says so with exactly that size (Monomyth packs its
@@ -331,6 +365,8 @@ object AreaMaps {
     private val areas = LockedMap<AreaMap.MapId, Optional<AreaMap.Area>>()
     /** The pictures, newest last: at most [KEEP_IMAGES] (a big cave floor is ~5 MB), the oldest dropped. */
     private val images = LinkedHashMap<AreaMap.MapId, Optional<RomArt.Image>>()
+    /** The HUD minimap's pictures ([AreaMap.shrink], a sixteenth of the size), as many. */
+    private val minis = LinkedHashMap<AreaMap.MapId, Optional<RomArt.Image>>()
     private const val KEEP_IMAGES = 16
 
     private class Optional<T>(val value: T?)
@@ -346,6 +382,7 @@ object AreaMaps {
                 checked = t
                 areas.clear()
                 images.clear()
+                minis.clear()
             }
             return t.takeIf { ok }
         }
@@ -353,6 +390,7 @@ object AreaMaps {
 
     fun cachedArea(id: AreaMap.MapId): AreaMap.Area? = areas[id]?.value
     fun cachedImage(id: AreaMap.MapId): RomArt.Image? = synchronized(lock) { images[id]?.value }
+    fun cachedMiniImage(id: AreaMap.MapId): RomArt.Image? = synchronized(lock) { minis[id]?.value }
 
     /** The area [id] is in, or null (outdoors, no tables). Every map of it gets the same answer from then on. */
     fun area(id: AreaMap.MapId): AreaMap.Area? {
@@ -374,8 +412,22 @@ object AreaMaps {
         return img
     }
 
+    /** [image] at a quarter of each side: a metatile [MINI_SCALE] pixels, for the HUD minimap. */
+    fun miniImage(id: AreaMap.MapId): RomArt.Image? {
+        synchronized(lock) { minis[id]?.let { return it.value } }
+        val mini = image(id)?.let { AreaMap.shrink(it, 16 / MINI_SCALE) }
+        synchronized(lock) {
+            minis[id] = Optional(mini)
+            while (minis.size > KEEP_IMAGES) minis.remove(minis.keys.first())
+        }
+        return mini
+    }
+
+    /** A metatile's pixels in [miniImage]. */
+    const val MINI_SCALE = 4
+
     /** [PokedexSource.romChanged]. */
     fun romChanged() {
-        synchronized(lock) { checked = null; ok = false; areas.clear(); images.clear() }
+        synchronized(lock) { checked = null; ok = false; areas.clear(); images.clear(); minis.clear() }
     }
 }

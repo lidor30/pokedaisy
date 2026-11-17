@@ -1,5 +1,6 @@
 #include "pd_style.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include "pd_games.h"
@@ -119,6 +120,36 @@ void pd_look_apply(const struct pd_game* g, const struct pd_settings* s) {
 
 int pd_title_box(struct pd_canvas* c, int x, int y, int w, int h, uint32_t fill) {
     return pd_layered_box(c, x, y, w, h, 3, pd_cur->title, pd_cur->titleCount, fill);
+}
+
+static const uint16_t BOLT[7] = { 0x18, 0x0C, 0x06, 0x1F, 0x0C, 0x06, 0x03 }; // bit 0 = left, 5 wide
+
+int pd_battery_width(int pct, bool charging) {
+    char text[16];
+    snprintf(text, sizeof text, "%d%%", pct > 100 ? 100 : pct < 0 ? 0 : pct);
+    return 24 + pd_text_width(text) + (charging ? 8 : 0);
+}
+
+void pd_battery_draw(struct pd_canvas* c, int end, int ty, int pct, bool charging) {
+    if (pct < 0) return;
+    if (pct > 100) pct = 100;
+    char text[8];
+    snprintf(text, sizeof text, "%d%%", pct);
+    int x = end - pd_battery_width(pct, charging);
+    if (charging) {
+        pd_bitmap(c, x + 1, ty + 6, BOLT, 7, 0x1E6A1E); // a darker copy a pixel down-right: the text's shadow
+        pd_bitmap(c, x, ty + 5, BOLT, 7, 0x40B840);
+        x += 8;
+    }
+    pd_fill(c, x, ty + 5, 18, 8, PD_TITLE_TEXT);
+    pd_fill(c, x + 1, ty + 6, 16, 6, PD_TITLE_FILL);
+    pd_fill(c, x + 2, ty + 7, 14 * pct / 100, 4, charging ? 0x40B840 : pct <= 15 ? PD_VALUE : PD_TITLE_TEXT);
+    pd_fill(c, x + 18, ty + 7, 2, 4, PD_TITLE_TEXT);
+    pd_text(c, end - pd_text_width(text), ty, text, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+}
+
+void pd_row_divider(struct pd_canvas* c, int x, int y, int w) {
+    if (pd_font_size_small()) pd_fill(c, x, y, w, 1, pd_mix(PD_LIST_FILL, PD_DIVIDER, 150));
 }
 
 int pd_list_box(struct pd_canvas* c, int x, int y, int w, int h) {

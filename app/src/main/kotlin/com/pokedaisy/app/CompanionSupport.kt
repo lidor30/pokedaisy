@@ -74,6 +74,28 @@ object CompanionSupport {
             com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, rev, size) { RomArchive.open(rom).source() } != null
     }
 
+    /**
+     * An unsupported ROM that is still a Pokémon game (GitHub #943: a player's Game Boy hacks, spin-offs and patched DS
+     * hacks never showed up from their linked folders): its file name says so, or its header's title does (a GBA
+     * cart's at 0xA0, a Game Boy one's at 0x134, a DS one's at 0). The library lists these as NOT SUPPORTED, playable as
+     * any game; anything else in a linked folder (a whole frontend's other games) stays out. Header reads only.
+     */
+    fun looksPokemon(rom: File): Boolean {
+        if (POKEMON_NAME.containsMatchIn(rom.name)) return true
+        val title = when {
+            RomIdentity.isGameBoy(rom) -> RomArchive.readAt(rom, 0x134L, 16)
+            RomIdentity.isNds(rom) -> RomArchive.readAt(rom, 0x0L, 12)
+            else -> RomArchive.readAt(rom, 0xA0L, 12)
+        }?.let { String(it, Charsets.US_ASCII).uppercase() } ?: return false
+        return POKEMON_TITLES.any { title.startsWith(it) }
+    }
+
+    private val POKEMON_NAME = Regex("pok[eé]mon|pocket monsters", RegexOption.IGNORE_CASE)
+
+    /** Header titles of Pokémon carts: the main games and their hacks (POKEMON ..., Crystal's PM_CRYSTAL), the card games
+     * (POKECARD), Mystery Dungeon (POKEDUN). */
+    private val POKEMON_TITLES = listOf("POKEMON", "PM_", "POKECARD", "POKEDUN", "POKE DUN")
+
     /** [rom] is a game its makers asked PokéDaisy not to read ([com.pokedaisy.app.companion.data.BlockedGames]), by its
      * SHA-1. Only a GBA cart's file is hashed here (a cheap header look first); blocking. */
     fun blocked(rom: File): com.pokedaisy.app.companion.data.BlockedGame? {
