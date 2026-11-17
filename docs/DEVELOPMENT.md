@@ -2059,8 +2059,10 @@ only keeps a 256x256 ring of tiles in VRAM (`field_camera.c`), so the rest would
   (mGBA's transform), and screen-space sprites (not following the camera) wrap like OAM's 9 / 8-bit positions.
   Blending and brightness are done on the widened 8-bit colour, as mGBA's 32-bit renderer does, so they round alike.
 - **Weather** is screen-space sprites (`GFXTAG_*` 0x1201-0x1206: fog, ash, sandstorm, bubbles, rain) laid only over the
-  game's 240 px - fog / ash / sandstorm as 64 px grids, rain at random - so each is drawn again 256 px either way, in
-  the margins only: it goes on seamlessly however wide the screen.
+  game's 240 x 160 - fog / ash / sandstorm as 64 px grids, rain at random - so each is drawn again 256 px each way
+  (sideways, up and down, and diagonally: ZOOM shows past the frame's top and bottom too; GitHub #607, Route 113's ash
+  stopped 32 px over the frame zoomed out), in the margins only: it goes on seamlessly however wide the view. The
+  sprite list holds 512 pieces for the copies.
 - **The sweep** (both games, `mgba_dump` with BG0 off so text boxes and popups don't count): warp in with the game's
   own `warp` script command (`0x39 group num warpId x y`), walk a loop with `widecheck` on. Pixel-exact on every map
   frame in towns, forests, lit and Flash-dark caves, gyms, fog (Lost Cave), shade (Berry Forest, Abandoned Ship),
