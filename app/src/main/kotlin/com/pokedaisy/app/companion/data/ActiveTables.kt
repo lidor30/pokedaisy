@@ -29,7 +29,7 @@ import kotlin.concurrent.Volatile
 // ROM-extracted tables (*Hns.kt / *Lazarus.kt, scripts/gen_expansion_tables.py).
 enum class GameKind { FIRERED, EMERALD, UNBOUND, GAIA, RADICAL_RED, ODYSSEY, HEART_AND_SOUL, LAZARUS, ROWE, EMERALD_ROGUE, AMETHYST, EMERALD_SEAGLASS, CELIA, TMT2, SOULGOLD, YELLOW, GLAZED, IMPERIUM, QUETZAL, ORANGE_ISLANDS, RECHARGED_YELLOW, MARIOMON, SWORD_SHIELD, GS_CHRONICLES, CRYSTAL, CRYSTAL_CLEAR, PRISM,
     GOLD, SILVER, RED, BLUE, ELITE_REDUX, POLISHED_CRYSTAL, PLATINUM, HEARTGOLD, SOULSILVER, TEAM_ROCKET, BLACK, WHITE, BLACK2, WHITE2,
-    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY, BROWN, RHYTHM,
+    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY, BROWN, RHYTHM, OOPS_ALL_EEVEES,
     /** A 3DS game (docs/3DS_GAMES_PLAN.md): its companion reads Azahar's memory, PARTY and BAG so far. Y is X's code
      * with its own version's Pokemon ([isXy]: everything else the same). */
     POKEMON_X, POKEMON_Y }
@@ -318,9 +318,11 @@ private inline val frHack get() = runningFireRedHack ?: runningEmeraldHack ?: ru
 private inline val gsChronicles get() = activeGame == GameKind.GS_CHRONICLES
 // Pokémon Rhythm: Vedeo on CFRU, its own names (gen_cfru_tables.py rhythm).
 private inline val rhythm get() = activeGame == GameKind.RHYTHM
+// Pokémon Oops All Eevees!: Kanto on CFRU, every species an Eevee form (gen_cfru_tables.py oops_all_eevees).
+private inline val oopsAllEevees get() = activeGame == GameKind.OOPS_ALL_EEVEES
 // CFRU-family hacks with CFRU's own type ids (Fairy = 23, as in Unbound) -
 // checked in each ROM's base stats (CLEFAIRY is 23/23).
-private inline val cfruTypes get() = radicalRed || amethyst || gaia || swordShield || gsChronicles || rhythm
+private inline val cfruTypes get() = radicalRed || amethyst || gaia || swordShield || gsChronicles || rhythm || oopsAllEevees
 // Hacks confirmed to store species as the plain National Dex number (see
 // SpeciesNamesNationalDex.kt) rather than vanilla's internal Gen3 index.
 private inline val nationalDexSpecies get() =
@@ -388,6 +390,7 @@ val activeSpeciesNames: Map<Int, String> get() = localText?.species ?: when {
     swordShield -> speciesNamesSwordShield
     gsChronicles -> speciesNamesGsChronicles
     rhythm -> speciesNamesRhythm
+    oopsAllEevees -> speciesNamesOopsAllEevees
     rechargedYellow -> speciesNamesRechargedYellow
     mariomon -> if (mariomonV13) speciesNamesMariomonV13 else speciesNamesMariomon
     eliteRedux -> if (eliteRedux265_3) speciesNamesEliteRedux265_3 else speciesNamesEliteRedux
@@ -430,6 +433,7 @@ val activeMoveData: Map<Int, MoveInfo> get() = localText?.moveData ?: when {
     swordShield -> moveDataSwordShield
     gsChronicles -> moveDataGsChronicles
     rhythm -> moveDataRhythm
+    oopsAllEevees -> moveDataOopsAllEevees
     rechargedYellow -> moveDataRechargedYellow
     mariomon -> if (mariomonV13) moveDataMariomonV13 else moveDataMariomon
     amethyst -> moveDataAmethyst   // both versions' (GitHub #96: past Gen 3's 354 they read "Move#N")
@@ -473,6 +477,7 @@ val activeItemNames: Map<Int, String> get() = localText?.items ?: when {
     swordShield -> itemNamesSwordShield
     gsChronicles -> itemNamesGsChronicles
     rhythm -> itemNamesRhythm
+    oopsAllEevees -> itemNamesOopsAllEevees
     rechargedYellow -> itemNamesRechargedYellow
     mariomon -> itemNamesMariomon
     eliteRedux -> if (eliteRedux265_3) itemNamesEliteRedux265_3 else itemNamesEliteRedux
@@ -514,6 +519,7 @@ val activeSpeciesTypeData: Map<Int, SpeciesTypes> get() = when {
     swordShield -> speciesTypeDataSwordShield
     gsChronicles -> speciesTypeDataGsChronicles
     rhythm -> speciesTypeDataRhythm
+    oopsAllEevees -> speciesTypeDataOopsAllEevees
     mariomon -> if (mariomonV13) speciesTypeDataMariomonV13 else speciesTypeDataMariomon
     emeraldLegacy -> speciesTypeDataEmeraldLegacy
     eliteRedux -> if (eliteRedux265_3) speciesTypeDataEliteRedux265_3 else speciesTypeDataEliteRedux
@@ -630,6 +636,7 @@ val activeMapSecData: Map<Int, MapSecInfo> get() = localText?.mapSecData ?: when
     // Johto and Kanto, renamed in place over FireRed's sections; its map is drawn from the ROM (RomRegionMap).
     gsChronicles -> mapSecDataGsChronicles
     rhythm -> mapSecDataRhythm
+    oopsAllEevees -> mapSecDataOopsAllEevees
     rechargedYellow -> mapSecDataRechargedYellow
     mariomon -> if (mariomonV13) mapSecDataMariomonV13 else mapSecDataMariomon
     // Emerald's Hoenn sections and rects (and its own few past them), on Emerald's map.
@@ -755,7 +762,7 @@ val activeRegionMapImages: Array<String> get() = when {
     // Its own world map (Emerald's region_map.c, its art: RomArt's MM_REGION_*), the same in every release.
     mariomon -> regionMapImagesMariomon
     // Their own maps (the Orange Archipelago, Galar), drawn from the ROM (RomRegionMap) - none bundled.
-    orangeIslands || swordShield || gsChronicles || rhythm || frHack?.ownRegionMap == true -> emptyArray()
+    orangeIslands || swordShield || gsChronicles || rhythm || oopsAllEevees || frHack?.ownRegionMap == true -> emptyArray()
     // Team Rocket Edition: Dragonsden's Kanto / Sevii / Johto maps aren't read yet in v1.5 - the MAP tab names the place;
     // the 2026 rebuild's seven are drawn from its ROM (RomArt's TR3_*).
     teamRocket -> if (teamRocketV3) regionMapImagesTeamRocketV3 else emptyArray()
@@ -839,6 +846,7 @@ fun GameKind.displayName(): String = when (this) {
     GameKind.SWORD_SHIELD -> "Sword and Shield Ultimate Plus"
     GameKind.GS_CHRONICLES -> "Pokémon GS Chronicles"
     GameKind.RHYTHM -> "Pokémon Rhythm"
+    GameKind.OOPS_ALL_EEVEES -> "Pokémon Oops All Eevees!"
     GameKind.ELITE_REDUX -> "Pokémon Elite Redux"
     GameKind.TEAM_ROCKET -> "Pokémon Team Rocket Edition: Dragonsden Version"
     GameKind.WISHES -> "Pokémon Wishes of Tomorrow"

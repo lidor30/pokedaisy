@@ -84,6 +84,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Glazed | 9.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁷ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | — ³⁶ |
 | Rhythm | 1.4.0 | — | ✅ | ✅ ⁴⁴ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
+| Oops All Eevees! | 1.3.2 | — | ✅ | ✅ ⁴⁵ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ | ✅ |
 | Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ |
 | Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ |
@@ -688,6 +689,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
 44. Rhythm (1.4.0, a CFRU hack; 2026-11-18): FireRed rev 0's RAM on a new game played headless (it deletes retail FireRed's
     save). A written move cell + A used that move, so one-press picks are on; the switch, field items, FLY, EXPAND and the
     rest weren't mapped yet.
+45. Oops All Eevees! (1.3.2, a CFRU hack with DPE; 2026-11-18): FireRed rev 0's RAM on a new game played headless (it deletes
+    retail FireRed's save). A written move cell + A used that move, so one-press picks are on; the switch, field items, FLY,
+    EXPAND and the rest weren't mapped yet.
 
 ## What each column is
 

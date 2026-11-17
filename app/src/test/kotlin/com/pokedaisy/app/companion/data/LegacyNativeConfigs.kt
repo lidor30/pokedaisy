@@ -2181,3 +2181,13 @@ val LEGACY_NATIVE_MARIOMON_V1_2_1 = LEGACY_NATIVE_MARIOMON_V1_2_2.copy(
     pokedex = POKEDEX_MARIOMON_V1_2_1,
     guideTables = GUIDE_TABLES_MARIOMON_V1_2_1,
 )
+
+// Pokémon Oops All Eevees! v1.3.2: CFRU on FireRed rev 0, its icon tables and gItems repointed, FireRed's battle cursors.
+val LEGACY_NATIVE_OOPS_ALL_EEVEES = LEGACY_NATIVE_FIRERED_REV0.copy(
+    itemDescs = vanillaItems(0x093C0000L),
+    monIconTable = 0x099B7180L,
+    monIconPaletteIndices = 0x099B6C8CL,
+    itemIconTable = 0x093C8100L,
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
+)

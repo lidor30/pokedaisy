@@ -45,6 +45,12 @@ class RomRegionMapTest {
         assertEquals("Notewood Town", m.sections[0x58]!!.name)
     }
 
+    /** Oops All Eevees: Kanto, CFRU's FireRed 1.0 region map code. */
+    @Test fun oopsAllEeveesHasKanto() {
+        val m = read("Pokemon Oops All Eevees (v1.3.2).gba")
+        assertEquals("Pallet Town", m.sections[0x58]!!.name)
+    }
+
     @Test fun unboundHasBorrius() {
         val m = read("Pokemon Unbound (v2.1.1.1).gba")
         assertEquals(1, m.images.size) // every region slot is Borrius

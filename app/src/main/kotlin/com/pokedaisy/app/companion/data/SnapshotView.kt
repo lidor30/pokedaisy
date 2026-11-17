@@ -623,7 +623,7 @@ fun isVanillaEgg(species: Int): Boolean =
     species == SPECIES_EGG_VANILLA && !emeraldLegacy && when (activeGame) {
         GameKind.FIRERED, GameKind.EMERALD,
         GameKind.UNBOUND, GameKind.RADICAL_RED, GameKind.ODYSSEY, GameKind.AMETHYST, GameKind.ORANGE_ISLANDS,
-        GameKind.SWORD_SHIELD, GameKind.RECHARGED_YELLOW, GameKind.GS_CHRONICLES, GameKind.RHYTHM -> true
+        GameKind.SWORD_SHIELD, GameKind.RECHARGED_YELLOW, GameKind.GS_CHRONICLES, GameKind.RHYTHM, GameKind.OOPS_ALL_EEVEES -> true
         else -> false
     }
 

@@ -178,6 +178,7 @@ def tileset(r, a):
     comp = r.u8(a)
     t = r.u32(a + 4)
     if comp:
+        if not r.ok(t): return 0     # a pointer past the ROM's end (no tileset there)
         size = r.lz77_size(t)
         if size is None and r.u8(t) & 0xF in range(1, 7):
             size = (r.u32(t) >> 4 & 0x3FFF) * 4

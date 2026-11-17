@@ -996,6 +996,7 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
         GameKind.SWORD_SHIELD -> genderRatiosSwordShield
         GameKind.GS_CHRONICLES -> genderRatiosGsChronicles
         GameKind.RHYTHM -> genderRatiosRhythm
+        GameKind.OOPS_ALL_EEVEES -> genderRatiosOopsAllEevees
         GameKind.MARIOMON -> if (mariomonV13) genderRatiosMariomonV13 else genderRatiosMariomon
         GameKind.ELITE_REDUX -> genderRatiosEliteRedux
         GameKind.TEAM_ROCKET -> if (teamRocketV3) genderRatiosTeamRocketV3 else genderRatiosTeamRocket

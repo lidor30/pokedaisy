@@ -4125,6 +4125,23 @@ val NATIVE_ODYSSEY = NATIVE_FIRERED_REV0.copy(
     moveCursor = 0x02023FFCL,
 )
 
+// ---- gamedata/gen3/hacks/oops_all_eevees.toml ----
+
+// Pokémon Oops All Eevees! v1.3.2 Alpha (kddao16; 32 MB, the author's BPS over FireRed 1.0 rev 0, sha1 4234507f…): Kanto on
+// CFRU with DPE, every species an Eevee form. FireRed rev 0's RAM, checked on a new game played headless (it deletes retail
+// FireRed's save; `oops_all_eevees`: the intro, then the game's own givemon / additem through rev 0's ScriptContext_SetupScript,
+// saved in game). Its tables through FireRed 1.0's literal pools (gen_cfru_tables.py oops_all_eevees); the icon tables likewise:
+// gMonIconTable 0x099B7180, gMonIconPaletteIndices 0x099B6C8C, sItemIconTable 0x093C8100. The battle menus' cursors are
+// FireRed's (a written cell + A, headless: `oops_all_eevees_battle`). Kanto's map, drawn from the ROM (RomRegionMap).
+val NATIVE_OOPS_ALL_EEVEES = NATIVE_FIRERED_REV0.copy(
+    itemDescs = vanillaItems(0x093C0000L),
+    monIconTable = 0x099B7180L,
+    monIconPaletteIndices = 0x099B6C8CL,
+    itemIconTable = 0x093C8100L,
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
+)
+
 // ---- gamedata/gen3/hacks/orange_islands.toml ----
 
 // Pokémon Orange Islands (BPRE rev 0, 16 MB, sha1 8bac897d…; Beta 5.7 d2e3800e… differs from it

@@ -572,6 +572,7 @@ class TelemetrySampler {
                 -> { kind = GameKind.SWORD_SHIELD; nativeCfg = NATIVE_SWORD_SHIELD }
                 GS_CHRONICLES_V2_7_6_SHA1 -> { kind = GameKind.GS_CHRONICLES; nativeCfg = NATIVE_GS_CHRONICLES }
                 RHYTHM_V1_4_0_SHA1 -> { kind = GameKind.RHYTHM; nativeCfg = NATIVE_RHYTHM; ramVerified = true }
+                OOPS_ALL_EEVEES_V1_3_2_SHA1 -> { kind = GameKind.OOPS_ALL_EEVEES; nativeCfg = NATIVE_OOPS_ALL_EEVEES; ramVerified = true }
                 else -> {
                     kind = GameKind.FIRERED
                     unsupportedRom(reader, code, size, hash, "unrecognized FireRed-based ROM hack " +
@@ -1163,6 +1164,9 @@ class TelemetrySampler {
         // Pokémon Rhythm v1.4.0 (Hackdex's xdelta over FireRed 1.0): Vedeo on CFRU, 32 MB.
         const val RHYTHM_V1_4_0_SHA1 = "b0d6b91356ee4d4c8f8c70020fe0352c391a12e2"
 
+        // Pokémon Oops All Eevees! v1.3.2 Alpha (the author's BPS over FireRed 1.0): Kanto on CFRU, 32 MB.
+        const val OOPS_ALL_EEVEES_V1_3_2_SHA1 = "4234507f92101a322aa5c0518a6aa1f1fe807832"
+
         // Pokémon Elysium v2.5.0 (Hackdex's BPS patches over FireRed 1.0), its two parts: FireRed 1.0 edited in place, 16 MB.
         const val ELYSIUM_V2_5_0_A_SHA1 = "d2440fd6bae5a12dfc3cecc129b9bbff22d74b2e"
         const val ELYSIUM_V2_5_0_B_SHA1 = "71bf40178a1f5c69dc1c22099623434ba1e74318"
@@ -1378,7 +1382,7 @@ class TelemetrySampler {
             FIRERED_ROCKET_EDITION_UNVERSIONED_SHA1, ASH_GRAY_V4_5_3_SHA1, ASH_GRAY_FORK_BUG_FIX_V1_0_SHA1,
             GHOST_GREY_V1_0_1_SHA1, GHOST_GREY_V1_0_2_SHA1, GHOST_GREY_V1_0_4_SHA1,
             LETS_GO_PIKACHU_UNVERSIONED_SHA1, LETS_GO_PIKACHU_TRANSLATION_ONLY_UNVERSIONED_SHA1, CLOVER_V1_3_3_SHA1,
-            ELYSIUM_V2_5_0_A_SHA1, ELYSIUM_V2_5_0_B_SHA1, RHYTHM_V1_4_0_SHA1,
+            ELYSIUM_V2_5_0_A_SHA1, ELYSIUM_V2_5_0_B_SHA1, RHYTHM_V1_4_0_SHA1, OOPS_ALL_EEVEES_V1_3_2_SHA1,
             LETS_GO_EEVEE_UNVERSIONED_SHA1, LETS_GO_EEVEE_TRANSLATION_ONLY_UNVERSIONED_SHA1,
             ELITE_REDUX_V2_65_3B_SHA1, ELITE_REDUX_V2_65_4_1B_SHA1, TEAM_ROCKET_DRAGONSDEN_V1_5_SHA1,
             TEAM_ROCKET_2026_V3_0_9_ES_SHA1, TEAM_ROCKET_2026_V3_1_ES_SHA1,
