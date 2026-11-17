@@ -693,6 +693,8 @@ static bool run_game(const char* file) {
             game_failed("The game didn't start (gpSP):", error);
             return true;
         }
+        // Its renderer asked for a core and didn't get it: why (gpSP 3D's video_thread_sys.c, a 64 KiB stack).
+        if (emuHost.threaded && !pd_gpsp_threaded()) host_log_thread_failure("gpSP's renderer", emuHost.renderCore, 64 * 1024);
         core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
         host_log("game: running on %s; heap %lu KiB free", pd_gpsp_recompiling() ? "gpSP's recompiler" : "gpSP's INTERPRETER",
                  (unsigned long) host_heap_free() >> 10);
@@ -1459,6 +1461,9 @@ int main(void) {
     host_log("PokeDaisy: %s, heap %lu KiB free", host_is_new_3ds() ? "New 3DS" : host_old_3ds_stand_in() ? "New 3DS playing an Old 3DS" : "3DS",
              (unsigned long) host_heap_free() >> 10);
     host_log("screens drawn on core %d", gpu_draw_core() >= 0 ? gpu_draw_core() : 0);
+    host_core1_log();
+    // An Old 3DS whose draw thread didn't get the system core: why, now that the log is open.
+    if (!host_is_new_3ds() && gpu_draw_core() < 0) host_log_thread_failure("the screens' draw thread", 1, GPU_DRAW_STACK);
     {
         char report[256];
         host_memory_report(report, sizeof report);

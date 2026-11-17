@@ -24,6 +24,10 @@ bool host_old_3ds_stand_in(void);
 // to the system (30%) while the app is in the background. False when the system refused.
 #define HOST_CORE1_PERCENT 80
 bool host_core1_take(unsigned percent);
+// Core 1's time as the app asked for it and as the system has it, into the log (taken before the log opens).
+void host_core1_log(void);
+// Why a thread [who] couldn't start on [core]: the system's own answer to the same request, into the log.
+void host_log_thread_failure(const char* who, int core, size_t stack);
 size_t host_heap_free(void);
 // The cartridge buffer every game uses, reserved once at start (host_rom_arena_init, before anything else is allocated,
 // so a 32 MB game always finds it): mGBA's romBuffer for a Game Boy game, armGBA's offered ROM for a GBA one
