@@ -196,6 +196,15 @@ int main(void) {
     assert(back.aspect==PD_ASPECT_ZOOM_OUT && !back.autoZoom && back.ffSpeed==settings.ffSpeed);
     FILE* old=fopen(path,"w");fputs("screen=1\nff=3\nguide=0\n",old);fclose(old);
     assert(pd_settings_load(&back,path) && back.aspect==PD_ASPECT_ORIGINAL && back.autoZoom && back.ffSpeed==3);
+    // A second save over the first is read back (1.6.0's 3DS kept the first file forever), and the Old 3DS's switch too.
+    settings.darkMode=true;settings.theme=3;settings.expandOff=true;assert(pd_settings_save(&settings,path));
+    settings.theme=5;assert(pd_settings_save(&settings,path));
+    assert(pd_settings_load(&back,path) && back.darkMode && back.theme==5 && back.expandOff);
+    // Cut off between the 3DS's remove and rename: the .tmp is read.
+    char tmpPath[64];snprintf(tmpPath,sizeof tmpPath,"%s.tmp",path);
+    remove(tmpPath);assert(rename(path,tmpPath)==0);
+    assert(pd_settings_load(&back,path) && back.theme==5);
+    remove(tmpPath);settings.darkMode=false;settings.theme=0;settings.expandOff=false;
     remove(path);
     // PARTY at a Linux canvas size: Android's slot, edge to edge, three columns past 2:1 (426x240's tab).
     // The selected look (orange outline) follows the host's D-pad focus, else slot 0; empty slots are

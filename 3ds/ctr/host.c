@@ -29,18 +29,89 @@ void userAppInit(void) {
 
 #define ROM_ARENA (32u << 20) // the GBA's whole cartridge space
 static uint8_t* romArena;
+static size_t heapAtStart; // free before the arena was asked for (host_memory_report)
 
 bool host_rom_arena_init(void) {
+    heapAtStart = host_heap_free();
     romArena = malloc(ROM_ARENA);
     romBuffer = (uint32_t*) romArena;
     romBufferSize = romArena ? ROM_ARENA : 0;
     return romArena != NULL;
 }
 
+static size_t romUsed; // what the last game asked of the arena (host_rom_arena)
+
 void* host_rom_arena(size_t size) {
     if (!romArena || size > ROM_ARENA) return NULL;
     memset(romArena, 0, size);
+    romUsed = size;
     return romArena;
+}
+
+// armGBA's code memory from the arena's end, past what the game uses (linked with --wrap=jitHostAllocCode,
+// ctr/CMakeLists.txt; armGBA's jitmem.c is otherwise as it is). Its jitHostFreeCode is inlined into jitDeinit by LTO, so a
+// wrap of it never runs: main.c gives the memory back itself after the core is gone (host_lent_code_release); jitmem.c's
+// own free does nothing to it (its codeProtected and heapCode are its heap's). In the 80 MB mode (every CIA, every
+// Old 3DS) the heap past the 32 MB arena couldn't hold the recompiler's code and what it allocates as it compiles: armGBA
+// either didn't start or ran the heap dry mid-game (a memcpy to NULL in compileInStretch, 2026-11-17). A 16 MB game leaves
+// ~16 MB of the arena unused: the code goes there, made read-write-execute as jitmem.c does it, read-write again when the
+// game closes. A 32 MB game leaves none and gets the heap's, as before.
+#define LENT_CODE_MIN (4u << 20) // jitmem.c's HEAP_CODE_MIN
+static uint8_t* lentCode;
+static size_t lentSize;
+static Handle selfHandle;
+
+void* __real_jitHostAllocCode(size_t* size);
+bool isEmulator(void); // armGBA's 3DS code
+
+void* __wrap_jitHostAllocCode(size_t* size) {
+    host_lent_code_release(); // a load that failed before main.c could
+    uintptr_t from = ((uintptr_t) romArena + romUsed + 0xFFF) & ~(uintptr_t) 0xFFF;
+    uintptr_t to = ((uintptr_t) romArena + ROM_ARENA) & ~(uintptr_t) 0xFFF;
+    size_t spare = romArena && romUsed && to > from ? to - from : 0;
+    if (spare > *size) spare = *size & ~(size_t) 0xFFF;
+    if (!lentCode && spare >= LENT_CODE_MIN && !isEmulator()) {
+        if (!selfHandle && R_FAILED(svcDuplicateHandle(&selfHandle, CUR_PROCESS_HANDLE))) selfHandle = 0;
+        Result rc = selfHandle ? svcControlProcessMemory(selfHandle, (u32) from, 0, spare, MEMOP_PROT,
+                                                         MEMPERM_READ | MEMPERM_WRITE | MEMPERM_EXECUTE)
+                               : -1;
+        if (R_SUCCEEDED(rc)) {
+            lentCode = (uint8_t*) from;
+            lentSize = spare;
+            *size = spare;
+            host_log("jit: %u KiB of code memory from the game buffer's unused end", (unsigned) (spare >> 10));
+            return lentCode;
+        }
+        host_log("jit: the game buffer's end couldn't be made executable (%08lX): code memory from the heap", (unsigned long) rc);
+    }
+    return __real_jitHostAllocCode(size);
+}
+
+void host_lent_code_release(void) {
+    if (!lentCode) return;
+    Result rc = svcControlProcessMemory(selfHandle, (u32) lentCode, 0, lentSize, MEMOP_PROT, MEMPERM_READ | MEMPERM_WRITE);
+    host_log("jit: the game buffer's end back to read-write: %08lX", (unsigned long) rc);
+    lentCode = NULL;
+    lentSize = 0;
+}
+
+bool host_rom_arena_ready(void) {
+    return romArena != NULL;
+}
+
+extern char __bss_start__[], __bss_end__[]; // 3dsx.ld's
+extern u32 __ctru_heap_size, __ctru_linear_heap_size; // set below (__system_allocateHeaps)
+
+void host_memory_report(char* out, size_t len) {
+    // osGetApplicationMemType: 0 / 2-5 an Old 3DS's 64 / 96 / 80 / 72 / 32 MB modes, 6-8 a New 3DS's 124 / 178 MB.
+    snprintf(out, len, "%s, %s, app memory %lu KiB (mode %lu), heap %lu KiB, linear %lu KiB (%lu free), statics %lu KiB, "
+             "heap free at start %lu KiB, now %lu KiB",
+             host_is_new_3ds() ? "New 3DS" : "3DS", envIsHomebrew() ? "3dsx" : "CIA",
+             (unsigned long) osGetMemRegionSize(MEMREGION_APPLICATION) >> 10, (unsigned long) osGetApplicationMemType(),
+             (unsigned long) __ctru_heap_size >> 10, (unsigned long) __ctru_linear_heap_size >> 10,
+             (unsigned long) linearSpaceFree() >> 10,
+             (unsigned long) (__bss_end__ - __bss_start__) >> 10, (unsigned long) heapAtStart >> 10,
+             (unsigned long) host_heap_free() >> 10);
 }
 
 // Linked with --wrap=free (ctr/CMakeLists.txt): the arena is never given back.
@@ -54,7 +125,11 @@ void __wrap_free(void* p) {
 // gets what the screens' textures, the frames in flight, the sound and a Game Boy game's mGBA machine need, and the heap
 // the rest, as far as its address range goes (asked for more, the allocation fails and the app stops before main:
 // armGBA-3DS's finding on a New 3DS).
-#define LINEAR_WANTED (12u << 20)
+// 8 MB: measured on a New 3DS (2026-11-17, Monomyth with EXPAND, pdlink stat's linear_free), the app uses ~5.3 MB of it, the
+// same in the library and in a game (everything is allocated at start); a Game Boy game adds mGBA's machine (its RAM, under
+// 1 MB). It was 12 MB: in the 80 MB mode (every CIA) that left armGBA too little heap past the 32 MB game buffer to start
+// its recompiler, and on the 3DS armGBA doesn't start without it.
+#define LINEAR_WANTED (8u << 20)
 extern char* fake_heap_start;
 extern char* fake_heap_end;
 extern u32 __ctru_heap, __ctru_linear_heap; // libctru's; the sizes are weak there

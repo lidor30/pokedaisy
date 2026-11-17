@@ -96,6 +96,7 @@ struct pd_settings {
     bool battleGen5;  // BATTLE STYLE: GEN 5 (Black / White's touch screen); off = GEN 4
     bool noBattleInfo;    // BATTLE INFO off: the battle buttons alone, no INFO / SUGGESTIONS or move ratings
     bool battleInfoFirst; // BATTLE VIEW: INFO; off = BUTTONS (what the BATTLE tab opens on)
+    bool expandOff;       // the one-time switch from 1.6.0's EXPAND to SHARP 1.5x done (1.6.1; ctr/main.c): a later pick stays
     bool flyClassic;      // FLY STYLE: CLASSIC (the game's own FLY); off = SCENIC, flown over the field where the game can
     bool flightAnywhere;  // FLIGHT AREA: ANYWHERE; off = VISITED, the app's WHERE YOU'VE BEEN (only the maps this save has seen)
     int flightVehicle;    // FLY ON: linux/flight.h's enum flight_vehicle (0 the game's bird)

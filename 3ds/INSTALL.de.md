@@ -115,6 +115,7 @@ Lade die neuere `pokedaisy.3dsx` herunter und kopiere sie über die alte in `sdm
 - **PokeDaisy fehlt im Homebrew Launcher:** Die Datei muss in `sdmc:/3ds/` liegen und auf `.3dsx` enden.
 - **Ein Spiel fehlt in der Liste:** Es muss direkt in `sdmc:/pokedaisy/roms/` liegen, nicht in einem Ordner darin und nicht gepackt.
 - **Meine Speicherdatei wurde nicht geladen:** Sie braucht genau den Namen des Spiels mit `.sav` am Ende. Jeder Start kopiert die Speicherdatei zuerst nach `sdmc:/pokedaisy/roms/pokedaisy-backups/`, also liegt dort eine ältere Kopie, falls du sie brauchst.
-- **Es läuft langsam:** Ein älterer 3DS oder 2DS ist langsamer als die New-Modelle. Stelle in den `SETTINGS` der Bibliothek `SCREEN` auf `PIXEL 1x`, den leichtesten Modus. Bei einem GBA-Spiel kannst du in der Bibliothek auch `X` drücken und einen anderen `GBA CORE` ausprobieren: `GPSP` ist ein experimenteller, gedacht für den älteren 3DS.
+- **Es läuft langsam:** Ein älterer 3DS oder 2DS ist langsamer als die New-Modelle. Stelle in den `SETTINGS` der Bibliothek `SCREEN` auf `PIXEL 1x`, den leichtesten Modus. Bei einem GBA-Spiel kannst du in der Bibliothek auch `X` drücken und einen anderen `GBA CORE` ausprobieren: `GPSP` ist ein experimenteller, gedacht für den älteren 3DS. Spiele starten ohne EXPAND, das ist leichter. `EXPAND 1.5x` findest du in den `SETTINGS` der Bibliothek.
+- **Das Spiel startet nicht:** Der obere Bildschirm zeigt den Grund und danach den Speicher deines 3DS. Wenn du uns schreibst, mach ein Foto der ganzen Meldung oder hänge `sdmc:/pokedaisy/log.txt` an.
 
 Kommst du nicht weiter? [Sag uns Bescheid](https://pokedaisy.com/de/feedback/#bug) und hänge `sdmc:/pokedaisy/log.txt` an.
