@@ -116,7 +116,7 @@ endif()
 # citro2d draws the screens (gpu.c); citro3d and libctru come with libmgba too.
 target_link_libraries(pokedaisy.elf pd_armgba pd_gpsp mgba citro2d citro3d ctru z m)
 pd_mgba_renames(pokedaisy.elf)
-target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3 -Wl,--wrap=free -Wl,--wrap=jitHostAllocCode)
+target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3 -Wl,--wrap=free -Wl,--wrap=jitHostAllocCode -Wl,--wrap=svcCreateThread)
 
 if(PD_DEV)
     set(PD_TITLE "PokeDaisy [DEV]")

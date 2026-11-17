@@ -721,12 +721,13 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
     s->host.itemCanGive = pd_items_can_give;
 
     START_MARK("items+boxes");
-    // What the companion shows: read once now (RAM still blank: an empty party), then every PD_SNAPSHOT_EVERY frames.
+    // What the companion shows: read once now, then on its wall-time schedule.
     pd_snapshot_read(&s->shown, &s->game, pd_session_read, s);
     START_MARK("snapshot");
 #undef START_MARK
     s->shown.frame = 0;
     s->frame = 0;
+    pd_refresh_mark(&s->snapshotTimer, s->companionMs);
     s->redraw = true;
 }
 
@@ -958,8 +959,12 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
         pk_rest_note(s->core);
         pd_mixer_frame(s->core);
     }
-    if (s->fieldKnown)
+    bool battleTransition = false;
+    if (s->fieldKnown) {
+        int oldFlags = s->fieldFlags;
         s->fieldFlags = pk_field_state(s->core, s->settings->runIndoors, s->wildSwitch && s->settings->wildOff ? 0 : 100);
+        battleTransition = ((oldFlags ^ s->fieldFlags) & PK_FIELD_BATTLE) != 0;
+    }
     s->framePending = last;
     if (s->flightCfg) {
         // FREE FLIGHT's next step, then its shadow and bird into the finished frame (before EXPAND reads it).
@@ -991,10 +996,22 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
         pd_boxes_read(&s->boxes, &s->game, pd_session_read, s, s->ui.boxShown);
         if (memcmp(&before, &s->boxes, sizeof(before))) s->redraw = true;
     }
-    if ((stateChanged || s->frame % PD_SNAPSHOT_EVERY == 0) && (s->game.kind == PD_GAME_GB || (s->ewram && s->iwram))) {
+    bool urgent = stateChanged || battleTransition || s->snapshotRequested;
+    bool displayRead = s->files.companionIntervalMs
+        ? pd_refresh_due(&s->snapshotTimer, s->companionMs, s->files.companionIntervalMs, urgent)
+        : urgent || s->frame % PD_SNAPSHOT_EVERY == 0;
+    bool trackingRead = s->nuzOn && s->nuzSupported && s->frame % PD_SNAPSHOT_EVERY == 0;
+    if ((displayRead || trackingRead) && (s->game.kind == PD_GAME_GB || (s->ewram && s->iwram))) {
         pd_snapshot_read(&s->snap, &s->game, pd_session_read, s);
+        if (trackingRead || stateChanged || battleTransition || !s->nuzOn) nuz_feed(s);
+        if (!displayRead) {
+            if (s->files.clock) s->prof.snap += s->files.clock() - wideEnd;
+            return;
+        }
+        pd_refresh_mark(&s->snapshotTimer, s->companionMs);
+        s->snapshotRequested = false;
+        if (stateChanged || battleTransition) s->redrawUrgent = true;
         pd_ui_update(&s->ui, &s->snap);
-        nuz_feed(s);
         // Only a change the companion shows is worth a redraw (not the frame counter).
         s->snap.frame = 0;
         if (memcmp(&s->snap, &s->shown, sizeof(s->snap))) {
@@ -1837,6 +1854,7 @@ static void overlay_update(struct pd_session* s) {
 }
 
 void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned ms) {
+    s->companionMs += ms;
     quick_items(s);
     bool menuWasOpen = s->quickOpen;
     if (in->quickMenu) {
@@ -1901,6 +1919,7 @@ void pd_session_draw(struct pd_session* s, struct pd_canvas* bottom) {
     }
     pd_ui_draw(&s->ui, bottom, &s->game, &s->shown, &s->host);
     s->redraw = false;
+    s->redrawUrgent = false;
 }
 
 bool pd_session_action(struct pd_session* s, enum pd_action action) {

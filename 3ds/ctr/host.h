@@ -9,7 +9,8 @@
 void host_log_open(const char* path);
 void host_log(const char* format, ...) __attribute__((format(printf, 1, 2)));
 void host_log_close(void);
-// While a game runs, the lines wait in memory (no SD card writes mid-game) until hold(false), HOME, sleep or a full buffer.
+// While a game runs, lines wait in RAM until hold(false), HOME or sleep.
+// A full buffer drops its oldest lines rather than writing during gameplay.
 void host_log_hold(bool hold);
 void host_log_flush(void);
 // pd_armgba_host.log.

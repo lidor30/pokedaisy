@@ -6,6 +6,7 @@
 #define GPU_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define GPU_GAME_STRIDE 240 // the game buffer's row length in pixels
@@ -28,6 +29,9 @@ void gpu_set_bars(uint32_t rgb);
 uint32_t* gpu_frame_done(void);
 // The core's picture size: 240 x 160, a Game Boy's 160 x 144.
 void gpu_set_game_size(int w, int h);
+// Optional RGB565 frame; copied before returning when drawing asynchronously.
+void gpu_set_native_pixels(const uint16_t* px, size_t stride);
+unsigned gpu_native_frames(void);
 // New canvases (0xRRGGBB): the bottom screen's 320x240, the top's 400x240.
 void gpu_set_bottom(const uint32_t* px);
 void gpu_set_top(const uint32_t* px);

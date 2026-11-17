@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "../core/pd_ui.h"
+#include "../core/pd_pixels.h"
 #include "host.h"
 
 #define GBA_W 240
@@ -59,6 +60,8 @@ struct draw_job {
     const uint32_t* bottom;
     const uint32_t* top;
     const uint32_t* overlay;
+    const uint16_t* nativePx;
+    size_t nativeStride;
 };
 #define DRAW_STACK GPU_DRAW_STACK
 static Thread drawThread;
@@ -74,6 +77,9 @@ static uint32_t* stageGame;
 static uint32_t* stageBottom;
 static uint32_t* stageTop;
 static uint32_t* stageOverlay;
+static const uint16_t* pendingNative;
+static size_t pendingNativeStride;
+static volatile unsigned nativeFrames;
 static aptHookCookie drawHook;
 static volatile unsigned framesShown;
 
@@ -195,15 +201,7 @@ uint32_t* gpu_frame_done(void) {
 
 // A 0xRRGGBB canvas into an RGB565 texture.
 static void write_canvas(C3D_Tex* tex, const uint32_t* px, int w, int h) {
-    uint16_t* t = tex->data;
-    for (int y = 0; y < h; y++) {
-        const uint32_t* row = px + y * w;
-        for (int x = 0; x < w; x++) {
-            uint32_t p = row[x];
-            t[tiled((u32) x, (u32) y, tex->width)] =
-                (uint16_t) (((p >> 19) & 0x1F) << 11 | ((p >> 10) & 0x3F) << 5 | ((p >> 3) & 0x1F));
-        }
-    }
+    pd_pixels_canvas(tex->data, tex->width, px, (unsigned) w, (unsigned) h);
     GSPGPU_FlushDataCache(tex->data, tex->size);
 }
 
@@ -314,12 +312,7 @@ void gpu_set_perf(const uint32_t* px, int x, int y, int w) {
 }
 
 static void write_perf(const uint32_t* px) {
-    uint32_t* t = perfTex.data;
-    for (int y = 0; y < 16; y++)
-        for (int x = 0; x < 128; x++) {
-            uint32_t p = px[y * 128 + x];
-            t[tiled((u32) x, (u32) y, perfTex.width)] = (p & 0xFF000000) >> 24 | (p & 0xFF) << 8 | (p & 0xFF00) << 8 | (p & 0xFF0000) << 8;
-        }
+    pd_pixels_overlay(perfTex.data, perfTex.width, px, 128, 16);
     GSPGPU_FlushDataCache(perfTex.data, perfTex.size);
 }
 
@@ -330,14 +323,7 @@ void gpu_show_overlay(bool shown, bool dim) {
 
 // 0xAARRGGBB into the RGBA8 texture (the GPU reads its bytes A, B, G, R).
 static void write_overlay(const uint32_t* px) {
-    uint32_t* t = overlayTex.data;
-    for (int y = 0; y < TOP_H; y++) {
-        const uint32_t* row = px + y * TOP_W;
-        for (int x = 0; x < TOP_W; x++) {
-            uint32_t p = row[x];
-            t[tiled((u32) x, (u32) y, overlayTex.width)] = (p & 0xFF000000) >> 24 | (p & 0xFF) << 8 | (p & 0xFF00) << 8 | (p & 0xFF0000) << 8;
-        }
-    }
+    pd_pixels_overlay(overlayTex.data, overlayTex.width, px, TOP_W, TOP_H);
     GSPGPU_FlushDataCache(overlayTex.data, overlayTex.size);
 }
 
@@ -347,6 +333,15 @@ static int gameW = GBA_W, gameH = GBA_H;
 void gpu_set_game_size(int w, int h) {
     gameW = w;
     gameH = h;
+}
+
+void gpu_set_native_pixels(const uint16_t* px, size_t stride) {
+    pendingNative = px;
+    pendingNativeStride = stride;
+}
+
+unsigned gpu_native_frames(void) {
+    return nativeFrames;
 }
 
 void gpu_hold_game(bool hold) {
@@ -368,6 +363,12 @@ static void run_job(const struct draw_job* j, bool threaded) {
         if (widePx) {
             gpu_wide_join();
             write_tiles(&wideTex[texSide], widePx, wideW, wideH, wideW, &j->hole, gamePx);
+        } else if (j->nativePx) {
+            pd_pixels_native(gameTex[texSide].data, gameTex[texSide].width, j->nativePx,
+                             (unsigned) j->nativeStride, (unsigned) gameW, (unsigned) gameH);
+            u32 used = (u32) ((gameH + 7) / 8) * (gameTex[texSide].width >> 3) * 128;
+            GSPGPU_FlushDataCache(gameTex[texSide].data, used);
+            nativeFrames++;
         } else {
             write_tiles(&gameTex[texSide], gamePx, gameW, gameH, GPU_GAME_STRIDE, &NO_HOLE, NULL);
         }
@@ -542,8 +543,12 @@ static void draw_thread_start(void) {
 
 void gpu_draw(bool game, int screenMode) {
     struct draw_job next = { game, screenMode, holdGame, overlayShown, overlayDim, perfX, perfY, perfW, false, gameW, gameH, shownBuf,
-                             widePx, wideW, wideH, wideHole, pendingBottom, pendingTop, pendingOverlay };
+                             widePx, wideW, wideH, wideHole, pendingBottom, pendingTop, pendingOverlay,
+                             pendingNative, pendingNativeStride };
     pendingBottom = pendingTop = pendingOverlay = NULL;
+    pendingNative = NULL;
+    if (!game || holdGame || widePx || gameW != GBA_W || gameH != GBA_H || next.nativeStride < GBA_W)
+        next.nativePx = NULL;
     if (!drawThread) {
         next.perfNew = perfPending;
         if (perfPending) memcpy(stagePerf, perfPx, sizeof(stagePerf));
@@ -552,12 +557,24 @@ void gpu_draw(bool game, int screenMode) {
         return;
     }
     LightEvent_Wait(&stageFree);
+    if (next.nativePx) {
+        if (stageGame) {
+            // The previous job has consumed this stage. A native image uses
+            // half its capacity; no additional Old3DS RAM is needed.
+            uint16_t* nativeStage = (uint16_t*) stageGame;
+            pd_pixels_stage_native(nativeStage, next.nativePx, (unsigned) next.nativeStride, GBA_W, GBA_H);
+            next.nativePx = nativeStage;
+            next.nativeStride = GBA_W;
+        } else {
+            next.nativePx = NULL;
+        }
+    }
     next.perfNew = perfPending;
     if (perfPending) memcpy(stagePerf, perfPx, sizeof(stagePerf));
     perfPending = false;
     // No copies of a frame the next one won't touch: the game's other buffer, the session's other window (wideFrames).
     if (!gameDoubled) {
-        if (game && !holdGame && (!widePx || wideHole.w)) memcpy(stageGame, gameBuf, GPU_GAME_STRIDE * (size_t) gameH * sizeof(uint32_t));
+        if (game && !holdGame && !next.nativePx && (!widePx || wideHole.w)) memcpy(stageGame, gameBuf, GPU_GAME_STRIDE * (size_t) gameH * sizeof(uint32_t));
         next.gamePx = stageGame;
     }
     if (next.bottom) next.bottom = memcpy(stageBottom, next.bottom, PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));
