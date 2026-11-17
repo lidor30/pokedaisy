@@ -249,18 +249,18 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
             return;
         }
         g->title = "Unknown game";
-        g->unsupported = "Not a game the 3DS companion knows yet";
+        g->unsupported = "Not a game the companion knows yet";
         return;
     }
     if (g->revision > 1) {
         g->cfg = NULL;
         g->unsupported = "This revision isn't supported yet";
     } else if (romSize > 0x1000000) {
-        // A >16 MB FireRed / Emerald is a ROM hack: the app tells them apart
-        // by SHA1 (Poller.detect) - not ported yet.
+        // A >16 MB FireRed / Emerald is a ROM hack: identify() gives back the ones KNOWN_ROMS has by SHA-1 (as the
+        // app's Poller.detect). The words are the other unknown builds' (this runs on the 3DS and the Linux cores alike).
         g->cfg = NULL;
         g->title = g->kind == PD_GAME_FIRERED ? "FireRed ROM hack" : "Emerald ROM hack";
-        g->unsupported = "ROM hacks aren't supported on 3DS yet";
+        g->unsupported = "Not a version the companion knows";
     }
 }
 

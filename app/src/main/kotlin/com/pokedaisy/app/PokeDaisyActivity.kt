@@ -2071,6 +2071,12 @@ class PokeDaisyActivity : Activity() {
             runOnUiThread { syncGameScreen() }
         }
         override val wideSupported get() = wideGame != WideScreen.OFF
+        // SETTINGS > QUICK MENU lists only what this game's menu can show (GitHub #1086: HEAL switched on in Emerald
+        // Seaglass, which has no POKéMON CENTER call, and no tile). FLASH comes and goes with the party, so it stays.
+        override val quickMenuSupportedActions: Set<com.pokedaisy.app.companion.QuickAction>
+            get() = com.pokedaisy.app.companion.QuickAction.entries.filterTo(LinkedHashSet()) {
+                it == com.pokedaisy.app.companion.QuickAction.FLASH || quickActions.offered(it)
+            }
         override val lookAround get() = Prefs(this@PokeDaisyActivity).lookAround
         override fun setLookAround(on: Boolean) {
             Prefs(this@PokeDaisyActivity).lookAround = on
