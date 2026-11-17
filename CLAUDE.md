@@ -893,7 +893,7 @@ replay, which sets it itself) with probability 1 - keep; NORMAL puts it back onc
 instead and put the cart's own back from `Gen4World.wildRates` (`MgbaCore.pkNdsWildRates`): a remembered value didn't
 survive a restart, and a resumed game stayed without wild Pokémon until a map change. Walked headless
 (mgba_dump `wild ADDR KEEP`, warp into Route 101 / Route 1 grass): OFF 360 steps, none; 50% about twice NORMAL's steps.
-**SHINY ODDS on the DS** (2026-11-14, `ShinyOdds.DsTarget` / `DsRoller`, docs/ROM_FEATURES.md's note 37): the foe rewritten in the
+**SHINY ODDS on the DS** (2026-11-14, `ShinyOdds.DsTarget` / `DsRoller`, docs/ROM_FEATURES.md's note 40): the foe rewritten in the
 battle's setup in the frames before the battle copies the parties - Gen 4: the field's child app is the battle's (`Gen4Battle.battleTemplate`'s
 init word) with its data NULL (two frames: its init does nothing, Battle_Main's first step only makes a heap), `setup->parties[1]`, wild
 types only; Gen 5: the running proc is the battle overlay's with its work NULL (~14 frames), `BATTLE_SETUP_PARAM` competitor 0, party
