@@ -413,6 +413,12 @@ struct pd_config {
     int tmPartyMenuSlotOff, tmFirst, tmLast;
     uint32_t tmCrcs[9];
 
+    // TRADE EVOS (TradeEvolution.kt's TradeEvoFns, the config's TRADE_EVO record): GetEvolutionTargetSpecies,
+    // BeginEvolutionScene, gCB2_AfterEvolution (IWRAM), CB2_ReturnToField, LockPlayerFieldControls, and CRC32 of the four
+    // functions' first 32 bytes (target, scene, return, lock). tradeEvoTarget 0 = none.
+    uint32_t tradeEvoTarget, tradeEvoScene, tradeEvoAfter, tradeEvoReturn, tradeEvoLock;
+    uint32_t tradeEvoCrcs[4];
+
     // REPEL and PC anywhere (the app's FieldItemFns / PcFns, FieldItems.kt / Pc.kt): VarGet, VarSet,
     // CheckBagHasItem, RemoveBagItem and ArePlayerFieldControlsLocked (fieldCrcs, in that order), VAR_REPEL_STEP_COUNT
     // and the Repels' ids, gItems (holdEffectParam = a Repel's steps, itemNameLen + 5 into struct Item unless

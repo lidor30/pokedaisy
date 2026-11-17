@@ -322,7 +322,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
     implementation("androidx.savedstate:savedstate-ktx:1.2.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     // Bottom-screen companion UI (ported from tools/android-companion).
     // 2025.03.01 = Compose 1.7.8, the last before 1.8 (which needs compileSdk 35).
@@ -331,7 +331,6 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.runtime:runtime")
 
     // ROMs in .7z archives (RomArchive; .zip is java.util.zip). xz is 7z's LZMA / LZMA2.
@@ -339,11 +338,11 @@ dependencies {
     implementation("org.tukaani:xz:1.12")
 
     // QR codes for co-op invites (encoding only).
-    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:core:3.5.4")
 
     // Crash reports, opt-in (CrashReports.kt). -ndk catches native crashes too (mGBA, JNI),
     // which is where most of this app's crashes have been.
-    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-crashlytics-ndk")
 
@@ -351,18 +350,19 @@ dependencies {
     // for how the fixtures they read (app/src/test/resources/fixtures/) get made.
     testImplementation("junit:junit:4.13.2")
     // The real org.json (android.jar's is a stub in unit tests): ScreenScraperTest and DocsSearchTest parse JSON.
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
     // The co-op relay server (its sources are on the test path) for CoopRelayIntegrationTest.
-    testImplementation("org.java-websocket:Java-WebSocket:1.5.7")
-    testImplementation("org.slf4j:slf4j-nop:2.0.13")
+    testImplementation("org.java-websocket:Java-WebSocket:1.6.0")
+    testImplementation("org.slf4j:slf4j-nop:2.0.20")
     // The relay uses the JDK's HttpServer, which android.jar hides at compile time (the JDK has it at run time).
     testImplementation(files(jdkHttpServerJar))
-    // Co-op transport crypto: X25519 (rfc7748) for keys and the Noise IK handshake (MIT).
-    implementation("org.bouncycastle:bcprov-jdk18on:1.79")
+    // Co-op transport crypto: X25519 (rfc7748) for keys and the Noise IK handshake is Bouncy Castle's own code, copied
+    // into companion/coop/x25519/ (MIT); the whole library stays a test dependency, which X25519Test checks the copy against.
+    testImplementation("org.bouncycastle:bcprov-jdk18on:1.87")
     // The relay WebSocket (Apache 2.0, with Okio).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Byte buffers, files and hashes in the data code shared with the iPad app (okio is Kotlin Multiplatform).
-    implementation("com.squareup.okio:okio:3.10.2")
+    implementation("com.squareup.okio:okio:3.18.2")
     // Locks in the data code shared with the iPad app (atomicfu is Kotlin Multiplatform; the coroutines are above).
     implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
     // The local date and time in the data code shared with the iPad app (Kotlin Multiplatform).

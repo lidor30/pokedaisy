@@ -36,4 +36,18 @@ class GbaInputTurboTest {
         i.setScript(0, exclusive = false)
         assertEquals(MgbaCore.Key.A, i.turboMask)
     }
+
+    /** The QUICK MENU's TURBO A: the plain A key mashes while it's on, and only A. */
+    @Test fun theQuickMenusTurboLatchesA() {
+        val i = input()
+        i.turboLatch = MgbaCore.Key.A
+        i.onKey(aKey, true)
+        assertEquals(0, i.mask)
+        assertEquals(MgbaCore.Key.A, i.turboMask)
+        i.setTouchBits(MgbaCore.Key.B)
+        assertEquals(MgbaCore.Key.B, i.mask)
+        i.turboLatch = 0
+        assertEquals(MgbaCore.Key.A or MgbaCore.Key.B, i.mask)
+        assertEquals(0, i.turboMask)
+    }
 }

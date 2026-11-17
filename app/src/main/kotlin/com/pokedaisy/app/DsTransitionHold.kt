@@ -13,11 +13,22 @@ package com.pokedaisy.app
  * ~32 of black, ~12 fading in (its party's top screen stays one colour); back out ~100 of black. DsTransitionHoldTest
  * replays both.
  *
+ * Only once the top screen fades or goes dark too ([fast]) does the game run flat out and muted. A fade of the touch screen
+ * alone may be a page of its own turning over - Black's X menu fades only that screen, ~11 frames in and ~9 out, the top
+ * screen lit, and run muted those were a cut in the music each time a menu opened (GitHub #840) - or the first part of a
+ * change of both (HeartGold's party fades its touch screen 11 frames before the top one): held at the game's own speed,
+ * with its sound, until it's clear which.
+ *
  * Fed once a frame, right after it ran and before its picture is shown, so the frame the fade starts on is never seen.
  */
 class DsTransitionHold {
     /** Both screens are held. */
     var holding = false
+        private set
+
+    /** The top screen has faded or gone dark during this hold: a change of both screens, run flat out and muted. Before
+     * that (the touch screen alone fading) the hold keeps the pictures but the game runs at its own speed, with sound. */
+    var fast = false
         private set
 
     /** Frames run since the hold began. */
@@ -41,12 +52,15 @@ class DsTransitionHold {
         val darkBottom = state and MgbaCore.FIELD_DARK_BOTTOM != 0
         val black = darkTop && darkBottom
         val fading = fade != 0
+        // The top screen's part in it (engine A's fade, bits 0-7).
+        val topGoing = fade and 0xFF != 0 || darkTop
         if (!fading && !black) blocked = false
         if (!on) return release()
         if (!holding) {
             // A battle's own fades (its bag, its party, a move's flash) are its business: DS LAYOUT's battle rules.
             if (blocked || !inFlow || state and MgbaCore.FIELD_BATTLE != 0 || !(fading || black)) return false
             holding = true
+            fast = topGoing
             frames = 0
             lit = 0
             halfLit = 0
@@ -55,6 +69,7 @@ class DsTransitionHold {
             return true
         }
         frames++
+        if (topGoing) fast = true
         // A shade that holds still part way down (a page's own, not a fade on its way): not a transition.
         stillFrames = if (fading && fade == lastFade && partial(fade)) stillFrames + 1 else 0
         lastFade = fade
@@ -74,6 +89,7 @@ class DsTransitionHold {
     /** Ends a hold now (the game closed, the stage changed). */
     fun release(): Boolean {
         holding = false
+        fast = false
         return false
     }
 

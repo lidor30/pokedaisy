@@ -59,6 +59,9 @@ data class NativeConfig(
     val extraItemIconTable: Long = 0,
     // See IconTables.monIconPalettes (SoulGold's per-species icon palettes).
     val monIconPalettes: Long = 0,
+    // See IconTables.monIconPalStride / monIconShinyOff (Epsilon Emerald's per-species icon palettes).
+    val monIconPalStride: Int = 0,
+    val monIconShinyOff: Long = 4,
     val extraItemFirst: Int = 0,
     val extraItemCount: Int = 0,
     val extraItemStride: Int = 8,
@@ -168,6 +171,8 @@ data class NativeConfig(
     val bag4: Bag4Layout? = null,
     // A bag kept as one "owned" bit per item id in SaveBlock1, no counts (Elite Redux); null = gBagPockets.
     val itemFlagsBag: ItemFlagsBag? = null,
+    // gBagPockets packed another way, its TM pocket a bit per machine, pockets filtered by each item's own (Epsilon Emerald).
+    val packedBag: PackedBagLayout? = null,
     // Map groups whose sections are named from a second table (Quetzal's Johto): read as 0x100 + id.
     val altMapSecGroups: IntRange? = null,
     // The game's money cap: Gen 3's 999,999 (Glazed's AddMoney caps at 9,999,999); above it is a wrong read.
@@ -205,6 +210,8 @@ data class NativeConfig(
         // Shiny icons where the game's shiny check is known: recoloured through the battle palettes (decodeMonIcon).
         battlePalettes = if (shinyBelow > 0) pokedex?.palettes ?: monPalettes else 0L,
         monIconPacked = monIconPacked,
+        monIconPalStride = monIconPalStride,
+        monIconShinyOff = monIconShinyOff,
     )
     val hasBattleInputAddrs get() = battlerControllerFuncs != 0L && handleInputChooseAction != 0L && handleInputChooseMove != 0L
 }
@@ -875,6 +882,46 @@ private fun readItemFlagsBag(c: MemoryReader, cfg: NativeConfig, b: ItemFlagsBag
     return out
 }
 
+/**
+ * Epsilon Emerald's gBagPockets: { *slots, u16 capacity } packed into [stride] bytes (6), in [order]. Its TM pocket
+ * ([flagPocket]) is one bit per machine, in [flagItems]' order, with no counts. Every other pocket shows only the items
+ * whose own pocket ([itemPockets], gItems') is that pocket, as its bag does: an Emerald save's Items pocket runs on over the
+ * old Key Items and Poké Balls slots there.
+ */
+class PackedBagLayout(
+    val stride: Int,
+    val flagPocket: Int,
+    val flagItems: IntArray,
+    val itemPockets: Map<Int, Int>,
+)
+
+private fun readPackedBag(c: MemoryReader, cfg: NativeConfig, b: PackedBagLayout, key: Int): List<Item> {
+    val pockets = c.readCoreMemory(cfg.bagPockets, cfg.bagPocketCount * b.stride)
+    val out = mutableListOf<Item>()
+    for (p in 0 until cfg.bagPocketCount) {
+        val slotsPtr = u32le(pockets, p * b.stride)
+        val capacity = u16le(pockets, p * b.stride + 4)
+        if (slotsPtr < 0x02000000L || slotsPtr >= 0x04000000L || capacity == 0) continue
+        val pocket = cfg.bagPocketOrder.getOrElse(p) { POCKET_ITEMS }
+        if (p == b.flagPocket) {
+            val n = minOf(capacity, b.flagItems.size)
+            val raw = c.readCoreMemory(slotsPtr, (n + 7) / 8)
+            for (i in 0 until n) {
+                if ((raw[i / 8].toInt() shr (i % 8)) and 1 != 0 && out.size < BAG_MAX_ITEMS) out.add(Item(b.flagItems[i], 1, pocket))
+            }
+            continue
+        }
+        val readSlots = minOf(capacity, BAG_POCKET_SLOTS)
+        val raw = c.readCoreMemory(slotsPtr, readSlots * 4)
+        for (i in 0 until readSlots) {
+            val id = u16le(raw, i * 4)
+            if (id == 0 || b.itemPockets[id] != pocket || out.size >= BAG_MAX_ITEMS) continue
+            out.add(Item(id, u16le(raw, i * 4 + 2) xor key, pocket))
+        }
+    }
+    return out
+}
+
 // gBagPockets: 5 pockets of { *itemSlots, u8 capacity }. Quantities XOR
 // SaveBlock2.encryptionKey (retail FireRed obfuscates them; Unbound leaves it 0).
 private fun readNativeBag(c: MemoryReader, cfg: NativeConfig): List<Item> {
@@ -889,6 +936,7 @@ private fun readNativeBag(c: MemoryReader, cfg: NativeConfig): List<Item> {
             key = u32le(c.readCoreMemory(sb2 + cfg.encryptionKeyOff, 4), 0).toInt() and 0xFFFF
         }
     }
+    cfg.packedBag?.let { return readPackedBag(c, cfg, it, key) }
     val pockets = c.readCoreMemory(cfg.bagPockets, cfg.bagPocketCount * BAG_POCKET_STRIDE)
     val out = mutableListOf<Item>()
     for (p in 0 until cfg.bagPocketCount) {

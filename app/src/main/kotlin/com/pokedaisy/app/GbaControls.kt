@@ -165,6 +165,12 @@ object GbaControls {
         if (btn.dpad) Hotkeys.releaseKey(dir, name)
     }
 
+    /** Every button back to [DEFAULTS] (GitHub discussion #923: a player rebound A and couldn't press anything to put it
+     * back): the file goes, and the next read writes the defaults. */
+    fun resetBindings(dir: File) {
+        file(dir).delete()
+    }
+
     /** Leaves [btn] unbound - TURBO A / B and the GBA / Game Boy rows only ([Btn.canClear]). */
     fun clearBinding(dir: File, btn: Btn) {
         if (!btn.canClear) return

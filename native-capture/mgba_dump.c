@@ -89,6 +89,7 @@
 //   gbinject TRAMP BANK ADDR [AT] - GB (hex): make the game call BANK:ADDR from its frame wait (runs on in `wait`s)
 //   gbpoke BANK ADDR BYTE.. - GB (hex): write WRAM bank BANK's bytes at ADDR
 //   gbpeek BANK ADDR N - GB (hex): print N bytes of WRAM bank BANK at ADDR (C000-CFFF ignores the bank)
+//   gbwram - GB: C000-DFFF and FF80-FFFE as one hex line, stdout flushed (a harness reading the game every frame)
 //   gbcallat AT FN A B HL - GB (hex): the game calls FN (A, B, HL) from its loop at AT, back there after (pk_gb_call_at)
 //   gbvdump DIR        - GB: VRAM (both banks), OAM and the Color palettes into DIR
 //   rompatch AT EXPECT ADDR VALUE - a game option's ROM patch the way the app makes it
@@ -1601,6 +1602,14 @@ int main(int argc, char** argv) {
             printf("gbpeek %x:%04x:", bank, addr);
             for (unsigned k = 0; k < cnt; k++) printf(" %02x", buf[k]);
             printf("\n");
+        } else if (!strcmp(cmd, "gbwram")) {
+            // gbwram: C000-DFFF then FF80-FFFE over the bus, one hex line, flushed - for a harness that reads the game
+            // every frame through a pipe (the battle controls run against the running game: BrownLiveControlsTest).
+            printf("gbwram ");
+            for (unsigned a = 0xC000; a < 0xE000; a++) printf("%02x", core->busRead8(core, (uint16_t) a));
+            for (unsigned a = 0xFF80; a < 0xFFFF; a++) printf("%02x", core->busRead8(core, (uint16_t) a));
+            printf("\n");
+            fflush(stdout);
         } else if (!strcmp(cmd, "gbcallat")) {
             // gbcallat AT FN A B HL: the app's pkGbCallAt - Yellow's PC anywhere (Bankswitch into the PC tile's routine
             // from the overworld loop).

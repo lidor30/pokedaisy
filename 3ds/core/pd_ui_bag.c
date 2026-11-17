@@ -13,7 +13,7 @@
 #include "pd_ui_internal.h"
 
 #define TAB_H 22
-#define BAG_ROW 17
+#define BAG_ROW pd_list_row(17)
 #define DESC_H 44
 #define FIRST_HM 339 // ITEM_HM01..ITEM_HM08: no quantity, like the game
 #define LAST_HM 346
@@ -256,7 +256,7 @@ static void description(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
         tx += PD_ITEM_ICON + 2;
         tw -= PD_ITEM_ICON + 2;
     }
-    pd_text_wrap(c, tx, y + f + 1, tw, 16, (h - 2 * f) / 16, text, p->descText, p->descTextShadow);
+    pd_text_wrap(c, tx, y + f + 1, tw, pd_lh(16), (h - 2 * f) / pd_lh(16), text, p->descText, p->descTextShadow);
     int bh = (h - 2 * f - 2) / 2, by = y + f + 1, bx = x + w - f - bw - 2;
     if (use) ui_button(ui, c, bx, by, bw, bh, "USE", HIT_BAG_USE);
     if (give) ui_button(ui, c, bx, use ? by + bh + 2 : by, bw, bh, "GIVE", HIT_BAG_GIVE);

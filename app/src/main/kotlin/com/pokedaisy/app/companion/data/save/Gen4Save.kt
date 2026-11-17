@@ -5,8 +5,9 @@ import com.pokedaisy.app.companion.data.gen3ExperienceTables
 import com.pokedaisy.app.companion.i18n.tr
 
 /**
- * Where a Gen 4 game keeps things in its two save blocks: HeartGold / SoulSilver's (pret/pokeheartgold) or Platinum's
- * (pret/pokeplatinum). Offsets are into the general block, or into the PC block for the boxes.
+ * Where a Gen 4 game keeps things in its two save blocks: HeartGold / SoulSilver's (pret/pokeheartgold), Platinum's
+ * (pret/pokeplatinum) or Diamond / Pearl's (pret/pokediamond). Offsets are into the general block, or into the PC block for
+ * the boxes.
  */
 enum class Gen4Layout(
     val label: String,
@@ -33,6 +34,11 @@ enum class Gen4Layout(
     val dexNational: Int,
     /** The regional Pokédex's name. */
     val region: String,
+    /**
+     * Diamond / Pearl keep the languages a species was caught in for 14 species only (pokedex.h's meister[14], in
+     * [MEISTER_SPECIES] order) from [dexLanguages]; the later games keep a byte for every species.
+     */
+    val meisterLanguages: Boolean = false,
 ) {
     HGSS(
         "HEARTGOLD / SOULSILVER", 0xF628, 0xF700, 0x12310, trainer = 0x64, party = 0x90, aprijuice = 0x98 + 6 * 0xEC,
@@ -48,13 +54,37 @@ enum class Gen4Layout(
         dex = 0x1328, dexLanguages = 0x128, dexInternational = -1, dexUnownCaught = -1, dexPichu = -1,
         dexRotom = 0x31C, dexShaymin = 0x320, dexGiratina = 0x321, dexNational = 0x319, region = "SINNOH",
     ),
+    // pret/pokediamond, and the player's Diamond saved headless: Platinum's footer and PC block (0x4 smaller), the general
+    // block's structs a little earlier; the Pokédex has no Rotom / Shaymin / Giratina forms and its languages for 14 species.
+    DP(
+        "DIAMOND / PEARL", 0xC100, 0xC100, 0x121E0, trainer = 0x64, party = 0x90, aprijuice = -1,
+        boxes = 4, boxStride = 30 * 0x88, curBox = 0, boxNames = 4 + 18 * 30 * 0x88, modifiedFlags = -1,
+        bag = 0x624, pocketSizes = intArrayOf(165, 50, 100, 12, 40, 64, 15, 30),
+        dex = 0x12DC, dexLanguages = 0x129, dexInternational = -1, dexUnownCaught = -1, dexPichu = -1,
+        dexRotom = -1, dexShaymin = -1, dexGiratina = -1, dexNational = 0x139, region = "SINNOH", meisterLanguages = true,
+    ),
     ;
 
     val partyMons: Int get() = party + 8
+
+    /** Platinum's save code (a footer per block, each block's copy picked on its own): Platinum, Diamond and Pearl. */
+    val sinnohSave: Boolean get() = this != HGSS
+
+    /** Where the Pokédex keeps the languages [species] was caught in (a bit each), or -1 where it keeps none. */
+    fun languageByte(species: Int): Int = when {
+        !meisterLanguages -> dexLanguages + species
+        else -> MEISTER_SPECIES.indexOf(species).let { if (it < 0) -1 else dexLanguages + it }
+    }
+
+    companion object {
+        /** pokediamond's sMeister.species: the species whose foreign Pokédex entries Diamond / Pearl keep. */
+        val MEISTER_SPECIES = intArrayOf(23, 25, 54, 77, 120, 129, 202, 214, 215, 216, 228, 278, 287, 315)
+    }
 }
 
 /**
- * A Gen 4 save file (512 KB: HeartGold / SoulSilver or Platinum), read and written the way the games' save code does it.
+ * A Gen 4 save file (512 KB: HeartGold / SoulSilver, Platinum, Diamond or Pearl), read and written the way the games' save
+ * code does it.
  * Both keep two copies (0x00000 and 0x40000) of their two blocks - the general one and the PC's - each ending in a footer
  * with a CRC16-CCITT of the block before it, and save into the copy they didn't load from; an edit does the same, so the
  * copy the game loaded stays as its fallback.
@@ -66,7 +96,7 @@ enum class Gen4Layout(
  * - **Platinum** (pokeplatinum's savedata.c): a 20-byte SaveBlockFooter {global count, block count, size, signature,
  *   block id, crc}, each block's copy picked on its own (the global count, then the block's); the two picked must share
  *   the global count. An edit is a full save: global + 1, each block's count + 1, each block into the copy it wasn't
- *   loaded from.
+ *   loaded from. Diamond / Pearl (pokediamond's save.c) save the same way, with blocks of their own sizes.
  *
  * Pure Kotlin (no Android): the editor, the tests and ui-preview share it.
  */
@@ -100,7 +130,7 @@ class Gen4SaveFile private constructor(
         val g = general.copyOf()
         val p = pc.copyOf()
         if (l.modifiedFlags >= 0) putU32(p, l.modifiedFlags, ALL_BOXES_MODIFIED)
-        if (l == Gen4Layout.HGSS) {
+        if (!l.sinnohSave) {
             hgssFooter(g, next, 0)
             hgssFooter(p, next, 1)
         } else {
@@ -163,9 +193,9 @@ class Gen4SaveFile private constructor(
         }
 
         fun parse(bytes: ByteArray): Parsed {
-            if (bytes.size < SIZE) return Parsed.Failed(tr("This isn't a HeartGold, SoulSilver or Platinum save"))
-            return parseHgss(bytes) ?: parsePlatinum(bytes)
-                ?: Parsed.Failed(tr("This isn't a HeartGold, SoulSilver or Platinum save, or it's damaged"))
+            if (bytes.size < SIZE) return Parsed.Failed(tr("This isn't a Diamond, Pearl, HeartGold, SoulSilver or Platinum save"))
+            return parseHgss(bytes) ?: parseSinnoh(bytes, Gen4Layout.PLATINUM) ?: parseSinnoh(bytes, Gen4Layout.DP)
+                ?: Parsed.Failed(tr("This isn't a Diamond, Pearl, HeartGold, SoulSilver or Platinum save, or it's damaged"))
         }
 
         private fun parseHgss(bytes: ByteArray): Parsed? {
@@ -190,8 +220,7 @@ class Gen4SaveFile private constructor(
             ))
         }
 
-        private fun parsePlatinum(bytes: ByteArray): Parsed? {
-            val l = Gen4Layout.PLATINUM
+        private fun parseSinnoh(bytes: ByteArray, l: Gen4Layout): Parsed? {
             class Check(val valid: Boolean, val global: Long, val count: Long)
             fun check(off: Int, size: Int, id: Int): Check {
                 val f = off + size - PT_FOOTER
@@ -375,6 +404,35 @@ class Gen4BoxMon private constructor(
             putU16(out, 6, sum)
             crypt(stored, 0, 128, sum.toLong()).copyInto(out, 8)
             return out
+        }
+
+        /**
+         * A record's four blocks decrypted and put in A B C D order, with whether its checksum holds (Gen 5's records are
+         * built the same way: [Gen5BoxMon]). Null for a slot never written.
+         */
+        internal fun decode(b: ByteArray, off: Int): Pair<ByteArray, Boolean>? {
+            if ((0 until SIZE).all { b[off + it].toInt() == 0 }) return null
+            val personality = u32(b, off)
+            val checksum = u16(b, off + 6)
+            val stored = crypt(b, off + 8, 128, checksum.toLong())
+            val order = ORDERS[(((personality shr 13) and 0x1F) % 24).toInt()]
+            val logical = ByteArray(128)
+            for (slot in 0 until 4) stored.copyInto(logical, "ABCD".indexOf(order[slot]) * 32, slot * 32, slot * 32 + 32)
+            var sum = 0
+            for (i in 0 until 64) sum = (sum + u16(logical, i * 2)) and 0xFFFF
+            return logical to (sum == checksum)
+        }
+
+        /** A whole new record from its four blocks in A B C D order (128 bytes): checksummed, shuffled and encrypted. */
+        fun build(personality: Long, logical: ByteArray): ByteArray {
+            require(logical.size == 128)
+            return encode(personality, 0, logical)
+        }
+
+        /** [build] keeping the record's flags word (Gen 5's records: [Gen5BoxMon]). */
+        internal fun build(personality: Long, flags: Int, logical: ByteArray): ByteArray {
+            require(logical.size == 128)
+            return encode(personality, flags, logical)
         }
 
         /** ZeroBoxMonData: zeroes, encrypted with checksum 0 (what an empty PC slot holds). */
@@ -577,6 +635,10 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
     override val data: Gen4SaveData get() = Gen4SaveData(game, general, pc, file.layout)
     override val changed: Boolean get() = !general.contentEquals(file.general) || !pc.contentEquals(file.pc)
     override fun fresh(): MonSaveEditor = Gen4SaveEditor(file, game)
+    override fun snapshot() = EditorSnapshot(listOf(general.copyOf(), pc.copyOf()))
+    override fun restore(snapshot: EditorSnapshot) {
+        snapshot.parts.zip(listOf(general, pc)).forEach { (from, to) -> from.copyInto(to) }
+    }
     override fun build(): ByteArray = file.withBlocks(general, pc)
     override val canWriteNames: Boolean get() = true
     override val canEditItems: Boolean get() = true
@@ -743,6 +805,13 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
 
     private fun dexBit(off: Int, species: Int) = (general[l.dex + off + (species - 1) / 8].toInt() shr ((species - 1) % 8)) and 1 == 1
     private val hasNational: Boolean get() = general[l.dex + l.dexNational].toInt() != 0
+    /** The save has the National Pokédex (what Pal Park waits for). */
+    val nationalDex: Boolean get() = hasNational
+    /** [species] (a National Dex number) is caught in this save's Pokédex. */
+    fun caughtInDex(species: Int): Boolean = species in 1..Gen4GameData.LAST_SPECIES && dexBit(DEX_CAUGHT, species)
+    /** The species the Pokédex lists now: the regional ones until the National Pokédex. */
+    fun dexSpecies(): List<Int> =
+        (1..Gen4GameData.LAST_SPECIES).filter { hasNational || game.regional.isEmpty() || inRegional(it) }
     private fun inRegional(species: Int) = (game.regional.getOrNull(species) ?: 0) != 0
 
     override val dex: DexSummary get() {
@@ -795,7 +864,8 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
             if (caught && !dexBit(DEX_CAUGHT, sp)) {
                 if (sp == UNOWN && l.dexUnownCaught >= 0) appendUnown(0, caught = true)
                 val shift = listOf(1, 2, 3, 5, 4, 7).indexOf(game.gameLanguage)
-                if (shift >= 0) general[dex + l.dexLanguages + sp] = (general[dex + l.dexLanguages + sp].toInt() or (1 shl shift)).toByte()
+                val lang = l.languageByte(sp)
+                if (shift >= 0 && lang >= 0) general[dex + lang] = (general[dex + lang].toInt() or (1 shl shift)).toByte()
                 setBit(DEX_CAUGHT, true)
             }
         }
@@ -816,6 +886,9 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
         }
         put(at, mon.withChanges(heldItem = item))
     }
+
+    /** An item a Pokémon held, back into the bag (Poké Transfer's way); false when the bag has no room. */
+    internal fun returnToBag(item: Int): Boolean = addOne(item)
 
     private val partyCount: Int get() = u32(general, l.party + 4).toInt()
     private fun partyOff(i: Int) = l.partyMons + i * Gen4BoxMon.PARTY_SIZE
@@ -1003,7 +1076,8 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
         appendSeenForm(mon, seen)
         if (species == UNOWN && l.dexUnownCaught >= 0) appendUnown(mon.form, caught = true)
         val shift = listOf(1, 2, 3, 5, 4, 7).indexOf(mon.language).let { if (it < 0) 6 else it }
-        if (shift != 6) general[dex + l.dexLanguages + species] = (general[dex + l.dexLanguages + species].toInt() or (1 shl shift)).toByte()
+        val lang = l.languageByte(species)
+        if (shift != 6 && lang >= 0) general[dex + lang] = (general[dex + lang].toInt() or (1 shl shift)).toByte()
         if (l.dexInternational >= 0 && mon.language != game.gameLanguage) general[dex + l.dexInternational] = 1
         setBit(DEX_CAUGHT, species, 1)
         setBit(DEX_SEEN, species, 1)
@@ -1050,8 +1124,8 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
             PICHU -> if (l.dexPichu >= 0) threeMax(l.dexPichu, if (form == 0) (if (gender == Gen3Gender.MALE) 0 else 1) else 2)
             SHELLOS -> twoMax(DEX_SHELLOS, form)
             GASTRODON -> twoMax(DEX_GASTRODON, form)
-            SHAYMIN -> twoMax(l.dexShaymin, form)
-            GIRATINA -> twoMax(l.dexGiratina, form)
+            SHAYMIN -> if (l.dexShaymin >= 0) twoMax(l.dexShaymin, form)
+            GIRATINA -> if (l.dexGiratina >= 0) twoMax(l.dexGiratina, form)
             DEOXYS -> {
                 // Four nibbles: caughtSpecies' and seenSpecies' last word, bits 24-31 each; 15 = none yet.
                 fun nib(i: Int): Int = (u32(general, dex + (if (i < 2) DEX_CAUGHT else DEX_SEEN) + 60) shr (24 + 4 * (i % 2))).toInt() and 15
@@ -1064,7 +1138,7 @@ class Gen4SaveEditor(val file: Gen4SaveFile, val game: Gen4GameData) : MonSaveEd
                     }
                 }
             }
-            ROTOM -> {
+            ROTOM -> if (l.dexRotom >= 0) {
                 val o = dex + l.dexRotom
                 val v = u32(general, o)
                 val n = if (!seen) 0 else (0 until 6).firstOrNull { ((v shr (3 * it)) and 7).toInt() == 7 } ?: 6

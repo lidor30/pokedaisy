@@ -19,10 +19,6 @@
   · <strong><a href="https://pokedaisy.com/feedback/#bug">Report a problem</a></strong>
 </p>
 
-<img src="website/public/media/readme-free-flight.webp" width="100%" alt="FireRed on PokeDaisy: flying over Kanto on a bird, the map drawn past the GBA's edges, the party and buttons in the corners">
-
-<sub>FireRed on an AYN Thor: TAKE OFF, EXPAND and the HUD. Every picture here is the real app.</sub>
-
 </div>
 
 PokeDaisy plays Game Boy, Game Boy Color, GBA and Nintendo DS games on Android handhelds, made for the Pokemon games
@@ -31,6 +27,8 @@ play: your party, bag, map, battle matchups, Pokedex and a spoiler-free guide, d
 a dual-screen handheld it gets the bottom screen; on one screen it opens over the game.
 
 ## The companion
+
+<sub>Every picture here is the real app.</sub>
 
 <table>
   <tr>
@@ -109,7 +107,7 @@ EXPAND works in every Gen 3 game, many hacks and the Game Boy's Yellow and Cryst
 - **Shaders** (LCD, scanlines, CRT, GBA colours, edge smoothing), themes, dark mode, overlays.
 - **Controls**: remap everything, touch controls you lay out yourself (or a Delta skin), any controller.
 - **DS games**: the touch screen on the bottom screen, or in five layouts on one, upscaled 2x to 8x.
-- **Tools**: link play (two to four games on one cable), a save editor, save trades, BPS patching.
+- **Tools**: link play (two to four games on one cable), a save editor (with what your Pokédex is missing), save trades (and trade and back for trade evolutions), Pal Park from a GBA game to a DS one, Poké Transfer on to Black and White, one collection of every save's Pokémon, BPS patching.
 - **Your files**: standard `.sav` / `.srm` saves shared with RetroArch and mGBA, a backup every start, zipped ROMs,
   launching from ES-DE, Cocoon and iiSU ([iiSU](docs/iisu/README.md), [ES-DE](docs/es-de/README.md) setup).
 - **Nine languages**: English, Japanese, Korean, French, German, Italian, Spanish and both Portugueses.
@@ -191,6 +189,7 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | Yellow (GB)                    | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Yellow (GB)                    | DE / FR / IT / ES          |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Yellow Legacy (GB)             | 1.0.10                     |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
+| Brown (GB)                     | 6.0.1, 6.1.2               |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Gold / Silver (GBC)            | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Gold / Silver (GBC)            | DE (Goldene Edition, Silberne Edition) |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Crystal (GBC)                  | USA, USA/Europe rev 1, AU  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
@@ -218,7 +217,8 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | Black 2 (DS)                   | USA/Europe, every language |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | White 2 (DS)                   | USA/Europe, every language |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Origin HeartGold (DS)          | 4.0.3 English 1.0.0        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
-| Renegade Platinum (DS)         | 1.2.0, 1.3.0 (+ Classic)   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
+| Heartfelt Gold (DS)            | 1.0.15 (+ Zoomed In)       |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
+| Renegade Platinum (DS)         | 1.2.0, 1.3.0 (+ patches)   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Blaze Black 2 Redux (DS)       | 1.4.1 (+ Classic, EVless)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Volt White 2 Redux (DS)        | 1.4.1 (+ Classic, EVless)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Unbound                        | 2.1.1.1                    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
@@ -251,12 +251,13 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | Super Mariomon                 | 1.2.1-1.3, 1.5.1, 1.5.2    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Recharged Emerald              | 2.2.5, 2.2.8, Rebalanced   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Modern Emerald                 | 3.6                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   —   |
+| Epsilon Emerald                | 1.0.0                      |  ✅   | ✅  |   ◐    |  ◐  |   ✅    |   ◐   |
 | Elite Redux                    | 2.65.3b, 2.65.4.1b         |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Team Rocket Dragonsden         | 1.5                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   ◐   |
 | Team Rocket Dragonsden         | 2026 3.0.9, 3.1 (Spanish)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Wishes of Tomorrow             | 1.2.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Dreamstone Mysteries           | the one release            |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
-| Monomyth                       | 1.0, 1.1                   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
+| Monomyth                       | 1.0, 1.1, 1.2              |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Emerald Rogue                  | 2.2.1-EX                   |  ✅   | ✅  |   ✅   | ✅  |   ✅    |   —   |
 | SoulGold                       | 1.1.4, 1.2 (3), 1.2.1 (2)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | R.O.W.E.                       | 2.1.9.1 Experimental       |  ✅   | ✅  |   ◐    | ✅  |    ◐    |   —   |
@@ -271,7 +272,7 @@ when it isn't sure. Map ◐ means place names only,
 without the map picture. Guide ◐ means the live pages only (the wild encounters here and the next boss). Battle ◐
 means the battle panes work but haven't been checked in every kind of battle. On the DS, HeartGold's and SoulSilver's
 battles aren't read yet. Origin HeartGold's battle system is its own: the battle panes read it, but their buttons
-can't press its menus, and it has no guide yet. Renegade Platinum reads as Platinum with its own types (Fairy among them),
+can't press its menus, and it has no guide yet. Heartfelt Gold reads as HeartGold with its own species, moves, items and type chart, and has no guide yet. Renegade Platinum reads as Platinum with its own types (Fairy among them),
 moves and type chart; its trainers and wild Pokémon are its own, so it has no guide yet. Blaze Black 2 Redux and Volt White 2 Redux read the same way, as Black 2 and White 2 with their own types, moves, type chart and machines, and no guide yet. Team Rocket Dragonsden is DragonsdenTV's Team Rocket Edition, not FireRed Rocket Edition.
 FireRed (rev 0 and 1) and Emerald randomized with Universal Pokemon Randomizer ZX 4.6.1 work with any settings and
 seed: the companion reads the randomized types, moves, teams, wild Pokémon and items from the ROM, and the guide leaves

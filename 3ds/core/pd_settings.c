@@ -8,7 +8,11 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->screenMode = PD_SCREEN_SHARP;
     s->ffSpeed = PD_FF_MIN;
     s->guideNotice = 0;
-    s->aspect = PD_ASPECT_ORIGINAL;
+#ifdef __3DS__
+    s->aspect = PD_ASPECT_EXPAND; // with SHARP: VIEW's EXPAND 1.5x (the user's call, 2026-11-16); a game without EXPAND shows SHARP 1.5x
+#else
+    s->aspect = PD_ASPECT_ORIGINAL; // the Linux / libretro cores and the host tests keep ORIGINAL (the user's call, 2026-11-16)
+#endif
     s->autoZoom = true;
     s->wildOff = false;
     s->tabBar = PD_TAB_BAR_DEFAULT;
@@ -35,6 +39,8 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->flightAnywhere = false;
     s->flightVehicle = 0;
     s->gameSpeed = 0;
+    s->reusableTms = s->instantText = s->tradeEvos = false;
+    for (int i = 0; i < PD_SCENES; i++) s->sceneSpeed[i] = 0;
     s->gameVolume = 100;
     s->gameMuted = false;
     s->autoRun = false;
@@ -120,6 +126,8 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
         else if (!strcmp(key, "speed")) int_in(value, 0, PD_GAME_SPEED_COUNT - 1, &s->gameSpeed);
         else if (!strcmp(key, "volume")) int_in(value, 20, 100, &s->gameVolume);
         else if (!strcmp(key, "flyon")) int_in(value, 0, 3, &s->flightVehicle);
+        else if (!strncmp(key, "scene", 5) && key[5] >= '0' && key[5] < '0' + PD_SCENES && !key[6])
+            int_in(value, 0, PD_SCENE_SPEED_COUNT - 1, &s->sceneSpeed[key[5] - '0']);
         else {
             int on;
             bool* b = !strcmp(key, "ffaudio") ? &s->ffAudio : !strcmp(key, "rewind") ? &s->rewind
@@ -127,12 +135,18 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
                     : !strcmp(key, "onetap") ? &s->oneTapMoves : !strcmp(key, "mute") ? &s->gameMuted
                     : !strcmp(key, "autorun") ? &s->autoRun : !strcmp(key, "gen5") ? &s->battleGen5
                     : !strcmp(key, "noinfo") ? &s->noBattleInfo : !strcmp(key, "infofirst") ? &s->battleInfoFirst
-                    : !strcmp(key, "flyclassic") ? &s->flyClassic
+                    : !strcmp(key, "flyclassic") ? &s->flyClassic : !strcmp(key, "reusabletms") ? &s->reusableTms
+                    : !strcmp(key, "instanttext") ? &s->instantText : !strcmp(key, "tradeevos") ? &s->tradeEvos
                     // FLIGHT AREA: "flightanywhere" as the Linux / libretro hosts write it, "flyanywhere" as 3DS builds did
                     : !strcmp(key, "flightanywhere") || !strcmp(key, "flyanywhere") ? &s->flightAnywhere : NULL;
             if (b && int_in(value, 0, 1, &on)) *b = on;
         }
     }
+    // VIEW has no PIXEL 1x or SHARP 1.25x of the game's own picture any more: SHARP 1.5x; EXPAND's PIXEL read as 1.25x.
+    if (s->aspect == PD_ASPECT_ORIGINAL && (s->screenMode == PD_SCREEN_PIXEL || s->screenMode == PD_SCREEN_SHARP_125))
+        s->screenMode = PD_SCREEN_SHARP;
+    else if (s->aspect != PD_ASPECT_ORIGINAL && s->screenMode == PD_SCREEN_PIXEL)
+        s->screenMode = PD_SCREEN_SHARP_125;
     fclose(f);
     return true;
 }
@@ -156,6 +170,8 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
             s->gameVolume, s->hideHints, s->oneTapMoves, s->gameMuted, s->autoRun, s->showPerf ? 1 : 0);
     fprintf(f, "gen5=%d\nnoinfo=%d\ninfofirst=%d\n", s->battleGen5 ? 1 : 0, s->noBattleInfo ? 1 : 0, s->battleInfoFirst ? 1 : 0);
     fprintf(f, "flyclassic=%d\nflightanywhere=%d\nflyon=%d\n", s->flyClassic ? 1 : 0, s->flightAnywhere ? 1 : 0, s->flightVehicle);
+    fprintf(f, "reusabletms=%d\ninstanttext=%d\ntradeevos=%d\n", s->reusableTms ? 1 : 0, s->instantText ? 1 : 0, s->tradeEvos ? 1 : 0);
+    for (int i = 0; i < PD_SCENES; i++) fprintf(f, "scene%d=%d\n", i, s->sceneSpeed[i]);
     if (fclose(f) != 0) return false;
     return rename(tmp, path) == 0;
 }

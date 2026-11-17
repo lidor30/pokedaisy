@@ -206,6 +206,12 @@ class Prefs(context: Context) {
         get() = p.getInt("exp_share", 0)
         set(v) = p.edit().putInt("exp_share", v).apply()
 
+    /** GAME LOOK (DISPLAY OPTIONS on both screens, CompanionSkins.enabled): the companion and the HUD in the running game's
+     * own look. On by default. */
+    var gameLook: Boolean
+        get() = p.getBoolean("game_look", true)
+        set(v) = p.edit().putBoolean("game_look", v).apply()
+
     /** SETTINGS' DESCRIPTIONS and GROUP TABS (both screens, SettingsLook): shown by default. */
     var settingsDescriptions: Boolean
         get() = p.getBoolean("settings_descriptions", true)

@@ -200,7 +200,7 @@ static int fill_column(const struct pd_boxes* b, int shown, int* at) {
 void ui_box_message(struct pd_ui* ui, struct pd_canvas* c) {
     int w = c->w - 2 * MARGIN, h = 52, x = MARGIN, y = (c->h - h) / 2 - 16;
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
-    pd_text_wrap(c, x + f + 6, y + f + 2, w - 2 * f - 52, 15, 3, ui->boxMessage, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text_wrap(c, x + f + 6, y + f + 2, w - 2 * f - 52, pd_lh(15), 3, ui->boxMessage, PD_TITLE_TEXT, PD_TITLE_SHADOW);
     ui_button(ui, c, x + w - f - 40, y + (h - 22) / 2, 36, 22, "OK", HIT_BOX_MESSAGE);
 }
 
@@ -221,7 +221,7 @@ void ui_boxes_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
                  m ? shown_name(m, name, sizeof(name)) : "");
         int y = c->h - 32, w = c->w - 2 * MARGIN;
         int f = pd_title_box(c, MARGIN, y, w, 30, PD_TITLE_FILL);
-        pd_text_wrap(c, MARGIN + f + 4, y + f, w - 2 * f - 64, 13, 2, buf, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+        pd_text_wrap(c, MARGIN + f + 4, y + f, w - 2 * f - 64, pd_lh(13), 2, buf, PD_TITLE_TEXT, PD_TITLE_SHADOW);
         ui_button(ui, c, MARGIN + w - f - 54, y + 5, 50, 20, "CANCEL", HIT_BOX_CANCEL);
         return;
     }

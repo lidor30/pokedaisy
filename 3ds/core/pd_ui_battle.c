@@ -21,7 +21,7 @@
 #define ROW 34      // a card's row: the icon and two lines of text
 #define RULE 5      // a separator and the space around it
 #define FRAME 3     // the white window's frame
-#define LINE 16     // PD_FONT_HEIGHT
+#define LINE pd_lh(16) // PD_FONT_HEIGHT at NORMAL
 
 // BattleControlsScreen's button colours.
 #define SUGGEST_GOLD 0xE8B830

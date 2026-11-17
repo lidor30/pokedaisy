@@ -313,7 +313,7 @@ size_t pd_library_cache_write(const struct pd_library* l, char* out, size_t len)
 // The rows: a group title, or a setting with its value and (for a pick-list) how many choices.
 enum row {
     R_LIBRARY, R_VIEW, R_SORT,
-    R_SCREEN, R_THEME, R_DARK, R_SCREEN_MODE, R_ASPECT,
+    R_SCREEN, R_THEME, R_DARK, R_PICTURE,
     R_SOUND, R_VOLUME, R_MUTE,
     R_BATTLE, R_STYLE, R_HINTS, R_INFO,
     R_FIELD, R_HUD, R_FLY,
@@ -346,8 +346,7 @@ const char* lib_settings_choice(const struct pd_library* l, int row, int choice)
             if (choice < n && pd_themes[i].id == ids[choice]) return pd_themes[i].label;
         return "";
     }
-    case R_SCREEN_MODE: return pd_screen_mode_name(choice);
-    case R_ASPECT: return pd_aspect_name(choice);
+    case R_PICTURE: return pd_view_name(choice);
     case R_VOLUME: return choice >= 0 && choice < 5 ? VOLUMES[choice] : "";
     default: return "";
     }
@@ -361,7 +360,7 @@ const char* lib_settings_label(const struct pd_library* l, int row, const char**
     *choices = 0;
     switch (row) {
     case R_LIBRARY: *group = true; return "LIBRARY";
-    case R_VIEW: *value = s->libraryGrid ? "GRID" : "LIST"; return "VIEW";
+    case R_VIEW: *value = s->libraryGrid ? "GRID" : "LIST"; return "LAYOUT";
     case R_SORT: *value = s->libraryRecent ? "LAST PLAYED" : "NAME"; return "SORT";
     case R_SCREEN: *group = true; return "SCREEN";
     case R_THEME: {
@@ -372,8 +371,8 @@ const char* lib_settings_label(const struct pd_library* l, int row, const char**
         return "THEME";
     }
     case R_DARK: *value = on_off(s->darkMode); return "DARK MODE";
-    case R_SCREEN_MODE: *value = pd_screen_mode_name(s->screenMode); *choices = PD_SCREEN_MODES; return "SCREEN";
-    case R_ASPECT: *value = pd_aspect_name(s->aspect); *choices = PD_ASPECTS; return "ASPECT";
+    // VIEW: SCREEN and ASPECT as one pick-list (the companion's too); all seven here, a game without EXPAND reads its size.
+    case R_PICTURE: *value = pd_view_name(pd_view_of(s, true)); *choices = PD_VIEWS; return "VIEW";
     case R_SOUND: *group = true; return "SOUND";
     case R_VOLUME: {
         int v = (s->gameVolume + 10) / 20 - 1;
@@ -449,8 +448,7 @@ void lib_settings_pick(struct pd_library* l, int choice) {
         if (choice < themes(ids)) s->theme = ids[choice];
         break;
     }
-    case R_SCREEN_MODE: s->screenMode = choice; break;
-    case R_ASPECT: s->aspect = choice; break;
+    case R_PICTURE: pd_view_set(s, choice, true); break;
     case R_VOLUME: s->gameVolume = (choice + 1) * 20; break;
     default: return;
     }
@@ -516,7 +514,8 @@ void pd_library_keys(struct pd_library* l, unsigned down) {
     if (!down) return;
     l->dirty = true;
     if (down & PD_LIB_START) {
-        l->quit = true;
+        if ((l->page == PD_PAGE_EDITOR || l->page == PD_PAGE_TRADE) && lib_saves_unsaved(l)) lib_saves_ask_quit(l);
+        else l->quit = true;
         return;
     }
     // SELECT steps through the pages (the rail's order), Y too; the save tools keep B while a save is open.
@@ -590,6 +589,10 @@ void pd_library_touch(struct pd_library* l, int x, int y, bool down) {
             if (l->dragged) {
                 if (l->page == PD_PAGE_SETTINGS && l->pickRow < 0) l->settingsScroll += l->lastY - y;
                 else if (list) list->scroll += l->lastY - y;
+                else if (l->page == PD_PAGE_EDITOR || l->page == PD_PAGE_TRADE) {
+                    int* sc = lib_saves_scroll(l);
+                    if (sc) *sc += l->lastY - y;
+                }
                 l->lastY = y;
                 l->pressedHit = HIT_NONE;
                 l->dirty = true;

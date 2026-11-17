@@ -52,7 +52,7 @@ bool devlink_take_leave(void);
 bool devlink_take_wild(int* species, int* level);
 // `teach SLOT INDEX MOVE`: a party Pokemon's move set by the game's SetMonData, between frames.
 bool devlink_take_teach(int* slot, int* index, int* move);
-// SCREEN and ASPECT to set while playing (`opt`; -1 leaves one alone): taken once.
+// SCREEN and ASPECT to set while playing (`opt`; -1 leaves one alone; ASPECT 10 / 11 = EXPAND's mist off / on): taken once.
 bool devlink_take_opt(int* screen, int* aspect);
 // True when a new build waits: leave everything and run it.
 bool devlink_restart_wanted(void);

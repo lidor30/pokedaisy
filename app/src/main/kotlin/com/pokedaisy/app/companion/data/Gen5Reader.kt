@@ -319,9 +319,13 @@ private fun readGen5Battle(r: MemoryReader, b: Gen5Battle): Gen5BattleRead? {
     fun member(client: Int, i: Int) = u32(parties, client * b.partyStride + i * 4).takeIf { inMain(it) }
     fun mon(addr: Long?) = addr?.let { decodeGen5BattleMon(r.readCoreMemory(it, 0x140), 0) } ?: EMPTY_BATTLE_MON
     val foeOut = member(1, 0)?.let { u8(r.readCoreMemory(it + GEN5_POKE_ID, 1), 0) % 6 } ?: -1
-    val doubles = rule == 1
-    val mons = listOf(mon(member(0, 0)), mon(member(1, 0)), if (doubles) mon(member(0, 1)) else EMPTY_BATTLE_MON,
-        if (doubles) mon(member(1, 1)) else EMPTY_BATTLE_MON)
+    // Anything but a single battle (1 double, 2 triple, 3 rotation): BATTLE BUTTONS' strip is a single battle's panel, so
+    // these float the game's own touch screen in (GitHub #833). The second battler shown is a double's or triple's next one;
+    // a rotation has one out at a time.
+    val doubles = rule != 0
+    val second = rule == 1 || rule == 2
+    val mons = listOf(mon(member(0, 0)), mon(member(1, 0)), if (second) mon(member(0, 1)) else EMPTY_BATTLE_MON,
+        if (second) mon(member(1, 1)) else EMPTY_BATTLE_MON)
     val foeParty = u32(head, b.offFoeParty)
     val foes = if (inMain(foeParty)) {
         val count = u32(r.readCoreMemory(foeParty + 4, 4), 0).toInt().coerceIn(0, PARTY_SIZE)

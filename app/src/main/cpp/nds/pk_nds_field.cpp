@@ -812,7 +812,7 @@ int pk_nds_gen5_battle_panel(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_
 
 // Gen 5's touch bits in a battle (proc: the battle's): the commands and the moves are the battle buttons' own while their
 // panel takes touches; the bag and the party (and a fainted Pokémon's party) are screens of their own, faded in; any
-// other panel (a prompt) is the touch screen's.
+// other panel (a prompt, a double's or triple's choice of target: panel 3) is the touch screen's.
 static int gen5BattleTouch(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uint32_t (*read32)(uint32_t), uint32_t proc)
 {
     int panel = 0, waiting = 0, sub = 0;
@@ -821,7 +821,9 @@ static int gen5BattleTouch(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uin
     if (command == g->battleSelecting) {
         if (panel == 1 || panel == 2) return waiting ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
         if (sub == 2 || sub == 3) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
-        return 0;
+        // Which foe to hit (panel 3, GitHub #833: Black headless in a double battle, both Pokémon's turns): no BATTLE
+        // BUTTONS of ours for it, so the touch screen floats in; it read as nothing and only L2 brought it up.
+        return panel >= 3 ? PK_NDS_FIELD_TOUCH : 0;
     }
     if (command == GEN5_ACMD_PARTY) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
     // The switch prompt's party: after the prompt, no panel (the party's own screen, faded in - the engine waits the fade

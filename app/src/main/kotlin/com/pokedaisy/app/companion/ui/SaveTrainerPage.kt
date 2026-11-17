@@ -24,7 +24,11 @@ import com.pokedaisy.app.companion.i18n.tr
  * gave it.
  */
 @Composable
-internal fun TrainerPage(state: PcBoxesState, bag: TrainerBagEditor, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier) {
+internal fun TrainerPage(
+    state: PcBoxesState, bag: TrainerBagEditor, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier,
+    /** MISSING: what this Pokédex hasn't caught, and which other save has one. */
+    onMissing: (() -> Unit)? = null,
+) {
     val gen3 = state.gen3?.let { state.data3 }
     BoxWithConstraints(modifier) {
         if (maxWidth > maxHeight * 1.1f) {
@@ -32,14 +36,14 @@ internal fun TrainerPage(state: PcBoxesState, bag: TrainerBagEditor, m: GbaTextM
                 // Without Gen 3's tickets beside it, the trainer's window is only as tall as its lines.
                 TrainerWindow(state, bag, gen3, m, Modifier.weight(0.4f).let { if (gen3 != null) it.fillMaxHeight() else it })
                 Column(Modifier.weight(0.6f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(m.u * 4)) {
-                    DexWindow(state, bag, m, small, Modifier.fillMaxWidth())
+                    DexWindow(state, bag, m, small, Modifier.fillMaxWidth(), onMissing)
                     if (gen3 != null) EventsWindow(state, gen3, m, small, Modifier.weight(1f).fillMaxWidth())
                 }
             }
         } else {
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(m.u * 4)) {
                 TrainerWindow(state, bag, gen3, m, Modifier.fillMaxWidth())
-                DexWindow(state, bag, m, small, Modifier.fillMaxWidth())
+                DexWindow(state, bag, m, small, Modifier.fillMaxWidth(), onMissing)
                 if (gen3 != null) EventsWindow(state, gen3, m, small, Modifier.weight(1f).fillMaxWidth())
             }
         }
@@ -66,7 +70,7 @@ private fun TrainerWindow(state: PcBoxesState, bag: TrainerBagEditor, gen3: Gen3
 }
 
 @Composable
-private fun DexWindow(state: PcBoxesState, bag: TrainerBagEditor, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier) {
+private fun DexWindow(state: PcBoxesState, bag: TrainerBagEditor, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier, onMissing: (() -> Unit)?) {
     val c = bag.dex
     OptionListWindow(m, modifier) {
         Column {
@@ -83,6 +87,8 @@ private fun DexWindow(state: PcBoxesState, bag: TrainerBagEditor, m: GbaTextMetr
                 )) {
                     OptionButton(label, small, onClick = { state.editing = PcBoxesState.Editing.Dex(kind) }, modifier = Modifier.weight(1f), sidePadding = 2)
                 }
+                // What the dex lacks, and which of the other saves can send one.
+                if (onMissing != null) OptionButton(tk("MISSING"), small, onClick = onMissing, emphasis = true, modifier = Modifier.weight(1f), sidePadding = 2)
             }
         }
     }

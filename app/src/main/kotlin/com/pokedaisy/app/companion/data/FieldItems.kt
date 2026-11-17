@@ -293,6 +293,14 @@ val FIELD_ITEMS_MONOMYTH_V1_1 = FIELD_ITEMS_MONOMYTH.copy(
     pc = PcFns(0x08090A60L, 57, 0x08298510L, 0x080C6535L, listOf(0xCC9E3CD3L, 0x3DECE7E0L)),
 )
 
+/** Monomyth v1.2: v1.1's functions moved +0x220; ArePlayerFieldControlsLocked reads sLockFieldControls 4 bytes later
+ * (0x0203BF6B), so its CRC is its own. Special 57 is still the PC (gSpecials 0x08298368). */
+val FIELD_ITEMS_MONOMYTH_V1_2 = FIELD_ITEMS_MONOMYTH.copy(
+    varGet = 0x08096454L, varSet = 0x0809648CL, fieldControlsLocked = 0x08090BF0L,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0xCFEC077FL),
+    pc = PcFns(0x08090C80L, 57, 0x08298368L, 0x080C6761L, listOf(0xCC9E3CD3L, 0x8DD1B5B0L)),
+)
+
 /**
  * Emerald Imperium 1.3.1 (pokeemerald-expansion 1.10.0, no source): pokeemerald-expansion's 1.10.0 tag built plain with
  * Debian's arm-none-eabi-gcc 12 as the reference, each function found in Imperium by its first instructions (literal
@@ -326,6 +334,45 @@ val FIELD_ITEMS_IMPERIUM = FieldItemFns(
         ),
     ),
     flight = FLIGHT_IMPERIUM,
+)
+
+/**
+ * Pokémon Epsilon Emerald v1.0.0 (a closed gcc pokeemerald): PC anywhere and FLY, no bag functions. Every function found
+ * through the game's own callers or retail Emerald's code masked: ScriptContext_SetupScript's pool gives gScriptCmdTable
+ * (0x08A49548), its `special` gSpecials (0x08A49938, [63] the PC, retail's code), `checkflag` FlagGet (with a range check of
+ * its own), `fadescreen` FadeScreen, `additem` VarGet; the field-lock trio over 0x03000F2C; SetUpFieldMove_Fly is FLY's slot
+ * in the party menu's field-move table (retail's code); its own SetFlyDestination (0x0896C26C, CB_ExitFlyMap's switch, split
+ * out) gives sMapHealLocations (239 rows {group, num, heal}: its routes too), Emerald's special towns (Littleroot by gender,
+ * Ever Grande 11, the Battle Frontier 22), SetWarpDestinationToHealLocation / ToMapWarp, and its caller
+ * ReturnToFieldFromFlyMapSelect. GetMapsecType (0x0896ACD4) renumbered the types: a visited town 3, a visited route 2, the
+ * Battle Frontier 5 (unvisited 4 / 1 / 0) - the three its Fly map takes. GetMonData / SetMonData by their switches from
+ * MON_DATA_STATUS (retail's field ids: MOVE1 13, IS_EGG 45). Its sections the game sends somewhere special by flag or cursor
+ * spot (0x47, 0x49, 0xEF, Rustboro's second landing) aren't in the table's rows or take its plain landing. The PC opened and
+ * closed and FLY flown headless on retail Emerald's save (docs/DEVELOPMENT.md's Epsilon Emerald section).
+ */
+val FIELD_ITEMS_EPSILON_EMERALD = FieldItemFns(
+    varGet = 0x088CBD0CL, varSet = 0x088CBD44L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x088C6594L, repelVar = 0x4021, items = 0,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0x2532A407L),
+    party = PartyItemFns(
+        getMonData = 0x0888C978L, setMonData = 0x0888D440L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x020251A0L, partyCount = 0x0202519DL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0x8C6C6D54L, 0xD1CCFDB2L),
+    ),
+    bagActions = false,
+    pc = PcFns(0x088C6620L, 63, 0x08A49938L, 0x088FFCDDL, listOf(0x794EBC3DL, 0x642C785DL)),
+    fly = FlyFns(
+        flagGet = 0x088CBE58L, badgeFlag = 0x86C, setUpFieldMoveFly = 0x08A12EDCL, getMapsecType = 0x0896ACD4L,
+        fadeScreen = 0x088DBD8CL, lockControls = 0x088C657CL, unlockControls = 0x088C6588L, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x0203DE45L, destinations = 0x0901D370L, firstMapsec = 0, count = 0xEF,
+        codeCrcs = listOf(0xC3EAF912L, 0x555680EDL, 0x68FA76C9L, 0xCE0E8C28L, 0xB9FB85A7L, 0xB037C8AFL, 0x65220897L, 0x2F1D18CAL, 0x84D77941L),
+        flyTypes = setOf(2, 3, 5), extraMapsecs = listOf(58), monMoveField = 13, monEggField = 45,
+        healWarp = HealWarp(
+            toHealLocation = 0x088ABEB8L, toMapWarp = 0x088ABE14L, returnToField = 0x088E82A8L,
+            saveBlock2Ptr = 0x03004550L, special = mapOf(15 to 11, 58 to 22),
+            genderMapsec = 0, maleHeal = 12, femaleHeal = 13,
+        ),
+    ),
 )
 
 /**

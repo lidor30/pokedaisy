@@ -72,12 +72,18 @@ enum class BoxSort { DEX, LEVEL, NAME }
  * A save being edited: every change only what that game could hold, refused with the game's reason ([SaveEditRefused])
  * or an [IllegalArgumentException] for a value the screens never offer. [build] gives the whole file to write.
  */
+/** An editor's working copies at one moment ([MonSaveEditor.snapshot]). */
+class EditorSnapshot internal constructor(internal val parts: List<ByteArray>)
+
 interface MonSaveEditor {
     val data: MonSave
     val changed: Boolean
     /** A new editor over the same file (UNDO ALL). */
     fun fresh(): MonSaveEditor
     fun build(): ByteArray
+    /** The working copies as they are now, to put back with [restore] (a two-step edit that must all happen or none). */
+    fun snapshot(): EditorSnapshot
+    fun restore(snapshot: EditorSnapshot)
 
     fun monAt(at: MonRef): SaveMon?
     fun move(from: MonRef, to: MonRef)

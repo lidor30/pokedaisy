@@ -124,7 +124,7 @@ class RetailEngineTest {
         var checked = 0
         for (name in listOf(
             "Pokemon Emerald Legacy (v1.1.4).gba", "Pokemon Recharged Emerald (v2.2.8).gba", "Pokemon Recharged Yellow (v1.9.7).gba",
-            "Pokemon FireRed QoL (2026-09-27 build).gba", "Pokemon Monomyth (v1.1).gba", "Pokemon Elite Redux (2.65.4.1b).gba",
+            "Pokemon FireRed QoL (2026-09-27 build).gba", "Pokemon Monomyth (v1.1).gba", "Pokemon Monomyth (v1.2).gba", "Pokemon Elite Redux (2.65.4.1b).gba",
             "Pokemon Emerald Seaglass (v3.0).gba", "Pokemon Lazarus (v2.0).gba", "Pokemon SoulGold (v1.2.1).gba",
             "Pokemon Celia's Stupid Romhack (v1.1.4).gba", "Super Mariomon (v1.5.2 Anniversary).gba", "Pokemon Unbound (v2.1.1.1).gba",
         )) {

@@ -33,9 +33,13 @@ data class Gen4Config(
     val pokedexOff: Int? = null,
     /** Its National Dex byte (Pokedex.nationalDexObtained) and the game's dex tables. */
     val nationalDexOff: Int = 0,
+    /** The game has the National Dex from the start whatever that byte says (Heartfelt Gold's check returns 1). */
+    val nationalDexAlways: Boolean = false,
     /** Bytes in each of its flag arrays (caught, seen, the genders'): a bit per species, 0x40 for 493 (Origin HeartGold's
      * 0xC8, for 1600). */
     val dexFlagBytes: Int = 0x40,
+    /** Where its seen bits start in the Pokédex (Heartfelt Gold's moved to +0x400); null = right after the caught bits. */
+    val dexSeenOff: Int? = null,
     val pokedexTables: PokedexTables? = null,
     /** Each map header's place name (its map label) - the English one: [placeName] reads the cart's own. */
     val mapPlaces: Map<Int, String>,
@@ -412,6 +416,32 @@ val GEN4_ORIGIN_HEARTGOLD = gen4HeartGoldFamily(saveDataPtr = 0x021D11B4, fieldS
     formSpecies = { species, form -> OriginHeartGold.data?.formSpecies(species, form) ?: species },
 )
 
+/**
+ * Heartfelt Gold ([HeartfeltGold]): the US HeartGold's RAM and save, hg-engine's bag grown (Items 245, Key Items 92, Balls
+ * 26: include/bag.h's ITEM_POCKET_EXPANSION), so every section after it moved 0x1F0 - its SaveData's own table
+ * (arrayHeaders at +0x2F014, read live): the flags (VarsFlags) 0xFD4, the Location 0x1424, the Pokédex 0x14A8, the roamers
+ * 0x721C (REPEL's steps +0x65), the Pokégear 0xC458. Its Pokédex grew to 0x704 bytes: retail's caught bits (+0x04) and
+ * National Dex byte (+0x337, which the game no longer reads: its National Dex is always on) where they were, the seen bits at +0x400, each a bit per species id (its ARM9's Pokédex
+ * functions, edited in place: 0x02029FF8's caught check reads both); its DEX is the National Dex's 1025 from its cart
+ * ([POKEDEX_HEARTFELT]). Species to 1534 (personal records; its forms are ids of their own past the National Dex). No GUIDE.
+ */
+val GEN4_HEARTFELT_GOLD = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PTR).copy(
+    pocketSizes = intArrayOf(245, 92, 101, 12, 40, 64, 26, 30),
+    locationOff = 0x1424,
+    repelStepsOff = 0x721C + 0x65,
+    pokedexOff = 0x14A8,
+    nationalDexOff = 0x337,
+    // Pokedex_GetNatDexFlag (0x0202A55C) is `movs r0, #1` here: the dex opens on NATIONAL from the start.
+    nationalDexAlways = true,
+    dexFlagBytes = 0xC0,
+    dexSeenOff = 0x400,
+    pokedexTables = POKEDEX_HEARTFELT,
+    flagsOff = 0xFD4 + 0x170 * 2,
+    varsFlagsOff = 0xFD4,
+    pokegearWordOff = 0xC458 + 4,
+    maxSpecies = HeartfeltGold.LAST_SPECIES,
+)
+
 /** German SoulSilver rev 0 shares HeartGold's globals and save layout (IPGD, SHA-1 576cdb7e…). */
 val GEN4_SOULSILVER_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138, battleTemplate = 0x020FA438)
 
@@ -439,6 +469,7 @@ fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = wh
     }
     GameKind.HEARTGOLD -> when {
         originHeartGold -> GEN4_ORIGIN_HEARTGOLD
+        heartfeltGold -> GEN4_HEARTFELT_GOLD
         code == "IPKD" -> GEN4_HEARTGOLD_DE
         code == "IPKF" -> GEN4_HEARTGOLD_FR
         else -> DsPorts.byCode(code)?.let(DsPorts::gen4Config) ?: GEN4_HEARTGOLD_US

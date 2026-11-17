@@ -201,6 +201,9 @@ fun itemDescription(id: Int): String = when (activeGame) {
         ?: itemDescriptionsYellow[id]?.takeIf { itemNamesPureRgb[id] == itemNamesYellow[id] } ?: ""
     // Yellow Legacy kept Yellow's items; its TMs teach its own moves.
     GameKind.YELLOW_LEGACY -> tmDescriptionsYellowLegacy[id] ?: itemDescriptionsYellow[id] ?: ""
+    // Brown: its TMs teach its own moves; Yellow's text where the item is still Yellow's (its names are mixed case).
+    GameKind.BROWN -> tmDescriptionsBrown[id]
+        ?: itemDescriptionsYellow[id]?.takeIf { activeItemNames[id]?.uppercase() == itemNamesYellow[id]?.uppercase() } ?: ""
     // Crystal's own text, from the cart (a TM's: its move's), like the GBA games'.
     // (Prism's are compressed: none.)
     GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.POLISHED_CRYSTAL,

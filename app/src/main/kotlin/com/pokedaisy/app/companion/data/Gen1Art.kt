@@ -39,6 +39,9 @@ object Gen1Art {
     const val YELLOW_LEGACY_FONT = "gen1/yellow-legacy-font.ttf"
     const val YELLOW_LEGACY_ICONS = "gen1/yellow_legacy/pokemon"
     const val YELLOW_LEGACY_TOWN_MAP_NAME = "yellow_legacy"
+    /** Pokémon Brown: Red's font and icon shapes, its icons for 252 species and its own Rijon town map ("brown"). */
+    const val BROWN_ICONS = "gen1/brown/pokemon"
+    const val BROWN_TOWN_MAP_NAME = "brown"
     /** Bump when what [extractTo] writes changes, so a cached ROM's art is rebuilt once. */
     private const val VERSION = 3
 
@@ -203,7 +206,30 @@ object Gen1Art {
         iconSheet2 = 0x0E to 0x64BF,
     )
 
-    private val GAMES = listOf(YELLOW, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, BLUE, RED_DE, BLUE_DE, PURE_RED, PURE_BLUE, YELLOW_LEGACY)
+    /**
+     * Pokémon Brown 6.1.2 / 6.0.1 (pokered.sym mapped into it by scripts/port_gen1.py, each checked by its bytes): Red's
+     * font and MonPartySpritePointers at Red's places, MonPartyData moved and grown to 252 species (2 a byte), its own
+     * Rijon town map (CompressedMap 1C:7B9E) over WorldMapTileGraphics redrawn in place, its player at Red's. A DMG cart
+     * run as a Super Game Boy like Red, with SGB palettes of its own (sampled headless): the party menu's icons in two browns
+     * and black on white (OBP0 straight through: pixel 1 = D68463, 2 = 7B3939, 3 = black), the town map cream / sky blue /
+     * green / black (its Fly menu), the player there in its paper, water and black.
+     */
+    private fun brown(sha1: String) = redBlue(sha1).let {
+        Gen1ArtTables(
+            sha1 = sha1, font = it.font, fontPath = it.fontPath, iconPointers = it.iconPointers, iconPointerCount = it.iconPointerCount,
+            monPartyData = 0x1C to 0x5580, dexCount = 252, iconsDir = BROWN_ICONS,
+            iconColors = intArrayOf(0xFFD68463.toInt(), 0xFF7B3939.toInt(), 0xFF000000.toInt()),
+            townMap = 0x1C to 0x7B9E, townMapTiles = it.townMapTiles, townMapPath = "regionmap/$BROWN_TOWN_MAP_NAME.png",
+            townMapColors = intArrayOf(0xFFFFF7DE.toInt(), 0xFF84DEF7.toInt(), 0xFF8CBD52.toInt(), 0xFF000000.toInt()),
+            playerSprite = it.playerSprite, playerPath = "regionmap/player_brown.png",
+            playerColors = intArrayOf(0, 0xFFFFF7DE.toInt(), 0xFF84DEF7.toInt(), 0xFF000000.toInt()),
+        )
+    }
+    val BROWN = brown(TelemetrySampler.BROWN_V6_1_2_SHA1)
+    val BROWN_V601 = brown(TelemetrySampler.BROWN_V6_0_1_SHA1)
+
+    private val GAMES = listOf(YELLOW, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, BLUE, RED_DE, BLUE_DE, PURE_RED, PURE_BLUE, YELLOW_LEGACY,
+        BROWN, BROWN_V601)
 
     private fun off(bank: Int, addr: Int) = if (bank == 0) addr else bank * 0x4000 + (addr - 0x4000)
 

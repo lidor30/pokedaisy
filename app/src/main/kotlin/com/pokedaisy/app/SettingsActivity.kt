@@ -44,7 +44,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import com.pokedaisy.app.companion.ui.LibraryIcons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -336,7 +336,7 @@ class SettingsActivity : ComponentActivity() {
                         Spacer(Modifier.width(nm.u * 4))
                         com.pokedaisy.app.companion.ui.OptionButton(
                             null, nm, onClick = { screen = Screen.HELP },
-                            icon = Icons.AutoMirrored.Filled.HelpOutline, contentDescription = tr("Help"),
+                            icon = LibraryIcons.HelpOutline, contentDescription = tr("Help"),
                         )
                     }
                     Spacer(Modifier.height(nm.u * 8))
@@ -479,6 +479,22 @@ class SettingsActivity : ComponentActivity() {
                     m = m,
                     onDismiss = { confirmReplaceAll = false },
                     onConfirm = { confirmReplaceAll = false; startCoverSync(replace = true) },
+                )
+            }
+
+            confirmReset?.let { r ->
+                OptionConfirm(
+                    title = if (r == Reset.HOTKEYS) tk("RESET HOTKEYS?") else tk("RESET GAME BUTTONS?"),
+                    message = if (r == Reset.HOTKEYS) tr("Every hotkey goes back to the keys it had at first.")
+                        else tr("Every game button goes back to the key it had at first."),
+                    confirmLabel = tk("RESET"),
+                    m = m,
+                    onDismiss = { confirmReset = null },
+                    onConfirm = {
+                        if (r == Reset.HOTKEYS) Hotkeys.resetBindings(filesRoot) else GbaControls.resetBindings(filesRoot)
+                        confirmReset = null
+                        revision++
+                    },
                 )
             }
 
@@ -900,6 +916,8 @@ class SettingsActivity : ComponentActivity() {
                     badge = { l -> tk("LIMITED").takeIf { themes.firstOrNull { it.label == l }?.season != null } },
                 ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(this@SettingsActivity, it) } }
             },
+            // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
+            com.pokedaisy.app.companion.ui.gameLookRow { revision++ },
             // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
             SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
                 DarkMode.set(this@SettingsActivity, DarkMode.setting.next())
@@ -1972,6 +1990,20 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }
+            ResetToDefaults(m) { confirmReset = Reset.HOTKEYS }
+        }
+    }
+
+    /** What RESET TO DEFAULTS asks about ([confirmReset]): the hotkeys or the game buttons. */
+    private enum class Reset { HOTKEYS, BUTTONS }
+
+    private var confirmReset by mutableStateOf<Reset?>(null)
+
+    /** A page's RESET TO DEFAULTS, under its list (GitHub discussion #923: a key rebound by mistake, nothing left to fix it with). */
+    @Composable
+    private fun ResetToDefaults(m: GbaTextMetrics, onClick: () -> Unit) {
+        Row(Modifier.fillMaxWidth().padding(top = m.u * 4), horizontalArrangement = Arrangement.End) {
+            OptionButton(tk("RESET TO DEFAULTS"), m, onClick = { capture.cancel(); onClick() })
         }
     }
 
@@ -1996,6 +2028,7 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }
+            ResetToDefaults(m) { confirmReset = Reset.BUTTONS }
         }
     }
 

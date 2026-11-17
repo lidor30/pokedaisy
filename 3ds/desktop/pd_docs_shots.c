@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
     static struct pd_settings settings;
     pd_settings_defaults(&settings);
     static const struct pd_library_host host = {
-        NULL, read_rom, read_save, write_saves, load_rom, read_card, nothing, nothing, "3DS", NULL,
+        NULL, read_rom, read_save, write_saves, load_rom, read_card, nothing, nothing, "3DS", NULL, NULL,
     };
 
     // The first launch: an empty roms folder.

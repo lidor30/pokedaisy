@@ -13,6 +13,8 @@
 static const char* const SCREEN_NAMES[PD_SCREEN_MODES] = { "PIXEL 1x", "SHARP 1.25x", "SHARP 1.5x", "STRETCH" };
 static const char* const ASPECT_NAMES[PD_ASPECTS] = { "ORIGINAL", "EXPAND", "ZOOM OUT" };
 const char* const PD_GAME_SPEEDS[PD_GAME_SPEED_COUNT] = { "1x", "1.5x", "2x", "3x", "4x", "0.5x", "0.25x" };
+const char* const PD_SCENE_SPEEDS[PD_SCENE_SPEED_COUNT] = { "SAME", "1x", "1.5x", "2x", "3x", "4x" };
+static const char* const SCENE_NAMES[PD_SCENES] = { "BATTLE SPEED", "TEXT SPEED", "MENU SPEED", "BIKE SPEED", "SURF SPEED" };
 static const char* const VOLUMES[5] = { "20%", "40%", "60%", "80%", "100%" };
 // FLY ON (the app's FlightVehicle, linux/flight.h's enum flight_vehicle): the game's bird, or a vehicle with the player in it.
 static const char* const FLY_ON_NAMES[4] = { "BIRD", "AIR BALLOON", "HELICOPTER", "ZEPPELIN" };
@@ -24,6 +26,30 @@ const char* pd_aspect_name(int aspect) {
 
 const char* pd_screen_mode_name(int mode) {
     return mode >= 0 && mode < PD_SCREEN_MODES ? SCREEN_NAMES[mode] : "";
+}
+
+// PIXEL 1x and SHARP 1.25x of the game's own picture are left out (the user's call: they looked bad); EXPAND 1x is what
+// ASPECT called ZOOM OUT (EXPAND's window the whole screen, a game pixel a screen pixel).
+static const char* const VIEW_NAMES[PD_VIEWS] = { "SHARP 1.5x", "STRETCH", "EXPAND 1.5x", "EXPAND 1.25x", "EXPAND 1x (EXPERIMENTAL)" };
+int pd_view_count(bool expand) { return expand ? PD_VIEWS : 2; }
+const char* pd_view_name(int view) { return view >= 0 && view < PD_VIEWS ? VIEW_NAMES[view] : ""; }
+int pd_view_of(const struct pd_settings* s, bool expand) {
+    if (!expand || s->aspect == PD_ASPECT_ORIGINAL) return s->screenMode == PD_SCREEN_STRETCH ? 1 : 0;
+    if (s->aspect == PD_ASPECT_ZOOM_OUT) return 4;
+    return s->screenMode == PD_SCREEN_PIXEL || s->screenMode == PD_SCREEN_SHARP_125 ? 3 : 2;
+}
+void pd_view_set(struct pd_settings* s, int view, bool expand) {
+    if (view < 0 || view >= pd_view_count(expand)) return;
+    if (view < 2) {
+        s->screenMode = view ? PD_SCREEN_STRETCH : PD_SCREEN_SHARP;
+        if (expand) s->aspect = PD_ASPECT_ORIGINAL;
+    } else if (view == 4) {
+        s->aspect = PD_ASPECT_ZOOM_OUT;
+        s->screenMode = PD_SCREEN_SHARP; // what AUTO ZOOM IN zooms in to
+    } else {
+        s->aspect = PD_ASPECT_EXPAND;
+        s->screenMode = view == 3 ? PD_SCREEN_SHARP_125 : PD_SCREEN_SHARP;
+    }
 }
 
 // The list's visible band (rows outside it are drawn clipped and take no taps) and its rows' height last time
@@ -71,6 +97,7 @@ static void setting(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w,
         if (ui->shoulderTabs && ui->overlay == PD_OVERLAY_NONE && ui->settingsNavId == HIT_SETTING + (int) row)
             settings_outline(c, x - 4, *y, w + 8, ROW_H);
     }
+    ui_row_divider(c, x - 2, *y + ROW_H - 1, w + 4);
     *y += ROW_H;
 }
 
@@ -79,6 +106,7 @@ static void muted_row(struct pd_canvas* c, int x, int* y, int w, const char* lab
     pd_text(c, x, pd_text_y(*y, ROW_H), label, PD_MUTED, PD_MUTED_SHADOW);
     int vx = x + w * valuePct / 100, past = x + pd_text_width(label) + 8;
     pd_text(c, vx < past ? past : vx, pd_text_y(*y, ROW_H), value, PD_MUTED, PD_MUTED_SHADOW);
+    ui_row_divider(c, x - 2, *y + ROW_H - 1, w + 4);
     *y += ROW_H;
 }
 
@@ -162,16 +190,8 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     // The TRAINER CARD opens from here (the list below is full): a grey chip at
     // the title window's right, white while pressed, like the tab bar's.
     if (host && host->batteryPct >= 0 && host->fullSettings) {
-        char pct[16];
-        snprintf(pct, sizeof(pct), "%d%%", host->batteryPct);
-        right -= pd_text_width(pct);
-        pd_text(c, right, ty, pct, PD_TITLE_TEXT, PD_TITLE_SHADOW);
-        right -= 26;
-        pd_fill(c, right + 2, ty + 5, 18, 8, PD_TITLE_TEXT);
-        pd_fill(c, right + 3, ty + 6, 16, 6, PD_TITLE_FILL);
-        pd_fill(c, right + 4, ty + 7, 14 * host->batteryPct / 100, 4, PD_TITLE_TEXT);
-        pd_fill(c, right + 20, ty + 7, 2, 4, PD_TITLE_TEXT);
-        right -= 2;
+        pd_battery_draw(c, right, ty, host->batteryPct, host->charging);
+        right -= pd_battery_width(host->batteryPct, host->charging) + 4;
     } else if (g->cfg && g->cfg->cardStyle && g->rom) {
         const char* label = "TRAINER CARD";
         int bw = pd_text_width(label) + 12, bh = TITLE_H - 6;
@@ -235,6 +255,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     char buf[40];
     struct pd_settings* st = ui->settings;
     bool full = host && host->fullSettings;
+    ui->viewExpand = host && host->hasExpand && host->expandGame;
     if (full) group(c, ix, &y, "GAME");
     if (s->valid) {
         const char* place = pd_mapsec_name(g, s->mapsec);
@@ -262,6 +283,13 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     if (full) {
         setting(ui, c, ix, &y, iw, SETTING_FF_MODE, "FF MODE", st->ffNormal ? "NORMAL" : "SMART");
         setting(ui, c, ix, &y, iw, SETTING_GAME_SPEED, "GAME SPEED", PD_GAME_SPEEDS[st->gameSpeed]);
+        // SCENE SPEEDS (the app's SPEED OPTIONS page): what each kind of scene runs at while FF is off. TEXT, BIKE and SURF
+        // need the field read (the game's own player state).
+        for (int i = 0; i < PD_SCENES; i++) {
+            if (host->fieldSupported || i == PD_SCENE_BATTLE || i == PD_SCENE_MENU)
+                setting(ui, c, ix, &y, iw, (enum setting_row) (SETTING_SCENE + i), SCENE_NAMES[i], PD_SCENE_SPEEDS[st->sceneSpeed[i]]);
+            else muted_row(c, ix, &y, iw, SCENE_NAMES[i], "N/A");
+        }
         group(c, ix, &y, "SOUND");
         snprintf(buf, sizeof(buf), "%d%%", st->gameVolume);
         setting(ui, c, ix, &y, iw, SETTING_VOLUME, "GAME VOLUME", buf);
@@ -285,6 +313,16 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
             muted_row(c, ix, &y, iw, "AUTO-RUN", "N/A");
             muted_row(c, ix, &y, iw, "RUN INDOORS", "N/A");
         }
+        // The game patches (REUSABLE TMS, INSTANT TEXT): found in the game's code, else N/A; a game whose TMs never run out
+        // says ON, greyed.
+        if (host->tmsSupported == 1) setting(ui, c, ix, &y, iw, SETTING_REUSABLE_TMS, "REUSABLE TMS", st->reusableTms ? "ON" : "OFF");
+        else muted_row(c, ix, &y, iw, "REUSABLE TMS", host->tmsSupported == 2 ? "ON" : "N/A");
+        if (host->textSupported) setting(ui, c, ix, &y, iw, SETTING_INSTANT_TEXT, "INSTANT TEXT", st->instantText ? "ON" : "OFF");
+        else muted_row(c, ix, &y, iw, "INSTANT TEXT", "N/A");
+        if (host->tradeEvoSupported) setting(ui, c, ix, &y, iw, SETTING_TRADE_EVOS, "TRADE EVOS", st->tradeEvos ? "ON" : "OFF");
+        else muted_row(c, ix, &y, iw, "TRADE EVOS", "N/A");
+        if (host->nuzlockeSupported) setting(ui, c, ix, &y, iw, SETTING_NUZLOCKE, "NUZLOCKE", host->nuzlockeOn ? "ON" : "OFF");
+        else muted_row(c, ix, &y, iw, "NUZLOCKE", "N/A");
         if (host->hasCheats) setting(ui, c, ix, &y, iw, SETTING_CHEATS, "CHEATS", st->cheats ? "ON" : "OFF");
         else muted_row(c, ix, &y, iw, "CHEATS", "N/A");
         // A host with FREE FLIGHT of its own has FLIGHT AREA above with FLY STYLE; one with TAKE OFF alone, here.
@@ -293,6 +331,13 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     }
     // PIXEL 1x is ORIGINAL's: EXPAND that wide can't keep up, so there it reads as the next size (pd_session_screen).
     ui->pixelOff = host && host->expandGame && st->aspect != PD_ASPECT_ORIGINAL;
+    if (full && host && !host->hideScreenMode) {
+        // One VIEW row for SCREEN and ASPECT (the user's call): how big the picture is and whether EXPAND fills past it.
+        const bool expand = host->hasExpand && host->expandGame;
+        setting(ui, c, ix, &y, iw, SETTING_VIEW, "VIEW", pd_view_name(pd_view_of(st, expand)));
+        if (expand && st->aspect == PD_ASPECT_ZOOM_OUT)
+            setting(ui, c, ix, &y, iw, SETTING_AUTO_ZOOM, "AUTO ZOOM IN", st->autoZoom ? "ON" : "OFF");
+    } else {
     if (!host || !host->hideScreenMode)
         setting(ui, c, ix, &y, iw, SETTING_SCREEN, "SCREEN",
                 pd_screen_mode_name(ui->pixelOff && st->screenMode == PD_SCREEN_PIXEL ? PD_SCREEN_SHARP_125 : st->screenMode));
@@ -307,6 +352,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
             // This game's overworld can't be rebuilt: shown, not tappable.
             muted_row(c, ix, &y, iw, "ASPECT", "N/A");
         }
+    }
     }
     if (host && host->hasHud) setting(ui, c, ix, &y, iw, SETTING_HUD, "HUD", st->hud ? "ON" : "OFF");
     if (host && host->hasPerf) setting(ui, c, ix, &y, iw, SETTING_PERF, "FPS / CPU", st->showPerf ? "ON" : "OFF");
@@ -422,6 +468,7 @@ static void pick_list(struct pd_ui* ui, struct pd_canvas* c, const char* title, 
                 on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
         if (i == current) pd_triangle(c, ix, ry + 4, 5, PD_RIGHT, PD_VALUE);
         ui_add_hit(ui, ix - 4, ry, iw + 8, ROW_H, HIT_OPTION + i);
+        if (i < n - 1) ui_row_divider(c, ix - 2, ry + ROW_H - 1, iw + 4);
         ry += ROW_H;
     }
 }
@@ -455,6 +502,7 @@ static void toggle_page(struct pd_ui* ui, struct pd_canvas* c, const char* title
                     sel ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
         }
         ui_add_hit(ui, ix - 4, ry, iw + 8, ROW_H, HIT_OPTION + i);
+        if (i < n - 1) ui_row_divider(c, ix - 2, ry + ROW_H - 1, iw + 4);
         ry += ROW_H;
     }
     if (note) pd_text_fit(c, ix, ry + 2, iw, note, PD_MUTED, PD_MUTED_SHADOW);
@@ -501,8 +549,11 @@ void ui_more_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     int x = MARGIN, w = c->w - 2 * MARGIN;
     title_window(c, CONTENT_Y, "MORE");
     int y = CONTENT_Y + TITLE_H + 3, h = c->h - y - 2;
-    int f = pd_list_box(c, x, y, w, h);
-    const int gap = 6, bottomH = 2 + 2 * gap + 40;
+    const bool smallText = pd_font_text_small();
+    // The band under the rule: the note's two lines or TAB BAR's button, a gap above and below (40 tall at NORMAL).
+    const int gap = 6, bottomH = 2 + 2 * gap + (smallText ? 28 : 40);
+    int f = 0;
+    for (int i = 0; i < pd_cur->listCount; i++) f += pd_cur->list[i].width;
     int ix = x + f + gap, iy = y + f + gap, iw = w - 2 * (f + gap), gridH = h - 2 * f - gap - bottomH;
     // As many columns as fit tiles 64 wide, four at most - five when the rows wouldn't fit the 3DS's short screen.
     int cols = (iw + gap) / (64 + gap);
@@ -513,32 +564,54 @@ void ui_more_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
         cols++;
         tile = (iw - gap * (cols - 1)) / cols;
     }
+    int rows = n > 0 ? (n + cols - 1) / cols : 1, tileH = tile;
+    // SMALL: square tiles, four to a row, and the window ends under its note (no empty band between the tiles and the rule).
+    if (smallText) {
+        int want = 2 * f + gap + rows * (tile + gap) + bottomH;
+        if (want < h) h = want;
+        gridH = h - 2 * f - gap - bottomH;
+    }
+    f = pd_list_box(c, x, y, w, h);
+    const int capTop = smallText ? 5 : 4, capH = smallText ? 8 : 9;
     uint32_t idle = pd_mix(pd_cur->tabIdleFill, PD_TITLE_FILL, 230); // 0.9
     for (int i = 0; i < n; i++) {
-        int tx = ix + (i % cols) * (tile + gap), ty = iy + (i / cols) * (tile + gap);
+        int tx = ix + (i % cols) * (tile + gap), ty = iy + (i / cols) * (tileH + gap);
         bool pressed = ui->pressedId == HIT_OPTION + i;
         uint32_t fill = pressed ? pd_cur->tabSelectedFill : idle;
-        pd_layered_two_tone(c, tx, ty, tile, tile, 3, pd_cur->chip, pd_cur->chipCount, fill,
+        pd_layered_two_tone(c, tx, ty, tile, tileH, 3, pd_cur->chip, pd_cur->chipCount, fill,
                             pd_mix(fill, pd_two_tone_low(fill), 128));
         const struct pd_art* art = ui_tab_art(more[i]);
-        int iconScale = tile >= 52 ? 2 : 1;
-        if (art) ui_art(c, art, tx + (tile - 16 * iconScale) / 2, ty + (tile - 16 - 16 * iconScale) / 2, iconScale);
+        int icon = tileH - capH - 18;
+        if (icon > 28) icon = 28; // Scale2x's 32 averaged down: the smoothing shows
+        if (icon > tile - 12) icon = tile - 12;
+        if (icon < 12) icon = 12;
+        int block = (art ? icon + 5 : 0) + capH, top = ty + (tileH - block) / 2;
+        if (art) {
+            if (smallText) ui_icon_smooth(c, art, NULL, 0, tx + (tile - icon) / 2, top, icon);
+            else {
+                int iconScale = tile >= 52 ? 2 : 1;
+                ui_art(c, art, tx + (tile - 16 * iconScale) / 2, ty + (tile - 16 - 16 * iconScale) / 2, iconScale);
+            }
+        }
         const char* label = ui_tab_label(more[i]);
-        pd_text_fit(c, tx + 2 + (tile - 4 - pd_text_width(label) > 0 ? (tile - 4 - pd_text_width(label)) / 2 : 0), ty + tile - 17,
+        int ly = smallText ? top + (art ? icon + 5 : 0) - capTop : ty + tile - 17;
+        pd_text_fit(c, tx + 2 + (tile - 4 - pd_text_width(label) > 0 ? (tile - 4 - pd_text_width(label)) / 2 : 0), ly,
                     tile - 4, label, pressed ? PD_VALUE : PD_TITLE_TEXT, pressed ? PD_VALUE_SHADOW : PD_TITLE_SHADOW);
-        ui_add_hit(ui, tx, ty, tile, tile, HIT_OPTION + i);
+        ui_add_hit(ui, tx, ty, tile, tileH, HIT_OPTION + i);
     }
     // The rule: the window's own inner frame, dark over light (Separator).
     int ry = y + h - f - bottomH;
     pd_separator(c, ix, ry, iw, false);
-    int bw = 86, bh = 22, by = ry + 2 + gap + (40 - bh) / 2;
-    pd_text_wrap(c, ix, ry + 2 + gap - 3, iw - bw - gap, 13, 3,
+    int bw = 86, bh = 22, by = ry + 2 + gap + ((pd_font_text_small() ? 28 : 40) - bh) / 2;
+    pd_text_wrap(c, ix, ry + 2 + gap - (pd_font_text_small() ? 4 : 3), iw - bw - gap, pd_lh(13), pd_font_text_small() ? 2 : 3,
                  "Tabs that aren't on the tab bar are here. Pick the bar's tabs in TAB BAR.", PD_LABEL, PD_LABEL_SHADOW);
     int bx = ix + iw - bw;
     ui_button(ui, c, bx, by, bw, bh, "", HIT_MORE_TAB_BAR);
-    int lw = PD_ICON_GEAR.w + 4 + pd_text_width("TAB BAR"), lx = bx + (bw - lw) / 2;
-    ui_mono(c, &PD_ICON_GEAR, lx, by + (bh - PD_ICON_GEAR.h) / 2, 1, PD_TITLE_TEXT);
-    pd_text(c, lx + PD_ICON_GEAR.w + 4, pd_text_y(by, bh), "TAB BAR", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    const int gear = pd_font_text_small() ? 12 : PD_ICON_GEAR.w;
+    int lw = gear + 4 + pd_text_width("TAB BAR"), lx = bx + (bw - lw) / 2;
+    if (gear != PD_ICON_GEAR.w) ui_icon_smooth(c, NULL, &PD_ICON_GEAR, PD_TITLE_TEXT, lx, by + (bh - gear) / 2, gear);
+    else ui_mono(c, &PD_ICON_GEAR, lx, by + (bh - PD_ICON_GEAR.h) / 2, 1, PD_TITLE_TEXT);
+    pd_text(c, lx + gear + 4, pd_text_y(by, bh), "TAB BAR", PD_TITLE_TEXT, PD_TITLE_SHADOW);
 }
 
 static void confirm(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* text, const char* yes) {
@@ -548,7 +621,7 @@ static void confirm(struct pd_ui* ui, struct pd_canvas* c, const char* title, co
     y += TITLE_H + 4;
     int h = 3 * 16 + 2 * 7 + 6;
     int lf = pd_list_box(c, x, y, w, h);
-    pd_text_wrap(c, x + lf + 6, y + lf + 2, w - 2 * (lf + 6), 16, 3, text, PD_LABEL, PD_LABEL_SHADOW);
+    pd_text_wrap(c, x + lf + 6, y + lf + 2, w - 2 * (lf + 6), pd_lh(16), 3, text, PD_LABEL, PD_LABEL_SHADOW);
     y += h + 6;
     int bw = 96;
     ui->startId = HIT_NO; // cancel first
@@ -572,11 +645,19 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     case PD_OVERLAY_PICK_ASPECT:
         pick_list(ui, c, "ASPECT", ASPECT_NAMES, PD_ASPECTS, ui->settings->aspect);
         break;
+    case PD_OVERLAY_PICK_VIEW: {
+        const bool expand = ui->viewExpand;
+        pick_list(ui, c, "VIEW", VIEW_NAMES, pd_view_count(expand), pd_view_of(ui->settings, expand));
+        break;
+    }
     case PD_OVERLAY_PICK_FF:
         pick_list(ui, c, "FAST-FORWARD", FF, PD_FF_CHOICES, pd_ff_index(ui->settings->ffSpeed));
         break;
     case PD_OVERLAY_PICK_SPEED:
         pick_list(ui, c, "GAME SPEED", PD_GAME_SPEEDS, PD_GAME_SPEED_COUNT, ui->settings->gameSpeed);
+        break;
+    case PD_OVERLAY_PICK_SCENE:
+        pick_list(ui, c, SCENE_NAMES[ui->scenePick], PD_SCENE_SPEEDS, PD_SCENE_SPEED_COUNT, ui->settings->sceneSpeed[ui->scenePick]);
         break;
     case PD_OVERLAY_PICK_BOX:
         ui_boxes_overlay(ui, c);

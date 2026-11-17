@@ -258,6 +258,12 @@ interface CompanionSettings {
     /** Leaves TURBO A / B and the GBA / Game Boy rows unbound ([GbaControls.Btn.canClear]). */
     fun clearGbaControlBinding(btn: GbaControls.Btn) {}
 
+    /** GAME BUTTONS' RESET TO DEFAULTS ([GbaControls.resetBindings]). */
+    fun resetGbaControls() {}
+
+    /** HOTKEYS' RESET TO DEFAULTS ([com.pokedaisy.app.Hotkeys.resetBindings]). */
+    fun resetHotkeys() {}
+
     /** GAME BUTTONS' rows for the game running besides every game's ([GbaControls.Group.DS] or [GbaControls.Group.GBA]);
      * null = both groups (previews). */
     val buttonGroup: GbaControls.Group? get() = null

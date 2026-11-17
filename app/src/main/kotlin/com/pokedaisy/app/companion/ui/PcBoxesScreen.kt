@@ -61,6 +61,8 @@ import com.pokedaisy.app.companion.data.save.SaveEditRefused
 import com.pokedaisy.app.companion.data.speciesNames
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 
 /**
  * The SAVE EDITOR (a game's library menu, or TOOLS): a save file read while the game is closed, in three pages -
@@ -127,6 +129,10 @@ class PcBoxesState(editor: MonSaveEditor) {
     }
 
     enum class DexAction { REGISTER_OWNED, ALL_SEEN, ALL_CAUGHT }
+
+    /** The TRAINER page's MISSING list, while it's open. */
+    var missing by mutableStateOf<MissingView?>(null)
+    var missingFilter by mutableStateOf(MissingFilter.ALL)
 
     /**
      * Runs an edit on the save. One the game wouldn't make changes nothing and says why in [notice] (a check the screens
@@ -207,6 +213,10 @@ fun PcBoxesScreen(
     icons: MonIconLoader? = null,
     /** TRADE: pick another game's save to trade with (only while nothing here is unsaved). */
     onTrade: (() -> Unit)? = null,
+    /** TRAINER's MISSING: read the other saves for what this Pokédex lacks ([PcBoxesState.missing]). */
+    onMissing: (() -> Unit)? = null,
+    /** A MISSING row tapped: open the trade or Pal Park that brings that Pokémon. */
+    onGet: ((com.pokedaisy.app.companion.data.save.MissingDex.Owned) -> Unit)? = null,
 ) {
     val small = rememberGbaTextMetrics(textScale = 1f)
     // The box's cards: a step denser, so ten-letter names fit six across.
@@ -214,6 +224,7 @@ fun PcBoxesScreen(
     val data = state.data
     val leave = {
         when {
+            state.missing != null -> state.missing = null
             state.detail != null -> state.detail = null
             state.moving != null -> state.moving = null
             state.changed -> state.confirmDiscard = true
@@ -224,7 +235,8 @@ fun PcBoxesScreen(
         AppBackdrop()
         // A Pokémon's page takes the screen; the boxes come back as they were.
         state.detail?.let { at -> MonPage(state, at, m, small, icons, onClose = { state.detail = null }) }
-        if (state.detail == null) Column(Modifier.fillMaxSize().padding(16.dp)) {
+        state.missing?.let { v -> if (state.detail == null) MissingPage(state, v, m, small, onGet = { onGet?.invoke(it) }, onClose = { state.missing = null }) }
+        if (state.detail == null && state.missing == null) Column(Modifier.fillMaxSize().padding(16.dp)) {
             OptionTitleWindow(tk("SAVE EDITOR"), m, trailing = gameName, onBack = leave)
             Spacer(Modifier.height(m.u * 4))
             Row(horizontalArrangement = Arrangement.spacedBy(m.u * 4), verticalAlignment = Alignment.CenterVertically) {
@@ -237,6 +249,8 @@ fun PcBoxesScreen(
                             PcBoxesState.Page.TRAINER -> tk("TRAINER")
                         },
                         m, onClick = { state.page = p; state.moving = null; state.notice = null }, emphasis = state.page == p,
+                        // The D-pad's first press lands here when no slot is selected.
+                        modifier = Modifier.focusStart(state.page == p),
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -247,7 +261,7 @@ fun PcBoxesScreen(
             val content = Modifier.weight(1f).fillMaxWidth()
             when (state.page) {
                 PcBoxesState.Page.BAG -> BagPage(state, state.bag, m, content)
-                PcBoxesState.Page.TRAINER -> TrainerPage(state, state.bag, m, small, content)
+                PcBoxesState.Page.TRAINER -> TrainerPage(state, state.bag, m, small, content, onMissing)
                 PcBoxesState.Page.POKEMON -> BoxWithConstraints(content) {
                     val wide = maxWidth > maxHeight * 1.1f
                     if (wide) {
@@ -538,10 +552,14 @@ internal fun MonCell(
 ) {
     val u = m.u
     val noRipple = remember { MutableInteractionSource() }
+    val focused by noRipple.collectIsFocusedAsState()
     val withIcon = icons != null && mon != null && !mon.isBadEgg
     Box(
         modifier
             .padding(u * 0.5f)
+            // The D-pad's cursor: the orange ring, and where it starts (the selected slot) when nothing has it yet.
+            .focusStart(selected)
+            .gbaFocusRing(focused, PixelRoundedShape(u * 2))
             .drawBehind {
                 val r = 2 * u.toPx()
                 when {
