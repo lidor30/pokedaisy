@@ -883,17 +883,11 @@ private fun homeRows(
         },
         // A foldable: OFF, HALF-OPEN, or ALWAYS.
         s.foldMode?.let { mode ->
-            SettingRow(
-                tk("FOLD LAYOUT"), foldModeLabel(mode), labelBadge = NewFeatures.badge(NewFeatures.FOLD_LAYOUT),
-                subtitle = "Off, half open, or always when unfolded",
-            ) { s.setFoldMode(mode.next()); changed() }
+            foldLayoutRow(mode, { title, choices, current, onPick -> select(Selector(title, choices, current) { onPick(it); changed() }) }) {
+                s.setFoldMode(it)
+            }
         },
-        s.tabletopControlsBottom?.let { bottom ->
-            SettingRow(
-                tk("TABLETOP CONTROLS"), if (bottom) tk("BOTTOM SIDES") else tk("ON GAME"),
-                subtitle = "Position of touch controls in fold mode",
-            ) { s.setTabletopControlsBottom(!bottom); changed() }
-        },
+        s.tabletopControlsBottom?.let { bottom -> tabletopControlsRow(bottom) { s.setTabletopControlsBottom(it); changed() } },
         // The buttons on the game screen that open it: the white edge tab and the HUD's COMPANION (BACK still does).
         s.companionTab?.let { tab ->
             SettingRow(

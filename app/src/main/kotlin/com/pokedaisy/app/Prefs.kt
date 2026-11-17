@@ -791,23 +791,19 @@ class Prefs(context: Context) {
         get() = p.getBoolean("portrait_companion_under_game", true)
         set(v) = p.edit().putBoolean("portrait_companion_under_game", v).apply()
 
-    /** SETTINGS > FOLD LAYOUT: OFF (0), HALF-OPEN (1, default), or ALWAYS (2: half open and flat). */
+    /** SETTINGS > FOLD LAYOUT: OFF (0), HALF OPEN (1, default) or ALWAYS (2: half open and unfolded flat). It was the
+     * ON / OFF `fold_layout` until 1.6.x: an OFF there stays OFF. */
     var foldMode: com.pokedaisy.app.companion.FoldMode
         get() {
-            if (!p.contains("fold_mode") && p.contains("fold_layout")) {
-                val old = p.getBoolean("fold_layout", true)
-                val flat = p.getBoolean("fold_when_flat", false)
-                return if (!old) com.pokedaisy.app.companion.FoldMode.OFF
-                else if (flat) com.pokedaisy.app.companion.FoldMode.ALWAYS
-                else com.pokedaisy.app.companion.FoldMode.HALF_OPEN
-            }
+            if (!p.contains("fold_mode") && !p.getBoolean("fold_layout", true)) return com.pokedaisy.app.companion.FoldMode.OFF
             return com.pokedaisy.app.companion.FoldMode.of(p.getInt("fold_mode", com.pokedaisy.app.companion.FoldMode.HALF_OPEN.id))
         }
         set(v) = p.edit().putInt("fold_mode", v.id).apply()
 
     val foldLayout: Boolean get() = foldMode != com.pokedaisy.app.companion.FoldMode.OFF
 
-    /** SETTINGS > TABLETOP CONTROLS: in tabletop mode, place touch controls on bottom screen beside companion (true), or on top over game (false). */
+    /** SETTINGS > TABLETOP CONTROLS: a foldable half open like a laptop puts the touch controls on the bottom half, either side
+     * of a narrower companion (BOTTOM SIDES, true), or on the top half beside the game (ON GAME, false: the default). */
     var tabletopControlsBottom: Boolean
         get() = p.getBoolean("tabletop_controls_bottom", false)
         set(v) = p.edit().putBoolean("tabletop_controls_bottom", v).apply()

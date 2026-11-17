@@ -875,19 +875,11 @@ class SettingsActivity : ComponentActivity() {
                 revision++
             }.takeIf { !usesSecondScreen },
             // A foldable: OFF, HALF-OPEN, or ALWAYS.
-            SettingRow(
-                tk("FOLD LAYOUT"), com.pokedaisy.app.companion.ui.foldModeLabel(prefs.foldMode),
-                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.FOLD_LAYOUT),
-                subtitle = "Off, half open, or always when unfolded",
-            ) {
-                prefs.foldMode = prefs.foldMode.next()
-                revision++
-            }.takeIf { prefs.foldSeen && !usesSecondScreen },
-            SettingRow(
-                tk("TABLETOP CONTROLS"), if (prefs.tabletopControlsBottom) tk("BOTTOM SIDES") else tk("ON GAME"),
-                subtitle = "Position of touch controls in fold mode",
-            ) {
-                prefs.tabletopControlsBottom = !prefs.tabletopControlsBottom
+            com.pokedaisy.app.companion.ui.foldLayoutRow(
+                prefs.foldMode, { title, choices, current, onPick -> selector = Selector(title, choices, current) { onPick(it); revision++ } },
+            ) { prefs.foldMode = it }.takeIf { prefs.foldSeen && !usesSecondScreen },
+            com.pokedaisy.app.companion.ui.tabletopControlsRow(prefs.tabletopControlsBottom) {
+                prefs.tabletopControlsBottom = it
                 revision++
             }.takeIf { prefs.foldSeen && !usesSecondScreen && prefs.foldMode != com.pokedaisy.app.companion.FoldMode.OFF },
             // The buttons on the game screen that open it: the white edge tab and the HUD's COMPANION (BACK still does).

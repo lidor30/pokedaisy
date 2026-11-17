@@ -121,11 +121,30 @@ private val WINDOW_SCRIM = Color(0x8C000000.toInt())
 /** SETTINGS > COMPANION VIEW's value: a window in the middle over the game, or the side panel. */
 fun companionViewLabel(window: Boolean) = if (window) tk("WINDOW") else tk("SIDE PANEL")
 
-fun foldModeLabel(mode: com.pokedaisy.app.companion.FoldMode) = when (mode) {
-    com.pokedaisy.app.companion.FoldMode.OFF -> tk("OFF")
-    com.pokedaisy.app.companion.FoldMode.HALF_OPEN -> tk("HALF-OPEN")
-    com.pokedaisy.app.companion.FoldMode.ALWAYS -> tk("ALWAYS")
+/** SETTINGS > FOLD LAYOUT's value. */
+fun foldModeLabel(mode: com.pokedaisy.app.companion.FoldMode) = tk(mode.label)
+
+/** SETTINGS > FOLD LAYOUT on both screens: three values, so a pick-list ([pick]: title, choices, current, on pick). */
+fun foldLayoutRow(
+    mode: com.pokedaisy.app.companion.FoldMode,
+    pick: (String, List<String>, String, (String) -> Unit) -> Unit,
+    set: (com.pokedaisy.app.companion.FoldMode) -> Unit,
+): SettingRow {
+    val modes = com.pokedaisy.app.companion.FoldMode.entries
+    val current = foldModeLabel(mode)
+    return SettingRow(
+        tk("FOLD LAYOUT"), current,
+        labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.FOLD_LAYOUT),
+        subtitle = "The game on one side of the fold",
+    ) { pick(tk("FOLD LAYOUT"), modes.map(::foldModeLabel), current) { l -> modes.firstOrNull { foldModeLabel(it) == l }?.let(set) } }
 }
+
+/** SETTINGS > TABLETOP CONTROLS on both screens: where the touch controls go with the fold across the screen. */
+fun tabletopControlsRow(bottom: Boolean, set: (Boolean) -> Unit) = SettingRow(
+    tk("TABLETOP CONTROLS"), if (bottom) tk("BOTTOM SIDES") else tk("ON GAME"),
+    labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.TABLETOP_CONTROLS),
+    subtitle = "The touch controls with the fold across",
+) { set(!bottom) }
 
 /**
  * What the single-screen companion's view draws: the side panel, the companion filling it; or the window
