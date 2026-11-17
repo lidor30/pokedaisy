@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.asImageBitmap
@@ -675,11 +676,12 @@ class PokeDaisyActivity : Activity() {
     @Volatile private var fieldSupport: Pair<String, com.pokedaisy.app.companion.data.FieldItemSupport?>? = null
 
     private fun fieldItemSupport(): com.pokedaisy.app.companion.data.FieldItemSupport? {
-        if (romBlocked != null) return null
+        val noFly = { com.pokedaisy.app.companion.data.FlyWithoutMoveGame.active = false; null }
+        if (romBlocked != null) return noFly()
         val game = telemetry.snapshot.value.game
         // The config's text key and tables too: Emerald Kaizo runs as EMERALD and keeps no classic FLY (fieldItemsForGame);
         // Recharged Emerald shares retail Emerald's code, revision and kind, but not its functions.
-        val candidates = fieldItemsFor(game).ifEmpty { return null }
+        val candidates = fieldItemsFor(game).ifEmpty { return noFly() }
         val key = "$romCode/$romRev/$game/${com.pokedaisy.app.companion.data.romGameCode}/" +
             candidates.joinToString(",") { "${it.varGet}/${it.items}" }
         fieldSupport?.let { (k, v) -> if (k == key) return v }
@@ -692,6 +694,7 @@ class PokeDaisyActivity : Activity() {
             }
         }.getOrElse { return null }
         fieldSupport = key to support
+        com.pokedaisy.app.companion.data.FlyWithoutMoveGame.active = support?.canFly == true && support.fns.fly?.withoutMove != null
         return support
     }
 
@@ -2733,8 +2736,6 @@ class PokeDaisyActivity : Activity() {
         view.holdFrame = { ::engine.isInitialized && engine.holdFrame }
         // 1x frames follow the game screen's refresh (EmulatorEngine.onVsync).
         view.onVsync = { if (::engine.isInitialized) engine.onVsync() else 0L }
-        view.showAtSource = { if (::engine.isInitialized) engine.frameShowAt() else 0L }
-        view.vsyncNow = { if (::engine.isInitialized) engine.vsyncNow() else 0L }
         // SHADERS on the companion: its grid at the game's own pixel size, so both screens match.
         view.onGamePixel = CompanionColors::setCell
         // The HUD keeps to the game's picture (ORIGINAL / STRETCH / an overlay); EXPAND = the whole view.
@@ -2911,8 +2912,15 @@ class PokeDaisyActivity : Activity() {
             return
         }
         freshLaunch = true
-        // An archive unpacks once (cached after) - ~0.5 s for 32 MiB, on the black screen.
-        val r = RomArchive.playable(romFile, cacheDir) ?: romFile
+        // An archive unpacks once (cached after) - ~0.5 s for 32 MiB, on the black screen. One with no game in it (a PC
+        // fan game's zip) is said so, not played: read as the ROM it threw on its CRC and closed the app (Crashlytics,
+        // 1.6.0: "No GBA ROM in Pokemon Uranium.zip").
+        val r = RomArchive.playable(romFile, cacheDir) ?: run {
+            Log.w("pokedaisy", "no game in ${romFile.name}")
+            Toast.makeText(this, tr("No GBA ROM in {0}", romFile.name), Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
         romData = r
         CrashReports.gameStarted(
             this, romFile, r,
@@ -3467,7 +3475,8 @@ class PokeDaisyActivity : Activity() {
                 rom = next
                 telemetry.reset()
                 loadRom(next)
-                if (running) startGame()
+                // (An archive with no game closed the screen: nothing to start.)
+                if (running && !isFinishing) startGame()
             }
         }
     }
@@ -5039,8 +5048,19 @@ class PokeDaisyActivity : Activity() {
                     com.pokedaisy.app.companion.ui.LocalGameSilent provides { battleInput.gameSilent },
                 ) {
                     val snap by telemetry.snapshot.collectAsState()
+                    // SHADERS' FILTER / GBA COLORS as the game gets them: the strip stands in for the game's own text box rows,
+                    // and kept no grid while the game around it had one (Discord, 2026-11-17).
+                    val fxVersion = CompanionColors.version.intValue
+                    val density = androidx.compose.ui.platform.LocalDensity.current.density
+                    val gameFx = remember(fxVersion, density) {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU)
+                            CompanionColors.gameEffect(density)?.asComposeRenderEffect() else null
+                    }
                     androidx.compose.foundation.layout.Box(
-                        androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { translationY = (fieldHud.top - dsWindowView.top).toFloat() },
+                        androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer {
+                            translationY = (fieldHud.top - dsWindowView.top).toFloat()
+                            renderEffect = gameFx
+                        },
                     ) {
                         com.pokedaisy.app.companion.ui.DsBattleMenu(
                             snap, dsBattleMenu, battleInput, if (romIs3ds) n3dsTopRect.value else coreFrame.value,
@@ -6370,9 +6390,8 @@ class PokeDaisyActivity : Activity() {
             TipId.AUTO_RUN -> !p.autoRun && companionSettings.fieldReadable && !companionSettings.autoRunBuiltIn
             TipId.WILD -> companionSettings.wildEncountersSupported && p.wildEncounters != 0
             TipId.REUSABLE_TMS -> companionSettings.reusableTmsSupported && !companionSettings.reusableTmsBuiltIn && !p.reusableTms
-            TipId.FLY -> flyAction.canFly() && telemetry.snapshot.value.party.any { m ->
-                !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLY_MOVE }
-            }
+            TipId.FLY -> flyAction.canFly() && (com.pokedaisy.app.companion.data.FlyWithoutMoveGame.active ||
+                telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLY_MOVE } })
             // A DS game on one screen with the triggers on a controller (the HUD's TOUCH stands in without one).
             TipId.DS_TRIGGERS -> dsStageOn && tipKey(Hotkeys.Action.DS_LAYOUT) != null
         }
