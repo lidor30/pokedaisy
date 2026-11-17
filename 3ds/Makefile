@@ -16,6 +16,14 @@ CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror
 CORE_SRC := $(wildcard core/*.c)
 DEVKITARM_IMAGE := devkitpro/devkitarm:latest
 
+.PHONY: test-old3ds
+# Portable scheduling, pixel conversion, worker fallback and log-buffer tests.
+# The separate rom_memory_test executable optionally accepts a user's own ROM.
+test-old3ds:
+	cmake -S test/memory -B $(BUILD)/old3ds-tests -DCMAKE_BUILD_TYPE=Debug
+	cmake --build $(BUILD)/old3ds-tests -j4
+	ctest --test-dir $(BUILD)/old3ds-tests --output-on-failure
+
 .PHONY: preview library-preview docs-shots test-save 3ds-dev cia test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
 
 $(BUILD)/pd_font_test: core/pd_canvas.c core/pd_canvas.h core/pd_font.h core/pd_font_gen.c test/font_test.c
