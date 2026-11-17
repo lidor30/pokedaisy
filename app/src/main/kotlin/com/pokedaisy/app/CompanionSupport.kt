@@ -81,6 +81,9 @@ object CompanionSupport {
      * any game; anything else in a linked folder (a whole frontend's other games) stays out. Header reads only.
      */
     fun looksPokemon(rom: File): Boolean {
+        // An archive with no GBA / Game Boy / DS ROM in it (a zipped N64 Pokemon Snap) is nothing the app plays, whatever
+        // its name: it was listed under GBA, NOT SUPPORTED.
+        if (RomArchive.isArchive(rom) && RomArchive.romEntry(rom) == null) return false
         if (POKEMON_NAME.containsMatchIn(rom.name)) return true
         val title = when {
             RomIdentity.isGameBoy(rom) -> RomArchive.readAt(rom, 0x134L, 16)
