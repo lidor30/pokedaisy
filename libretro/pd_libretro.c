@@ -1914,6 +1914,12 @@ RETRO_API void retro_run(void) {
   const bool repeat = late && canDupe && haveGameFrame && !paused && !quickOpen &&
                       (!ff || (expanded && !repeatedFrame));
   maskGame = paused;
+  // The button that closed the companion / quick menu / HUD cursor (A on a pick, B backing out) is still held: it stays
+  // out of the game until let go, as the app's menuHeld (GitHub #1100: on a Steam Deck it answered the game's prompt).
+  static bool wasPaused;
+  if (wasPaused && !paused)
+    shortcutBlocked |= held;
+  wasPaused = paused;
   shortcutExclusive = false;
   if (!paused) {
     if (polishedActions && !rewinding && settings.wildOff &&
