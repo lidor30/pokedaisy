@@ -20,7 +20,9 @@ val sharedUiFiles: Set<String> = fileTree("src/main/kotlin") {
     include(rootProject.extra["sharedUiSources"] as List<String>)
     exclude(rootProject.extra["sharedUiAppOnly"] as List<String>)
     exclude(rootProject.extra["sharedCoreSources"] as List<String>)
-}.map { it.relativeTo(file("src/main/kotlin")).invariantSeparatorsPath }.toSet()
+}.map { it.relativeTo(file("src/main/kotlin")).invariantSeparatorsPath }
+    // Kotlin only: shared-ui compiles no Java, so a .java under those folders (co-op's X25519 copy) stays the app's.
+    .filter { it.endsWith(".kt") }.toSet()
 
 @Suppress("UNCHECKED_CAST")
 val sharedCoreFiles: Set<String> = fileTree("src/main/kotlin") {

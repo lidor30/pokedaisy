@@ -94,6 +94,9 @@ jobs:
   # diagnostic ROMs (PkApiCoreTest). Advisory for now (the iPad plan): make it required once it has held for a while.
   ios-shared:
     name: Shared code for iOS
+    # PRs and pushes only: the Release and Nightly workflows call this file too (workflow_call, where github.workflow
+    # is the caller's), and an advisory job mustn't hold back a signed release.
+    if: github.workflow == 'CI'
     runs-on: macos-15
     timeout-minutes: 60
     steps:
@@ -138,6 +141,9 @@ jobs:
   # emulator core into the PokeDaisyUI framework. A Mac, as the core needs Xcode (advisory for now).
   ios-app:
     name: iPad app (simulator build)
+    # PRs and pushes only: the Release and Nightly workflows call this file too (workflow_call, where github.workflow
+    # is the caller's), and an advisory job mustn't hold back a signed release.
+    if: github.workflow == 'CI'
     runs-on: macos-15
     timeout-minutes: 60
     steps:

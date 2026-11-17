@@ -8,8 +8,6 @@ keywords: [town map, region map, area map, cave map, dungeon map, building map, 
 
 The `MAP` tab is the game's town map, always open. It answers "where am I?" at a glance and "where is that town the guide mentioned?" in two taps, without digging the map out of your bag.
 
-On iPhone and iPad, supported GBA games can use `FLY` from the map with the game's own cut-in and landing. The same badge, party, destination and field checks apply as on Android. Scenic flight is coming with the expanded-rendering support.
-
 ## You on the map
 
 The map is drawn the way your game draws it: the region's own picture, your character's head on the tile where the game would put it, and the game's blinking cursor around the place you're in. The place's name sits in the game's own label: a dark strip in the top left in FireRed and its relatives, a framed window in the bottom right in Emerald and its relatives. In FireRed-style games a second strip names a cave or other place on that spot when there is one.

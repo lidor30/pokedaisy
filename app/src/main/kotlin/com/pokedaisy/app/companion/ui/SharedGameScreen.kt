@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -34,7 +35,8 @@ fun GameScreen(
     screenOverlay: @Composable () -> Unit = {}, pictureOverlay: @Composable () -> Unit = {},
     overlayRect: () -> Rect? = { null },
     screenOverlayTop: () -> Int = { 0 },
-    dismissSideOnGameTap: Boolean = false, chromeModifier: Modifier = Modifier,
+    /** Read at each tap's down: a tap on the game closes an open (undocked) side panel - the touch controls hidden. */
+    dismissSideOnGameTap: () -> Boolean = { false }, chromeModifier: Modifier = Modifier,
     onFrames: (GameScreenFrames, List<Rect>) -> Unit = { _, _ -> },
 ) {
     val side = state.side
@@ -44,12 +46,13 @@ fun GameScreen(
     val sideTabs = !portrait.enabled && side.enabled && !side.isWindow && side.book == null && (side.open || reveal > 0f)
     val minimum = LocalViewConfiguration.current.minimumTouchTargetSize
     val reserved = remember { arrayOf(emptyList<Rect>()) }
-    val outside = Modifier.pointerInput(state, dismissSideOnGameTap) {
+    val dismissOnTap by rememberUpdatedState(dismissSideOnGameTap)
+    val outside = Modifier.pointerInput(state) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
             val current = state.side
             val edge = state.width - current.arrange(state.width).panelWidth
-            if (dismissSideOnGameTap && current.sideShown && !current.isDocked && down.position.x < edge &&
+            if (dismissOnTap() && current.sideShown && !current.isDocked && down.position.x < edge &&
                 reserved[0].none { it.contains(down.position) }) state.hide()
         }
     }

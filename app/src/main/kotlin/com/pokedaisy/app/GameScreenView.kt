@@ -78,7 +78,7 @@ class GameScreenView(
                         gameUnderlay = underlay,
                         gameOverlay = { androidx.compose.foundation.layout.Box(chrome, propagateMinConstraints = true) { gameOverlay() } },
                         pictureOverlay = pictureOverlay, chromeModifier = chrome,
-                        dismissSideOnGameTap = controls.visibility != View.VISIBLE,
+                        dismissSideOnGameTap = { controls.visibility != View.VISIBLE },
                         overlayRect = { viewport.overlayBounds().let { Rect(it.left.toFloat(), it.top.toFloat(), it.right.toFloat(), it.bottom.toFloat()) } },
                         screenOverlayTop = { viewport.hudTop },
                         screenOverlay = {

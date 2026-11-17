@@ -267,28 +267,3 @@ A few things to know:
 - Starting another game from the frontend while one is open switches to it; the open one is suspended first.
 
 There are step-by-step guides for [ES-DE](https://github.com/lidor30/pokedaisy/blob/main/docs/es-de/README.md) and [iiSU](https://github.com/lidor30/pokedaisy/blob/main/docs/iisu/README.md).
-
-## On iPad
-
-On your Home Screen, look for the PokeDaisy flower icon on its blue patterned background to open the app.
-
-The library, setup and application settings use the same styled screens as Android. The library fills the window
-when no game is open. Use the header to add games from Files, search, change the order, switch between a list and a
-grid, or refresh after changing files. Hold a game to mark it as a favorite or choose `LOAD SAVE`.
-
-`FAVORITES` and `RECENT` keep the games you want close by. Your choices, display mode and game history are kept when
-you reopen the app. The platform views show the consoles your library contains.
-
-Favorites come first in every sort order, and `RECENT` lists the games you played most recently first.
-Search ignores case and accents, whether you search by the displayed name or the file name.
-
-Open `SETTINGS` from the library to change appearance, language, playback defaults and touch controls before playing.
-`RUN SETUP` reopens the shared setup pages. On iPad, games picked in Files are copied into PokeDaisy's `roms` folder,
-and battery saves stay in `saves`. You can reach both folders through Files.
-Setup also includes `GAME BUTTONS`: tap a row and press a controller or keyboard button to bind it,
-or keep the defaults and choose `DONE`. These are the same bindings used in Settings and while playing.
-
-To return to the library while playing, open the companion's `SETTINGS` and choose `CLOSE GAME`. Confirm to close it.
-
-Only actions supported on iPad are offered. Folder linking, cover downloads and several Android tools still need
-platform support.

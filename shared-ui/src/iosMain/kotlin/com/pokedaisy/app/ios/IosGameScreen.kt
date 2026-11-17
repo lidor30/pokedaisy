@@ -150,7 +150,7 @@ internal class IosGameScreen(
                             onConfirm = dismiss, onDismiss = dismiss, cancelLabel = null)
                     }
                 },
-                dismissSideOnGameTap = !visible,
+                dismissSideOnGameTap = { !visible },
                 onFrames = { measured, _ -> frames = measured; touch.stage = stage(measured, visible) })
         }
     }

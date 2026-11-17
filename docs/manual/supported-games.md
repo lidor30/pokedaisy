@@ -150,16 +150,6 @@ You can open the picker again any time:
 - In the library: long-press the game, open `INFO` and tap `PICK A GAME`.
 - From the match notice: `WRONG GAME?`.
 
-### On iPhone and iPad
-
-When an unfamiliar hack offers `WHICH GAME IS THIS?`, you can choose its base game on iPhone and iPad too.
-`NONE OF THESE` leaves the companion at `NOT SUPPORTED`. Your choice is kept for that ROM when you reopen the app,
-including a choice to decline every candidate. Renaming the ROM keeps its choice; a different ROM has its own.
-
-Use the match notice's `WRONG GAME?` or the companion's `SETTINGS` > `PLAYS AS` to choose again. After
-`NONE OF THESE`, open the picker from the companion's `NOT SUPPORTED` page. A choice does not add support for
-features the app could not verify. The iOS library does not offer the `INFO` match controls described above.
-
 ## NOT SUPPORTED and ASK FOR SUPPORT
 
 When the companion can't read a game at all, every tab except `SETTINGS` shows a `NOT SUPPORTED` page. The game itself keeps running normally on the top screen; you lose the companion, not the game.

@@ -44,14 +44,6 @@ The D-pad and the analog stick always move; they can't be remapped. The four D-p
 
 ![The top screen's GAME BUTTONS page: ALL GAMES, DS GAMES and GBA AND GAME BOY, a row for each button with the keys it's on](shots/settings-buttons.png "GAME BUTTONS on the top screen")
 
-### iPhone and iPad bindings
-
-On iPhone and iPad, `GAME BUTTONS` uses the same binding rows and button capture. Connect a controller or hardware keyboard, tap a row, press its new key, then release it. `CANCEL` or Escape leaves the binding alone. The D-pad and left stick always move. You can bind another key to a D-pad row, `TURBO A`, `TURBO B`, `START 2` or `SELECT 2`.
-
-Your existing iOS defaults stay the same: X is A, Z is B, A and S are L and R, Return is START, and Backspace or right Shift is SELECT. A controller's shoulders and triggers press L and R. Extra X and Y bindings start empty. Changing a row replaces all its old keys. The keyboard letters keep working in text fields while the companion window is open.
-
-Bindings are kept in `PokeDaisy/bindings/controls.properties` in Files. The keys use the same canonical names as Android, so you can copy a binding file between platforms. Buttons held while a capture or companion window closes need a release before they can reach the game again.
-
 ## X takes your buttons to the companion
 
 On a handheld with two screens, or a phone held upright with a controller, press `X` (the `TO COMPANION` button in `GAME BUTTONS`) while you walk around in a GBA or Game Boy game and your buttons move down to the companion, like the menu on a DS game's touch screen. A silver strip slides up along the bottom of the game with an arrow pointing down at the companion, and `L` and `R` slide in at the ends of the companion's tab bar.
@@ -111,14 +103,6 @@ When SELECT or START is part of a chord, the game gets it when you let go rather
 The speed hotkeys are explained in [Fast-forward and game speed](fast-forward.md), states and rewind in [Saves](saves.md), and zoom in [Screen](screen.md).
 
 ![The top screen's HOTKEYS page: the HOTKEYS switch, then each hotkey with its buttons](shots/settings-hotkeys.png "HOTKEYS on the top screen")
-
-### iPhone and iPad hotkeys
-
-On iPhone and iPad, `HOTKEYS` starts off so your existing trigger buttons still press L and R. Turn it on to use the speed, state, slot, `EXIT GAME`, `RESTART GAME`, `COMPANION`, `QUICK MENU` and `MUTE` shortcuts. The defaults in the table apply to these actions. Actions that need a feature still being ported are omitted.
-
-`FF HOLD` and `SLOWMO HOLD` stop when you release their keys, open a companion window or button capture, focus a text box, or put the app in the background. Fast-forward takes priority over half speed. The touch FF button keeps its own hold. On both platforms, releasing touch leaves a controller hold active, and releasing the controller leaves touch active. Changing bindings or turning hotkeys off releases the old hotkey holds. `SPEED CYCLE` goes through 1x, 1.5x, 2x, 3x and 4x, then back to 1x. From half or quarter speed it returns to 1x, using the same policy as Android.
-
-Use the shared key-capture rows to change a shortcut or chord. Escape cancels a capture. SELECT and START alone keep their game action after release; a completed shortcut takes the combination. `COMPANION` opens the shared panel, and hides or reveals it in portrait. In a companion window, B or START closes it. While you type in a text box, keyboard shortcuts and game buttons leave those keys to the text box. The binding file is `PokeDaisy/bindings/hotkeys.properties` in Files.
 
 ### Changing a hotkey
 
@@ -181,8 +165,6 @@ Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROL
 
 To use another button, change the `QUICK MENU` hotkey.
 
-On iPhone and iPad, the same menu offers `PC`, `FLY`, the keep-away spray, `WILD ENCOUNTERS`, the current state's save and load, and `FF` where supported. Held sideways, `COMPANION` opens the companion too. The game's own checks still decide when a field action can run. Other actions are omitted until their features are available on iOS.
-
 You can open it with the `QUICK MENU` touch button, even with `HOTKEYS` off. With hotkeys on, L3 or your chosen key opens and closes it. Use the D-pad, a hardware keyboard's game bindings, or the ring's left stick to choose, then press `A`. `B` returns from a destination or item list, then closes the menu. Held buttons stay out of the game until released after closing.
 
 ## Touch controls
@@ -227,8 +209,6 @@ The `EXTRA BUTTONS` group adds buttons the GBA doesn't have. Turn each one on or
 - **`REWIND`** (on to start with): rewinds the game for as long as you hold it, in GBA and Game Boy games. Turn `REWIND` on in Settings first; until then a press tells you where.
 - **`X AND Y`** (on to start with): X and Y buttons in GBA and Game Boy games, which have none of their own, round A, B, X and Y as on a DS: X on top, A right, B below, Y left. They work like a controller's X and Y, so they do whatever you put on them: by default X is `START 2` and `TO COMPANION`, Y is `SELECT 2`, and you can give them a hotkey under `HOTKEYS`. A DS game always shows its own X and Y.
 
-On iPhone and iPad, `X AND Y` uses the same buttons, layouts and editor. Each touch goes through your `GAME BUTTONS` and `HOTKEYS` bindings, just like a controller's X or Y. Existing iOS bindings are kept: if these keys are unbound, assign `START 2`, `SELECT 2` or a hotkey before using them. Closing a window, changing bindings or opening the layout editor releases held touch keys.
-
 ### Skins
 
 A skin replaces the drawn buttons with a picture of a whole controller. PokeDaisy reads skins made for the Delta emulator: `.deltaskin` files, which you can find on skin sites for Delta. Use ones made for the GBA or the Game Boy Color (a Game Boy Color skin is used for Game Boy games too). DS skins don't work yet.
@@ -242,9 +222,6 @@ Held sideways, the skin fills the screen and the game moves into the skin's own 
 ### Moving and resizing buttons: EDIT LAYOUT
 
 `EDIT LAYOUT` shows every button at its real size with a dashed outline. In a game it opens over the game itself (from the companion's `SETTINGS`); from the top screen's Settings it opens over a picture of the game's screen.
-
-Android and iPad use the same editor. Editing one orientation keeps the other one's layout. Controls that your
-current game cannot show keep their saved positions too.
 
 ![EDIT LAYOUT on a phone held sideways: the buttons with dashed outlines in the bars beside the game, the bar with DONE, SNAP ON and RESET at the top](shots/settings-touch-edit.png "EDIT LAYOUT")
 
@@ -267,10 +244,6 @@ A phone held upright and held sideways each get their own layout: you edit the o
 
 Both show `N/A` on a game PokeDaisy can't read the field of yet.
 
-On iPhone and iPad, both options work in supported GBA games and remember your choices. Auto-run follows the same
-rules: it leaves menus, conversations, battles, bikes, surfing and the game's own auto-run alone. On a new game,
-walk around for a few seconds so the field can be recognized. Game Boy games show `N/A` for now.
-
 If you turn indoor running off while inside a building, leave and re-enter to restore that map's normal rule.
 
 ## WILD ENCOUNTERS
@@ -283,10 +256,6 @@ If you turn indoor running off while inside a building, leave and re-enter to re
 Only random encounters change. Fishing, moves that lure wild Pokémon out and battles the story sets up still happen, and items that keep wild Pokémon away work as usual on top. The change applies at once, no restart needed.
 
 It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Brown, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
-
-On iPhone and iPad, the toggle works where the GBA game's field and encounter switch are known. It can briefly show
-`N/A` while the game is checked. Your choice is remembered, including after resuming a saved state. Turning it back
-on restores random encounters when you return to the free field. Game Boy support is still to come on iOS.
 
 ## SHINY ODDS
 
@@ -381,25 +350,3 @@ Some handhelds and controllers (Retroid's, for example) send their L2 and R2 tri
 - **A hold** leaves the game and returns to the library (or to the frontend that launched it).
 
 This works from either screen. On a device with one screen, a tap also slides the companion panel in and out; see [Devices](devices.md).
-
-## Touch controls on iPad
-
-Open the companion's `SETTINGS` > `TOUCH CONTROLS` to change the same layouts, size, look, colors, opacity and D-pad
-options as on Android. Changes apply to the controls straight away and are kept when you reopen the app.
-
-Held upright, it works as on an Android phone. With `COMPANION` at `UNDER GAME` (the default), the game is at the top,
-the companion right under it and the buttons in a space of their own along the bottom; the companion and then the game
-get a little smaller to make that space. With `AT BOTTOM`, the companion goes along the bottom of the screen and the
-buttons sit in the gap above it, or over the game when there's no gap, as on an iPad. Held sideways, the game is centered beside the companion, with touch controls over the game area.
-The preview and `EDIT LAYOUT` use the same arrangement as the game screen.
-
-`EDIT LAYOUT` pauses the game and opens the shared editor over its picture. Drag controls, resize or hide them, then
-choose `DONE`. Upright and sideways layouts are kept separately. `SHOW` > `AUTO` hides the controls while a gamepad is
-connected; `ALWAYS` and `NEVER` let you choose for yourself.
-
-You can enable `FF`, `QUICK MENU`, `TURBO A`, `TURBO B`, `SAVE STATE` and `LOAD STATE` under `EXTRA BUTTONS`. A short tap on `FF`
-toggles it; holding it speeds up the game until you release it. The state buttons use the current slot in `STATES`.
-`QUICK MENU` opens the same ring or grid as on Android. `REWIND` and `X AND Y` also use the shared bindings and controls. Skin import and zoom remain unavailable on iPad.
-
-You can also open `TOUCH CONTROLS` from the library's `SETTINGS`, with no game running. The editor uses a stand-in of
-the same game and controls panels. It keeps the layout for the orientation you are editing, ready for your next game.

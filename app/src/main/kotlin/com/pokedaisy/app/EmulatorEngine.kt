@@ -2135,7 +2135,12 @@ class EmulatorEngine(
     } }
 
     fun stateSlotList() = slots.list()
-    fun requestDeleteState(slot: Int) { postToEmu { slots.requestDelete(slot) } }
+    /** Between frames while the game runs (a save to the slot can't be half way); with no loop to post to (the game
+     * closed or not started yet), the files go at once - a post there would be dropped and the slot stay. */
+    fun requestDeleteState(slot: Int) {
+        if (running) postToEmu { slots.requestDelete(slot) }
+        else if (slot in SaveStates.SLOT_MIN..SaveStates.SLOT_MAX) runCatching { states.files.deleteSlot(slot) }
+    }
 
     private fun stateSnapshot(): ByteArray? = runCatching {
         telemetry.refresh()

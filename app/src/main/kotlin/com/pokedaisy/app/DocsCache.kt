@@ -32,11 +32,15 @@ class DocsCache(
         runCatching { DocsApi.parse(manualFile.readText()) }.getOrNull()
     }
 
-    fun refresh(url: String = DocsApi.URL): DocsApi.Refresh = synchronized(lock) {
-        runCatching {
-            val headers = headers() + mapOf("Accept" to "application/json") +
+    // The files only are under [lock]; a fetch (up to ~20 s offline) never holds it, or HELP opened during the launch's
+    // prefetch sat on LOADING with the cached manual right there.
+    fun refresh(url: String = DocsApi.URL): DocsApi.Refresh = runCatching {
+        val headers = synchronized(lock) {
+            headers() + mapOf("Accept" to "application/json") +
                 (if (cached() != null && etagFile.isFile) mapOf("If-None-Match" to etagFile.readText()) else emptyMap())
-            val reply = fetch(url, headers, 12_000)
+        }
+        val reply = fetch(url, headers, 12_000)
+        synchronized(lock) {
             when (reply.status) {
                 304 -> if (cached() != null) DocsApi.Refresh.Unchanged else DocsApi.Refresh.Failed(offline = false)
                 200 -> {
@@ -51,20 +55,19 @@ class DocsCache(
                 }
                 else -> DocsApi.Refresh.Failed(offline = false)
             }
-        }.getOrElse { DocsApi.Refresh.Failed(offline = it is Offline || it is okio.IOException) }
-    }
+        }
+    }.getOrElse { DocsApi.Refresh.Failed(offline = it is Offline || it is okio.IOException) }
 
-    fun image(manual: DocsApi.Manual, image: DocsApi.Block.Image): ByteArray? = synchronized(lock) {
-        runCatching {
-            val file = imageFile(image)
-            if (!file.isFile) {
-                val reply = fetch(manual.site + image.src, headers(), 15_000)
-                if (reply.status != 200) return@runCatching null
-                file.writeAtomically(reply.body)
-            }
+    fun image(manual: DocsApi.Manual, image: DocsApi.Block.Image): ByteArray? = runCatching {
+        val file = imageFile(image)
+        synchronized(lock) { if (file.isFile) return@runCatching file.readBytes() }
+        val reply = fetch(manual.site + image.src, headers(), 15_000)
+        if (reply.status != 200) return@runCatching null
+        synchronized(lock) {
+            file.writeAtomically(reply.body)
             file.readBytes()
-        }.getOrNull()
-    }
+        }
+    }.getOrNull()
 
     /** One refresh per cache owner, without a platform thread or timer. HELP refreshes independently afterward. */
     fun prefetch() = synchronized(lock) {

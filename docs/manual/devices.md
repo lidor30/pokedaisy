@@ -169,18 +169,6 @@ The `FOLD LAYOUT` setting (in the `SCREEN` group, on both screens) picks when th
 
 It only shows up once your phone has reported a fold. `TABLETOP CONTROLS`, right under it, picks where the touch controls go with the fold across the screen: `ON GAME` (the default) or `BOTTOM SIDES`.
 
-## On iPhone and iPad
-
-On supported GBA games, `NO HMS NEEDED`, `EXP SHARE` and `LEVEL CAP` use the same settings and game-option rules as Android. Unknown ROM layouts show N/A.
-
-The game screen uses the same panel controls as Android. In portrait, drag the companion grip to resize it, or tap it to step through sizes and hide it. The grip stays visible when the companion is hidden, so you can bring it back.
-
-In landscape, the companion starts docked beside the game. Drag the padlock tab to change its width, tap it to lock or unlock the panel, and use the edge tabs to close or reopen it. Your sizes and docking choice are remembered. `COMPANION VIEW`, in the companion's `SETTINGS` while held sideways, switches between the side panel and a window over the game.
-
-The window keeps the game running and takes its buttons while open. Tap outside the window or its X to close it. On a controller, `B` goes back and closes the window when there's nothing left to go back from, `START` closes it, and `L` / `R` change tabs. Directions and `A` move through and use focused controls. A held button needs to be released before it returns to the game after the window closes. Keyboard typing stays with the window's text fields.
-
-The edge button stays available on iPhone and iPad, so you can always reopen a hidden landscape companion. DS games, skins and fold layouts are still Android features.
-
 ## Rotating the device
 
 On a device with one screen, PokeDaisy follows the way you hold it. Turn it sideways and you get the window or the side panel; turn it upright and you get the docked companion. It switches as you rotate, mid-game.

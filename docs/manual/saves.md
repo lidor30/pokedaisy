@@ -167,25 +167,3 @@ On a keyboard, `REWIND HOLD` is R. It has no controller button until you pick on
 Loading a save state starts a new rewind history. You cannot rewind from the loaded state into the timeline you left behind.
 
 Rewinding never touches your save file: it only moves the game back in time, and whatever you saved in the game stays saved until the game saves again.
-
-Rewind also works on iPhone and iPad for GBA and Game Boy games. Turn on `REWIND`, then hold the touch controls' rewind button, or enable `HOTKEYS` and bind `REWIND HOLD` to your keyboard or controller. You can hide or move the touch button under `TOUCH CONTROLS`. Pausing, loading a state, opening the layout editor or leaving the game releases the hold. Rewind runs at normal speed even with FF on.
-
-## On iPad
-
-Open `STATES` from `MORE`, or put it on your tab bar in `SETTINGS` > `TAB BAR`. You have ten slots with screenshots.
-Use `SAVE` or `LOAD`, `UNDO SAVE` to restore a slot's previous contents, and `UNDO LOAD` to return to the moment before
-your last load. Hold a saved screenshot to delete its slot, then confirm.
-
-Loading a state also restores the battery save it contains. Your current save is copied into `saves/pokedaisy-backups`
-before a manual load. The latest ten distinct copies are kept. You can find both saves and `states` in the app's
-folder in Files. Keep saving through the game's own menu too.
-
-`RESUME GAMES` is on by default. You can change it in the companion's `SETTINGS`, under `APP`. Closing a game or
-putting the app in the background saves a resume snapshot. Opening that game again picks up from the snapshot only
-when its battery data still matches your save file. If the save changed, or the snapshot cannot be checked, the game
-starts from your save file instead. Returning to a game still open in memory carries on from its paused moment.
-
-`LOAD SAVE` and `RESTART GAME` always start from the battery save, even if an older snapshot has matching save data.
-With `RESUME GAMES` off, `GAMES` and `CLOSE GAME` warn before closing, because progress since your last in-game save
-will be lost. If resume data cannot be updated, `CLOSE GAME` and `RESTART GAME` leave the game open so you can save
-through its own menu before leaving.

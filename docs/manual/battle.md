@@ -184,12 +184,3 @@ In HeartGold, SoulSilver, Platinum, Black, White, Black 2 and White 2 the battle
 ## Turning the hints off
 
 If you'd rather work out matchups yourself, turn off `BATTLE HINTS` in SETTINGS. The verdicts on moves, the foe's weaknesses, the warnings on your card and the `BEST` tag all go away. The facts stay: HP, types, levels, moves, power and PP. (`SUGGESTIONS` is still there if you ask for it.)
-
-## On iPad
-
-In a single battle, the companion's battle buttons can choose an action or move and return with `BACK`.
-When the game's party menu is supported, you can also choose who to send in. `ONE-TAP MOVES`, `BATTLE STYLE`,
-`BATTLE VIEW` and `BATTLE INFO` are in the companion's `SETTINGS`, alongside the hints and foe IVs.
-
-These buttons press the game's own keys. A choice may take a few frames while the game's cursor moves.
-For a double battle or a party menu the companion cannot control yet, use the game buttons.

@@ -3061,9 +3061,12 @@ class PokeDaisyActivity : Activity() {
      * them before the first frame, or on the next one while the game runs. */
     private var coopCheatNoticed = false
 
-    private fun syncCheats() {
+    /** [reread]: the file read again (a game starting: the top screen's Settings may have changed it); a switch flipped
+     * mid-game only hands the list already read back to the engine - reading an imported file again on the UI thread for
+     * each flip held it for seconds (GitHub #786). */
+    private fun syncCheats(reread: Boolean = false) {
         if (!::engine.isInitialized) return
-        gameCheats()?.let { it.refresh(); it.apply() }
+        gameCheats()?.let { if (reread || it.list.isEmpty()) it.refresh(); it.apply() }
     }
 
     private fun submitCheats(cheatText: String) {
@@ -3354,7 +3357,7 @@ class PokeDaisyActivity : Activity() {
         engine.ndsCore = if (dsperate) DsCore.CORE_DSPERATE else DsCore.CORE_MELONDS   // DS CORE (pickDsCore)
         // Cheats may have changed in the library's Settings since the game was last up.
         cheatCache = null
-        syncCheats()
+        syncCheats(reread = true)
         // Back from sleep: the game held on its frame (onPause) and goes on from it. The state written as it went to
         // sleep is used up, as a resume's is once loaded.
         if (engine.sleeping) {
@@ -4533,6 +4536,8 @@ class PokeDaisyActivity : Activity() {
                 com.pokedaisy.app.companion.ui.DsBattleMenu(
                     snap, dsBattleMenu, battleInput, if (romIs3ds) n3dsTopRect.value else coreFrame.value, shown = dsStripShown.value, active = dsStripActive.value,
                     gameFills = !romIs3ds && dsFill.value, hints = battleHints.value,
+                    // FIGHT / BAG / RUN under the touch controls on a phone: the buttons over them step aside (Discord 2026-11-10).
+                    onTapArea = { if (::touchControls.isInitialized) touchControls.coverInWindow(it) },
                 )
             }
             // The menu's D-pad: with no plain view focused, Android takes the first press after a touch to leave
@@ -5989,7 +5994,7 @@ class PokeDaisyActivity : Activity() {
         engine.stop()
         states?.let { com.pokedaisy.app.companion.data.StateResume.startFresh(it.files) }
         val save = SavesLocation.saveFor(this, Prefs(this), r)
-        syncCheats()
+        syncCheats(reread = true)
         waitForPlay()
         // DS CORE changed while the game ran: the restart is on the new one.
         if (romIsNds) {
