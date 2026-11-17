@@ -142,6 +142,7 @@ data class PartyItemFns(
     val heldItemField get() = MON_DATA_HELD_ITEM + monFieldShift
     val move1Field get() = MON_DATA_MOVE1 + monFieldShift
     val isEggField get() = MON_DATA_IS_EGG + monFieldShift
+    val mailField get() = MON_DATA_MAIL + monFieldShift
 }
 
 /** Whether the running ROM has [fns]' functions (its party ones too) where they're expected. */
@@ -172,6 +173,17 @@ val PP_ALL_MOVES_ITEMS = setOf(36, 37)
 
 /** ORANGE MAIL .. RETRO MAIL (ItemIsMail). */
 val MAIL_ITEMS = (121..132).toSet()
+
+// struct Mail (global.h): 9 easy-chat words, the player's name, the trainer ID, the species and the item. The party's
+// first PARTY_SIZE records hold mail its Pokémon carry; the rest (6..15) are the PC's 10 mailbox slots.
+private const val MAIL_COUNT = 16
+private const val MAIL_SIZE = 0x24
+private const val MAIL_ITEM_OFF = 0x20
+private const val MAIL_NONE = 0xFF
+private const val MON_DATA_MAIL = 64
+
+/** Where SaveBlock1 keeps its struct Mail mail[MAIL_COUNT] (Emerald +0x2BE0, FireRed / LeafGreen +0x2CD0). */
+data class MailboxLayout(val saveBlock1Ptr: Long, val staticSaveBlock: Boolean, val mailOff: Int)
 
 // FIELD_ITEMS_FIRERED_REV1 / _EMERALD / _LEAFGREEN_REV0 / _REV1 (and their PARTY_ITEMS_* and PC_*) are records in
 // gamedata/gen3/records/ (GameDataRecordsGen.kt), shared with the 3DS / Linux companion.
@@ -924,6 +936,8 @@ enum class ItemUseResult {
     PARTY_CHANGED,
     /** TAKE: the held item ([ItemUseOutcome.swapped]) is in the bag now. */
     TAKEN,
+    /** TAKE of Mail: the PC's 10 mailbox slots are full; it stays held. */
+    MAILBOX_FULL,
     /** A TM / HM: the game's own TM screen is opening (TmTeach.kt); the rest happens there. */
     IN_GAME,
 }
@@ -961,6 +975,8 @@ class FieldItemSupport(
     val canFlight: Boolean = false,
     /** PC anywhere's code is where [FieldItemFns.pc] says. */
     val canPc: Boolean = false,
+    /** Where TAKE sends a Mail (its own PC mailbox, not the bag); null = this game's mailbox isn't known. */
+    val mailbox: MailboxLayout? = null,
 ) {
     private val party = fns.party
     /** USE: a Repel on the spot, or medicine / a PP item on a picked Pokémon. */
@@ -978,7 +994,12 @@ class FieldItemSupport(
 
 /** [fns]' support on the running ROM, or null when its code isn't where [fns] says (a hack
  * that moved it). The holdable items come from the ROM's gItems ([holdableItems]). */
-fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArray): FieldItemSupport? {
+fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArray): FieldItemSupport? =
+    fieldItemSupport(fns, read, null)
+
+fun fieldItemSupport(
+    fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArray, mailbox: MailboxLayout?,
+): FieldItemSupport? {
     if (!fieldItemCodeMatches(fns, read)) return null
     // No party functions: the Repels where the bag's functions are mapped, and PC anywhere (Monomyth's table is the PC alone).
     val party = fns.party ?: return FieldItemSupport(
@@ -995,7 +1016,10 @@ fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArra
         return FieldItemSupport(fns, emptySet(), repels, canFly = fly, canPc = pc, canFlight = flight)
     }
     val items = read(fns.items, party.itemCount * fns.itemSize)
-    return FieldItemSupport(fns, holdableItems(fns, items), usableItems(fns, items), canFly = fly, canPc = pc, canFlight = flight)
+    return FieldItemSupport(
+        fns, holdableItems(fns, items), usableItems(fns, items),
+        canFly = fly, canPc = pc, canFlight = flight, mailbox = mailbox,
+    )
 }
 
 /** What the bag's GIVE takes (item_menu.c's Task_ItemContext_FieldGive): importance 0 and not a key
@@ -1250,7 +1274,10 @@ fun partyHeldItems(support: FieldItemSupport, g: GameCalls): PartyTargets {
             val verdict = when {
                 p.get(g, slot, p.isEggField) != 0L -> SlotVerdict.EGG
                 held == 0 -> SlotVerdict.NO_EFFECT
-                held in p.mail -> SlotVerdict.HOLDS_MAIL
+                held in p.mail ->
+                    // Mail goes to the PC's mailbox, not the bag, so its room there is what matters.
+                    if (support.mailbox != null && p.get(g, slot, p.mailField).toInt() in 0 until MAIL_COUNT) SlotVerdict.OK
+                    else SlotVerdict.HOLDS_MAIL
                 p.bagHasRoom(g, held) == false -> SlotVerdict.BAG_FULL
                 else -> SlotVerdict.OK
             }
@@ -1271,9 +1298,59 @@ fun takeFromMon(support: FieldItemSupport, target: PartyTarget, busy: Boolean, g
         p.get(g, target.slot, p.heldItemField).toInt()
     }.getOrElse { return ItemUseOutcome(ItemUseResult.FAILED) }
     if (held == 0) return ItemUseOutcome(ItemUseResult.NO_EFFECT)
-    if (held in p.mail) return ItemUseOutcome(ItemUseResult.FAILED)
+    if (held in p.mail) {
+        val mailbox = support.mailbox ?: return ItemUseOutcome(ItemUseResult.FAILED)
+        return takeMailToPc(p, mailbox, target.slot, held, g)
+    }
     if (g.call(p.addBagItem, held, 1) != 1L) return ItemUseOutcome(ItemUseResult.BAG_FULL, swapped = held)
     if (setHeldItem(p, g, target.slot, 0)) return ItemUseOutcome(ItemUseResult.TAKEN, swapped = held)
     g.call(fns.removeBagItem, held, 1)
     return ItemUseOutcome(ItemUseResult.FAILED)
 }
+
+/**
+ * TAKE of Mail: its struct comes out of the party's mail record (id 0..5) into a free PC mailbox record (6..15), then
+ * the held item and the mail id are cleared - party_menu.c's TakeMailFromMonAndSave. Never loses it: a full mailbox
+ * leaves it held, and anything that didn't take puts the two records and the Pokémon back. Emu thread.
+ */
+private fun takeMailToPc(p: PartyItemFns, box: MailboxLayout, slot: Int, held: Int, g: GameCalls): ItemUseOutcome = runCatching {
+    val sb1 = if (box.staticSaveBlock) box.saveBlock1Ptr else u32le(g.read(box.saveBlock1Ptr, 4), 0)
+    if (sb1 !in 0x02000000L until 0x04000000L) return@runCatching ItemUseOutcome(ItemUseResult.FAILED)
+    val mailId = p.get(g, slot, p.mailField).toInt()
+    if (mailId !in 0 until MAIL_COUNT) return@runCatching ItemUseOutcome(ItemUseResult.FAILED)
+    val base = sb1 + box.mailOff
+    val sourceAddr = base + mailId.toLong() * MAIL_SIZE
+    val source = g.read(sourceAddr, MAIL_SIZE)
+    if (source.size != MAIL_SIZE || u16le(source, MAIL_ITEM_OFF) != held) return@runCatching ItemUseOutcome(ItemUseResult.FAILED)
+    val free = (PARTY_SIZE until MAIL_COUNT).firstOrNull { i ->
+        u16le(g.read(base + i.toLong() * MAIL_SIZE + MAIL_ITEM_OFF, 2), 0) == 0
+    } ?: return@runCatching ItemUseOutcome(ItemUseResult.MAILBOX_FULL, swapped = held)
+    val freeAddr = base + free.toLong() * MAIL_SIZE
+    val freeBefore = g.read(freeAddr, MAIL_SIZE)
+    fun restore(): ItemUseOutcome {
+        g.write(sourceAddr, source)
+        g.write(freeAddr, freeBefore)
+        setHeldItem(p, g, slot, held)
+        setMonMail(p, g, slot, mailId)
+        return ItemUseOutcome(ItemUseResult.FAILED)
+    }
+    if (!g.write(freeAddr, source)) return@runCatching ItemUseOutcome(ItemUseResult.FAILED)
+    // The game clears only the source's item id; the words stay until another letter reuses the record.
+    if (!g.write(sourceAddr + MAIL_ITEM_OFF, ByteArray(2))) return@runCatching restore()
+    if (!setHeldItem(p, g, slot, 0)) return@runCatching restore()
+    if (!setMonMail(p, g, slot, MAIL_NONE)) return@runCatching restore()
+    val cleared = runCatching {
+        p.get(g, slot, p.heldItemField).toInt() == 0 && p.get(g, slot, p.mailField).toInt() == MAIL_NONE
+    }.getOrDefault(false)
+    if (!cleared) return@runCatching restore()
+    ItemUseOutcome(ItemUseResult.TAKEN, swapped = held)
+}.getOrElse { ItemUseOutcome(ItemUseResult.FAILED) }
+
+/** SetMonData(mon, MON_DATA_MAIL, &mailId) through [PartyItemFns.scratch] (one byte), then read back. */
+private fun setMonMail(p: PartyItemFns, g: GameCalls, slot: Int, mailId: Int): Boolean = runCatching {
+    val before = g.read(p.scratch, 1)
+    if (!g.write(p.scratch, byteArrayOf(mailId.toByte()))) return@runCatching false
+    val called = g.call(p.setMonData, p.mon(slot), p.mailField, p.scratch.toInt())
+    g.write(p.scratch, before)
+    called >= 0 && p.get(g, slot, p.mailField).toInt() == mailId
+}.getOrDefault(false)

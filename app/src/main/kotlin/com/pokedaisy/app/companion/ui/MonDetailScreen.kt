@@ -408,8 +408,11 @@ internal fun tradeEvoMessage(r: com.pokedaisy.app.companion.data.TradeEvoResult,
 
 /** What TAKE did, in the companion's words. */
 internal fun takeMessage(o: com.pokedaisy.app.companion.data.ItemUseOutcome, mon: String): String = when (o.result) {
-    com.pokedaisy.app.companion.data.ItemUseResult.TAKEN -> tr("Received {0} from {1}.", bagItemName(o.swapped), mon)
+    com.pokedaisy.app.companion.data.ItemUseResult.TAKEN ->
+        if (o.swapped in com.pokedaisy.app.companion.data.MAIL_ITEMS) tr("Received {0} from {1}. The letter went to the PC.", bagItemName(o.swapped), mon)
+        else tr("Received {0} from {1}.", bagItemName(o.swapped), mon)
     com.pokedaisy.app.companion.data.ItemUseResult.BAG_FULL -> tr("The bag is full: {0} can't go back in it.", bagItemName(o.swapped))
+    com.pokedaisy.app.companion.data.ItemUseResult.MAILBOX_FULL -> tr("The PC's mailbox is full.")
     com.pokedaisy.app.companion.data.ItemUseResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.ItemUseResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.ItemUseResult.PARTY_CHANGED -> tr("The party has changed. Try again.")
