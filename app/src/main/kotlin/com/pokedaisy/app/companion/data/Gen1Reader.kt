@@ -449,6 +449,8 @@ fun readGen1Telemetry(r: MemoryReader, cfg: Gen1Config): Telemetry {
     return Telemetry(
         frameCounter = frames,
         inBattle = inBattle,
+        // wIsInBattle: 1 wild, 2 trainer (BOSS RETRY, SHINY ALERT's count, NUZLOCKE).
+        isTrainerBattle = if (inBattle) battle == 2 else null,
         isDoubleBattle = false,
         mapGroup = 0,
         mapNum = map,

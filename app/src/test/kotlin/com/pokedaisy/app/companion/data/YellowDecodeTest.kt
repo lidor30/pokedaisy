@@ -41,6 +41,7 @@ class YellowDecodeTest {
         activeGame = GameKind.YELLOW
         val t = readGen1Telemetry(FixtureMemoryReader.load("yellow_battle"), GEN1_YELLOW)
         assertTrue(t.inBattle)
+        assertEquals(false, t.isTrainerBattle)   // a wild one (wIsInBattle 1)
         val me = t.battleMons[BATTLE_POS_PLAYER_LEFT]
         assertEquals(25 to 100, me.species to me.level)
         assertEquals("ELECTRIC", typeName(me.type1))

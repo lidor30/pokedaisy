@@ -867,6 +867,8 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
     return Telemetry(
         frameCounter = 0,
         inBattle = battle != null,
+        // The battle type's trainer bit (BOSS RETRY, SHINY ALERT's count, NUZLOCKE).
+        isTrainerBattle = battle?.trainer,
         isDoubleBattle = battle?.doubles == true,
         battleInputState = if (battle != null) cfg.battle?.let { readGen4BattleInput(r, it) } ?: BATTLE_INPUT_NONE else BATTLE_INPUT_NONE,
         mapGroup = 0,
