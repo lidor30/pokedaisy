@@ -805,7 +805,7 @@ class SettingsActivity : ComponentActivity() {
             // DS games: which emulator runs them (companion.DsCore): melonDS, or DSperate for weak devices (AUTO picks).
             SettingRow(
                 tk("DS CORE"), prefs.dsCore.valueLabel(), subtitle = "DSPERATE runs on weaker devices",
-                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CORE),
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CORE_BANANADS),
             ) {
                 val cores = com.pokedaisy.app.companion.DsCore.entries
                 selector = Selector(tk("DS CORE"), cores.map { it.label }, prefs.dsCore.label) { l ->

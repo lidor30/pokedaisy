@@ -434,3 +434,47 @@ diff --git a/src/NDS.h b/src/NDS.h
  protected:
      explicit NDS(NDSArgs&& args, int type, void* userdata) noexcept;
      virtual u32 GetSavestateConfig();
+diff --git a/src/SPU.cpp b/src/SPU.cpp
+--- a/src/SPU.cpp
++++ b/src/SPU.cpp
+@@ -1369,7 +1369,7 @@
+             if (BlipTimer >= 512 * 128)
+                 BufferAudio();
+         }
+-        NDS.ScheduleEvent(Event_SPU, true, MixInterval, 0, MixInterval >> 1);
++        NDS.ScheduleEvent(Event_SPU, true, MixInterval << MixShift, 0, (MixInterval << MixShift) >> 1);
+         return;
+     }
+     FastTailValid = FastMix;
+@@ -1419,7 +1419,7 @@
+ 
+     if (DiscardOutput)  // (patch 0091)
+     {
+-        NDS.ScheduleEvent(Event_SPU, true, MixInterval, 0, MixInterval >> 1);
++        NDS.ScheduleEvent(Event_SPU, true, MixInterval << MixShift, 0, (MixInterval << MixShift) >> 1);
+         return;
+     }
+ 
+@@ -1443,7 +1443,7 @@
+     if (BlipTimer >= 512 * 128)
+         BufferAudio();
+ 
+-    NDS.ScheduleEvent(Event_SPU, true, MixInterval, 0, MixInterval >> 1);
++    NDS.ScheduleEvent(Event_SPU, true, MixInterval << MixShift, 0, (MixInterval << MixShift) >> 1);
+ }
+ 
+ void SPU::BufferAudio()
+diff --git a/src/SPU.h b/src/SPU.h
+--- a/src/SPU.h
++++ b/src/SPU.h
+@@ -282,6 +282,10 @@
+     int ReadOutput(s16* data, int samples);
+     void SetOutputSampleRate(double rate);
+     void SetOutputSkew(double skew);
++    // PokeDaisy: a Mix every MixInterval << MixShift cycles (0: the DS's 32768 Hz). The host sets it for fast-forward's
++    // frames nobody sees (their sound is averaged down anyway): the channels run the same, sampled less often. Takes
++    // effect at the next Mix; MixChannelsFast resyncs its timers to the new step. Not saved.
++    u32 MixShift = 0;
+ 
+     u8 Read8(u32 addr);
+     u16 Read16(u32 addr);

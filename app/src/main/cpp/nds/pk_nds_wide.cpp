@@ -22,9 +22,6 @@
 #include <mutex>
 #include <thread>
 #include <vector>
-#ifdef PK_NDS_BANANADS_DBG
-#include <android/log.h>
-#endif
 
 using namespace melonDS;
 
@@ -104,6 +101,10 @@ struct Slice {
     Image image;   // drawn after the last frame: what the next composed frame shows
     Image shown;   // what the last composed frame used (pk_nds_wide_check)
     int lastCount = 0;
+    // pk_nds_wide_hires: the slice at the hires renderer's scale too ((W3D * S) x (H3D * S), the 3D engine's colours),
+    // drawn and shown with [image] / [shown]
+    std::vector<u32> hi, hiShown;
+    bool hiValid = false, hiShownValid = false;
 };
 
 // A renderer of its own and its scratch: one per helper thread.
@@ -132,6 +133,12 @@ struct Wide {
     Slice slices[9];      // (sy + 1) * 3 + sx + 1; 4, the screen itself, unused
     Drawer drawers[HELPERS];
     Pool pool;
+    // pk_nds_wide_hires: the margins at a renderer's scale (BananaDS: Gengis) - the slices also drawn by [hiDraw], the
+    // margins composed as a plan (GPU mode's) for the caller to put the hires 3D into
+    int hiScale = 1;
+    PkNdsHiresDraw hiDraw = nullptr;
+    void* hiUser = nullptr;
+    bool planOnly = false;
     std::vector<u32> out;   // OW x OH, the game frame's (0, 0) at (MX, MY)
     int cx0 = 0, cx1 = 0, cy0 = 0, cy1 = 0;   // what the last composed frame covers, in the game frame's pixels
     // The sprites last frame, by what they are (tiles, palette, shape, size, x - not y, nor their OAM slot, which the
@@ -204,6 +211,16 @@ void takeShown2D(Shown2D& d, const GPU& gpu)
 }
 
 void waitSlices();
+
+void drawSliceHires(Slice& s, Drawer& d)
+{
+    s.hiValid = false;
+    if (!wide.hiDraw || wide.hiScale < 2) return;
+    const size_t n = (size_t) W3D * wide.hiScale * H3D * wide.hiScale;
+    if (s.hi.size() != n) s.hi.assign(n, 0);
+    const int slot = (int) (&s - wide.slices);
+    s.hiValid = wide.hiDraw(wide.hiUser, slot, d.visible.data(), (int) d.visible.size(), s.hi.data());
+}
 
 // Line 192: VBlank is next, which latches the 3D registers the slices still being drawn read (waitSlices).
 void onVisibleEnd(GPU& gpu, void*)
@@ -955,24 +972,15 @@ void drawSlice(Slice& s, Drawer& d)
     r.RenderPolygonList(wide.nds->GPU, d.visible.data(), (int) d.visible.size());
     for (int y = r.RowMin; y < r.RowMax; y++)
         memcpy(&s.image.px[y * W3D + r.ColumnMin], r.GetLine(y) + r.ColumnMin, (size_t) (r.ColumnMax - r.ColumnMin) * 4);
-#ifdef PK_NDS_BANANADS_DBG
-    {
-        static std::atomic<int> dbg {0};
-        if (dbg++ % 200 == 0) {
-            int nz = 0;
-            for (int y = r.RowMin; y < r.RowMax; y++)
-                for (int x = r.ColumnMin; x < r.ColumnMax; x++) nz += (s.image.px[y * W3D + x] & 0x00FFFFFF) != 0;
-            __android_log_print(4, "pokedaisy/bananads", "DBG slice %d,%d cols %d-%d rows %d-%d vis %zu nonzero %d abort %d",
-                s.sx, s.sy, r.ColumnMin, r.ColumnMax, r.RowMin, r.RowMax, d.visible.size(), nz, (int) wide.nds->GPU.GPU3D.AbortFrame);
-        }
-    }
-#endif
     s.image.x0 = r.ColumnMin + ox;
     s.image.x1 = r.ColumnMax + ox;
     s.image.y0 = r.RowMin + oy;
     s.image.y1 = r.RowMax + oy;
     s.image.valid = true;
+    drawSliceHires(s, d);
 }
+
+void drawSliceHires(Slice& s, Drawer& d);
 
 void takeJobs(Drawer& d)
 {
@@ -1129,7 +1137,7 @@ void pk_nds_wide_gpu_want(bool threeD) { wide.gpuWant = threeD; }
 
 void pk_nds_wide_plan(PkNdsWidePlan* out)
 {
-    *out = wide.on && wide.gpu ? wide.plan : PkNdsWidePlan();
+    *out = wide.on && (wide.gpu || wide.planOnly) ? wide.plan : PkNdsWidePlan();
 }
 
 void pk_nds_wide_need(int left, int right, int top, int bottom)
@@ -1172,6 +1180,8 @@ static void applyNeed()
 bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, bool drawNext, bool battle)
 {
     if (!wide.on || nds != wide.nds || !top) return false;
+    // GPU mode's plan instead of the margins' colours: for the GL compositor, or the hires slices' (pk_nds_wide_hires)
+    const bool planning = wide.gpu || wide.planOnly;
     waitSlices();
     int step = 1 + wide.undrawn;
     wide.undrawn = draw ? 0 : std::min(wide.undrawn + 1, 255);
@@ -1204,17 +1214,6 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
     bool blackL[H3D] = {}, blackR[H3D] = {};
     // A layer blended over the 3D is drawn on into the margins instead (setupCompose).
     setupCompose(compose, nds, threeDOnTop);
-#ifdef PK_NDS_BANANADS_DBG
-    {
-        static int dbg = 0;
-        if (dbg++ % 300 == 0) {
-            u32 c = marginPixel(-10, 96);
-            __android_log_print(4, "pokedaisy/bananads", "DBG compose 3DonTop %d aOnTop %d draw %d mb %x count %d bright63 %d backdrop %x c %x composed %x cx %d..%d pow %x",
-                threeDOnTop, aOnTop, draw, compose.mb, compose.count, compose.bright[63], compose.backdrop, c,
-                composed(compose, -10, 96, c), wide.cx0, wide.cx1, nds->PowerControl9);
-        }
-    }
-#endif
     if (aOnTop && (threeDOnTop || battleBg)) {
         int mode = (int) (unitA.DispCnt & 7);
         int base = battleBg ? 3 : 0;
@@ -1409,15 +1408,15 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
         wide.cy1 = H3D + wide.needB;
         for (int y = wide.cy0; y < wide.cy1; y++) {
             u32* row = &wide.out[(size_t) (y + MY) * OW + MX];   // row[x], x from -MX
-            if (y >= 0 && y < H3D && !wide.gpu) {
+            if (y >= 0 && y < H3D && !planning) {
                 const u32* src = top + y * W3D;
                 for (int x = 0; x < W3D; x++) row[x] = toRgba(src[x]);
             }
             // GPU mode: what the compositor does there (pk_nds_wide.h's PK_NDS_PLAN_*) - colours it takes as they are,
             // the screen's own pixels where the margin repeats them, the 3D (and the 2D blended over it) to put together.
-            auto color = [&](u32 rgba) { return wide.gpu ? (rgba & 0xFFFFFFu) | PK_NDS_PLAN_COLOR << 24 : rgba; };
+            auto color = [&](u32 rgba) { return planning ? (rgba & 0xFFFFFFu) | PK_NDS_PLAN_COLOR << 24 : rgba; };
             auto screen = [&](int sx, int sy) {
-                if (!wide.gpu) return toRgba(top[sy * W3D + sx]);
+                if (!planning) return toRgba(top[sy * W3D + sx]);
                 return PK_NDS_PLAN_SCREEN << 24 | (u32) (sx & 0xFF) | (u32) sy << 8 | (u32) (sx >> 8) << 16;
             };
             auto margin = [&](int x) {
@@ -1448,12 +1447,12 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
                         int k = std::min(y - runTop[side][y], runBottom[side][y] - y);   // rows from the box's top / bottom
                         int end = BOX_RUN + t - (k < 2 ? BOX_CORNER[k] : 0);
                         if (d <= end - t) {
-                            row[x] = wide.gpu ? screen(side ? W3D - 1 : 0, carryRow[side][y]) : carry[side][y];
+                            row[x] = planning ? screen(side ? W3D - 1 : 0, carryRow[side][y]) : carry[side][y];
                             return;
                         }
                         if (d <= end) {
                             int r0 = runTop[side][y];
-                            row[x] = wide.gpu ? screen(side ? W3D - 1 : 0, carryRow[side][r0]) : carry[side][r0];
+                            row[x] = planning ? screen(side ? W3D - 1 : 0, carryRow[side][r0]) : carry[side][r0];
                             return;
                         }
                         // Past the box's end: the scene, as anywhere else in the margin.
@@ -1470,7 +1469,7 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
                     }
                     if (battle3D) {
                         // The 3D's alpha onto what's under it where BLDCNT has that (the sprite, BG3) as the second target
-                        if (wide.gpu) {
+                        if (planning) {
                             row[x] = PK_NDS_PLAN_3D_ON << 24 | (objUnder ? PK_NDS_PLAN_UNDER_OBJ : 0) | under;
                             return;
                         }
@@ -1484,7 +1483,7 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
                     row[x] = color(shade(under, mb));
                     return;
                 }
-                if (threeDOnTop && wide.gpu) {
+                if (threeDOnTop && planning) {
                     u16 o = compose.count ? overlayPixel(compose, x, y) : 0;
                     row[x] = o ? PK_NDS_PLAN_3D_OVER << 24 | widen(o) : PK_NDS_PLAN_3D << 24;
                     return;
@@ -1499,7 +1498,7 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
         // The frame's outer rows and columns: the DS outlines polygons where the screen cuts them (edge marking), a
         // dark line once the picture goes on past them. Taken from the slice beside them instead - where the next one
         // in shows the slice's own pixel, so it's the 3D layer there and not a text box or a sprite over it.
-        if (threeDOnTop && !wide.gpu) {
+        if (threeDOnTop && !planning) {
             // The edge-marking colours as they come out on screen (ScanlineFinalPass's 5 -> 6 bit conversion): a frame
             // edge pixel showing one of them exactly is the outline. Where the slice shows texture a texel off, the
             // "next one in" test below fails on a busy texture, and the outline stayed as a dark dot.
@@ -1536,7 +1535,7 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
                 }
         }
     }
-    if (draw && wide.gpu) {
+    if (draw && planning) {
         PkNdsWidePlan& p = wide.plan;
         p.valid = true;
         p.px = &wide.out[(size_t) MY * OW + MX];
@@ -1560,6 +1559,9 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
         if (s.verts[0].empty()) continue;
         std::swap(s.shown, s.image);   // the one just shown (pk_nds_wide_check); the other is drawn over
         s.image.valid = false;
+        std::swap(s.hi, s.hiShown);
+        s.hiShownValid = s.hiValid;
+        s.hiValid = false;
         if (drawNext && s.active) wide.pool.jobs.push_back(&s);
     }
     drawSlices();
@@ -1686,3 +1688,20 @@ void pk_nds_wide_counts(int out[8])
         if (i != 4) out[n++] = wide.slices[i].lastCount;
 }
 
+
+void pk_nds_wide_hires(int scale, PkNdsHiresDraw draw, void* user)
+{
+    waitSlices();
+    wide.hiScale = scale;
+    wide.hiDraw = draw;
+    wide.hiUser = user;
+    wide.planOnly = scale > 1 && draw;
+    wide.plan = PkNdsWidePlan();
+    for (Slice& sl : wide.slices) sl.hiValid = sl.hiShownValid = false;
+}
+
+const uint32_t* pk_nds_wide_hires_slice(int sx, int sy)
+{
+    const Slice& sl = wide.slices[(sy + 1) * 3 + sx + 1];
+    return wide.planOnly && sl.hiShownValid ? sl.hiShown.data() : nullptr;
+}

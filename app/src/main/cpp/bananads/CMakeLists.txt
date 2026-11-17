@@ -81,6 +81,35 @@ add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:SHELL:-include ${CMAKE_CURRENT_
 # (nds/pk_nds_bnd_load.cpp), so on an older Android BananaDS just doesn't start.
 add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:-fno-emulated-tls>")
 add_link_options(-fno-emulated-tls)
+# Link-time optimization across melonDS, the Banana 2D engine, Gengis and the glue (as BananaDS's handheld build does,
+# BANANADS_LTO): ThinLTO, the NDK's lld.
+option(PKB_LTO "ThinLTO for libpkbananads.so (measured: no gain on the Thor)" OFF)
+if(PKB_LTO)
+    add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:-flto=thin>")
+    add_link_options(-flto=thin)
+endif()
+
+# gengis_renderer.cpp / .h, with gengis-slices.patch (a slice renderer for EXPAND's margins at render.scale): copies in
+# the build folder, ahead of BananaDS's src/ on the include path
+set(GSRC "${CMAKE_BINARY_DIR}/gengis-src")
+set(PK_GENGIS_PATCH "${CMAKE_CURRENT_SOURCE_DIR}/gengis-slices.patch")
+file(SHA1 "${PK_GENGIS_PATCH}" PK_GENGIS_SHA)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PK_GENGIS_PATCH}")
+set(GSTAMP_HAVE "")
+if(EXISTS "${GSRC}/.pk-stamp")
+    file(READ "${GSRC}/.pk-stamp" GSTAMP_HAVE)
+endif()
+if(NOT GSTAMP_HAVE STREQUAL "${BANANA_HEAD} ${PK_GENGIS_SHA}")
+    file(REMOVE_RECURSE "${GSRC}")
+    file(MAKE_DIRECTORY "${GSRC}/src")
+    file(COPY "${BANANADS_DIR}/src/gengis_renderer.cpp" "${BANANADS_DIR}/src/gengis_renderer.h" DESTINATION "${GSRC}/src")
+    execute_process(COMMAND patch -p1 -s --no-backup-if-mismatch -i "${PK_GENGIS_PATCH}"
+        WORKING_DIRECTORY "${GSRC}" RESULT_VARIABLE R ERROR_VARIABLE E OUTPUT_VARIABLE O)
+    if(NOT R EQUAL 0)
+        message(FATAL_ERROR "gengis-slices.patch doesn't apply: ${O} ${E}")
+    endif()
+    file(WRITE "${GSRC}/.pk-stamp" "${BANANA_HEAD} ${PK_GENGIS_SHA}")
+endif()
 
 # Every object in this library hidden; pk_ndsb_* are exported by exports.map.
 set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -117,15 +146,15 @@ target_compile_definitions(banana2d PUBLIC BANANADS_2D=1)
 add_library(pkbananads SHARED
     pk_nds_bnd.cpp
     bnd_platform.cpp
-    "${BANANADS_DIR}/src/gengis_renderer.cpp"
+    "${GSRC}/src/gengis_renderer.cpp"
     "${PD_NDS}/pk_nds_field.cpp"
     "${PD_NDS}/pk_nds_field_gpu.cpp"
     "${PD_NDS}/pk_nds_wide.cpp")
 # (its own objects default-visible: exports.map keeps pk_ndsb_* and hides the rest; the static libraries stay hidden)
 set_target_properties(pkbananads PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_VISIBILITY_PRESET default)
 # gengis_renderer.cpp includes BananaDS's emu.h (headers only); the one function it calls is in pk_nds_bnd.cpp
-target_include_directories(pkbananads PRIVATE "${PD_NDS}" "${BANANADS_DIR}/src")
-target_compile_definitions(pkbananads PRIVATE BANANADS_GENGIS=1 ARCHITECTURE_ARM64=1 PK_NDS_BANANADS=1 PK_NDS_BANANADS_DBG=1)
+target_include_directories(pkbananads PRIVATE "${GSRC}/src" "${PD_NDS}" "${BANANADS_DIR}/src")
+target_compile_definitions(pkbananads PRIVATE BANANADS_GENGIS=1 ARCHITECTURE_ARM64=1 PK_NDS_BANANADS=1)
 target_link_libraries(pkbananads PRIVATE banana2d gengis core android log z)
 target_link_options(pkbananads PRIVATE
     "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map"

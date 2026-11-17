@@ -96,6 +96,12 @@ struct Ds {
     int winX = 0, winY = 0, winW = PK_NDS_W, winH = PK_NDS_H;   // EXPAND's window (the screen without it)
     u32 topArgb[PK_NDS_W * PK_NDS_H] {};     // the top screen at 1x as melonDS draws it (EXPAND reads it) when hires
     std::vector<u32> view;                   // EXPAND at 2x-4x: the window at 1x (pk_nds_wide_view)
+    int coarseMix = 0;                       // SPU::MixShift on unseen frames
+    // EXPAND at 2x-4x: its slices drawn by Gengis at the scale too (pk_nds_wide_hires), one renderer a slice
+    std::unique_ptr<bananads::GengisRenderer3D> sliceR[9];
+    std::mutex sliceLock;
+    int showHz = 0;                          // frames read back a second at most (0: all asked for)
+    int64_t lastShown = 0;
 };
 
 // The game screen's window (pk_nds_set_window), any thread; taken on the emu thread before a frame goes out.
@@ -178,11 +184,12 @@ void setArm9Shift(u32 shift)
 u32 boostShift() { return ds->cpuBoost ? 2 : 1; }
 
 // BananaDS's settings with no config file (emu.cpp's defaults): the ones read from the environment by its patches first.
+
 void bananaEnv()
 {
+    setenv("MELONDS_GEOMTHREAD", "0", 1);   // render.geom_thread off (measured: slower on the Thor too)
     setenv("MELONDS_JIT_PINREGS", "300f", 0);
     setenv("MELONDS_JIT_LOOPREGS", "1", 0);
-    setenv("MELONDS_GEOMTHREAD", "0", 0);
 }
 
 // The renderer at [scale]: render.renderer gengis on render.gengis_threads 3, render.2d banana; the 2D on its own
@@ -199,14 +206,18 @@ void setRenderer(NDS& n, int scale)
     ds->banana->SetKickBatch(64);
     ds->banana->SetNice(0);
     ds->banana->SetFenceWaitBlocking(true);
-    if (scale >= 2) ds->banana->SetThreaded2D(true);
+    // render.2d_thread at every scale (BananaDS turns it on at 2x and up only, for the RG DS's four small cores;
+    // uncapped fast-forward on the Thor: +7%), and render.2d_lazy: a frame's end waits only for the frame before's 2D
+    // lines, not its own
+    ds->banana->SetThreaded2D(true);
+    ds->banana->SetLazyFrames(true);
     ds->scale = ds->banana->Scale();
 }
 
 void bananaSetup(NDS& n)
 {
     NDSCart::NDSCartSlot::XferShift = 0;   // core.card_fast 0
-    n.SetSlice(64, 64, 4096);              // core.slice 64 (melonDS's)
+    n.SetSlice(64, 64, 4096);   // core.slice 64 (melonDS's) until the cart is known (pk_ndsb_init)
     n.FastGXDMA = false;
     n.FastSPU = false;
     n.SPU.SetFastMix(true);
@@ -250,6 +261,105 @@ void bananaSetup(NDS& n)
     setRenderer(n, 1);
 }
 
+// pk_nds_wide_hires's drawing (EXPAND's helper threads): slice [slot]'s polygons by its own Gengis renderer at the
+// scale, no render threads of its own, into [out] row by row
+bool hiresDraw(void*, int slot, Polygon** polys, int n, u32* out)
+{
+    if (!ds || slot < 0 || slot >= 9) return false;
+    bananads::GengisRenderer3D* r;
+    {
+        std::lock_guard<std::mutex> l(ds->sliceLock);
+        auto& u = ds->sliceR[slot];
+        if (!u || u->Scale() != ds->scale) {
+            u = std::make_unique<bananads::GengisRenderer3D>(ds->nds->GPU.GPU3D, 0, false, ds->scale);
+            u->Slave = true;
+        }
+        r = u.get();
+    }
+    const int S = r->Scale(), W = PK_NDS_W * S;
+    r->ListOverride = polys;
+    r->ListOverrideN = (u32) n;
+    r->RenderFrame();
+    for (int line = 0; line < PK_NDS_H; line++)
+        for (int q = 0; q < S * S; q++) {
+            const u32* row = r->GetQuarter(line, q);
+            u32* dst = out + (size_t) (S * line + q / S) * W + q % S;
+            for (int k = 0; k < PK_NDS_W; k++) dst[k * S] = row[k];
+        }
+    return true;
+}
+
+// EXPAND's margins at the renderer's scale while both are on (else at 1x, as melonDS's software renderer draws them)
+void updateHires()
+{
+    pk_nds_wide_hires(ds->wide && ds->scale > 1 ? ds->scale : 1, hiresDraw, ds);   // (waits for the slices first)
+    std::lock_guard<std::mutex> l(ds->sliceLock);
+    for (auto& u : ds->sliceR) u.reset();
+}
+
+// A margin texel by EXPAND's plan (pk_nds_wide.h's PK_NDS_PLAN_*): pk_nds_gl.cpp's Margin() on the CPU, [c3] the hires
+// 3D there (r | g << 8 | b << 16 | alpha << 24, 0: none) and [screen] the screen's texel for PLAN_SCREEN's pixel. RGBA.
+inline int bright6(int c, u32 mb)
+{
+    const int mode = (int) (mb >> 14), evy = std::min<int>(mb & 0x1F, 16);
+    if (mode == 1) c += ((0x3F - c) * evy) >> 4;
+    else if (mode == 2) c -= ((c * evy) + 0xF) >> 4;
+    return c;
+}
+
+inline u32 out8(int r, int g, int b)
+{
+    auto w = [](int c) { return (u32) ((c << 2) | (c >> 4)); };
+    return 0xFF000000u | w(r) | w(g) << 8 | w(b) << 16;
+}
+
+u32 marginTexel(const PkNdsWidePlan& p, u32 plan, u32 c3)
+{
+    const u32 code = plan >> 24;
+    if (code == PK_NDS_PLAN_COLOR) return 0xFF000000u | (plan & 0xFFFFFF);
+    const bool has3D = (c3 >> 24) & 0x1F;
+    const int r3 = c3 & 0x3F, g3 = (c3 >> 8) & 0x3F, b3 = (c3 >> 16) & 0x3F, a3 = (c3 >> 24) & 0x1F;
+    const int br = p.backdrop & 0x3F, bg = (p.backdrop >> 8) & 0x3F, bb = (p.backdrop >> 16) & 0x3F;
+    int r, g, b;
+    if (code == PK_NDS_PLAN_3D_ON) {
+        r = plan & 0x3F; g = (plan >> 8) & 0x3F; b = (plan >> 16) & 0x3F;
+        if (has3D) {
+            const int eva = a3 + 1;
+            const bool target2 = (p.blendCnt & ((plan & 0x80) ? 0x1000 : 0x800)) != 0;
+            if (target2 && eva < 32) {
+                r = std::min((r3 * eva + r * (32 - eva) + 0x10) >> 5, 0x3F);
+                g = std::min((g3 * eva + g * (32 - eva) + 0x10) >> 5, 0x3F);
+                b = std::min((b3 * eva + b * (32 - eva) + 0x10) >> 5, 0x3F);
+            } else { r = r3; g = g3; b = b3; }
+        }
+        return out8(bright6(r, p.brightness), bright6(g, p.brightness), bright6(b, p.brightness));
+    }
+    int ur = has3D ? r3 : br, ug = has3D ? g3 : bg, ub = has3D ? b3 : bb;
+    r = ur; g = ug; b = ub;
+    if (code == PK_NDS_PLAN_3D_OVER) {
+        const int orr = plan & 0x3F, og = (plan >> 8) & 0x3F, ob = (plan >> 16) & 0x3F;
+        const bool target2 = (p.blendCnt & (has3D ? 0x100 : 0x2000)) != 0;
+        if (target2) {
+            r = std::min((orr * (int) p.eva + ur * (int) p.evb + 8) >> 4, 0x3F);
+            g = std::min((og * (int) p.eva + ug * (int) p.evb + 8) >> 4, 0x3F);
+            b = std::min((ob * (int) p.eva + ub * (int) p.evb + 8) >> 4, 0x3F);
+        } else { r = orr; g = og; b = ob; }
+    } else if (has3D && (p.blendCnt & 0x2000)) {
+        const int eva = a3 + 1;
+        if (eva < 32) {
+            r = std::min((r3 * eva + br * (32 - eva) + 0x10) >> 5, 0x3F);
+            g = std::min((g3 * eva + bg * (32 - eva) + 0x10) >> 5, 0x3F);
+            b = std::min((b3 * eva + bb * (32 - eva) + 0x10) >> 5, 0x3F);
+        }
+    }
+    if (code != PK_NDS_PLAN_3D_OVER && (p.fxTargets & (has3D ? 1u : 0x20u))) {
+        const int evy = std::min<int>(p.fx & 0x1F, 16);
+        auto f = [&](int c) { return (p.fx >> 14) == 1 ? c + (((0x3F - c) * evy + 8) >> 4) : (p.fx >> 14) == 2 ? c - ((c * evy + 7) >> 4) : c; };
+        r = f(r); g = f(g); b = f(b);
+    }
+    return out8(bright6(r, p.brightness), bright6(g, p.brightness), bright6(b, p.brightness));
+}
+
 void takeWindow()
 {
     std::lock_guard<std::mutex> l(win.lock);
@@ -274,7 +384,10 @@ bool present(const u32* hiTop, int S)
     const bool wide = ds->wide && ds->winW > 0 && ds->winH > 0;
     const int vx = wide ? ds->winX : 0, vy = wide ? ds->winY : 0;
     const int vw = wide ? ds->winW : PK_NDS_W, vh = wide ? ds->winH : PK_NDS_H;
-    if (wide) {
+    PkNdsWidePlan plan;
+    if (wide) pk_nds_wide_plan(&plan);
+    const bool planned = wide && plan.valid;
+    if (wide && !planned) {
         ds->view.resize((size_t) vw * vh);
         pk_nds_wide_view(ds->view.data(), vx, vy, vw, vh);
     }
@@ -299,11 +412,46 @@ bool present(const u32* hiTop, int S)
             for (int x = 0; x < w; x++) dst[x] = toRgba(src[x]);
             continue;
         }
-        const u32* vrow = ds->view.data() + (size_t) (y / S) * vw;
         const bool rowIn = sy >= 0 && sy < PK_NDS_H * S;
+        if (!planned) {
+            const u32* vrow = ds->view.data() + (size_t) (y / S) * vw;
+            for (int x = 0; x < w; x++) {
+                const int sx = vx * S + x;
+                dst[x] = rowIn && sx >= 0 && sx < hw ? toRgba(hiTop[(size_t) sy * hw + sx]) : vrow[x / S];
+            }
+            continue;
+        }
+        // the margins by EXPAND's plan, with the slices' hires 3D (pk_nds_wide_hires)
+        const int dy = sy >= 0 ? sy / S : -((-sy + S - 1) / S);   // the DS row (floor)
+        const int fy = sy - dy * S;
+        const int slY = dy < 0 ? -1 : dy >= PK_NDS_H ? 1 : 0;
         for (int x = 0; x < w; x++) {
             const int sx = vx * S + x;
-            dst[x] = rowIn && sx >= 0 && sx < hw ? toRgba(hiTop[(size_t) sy * hw + sx]) : vrow[x / S];
+            if (rowIn && sx >= 0 && sx < hw) {
+                dst[x] = toRgba(hiTop[(size_t) sy * hw + sx]);
+                continue;
+            }
+            const int dx = sx >= 0 ? sx / S : -((-sx + S - 1) / S);
+            const int fx = sx - dx * S;
+            if (dx < plan.x0 || dx >= plan.x1 || dy < plan.y0 || dy >= plan.y1) {
+                dst[x] = 0xFF000000u;
+                continue;
+            }
+            const u32 pl = plan.px[(ptrdiff_t) dy * plan.stride + dx];
+            if ((pl >> 24) == PK_NDS_PLAN_SCREEN) {
+                const int ex = (int) ((pl & 0xFF) | ((pl >> 16) & 0xFF) << 8), ey = (int) ((pl >> 8) & 0xFF);
+                dst[x] = toRgba(hiTop[(size_t) (ey * S + fy) * hw + ex * S + fx]);
+                continue;
+            }
+            u32 c3 = 0;
+            const int slX = dx < 0 ? -1 : dx >= PK_NDS_W ? 1 : 0;
+            if (const u32* im = pk_nds_wide_hires_slice(slX, slY)) {
+                // (pk_nds_wide.cpp's slices: a slice's (0, 0) at the screen's (sx * (256 - 4), sy * (192 - 4)))
+                const int lx = dx - slX * (PK_NDS_W - 4), ly = dy - slY * (PK_NDS_H - 4);
+                if (lx >= 0 && lx < PK_NDS_W && ly >= 0 && ly < PK_NDS_H)
+                    c3 = im[(size_t) (ly * S + fy) * hw + lx * S + fx];
+            }
+            dst[x] = marginTexel(plan, pl, c3);
         }
     }
     ANativeWindow_unlockAndPost(win.win);
@@ -431,12 +579,22 @@ bool pk_ndsb_init(const char* romPath, const char* savePath, int sampleRate)
     ds->nds->SetupDirectBoot("rom.nds");
     setClock();
     geomReject = ds->nds->GPU.GPU3D.GeomReject;
+    ds->coarseMix = 2;   // a quarter as often (uncapped fast-forward on the Thor: +7%)
+    ds->showHz = 240;    // the Thor's screens refresh at 120 Hz
     ds->nds->Start();
     if (const u8* mem = ds->nds->GetNDSSave()) ds->saveCopy.assign(mem, mem + ds->nds->GetNDSSaveLength());
     ds->audio.resize(8192 * 2);
     {
         const auto* c = ds->nds->NDSCartSlot.GetCart();
         ds->field = pk_nds_field_game_rom(c->GetROM(), c->GetROMLength());
+    }
+    // core.slice_idle 512 (BananaDS's adaptive scheduler slice: longer slices away from IPC), for the Pokemon carts the
+    // field read knows, measured with them; any other cart keeps melonDS's 64 (Golden Sun: Dark Dawn's 3D field broke
+    // with it on BananaOS)
+    {
+        const int idle = ds->field ? 512 : 64;   // (uncapped fast-forward on the Thor: +12%)
+        ds->nds->SetSlice(64, idle, 4096);
+        LOGI("scheduler slice 64, %d away from IPC", idle);
     }
     LOGI("BananaDS up: save %u bytes, %d Hz", ds->nds->GetNDSSaveLength(), sampleRate);
     return true;
@@ -447,6 +605,7 @@ void pk_ndsb_deinit(void)
     if (!ds) return;
     if (ds->nds) {
         pk_ndsb_flush_save();
+        pk_nds_wide_hires(1, nullptr, nullptr);
         pk_nds_wide_set(nullptr, false);
         ds->nds->Stop();
         delete ds->nds;
@@ -479,20 +638,33 @@ void pk_ndsb_run_frame(void)
         if (ds->scaleWant != ds->scale) {
             setRenderer(*nds, ds->scaleWant);
             nds->GetRenderer().PostSavestate();   // (its copies of VRAM made again, as after a state)
+            if (ds->wide) updateHires();
             LOGI("DS RESOLUTION: BananaDS at %dx", ds->scale);
         }
     }
+    // Uncapped fast-forward asks for every frame (its groups are for the capped speeds): past showHz frames a second
+    // the frames between aren't read back (the screen can't show them; EXPAND's margins wait for a shown one too)
+    bool show = ds->draw;
+    if (show && ds->showHz > 0) {
+        timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        const int64_t now = (int64_t) ts.tv_sec * 1000000000 + ts.tv_nsec;
+        if (now - ds->lastShown < 1000000000 / ds->showHz) show = false;
+        else ds->lastShown = now;
+    }
+    // Fast-forward's frames nobody sees: the sound mixed less often (melonds-expand.patch's SPU::MixShift)
+    nds->SPU.MixShift = show ? 0 : (u32) ds->coarseMix;
     nds->SetKeyMask(~ds->keys & 0xFFF);
     u32 t = touch.load();
     if (t & 0x80000000u) nds->TouchScreen((u16) ((t >> 8) & 0xFF), (u16) (t & 0xFF));
     else nds->ReleaseScreen();
     nds->RunFrame();
     // Every frame is drawn (BananaDS's melonDS has no draw skip); a frame fast-forward won't show isn't copied out.
-    ds->drawn = ds->draw;
+    ds->drawn = show;
     ds->presented = false;
     const u32* hiTop = nullptr;
     int S = 1;
-    if (ds->draw) {
+    if (show) {
         void *top = nullptr, *bottom = nullptr;
         if (nds->GPU.GetFramebuffers(&top, &bottom)) {
             hiTop = (const u32*) top;
@@ -517,13 +689,6 @@ void pk_ndsb_run_frame(void)
             (inBattle && pk_nds_battle_3d(ds->field));
         const bool battle = inBattle && pk_nds_battle_margins(ds->field);
         const u32* frame = S > 1 ? ds->topArgb : hiTop;
-        static int dbgf = 0;
-        if (dbgf++ % 300 == 0) {
-            int c[8];
-            pk_nds_wide_counts(c);
-            LOGI("DBG wide_frame overworld=%d battle=%d bits=%x counts %d %d %d %d %d %d %d %d polys=%u", overworld, battle,
-                ds->fieldBits, c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], nds->GPU.GPU3D.RenderNumPolygons);
-        }
         if (frame) pk_nds_wide_frame(nds, frame, ds->drawn, overworld, ds->drawNext, battle);
     }
     if (hiTop && S > 1) ds->presented = present(hiTop, S);
@@ -745,28 +910,18 @@ void pk_ndsb_music_stop(void) {}
 
 void pk_ndsb_wide_enable(bool on)
 {
-    LOGI("DBG wide_enable %d (ds %p, was %d)", on, (void*) ds, ds ? ds->wide : -1);
     if (!ds || ds->wide == on) return;
     ds->wide = on;
     // render.geom_reject drops polygons wholly off the screen before EXPAND's hook sees them: off while it's on
     ds->nds->GPU.GPU3D.GeomReject = on ? false : geomReject;
     pk_nds_wide_set(ds->nds, on);
+    updateHires();
 }
 
 bool pk_ndsb_wide_draw(uint32_t* out, int x, int y, int w, int h)
 {
-    static int dbg = 0;
-    if (dbg++ % 300 == 0) LOGI("DBG wide_draw %d,%d %dx%d wide=%d", x, y, w, h, ds ? ds->wide : -1);
     if (!ds || !ds->wide) return false;
     pk_nds_wide_view(out, x, y, w, h);
-    if (dbg % 300 == 1) {
-        int nz = 0, n = 0;
-        for (int yy = 0; yy < h; yy++)
-            for (int xx = 0; xx < w && xx < -x; xx++, n++) nz += (out[yy * w + xx] & 0xFFFFFF) != 0;
-        int rx, ry, rw, rh;
-        pk_nds_wide_rect(&rx, &ry, &rw, &rh);
-        LOGI("DBG view left margin nonblack %d of %d, rect %d,%d %dx%d", nz, n, rx, ry, rw, rh);
-    }
     return true;
 }
 

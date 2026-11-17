@@ -1,0 +1,73 @@
+diff --git a/src/gengis_renderer.cpp b/src/gengis_renderer.cpp
+--- a/src/gengis_renderer.cpp
++++ b/src/gengis_renderer.cpp
+@@ -273,14 +273,16 @@
+ // ---- melonDS's polygons as the rasterizer's ----
+ 
+ melonDS::u32 GengisRenderer3D::DispMask = ~0u;
++std::atomic<unsigned> GengisRenderer3D::TexGen{0};
+ 
+ void GengisRenderer3D::Convert() {
+     const u32 d3 = GPU3D.RenderDispCnt;
+     Polys.clear();
+     std::vector<gx_poly>& trl = Trl;
+     trl.clear();
+-    for (u32 i = 0; i < GPU3D.RenderNumPolygons; i++) {
+-        const Polygon* p = GPU3D.RenderPolygonRAM[i];
++    const u32 npolys = ListOverride ? ListOverrideN : GPU3D.RenderNumPolygons;
++    for (u32 i = 0; i < npolys; i++) {
++        const Polygon* p = ListOverride ? ListOverride[i] : GPU3D.RenderPolygonRAM[i];
+         if (p->Degenerate) continue;
+         const unsigned n = p->NumVertices;
+         if (n < 1 || n > 10) continue;
+@@ -692,10 +694,31 @@
+             CrcN = 0; CrcFold = 0;
+         }
+     }
++    if (Slave) {
++        // PokeDaisy: a slice renderer (see the header): the main renderer's texture copies, its decodes dropped when
++        // that one saw them change
++        const unsigned tg = TexGen.load(std::memory_order_acquire);
++        if (tg != SlaveTexGen) {
++            Textures.clear();
++            SlaveTexGen = tg;
++        }
++        LastOut = nullptr;   // (render.gengis_reuse: another list each time)
++        Out = Out == OutBuf[0] ? OutBuf[1] : OutBuf[0];
++        Frame.gen = ++Gen;
++        Converted.store(0, std::memory_order_relaxed);
++        {
++            std::lock_guard<std::mutex> l(M);
++            Late.store(false, std::memory_order_relaxed);
++            Next.store(0, std::memory_order_release);
++        }
++        WaitAll();   // (no render threads: drawn here, now)
++        return;
++    }
+     auto textureDirty = GPU.VRAMDirty_Texture.DeriveState(GPU.VRAMMap_Texture, GPU);
+     auto texPalDirty = GPU.VRAMDirty_TexPal.DeriveState(GPU.VRAMMap_TexPal, GPU);
+     const bool textureChanged = GPU.MakeVRAMFlat_TextureCoherent(textureDirty);
+     const bool texPalChanged = GPU.MakeVRAMFlat_TexPalCoherent(texPalDirty);
++    if (textureChanged || texPalChanged) TexGen.fetch_add(1, std::memory_order_release);   // (PokeDaisy: slices)
+     if (!AbModes.empty()) {
+         const auto now = std::chrono::steady_clock::now();
+         if (now >= AbNext) {
+diff --git a/src/gengis_renderer.h b/src/gengis_renderer.h
+--- a/src/gengis_renderer.h
++++ b/src/gengis_renderer.h
+@@ -36,6 +36,15 @@
+     void RestartFrame() override {}
+     melonDS::u32* GetLine(int line) override;  // at 2x (3x): quarter 0 of the line
+     int Scale() const { return Scale_; }
++    // PokeDaisy (EXPAND's margins at render.scale, pk_nds_bnd.cpp): a slice renderer draws ListOverride's polygons
++    // instead of the game's, never takes the VRAM's dirty state (the main renderer's: it uses the texture copies as
++    // that one last made them) and drops its decoded textures whenever the main renderer saw texture VRAM change
++    // (TexGen). Its rows through GetQuarter, as the main renderer's.
++    const melonDS::Polygon* const* ListOverride = nullptr;
++    melonDS::u32 ListOverrideN = 0;
++    bool Slave = false;
++    static std::atomic<unsigned> TexGen;
++    unsigned SlaveTexGen = ~0u;
+     // the game's DISP3DCNT bits the picture may use (render.edge_marking, render.fog): the others are cleared
+     // before the rasterizer sees them
+     static void SetEffects(bool edge_marking, bool fog) {

@@ -811,7 +811,7 @@ private fun homeRows(
             val now = core.valueLabel()
             val pending = core.runs() != s.dsCoreRunning
             SettingRow(
-                tk("DS CORE"), now, labelBadge = NewFeatures.badge(NewFeatures.DS_CORE),
+                tk("DS CORE"), now, labelBadge = NewFeatures.badge(NewFeatures.DS_CORE_BANANADS),
                 subtitle = if (pending) "Takes effect when the game restarts" else "DSPERATE runs on weaker devices",
             ) {
                 select(Selector(tk("DS CORE"), DsCore.entries.map { it.label }, core.label) { l ->
