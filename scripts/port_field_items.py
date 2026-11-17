@@ -91,6 +91,12 @@ TM_REC = {"BPRE0": "TM_FIRERED_REV0", "BPRE1": "TM_FIRERED_REV1", "BPGE0": "TM_L
 FLASH_REC = {"BPRE0": "FLASH_FIRERED_REV0", "BPRE1": "FLASH_FIRERED_REV1", "BPGE0": "FLASH_LEAFGREEN_REV0",
              "BPGE1": "FLASH_LEAFGREEN_REV1", "BPEE0": "FLASH_EMERALD", "AXVE0": "FLASH_RUBY_REV0", "AXVE1": "FLASH_RUBY",
              "AXPE0": "FLASH_SAPPHIRE_REV0", "AXPE1": "FLASH_SAPPHIRE"}
+# TRADE EVOLUTIONS (TradeEvolution.kt's TradeEvoFns), from the English records (TRADE_EVO_*), mapped like the TM screen's:
+# functions by code, gCB2_AfterEvolution (IWRAM) through the pools. English FireRed rev 0's from rev 1's (TRADE_FROM).
+TRADE_REC = {"BPRE1": "TRADE_EVO_FIRERED_REV1", "BPGE0": "TRADE_EVO_LEAFGREEN_REV0", "BPGE1": "TRADE_EVO_LEAFGREEN_REV1",
+             "BPEE0": "TRADE_EVO_EMERALD"}
+TRADE_FROM = {"BPRE0": "BPRE1"}
+TRADE_FUNCS = ("getEvolutionTarget", "beginEvolutionScene", "returnToField", "lockControls")   # TradeEvoFns.functions' order
 TM_FUNCS = ("itemUseCbTmhm", "showPartyMenuForItemUse", "initPartyMenu", "setMainCallback2", "returnToField", "cleanupOverworld",
             "fadeScreen", "lockControls", "unlockControls")   # TmFns.functions' order (its codeCrcs)
 
@@ -261,6 +267,7 @@ def port(rom, refs, key):
     out["box"] = port_box(src, rom, key, shift) if key in BOX else None
     out["tm"] = port_tm(src, rom, key, shift) if key in TM_REC else None
     out["flash"] = port_flash(src, rom, key, shift) if key in FLASH_REC else None
+    out["trade"] = port_trade(src, rom, key, shift) if key in TRADE_REC or key in TRADE_MAPPED else None
     fl_key = key if key in FLIGHT_REC else FLIGHT_FROM.get(key)
     out["flight"] = port_flight(refs[fl_key], rom, fl_key, shift) if fl_key and out["fly"] else None
     return out, None
@@ -311,6 +318,23 @@ def port_tm(src, rom, key, shift):
         return None
     got["mainCallback2"] = main + 4
     return got
+
+
+def port_trade(src, rom, key, shift):
+    """TRADE EVOLUTIONS' addresses mapped from English [key]'s record (or an already mapped dict), or None."""
+    r = record(TRADE_REC[key]) if key in TRADE_REC else TRADE_MAPPED[key]
+    got = {}
+    for n in TRADE_FUNCS:
+        got[n] = port_fn(src, rom, r[n], shift)
+        if got[n] is None:
+            return None
+    got["afterEvolution"] = port_ram(src, rom, r["afterEvolution"], [(r[n], got[n]) for n in TRADE_FUNCS])
+    if got["afterEvolution"] is None or not 0x03000000 <= got["afterEvolution"] < 0x03008000:
+        return None
+    return got
+
+
+TRADE_MAPPED = {}   # English FireRed rev 0's, mapped from rev 1's in main()
 
 
 def port_flash(src, rom, key, shift):
@@ -625,6 +649,14 @@ def flash_kt(rom, fl):
             f"        codeCrcs = listOf({', '.join(f'0x{crc(rom, v):08X}L' for v in fns)}),\n    ),")
 
 
+def trade_kt(rom, t):
+    h = lambda v: f"0x{v:08X}L"
+    return (f'    // {os.path.basename(rom.path)}.\n    "{rom.code}{rom.rev}" to TradeEvoFns(\n'
+            f"        getEvolutionTarget = {h(t['getEvolutionTarget'])}, beginEvolutionScene = {h(t['beginEvolutionScene'])}, "
+            f"afterEvolution = {h(t['afterEvolution'])},\n        returnToField = {h(t['returnToField'])}, lockControls = {h(t['lockControls'])},\n"
+            f"        codeCrcs = listOf({', '.join(f'0x{crc(rom, t[n]):08X}L' for n in TRADE_FUNCS)}),\n    ),")
+
+
 def box_kt(rom, box):
     h = lambda v: f"0x{v:08X}L"
     return (f'    // {os.path.basename(rom.path)}.\n    "{rom.code}{rom.rev}" to BoxSwapFns(\n'
@@ -661,7 +693,13 @@ def main():
         if box is None:
             sys.exit(f"{key}: the box functions didn't map from {fr}")
         BOX[key] = box
-    blocks, box_blocks, tm_blocks, flash_blocks, done, js = [], [], [], [], set(), {}
+    for key, fr in TRADE_FROM.items():
+        shift = int(statistics.median(REFS[key]["a"][n] - REFS[fr]["a"][n] for n in FUNCS if REFS[key]["a"].get(n)))
+        t = port_trade(refs[fr], refs[key], fr, shift)
+        if t is None:
+            sys.exit(f"{key}: the trade evolution functions didn't map from {fr}")
+        TRADE_MAPPED[key] = t
+    blocks, box_blocks, tm_blocks, flash_blocks, trade_blocks, done, js = [], [], [], [], [], set(), {}
     for p in sorted(paths):
         name = os.path.basename(p)
         if any(x in name for x in ("Pirate", "Debug", "Pokemon Box")):
@@ -678,6 +716,7 @@ def main():
             if key in FLY_FROM:
                 m["fly"] = port_fly(refs[FLY_FROM[key]], rom, FLY_FROM[key], 0)
             m["box"] = BOX.get(key)
+            m["trade"] = TRADE_MAPPED.get(key)
             if key in FLIGHT_REC:
                 m["flight"] = dict(rec=FLIGHT_REC[key], own=True)
             elif key in FLIGHT_FROM:
@@ -701,12 +740,14 @@ def main():
             tm_blocks.append(tm_kt(rom, m["tm"]))
         if m.get("flash"):
             flash_blocks.append(flash_kt(rom, m["flash"]))
+        if m.get("trade"):
+            trade_blocks.append(trade_kt(rom, m["trade"]))
         js[key] = dict(path=os.path.abspath(p), ref=ref_key, family=rom.code[:3], **{k: v for k, v in m.items() if k != "how"})
         masked = [n for n, v in m["how"].items() if v == "masked"]
         print(f"{key:6} {name[:48]:48} from {ref_key}  items {m['items']:#x} x{m['name_len'] + 30}"
               f"  party {m['party']:#x}{'  masked ' + ','.join(masked) if masked else ''}{'' if m.get('pc') else '  NO PC'}{'' if m.get('fly') else '  NO FLY'}{'' if m.get('flight') else '  NO FLIGHT'}"
               f"{'' if m.get('box') else '  NO BOX MOVES'}{'' if m.get('tm') or rom.code[:3] in ('AXV', 'AXP') or rom.lang == 'E' else '  NO TM'}"
-              f"{'' if m.get('flash') or rom.lang == 'E' else '  NO FLASH'}")
+              f"{'' if m.get('flash') or rom.lang == 'E' else '  NO FLASH'}{'' if m.get('trade') or rom.code[:3] in ('AXV', 'AXP') else '  NO TRADE EVO'}")
     # The hand-written English tables' FLY (FieldItems.kt), checked the same way: printed for FLY_RUBY's file.
     for key in ("AXVE1", "AXPE1"):
         if key in refs:
@@ -742,7 +783,12 @@ val TM_PORTS: Map<String, TmFns> = mapOf(
 
 /** FLASH from the QUICK MENU (Flash.kt) for the same games, by the same keys (scripts/verify_tm_flash.py checks them). */
 val FLASH_PORTS: Map<String, FlashFns> = mapOf(
-""" + "\n".join(flash_blocks) + "\n)\n")
+""" + "\n".join(flash_blocks) + """
+)
+
+/** TRADE EVOLUTIONS (TradeEvolution.kt) for the same games, by the same keys (headless: a KADABRA evolved from the field). */
+val TRADE_EVO_PORTS: Map<String, TradeEvoFns> = mapOf(
+""" + "\n".join(trade_blocks) + "\n)\n")
     print("wrote", os.path.relpath(OUT), len(blocks), "tables")
 
 

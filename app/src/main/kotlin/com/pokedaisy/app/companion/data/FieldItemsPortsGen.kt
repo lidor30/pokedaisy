@@ -1441,3 +1441,115 @@ val FLASH_PORTS: Map<String, FlashFns> = mapOf(
         codeCrcs = listOf(0xAC4D17B2L, 0xC477C650L, 0xA460DEAEL),
     ),
 )
+
+/** TRADE EVOLUTIONS (TradeEvolution.kt) for the same games, by the same keys (headless: a KADABRA evolved from the field). */
+val TRADE_EVO_PORTS: Map<String, TradeEvoFns> = mapOf(
+    // Pocket Monsters - Emerald (Japan).gba.
+    "BPEJ0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806CB5CL, beginEvolutionScene = 0x0813DB44L, afterEvolution = 0x03005F28L,
+        returnToField = 0x08085A30L, lockControls = 0x080987DCL,
+        codeCrcs = listOf(0xA970F637L, 0x9C386453L, 0x633AA4D2L, 0xB9FB85A7L),
+    ),
+    // Pocket Monsters - FireRed (Japan) (Rev 1).gba.
+    "BPRJ1" to TradeEvoFns(
+        getEvolutionTarget = 0x08042520L, beginEvolutionScene = 0x080CEF44L, afterEvolution = 0x0300532CL,
+        returnToField = 0x08056078L, lockControls = 0x080691A8L,
+        codeCrcs = listOf(0xA970F637L, 0x93546059L, 0xD94D296AL, 0x0111A86EL),
+    ),
+    // Pocket Monsters - FireRed (Japan).gba.
+    "BPRJ0" to TradeEvoFns(
+        getEvolutionTarget = 0x080425B4L, beginEvolutionScene = 0x080CEF00L, afterEvolution = 0x030053CCL,
+        returnToField = 0x0805609CL, lockControls = 0x08069200L,
+        codeCrcs = listOf(0xA970F637L, 0x6C732801L, 0xECD995F5L, 0x0111A86EL),
+    ),
+    // Pocket Monsters - LeafGreen (Japan) (Rev 1).gba.
+    "BPGJ1" to TradeEvoFns(
+        getEvolutionTarget = 0x08042520L, beginEvolutionScene = 0x080CEF18L, afterEvolution = 0x0300532CL,
+        returnToField = 0x08056078L, lockControls = 0x080691A8L,
+        codeCrcs = listOf(0xA970F637L, 0x311941A4L, 0xD94D296AL, 0x0111A86EL),
+    ),
+    // Pocket Monsters - LeafGreen (Japan).gba.
+    "BPGJ0" to TradeEvoFns(
+        getEvolutionTarget = 0x080425B4L, beginEvolutionScene = 0x080CEED4L, afterEvolution = 0x030053CCL,
+        returnToField = 0x0805609CL, lockControls = 0x08069200L,
+        codeCrcs = listOf(0xA970F637L, 0x51D54C47L, 0xECD995F5L, 0x0111A86EL),
+    ),
+    // Pokemon - Blattgruene Edition (Germany).gba.
+    "BPGD0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DC4L, beginEvolutionScene = 0x080CDF1CL, afterEvolution = 0x030052CCL,
+        returnToField = 0x080567FCL, lockControls = 0x08069930L,
+        codeCrcs = listOf(0xA970F637L, 0x68DE11C4L, 0x879179B3L, 0x0111A86EL),
+    ),
+    // Pokemon - Edicion Esmeralda (Spain).gba.
+    "BPES0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806D098L, beginEvolutionScene = 0x0813D674L, afterEvolution = 0x030061E8L,
+        returnToField = 0x080860DCL, lockControls = 0x08098E68L,
+        codeCrcs = listOf(0xA970F637L, 0xFFDDD62BL, 0x02EE957BL, 0xB9FB85A7L),
+    ),
+    // Pokemon - Edicion Rojo Fuego (Spain).gba.
+    "BPRS0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DB0L, beginEvolutionScene = 0x080CE010L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080568D0L, lockControls = 0x08069A04L,
+        codeCrcs = listOf(0xA970F637L, 0x6CA41669L, 0xE027EA65L, 0x0111A86EL),
+    ),
+    // Pokemon - Edicion Verde Hoja (Spain).gba.
+    "BPGS0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DB0L, beginEvolutionScene = 0x080CDFE4L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080568D0L, lockControls = 0x08069A04L,
+        codeCrcs = listOf(0xA970F637L, 0x52D470B4L, 0xE027EA65L, 0x0111A86EL),
+    ),
+    // Pokemon - Feuerrote Edition (Germany).gba.
+    "BPRD0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DC4L, beginEvolutionScene = 0x080CDF48L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080567FCL, lockControls = 0x08069930L,
+        codeCrcs = listOf(0xA970F637L, 0xCEE93794L, 0x879179B3L, 0x0111A86EL),
+    ),
+    // Pokemon - FireRed Version (USA).gba.
+    "BPRE0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042EC4L, beginEvolutionScene = 0x080CDDA8L, afterEvolution = 0x0300537CL,
+        returnToField = 0x080567DCL, lockControls = 0x08069940L,
+        codeCrcs = listOf(0xA970F637L, 0xB9EDBA19L, 0xB892BBB7L, 0x0111A86EL),
+    ),
+    // Pokemon - Smaragd-Edition (Germany).gba.
+    "BPED0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806D09CL, beginEvolutionScene = 0x0813D67CL, afterEvolution = 0x030061E8L,
+        returnToField = 0x080860E4L, lockControls = 0x08098E70L,
+        codeCrcs = listOf(0xA970F637L, 0xFFDDD62BL, 0x14037773L, 0xB9FB85A7L),
+    ),
+    // Pokemon - Version Emeraude (France).gba.
+    "BPEF0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806D098L, beginEvolutionScene = 0x0813D69CL, afterEvolution = 0x030061E8L,
+        returnToField = 0x080860D8L, lockControls = 0x08098E64L,
+        codeCrcs = listOf(0xA970F637L, 0x8BC914CBL, 0x0F941281L, 0xB9FB85A7L),
+    ),
+    // Pokemon - Version Rouge Feu (France).gba.
+    "BPRF0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042D9CL, beginEvolutionScene = 0x080CE008L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080568BCL, lockControls = 0x080699F0L,
+        codeCrcs = listOf(0xA970F637L, 0xCEE93794L, 0xEF99B993L, 0x0111A86EL),
+    ),
+    // Pokemon - Version Vert Feuille (France).gba.
+    "BPGF0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042D9CL, beginEvolutionScene = 0x080CDFDCL, afterEvolution = 0x030052CCL,
+        returnToField = 0x080568BCL, lockControls = 0x080699F0L,
+        codeCrcs = listOf(0xA970F637L, 0x68DE11C4L, 0xEF99B993L, 0x0111A86EL),
+    ),
+    // Pokemon - Versione Rosso Fuoco (Italy).gba.
+    "BPRI0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DB0L, beginEvolutionScene = 0x080CDF28L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080567E8L, lockControls = 0x0806991CL,
+        codeCrcs = listOf(0xA970F637L, 0x6CA41669L, 0xB25806B7L, 0x0111A86EL),
+    ),
+    // Pokemon - Versione Smeraldo (Italy).gba.
+    "BPEI0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806D09CL, beginEvolutionScene = 0x0813D66CL, afterEvolution = 0x030061E8L,
+        returnToField = 0x080860DCL, lockControls = 0x08098E68L,
+        codeCrcs = listOf(0xA970F637L, 0x644C943DL, 0x02EE957BL, 0xB9FB85A7L),
+    ),
+    // Pokemon - Versione Verde Foglia (Italy).gba.
+    "BPGI0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DB0L, beginEvolutionScene = 0x080CDEFCL, afterEvolution = 0x030052CCL,
+        returnToField = 0x080567E8L, lockControls = 0x0806991CL,
+        codeCrcs = listOf(0xA970F637L, 0x52D470B4L, 0xB25806B7L, 0x0111A86EL),
+    ),
+)
