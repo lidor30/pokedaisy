@@ -688,8 +688,11 @@ void pk_ndsb_run_frame(void)
                                    !(ds->fieldBits & (PK_NDS_FIELD_MENU | PK_NDS_FIELD_BATTLE))) ||
             (inBattle && pk_nds_battle_3d(ds->field));
         const bool battle = inBattle && pk_nds_battle_margins(ds->field);
-        const u32* frame = S > 1 ? ds->topArgb : hiTop;
-        if (frame) pk_nds_wide_frame(nds, frame, ds->drawn, overworld, ds->drawNext, battle);
+        // Every frame, as pk_nds.cpp: a frame not shown says so (draw), and EXPAND's slices are drawn after any frame the
+        // next of which is shown (drawNext) - called on the shown frames only, fast-forward's groups (4x: three frames
+        // in four not drawn) left the slices undrawn before the shown one, and its margins showed the backdrop.
+        if (hiTop && S == 1) memcpy(ds->topArgb, hiTop, sizeof(ds->topArgb));
+        pk_nds_wide_frame(nds, ds->topArgb, ds->drawn, overworld, ds->drawNext, battle);
     }
     if (hiTop && S > 1) ds->presented = present(hiTop, S);
     if (ds->saveDirty && ++ds->saveQuiet >= SAVE_QUIET_FRAMES) pk_ndsb_flush_save();
