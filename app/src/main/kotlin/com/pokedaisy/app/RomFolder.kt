@@ -300,9 +300,13 @@ object RomFolder {
             val modified = p[2].toLongOrNull() ?: return@mapNotNull null
             if (stale && p[3] != "1") return@mapNotNull null
             if (blockedStale && com.pokedaisy.app.companion.data.BlockedGames.mayList(size)) return@mapNotNull null
+            // An archive listed as another Pokémon game ("N") before such a listing needed a ROM of ours inside it (a
+            // zipped N64 game showed under GBA) is checked once more; one checked since is "Z".
+            val oldArchive = p[3] == "N" && RomArchive.isArchive(File(p[0]))
             p[0] to Entry(
                 size, modified, p[3] == "1" || p[3] == "M" || p[3] == "B", partial = p[3] == "P", matched = p[3] == "M",
-                tryable = p[3] == "T", pokemon = p[3] == "N", legacy = p[3] == "0", blocked = p[3] == "B" || p[3] == "X",
+                tryable = p[3] == "T", pokemon = p[3] == "N" || p[3] == "Z", legacy = p[3] == "0" || oldArchive,
+                blocked = p[3] == "B" || p[3] == "X",
             )
         }.toMap()
     }
@@ -312,7 +316,7 @@ object RomFolder {
         val tmp = File(f.parentFile, "${f.name}.tmp")
         runCatching {
             tmp.writeText(SUPPORTED + "\n" + BLOCKED + "\n" + entries.entries.joinToString("") { (path, e) ->
-                "$path\t${e.size}\t${e.modified}\t${if (e.blocked) (if (e.supported) "B" else "X") else if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else if (e.pokemon) "N" else "U"}\n"
+                "$path\t${e.size}\t${e.modified}\t${if (e.blocked) (if (e.supported) "B" else "X") else if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else if (e.pokemon) (if (RomArchive.isArchive(File(path))) "Z" else "N") else "U"}\n"
             })
             tmp.renameTo(f)
         }
