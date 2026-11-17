@@ -404,7 +404,7 @@ object ShinyOdds {
     /**
      * The DS carts SHINY ODDS was checked on (code + revision): a scripted (Gen 4: a new game's) or a grass (Gen 5: the
      * player's saves) wild battle, the foe made shiny in its window and the battle drawing it in its shiny colours, beside
-     * the same battle left alone - headless, docs/ROM_FEATURES.md's note 37.
+     * the same battle left alone - headless, docs/ROM_FEATURES.md's note 40.
      */
     val DS_VERIFIED: Set<String> = setOf(
         "CPUE1",                    // Platinum (USA, rev 1)
