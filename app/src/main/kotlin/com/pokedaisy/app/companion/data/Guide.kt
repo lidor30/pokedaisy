@@ -175,6 +175,8 @@ enum class GuideId {
     GS_CHRONICLES,
     // Pokémon Clover: HERE only.
     CLOVER,
+    // Pokémon Elysium (both parts): HERE only.
+    ELYSIUM,
     RECHARGED_EMERALD,
     EMERALD_LEGACY,
     EPSILON_EMERALD,
@@ -256,6 +258,7 @@ private fun wholeGuide(id: GuideId?): GameGuide? = when (id) {
     GuideId.TEAM_ROCKET -> GUIDE_TEAM_ROCKET
     GuideId.WISHES -> GUIDE_WISHES
     GuideId.CLOVER -> GUIDE_CLOVER
+    GuideId.ELYSIUM -> GUIDE_ELYSIUM
     GuideId.DREAMSTONE -> GUIDE_DREAMSTONE
     GuideId.MONOMYTH -> GUIDE_MONOMYTH
     GuideId.EPSILON_EMERALD -> GUIDE_EPSILON_EMERALD

@@ -159,6 +159,14 @@ HACKS = [
     # gMapGroups sits at rev 0's address (reshaped); the object graphics table moved (0x083BD450, its pool word).
     dict(name="Clover v1.3.3", sha1="7eca3ef1580e21b96027b721ecd3ba1aa36a6ea2", family="FR", mapped=True,
          save="clover", boot_file="firered_hack.txt", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x083BD450)),
+    # Pokémon Elysium v2.5.0, its two parts: FireRed rev 0 edited in place; gMapGroups at rev 0's address, the object
+    # graphics table moved (its pool word). Part A boots its own new game's save (it deletes retail FireRed's), Part B
+    # retail FireRed's.
+    dict(name="Elysium v2.5.0 Part A", sha1="d2440fd6bae5a12dfc3cecc129b9bbff22d74b2e", family="FR", mapped=True,
+         save="elysium_a", boot_file="elysium_a.txt", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x0826E6A4)),
+    dict(name="Elysium v2.5.0 Part B", sha1="71bf40178a1f5c69dc1c22099623434ba1e74318", family="FR", mapped=True,
+         save="elysium_b", boot_file="firered_hack.txt", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0)),
+    # (Part B's graphics table sits at an odd address, 0x082723DE, which the far-off people's word reads can't take: none.)
     *[dict(name=f"Ash Gray {v}", sha1=sha, family="FR", mapped=True, save=save, boot_file="firered_hack.txt",
            a=dict(MAP_GROUPS=0x0873E2F4, OBJ_GFX_INFO=0x0839FDB0))
       for v, sha, save in [("v4.5.3", "1ee1557db1e4c2e0e94c6306efcc40506bc40cc9", "ash_gray"),

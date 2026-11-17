@@ -5430,6 +5430,26 @@ val NATIVE_CLOVER = NATIVE_ULTRA_VIOLET.copy(
     guideTables = GUIDE_TABLES_CLOVER,
 )
 
+// ---- gamedata/gen3/hacks/elysium.toml ----
+
+// Pokémon Elysium v2.5.0 (black_kaiser; 16 MB each, Hackdex's two BPS patches over FireRed 1.0 rev 0): FireRed rev 0 edited in
+// place, no source, in two parts - Part A (sha1 d2440fd6…, the main game) and Part B (sha1 71bf4017…, the finale), told apart by
+// hash in the small-BPRE check and run as FIRERED with their own names (ElysiumGen.kt, gen_firered_hack_tables.py elysium: its
+// moves to 454 repointed, FAIRY in FireRed's type 9; Part B's species tables repointed too). Rev 0's RAM in both, checked on a
+// capture of each (`elysium_a`: a new game played headless, as Part A deletes retail FireRed's save; `elysium_b`: retail
+// FireRed's save, which Part B keeps), and its battle cursors (a written cell + A, headless on both). The POKéDEX: Part A keeps
+// rev 0's tables in place; Part B repointed entries, pictures, base stats, numbering, footprints, evolutions and TM learnsets
+// (their literal-pool words). HERE reads each part's own gWildMonHeaders over gMapGroups at rev 0's address.
+val NATIVE_ELYSIUM_A = NATIVE_ULTRA_VIOLET.copy(
+    pokedex = POKEDEX_ELYSIUM_A,
+    guideTables = GUIDE_TABLES_ELYSIUM_A,
+)
+
+val NATIVE_ELYSIUM_B = NATIVE_ULTRA_VIOLET.copy(
+    pokedex = POKEDEX_ELYSIUM_B,
+    guideTables = GUIDE_TABLES_ELYSIUM_B,
+)
+
 // ---- gamedata/gen3/hacks/ghost_grey.toml ----
 
 // Pokémon Ghost Grey (JoeyZeed; 32 MB, BPRE rev 0): v1.0.2 (sha1 74337272…) and v1.0.4 (0dafc011…) share every

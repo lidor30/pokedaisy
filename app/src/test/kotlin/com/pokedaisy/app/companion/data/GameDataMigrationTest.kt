@@ -33,7 +33,7 @@ class GameDataMigrationTest {
 
     @Test
     fun `every hand-written config has a generated one and no more`() {
-        assertEquals(70, legacy.size)
+        assertEquals(72, legacy.size)
         assertEquals((legacy.keys + bornInGamedata).sorted(), generated.keys.sorted())
     }
 

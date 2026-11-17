@@ -29,6 +29,16 @@ class RomRegionMapTest {
         assertEquals("Veepier Town", m.sections[0x58]!!.name)
     }
 
+    /** Elysium (both parts): its own regions on FireRed 1.0's region map code. */
+    @Test fun elysiumHasItsOwnRegions() {
+        for (part in listOf("A", "B")) {
+            val f = File(ROMS, "Pokemon Elysium (v2.5.0) (Part $part).gba")
+            assumeTrue("no ROM at $f", f.isFile)
+            val m = RomRegionMap.read(RomRegionMap.BytesRom(f.readBytes()))!!
+            assertEquals(part, "Astrantia City", m.sections[0x58 + 6]!!.name)
+        }
+    }
+
     @Test fun unboundHasBorrius() {
         val m = read("Pokemon Unbound (v2.1.1.1).gba")
         assertEquals(1, m.images.size) // every region slot is Borrius

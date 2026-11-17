@@ -79,6 +79,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Ghost Grey (blocked ¹¹) | 1.0.1, 1.0.2, 1.0.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹¹ ³⁴ | — | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | — | — | — | ✅ | ✅ ³³ | — ¹¹ |
 | Let's Go Pikachu / Eevee | English, Translation Only (4 builds) | ✅ ²⁸ | ✅ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ ³⁴ | — | ✅ ²⁸ | ◐ ²⁸ | ◐ ²⁸ | ✅ ²⁸ | — | — | — | ✅ | ✅ ³³ | ✅ |
 | Clover | 1.3.3 | ✅ ⁴¹ | ✅ | ✅ ⁴¹ | — | — ⁴¹ | — ⁴¹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — ⁴¹ | — | — | — | — | — | ✅ |
+| Elysium (Part A), Elysium (Part B) | 2.5.0 | ✅ ⁴² | ✅ | ✅ ⁴² | — | ◐ ⁹ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | — | — | — | ✅ |
 | Glazed | 9.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁷ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | — ³⁶ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ | ✅ |
@@ -671,6 +672,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
     written move cell + A picked that move, a written POKéMON cell + A opened its party menu (FireRed's list; the switch
     isn't hooked up yet). The field items, PC and FLY go by the header's code and turn themselves off (Emerald's tables
     don't match its code); they'd need FireRed rev 0's tables picked by its hash.
+42. Elysium (2.5.0, its two parts, 2026-11-18): FireRed 1.0 edited in place, checked headless on a save of each (Part A deletes
+    retail FireRed's save, so its own new game played headless; Part B keeps retail FireRed's): EXPAND exact on both
+    (`verify_wide.py`), a written move cell + A used that move (Part A), a written POKéMON cell + A opened the party (Part B).
+    Part B's people graphics table sits at an odd address the far-off people can't be read from: EXPAND draws none there.
 
 ## What each column is
 

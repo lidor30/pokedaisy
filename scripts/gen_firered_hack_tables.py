@@ -48,6 +48,12 @@ gBattleMoves 0x08F44698, to 719) and its fakemon in FireRed's species slots (gSp
 growth rates are written for every species (`own_growth`: FireRed's curves no longer fit the slots). Mixed case; its own
 region (Fochun) on FireRed's region map code (`ownRegionMap`).
 
+Pokémon Elysium v2.5.0 (black_kaiser; Hackdex's two BPS patches over FireRed rev 0, 16 MB each): Part A keeps rev 0's species /
+base stats / items / type names in place and repoints the moves (gMoveNames 0x08B0F9D0, gBattleMoves 0x08AC1A90, to 454) and
+gTypeEffectiveness (0x08962010); FAIRY took type 9 (FireRed's "???"). Part B (the finale) is the same with its species tables
+repointed too (gSpeciesNames 0x089E8D50, gBaseStats 0x089EA560): each part its own table set (`groups`). FireRed's capitals,
+title-cased like the shared tables; its own region (Rhea) on rev 0's region map code (`ownRegionMap`).
+
 Pokémon Let's Go Pikachu / Eevee (Kevin Pokefan, English translation; 32 MB, no version in the game) sits on Rocket Edition's
 moves (to 510, FAIRY 23, ability names 0x08950000) and grew the species to 987 ids: gSpeciesNames 0x08A000E8, gBaseStats
 0x08A02B50 (the newer species in FireRed's Hoenn slots and past EGG 412, regional forms as their own ids - A-RAICHU,
@@ -115,6 +121,13 @@ GAMES = {
         label="Pokemon Clover v1.3.3", out="CloverGen.kt", name="Clover",
         sha1s=["7eca3ef1580e21b96027b721ecd3ba1aa36a6ea2"], own_case=True, own_region_map=True, moves_count=720,
         type_names_app={23: "Fairy"}, own_growth=True,
+    ),
+    "elysium": dict(
+        label="Pokemon Elysium v2.5.0", out="ElysiumGen.kt", name="ElysiumA",
+        sha1s=["d2440fd6bae5a12dfc3cecc129b9bbff22d74b2e", "71bf40178a1f5c69dc1c22099623434ba1e74318"],
+        groups=[("ElysiumA", ["d2440fd6bae5a12dfc3cecc129b9bbff22d74b2e"], "Part A v2.5.0 (the main game).", True),
+                ("ElysiumB", ["71bf40178a1f5c69dc1c22099623434ba1e74318"], "Part B v2.5.0 (the finale: its species repointed).", True)],
+        own_case=False, own_region_map=True, moves_count=455, type_names_app={9: "Fairy"}, own_growth=True,
     ),
 }
 CH = dict(CHARS)
@@ -311,6 +324,9 @@ def block(key, g, base, h, suffix, what):
         assert sp[104] == "Cubone" and ty[104] == (4, 9) and sp[234] == "Roar. Moon" and sp[404] == "Tlachtga"
         assert new_types == {9: "Aether"} and mv[477] == ("Twineedle", 6, 60) and 478 not in mv and it[1] == "Master Ball"
         assert chart[409] != 100 or chart[904] != 100
+    elif key == "elysium":
+        assert sp[150] == "Mamoswine" and sp[411] == "Xerneas" and set(new_types) == {9}
+        assert mv[451][0] == "Eerieimpulse" and 455 not in mv and ms[0x58 + 6] == "Astrantia City"
     elif key == "clover":
         assert sp[1] == "Grasshole" and sp[25] == "Pikotton" and sp[151] == "Clovenix" and new_types == {23: "Fairy"}
         assert mv[1] == ("Pound", 0, 40) and mv[719][0] == "Elbow Drop" and 720 not in mv

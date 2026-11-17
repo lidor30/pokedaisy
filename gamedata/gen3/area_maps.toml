@@ -657,6 +657,28 @@ floorNumOff = -1
 metatileSize = 16
 metatileMask = 0xFFF
 
+[rom.d6ebe711]
+name = "Pokemon Elysium (v2.5.0) (Part A).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [6, 129, 68, 79, 9, 8, 11, 12, 19, 10, 26, 12, 33, 15, 23, 12, 2, 2, 8, 4, 93, 15, 2, 3, 3, 3, 2, 1, 10, 1, 1, 10, 5, 6, 8, 8, 5, 5, 1, 1, 1, 3, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.a4a76614]
+name = "Pokemon Elysium (v2.5.0) (Part B).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [6, 129, 68, 72, 9, 8, 11, 12, 13, 10, 26, 11, 29, 7, 12, 6, 2, 2, 2, 2, 24, 13, 2, 4, 3, 3, 2, 1, 10, 1, 1, 9, 5, 6, 8, 8, 5, 5, 1, 1, 1, 3, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
 [rom.9c31cc4b]
 name = "Pokemon Emerald Imperium (v1.3.1).gba"
 mapGroups = 0x08FC2F74

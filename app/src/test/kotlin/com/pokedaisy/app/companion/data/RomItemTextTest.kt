@@ -78,6 +78,8 @@ class RomItemTextTest {
         Case("Pokemon Ultra Violet (v1.22).gba", GameKind.FIRERED, NATIVE_ULTRA_VIOLET, mapOf(13 to "20 points")),
         Case("Pokemon FireRed Rocket Edition.gba", GameKind.FIRERED, NATIVE_ROCKET_EDITION, mapOf(13 to "20 points")),
         Case("Pokemon Clover (v1.3.3).gba", GameKind.FIRERED, NATIVE_CLOVER, mapOf(13 to "20 points")),
+        Case("Pokemon Elysium (v2.5.0) (Part A).gba", GameKind.FIRERED, NATIVE_ELYSIUM_A, mapOf(13 to "20 points")),
+        Case("Pokemon Elysium (v2.5.0) (Part B).gba", GameKind.FIRERED, NATIVE_ELYSIUM_B, mapOf(13 to "20 points")),
         Case("Pokemon Ash Gray (v4.5.3).gba", GameKind.FIRERED, NATIVE_ASH_GRAY, mapOf(13 to "20 points")),
         // Ghost Grey's RAGECANDYBAR in FireRed's POTION slot.
         Case("Pokemon Ghost Grey (v1.0.4).gba", GameKind.FIRERED, NATIVE_GHOST_GREY, mapOf(13 to "Heals 20 HP")),

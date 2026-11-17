@@ -474,6 +474,18 @@ class HackPokedexTest {
         }
 
     @Test
+    fun `Elysium entries - Part A in place, Part B repointed`() {
+        roms("Pokemon Elysium (v2.5.0) (Part A).gba", GameKind.FIRERED, POKEDEX_ELYSIUM_A) { t ->
+            assertEquals(4, PokedexSource.entry(t, 4)!!.species)
+        }
+        roms("Pokemon Elysium (v2.5.0) (Part B).gba", GameKind.FIRERED, POKEDEX_ELYSIUM_B) { t ->
+            val e = PokedexSource.entry(t, 4)!!
+            assertEquals(4, e.species)
+            assertTrue(e.abilities.isNotEmpty())
+        }
+    }
+
+    @Test
     fun `Clover entries - rev 0's tables rewritten in place, its own ability names`() =
         roms("Pokemon Clover (v1.3.3).gba", GameKind.FIRERED, POKEDEX_CLOVER) { t ->
             val arabomb = PokedexSource.entry(t, 4)!!

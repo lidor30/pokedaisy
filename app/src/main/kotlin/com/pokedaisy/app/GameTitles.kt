@@ -161,6 +161,8 @@ object GameTitles {
         "0ce2a880aa097f1dce4e1db8ee513d0e82d15859" to "Pokémon Unbound",
         "8114e0f81eb3581f699c74a5891c7b75a130269d" to "Pokémon Unbound",
         "7eca3ef1580e21b96027b721ecd3ba1aa36a6ea2" to "Pokémon Clover",
+        "d2440fd6bae5a12dfc3cecc129b9bbff22d74b2e" to "Pokémon Elysium (Part A)",
+        "71bf40178a1f5c69dc1c22099623434ba1e74318" to "Pokémon Elysium (Part B)",
         "8bac897de515f88e6ce92d0712ce2c018a394b37" to "Pokémon Orange Islands",
         "d2e3800e69e44c9649c3d9a15dc1cd12c1d90501" to "Pokémon Orange Islands",
         "3b6c51d8fb6b513bdd01b7bda3ed8965bc985d58" to "Pokémon Ultra Violet",

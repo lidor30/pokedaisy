@@ -51,6 +51,8 @@ class MoneyTest {
         // Retail FireRed's save, booted in FireRed Rocket Edition and Ash Gray.
         assertEquals(246468L, money("rocket_edition", NATIVE_ROCKET_EDITION))
         assertEquals(246468L, money("clover", NATIVE_CLOVER)) // the same save, booted in Clover
+        assertEquals(3000L, money("elysium_a", NATIVE_ELYSIUM_A))
+        assertEquals(198199L, money("elysium_b", NATIVE_ELYSIUM_B))
         assertEquals(246468L, money("ash_gray", NATIVE_ASH_GRAY))
         assertEquals(246468L, money("ash_gray_fork", NATIVE_ASH_GRAY))
         // Elite Redux's save in both builds: plain (it zeroes the encryption key), its trainer card shows BP instead.

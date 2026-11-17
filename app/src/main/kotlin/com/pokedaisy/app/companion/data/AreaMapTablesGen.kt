@@ -122,6 +122,10 @@ val AREA_MAP_TABLES: Map<Long, AreaMapTables> by lazy {
         0x7a80d68bL to AreaMapTables(0x0917995CL, 0x0L, listOf(60, 5, 5, 6, 7, 8, 9, 7, 7, 14, 9, 17, 11, 24, 14, 15, 16, 2, 3, 2, 3, 1, 1, 1, 128, 14, 61, 93, 2, 1, 13, 1, 1, 3, 1), 512, 2048, 6, -1, 16, 0xFFF),
         // Pokemon Elite Redux (2.65.4.1b).gba
         0x1d230210L to AreaMapTables(0x091F54A0L, 0x0L, listOf(60, 5, 5, 6, 7, 8, 9, 7, 7, 14, 9, 17, 11, 24, 14, 15, 16, 2, 3, 2, 3, 1, 1, 1, 128, 14, 61, 93, 2, 1, 13, 1, 1, 3, 1), 512, 2048, 6, -1, 16, 0xFFF),
+        // Pokemon Elysium (v2.5.0) (Part A).gba
+        0xd6ebe711L to AreaMapTables(0x083526A8L, 0x0L, listOf(6, 129, 68, 79, 9, 8, 11, 12, 19, 10, 26, 12, 33, 15, 23, 12, 2, 2, 8, 4, 93, 15, 2, 3, 3, 3, 2, 1, 10, 1, 1, 10, 5, 6, 8, 8, 5, 5, 1, 1, 1, 3, 1), 640, 640, 7, 26, 16, 0x3FF),
+        // Pokemon Elysium (v2.5.0) (Part B).gba
+        0xa4a76614L to AreaMapTables(0x083526A8L, 0x0L, listOf(6, 129, 68, 72, 9, 8, 11, 12, 13, 10, 26, 11, 29, 7, 12, 6, 2, 2, 2, 2, 24, 13, 2, 4, 3, 3, 2, 1, 10, 1, 1, 9, 5, 6, 8, 8, 5, 5, 1, 1, 1, 3, 1), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Emerald Imperium (v1.3.1).gba
         0x9c31cc4bL to AreaMapTables(0x08FC2F74L, 0x0L, listOf(57, 6, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 11, 23, 14, 16, 15, 2, 2, 2, 3, 1, 1, 1, 112, 61, 89, 2, 1, 13, 1, 1, 3, 1), 512, 512, 6, -1, 16, 0x3FF),
         // Pokemon Emerald Kaizo (v2.0).gba

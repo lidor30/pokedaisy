@@ -954,6 +954,20 @@ val GUIDE_TABLES_ROCKET_EDITION = GUIDE_TABLES_ULTRA_VIOLET.copy(
     probeName = "Brock",   // its text is mixed case
 )
 
+/** Pokémon Elysium v2.5.0 Part A: rev 0's gTrainers and learnsets, its own gWildMonHeaders. HERE only (GuideElysium.kt). */
+val GUIDE_TABLES_ELYSIUM_A = GUIDE_TABLES_ULTRA_VIOLET.copy(
+    wildHeaders = 0x08AAB86CL,
+    guide = GuideId.ELYSIUM,
+    mapGroups = 0x083526A8L,
+    probeName = "HUNTER",   // trainer 414 (BROCK in FireRed)
+)
+
+/** Pokémon Elysium v2.5.0 Part B: rev 0's gTrainers, its own learnsets and gWildMonHeaders. */
+val GUIDE_TABLES_ELYSIUM_B = GUIDE_TABLES_ELYSIUM_A.copy(
+    learnsets = 0x089DBF60L,
+    wildHeaders = 0x08A89E1CL,
+)
+
 /** Pokémon Clover v1.3.3: rev 0's gTrainers and learnsets, its own gWildMonHeaders, gMapGroups at rev 0's address
  * (reshaped: 43 groups); trainer 414 is TERRY there. HERE only (GuideClover.kt). */
 val GUIDE_TABLES_CLOVER = GUIDE_TABLES_ULTRA_VIOLET.copy(

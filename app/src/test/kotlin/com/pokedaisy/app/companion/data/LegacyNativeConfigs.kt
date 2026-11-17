@@ -1610,6 +1610,10 @@ val LEGACY_NATIVE_CLOVER = LEGACY_NATIVE_ULTRA_VIOLET.copy(
     guideTables = GUIDE_TABLES_CLOVER,
 )
 
+// Pokémon Elysium v2.5.0, its two parts: FireRed 1.0 edited in place.
+val LEGACY_NATIVE_ELYSIUM_A = LEGACY_NATIVE_ULTRA_VIOLET.copy(pokedex = POKEDEX_ELYSIUM_A, guideTables = GUIDE_TABLES_ELYSIUM_A)
+val LEGACY_NATIVE_ELYSIUM_B = LEGACY_NATIVE_ULTRA_VIOLET.copy(pokedex = POKEDEX_ELYSIUM_B, guideTables = GUIDE_TABLES_ELYSIUM_B)
+
 // Pokémon Ash Gray v4.5.3 (16 MB, BPRE rev 0, sha1 1ee1557d…; its Fork Bug Fix v1.0 build, 92ed8214…,
 // differs in 493 bytes of scripts and shares this): FireRed 1.0 edited in place, no source. Its tables
 // sit at rev 0's addresses, edited in place, but for gWildMonHeaders (0x088CD1F8), gMapGroups (0x0873E2F4)

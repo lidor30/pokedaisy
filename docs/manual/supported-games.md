@@ -66,6 +66,8 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Pokémon Ash Gray | 4.5.3, and its Fork Bug Fix 1.0 build |
 | Pokémon Let's Go (both versions) | its English translation, and each version's Translation Only build |
 | Pokémon Clover | 1.3.3 |
+| Pokémon Elysium (Part A) | 2.5.0 |
+| Pokémon Elysium (Part B) | 2.5.0 |
 | Sword and Shield Ultimate Plus | 1.2.1.2, plus its three patches |
 | Pokémon GS Chronicles | 2.7.6 |
 | Pokémon Recharged Yellow | 1.8.0, 1.9.0, 1.9.4 and 1.9.7 |
