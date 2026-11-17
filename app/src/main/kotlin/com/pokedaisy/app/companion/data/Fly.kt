@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+
 /**
  * FLY from the MAP tab, the way the game does it (FieldItems.kt's idea: the game's own functions, called between
  * frames). pokefirered's party menu: FIELD_MOVE_FLY needs FLAG_BADGE01_GET + its index (the Thunder Badge) and

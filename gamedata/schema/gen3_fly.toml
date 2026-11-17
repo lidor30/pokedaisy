@@ -128,3 +128,9 @@ default = 'none'
 kotlin = 'RegionMapPin?'
 type = 'ref'
 default = 'none'
+
+# A game whose party menu offers Fly to Pokémon that don't know it (Unbound's CFRU field moves).
+[field.withoutMove]
+kotlin = 'FlyWithoutMove?'
+type = 'ref'
+default = 'none'
