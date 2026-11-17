@@ -64,4 +64,4 @@ The tab shows your boxes in:
 
 Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus and GS Chronicles have 25 boxes and SoulGold 15, and the tab shows them all.
 
-`WITHDRAW`, the swap and `DEPOSIT` work on FireRed, LeafGreen and Emerald in English, German, French, Italian and Spanish (both FireRed cartridges, both LeafGreens), and on Ultra Violet, Rocket Edition and Ash Gray. The other games show their boxes but can't move Pokémon yet. More games will follow.
+`WITHDRAW`, the swap and `DEPOSIT` work on FireRed, LeafGreen and Emerald in English, German, French, Italian, Spanish and Japanese (every release of each), and on Ultra Violet, Rocket Edition and Ash Gray. The other games show their boxes but can't move Pokémon yet. More games will follow.

@@ -1006,6 +1006,31 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
 
 /** The BOXES tab's moves (BoxSwap.kt) for the same games, by the same keys (scripts/verify_box_swap.py checks them). */
 val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
+    // Pocket Monsters - Emerald (Japan).gba.
+    "BPEJ0" to BoxSwapFns(
+        boxMonToMon = 0x08068B44L, boxMonRestorePP = 0x0806E3BCL, getBoxMonData = 0x0806A1B4L, storagePtr = 0x03005AF4L,
+        codeCrcs = listOf(0x50D3CD99L, 0xC3A19350L, 0x053E19D1L),
+    ),
+    // Pocket Monsters - FireRed (Japan) (Rev 1).gba.
+    "BPRJ1" to BoxSwapFns(
+        boxMonToMon = 0x0803DE4CL, boxMonRestorePP = 0x08043908L, getBoxMonData = 0x0803F41CL, storagePtr = 0x03004FB0L,
+        codeCrcs = listOf(0x7CCAD77FL, 0xD3B549AFL, 0x053E19D1L),
+    ),
+    // Pocket Monsters - FireRed (Japan).gba.
+    "BPRJ0" to BoxSwapFns(
+        boxMonToMon = 0x0803DEE0L, boxMonRestorePP = 0x0804392CL, getBoxMonData = 0x0803F4B0L, storagePtr = 0x03005050L,
+        codeCrcs = listOf(0x889E4AE9L, 0x851DE741L, 0x053E19D1L),
+    ),
+    // Pocket Monsters - LeafGreen (Japan) (Rev 1).gba.
+    "BPGJ1" to BoxSwapFns(
+        boxMonToMon = 0x0803DE4CL, boxMonRestorePP = 0x08043908L, getBoxMonData = 0x0803F41CL, storagePtr = 0x03004FB0L,
+        codeCrcs = listOf(0x8DCADF99L, 0xD3B549AFL, 0x053E19D1L),
+    ),
+    // Pocket Monsters - LeafGreen (Japan).gba.
+    "BPGJ0" to BoxSwapFns(
+        boxMonToMon = 0x0803DEE0L, boxMonRestorePP = 0x0804392CL, getBoxMonData = 0x0803F4B0L, storagePtr = 0x03005050L,
+        codeCrcs = listOf(0x49FDF5FFL, 0x851DE741L, 0x053E19D1L),
+    ),
     // Pokemon - Blattgruene Edition (Germany).gba.
     "BPGD0" to BoxSwapFns(
         boxMonToMon = 0x0803E674L, boxMonRestorePP = 0x080441E4L, getBoxMonData = 0x0803FC44L, storagePtr = 0x03004F60L,

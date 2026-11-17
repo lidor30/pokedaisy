@@ -38,6 +38,8 @@ B_PRESSES = "press B\nwait 60\n" * 4 + "wait 120\n"
 
 # Saves (scripts/host_roms.conf keys) and boot scripts by game code; the English save loads in the other languages.
 SAVES = {"BPR": "firered_vanilla", "BPG": "leafgreen_rev1", "BPE": "emerald_vanilla"}
+# Japanese FireRed / LeafGreen can't read the English saves (verify_ports.py's OWN_SAVES): their own.
+OWN_SAVES = {"BPRJ": "firered_ja", "BPGJ": "leafgreen_ja"}
 BOOTS = {"BPR": ("default.txt", B_PRESSES), "BPG": ("leafgreen.txt", B_PRESSES), "BPE": ("default.txt", "wait 120\n")}
 # The English tables (BoxSwap.kt) and the party ones they run with (FieldItems.kt's FIELD_ITEMS_*).
 ENGLISH = {
@@ -93,7 +95,7 @@ def targets(only):
     for key, p in ports.items():
         if p.get("box"):
             boot, after = BOOTS[key[:3]]
-            out[key] = dict(rom=p["path"], save=conf(SAVES[key[:3]])[1], boot=boot, after=after,
+            out[key] = dict(rom=p["path"], save=conf(OWN_SAVES.get(key[:4], SAVES[key[:3]]))[1], boot=boot, after=after,
                             fieldControlsLocked=p["fieldControlsLocked"], getMonData=p["getMonData"], box=p["box"])
     for key, e in ENGLISH.items():
         rom, save = conf(SAVES[key[:3]])

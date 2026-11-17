@@ -264,7 +264,7 @@ def port(rom, refs, key):
     out["pc"] = port_pc(src, rom, r, shift)
     fly_key = key if key in FLY else FLY_FROM.get(key)
     out["fly"] = port_fly(refs[fly_key], rom, fly_key, shift) if fly_key else None
-    out["box"] = port_box(src, rom, key, shift) if key in BOX else None
+    out["box"] = port_box(src, rom, key, shift, out.get("getMonData")) if key in BOX else None
     out["tm"] = port_tm(src, rom, key, shift) if key in TM_REC else None
     out["flash"] = port_flash(src, rom, key, shift) if key in FLASH_REC else None
     out["trade"] = port_trade(src, rom, key, shift) if key in TRADE_REC or key in TRADE_MAPPED else None
@@ -362,15 +362,32 @@ def port_flash(src, rom, key, shift):
     return got
 
 
-def port_box(src, rom, key, shift):
+def bl_targets(rom, fn, n=0x200):
+    """The BL calls in the [n] bytes from Thumb function [fn]: (offset into it, target)."""
+    o, out = (fn & ~1) - B, []
+    for i in range(o, o + n, 2):
+        h1, h2 = struct.unpack_from("<HH", rom.d, i)
+        if h1 & 0xF800 == 0xF000 and h2 & 0xF800 == 0xF800:
+            off = ((h1 & 0x7FF) << 12) | ((h2 & 0x7FF) << 1)
+            out.append((i - o, B + i + 4 + (off - 0x800000 if off & 0x400000 else off)))
+    return out
+
+
+def port_box(src, rom, key, shift, get_mon=None):
     """The BOXES moves' addresses mapped from English [key]'s, or None (the port keeps the tab, without the moves).
-    Checked: every function found, gPokemonStoragePtr a word right after a literal-pool IWRAM word (gSaveBlock2Ptr)."""
+    Checked: every function found, gPokemonStoragePtr a word right after a literal-pool IWRAM word (gSaveBlock2Ptr).
+    GetBoxMonData, which the Japanese builds compile another way (their names), is else the call GetMonData ([get_mon], the
+    port's, mapped with USE's) makes where English's GetMonData calls it: the same place in every Japanese build (+0x152)."""
     f = BOX[key]
     got = {}
     for n in BOX_FUNCS:
         v = map_code(src, rom, f[n])
         if v is None:
             v = map_code_masked(src, rom, f[n], f[n] + shift, radius=0x10000)
+        if v is None and n == "getBoxMonData" and get_mon and key in REFS:
+            at = [o for o, t in bl_targets(src, REFS[key]["a"]["getMonData"]) if t == f[n]]
+            calls = dict(bl_targets(rom, get_mon))
+            v = calls.get(at[0]) if len(at) == 1 else None
         if v is None:
             return None
         got[n] = v

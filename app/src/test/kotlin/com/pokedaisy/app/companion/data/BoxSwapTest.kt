@@ -18,15 +18,15 @@ class BoxSwapTest {
     }
 
     /** The other languages (and English FireRed rev 0): each port's own table, under its bag table's key, with its config's
-     * storage; Japanese has none (its code was rebuilt). Emerald's languages run their hand-written configs. */
+     * storage; Japanese too (its GetBoxMonData from GetMonData's call, 2026-11-18). Emerald's languages run their hand-written configs. */
     @Test fun eachPortGetsItsOwnTable() {
-        val emerald = mapOf("BPED0" to NATIVE_EMERALD_DE, "BPEF0" to NATIVE_EMERALD_FR, "BPEI0" to NATIVE_EMERALD_IT, "BPES0" to NATIVE_EMERALD_ES)
-        assertEquals(13, BOX_SWAP_PORTS.size)
+        val emerald = mapOf("BPED0" to NATIVE_EMERALD_DE, "BPEF0" to NATIVE_EMERALD_FR, "BPEI0" to NATIVE_EMERALD_IT, "BPES0" to NATIVE_EMERALD_ES,
+            "BPEJ0" to NATIVE_EMERALD_JA)
+        assertEquals(18, BOX_SWAP_PORTS.size)
         for ((key, fns) in BOX_SWAP_PORTS) {
             val cfg = emerald[key] ?: RETAIL_PORTS[key]?.invoke() ?: retail(NATIVE_FIRERED_REV0)
             assertSame(key, fns, boxSwapFor(FIELD_ITEMS_PORTS[key], cfg))
         }
-        for (key in listOf("BPRJ0", "BPRJ1", "BPGJ0", "BPGJ1", "BPEJ0")) assertNull(key, BOX_SWAP_PORTS[key])
         // A port's table never goes with another storage (a ROM under that code whose hash isn't retail's: the Poller zeroes it).
         assertNull(boxSwapFor(FIELD_ITEMS_PORTS["BPRD0"], RETAIL_PORTS.getValue("BPRD0")().copy(pokemonStoragePtr = 0)))
     }
