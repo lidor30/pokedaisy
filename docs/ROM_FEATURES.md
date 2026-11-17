@@ -428,6 +428,12 @@ change to any of the places listed under "Where it's decided" updates its rows h
     (the player brought it up with L2); it floats the touch screen in now, for each Pokémon's turn. Any rule but 0 (single)
     reads as a double (`Gen5Reader`), so a triple's (its SHIFT button) and a rotation's own panels float in instead of
     BATTLE BUTTONS' strip; a rotation battle wasn't run. Black 2's panels weren't checked in a double.
+    A fifth move at a level-up (GitHub #916 / #1077, Black headless on the player's save with a PC CHARMELEON led out one
+    EXP point short of Lv 17, Route 1, 2026-11-18): FORGET / KEEP OLD MOVES! is panel 4 under command 8, and after FORGET the
+    moves are a screen of their own with the panel at 0 and btlv_input's resource pointer (+0x48) cleared until a move is
+    picked; it floats in right after that prompt, held over the 20 frames between them (`gen5ForgetAsked`, up to 48 field
+    reads: on KEEP OLD MOVES / give up it stays that long into the next message). Black 2's wasn't reached headless (its
+    btlv_input is read with Black's offsets, so the rule is the same there).
 28. Let's Go Pikachu / Eevee (FireRed rev 0 edited in place; all four builds share rev 0's RAM, code and tables for these),
     checked headless on Let's Go Pikachu with its new game's save (the `lets_go` fixtures' READMEs): EXPAND by `verify_wide.py`
     on all four (map 440/440, battle 895/895 exact); a written action cell 2 + A opened the party menu and a written move
