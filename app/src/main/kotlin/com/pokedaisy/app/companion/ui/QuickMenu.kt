@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.FlyWithoutMoveGame
 import com.pokedaisy.app.companion.data.HmFree
 
 import androidx.compose.foundation.background
@@ -332,13 +333,15 @@ fun quickBlocked(action: QuickAction, s: SnapshotView, repelSteps: Int = 0, dark
         QuickAction.FLIGHT -> when {
             flying -> null
             !field -> tr("Not during a battle")
-            !HmFree.active && s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } -> tr("No one in your party knows FLY")
+            !HmFree.active && !FlyWithoutMoveGame.active && s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } ->
+                tr("No one in your party knows FLY")
             else -> null
         }
         QuickAction.PC, QuickAction.HEAL -> if (!field) tr("Not during a battle") else null
         QuickAction.FLY -> when {
             !field -> tr("Not during a battle")
-            !HmFree.active && s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } -> tr("No one in your party knows FLY")
+            !HmFree.active && !FlyWithoutMoveGame.active && s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } ->
+                tr("No one in your party knows FLY")
             else -> null
         }
         QuickAction.FLASH -> when {

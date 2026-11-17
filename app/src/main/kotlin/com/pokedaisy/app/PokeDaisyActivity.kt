@@ -678,11 +678,12 @@ class PokeDaisyActivity : Activity() {
     @Volatile private var fieldSupport: Pair<String, com.pokedaisy.app.companion.data.FieldItemSupport?>? = null
 
     private fun fieldItemSupport(): com.pokedaisy.app.companion.data.FieldItemSupport? {
-        if (romBlocked != null) return null
+        val noFly = { com.pokedaisy.app.companion.data.FlyWithoutMoveGame.active = false; null }
+        if (romBlocked != null) return noFly()
         val game = telemetry.snapshot.value.game
         // The config's text key and tables too: Emerald Kaizo runs as EMERALD and keeps no classic FLY (fieldItemsForGame);
         // Recharged Emerald shares retail Emerald's code, revision and kind, but not its functions.
-        val candidates = fieldItemsFor(game).ifEmpty { return null }
+        val candidates = fieldItemsFor(game).ifEmpty { return noFly() }
         // The PC mailbox (TAKE of Mail) depends on the config too: support built before the config was known is rebuilt.
         val cfg = com.pokedaisy.app.companion.data.activeNativeConfig
         val key = "$romCode/$romRev/$game/${com.pokedaisy.app.companion.data.romGameCode}/" +
@@ -700,6 +701,7 @@ class PokeDaisyActivity : Activity() {
             }
         }.getOrElse { return null }
         fieldSupport = key to support
+        com.pokedaisy.app.companion.data.FlyWithoutMoveGame.active = support?.canFly == true && support.fns.fly?.withoutMove != null
         return support
     }
 
@@ -6385,9 +6387,8 @@ class PokeDaisyActivity : Activity() {
             TipId.AUTO_RUN -> !p.autoRun && companionSettings.fieldReadable && !companionSettings.autoRunBuiltIn
             TipId.WILD -> companionSettings.wildEncountersSupported && p.wildEncounters != 0
             TipId.REUSABLE_TMS -> companionSettings.reusableTmsSupported && !companionSettings.reusableTmsBuiltIn && !p.reusableTms
-            TipId.FLY -> flyAction.canFly() && telemetry.snapshot.value.party.any { m ->
-                !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLY_MOVE }
-            }
+            TipId.FLY -> flyAction.canFly() && (com.pokedaisy.app.companion.data.FlyWithoutMoveGame.active ||
+                telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLY_MOVE } })
             // A DS game on one screen with the triggers on a controller (the HUD's TOUCH stands in without one).
             TipId.DS_TRIGGERS -> dsStageOn && tipKey(Hotkeys.Action.DS_LAYOUT) != null
         }
