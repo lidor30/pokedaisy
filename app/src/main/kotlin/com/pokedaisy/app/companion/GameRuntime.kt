@@ -84,6 +84,7 @@ class GameRuntime(
 
     /** Stop producers before native host teardown; safe before or after sampling was configured. */
     fun quiesce() {
+        settledOnField = false
         sampler?.close()
         sampler = null
         options.cancelDiscovery()
@@ -95,6 +96,8 @@ class GameRuntime(
     private val map get() = session.mapOpen
     private var field = 0
     val fieldState get() = field
+    var settledOnField by mutableStateOf(false)
+        private set
     val onField get() = gba && !blocked && FfMenuWatch.onField
     var readField: () -> Int = { 0 }
     var blocked = false
@@ -125,6 +128,7 @@ class GameRuntime(
         if (closed.value) return
         this.gba = gba
         session.reset()
+        settledOnField = false
         val romKey = crc.toString(16).padStart(8, '0')
         blocked = BlockedGames.forCrc(romKey) != null
         activeAreaMapCrc = if (gba && !blocked) areaMapCrc else 0L
@@ -161,10 +165,11 @@ class GameRuntime(
         session.serviceField(gba, gbOnField = true)
     }
 
-    fun tick() {
+    fun tick(reader: MemoryReader = InProcessReader) {
         val readable = gba && !blocked && telemetry.snapshot.value.blocked == null
-        session.observeScreens(readable)
+        session.observeScreens(readable, reader = reader)
         session.observeField(readable && FfMenuWatch.onField && !map, -1, battle.gameState, battle.holdPicture)
+        settledOnField = readable && session.onField
         fieldChanged(if (readable && fieldReadable) readField() else 0)
     }
 

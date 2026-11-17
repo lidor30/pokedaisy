@@ -1793,7 +1793,7 @@ class PokeDaisyActivity : Activity() {
         }
         override val fieldHud get() = Prefs(this@PokeDaisyActivity).fieldHud
         override fun setFieldHud(on: Boolean) {
-            Prefs(this@PokeDaisyActivity).fieldHud = on
+            stored.setFieldHud(on)
             runOnUiThread { syncGameScreen() }
         }
         override val hideBattleMenu get() = if (secondScreen() != null && battleMenuHideSupported()) Prefs(this@PokeDaisyActivity).hideBattleMenu else null
@@ -1808,7 +1808,7 @@ class PokeDaisyActivity : Activity() {
         }
         override val fieldHudStyle get() = Prefs(this@PokeDaisyActivity).fieldHudStyle
         override fun setFieldHudStyle(style: com.pokedaisy.app.companion.FieldHudStyle) {
-            Prefs(this@PokeDaisyActivity).fieldHudStyle = style
+            stored.setFieldHudStyle(style)
             runOnUiThread { syncGameScreen() }
         }
         override fun setQuickMenuActions(actions: Set<com.pokedaisy.app.companion.QuickAction>) {
@@ -4386,7 +4386,7 @@ class PokeDaisyActivity : Activity() {
         val idle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
         val onField by (engine?.onField ?: idle).collectAsState()
         val field = if (romIs3ds) n3dsOnField.value && !n3dsFloating.value else onField
-        val shown = hudOn.value && !hudUpright.value && field && snap.hasData && !snap.unsupported && !snap.inBattle
+        val shown = com.pokedaisy.app.companion.ui.fieldHudShown(hudOn.value, hudUpright.value, field, snap)
         // One screen, the companion's panel closed: its open button joins the HUD's, and the edge tab steps aside
         // (for BATTLE BUTTONS' party window too, which sits in that corner). As the window it stays put while the
         // window is up too (under its dim): it doesn't vanish from the HUD the player sees around it.

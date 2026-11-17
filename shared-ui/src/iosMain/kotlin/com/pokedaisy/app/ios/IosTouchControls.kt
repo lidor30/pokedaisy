@@ -27,6 +27,8 @@ internal class IosTouchControls(
     private val game: () -> GameViewController?,
     private val settings: () -> IosCompanionSettings?,
 ) {
+    var placed by mutableStateOf<com.pokedaisy.app.companion.ui.TouchGeometry.Placed?>(null)
+        private set
     var stage by mutableStateOf<TouchStage?>(null)
     private var editingGame: GameViewController? = null
     private val editor = com.pokedaisy.app.companion.ui.TouchEditorState(
@@ -69,11 +71,11 @@ internal class IosTouchControls(
                 onAction = ::action,
                 onPress = { IosTouchPreferences.feel(IosTouchPreferences.style.vibration) })
         }
-        DisposableEffect(Unit) { onDispose { releaseKeys() } }
+        DisposableEffect(Unit) { onDispose { placed = null; releaseKeys() } }
         // Changing ownership cancels existing fingers; only a new DOWN may play after a modal closes.
         key(inputEpoch) {
             TouchControls(IosTouchPreferences.drawingStyle, portrait, input, Modifier.fillMaxSize(),
-                gameAspect = if (gameBoy) 160f / 144 else 1.5f, gameBoy = gameBoy, ffOn = settings()?.ffActive == true)
+                gameAspect = if (gameBoy) 160f / 144 else 1.5f, gameBoy = gameBoy, ffOn = settings()?.ffActive == true, onPlaced = { placed = it })
         }
     }
 

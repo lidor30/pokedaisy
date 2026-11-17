@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import com.pokedaisy.app.Prefs
 import com.pokedaisy.app.companion.i18n.L10n
 
@@ -12,6 +15,11 @@ class PrefsCompanionSettings(
 ) : StoredCompanionSettings {
     enum class Change { PLAYBACK, FIELD_OPTIONS }
     var changed: (Change) -> Unit = {}
+    private var hudRevision by mutableIntStateOf(0)
+    override val fieldHud get() = hudRevision.let { prefs.fieldHud }
+    override fun setFieldHud(on: Boolean) { prefs.fieldHud = on; hudRevision++ }
+    override val fieldHudStyle get() = hudRevision.let { prefs.fieldHudStyle }
+    override fun setFieldHudStyle(style: FieldHudStyle) { prefs.fieldHudStyle = style; hudRevision++ }
     override val quickMenuActions get() = prefs.quickMenuActions
     override fun setQuickMenuActions(actions: Set<QuickAction>) { prefs.quickMenuActions = actions }
     override val quickMenuStyle get() = prefs.quickMenuStyle

@@ -24,6 +24,31 @@ class GameRuntimeTest {
         try { test(playback, session, battle) } finally { playback.close() }
     }
 
+    @Test fun hudWaitsForSettledFieldAndDropsImmediatelyForMenusAndTeardown() {
+        val main = 0x03001000L
+        val field = 0x08001235L
+        var callback = field
+        val reader = object : MemoryReader {
+            override fun readCoreMemory(addr: Long, size: Int) =
+                ByteArray(size) { i -> if (addr == main + 4) (callback shr (8 * i)).toByte() else 0 }
+        }
+        withPlayback { runtime, _, _ ->
+            runtime.start("missing-diagnostic.gba".toPath(), "BPEE", 0)
+            FfMenuWatch.load("BPEE", field, 0)
+            FfMenuWatch.useKnownGMain(main, 0x439)
+            repeat(19) { runtime.tick(reader); assertFalse(runtime.settledOnField) }
+            runtime.tick(reader); assertTrue(runtime.settledOnField)
+            callback = field + 0x100
+            runtime.tick(reader); assertFalse(runtime.settledOnField)
+            callback = field
+            repeat(20) { runtime.tick(reader) }
+            assertTrue(runtime.settledOnField)
+            runtime.quiesce(); assertFalse(runtime.settledOnField)
+            runtime.start("missing-diagnostic.gb".toPath(), null, 0)
+            assertFalse(runtime.settledOnField)
+        }
+    }
+
     @Test fun liveConfigurationDrivesScenesAndSmartMenusWithoutLosingTheRequestedSpeed() = withPlayback { p, session, _ ->
         p.baseSpeed = 1.5f; p.bikeSpeed = 3f
         p.fieldChanged(GameField.AVATAR or GameField.BIKE)
