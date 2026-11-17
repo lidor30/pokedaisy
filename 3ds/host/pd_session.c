@@ -46,6 +46,8 @@
 
 static uint32_t wideSource[PK_WIDE_W * PK_WIDE_H];
 // Two, in turn: the draw thread reads one while the next frame fills the other, with no copy between them.
+// EXPAND's window is at most the top screen (wide_window), and pk_wide's buffers must hold it.
+_Static_assert(PK_WIDE_MAX_VIEW_W >= PD_TOP_W && PK_WIDE_MAX_VIEW_H >= PD_TOP_H, "EXPAND's buffers are smaller than the top screen");
 static uint32_t wideFrames[2][PD_TOP_W * PD_TOP_H];
 static int wideShown;
 static uint32_t overlayPx[PD_TOP_W * PD_TOP_H];
