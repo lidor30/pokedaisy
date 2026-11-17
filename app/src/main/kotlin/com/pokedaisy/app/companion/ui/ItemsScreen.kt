@@ -1714,6 +1714,11 @@ private fun ItemDescriptionBar(
 
 /** What a USE / GIVE did, in the companion's words: [mon] the Pokémon it went to, [item] the item, [held]
  * what the Pokémon held before. */
+/** TAKE done: the item is in the bag, or a Mail (with its letter) in the PC's mailbox, as the game sends it. */
+internal fun takenMessage(item: Int, mon: String): String =
+    if (item in com.pokedaisy.app.companion.data.MAIL_ITEMS) tr("{1}'s {0} went to the PC's mailbox.", bagItemName(item), mon)
+    else tr("Received {0} from {1}.", bagItemName(item), mon)
+
 internal fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = "", held: Int = 0): String = when (o.result) {
     ItemUseResult.USED -> if (o.steps > 0) tr("Used! It lasts {0} steps.", o.steps) else tr("Used on {0}.", mon)
     ItemUseResult.STILL_ACTIVE -> tr("The last one is still working.")
@@ -1726,7 +1731,7 @@ internal fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = 
         else tr("{0} is holding {1} now. {2} went back to the bag.", mon, item, bagItemName(o.swapped))
     ItemUseResult.BAG_FULL -> tr("The bag is full: {0} can't go back in it.", bagItemName(held))
     ItemUseResult.PARTY_CHANGED -> tr("The party has changed. Try again.")
-    ItemUseResult.TAKEN -> tr("Received {0} from {1}.", bagItemName(o.swapped), mon)
+    ItemUseResult.TAKEN -> takenMessage(o.swapped, mon)
     ItemUseResult.MAILBOX_FULL -> tr("The PC's mailbox is full.")
     ItemUseResult.IN_GAME -> tr("Pick a POKéMON on the game's screen.")
 }

@@ -185,6 +185,25 @@ private const val MON_DATA_MAIL = 64
 /** Where SaveBlock1 keeps its struct Mail mail[MAIL_COUNT] (Emerald +0x2BE0, FireRed / LeafGreen +0x2CD0). */
 data class MailboxLayout(val saveBlock1Ptr: Long, val staticSaveBlock: Boolean, val mailOff: Int)
 
+/** SaveBlock1's mail[] in the retail layouts (pokeemerald / pokefirered global.h): struct offsets, the same in every language. */
+private const val MAIL_OFF_EMERALD = 0x2BE0
+private const val MAIL_OFF_FIRERED = 0x2CD0
+
+/**
+ * TAKE's PC mailbox for [fns] on the running game: only where the PC's moves ([boxSwapFor]) know its boxes - retail
+ * FireRed / LeafGreen / Emerald and the ports and in-place hacks that keep retail's SaveBlock1 - never a rebuild with its
+ * own layout (Emerald Legacy, Recharged Emerald) or Ruby / Sapphire (which run as EMERALD, with no box moves).
+ */
+fun mailboxFor(fns: FieldItemFns, cfg: NativeConfig?, kind: GameKind?): MailboxLayout? {
+    if (cfg == null || boxSwapFor(fns, cfg) == null) return null
+    val off = when (kind) {
+        GameKind.EMERALD -> MAIL_OFF_EMERALD
+        GameKind.FIRERED -> MAIL_OFF_FIRERED
+        else -> return null
+    }
+    return MailboxLayout(cfg.saveBlock1Ptr, cfg.staticSaveBlocks, off)
+}
+
 // FIELD_ITEMS_FIRERED_REV1 / _EMERALD / _LEAFGREEN_REV0 / _REV1 (and their PARTY_ITEMS_* and PC_*) are records in
 // gamedata/gen3/records/ (GameDataRecordsGen.kt), shared with the 3DS / Linux companion.
 
