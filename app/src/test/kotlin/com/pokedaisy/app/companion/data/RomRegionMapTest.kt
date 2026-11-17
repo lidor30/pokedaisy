@@ -39,6 +39,12 @@ class RomRegionMapTest {
         }
     }
 
+    /** Rhythm: Vedeo on CFRU's FireRed 1.0 region map code. */
+    @Test fun rhythmHasVedeo() {
+        val m = read("Pokemon Rhythm (v1.4.0).gba")
+        assertEquals("Notewood Town", m.sections[0x58]!!.name)
+    }
+
     @Test fun unboundHasBorrius() {
         val m = read("Pokemon Unbound (v2.1.1.1).gba")
         assertEquals(1, m.images.size) // every region slot is Borrius

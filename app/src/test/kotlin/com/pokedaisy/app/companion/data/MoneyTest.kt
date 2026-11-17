@@ -53,6 +53,7 @@ class MoneyTest {
         assertEquals(246468L, money("clover", NATIVE_CLOVER)) // the same save, booted in Clover
         assertEquals(3000L, money("elysium_a", NATIVE_ELYSIUM_A))
         assertEquals(198199L, money("elysium_b", NATIVE_ELYSIUM_B))
+        assertEquals(5000L, money("rhythm", NATIVE_RHYTHM))
         assertEquals(246468L, money("ash_gray", NATIVE_ASH_GRAY))
         assertEquals(246468L, money("ash_gray_fork", NATIVE_ASH_GRAY))
         // Elite Redux's save in both builds: plain (it zeroes the encryption key), its trainer card shows BP instead.

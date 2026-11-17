@@ -83,6 +83,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Elysium (Part A), Elysium (Part B) | 2.5.0 | ✅ ⁴² | ✅ | ✅ ⁴² | — | ◐ ⁹ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | — | — | — | ✅ |
 | Glazed | 9.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁷ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | — ³⁶ |
+| Rhythm | 1.4.0 | — | ✅ | ✅ ⁴⁴ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ | ✅ |
 | Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ |
 | Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ |
@@ -684,6 +685,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
     (`SacredGold.Data.wildRates`, the reader proven on retail HeartGold against pokeheartgold's data); the rest (battle
     buttons, FLY, PC, the bike) is HeartGold's code but wasn't run on them yet. Storm Silver's Classic patch didn't rebuild to
     its own target MD5 from the user's SoulSilver dump, so it's left out.
+44. Rhythm (1.4.0, a CFRU hack; 2026-11-18): FireRed rev 0's RAM on a new game played headless (it deletes retail FireRed's
+    save). A written move cell + A used that move, so one-press picks are on; the switch, field items, FLY, EXPAND and the
+    rest weren't mapped yet.
 
 ## What each column is
 

@@ -4698,6 +4698,23 @@ val NATIVE_RECHARGED_YELLOW_V1_9_7 = NATIVE_RECHARGED_YELLOW_V1_9_4.copy(
     trainerCard = TRAINER_CARD_RECHARGED_YELLOW_V1_9_7,
 )
 
+// ---- gamedata/gen3/hacks/rhythm.toml ----
+
+// Pokémon Rhythm v1.4.0 (invis292; 32 MB, Hackdex's xdelta over FireRed 1.0 rev 0, sha1 b0d6b913…): Vedeo on CFRU, no source.
+// FireRed rev 0's RAM, checked on a new game played headless (it deletes retail FireRed's save; `rhythm`: the intro, then the
+// game's own givemon / additem through rev 0's ScriptContext_SetupScript, saved in game). Its tables through FireRed 1.0's
+// literal pools (gen_cfru_tables.py rhythm); the icon tables likewise: gMonIconTable 0x09E89400, gMonIconPaletteIndices
+// 0x099B6C8C, sItemIconTable 0x09E51180. The battle menus' cursors are FireRed's (a written cell + A, headless: `rhythm_battle`).
+// Its region map is its own, drawn from the ROM (RomRegionMap).
+val NATIVE_RHYTHM = NATIVE_FIRERED_REV0.copy(
+    itemDescs = vanillaItems(0x09E486C0L),
+    monIconTable = 0x09E89400L,
+    monIconPaletteIndices = 0x099B6C8CL,
+    itemIconTable = 0x09E51180L,
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
+)
+
 // ---- gamedata/gen3/hacks/rowe.toml ----
 
 // R.O.W.E. v2.1.9.1 Experimental (BPEE, 32 MB, BelialClover's own pokeemerald fork - no expansion;

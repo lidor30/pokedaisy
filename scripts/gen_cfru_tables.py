@@ -114,6 +114,26 @@ GAMES = {
                            262: "Old Rod"},
                     mapsecs={0x58: "New Bark Town", 0x65: "Route 29", 0x92: "Pallet Town"}),
     ),
+    # Pokemon Rhythm v1.4.0 (invis292; Hackdex's xdelta over FireRed 1.0): Vedeo on CFRU, every table through FireRed 1.0's
+    # literal pools - gSpeciesNames 0x09E78D00 (to 1518, its forms after), gBaseStats 0x09E8AC00, gMoveNames 0x094B3FD4 (13
+    # bytes: its long-name table at 0x09DFA940 falls a slot behind past move 700, so the short names, which agree with
+    # gBattleMoves 0x094C1790, to RAPID FLOW 895), gItems 0x09E486C0 (to 804, .itemId = slot), sMapNames 0x089B9C00.
+    "rhythm": dict(
+        suffix="Rhythm",
+        label="Pokemon Rhythm v1.4.0",
+        sha1="b0d6b91356ee4d4c8f8c70020fe0352c391a12e2",
+        species_names=0x09E78D00, species_max=1600,
+        base_stats=0x09E8AC00,
+        move_names=0x094B3FD4, move_name_len=13, battle_moves=0x094C1790, moves_max=895,
+        items=0x09E486C0, items_max=805,
+        gender=True,
+        map_names=0x089B9C00,
+        checks=dict(species={1: "Bulbasaur", 25: "Pikachu", 151: "Mew", 1514: "Alcremie"},
+                    types={1: (12, 3), 4: (10, 10)},
+                    moves={33: ("Tackle", 0, 40), 7: ("Fire Punch", 10, 75)},
+                    items={1: "Master Ball", 13: "Potion", 802: "Hisui Rock"},
+                    mapsecs={0x58: "Notewood Town", 0x59: "Tremora Town"}),
+    ),
 }
 
 

@@ -242,6 +242,7 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | Elysium (Part B)               | 2.5.0                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Sword and Shield Ultimate Plus | 1.2.1.2 + its 3 patches    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | GS Chronicles                  | 2.7.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Rhythm                         | 1.4.0                      |  ✅   | ✅  |   ◐    | ✅  |   —    |   —   |
 | Recharged Yellow               | 1.8.0, 1.9.0, 1.9.4, 1.9.7 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Emerald Legacy                 | 1.1.4                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Lazarus                        | 2.0                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |

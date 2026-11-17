@@ -71,6 +71,7 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Pokémon Elysium (Part B) | 2.5.0 |
 | Sword and Shield Ultimate Plus | 1.2.1.2, plus its three patches |
 | Pokémon GS Chronicles | 2.7.6 |
+| Pokémon Rhythm | 1.4.0 |
 | Pokémon Recharged Yellow | 1.8.0, 1.9.0, 1.9.4 and 1.9.7 |
 | Pokémon Lazarus | 2.0 |
 | Emerald Seaglass | 3.0 |
