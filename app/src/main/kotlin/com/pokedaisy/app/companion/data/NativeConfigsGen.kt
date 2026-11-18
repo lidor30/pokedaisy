@@ -226,7 +226,7 @@ val NATIVE_EMERALD_ES = NATIVE_EMERALD_RETAIL.copy(
     language = 'S',
     gameCode = "BPES",
     pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_es` capture's boxes read, checksums good)
-    trainerCard = null,
+    trainerCard = TRAINER_CARD_EMERALD_ES,
     monIconTable = 0x0857E784L,
     monIconPaletteIndices = 0x0857EE64L,
     monIconPaletteTable = 0x0857F01CL,
@@ -240,7 +240,7 @@ val NATIVE_EMERALD_DE = NATIVE_EMERALD_RETAIL.copy(
     language = 'D',
     gameCode = "BPED",
     pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_de` capture's boxes read, checksums good)
-    trainerCard = null,
+    trainerCard = TRAINER_CARD_EMERALD_DE,
     monIconTable = 0x0858CAA8L,
     monIconPaletteIndices = 0x0858D188L,
     monIconPaletteTable = 0x0858D340L,
@@ -259,7 +259,7 @@ val NATIVE_EMERALD_FR = NATIVE_EMERALD_RETAIL.copy(
     language = 'F',
     gameCode = "BPEF",
     pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_fr` capture's boxes read, checksums good)
-    trainerCard = null,
+    trainerCard = TRAINER_CARD_EMERALD_FR,
     monIconTable = 0x08580020L,
     monIconPaletteIndices = 0x08580700L,
     monIconPaletteTable = 0x085808B8L,
@@ -273,7 +273,7 @@ val NATIVE_EMERALD_IT = NATIVE_EMERALD_RETAIL.copy(
     language = 'I',
     gameCode = "BPEI",
     pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_it` capture's boxes read, checksums good)
-    trainerCard = null,
+    trainerCard = TRAINER_CARD_EMERALD_IT,
     monIconTable = 0x0857838CL,
     monIconPaletteIndices = 0x08578A6CL,
     monIconPaletteTable = 0x08578C24L,
@@ -414,7 +414,7 @@ private val NATIVE_PORT_BPRD0 by lazy {
     NATIVE_FIRERED_REV0.copy(
         language = 'D',
         gameCode = "BPRD",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_DE,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -482,7 +482,7 @@ private val NATIVE_PORT_BPRF0 by lazy {
     NATIVE_FIRERED_REV0.copy(
         language = 'F',
         gameCode = "BPRF",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_FR,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -550,7 +550,7 @@ private val NATIVE_PORT_BPRI0 by lazy {
     NATIVE_FIRERED_REV0.copy(
         language = 'I',
         gameCode = "BPRI",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_IT,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -761,7 +761,7 @@ private val NATIVE_PORT_BPRS0 by lazy {
     NATIVE_FIRERED_REV1.copy(
         language = 'S',
         gameCode = "BPRS",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_ES,
         actionCursor = 0x02023FF8L,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
@@ -834,7 +834,7 @@ private val NATIVE_PORT_BPGD0 by lazy {
     NATIVE_LEAFGREEN_REV0.copy(
         language = 'D',
         gameCode = "BPGD",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_DE,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -901,7 +901,7 @@ private val NATIVE_PORT_BPGF0 by lazy {
     NATIVE_LEAFGREEN_REV0.copy(
         language = 'F',
         gameCode = "BPGF",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_FR,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -968,7 +968,7 @@ private val NATIVE_PORT_BPGI0 by lazy {
     NATIVE_LEAFGREEN_REV0.copy(
         language = 'I',
         gameCode = "BPGI",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_LEAFGREEN_IT,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -1176,7 +1176,7 @@ private val NATIVE_PORT_BPGS0 by lazy {
     NATIVE_LEAFGREEN_REV1.copy(
         language = 'S',
         gameCode = "BPGS",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_LEAFGREEN_ES,
         actionCursor = 0x02023FF8L,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,

@@ -472,7 +472,9 @@ PNGs). `RomArtTest` pins the pixels (the hacks' matched the PNGs once bundled, p
 ui-preview rebuilds the art from the decomp builds (or `-PartRoms` / `-Prom`), Paparazzi from the ROMs.
 **TRAINER CARD (the CARD tab, off the bar by default, so under MORE)**: retail FireRed /
 LeafGreen / Emerald only (`NativeConfig.trainerCard`; the hacks copy the retail
-configs, so it is set on the retail ones alone). `TrainerCard.kt` reads what `SetPlayerCardData` gathers (name, ID, play time, money, caught
+configs, so it is set on the retail ones alone; the German / French / Italian / Spanish carts, 2026-11-18, have their own
+`CardStyle.KANTO_DE` ... `HOENN_ES`: their tiles, font and widths as `*_CARD_*` blobs, their words read from the cart as a
+`*_CARD_TEXT` blob - never typed into the app - and FireRed's moved lines in `TrainerCardArt.EURO_KANTO`). `TrainerCard.kt` reads what `SetPlayerCardData` gathers (name, ID, play time, money, caught
 count regional until the National Dex, badge flags, stars, game stats XOR the encryption key, FireRed's
 Sticker Man vars); `TrainerCardArt.kt` draws the game's own card from ROM blobs `RomArt` caches raw
 (`rom-art/trainercard/*.bin`: card tiles, tilemaps, a palette per star count, badges, trainer pics,

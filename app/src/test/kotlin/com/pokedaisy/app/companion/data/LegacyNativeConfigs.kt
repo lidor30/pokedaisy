@@ -346,7 +346,7 @@ val LEGACY_NATIVE_EMERALD_RETAIL = LEGACY_NATIVE_EMERALD.copy(
 val LEGACY_NATIVE_EMERALD_ES = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x0858639CL),
-    language = 'S', gameCode = "BPES", trainerCard = null,
+    language = 'S', gameCode = "BPES", trainerCard = TRAINER_CARD_EMERALD_ES,
     monIconTable = 0x0857E784L, monIconPaletteIndices = 0x0857EE64L, monIconPaletteTable = 0x0857F01CL,
     itemIconTable = 0x08617250L,
     pokedex = POKEDEX_EMERALD_ES, guideTables = GUIDE_TABLES_EMERALD_ES,
@@ -355,7 +355,7 @@ val LEGACY_NATIVE_EMERALD_ES = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 val LEGACY_NATIVE_EMERALD_DE = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x085946DCL),
-    language = 'D', gameCode = "BPED", trainerCard = null,
+    language = 'D', gameCode = "BPED", trainerCard = TRAINER_CARD_EMERALD_DE,
     monIconTable = 0x0858CAA8L, monIconPaletteIndices = 0x0858D188L, monIconPaletteTable = 0x0858D340L,
     itemIconTable = 0x086258D8L,
     handleInputChooseAction = 0x0805758CL, handleInputChooseMove = 0x08057C00L,
@@ -366,7 +366,7 @@ val LEGACY_NATIVE_EMERALD_DE = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 val LEGACY_NATIVE_EMERALD_FR = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x08587D6CL),
-    language = 'F', gameCode = "BPEF", trainerCard = null,
+    language = 'F', gameCode = "BPEF", trainerCard = TRAINER_CARD_EMERALD_FR,
     monIconTable = 0x08580020L, monIconPaletteIndices = 0x08580700L, monIconPaletteTable = 0x085808B8L,
     itemIconTable = 0x08618798L,
     pokedex = POKEDEX_EMERALD_FR, guideTables = GUIDE_TABLES_EMERALD_FR,
@@ -375,7 +375,7 @@ val LEGACY_NATIVE_EMERALD_FR = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 val LEGACY_NATIVE_EMERALD_IT = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x0858000CL),
-    language = 'I', gameCode = "BPEI", trainerCard = null,
+    language = 'I', gameCode = "BPEI", trainerCard = TRAINER_CARD_EMERALD_IT,
     monIconTable = 0x0857838CL, monIconPaletteIndices = 0x08578A6CL, monIconPaletteTable = 0x08578C24L,
     itemIconTable = 0x08610FACL,
     handleInputChooseAction = 0x0805758CL, handleInputChooseMove = 0x08057C00L,

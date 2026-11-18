@@ -691,7 +691,11 @@ def toml_config(p):
            f"port = '{p['key']}'", f"language = '{lang}'"]
     if lang != "E":  # English rev 0 has no names of its own
         out.append(f"gameCode = '{p['code']}'")
-    out.append("trainerCard = 'none'")
+    # The European FireRed / LeafGreen carts' own cards (TrainerCard.kt's TRAINER_CARD_FIRERED_<lang>; Italian / Spanish
+    # LeafGreen have their own back): English's save offsets, each cart's art and words. Japanese has none yet.
+    eu = {"D": "DE", "F": "FR", "I": "IT", "S": "ES"}.get(lang)
+    game = "LEAFGREEN" if p["code"][:3] == "BPG" and lang in "IS" else "FIRERED"
+    out.append(f"trainerCard = 'TRAINER_CARD_{game}_{eu}'" if eu and p["family"] == "FR" else "trainerCard = 'none'")
     for k, (v, _) in sorted(p["fields"].items()):
         out.append(f"{k} = 0x{v:X}" if k == "inBattleOff" else f"{k} = 0x{v:08X}")
     items_base, item_stride, _ = p["layout"]["items"]
