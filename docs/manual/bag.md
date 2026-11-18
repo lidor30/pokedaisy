@@ -56,7 +56,7 @@ Under the icons, a line names the best fit and, if its moves are full, which mov
 
 ## Teaching a TM or HM
 
-In FireRed, LeafGreen and Emerald, `USE` on a TM or HM opens the game's own screen for it, as if you'd picked it from the game's bag: the screen fades and the game asks "Teach which POKéMON?" with each Pokémon marked `ABLE` or `NOT ABLE`. From there it's all the game: forgetting a move to make room, the tune when it's learned, and a TM leaving your bag (unless `REUSABLE TMS` is on). When you're done, you're back on the field where you were. With two screens, the companion stays up and tells you to pick the Pokémon on the game's screen; the companion window on one screen gets out of the way.
+In FireRed, LeafGreen and Emerald, and in Ruby and Sapphire (English), `USE` on a TM or HM opens the game's own screen for it, as if you'd picked it from the game's bag: the screen fades and the game asks "Teach which POKéMON?" with each Pokémon marked `ABLE` or `NOT ABLE`. From there it's all the game: forgetting a move to make room, the tune when it's learned, and a TM leaving your bag (unless `REUSABLE TMS` is on). When you're done, you're back on the field where you were. With two screens, the companion stays up and tells you to pick the Pokémon on the game's screen; the companion window on one screen gets out of the way.
 
 Like the other items, it only works while you're walking around, with no menu, conversation or battle open.
 

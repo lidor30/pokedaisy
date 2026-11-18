@@ -806,6 +806,15 @@ class PokeDaisyActivity : Activity() {
             sharedItemUse.use(itemId, done)
         }
 
+        /** Ruby / Sapphire's TM party menu: its way back to the bag turned into the field (tmBagReturnWatch), a frame at a
+         * time while it runs (20 minutes at most). */
+        private fun watchTmBagReturn(tm: com.pokedaisy.app.companion.data.TmFns, frames: Int) {
+            if (frames > 20 * 60 * 60) return
+            engine.requestFieldItemJob(false, 1) { c, _ ->
+                if (runCatching { com.pokedaisy.app.companion.data.tmBagReturnWatch(tm, c) }.getOrDefault(false)) watchTmBagReturn(tm, frames + 1)
+            }
+        }
+
         /** A TM / HM: the game's own TM screen (TmTeach.kt), in two steps like FLY - the checks, the controls locked and
          * the fade to black, then once it's black the game's party menu, sent back to the field when it closes. */
         private fun openTmScreen(itemId: Int, done: (com.pokedaisy.app.companion.data.ItemUseOutcome) -> Unit) {
@@ -819,6 +828,7 @@ class PokeDaisyActivity : Activity() {
                 if (r == com.pokedaisy.app.companion.data.ItemUseResult.USED) {
                     engine.requestFieldItemJob(false, com.pokedaisy.app.companion.data.TM_FADE_FRAMES) { c, leftField ->
                         val ok = com.pokedaisy.app.companion.data.tmFinish(tm, itemId, c, leftField)
+                        if (ok && tm.bagReturn != 0L) watchTmBagReturn(tm, 0)
                         Log.i("pokedaisy", "TM screen for $itemId: ${when {
                             ok -> "open"
                             leftField -> "the game left the field during the fade, not taken"
@@ -928,7 +938,8 @@ class PokeDaisyActivity : Activity() {
         /** The Move Tutor's screen in two steps, like the TM screen's: the checks and the fade, then once it's black the screen. */
         override fun centerRelearn(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) {
             // Ruby / Sapphire: one step, the Fallarbor tutor's own script.
-            if (tmFns() == null && centerFound?.relearnSpecial != null)
+            // Ruby / Sapphire (their TM screen the bag's way, no gFieldCallback route): the Fallarbor tutor's own script.
+            if ((tmFns()?.bagReturn ?: 0L).let { tmFns() == null || it != 0L } && centerFound?.relearnSpecial != null)
                 return onCenter(done, screen = true) { fns, c, calls, busy ->
                     com.pokedaisy.app.companion.data.centerRelearnScript(fns, c, slot, personality, busy, calls)
                 }

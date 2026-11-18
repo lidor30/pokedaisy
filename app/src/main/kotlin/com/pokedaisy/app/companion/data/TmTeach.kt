@@ -41,6 +41,11 @@ data class TmFns(
     /** CRC32 of each function's first 32 bytes: itemUseCbTmhm, showPartyMenuForItemUse, initPartyMenu, setMainCallback2,
      * returnToField, cleanupOverworld, fadeScreen, lockControls, unlockControls. */
     val codeCrcs: List<Long>,
+    /** Ruby / Sapphire: gPokemonItemUseType, their party menu's fixed way back to the bag (sub_80A5B40) and CB2_Overworld
+     * ([tmFinish], [tmBagReturnWatch]); 0 = FireRed / Emerald's exit callback. */
+    val itemUseType: Long = 0,
+    val bagReturn: Long = 0,
+    val overworld: Long = 0,
     /** ITEM_TM01 and HM08: the same in every Gen 3 game. */
     val firstTm: Int = 289,
     val lastHm: Int = 346,
@@ -48,7 +53,7 @@ data class TmFns(
     val functions get() = listOf(
         itemUseCbTmhm, showPartyMenuForItemUse, initPartyMenu, setMainCallback2, returnToField, cleanupOverworld, fadeScreen,
         lockControls, unlockControls,
-    )
+    ).filter { it != 0L }
 
     /** Whether [itemId] is a TM or an HM. */
     fun teaches(itemId: Int) = itemId in firstTm..lastHm
@@ -61,9 +66,10 @@ data class TmFns(
  * edited into retail's code in place ([hack] false for them; true for a rebuild like Recharged Emerald; Emerald Legacy, a
  * rebuild too, has records of its own):
  * FireRed rev 0's ([FIRERED_REV0_HACKS], Ultra Violet's PUVV, the FireRed-kind ones) and Emerald's (Glazed, Kaizo, the
- * randomized cart). Their own TM rules (reusable, CFRU's TM51+ in the HMs' ids) are the game's. Not Ruby / Sapphire: their
- * party menu goes back to the bag by a fixed call (pokemon_menu.c's sub_808B25C), with no exit to point at the field. The
- * code CRCs still decide. */
+ * randomized cart). Their own TM rules (reusable, CFRU's TM51+ in the HMs' ids) are the game's. English Ruby / Sapphire
+ * (2026-11-18): their party menu goes back to the bag by a fixed call (pokemon_menu.c's sub_808B25C), so the screen is
+ * opened the bag's way and that call's callback swapped for the field ([TmFns.bagReturn], [tmBagReturnWatch]). The code CRCs
+ * still decide. */
 fun tmFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean): TmFns? = when {
     hack -> null
     // Amethyst keeps every function here as retail's, but CleanupOverworldWindowsAndTilemaps never came back there (headless:
@@ -74,6 +80,9 @@ fun tmFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean): T
     kind == GameKind.FIRERED && gameCode == "BPRE" -> when (revision) { 0 -> TM_FIRERED_REV0; 1 -> TM_FIRERED_REV1; else -> null }
     kind == GameKind.FIRERED && gameCode == "BPGE" -> when (revision) { 0 -> TM_LEAFGREEN_REV0; 1 -> TM_LEAFGREEN_REV1; else -> null }
     kind == GameKind.EMERALD && gameCode == "BPEE" -> if (emeraldLegacy) TM_EMERALD_LEGACY else TM_EMERALD
+    // Ruby / Sapphire (English): the bag's own way into the party menu, its way back swapped for the field (tmBagReturnWatch).
+    kind == GameKind.EMERALD && gameCode == "AXVE" -> when (revision) { 0 -> TM_RUBY_REV0; 1, 2 -> TM_RUBY; else -> null }
+    kind == GameKind.EMERALD && gameCode == "AXPE" -> when (revision) { 0 -> TM_SAPPHIRE_REV0; 1, 2 -> TM_SAPPHIRE; else -> null }
     kind == GameKind.FIRERED || kind == GameKind.EMERALD -> TM_PORTS["$gameCode$revision"]
     else -> null
 }
@@ -125,6 +134,7 @@ fun tmStart(fns: FieldItemFns, tm: TmFns, itemId: Int, busy: Boolean, g: GameCal
  */
 fun tmFinish(tm: TmFns, itemId: Int, g: GameCalls, leftField: Boolean = false): Boolean {
     if (leftField) return false
+    if (tm.bagReturn != 0L) return tmFinishBagWay(tm, itemId, g)
     val ok = runCatching {
         g.call(tm.cleanupOverworld)
         if (!g.write(tm.specialVarItemId, byteArrayOf(itemId.toByte(), (itemId shr 8).toByte())) ||
@@ -143,4 +153,37 @@ fun tmFinish(tm: TmFns, itemId: Int, g: GameCalls, leftField: Boolean = false): 
     }.getOrDefault(false)
     if (!ok) runCatching { g.call(tm.fadeScreen, 0, 0); g.call(tm.unlockControls) }
     return ok
+}
+
+/**
+ * Ruby / Sapphire's second step: their bag's own way into the party menu (item_use.c's SetPokemonItemUseAndFadeOut with
+ * TeachMonTMMove): the item, gPokemonItemUseType = ITEM_USE_SINGLE_MON, gPokemonItemUseCallback, then sub_808B020 ("Teach
+ * which POKéMON?", gMain.callback2 to the party menu's). Its exit goes back to the bag by a fixed call: [tmBagReturnWatch]
+ * turns that into the field each frame after. Emu thread.
+ */
+private fun tmFinishBagWay(tm: TmFns, itemId: Int, g: GameCalls): Boolean {
+    val ok = runCatching {
+        if (!g.write(tm.specialVarItemId, byteArrayOf(itemId.toByte(), (itemId shr 8).toByte())) ||
+            !g.write(tm.itemUseType, byteArrayOf(0)) ||
+            !g.write(tm.itemUseCb, word(tm.itemUseCbTmhm or 1))
+        ) return@runCatching false
+        g.call(tm.showPartyMenuForItemUse)
+        (u32(g.read(tm.mainCallback2, 4)) and 0xFFFFFFFEL) == (tm.initPartyMenu and 0xFFFFFFFEL)
+    }.getOrDefault(false)
+    if (!ok) runCatching { g.call(tm.fadeScreen, 0, 0); g.call(tm.unlockControls) }
+    return ok
+}
+
+/**
+ * Each frame while Ruby / Sapphire's TM party menu runs: when its exit sets gMain.callback2 to the bag (sub_80A5B40), the field
+ * (CB2_ReturnToField) instead, before the bag ever runs - as FireRed's exit callback does. Returns whether to keep watching: not
+ * once the field's own CB2_Overworld runs (the menu is over, a later trip through the bag is the player's). Emu thread.
+ */
+fun tmBagReturnWatch(tm: TmFns, g: GameCalls): Boolean {
+    val cb = u32(g.read(tm.mainCallback2, 4)) and 0xFFFFFFFEL
+    return when (cb) {
+        tm.bagReturn and 0xFFFFFFFEL -> { g.write(tm.mainCallback2, word(tm.returnToField or 1)); false }
+        tm.overworld and 0xFFFFFFFEL -> false
+        else -> true
+    }
 }
