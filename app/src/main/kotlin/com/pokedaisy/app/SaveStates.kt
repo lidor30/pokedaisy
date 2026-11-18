@@ -1,6 +1,9 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.DsCore
 import java.io.File
+import okio.Path.Companion.toOkioPath
+import com.pokedaisy.app.companion.data.StateFiles
 import java.util.zip.CRC32
 
 /**
@@ -13,22 +16,22 @@ import java.util.zip.CRC32
  */
 class SaveStates(filesDir: File, romCrc: String) {
 
-    private val dir = File(File(filesDir, "states"), romCrc).apply { mkdirs() }
+    internal val files = StateFiles(File(File(filesDir, "states"), romCrc).toOkioPath(), extraSidecars = listOf(".ra"))
 
-    fun stateFile(slot: Int): File = File(dir, "ss$slot")
-    fun thumbFile(slot: Int): File = File(dir, "ss$slot.png")
-    fun bakFile(slot: Int): File = File(dir, "ss$slot.bak")        // one-level undo of a save
-    fun bakThumbFile(slot: Int): File = File(dir, "ss$slot.bak.png")
-    val resumeFile: File get() = File(dir, "resume")
-    val undoLoadFile: File get() = File(dir, "undo_load")          // pre-load snapshot
+    fun stateFile(slot: Int): File = File(files.stateFile(slot).toString())
+    fun thumbFile(slot: Int): File = File(files.thumbFile(slot).toString())
+    fun bakFile(slot: Int): File = File(files.bakFile(slot).toString())        // one-level undo of a save
+    fun bakThumbFile(slot: Int): File = File(files.bakThumbFile(slot).toString())
+    val resumeFile: File get() = File(files.resumeFile.toString())
+    val undoLoadFile: File get() = File(files.undoLoadFile.toString())          // pre-load snapshot
     /** BOSS RETRY: the state taken as a trainer battle began (never a slot; one per game, overwritten by the next). */
-    val retryFile: File get() = File(dir, "battle_retry")
+    val retryFile: File get() = File(files.retryFile.toString())
     /** Set when the library loads another save file into this game ([GameSaves.load]):
      * the next start boots from that save instead of resuming, since a resume (or
      * manual) state still holds the old save's progress and would write it back. */
-    val freshBootFile: File get() = File(dir, "boot_fresh")
+    val freshBootFile: File get() = File(files.freshBootFile.toString())
 
-    fun exists(slot: Int): Boolean = stateFile(slot).let { it.isFile && it.length() > 0 }
+    fun exists(slot: Int): Boolean = files.exists(slot)
 
     fun slotInfo(slot: Int): SlotInfo {
         val f = stateFile(slot)
@@ -53,12 +56,7 @@ class SaveStates(filesDir: File, romCrc: String) {
      * Returns null if there's nothing to resume from at all.
      */
     fun latestResumeSource(): File? {
-        val resume = resumeFile.takeIf { it.isFile && it.length() > 0 }
-        val newestSlot = (SLOT_MIN..SLOT_MAX)
-            .map { stateFile(it) }
-            .filter { it.isFile && it.length() > 0 }
-            .maxByOrNull { it.lastModified() }
-        return listOfNotNull(resume, newestSlot).maxByOrNull { it.lastModified() }
+        return files.latestResumeSource()?.let { File(it.toString()) }
     }
 
     data class SlotInfo(
@@ -72,25 +70,25 @@ class SaveStates(filesDir: File, romCrc: String) {
         const val SLOT_MIN = 0
         const val SLOT_MAX = 9
 
-        /** Where a DS game's resume state ([resumeFile]) waits for DS CORE's [core] (MgbaCore.NDS_CORE_*) while the other
+        /** Where a DS game's resume state ([resumeFile]) waits for DS CORE's [core] (DsCore.CORE_*) while the other
          * core runs the game: states don't cross cores, so the engine sets it aside here and the next start on that core
          * resumes it (PokeDaisyActivity.startGame), if the save file still matches it as any resume must. */
         fun parkedResume(resume: File, core: Int): File =
             File(resume.parentFile, when (core) {
-                MgbaCore.NDS_CORE_DSPERATE -> "resume.dsperate"
-                MgbaCore.NDS_CORE_BANANADS -> "resume.bananads"
+                DsCore.CORE_DSPERATE -> "resume.dsperate"
+                DsCore.CORE_BANANADS -> "resume.bananads"
                 else -> "resume.melonds"
             })
 
         /** The DS core whose state [state] is (its first word: pk_nds_cores.h's PK_NDS_STATE_MAGIC_*), MELONDS if unknown. */
         fun stateCore(state: File): Int {
-            val b = runCatching { state.inputStream().use { s -> ByteArray(4).also { if (s.read(it) != 4) return MgbaCore.NDS_CORE_MELONDS } } }
-                .getOrNull() ?: return MgbaCore.NDS_CORE_MELONDS
+            val b = runCatching { state.inputStream().use { s -> ByteArray(4).also { if (s.read(it) != 4) return DsCore.CORE_MELONDS } } }
+                .getOrNull() ?: return DsCore.CORE_MELONDS
             val magic = (b[0].toInt() and 0xFF) or ((b[1].toInt() and 0xFF) shl 8) or ((b[2].toInt() and 0xFF) shl 16) or ((b[3].toInt() and 0xFF) shl 24)
             return when (magic) {
-                0x50444B50 -> MgbaCore.NDS_CORE_DSPERATE   // "PKDP"
-                0x42444B50 -> MgbaCore.NDS_CORE_BANANADS   // "PKDB"
-                else -> MgbaCore.NDS_CORE_MELONDS          // "PKDS"
+                0x50444B50 -> DsCore.CORE_DSPERATE   // "PKDP"
+                0x42444B50 -> DsCore.CORE_BANANADS   // "PKDB"
+                else -> DsCore.CORE_MELONDS          // "PKDS"
             }
         }
 

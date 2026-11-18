@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.DsCore
 import com.pokedaisy.app.companion.ui.theme.DarkMode
 import com.pokedaisy.app.companion.i18n.L10n
 import com.pokedaisy.app.companion.i18n.tk
@@ -77,10 +78,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.achievements.RetroAchievements
 import com.pokedaisy.app.cheats.Cheat
-import com.pokedaisy.app.cheats.CheatCheck
-import com.pokedaisy.app.cheats.CheatCodes
 import com.pokedaisy.app.cheats.CheatStore
-import com.pokedaisy.app.cheats.CheatType
 import com.pokedaisy.app.companion.ui.AppBackdrop
 import com.pokedaisy.app.companion.ui.AspectPicker
 import com.pokedaisy.app.companion.ui.aspectLabel
@@ -124,6 +122,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.pokedaisy.app.companion.ui.PixelRoundedShape
 import com.pokedaisy.app.companion.ui.drawPixelRoundRect
+import okio.Path.Companion.toOkioPath
+import okio.source
 
 /**
  * Settings, in the companion SETTINGS tab's OPTION-screen look: a hub of
@@ -206,7 +206,6 @@ class SettingsActivity : ComponentActivity() {
     /** DS RESOLUTION's GPU renderer can run here (OpenGL ES 3.2). */
     private val dsGpu by lazy { GlCaps.gles32(this) }
     /** DS games start on DSperate (DS CORE): DS RESOLUTION and DS CPU BOOST are melonDS's, greyed out then. */
-    private val dsOnDsperate get() = prefs.dsCore.runs() != MgbaCore.NDS_CORE_MELONDS
     /** DS CPU BOOST runs on the DS CORE picked (not DSperate). */
     private val dsBoosts get() = com.pokedaisy.app.companion.DsCore.boosts(prefs.dsCore.runs())
     /** DS RESOLUTION runs on the DS CORE picked (melonDS, BananaDS). */
@@ -217,7 +216,7 @@ class SettingsActivity : ComponentActivity() {
 
     /** HELP: the manual (DocsScreen.kt), its place kept while Settings is open. */
     private val docsUi = com.pokedaisy.app.companion.ui.DocsUiState()
-    private val docsSource by lazy { com.pokedaisy.app.companion.ui.DocsSources.of(this) }
+    private val docsSource by lazy { com.pokedaisy.app.companion.ui.DocsSources.get() }
     /** Opened straight on HELP (the library's ? button): BACK from its contents leaves. */
     private var helpOnly = false
 
@@ -331,22 +330,9 @@ class SettingsActivity : ComponentActivity() {
             Column(Modifier.weight(1f).fillMaxHeight()) {
             Column(modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
                 if (tab && screen == Screen.HOME) LibraryLook { nm, _ ->
-                    // The library's header in place of HOME's SETTINGS title, as on GAMES and TOOLS.
-                    OptionTitleWindow(
-                        // One button beside it: the name always fits (the games' header drops it on a phone held upright).
-                        "POKéDAISY",
-                        nm,
-                        leading = { com.pokedaisy.app.companion.ui.PixelArt(com.pokedaisy.app.companion.ui.LOGO_ROWS, com.pokedaisy.app.companion.ui.LOGO_PALETTE, Modifier.size(nm.lineHeight)) },
-                    ) {
-                        Spacer(Modifier.width(nm.u * 4))
-                        com.pokedaisy.app.companion.ui.OptionButton(
-                            null, nm, onClick = { screen = Screen.HELP },
-                            icon = LibraryIcons.HelpOutline, contentDescription = tr("Help"),
-                        )
-                    }
-                    Spacer(Modifier.height(nm.u * 8))
+                    com.pokedaisy.app.companion.ui.AppPageTitle(tk("SETTINGS"), nm, home = true, onHelp = { screen = Screen.HELP })
                 } else {
-                OptionTitleWindow(
+                com.pokedaisy.app.companion.ui.AppPageTitle(
                     title = when (screen) {
                         Screen.HOME -> tk("SETTINGS")
                         Screen.SPEED -> tk("SPEED OPTIONS")
@@ -382,7 +368,6 @@ class SettingsActivity : ComponentActivity() {
                         goBack()
                     },
                 )
-                Spacer(Modifier.height(m.u * 4))
                 }
                 when (screen) {
                     Screen.HOME -> HomeScreen(m)
@@ -496,7 +481,7 @@ class SettingsActivity : ComponentActivity() {
                     m = m,
                     onDismiss = { confirmReset = null },
                     onConfirm = {
-                        if (r == Reset.HOTKEYS) Hotkeys.resetBindings(filesRoot) else GbaControls.resetBindings(filesRoot)
+                        if (r == Reset.HOTKEYS) Hotkeys.resetBindings(controlsDir) else GbaControls.resetBindings(controlsDir)
                         confirmReset = null
                         revision++
                     },
@@ -516,7 +501,7 @@ class SettingsActivity : ComponentActivity() {
                     onDismiss = { hotkeyClash = null },
                     onConfirm = {
                         hotkeyClash = null
-                        Hotkeys.setBinding(filesRoot, c.action, c.keys, takeFrom = c.taken)
+                        Hotkeys.setBinding(controlsDir, c.action, c.keys, takeFrom = c.taken)
                         revision++
                     },
                 )
@@ -807,7 +792,7 @@ class SettingsActivity : ComponentActivity() {
                 tk("DS CORE"), prefs.dsCore.valueLabel(), subtitle = "DSPERATE runs on weaker devices",
                 labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CORE_BANANADS),
             ) {
-                val cores = com.pokedaisy.app.companion.DsCore.entries
+                val cores = com.pokedaisy.app.companion.DsCore.offered()
                 selector = Selector(tk("DS CORE"), cores.map { it.label }, prefs.dsCore.label) { l ->
                     prefs.dsCore = cores.first { it.label == l }
                     revision++
@@ -917,13 +902,13 @@ class SettingsActivity : ComponentActivity() {
                 selector = Selector(
                     tk("THEME"), themes.map { it.label }, AppColors.theme.label,
                     badge = { l -> tk("LIMITED").takeIf { themes.firstOrNull { it.label == l }?.season != null } },
-                ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(this@SettingsActivity, it) } }
+                ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(it) } }
             },
             // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
             com.pokedaisy.app.companion.ui.gameLookRow { revision++ },
             // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
             SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
-                DarkMode.set(this@SettingsActivity, DarkMode.setting.next())
+                DarkMode.set(DarkMode.setting.next())
                 revision++
             },
             // The app's text: the pixel font or a smooth one, both screens at once.
@@ -936,7 +921,7 @@ class SettingsActivity : ComponentActivity() {
                     com.pokedaisy.app.companion.ui.theme.AppFonts.current.label,
                 ) { l ->
                     com.pokedaisy.app.companion.ui.theme.AppFont.entries.firstOrNull { it.label == l }?.let {
-                        com.pokedaisy.app.companion.ui.theme.AppFonts.set(this@SettingsActivity, it)
+                        com.pokedaisy.app.companion.ui.theme.AppFonts.set(it)
                         revision++
                     }
                 }
@@ -1033,7 +1018,6 @@ class SettingsActivity : ComponentActivity() {
             SettingRow(tk("HELP"), null, opensPage = true) { screen = Screen.HELP },
         )
         // Search: every row whose name, value or keywords (SETTING_KEYWORDS: "rebind", "keybinds"...) match.
-        val shown = filterRows(rows, searchQuery)
         // D-pad focus starts on the first setting (it used to land on the search box first), once per visit to Settings;
         // B / BACK in the search box comes back there too.
         val firstRow = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -1051,38 +1035,9 @@ class SettingsActivity : ComponentActivity() {
             inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
             if (runCatching { firstRow.requestFocus() }.isSuccess) homeFocused = true
         }
-        val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-        Column(Modifier.fillMaxSize().onFocusChanged { homeHasFocus = it.hasFocus }) {
-            OptionTextField(
-                searchQuery, { searchQuery = it }, m,
-                Modifier.fillMaxWidth().onPreviewKeyEvent { e ->
-                    val back = e.key == androidx.compose.ui.input.key.Key.Back || e.key == androidx.compose.ui.input.key.Key.ButtonB
-                    if (!back) return@onPreviewKeyEvent false
-                    if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
-                        keyboard?.hide()
-                        runCatching { firstRow.requestFocus() }
-                    }
-                    true
-                },
-                placeholder = tr("SEARCH SETTINGS (e.g. KEY BINDINGS)"),
-                leadingIcon = PixelIcons.search,
-            )
-            Spacer(Modifier.height(m.u * 4))
-            RailedWindow(m, Modifier.fillMaxWidth().weight(1f), rail = shown.isNotEmpty()) {
-                if (shown.isEmpty()) {
-                    GbaText(
-                        tr("NOTHING MATCHES \"{0}\"", searchQuery.trim()), OptionColors.muted, OptionColors.mutedShadow, m,
-                        modifier = Modifier.padding(horizontal = m.u * 8, vertical = m.u * 4),
-                    )
-                } else if (searchQuery.isBlank()) {
-                    GroupedRows(rows, m, cursor = -1, onClick = { rows[it].onClick() }, scroll = homeScroll, firstRowFocus = firstRow, groupTabs = true)
-                } else {
-                    GroupedRows(shown, m, cursor = -1, onClick = { shown[it].onClick() }, firstRowFocus = firstRow)
-                }
-            }
-            Spacer(Modifier.height(m.u * 4))
-            AboutFooter(m)
-        }
+        com.pokedaisy.app.companion.ui.AppSettingsHome(rows, m, searchQuery, { searchQuery = it },
+            modifier = Modifier.onFocusChanged { homeHasFocus = it.hasFocus }, scroll = homeScroll,
+            firstRowFocus = firstRow, footer = { AboutFooter(m) })
     }
 
     /** SHADERS: what the game is drawn through, like the companion's page; the game picks it up on resume. */
@@ -1221,7 +1176,7 @@ class SettingsActivity : ComponentActivity() {
     @Composable
     private fun QuickMenuScreen(m: GbaTextMetrics) {
         @Suppress("UNUSED_EXPRESSION") revision
-        val binding = remember(revision) { Hotkeys.load(filesRoot).rawBindings[Hotkeys.Action.QUICK_MENU].orEmpty() }
+        val binding = remember(revision) { Hotkeys.load(controlsDir).rawBindings[Hotkeys.Action.QUICK_MENU].orEmpty() }
         val rows = com.pokedaisy.app.companion.ui.quickMenuRows(
             prefs.quickMenuActions, binding.joinToString(", ") { it.replace("BUTTON_", "").replace('_', ' ') }, prefs.quickMenuStyle, prefs.quickMenuLabels,
             setShown = { prefs.quickMenuActions = it; revision++ },
@@ -1252,14 +1207,19 @@ class SettingsActivity : ComponentActivity() {
     private var removingAllOverlays by mutableStateOf(false)
 
     /** TOUCH CONTROLS > SKINS: the imported Delta skins, their pick-lists, IMPORT SKIN's file picker. */
-    private val skinStore by lazy { com.pokedaisy.app.companion.DeltaSkinStore(java.io.File(filesDir, "skins")) }
+    private val skinStore by lazy { com.pokedaisy.app.companion.DeltaSkinStore(filesDir.toOkioPath() / "skins") }
     private val touchSkinUi = com.pokedaisy.app.companion.ui.TouchSkinUi()
     private val pickSkin = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { importSkin(it) } }
 
     /** IMPORT SKIN: the picked .deltaskin (or a zip of them) into files/skins/; one new skin is picked for its system. */
     private fun importSkin(uri: Uri) {
         Thread {
-            val result = runCatching { contentResolver.openInputStream(uri)?.use { skinStore.import(it) } }.getOrNull()
+            // The store reads a zip from a file: the picked document is copied into the cache first.
+            val temp = java.io.File(cacheDir, "skin-import.deltaskin")
+            val result = runCatching {
+                contentResolver.openInputStream(uri)?.use { input -> temp.outputStream().use { input.copyTo(it) } }
+                    ?.let { skinStore.import(temp.toOkioPath()) }
+            }.getOrNull().also { temp.delete() }
                 ?: com.pokedaisy.app.companion.DeltaSkinStore.ImportResult(emptyList(), listOf("it couldn't be opened"))
             runOnUiThread {
                 val added = result.added
@@ -1397,40 +1357,7 @@ class SettingsActivity : ComponentActivity() {
 
     /** Version, author, Buy Me a Coffee, the Discord and the repo, under the settings list. */
     @Composable
-    private fun AboutFooter(m: GbaTextMetrics) {
-        val small = rememberGbaTextMetrics(textScale = 1f)
-        OptionListWindow(m, Modifier.fillMaxWidth()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = m.u * 8, vertical = m.u * 3),
-            ) {
-                GbaText(
-                    tr("POKéDAISY {0}  ·  by {1}", BuildConfig.VERSION_NAME, "Lidor Itzhari (@lidor30)"),
-                    OptionColors.label, OptionColors.labelShadow, small, modifier = Modifier.weight(1f),
-                )
-                FooterLink(tr("Buy me a coffee"), m, small, Modifier.padding(start = m.u * 6), { CoffeeCup() }) {
-                    openUrl(COFFEE_URL)
-                }
-                GbaText("  ·  ", OptionColors.label, OptionColors.labelShadow, small)
-                FooterLink("Discord", m, small, icon = { DiscordMark() }) { openUrl(Discord.URL) }
-                GbaText("  ·  ", OptionColors.label, OptionColors.labelShadow, small)
-                FooterLink("GitHub", m, small, icon = { GitHubMark() }) { openUrl(REPO_URL) }
-            }
-        }
-    }
-
-    /** A pixel [icon] then [text] in the value red, the whole of it one tap target. */
-    @Composable
-    private fun FooterLink(
-        text: String, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier = Modifier,
-        icon: @Composable () -> Unit, onClick: () -> Unit,
-    ) {
-        Row(modifier.clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(small.lineHeight)) { icon() }
-            Spacer(Modifier.width(m.u * 3))
-            GbaText(text, OptionColors.value, OptionColors.valueShadow, small)
-        }
-    }
+    private fun AboutFooter(m: GbaTextMetrics) = com.pokedaisy.app.companion.ui.AppAboutFooter(BuildConfig.VERSION_NAME, m, ::openUrl)
 
     private fun openUrl(url: String) {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
@@ -1590,17 +1517,16 @@ class SettingsActivity : ComponentActivity() {
     private var cheatCrc by mutableStateOf<String?>(null)
     /** The CHEATS page's game is a DS cart: Action Replay DS codes, checked as such (cheats.DsCheats). */
     private var cheatDs by mutableStateOf(false)
-    private var cheatList by mutableStateOf<List<Cheat>>(emptyList())
+    private var cheatSession by mutableStateOf<com.pokedaisy.app.companion.GameCheats?>(null)
+    private val cheatList get() = cheatSession?.list.orEmpty()
     private var cheatRemoveMode by mutableStateOf(false)
     private var removingCheat by mutableStateOf<Int?>(null)
     /** A title + message to show over CHEATS (an import's result, a file that isn't one; internal for ui-preview). */
     internal var cheatNotice by mutableStateOf<Pair<String, String>?>(null)
 
-    private fun cheatStore(): CheatStore? = cheatCrc?.let { CheatStore.forCrc(filesDir, it) }
-
     private fun saveCheats(list: List<Cheat>) {
-        cheatStore()?.save(list)
-        cheatList = list
+        cheatSession?.save(list)
+        revision++
     }
 
     /**
@@ -1616,11 +1542,14 @@ class SettingsActivity : ComponentActivity() {
         val rom = cheatRom ?: remember(games) { prefs.lastRomPath?.let(::File)?.takeIf { it.isFile } ?: games.firstOrNull() }
         LaunchedEffect(rom) {
             cheatCrc = null
-            cheatList = emptyList()
+            cheatSession = null
             val crc = rom?.let { withContext(Dispatchers.IO) { cheatCrcOf(it) } }
             cheatDs = rom != null && withContext(Dispatchers.IO) { runCatching { RomIdentity.isNds(rom) }.getOrDefault(false) }
             cheatCrc = crc
-            cheatList = crc?.let { c -> withContext(Dispatchers.IO) { CheatStore.forCrc(filesDir, c).load() } }.orEmpty()
+            cheatSession = crc?.let { c -> withContext(Dispatchers.IO) {
+                com.pokedaisy.app.companion.GameCheats(true,
+                    openStore = { CheatStore.forCrc(filesDir.toOkioPath(), c) }, enabled = { false }, submit = {}).also { it.start() }
+            } }
         }
         val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) importCheats(uri)
@@ -1673,73 +1602,27 @@ class SettingsActivity : ComponentActivity() {
 
     /** IMPORT FILE: reads the picked file and adds its cheats (all OFF), saying what came in and what didn't. */
     private fun importCheats(uri: Uri) {
-        val store = cheatStore() ?: return
+        val session = cheatSession ?: return
+        val ds = cheatDs
         val name = uri.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.')?.ifBlank { null } ?: tk("CHEAT")
         Thread {
-            val text = runCatching {
-                contentResolver.openInputStream(uri)?.use { it.readBytes().takeIf { b -> b.size <= MAX_CHEAT_FILE } }
-            }.getOrNull()?.toString(Charsets.UTF_8)?.removePrefix("\uFEFF")
-            val result = text?.let { store.import(it, name, ds = cheatDs) }
-            val list = store.load()
+            val result = runCatching {
+                contentResolver.openInputStream(uri)?.source()?.use { session.import(it, name, ds) }
+            }.getOrNull()
             runOnUiThread {
-                cheatList = list
-                cheatNotice = cheatImportNotice(result)
+                if (cheatSession === session) {
+                    revision++
+                    cheatNotice = cheatImportNotice(result)
+                }
             }
         }.start()
     }
 
     @Composable
     private fun CheatAddScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
-        var name by remember { mutableStateOf("") }
-        var code by remember { mutableStateOf("") }
-        var type by remember { mutableStateOf(CheatType.AUTO) }
-        var error by remember { mutableStateOf<String?>(null) }
-        Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-            Hint(
-                if (cheatDs) tr("Type or paste an Action Replay DS code, one line or many.")
-                else tr("Type or paste a GameShark, Action Replay or CodeBreaker code, one line or many. AUTO works out which it is; pick the type when a code doesn't take."),
-                m, small,
-            )
-            OptionListWindow(m, Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(horizontal = m.u * 4)) {
-                    GbaText(tr("NAME"), OptionColors.label, OptionColors.labelShadow, m, Modifier.padding(vertical = m.u * 2))
-                    OptionTextField(name, { name = it; error = null }, small, placeholder = tr("e.g. INFINITE MONEY"))
-                    Spacer(Modifier.height(m.u * 4))
-                    GbaText(tr("CODE"), OptionColors.label, OptionColors.labelShadow, m, Modifier.padding(vertical = m.u * 2))
-                    OptionTextField(code, { code = it.uppercase(); error = null }, small, placeholder = "XXXXXXXX YYYYYYYY", minLines = 3, code = true)
-                    Spacer(Modifier.height(m.u * 2))
-                    // Back by the list row's own inset, so TYPE lines up with NAME and CODE. A DS game has one kind of code.
-                    if (!cheatDs) OptionLine(tk("TYPE"), type.label, selected = false, m, Modifier.offset(x = -m.u * 4), height = m.rowHeight * 1.2f) {
-                        val types = CheatType.entries
-                        selector = Selector(tk("TYPE"), types.map { it.label }, type.label) { l -> type = types.first { it.label == l }; error = null }
-                    }
-                    error?.let {
-                        GbaText(it, OptionColors.value, OptionColors.valueShadow, small, Modifier.padding(top = m.u * 4), maxLines = 4)
-                    }
-                    Row(Modifier.padding(vertical = m.u * 4), horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
-                        OptionButton(tk("CANCEL"), m, onClick = { screen = Screen.CHEATS })
-                        OptionButton(tk("ADD"), m, emphasis = true, enabled = code.isNotBlank(), onClick = {
-                            val lines = CheatCodes.normalize(code)
-                            val label = name.trim().ifEmpty { tr("CHEAT {0}", cheatList.size + 1) }
-                            val r = CheatCheck.check(Cheat(label, lines), type, ds = cheatDs)
-                            val ok = r.cheat
-                            if (ok == null) {
-                                error = when {
-                                    r.bad.isEmpty() -> tr("That isn't a code.")
-                                    cheatDs -> tr("{0} isn't an Action Replay DS line.", r.bad.joinToString(", "))
-                                    type == CheatType.AUTO -> tr("mGBA can't read {0}.", r.bad.joinToString(", "))
-                                    else -> tr("mGBA can't read {0} as a {1} code.", r.bad.joinToString(", "), tr(type.label))
-                                }
-                            } else {
-                                // Typed in to be used: on (the master switch still decides).
-                                saveCheats(cheatList + ok.copy(enabled = true))
-                                screen = Screen.CHEATS
-                            }
-                        })
-                    }
-                }
-            }
-        }
+        com.pokedaisy.app.companion.ui.CheatAddForm(m, small, cheatDs, cheatList.size + 1,
+            onCancel = { screen = Screen.CHEATS },
+            onAdd = { saveCheats(cheatList + it); screen = Screen.CHEATS })
     }
 
     // ---- hidden games -------------------------------------------------------
@@ -1956,15 +1839,15 @@ class SettingsActivity : ComponentActivity() {
 
     /** A hotkey bound to [keys] - asked first when other hotkeys have exactly that chord (MOVE takes it off them). */
     private fun bindHotkey(action: Hotkeys.Action, keys: List<Int>) {
-        val taken = Hotkeys.clashes(Hotkeys.load(filesRoot).rawBindings, action, keys.map { Hotkeys.keyName(it) })
-        if (taken.isEmpty()) Hotkeys.setBinding(filesRoot, action, keys)
+        val taken = Hotkeys.clashes(Hotkeys.load(controlsDir).rawBindings, action, keys.map { Hotkeys.keyName(it) })
+        if (taken.isEmpty()) Hotkeys.setBinding(controlsDir, action, keys)
         else hotkeyClash = HotkeyClash(action, keys, taken)
         revision++
     }
 
     @Composable
     private fun HotkeysScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
-        val hotkeys = remember(revision) { Hotkeys.load(filesRoot) }
+        val hotkeys = remember(revision) { Hotkeys.load(controlsDir) }
         Column(modifier = Modifier.fillMaxWidth()) {
             Hint(
                 tr("Tap a hotkey, then press one or more keys/buttons together and release — e.g. hold Select and tap R1 for a chord. BACK cancels."),
@@ -1987,7 +1870,7 @@ class SettingsActivity : ComponentActivity() {
                                 action.title, chord = true,
                                 onDone = { keys -> bindHotkey(action, keys) },
                                 // CLEAR leaves it unbound ("-").
-                                onClear = { Hotkeys.clearBinding(filesRoot, action); revision++ },
+                                onClear = { Hotkeys.clearBinding(controlsDir, action); revision++ },
                             )
                         }
                     }
@@ -2012,7 +1895,7 @@ class SettingsActivity : ComponentActivity() {
 
     @Composable
     private fun ControlsScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
-        val ctrls = remember(revision) { GbaControls.rawBindings(filesRoot) }
+        val ctrls = remember(revision) { GbaControls.rawBindings(controlsDir) }
         Column(modifier = Modifier.fillMaxWidth()) {
             Hint(tr("Which physical button is each GBA button. The D-pad and analog stick always work; the D-PAD rows add more keys to them."), m, small)
             OptionListWindow(m, Modifier.fillMaxWidth().weight(1f, fill = false)) {
@@ -2037,8 +1920,8 @@ class SettingsActivity : ComponentActivity() {
 
     private fun controlRequest(btn: GbaControls.Btn) = com.pokedaisy.app.companion.KeyCapture.Request(
         btn.title, chord = false,
-        onDone = { keys -> GbaControls.setBinding(filesRoot, btn, keys.first()); revision++ },
-        onClear = if (btn.canClear) ({ GbaControls.clearBinding(filesRoot, btn); revision++ }) else null,
+        onDone = { keys -> GbaControls.setBinding(controlsDir, btn, keys.first()); revision++ },
+        onClear = if (btn.canClear) ({ GbaControls.clearBinding(controlsDir, btn); revision++ }) else null,
     )
 
     // ---- folders --------------------------------------------------------
@@ -2387,7 +2270,7 @@ class SettingsActivity : ComponentActivity() {
     companion object {
         private val FOLDER_PAGES = setOf(Screen.ROMS_FOLDERS, Screen.SAVES_FOLDER, Screen.SAVE_SEARCH, Screen.STATES_FOLDER, Screen.BACKUPS)
         val RATES = floatArrayOf(0f, 1.5f, 2f, 3f, 4f, 5f, 6f, 8f, 10f)
-        const val REPO_URL = "https://github.com/lidor30/pokedaisy"
+        const val REPO_URL = com.pokedaisy.app.companion.ui.AppLinks.REPO_URL
         /** A ROM path: open straight on that game's CHEATS (its library menu). */
         const val EXTRA_CHEATS_ROM = "cheats_rom"
         /** Opens one page alone ([SCREEN_HELP]: the manual); BACK finishes. */
@@ -2402,7 +2285,7 @@ class SettingsActivity : ComponentActivity() {
         /** [EXTRA_SCREEN]: FOLDERS > ROMS FOLDERS alone (the library's + > MANAGE ROMS FOLDERS). */
         const val SCREEN_ROMS_FOLDERS = "ROMS_FOLDERS"
         /** Cheat files are text; anything bigger isn't one. */
-        const val MAX_CHEAT_FILE = 1 shl 20
+        const val MAX_CHEAT_FILE = com.pokedaisy.app.companion.GameCheats.MAX_FILE_BYTES
         /** Retail Emerald is 16 MB: the only size worth hashing for co-op. */
         const val EMERALD_ROM_BYTES = 16L * 1024 * 1024
         /** One picked overlay file at most (read into memory; a pack of a few 4K borders is ~20 MB). */
@@ -2419,17 +2302,9 @@ class SettingsActivity : ComponentActivity() {
         }
 
         /** What IMPORT FILE says once it's done (null: the file couldn't be read). */
-        fun cheatImportNotice(r: CheatStore.Import?): Pair<String, String> = when {
-            r == null -> tk("CAN'T READ THAT FILE") to tr("Pick a RetroArch .cht or an mGBA .cheats file.")
-            r.added == 0 && r.badCheats == 0 && r.duplicates == 0 ->
-                tk("NO CHEATS FOUND") to tr("That file has no cheats in a format PokeDaisy reads (RetroArch .cht, mGBA .cheats).")
-            else -> (if (r.added == 0) tk("NO CHEATS ADDED") else tr("{0} CHEATS ADDED", r.added)) to listOfNotNull(
-                tr("They start OFF: tap one to turn it on.").takeIf { r.added > 0 },
-                tr("{0} left out: mGBA can't read {1} of their code lines.", r.badCheats, r.badLines).takeIf { r.badCheats > 0 },
-                tr("{0} were already in the list.", r.duplicates).takeIf { r.duplicates > 0 },
-            ).joinToString(" ")
-        }
-        const val COFFEE_URL = "https://buymeacoffee.com/lidor30g"
+        fun cheatImportNotice(r: CheatStore.Import?): Pair<String, String> =
+            com.pokedaisy.app.companion.ui.cheatImportNotice(r)
+        const val COFFEE_URL = com.pokedaisy.app.companion.ui.AppLinks.COFFEE_URL
 
         fun rateLabel(v: Float) = if (v <= 0f) tk("INFINITE") else if (v % 1f == 0f) "${v.toInt()}×" else "$v×"
 

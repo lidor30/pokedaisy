@@ -77,6 +77,11 @@ class RomItemTextTest {
         Case("Pokemon Orange Islands.gba", GameKind.ORANGE_ISLANDS, NATIVE_ORANGE_ISLANDS, mapOf(13 to "20 points")),
         Case("Pokemon Ultra Violet (v1.22).gba", GameKind.FIRERED, NATIVE_ULTRA_VIOLET, mapOf(13 to "20 points")),
         Case("Pokemon FireRed Rocket Edition.gba", GameKind.FIRERED, NATIVE_ROCKET_EDITION, mapOf(13 to "20 points")),
+        Case("Pokemon Clover (v1.3.3).gba", GameKind.FIRERED, NATIVE_CLOVER, mapOf(13 to "20 points")),
+        Case("Pokemon Elysium (v2.5.0) (Part A).gba", GameKind.FIRERED, NATIVE_ELYSIUM_A, mapOf(13 to "20 points")),
+        Case("Pokemon Elysium (v2.5.0) (Part B).gba", GameKind.FIRERED, NATIVE_ELYSIUM_B, mapOf(13 to "20 points")),
+        Case("Pokemon Rhythm (v1.4.0).gba", GameKind.RHYTHM, NATIVE_RHYTHM, mapOf(13 to "20 points")),
+        Case("Pokemon Oops All Eevees (v1.3.2).gba", GameKind.OOPS_ALL_EEVEES, NATIVE_OOPS_ALL_EEVEES, mapOf(13 to "20 points")),
         Case("Pokemon Ash Gray (v4.5.3).gba", GameKind.FIRERED, NATIVE_ASH_GRAY, mapOf(13 to "20 points")),
         // Ghost Grey's RAGECANDYBAR in FireRed's POTION slot.
         Case("Pokemon Ghost Grey (v1.0.4).gba", GameKind.FIRERED, NATIVE_GHOST_GREY, mapOf(13 to "Heals 20 HP")),
@@ -103,6 +108,8 @@ class RomItemTextTest {
         Case("Pokemon Team Rocket Dragonsden Version.gba", GameKind.TEAM_ROCKET, NATIVE_TEAM_ROCKET, mapOf(121 to "a cave or a dungeon")),
         // Wishes of Tomorrow's POTION, as its bag screen prints it.
         Case("Pokemon Wishes of Tomorrow (v1.2.6).gba", GameKind.WISHES, NATIVE_WISHES, mapOf(28 to "by 20 points")),
+        Case("Pokemon Ceruleum (v1.1.1).gba", GameKind.CERULEUM, NATIVE_CERULEUM, mapOf(28 to "20 points")),
+        Case("Pokemon RecordKeepers (v1.2.1).gba", GameKind.RECORDKEEPERS, NATIVE_RECORDKEEPERS, mapOf(28 to "20 points")),
         // Monomyth's REPEL and ANTIDOTE, as its bag screen prints them (its own item ids, 32-byte gItems).
         Case("Pokemon Monomyth (v1.0).gba", GameKind.MONOMYTH, NATIVE_MONOMYTH, mapOf(93 to "for 100 steps", 33 to "poisoned")),
         Case("Pokemon Monomyth (v1.1).gba", GameKind.MONOMYTH, NATIVE_MONOMYTH_V1_1, mapOf(93 to "for 100 steps", 33 to "poisoned")),

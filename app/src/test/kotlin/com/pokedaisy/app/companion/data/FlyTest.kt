@@ -30,10 +30,20 @@ class FlyTest {
         val rom = mutableMapOf<Long, ByteArray>()
         /** sRegionMap as the warp saw it. */
         var pinnedTo = -1L
+        /** [FlyWithoutMove]'s state: the flags set, the HM in the bag, the slots that can learn it. */
+        val flags = mutableSetOf<Int>()
+        var hasHm = false
+        val learns = mutableSetOf<Int>()
 
         override fun call(fn: Long, a0: Int, a1: Int, a2: Int, a3: Int): Long = when (fn) {
             fns.fieldControlsLocked -> if (locked) 1 else 0
-            fly.flagGet -> { assertEquals(fly.badgeFlag, a0); if (badge) 1 else 0 }
+            fly.flagGet -> if (a0 == fly.badgeFlag) (if (badge) 1 else 0) else { assertTrue("flag $a0", fly.withoutMove?.flags.orEmpty().contains(a0)); if (a0 in flags) 1 else 0 }
+            fns.checkBagHasItem -> { assertEquals(fly.withoutMove?.hmItem, a0); if (hasHm) 1 else 0 }
+            fly.withoutMove?.canLearn -> {
+                assertEquals(fly.withoutMove?.hmItem, a1)
+                val slot = (((a0.toLong() and 0xFFFFFFFFL) - p.party) / p.monStride).toInt()
+                if (slot in learns) 0 else 1
+            }
             fly.setUpFieldMoveFly -> if (outdoors) 1 else 0
             fly.getMapsecType -> if (a0 in visited) 2 else 1
             fly.lockControls -> { calls += "lock"; locked = true; 1 }
@@ -86,6 +96,28 @@ class FlyTest {
         assertEquals(FlyResult.NO_FLYER, flyTargets(g.fns, false, g).result)
         g.locked = true
         assertEquals(FlyResult.NOT_NOW, flyTargets(g.fns, false, g).result)
+    }
+
+    /** Unbound's party menu (CFRU's ONLY_CHECK_ITEM_FOR_HM_USAGE): Fly without the move, by its flags or the HM and a
+     * Pokémon that can learn it. Its quick menu said "No one in your party knows FLY" while the game offered it (Discord). */
+    @Test
+    fun `a game that offers Fly without the move picks the Pokemon its party menu would`() {
+        val g = Game { it.copy(withoutMove = FlyWithoutMove(listOf(0x152D, 0x16E4), 438, 0x089F3B6CL, CRC32().apply { update(ByteArray(32)) }.value)) }
+        g.party[1] = Triple(0x222L, intArrayOf(33, 0, 0, 0), false) // nobody knows Fly
+        g.party += Triple(0x333L, intArrayOf(33, 0, 0, 0), false)
+        assertEquals(FlyResult.NO_FLYER, flyTargets(g.fns, false, g).result)
+        // The HM alone: only a Pokémon that can learn it.
+        g.hasHm = true
+        assertEquals(FlyResult.NO_FLYER, flyTargets(g.fns, false, g).result)
+        g.learns += 2
+        assertEquals(2 to 0x333L, flyTargets(g.fns, false, g).let { it.flyerSlot to it.flyerPersonality })
+        // The bought device: any Pokémon (the first), the HM not needed.
+        g.hasHm = false
+        g.flags += 0x152D
+        assertEquals(0 to 0x111L, flyTargets(g.fns, false, g).let { it.flyerSlot to it.flyerPersonality })
+        // One that knows it still goes first.
+        g.party[1] = Triple(0x222L, intArrayOf(19, 0, 0, 0), false)
+        assertEquals(1, flyTargets(g.fns, false, g).flyerSlot)
     }
 
     @Test

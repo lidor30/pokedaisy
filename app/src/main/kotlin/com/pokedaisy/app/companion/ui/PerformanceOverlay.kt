@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.fixed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -19,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
-import java.util.Locale
 
 /** What SETTINGS > FPS / CPU shows, measured over the last half second. */
 data class PerfReading(
@@ -74,7 +74,7 @@ fun PerformanceOverlay(reading: PerfReading, modifier: Modifier = Modifier, init
         // The dark box hugs the text; the padding outside it is the touch area (clear, so the game shows).
         Box(modifier.then(tap).padding(end = TOUCH_REACH, bottom = TOUCH_REACH)) {
             Line(
-                "%.1f FPS  CPU %s".format(Locale.ROOT, reading.fps, pct(reading.cpu)), m,
+                "${reading.fps.f1()} FPS  CPU ${pct(reading.cpu)}", m,
                 Modifier.background(Color(0xB0000000)).padding(horizontal = u * 3, vertical = u * 1),
             )
         }
@@ -89,20 +89,20 @@ fun PerformanceOverlay(reading: PerfReading, modifier: Modifier = Modifier, init
         Spacer(Modifier.padding(top = u * 2))
         val r = reading
         val stats = listOf(
-            Stat("FPS", "%.1f".format(Locale.ROOT, r.fps)),
-            Stat(tr("ON SCREEN"), "%.1f".format(Locale.ROOT, r.shownFps)),
-            Stat(tr("LATE"), "%.1f/s".format(Locale.ROOT, r.latePerSecond), warn = r.latePerSecond >= 1f),
-            Stat(tr("FRAME TIME"), "%.1f / %.1f ms".format(Locale.ROOT, r.frameMs, r.frameMaxMs)),
+            Stat("FPS", r.fps.f1()),
+            Stat(tr("ON SCREEN"), r.shownFps.f1()),
+            Stat(tr("LATE"), "${r.latePerSecond.f1()}/s", warn = r.latePerSecond >= 1f),
+            Stat(tr("FRAME TIME"), "${r.frameMs.f1()} / ${r.frameMaxMs.f1()} ms"),
             Stat(tr("EMULATION"), "${r.emulationLoad}%", warn = r.emulationLoad >= 85),
             Stat("CPU", pct(r.cpu) + (if (r.cores > 0) " / ${r.cores}" else "")),
             Stat(tr("SCREEN"), refreshText(r), warn = r.refreshesPerFrame == 0 && r.timerFallback != 0),
-            Stat(tr("GAME SPEED"), if (r.speed.isInfinite()) "FF" else "%sx".format(Locale.ROOT, trimFloat(r.speed))),
+            Stat(tr("GAME SPEED"), if (r.speed.isInfinite()) "FF" else "${trimFloat(r.speed)}x"),
             Stat(tr("AUDIO DROPOUTS"), "${r.audioDropouts}"),
-            Stat(tr("BATTERY"), r.batteryTempC?.let { "%.1f °C".format(Locale.ROOT, it) } ?: "--"),
+            Stat(tr("BATTERY"), r.batteryTempC?.let { "${it.f1()} °C" } ?: "--"),
             Stat(tr("THERMAL"), tr(thermalLabel(r.thermal)), warn = r.thermal >= 2),
             Stat(tr("MEMORY"), "${r.memoryMb} MB"),
-            Stat(tr("SNAPSHOTS"), "%.1f/s".format(Locale.ROOT, r.snapshotsPerSecond)),
-            Stat(tr("BATTLE CHECKS"), "%.1f/s".format(Locale.ROOT, r.battleChecksPerSecond)),
+            Stat(tr("SNAPSHOTS"), "${r.snapshotsPerSecond.f1()}/s"),
+            Stat(tr("BATTLE CHECKS"), "${r.battleChecksPerSecond.f1()}/s"),
         )
         // Two columns, the labels as wide as the widest (lines are all one height, so the rows line up).
         Row {
@@ -121,10 +121,13 @@ private class Stat(val label: String, val value: String, val warn: Boolean = fal
 
 private fun pct(v: Int?) = v?.let { "$it%" } ?: "--"
 
+/** One decimal, as `%.1f` printed it. */
+private fun Float.f1() = toDouble().fixed(1)
+
 private fun trimFloat(f: Float) = if (f % 1f == 0f) f.toInt().toString() else f.toString()
 
 private fun refreshText(r: PerfReading): String {
-    val hz = if (r.refreshHz > 0f) "%.0f Hz".format(Locale.ROOT, r.refreshHz) else "--"
+    val hz = if (r.refreshHz > 0f) "${r.refreshHz.toDouble().fixed(0)} Hz" else "--"
     if (r.refreshesPerFrame > 0) return "$hz · VSYNC ${r.refreshesPerFrame}:1"
     return "$hz · " + when (r.timerFallback) {
         1 -> tr("TIMER (AUDIO)")

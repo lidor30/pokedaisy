@@ -117,6 +117,7 @@ import okio.Path.Companion.toOkioPath
  * screen (1240x1080, landscape). See CLAUDE.md's "UI work" section.
  */
 open class CompanionScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     open val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(
@@ -399,7 +400,7 @@ open class CompanionScreenshotTest {
             if (rom.isFile && com.pokedaisy.app.companion.data.NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath())) com.pokedaisy.app.companion.data.NdsArt.dir = dir.toOkioPath()
             val t = com.pokedaisy.app.companion.data.readGen5Telemetry(FixtureMemoryReader.load("black2"), com.pokedaisy.app.companion.data.GEN5_BLACK2)
             val v = buildSnapshotView(t).copy(game = GameKind.BLACK2)
-            v.party.forEach { m -> m.iconAsset?.let { GameArt.get(paparazzi.context, it) } }
+            v.party.forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
             snapshot { AppTheme { MonDetailScreen(v.party, 0, {}, {}, initialShowStats = true) } }
         } finally {
             com.pokedaisy.app.companion.data.NdsArt.dir = null
@@ -442,7 +443,7 @@ open class CompanionScreenshotTest {
             else com.pokedaisy.app.companion.data.Gen2Art.extractTo(rom.readBytes(), RomArt.dirOverride!!)
         }
         val v = buildSnapshotView(read()).copy(game = game)
-        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(paparazzi.context, it) } }
+        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
         return v
     }
 
@@ -754,7 +755,7 @@ open class CompanionScreenshotTest {
                     ),
                 ),
             ),
-            SampleCompanion.Slots, SampleCompanion.Settings(), shareBestEffort = {}, gamePick = SamplePicker.actions,
+            SampleCompanion.Slots, SampleCompanion.Settings(), shareBestEffort = com.pokedaisy.app.companion.data.BestEffortSharing("1.0") {}, gamePick = SamplePicker.actions,
         )
     }
 
@@ -1508,7 +1509,7 @@ open class CompanionScreenshotTest {
             .let { if (onMap == null) it else it.copy(mapNum = onMap, regionMapSectionId = onMap) }
         val v = buildSnapshotView(t).copy(game = game)
         // The icon sheets load asynchronously in the app; decode them before the snapshot.
-        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(paparazzi.context, it) } }
+        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
         // The touch controls (FIGHT / moves) show with a battle input to drive.
         val input = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
             override val busy = false
@@ -1523,7 +1524,7 @@ open class CompanionScreenshotTest {
             val here = world.encounters(v.mapGroup, v.mapNum, v.progress)
             val teams = gameGuide(guideId(game, null))?.bosses.orEmpty().flatMap { b -> v.progress?.let { p -> b.trainers(p).flatMap { world.party(it, p) } }.orEmpty() }
             ((here.grass + here.water + here.oldRod + here.goodRod + here.superRod).map { it.species } + teams.map { it.species })
-                .forEach { sp -> com.pokedaisy.app.companion.data.spriteAsset("pokemon", sp)?.let { GameArt.get(paparazzi.context, it) } }
+                .forEach { sp -> com.pokedaisy.app.companion.data.spriteAsset("pokemon", sp)?.let { GameArt.get(it) } }
             snapshot {
                 AppTheme {
                     androidx.compose.runtime.CompositionLocalProvider(
@@ -1598,7 +1599,7 @@ open class CompanionScreenshotTest {
         }
         val t = com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load(fixture), cfg)
         val v = buildSnapshotView(t).copy(game = game)
-        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(paparazzi.context, it) } }
+        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
         val input = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
             override val busy = false
             override fun selectAction(actionIndex: Int) {}
@@ -1616,7 +1617,7 @@ open class CompanionScreenshotTest {
             val here = world.encounters(v.mapGroup, v.mapNum, v.progress)
             val teams = gameGuide(guideId(game, null))?.bosses.orEmpty().take(3).flatMap { b -> v.progress?.let { world.party(b.trainer(it), it) }.orEmpty() }
             ((here.grass + here.headbutt + here.headbuttRare).map { it.species } + teams.map { it.species })
-                .forEach { sp -> com.pokedaisy.app.companion.data.spriteAsset("pokemon", sp)?.let { GameArt.get(paparazzi.context, it) } }
+                .forEach { sp -> com.pokedaisy.app.companion.data.spriteAsset("pokemon", sp)?.let { GameArt.get(it) } }
             snapshot {
                 AppTheme {
                     androidx.compose.runtime.CompositionLocalProvider(
@@ -2168,6 +2169,28 @@ open class CompanionScreenshotTest {
     }
     @Test fun states() = tab("STATES")
     @Test fun settings() = tab("SETTINGS")
+
+    @Test fun ipadTouchSettings() = snapshot {
+        val settings = object : com.pokedaisy.app.companion.CompanionSettings by SampleCompanion.Settings() {
+            override val touchButtons = com.pokedaisy.app.companion.TouchButton.entries.toSet() - setOf(
+                com.pokedaisy.app.companion.TouchButton.X, com.pokedaisy.app.companion.TouchButton.Y,
+                com.pokedaisy.app.companion.TouchButton.QUICK_MENU, com.pokedaisy.app.companion.TouchButton.ZOOM,
+                com.pokedaisy.app.companion.TouchButton.REWIND)
+            override val touchSkinsSupported = false
+        }
+        CompanionScreen(SampleCompanion.snapshot, SampleCompanion.Slots, settings,
+            initialTab = "SETTINGS", initialSettingsPage = "TOUCH")
+    }
+
+    @Test fun ipadResumeSettings() = snapshot {
+        val settings = object : com.pokedaisy.app.companion.CompanionSettings by SampleCompanion.Settings() {
+            override val resumeGamesEditable = true
+            override val resumeBadge = com.pokedaisy.app.companion.NewFeatures.NEW_TAG
+            override val shownRows = setOf("RESUME GAMES", "LANGUAGE", "HELP")
+        }
+        CompanionScreen(SampleCompanion.snapshot, SampleCompanion.Slots, settings,
+            initialTab = "SETTINGS", initialSettingsRow = "RESUME GAMES")
+    }
 
     /** SETTINGS > CHEATS: the master switch and a game's three cheats, then a game with none. */
     @Test fun settingsCheats() = snapshot {

@@ -57,7 +57,7 @@ class LevelCapTest {
         }
     }
 
-    /** Every FireRed / LeafGreen / Emerald cart in the retail ROM dir (-DmultiRomDir=...). */
+    /** Every FireRed / LeafGreen / Emerald / Ruby / Sapphire cart in the retail ROM dir (-DmultiRomDir=...). */
     @Test
     fun everyRetailBuild() {
         val dir = File(System.getProperty("multiRomDir") ?: RETAIL_ROM_DIR)
@@ -65,11 +65,10 @@ class LevelCapTest {
         var checked = 0
         for (f in retailRomFiles(dir).filter { listOf("Pirate", "Debug").none { x -> x in it.name } }) {
             val code = f.inputStream().use { ByteArray(0xB0).also { b -> it.read(b) } }.let { String(it, 0xAC, 4) }
-            if (code.startsWith("AXV") || code.startsWith("AXP")) continue   // Ruby / Sapphire build getexp another way
             assertNotNull(f.name, LevelCap.find(f.toOkioPath()))
             checked++
         }
-        assertTrue("checked $checked", checked >= 15)
+        assertTrue("checked $checked", checked >= 40)
     }
 
     /** The cap for the real saves: the top level of the first boss their guide has ahead (FireRed's and Emerald's). */

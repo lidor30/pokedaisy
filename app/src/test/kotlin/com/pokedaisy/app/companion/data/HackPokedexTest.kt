@@ -73,6 +73,14 @@ class HackPokedexTest {
         assertEquals(setOf(225, 246, 361), dex.caught)
     }
 
+    /** Unbound IT: CFRU's flags, as English's - English's save booted in it; its dex said Seen 2 Borrius / 4 National, Caught 1. */
+    @Test
+    fun `Unbound IT - seen 4, caught 1`() {
+        val dex = state("unbound_it", NATIVE_UNBOUND_IT)
+        assertEquals(4 to 1, dex.seen.size to dex.caught.size)
+        assertEquals(setOf(443), dex.caught)
+    }
+
     /** Orange Islands: FireRed's flags - its continue screen said POKéDEX 2 (PIKACHU and the MEWTWO it starts with). */
     @Test
     fun `Orange Islands - two caught`() {
@@ -463,6 +471,26 @@ class HackPokedexTest {
             val clefairy = PokedexSource.entry(t, 35)!!
             assertEquals(35 to "Fairy", clefairy.species to clefairy.category)
             assertTrue(clefairy.abilities.isNotEmpty())
+        }
+
+    @Test
+    fun `Elysium entries - Part A in place, Part B repointed`() {
+        roms("Pokemon Elysium (v2.5.0) (Part A).gba", GameKind.FIRERED, POKEDEX_ELYSIUM_A) { t ->
+            assertEquals(4, PokedexSource.entry(t, 4)!!.species)
+        }
+        roms("Pokemon Elysium (v2.5.0) (Part B).gba", GameKind.FIRERED, POKEDEX_ELYSIUM_B) { t ->
+            val e = PokedexSource.entry(t, 4)!!
+            assertEquals(4, e.species)
+            assertTrue(e.abilities.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun `Clover entries - rev 0's tables rewritten in place, its own ability names`() =
+        roms("Pokemon Clover (v1.3.3).gba", GameKind.FIRERED, POKEDEX_CLOVER) { t ->
+            val arabomb = PokedexSource.entry(t, 4)!!
+            assertEquals("Bomb" to (6 to 85), arabomb.category to (arabomb.heightDm to arabomb.weightHg))
+            assertTrue(arabomb.abilities.isNotEmpty())
         }
 
     @Test

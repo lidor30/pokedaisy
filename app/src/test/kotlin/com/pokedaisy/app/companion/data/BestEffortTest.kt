@@ -32,6 +32,7 @@ class BestEffortTest {
         Game("Pokemon - Ruby Version (USA, Europe) (Rev 1).gba", "ruby_rev1", "AXVE", "RUBY"),
         Game("Pokemon Unbound (v2.1.1.1).gba", "unbound", "BPRE", "UNBOUND"),
         Game("Pokemon Unbound (v2.1.1.1) (French).gba", "unbound_fr", "BPRE", "UNBOUND_FR"),
+        Game("Pokemon Unbound (v2.1.1.1) (Italian v7).gba", "unbound_it", "BPRE", "UNBOUND_IT"),
         Game("Pokemon Orange Islands.gba", "orange_islands", "BPRE", "ORANGE_ISLANDS"),
         Game("Pokemon FireRed Rocket Edition.gba", "rocket_edition", "BPRE", "ROCKET_EDITION"),
         Game("Pokemon Ash Gray (v4.5.3).gba", "ash_gray", "BPRE", "ASH_GRAY"),

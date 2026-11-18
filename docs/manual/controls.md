@@ -31,7 +31,7 @@ Since a DS game and a GBA game never run at the same time, a button can be in bo
 
 In a game, the companion's `GAME BUTTONS` shows the group for the game you're playing under `ALL GAMES`. The top screen's Settings shows all three.
 
-To change one, tap its row (it says `PRESS A BUTTON…`) and press the button you want on your device. That works the same on the top screen and on the companion: there, while a row waits, the game's screen shows a window asking for the button and the keys you hold. `CANCEL`, or `BACK`, leaves the button as it was. `TURBO A`, `TURBO B`, the D-pad rows and the GBA and Game Boy rows also get `CLEAR`, which takes them off every button again.
+To change one, tap its row (it says `PRESS A BUTTON…`) and press the button you want on your device. That works the same on the top screen and on the companion: there, while a row waits, the game's screen shows a window asking for the button and the keys you hold. `CANCEL`, `BACK` or Escape leaves the button as it was. `TURBO A`, `TURBO B`, the D-pad rows and the GBA and Game Boy rows also get `CLEAR`, which takes them off every button again.
 
 The new button replaces everything that row had, keyboard key included. A button can only do one thing in a game: put it on a new row and it leaves the old one in the same games. `TO COMPANION` is the exception: it shares its button with whatever else is on it.
 
@@ -115,7 +115,7 @@ On the companion, the game's screen shows a window while a hotkey waits, with th
 
 ![Over the game while a companion hotkey waits: SAVE STATE, the button held so far, CLEAR SAVE STATE and CANCEL](shots/game-capture.png "The game's screen while the companion waits for keys")
 
-The new buttons replace the hotkey's whole binding, keyboard key included.
+The new buttons replace the hotkey's whole binding, keyboard key included. A binding takes effect after it saves; an invalid button or a failed save leaves the active controls alone.
 
 ![The companion's HOTKEYS page with the HOTKEYS switch and every hotkey's buttons](shots/companion-settings-hotkeys.png "HOTKEYS on the companion")
 
@@ -139,7 +139,7 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | --- | --- |
 | `PC` | Opens your game's own PC right where you stand, as in the [bag](bag.md). |
 | `HEAL` | Heals the whole party, as the nurse at a POKéMON CENTER does. It asks first (`YES` / `NO`), then shows each Pokémon's HP bar filling up. The other services are on a Pokémon's summary: see [CENTER](party.md#center-heal-relearn-forget-rename). |
-| `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move, or any Pokémon with [`NO HMS NEEDED`](#no-hms-needed) on. |
+| `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move, or any Pokémon with [`NO HMS NEEDED`](#no-hms-needed) on. In a game whose own party menu lets a Pokémon fly without knowing the move (Unbound), it goes by the game's rule. |
 | `TAKE OFF` | Takes off on your Pokémon's bird and lets you [fly over the map](map.md#flying-over-the-map); while you're up it says `LAND` and brings you down. The original games in every language, Emerald Legacy and the hacks listed in [Map](map.md#flying-over-the-map). |
 | `FLASH` | Lights up a dark cave, the way the move does from the game's party menu: the Pokémon that knows it shows up and the cave lights up. It only shows while a Pokémon in your party knows `FLASH` (any Pokémon will do with [`NO HMS NEEDED`](#no-hms-needed) on), and it's greyed out where it isn't dark. In Emerald it also opens the sealed wall in the ancient tomb when you stand where the game asks. It needs the same badge as in the game. |
 | The keep-away spray | Uses an item from your bag that keeps wild Pokémon away (the tile shows its icon and name). With more than one kind in your bag, it lists them with how many you have and how many steps each lasts, so you pick. While one is still working it's greyed out and says how many steps are left. |
@@ -154,9 +154,9 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 
 Press L3 and the menu stays open: move with the D-pad or the left stick (on the ring, point the stick at an action), press `A` to use it, and `B` (or L3 again) closes it. You can also tap an action on the screen. While the menu is open your buttons work it, not the game, and the game keeps running underneath.
 
-An action you can't use right now is greyed out and says why, like a battle going on or nothing for it in your bag. `BIKE` and `ROD` use the game's own way of using a registered item, so the game decides the rest: where you can't ride or fish, it tells you so. They work in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in Emerald Kaizo and Ultra Violet, which run on those games, and in SoulGold, through its own `SELECT` wheel (it borrows the wheel's bottom slot for a moment, then puts back what you had there). `PC`, `FLY` and the spray show only in games where the [bag](bag.md) and [map](map.md) offer them. `FLASH` works in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language PokeDaisy supports, and in Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Ultra Violet, Gaia, Odyssey, Orange Islands, Let's Go, Glazed, Emerald Kaizo, Emerald Legacy, Recharged Emerald, Lazarus, Emerald Imperium, Heart and Soul, SoulGold and the randomized games. It asks for the badge the game's own menu asks for (Unbound, Gaia and Orange Islands ask for none).
+An action you can't use right now is greyed out and says why, like a battle going on or nothing for it in your bag. `BIKE` and `ROD` use the game's own way of using a registered item, so the game decides the rest: where you can't ride or fish, it tells you so. They work in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in Emerald Kaizo and Ultra Violet, which run on those games, and in SoulGold, through its own `SELECT` wheel (it borrows the wheel's bottom slot for a moment, then puts back what you had there). On the DS they work in Platinum, HeartGold and SoulSilver, through the item you'd register to `Y` (it's borrowed for a moment, then yours is put back). `PC`, `FLY` and the spray show only in games where the [bag](bag.md) and [map](map.md) offer them. `FLASH` works in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language PokeDaisy supports, and in Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Ultra Violet, Gaia, Odyssey, Orange Islands, Let's Go, Glazed, Emerald Kaizo, Emerald Legacy, Recharged Emerald, Lazarus, Emerald Imperium, Heart and Soul, SoulGold and the randomized games. It asks for the badge the game's own menu asks for (Unbound, Gaia and Orange Islands ask for none).
 
-Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROLS` group of Settings on either screen): each action's row carries the icon of its tile. Its `STYLE` picks how they're laid out (tap it to switch):
+Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROLS` group of Settings on either screen): each action's row carries the icon of its tile. While a game is open, the companion's page lists only the actions that game has, so one your game can't do (`HEAL` in some ROM hacks, say) isn't there to turn on. Its `STYLE` picks how they're laid out (tap it to switch):
 
 - `RING` (to start with): the actions round a circle, like the weapon wheel in a modern game, each the same distance from the next. Point the left stick at one, and its name shows in the middle, with a light tick of vibration each time you move onto another one. The D-pad steps round it too.
 - `GRID`: rows of tiles, all the same size. The D-pad steps through them.
@@ -164,6 +164,8 @@ Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROL
 `LABELS` (on to start with) puts each action's name under its icon. Turn it off for icons alone, smaller and closer together: the highlighted one is then named under the row, or in the middle of the ring.
 
 To use another button, change the `QUICK MENU` hotkey.
+
+You can open it with the `QUICK MENU` touch button, even with `HOTKEYS` off. With hotkeys on, L3 or your chosen key opens and closes it. Use the D-pad, a hardware keyboard's game bindings, or the ring's left stick to choose, then press `A`. `B` returns from a destination or item list, then closes the menu. Held buttons stay out of the game until released after closing.
 
 ## Touch controls
 
@@ -182,7 +184,7 @@ To use another button, change the `QUICK MENU` hotkey.
 - **`EDIT LAYOUT`**: move the buttons yourself (see below).
 
 In a DS game the buttons get X and Y too, around A and B the way the DS has them: X on top, Y on the left.
-- **`POSITION`**: with the phone held upright, where the buttons sit in their space: `TOP`, `MIDDLE` (the default) or `BOTTOM`. Their space is the gap between the game and the companion, or the game itself when there's no gap. It doesn't move a `CUSTOM` layout, which keeps your own places. With `EXPAND` and `UNDER GAME` the buttons get a space that fits them exactly, so it's greyed out then.
+- **`POSITION`**: with the phone held upright, where the buttons sit in their space: `TOP`, `MIDDLE` (the default) or `BOTTOM`. With the companion `UNDER GAME`, their space is below the companion. With `AT BOTTOM`, it is the gap between the game and the companion, or the game itself when there's no gap. It doesn't move a `CUSTOM` layout, which keeps your own places. With `EXPAND` and `UNDER GAME` the buttons get a space that fits them exactly, so it's greyed out then.
 - **`COMPANION`**: with the phone held upright, the companion right `UNDER GAME` (the default), which leaves the space at the bottom of the screen for the buttons (when there's no room to spare, the companion and then the game get a little smaller to make that space), or `AT BOTTOM` of the screen. It's the same setting as the one in `DISPLAY OPTIONS`, and only on phones and other one-screen devices. With `EXPAND` on, the game fills everything above the companion, so `UNDER GAME` gives the buttons a strip of their own along the bottom of the screen instead, under the companion, where they never cover the game. With no touch controls on screen there's nothing to choose then, and the setting is greyed out.
 - **`SIZE`**: `SMALL`, `NORMAL`, `LARGE` or `X-LARGE`, for every button at once.
 - **`LOOK`**: how the buttons are drawn. `GLASS` (the default) is see-through with a light edge, `SOLID` fills them in, `OUTLINE` draws only their edges and words (a press fills one in), `CONSOLE` makes them look like a handheld's: raised, sinking a little when you press them, and `MODERN` draws smooth round buttons with plain lettering instead of pixels.
@@ -199,7 +201,7 @@ On a phone held upright the buttons sit between the game and the companion when 
 
 The `EXTRA BUTTONS` group adds buttons the GBA doesn't have. Turn each one on or off:
 
-- **`FF`** (on to start with): a tap turns fast-forward on or off; hold it for fast-forward only while you hold it. Its word lights up while fast-forward is on.
+- **`FF`** (on to start with): a tap turns fast-forward on or off; hold it for fast-forward only while you hold it. Its word lights up while fast-forward is on. Leaving the game or opening button capture cancels the touch hold without counting it as a tap.
 - **`QUICK MENU`** (on to start with): opens the [quick menu](#the-quick-menu). A phone has no button for it otherwise. Tap a tile to run it; a tap anywhere else closes it.
 - **`TURBO A`** and **`TURBO B`**: press A or B over and over while you hold them, like the [turbo buttons](#turbo-a-and-b).
 - **`SAVE STATE`** and **`LOAD STATE`**: save or load a state in the current slot, like the hotkeys. If you load one by mistake, the `UNDO LOAD` hotkey takes you back.
@@ -242,6 +244,8 @@ A phone held upright and held sideways each get their own layout: you edit the o
 
 Both show `N/A` on a game PokeDaisy can't read the field of yet.
 
+If you turn indoor running off while inside a building, leave and re-enter to restore that map's normal rule.
+
 ## WILD ENCOUNTERS
 
 `WILD ENCOUNTERS` turns wild Pokémon jumping out at you in grass, caves and water on or off. It's in the companion's `GAMEPLAY` group:
@@ -251,7 +255,7 @@ Both show `N/A` on a game PokeDaisy can't read the field of yet.
 
 Only random encounters change. Fishing, moves that lure wild Pokémon out and battles the story sets up still happen, and items that keep wild Pokémon away work as usual on top. The change applies at once, no restart needed.
 
-It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Brown, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
+It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Brown, Gold, Silver, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
 
 ## SHINY ODDS
 
@@ -275,7 +279,7 @@ Two of the games' old habits, each a switch in the companion's `GAMEPLAY` group.
 - **`LOW HP BEEP`** `OFF`: no more beeping in battle while your Pokémon's health bar is in the red. Every other sound stays.
 - **`FIELD POISON`** `OFF`: a poisoned Pokémon no longer loses health while you walk around, and never faints from it on the way. In battle poison works as ever, and it stays poisoned until you heal it.
 
-They work in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. Elsewhere they show `N/A`. The change applies at once, no restart needed.
+They work in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. On the Game Boy they work too, in Red, Blue, Yellow, Gold, Silver and Crystal and the hacks built on them. Elsewhere they show `N/A`. The change applies at once, no restart needed.
 
 ## BOSS RETRY
 
@@ -287,7 +291,7 @@ The battle starts over the same way, so try something different. Going back is a
 
 `SHINY ALERT` is for shiny hunting. Turn it on in the companion's `GAMEPLAY` group and it counts your wild battles in this game, and the moment a shiny one shows up it says so: fast-forward and turbo stop, the game's level-up tune plays and a line on the game screen names the Pokémon and how many battles it took. The battle waits at its menu, so you can't miss your chance to catch it.
 
-While it's on, the row shows the count so far. It starts from 0 when you turn it on and again after each shiny, and each game keeps its own. Trainers' battles don't count.
+While it's on, the row shows the count so far. It starts from 0 when you turn it on and again after each shiny, and each game keeps its own. Trainers' battles don't count. It works in the Game Boy Advance games the companion knows the shiny rule of, and in Gold, Silver, Crystal and the DS games too.
 
 It works in the same games as `SHINY ODDS`, and the two go well together. Elsewhere it shows `N/A`.
 
@@ -299,11 +303,11 @@ Normally only the Pokémon that fought gain EXP when you win, so the rest of you
 - **`SPLIT`** counts every Pokémon in your party as having fought: a win's EXP is shared out across the whole team, as the first games' version of this did. Each gets a smaller share, but nobody gets nothing.
 - **`FULL EXP`** gives every Pokémon in your party the EXP the one that fought would have had on its own. The game's own boosts still count: a held item that shares or boosts EXP, and the bonus for a Pokémon from a trade.
 
-Eggs are left out. The game shows each Pokémon's EXP as it comes, level ups and new moves included, and evolves the ones that leveled up once the battle is over. Battles that give no EXP in the game (link battles, the Battle Frontier) still give none.
+Eggs and fainted Pokémon are left out. The game shows each Pokémon's EXP as it comes, level ups and new moves included, and evolves the ones that leveled up once the battle is over. Battles that give no EXP in the game (link battles, the Battle Frontier) still give none.
 
 While it's on, [achievements](achievements.md) are paused, since some sets reward reaching a level.
 
-It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work (Ruby and Sapphire, and hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
+It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire, in every language and release PokeDaisy supports, and in many hacks built on their code. On the Game Boy it works in Red, Blue, Yellow, Gold, Silver and Crystal and the hacks built on them. Where it can't work (hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
 
 ## LEVEL CAP
 
@@ -313,7 +317,7 @@ A Pokémon at the cap gains nothing from a win until you beat that boss. One tha
 
 Only EXP from battles is capped: items that raise a level and the day care still work. Pair it with `EXP SHARE` to keep the whole team at the cap.
 
-It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work, or the game has no NEXT BOSS page to follow, the row shows `N/A`. Turning it off puts the game back as it was.
+It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work, or the game has no NEXT BOSS page to follow, the row shows `N/A`. Turning it off puts the game back as it was.
 
 ## NO HMS NEEDED
 

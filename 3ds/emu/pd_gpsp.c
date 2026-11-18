@@ -21,6 +21,7 @@
 // gpSP's own (gba_memory.c, the patch's arena hook; libretro.c).
 extern u8* (*gpsp_host_rom_arena)(size_t size);
 extern u8* gamepak_buffers[32];
+extern const unsigned gamepak_buffer_blocksize;
 u32 gpsp_backup_size(void);
 extern int gpsp_frontend_skip;
 #ifdef HAVE_DYNAREC
@@ -49,12 +50,17 @@ static void hblank_find(void); // the H-blank stand-in (below), set up as a game
 
 static struct {
     bool loaded;
+    uint8_t* romArena;
     struct pd_gpsp_host host;
     char savePath[1024];
     uint32_t keys;
     uint32_t* video;
+    const uint16_t* nativePixels;
+    size_t nativeStride;
     size_t stride;
     bool skipVideo;
+    bool lateNext;              // the next frame drawn is collected later (pd_gpsp_draw_late)
+    volatile bool latePending;  // a picture started and not collected: its hook still converts it
     uint32_t crc;
     // The save: what the file held past the save data (mGBA's clock), how big the save was, the last written copy's hash.
     uint8_t trailer[GBA_RTC_TRAILER];
@@ -65,7 +71,9 @@ static struct {
     int saveQuiet;
     int frames;
     bool threaded;
+    int threadStartError; // this open's attempt, not the previous game's worker
     volatile bool hookDrew; // the render thread's frame hook already wrote this frame into [video]
+    char lastWarn[160];     // gpSP's last warning or error, for a failed load's message
 } G;
 
 static void emu_log(const char* format, ...) {
@@ -82,12 +90,14 @@ static void emu_log(const char* format, ...) {
 // --- what gpSP's libretro layer asks its frontend ---
 
 static void core_log(enum retro_log_level level, const char* format, ...) {
-    if (!G.host.log || level < RETRO_LOG_WARN) return;
+    if (level < RETRO_LOG_WARN) return;
     char line[480];
     va_list args;
     va_start(args, format);
     vsnprintf(line, sizeof(line), format, args);
     va_end(args);
+    line[strcspn(line, "\n")] = 0;
+    snprintf(G.lastWarn, sizeof(G.lastWarn), "%s", line);
     emu_log("gpSP: %s", line);
 }
 
@@ -174,7 +184,10 @@ static void convert(const void* data, unsigned width, unsigned height, size_t pi
 static void video_refresh(const void* data, unsigned width, unsigned height, size_t pitch) {
     bool drew = G.hookDrew;
     G.hookDrew = false;
-    if (!data || !G.video || G.skipVideo || drew) return;
+    if (!data || G.skipVideo) return;
+    G.nativePixels = data;
+    G.nativeStride = pitch / sizeof(uint16_t);
+    if (!G.video || drew) return;
     convert(data, width, height, pitch);
 }
 
@@ -183,7 +196,8 @@ static void video_refresh(const void* data, unsigned width, unsigned height, siz
 static void frame_hook(const unsigned short* left, const unsigned short* right, unsigned pitch, void* arg) {
     (void) right;
     (void) arg;
-    if (!G.video || G.skipVideo) return;
+    // A picture collected late finishes while an undrawn frame runs: it's still wanted.
+    if (!G.video || (G.skipVideo && !G.latePending)) return;
     convert(left, 240, 160, pitch * sizeof(unsigned short));
     G.hookDrew = true;
 }
@@ -356,9 +370,32 @@ void pd_gpsp_flush_save(void) {
 
 static u8* own_arena(size_t size) {
     static u8* arena;
-    if (!arena) arena = malloc(size);
+    static size_t capacity;
+    if (!arena) {
+        arena = malloc(size);
+        if (arena) capacity = size;
+    }
+    if (size > capacity) return NULL;
     if (arena) memset(arena, 0, size);
     return arena;
+}
+
+#define GPSP_ROM_ARENA_SIZE (32u << 20)
+
+static u8* reserved_arena(size_t size) {
+    return size <= GPSP_ROM_ARENA_SIZE ? G.romArena : NULL;
+}
+
+// A fragmented gpSP cartridge cannot be exposed as a flat ROM to the
+// companion, mixer or CRC reader. Check before any of them can see it.
+static bool flat_rom_ready(void) {
+    if (!G.romArena || !gamepak_size || gamepak_size > GPSP_ROM_ARENA_SIZE) return false;
+    size_t blocks = (gamepak_size + gamepak_buffer_blocksize - 1) / gamepak_buffer_blocksize;
+    if (blocks > gamepak_buffer_count) return false;
+    for (size_t i = 0; i < blocks; ++i) {
+        if (gamepak_buffers[i] != G.romArena + i * gamepak_buffer_blocksize) return false;
+    }
+    return true;
 }
 
 bool pd_gpsp_open(const char* romPath, const char* savePath, const struct pd_gpsp_host* host, char* error, size_t errorLen) {
@@ -369,8 +406,15 @@ bool pd_gpsp_open(const char* romPath, const char* savePath, const struct pd_gps
     memset(&G, 0, sizeof(G));
     G.host = *host;
     snprintf(G.savePath, sizeof(G.savePath), "%s", savePath);
-    // The cartridge in one block, which the view and the patches count on: the host's, else one of our own (kept).
-    gpsp_host_rom_arena = host->romBuffer ? (u8 * (*) (size_t)) host->romBuffer : own_arena;
+    // Acquire the contiguous cartridge BEFORE retro_init(). Otherwise gpSP
+    // silently falls back to separate 1 MiB allocations and ROM scans crash.
+    G.romArena = host->romBuffer ? host->romBuffer(GPSP_ROM_ARENA_SIZE) : own_arena(GPSP_ROM_ARENA_SIZE);
+    if (!G.romArena) {
+        snprintf(error, errorLen, "gpSP needs a contiguous 32 MiB ROM buffer");
+        emu_log("gpSP: no contiguous 32 MiB ROM buffer; core not started");
+        return false;
+    }
+    gpsp_host_rom_arena = reserved_arena;
 
     retro_set_environment(environment);
     retro_set_video_refresh(video_refresh);
@@ -382,13 +426,35 @@ bool pd_gpsp_open(const char* romPath, const char* savePath, const struct pd_gps
     struct retro_game_info info = { romPath, NULL, 0, NULL };
     if (!retro_load_game(&info)) {
         retro_deinit();
-        snprintf(error, errorLen, "gpSP couldn't load it");
+        if (G.lastWarn[0]) snprintf(error, errorLen, "gpSP couldn't load it: %s", G.lastWarn);
+        else snprintf(error, errorLen, "gpSP couldn't load it (no reason given)");
         return false;
     }
+    if (!flat_rom_ready()) {
+        retro_unload_game();
+        retro_deinit();
+        snprintf(error, errorLen, "gpSP ROM buffer is fragmented or too small");
+        return false;
+    }
+#ifdef HAVE_DYNAREC
+    emu_log("gpSP JIT: %s; ROM cache %u KiB, RAM cache %u KiB",
+            dynarec_enable ? "enabled" : "INTERPRETER fallback",
+            (unsigned) (ROM_TRANSLATION_CACHE_SIZE >> 10), (unsigned) (RAM_TRANSLATION_CACHE_SIZE >> 10));
+#endif
     G.loaded = true;
-    if (host->threaded && video_thread_start(host->renderCore) == 0) {
-        video_thread_set_frame_hook(frame_hook, NULL);
-        G.threaded = true;
+    if (host->threaded) {
+        emu_log("gpSP render worker: target CPU %d, snapshots %u KiB plus stack/TLS",
+                host->renderCore, (video_thread_snapshot_bytes() + 1023) >> 10);
+        if (video_thread_start(host->renderCore) == 0) {
+            video_thread_set_frame_hook(frame_hook, NULL);
+            G.threaded = true;
+        } else {
+            static const char* const stages[] = { "unknown", "frame slot 0 allocation", "frame slot 1 allocation",
+                "line semaphore", "done semaphore", "sync semaphore", "VRAM snapshots", "thread creation" };
+            int err = G.threadStartError = video_thread_start_error();
+            unsigned stage = err < 0 && err >= -7 ? (unsigned) -err : 0;
+            emu_log("gpSP render worker FAILED: %s (stage %d); see thread-create Results", stages[stage], err);
+        }
     }
     G.crc = host->knownCrc ? host->knownCrc : crc32_of(gamepak_buffers[0], gamepak_size);
     read_save();
@@ -428,6 +494,24 @@ void pd_gpsp_render_us(unsigned* render, unsigned* wait) {
     *wait = G.threaded ? video_thread_last_wait_us() : 0;
 }
 
+void pd_gpsp_get_stats(struct pd_gpsp_stats* out) {
+    memset(out, 0, sizeof(*out));
+    out->threaded = G.threaded;
+    out->workerCpu = G.threaded ? video_thread_worker_cpu() : -1;
+    out->startError = G.threadStartError;
+    out->snapshotBytes = video_thread_snapshot_bytes();
+    if (G.threaded) {
+        out->renderUs = video_thread_last_render_us();
+        out->waitUs = video_thread_last_wait_us();
+        out->hookUs = video_thread_last_hook_us();
+    }
+#ifdef HAVE_DYNAREC
+    extern u32 pd_gpsp_rom_flushes, pd_gpsp_ram_flushes;
+    out->romFlushes = pd_gpsp_rom_flushes;
+    out->ramFullFlushes = pd_gpsp_ram_flushes;
+#endif
+}
+
 bool pd_gpsp_recompiling(void) {
 #ifdef HAVE_DYNAREC
     return G.loaded && dynarec_enable;
@@ -460,9 +544,30 @@ uint32_t pd_gpsp_keys(void) {
 
 void pd_gpsp_run_frame(void) {
     if (!G.loaded) return;
-    if (G.skipVideo) gpsp_frontend_skip = 1;
+    if (G.skipVideo) {
+        gpsp_frontend_skip = 1;
+    } else {
+        // A drawn frame collects any picture still on its way before it starts (video_thread.cc does it itself).
+        G.latePending = false;
+        if (G.lateNext && G.threaded) {
+            video_thread_defer_next_finish();
+            G.latePending = true;
+        }
+    }
+    G.lateNext = false;
     retro_run();
     track_save();
+}
+
+void pd_gpsp_draw_late(void) {
+    G.lateNext = G.threaded;
+}
+
+bool pd_gpsp_collect(void) {
+    if (!G.latePending) return false;
+    bool done = video_thread_complete_deferred() != 0;
+    G.latePending = false;
+    return done;
 }
 
 void pd_gpsp_reset(void) {
@@ -472,6 +577,11 @@ void pd_gpsp_reset(void) {
 void pd_gpsp_set_video(uint32_t* buffer, size_t stride) {
     G.video = buffer;
     G.stride = stride;
+}
+
+const uint16_t* pd_gpsp_native_pixels(size_t* stride) {
+    *stride = G.nativeStride;
+    return G.loaded ? G.nativePixels : NULL;
 }
 
 void pd_gpsp_skip_video(bool skip) {
@@ -493,11 +603,19 @@ static void ram_written(uint32_t addr, size_t len) {
     if (!ew && (addr >> 24) != 0x03) return;
     const uint8_t* marks = ew ? ewram + 0x40000 : iwram;
     uint32_t mask = ew ? 0x3FFFF : 0x7FFF;
-    for (size_t i = 0; i < len; i++)
-        if (marks[(addr + i) & mask]) {
-            flush_translation_cache_ram();
-            return;
+    bool touched = false;
+    for (size_t i = 0; i < len; i++) {
+        // gpSP stores a 16-bit code tag per halfword. A byte write must
+        // inspect both tag bytes, including when it hits the odd address.
+        uint32_t at = ((addr + (uint32_t) i) & mask) & ~1u;
+        if (marks[at] || marks[at + 1]) {
+            // The core can retain translations outside these writes. Without
+            // SMC notes, its compatibility fallback clears the whole RAM JIT.
+            smc_note_write(addr + (uint32_t) i);
+            touched = true;
         }
+    }
+    if (touched) flush_translation_cache_ram();
 #else
     (void) addr;
     (void) len;
@@ -506,6 +624,8 @@ static void ram_written(uint32_t addr, size_t len) {
 
 bool pd_gpsp_write(uint32_t addr, const void* data, size_t len) {
     if (!G.loaded) return false;
+    if (!len) return true;
+    if (!data) return false;
     const uint8_t* s = data;
     uint8_t* base;
     uint32_t off = addr & 0x00FFFFFF, size;
@@ -517,7 +637,8 @@ bool pd_gpsp_write(uint32_t addr, const void* data, size_t len) {
     case 0x07: base = (uint8_t*) oam_ram; off &= 0x3FF; size = 0x400; break;
     default: return false;
     }
-    if (off + len > size) return false;
+    if (off > size || len > size - off) return false;
+    if (((addr >> 24) == 2 || (addr >> 24) == 3) && !memcmp(base + off, s, len)) return true;
     memcpy(base + off, s, len);
     ram_written(addr, len);
     return true;
@@ -527,6 +648,9 @@ bool pd_gpsp_rom_write(uint32_t addr, const void* data, size_t len) {
     if (!G.loaded) return false;
     uint32_t off = addr - 0x08000000u;
     if (addr < 0x08000000u || off >= gamepak_size || len > gamepak_size - off) return false;
+    if (!len) return true;
+    if (!data) return false;
+    if (!memcmp(gamepak_buffers[0] + off, data, len)) return true;
     memcpy(gamepak_buffers[0] + off, data, len);
 #ifdef HAVE_DYNAREC
     flush_translation_cache_rom();

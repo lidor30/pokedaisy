@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
 import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import okio.Path
 
 /**
@@ -27,12 +29,17 @@ object RegionMapWatch {
     @Volatile
     private var watches = emptyList<Watch>()
 
+    private val lock = SynchronizedObject()
+    private var generation = 0
+
     /** Scans [rom] in the background for its map pointers. */
-    fun load(rom: Path) {
-        watches = emptyList()
+    fun load(rom: Path?) {
+        val current = synchronized(lock) { watches = emptyList(); ++generation }
+        if (rom == null) return
         background("pokedaisy-map-watch") {
             try {
-                watches = withRomFile(rom) { f -> find(f.readFully(0, minOf(f.size(), SCAN_END.toLong()).toInt())) }
+                val found = withRomFile(rom) { f -> find(f.readFully(0, minOf(f.size(), SCAN_END.toLong()).toInt())) }
+                synchronized(lock) { if (generation == current) watches = found }
             } catch (t: Throwable) {
                 Logs.w("RegionMapWatch: scan failed", t)
             }
@@ -82,7 +89,8 @@ object RegionMapWatch {
         fun u32(i: Int) = (rom[i].toLong() and 0xFF) or ((rom[i + 1].toLong() and 0xFF) shl 8) or
             ((rom[i + 2].toLong() and 0xFF) shl 16) or ((rom[i + 3].toLong() and 0xFF) shl 24)
         val end = minOf(rom.size, SCAN_END) - 8
-        return when (asciiString(rom, 0xAC, 4)) {
+        // Pokémon Clover: FireRed 1.0 under Emerald's code - FireRed's pattern.
+        return when (if (isFireRedUnderEmeraldHeader(rom)) "BPRE" else asciiString(rom, 0xAC, 4)) {
             // the other-language FireRed / LeafGreen too: the pattern finds their own pointer (and
             // Ultra Violet's, FireRed 1.0 under its own code)
             "BPRE", "BPGE", "BPRD", "BPRF", "BPRI", "BPRS", "BPGF", "BPGI", "BPGS", "PUVV" -> {

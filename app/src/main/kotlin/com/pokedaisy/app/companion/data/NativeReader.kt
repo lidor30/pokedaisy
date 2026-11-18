@@ -327,6 +327,11 @@ const val RECHARGED_YELLOW_ITEMS = 409
 fun isRechargedYellowRom(head: ByteArray): Boolean = head.size >= GF_HEADER_SB1_SIZE + 4 &&
     asciiString(head, 0xAC, 3) == "BPR" && u32le(head, GF_HEADER_SB1_SIZE) == RECHARGED_YELLOW_SB1_SIZE
 
+/** FireRed 1.0's code under Emerald's game code (Pokémon Clover): the cart header says BPEE, but the GF ROM header after it
+ * still names "pokemon red version" (0x108; Emerald's says "pokemon emerald version"). [head] from the ROM's start. */
+fun isFireRedUnderEmeraldHeader(head: ByteArray): Boolean = head.size >= 0x11B &&
+    asciiString(head, 0xAC, 4) == "BPEE" && asciiString(head, 0x108, 19) == "pokemon red version"
+
 private const val GF_HEADER_SB1_SIZE = 0x18C // struct GFRomHeader.saveBlock1Size
 private const val RECHARGED_YELLOW_SB1_SIZE = 0x3D94L
 
@@ -990,10 +995,14 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
         GameKind.ORANGE_ISLANDS -> genderRatiosOrangeIslands
         GameKind.SWORD_SHIELD -> genderRatiosSwordShield
         GameKind.GS_CHRONICLES -> genderRatiosGsChronicles
+        GameKind.RHYTHM -> genderRatiosRhythm
+        GameKind.OOPS_ALL_EEVEES -> genderRatiosOopsAllEevees
         GameKind.MARIOMON -> if (mariomonV13) genderRatiosMariomonV13 else genderRatiosMariomon
         GameKind.ELITE_REDUX -> genderRatiosEliteRedux
         GameKind.TEAM_ROCKET -> if (teamRocketV3) genderRatiosTeamRocketV3 else genderRatiosTeamRocket
         GameKind.WISHES -> genderRatiosWishes
+        GameKind.CERULEUM -> genderRatiosCeruleum
+        GameKind.RECORDKEEPERS -> genderRatiosRecordKeepers
         GameKind.MONOMYTH -> genderRatiosMonomyth
         GameKind.DREAMSTONE -> genderRatiosDreamstone
         else -> return this

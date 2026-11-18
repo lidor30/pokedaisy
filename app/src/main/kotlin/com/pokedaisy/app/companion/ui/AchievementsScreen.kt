@@ -1,9 +1,16 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.ui.graphics.ImageBitmap
+import kotlin.concurrent.Volatile
+import com.pokedaisy.app.companion.data.LockedMap
+import com.pokedaisy.app.companion.data.isFile
+import com.pokedaisy.app.companion.data.readBytes
+import com.pokedaisy.app.companion.data.writeAtomically
+import okio.Path
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -45,7 +52,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -64,42 +70,31 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.IO
 
 /**
  * Achievement badges (64x64 PNGs on RetroAchievements' media server), fetched
- * once into [dir] and decoded once. [dir] is set by the game's activity; null
+ * once into [dir] and decoded once. [dir] and [download] are set by the game's activity; [dir] null
  * (screenshot tests) = no downloads, every badge draws [PixelIcons.trophy].
  */
 object AchievementBadges {
-    @Volatile var dir: File? = null
-    private val cache = ConcurrentHashMap<String, Bitmap>()
+    @Volatile var dir: Path? = null
 
-    fun cached(url: String): Bitmap? = cache[url]
+    /** The badge's bytes off the network (blocking, IO thread), null when it can't be had: the platform's HTTP. */
+    @Volatile var download: (url: String) -> ByteArray? = { null }
+    private val cache = LockedMap<String, ImageBitmap>()
+
+    fun cached(url: String): ImageBitmap? = cache[url]
 
     /** Blocking (IO thread): the badge at [url], from disk or the network, or null. */
-    fun load(url: String): Bitmap? {
+    fun load(url: String): ImageBitmap? {
         cache[url]?.let { return it }
         val d = dir ?: return null
         val name = url.substringAfterLast('/').filter { it.isLetterOrDigit() || it == '_' || it == '.' }
         if (name.isEmpty()) return null
-        val f = File(d, name)
-        if (!f.isFile) runCatching {
-            d.mkdirs()
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 10000
-                readTimeout = 15000
-            }
-            val bytes = conn.inputStream.use { it.readBytes() }
-            conn.disconnect()
-            val tmp = File(d, "$name.part")
-            tmp.writeBytes(bytes)
-            tmp.renameTo(f)
-        }
-        val bmp = runCatching { BitmapFactory.decodeFile(f.path) }.getOrNull() ?: return null
+        val f = d / name
+        if (!f.isFile) runCatching { download(url)?.let { f.writeAtomically(it) } }
+        val bmp = runCatching { decodeImage(f.readBytes()) }.getOrNull() ?: return null
         cache[url] = bmp
         return bmp
     }
@@ -128,7 +123,7 @@ fun AchievementBadge(url: String?, size: Dp, modifier: Modifier = Modifier, dim:
         val b = bmp
         if (b != null) {
             Image(
-                b.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop,
+                b, contentDescription = null, contentScale = ContentScale.Crop,
                 filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize().padding(u * 2),
             )
         } else {
@@ -158,7 +153,7 @@ enum class AchievementFilter(val label: String, val short: String) {
 /** A request to open the list on achievement [id] (a tapped unlock / progress popup), marked as the
  * cursor row; [unlocked] = it's an unlock, so a LOCKED filter would hide it. [id] 0 = just the list. */
 class AchievementFocus(val id: Int, val unlocked: Boolean) {
-    val at = System.nanoTime()
+    val at = TimeSource.Monotonic.markNow()
 }
 
 /**
@@ -290,7 +285,7 @@ private fun AchievementList(
     // reported (it moves up to RECENTLY UNLOCKED), but not later, under a player scrolling.
     LaunchedEffect(marked, target) {
         val f = marked ?: return@LaunchedEffect
-        if (target >= 0 && System.nanoTime() - f.at < FOLLOW_MARKED_NANOS) listState.animateScrollToItem(target)
+        if (target >= 0 && f.at.elapsedNow() < FOLLOW_MARKED) listState.animateScrollToItem(target)
     }
     Column(modifier.fillMaxWidth()) {
         Row(
@@ -546,8 +541,8 @@ object AchievementPopupRoute {
 
     private val companions = LinkedHashSet<() -> Boolean>()
 
-    internal fun add(shown: () -> Boolean) { companions += shown }
-    internal fun remove(shown: () -> Boolean) { companions -= shown }
+    fun add(shown: () -> Boolean) { companions += shown }
+    fun remove(shown: () -> Boolean) { companions -= shown }
 
     /** A companion's popup host is on screen now. */
     fun companionSeen(): Boolean = companions.any { it() }
@@ -711,4 +706,4 @@ object AchievementIcons {
 }
 
 /** How long the list keeps scrolling to a popup's achievement as it re-sorts (see [AchievementList]). */
-private const val FOLLOW_MARKED_NANOS = 3_000_000_000L
+private val FOLLOW_MARKED = 3.seconds

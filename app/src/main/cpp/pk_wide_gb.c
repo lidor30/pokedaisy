@@ -52,6 +52,15 @@ static const struct GbGame { uint32_t crc; int gen; uint32_t a[GB_CONFIG]; } GB_
     // Pokémon Yellow (USA, Europe): pret/pokeyellow's symbols (its build is the cart byte for byte).
     { 0x7D527D62u, 1, { 0xC100, 0xC200, 0xC6E8, 0xD35E, 0xD360, 0xD362, 0xD366, 0xD367, 0xD36F, 0xD52A, 0xD3AC, 0xD056,
                         0xCFC3, 0xD5A5, 0xD5CD, GB_LINEAR(0x3F, 0x41F2), GB_LINEAR(0x3F, 0x43E4), 0xCC2D, 0xD746 } },
+    // Pokémon Yellow in German, French, Italian and Spanish (2026-11-18): English's code, its RAM 5 bytes on from wFontLoaded up
+    // (scripts/port_gen1.py on pokeyellow.sym, the same in all four), the map header tables where English's are.
+#define GB_YELLOW_EU { 0xC100, 0xC200, 0xC6E8, 0xD363, 0xD365, 0xD367, 0xD36B, 0xD36C, 0xD374, 0xD52F, 0xD3B1, 0xD05B, \
+                       0xCFC8, 0xD5AA, 0xD5D2, GB_LINEAR(0x3F, 0x41F2), GB_LINEAR(0x3F, 0x43E4), 0xCC2D, 0xD74B }
+    { 0x7A01E45Au, 1, GB_YELLOW_EU },   // Gelbe Edition
+    { 0xD03426E9u, 1, GB_YELLOW_EU },   // Version Jaune
+    { 0x8B56FE33u, 1, GB_YELLOW_EU },   // Versione Gialla
+    { 0x964B7A10u, 1, GB_YELLOW_EU },   // Edicion Amarilla
+#undef GB_YELLOW_EU
     // Pokémon Yellow Legacy v1.0.10: its pokeyellow.sym (its build is the patched cart byte for byte).
     { 0xE7D07A3Fu, 1, { 0xC100, 0xC200, 0xC6E8, 0xD3AC, 0xD3AE, 0xD3B0, 0xD3B4, 0xD3B5, 0xD3BD, 0xD578, 0xD3FA, 0xD057,
                         0xCFC3, 0xD5F3, 0xD61B, GB_LINEAR(0x3F, 0x41F2), GB_LINEAR(0x3F, 0x43E4), 0xCC2D, 0xD746 } },

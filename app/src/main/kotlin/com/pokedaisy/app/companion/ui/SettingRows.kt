@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.i18n.stripAccents
 import androidx.compose.foundation.layout.Column
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
@@ -220,8 +221,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "WILD ENCOUNTERS" to "wild encounters encounter rate random battles grass caves repel no encounters fewer battles",
 )
 
-private fun fold(s: String): String =
-    java.text.Normalizer.normalize(s.lowercase(), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+private fun fold(s: String): String = stripAccents(s.lowercase())
 
 /** A group's title row in [GroupedRows]. */
 fun groupTitle(label: String) = SettingRow(label, null, header = true) {}

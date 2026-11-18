@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import okio.Path.Companion.toOkioPath
 import com.pokedaisy.app.Hotkeys.Action
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -15,7 +16,7 @@ class HotkeyBindingTest {
 
     @Test
     fun clearedHotkeyStaysUnbound() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         Hotkeys.clearBinding(dir, Action.UNDO_SAVE)
         // Loaded again (defaults fill in missing keys): still nothing, not F3 back.
         assertEquals(emptyList<String>(), Hotkeys.load(dir).rawBindings[Action.UNDO_SAVE])
@@ -23,7 +24,7 @@ class HotkeyBindingTest {
 
     @Test
     fun companionHotkeyIsUnboundUntilThePlayerBindsIt() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         // Its whole point on one screen is replacing a hidden COMPANION BUTTON tab, so it must not take a button
         // from the game by default.
         assertEquals(emptyList<String>(), Hotkeys.load(dir).rawBindings[Action.COMPANION])
@@ -44,7 +45,7 @@ class HotkeyBindingTest {
 
     @Test
     fun movingAChordTakesOnlyThatChordOffTheOtherHotkey() {
-        val dir = tmp.newFolder()
+        val dir = tmp.newFolder().toOkioPath()
         Hotkeys.load(dir) // the defaults: SAVE STATE = SELECT+R1, F1
         Hotkeys.setBindingNamed(dir, Action.UNDO_SAVE, listOf("F1"), takeFrom = listOf(Action.SAVE_STATE))
         val raw = Hotkeys.load(dir).rawBindings

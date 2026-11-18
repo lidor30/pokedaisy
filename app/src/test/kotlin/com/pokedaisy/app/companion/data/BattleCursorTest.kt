@@ -31,6 +31,9 @@ class BattleCursorTest {
             "rocket_edition_battle" to NATIVE_ROCKET_EDITION, "ash_gray_battle" to NATIVE_ASH_GRAY, "ash_gray_fork_battle" to NATIVE_ASH_GRAY,
             "ghost_grey_battle" to NATIVE_GHOST_GREY, "ghost_grey_v101_battle" to NATIVE_GHOST_GREY_V1_0_1,
             "lets_go_pikachu_battle" to NATIVE_LETS_GO_PIKACHU, "lets_go_eevee_battle" to NATIVE_LETS_GO_EEVEE,
+            "clover_battle" to NATIVE_CLOVER, "elysium_a_battle" to NATIVE_ELYSIUM_A, "elysium_b_battle" to NATIVE_ELYSIUM_B,
+            "rhythm_battle" to NATIVE_RHYTHM,
+            "oops_all_eevees_battle" to NATIVE_OOPS_ALL_EEVEES,
             "recharged_yellow_v180_battle" to NATIVE_RECHARGED_YELLOW_V1_8_0, "recharged_yellow_v190_battle" to NATIVE_RECHARGED_YELLOW_V1_9_0,
             "recharged_yellow_v194_battle" to NATIVE_RECHARGED_YELLOW_V1_9_4, "recharged_yellow_battle" to NATIVE_RECHARGED_YELLOW_V1_9_7,
             "mariomon_v1_5_1_battle" to NATIVE_MARIOMON_V1_5_1, "mariomon_v1_5_2_battle" to NATIVE_MARIOMON_V1_5_2, "mariomon_v1_3_battle" to NATIVE_MARIOMON_V1_3,
@@ -47,6 +50,7 @@ class BattleCursorTest {
             "elite_redux_battle" to NATIVE_ELITE_REDUX_V2_65_4_1B, "elite_redux_v2653_battle" to NATIVE_ELITE_REDUX_V2_65_3B,
             "team_rocket_battle" to NATIVE_TEAM_ROCKET, "team_rocket_trainer" to NATIVE_TEAM_ROCKET,
             "wishes_battle" to NATIVE_WISHES, "wishes_trainer" to NATIVE_WISHES,
+            "ceruleum_battle" to NATIVE_CERULEUM,
             "dreamstone_battle" to NATIVE_DREAMSTONE, "dreamstone_trainer" to NATIVE_DREAMSTONE,
             "monomyth_battle" to NATIVE_MONOMYTH, "monomyth_trainer" to NATIVE_MONOMYTH,
             "monomyth_v1_1_battle" to NATIVE_MONOMYTH_V1_1, "monomyth_v1_1_trainer" to NATIVE_MONOMYTH_V1_1,
@@ -79,9 +83,19 @@ class BattleCursorTest {
         listOf(NATIVE_FIRERED_REV0_RETAIL, NATIVE_LEAFGREEN_REV0_RETAIL, NATIVE_LEAFGREEN_REV1_RETAIL).forEach {
             assertEquals(0x02023FF8L to 0x02023FFCL, it.actionCursor to it.moveCursor)
         }
-        // Copies whose RAM differs (or isn't checked) are zeroed; the hacks' base configs never had them.
-        (listOf(NATIVE_EMERALD_JA, NATIVE_LEAFGREEN_REV0, NATIVE_LEAFGREEN_REV1, NATIVE_EMERALD, NATIVE_FIRERED_REV0, NATIVE_EMERALD_ROGUE,
-        ) + listOf("BPGJ0", "BPGJ1", "BPGD0", "BPRJ0").map { RETAIL_PORTS.getValue(it)() }).forEach {
+        // Japanese Emerald and the FireRed / LeafGreen language ports (2026-11-18): mapped through the handlers' pools, a written
+        // POKéMON cell + A and a written move cell + A checked headless on each cart.
+        assertEquals(0x02024150L to 0x02024154L, NATIVE_EMERALD_JA.actionCursor to NATIVE_EMERALD_JA.moveCursor)
+        listOf("BPRD0", "BPRF0", "BPRI0", "BPRS0", "BPGD0", "BPGF0", "BPGI0", "BPGS0").forEach {
+            val p = RETAIL_PORTS.getValue(it)()
+            assertEquals(it, 0x02023FF8L to 0x02023FFCL, p.actionCursor to p.moveCursor)
+        }
+        listOf("BPRJ0", "BPRJ1", "BPGJ0", "BPGJ1").forEach {
+            val p = RETAIL_PORTS.getValue(it)()
+            assertEquals(it, 0x02023F58L to 0x02023F5CL, p.actionCursor to p.moveCursor)
+        }
+        // The bases the hacks copy are zeroed; the hacks' base configs never had them.
+        listOf(NATIVE_LEAFGREEN_REV0, NATIVE_LEAFGREEN_REV1, NATIVE_EMERALD, NATIVE_FIRERED_REV0, NATIVE_EMERALD_ROGUE).forEach {
             assertEquals(0L to 0L, it.actionCursor to it.moveCursor)
         }
     }

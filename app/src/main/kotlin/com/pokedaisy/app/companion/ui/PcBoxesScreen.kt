@@ -31,7 +31,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -61,6 +60,7 @@ import com.pokedaisy.app.companion.data.save.SaveEditRefused
 import com.pokedaisy.app.companion.data.speciesNames
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
+import kotlinx.coroutines.IO
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 
@@ -483,7 +483,7 @@ private fun InfoPair(label: String, value: String, m: GbaTextMetrics) {
 
 /** Party icons, decoded on demand (blocking: called off the UI thread) and cached by whoever loads them. */
 fun interface MonIconLoader {
-    fun load(species: Int): android.graphics.Bitmap?
+    fun load(species: Int): ImageBitmap?
 }
 
 /**
@@ -534,7 +534,7 @@ internal fun BoxGrid(
 internal fun BoxMonIcon(loader: MonIconLoader, mon: SaveMon, size: Dp) {
     val species = if (mon.isEgg) SPECIES_EGG else mon.species
     val bmp by produceState<ImageBitmap?>(null, loader, species) {
-        value = withContext(Dispatchers.IO) { runCatching { loader.load(species) }.getOrNull()?.let { cropToFirstFrame(it).asImageBitmap() } }
+        value = withContext(Dispatchers.IO) { runCatching { loader.load(species) }.getOrNull()?.let { cropToFirstFrame(it) } }
     }
     Box(Modifier.size(size)) {
         bmp?.let { Image(it, contentDescription = null, modifier = Modifier.size(size), filterQuality = FilterQuality.None) }

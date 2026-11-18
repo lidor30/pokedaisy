@@ -79,18 +79,17 @@ import com.pokedaisy.app.companion.i18n.tr
 class DsBattleMenuState {
     /** 0 nothing up (the keys go to the game), 1 the actions, 2 the moves. */
     var mode by mutableIntStateOf(0)
-        internal set
     /** FIGHT 0, BAG 1, POKéMON 2, RUN 3 (2 x 2: FIGHT BAG / POKéMON RUN). */
     var actionCursor by mutableIntStateOf(0)
     var moveCursor by mutableIntStateOf(0)
     /** Pokemon X / Y's actions: FIGHT over BAG, RUN, POKéMON in a row ([XyBattleCorner]). */
     internal var xy = false
 
-    internal var actionEnabled: (Int) -> Boolean = { true }
-    internal var moveEnabled: (Int) -> Boolean = { true }
-    internal var pickAction: (Int) -> Unit = {}
-    internal var pickMove: (Int) -> Unit = {}
-    internal var back: () -> Unit = {}
+    var actionEnabled: (Int) -> Boolean = { true }
+    var moveEnabled: (Int) -> Boolean = { true }
+    var pickAction: (Int) -> Unit = {}
+    var pickMove: (Int) -> Unit = {}
+    var back: () -> Unit = {}
 
     /** A button while the menu is up: true = it's the menu's (kept from the game). */
     fun key(k: MenuKey): Boolean {
@@ -256,7 +255,7 @@ fun DsBattleMenu(
         // bag or the party floats in (the corner is drawn over that window).
         if (holding || !active) return
         // (Its cursor breathes smoothly: the pulse eased, 0 .. 1.)
-        val breath = (0.5f - 0.5f * kotlin.math.cos(Math.PI.toFloat() * pulse / (PULSE_PX + 0.99f)))
+        val breath = (0.5f - 0.5f * kotlin.math.cos(kotlin.math.PI.toFloat() * pulse / (PULSE_PX + 0.99f)))
         XyBattleCorner(state, picture, shownMode, idle, moves, snapshot.battlePlayer.getOrNull(0)?.iconAsset, breath, power = hints)
         return
     }

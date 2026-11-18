@@ -503,6 +503,22 @@ bool pk_ndsm_write(uint32_t addr, const uint8_t* src, int len)
     return true;
 }
 
+bool pk_ndsm_code_write(uint32_t addr, const uint8_t* src, int len)
+{
+    if (!ds || !src || len <= 0) return false;
+    if ((addr & 0xFF000000u) == 0x02000000u) {
+        for (int i = 0; i < len; i++) ds->nds->MainRAM[(addr + (u32) i) & ds->nds->MainRAMMask] = src[i];
+        for (u32 a = addr & ~3u; a < addr + (u32) len; a += 4)
+            ds->nds->JIT.CheckAndInvalidate<0, ARMJIT_Memory::memregion_MainRAM>(a);
+        return true;
+    }
+    if (addr >= PK_NDS_HOOK_ADDR && addr + (u32) len <= 0x02000000u) {
+        pk_nds_call_itcm_write(ds->nds, addr, src, (u32) len);
+        return true;
+    }
+    return false;
+}
+
 static uint32_t mainRead32(uint32_t addr)
 {
     if ((addr & 0xFF000000u) != 0x02000000u) return 0;

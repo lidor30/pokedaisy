@@ -18,7 +18,8 @@ import okio.Path
  *
  * [find] reads the functions from the ROM, from the config's `completeWhenChoseItem` / `battlerControllerFuncs`: agbcc's
  * shape in FireRed / LeafGreen / Emerald (OpenBagAndChooseItem right before CompleteWhenChoseItem, PlayerHandleChooseItem the
- * one function holding it in its pool, its first call BeginNormalPaletteFade). Played headless on FireRed rev 1 and Emerald.
+ * one function holding it in its pool, its first call BeginNormalPaletteFade); Ruby / Sapphire's the same, OpenBagAndChooseItem
+ * 4 bytes shorter. Played headless on FireRed rev 1, Emerald, Japanese Emerald, German FireRed and Ruby rev 1.
  */
 object BattleBall {
     class Fns(
@@ -31,8 +32,9 @@ object BattleBall {
     )
 
     private const val ROM_BASE = 0x08000000L
-    /** OpenBagAndChooseItem's distance before CompleteWhenChoseItem in agbcc's builds. */
-    private const val OPEN_BAG_BEFORE = 0x3C
+    /** OpenBagAndChooseItem's distance before CompleteWhenChoseItem in agbcc's builds: FireRed / LeafGreen / Emerald's, then
+     * Ruby / Sapphire's (its function 4 bytes shorter). */
+    private val OPEN_BAG_BEFORE = listOf(0x3C, 0x38)
 
     private val cache = HashMap<String, Fns?>()
     private val lock = SynchronizedObject()
@@ -52,7 +54,7 @@ object BattleBall {
 
     fun find(rom: LittleEndianReader, completeWhenChose: Long, controllerFuncs: Long): Fns? {
         val c = ((completeWhenChose and 0xFFFFFFFEL) - ROM_BASE).toInt()
-        if (c < OPEN_BAG_BEFORE || c + 0x40 > rom.limit()) return null
+        if (c < 0x3C || c + 0x40 > rom.limit()) return null
         // CompleteWhenChoseItem: push {lr}; ldr gMain; ldr r1,[r0,#4]; ldr BattleMainCB2; cmp; bne; ldr gPaletteFade; ...
         // ldr gSpecialVar_ItemId; ldrh r1,[r0].
         if (half(rom, c) != 0xB500 || half(rom, c + 0x1A) != 0x8801) return null
@@ -60,10 +62,11 @@ object BattleBall {
         val itemId = literal(rom, c + 0x18) ?: return null
         if (!ewram(paletteFade) || !ewram(itemId)) return null
         // OpenBagAndChooseItem: push {lr}; ldr gPaletteFade; ... ldr gBattlerControllerFuncs; ... ldr CompleteWhenChoseItem|1.
-        val o = c - OPEN_BAG_BEFORE
-        if (half(rom, o) != 0xB500 || literal(rom, o + 2) != paletteFade || literal(rom, o + 0x0E) != (controllerFuncs and 0xFFFFFFFFL) ||
-            literal(rom, o + 0x18) != ROM_BASE + c + 1
-        ) return null
+        // 0x3C bytes before CompleteWhenChoseItem in FireRed / LeafGreen / Emerald, 0x38 in Ruby / Sapphire.
+        val o = OPEN_BAG_BEFORE.map { c - it }.firstOrNull { o ->
+            half(rom, o) == 0xB500 && literal(rom, o + 2) == paletteFade && literal(rom, o + 0x0E) == (controllerFuncs and 0xFFFFFFFFL) &&
+                literal(rom, o + 0x18) == ROM_BASE + c + 1
+        } ?: return null
         // PlayerHandleChooseItem: the one pool word OpenBagAndChooseItem|1; the function's first call is the fade.
         val want = (ROM_BASE + o + 1).toInt()
         var at = -1

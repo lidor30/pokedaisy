@@ -1,6 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
+import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.data.GEN1_YELLOW
 import com.pokedaisy.app.companion.data.GEN2_CRYSTAL
 import com.pokedaisy.app.companion.data.Gen1PartySwitch
@@ -315,8 +316,8 @@ class BattleInputControllerGbTest {
 
     private companion object {
         val KEYS = listOf(
-            MgbaCore.Key.A to "A", MgbaCore.Key.B to "B", MgbaCore.Key.LEFT to "LEFT",
-            MgbaCore.Key.RIGHT to "RIGHT", MgbaCore.Key.UP to "UP", MgbaCore.Key.DOWN to "DOWN",
+            CoreKey.A to "A", CoreKey.B to "B", CoreKey.LEFT to "LEFT",
+            CoreKey.RIGHT to "RIGHT", CoreKey.UP to "UP", CoreKey.DOWN to "DOWN",
         )
     }
 }

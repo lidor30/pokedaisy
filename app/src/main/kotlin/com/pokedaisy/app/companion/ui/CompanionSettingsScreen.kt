@@ -1,11 +1,11 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.badge
+import kotlin.time.Clock
 import com.pokedaisy.app.companion.SkinSystem
-
 import com.pokedaisy.app.companion.DsCore
 import com.pokedaisy.app.companion.NewFeatures
 import com.pokedaisy.app.companion.zoomLabel
-
 import com.pokedaisy.app.companion.data.LookChar
 import com.pokedaisy.app.companion.ui.theme.DarkMode
 import com.pokedaisy.app.companion.i18n.L10n
@@ -40,6 +40,7 @@ import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.companion.SCENE_SPEEDS
 import com.pokedaisy.app.companion.data.WildEncounters
 import com.pokedaisy.app.companion.COMPANION_TABS
+import com.pokedaisy.app.companion.gameButtonRequest
 import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.KeyCapture
 import com.pokedaisy.app.companion.BattleStyle
@@ -52,17 +53,21 @@ import com.pokedaisy.app.companion.next
 import com.pokedaisy.app.companion.FfMusicMode
 import com.pokedaisy.app.companion.MAX_BAR_TABS
 
-private val FF_RATES = floatArrayOf(0f, 1.5f, 2f, 3f, 4f, 5f, 6f, 8f, 10f)
+private val FF_RATES = com.pokedaisy.app.companion.FF_SPEEDS.toFloatArray()
 
 /** SETTINGS > STATUS BAR's choices: off, over the game, over the companion's tabs. */
-internal val STATUS_BAR_PLACES = listOf(tk("OFF"), tk("GAME"), tk("COMPANION"))
+val STATUS_BAR_PLACES = listOf(tk("OFF"), tk("GAME"), tk("COMPANION"))
 
-internal fun statusBarLabel(on: Boolean, onCompanion: Boolean) = STATUS_BAR_PLACES[if (!on) 0 else if (onCompanion) 2 else 1]
+fun statusBarLabel(on: Boolean, onCompanion: Boolean) = STATUS_BAR_PLACES[if (!on) 0 else if (onCompanion) 2 else 1]
 
-internal enum class Page(val title: String) { HOME(tk("SETTINGS")), TABS(tk("TAB BAR")), BUTTONS(tk("GAME BUTTONS")), HOTKEYS(tk("HOTKEYS")), SHADERS(tk("SHADERS")), FIELD_HUD(tk("HUD")), QUICK_MENU(tk("QUICK MENU")), TOUCH(tk("TOUCH CONTROLS")), SPEED(tk("SPEED OPTIONS")), DISPLAY(tk("DISPLAY OPTIONS")), CHEATS(tk("CHEATS")), TWEAKS(tk("TWEAKS")), COOP_PARTNERS(tk("PARTNERS")), HELP(tk("HELP")) }
+internal enum class Page(val title: String) { HOME(tk("SETTINGS")), TABS(tk("TAB BAR")), BUTTONS(tk("GAME BUTTONS")), HOTKEYS(tk("HOTKEYS")), SHADERS(tk("SHADERS")), FIELD_HUD(tk("HUD")), QUICK_MENU(tk("QUICK MENU")), TOUCH(tk("TOUCH CONTROLS")), SPEED(tk("SPEED OPTIONS")), DISPLAY(tk("DISPLAY OPTIONS")), CHEATS(tk("CHEATS")), CHEAT_ADD(tk("ADD CODE")), TWEAKS(tk("TWEAKS")), COOP_PARTNERS(tk("PARTNERS")), HELP(tk("HELP")) }
 
 /** Where BACK from a page goes: SHADERS opens from DISPLAY OPTIONS, the rest from HOME. */
-internal val Page.parent: Page get() = if (this == Page.SHADERS) Page.DISPLAY else Page.HOME
+internal val Page.parent: Page get() = when (this) {
+    Page.SHADERS -> Page.DISPLAY
+    Page.CHEAT_ADD -> Page.CHEATS
+    else -> Page.HOME
+}
 
 /**
  * The bottom-screen SETTINGS tab, laid out like FireRed's OPTION screen over
@@ -93,11 +98,16 @@ fun CompanionSettingsScreen(
     /** A ROM the app doesn't know: the game it's read as (BEST EFFORT), a GAME row at the top; [onPlaysAs] opens the picker. */
     playsAs: String? = null,
     onPlaysAs: () -> Unit = {},
+    /** The application uses the same page catalog with its searchable home and library header. */
+    application: Boolean = false,
+    homeExtras: List<SettingRow> = emptyList(),
+    applicationFooter: @Composable () -> Unit = {},
 ) {
     val m = rememberGbaTextMetrics()
     var page by ui::page
     // Settings aren't Compose state: bump this after each change to redraw the values.
     var tick by remember { mutableStateOf(0) }
+    var appSearch by remember { mutableStateOf("") }
     // HOME starts with a group title, so its first row is index 1. HOME's cursor and
     // scroll outlive its sub-pages: coming back lands on the row that opened one.
     var homeCursor by ui::homeCursor
@@ -112,6 +122,8 @@ fun CompanionSettingsScreen(
     val capturedKeys = capture?.keys
     DisposableEffect(page, capture) { onDispose { capture?.cancel() } }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
+    var cheatNotice by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var removingCheats by remember(page) { mutableStateOf(false) }
     var selector by remember { mutableStateOf<Selector?>(null) }
     // TOUCH CONTROLS > SKINS: the imported skins (read on the way in) and their pick-list.
     val touchSkinUi = remember { TouchSkinUi() }
@@ -128,11 +140,15 @@ fun CompanionSettingsScreen(
                 statusBarShown -> null
                 else -> gameName.ifEmpty { null }
             }
-            if (!(statusBarShown && page == Page.HOME)) {
+            if (application) {
+                AppPageTitle(page.title, m, home = page == Page.HOME,
+                    onBack = if (page != Page.HOME) ({ if (page != Page.HELP || !ui.docs.back()) page = page.parent }) else null,
+                    onHelp = { page = Page.HELP })
+            } else if (!(statusBarShown && page == Page.HOME)) {
                 // A sub-page's arrow (and BACK, through it) returns to the options.
                 val titleM = rememberGbaTextMetrics()
                 OptionTitleWindow(page.title, titleM, trailing = trailing, onBack = if (page != Page.HOME) ({ if (page != Page.HELP || !ui.docs.back()) page = page.parent }) else null) {
-                    if (!statusBarShown) {
+                    if (!statusBarShown && !application) {
                         Spacer(Modifier.width(titleM.u * 8))
                         BatteryIndicator(titleM)
                     }
@@ -152,21 +168,23 @@ fun CompanionSettingsScreen(
             }
             // EDIT LAYOUT saves over the game, outside this page: its revision redraws TOUCH CONTROLS.
             val touchRevision = settings?.touchRevision ?: 0
-            val rows = remember(settings, page, tick, availableTabs, playsAs, capturing, capturedKeys, touchRevision) {
+            val rows = remember(settings, page, tick, availableTabs, playsAs, capturing, capturedKeys, touchRevision, removingCheats) {
                 if (settings == null) return@remember listOf(SettingRow(tk("NO GAME RUNNING"), null) {})
                 when (page) {
                     Page.HOME -> playsAs?.let { game ->
-                        listOf(groupTitle(tk("GAME")), SettingRow(tk("PLAYS AS"), game, subtitle = "Which game this ROM is read as", opensPage = true) { onPlaysAs() })
+                        listOf(groupTitle(tk("GAME")), SettingRow(tk("PLAYS AS"), game, subtitle = "Which game this ROM is read as",
+                            opensPage = true, labelBadge = settings.gamePickBadge) { onPlaysAs() })
                     }.orEmpty() + homeRows(settings, barCount(settings, availableTabs), { tick++ }, { page = it }, { selector = it },
                         { c -> confirm = Confirm(c.title, c.message, c.confirmLabel, c.onConfirm).also { it.cancelLabel = c.cancelLabel; it.onCancel = c.onCancel } })
                         .let { if (settings.gameBlocked) withoutGameRows(it) else it }
+                        .let { rows -> settings.shownRows?.let { onlyRows(rows, it) } ?: rows } + homeExtras
                     Page.TABS -> COMPANION_TABS.map { id ->
                         val shown = id in settings.companionTabs
                         // A tab this game doesn't have (DEX, GUIDE) keeps its setting for the games that do.
                         if (id !in availableTabs) return@map SettingRow(companionTabLabel(id), tk("N/A")) {}
                         SettingRow(
                             companionTabLabel(id), if (shown) tk("SHOWN") else tk("HIDDEN"),
-                            labelBadge = if (id == "BOXES") NewFeatures.badge(NewFeatures.BOXES_TAB) else null,
+                            labelBadge = when (id) { "BOXES" -> NewFeatures.badge(NewFeatures.BOXES_TAB); "STATES" -> settings.statesBadge; else -> null },
                         ) {
                             val now = settings.companionTabs
                             when {
@@ -186,15 +204,12 @@ fun CompanionSettingsScreen(
                         val btns = GbaControls.Btn.entries.filter {
                             it.group == group && (it != GbaControls.Btn.TO_COMPANION || settings.usesSecondScreen || settings.buttonGroup == null)
                         }
+                        val bindings = settings.gbaControlBindings()
                         listOf(groupTitle(group.title)) + btns.map { btn ->
                             val title = btn.title
-                            SettingRow(title, bindingValue(capture, title, settings.gbaControlBindings()[btn]), subtitle = btn.subtitle, labelBadge = btn.badge) {
+                            SettingRow(title, bindingValue(capture, title, bindings[btn]), subtitle = btn.subtitle, labelBadge = settings.gameButtonsBadge ?: btn.badge) {
                                 capture?.toggle(title) {
-                                    KeyCapture.Request(
-                                        title, chord = false,
-                                        onDone = { keys -> settings.setGbaControlBinding(btn, KeyCapture.keyName(keys.first())); tick++ },
-                                        onClear = if (btn.canClear) ({ settings.clearGbaControlBinding(btn); tick++ }) else null,
-                                    )
+                                    settings.gameButtonRequest(btn) { tick++ }
                                 }
                             }
                         }
@@ -204,37 +219,40 @@ fun CompanionSettingsScreen(
                         ) { settings.resetGbaControls(); tick++ }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     // Off, the binds stay as they are, greyed out, and every key goes to the game.
-                    Page.HOTKEYS -> listOf(
-                        SettingRow(tk("HOTKEYS"), if (settings.hotkeysEnabled) tk("ON") else tk("OFF")) {
-                            settings.setHotkeysEnabled(!settings.hotkeysEnabled); tick++
-                        },
-                    ) + Hotkeys.Action.entries.map { action ->
-                        val title = action.title
-                        SettingRow(title, bindingValue(capture, title, settings.hotkeyBindings()[action]), enabled = settings.hotkeysEnabled, labelBadge = action.badge) {
-                            capture?.toggle(title) {
-                                KeyCapture.Request(
-                                    title, chord = true,
-                                    onDone = { keys ->
-                                        // A chord another hotkey already has exactly moves only on MOVE.
-                                        val names = keys.map(KeyCapture::keyName)
-                                        val taken = Hotkeys.clashes(settings.hotkeyBindings(), action, names)
-                                        if (taken.isEmpty()) { settings.setHotkeyBinding(action, names); tick++ }
-                                        else confirm = Confirm(
-                                            tk("KEY IN USE"),
-                                            tr("{0} is already {1}. Move it to {2}?", KeyCapture.chordLabel(keys), taken.joinToString(", ") { tr(it.title) }, tr(title)),
-                                            tk("MOVE"),
-                                        ) { settings.setHotkeyBinding(action, names, taken); tick++ }
-                                    },
-                                    // CLEAR leaves it unbound.
-                                    onClear = { settings.setHotkeyBinding(action, null); tick++ },
-                                )
+                    Page.HOTKEYS -> {
+                        val bindings = settings.hotkeyBindings()
+                        listOf(
+                            SettingRow(tk("HOTKEYS"), if (settings.hotkeysEnabled) tk("ON") else tk("OFF")) {
+                                settings.setHotkeysEnabled(!settings.hotkeysEnabled); tick++
+                            },
+                        ) + settings.hotkeyActions.map { action ->
+                            val title = action.title
+                            SettingRow(title, bindingValue(capture, title, bindings[action]), enabled = settings.hotkeysEnabled, labelBadge = settings.hotkeysBadge ?: action.badge) {
+                                capture?.toggle(title) {
+                                    KeyCapture.Request(
+                                        title, chord = true,
+                                        onDone = { keys ->
+                                            // A chord another hotkey already has exactly moves only on MOVE.
+                                            val names = keys.map(KeyCapture::keyName)
+                                            val taken = Hotkeys.clashes(settings.hotkeyBindings(), action, names)
+                                            if (taken.isEmpty()) { settings.setHotkeyBinding(action, names); tick++ }
+                                            else confirm = Confirm(
+                                                tk("KEY IN USE"),
+                                                tr("{0} is already {1}. Move it to {2}?", KeyCapture.chordLabel(keys), taken.joinToString(", ") { tr(it.title) }, tr(title)),
+                                                tk("MOVE"),
+                                            ) { settings.setHotkeyBinding(action, names, taken); tick++ }
+                                        },
+                                        // CLEAR leaves it unbound.
+                                        onClear = { settings.setHotkeyBinding(action, null); tick++ },
+                                    )
+                                }
                             }
-                        }
-                    } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
-                        confirm = Confirm(
-                            tk("RESET HOTKEYS?"), tr("Every hotkey goes back to the keys it had at first."), tk("RESET"),
-                        ) { settings.resetHotkeys(); tick++ }
-                    } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
+                        } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
+                            confirm = Confirm(
+                                tk("RESET HOTKEYS?"), tr("Every hotkey goes back to the keys it had at first."), tk("RESET"),
+                            ) { settings.resetHotkeys(); tick++ }
+                        } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
+                    }
                     Page.SHADERS -> shaderRows(settings) { tick++ } + SettingRow(tk("CANCEL"), null) { page = Page.DISPLAY }
                     Page.FIELD_HUD -> fieldHudRows(
                         settings.fieldHud, settings.fieldHudStyle,
@@ -248,19 +266,32 @@ fun CompanionSettingsScreen(
                         setStyle = { settings.setQuickMenuStyle(it); tick++ },
                         setLabels = { settings.setQuickMenuLabels(it); tick++ },
                         onHotkey = { page = Page.HOTKEYS },
+                        available = settings.quickMenuSupportedActions,
                     ) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.TOUCH -> touchControlsRows(
                         settings.touchStyle, set = { settings.setTouchStyle(it); tick++ },
                         onEdit = settings::editTouchLayout,
                         underGame = settings.uprightUnderGame, setUnderGame = { settings.setPortraitUnderGame(it); tick++ },
                         expand = settings.gameAspect == GameAspect.WIDE && settings.wideSupported, touchShown = settings.touchControlsShown,
-                        skins = touchSkins, skinUi = touchSkinUi,
+                        skins = touchSkins, skinUi = touchSkinUi.takeIf { settings.touchSkinsSupported },
                         skinSystem = settings.touchStage?.let { if (it.ds) SkinSystem.DS else if (it.gameBoy) SkinSystem.GB else SkinSystem.GBA } ?: SkinSystem.GBA,
                         feel = settings::feelVibration,
+                        buttons = settings.touchButtons, xyBadge = settings.touchXyBadge,
                     ) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.SPEED -> speedRows(settings, { tick++ }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.DISPLAY -> displayRows(settings, { tick++ }, { page = it }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
-                    Page.CHEATS -> cheatRows(settings) { tick++ } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
+                    Page.CHEATS -> cheatRows(settings, changed = { tick++ }, removing = removingCheats,
+                        onAdd = { page = Page.CHEAT_ADD },
+                        onImport = { settings.importCheats { result -> cheatNotice = cheatImportNotice(result); tick++ } },
+                        onRemoveMode = { removingCheats = !removingCheats },
+                        onRemove = { index ->
+                            settings.cheats.getOrNull(index)?.let { cheat ->
+                                confirm = Confirm(tk("REMOVE CHEAT?"), cheat.name, tk("REMOVE")) {
+                                    settings.removeCheat(index); tick++
+                                }
+                            }
+                        }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
+                    Page.CHEAT_ADD -> emptyList()
                     // Small preferences, each on by default (CompanionTweaks).
                     Page.TWEAKS -> CompanionTweaks.Tweak.entries.map { t ->
                         // LIGHT COMPANION keeps the animations off whatever these say (CompanionTweaks.get).
@@ -286,21 +317,28 @@ fun CompanionSettingsScreen(
             androidx.compose.runtime.key(page) {
                 // HELP: the manual, read from the docs API (no search box: the bottom screen can't host a keyboard).
                 if (page == Page.HELP) {
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    val source = remember { DocsSources.of(context) }
-                    DocsReader(ui.docs, m, source, Modifier.fillMaxWidth().weight(1f), searchable = false)
+                    val source = remember { DocsSources.get() }
+                    DocsReader(ui.docs, m, source, Modifier.fillMaxWidth().weight(1f), searchable = application)
+                } else if (page == Page.CHEAT_ADD && settings != null) {
+                    CheatAddForm(m, rememberGbaTextMetrics(textScale = 1f), ds = false, nextNumber = settings.cheats.size + 1,
+                        onCancel = { page = Page.CHEATS }, onAdd = { settings.addCheat(it); tick++; page = Page.CHEATS },
+                        modifier = Modifier.fillMaxWidth().weight(1f))
+                } else if (application && page == Page.HOME) {
+                    AppSettingsHome(rows, m, appSearch, { appSearch = it },
+                        Modifier.fillMaxWidth().weight(1f), scroll = homeScroll, footer = applicationFooter)
                 } else if (page == Page.TOUCH && settings != null) {
                     // The preview beside / above the rows; it follows each change (tick).
                     @Suppress("UNUSED_EXPRESSION") tick
                     @Suppress("UNUSED_EXPRESSION") touchRevision
-                    val style = settings.touchStyle
+                    val style = settings.touchStyle.forButtons(settings.touchButtons)
                     val density = androidx.compose.ui.platform.LocalDensity.current.density
                     val stage = settings.touchStage ?: remember(density) { simulateTouchStage(2400f, 1080f, density.coerceAtLeast(2f)) }
                     val shot = remember(settings) { settings.touchPreviewShot() }
                     TouchControlsPage(
                         stage, style, shot, m, Modifier.fillMaxWidth().weight(1f), underGame = settings.uprightUnderGame == true,
                         expand = settings.gameAspect == GameAspect.WIDE && settings.wideSupported, touchShown = settings.touchControlsShown,
-                        skins = touchSkins, skinUi = touchSkinUi, setStyle = { settings.setTouchStyle(it); tick++ },
+                        skins = touchSkins, skinUi = touchSkinUi.takeIf { settings.touchSkinsSupported }, setStyle = { settings.setTouchStyle(it); tick++ },
+                        otherStage = settings.touchStageInOtherOrientation,
                     ) { mod ->
                         OptionListWindow(m, mod) {
                             GroupedRows(rows, m, cursor, onClick = { i -> moveCursor(i); rows[i].onClick() }, onFocused = ::moveCursor)
@@ -323,7 +361,7 @@ fun CompanionSettingsScreen(
                             labelWeight = when (page) { Page.TWEAKS -> 0.8f; Page.CHEATS -> 0.75f; else -> 0.58f }, reveal = reveal, onRevealed = { ui.revealRow = null },
                             onFocused = ::moveCursor, groupTabs = page == Page.HOME) {
                             // Actions, not settings: the list's last line, out of the way of the options.
-                            if (page == Page.HOME && settings != null) {
+                            if (page == Page.HOME && settings != null && settings.hasRunningGame) {
                                 // A summary-window line sets them apart from the last group.
                                 Separator(m, Modifier.fillMaxWidth().padding(start = m.u * 4, end = m.u * 4, top = m.u * 8))
                                 // Room around them, so they don't read as one more row of the list.
@@ -405,6 +443,10 @@ fun CompanionSettingsScreen(
                 badge = sel.badge, note = sel.note,
             )
         }
+        cheatNotice?.let { (title, message) ->
+            OptionConfirm(title, message, tk("OK"), m, onConfirm = { cheatNotice = null },
+                onDismiss = { cheatNotice = null }, cancelLabel = null)
+        }
         confirm?.let { c ->
             OptionConfirm(
                 c.title, c.message, c.confirmLabel, m,
@@ -441,9 +483,15 @@ private fun setTabs(s: CompanionSettings, tabs: List<String>, changed: (List<Str
     changed(ordered)
 }
 
+/** A DS game on DSPERATE, which has no EXPAND: ASPECT says so rather than NOT YET (GitHub #1064: a HeartGold hack read
+ * as one EXPAND doesn't know). */
+// (BananaDS has EXPAND: only a core without it, DSperate, turns it off.)
+private fun wideOffOnDsperate(s: CompanionSettings): Boolean = s.dsCore != null && !DsCore.hasExpand(s.dsCoreRunning)
+
 /** WIDE on a game it doesn't know yet (it shows as ORIGINAL there). */
 private fun wideBadge(s: CompanionSettings, aspect: GameAspect): String? = when {
     aspect != GameAspect.WIDE -> null
+    wideOffOnDsperate(s) -> null
     !s.wideSupported -> tk("NOT YET")
     else -> tk("BETA")   // still not perfect (the user's call)
 }
@@ -485,6 +533,12 @@ private fun withoutGameRows(rows: List<SettingRow>): List<SettingRow> {
         if (r.header) skipping = r.label in BLOCKED_GROUPS
         !skipping && r.label !in BLOCKED_ROWS
     }
+}
+
+/** [rows] cut to the ones labelled in [shown], with the titles of the groups that still have one. */
+private fun onlyRows(rows: List<SettingRow>, shown: Set<String>): List<SettingRow> {
+    val kept = rows.filter { it.header || it.label in shown }
+    return kept.filterIndexed { i, r -> !r.header || kept.getOrNull(i + 1)?.header == false }
 }
 
 private fun homeRows(
@@ -574,22 +628,22 @@ private fun homeRows(
     return settingsLookRows(changed) + makeover + listOfNotNull(
         groupTitle(tk("FF / SPEED")),
         // On / off - the group's title already says fast-forward.
-        SettingRow("FF", onOff(s.ffToggled)) { s.setFfToggled(!s.ffToggled); changed() },
-        SettingRow(tk("FF SPEED"), rateLabel(s.ffMaxSpeed)) {
+        SettingRow("FF", onOff(s.ffToggled), labelBadge = s.playbackBadge) { s.setFfToggled(!s.ffToggled); changed() },
+        SettingRow(tk("FF SPEED"), rateLabel(s.ffMaxSpeed), labelBadge = s.playbackBadge) {
             select(Selector(tk("FF SPEED"), rateLabels, rateLabel(s.ffMaxSpeed)) { s.setFfMaxSpeed(FF_RATES[rateLabels.indexOf(it)]) })
         },
         // The game's own pace, kept per game: slow-motion that stays (0.5x, 0.25x) up to 4x. FF, when on, wins.
-        SettingRow(tk("GAME SPEED"), speedLabel(s.gameSpeed), subtitle = "The pace with FF off, kept per game") {
+        SettingRow(tk("GAME SPEED"), speedLabel(s.gameSpeed), labelBadge = s.playbackBadge, subtitle = "The pace with FF off, kept per game") {
             val speeds = s.gameSpeeds
             val labels = speeds.map(::speedLabel)
             select(Selector(tk("GAME SPEED"), labels, speedLabel(s.gameSpeed)) { l -> s.setGameSpeed(speeds[labels.indexOf(l)]) })
         },
         // Keeps the last ~20 s; the REWIND HOLD hotkey plays them backwards.
         if (s.rewindSupported) {
-            SettingRow(tk("REWIND"), onOff(s.rewind)) { s.setRewind(!s.rewind); changed() }
+            SettingRow(tk("REWIND"), onOff(s.rewind), labelBadge = s.rewindBadge) { s.setRewind(!s.rewind); changed() }
         } else null,
         // SCENE SPEEDS, FF MODE and FF MUSIC: set once and rarely touched, on their own page.
-        SettingRow(tk("SPEED OPTIONS"), null, subtitle = "Scene speeds, FF mode and FF music", opensPage = true) { navigate(Page.SPEED) },
+        SettingRow(tk("SPEED OPTIONS"), null, labelBadge = s.speedOptionsBadge, subtitle = "Scene speeds, FF mode and FF music", opensPage = true) { navigate(Page.SPEED) },
         groupTitle(tk("SOUND")),
         // The game's loudness under the device's own volume (100% = the device's); MUTE GAME keeps it for after.
         SettingRow(tk("GAME VOLUME"), gameVolumeLabel(s.gameVolume),
@@ -609,13 +663,13 @@ private fun homeRows(
         groupTitle(tk("GAMEPLAY")),
         // The game's own switch for random encounters (WildEncounters.kt): ON (the game's rate) or OFF.
         SettingRow(tk("WILD ENCOUNTERS"), if (s.wildEncountersSupported) wildEncountersLabel(s.wildEncounters) else tk("N/A"),
-            enabled = s.wildEncountersSupported) {
+            enabled = s.wildEncountersSupported, labelBadge = s.fieldOptionsBadge) {
             if (s.wildEncountersSupported) { s.setWildEncounters(if (s.wildEncounters == 0) 100 else 0); changed() }
         },
         // A text box's words appear at once, nothing else sped up (InstantText.kt: the game's text routine patched).
         SettingRow(
             tk("INSTANT TEXT"), if (s.instantTextSupported) onOff(s.instantText) else tk("N/A"),
-            enabled = s.instantTextSupported, labelBadge = NewFeatures.badge(NewFeatures.INSTANT_TEXT),
+            enabled = s.instantTextSupported, labelBadge = s.gameOptionsBadge ?: NewFeatures.badge(NewFeatures.INSTANT_TEXT),
         ) {
             if (s.instantTextSupported) { s.setInstantText(!s.instantText); changed() }
         },
@@ -646,7 +700,7 @@ private fun homeRows(
             tk("REUSABLE TMS"),
             when { s.reusableTmsBuiltIn -> tk("ON"); s.reusableTmsSupported -> onOff(s.reusableTms); else -> tk("N/A") },
             enabled = s.reusableTmsSupported && !s.reusableTmsBuiltIn,
-            labelBadge = NewFeatures.badge(NewFeatures.REUSABLE_TMS),
+            labelBadge = s.gameOptionsBadge ?: NewFeatures.badge(NewFeatures.REUSABLE_TMS),
             subtitle = if (s.reusableTmsBuiltIn) "This game's TMs never run out" else null,
         ) {
             if (s.reusableTmsSupported) { s.setReusableTms(!s.reusableTms); changed() }
@@ -765,20 +819,21 @@ private fun homeRows(
         SettingRow(
             tk("AUTO-RUN"),
             when { s.autoRunBuiltIn -> tk("ON"); s.fieldReadable -> onOff(s.autoRun); else -> tk("N/A") },
-            enabled = s.fieldReadable && !s.autoRunBuiltIn,
+            enabled = s.fieldReadable && !s.autoRunBuiltIn, labelBadge = s.fieldOptionsBadge,
             subtitle = if (s.autoRunBuiltIn) "This game has its own auto-run" else null,
         ) { if (s.fieldReadable) { s.setAutoRun(!s.autoRun); changed() } },
         // Every map lets the player run (buildings too); FireRed / Emerald engines.
-        SettingRow(tk("RUN INDOORS"), if (s.runIndoorsSupported) onOff(s.runIndoors) else tk("N/A"), enabled = s.runIndoorsSupported) { if (s.runIndoorsSupported) { s.setRunIndoors(!s.runIndoors); changed() } },
+        SettingRow(tk("RUN INDOORS"), if (s.runIndoorsSupported) onOff(s.runIndoors) else tk("N/A"), enabled = s.runIndoorsSupported, labelBadge = s.fieldOptionsBadge) { if (s.runIndoorsSupported) { s.setRunIndoors(!s.runIndoors); changed() } },
         // This game's cheats on / off (the codes are typed or imported in the top screen's Settings).
-        SettingRow(tk("CHEATS"), cheatsValue(s), opensPage = true) { navigate(Page.CHEATS) },
+        SettingRow(tk("CHEATS"), cheatsValue(s), labelBadge = s.cheatsBadge, opensPage = true) { navigate(Page.CHEATS) },
         groupTitle(tk("SCREEN")),
         // The game at the GBA's 3:2, stretched to fill the top screen, or WIDE (the overworld drawn past
         // its edges); WIDE is tagged BETA, or NOT YET on a game it doesn't know (which shows it as ORIGINAL).
         // A blocked game has no EXPAND: ORIGINAL or STRETCH, a saved EXPAND reading as ORIGINAL (what it plays as).
         run {
             val aspect = if (s.gameBlocked && s.gameAspect == GameAspect.WIDE) GameAspect.ORIGINAL else s.gameAspect
-            SettingRow(tk("ASPECT"), aspectLabel(aspect), if (s.gameBlocked) null else wideBadge(s, aspect), subtitle = "Original shape, stretched, or more of the map") {
+            val subtitle = if (aspect == GameAspect.WIDE && wideOffOnDsperate(s)) "Unavailable on DSPERATE" else "Original shape, stretched, or more of the map"
+            SettingRow(tk("ASPECT"), aspectLabel(aspect), if (s.gameBlocked) null else wideBadge(s, aspect), subtitle = subtitle) {
                 val aspects = GameAspect.entries.filter { !s.gameBlocked || it != GameAspect.WIDE }
                 select(
                     Selector(
@@ -814,8 +869,8 @@ private fun homeRows(
                 tk("DS CORE"), now, labelBadge = NewFeatures.badge(NewFeatures.DS_CORE_BANANADS),
                 subtitle = if (pending) "Takes effect when the game restarts" else "DSPERATE runs on weaker devices",
             ) {
-                select(Selector(tk("DS CORE"), DsCore.entries.map { it.label }, core.label) { l ->
-                    s.setDsCore(DsCore.entries.first { it.label == l }); changed()
+                select(Selector(tk("DS CORE"), DsCore.offered().map { it.label }, core.label) { l ->
+                    s.setDsCore(DsCore.offered().first { it.label == l }); changed()
                 })
             }
         },
@@ -879,7 +934,7 @@ private fun homeRows(
         s.companionWindow?.let { window ->
             SettingRow(
                 tk("COMPANION VIEW"), companionViewLabel(window),
-                labelBadge = NewFeatures.badge(NewFeatures.COMPANION_WINDOW), subtitle = "A window over the game, or a side panel",
+                labelBadge = s.companionViewBadge, subtitle = "A window over the game, or a side panel",
             ) { s.setCompanionWindow(!window); changed() }
         },
         // A foldable: OFF, HALF-OPEN, or ALWAYS.
@@ -1006,13 +1061,16 @@ private fun homeRows(
         SettingRow(tk("TWEAKS"), null, opensPage = true, subtitle = "Small animations and the battle jump") { navigate(Page.TWEAKS) },
     ) + coopRows(s, changed, navigate, pick = { title, choices, current, onPick -> select(Selector(title, choices, current) { onPick(it); changed() }) }, askLock = askLock) + listOfNotNull(
         groupTitle(tk("CONTROLS")),
-        SettingRow(tk("GAME BUTTONS"), null, subtitle = "Key bindings: which button presses A, B, START...", opensPage = true) { navigate(Page.BUTTONS) },
-        SettingRow(tk("HOTKEYS"), onOff(s.hotkeysEnabled), opensPage = true, subtitle = "Button combos for states, FF and more") { navigate(Page.HOTKEYS) },
+        SettingRow(tk("GAME BUTTONS"), null, labelBadge = s.gameButtonsBadge, subtitle = "Key bindings: which button presses A, B, START...", opensPage = true) { navigate(Page.BUTTONS) },
+        SettingRow(tk("HOTKEYS"), onOff(s.hotkeysEnabled), labelBadge = s.hotkeysBadge, opensPage = true, subtitle = "Button combos for states, FF and more") { navigate(Page.HOTKEYS) },
         // PC, FLY, a Repel, the bike, a rod, states, FF... on a held button (L3 by default): its own page.
-        SettingRow(tk("QUICK MENU"), null, subtitle = "Actions on a held button", labelBadge = quickMenuBadge(), opensPage = true) { navigate(Page.QUICK_MENU) },
+        SettingRow(tk("QUICK MENU"), null, subtitle = "Actions on a held button", labelBadge = s.quickMenuBadge ?: quickMenuBadge(), opensPage = true) { navigate(Page.QUICK_MENU) },
         // The on-screen buttons: when they show, layouts, size, extras, EDIT LAYOUT - its own page, with a preview.
-        SettingRow(tk("TOUCH CONTROLS"), s.touchStyle.show.label, labelBadge = touchControlsBadge(), opensPage = true, subtitle = "The on-screen buttons: layout, look, skins") { navigate(Page.TOUCH) },
+        SettingRow(tk("TOUCH CONTROLS"), s.touchStyle.show.label, labelBadge = s.touchBadge, opensPage = true, subtitle = "The on-screen buttons: layout, look, skins") { navigate(Page.TOUCH) },
         groupTitle(tk("APP")),
+        SettingRow(tk("RESUME GAMES"), onOff(s.autoResume), labelBadge = s.resumeBadge) {
+            s.setAutoResume(!s.autoResume); changed()
+        }.takeIf { s.resumeGamesEditable },
         // A card now and then about a feature the player hasn't found (FeatureTips).
         tipsRow(s.tips) { s.setTips(it); changed() },
         // AUTO: the ROM's own language. Applies at once, both screens.
@@ -1057,7 +1115,7 @@ internal fun coopRows(
         }
         is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> when (state.reason) {
             com.pokedaisy.app.companion.coop.CoopDropReason.CLOSED, com.pokedaisy.app.companion.coop.CoopDropReason.NETWORK -> {
-                val secs = ((state.retryAtMs - System.currentTimeMillis() + 999) / 1000).coerceAtLeast(0)
+                val secs = ((state.retryAtMs - Clock.System.now().toEpochMilliseconds() + 999) / 1000).coerceAtLeast(0)
                 tr("{0}: trying again in {1} s", state.partner.name, secs.toString())
             }
             else -> partnerName
@@ -1080,7 +1138,7 @@ internal fun coopRows(
 /** NEARBY RANGE (both screens): how far away a partner's battle can be joined from, in steps. */
 internal val COOP_NEARBY_RANGES = listOf(2, 4, 8, 16, 32)
 
-internal fun nearbyRangeRow(
+fun nearbyRangeRow(
     current: Int,
     pick: (title: String, choices: List<String>, current: String, onPick: (String) -> Unit) -> Unit,
     set: (Int) -> Unit,
@@ -1098,25 +1156,29 @@ private fun cheatsValue(s: CompanionSettings): String =
 
 /**
  * CHEATS: the master switch, then one row per cheat of this game, each flipping
- * live (the game loads it on the next frame). Adding codes needs a keyboard, so
- * that's the top screen's Settings > CHEATS; with none yet, this page says so.
+ * live. Hosts with a keyboard can use the same entry form and import result UI as the top-screen settings.
  */
-private fun cheatRows(s: CompanionSettings, changed: () -> Unit): List<SettingRow> {
+private fun cheatRows(s: CompanionSettings, changed: () -> Unit, removing: Boolean,
+                      onAdd: () -> Unit, onImport: () -> Unit, onRemoveMode: () -> Unit,
+                      onRemove: (Int) -> Unit): List<SettingRow> {
     fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
     val master = s.cheatsEnabled
     val cheats = s.cheats
-    return listOf(SettingRow(tk("CHEATS"), onOff(master), subtitle = "GameShark, Action Replay and CodeBreaker codes") { s.setCheatsEnabled(!master); changed() }) +
-        if (cheats.isEmpty()) {
-            listOf(
+    return listOf(SettingRow(tk("CHEATS"), onOff(master), labelBadge = s.cheatsBadge,
+        subtitle = "GameShark, Action Replay and CodeBreaker codes") { s.setCheatsEnabled(!master); changed() }) +
+        (if (cheats.isEmpty()) {
+            listOfNotNull(
                 SettingRow(tk("NO CHEATS FOR THIS GAME"), null, enabled = false) {},
-                SettingRow(tk("ADD THEM IN SETTINGS ON THE TOP SCREEN"), null, enabled = false) {},
+                if (!s.cheatsEditable) SettingRow(tk("ADD THEM IN SETTINGS ON THE TOP SCREEN"), null, enabled = false) {} else null,
             )
-        } else {
-            // Greyed out with the master switch off, like HOTKEYS' binds.
-            cheats.mapIndexed { i, c ->
-                SettingRow(c.name, onOff(c.enabled), enabled = master) { s.setCheatEnabled(i, !c.enabled); changed() }
-            }
-        }
+        } else cheats.mapIndexed { i, c ->
+            if (removing) SettingRow(c.name, tk("REMOVE")) { onRemove(i) }
+            else SettingRow(c.name, onOff(c.enabled), enabled = master) { s.setCheatEnabled(i, !c.enabled); changed() }
+        }) + if (s.cheatsEditable) listOfNotNull(
+            SettingRow(tk("ADD CODE"), null, labelBadge = s.cheatsBadge, opensPage = true, onClick = onAdd),
+            SettingRow(tk("IMPORT FILE"), null, onClick = onImport),
+            if (cheats.isNotEmpty()) SettingRow(tk(if (removing) "DONE" else "REMOVE"), null, onClick = onRemoveMode) else null,
+        ) else emptyList()
 }
 
 
@@ -1125,13 +1187,13 @@ private fun speedRows(s: CompanionSettings, changed: () -> Unit, select: (Select
     listOf(groupTitle(tk("SCENE SPEEDS"))) + sceneRows(s, changed, select) + listOf(
         groupTitle(tk("FAST-FORWARD")),
         // SMART: menus (party, bag, ... in battle too) and the region map at 1x; NORMAL: fast everywhere.
-        SettingRow(tk("FF MODE"), s.ffMode.label, subtitle = "SMART slows down for menus and the map") {
+        SettingRow(tk("FF MODE"), s.ffMode.label, labelBadge = s.speedOptionsBadge, subtitle = "SMART slows down for menus and the map") {
             val modes = FfMode.entries
             select(Selector(tk("FF MODE"), modes.map { it.label }, s.ffMode.label) { l -> s.setFfMode(modes.first { it.label == l }); changed() })
         },
         // STEADY / SPED-UP / OFF (FfMusicMode's order).
-        SettingRow(tk("FF MUSIC"), s.ffMusicMode.label, subtitle = "What you hear while fast-forwarding") {
-            val modes = FfMusicMode.entries
+        SettingRow(tk("FF MUSIC"), s.ffMusicMode.label, enabled = s.ffMusicModes.size > 1, subtitle = "What you hear while fast-forwarding") {
+            val modes = s.ffMusicModes
             select(Selector(tk("FF MUSIC"), modes.map { it.label }, s.ffMusicMode.label) { l -> s.setFfMusicMode(modes.first { it.label == l }); changed() })
         },
     )
@@ -1170,7 +1232,7 @@ private fun displayRows(s: CompanionSettings, changed: () -> Unit, navigate: (Pa
 private fun sceneRows(s: CompanionSettings, changed: () -> Unit, select: (Selector) -> Unit): List<SettingRow> {
     val labels = SCENE_SPEEDS.map(::sceneSpeedLabel)
     fun row(label: String, value: Float, enabled: Boolean = true, set: (Float) -> Unit) =
-        SettingRow(label, if (enabled) sceneSpeedLabel(value) else tk("N/A"), enabled = enabled) {
+        SettingRow(label, if (enabled) sceneSpeedLabel(value) else tk("N/A"), enabled = enabled, labelBadge = s.speedOptionsBadge) {
             if (enabled) select(Selector(label, labels, sceneSpeedLabel(value)) { l -> set(SCENE_SPEEDS[labels.indexOf(l)]); changed() })
         }
     return listOf(
@@ -1233,13 +1295,16 @@ private fun KeyCapture.toggle(title: String, request: () -> KeyCapture.Request) 
 
 /** WILD ENCOUNTERS' value: ON (the game's own rate) or OFF. */
 /** GAME VOLUME's value (both screens): "100%" .. "0%". */
-internal fun gameVolumeLabel(percent: Int) = "$percent%"
+fun gameVolumeLabel(percent: Int) = "$percent%"
 
-/** GAME VOLUME's slider (both screens): 0 - 100% in [com.pokedaisy.app.GameVolume.STEP]s, [set] on every move. */
-internal fun gameVolumeSlider(percent: Int, set: (Int) -> Unit) =
-    SettingSlider(percent, 0..100, com.pokedaisy.app.GameVolume.STEP, set)
+/** GAME VOLUME's slider moves in steps of this many percent (a drag, LEFT / RIGHT). */
+private const val GAME_VOLUME_STEP = 5
 
-internal fun wildEncountersLabel(percent: Int) = if (percent == 0) tk("OFF") else tk("ON")
+/** GAME VOLUME's slider (both screens): 0 - 100% in [GAME_VOLUME_STEP]s, [set] on every move. */
+fun gameVolumeSlider(percent: Int, set: (Int) -> Unit) =
+    SettingSlider(percent, 0..100, GAME_VOLUME_STEP, set)
+
+fun wildEncountersLabel(percent: Int) = if (percent == 0) tk("OFF") else tk("ON")
 
 /** SHINY ODDS' value: NORMAL (the game's own 1 in 8192), else "1 IN n". */
 private fun shinyOddsLabel(odds: Int): String =

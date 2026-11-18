@@ -15,23 +15,6 @@ object MgbaCore {
         System.loadLibrary("pokedaisy")
     }
 
-    /** GBA key bit positions, matching the native bridge. */
-    object Key {
-        const val A = 1 shl 0
-        const val B = 1 shl 1
-        const val SELECT = 1 shl 2
-        const val START = 1 shl 3
-        const val RIGHT = 1 shl 4
-        const val LEFT = 1 shl 5
-        const val UP = 1 shl 6
-        const val DOWN = 1 shl 7
-        const val R = 1 shl 8
-        const val L = 1 shl 9
-        /** The DS's X / Y (melonDS's key mask bits 10 and 11); a GBA core ignores them. */
-        const val X = 1 shl 10
-        const val Y = 1 shl 11
-    }
-
     /** Loads [romPath], attaches [savePath] as persistent SRAM, resets. */
     external fun pkInit(romPath: String, savePath: String?): Boolean
     external fun pkDeinit()
@@ -153,21 +136,21 @@ object MgbaCore {
     external fun pkPartnerPlace(visible: Boolean, fineX: Int, fineY: Int, frame: Int, hflip: Boolean, blobFrame: Int, bob: Int)
 
     // pkFieldState's bits (pk_wide.h's PK_FIELD_*).
-    const val FIELD_KNOWN = 1
-    const val FIELD_LOCKED = 2
-    const val FIELD_BATTLE = 4
-    const val FIELD_TEXT = 8
-    const val FIELD_BIKE = 16
+    const val FIELD_KNOWN = com.pokedaisy.app.companion.data.GameField.KNOWN
+    const val FIELD_LOCKED = com.pokedaisy.app.companion.data.GameField.LOCKED
+    const val FIELD_BATTLE = com.pokedaisy.app.companion.data.GameField.BATTLE
+    const val FIELD_TEXT = com.pokedaisy.app.companion.data.GameField.TEXT
+    const val FIELD_BIKE = com.pokedaisy.app.companion.data.GameField.BIKE
     /** WILD ENCOUNTERS set the game's switch: keep calling (with 100) until it's been put back. */
-    const val FIELD_WILD_HELD = 32
-    const val FIELD_SURF = 64
+    const val FIELD_WILD_HELD = com.pokedaisy.app.companion.data.GameField.WILD_HELD
+    const val FIELD_SURF = com.pokedaisy.app.companion.data.GameField.SURF
     /** [FIELD_BIKE] / [FIELD_SURF] come from the game's own player state (FIELD SPEED's BIKE / SURF rows work). */
-    const val FIELD_AVATAR = 128
+    const val FIELD_AVATAR = com.pokedaisy.app.companion.data.GameField.AVATAR
     /** A DS game's own: the overworld is on screen (its field map runs, nothing over it) - what FfMenuWatch.onField
      * tells for a GBA game. */
     const val FIELD_SCREEN = 256
     /** A DS game's own: a menu screen (party, bag, Pokédex, ...) runs over the field. */
-    const val FIELD_MENU = 512
+    const val FIELD_MENU = com.pokedaisy.app.companion.data.GameField.MENU
     /** A DS game's own: a battle waits for the player's command (FIGHT / BAG / POKéMON / RUN, a move, a target). */
     const val FIELD_BATTLE_INPUT = 1024
     /** A DS game's own: the game wants its touch screen now (DS LAYOUT floats it in; nds/pk_nds_field.cpp's touch rules). */
@@ -185,7 +168,7 @@ object MgbaCore {
     const val FIELD_TOP_ONLY = 131072
     /** A GBA game: a window up on the field's text layer while its controls are free (a START menu that doesn't lock them,
      *  Recharged Yellow's): AUTO-RUN keeps its B out of it (GitHub #610). */
-    const val FIELD_WINDOW = 262144
+    const val FIELD_WINDOW = com.pokedaisy.app.companion.data.GameField.WINDOW
     /** WIDE: the window to draw around the frame from the next frame on ([WideCamera]), in the frame's pixels
      * (its top-left 0, 0); [w] 0 = none. Any thread. */
     external fun pkWideSetView(x: Int, y: Int, w: Int, h: Int)
@@ -268,6 +251,10 @@ object MgbaCore {
      * closes it then: HeartGold / SoulSilver's menuInputState). Emu thread. */
     external fun pkNdsKeepStartMenu(on: Boolean)
 
+    /** Code of ours into a DS game ([com.pokedaisy.app.companion.data.DsInstantText]): main RAM or the spare ITCM, the JIT
+     * told. False on DSperate. Emu thread. */
+    external fun pkNdsCodeWrite(addr: Long, bytes: ByteArray): Boolean
+
     /** A DS game's screens fading by master brightness (towards black or white): the factor 0-16, the top screen's in
      * bits 0-7, the touch screen's in 8-15; 0 = no fade. Emu thread, after [pkRunFrame]. */
     external fun pkNdsFade(): Int
@@ -275,17 +262,10 @@ object MgbaCore {
     /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock - a game's own slow frames (HeartGold walking) go. Emu thread. */
     external fun pkNdsCpuBoost(on: Boolean)
 
-    /** DS CORE (companion.DsCore): the DS core the next [pkInit] of a DS cart starts, NDS_CORE_*. Emu thread. */
+    /** DS CORE (companion.DsCore): the DS core the next [pkInit] of a DS cart starts, companion.DsCore.CORE_*. Emu thread. */
     external fun pkNdsSetCore(core: Int)
-    /** The DS core that's up (NDS_CORE_*), -1 with no DS game. */
+    /** The DS core that's up (companion.DsCore.CORE_*), -1 with no DS game. */
     external fun pkNdsCore(): Int
-    /** melonDS (nds/pk_nds.cpp): every DS feature. */
-    const val NDS_CORE_MELONDS = 0
-    /** DSperate (nds/pk_nds_dsp.cpp): for weak devices; no EXPAND, DS RESOLUTION, PC / FLY calls, STEADY or DS CPU BOOST. */
-    const val NDS_CORE_DSPERATE = 1
-    /** BananaDS (bananads/pk_nds_bnd.cpp, libpkbananads.so): BananaOS's DS emulator; no EXPAND, DS RESOLUTION, PC / FLY
-     *  calls or STEADY. AArch64 only. */
-    const val NDS_CORE_BANANADS = 2
     /** [pkStateMatchesSave]'s answer for a DS state the other core made: it won't load. */
     const val STATE_OTHER_CORE = 2
     /** A DS game's Action Replay codes ([words], [lengths] words per cheat: cheats.DsCheats) into melonDS's AREngine,

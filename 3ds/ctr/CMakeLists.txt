@@ -100,6 +100,9 @@ target_include_directories(pokedaisy.elf PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp")
 # mGBA's headers size its structs by these, so ours must match the library's (see the colour note above).
 target_compile_definitions(pokedaisy.elf PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_NO_GUARD PK_WIDE_CACHE FIXED_ROM_BUFFER)
+# EXPAND's buffers at the top screen's size (pk_wide.h's default is 800 x 800, ~10 MB of static memory): with that,
+# 1.6.0's static memory left the 80 MB mode under 32 MB of heap and no game started. pd_session.c checks its window fits.
+target_compile_definitions(pokedaisy.elf PRIVATE PK_WIDE_MAX_VIEW_W=400 PK_WIDE_MAX_VIEW_H=240)
 target_compile_options(pokedaisy.elf PRIVATE -std=gnu11 -O2 -Wall -Wextra)
 # The app's version, for the library's SETTINGS > APP.
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../../app/build.gradle.kts" PD_VERSION_LINE REGEX "versionName = \"")
@@ -113,7 +116,7 @@ endif()
 # citro2d draws the screens (gpu.c); citro3d and libctru come with libmgba too.
 target_link_libraries(pokedaisy.elf pd_armgba pd_gpsp mgba citro2d citro3d ctru z m)
 pd_mgba_renames(pokedaisy.elf)
-target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3 -Wl,--wrap=free)
+target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3 -Wl,--wrap=free -Wl,--wrap=jitHostAllocCode -Wl,--wrap=svcCreateThread)
 
 if(PD_DEV)
     set(PD_TITLE "PokeDaisy [DEV]")

@@ -1,0 +1,24 @@
+# Pokemon Rhythm v1.4.0, from its own save (a new game played headless: ~/Documents/RetroArch/saves/mGBA/Pokemon Rhythm (v1.4.0).sav).
+# The intro / title / its credits page take A presses, then CONTINUE puts the player in the Notewood Town Pokemon Center.
+wait 120
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+wait 100

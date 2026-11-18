@@ -27,6 +27,8 @@ object RomFolder {
     private const val MAX_DS_ROM_BYTES = 512L shl 20
     /** The folder itself plus a few levels: a frontend's tree nests (`ROMs/gba/Pokemon/Retail/`, GitHub #233). */
     private const val MAX_DEPTH = 6
+    /** How often a long [scan] writes what it has checked so far. */
+    private const val PARTIAL_SAVE_NANOS = 3_000_000_000L
 
     /** A DS cart or an archive (which may hold one: GitHub #315, zipped DS games went missing) up to a DS cart's size. */
     private fun maxBytes(f: File): Long =
@@ -166,12 +168,19 @@ object RomFolder {
         }.distinctBy { canonical(it.path) }   // one file reached through two linked names: listed once
         val old = load(context)
         val fresh = LinkedHashMap<String, Entry>()
+        var savedAt = System.nanoTime()
         candidates.forEachIndexed { i, f ->
             val size = f.length()
             val modified = f.lastModified()
             val cached = old[f.absolutePath]?.takeIf { it.size == size && it.modified == modified && !it.legacy }
             fresh[f.absolutePath] = cached
                 ?: entryOf(size, modified, f)
+            // A long scan keeps what it has checked so far: closed halfway, the next one starts from there, and the
+            // library lists the games already checked meanwhile.
+            if (cached == null && System.nanoTime() - savedAt > PARTIAL_SAVE_NANOS) {
+                save(context, LinkedHashMap(old).apply { putAll(fresh) })
+                savedAt = System.nanoTime()
+            }
             onProgress(i + 1, candidates.size)
         }
         // Imported ROMs' verdicts ([checkImported]) live in the same cache, and so do an unreadable folder's.
@@ -271,24 +280,35 @@ object RomFolder {
     private fun load(context: Context): Map<String, Entry> {
         val f = cacheFile(context)
         if (!f.isFile) return emptyMap()
-        return runCatching {
-            val lines = f.readLines()
-            // Written before a game got its companion (an app update): only SUPPORTED answers still stand.
-            val stale = SUPPORTED !in lines
-            val blockedLine = BLOCKED
-            if (blockedLine !in lines) return@runCatching emptyMap()
-            lines.mapNotNull { line ->
-                val p = line.split('\t')
-                if (p.size != 4) return@mapNotNull null
-                val size = p[1].toLongOrNull() ?: return@mapNotNull null
-                val modified = p[2].toLongOrNull() ?: return@mapNotNull null
-                if (stale && p[3] != "1") return@mapNotNull null
-                p[0] to Entry(
-                    size, modified, p[3] == "1" || p[3] == "M" || p[3] == "B", partial = p[3] == "P", matched = p[3] == "M",
-                    tryable = p[3] == "T", pokemon = p[3] == "N", legacy = p[3] == "0", blocked = p[3] == "B" || p[3] == "X",
-                )
-            }.toMap()
-        }.getOrDefault(emptyMap())
+        return runCatching { parseCache(f.readLines()) }.getOrDefault(emptyMap())
+    }
+
+    /** The paths [load] keeps from a cache file's [lines], for tests: which answers stand after an app update. */
+    internal fun cachedPaths(lines: List<String>): Set<String> = parseCache(lines).keys
+
+    private fun parseCache(lines: List<String>): Map<String, Entry> {
+        // Written before a game got its companion (an app update): only SUPPORTED answers still stand.
+        val stale = SUPPORTED !in lines
+        // Written before the blocked list changed (1.5.x's has no #blocked line at all): only a file the size of a blocked
+        // game is checked again. 1.6.0 dropped the whole cache here, and an updated library stood empty ("No ROMs yet")
+        // for the minutes a full rescan of a big folder took, from zero again if the app was closed meanwhile.
+        val blockedStale = BLOCKED !in lines
+        return lines.mapNotNull { line ->
+            val p = line.split('\t')
+            if (p.size != 4) return@mapNotNull null
+            val size = p[1].toLongOrNull() ?: return@mapNotNull null
+            val modified = p[2].toLongOrNull() ?: return@mapNotNull null
+            if (stale && p[3] != "1") return@mapNotNull null
+            if (blockedStale && com.pokedaisy.app.companion.data.BlockedGames.mayList(size)) return@mapNotNull null
+            // An archive listed as another Pokémon game ("N") before such a listing needed a ROM of ours inside it (a
+            // zipped N64 game showed under GBA) is checked once more; one checked since is "Z".
+            val oldArchive = p[3] == "N" && RomArchive.isArchive(File(p[0]))
+            p[0] to Entry(
+                size, modified, p[3] == "1" || p[3] == "M" || p[3] == "B", partial = p[3] == "P", matched = p[3] == "M",
+                tryable = p[3] == "T", pokemon = p[3] == "N" || p[3] == "Z", legacy = p[3] == "0" || oldArchive,
+                blocked = p[3] == "B" || p[3] == "X",
+            )
+        }.toMap()
     }
 
     private fun save(context: Context, entries: Map<String, Entry>) {
@@ -296,7 +316,7 @@ object RomFolder {
         val tmp = File(f.parentFile, "${f.name}.tmp")
         runCatching {
             tmp.writeText(SUPPORTED + "\n" + BLOCKED + "\n" + entries.entries.joinToString("") { (path, e) ->
-                "$path\t${e.size}\t${e.modified}\t${if (e.blocked) (if (e.supported) "B" else "X") else if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else if (e.pokemon) "N" else "U"}\n"
+                "$path\t${e.size}\t${e.modified}\t${if (e.blocked) (if (e.supported) "B" else "X") else if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else if (e.pokemon) (if (RomArchive.isArchive(File(path))) "Z" else "N") else "U"}\n"
             })
             tmp.renameTo(f)
         }

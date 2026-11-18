@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.coop
 
 import java.io.File
+import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -27,14 +28,14 @@ class CoopPairsTest {
 
     @Test fun dropsPairsFromAnOlderBuild() {
         val f = file()
-        CoopPairs(f).add(pair(own = 1, peerByte = 7, ticket = "endpointabc"))
-        CoopPairs(f).add(pair(own = 2, peerByte = 8, ticket = null))
-        CoopPairs(f).add(pair(own = 3, peerByte = 9, ticket = ticketOf(5)))
-        assertEquals(setOf(2, 3), CoopPairs(f).all().map { it.ownSave.trainerId }.toSet())
+        CoopPairs(f.toOkioPath()).add(pair(own = 1, peerByte = 7, ticket = "endpointabc"))
+        CoopPairs(f.toOkioPath()).add(pair(own = 2, peerByte = 8, ticket = null))
+        CoopPairs(f.toOkioPath()).add(pair(own = 3, peerByte = 9, ticket = ticketOf(5)))
+        assertEquals(setOf(2, 3), CoopPairs(f.toOkioPath()).all().map { it.ownSave.trainerId }.toSet())
     }
 
     @Test fun addFindRemove() {
-        val pairs = CoopPairs(file())
+        val pairs = CoopPairs(file().toOkioPath())
         val p = pair()
         assertTrue(pairs.add(p))
         assertEquals(p, pairs.forSave(p.ownSave))
@@ -46,7 +47,7 @@ class CoopPairsTest {
     }
 
     @Test fun onePartnerPerSave() {
-        val pairs = CoopPairs(file())
+        val pairs = CoopPairs(file().toOkioPath())
         val first = pair(peerByte = 7)
         assertTrue(pairs.add(first))
         assertFalse(pairs.add(pair(peerByte = 9)))
@@ -55,26 +56,26 @@ class CoopPairsTest {
 
     @Test fun survivesReload() {
         val p = pair()
-        CoopPairs(file()).add(p)
-        val back = CoopPairs(file()).all()
+        CoopPairs(file().toOkioPath()).add(p)
+        val back = CoopPairs(file().toOkioPath()).all()
         assertEquals(listOf(p), back)
         assertEquals("MAY", back[0].partner.name)
         assertArrayEquals(may, back[0].partner.save.name)
     }
 
     @Test fun updateTicketAndNullTicket() {
-        val pairs = CoopPairs(file())
+        val pairs = CoopPairs(file().toOkioPath())
         val p = pair(ticket = null)
         pairs.add(p)
-        assertNull(CoopPairs(file()).forSave(p.ownSave)!!.lastTicket)
+        assertNull(CoopPairs(file().toOkioPath()).forSave(p.ownSave)!!.lastTicket)
         pairs.updateTicket(p.ownSave, ticketOf(6))
-        assertEquals(ticketOf(6), CoopPairs(file()).forSave(p.ownSave)!!.lastTicket)
+        assertEquals(ticketOf(6), CoopPairs(file().toOkioPath()).forSave(p.ownSave)!!.lastTicket)
     }
 
     @Test fun corruptFileIsKeptAside() {
         file().parentFile!!.mkdirs()
         file().writeText("{oops")
-        val pairs = CoopPairs(file())
+        val pairs = CoopPairs(file().toOkioPath())
         assertTrue(pairs.all().isEmpty())
         assertEquals("{oops", File(file().parentFile, "pairs.json.bad").readText())
         assertTrue(pairs.add(pair()))
@@ -107,23 +108,23 @@ class CoopPairsSafetyTest {
     private fun file() = File(tmp.root, "coop/pairs.json")
 
     @Test fun anIoErrorKeepsTheFileAndBlocksWrites() {
-        val good = CoopPairs(file())
+        val good = CoopPairs(file().toOkioPath())
         assertTrue(good.add(pair()))
         val before = file().readText()
-        val failing = CoopPairs(file(), read = { throw java.io.IOException("transient") })
+        val failing = CoopPairs(file().toOkioPath(), read = { throw java.io.IOException("transient") })
         assertTrue(failing.all().isEmpty())
         assertTrue(runCatching { failing.add(pair()) }.exceptionOrNull() is java.io.IOException)
         assertTrue(runCatching { failing.remove(pair().ownSave) }.exceptionOrNull() is java.io.IOException)
         assertTrue(runCatching { failing.updateTicket(pair().ownSave, "t") }.exceptionOrNull() is java.io.IOException)
         assertEquals(before, file().readText())
         assertFalse(File(file().parentFile, "pairs.json.bad").exists())
-        assertEquals(listOf(pair()), CoopPairs(file()).all())
+        assertEquals(listOf(pair()), CoopPairs(file().toOkioPath()).all())
     }
 
     @Test fun aFailedMoveAsideNeverLetsAWriteOverwrite() {
         file().parentFile!!.mkdirs()
         file().writeText("{oops")
-        val pairs = CoopPairs(file(), moveAside = { _, _ -> false })
+        val pairs = CoopPairs(file().toOkioPath(), moveAside = { _, _ -> false })
         assertTrue(pairs.all().isEmpty())
         assertTrue(runCatching { pairs.add(pair()) }.exceptionOrNull() is java.io.IOException)
         assertEquals("{oops", file().readText())
@@ -132,9 +133,9 @@ class CoopPairsSafetyTest {
     @Test fun anEarlierBadFileIsNeverDestroyed() {
         file().parentFile!!.mkdirs()
         file().writeText("{first")
-        CoopPairs(file()).all()
+        CoopPairs(file().toOkioPath()).all()
         file().writeText("{second")
-        CoopPairs(file()).all()
+        CoopPairs(file().toOkioPath()).all()
         val texts = file().parentFile!!.listFiles()!!.filter { it.name.startsWith("pairs.json.bad") }.map { it.readText() }.toSet()
         assertEquals(setOf("{first", "{second"), texts)
         assertFalse(file().exists())
