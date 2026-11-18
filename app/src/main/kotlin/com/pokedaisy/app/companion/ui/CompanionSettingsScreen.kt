@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.badge
 import kotlin.time.Clock
 import com.pokedaisy.app.companion.SkinSystem
@@ -783,6 +784,14 @@ private fun homeRows(
         ) {
             if (s.lowHpBeepSupported) { s.setLowHpBeep(!s.lowHpBeep); changed() }
         },
+        // A Game Boy game: B held while walking moves at the bike's speed (GbGamePatches' RUNNING SHOES).
+        SettingRow(
+            tk("RUNNING SHOES"), if (s.runningShoesSupported) onOff(s.runningShoes) else tk("N/A"),
+            enabled = s.runningShoesSupported, labelBadge = NewFeatures.badge(NewFeatures.RUNNING_SHOES),
+            subtitle = "Hold B to run while you walk",
+        ) {
+            if (s.runningShoesSupported) { s.setRunningShoes(!s.runningShoes); changed() }
+        }.takeIf { com.pokedaisy.app.companion.data.activeGame.isGameBoyGame },
         SettingRow(
             tk("FIELD POISON"), if (s.fieldPoisonSupported) onOff(s.fieldPoison) else tk("N/A"),
             enabled = s.fieldPoisonSupported, labelBadge = NewFeatures.badge(NewFeatures.FIELD_POISON),

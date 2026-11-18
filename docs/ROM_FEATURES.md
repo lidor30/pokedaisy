@@ -1040,3 +1040,13 @@ Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draw
     (`picBankOffset`). Only the RAM-driven columns are marked: nothing else was played here (no copy of the hacks on the
     machine that wrote this), and Yellow's bank 0 is 0x12 off retail's (its STEADY addresses moved with it), so
     GbField's fixed-address checks likely turn its field features off. Their colours and music weren't compared with the game.
+
+57. RUNNING SHOES on the Game Boy (2026-11-19, from marthinmooy's PR #1171, ported to `GbGamePatches.run`): B held while
+    walking gives the bike's speed. Red / Blue hook .moveAhead2's bike check (0x05CC), Yellow DoBikeSpeedup's (0x049D),
+    Gold / Silver / Crystal DoPlayerMovement's .BikeCheck (04:43CA / 20:43CA), each by its shape with its RAM and joypad
+    operands read from the cart's own code; the trampoline (21 / 16 / 18 bytes) at the end of the hook's bank in the cart's
+    padding, which its write checks. Only walking speeds up: the bike and the skates keep the game's own answer, and every
+    other state (surfing) is "not the bike". Found in English Red, Blue, Yellow, Gold, Silver, Crystal (rev 0, rev 1, AU),
+    Italian Yellow and Crystal Legacy (not played); N/A in the Spanish / German / French Yellows (12 to 14 bytes of bank 0
+    padding for a 16-byte trampoline), Brown, PureRed / PureBlue, Yellow Legacy, Crystal Clear (1 byte), Prism (27 bytes,
+    under the 64 kept) and Polished Crystal (no .GetDPad). `GbRunningShoesTest`.

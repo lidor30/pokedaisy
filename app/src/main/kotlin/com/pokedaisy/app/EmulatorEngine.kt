@@ -187,6 +187,8 @@ class EmulatorEngine(
     /** LOW HP BEEP / FIELD POISON off ([com.pokedaisy.app.companion.data.QuietPatches]; null = none known). */
     fun setQuietPatches(found: com.pokedaisy.app.companion.data.QuietPatches.Found?, beepOff: Boolean, poisonOff: Boolean) =
         gameOptions.setQuietPatches(found, beepOff, poisonOff)
+    fun setRunningShoes(found: com.pokedaisy.app.companion.data.InstantText.Patch?, on: Boolean) =
+        gameOptions.setRunningShoes(found, on)
     fun setLevelCap(found: com.pokedaisy.app.companion.data.LevelCap.Found?, level: Int) =
         gameOptions.setLevelCap(found, level)
     fun setHmFree(patch: com.pokedaisy.app.companion.data.HmFree.Patch?, on: Boolean) =

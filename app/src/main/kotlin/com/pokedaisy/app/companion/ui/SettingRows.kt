@@ -194,6 +194,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "SCENE SPEEDS" to "battle speed text speed instant text fast text menu speed overworld speed faster battles quality of life qol bike speed surf speed faster bike faster surfing",
     "AUTO-RUN" to "auto run autorun running shoes run sprint dash always run hold b",
     "RUN INDOORS" to "run inside buildings indoor running shoes houses",
+    "RUNNING SHOES" to "running shoes run sprint dash hold b faster walking game boy red blue yellow gold silver crystal bike speed",
     "MAKEOVER" to "makeover look looks style customize customise appearance costume outfit skin dress up player rival",
     "FOLLOWER" to "follower following pokemon walking pokemon partner companion pet behind you lead heartgold soulsilver yellow pikachu",
     "DAY AND NIGHT" to "day and night daytime nighttime night time dusk dawn sunset evening clock time of day tint darker dark lighting dns",

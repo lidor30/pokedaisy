@@ -29,12 +29,15 @@ class GameOptions internal constructor(
                          val center: PokemonCenter.Found? = null,
                          /** A Game Boy cart's LOW HP BEEP off ([GbGamePatches]: the GBA's comes from QuietPatches, by the host). */
                          val gbBeep: InstantText.Patch? = null,
-                         val gbPoison: InstantText.Patch? = null)
+                         val gbPoison: InstantText.Patch? = null,
+                         /** A Game Boy cart's RUNNING SHOES ([GbGamePatches.Found.run]). */
+                         val gbRun: InstantText.Patch? = null)
     private data class Patches(val sites: List<ReusableTms.Site> = emptyList(), val tms: Boolean = false,
                                val text: InstantText.Patch? = null, val instant: Boolean = false,
                                val hm: HmFree.Patch? = null, val full: ExpShare.Found? = null,
                                val cap: LevelCap.Found? = null, val level: Int = 0,
-                               val beep: InstantText.Patch? = null, val poison: InstantText.Patch? = null)
+                               val beep: InstantText.Patch? = null, val poison: InstantText.Patch? = null,
+                               val run: InstantText.Patch? = null)
     private data class Inputs(val autoRun: Boolean = false, val indoors: Boolean = false, val wild: Int = 100)
     private val desired = atomic(Patches())
     private val inputs = atomic(Inputs())
@@ -103,6 +106,10 @@ class GameOptions internal constructor(
     /** LOW HP BEEP / FIELD POISON off: the ROM's patches ([QuietPatches.find], by the host) and which go in. */
     fun setQuietPatches(found: QuietPatches.Found?, beepOff: Boolean, poisonOff: Boolean) {
         desired.update { it.copy(beep = found?.beep.takeIf { beepOff }, poison = found?.poison.takeIf { poisonOff }) }
+    }
+    /** RUNNING SHOES: the cart's patch ([Discovery.gbRun]) in while [on]. */
+    fun setRunningShoes(found: InstantText.Patch?, on: Boolean) {
+        desired.update { it.copy(run = found.takeIf { on }) }
     }
     fun setExpShare(found: ExpShare.Found?, mode: ExpShare.Mode) {
         expMetadata.value = found; expMode.value = mode
@@ -184,7 +191,7 @@ class GameOptions internal constructor(
         scan = scope.launch {
             // A Game Boy cart: its own three options (GbGamePatches), nothing of the GBA's finders.
             val gb = if (gameBoy) runCatching { GbGamePatches.find(path) }.getOrNull() else null
-            val result = if (gameBoy) Discovery(sites = gb?.tms.orEmpty(), text = gb?.text, exp = gb?.exp, gbBeep = gb?.beep, gbPoison = gb?.poison) else Discovery(
+            val result = if (gameBoy) Discovery(sites = gb?.tms.orEmpty(), text = gb?.text, exp = gb?.exp, gbBeep = gb?.beep, gbPoison = gb?.poison, gbRun = gb?.run) else Discovery(
                 runCatching { WildEncounters.find(path) }.getOrDefault(0L),
                 runCatching { ReusableTms.find(path) }.getOrDefault(emptyList()),
                 runCatching { InstantText.find(path) }.getOrNull(),
@@ -216,8 +223,8 @@ class GameOptions internal constructor(
         val state = desired.value
         if (state == applied) return null
         val result = GameOptionPatches.apply(core, state.sites.takeIf { state.tms }.orEmpty(), state.text.takeIf { state.instant },
-            state.hm, state.full, state.cap, state.level, state.beep, state.poison)
-        applied = state; appliedAny = result.tms || result.text || result.hm || result.full || result.cap || result.beep || result.poison
+            state.hm, state.full, state.cap, state.level, state.beep, state.poison, state.run)
+        applied = state; appliedAny = result.tms || result.text || result.hm || result.full || result.cap || result.beep || result.poison || result.run
         Logs.i("game-option patches: text=${result.text}, reusableTms=${result.tms}")
         return result
     }

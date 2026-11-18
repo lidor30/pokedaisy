@@ -98,6 +98,10 @@ interface CompanionSettings : StoredCompanionSettings {
     val fieldPoison: Boolean get() = true
     fun setFieldPoison(on: Boolean) {}
     val fieldPoisonSupported: Boolean get() = false
+    /** RUNNING SHOES (a Game Boy game): B held while walking moves at the bike's speed. Off by default. */
+    val runningShoes: Boolean get() = false
+    fun setRunningShoes(on: Boolean) {}
+    val runningShoesSupported: Boolean get() = false
     /** AUTO REFILL - see [com.pokedaisy.app.Prefs.repelRefill]; [repelRefillSupported]: the game can take a REPEL from the
      * companion (the quick menu's REPEL). */
     val repelRefill: Boolean get() = false

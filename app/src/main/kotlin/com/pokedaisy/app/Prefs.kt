@@ -252,6 +252,11 @@ class Prefs(
     var lowHpBeep: Boolean
         get() = p.getBoolean("low_hp_beep", true)
         set(v) = p.edit().putBoolean("low_hp_beep", v).apply()
+    /** RUNNING SHOES (companion GAMEPLAY, a Game Boy game): B held while walking moves at the bike's speed. Off. */
+    var runningShoes: Boolean
+        get() = p.getBoolean("running_shoes", false)
+        set(v) = p.edit().putBoolean("running_shoes", v).apply()
+
     var fieldPoison: Boolean
         get() = p.getBoolean("field_poison", true)
         set(v) = p.edit().putBoolean("field_poison", v).apply()

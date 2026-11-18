@@ -362,6 +362,12 @@ class PokeDaisyActivity : Activity() {
         val p = Prefs(this)
         if (::engine.isInitialized) engine.setQuietPatches(quietFound, !p.lowHpBeep, !p.fieldPoison)
     }
+
+    /** RUNNING SHOES: a Game Boy cart's patch ([com.pokedaisy.app.companion.data.GbGamePatches.Found.run]; null = N/A). */
+    private var runFound: com.pokedaisy.app.companion.data.InstantText.Patch? = null
+    private fun syncRunningShoes() {
+        if (::engine.isInitialized) engine.setRunningShoes(runFound, Prefs(this).runningShoes)
+    }
     private fun syncLevelCap() { currentGameOptions()?.setLevelCapEnabled(Prefs(this).levelCap) }
     private fun syncHmFree(on: Boolean = Prefs(this).hmFree) { currentGameOptions()?.setHmFree(hmPatch, on) }
     /** EXPAND's one-time offer is up on the companion ([CompanionSettings.expandOffer]). */
@@ -1882,6 +1888,13 @@ class PokeDaisyActivity : Activity() {
             syncQuietPatches()
         }
         override val fieldPoisonSupported get() = quietFound?.poison != null
+        override val runningShoes get() = Prefs(this@PokeDaisyActivity).runningShoes
+        override fun setRunningShoes(on: Boolean) {
+            if (coopRefuses()) return
+            Prefs(this@PokeDaisyActivity).runningShoes = on
+            syncRunningShoes()
+        }
+        override val runningShoesSupported get() = runFound != null
         override val expShare get() = com.pokedaisy.app.companion.data.ExpShare.Mode.of(Prefs(this@PokeDaisyActivity).expShare)
         override fun setExpShare(mode: com.pokedaisy.app.companion.data.ExpShare.Mode) {
             if (coopRefuses()) return
@@ -2687,6 +2700,8 @@ class PokeDaisyActivity : Activity() {
         syncExpShare()
         quietFound = null
         syncQuietPatches()
+        runFound = null
+        syncRunningShoes()
         syncLevelCap()
         repelRefillOn = Prefs(this).repelRefill
         shinyAlertOn = Prefs(this).shinyAlert
@@ -2906,6 +2921,8 @@ class PokeDaisyActivity : Activity() {
                     current.setInstantText(textPatch, Prefs(this).instantText)
                     // A Game Boy cart's LOW HP BEEP (GbGamePatches): its patch where the GBA's QuietPatches would put it.
                     if (gameBoy) { quietFound = com.pokedaisy.app.companion.data.QuietPatches.Found(found.gbBeep, found.gbPoison); syncQuietPatches() }
+                    runFound = found.gbRun.takeIf { gameBoy }
+                    syncRunningShoes()
                 }
             })
         }
@@ -3044,6 +3061,7 @@ class PokeDaisyActivity : Activity() {
         e.setExpShare(expShareFound, if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(p.expShare) else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF)
         e.setLevelCap(levelCapFound, if (levelCapFound != null && p.levelCap) levelCapNow?.level ?: 0 else 0)
         e.setQuietPatches(quietFound, !p.lowHpBeep, !p.fieldPoison)
+        e.setRunningShoes(runFound, p.runningShoes)
         e.setShinyTarget(shinyTarget)
         e.shinyOdds = shinyOddsPref()
     }
