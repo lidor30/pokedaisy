@@ -769,8 +769,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
   Modern Emerald, Recharged Emerald (three builds: its message box is a band with no right edge), Rocket Edition, Ash Gray and its
   fork, Ghost Grey v1.0.1 / v1.0.4 (white on black text with no shadow colour), Let's Go Pikachu / Eevee; then (2026-11-18, once their
   cursors were mapped) German / French / Italian / Japanese FireRed and LeafGreen and Japanese Emerald. The Japanese boxes draw an inner
-  edge with the frame's T + 6 tile, so the plain middle is T + 7 (the Western ones' too). Ruby / Sapphire are left out: their cursor is
-  drawn apart and stayed over the empty box.
+  edge with the frame's T + 6 tile, so the plain middle is T + 7 (the Western ones' too). Ruby / Sapphire too (2026-11-18): their cursor is
+  sprites (menu_cursor.c), hidden for the frame with the menu (the shown OBJ entries whose top is inside the box), and their empty
+  message box has no text tiles of its own, so the sign borrows the hidden menu's (off screen that frame); both menus hidden with the
+  sign drawn on English Ruby rev 1.
 - **One-press picks**: `NativeConfig.actionCursor` / `moveCursor`, handed out only for a hash-verified ROM
   (`TelemetrySampler.knownCursorAddrs`; a randomized retail ROM's masked hash counts, `RandomizedRetail`), or for a hack
   whose code proves retail's engine (`RetailEngine`, note 30). Configs made with `.copy()` inherit them: zero them where the RAM moved.

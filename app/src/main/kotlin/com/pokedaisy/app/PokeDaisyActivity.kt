@@ -1673,11 +1673,11 @@ class PokeDaisyActivity : Activity() {
     }
 
     /** DAY AND NIGHT works here: a GBA game (not a Game Boy or DS one) that doesn't change with the time itself. */
-    /** HIDE BATTLE MENU works in this game: FireRed, LeafGreen or Emerald's engine (their text box, pk_wide.c's
-     * menuHideBegin; not Ruby / Sapphire's, whose cursor is drawn apart and stayed over the empty box) whose battles the
-     * companion's buttons can steer (the battle input read). */
+    /** HIDE BATTLE MENU works in this game: FireRed, LeafGreen, Emerald, Ruby or Sapphire's engine (their text box, pk_wide.c's
+     * menuHideBegin; Ruby / Sapphire's cursor sprites hidden with it, the sign drawn in the hidden menu's own tiles) whose
+     * battles the companion's buttons can steer (the battle input read). */
     private fun battleMenuHideSupported() = !romIsGameBoy && !romIsNds && romBlocked == null && ::engine.isInitialized &&
-        (romCode.startsWith("BPR") || romCode.startsWith("BPG") || romCode.startsWith("BPE")) &&
+        listOf("BPR", "BPG", "BPE", "AXV", "AXP").any { romCode.startsWith(it) } &&
         com.pokedaisy.app.companion.data.activeGame.let {
             it == com.pokedaisy.app.companion.data.GameKind.FIRERED || it == com.pokedaisy.app.companion.data.GameKind.EMERALD
         } && com.pokedaisy.app.companion.data.activeNativeConfig?.hasBattleInputAddrs == true &&
