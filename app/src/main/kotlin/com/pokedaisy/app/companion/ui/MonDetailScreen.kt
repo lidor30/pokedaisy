@@ -526,7 +526,7 @@ private fun PartyColumnSlot(mon: MonView, current: Boolean, small: GbaTextMetric
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
             .semantics { contentDescription = tr("{0} Lv {1}", mon.name, mon.level) },
     ) {
-        SpeciesIcon(mon.iconAsset, size = cell * 0.85f, modifier = Modifier.alpha(if (mon.hp == 0 && !mon.isEgg) 0.35f else 1f))
+        MonIcon(mon, size = cell * 0.85f, modifier = Modifier.alpha(if (mon.hp == 0 && !mon.isEgg) 0.35f else 1f), fit = true)
     }
 }
 
@@ -639,7 +639,7 @@ internal fun InfoSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics,
                 // The 32px icon at a whole multiple of the frame's GBA pixel, so it stays crisp.
                 // A shiny one: in a gold frame, as on battle INFO.
                 Box(Modifier.monIconBox(u * 36, u, mon.shiny, optionLook.listFill), contentAlignment = Alignment.Center) {
-                    SpeciesIcon(mon.iconAsset, size = u * 32)
+                    MonIcon(mon, size = u * 32, fit = true)
                 }
                 Spacer(Modifier.width(u * 5))
                 if (!mon.isEgg) {

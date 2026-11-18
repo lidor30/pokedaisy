@@ -183,6 +183,8 @@ fun CompanionScreen(
         LocalGameFont provides gameFont,
         LocalGameTextScale provides if (gameFont != null) gameTextScale(snapshot.game) else 1f,
         LocalGameFontWidth provides if (gameFont != null) gameFontWidth(snapshot.game) else 1f,
+        // PARTY PICTURES (Crystal): every Pokémon in the companion shows its front picture from the cart.
+        LocalPartyPictures provides snapshot.pokedex?.tables?.takeIf { settings?.partyPictures == true && partyPicturesOffered(snapshot.game) },
     ) { AppTheme { key(snapshot.game) {
         val game = snapshot.game
         // Until the first real data arrives (the ROM takes a few seconds to
@@ -733,10 +735,7 @@ fun CompanionScreen(
                             var swapNotice by remember { mutableStateOf<ItemNotice?>(null) }
                             // Pokemon X: its own party screen's slots (the game's smooth look, not the pixel ones).
                             if (game.isXy) XyPartyScreen(snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) })
-                            else androidx.compose.runtime.CompositionLocalProvider(
-                                // PARTY PICTURES (Crystal): each slot shows the front picture from the cart.
-                                LocalPartyPictures provides snapshot.pokedex?.tables?.takeIf { settings?.partyPictures == true && partyPicturesOffered(game) },
-                            ) {
+                            else run {
                                 PartyScreen(
                                     snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) },
                                     onSwap = itemUse?.takeIf { it.canReorderParty() }?.let { use ->

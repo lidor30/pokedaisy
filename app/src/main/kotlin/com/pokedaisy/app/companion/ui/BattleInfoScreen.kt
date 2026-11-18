@@ -205,7 +205,7 @@ private fun PlayerStripSprites(player: List<MonView>, m: GbaTextMetrics, small: 
                 Box(
                     Modifier.size(u * icon).clip(PixelRoundedShape(u * 4)).background(OptionColors.listFill),
                     contentAlignment = Alignment.Center,
-                ) { SpeciesIcon(mon.iconAsset, size = u * (icon - 4)) }
+                ) { MonIcon(mon, size = u * (icon - 4), fit = true) }
             }
         }
     }
@@ -371,7 +371,7 @@ internal fun BattlerCard(
         Column(Modifier.widthIn(min = u * icon)) {
             if (side != null) SideLabel(side, nameLine, small)
             Box(Modifier.monIconBox(u * icon, u, mon.shiny, OptionColors.listFill), contentAlignment = Alignment.Center) {
-                SpeciesIcon(mon.iconAsset, size = u * (icon - 4))
+                MonIcon(mon, size = u * (icon - 4), fit = true)
             }
         }
         Spacer(Modifier.width(u * 5))
@@ -711,7 +711,7 @@ internal fun FoeSlot(mon: MonView, shown: Boolean, current: Boolean, small: GbaT
             .semantics { contentDescription = if (shown) tr("{0} Lv {1}", mon.name, mon.level) else tr("Unknown foe Pokémon") },
     ) {
         if (shown) {
-            SpeciesIcon(mon.iconAsset, size = cell * 0.85f, modifier = Modifier.alpha(if (mon.hp == 0) 0.35f else 1f))
+            MonIcon(mon, size = cell * 0.85f, modifier = Modifier.alpha(if (mon.hp == 0) 0.35f else 1f), fit = true)
         } else {
             PixelArt(PixelIcons.pokeBall, caughtBall, Modifier.size(cell * 0.5f))
         }

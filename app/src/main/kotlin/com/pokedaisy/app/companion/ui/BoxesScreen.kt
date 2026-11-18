@@ -183,7 +183,7 @@ internal fun BoxSwapPicker(boxMon: MonView?, party: List<MonView>, onCancel: () 
         )
         OptionTitleWindow(
             prompt, m,
-            leading = { SpeciesIcon(boxMon?.iconAsset, m.lineHeight * 1.5f) },
+            leading = { MonIcon(boxMon, m.lineHeight * 1.5f) },
             titleMaxLines = 2,
         ) {
             OptionButton(tr("CANCEL"), m, onClick = onCancel, modifier = Modifier.padding(start = m.u * 8))
@@ -495,7 +495,7 @@ private fun MonPanel(mon: MonView?, dex: PokedexTables?, m: GbaTextMetrics, modi
             else BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val density = LocalDensity.current
                 val room = with(density) { minOf(maxWidth, maxHeight).toPx() }
-                SpeciesIcon(mon.iconAsset, with(density) { (ICON * floor(room / ICON).coerceAtLeast(1f)).toDp() })
+                MonIcon(mon, with(density) { (ICON * floor(room / ICON).coerceAtLeast(1f)).toDp() })
             }
         }
     }
@@ -817,7 +817,7 @@ private fun Wallpaper(box: BoxView, boxIndex: Int, lookedSlot: Int, ui: BoxesUiS
                     }
                     // Past the cell's edges where it must (the game's 32-pixel icon in a 24-pixel cell), never squeezed.
                     val side = with(density) { iconPx.toDp() }
-                    SpeciesIcon(mon.iconAsset, side, Modifier.requiredSize(side))
+                    MonIcon(mon, side, Modifier.requiredSize(side))
                 }
             }
         }

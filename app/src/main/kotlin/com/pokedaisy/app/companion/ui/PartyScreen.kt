@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -880,6 +882,39 @@ internal fun paperFilled(img: com.pokedaisy.app.companion.data.RomArt.Image): co
     val out = px.copyOf()
     for (i in out.indices) if ((out[i] ushr 24) == 0 && !outside[i]) out[i] = 0xFFFFFFFF.toInt()
     return com.pokedaisy.app.companion.data.RomArt.Image(w, h, out)
+}
+
+/**
+ * [mon]'s party icon, or with PARTY PICTURES its front picture, filled white inside: at [size] the icon's place, the
+ * picture at a whole number of screen pixels a picture pixel near the icon's size, centred, reaching past it like the icon.
+ * [fit]: inside a frame (the summary's and battle INFO's party columns): the picture cut to what it draws, centred, its
+ * 56-pixel box scaled to [size] for every Pokémon alike.
+ */
+@Composable
+internal fun MonIcon(mon: MonView?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) {
+    val pictures = LocalPartyPictures.current?.takeIf { mon != null && !mon.isEgg && mon.species > 0 }
+    if (mon == null || pictures == null) { SpeciesIcon(mon?.iconAsset, size, modifier); return }
+    val density = LocalDensity.current
+    val pic = rememberRomBitmap(
+        pictures, mon.species,
+        { t, sp -> partyPicture(t, sp, cached = true, topLeft = fit) }, { t, sp -> partyPicture(t, sp, cached = false, topLeft = fit) },
+    )
+    val sizePx = with(density) { size.toPx() }
+    val k = max(1, (sizePx * 32f / 24f / 56f).roundToInt())
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        if (!fit) {
+            Box(Modifier.wrapContentSize(unbounded = true)) { PixelImage(pic, 56, Modifier.size(with(density) { (56 * k).toDp() })) }
+        } else if (pic != null) {
+            // One scale for every picture: the 56-pixel box fills the frame, so a small Pokémon stays small next to a big
+            // one, as in the game. Whole pixels when the frame allows them.
+            val scale = (sizePx / 56f).let { f -> if (f >= 1f) min(k, floor(f).toInt()).toFloat().takeIf { it >= f - 0.25f } ?: f else f }
+            androidx.compose.foundation.Image(
+                pic, contentDescription = null, filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                modifier = Modifier.size(with(density) { (pic.width * scale).toDp() }, with(density) { (pic.height * scale).toDp() }),
+            )
+        }
+    }
 }
 
 /** Slot pixels between a PARTY PICTURE and the slot's left and top edges, and the name on its right. */
