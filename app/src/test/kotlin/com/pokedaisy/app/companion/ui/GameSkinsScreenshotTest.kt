@@ -10,6 +10,7 @@ import com.pokedaisy.app.companion.data.activeGame
 import com.pokedaisy.app.companion.ui.theme.DarkMode
 import androidx.compose.foundation.layout.fillMaxSize
 import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -26,6 +27,8 @@ class GameSkinsScreenshotTest {
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1240, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),
         theme = "android:Theme.Material.NoActionBar",
     )
+
+    @Before fun hosts() = installTestHosts(paparazzi.context)
 
     @After fun reset() {
         CompanionSkins.override = null
@@ -68,6 +71,8 @@ class GameSkinsHudScreenshotTest {
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1920, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),
         theme = "android:Theme.Material.NoActionBar",
     )
+
+    @Before fun hosts() = installTestHosts(paparazzi.context)
 
     @After fun reset() {
         CompanionSkins.override = null
@@ -119,6 +124,8 @@ class SettingsRowIconsScreenshotTest {
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1240, screenHeight = 2700, orientation = ScreenOrientation.PORTRAIT),
         theme = "android:Theme.Material.NoActionBar",
     )
+
+    @Before fun hosts() = installTestHosts(paparazzi.context)
 
     private fun page(id: String) = paparazzi.snapshot {
         androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
