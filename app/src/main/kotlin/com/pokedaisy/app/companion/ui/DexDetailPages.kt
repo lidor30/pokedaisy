@@ -371,6 +371,7 @@ internal fun DexMovesSection(t: PokedexTables, g: GuideTables?, species: Int, m:
 }
 
 private fun LazyListScope.header(text: String, small: GbaTextMetrics) = item {
+    OptionColors.style?.let { style -> StyledGroupTitle(text, small, first = false, style = style, modifier = Modifier.padding(bottom = small.u * 2)); return@item }
     GbaText(text, OptionColors.muted, OptionColors.mutedShadow, small, Modifier.padding(top = small.u * 4, bottom = small.u * 2))
 }
 

@@ -147,13 +147,13 @@ fun CompanionSettingsScreen(
             } else if (!(statusBarShown && page == Page.HOME)) {
                 // A sub-page's arrow (and BACK, through it) returns to the options.
                 val titleM = rememberGbaTextMetrics()
-                OptionTitleWindow(page.title, titleM, trailing = trailing, onBack = if (page != Page.HOME) ({ if (page != Page.HELP || !ui.docs.back()) page = page.parent }) else null) {
+                OptionTitleWindow(page.title, titleM, trailing = trailing, joined = true, onBack = if (page != Page.HOME) ({ if (page != Page.HELP || !ui.docs.back()) page = page.parent }) else null) {
                     if (!statusBarShown && !application) {
                         Spacer(Modifier.width(titleM.u * 8))
                         BatteryIndicator(titleM)
                     }
                 }
-                Spacer(Modifier.height(m.u * 4))
+                WindowGap(m)
             }
             // While a row waits for keys: what to press (the game's screen asks for them too), CLEAR / CANCEL for a touch.
             if (capture != null && capturing != null && (page == Page.BUTTONS || page == Page.HOTKEYS)) {

@@ -105,8 +105,8 @@ internal fun NuzlockeScreen(area: Int, areaName: String, modifier: Modifier = Mo
     }
     Box(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            OptionTitleWindow(tk("NUZLOCKE"), m, trailing = tr("{0} ALIVE · {1} FAINTED", run.alive.size, run.dead.size))
-            Spacer(Modifier.height(m.u * 4))
+            OptionTitleWindow(tk("NUZLOCKE"), m, trailing = tr("{0} ALIVE · {1} FAINTED", run.alive.size, run.dead.size), joined = true)
+            WindowGap(m)
             OptionListWindow(m, Modifier.fillMaxWidth().weight(1f)) {
                 val at = cursor.coerceIn(0, rows.lastIndex)
                 GroupedRows(rows, m, at, onClick = { i -> cursor = i; rows[i].onClick() }, labelWeight = 0.66f, onFocused = { cursor = it })

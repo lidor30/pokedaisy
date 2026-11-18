@@ -436,10 +436,23 @@ private fun EntryPage(
     val species = e?.species ?: 0
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.weight(0.42f).fillMaxHeight().padding(end = gap), verticalArrangement = Arrangement.spacedBy(gap)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                GbaText(dexNo(shownNo), OptionColors.value, OptionColors.valueShadow, small)
-                Spacer(Modifier.width(u * 6))
-                GbaText(if (species > 0) speciesName(species) else "-----", OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f))
+            val style = OptionColors.style
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                // A MENU STYLE: the number and name on the style's section strip, like the summary's name bar.
+                modifier = if (style == null) Modifier else Modifier.fillMaxWidth()
+                    .background(OptionColors.tint(style.sectionFill), PixelRoundedShape(u * 3))
+                    .padding(horizontal = u * 4, vertical = u * 2),
+            ) {
+                if (style == null) {
+                    GbaText(dexNo(shownNo), OptionColors.value, OptionColors.valueShadow, small)
+                    Spacer(Modifier.width(u * 6))
+                    GbaText(if (species > 0) speciesName(species) else "-----", OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f))
+                } else {
+                    GbaText(dexNo(shownNo), style.sectionText, style.sectionShadow, small)
+                    Spacer(Modifier.width(u * 6))
+                    GbaText(if (species > 0) speciesName(species) else "-----", style.sectionText, style.sectionShadow, m, Modifier.weight(1f))
+                }
                 DexMark(caught, seen, Modifier.size(u * 12))
             }
             // The sprite gets whatever height the text below leaves it.
@@ -448,11 +461,11 @@ private fun EntryPage(
                 val paper = OptionColors.spritePaper
                 if (paper != null) {
                     // Dark mode on Gen 1: the picture on its own white card, padded inside the dark well.
-                    Box(Modifier.fillMaxSize().clip(PixelRoundedShape(u * 4)).background(OptionColors.listFill).padding(u * 4)) {
+                    Box(Modifier.fillMaxSize().clip(PixelRoundedShape(u * 4)).background(OptionColors.well).padding(u * 4)) {
                         PixelImage(sprite, 64, Modifier.fillMaxSize().clip(PixelRoundedShape(u * 3)).background(paper).padding(u * 4))
                     }
                 } else {
-                    PixelImage(sprite, 64, Modifier.fillMaxSize().clip(PixelRoundedShape(u * 4)).background(OptionColors.listFill))
+                    PixelImage(sprite, 64, Modifier.fillMaxSize().clip(PixelRoundedShape(u * 4)).background(OptionColors.well))
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -506,10 +519,16 @@ private fun DexInfoSection(e: DexEntry?, small: GbaTextMetrics, m: GbaTextMetric
     val scroll = rememberScrollState()
     Column(modifier.dpadScroll(scroll, RectangleShape, m.lineHeight * 3).verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(u * 2)) {
         GbaText(e?.description ?: "", OptionColors.label, OptionColors.labelShadow, small, maxLines = 6)
-        Separator(m, Modifier.fillMaxWidth())
+        // A MENU STYLE: the summary's labelled sections (STATS, PROFILE) instead of plain lines.
+        val style = OptionColors.style
+        val section = @Composable { label: String ->
+            if (style != null) StyledGroupTitle(label, small, first = false, style = style, modifier = Modifier)
+            else Separator(m, Modifier.fillMaxWidth())
+        }
+        section(tk("STATS"))
         if (e != null) {
             BaseStats(e.baseStats, small)
-            Separator(m, Modifier.fillMaxWidth())
+            section(tk("PROFILE"))
             // Gen 1 has none of these: no abilities, eggs or genders (genderRatio -1).
             // Two names outrun a line in a wide game font (Polished Crystal's): one a line there.
             val wide = com.pokedaisy.app.companion.ui.theme.LocalGameFont.current != null

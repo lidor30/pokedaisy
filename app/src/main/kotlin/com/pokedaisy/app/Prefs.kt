@@ -331,11 +331,6 @@ class Prefs(
     fun setSpeedIndexFor(romKey: String, index: Int) = p.edit().putInt("speed_$romKey", index).apply()
 
     /** The ZOOM step the player last picked on this ROM (WideCamera.level: 0 = 1x), put back when it's played again. */
-    /** SETTINGS > FONT: the app's text font by AppFont ordinal (0 PIXEL, the default; companion/ui/theme/AppFont.kt). */
-    var appFont: Int
-        get() = p.getInt("app_font", 0)
-        set(v) = p.edit().putInt("app_font", v).apply()
-
     fun zoomLevelFor(romKey: String): Int = p.getInt("zoom_$romKey", 0)
     fun setZoomLevelFor(romKey: String, level: Int) = p.edit().putInt("zoom_$romKey", level).apply()
 
@@ -982,6 +977,11 @@ class Prefs(
     var darkMode: Int
         get() = p.getInt("dark_mode", 0)
         set(v) = p.edit().putInt("dark_mode", v).apply()
+
+    /** SETTINGS > FONT: the app's text font by AppFont ordinal (0 PIXEL, the default; companion/ui/theme/AppFont.kt). */
+    var appFont: Int
+        get() = p.getInt("app_font", 0)
+        set(v) = p.edit().putInt("app_font", v).apply()
 
     /** User-supplied SteamGridDB API key (Settings > Cover Art) — see
      * [SteamGridDbClient]. Null/blank = cover-art fetching is off; nothing is

@@ -21,6 +21,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.MoveView
@@ -77,24 +81,39 @@ fun SuggestionsScreen(
         m, onBack, modifier,
         buttons = { TextNavButton(tr("INFO"), InfoPurple, InfoPurpleDark, onClick = onShowInfo) },
         middle = if (foeTeam.size > 1) ({ FoeTeamStrip(foeTeam, seenFoes, shownFoe, small, onSelectFoe) }) else null,
+        cells = true,
     ) {
         Column(Modifier.fillMaxSize()) {
             if (foe == null) {
-                GbaText(tr("NO FOE ON THE FIELD"), OptionColors.muted, OptionColors.mutedShadow, m)
+                EmptyNote { GbaText(tr("NO FOE ON THE FIELD"), OptionColors.muted, OptionColors.mutedShadow, m) }
                 return@Column
             }
-            FoeLine(foe, foeHeading.substringAfter(" · ", ""), m, small)
-            Separator(m, Modifier.fillMaxWidth().padding(vertical = m.u * 2))
+            val styled = OptionColors.joined
+            if (styled) {
+                // The foe in a cell of its own colours, the picks under it one table of connected cells.
+                val c = OptionColors.foeCells!!
+                Box(Modifier.fillMaxWidth().cell(c.a, c.line, m.u, top = true, bottom = true).padding(horizontal = m.u * 4, vertical = m.u * 2)) {
+                    FoeLine(foe, foeHeading.substringAfter(" · ", ""), m, small)
+                }
+                Spacer(Modifier.height(m.u * 3))
+            } else {
+                FoeLine(foe, foeHeading.substringAfter(" · ", ""), m, small)
+                Separator(m, Modifier.fillMaxWidth().padding(vertical = m.u * 2))
+            }
             val ranked = remember(party, foe) { rankSuggestions(party, foe) }
             if (ranked.isEmpty()) {
-                GbaText(tr("NO USABLE DAMAGING MOVES IN YOUR PARTY"), OptionColors.muted, OptionColors.mutedShadow, small, maxLines = 2)
+                EmptyNote { GbaText(tr("NO USABLE DAMAGING MOVES IN YOUR PARTY"), OptionColors.muted, OptionColors.mutedShadow, small, maxLines = 2) }
                 return@Column
             }
             // Up to three picks sharing the window's height, ruled apart.
             val picks = ranked.take(3)
             picks.forEachIndexed { i, s ->
-                if (i > 0) Separator(m, Modifier.fillMaxWidth().padding(vertical = m.u * 2))
                 val out = isOut(s.mon, active)
+                if (styled) {
+                    SuggestionRow(i, s, out, foe, gap, m, small, Modifier.weight(1f).fillMaxWidth(), styled = true, last = i == picks.lastIndex)
+                    return@forEachIndexed
+                }
+                if (i > 0) Separator(m, Modifier.fillMaxWidth().padding(vertical = m.u * 2))
                 SuggestionRow(i, s, out, foe, gap, m, small, Modifier.weight(1f).fillMaxWidth())
             }
             repeat(3 - picks.size) { Spacer(Modifier.weight(1f)) }
@@ -145,8 +164,27 @@ private fun SuggestionRow(
     m: GbaTextMetrics,
     small: GbaTextMetrics,
     modifier: Modifier,
+    /** A menu style: the card and the move two connected cells, a row of the picks' table ([last] closes it). */
+    styled: Boolean = false,
+    last: Boolean = false,
 ) {
     val move = if (s.bestMove.power == 0) s.bestMove.copy(vs = emptyList()) else s.bestMove.copy(vs = listOf(MoveVsFoe(foe.name, formatMultiplier(s.movePct), s.movePct)))
+    if (styled) {
+        val c = OptionColors.cells!!
+        val u = m.u
+        val fill = if (index % 2 == 0) c.a else c.b
+        Row(modifier.height(IntrinsicSize.Min)) {
+            Box(Modifier.weight(1f).fillMaxHeight().cell(fill, c.line, u, top = index == 0, bottom = last, right = false)
+                .padding(horizontal = u * 4, vertical = u * 2), contentAlignment = Alignment.CenterStart) {
+                BattlerCard(s.mon, compact = false, side = RankLabels[index], state = if (out) tk("OUT") else "", m, small, threats = listOf(foe),
+                    sideColor = c.head, sideShadow = c.headShadow)
+            }
+            MoveCell(move, m, small, Modifier.weight(1f).fillMaxHeight().cell(fill, c.line, u, top = index == 0, bottom = last, left = false)) { mv ->
+                MoveVerdict(mv, 1)
+            }
+        }
+        return
+    }
     Row(modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f).padding(end = gap)) {
             BattlerCard(s.mon, compact = false, side = RankLabels[index], state = if (out) tk("OUT") else "", m, small, threats = listOf(foe))
@@ -216,3 +254,11 @@ private fun defenseRiskFor(mon: MonView, attackerTypeName: String): Int =
 // types (Too Many Types 2: Fire = 11, 60 custom types) or add them (Unbound's
 // Fairy = 23), and a vanilla-only map silently mis-resolved or dropped those.
 private val typeIdByName: Map<String, Int> get() = activeTypeIdByName()
+
+/** A pane's one line when there's nothing to rank: in its own cell under a menu style (no window behind it there). */
+@Composable
+private fun EmptyNote(content: @Composable () -> Unit) {
+    val c = OptionColors.cells
+    if (c == null) content()
+    else Box(Modifier.fillMaxWidth().padding(12.dp)) { content() }
+}

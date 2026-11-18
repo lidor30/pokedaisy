@@ -87,10 +87,10 @@ The first time you open PokeDaisy after this update, it asks which look you want
 
 ## INFO: the whole matchup on one page
 
-Tap `INFO` for the battle at a glance. It's split down the middle, you on the left and the foe on the right:
+Tap `INFO` for the battle at a glance. It's split down the middle, you on the left and the foe on the right, each part in its own ruled box (yours in the menus' colour, the foe's in rose):
 
 - **Top**: a card for each Pokémon in battle with its icon, name, level, status, types and HP. Your card also warns you when the foe's type hits you hard (for example `ROCK 2x`), or says `RESISTS` when you shrug off its types.
-- **Bottom left**: your moves, each with its verdict against the foe.
+- **Bottom left**: your moves, each with its type tag and name, then its verdict against the foe, power and PP.
 - **Bottom right**: what the foe is `WEAK TO`, what it `RESISTS` and what it's `IMMUNE TO`, strongest weakness first.
 
 ![The INFO page: EMBERPUP's card and moves on the left, CRAGMAW's card and its weaknesses on the right, the foe team along the bottom](shots/companion-battle-info.png "INFO in a trainer battle")

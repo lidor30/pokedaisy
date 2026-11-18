@@ -440,8 +440,8 @@ fun snapshot() = SnapshotView(
         MonView(
             4, "CHARMANDER", 12, 30, 35, "", listOf("Fire"), null, GENDER_SYMBOL_MALE,
             moves = listOf(
-                MoveView("Scratch", "Normal", 35, 40), MoveView("Growl", "Normal", 40, 0),
-                MoveView("Ember", "Fire", 25, 40), MoveView("Metal Claw", "Steel", 35, 50),
+                MoveView("Scratch", "Normal", 35, 40, id = 10), MoveView("Growl", "Normal", 40, 0, id = 45),
+                MoveView("Ember", "Fire", 25, 40, id = 52), MoveView("Metal Claw", "Steel", 35, 50, id = 232),
             ),
             weaknesses = listOf(TypeMatchup("Water", "2x", 200), TypeMatchup("Ground", "2x", 200), TypeMatchup("Rock", "2x", 200)),
             resistances = listOf(
@@ -451,7 +451,7 @@ fun snapshot() = SnapshotView(
         ),
         MonView(
             16, "PIDGEY", 9, 5, 26, "PSN", listOf("Normal", "Flying"), null, GENDER_SYMBOL_FEMALE,
-            moves = listOf(MoveView("Tackle", "Normal", 35, 35), MoveView("Sand-Attack", "Ground", 15, 0), MoveView("Gust", "Flying", 35, 40)),
+            moves = listOf(MoveView("Tackle", "Normal", 35, 35, id = 33), MoveView("Sand-Attack", "Ground", 15, 0, id = 28), MoveView("Gust", "Flying", 35, 40, id = 16)),
             weaknesses = listOf(TypeMatchup("Electric", "2x", 200), TypeMatchup("Ice", "2x", 200), TypeMatchup("Rock", "2x", 200)),
             resistances = listOf(TypeMatchup("Grass", "½x", 50), TypeMatchup("Bug", "½x", 50)),
             immunities = listOf(TypeMatchup("Ground", "0x", 0), TypeMatchup("Ghost", "0x", 0)),
@@ -707,7 +707,12 @@ fun trainerBattle(state: Int, six: Boolean = false): SnapshotView {
         if (six) listOf(foe(111, 16, 40, 40, "Ground", "Rock"), foe(27, 13, 35, 35, "Ground"), foe(104, 15, 38, 38, "Ground")) else emptyList()
     val me = s.party[0].withMovesVs(team[1]).let { it.copy(moves = it.moves.mapIndexed { i, mv -> if (i == 1) mv.copy(pp = 0) else mv }) }
     return s.copy(
-        inBattle = true, battleInputState = state, battlePlayer = listOf(me), battleOpponent = listOf(team[1]),
+        // The foe out with its moves, for FOE DETAILS (each with what it does to the lead).
+        inBattle = true, battleInputState = state, battlePlayer = listOf(me),
+        battleOpponent = listOf(team[1].copy(moves = listOf(
+            MoveView("Tackle", "Normal", 35, 35, id = 33), MoveView("Rock Throw", "Rock", 15, 50, id = 88),
+            MoveView("Bind", "Normal", 20, 15, id = 20), MoveView("Harden", "Normal", 30, 0, id = 106),
+        )).withMovesVs(listOf(me))),
         enemyParty = team, enemyActive = 1,
     )
 }
@@ -725,8 +730,8 @@ fun SnapshotView.withBench(): SnapshotView {
         )
     }
     val bench = listOf(
-        mon(7, 11, 31, 31, listOf("Water"), MoveView("Tackle", "Normal", 35, 35), MoveView("Tail Whip", "Normal", 30, 0), MoveView("Bubble", "Water", 30, 20), MoveView("Water Gun", "Water", 25, 40)),
-        mon(1, 10, 12, 30, listOf("Grass", "Poison"), MoveView("Tackle", "Normal", 35, 35), MoveView("Growl", "Normal", 40, 0), MoveView("Vine Whip", "Grass", 10, 35)),
+        mon(7, 11, 31, 31, listOf("Water"), MoveView("Tackle", "Normal", 35, 35, id = 33), MoveView("Tail Whip", "Normal", 30, 0, id = 39), MoveView("Bubble", "Water", 30, 20, id = 145), MoveView("Water Gun", "Water", 25, 40, id = 55)),
+        mon(1, 10, 12, 30, listOf("Grass", "Poison"), MoveView("Tackle", "Normal", 35, 35, id = 33), MoveView("Growl", "Normal", 40, 0, id = 45), MoveView("Vine Whip", "Grass", 10, 35, id = 22)),
     )
     return copy(party = party + bench)
 }
@@ -1529,6 +1534,15 @@ fun main(args: Array<String>) {
     }
     // -Pdark=true: DARK MODE on for every shot.
     if (System.getProperty("dark") == "true") com.pokedaisy.app.companion.ui.theme.DarkMode.override = true
+    // -Pfont=SMOOTH: that FONT for every shot.
+    System.getProperty("font").orEmpty().takeIf { it.isNotBlank() }?.let {
+        com.pokedaisy.app.companion.ui.theme.AppFonts.override = com.pokedaisy.app.companion.ui.theme.AppFont.valueOf(it)
+    }
+    // The menus' look for every shot: SUMMARY MINT, or -Pstyle=CLASSIC for the old OPTION look. Set either way, so a game's own
+    // colours (Unbound's purple) show as they do with the game up.
+    com.pokedaisy.app.companion.ui.theme.UiStyles.override = com.pokedaisy.app.companion.ui.theme.UiStyle.valueOf(
+        System.getProperty("style").orEmpty().ifBlank { "SUMMARY_MINT" },
+    )
     // -Ptheme=CHERRY: that THEME on for every shot (the top screen's put it on again in activity {}).
     wearPreviewTheme(previewTheme)
     val g = game.name.lowercase()
@@ -1723,6 +1737,9 @@ fun main(args: Array<String>) {
         },
         Shot("$g-expand-offer", bw, bh, bd, companion("PARTY", expandOffer = true)),
         Shot("$g-party-detail", bw, bh, bd, companion("PARTY", mon = 0)),
+        // A move tapped in the summary: its own page (the second move, then the first: a damaging one in every party).
+        Shot("$g-party-move", bw, bh, bd, companion("PARTY", mon = 0)) { onNodeWithTag("move-0").performClick() },
+        Shot("$g-party-move2", bw, bh, bd, companion("PARTY", mon = 0)) { onNodeWithTag("move-2").performClick() },
         Shot("$g-party-detail-next", bw, bh, bd, companion("PARTY", mon = 0)) {
             onNodeWithContentDescription("Next Pokémon").performClick()
         },
@@ -1922,6 +1939,11 @@ fun main(args: Array<String>) {
         Shot("$g-battle-info-trainer", bw, bh, bd, companion("PARTY") { trainerBattle(BATTLE_INPUT_ACTION_SELECT) }) {
             onNodeWithText("INFO").performClick()
         },
+        // FOE DETAILS: INFO's corner button gives the foe the page.
+        Shot("$g-battle-info-foe-details", bw, bh, bd, companion("PARTY") { trainerBattle(BATTLE_INPUT_ACTION_SELECT) }) {
+            onNodeWithText("INFO").performClick()
+            onNodeWithContentDescription("Show foe details").performClick()
+        },
         // The real thing: a headless battle's shiny foe, read from its RAM (FireRed / Emerald).
         Shot("$g-battle-shiny-real", bw, bh, bd, companion("PARTY") { realShinyBattle(BATTLE_INPUT_ACTION_SELECT) }),
         Shot("$g-battle-info-shiny-real", bw, bh, bd, companion("PARTY") { realShinyBattle(BATTLE_INPUT_ACTION_SELECT) }) {
@@ -2026,6 +2048,23 @@ fun main(args: Array<String>) {
         Shot("$g-more", bw, bh, bd, companion("MORE")),
         // NUZLOCKE is under MORE in every game the tracker follows; off, the tab says so and offers TURN ON.
         Shot("$g-nuzlocke-off", bw, bh, bd, companion("NUZLOCKE")),
+        // A run under way: the area here, the team, encounters and a fainted one.
+        Shot("$g-nuzlocke-run", bw, bh, bd, companion("NUZLOCKE") {
+            val run = com.pokedaisy.app.companion.data.NuzlockeRun(
+                encounters = listOf(
+                    com.pokedaisy.app.companion.data.NuzlockeEncounter(88, "ROUTE 1", 16, com.pokedaisy.app.companion.data.NuzlockeOutcome.CAUGHT),
+                    com.pokedaisy.app.companion.data.NuzlockeEncounter(89, "ROUTE 2", 19, com.pokedaisy.app.companion.data.NuzlockeOutcome.MISSED),
+                    com.pokedaisy.app.companion.data.NuzlockeEncounter(90, "VIRIDIAN FOREST", 10, com.pokedaisy.app.companion.data.NuzlockeOutcome.CAUGHT),
+                ),
+                mons = listOf(
+                    com.pokedaisy.app.companion.data.NuzlockeMon(1L, 4, "EMBER", 14, "PALLET TOWN"),
+                    com.pokedaisy.app.companion.data.NuzlockeMon(2L, 16, "SKY", 11, "ROUTE 1"),
+                    com.pokedaisy.app.companion.data.NuzlockeMon(3L, 10, "BUGSY", 6, "VIRIDIAN FOREST", dead = true, diedIn = "ROUTE 2", diedLevel = 6),
+                ),
+            )
+            com.pokedaisy.app.companion.Nuzlocke.load(true, run.encode(), {}, {})
+            snapshot()
+        }),
         Shot("$g-more-full", bw, bh, bd, companion("MORE", barTabs = listOf("PARTY", "MAP"))),
         // Every app icon at once (a game can't have all of them off the bar with a ROM-less preview).
         Shot("$g-more-icons", bw, bh, bd, {
@@ -3420,7 +3459,8 @@ fun main(args: Array<String>) {
     val shots = if (docsMode) docsShots(all, bw, bh, bd, tw, th, td) else all
     var failed = 0
     for (shot in shots) {
-        if (only.isNotEmpty() && only.none { shot.name.contains(it) }) continue
+        // -Ponly=name matches by part of the name; =name only that exact shot.
+        if (only.isNotEmpty() && only.none { if (it.startsWith("=")) shot.name == it.drop(1) else shot.name.contains(it) }) continue
         try {
             com.pokedaisy.app.companion.FavoriteItems.load(emptySet()) {} // a shot's stars don't carry into the next
             com.pokedaisy.app.companion.data.PlayerLook.worn.value = null

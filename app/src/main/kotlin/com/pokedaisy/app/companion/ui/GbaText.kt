@@ -274,6 +274,21 @@ fun DrawScope.drawLayeredBox(
     }
 }
 
+/**
+ * A [com.pokedaisy.app.companion.ui.theme.KeyColors] key filling the box: its outline, the [depth] edge along the bottom
+ * ([unit] px a GBA pixel; a pressed key's is one unit, else [depthUnits]) and the two-tone face over it. [radius] in px.
+ */
+fun DrawScope.drawKey(k: com.pokedaisy.app.companion.ui.theme.KeyColors, unit: Float, radius: Float, depthUnits: Int = 2, face: Color = k.face) {
+    val d = (if (k.pressed) 1 else depthUnits) * unit
+    drawPixelRoundRect(k.outline, radius = radius, step = unit)
+    val inner = Size(size.width - 2 * unit, size.height - 2 * unit)
+    val r = (radius - unit).coerceAtLeast(0f)
+    drawPixelRoundRect(k.depth, Offset(unit, unit), inner, r, step = unit)
+    val faceSize = Size(inner.width, inner.height - d)
+    drawTwoTone(face, k.low, unit) { c -> drawPixelRoundRect(c, Offset(unit, unit), faceSize, r, step = unit) }
+    k.shine?.let { drawRect(it, Offset(unit + r, unit * 2), Size((inner.width - 2 * r).coerceAtLeast(0f), unit)) }
+}
+
 /** A two-tone button's lower colour, for a window-coloured one: [fill] a step down, on a light or a dark look alike. */
 fun twoToneLow(fill: Color): Color = androidx.compose.ui.graphics.lerp(fill, Color(0xFF40485A), 0.3f)
 

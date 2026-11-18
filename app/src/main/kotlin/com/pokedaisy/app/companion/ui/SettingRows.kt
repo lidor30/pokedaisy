@@ -32,6 +32,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.composed
 import androidx.compose.ui.focus.focusRequester
 import com.pokedaisy.app.companion.i18n.tr
@@ -367,13 +370,20 @@ fun TabRail(
     /** The height to fill (SETTINGS' rail beside its window, the user's call): the tabs stretch to share it out where they fit,
      * else they keep their own height and the rail scrolls. */
     fill: androidx.compose.ui.unit.Dp? = null,
+    /** D-pad stops that pick their tab on focus (GUIDE's pages); SETTINGS' are touch only. */
+    focusable: Boolean = false,
+    /** The tabs' text size against a GBA pixel. */
+    textScale: Float = 1f,
     onSelect: (Int) -> Unit,
 ) {
-    val small = rememberGbaTextMetrics(1f)
-    val gap = m.u * if (fill != null) 3 else 2
+    val small = rememberGbaTextMetrics(textScale)
+    // A MENU STYLE: folder tabs on the window's left side, touching, the open one running into the window.
+    val folder = outside && OptionColors.joined
+    val gap = if (folder) 0.dp else m.u * if (fill != null) 3 else 2
     val tabMin = fill?.let { ((it - gap * (labels.size - 1)) / labels.size.coerceAtLeast(1)) } ?: 0.dp
     androidx.compose.foundation.layout.Column(
         Modifier
+            .then(if (folder) Modifier.zIndex(1f) else Modifier)
             .width(androidx.compose.foundation.layout.IntrinsicSize.Max)
             .fillMaxHeight()
             .drawBehind {
@@ -388,12 +398,16 @@ fun TabRail(
             }
             .verticalScroll(rememberScrollState())
             .then(
-                if (outside) Modifier.padding(end = m.u * 4)
+                if (folder) Modifier
+                else if (outside) Modifier.padding(end = m.u * 4)
                 else Modifier.padding(start = m.u * 4, end = m.u * 6, top = m.u * 4, bottom = m.u * 4),
             ),
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(gap),
     ) {
-        labels.forEachIndexed { i, label -> GroupTab(label, i == selected, small, tabMin) { onSelect(i) } }
+        labels.forEachIndexed { i, label ->
+            if (folder) FolderTab(label, i == selected, small, tabMin, focusable) { onSelect(i) }
+            else GroupTab(label, i == selected, small, tabMin) { onSelect(i) }
+        }
     }
 }
 
@@ -405,6 +419,54 @@ fun PageHint(text: String, m: GbaTextMetrics, small: GbaTextMetrics) {
             text, OptionColors.label, OptionColors.labelShadow, small, maxLines = Int.MAX_VALUE,
             modifier = Modifier.padding(horizontal = m.u * 6, vertical = m.u * 2),
         )
+    }
+}
+
+/**
+ * [TabRail]'s tab under a MENU STYLE: the window's own frame layers round its left, top and bottom, open on the right. The
+ * open one is the window's paper and runs over the window's left frame, so the two read as one; the others are the
+ * style's section colour.
+ */
+@Composable
+private fun FolderTab(
+    label: String, selected: Boolean, m: GbaTextMetrics, minHeight: androidx.compose.ui.unit.Dp, focusable: Boolean, onClick: () -> Unit,
+) {
+    val u = m.u
+    val style = OptionColors.style ?: return GroupTab(label, selected, m, minHeight, onClick)
+    val layers = OptionColors.listLayers
+    val frame = layers.sumOf { it.second }
+    val fill = if (selected) OptionColors.listFill else OptionColors.tint(style.sectionFill)
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    LaunchedEffect(focused) { if (focused && !selected) onClick() }
+    androidx.compose.foundation.layout.Box(
+        contentAlignment = androidx.compose.ui.Alignment.CenterStart,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = minHeight)
+            .drawBehind {
+                val px = u.toPx()
+                val reach = if (selected) frame * px else 0f
+                val radius = 3 * px
+                // Run past the right edge (no right-hand frame), cut where the tab meets the window, or past its frame.
+                clipRect(right = size.width + reach) {
+                    var inset = 0f
+                    var r = radius
+                    val w = size.width + reach + radius + frame * px
+                    for ((color, width) in layers) {
+                        drawPixelRoundRect(color, androidx.compose.ui.geometry.Offset(inset, inset), androidx.compose.ui.geometry.Size(w - 2 * inset, size.height - 2 * inset), r.coerceAtLeast(0f), px)
+                        inset += width * px
+                        r -= width * px
+                    }
+                    drawPixelRoundRect(fill, androidx.compose.ui.geometry.Offset(inset, inset), androidx.compose.ui.geometry.Size(w - 2 * inset, size.height - 2 * inset), r.coerceAtLeast(0f), px)
+                }
+            }
+            .focusProperties { canFocus = focusable }
+            .soundClickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(start = u * (frame + 4), end = u * 6, top = u * (frame + 1), bottom = u * (frame + 1)),
+    ) {
+        if (selected) GbaText(label, OptionColors.value, OptionColors.valueShadow, m, bold = gameBoldLabels())
+        else GbaText(label, style.sectionText, style.sectionShadow, m, bold = gameBoldLabels())
     }
 }
 
@@ -491,6 +553,8 @@ private fun GroupedRowsList(
                 labelIconSize = if (row.iconPixels > 0) m.u * row.iconPixels else null,
                 valueBadge = row.badge, enabled = row.enabled, subtitle = subtitleOf(row), labelWeight = row.labelWeight ?: labelWeight,
                 chevron = row.opensPage, slider = row.slider,
+                // A menu style's bands: every other row of a group.
+                stripe = (i - (rows.subList(0, i).indexOfLast { it.header } + 1)) % 2 == 1,
                 onFocus = onFocused?.let { f -> { f(i) } },
             ) { onClick(i) }
         }
@@ -520,6 +584,8 @@ private const val LAZY_ROWS = 100
 @Composable
 fun GroupTitleLine(label: String, m: GbaTextMetrics, first: Boolean, modifier: Modifier = Modifier) {
     val band = OptionColors.groupTitleFill
+    val style = OptionColors.style
+    if (style != null) return StyledGroupTitle(label, m, first, style, modifier)
     if (band == null) {
         GbaText(
             tr(label), OptionColors.value, OptionColors.valueShadow, m,
@@ -536,6 +602,27 @@ fun GroupTitleLine(label: String, m: GbaTextMetrics, first: Boolean, modifier: M
                 .padding(horizontal = m.u * 6, vertical = m.u * 2),
         )
     }
+}
+
+/**
+ * A group title in a [com.pokedaisy.app.companion.ui.theme.UiStyle] other than CLASSIC: SUMMARY / NOTEBOOK a tab sitting on
+ * a rule across the list (the summary's TRAINER MEMO, the bag's pocket tab), DEVICE a band the list's width, CARD a pill.
+ */
+@Composable
+internal fun StyledGroupTitle(
+    label: String, m: GbaTextMetrics, first: Boolean, style: com.pokedaisy.app.companion.ui.theme.UiStylePalette, modifier: Modifier,
+) {
+    val u = m.u
+    val fill = OptionColors.tint(style.sectionFill)
+    val small = rememberGbaTextMetrics(1f)
+    val text = @Composable { mod: Modifier -> GbaText(tr(label), style.sectionText, style.sectionShadow, small, modifier = mod) }
+    val top = u * (if (first) 1 else 6)
+    // The summary pages' section band, the list's width.
+    text(
+        modifier.padding(start = u * 2, end = u * 2, top = top, bottom = u * 2).fillMaxWidth()
+            .drawBehind { drawPixelRoundRect(fill, radius = u.toPx() * 3, step = u.toPx()) }
+            .padding(horizontal = u * 6, vertical = u * 2),
+    )
 }
 
 /** GBA pixels added under a [GroupedRows] row without a subtitle. */
