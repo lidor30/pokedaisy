@@ -311,7 +311,40 @@ class EmulatorEngine(
 
     /** The DS game's header code: where its battle panels have their buttons ([NdsBattleTaps.layoutFor]). */
     var ndsGameCode: String = ""
-        set(v) { field = v; ndsTaps.layout = NdsBattleTaps.layoutFor(v) }
+        set(v) {
+            field = v; ndsTaps.layout = NdsBattleTaps.layoutFor(v)
+            dsText = null; dsTextTries = 0; dsTextFrames = 0; dsTms = null; dsTmsTries = 0
+        }
+
+    /** INSTANT TEXT on a Gen 4 DS game ([com.pokedaisy.app.companion.data.DsInstantText]); the activity sets it where it works. */
+    @Volatile var dsInstantText = false
+    /** REUSABLE TMS on a Gen 4 DS game ([com.pokedaisy.app.companion.data.DsReusableTms]). */
+    @Volatile var dsReusableTms = false
+    @Volatile private var dsTms: com.pokedaisy.app.companion.data.DsReusableTms.Found? = null
+    private var dsTmsTries = 0
+    @Volatile private var dsText: com.pokedaisy.app.companion.data.DsInstantText.Found? = null
+    private var dsTextTries = 0
+    private var dsTextFrames = 0
+
+    /** Every 30 frames: the printer task found (once the game has run 5 s and decompressed its ARM9; 20 tries at most, only
+     * while wanted), then its call set to the setting. Emu thread, between frames. */
+    private fun dsTextTick() {
+        if (++dsTextFrames % 30 != 0) return
+        val read = com.pokedaisy.app.companion.data.InProcessReader::readCoreMemory
+        val tms = dsTms ?: run {
+            if (dsReusableTms && dsTextFrames >= 300 && dsTmsTries < 20) {
+                dsTmsTries++
+                com.pokedaisy.app.companion.data.DsReusableTms.find(read)?.also { dsTms = it }
+            } else null
+        }
+        if (tms != null) runCatching { com.pokedaisy.app.companion.data.DsReusableTms.sync(tms, dsReusableTms, read, MgbaCore::pkNdsCodeWrite) }
+        val f = dsText ?: run {
+            if (!dsInstantText || dsTextFrames < 300 || dsTextTries >= 20) return
+            dsTextTries++
+            com.pokedaisy.app.companion.data.DsInstantText.find(read)?.also { dsText = it } ?: return
+        }
+        runCatching { com.pokedaisy.app.companion.data.DsInstantText.sync(f, dsInstantText, read, MgbaCore::pkNdsCodeWrite) }
+    }
 
     /** True while a queued battle-menu button sequence hasn't fully drained —
      * the touch battle UI should disable further taps while this is true. */
@@ -345,6 +378,12 @@ class EmulatorEngine(
 
     /** Switch to the party mon with this personality. Call from the UI thread. */
     fun battleSwitchTo(personality: Long) = battleInput.switchTo(personality)
+
+    /** A DS game's POKéMON: the party screen's panel at [place] and its SHIFT ([NdsBattleTaps.switchTo]). */
+    fun battleDsSwitchTo(place: Int) = ndsTaps.switchTo(place)
+
+    /** The running DS game's party screen is mapped ([NdsBattleTaps.Layout.partySlots]). */
+    val dsSwitchMapped: Boolean get() = ndsTaps.layout.partySlots != null
 
     init { battle.stateObserved = ndsTaps::onState }
 
@@ -827,7 +866,8 @@ class EmulatorEngine(
     }
 
     val playback by lazy {
-        com.pokedaisy.app.companion.GameRuntime(gameSession, telemetry, preferences, battle, optionPatcher, { gba || nds },
+        // Every platform: a Game Boy cart's options are GbGamePatches' (pk_cheats_patch's Game Boy branch).
+        com.pokedaisy.app.companion.GameRuntime(gameSession, telemetry, preferences, battle, optionPatcher, { true },
             configureField = { fieldGame != WideScreen.OFF }, restoreOptionPatchesOnClose = false)
     }
 
@@ -1546,6 +1586,7 @@ class EmulatorEngine(
             val wildKeep = if (wildFlag != 0L || nds) wildEncounters else 100
             if (nds) {
                 MgbaCore.pkNdsKeepStartMenu(dsKeepStartMenu)
+                dsTextTick()
                 MgbaCore.pkNdsCpuBoost(ndsCpuBoost)
                 // EXP SHARE (Gen 4 / 5): the native side marks the battle's party and patches FULL EXP's division.
                 MgbaCore.pkNdsExpShare(gameOptions.dsExpShareMode, gameOptions.expSharePartyMask)
@@ -1562,7 +1603,8 @@ class EmulatorEngine(
                     if (n > 0) Log.i("pokedaisy", "shiny odds: foe made shiny (1 in $shinyOdds)")
                 }.onFailure { Log.w("pokedaisy", "shiny odds failed", it) }
             }
-            if (gba) gameOptions.markExp(InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes)
+            // EXP SHARE: a GBA getexp's bits or a Game Boy cart's participants byte (a DS game finds none).
+            if (!nds) gameOptions.markExp(InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes)
             playback.fieldChanged(fieldState)
             val bike = MgbaCore.FIELD_AVATAR or MgbaCore.FIELD_BIKE
             riding = (fieldState and bike) == bike

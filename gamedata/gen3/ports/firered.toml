@@ -10,7 +10,7 @@ lazy = true
 port = 'BPRD0'
 language = 'D'
 gameCode = 'BPRD'
-trainerCard = 'none'
+trainerCard = 'TRAINER_CARD_FIRERED_DE'
 bagPockets = 0x0203988C
 battleMons = 0x02023BE4
 battleTypeFlags = 0x02022B4C
@@ -36,6 +36,8 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x08030584
 itemDescs = { preset = 'vanilla', base = 0x083DA518 }
 partyMenu = 0x0203B0A0
+actionCursor = 0x02023FF8
+moveCursor = 0x02023FFC
 pokemonStoragePtr = 0x03004F60
 
 [config.port_bprd0.pokedex]
@@ -79,7 +81,7 @@ lazy = true
 port = 'BPRF0'
 language = 'F'
 gameCode = 'BPRF'
-trainerCard = 'none'
+trainerCard = 'TRAINER_CARD_FIRERED_FR'
 bagPockets = 0x0203988C
 battleMons = 0x02023BE4
 battleTypeFlags = 0x02022B4C
@@ -105,6 +107,8 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x0803055C
 itemDescs = { preset = 'vanilla', base = 0x083D3324 }
 partyMenu = 0x0203B0A0
+actionCursor = 0x02023FF8
+moveCursor = 0x02023FFC
 pokemonStoragePtr = 0x03004F60
 
 [config.port_bprf0.pokedex]
@@ -148,7 +152,7 @@ lazy = true
 port = 'BPRI0'
 language = 'I'
 gameCode = 'BPRI'
-trainerCard = 'none'
+trainerCard = 'TRAINER_CARD_FIRERED_IT'
 bagPockets = 0x0203988C
 battleMons = 0x02023BE4
 battleTypeFlags = 0x02022B4C
@@ -174,6 +178,8 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x08030570
 itemDescs = { preset = 'vanilla', base = 0x083D1EE8 }
 partyMenu = 0x0203B0A0
+actionCursor = 0x02023FF8
+moveCursor = 0x02023FFC
 pokemonStoragePtr = 0x03004F60
 
 [config.port_bpri0.pokedex]
@@ -244,6 +250,8 @@ saveBlock2Ptr = 0x0300504C
 waitForMonSelection = 0x0802FE04
 itemDescs = { preset = 'japanese', base = 0x083A06F8 }
 partyMenu = 0x0203B014
+actionCursor = 0x02023F58
+moveCursor = 0x02023F5C
 pokemonStoragePtr = 0x03005050
 
 [config.port_bprj0.pokedex]
@@ -316,6 +324,8 @@ saveBlock2Ptr = 0x03004FAC
 waitForMonSelection = 0x0802FD70
 itemDescs = { preset = 'japanese', base = 0x0839BEB8 }
 partyMenu = 0x0203B014
+actionCursor = 0x02023F58
+moveCursor = 0x02023F5C
 pokemonStoragePtr = 0x03004FB0
 
 [config.port_bprj1.pokedex]
@@ -362,7 +372,7 @@ lazy = true
 port = 'BPRS0'
 language = 'S'
 gameCode = 'BPRS'
-trainerCard = 'none'
+trainerCard = 'TRAINER_CARD_FIRERED_ES'
 actionCursor = 0x02023FF8
 bagPockets = 0x0203988C
 battleMons = 0x02023BE4

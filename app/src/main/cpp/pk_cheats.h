@@ -9,6 +9,10 @@ struct mCore;
 void pk_cheats_clear(struct mCore* core);
 int pk_cheats_apply(struct mCore* core, const char* text, size_t len);
 void pk_cheats_overlay(uint32_t addr, uint8_t* dst, int len);
+// A Game Boy cart's game-option patches go at PK_GB_ROM_TAG + the cart offset (pk_cheats_patch); the cart's own bytes back
+// over a read of its buffer at [off].
+#define PK_GB_ROM_TAG 0x10000000u
+void pk_cheats_overlay_gb(uint32_t off, uint8_t* dst, int len);
 void pk_cheats_swap_rom(struct mCore* core);
 int pk_cheats_rom_patched(void);
 int pk_cheats_patch(struct mCore* core, uint32_t expectAddr, const uint8_t* expect, int expectLen,

@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "pd_draw_pace.h"
 #include "../../linux/fly.h"
 #include "../../linux/flight.h"
 #include "pd_rom_options.h"
@@ -20,10 +21,13 @@
 #include "../core/pd_snapshot.h"
 #include "../core/pd_ui.h"
 #include "pd_items.h"
+#include "pd_refresh.h"
 
 struct mCore;
 
-// How often the companion reads the game (frames).
+// Cosmetic companion data: at most about 3 Hz in wall time, also at fast-forward.
+#define PD_SNAPSHOT_INTERVAL_MS 334
+// Gameplay tracking retains its existing cadence while Nuzlocke is enabled.
 #define PD_SNAPSHOT_EVERY 10
 // The top screen, where the overlay (QUICK MENU, HUD, notices) and EXPAND's window go.
 #define PD_TOP_W 400
@@ -39,6 +43,8 @@ struct pd_input {
     // Frames run undrawn before this loop's own, at 1x only: an Old 3DS that fell a refresh or two behind catches up, so
     // the game and its sound keep their speed while the picture skips (gpSP 3D's frame skip). 0 = none.
     int catchUp;
+    // How this loop's frame is drawn (pd_draw_pace.h's plan, gpSP on an Old 3DS); applied at 1x only.
+    enum pd_draw_plan drawPlan;
 };
 
 // What the host does for the session.
@@ -60,6 +66,9 @@ struct pd_session_host {
     void (*flightAreaPath)(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len);
     // NUZLOCKE's file for a ROM (by its CRC32: whether it's on and its run); NULL = kept for this run only.
     void (*nuzlockePath)(void* ctx, uint32_t crc, char* path, size_t len);
+    // Nonzero: background companion reads use this wall-time interval.
+    // Old 3DS uses 334 ms; zero preserves the original frame-based cadence.
+    unsigned companionIntervalMs;
 };
 
 // Clock ticks spent since the host last zeroed it: in the core, waiting for its renderer, in EXPAND, reading the snapshot,
@@ -100,11 +109,15 @@ struct pd_session {
     const uint32_t* video; // the core's frame, PD_GAME_STRIDE wide
     unsigned frame;
     bool redraw;
+    bool redrawUrgent, snapshotRequested;
+    uint64_t companionMs;
+    struct pd_refresh_timer snapshotTimer;
     bool ffToggled, ff;
     bool leave;
     bool wasBusy;
     int speedDebt; // quarters of a frame owed at GAME SPEED
     unsigned catchUpFrames; // pd_input.catchUp's frames run so far (the dev build's stat)
+    enum pd_draw_plan drawPlan; // the plan this loop's frame ran with: PD_DRAW_NOW where the speed or a scene ruled it out
 
     // The field read (pk_field_state) and EXPAND.
     uint32_t romCrc;

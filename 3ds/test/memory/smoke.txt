@@ -1,0 +1,4 @@
+# Run after the companion's full-ROM scans, including pd_mixer's find_code.
+run 120
+state
+shot boot

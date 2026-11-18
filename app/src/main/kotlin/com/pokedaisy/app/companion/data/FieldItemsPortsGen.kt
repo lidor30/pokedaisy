@@ -1006,6 +1006,51 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
 
 /** The BOXES tab's moves (BoxSwap.kt) for the same games, by the same keys (scripts/verify_box_swap.py checks them). */
 val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
+    // Pocket Monsters - Emerald (Japan).gba.
+    "BPEJ0" to BoxSwapFns(
+        boxMonToMon = 0x08068B44L, boxMonRestorePP = 0x0806E3BCL, getBoxMonData = 0x0806A1B4L, storagePtr = 0x03005AF4L,
+        codeCrcs = listOf(0x50D3CD99L, 0xC3A19350L, 0x053E19D1L),
+    ),
+    // Pocket Monsters - FireRed (Japan) (Rev 1).gba.
+    "BPRJ1" to BoxSwapFns(
+        boxMonToMon = 0x0803DE4CL, boxMonRestorePP = 0x08043908L, getBoxMonData = 0x0803F41CL, storagePtr = 0x03004FB0L,
+        codeCrcs = listOf(0x7CCAD77FL, 0xD3B549AFL, 0x053E19D1L),
+    ),
+    // Pocket Monsters - FireRed (Japan).gba.
+    "BPRJ0" to BoxSwapFns(
+        boxMonToMon = 0x0803DEE0L, boxMonRestorePP = 0x0804392CL, getBoxMonData = 0x0803F4B0L, storagePtr = 0x03005050L,
+        codeCrcs = listOf(0x889E4AE9L, 0x851DE741L, 0x053E19D1L),
+    ),
+    // Pocket Monsters - LeafGreen (Japan) (Rev 1).gba.
+    "BPGJ1" to BoxSwapFns(
+        boxMonToMon = 0x0803DE4CL, boxMonRestorePP = 0x08043908L, getBoxMonData = 0x0803F41CL, storagePtr = 0x03004FB0L,
+        codeCrcs = listOf(0x8DCADF99L, 0xD3B549AFL, 0x053E19D1L),
+    ),
+    // Pocket Monsters - LeafGreen (Japan).gba.
+    "BPGJ0" to BoxSwapFns(
+        boxMonToMon = 0x0803DEE0L, boxMonRestorePP = 0x0804392CL, getBoxMonData = 0x0803F4B0L, storagePtr = 0x03005050L,
+        codeCrcs = listOf(0x49FDF5FFL, 0x851DE741L, 0x053E19D1L),
+    ),
+    // Pocket Monsters - Ruby (Japan) (Rev 1).gba.
+    "AXVJ1" to BoxSwapFns(
+        boxMonToMon = 0x08038878L, boxMonRestorePP = 0x0803DE84L, getBoxMonData = 0x08039FC0L, storagePtr = 0x0202FDBCL,
+        codeCrcs = listOf(0xC9CE4048L, 0x8AB00144L, 0x053E19D1L), staticStorage = true,
+    ),
+    // Pocket Monsters - Ruby (Japan).gba.
+    "AXVJ0" to BoxSwapFns(
+        boxMonToMon = 0x08038878L, boxMonRestorePP = 0x0803DE84L, getBoxMonData = 0x08039FC0L, storagePtr = 0x0202FDBCL,
+        codeCrcs = listOf(0xC9CE4048L, 0x8AB00144L, 0x053E19D1L), staticStorage = true,
+    ),
+    // Pocket Monsters - Sapphire (Japan) (Rev 1).gba.
+    "AXPJ1" to BoxSwapFns(
+        boxMonToMon = 0x08038878L, boxMonRestorePP = 0x0803DE84L, getBoxMonData = 0x08039FC0L, storagePtr = 0x0202FDBCL,
+        codeCrcs = listOf(0x937E035AL, 0x8AB00144L, 0x053E19D1L), staticStorage = true,
+    ),
+    // Pocket Monsters - Sapphire (Japan).gba.
+    "AXPJ0" to BoxSwapFns(
+        boxMonToMon = 0x08038878L, boxMonRestorePP = 0x0803DE84L, getBoxMonData = 0x08039FC0L, storagePtr = 0x0202FDBCL,
+        codeCrcs = listOf(0x937E035AL, 0x8AB00144L, 0x053E19D1L), staticStorage = true,
+    ),
     // Pokemon - Blattgruene Edition (Germany).gba.
     "BPGD0" to BoxSwapFns(
         boxMonToMon = 0x0803E674L, boxMonRestorePP = 0x080441E4L, getBoxMonData = 0x0803FC44L, storagePtr = 0x03004F60L,
@@ -1021,10 +1066,30 @@ val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
         boxMonToMon = 0x0803E660L, boxMonRestorePP = 0x080441D0L, getBoxMonData = 0x0803FC30L, storagePtr = 0x03004F60L,
         codeCrcs = listOf(0x2E285EE0L, 0x05F9FBC2L, 0xF3E3F4DDL),
     ),
+    // Pokemon - Edicion Rubi (Spain) (Rev 1).gba.
+    "AXVS1" to BoxSwapFns(
+        boxMonToMon = 0x0803B680L, boxMonRestorePP = 0x08040D14L, getBoxMonData = 0x0803CDC8L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x86EE3C6CL, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Edicion Rubi (Spain).gba.
+    "AXVS0" to BoxSwapFns(
+        boxMonToMon = 0x0803B680L, boxMonRestorePP = 0x08040D14L, getBoxMonData = 0x0803CDC8L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x86EE3C6CL, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
     // Pokemon - Edicion Verde Hoja (Spain).gba.
     "BPGS0" to BoxSwapFns(
         boxMonToMon = 0x0803E660L, boxMonRestorePP = 0x080441D0L, getBoxMonData = 0x0803FC30L, storagePtr = 0x03004F60L,
         codeCrcs = listOf(0xE659418BL, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Edicion Zafiro (Spain) (Rev 1).gba.
+    "AXPS1" to BoxSwapFns(
+        boxMonToMon = 0x0803B680L, boxMonRestorePP = 0x08040D14L, getBoxMonData = 0x0803CDC8L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x94CB7C96L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Edicion Zafiro (Spain).gba.
+    "AXPS0" to BoxSwapFns(
+        boxMonToMon = 0x0803B680L, boxMonRestorePP = 0x08040D14L, getBoxMonData = 0x0803CDC8L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x94CB7C96L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
     ),
     // Pokemon - Feuerrote Edition (Germany).gba.
     "BPRD0" to BoxSwapFns(
@@ -1035,6 +1100,36 @@ val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
     "BPRE0" to BoxSwapFns(
         boxMonToMon = 0x0803E774L, boxMonRestorePP = 0x080442E4L, getBoxMonData = 0x0803FD44L, storagePtr = 0x03005010L,
         codeCrcs = listOf(0x7416AE8FL, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Rubin-Edition (Germany) (Rev 1).gba.
+    "AXVD1" to BoxSwapFns(
+        boxMonToMon = 0x0803B688L, boxMonRestorePP = 0x08040D1CL, getBoxMonData = 0x0803CDD0L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0xC7C148E4L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Rubin-Edition (Germany).gba.
+    "AXVD0" to BoxSwapFns(
+        boxMonToMon = 0x0803B688L, boxMonRestorePP = 0x08040D1CL, getBoxMonData = 0x0803CDD0L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0xC7C148E4L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Ruby Version (USA, Europe).gba.
+    "AXVE0" to BoxSwapFns(
+        boxMonToMon = 0x0803B4B4L, boxMonRestorePP = 0x08040B28L, getBoxMonData = 0x0803CBFCL, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x11ED9245L, 0xDF1E94D5L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Saphir-Edition (Germany) (Rev 1).gba.
+    "AXPD1" to BoxSwapFns(
+        boxMonToMon = 0x0803B688L, boxMonRestorePP = 0x08040D1CL, getBoxMonData = 0x0803CDD0L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x1D951775L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Saphir-Edition (Germany).gba.
+    "AXPD0" to BoxSwapFns(
+        boxMonToMon = 0x0803B688L, boxMonRestorePP = 0x08040D1CL, getBoxMonData = 0x0803CDD0L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x1D951775L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Sapphire Version (USA, Europe).gba.
+    "AXPE0" to BoxSwapFns(
+        boxMonToMon = 0x0803B4B4L, boxMonRestorePP = 0x08040B28L, getBoxMonData = 0x0803CBFCL, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x92E2D56FL, 0xDF1E94D5L, 0xFBFC6EF8L), staticStorage = true,
     ),
     // Pokemon - Smaragd-Edition (Germany).gba.
     "BPED0" to BoxSwapFns(
@@ -1051,6 +1146,26 @@ val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
         boxMonToMon = 0x0803E64CL, boxMonRestorePP = 0x080441BCL, getBoxMonData = 0x0803FC1CL, storagePtr = 0x03004F60L,
         codeCrcs = listOf(0x264A4209L, 0x05F9FBC2L, 0xF3E3F4DDL),
     ),
+    // Pokemon - Version Rubis (France) (Rev 1).gba.
+    "AXVF1" to BoxSwapFns(
+        boxMonToMon = 0x0803B688L, boxMonRestorePP = 0x08040D1CL, getBoxMonData = 0x0803CDD0L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x434442E9L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Version Rubis (France).gba.
+    "AXVF0" to BoxSwapFns(
+        boxMonToMon = 0x0803B688L, boxMonRestorePP = 0x08040D1CL, getBoxMonData = 0x0803CDD0L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x434442E9L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Version Saphir (France) (Rev 1).gba.
+    "AXPF1" to BoxSwapFns(
+        boxMonToMon = 0x0803B688L, boxMonRestorePP = 0x08040D1CL, getBoxMonData = 0x0803CDD0L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x801667FAL, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Version Saphir (France).gba.
+    "AXPF0" to BoxSwapFns(
+        boxMonToMon = 0x0803B688L, boxMonRestorePP = 0x08040D1CL, getBoxMonData = 0x0803CDD0L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x801667FAL, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
     // Pokemon - Version Vert Feuille (France).gba.
     "BPGF0" to BoxSwapFns(
         boxMonToMon = 0x0803E64CL, boxMonRestorePP = 0x080441BCL, getBoxMonData = 0x0803FC1CL, storagePtr = 0x03004F60L,
@@ -1061,6 +1176,16 @@ val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
         boxMonToMon = 0x0803E660L, boxMonRestorePP = 0x080441D0L, getBoxMonData = 0x0803FC30L, storagePtr = 0x03004F60L,
         codeCrcs = listOf(0x3F7133D1L, 0x05F9FBC2L, 0xF3E3F4DDL),
     ),
+    // Pokemon - Versione Rubino (Italy) (Rev 1).gba.
+    "AXVI1" to BoxSwapFns(
+        boxMonToMon = 0x0803B680L, boxMonRestorePP = 0x08040D14L, getBoxMonData = 0x0803CDC8L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x46105F38L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Versione Rubino (Italy).gba.
+    "AXVI0" to BoxSwapFns(
+        boxMonToMon = 0x0803B680L, boxMonRestorePP = 0x08040D14L, getBoxMonData = 0x0803CDC8L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x46105F38L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
     // Pokemon - Versione Smeraldo (Italy).gba.
     "BPEI0" to BoxSwapFns(
         boxMonToMon = 0x08069008L, boxMonRestorePP = 0x0806E934L, getBoxMonData = 0x0806A678L, storagePtr = 0x03005D94L,
@@ -1070,6 +1195,16 @@ val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
     "BPGI0" to BoxSwapFns(
         boxMonToMon = 0x0803E660L, boxMonRestorePP = 0x080441D0L, getBoxMonData = 0x0803FC30L, storagePtr = 0x03004F60L,
         codeCrcs = listOf(0xDF5240B2L, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Versione Zaffiro (Italy) (Rev 1).gba.
+    "AXPI1" to BoxSwapFns(
+        boxMonToMon = 0x0803B680L, boxMonRestorePP = 0x08040D14L, getBoxMonData = 0x0803CDC8L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x54351FC2L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+    ),
+    // Pokemon - Versione Zaffiro (Italy).gba.
+    "AXPI0" to BoxSwapFns(
+        boxMonToMon = 0x0803B680L, boxMonRestorePP = 0x08040D14L, getBoxMonData = 0x0803CDC8L, storagePtr = 0x020300A0L,
+        codeCrcs = listOf(0x54351FC2L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
     ),
 )
 
@@ -1439,5 +1574,117 @@ val FLASH_PORTS: Map<String, FlashFns> = mapOf(
         menuFieldCallback = 0x0300486CL, postMenuFieldCallback = 0x03005CF4L, fieldCallbacks = listOf(0x0810CFF0L),
         partyMenuSlotId = 0x03005CF0L, mapHeader = 0x0202E828L,
         codeCrcs = listOf(0xAC4D17B2L, 0xC477C650L, 0xA460DEAEL),
+    ),
+)
+
+/** TRADE EVOLUTIONS (TradeEvolution.kt) for the same games, by the same keys (headless: a KADABRA evolved from the field). */
+val TRADE_EVO_PORTS: Map<String, TradeEvoFns> = mapOf(
+    // Pocket Monsters - Emerald (Japan).gba.
+    "BPEJ0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806CB5CL, beginEvolutionScene = 0x0813DB44L, afterEvolution = 0x03005F28L,
+        returnToField = 0x08085A30L, lockControls = 0x080987DCL,
+        codeCrcs = listOf(0xA970F637L, 0x9C386453L, 0x633AA4D2L, 0xB9FB85A7L),
+    ),
+    // Pocket Monsters - FireRed (Japan) (Rev 1).gba.
+    "BPRJ1" to TradeEvoFns(
+        getEvolutionTarget = 0x08042520L, beginEvolutionScene = 0x080CEF44L, afterEvolution = 0x0300532CL,
+        returnToField = 0x08056078L, lockControls = 0x080691A8L,
+        codeCrcs = listOf(0xA970F637L, 0x93546059L, 0xD94D296AL, 0x0111A86EL),
+    ),
+    // Pocket Monsters - FireRed (Japan).gba.
+    "BPRJ0" to TradeEvoFns(
+        getEvolutionTarget = 0x080425B4L, beginEvolutionScene = 0x080CEF00L, afterEvolution = 0x030053CCL,
+        returnToField = 0x0805609CL, lockControls = 0x08069200L,
+        codeCrcs = listOf(0xA970F637L, 0x6C732801L, 0xECD995F5L, 0x0111A86EL),
+    ),
+    // Pocket Monsters - LeafGreen (Japan) (Rev 1).gba.
+    "BPGJ1" to TradeEvoFns(
+        getEvolutionTarget = 0x08042520L, beginEvolutionScene = 0x080CEF18L, afterEvolution = 0x0300532CL,
+        returnToField = 0x08056078L, lockControls = 0x080691A8L,
+        codeCrcs = listOf(0xA970F637L, 0x311941A4L, 0xD94D296AL, 0x0111A86EL),
+    ),
+    // Pocket Monsters - LeafGreen (Japan).gba.
+    "BPGJ0" to TradeEvoFns(
+        getEvolutionTarget = 0x080425B4L, beginEvolutionScene = 0x080CEED4L, afterEvolution = 0x030053CCL,
+        returnToField = 0x0805609CL, lockControls = 0x08069200L,
+        codeCrcs = listOf(0xA970F637L, 0x51D54C47L, 0xECD995F5L, 0x0111A86EL),
+    ),
+    // Pokemon - Blattgruene Edition (Germany).gba.
+    "BPGD0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DC4L, beginEvolutionScene = 0x080CDF1CL, afterEvolution = 0x030052CCL,
+        returnToField = 0x080567FCL, lockControls = 0x08069930L,
+        codeCrcs = listOf(0xA970F637L, 0x68DE11C4L, 0x879179B3L, 0x0111A86EL),
+    ),
+    // Pokemon - Edicion Esmeralda (Spain).gba.
+    "BPES0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806D098L, beginEvolutionScene = 0x0813D674L, afterEvolution = 0x030061E8L,
+        returnToField = 0x080860DCL, lockControls = 0x08098E68L,
+        codeCrcs = listOf(0xA970F637L, 0xFFDDD62BL, 0x02EE957BL, 0xB9FB85A7L),
+    ),
+    // Pokemon - Edicion Rojo Fuego (Spain).gba.
+    "BPRS0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DB0L, beginEvolutionScene = 0x080CE010L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080568D0L, lockControls = 0x08069A04L,
+        codeCrcs = listOf(0xA970F637L, 0x6CA41669L, 0xE027EA65L, 0x0111A86EL),
+    ),
+    // Pokemon - Edicion Verde Hoja (Spain).gba.
+    "BPGS0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DB0L, beginEvolutionScene = 0x080CDFE4L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080568D0L, lockControls = 0x08069A04L,
+        codeCrcs = listOf(0xA970F637L, 0x52D470B4L, 0xE027EA65L, 0x0111A86EL),
+    ),
+    // Pokemon - Feuerrote Edition (Germany).gba.
+    "BPRD0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DC4L, beginEvolutionScene = 0x080CDF48L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080567FCL, lockControls = 0x08069930L,
+        codeCrcs = listOf(0xA970F637L, 0xCEE93794L, 0x879179B3L, 0x0111A86EL),
+    ),
+    // Pokemon - FireRed Version (USA).gba.
+    "BPRE0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042EC4L, beginEvolutionScene = 0x080CDDA8L, afterEvolution = 0x0300537CL,
+        returnToField = 0x080567DCL, lockControls = 0x08069940L,
+        codeCrcs = listOf(0xA970F637L, 0xB9EDBA19L, 0xB892BBB7L, 0x0111A86EL),
+    ),
+    // Pokemon - Smaragd-Edition (Germany).gba.
+    "BPED0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806D09CL, beginEvolutionScene = 0x0813D67CL, afterEvolution = 0x030061E8L,
+        returnToField = 0x080860E4L, lockControls = 0x08098E70L,
+        codeCrcs = listOf(0xA970F637L, 0xFFDDD62BL, 0x14037773L, 0xB9FB85A7L),
+    ),
+    // Pokemon - Version Emeraude (France).gba.
+    "BPEF0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806D098L, beginEvolutionScene = 0x0813D69CL, afterEvolution = 0x030061E8L,
+        returnToField = 0x080860D8L, lockControls = 0x08098E64L,
+        codeCrcs = listOf(0xA970F637L, 0x8BC914CBL, 0x0F941281L, 0xB9FB85A7L),
+    ),
+    // Pokemon - Version Rouge Feu (France).gba.
+    "BPRF0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042D9CL, beginEvolutionScene = 0x080CE008L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080568BCL, lockControls = 0x080699F0L,
+        codeCrcs = listOf(0xA970F637L, 0xCEE93794L, 0xEF99B993L, 0x0111A86EL),
+    ),
+    // Pokemon - Version Vert Feuille (France).gba.
+    "BPGF0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042D9CL, beginEvolutionScene = 0x080CDFDCL, afterEvolution = 0x030052CCL,
+        returnToField = 0x080568BCL, lockControls = 0x080699F0L,
+        codeCrcs = listOf(0xA970F637L, 0x68DE11C4L, 0xEF99B993L, 0x0111A86EL),
+    ),
+    // Pokemon - Versione Rosso Fuoco (Italy).gba.
+    "BPRI0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DB0L, beginEvolutionScene = 0x080CDF28L, afterEvolution = 0x030052CCL,
+        returnToField = 0x080567E8L, lockControls = 0x0806991CL,
+        codeCrcs = listOf(0xA970F637L, 0x6CA41669L, 0xB25806B7L, 0x0111A86EL),
+    ),
+    // Pokemon - Versione Smeraldo (Italy).gba.
+    "BPEI0" to TradeEvoFns(
+        getEvolutionTarget = 0x0806D09CL, beginEvolutionScene = 0x0813D66CL, afterEvolution = 0x030061E8L,
+        returnToField = 0x080860DCL, lockControls = 0x08098E68L,
+        codeCrcs = listOf(0xA970F637L, 0x644C943DL, 0x02EE957BL, 0xB9FB85A7L),
+    ),
+    // Pokemon - Versione Verde Foglia (Italy).gba.
+    "BPGI0" to TradeEvoFns(
+        getEvolutionTarget = 0x08042DB0L, beginEvolutionScene = 0x080CDEFCL, afterEvolution = 0x030052CCL,
+        returnToField = 0x080567E8L, lockControls = 0x0806991CL,
+        codeCrcs = listOf(0xA970F637L, 0x52D470B4L, 0xB25806B7L, 0x0111A86EL),
     ),
 )

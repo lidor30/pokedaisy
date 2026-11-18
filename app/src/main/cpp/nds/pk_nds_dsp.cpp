@@ -537,6 +537,8 @@ void pk_ndsd_set_wild_off(bool off)
     if (d) d->wildOff = off;
 }
 
+bool pk_ndsd_code_write(uint32_t, const uint8_t*, int) { return false; }
+
 void pk_ndsd_set_keep_start_menu(bool on)
 {
     if (d) d->keepStartMenu = on;

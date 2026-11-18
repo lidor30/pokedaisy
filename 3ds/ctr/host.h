@@ -9,7 +9,8 @@
 void host_log_open(const char* path);
 void host_log(const char* format, ...) __attribute__((format(printf, 1, 2)));
 void host_log_close(void);
-// While a game runs, the lines wait in memory (no SD card writes mid-game) until hold(false), HOME, sleep or a full buffer.
+// While a game runs, lines wait in RAM until hold(false), HOME or sleep.
+// A full buffer drops its oldest lines rather than writing during gameplay.
 void host_log_hold(bool hold);
 void host_log_flush(void);
 // pd_armgba_host.log.
@@ -34,6 +35,8 @@ size_t host_heap_free(void);
 // (pd_armgba_host.romBuffer). armGBA frees it when a game closes: that free is skipped (host.c's __wrap_free).
 bool host_rom_arena_init(void);
 void* host_rom_arena(size_t size);
+// What host_rom_arena_init got: 32 MB, 16 MB where the app's memory has no room for 32 (an Old 3DS's .3dsx), or 0.
+size_t host_rom_arena_size(void);
 bool host_rom_arena_ready(void);
 // The memory the app was given and where it went, for an error a player can photograph and the log: the model, CIA or
 // 3dsx, the app's memory and mode, the heap / linear split, the static data, the heap free before the arena and now.

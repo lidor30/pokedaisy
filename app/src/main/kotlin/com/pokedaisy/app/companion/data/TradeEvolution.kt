@@ -35,8 +35,8 @@ data class TradeEvoFns(
 // TRADE_EVO_FIRERED_REV1, _LEAFGREEN_REV0 / _REV1 and TRADE_EVO_EMERALD are records in gamedata/gen3/records/
 // (GameDataRecordsGen.kt).
 
-/** The trade evolution calls for a ROM, by what the companion detected it as: retail English FireRed rev 1, LeafGreen
- * rev 0 / 1 and Emerald only (not Emerald Kaizo: its map reload after a CB2_ReturnToField from the live field crashed
+/** The trade evolution calls for a ROM, by what the companion detected it as: retail FireRed / LeafGreen / Emerald in every
+ * language and revision (not Emerald Kaizo: its map reload after a CB2_ReturnToField from the live field crashed
  * FLY there; not the rebuilds - Legacy, Recharged - whose code is elsewhere). The code CRCs still decide. */
 fun tradeEvoFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean): TradeEvoFns? = when {
     hack -> null
@@ -44,6 +44,10 @@ fun tradeEvoFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean)
     kind == GameKind.FIRERED && gameCode == "BPGE" && revision == 0 -> TRADE_EVO_LEAFGREEN_REV0
     kind == GameKind.FIRERED && gameCode == "BPGE" && revision == 1 -> TRADE_EVO_LEAFGREEN_REV1
     kind == GameKind.EMERALD && gameCode == "BPEE" -> TRADE_EVO_EMERALD
+    // English FireRed rev 0 and the other languages (Japanese too): TRADE_EVO_PORTS, mapped by scripts/port_field_items.py from
+    // the English records, each evolved headless (a KADABRA to ALAKAZAM from the field, 2026-11-18).
+    kind == GameKind.FIRERED && (gameCode.startsWith("BPR") || gameCode.startsWith("BPG")) ||
+        kind == GameKind.EMERALD && gameCode.startsWith("BPE") -> TRADE_EVO_PORTS["$gameCode$revision"]
     else -> null
 }
 

@@ -27,8 +27,10 @@ import okio.Path
 object ReusableTms {
     /** One spot: [expect] is the ROM from [at] (the compare through the RemoveBagItem call); the branch to patch sits
      * [BRANCH] bytes in. */
-    class Site(val at: Long, val expect: ByteArray) {
-        val branch get() = at + BRANCH
+    class Site(val at: Long, val expect: ByteArray, private val patchAt: Long? = null, private val patchValue: ByteArray? = null) {
+        /** What's written where: the GBA's `bhi` made a `b` ([ALWAYS_SKIP]), or a Game Boy cart's own edit ([GbGamePatches]). */
+        val branch get() = patchAt ?: (at + BRANCH)
+        val value: ByteArray get() = patchValue ?: ALWAYS_SKIP
         /** Where its call goes: the build's RemoveBagItem. */
         val calls: Long get() = blTarget(at + 12, expect, 12)
     }

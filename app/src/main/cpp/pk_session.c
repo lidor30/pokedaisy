@@ -350,9 +350,13 @@ void pk_api_set_audio_rate(double rate) {
 
 bool pk_api_rom_patch(uint32_t expectAddr, const uint8_t* expect, int expectLen,
                       uint32_t addr, const uint8_t* value, int len) {
-    if (!expect || !value || expectLen < 1 || expectLen > 64 || len < 1 || len > 4 ||
-        expectAddr < 0x08000000u || (uint64_t) expectAddr + expectLen > 0x0E000000u ||
-        addr < 0x08000000u || (uint64_t) addr + len > 0x0E000000u) return false;
+    if (!expect || !value || expectLen < 1 || expectLen > 64 || len < 1 || len > 4) return false;
+    // The GBA's cart space, or a Game Boy cart's offsets behind PK_GB_ROM_TAG (pk_cheats_patch picks by the core).
+    bool gbaRange = expectAddr >= 0x08000000u && (uint64_t) expectAddr + expectLen <= 0x0E000000u &&
+        addr >= 0x08000000u && (uint64_t) addr + len <= 0x0E000000u;
+    bool gbRange = expectAddr >= PK_GB_ROM_TAG && (uint64_t) expectAddr + expectLen <= PK_GB_ROM_TAG + 0x800000u &&
+        addr >= PK_GB_ROM_TAG && (uint64_t) addr + len <= PK_GB_ROM_TAG + 0x800000u;
+    if (!gbaRange && !gbRange) return false;
     pthread_rwlock_wrlock(&pk_coreLock);
     bool ok = g.core && pk_cheats_patch(g.core, expectAddr, expect, expectLen, addr, value, len);
     pthread_rwlock_unlock(&pk_coreLock);
@@ -631,6 +635,7 @@ bool pk_api_rom_read(int64_t off, uint8_t* dst, int len) {
         struct GB* gb = g.core->board;
         if (gb->memory.rom && (size_t) off + (size_t) len <= gb->pristineRomSize) {
             memcpy(dst, (const uint8_t*) gb->memory.rom + off, (size_t) len);
+            pk_cheats_overlay_gb((uint32_t) off, dst, len);   // the cart's own bytes under the game options' patches
             ok = true;
         }
     }

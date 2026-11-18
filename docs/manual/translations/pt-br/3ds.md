@@ -112,6 +112,7 @@ Baixe o `pokedaisy.3dsx` novo e copie por cima do antigo em `sdmc:/3ds/`. Seus j
 - **Um jogo não aparece na lista:** ele precisa estar direto em `sdmc:/pokedaisy/roms/`, não em uma pasta dentro dela e não compactado.
 - **Meu save não carregou:** ele precisa ter exatamente o nome do jogo com `.sav` no final. Todo início copia o save primeiro para `sdmc:/pokedaisy/roms/pokedaisy-backups/`, então uma cópia mais antiga está lá se você precisar.
 - **Está lento:** um 3DS ou 2DS original é mais lento que os modelos New. Nas `SETTINGS` da biblioteca, mude `SCREEN` para `PIXEL 1x`, o modo mais leve. Em um jogo de GBA, você também pode apertar `X` na biblioteca e testar outro `GBA CORE`: o `GPSP` é um experimental, feito para o 3DS original. Os jogos abrem sem EXPAND, que é mais leve. O `EXPAND 1.5x` está nas `SETTINGS` da biblioteca se você quiser.
+- **Um jogo pede para instalar o CIA:** aberto pelo Homebrew Launcher, um 3DS ou 2DS original só tem espaço para jogos de até 16 MB, e nenhum para o núcleo `GPSP`. Instale o `pokedaisy.cia` (veja acima) e abra o PokeDaisy pelo menu HOME para jogar jogos maiores ou usar o `GPSP`.
 - **O jogo não abriu:** a tela de cima diz o motivo, seguido da memória do seu 3DS. Quando falar com a gente, tire uma foto da mensagem inteira ou anexe o `sdmc:/pokedaisy/log.txt`.
 
 Ainda com problema? [Avise a gente](https://pokedaisy.com/pt-br/feedback/#bug) e anexe `sdmc:/pokedaisy/log.txt`.

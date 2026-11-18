@@ -28,6 +28,7 @@ if(NOT PK_GPSP_PATCHED EQUAL -1 AND (PK_GPSP_PATCHED_SEM EQUAL -1 OR PK_GPSP_PAT
     # A tree with the first patch only: gba_memory.c back to gpSP's (patch -R of that part isn't kept apart), then all of it.
     message(FATAL_ERROR "gpSP holds part of gpsp-pokedaisy.patch: git -C third_party/gpsp checkout . and configure again")
 endif()
+
 if(PK_GPSP_PATCHED EQUAL -1)
     execute_process(COMMAND patch -p1 -N -i "${PK_GPSP_PATCH}"
         WORKING_DIRECTORY "${GPSP_DIR}" RESULT_VARIABLE PK_GPSP_APPLY OUTPUT_VARIABLE PK_GPSP_OUT ERROR_VARIABLE PK_GPSP_ERR)
@@ -35,4 +36,17 @@ if(PK_GPSP_PATCHED EQUAL -1)
         message(FATAL_ERROR "gpSP patch didn't apply (${PK_GPSP_PATCH}): ${PK_GPSP_OUT}${PK_GPSP_ERR}")
     endif()
     message(STATUS "gpSP: applied gpsp-pokedaisy.patch")
+endif()
+
+# The r4 worker diagnostics are kept separate so an existing checkout with
+# the original PokeDaisy patch can be upgraded without resetting its tree.
+file(READ "${GPSP_DIR}/video_thread.cc" PK_GPSP_THREAD_SOURCE)
+string(FIND "${PK_GPSP_THREAD_SOURCE}" "pd_thread_start_error" PK_GPSP_THREAD_PATCHED)
+if(PK_GPSP_THREAD_PATCHED EQUAL -1)
+    execute_process(COMMAND patch -p1 -N -i "${CMAKE_CURRENT_LIST_DIR}/gpsp-thread-start.patch"
+        WORKING_DIRECTORY "${GPSP_DIR}" RESULT_VARIABLE PK_GPSP_THREAD_APPLY
+        OUTPUT_VARIABLE PK_GPSP_THREAD_OUT ERROR_VARIABLE PK_GPSP_THREAD_ERR)
+    if(NOT PK_GPSP_THREAD_APPLY EQUAL 0)
+        message(FATAL_ERROR "gpSP thread patch failed: ${PK_GPSP_THREAD_OUT}${PK_GPSP_THREAD_ERR}")
+    endif()
 endif()

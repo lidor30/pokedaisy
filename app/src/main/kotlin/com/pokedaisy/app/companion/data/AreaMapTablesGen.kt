@@ -114,12 +114,20 @@ val AREA_MAP_TABLES: Map<Long, AreaMapTables> by lazy {
         0x63478921L to AreaMapTables(0x0873E2F4L, 0x0L, listOf(43, 129, 60, 132, 4, 10, 10, 11, 6, 9, 22, 10, 8, 2, 11, 4, 2, 4, 2, 1, 1, 2, 2, 4, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 2, 2, 1), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Celia's Stupid Romhack (v1.1.4).gba
         0x458c9fadL to AreaMapTables(0x089DCD7CL, 0x0L, listOf(25, 127, 67, 69, 7, 6, 8, 10, 8, 9, 27, 15, 11, 3, 12, 4, 2, 2, 2, 1, 1, 2, 2, 4, 3, 3, 3, 2, 1, 1, 2, 7, 5, 10, 8, 11, 7, 5, 1, 1, 1, 2, 1, 8, 3, 28, 20, 33, 16, 19), 640, 640, 7, 26, 16, 0x3FF),
+        // Pokemon Ceruleum (v1.1.1).gba
+        0xb55f6446L to AreaMapTables(0x08FA4FC4L, 0x0L, listOf(144, 122, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1), 512, 512, 6, -1, 16, 0x3FF),
+        // Pokemon Clover (v1.3.3).gba
+        0x32a408ccL to AreaMapTables(0x083526A8L, 0x0L, listOf(5, 123, 60, 79, 6, 7, 9, 11, 14, 9, 59, 32, 13, 2, 36, 4, 2, 2, 2, 3, 10, 2, 2, 3, 2, 3, 32, 5, 6, 1, 1, 20, 6, 22, 8, 9, 21, 120, 11, 2, 25, 18, 20), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Dreamstone Mysteries.gba
         0xdc343b57L to AreaMapTables(0x09186E6CL, 0x0L, listOf(28, 32, 40, 31, 30, 4, 57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1), 512, 512, 6, -1, 16, 0x3FF),
         // Pokemon Elite Redux (2.65.3b).gba
         0x7a80d68bL to AreaMapTables(0x0917995CL, 0x0L, listOf(60, 5, 5, 6, 7, 8, 9, 7, 7, 14, 9, 17, 11, 24, 14, 15, 16, 2, 3, 2, 3, 1, 1, 1, 128, 14, 61, 93, 2, 1, 13, 1, 1, 3, 1), 512, 2048, 6, -1, 16, 0xFFF),
         // Pokemon Elite Redux (2.65.4.1b).gba
         0x1d230210L to AreaMapTables(0x091F54A0L, 0x0L, listOf(60, 5, 5, 6, 7, 8, 9, 7, 7, 14, 9, 17, 11, 24, 14, 15, 16, 2, 3, 2, 3, 1, 1, 1, 128, 14, 61, 93, 2, 1, 13, 1, 1, 3, 1), 512, 2048, 6, -1, 16, 0xFFF),
+        // Pokemon Elysium (v2.5.0) (Part A).gba
+        0xd6ebe711L to AreaMapTables(0x083526A8L, 0x0L, listOf(6, 129, 68, 79, 9, 8, 11, 12, 19, 10, 26, 12, 33, 15, 23, 12, 2, 2, 8, 4, 93, 15, 2, 3, 3, 3, 2, 1, 10, 1, 1, 10, 5, 6, 8, 8, 5, 5, 1, 1, 1, 3, 1), 640, 640, 7, 26, 16, 0x3FF),
+        // Pokemon Elysium (v2.5.0) (Part B).gba
+        0xa4a76614L to AreaMapTables(0x083526A8L, 0x0L, listOf(6, 129, 68, 72, 9, 8, 11, 12, 13, 10, 26, 11, 29, 7, 12, 6, 2, 2, 2, 2, 24, 13, 2, 4, 3, 3, 2, 1, 10, 1, 1, 9, 5, 6, 8, 8, 5, 5, 1, 1, 1, 3, 1), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Emerald Imperium (v1.3.1).gba
         0x9c31cc4bL to AreaMapTables(0x08FC2F74L, 0x0L, listOf(57, 6, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 11, 23, 14, 16, 15, 2, 2, 2, 3, 1, 1, 1, 112, 61, 89, 2, 1, 13, 1, 1, 3, 1), 512, 512, 6, -1, 16, 0x3FF),
         // Pokemon Emerald Kaizo (v2.0).gba
@@ -150,6 +158,8 @@ val AREA_MAP_TABLES: Map<Long, AreaMapTables> by lazy {
         0xe4ceffe2L to AreaMapTables(0x08486578L, 0x0L, listOf(57, 5, 5, 6, 9, 8, 9, 9, 8, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 110, 61, 89, 2, 1, 13, 1, 1, 3, 8), 512, 512, 6, -1, 16, 0x3FF),
         // Pokemon Heart and Soul (v2.0.6).gba
         0x01713508L to AreaMapTables(0x092DF5A4L, 0x0L, listOf(71, 5, 5, 6, 5, 29, 9, 10, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 7, 1, 7, 35, 28, 91, 5, 15, 1, 6, 15, 108), 512, 512, 6, -1, 16, 0x3FF, alt = AreaMapTables.Numbers(640, 640, 7)),
+        // Pokemon Hyper Emerald Lost Artifacts (v5.7).gba
+        0x81121270L to AreaMapTables(0x08A54698L, 0x0L, listOf(57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 96, 89, 97, 122), 512, 512, 6, -1, 16, 0x3FF),
         // Pokemon Lazarus (v2.0).gba
         0x558ae42fL to AreaMapTables(0x08FAF098L, 0x0L, listOf(114, 8, 12, 6, 7, 22, 10, 25, 7, 31, 8, 17, 18, 31, 24, 21, 19, 2, 2, 2, 3, 1, 1, 2, 115, 63, 89, 2, 1, 13, 1, 1, 3, 1), 512, 512, 6, -1, 24, 0x3FF),
         // Pokemon Let's Go Eevee (Translation Only).gba
@@ -170,6 +180,8 @@ val AREA_MAP_TABLES: Map<Long, AreaMapTables> by lazy {
         0xc17b3cf0L to AreaMapTables(0x0886EF64L, 0x0L, listOf(92, 13, 6, 24, 15, 24, 24, 14, 7, 4, 25, 9, 9, 13, 3, 56, 6, 42, 14, 7, 14, 29, 36, 36, 36, 36, 54, 6, 50, 14, 6, 46, 46, 12), 512, 512, 6, -1, 24, 0x3FF),
         // Pokemon Odyssey (v4.1.1).gba
         0x6c5ee1b2L to AreaMapTables(0x083526A8L, 0x0L, listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1), 640, 640, 7, 26, 16, 0x3FF),
+        // Pokemon Oops All Eevees (v1.3.2).gba
+        0x04014673L to AreaMapTables(0x083526A8L, 0x0L, listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Orange Islands (Beta 5.7).gba
         0xde228cd3L to AreaMapTables(0x083526A8L, 0x0L, listOf(5, 123, 60, 66, 6, 9, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Orange Islands.gba
@@ -196,6 +208,10 @@ val AREA_MAP_TABLES: Map<Long, AreaMapTables> by lazy {
         0x1ce28628L to AreaMapTables(0x08B16238L, 0x0L, listOf(7, 123, 66, 66, 4, 6, 8, 10, 6, 9, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 7, 6, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 63, 15, 15), 640, 640, 7, 26, 24, 0x3FF),
         // Pokemon Recharged Yellow (v1.9.7).gba
         0xdef0f69eL to AreaMapTables(0x08B3F134L, 0x0L, listOf(7, 123, 66, 66, 4, 6, 8, 10, 6, 9, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 7, 6, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 63, 15, 15), 640, 640, 7, 26, 24, 0x3FF),
+        // Pokemon RecordKeepers (v1.2.1).gba
+        0xfc3eb738L to AreaMapTables(0x09316A58L, 0x0L, listOf(19, 58, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1), 512, 512, 6, -1, 16, 0x3FF),
+        // Pokemon Rhythm (v1.4.0).gba
+        0x795b5af9L to AreaMapTables(0x083526A8L, 0x0L, listOf(122, 127, 60, 127, 13, 6, 8, 10, 6, 8, 20, 12, 8, 2, 15, 4, 2, 2, 2, 1, 2, 2, 2, 3, 2, 3, 2, 1, 6, 1, 1, 7, 5, 5, 8, 9, 5, 5, 1, 1, 1, 2, 1), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon SoulGold (v1.1.4).gba
         0xba7394a6L to AreaMapTables(0x09587364L, 0x0L, listOf(67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 1, 0, 34), 640, 1024, 6, -1, 24, 0x7FF, mapSecWide = true),
         // Pokemon SoulGold (v1.2) (Alt 1).gba
@@ -222,6 +238,8 @@ val AREA_MAP_TABLES: Map<Long, AreaMapTables> by lazy {
         0xee742896L to AreaMapTables(0x0872AF04L, 0x0L, listOf(5, 123, 61, 66, 7, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 2, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 21, 17), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Unbound (v2.1.1.1) (French).gba
         0xd1920e13L to AreaMapTables(0x08B70498L, 0xB749DEL, listOf(6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 4, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13), 640, 640, 7, 26, 16, 0x3FF),
+        // Pokemon Unbound (v2.1.1.1) (Italian v7).gba
+        0x71677a18L to AreaMapTables(0x08B70498L, 0xB749DEL, listOf(6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 4, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Unbound (v2.1.1.1).gba
         0x4b3d4957L to AreaMapTables(0x08B70498L, 0xB749DEL, listOf(6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 4, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Wishes of Tomorrow (v1.2.6).gba

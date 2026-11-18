@@ -269,6 +269,15 @@ val POKEDEX_UNBOUND_FR = POKEDEX_UNBOUND.copy(
     probeCategory = "Graine",
 )
 
+/** Unbound v2.1.1.1 IT: English's tables, the dex text translated in place - metric with a decimal comma
+ * ("Alt." / "Peso ... kg", headless, the game's own POKéDEX); BULBASAUR's category stayed English's "Seed". */
+val POKEDEX_UNBOUND_IT = POKEDEX_UNBOUND.copy(
+    categoryPrefix = "Pokémon",
+    categorySuffix = "",
+    metric = true,
+    probeCategory = "Seed",
+)
+
 /** Ruby (rev 1 and rev 2 share every address): Emerald's flag rules,
  * seen copies at SaveBlock1+0x938/+0x3A8C, two-page dex text. */
 val POKEDEX_RUBY = PokedexTables(
@@ -1089,6 +1098,25 @@ val POKEDEX_ROCKET_EDITION = POKEDEX_ULTRA_VIOLET.copy(abilityNames = 0x08950000
 /** Pokémon Ghost Grey: Rocket Edition's layout - rev 0's tables rewritten in place (its ghosts' entries), its
  * ability names at 0x08950000, its mixed-case text. */
 val POKEDEX_GHOST_GREY = POKEDEX_ROCKET_EDITION
+
+/** Pokémon Clover v1.3.3: rev 0's tables rewritten in place (its fakemon's entries), its ability names repointed to
+ * 0x0893A1C0, its mixed-case text ("Anal Plant Pokémon" for slot 1). */
+/** Pokémon Elysium v2.5.0 Part A: rev 0's tables rewritten in place; FireRed's capitals. */
+val POKEDEX_ELYSIUM_A = POKEDEX_ULTRA_VIOLET
+
+/** Pokémon Elysium v2.5.0 Part B: its species tables repointed (every one's literal-pool word). */
+val POKEDEX_ELYSIUM_B = POKEDEX_ULTRA_VIOLET.copy(
+    entries = 0x08A3ADDCL,
+    frontPics = 0x089EE2A0L,
+    palettes = 0x089F05A0L,
+    speciesInfo = 0x089EA560L,
+    speciesToNational = 0x08A2F200L,
+    footprints = 0x08A3A51CL,
+    evolutions = 0x08A31070L,
+    tmhmLearnsets = 0x08A2FAC8L,
+)
+
+val POKEDEX_CLOVER = POKEDEX_ULTRA_VIOLET.copy(abilityNames = 0x0893A1C0L, categorySuffix = "Pokémon", probeCategory = "Anal Plant")
 
 /**
  * Pokémon Let's Go Pikachu / Eevee (both versions share these): FireRed's dex screens over 987 species, every table found

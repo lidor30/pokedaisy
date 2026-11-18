@@ -6,6 +6,7 @@ import java.io.File
 import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.nio.charset.Charset
 import java.util.zip.CRC32
 import java.util.zip.ZipFile
 
@@ -65,7 +66,7 @@ object RomArchive {
     /** The ROM in [archive]: a `.gba` before an `.agb` / `.bin`, then the biggest; null if none. */
     fun romEntry(archive: File, format: Format? = formatOf(archive)): Entry? = runCatching {
         when (format) {
-            Format.ZIP -> ZipFile(archive).use { z ->
+            Format.ZIP -> zipFile(archive).use { z ->
                 pick(z.entries().asSequence().filter { !it.isDirectory }.map { Entry(it.name, it.size) })
             }
             Format.SEVEN_Z -> sevenZ(archive).use { z ->
@@ -84,7 +85,7 @@ object RomArchive {
     /** [entry]'s bytes; closing the stream closes the archive. */
     private fun openEntry(archive: File, entry: Entry, format: Format): InputStream = when (format) {
         Format.ZIP -> {
-            val z = ZipFile(archive)
+            val z = zipFile(archive)
             try {
                 val e = z.getEntry(entry.name) ?: throw IOException("${entry.name} is gone from ${archive.name}")
                 ClosingStream(z.getInputStream(e), z)
@@ -209,6 +210,27 @@ object RomArchive {
             if (old.name.startsWith("%08x-".format(pathCrc)) || i >= KEEP_EXTRACTED - 1) old.deleteRecursively()
         }
         return out
+    }
+
+    /**
+     * [archive] as a zip. Names are UTF-8 when the zip says so (or are plain ASCII); Windows' own zip and older tools
+     * write them in the DOS code page with no flag, which java.util.zip refuses as UTF-8 ("Pokémon" made the whole
+     * archive unreadable, GitHub #1073), so such an archive is opened again reading its unflagged names as Cp437.
+     */
+    private fun zipFile(archive: File): ZipFile {
+        val z = try {
+            ZipFile(archive)
+        } catch (e: java.util.zip.ZipException) {
+            return ZipFile(archive, Charset.forName("Cp437"))
+        }
+        // Android may decode the names only as they're listed.
+        return try {
+            z.entries().asSequence().forEach { it.name }
+            z
+        } catch (e: IllegalArgumentException) {
+            z.close()
+            ZipFile(archive, Charset.forName("Cp437"))
+        }
     }
 
     private fun sevenZ(archive: File): SevenZFile = SevenZFile.builder().setFile(archive).get()
