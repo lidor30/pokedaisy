@@ -72,7 +72,7 @@ FLY = {
 FLY_FROM = {"BPRE0": "BPRE1", "AXVE0": "AXVE1", "AXPE0": "AXVE1", "AXPE1": "AXVE1"}
 
 # The BOXES tab's moves (BoxSwap.kt): BoxMonToMon, BoxMonRestorePP, GetBoxMonData and gPokemonStoragePtr, from the English
-# tables (BOX_SWAP_*), mapped like FLY's. Ruby / Sapphire have no BoxMonToMon (their PC builds the Pokémon another way).
+# tables (BOX_SWAP_*), mapped like FLY's. Ruby / Sapphire call it ExpandBoxMon, their storage static (no pointer to follow).
 BOX_FUNCS = ("boxMonToMon", "boxMonRestorePP", "getBoxMonData")
 BOX = {
     "BPRE1": dict(boxMonToMon=0x0803E788, boxMonRestorePP=0x080442F8, getBoxMonData=0x0803FD58, storage=0x03005010),
@@ -80,7 +80,10 @@ BOX = {
     "BPGE0": dict(boxMonToMon=0x0803E774, boxMonRestorePP=0x080442E4, getBoxMonData=0x0803FD44, storage=0x03005010),
     "BPEE0": dict(boxMonToMon=0x08069004, boxMonRestorePP=0x0806E930, getBoxMonData=0x0806A674, storage=0x03005D94),
 }
-BOX_FROM = {"BPRE0": "BPRE1"}
+# Ruby / Sapphire: ExpandBoxMon (their BoxMonToMon) and gPokemonStorage itself (static: `static` - an EWRAM address, not a pointer).
+BOX["AXVE1"] = dict(boxMonToMon=0x0803B4B4, boxMonRestorePP=0x08040B48, getBoxMonData=0x0803CBFC, storage=0x020300A0, static=True)
+BOX["AXPE1"] = dict(BOX["AXVE1"])
+BOX_FROM = {"BPRE0": "BPRE1", "AXVE0": "AXVE1", "AXPE0": "AXPE1"}
 
 # USE on a TM / HM (TmTeach.kt: the game's own TM screen) and FLASH from the QUICK MENU (Flash.kt), from the English records in
 # gamedata/gen3/records/ (TM_* / FLASH_*), mapped like FLY's: functions by code, RAM globals through the literal pools. No TM
@@ -392,9 +395,11 @@ def port_box(src, rom, key, shift, get_mon=None):
             return None
         got[n] = v
     v, _ = map_literal(src, rom, f["storage"])
-    if v is None or not 0x03000000 <= v < 0x03008000:
+    if v is None or not ((0x02000000 <= v < 0x02040000) if f.get("static") else (0x03000000 <= v < 0x03008000)):
         return None
     got["storage"] = v
+    if f.get("static"):
+        got["static"] = True
     return got
 
 
@@ -679,7 +684,8 @@ def box_kt(rom, box):
     return (f'    // {os.path.basename(rom.path)}.\n    "{rom.code}{rom.rev}" to BoxSwapFns(\n'
             f"        boxMonToMon = {h(box['boxMonToMon'])}, boxMonRestorePP = {h(box['boxMonRestorePP'])}, "
             f"getBoxMonData = {h(box['getBoxMonData'])}, storagePtr = {h(box['storage'])},\n"
-            f"        codeCrcs = listOf({', '.join(f'0x{crc(rom, box[n]):08X}L' for n in BOX_FUNCS)}),\n    ),")
+            f"        codeCrcs = listOf({', '.join(f'0x{crc(rom, box[n]):08X}L' for n in BOX_FUNCS)}),"
+            f"{' staticStorage = true,' if box.get('static') else ''}\n    ),")
 
 
 def pc_kt(rom, fam, pc):

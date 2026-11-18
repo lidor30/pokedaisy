@@ -516,7 +516,8 @@ them is the same in both).
 Panel and box fill the tab (its peach backdrop is the screen's, CompanionScreen's `PcBackdrop`, like the bag's); icons at
 whole scales, allowed past their cells like the game's. A new game needs only its storage read. **The PC's moves** (`BoxSwap.kt`,
 FireRed rev 1, LeafGreen rev 0 / 1 and Emerald; the German / French / Italian / Spanish ones and English FireRed rev 0 from
-`BOX_SWAP_PORTS`, mapped by port_field_items.py under the bag tables' keys - Japanese too, its GetBoxMonData from GetMonData's call - and so Ultra Violet / Rocket Edition /
+`BOX_SWAP_PORTS`, mapped by port_field_items.py under the bag tables' keys - Japanese too, its GetBoxMonData from GetMonData's call; Ruby / Sapphire with ExpandBoxMon on their static gPokemonStorage
+(`BoxSwapFns.staticStorage`, `BOX_SWAP_RUBY` / `_SAPPHIRE`) - and so Ultra Violet / Rocket Edition /
 Ash Gray / Ghost Grey, which run rev 0's bag table; each checked by `scripts/verify_box_swap.py`, the game's functions called headless,
 not yet an in-game save and reboot: `boxSwapFor`, only with vanilla boxes at the table's own storage pointer - the CFRU hacks
 share FireRed rev 0's bag tables, and BoxMonToMon on a compressed record would wreck it), each in the running game the PC's own way, on
