@@ -4838,6 +4838,7 @@ class PokeDaisyActivity : Activity() {
             // The buttons on the other screen's companion (X): the HUD steps back too, under the strip pointing there.
             val hudAlpha by androidx.compose.animation.core.animateFloatAsState(if (quickMenu.open || bottomFocus.value) 0.25f else 1f, label = "hudAlpha")
             // A 3DS game: its own HUD, in the game's smooth look (party, WILD, TOUCH, COMPANION).
+            val hudPrefs = androidx.compose.runtime.remember { Prefs(this@PokeDaisyActivity) }
             if (romIs3ds) com.pokedaisy.app.companion.ui.XyFieldHud(
                 snap, shown, n3dsTopRect.value,
                 modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
@@ -4849,7 +4850,14 @@ class PokeDaisyActivity : Activity() {
                 onOpenCompanion = if (panelClosed && companionButtonShown.value) ({ sidePanel.openPanel() }) else null,
                 onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
                 onPanel = { hudPanelOpen.value = it },
-            ) else com.pokedaisy.app.companion.ui.FieldHud(
+            ) else androidx.compose.runtime.CompositionLocalProvider(
+                // POKéMON PICTURES (Crystal): the HUD's party shows the front pictures too.
+                com.pokedaisy.app.companion.ui.LocalPokemonPictures provides snap.pokedex?.tables?.takeIf {
+                    // The switch's version first: Prefs isn't Compose state, and a flip should show at once.
+                    com.pokedaisy.app.companion.ui.PokemonPicturesSwitch.version >= 0 &&
+                        hudPrefs.pokemonPictures && com.pokedaisy.app.companion.ui.pokemonPicturesOffered(snap.game)
+                },
+            ) { com.pokedaisy.app.companion.ui.FieldHud(
                 snap, shown && !dsWindowUp, hudStyle.value,
                 modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
                 clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
@@ -4864,7 +4872,7 @@ class PokeDaisyActivity : Activity() {
                 openPanel = hudOpenPanel.value, openTick = hudOpenTick.intValue,
                 onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
                 onPanel = { hudPanelOpen.value = it },
-            )
+            ) }
             // A DS game: the game's own buttons over the end of its text box, driven like Gen 3's menus.
             if (romIsNds) {
                 // A DS battle's menu is drawn by the floating window's view, under its dim ([buildDsStageViews]).

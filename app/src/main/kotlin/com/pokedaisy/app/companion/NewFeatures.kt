@@ -86,6 +86,7 @@ object NewFeatures {
     const val REPEL_REFILL = "repel_refill"
     const val SHINY_ALERT = "shiny_alert"
     const val LAST_BALL = "last_ball"
+    const val POKEMON_PICTURES = "pokemon_pictures"
     const val BOSS_RETRY = "boss_retry"
     const val LOW_HP_BEEP = "low_hp_beep"
     const val FIELD_POISON = "field_poison"
@@ -297,7 +298,7 @@ object NewFeatures {
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
         DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP, REPEL_REFILL, SHINY_ALERT, LAST_BALL, BOSS_RETRY, LOW_HP_BEEP, FIELD_POISON, SETTINGS_LOOK,
         QUICK_TOUCH, APP_FONT, PIXEL_SMALL, PAL_PARK, SAVE_MISSING, TRADE_BACK, SAVE_COLLECTION, POKE_TRANSFER, SAVE_EDITOR_GEN5, SAVE_EDITOR_DP, QUICK_TURBO,
-        GAME_LOOK,
+        GAME_LOOK, POKEMON_PICTURES,
     )
 
     private const val DAYS = 7

@@ -18,6 +18,14 @@ class CrystalDecodeTest {
         return readGen2Telemetry(FixtureMemoryReader.load(fixture), GEN2_CRYSTAL)
     }
 
+    /** A party Pokémon's shininess from its DVs at +21 / +22 (a player's MAGMAR: 2 / 10 / 10 / 10); never an egg. */
+    @Test
+    fun partyMonShinyByItsDvs() {
+        val raw = ByteArray(48).also { it[0] = 126; it[31] = 35; it[21] = 0x2A; it[22] = 0xAA.toByte() }
+        assertTrue(decodeGen2PartyMon(raw, 0, GEN2_CRYSTAL)!!.shiny)
+        assertFalse(decodeGen2PartyMon(raw, 0, GEN2_CRYSTAL, egg = true)!!.shiny)
+    }
+
     @Test
     fun `party - Gen 2's big-endian struct, held item, gender from the DVs`() {
         for (fixture in listOf("crystal", "crystal_rev0", "crystal_au")) {

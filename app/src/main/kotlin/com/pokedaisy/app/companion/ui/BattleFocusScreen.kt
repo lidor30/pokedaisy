@@ -219,7 +219,7 @@ private fun FocusHeader(mon: MonView, pill: String, dexTables: PokedexTables?, m
         Box(
             Modifier.size(u * 36).clip(PixelRoundedShape(u * 4)).background(OptionColors.listFill),
             contentAlignment = Alignment.Center,
-        ) { SpeciesIcon(mon.iconAsset, size = u * 32) }
+        ) { MonIcon(mon, size = u * 32, fit = true) }
         Spacer(Modifier.width(u * 5))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(u * 3)) {
             Row(Modifier.heightIn(min = m.lineHeight), verticalAlignment = Alignment.CenterVertically) {

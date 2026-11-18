@@ -32,6 +32,11 @@ class PrefsCompanionSettings(
     override fun setShowFoeIvs(on: Boolean) { prefs.showFoeIvs = on }
     override val battleInfo get() = prefs.battleInfo
     override fun setBattleInfo(on: Boolean) { prefs.battleInfo = on }
+    override val pokemonPictures get() = prefs.pokemonPictures
+    override fun setPokemonPictures(on: Boolean) {
+        prefs.pokemonPictures = on
+        com.pokedaisy.app.companion.ui.PokemonPicturesSwitch.flipped()
+    }
     override val oneTapMoves get() = prefs.oneTapMoves
     override fun setOneTapMoves(on: Boolean) { prefs.oneTapMoves = on }
     override val battleInfoFirst get() = prefs.battleInfoFirst

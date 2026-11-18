@@ -992,6 +992,12 @@ private fun homeRows(
         // The game's frames per second and the app's CPU share, in the game's corner.
         SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },
         groupTitle(tk("COMPANION")),
+        // Crystal: every Pokémon in the companion and the HUD shows its front picture instead of the shared party icons.
+        SettingRow(
+            tk("POKéMON PICTURES"), if (s.pokemonPictures) tk("DETAILED") else tk("GAME"), subtitle = "Each Pokémon's own picture in place of the game's icons",
+            labelBadge = NewFeatures.badge(NewFeatures.POKEMON_PICTURES),
+        ) { s.setPokemonPictures(!s.pokemonPictures); changed() }
+            .takeIf { pokemonPicturesOffered(com.pokedaisy.app.companion.data.activeGame) },
         // Move effectiveness and the foe's weak-to/resists during battle.
         // Off: the battle buttons alone - no INFO, SUGGESTIONS or move ratings. The rows about them go with it.
         SettingRow(

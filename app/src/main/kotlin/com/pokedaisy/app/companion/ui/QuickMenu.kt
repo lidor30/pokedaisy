@@ -816,7 +816,7 @@ private fun QuickIcon(action: QuickAction, s: SnapshotView, actions: QuickAction
         QuickAction.HEAL -> PixelArt(HEAL_ICON, HEAL_COLORS, Modifier.size(size * 0.8f))
         QuickAction.FLY -> {
             val flyer = s.party.firstOrNull { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } ?: s.party.firstOrNull()
-            SpeciesIcon(flyer?.iconAsset, size * 1.2f)
+            MonIcon(flyer, size * 1.2f)
         }
         // The wings: up (TAKE OFF) or down (LAND).
         QuickAction.FLIGHT -> PixelArt(if (actions.flying()) LAND_ICON else TAKE_OFF_ICON, WING_COLORS, Modifier.size(size * 0.8f))

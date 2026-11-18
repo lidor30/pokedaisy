@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.ui.theme.DarkMode
 import androidx.compose.foundation.background
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
@@ -1419,12 +1420,27 @@ open class CompanionScreenshotTest {
     @Test fun silverParty() = crystal("silver", "PARTY", silver = true)
     @Test fun silverDexEntry() = crystal("silver", "DEX", dexEntry = 155, silver = true)
     @Test fun crystalParty() = crystal("crystal", "PARTY")
+    @Test fun crystalPokemonPictures() = crystal("crystal", "PARTY", pokemonPictures = true)
+    @Test fun crystalPokemonPicturesDark() {
+        DarkMode.override = true
+        try { crystal("crystal", "PARTY", pokemonPictures = true) } finally { DarkMode.override = null }
+    }
+    // A shiny in the second slot (the fixture has none): the gold sparkle, the picture in its shiny colours.
+    @Test fun crystalPartyShiny() = crystal("crystal", "PARTY", shinySlot = 1)
+    @Test fun crystalPokemonPicturesShiny() = crystal("crystal", "PARTY", pokemonPictures = true, shinySlot = 1)
+    @Test fun crystalSettingsPokemonPictures() = crystal("crystal", "SETTINGS", settingsRow = "POKéMON PICTURES")
     @Test fun crystalGuide() = crystal("crystal", "GUIDE", guidePage = "HERE")
     @Test fun crystalGuideNextBoss() = crystal("crystal", "GUIDE", guidePage = "NEXT BOSS")
     @Test fun crystalGuideWhereIs() = crystal("crystal", "GUIDE", guidePage = "WHERE IS")
     @Test fun crystalItems() = crystal("crystal", "ITEMS")
     @Test fun crystalBattle() = crystal("crystal_battle", "BATTLE")
+    // A shiny wild foe (the fixture's SENTRET marked so): INFO's sparkle and gold frame, the SHINY plate.
+    @Test fun crystalBattleShinyFoe() = crystal("crystal_battle", "BATTLE", shinyFoe = true)
+    @Test fun crystalBattleShinyFoeControls() = crystal("crystal_battle_menu", "BATTLE", controls = true, shinyFoe = true)
     @Test fun crystalBattleMenu() = crystal("crystal_battle_menu", "BATTLE", controls = true)
+    // POKéMON PICTURES on the battle buttons and INFO: the FIGHT button's picture inside its icon's place.
+    @Test fun crystalBattleMenuPictures() = crystal("crystal_battle_menu", "BATTLE", controls = true, pokemonPictures = true)
+    @Test fun crystalBattlePictures() = crystal("crystal_battle", "BATTLE", pokemonPictures = true)
     @Test fun crystalBattleMoves() = crystal("crystal_battle", "BATTLE", controls = true)
     @Test fun crystalMap() = crystal("crystal", "MAP")
     @Test fun crystalSettings() = crystal("crystal", "SETTINGS")
@@ -1570,7 +1586,7 @@ open class CompanionScreenshotTest {
     private fun crystal(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null, statusBar: Boolean = false,
                         clear: Boolean = false, prism: Boolean = false, gold: Boolean = false, silver: Boolean = false,
                         polished: Boolean = false, describe: Boolean = false, guidePage: String? = null,
-                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false) {
+                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false, pokemonPictures: Boolean = false, settingsRow: String? = null, shinySlot: Int? = null, shinyFoe: Boolean = false) {
         val game = if (legacy) GameKind.CRYSTAL_LEGACY else if (polished) GameKind.POLISHED_CRYSTAL else if (prism) GameKind.PRISM else if (clear) GameKind.CRYSTAL_CLEAR else if (gold) GameKind.GOLD
             else if (silver) GameKind.SILVER else GameKind.CRYSTAL
         var cfg = if (legacy) com.pokedaisy.app.companion.data.GEN2_CRYSTAL_LEGACY else if (polished) com.pokedaisy.app.companion.data.GEN2_POLISHED_CRYSTAL
@@ -1598,8 +1614,11 @@ open class CompanionScreenshotTest {
             com.pokedaisy.app.companion.data.activeGen2 = cfg
         }
         val t = com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load(fixture), cfg)
-        val v = buildSnapshotView(t).copy(game = game)
+        val v = buildSnapshotView(t).copy(game = game).let { s ->
+            if (shinySlot == null) s else s.copy(party = s.party.mapIndexed { i, m -> if (i == shinySlot) m.copy(shiny = true) else m })
+        }.let { s -> if (!shinyFoe) s else s.copy(battleOpponent = s.battleOpponent.map { it.copy(shiny = true) }) }
         (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
+        if (pokemonPictures) v.party.forEach { m -> v.pokedex?.tables?.let { PokedexSource.frontSprite(it, m.species); PokedexSource.shinyFrontSprite(it, m.species) } }
         val input = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
             override val busy = false
             override fun selectAction(actionIndex: Int) {}
@@ -1666,7 +1685,7 @@ open class CompanionScreenshotTest {
         }
         snapshot {
             CompanionScreen(
-                v, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = tab, battleInput = input,
+                v, SampleCompanion.Slots, SampleCompanion.Settings(pokemonPics = pokemonPictures, rowsShown = settingsRow?.let { setOf("BATTLE INFO", it, "ONE-TAP MOVES", "LANGUAGE", "HELP") }), initialTab = tab, battleInput = input, initialSettingsRow = settingsRow,
                 statusBar = if (!statusBar) null else ({ GameStatusBar(if (clear) "Pokémon Crystal Clear" else "Pokémon Crystal", v.location.mapSecName, t.money, "12:34") }),
             )
         }
@@ -2406,7 +2425,12 @@ object SampleCompanion {
     class Settings(
         private var tabs: List<String> = com.pokedaisy.app.companion.DEFAULT_COMPANION_TABS,
         private var cheatList: List<com.pokedaisy.app.cheats.Cheat> = emptyList(),
+        private var pokemonPics: Boolean = false,
+        private val rowsShown: Set<String>? = null,
     ) : CompanionSettings {
+        override val shownRows get() = rowsShown
+        override val pokemonPictures get() = pokemonPics
+        override fun setPokemonPictures(on: Boolean) { pokemonPics = on }
         override val coopEnabled = true
         override val coopLiveRefresh = false
         override val coopState get() = com.pokedaisy.app.companion.coop.CoopSession.link.state.value

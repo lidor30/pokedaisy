@@ -280,7 +280,7 @@ private fun StatsColumn(side: String, mons: List<MonView>, m: GbaTextMetrics, sm
                 Box(
                     Modifier.size(u * 22).clip(PixelRoundedShape(u * 4)).background(if (optionLook === OptionLook.Live) OptionColors.well else optionLook.listFill),
                     contentAlignment = Alignment.Center,
-                ) { SpeciesIcon(mon.iconAsset, size = u * 18) }
+                ) { MonIcon(mon, size = u * 18, fit = true) }
                 Spacer(Modifier.width(u * 4))
                 Column(Modifier.weight(1f)) {
                     GbaText(tr(side), optionLook.value, optionLook.valueShadow, small)

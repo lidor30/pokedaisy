@@ -410,6 +410,13 @@ class Prefs(
         get() = p.getBoolean("look_around", true)
         set(v) = p.edit().putBoolean("look_around", v).apply()
 
+    /** POKéMON PICTURES (Crystal): every Pokémon in the companion and the HUD (PARTY, the summary, BATTLE, BOXES, LEARN,
+     * the DEX, GUIDE) shows its front picture from the cart instead of the game's party icons, which 251 species share 37
+     * of. Off (GAME) by default. */
+    var pokemonPictures: Boolean
+        get() = p.getBoolean("pokemon_pictures", false)
+        set(v) = p.edit().putBoolean("pokemon_pictures", v).apply()
+
     /** ONE-TAP MOVES: the battle controls' action menu shows the moves where FIGHT is, a tap
      * picking FIGHT and the move in one go. Off by default. */
     var oneTapMoves: Boolean

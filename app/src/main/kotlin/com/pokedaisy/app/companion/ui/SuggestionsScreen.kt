@@ -138,7 +138,7 @@ private fun FoeLine(foe: MonView, state: String, m: GbaTextMetrics, small: GbaTe
         Box(
             Modifier.size(u * 24).clip(PixelRoundedShape(u * 4)).background(OptionColors.listFill),
             contentAlignment = Alignment.Center,
-        ) { SpeciesIcon(foe.iconAsset, size = u * 22) }
+        ) { MonIcon(foe, size = u * 22, fit = true) }
         Spacer(Modifier.width(u * 4))
         GbaText(foe.name, OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f, fill = false))
         GenderMark(foe.genderSymbol, m, Modifier.padding(start = u * 2))

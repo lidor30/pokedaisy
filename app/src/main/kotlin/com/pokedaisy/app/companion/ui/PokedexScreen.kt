@@ -329,7 +329,7 @@ private fun DexRow(
         DexMark(caught, seen, Modifier.size(u * 12))
         Spacer(Modifier.width(u * 4))
         Box(Modifier.size(u * 32).alpha(if (seen) 1f else 0.45f)) {
-            if (species > 0) SpeciesIcon(spriteAsset("pokemon", species), size = u * 32)
+            if (species > 0) SpeciesPicture(species, spriteAsset("pokemon", species), size = u * 32, fit = true)
         }
         Spacer(Modifier.width(u * 6))
         GbaText(dexNo(n), OptionColors.muted, OptionColors.mutedShadow, small)

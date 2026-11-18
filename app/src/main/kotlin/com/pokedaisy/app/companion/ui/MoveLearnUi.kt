@@ -190,7 +190,7 @@ fun TmLearnersRow(ctx: LearnContext, party: List<MonView>, item: ItemView, text:
             learners.forEach { l ->
                 val mon = party[l.index]
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(u * 1)) {
-                    SpeciesIcon(mon.iconAsset, size = u * 40)
+                    MonIcon(mon, size = u * 40)
                     when {
                         l.index == best -> VerdictPill(tr("BEST"), LearnGreen)
                         l.fit == TmFit.ABLE -> VerdictPill(tr("ABLE"), LearnedBlue)

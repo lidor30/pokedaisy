@@ -183,6 +183,11 @@ fun CompanionScreen(
         LocalGameFont provides gameFont,
         LocalGameTextScale provides if (gameFont != null) gameTextScale(snapshot.game) else 1f,
         LocalGameFontWidth provides if (gameFont != null) gameFontWidth(snapshot.game) else 1f,
+        // POKéMON PICTURES (Crystal): every Pokémon in the companion shows its front picture from the cart.
+        // (Read after PokemonPicturesSwitch.version, so a flip redraws at once.)
+        LocalPokemonPictures provides snapshot.pokedex?.tables?.takeIf {
+            PokemonPicturesSwitch.version >= 0 && settings?.pokemonPictures == true && pokemonPicturesOffered(snapshot.game)
+        },
     ) { AppTheme { key(snapshot.game) {
         val game = snapshot.game
         // Until the first real data arrives (the ROM takes a few seconds to

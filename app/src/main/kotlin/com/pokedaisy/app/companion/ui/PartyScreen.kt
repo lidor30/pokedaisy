@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import com.pokedaisy.app.companion.data.PokedexSource
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -43,6 +47,7 @@ import com.pokedaisy.app.companion.data.GameKind
 import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.companion.data.activeGame
+import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.data.gameText
 import com.pokedaisy.app.companion.data.localText
 import com.pokedaisy.app.companion.data.romGameCode
@@ -824,6 +829,158 @@ private class SlotGeometry(w: Float, h: Float) {
     val hpTextMid = barY + 7 * u + 3 * u
 }
 
+/**
+ * POKéMON PICTURES: the Pokédex tables to draw each slot's front picture from (the cart's, as the DEX does), in place of the
+ * game's party icons; null = the icons. Crystal's 251 species share 37 icons, all in one colour.
+ */
+val LocalPokemonPictures = androidx.compose.runtime.staticCompositionLocalOf<com.pokedaisy.app.companion.data.PokedexTables?> { null }
+
+/**
+ * Bumped each time POKéMON PICTURES is flipped ([com.pokedaisy.app.companion.PrefsCompanionSettings]). The setting itself
+ * isn't Compose state, so the companion and the HUD read this before it: a flip shows at once, not on the next sample
+ * (with LIGHT COMPANION a still field can go a while without one).
+ */
+object PokemonPicturesSwitch {
+    var version by androidx.compose.runtime.mutableStateOf(0)
+        private set
+    fun flipped() { version++ }
+}
+
+/**
+ * A PARTY PICTURE: the front picture with its inside filled white, as the game's paper shows it. The picture's colour 0 is
+ * see-through everywhere, so over a dark window or the game (DARK MODE, the HUD) its white parts showed what lay behind.
+ * Only what the outside can't reach is filled, so the outline stays free. Cached per tables and species.
+ */
+private val pokemonPictureCache = java.util.concurrent.ConcurrentHashMap<Triple<Any, Int, Boolean>, com.pokedaisy.app.companion.data.RomArt.Image>()
+
+/** A picture's key bit for its shiny colours (above every species id). */
+private const val SHINY_PICTURE = 1 shl 20
+
+/**
+ * [topLeft]: the picture cut down to what it draws (the PARTY slot lines every one up by its top-left corner). [shiny]: in
+ * the species' shiny colours, as the game's summary and battles show it (Gen 2; elsewhere its usual colours).
+ */
+internal fun pokemonPicture(
+    t: com.pokedaisy.app.companion.data.PokedexTables, species: Int, cached: Boolean, topLeft: Boolean = false, shiny: Boolean = false,
+): com.pokedaisy.app.companion.data.RomArt.Image? {
+    val key = Triple<Any, Int, Boolean>(t, if (shiny) species or SHINY_PICTURE else species, topLeft)
+    pokemonPictureCache[key]?.let { return it }
+    // A game with no shiny pictures (only Gen 2 has them here) shows its usual one.
+    val src = when {
+        shiny && cached -> PokedexSource.cachedShinyFrontSprite(t, species)
+        shiny -> PokedexSource.shinyFrontSprite(t, species) ?: PokedexSource.frontSprite(t, species)
+        cached -> PokedexSource.cachedFrontSprite(t, species)
+        else -> PokedexSource.frontSprite(t, species)
+    } ?: return null
+    val filled = paperFilled(src)
+    return (if (topLeft) toTopLeft(filled) else filled).also { pokemonPictureCache[key] = it }
+}
+
+/** [species]' POKéMON PICTURE from [t], loaded off the main thread once (in its [shiny] colours when it is one). */
+@Composable
+internal fun rememberPokemonPicture(
+    t: com.pokedaisy.app.companion.data.PokedexTables, species: Int, shiny: Boolean, topLeft: Boolean = false,
+): androidx.compose.ui.graphics.ImageBitmap? = rememberRomBitmap(
+    t, if (shiny) species or SHINY_PICTURE else species,
+    { tt, k -> pokemonPicture(tt, k and (SHINY_PICTURE - 1), cached = true, topLeft = topLeft, shiny = k and SHINY_PICTURE != 0) },
+    { tt, k -> pokemonPicture(tt, k and (SHINY_PICTURE - 1), cached = false, topLeft = topLeft, shiny = k and SHINY_PICTURE != 0) },
+)
+
+/** [img] cut down to its drawn pixels. */
+private fun toTopLeft(img: com.pokedaisy.app.companion.data.RomArt.Image): com.pokedaisy.app.companion.data.RomArt.Image {
+    val w = img.width; val h = img.height; val px = img.argb
+    var left = w; var top = h; var right = -1; var bottom = -1
+    for (y in 0 until h) for (x in 0 until w) if ((px[y * w + x] ushr 24) != 0) {
+        if (x < left) left = x; if (y < top) top = y; if (x > right) right = x; if (y > bottom) bottom = y
+    }
+    if (right < 0) return img
+    val cw = right - left + 1; val ch = bottom - top + 1
+    val out = IntArray(cw * ch)
+    for (y in 0 until ch) for (x in 0 until cw) out[y * cw + x] = px[(y + top) * w + x + left]
+    return com.pokedaisy.app.companion.data.RomArt.Image(cw, ch, out)
+}
+
+/** [img] with every see-through pixel the border can't reach (4-way) made white. */
+internal fun paperFilled(img: com.pokedaisy.app.companion.data.RomArt.Image): com.pokedaisy.app.companion.data.RomArt.Image {
+    val w = img.width; val h = img.height; val px = img.argb
+    val outside = BooleanArray(w * h)
+    val stack = IntArray(w * h); var top = 0
+    fun push(i: Int) { if (!outside[i] && (px[i] ushr 24) == 0) { outside[i] = true; stack[top++] = i } }
+    for (x in 0 until w) { push(x); push((h - 1) * w + x) }
+    for (y in 0 until h) { push(y * w); push(y * w + w - 1) }
+    while (top > 0) {
+        val i = stack[--top]; val x = i % w
+        if (x > 0) push(i - 1); if (x < w - 1) push(i + 1)
+        if (i >= w) push(i - w); if (i < w * (h - 1)) push(i + w)
+    }
+    val out = px.copyOf()
+    for (i in out.indices) if ((out[i] ushr 24) == 0 && !outside[i]) out[i] = 0xFFFFFFFF.toInt()
+    return com.pokedaisy.app.companion.data.RomArt.Image(w, h, out)
+}
+
+/**
+ * [mon]'s party icon, or with POKéMON PICTURES its front picture, filled white inside: at [size] the icon's place, the
+ * picture cut to what it draws and filling it, centred (whole screen pixels a picture pixel where they come close). It
+ * never reaches past [size]: in a button, a tile or a box's cell a bigger one covered what was next to it.
+ * [fit]: inside a frame (the summary's and battle INFO's party columns): the picture cut to what it draws, centred, its
+ * 56-pixel box scaled to [size] for every Pokémon alike. Until the picture has loaded, or if it can't be read: the icon.
+ */
+@Composable
+internal fun MonIcon(mon: MonView?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) =
+    SpeciesPicture(mon?.species?.takeIf { !mon.isEgg } ?: 0, mon?.iconAsset, size, modifier, fit, shiny = mon?.shiny == true)
+
+/** [MonIcon] by species id: [asset] (its party icon) without POKéMON PICTURES or a [species] of 0. */
+@Composable
+internal fun SpeciesPicture(species: Int, asset: String?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false, shiny: Boolean = false) {
+    val pictures = LocalPokemonPictures.current?.takeIf { species > 0 }
+    if (pictures == null) { SpeciesIcon(asset, size, modifier); return }
+    val density = LocalDensity.current
+    // Cut to what it draws either way: outside a frame it fills the icon's place itself, not its 56-pixel box (most
+    // pictures draw well inside theirs, and a box-sized one came out half the icon's size on the FIGHT button).
+    val pic = rememberPokemonPicture(pictures, species, shiny, topLeft = true)
+    if (pic == null) { SpeciesIcon(asset, size, modifier); return }
+    val sizePx = with(density) { size.toPx() }
+    val k = max(1, (sizePx * 32f / 24f / 56f).roundToInt())
+    // Whole pixels when they come within a quarter of a picture pixel of the wanted scale, never past it.
+    fun whole(f: Float, cap: Int = k) = if (f >= 1f) min(cap, floor(f).toInt()).toFloat().takeIf { it >= f - 0.25f } ?: f else f
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        if (!fit) {
+            val f = sizePx / max(pic.width, pic.height)
+            val s = whole(f, cap = floor(f).toInt())
+            androidx.compose.foundation.Image(
+                pic, contentDescription = null, filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                modifier = Modifier.size(with(density) { (pic.width * s).toDp() }, with(density) { (pic.height * s).toDp() }),
+            )
+        } else {
+            val scale = whole(sizePx / 56f)
+            // One scale for every picture: the 56-pixel box fills the frame, so a small Pokémon stays small next to a big
+            // one, as in the game.
+            androidx.compose.foundation.Image(
+                pic, contentDescription = null, filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                modifier = Modifier.size(with(density) { (pic.width * scale).toDp() }, with(density) { (pic.height * scale).toDp() }),
+            )
+        }
+    }
+}
+
+/** Slot pixels between a PARTY PICTURE and the slot's left and top edges, and the name on its right. */
+private const val PICTURE_MARGIN = 3
+
+/**
+ * Screen pixels per PARTY PICTURE pixel: whole ones, about the icon's size (its 16 pixels at 2 slot pixels each), but a
+ * picture of 48 rows (most are; the biggest have 56) no taller than the name area under the top margin.
+ */
+private fun partyPictureScale(g: SlotGeometry): Int {
+    val u = g.u
+    val room = floor((g.dividerY - g.fy - PICTURE_MARGIN * u) / 48f).toInt()
+    return max(1, min((u * 0.6f).roundToInt(), room))
+}
+
+/** Games that offer POKéMON PICTURES: Crystal for now (English and German, which run as CRYSTAL). */
+fun pokemonPicturesOffered(game: com.pokedaisy.app.companion.data.GameKind?): Boolean = game == com.pokedaisy.app.companion.data.GameKind.CRYSTAL
+
 @Composable
 private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, sound: Boolean = true) {
     val density = LocalDensity.current
@@ -865,25 +1022,48 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
         val text = colors.text ?: palette.text
         val textShadow = colors.textShadow ?: palette.textShadow
 
-        // Poke Ball, then the icon over it: resting 4px up, bobbing -3/+1 while selected.
-        Canvas(Modifier.fillMaxSize()) { drawPixelBitmap(PartyBall, palette.ball, g.fx - 6 * u, g.fy - 4 * u, u.toFloat()) }
+        val pictures = LocalPokemonPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
         val iconDy = if (!selected) -4 else if (!bobDown) -3 else 1
-        SpeciesIcon(
-            mon.iconAsset, size = with(density) { (32 * u).toDp() },
-            modifier = Modifier.offset { IntOffset((g.fx - 8 * u).toInt(), (g.fy + iconDy * u).toInt()) },
-        )
-        // The held-item marker, where GbaPartySlot puts it: the resting icon's place + (16, 22). It doesn't bob.
-        HeldItemMarker(mon.heldItemId, u, g.fx - 8 * u + 16 * u, g.fy + 22 * u)
+        // The front picture, once it has loaded; until then (or if the cart's picture can't be read) the game's icon.
+        val pic = pictures?.let { rememberPokemonPicture(it, mon.species, mon.shiny, topLeft = true) }
+        if (pic != null) {
+            // The front picture in the icon's place, inside the slot's left edge, no Poke Ball under it. It doesn't bob.
+            // A tall one (the biggest have 56 rows, the scale is set for 48) a step smaller, so it stays above the HP band.
+            val room = g.dividerY - g.fy - PICTURE_MARGIN * u
+            var k = partyPictureScale(g)
+            while (k > 1 && pic.height * k > room) k--
+            val left = g.fx + PICTURE_MARGIN * u
+            val top = g.fy + PICTURE_MARGIN * u
+            androidx.compose.foundation.Image(
+                pic, contentDescription = null, filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                modifier = Modifier.offset { IntOffset(left.toInt(), top.toInt()) }
+                    .size(with(density) { (pic.width * k).toDp() }, with(density) { (pic.height * k).toDp() }),
+            )
+            // The held-item marker on the picture's bottom-right corner, as on the icon's.
+            HeldItemMarker(mon.heldItemId, u, left + pic.width * k - 6 * u, min(top + pic.height * k - 6 * u, g.dividerY - 8 * u))
+        } else {
+            // Poke Ball, then the icon over it: resting 4px up, bobbing -3/+1 while selected.
+            Canvas(Modifier.fillMaxSize()) { drawPixelBitmap(PartyBall, palette.ball, g.fx - 6 * u, g.fy - 4 * u, u.toFloat()) }
+            SpeciesIcon(
+                mon.iconAsset, size = with(density) { (32 * u).toDp() },
+                modifier = Modifier.offset { IntOffset((g.fx - 8 * u).toInt(), (g.fy + iconDy * u).toInt()) },
+            )
+            // The held-item marker, where GbaPartySlot puts it: the resting icon's place + (16, 22). It doesn't bob.
+            HeldItemMarker(mon.heldItemId, u, g.fx - 8 * u + 16 * u, g.fy + 22 * u)
+        }
 
-        val textWidth = with(density) { (g.fx + g.fw - 4 * u - g.textX).toDp() }
-        GbaText(mon.shownName, text, textShadow, nameM, density.at(g.textX, g.nameMid, nameM).width(textWidth))
+        // A picture is wider than the icon: the name and level start the same margin right of it.
+        val textX = if (pictures != null) max(g.textX, g.fx + PICTURE_MARGIN * u + 56 * partyPictureScale(g) + PICTURE_MARGIN * u) else g.textX
+        val textWidth = with(density) { (g.fx + g.fw - 4 * u - textX).toDp() }
+        GbaText(mon.shownName, text, textShadow, nameM, density.at(textX, g.nameMid, nameM).width(textWidth))
         if (!showHp) return@BoxWithConstraints
 
         val status = if (mon.hp == 0) "FNT" else mon.status
         if (status.isNotEmpty()) {
-            StatusChip(status, u, chipText, Modifier.offset { IntOffset((g.textX + 6 * u).toInt(), (g.levelMid - 5 * u).toInt()) })
+            StatusChip(status, u, chipText, Modifier.offset { IntOffset((textX + 6 * u).toInt(), (g.levelMid - 5 * u).toInt()) })
         } else {
-            GbaText(tr("Lv{0}", mon.level), text, textShadow, nameM, density.at(g.textX + 6 * u, g.levelMid, nameM))
+            GbaText(tr("Lv{0}", mon.level), text, textShadow, nameM, density.at(textX + 6 * u, g.levelMid, nameM))
         }
         val gender = when (mon.genderSymbol) {
             GENDER_SYMBOL_MALE -> Triple(PixelIcons.male, palette.male, palette.maleShadow)
@@ -896,6 +1076,15 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
                 val y = g.levelMid - 4 * u
                 drawPixelBitmap(bitmap, mapOf('1' to shadow), x + u, y + u, u.toFloat())
                 drawPixelBitmap(bitmap, mapOf('1' to color), x, y, u.toFloat())
+            }
+        }
+        // A shiny one: INFO's gold sparkle left of the gender sign (the games whose icons don't show it: the Game Boy's).
+        if (mon.shiny && activeGame.isGameBoyGame) {
+            Canvas(Modifier.fillMaxSize()) {
+                val x = g.fx + g.fw - 24 * u
+                val y = g.levelMid - 4 * u
+                drawPixelBitmap(PixelIcons.sparkle, mapOf('1' to ShinyAmber), x + u, y + u, u.toFloat())
+                drawPixelBitmap(PixelIcons.sparkle, mapOf('1' to ShinyGold), x, y, u.toFloat())
             }
         }
         Box(density.at(0f, g.hpTextMid).width(with(density) { g.barRight.toDp() }), contentAlignment = Alignment.TopEnd) {

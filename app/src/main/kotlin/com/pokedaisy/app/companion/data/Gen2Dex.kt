@@ -752,7 +752,8 @@ object Gen2Dex {
      * columns, placed in the 7x7-tile box the way PadFrontpic does - centred across (a 5x5 one column in),
      * on the box's bottom.
      */
-    fun frontPixels(t: Gen2DexTables, species: Int): IntArray? {
+    /** [shiny]: in the species' shiny pair (PokemonPalettes' second two colours). */
+    fun frontPixels(t: Gen2DexTables, species: Int, shiny: Boolean = false): IntArray? {
         val rom = Gen1Dex.rom ?: return null
         if (t.dexOf(species) == 0) return null
         t.polished?.let { a ->
@@ -763,7 +764,7 @@ object Gen2Dex {
             val sz = u8(rom, at(14) + i / 2).let { if (i % 2 == 0) it shr 4 else it and 0xF }
             val e = at(13) + 7 * i
             val tiles = Gen2Lz.decompress(rom, off(u8(rom, e), u16(rom, e + 1)), polished = true) ?: return null
-            return placePic(rom, tiles, sz, at(2) + 8 * species)
+            return placePic(rom, tiles, sz, at(2) + 8 * species + if (shiny) 4 else 0)
         }
         val s = off(t.baseData.first, t.baseData.second) + t.baseDataSize * (species - 1)
         val size = u8(rom, s + 17) and 0xF
@@ -785,7 +786,7 @@ object Gen2Dex {
             u8(rom, banks + u8(rom, ptrs) - (u8(rom, banks) - PICS_FIX))
         }
         val tiles = Gen2Lz.decompress(rom, off(bank, u16(rom, ptrs + 1))) ?: return null
-        return placePic(rom, tiles, size, off(t.palettes.first, t.palettes.second) + 8 * species)
+        return placePic(rom, tiles, size, off(t.palettes.first, t.palettes.second) + 8 * species + if (shiny) 4 else 0)
     }
 
     /** A [size] x [size]-tile pic ([tiles], columns first) in its 7x7 box, in the two colours at [pal] (+ clear, black). */

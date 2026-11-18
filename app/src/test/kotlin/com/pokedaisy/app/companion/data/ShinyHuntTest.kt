@@ -69,4 +69,38 @@ class ShinyHuntTest {
         assertTrue(step.counted)
         assertNull(step.shiny)
     }
+
+    /**
+     * Gen 2: a battler is shiny by its DVs (wEnemyMon +6 / +7, which GbStatsTest checks against the game's own stats). The
+     * `crystal_battle` fixture's wild SENTRET is plain; with shiny DVs written there (as SHINY ODDS would) it counts and is
+     * reported, and no RUN question is waited for, which only CFRU's hacks ask.
+     */
+    @Test
+    fun crystalWildFoeByItsDvs() {
+        activeGame = GameKind.CRYSTAL
+        activeGen2 = GEN2_CRYSTAL
+        val fixture = FixtureMemoryReader.load("crystal_battle")
+        val plainView = buildSnapshotView(readGen2Telemetry(fixture, GEN2_CRYSTAL)).copy(game = GameKind.CRYSTAL)
+        assertTrue(plainView.inBattle)
+        assertTrue(ShinyHunt.wild(plainView))
+        assertFalse(plainView.battleOpponent.single().shiny)
+        val plainStep = ShinyHunt().sample(plainView.inBattle, ShinyHunt.wild(plainView), plainView.battleOpponent)
+        assertTrue(plainStep.counted)
+        assertNull(plainStep.shiny)
+
+        val dvs = GEN2_CRYSTAL.enemyMon + 6
+        val shinyReader = object : MemoryReader {
+            override fun readCoreMemory(addr: Long, size: Int): ByteArray = fixture.readCoreMemory(addr, size).also { b ->
+                for (k in 0..1) if (dvs + k in addr until addr + size) b[(dvs + k - addr).toInt()] = (if (k == 0) 0x2A else 0xAA).toByte()
+            }
+        }
+        val t = readGen2Telemetry(shinyReader, GEN2_CRYSTAL)
+        assertTrue(t.battleFoes.single().shiny)
+        val view = buildSnapshotView(t).copy(game = GameKind.CRYSTAL)
+        val step = ShinyHunt().sample(view.inBattle, ShinyHunt.wild(view), view.battleOpponent)
+        assertTrue(step.counted)
+        assertEquals(view.battleOpponent.single().species, step.shiny?.species)
+        // The player's own battler stays as its DVs say.
+        assertFalse(view.battlePlayer.single().shiny)
+    }
 }

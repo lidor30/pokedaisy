@@ -389,7 +389,7 @@ private fun EntryRow(e: GuideEntry, level: Int, owned: Boolean, m: GbaTextMetric
             }
             // An unseen Pokémon's icon stays hidden with its name.
             if (e.icon != 0 && (e.steps == 0 || showAnswer)) {
-                SpeciesIcon(spriteAsset("pokemon", e.icon), size = u * 24)
+                SpeciesPicture(e.icon, spriteAsset("pokemon", e.icon), size = u * 24, fit = true)
                 Spacer(Modifier.width(u * 4))
             }
             GbaText(trGuide(e.title), OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f), maxLines = 2)
