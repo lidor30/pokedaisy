@@ -43,6 +43,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -1038,7 +1044,12 @@ fun AppBackdrop(
 /** A text input in the title window's look (white, grey frame), pixel font: one line, or
  * [minLines] and more. [password] hides what's typed and keeps the keyboard from learning
  * it, with an eye at the end to show / hide it; [code] asks for capitals with no suggestions
- * (cheat codes); [number] for digits. */
+ * (cheat codes); [number] for digits.
+ *
+ * The D-pad stops on it like on a button and only rings it: A (or a tap) starts typing. A text field brings the
+ * keyboard up as soon as it's focused, so a field the D-pad passed through opened the keyboard on the way down a page
+ * (a Thor player's report, 2026-11-18: SETTINGS' search box). [typeAtOnce]: typing from the start (a window opened to
+ * type in, LibrarySearchDialog). */
 @Composable
 fun OptionTextField(
     value: String,
@@ -1052,65 +1063,110 @@ fun OptionTextField(
     number: Boolean = false,
     /** A [PixelIcons] bitmap before the text, in the placeholder's grey (a search box's magnifier). */
     leadingIcon: List<String>? = null,
+    typeAtOnce: Boolean = false,
 ) {
     val u = m.u
     var shown by remember { androidx.compose.runtime.mutableStateOf(false) }
     // D-pad focus (the library's and Settings' search box) shows like every other control's: the focus ring.
     var focused by remember { androidx.compose.runtime.mutableStateOf(false) }
+    // The D-pad's stop is the box around the field; the field itself takes the focus (and the keyboard) only while
+    // [editing], from A on the box or a finger on it.
+    var boxFocused by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val editing = remember { androidx.compose.runtime.mutableStateOf(typeAtOnce) }
+    val fieldFocus = remember { FocusRequester() }
+    var swallowUp by remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.input.key.Key?>(null) }
+    if (typeAtOnce) androidx.compose.runtime.LaunchedEffect(Unit) { runCatching { fieldFocus.requestFocus() } }
     val textFocus = LocalTextInputFocus.current
     val fieldOwner = remember { Any() }
     androidx.compose.runtime.DisposableEffect(textFocus, fieldOwner) {
         onDispose { textFocus?.set(fieldOwner, false) }
     }
     val hidden = password && !shown
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = minLines == 1,
-        minLines = minLines,
-        visualTransformation = if (hidden) PasswordVisualTransformation() else VisualTransformation.None,
-        keyboardOptions = when {
-            password -> KeyboardOptions(autoCorrect = false, keyboardType = KeyboardType.Password)
-            number -> KeyboardOptions(autoCorrect = false, keyboardType = KeyboardType.Number)
-            code -> KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrect = false, keyboardType = KeyboardType.Ascii)
-            else -> KeyboardOptions.Default
-        },
-        textStyle = gbaTextStyle(pixelFontFamily(), m).copy(color = OptionColors.label),
-        cursorBrush = SolidColor(OptionColors.value),
-        modifier = modifier
+    Box(
+        modifier
             .fillMaxWidth()
-            .onFocusChanged {
-                focused = it.isFocused
-                textFocus?.set(fieldOwner, it.isFocused)
+            .onPreviewKeyEvent { e ->
+                val key = e.key
+                if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyUp && key == swallowUp) {
+                    swallowUp = null
+                    return@onPreviewKeyEvent true
+                }
+                if (editing.value || e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (key != androidx.compose.ui.input.key.Key.Enter && key != androidx.compose.ui.input.key.Key.NumPadEnter &&
+                    key != androidx.compose.ui.input.key.Key.DirectionCenter && key != androidx.compose.ui.input.key.Key.ButtonA
+                ) return@onPreviewKeyEvent false
+                editing.value = true
+                swallowUp = key
+                runCatching { fieldFocus.requestFocus() }
+                true
             }
-            .gbaFocusRing(focused, PixelRoundedShape(u * 2))
-            .drawBehind { drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
-            .padding(horizontal = u * 6, vertical = u * 5),
-        decorationBox = { inner ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                leadingIcon?.let {
-                    PixelIcon(it, OptionColors.muted, Modifier.size(m.lineHeight))
-                    Spacer(Modifier.width(u * 4))
+            .onFocusChanged {
+                boxFocused = it.isFocused
+                // Back on the box (the D-pad, or the field let go): A starts typing again.
+                if (it.isFocused) editing.value = false
+            }
+            .focusable()
+            .pointerInput(Unit) {
+                // A finger on it types at once: the field's own tap then takes the focus (read when it asks).
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    editing.value = true
                 }
-                Box(Modifier.weight(1f)) {
-                    if (value.isEmpty() && placeholder != null) GbaText(placeholder, OptionColors.muted, OptionColors.mutedShadow, m)
-                    inner()
+            },
+    ) {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = minLines == 1,
+            minLines = minLines,
+            visualTransformation = if (hidden) PasswordVisualTransformation() else VisualTransformation.None,
+            keyboardOptions = when {
+                password -> KeyboardOptions(autoCorrect = false, keyboardType = KeyboardType.Password)
+                number -> KeyboardOptions(autoCorrect = false, keyboardType = KeyboardType.Number)
+                code -> KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrect = false, keyboardType = KeyboardType.Ascii)
+                else -> KeyboardOptions.Default
+            },
+            textStyle = gbaTextStyle(pixelFontFamily(), m).copy(color = OptionColors.label),
+            cursorBrush = SolidColor(OptionColors.value),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(fieldFocus)
+                .focusProperties { canFocus = editing.value }
+                .onFocusChanged {
+                    // Let go (the D-pad on to the next row, BACK): the next stop on it rings it again.
+                    if (focused && !it.isFocused) editing.value = false
+                    focused = it.isFocused
+                    textFocus?.set(fieldOwner, it.isFocused)
                 }
-                if (password) {
-                    // SHOW / HIDE what's typed: an eye, struck through while it shows.
-                    val noRipple = remember { MutableInteractionSource() }
-                    Box(
-                        Modifier
-                            .padding(start = u * 4)
-                            .clickable(interactionSource = noRipple, indication = null, onClick = { shown = !shown })
-                            .semantics { contentDescription = if (shown) tr("Hide password") else tr("Show password") },
-                    ) {
-                        PixelIcon(if (shown) PixelIcons.eyeClosed else PixelIcons.eyeOpen, OptionColors.label, Modifier.size(m.lineHeight))
+                .gbaFocusRing(focused || boxFocused, PixelRoundedShape(u * 2))
+                .drawBehind { drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
+                .padding(horizontal = u * 6, vertical = u * 5),
+            decorationBox = { inner ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    leadingIcon?.let {
+                        PixelIcon(it, OptionColors.muted, Modifier.size(m.lineHeight))
+                        Spacer(Modifier.width(u * 4))
+                    }
+                    Box(Modifier.weight(1f)) {
+                        if (value.isEmpty() && placeholder != null) GbaText(placeholder, OptionColors.muted, OptionColors.mutedShadow, m)
+                        inner()
+                    }
+                    if (password) {
+                        // SHOW / HIDE what's typed: an eye, struck through while it shows.
+                        val noRipple = remember { MutableInteractionSource() }
+                        Box(
+                            Modifier
+                                .padding(start = u * 4)
+                                .clickable(interactionSource = noRipple, indication = null, onClick = { shown = !shown })
+                                .semantics { contentDescription = if (shown) tr("Hide password") else tr("Show password") },
+                        ) {
+                            PixelIcon(if (shown) PixelIcons.eyeClosed else PixelIcons.eyeOpen, OptionColors.label, Modifier.size(m.lineHeight))
+                        }
                     }
                 }
-            }
-        },
-    )
+            },
+        )
+    }
 }
 
 /** Dark mode's night: what the backdrops are dimmed towards ([OptionColors.backdropScrim]). */

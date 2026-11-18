@@ -13,7 +13,7 @@ The tools (`PATCH A ROM`, `LINK PLAY`, `SAVE EDITOR`, `TRADE SAVES`) aren't sett
 Many rows are on both. They're the same setting, so changing it on one screen changes it on the other. The tables below list each screen's rows in the order the app shows them, with the default in **bold**. A row with an arrow at its right end opens a page of its own; the others flip, or open a short list to pick from. On a wide enough screen both lists have their groups as tabs down the left side: tap one to jump to that group, and the tab of the group you're in stays lit, following the cursor as you move through the list.
 
 > [!TIP]
-> The top screen's Settings has a search box. Type what you're after, even in other emulators' words ("rebind", "box art", "turbo"), and the matching rows show.
+> The top screen's Settings has a search box. Type what you're after, even in other emulators' words ("rebind", "box art", "turbo"), and the matching rows show. With a controller, the D-pad stops on the box without bringing the keyboard up: press A to start typing.
 
 ## Top screen Settings
 
