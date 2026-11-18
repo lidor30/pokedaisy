@@ -27,6 +27,12 @@ if(GPSP_DYNAREC)
     list(APPEND GPSP_C cpu_threaded.c 3ds/3ds_utils.c)
     list(APPEND GPSP_ASM arm/arm_stub.S 3ds/3ds_cache_utils.S)
     list(APPEND GPSP_DEFS HAVE_DYNAREC ARM_ARCH ARM11 _3DS)
+    # The stock 3DS caches need 10.5 MiB after the 32 MiB cartridge and
+    # companion. The core's small preset fits the Old3DS memory budget.
+    option(PD_GPSP_SMALL_CACHE "Use gpSP's 2 MiB ROM / 384 KiB RAM JIT caches" ON)
+    if(PD_GPSP_SMALL_CACHE)
+        list(APPEND GPSP_DEFS SMALL_TRANSLATION_CACHE)
+    endif()
 elseif(GPSP_3DS)
     list(APPEND GPSP_DEFS ARM11 _3DS)
 endif()

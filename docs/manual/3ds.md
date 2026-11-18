@@ -114,6 +114,7 @@ Download the newer `pokedaisy.3dsx` and copy it over the old one in `sdmc:/3ds/`
 - **A game isn't listed:** it has to be right in `sdmc:/pokedaisy/roms/`, not in a folder inside it and not zipped.
 - **My save didn't load:** the save needs the game's exact name with `.sav` at the end. Every start copies the save to `sdmc:/pokedaisy/roms/pokedaisy-backups/` first, so an older copy is there if you need it.
 - **It runs slowly:** an original 3DS or 2DS is slower than the New models. In the library's `SETTINGS`, set `SCREEN` to `PIXEL 1x`, the lightest mode. On a GBA game you can also press `X` in the library and try another `GBA CORE`: `GPSP` is an experimental one meant for the original 3DS. Games start without EXPAND, which is lighter. `EXPAND 1.5x` is in the library's `SETTINGS` if you want it.
+- **A game says to install the CIA:** started from the Homebrew Launcher, an original 3DS or 2DS only has room for games up to 16 MB, and none for the `GPSP` core. Install `pokedaisy.cia` (see above) and start PokeDaisy from the HOME Menu to play bigger games or use `GPSP`.
 - **The game didn't start:** the top screen says why, followed by your 3DS's memory. When you tell us, take a photo of the whole message or attach `sdmc:/pokedaisy/log.txt`.
 
 Still stuck? [Tell us](https://pokedaisy.com/feedback/#bug) and attach `sdmc:/pokedaisy/log.txt`.
