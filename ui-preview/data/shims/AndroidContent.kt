@@ -38,6 +38,7 @@ open class Context {
 /** In-memory, process-wide. */
 class SharedPreferences {
     val m = HashMap<String, Any?>()
+    val all: Map<String, Any?> get() = m.toMap()
     fun getString(k: String, d: String?) = (m[k] as String?) ?: d
     fun getInt(k: String, d: Int) = (m[k] as Int?) ?: d
     fun getFloat(k: String, d: Float) = (m[k] as Float?) ?: d

@@ -203,3 +203,14 @@ jobs:
       - name: Clean up the key
         if: always()
         run: rm -f "${RUNNER_TEMP}/release.jks" keystore.properties app/google-services.json
+
+  # The 3DS app onto the draft: pokedaisy.3dsx, pokedaisy.cia and the CIA's QR code (in the notes too), built from the tag.
+  threeds:
+    name: 3DS app and CIA
+    needs: publish
+    permissions:
+      contents: write
+    uses: ./.github/workflows/3ds.yml
+    with:
+      tag: ${{ github.ref_name }}
+      upload_3dsx: true

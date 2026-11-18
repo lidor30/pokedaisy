@@ -126,7 +126,7 @@ In a trainer's double battle the page shows one foe at a time, the one on the le
 
 ### Foe IVs
 
-The foe's IVs, EVs and nature are hidden by default, since knowing them is a bit of a peek. Turn on `FOE IVS` in SETTINGS and `INFO` gets a `STATS` button: your Pokémon and the foe side by side, each stat with its IV and EV, plus `NATURE` and `HIDDEN POWER`. It's the same view as the [STATS page in a summary](party.md).
+The foe's IVs, EVs and nature are hidden by default, since knowing them is a bit of a peek. Turn on `FOE IVS` in SETTINGS and `INFO` gets a `STATS` button: your Pokémon and the foe side by side, each stat with its IV and EV, plus `NATURE` and `HIDDEN POWER`. It's the same view as the [STATS page in a summary](party.md). In the Game Boy games it shows DVs and stat experience instead ([how they differ](party.md#in-the-game-boy-games)); a wild foe there never has any stat experience.
 
 ## The foe's team
 
@@ -165,7 +165,7 @@ This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed,
 
 With the companion on a second screen, its battle buttons do the choosing, so the game's own menu is left off the game's screen: no `FIGHT`, `BAG`, `POKéMON` and `RUN` box, and no list of moves. The game's "What will ... do?" box runs the whole width instead, with a sign of two screens at its right, the bottom one lit, like a DS game pointing you at its touch screen. Pick on the companion as usual and the battle plays out on top.
 
-Your game's buttons work on the companion's buttons too. The one the game's cursor is on is lit from the start of your turn, and the D-pad moves it the way the companion lays them out: up to `FIGHT`, down from `FIGHT` to `RUN`, left and right along `BAG`, `RUN` and `POKéMON`. A picks the lit one and B goes back, as in the game. In your moves the D-pad walks the four cards. While the menu is hidden, `FIGHT` and `POKéMON` on the companion open the game's own moves and party screen, so your buttons always work on what you see. The menu comes back by itself where the companion has no buttons for it: in a double battle and in the Safari Zone. Nothing in the game changes; only the picture does.
+Your game's buttons work on the companion's buttons too. The one the game's cursor is on is lit from the start of your turn, and the D-pad moves it the way the companion lays them out: up to `FIGHT`, down from `FIGHT` to `RUN`, left and right along `BAG`, `RUN` and `POKéMON`. A picks the lit one and B goes back, as in the game. In your moves the D-pad walks the four cards. While the menu is hidden, `FIGHT` and `POKéMON` on the companion open the game's own moves and party screen, so your buttons always work on what you see. The menu comes back by itself where the companion has no buttons for it: in a double battle, in the Safari Zone and in the games' tutorial battles (your very first battle, and the catching lessons). Nothing in the game changes; only the picture does.
 
 This is in FireRed and LeafGreen in English and Spanish, Emerald in every language but Japanese, and several hacks built on them. To see the game's menu again, turn off `HIDE BATTLE MENU` in SETTINGS (SCREEN group, on either screen). It's on by default, and only there on a device with two screens.
 

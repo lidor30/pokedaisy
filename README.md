@@ -69,7 +69,7 @@ Also **BAG** (use and give items), **NUZLOCKE** (keeps score of a run), **CARD**
   </tr>
 </table>
 
-EXPAND works in every Gen 3 game, many hacks and the Game Boy's Yellow and Crystal:
+EXPAND works in every Gen 3 game, many hacks and the Game Boy's Red, Blue, Yellow, Gold, Silver and Crystal:
 
 <table>
   <tr>

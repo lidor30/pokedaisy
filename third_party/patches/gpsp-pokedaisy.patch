@@ -1,0 +1,512 @@
+diff --git a/arm/arm_emit.h b/arm/arm_emit.h
+index 7522697..4b44556 100644
+--- a/arm/arm_emit.h
++++ b/arm/arm_emit.h
+@@ -58,6 +58,7 @@ u32 execute_spsr_restore(u32 address);
+ 
+ void execute_swi_arm(u32 pc);
+ void execute_swi_thumb(u32 pc);
++void execute_bkpt_thumb(u32 pc);
+ 
+ #define armfn_gbaup_idle_arm       0
+ #define armfn_gbaup_idle_thumb     1
+@@ -74,6 +75,7 @@ void execute_swi_thumb(u32 pc);
+ #define armfn_indirect_dual_arm   12
+ #define armfn_indirect_dual_thumb 13
+ #define armfn_debug_trace         14
++#define armfn_bkpt_thumb          15
+ 
+ #define STORE_TBL_OFF     0x118
+ #define RDMAP_OFF         0xD00   /* memory_map_read, as in arm_stub.S */
+@@ -2072,6 +2074,14 @@ static void trace_instruction(u32 pc, u32 mode)
+   /* We're in ARM mode now */                                                 \
+   generate_branch(arm)                                                        \
+ 
++/* PokeDaisy: gpsp_bkpt through execute_bkpt_thumb, the BKPT's address and
++ * immediate after the call; it returns past them, or (hooked) goes on from
++ * wherever the hook left the CPU. */
++#define thumb_bkpt()                                                          \
++  generate_function_far_call(armfn_bkpt_thumb);                               \
++  write32(pc);                                                                \
++  write32(opcode & 0xFF)                                                      \
++
+ // Use software division
+ void *div6, *divarm7;
+ #define arm_hle_div(cpu_mode)                                                 \
+@@ -2194,6 +2204,7 @@ void init_emitter(bool must_swap) {
+   reg[REG_USERDEF + armfn_indirect_dual_arm]   = (u32)arm_indirect_branch_dual_arm;
+   reg[REG_USERDEF + armfn_indirect_dual_thumb] = (u32)arm_indirect_branch_dual_thumb;
+   reg[REG_USERDEF + armfn_debug_trace] = (u32)trace_instruction;
++  reg[REG_USERDEF + armfn_bkpt_thumb] = (u32)execute_bkpt_thumb;
+ }
+ 
+ u32 execute_arm_translate_internal(u32 cycles, void *regptr);
+diff --git a/arm/arm_stub.S b/arm/arm_stub.S
+index c683003..7336afa 100644
+--- a/arm/arm_stub.S
++++ b/arm/arm_stub.S
+@@ -416,6 +416,26 @@ defsymbl(execute_swi_##mode)                                                 ;\
+ execute_swi_builder(arm)
+ execute_swi_builder(thumb)
+ 
++@ PokeDaisy: a Thumb BKPT handed to gpsp_bkpt (cpu.cc).
++
++@ Input:
++@ [lr]:   the BKPT's PC
++@ [lr+4]: its immediate
++
++defsymbl(execute_bkpt_thumb)
++  save_flags()
++  ldr r0, [lr]                            @ r0 = the BKPT's pc
++  ldr r1, [lr, #4]                        @ r1 = its immediate
++  str r0, [reg_base, #REG_PC]
++  store_registers_thumb()
++  collapse_flags(r2)
++  call_c_function(gpsp_bkpt)
++  cmp r0, #0
++  bne lookup_pc                           @ hooked: on from where it left the CPU
++  load_registers_thumb()
++  restore_flags()
++  add pc, lr, #8                          @ not ours: past the BKPT
++
+ 
+ @ Start program execution. Normally the mode should be Thumb and the
+ @ PC should be 0x8000000, however if a save state is preloaded this
+diff --git a/cpu.cc b/cpu.cc
+index c12c751..2e96ebe 100644
+--- a/cpu.cc
++++ b/cpu.cc
+@@ -1498,6 +1498,27 @@ u8 vram[1024 * 96];
+ u16 io_registers[512];
+ #endif
+ 
++/* PokeDaisy: a call into the game between frames (the 3DS port's pk_call):
++ * the interpreter runs from the CPU as it is until the PC reaches
++ * gpsp_stop_pc (the call's return) or gpsp_stop_left instructions have run,
++ * and returns there without running the GBA's hardware (no update_gba). */
++u32 gpsp_stop_pc = 0;
++u32 gpsp_stop_left = 0;
++#define gpsp_check_stop()                                                     \
++  if (gpsp_stop_pc && (reg[REG_PC] == gpsp_stop_pc || !gpsp_stop_left--))     \
++    return 0;
++
++/* PokeDaisy: a Thumb BKPT (0xBExx) handed to the host (the 3DS port's native
++ * sound mixer puts one at the game's mixer). The hook gets the BKPT's address
++ * and immediate and returns 1 when it has set the CPU itself (reg[], the PC,
++ * the CPSR's T bit), else 0: the BKPT does nothing. Both the interpreter and
++ * the ARM recompiler (arm_stub.S's execute_bkpt_thumb) come here. */
++u32 (*gpsp_bkpt_hook)(u32 pc, u32 immediate) = NULL;
++u32 gpsp_bkpt(u32 pc, u32 immediate)
++{
++  return gpsp_bkpt_hook ? gpsp_bkpt_hook(pc, immediate) : 0;
++}
++
+ static u32 execute_arm_internal(u32 cycles, bool vram_only)
+ {
+   u32 opcode;
+@@ -1519,6 +1540,8 @@ static u32 execute_arm_internal(u32 cycles, bool vram_only)
+   {
+     /* Do not execute until CPU is active */
+     if (reg[CPU_HALT_STATE] != CPU_ACTIVE) {
++       if (gpsp_stop_pc)
++          return 0; /* a call that halted the CPU: it's over */
+        u32 ret = update_gba(cycles_remaining);
+        if (completed_frame(ret))
+           return ret;
+@@ -1539,6 +1562,7 @@ arm_loop:
+        collapse_flags();
+        if (vram_only && (reg[REG_PC] >> 24) != 0x06)
+           return cycles_remaining > 0 ? (u32)cycles_remaining : update_gba(cycles_remaining);
++       gpsp_check_stop();
+ 
+        /* Process cheats if we are about to execute the cheat hook */
+        if (reg[REG_PC] == cheat_master_hook)
+@@ -3105,6 +3129,7 @@ thumb_loop:
+        collapse_flags();
+        if (vram_only && (reg[REG_PC] >> 24) != 0x06)
+           return cycles_remaining > 0 ? (u32)cycles_remaining : update_gba(cycles_remaining);
++       gpsp_check_stop();
+ 
+        /* Process cheats if we are about to execute the cheat hook */
+        if (reg[REG_PC] == cheat_master_hook)
+@@ -3456,6 +3481,16 @@ thumb_loop:
+                REG_SP, (opcode & 0xFF) | (1 << REG_LR), cycles_remaining);
+              break;
+ 
++          case 0xBE:  /* BKPT imm (PokeDaisy: gpsp_bkpt) */
++             if (gpsp_bkpt(reg[REG_PC], opcode & 0xFF))
++             {
++                if (!(reg[REG_CPSR] & 0x20))
++                   goto arm_loop;
++                break;
++             }
++             thumb_pc_offset(2);
++             break;
++
+           case 0xBC:  /* POP rlist */
+              cpu_alert |= exec_thumb_block_mem<AccLoad, AddrPostInc>(
+                REG_SP, opcode & 0xFF, cycles_remaining);
+@@ -3591,6 +3626,20 @@ void execute_arm(u32 cycles)
+   execute_arm_internal(cycles, false);
+ }
+ 
++/* PokeDaisy: see gpsp_stop_pc. 1 when the PC reached stop_pc. */
++int execute_arm_until(u32 stop_pc, u32 max_instructions)
++{
++  gpsp_stop_pc = stop_pc;
++  gpsp_stop_left = max_instructions;
++  execute_arm_internal(0x7FFFFFF0u, false);
++  gpsp_stop_pc = 0;
++#ifdef HAVE_DYNAREC
++  /* as execute_arm_vram: what the interpreter wrote over compiled RAM code */
++  flush_translation_cache_ram_after_interp();
++#endif
++  return reg[REG_PC] == stop_pc;
++}
++
+ u32 function_cc execute_arm_vram(u32 cycles)
+ {
+   /* VRAM instructions are never cached. This also covers code rewritten by
+diff --git a/cpu.h b/cpu.h
+index ef07a52..2ffbd9d 100644
+--- a/cpu.h
++++ b/cpu.h
+@@ -114,6 +114,14 @@ typedef enum
+ extern u32 instruction_count;
+ 
+ void execute_arm(u32 cycles);
++/* PokeDaisy: from the CPU as it is until the PC is stop_pc (1) or
++ * max_instructions have run (0), the hardware not run meanwhile. */
++int execute_arm_until(u32 stop_pc, u32 max_instructions);
++/* PokeDaisy: the host's Thumb BKPT hook (cpu.cc). */
++extern u32 (*gpsp_bkpt_hook)(u32 pc, u32 immediate);
++u32 gpsp_bkpt(u32 pc, u32 immediate);
++/* PokeDaisy: the host's H-blank interrupt check (main.c's update_gba). */
++extern int (*gpsp_hblank_hook)(void);
+ /* Interpret mutable VRAM until execution leaves it or a frame completes.
+  * Returns the same cycle-count/frame-complete encoding as update_gba(). */
+ u32 function_cc execute_arm_vram(u32 cycles);
+@@ -148,8 +156,11 @@ bool translate_block_thumb(u32 pc, bool ram_region);
+ extern u8* rom_translation_cache;
+ extern u8* ram_translation_cache;
+ #elif defined(_3DS)
+-#define rom_translation_cache ((u8*)0x02000000 - ROM_TRANSLATION_CACHE_SIZE)
+-#define ram_translation_cache (rom_translation_cache - RAM_TRANSLATION_CACHE_SIZE)
++/* PokeDaisy: one block from the heap made executable in place (libretro.c's
++ * retro_init), not a map at a fixed address below 0x02000000, which a larger
++ * app's own static data covers. NULL = no recompiler (the interpreter runs). */
++extern u8* rom_translation_cache;
++extern u8* ram_translation_cache;
+ extern u8* rom_translation_cache_ptr;
+ extern u8* ram_translation_cache_ptr;
+ #elif defined(VITA)
+diff --git a/cpu_threaded.c b/cpu_threaded.c
+index 605f84f..1fe8617 100644
+--- a/cpu_threaded.c
++++ b/cpu_threaded.c
+@@ -46,10 +46,12 @@ u8 *rom_translation_ptr;
+ u8 *ram_translation_ptr;
+ int sceBlock;
+ #elif defined(_3DS) 
++u8* rom_translation_cache;
++u8* ram_translation_cache;
+ u8* rom_translation_cache_ptr;
+ u8* ram_translation_cache_ptr;
+-u8 *rom_translation_ptr = rom_translation_cache;
+-u8 *ram_translation_ptr = ram_translation_cache;
++u8 *rom_translation_ptr;
++u8 *ram_translation_ptr;
+ #else
+ u8 *rom_translation_ptr = rom_translation_cache;
+ u8 *ram_translation_ptr = ram_translation_cache;
+@@ -225,6 +227,11 @@ typedef struct
+   #include "x86/x86_emit.h"
+ #endif
+ 
++#ifndef thumb_bkpt
++/* PokeDaisy: the BKPT hook is the ARM recompiler's only; elsewhere a no-op. */
++#define thumb_bkpt()
++#endif
++
+ /* Cache invalidation */
+ 
+ #if defined(PSP)
+@@ -2135,6 +2142,11 @@ void translate_icache_sync() {
+       thumb_block_memory(store, push_lr, push_lr, 13);                        \
+       break;                                                                  \
+                                                                               \
++    case 0xBE:                                                                \
++      /* BKPT imm (PokeDaisy: gpsp_bkpt) */                                   \
++      thumb_bkpt();                                                           \
++      break;                                                                  \
++                                                                              \
+     case 0xBC:                                                                \
+       /* POP rlist */                                                         \
+       thumb_block_memory(load, no, up, 13);                                   \
+diff --git a/gba_memory.c b/gba_memory.c
+index e75e9a8..e3678c4 100644
+--- a/gba_memory.c
++++ b/gba_memory.c
+@@ -2672,11 +2672,31 @@ u8 *load_gamepak_page(u32 physical_index)
+   return swap_location;
+ }
+ 
++/* PokeDaisy: a host that keeps one cartridge buffer for every game (the 3DS
++ * port's 32 MB arena, reserved at start) hands it over here; gpSP's own 1MB
++ * blocks otherwise. The arena is never freed (memory_term). */
++u8 *(*gpsp_host_rom_arena)(size_t size) = NULL;
++static int gamepak_arena;
++
+ void init_gamepak_buffer(void)
+ {
+   unsigned i;
+-  // Try to allocate up to 32 blocks of 1MB each
+   gamepak_buffer_count = 0;
++  gamepak_arena = 0;
++  if (gpsp_host_rom_arena)
++  {
++    u8 *arena = gpsp_host_rom_arena((size_t)ROM_BUFFER_SIZE * gamepak_buffer_blocksize);
++    if (arena)
++    {
++      while (gamepak_buffer_count < ROM_BUFFER_SIZE)
++      {
++        gamepak_buffers[gamepak_buffer_count] = arena + (size_t)gamepak_buffer_count * gamepak_buffer_blocksize;
++        gamepak_buffer_count++;
++      }
++      gamepak_arena = 1;
++    }
++  }
++  // Try to allocate up to 32 blocks of 1MB each
+   while (gamepak_buffer_count < ROM_BUFFER_SIZE)
+   {
+     void *ptr = malloc(gamepak_buffer_blocksize);
+@@ -2779,10 +2799,13 @@ void memory_term(void)
+     gamepak_file_large = NULL;
+   }
+ 
++  if (gamepak_arena)
++    gamepak_buffer_count = 0;
+   while (gamepak_buffer_count)
+   {
+     free(gamepak_buffers[--gamepak_buffer_count]);
+   }
++  gamepak_arena = 0;
+ 
+   if (gamepak_mini_rom)
+   {
+diff --git a/libretro/libretro.c b/libretro/libretro.c
+index 30f3acb..8cfe0ba 100644
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -653,24 +653,47 @@ void retro_init(void)
+   #elif defined(_3DS)
+    if (__ctr_svchax && !translation_caches_inited)
+    {
+-      uint32_t currentHandle;
++      /* PokeDaisy: both caches as one block from the heap, made
++       * read-write-execute where it is (MEMOP_PROT), as armGBA's recompiler
++       * gets its code memory in the same app. The stock MEMOP_MAP to a fixed
++       * address below 0x02000000 landed inside PokeDaisy's own static data,
++       * and its result wasn't checked: the first translated block crashed
++       * the 3DS. The ROM cache first, the RAM cache right after it, so the
++       * RAM code's calls to the divide routines at the ROM cache's start
++       * stay within a branch's reach. Refused = the interpreter runs. */
++      const u32 size = ROM_TRANSLATION_CACHE_SIZE + RAM_TRANSLATION_CACHE_SIZE;
++      uint32_t self = 0;
++      int32_t rc = -1;
+       check_rosalina();
+-      
+-      rom_translation_cache_ptr  = memalign(0x1000, ROM_TRANSLATION_CACHE_SIZE);
+-      ram_translation_cache_ptr  = memalign(0x1000, RAM_TRANSLATION_CACHE_SIZE);
+-
+-      svcDuplicateHandle(&currentHandle, 0xFFFF8001);
+-      svcControlProcessMemory(currentHandle,
+-                              rom_translation_cache, rom_translation_cache_ptr,
+-                              ROM_TRANSLATION_CACHE_SIZE, MEMOP_MAP, 0b111);
+-      svcControlProcessMemory(currentHandle,
+-                              ram_translation_cache, ram_translation_cache_ptr,
+-                              RAM_TRANSLATION_CACHE_SIZE, MEMOP_MAP, 0b111);
+-      svcCloseHandle(currentHandle);
+-      rom_translation_ptr = rom_translation_cache;
+-      ram_translation_ptr = ram_translation_cache;
+-      ctr_flush_invalidate_cache();
+-      translation_caches_inited = 1;
++      rom_translation_cache_ptr = memalign(0x1000, size);
++      ram_translation_cache_ptr = NULL;
++      if (rom_translation_cache_ptr &&
++          svcDuplicateHandle(&self, 0xFFFF8001) >= 0)
++      {
++         /* 0b111: read, write, execute. */
++         rc = svcControlProcessMemory(self, rom_translation_cache_ptr, NULL,
++               size, MEMOP_PROT, 0b111);
++         svcCloseHandle(self);
++      }
++      if (rc >= 0)
++      {
++         rom_translation_cache = rom_translation_cache_ptr;
++         ram_translation_cache = rom_translation_cache + ROM_TRANSLATION_CACHE_SIZE;
++         rom_translation_ptr = rom_translation_cache;
++         ram_translation_ptr = ram_translation_cache;
++         ctr_flush_invalidate_cache();
++         translation_caches_inited = 1;
++      }
++      else
++      {
++         if (log_cb)
++            log_cb(RETRO_LOG_ERROR,
++                   "No executable memory for the recompiler (%08lX): "
++                   "the interpreter runs\n", (unsigned long)rc);
++         free(rom_translation_cache_ptr);
++         rom_translation_cache_ptr = NULL;
++         rom_translation_cache = ram_translation_cache = NULL;
++      }
+    }
+   #elif defined(VITA)
+    if(!translation_caches_inited){
+@@ -757,17 +780,21 @@ void retro_deinit(void)
+ 
+    if (__ctr_svchax && translation_caches_inited)
+    {
+-      uint32_t currentHandle;
+-      svcDuplicateHandle(&currentHandle, 0xFFFF8001);
+-      svcControlProcessMemory(currentHandle,
+-                              rom_translation_cache, rom_translation_cache_ptr,
+-                              ROM_TRANSLATION_CACHE_SIZE, MEMOP_UNMAP, 0b111);
+-      svcControlProcessMemory(currentHandle,
+-                              ram_translation_cache, ram_translation_cache_ptr,
+-                              RAM_TRANSLATION_CACHE_SIZE, MEMOP_UNMAP, 0b111);
+-      svcCloseHandle(currentHandle);
++      /* PokeDaisy: read-write again before it goes back to the heap (a
++       * process ending with memory still executable hangs the 3DS on
++       * "Closing software", armGBA's jitmem.c found). */
++      uint32_t self = 0;
++      if (svcDuplicateHandle(&self, 0xFFFF8001) >= 0)
++      {
++         /* 0b011: read, write. */
++         svcControlProcessMemory(self, rom_translation_cache_ptr, NULL,
++               ROM_TRANSLATION_CACHE_SIZE + RAM_TRANSLATION_CACHE_SIZE,
++               MEMOP_PROT, 0b011);
++         svcCloseHandle(self);
++      }
+       free(rom_translation_cache_ptr);
+-      free(ram_translation_cache_ptr);
++      rom_translation_cache_ptr = ram_translation_cache_ptr = NULL;
++      rom_translation_cache = ram_translation_cache = NULL;
+       translation_caches_inited = 0;
+    }
+ #endif
+@@ -973,7 +1000,7 @@ static void check_variables(bool started_from_load)
+    else
+       dynarec_enable = 1;
+ 
+-#if defined(MMAP_JIT_CACHE)
++#if defined(MMAP_JIT_CACHE) || defined(_3DS)
+    /* Without a translation cache the dynarec cannot run; pin the
+     * interpreter regardless of the core option. */
+    if (!rom_translation_cache)
+diff --git a/main.c b/main.c
+index 64210b1..e243822 100644
+--- a/main.c
++++ b/main.c
+@@ -113,7 +113,7 @@ void init_main(void)
+   video_count = 960;
+ 
+ #ifdef HAVE_DYNAREC
+-#if defined(MMAP_JIT_CACHE)
++#if defined(MMAP_JIT_CACHE) || defined(_3DS)
+   /* No cache was mapped: the dynarec is pinned off and its state must
+    * not be touched (init_emitter emits the BIOS SWI entry point). */
+   if (rom_translation_cache)
+@@ -125,6 +125,13 @@ void init_main(void)
+ #endif
+ }
+ 
++/* PokeDaisy: the host's say over an H-blank interrupt about to be raised (the
++ * 3DS port's pd_gpsp.c: a game's stock handler with nothing to call only sets
++ * two flags, which the host sets itself). It returns the CPU cycles the
++ * handler would have taken, taken from the CPU's next run, or -1: raise it. */
++int (*gpsp_hblank_hook)(void) = NULL;
++static u32 gpsp_hblank_charge = 0;
++
+ u32 function_cc update_gba(int remaining_cycles)
+ {
+ #ifdef GPSP_PROFILE
+@@ -199,7 +206,15 @@ u32 function_cc update_gba(int remaining_cycles)
+ 
+         // Trigger the hblank interrupt, if enabled in DISPSTAT
+         if (dispstat & 0x10)
+-          irq_raised |= IRQ_HBLANK;
++        {
++          int taken = -1;
++          if (gpsp_hblank_hook && (read_ioreg(REG_IE) & IRQ_HBLANK))
++            taken = gpsp_hblank_hook();
++          if (taken < 0)
++            irq_raised |= IRQ_HBLANK;
++          else if (reg[CPU_HALT_STATE] == CPU_ACTIVE)
++            gpsp_hblank_charge += taken;
++        }
+       }
+       else
+       {
+@@ -318,6 +333,13 @@ u32 function_cc update_gba(int remaining_cycles)
+   // We voluntarily limit this. It is not accurate but it would be much harder.
+   dma_cycles = MIN(64, dma_cycles);
+   dma_cycles = MIN(execute_cycles, dma_cycles);
++  if (gpsp_hblank_charge)
++  {
++    /* PokeDaisy: the handlers the host stood in for, as time the CPU spent */
++    u32 charged = MIN(gpsp_hblank_charge, execute_cycles - dma_cycles);
++    dma_cycles += charged;
++    gpsp_hblank_charge -= charged;
++  }
+ 
+   return (execute_cycles - dma_cycles) | changed_pc | frame_complete;
+ }
+diff --git a/video_thread_sys.c b/video_thread_sys.c
+index 59a6ba4..32617f1 100644
+--- a/video_thread_sys.c
++++ b/video_thread_sys.c
+@@ -63,13 +63,35 @@ unsigned long long vt_now_us(void)
+ #include <pthread.h>
+ #include <semaphore.h>
+ #include <time.h>
++#ifdef __APPLE__
++/* PokeDaisy: macOS has no unnamed POSIX semaphores (sem_init fails), so the
++ * render thread's waits there are dispatch semaphores (the 3DS port's desktop
++ * simulator runs gpSP on a Mac). */
++#include <dispatch/dispatch.h>
++#endif
+ 
++#ifdef __APPLE__
++struct vt_sem { dispatch_semaphore_t s; };
++#else
+ struct vt_sem { sem_t s; };
++#endif
+ static pthread_t vt_thread;
+ static int vt_thread_running;
+ static void (*vt_fn)(void*);
+ static void *vt_arg;
+ 
++#ifdef __APPLE__
++vt_sem *vt_sem_create(void)
++{
++   vt_sem *s = (vt_sem*)malloc(sizeof(vt_sem));
++   if (s)
++      s->s = dispatch_semaphore_create(0);
++   return s;
++}
++void vt_sem_destroy(vt_sem *s) { if (s) { dispatch_release(s->s); free(s); } }
++void vt_sem_post(vt_sem *s) { dispatch_semaphore_signal(s->s); }
++void vt_sem_wait(vt_sem *s) { dispatch_semaphore_wait(s->s, DISPATCH_TIME_FOREVER); }
++#else
+ vt_sem *vt_sem_create(void)
+ {
+    vt_sem *s = (vt_sem*)malloc(sizeof(vt_sem));
+@@ -80,6 +102,7 @@ vt_sem *vt_sem_create(void)
+ void vt_sem_destroy(vt_sem *s) { if (s) { sem_destroy(&s->s); free(s); } }
+ void vt_sem_post(vt_sem *s) { sem_post(&s->s); }
+ void vt_sem_wait(vt_sem *s) { while (sem_wait(&s->s) != 0) ; }
++#endif
+ 
+ static void *vt_trampoline(void *p) { (void)p; vt_fn(vt_arg); return NULL; }
+ 

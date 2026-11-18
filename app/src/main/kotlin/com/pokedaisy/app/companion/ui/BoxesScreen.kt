@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
-import android.graphics.Bitmap
+import com.pokedaisy.app.companion.data.LockedMap
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -44,7 +44,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -68,6 +67,7 @@ import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlin.math.PI
 
 /** The BOXES tab's place, kept across tab switches: the box on show, the slot looked at last, the summary open. */
 class BoxesUiState {
@@ -114,7 +114,7 @@ fun BoxesScreen(boxes: BoxesView, ui: BoxesUiState, dex: PokedexTables?, modifie
     // The box on show read at the tap, not captured: a `::step` of a local fun equals the last one whatever it captured,
     // so Compose kept the arrows' first click handler and they only ever stepped from the box the tab opened on.
     val step: (Int) -> Unit = { by ->
-        ui.box = Math.floorMod(ui.boxOf(boxes) + by, boxes.boxes.size)
+        ui.box = (ui.boxOf(boxes) + by).mod(boxes.boxes.size)
         ui.looked = null
     }
     val m = rememberGbaTextMetrics()
@@ -192,7 +192,7 @@ internal fun BoxSwapPicker(boxMon: MonView?, party: List<MonView>, onCancel: () 
 }
 
 /** What a SWAP of [boxMon] for [partyMon] (into box [boxName]) did, in the companion's words. */
-internal fun boxSwapMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, boxMon: MonView, partyMon: MonView, boxName: String): String = when (r) {
+fun boxSwapMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, boxMon: MonView, partyMon: MonView, boxName: String): String = when (r) {
     com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED ->
         tr("{0} joined the party and {1} went to {2}. Save in the game to keep it.", boxMon.shownName, partyMon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
@@ -214,7 +214,7 @@ internal fun BoxSwapNotice(ui: BoxesUiState) {
 }
 
 /** What a DEPOSIT of [mon] into box [boxName] did, in the companion's words. */
-internal fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
+fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
     com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was stored in {1}. Save in the game to keep it.", mon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.LAST_MON -> tr("That's your last POKéMON that can battle!")
     com.pokedaisy.app.companion.data.BoxSwapResult.BOX_FULL -> tr("{0} is full.", boxName)
@@ -223,7 +223,7 @@ internal fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult
 }
 
 /** What a WITHDRAW of [mon] from box [boxName] did, in the companion's words. */
-internal fun boxWithdrawMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
+fun boxWithdrawMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
     com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was taken out of {1} and joined the party. Save in the game to keep it.", mon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.PARTY_FULL -> tr("Your party is full!")
     com.pokedaisy.app.companion.data.BoxSwapResult.FAILED -> tr("That didn't work. Nothing was changed.")
@@ -232,7 +232,7 @@ internal fun boxWithdrawMessage(r: com.pokedaisy.app.companion.data.BoxSwapResul
 
 /** DEPOSIT's box pick: every box with how full it is, the save's current box first lit; a full one says FULL. */
 @Composable
-internal fun BoxDepositPicker(boxes: BoxesView, mon: MonView?, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+fun BoxDepositPicker(boxes: BoxesView, mon: MonView?, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
     OptionSelector(
         title = tr("Deposit {0} in which BOX?", mon?.shownName.orEmpty()),
         options = boxes.boxes.indices.toList(),
@@ -271,7 +271,7 @@ private const val SWAP_DONE = 1950L
  * of the clock, for screenshots.
  */
 @Composable
-internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit, at: Long? = null) {
+fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit, at: Long? = null) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
     val u = m.u
@@ -293,8 +293,8 @@ internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: ()
     CompanionBackHandler(onBack = ::tap)
     val outPic = anim.boxMon?.let { swapPictureOf(it, dex) }
     val inPic = anim.partyMon?.let { swapPictureOf(it, dex) }
-    val outArt = remember(outPic) { outPic?.let { SwapArt(it.asImageBitmap(), opaqueBounds(it)) } }
-    val inArt = remember(inPic) { inPic?.let { SwapArt(it.asImageBitmap(), opaqueBounds(it)) } }
+    val outArt = remember(outPic) { outPic?.let { SwapArt(it, opaqueBounds(it)) } }
+    val inArt = remember(inPic) { inPic?.let { SwapArt(it, opaqueBounds(it)) } }
     val fade = (t / SWAP_IN.toFloat()).coerceIn(0f, 1f)
     val noRipple = remember { MutableInteractionSource() }
     BoxWithConstraints(
@@ -362,7 +362,7 @@ internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: ()
                     for (k in 3 downTo 0) {
                         val back = (e - k * 0.05f).coerceAtLeast(0f)
                         val alpha = if (k == 0) 1f else 0.5f / k
-                        val arc = kotlin.math.sin(Math.PI.toFloat() * back)
+                        val arc = kotlin.math.sin(kotlin.math.PI.toFloat() * back)
                         val twinkle = k == 0 && (t / 80) % 2 == 0L
                         if (out) swapSpark(snap(lx + (rx - lx) * back), snap(cy + outLift * arc), p, alpha, twinkle)
                         if (into) swapSpark(snap(rx + (lx - rx) * back), snap(cy + inLift * arc), p, alpha, if (out) !twinkle && k == 0 else twinkle)
@@ -401,7 +401,7 @@ private class SwapArt(val image: ImageBitmap, val trim: Trim)
 
 /** [mon]'s front picture from the ROM, else (no Pokédex tables, an egg) its icon's first frame. */
 @Composable
-private fun swapPictureOf(mon: MonView, dex: PokedexTables?): Bitmap? {
+private fun swapPictureOf(mon: MonView, dex: PokedexTables?): ImageBitmap? {
     val species = mon.species.takeIf { !mon.isEgg && dex != null } ?: 0
     return if (dex != null && species > 0) rememberRomBitmap(dex, species, PokedexSource::cachedFrontSprite, PokedexSource::frontSprite)
     else remember(mon.iconAsset) { peekMonIcon(mon.iconAsset)?.let(::cropToFirstFrame) }
@@ -464,7 +464,7 @@ private fun DrawScope.swapBurst(cx: Float, cy: Float, side: Float, q: Float, p: 
     // The arms in the frame's grey-blue, so they show on the light well; the centre white.
     val arm = Color(SWAP_BURST_ARM).copy(alpha = fade)
     for (i in 0 until 12) {
-        val a = i * Math.PI.toFloat() / 6
+        val a = i * PI.toFloat() / 6
         // Every other one a little behind, so they leave as a ring of two.
         val r = if (i % 2 == 0) d else d * 0.8f
         val x = ((cx + r * kotlin.math.cos(a)) / p).roundToInt() * p
@@ -566,7 +566,7 @@ private fun MonPanel(mon: MonView?, dex: PokedexTables?, m: GbaTextMetrics, modi
  * fits, centred: the well's room goes to the Pokémon, not to the picture's empty margin.
  */
 @Composable
-private fun TrimmedSprite(bitmap: Bitmap?, modifier: Modifier) {
+private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier) {
     val density = LocalDensity.current
     val trim = remember(bitmap) { bitmap?.let(::opaqueBounds) }
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
@@ -574,7 +574,7 @@ private fun TrimmedSprite(bitmap: Bitmap?, modifier: Modifier) {
         val w = with(density) { maxWidth.toPx() }
         val h = with(density) { maxHeight.toPx() }
         val k = floor(minOf(w / trim.width, h / trim.height)).coerceAtLeast(1f)
-        val image = remember(bitmap) { bitmap.asImageBitmap() }
+        val image = bitmap
         Canvas(Modifier.size(with(density) { (trim.width * k).toDp() }, with(density) { (trim.height * k).toDp() })) {
             drawImage(
                 image, srcOffset = IntOffset(trim.left, trim.top), srcSize = IntSize(trim.width, trim.height),
@@ -587,11 +587,11 @@ private fun TrimmedSprite(bitmap: Bitmap?, modifier: Modifier) {
 private class Trim(val left: Int, val top: Int, val width: Int, val height: Int)
 
 /** The smallest rectangle holding [b]'s non-transparent pixels (the whole picture if it has none). */
-private fun opaqueBounds(b: Bitmap): Trim {
+private fun opaqueBounds(b: ImageBitmap): Trim {
     val w = b.width
     val h = b.height
     val px = IntArray(w * h)
-    b.getPixels(px, 0, w, 0, 0, w, h)
+    b.readPixels(px, 0, 0, w, h)
     var l = w; var t = h; var r = -1; var bt = -1
     for (y in 0 until h) for (x in 0 until w) if (px[y * w + x] ushr 24 != 0) {
         if (x < l) l = x
@@ -865,7 +865,7 @@ internal object PcColors {
                 else -> base
             }
         }
-        return Bitmap.createBitmap(px, n, n, Bitmap.Config.ARGB_8888).asImageBitmap()
+        return imageBitmapOf(px, n, n)
     }
 }
 
@@ -1040,17 +1040,16 @@ internal object BoxWallpapers {
     private val WAVE = intArrayOf(0, 0, 1, 2, 2, 2, 1, 0)
     private val BUBBLE = listOf(3 to 2, 2 to 3, 4 to 3, 3 to 4, 11 to 9, 10 to 10, 12 to 10, 11 to 11, 13 to 3, 6 to 12)
 
-    private val cache = HashMap<Triple<List<Paper>, Int, Boolean>, ImageBitmap>()
+    private val cache = LockedMap<Triple<List<Paper>, Int, Boolean>, ImageBitmap>()
 
     /** Wallpaper [id]'s 16x16 fill tile. */
-    fun tile(id: Int, night: Boolean): ImageBitmap = synchronized(cache) {
+    fun tile(id: Int, night: Boolean): ImageBitmap =
         cache.getOrPut(Triple(papers, id, night)) {
             val paper = paper(id)
             val inks = intArrayOf(shade(paper.base, night).toArgb(), shade(paper.mark, night).toArgb(), shade(paper.mark2, night).toArgb())
             val px = IntArray(TILE * TILE) { i -> inks[ink(paper.pattern, i % TILE, i / TILE)] }
-            Bitmap.createBitmap(px, TILE, TILE, Bitmap.Config.ARGB_8888).asImageBitmap()
+            imageBitmapOf(px, TILE, TILE)
         }
-    }
 
     private const val TILE = 16
 }

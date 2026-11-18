@@ -105,7 +105,7 @@ private val XY_TYPES = mapOf(
  * moves; [idle] = nothing takes a tap now; [pulse] the cursor's bob, 0 .. 1.
  */
 @Composable
-internal fun XyBattleCorner(
+fun XyBattleCorner(
     state: DsBattleMenuState, picture: Rect, mode: Int, idle: Boolean, moves: List<MoveView>, icon: String?, pulse: Float,
     /** BATTLE HINTS: each move's power on its card too. */
     power: Boolean = false,
@@ -352,7 +352,7 @@ private fun DrawScope.drawBurst(c: Offset, face: Rect, p: Float) {
         // Angle (degrees from the horizontal), length as a share of the face's width, base width in 3DS pixels.
         val spikes = listOf(Triple(0f, 0.46f, 2.2f), Triple(-14f, 0.34f, 1.6f), Triple(12f, 0.38f, 1.6f), Triple(-30f, 0.24f, 1.2f), Triple(28f, 0.26f, 1.2f), Triple(-6f, 0.40f, 1f), Triple(6f, 0.3f, 1f))
         for (side in listOf(1f, -1f)) for ((deg, len, base) in spikes) {
-            val t = Math.toRadians(deg.toDouble())
+            val t = deg.toDouble() * kotlin.math.PI / 180.0
             val dx = (cos(t) * side).toFloat()
             val dy = sin(t).toFloat()
             val l = face.width * len
@@ -432,8 +432,7 @@ internal fun XyText(
         val max = constraints.maxWidth.toFloat() - 2 * edge
         // SETTINGS > FONT's smooth fonts here too (the HUD, the battle buttons); PIXEL keeps the game's sans-serif.
         val appFont = com.pokedaisy.app.companion.ui.theme.AppFonts.current
-        val context = androidx.compose.ui.platform.LocalContext.current
-        val family = remember(appFont) { if (appFont.pixel) FontFamily.SansSerif else appFont.family(context) }
+        val family = remember(appFont) { if (appFont.pixel) FontFamily.SansSerif else appFont.family() }
         fun style(px: Float) = TextStyle(
             fontSize = with(density) { px.toSp() }, fontFamily = family, fontWeight = weight, letterSpacing = spacing.em,
         )

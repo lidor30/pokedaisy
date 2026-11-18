@@ -21,8 +21,8 @@ class HatRepeatTest {
         now = end
     }
 
-    private val up = MgbaCore.Key.UP
-    private val down = MgbaCore.Key.DOWN
+    private val up = com.pokedaisy.app.companion.data.CoreKey.UP
+    private val down = com.pokedaisy.app.companion.data.CoreKey.DOWN
 
     @Test fun aHeldDirectionRepeats() {
         repeat.update(up, up) { sent += it }
@@ -50,7 +50,7 @@ class HatRepeatTest {
     }
 
     @Test fun aButtonIsNotRepeated() {
-        repeat.update(MgbaCore.Key.A, MgbaCore.Key.A) { sent += it }
+        repeat.update(com.pokedaisy.app.companion.data.CoreKey.A, com.pokedaisy.app.companion.data.CoreKey.A) { sent += it }
         advance(10_000)
         assertEquals(emptyList<Int>(), sent)
     }

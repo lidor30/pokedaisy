@@ -31,7 +31,7 @@ Since a DS game and a GBA game never run at the same time, a button can be in bo
 
 In a game, the companion's `GAME BUTTONS` shows the group for the game you're playing under `ALL GAMES`. The top screen's Settings shows all three.
 
-To change one, tap its row (it says `PRESS A BUTTON…`) and press the button you want on your device. That works the same on the top screen and on the companion: there, while a row waits, the game's screen shows a window asking for the button and the keys you hold. `CANCEL`, or `BACK`, leaves the button as it was. `TURBO A`, `TURBO B`, the D-pad rows and the GBA and Game Boy rows also get `CLEAR`, which takes them off every button again.
+To change one, tap its row (it says `PRESS A BUTTON…`) and press the button you want on your device. That works the same on the top screen and on the companion: there, while a row waits, the game's screen shows a window asking for the button and the keys you hold. `CANCEL`, `BACK` or Escape leaves the button as it was. `TURBO A`, `TURBO B`, the D-pad rows and the GBA and Game Boy rows also get `CLEAR`, which takes them off every button again.
 
 The new button replaces everything that row had, keyboard key included. A button can only do one thing in a game: put it on a new row and it leaves the old one in the same games. `TO COMPANION` is the exception: it shares its button with whatever else is on it.
 
@@ -115,7 +115,7 @@ On the companion, the game's screen shows a window while a hotkey waits, with th
 
 ![Over the game while a companion hotkey waits: SAVE STATE, the button held so far, CLEAR SAVE STATE and CANCEL](shots/game-capture.png "The game's screen while the companion waits for keys")
 
-The new buttons replace the hotkey's whole binding, keyboard key included.
+The new buttons replace the hotkey's whole binding, keyboard key included. A binding takes effect after it saves; an invalid button or a failed save leaves the active controls alone.
 
 ![The companion's HOTKEYS page with the HOTKEYS switch and every hotkey's buttons](shots/companion-settings-hotkeys.png "HOTKEYS on the companion")
 
@@ -139,7 +139,7 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | --- | --- |
 | `PC` | Opens your game's own PC right where you stand, as in the [bag](bag.md). |
 | `HEAL` | Heals the whole party, as the nurse at a POKéMON CENTER does. It asks first (`YES` / `NO`), then shows each Pokémon's HP bar filling up. The other services are on a Pokémon's summary: see [CENTER](party.md#center-heal-relearn-forget-rename). |
-| `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move, or any Pokémon with [`NO HMS NEEDED`](#no-hms-needed) on. |
+| `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move, or any Pokémon with [`NO HMS NEEDED`](#no-hms-needed) on. In a game whose own party menu lets a Pokémon fly without knowing the move (Unbound), it goes by the game's rule. |
 | `TAKE OFF` | Takes off on your Pokémon's bird and lets you [fly over the map](map.md#flying-over-the-map); while you're up it says `LAND` and brings you down. The original games in every language, Emerald Legacy and the hacks listed in [Map](map.md#flying-over-the-map). |
 | `FLASH` | Lights up a dark cave, the way the move does from the game's party menu: the Pokémon that knows it shows up and the cave lights up. It only shows while a Pokémon in your party knows `FLASH` (any Pokémon will do with [`NO HMS NEEDED`](#no-hms-needed) on), and it's greyed out where it isn't dark. In Emerald it also opens the sealed wall in the ancient tomb when you stand where the game asks. It needs the same badge as in the game. |
 | The keep-away spray | Uses an item from your bag that keeps wild Pokémon away (the tile shows its icon and name). With more than one kind in your bag, it lists them with how many you have and how many steps each lasts, so you pick. While one is still working it's greyed out and says how many steps are left. |
@@ -165,6 +165,8 @@ Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROL
 
 To use another button, change the `QUICK MENU` hotkey.
 
+You can open it with the `QUICK MENU` touch button, even with `HOTKEYS` off. With hotkeys on, L3 or your chosen key opens and closes it. Use the D-pad, a hardware keyboard's game bindings, or the ring's left stick to choose, then press `A`. `B` returns from a destination or item list, then closes the menu. Held buttons stay out of the game until released after closing.
+
 ## Touch controls
 
 `TOUCH CONTROLS` puts on-screen buttons over the game, for when you have no real ones: a phone, or a tablet without a controller. It's a page of its own in the `CONTROLS` group, on both screens. At its top, a picture of your screen shows the buttons as they are now, and it changes as soon as you change a setting. Upright it shows the part of the screen around the buttons, so they come out bigger. The button under it says which way the phone is held in the picture (`UPRIGHT` or `SIDEWAYS`); tap it to see the other. Tap any setting on the page to step to its next choice.
@@ -182,7 +184,7 @@ To use another button, change the `QUICK MENU` hotkey.
 - **`EDIT LAYOUT`**: move the buttons yourself (see below).
 
 In a DS game the buttons get X and Y too, around A and B the way the DS has them: X on top, Y on the left.
-- **`POSITION`**: with the phone held upright, where the buttons sit in their space: `TOP`, `MIDDLE` (the default) or `BOTTOM`. Their space is the gap between the game and the companion, or the game itself when there's no gap. It doesn't move a `CUSTOM` layout, which keeps your own places. With `EXPAND` and `UNDER GAME` the buttons get a space that fits them exactly, so it's greyed out then.
+- **`POSITION`**: with the phone held upright, where the buttons sit in their space: `TOP`, `MIDDLE` (the default) or `BOTTOM`. With the companion `UNDER GAME`, their space is below the companion. With `AT BOTTOM`, it is the gap between the game and the companion, or the game itself when there's no gap. It doesn't move a `CUSTOM` layout, which keeps your own places. With `EXPAND` and `UNDER GAME` the buttons get a space that fits them exactly, so it's greyed out then.
 - **`COMPANION`**: with the phone held upright, the companion right `UNDER GAME` (the default), which leaves the space at the bottom of the screen for the buttons (when there's no room to spare, the companion and then the game get a little smaller to make that space), or `AT BOTTOM` of the screen. It's the same setting as the one in `DISPLAY OPTIONS`, and only on phones and other one-screen devices. With `EXPAND` on, the game fills everything above the companion, so `UNDER GAME` gives the buttons a strip of their own along the bottom of the screen instead, under the companion, where they never cover the game. With no touch controls on screen there's nothing to choose then, and the setting is greyed out.
 - **`SIZE`**: `SMALL`, `NORMAL`, `LARGE` or `X-LARGE`, for every button at once.
 - **`LOOK`**: how the buttons are drawn. `GLASS` (the default) is see-through with a light edge, `SOLID` fills them in, `OUTLINE` draws only their edges and words (a press fills one in), `CONSOLE` makes them look like a handheld's: raised, sinking a little when you press them, and `MODERN` draws smooth round buttons with plain lettering instead of pixels.
@@ -199,7 +201,7 @@ On a phone held upright the buttons sit between the game and the companion when 
 
 The `EXTRA BUTTONS` group adds buttons the GBA doesn't have. Turn each one on or off:
 
-- **`FF`** (on to start with): a tap turns fast-forward on or off; hold it for fast-forward only while you hold it. Its word lights up while fast-forward is on.
+- **`FF`** (on to start with): a tap turns fast-forward on or off; hold it for fast-forward only while you hold it. Its word lights up while fast-forward is on. Leaving the game or opening button capture cancels the touch hold without counting it as a tap.
 - **`QUICK MENU`** (on to start with): opens the [quick menu](#the-quick-menu). A phone has no button for it otherwise. Tap a tile to run it; a tap anywhere else closes it.
 - **`TURBO A`** and **`TURBO B`**: press A or B over and over while you hold them, like the [turbo buttons](#turbo-a-and-b).
 - **`SAVE STATE`** and **`LOAD STATE`**: save or load a state in the current slot, like the hotkeys. If you load one by mistake, the `UNDO LOAD` hotkey takes you back.
@@ -241,6 +243,8 @@ A phone held upright and held sideways each get their own layout: you edit the o
 `RUN INDOORS` lets you run inside buildings too, where the games normally make you walk. It works on games built on FireRed or Emerald. On Ruby and Sapphire it shows `N/A`: those games decide where you can run in a way PokeDaisy can't change safely.
 
 Both show `N/A` on a game PokeDaisy can't read the field of yet.
+
+If you turn indoor running off while inside a building, leave and re-enter to restore that map's normal rule.
 
 ## WILD ENCOUNTERS
 
@@ -291,7 +295,7 @@ The battle starts over the same way, so try something different. Going back is a
 
 While it's on, the row shows the count so far. It starts from 0 when you turn it on and again after each shiny, and each game keeps its own. Trainers' battles don't count.
 
-It works in the same games as `SHINY ODDS`, and the two go well together. Elsewhere it shows `N/A`.
+It works in the GBA games `SHINY ODDS` works in (not the DS games yet), and the two go well together. Elsewhere it shows `N/A`.
 
 ## EXP SHARE
 

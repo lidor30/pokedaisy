@@ -1,10 +1,7 @@
 package com.pokedaisy.app.companion.coop
 
-import java.net.InetAddress
-import java.net.InetSocketAddress
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -14,8 +11,8 @@ import org.junit.Test
 class CoopTicketTest {
     private val peer = CoopPeerId.of(ByteArray(32) { (it * 3 + 1).toByte() })
     private val secret = ByteArray(16) { (0xF0 + it).toByte() }
-    private val v4 = InetSocketAddress(InetAddress.getByAddress(byteArrayOf(192.toByte(), 168.toByte(), 1, 20)), 1)
-    private val v6 = InetSocketAddress(InetAddress.getByAddress(ByteArray(16) { (it + 1).toByte() }), 65_535)
+    private val v4 = CoopAddress(byteArrayOf(192.toByte(), 168.toByte(), 1, 20), 1)
+    private val v6 = CoopAddress(ByteArray(16) { (it + 1).toByte() }, 65_535)
 
     private val alphabet = "abcdefghijklmnopqrstuvwxyz234567"
 
@@ -91,11 +88,10 @@ class CoopTicketTest {
     private fun assertNotNullTicket(s: String) = assertTrue(CoopTicket.decode(s) != null)
 
     @Test fun addressesAreNeverLookedUp() {
-        // decode builds addresses from bytes (InetAddress.getByAddress): no host name is resolved.
+        // decode keeps addresses as bytes: there is no host name to resolve.
         val d = CoopTicket.decode(CoopTicket(peer, null, listOf(v4)).encode())!!
-        assertEquals("192.168.1.20", d.addresses[0].address.hostAddress)
-        assertFalse(d.addresses[0].isUnresolved)
-        assertEquals(4, d.addresses[0].address.address.size)
+        assertEquals("192.168.1.20 port 1", d.addresses[0].toString())
+        assertArrayEquals(byteArrayOf(192.toByte(), 168.toByte(), 1, 20), d.addresses[0].ip)
     }
 
     @Test fun encodeRequiresAtMostFourAddresses() {

@@ -40,6 +40,9 @@ struct pd_armgba_host {
     void* (*romBuffer)(size_t size);
     // The ROM's CRC-32 when the host knows it from an earlier start of the same file (0: worked out here, a pass over it).
     uint32_t knownCrc;
+    // With threaded: armGBA's One Frame Late, the game never waiting for the renderer (it hands a frame's picture over a
+    // frame later). For an Old 3DS, whose renderer is on the slower, shared system core.
+    bool lateVideo;
 };
 
 // Whether a ROM of this name and header goes to armGBA (a GBA game: anything that isn't a Game Boy cart).

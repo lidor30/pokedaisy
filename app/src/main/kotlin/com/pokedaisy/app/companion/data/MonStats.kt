@@ -14,12 +14,57 @@ data class MonStats(
     val ivs: List<Int>,
     val evs: List<Int>,
     /** 0..24, Hardy..Quirky: the nature the stats use (an expansion Mint's included); Monomyth's own, which change no stat,
-     * from [MONOMYTH_NATURE_BASE] on. */
+     * from [MONOMYTH_NATURE_BASE] on; [NO_NATURE] in Gen 1 / 2. */
     val nature: Int,
     val stats: List<Int>,
+    /** What [ivs] / [evs] are: Gen 3's IVs and EVs, or a Game Boy game's DVs and stat experience. */
+    val kind: StatKind = StatKind.GBA,
     /** Gen 3's aptitude bit (the IV word's top bit): 0 = the species' first ability, 1 = its second; null = not read. */
     val abilityNum: Int? = null,
 )
+
+/**
+ * How a game keeps a Pokémon's hidden stats. The Game Boy games have DVs (0-15) where Gen 3 has IVs: Gen 1 / 2 four of
+ * them (Attack, Defense, Speed, Special; HP's made of their low bits) and stat experience (0-65535, Special one value) for
+ * EVs, so their lists carry Special in both [STAT_SPATK] and [STAT_SPDEF] - Gen 1's [MonStats.stats] too, it has one
+ * Special stat. Polished Crystal keeps six DVs, Gen 3-style EVs and a nature. [GBA] is Gen 3's IVs and EVs.
+ */
+enum class StatKind(val ivMax: Int) {
+    GBA(MAX_IV),
+    GEN1(MAX_DV),
+    GEN2(MAX_DV),
+    POLISHED(MAX_DV);
+
+    /** DVs rather than IVs. */
+    val dvs: Boolean get() = this != GBA
+    /** Stat experience rather than EVs (no 510 cap, Special one value). */
+    val statExp: Boolean get() = this == GEN1 || this == GEN2
+    /** The stats a total counts once: Gen 1 / 2's Special is one value shown twice. */
+    val distinctStats: List<Int> get() = if (statExp) listOf(STAT_HP, STAT_ATK, STAT_DEF, STAT_SPEED, STAT_SPATK) else SUMMARY_STAT_ORDER
+}
+
+const val NO_NATURE = -1
+const val MAX_DV = 15
+
+/**
+ * Gen 1 / 2's DVs from their two bytes (Attack | Defense, Speed | Special, high nibble first) in [MonStats.ivs]' order;
+ * HP's DV is the four's low bits, Attack's the highest.
+ */
+fun gbDvs(b0: Int, b1: Int): List<Int> {
+    val atk = (b0 shr 4) and 0xF
+    val def = b0 and 0xF
+    val spd = (b1 shr 4) and 0xF
+    val spc = b1 and 0xF
+    val hp = ((atk and 1) shl 3) or ((def and 1) shl 2) or ((spd and 1) shl 1) or (spc and 1)
+    return listOf(hp, atk, def, spd, spc, spc)
+}
+
+/** Polished Crystal's three DV bytes (HP | Attack, Defense | Speed, Sp. Atk | Sp. Def), in [MonStats.ivs]' order. */
+fun polishedDvs(b0: Int, b1: Int, b2: Int): List<Int> =
+    listOf((b0 shr 4) and 0xF, b0 and 0xF, (b1 shr 4) and 0xF, b1 and 0xF, (b2 shr 4) and 0xF, b2 and 0xF)
+
+/** Polished Crystal's nature: the personality byte's low 5 bits, numbered as Gen 3's; [NO_NATURE] past Quirky. */
+fun polishedNature(personality: Int): Int = (personality and 0x1F).takeIf { it < 25 } ?: NO_NATURE
 
 /**
  * Whether [MonStats.abilityNum] names the ability in this game: only where the engine is the original games' (one bit,
@@ -69,6 +114,30 @@ fun natureRaises(nature: Int): Int? = (1 + nature / 5).takeIf { nature in 0..24 
 /** The stat [nature] lowers; null = a neutral nature. */
 fun natureLowers(nature: Int): Int? = (1 + nature % 5).takeIf { nature in 0..24 && nature / 5 != nature % 5 }
 
+/**
+ * Whether the summary can name [stats]' Hidden Power: Gen 3 always; Gen 2 by its DVs only in the games that kept its rule
+ * and type order (Gold / Silver, Crystal and Crystal Clear - Prism added types, Polished Crystal's rule isn't mapped);
+ * Gen 1 has no Hidden Power.
+ */
+fun hasHiddenPower(stats: MonStats): Boolean = when (stats.kind) {
+    StatKind.GBA -> true
+    StatKind.GEN2 -> activeGame.isGoldSilver || activeGame == GameKind.CRYSTAL || activeGame == GameKind.CRYSTAL_CLEAR
+    else -> false
+}
+
+/** Gen 2's Hidden Power type (pokecrystal's HiddenPowerDamage): Attack's and Defense's DVs' low 2 bits, Fighting first. */
+fun gen2HiddenPowerType(dvs: List<Int>): String {
+    val name = hiddenPowerTypes[((dvs[STAT_ATK] and 3) shl 2) or (dvs[STAT_DEF] and 3)]
+    return activeTypeNames.values.firstOrNull { it.equals(name, ignoreCase = true) } ?: name
+}
+
+/** Gen 2's Hidden Power power (31..70): the DVs' top bits, Attack's the highest, x5, plus Special's low 2 bits, halved. */
+fun gen2HiddenPowerPower(dvs: List<Int>): Int {
+    fun top(s: Int) = (dvs[s] shr 3) and 1
+    val bits = 8 * top(STAT_ATK) + 4 * top(STAT_DEF) + 2 * top(STAT_SPEED) + top(STAT_SPATK)
+    return (5 * bits + (dvs[STAT_SPATK] and 3)) / 2 + 31
+}
+
 // Hidden Power's type index -> type, Fighting first (Normal and ??? are skipped).
 private val hiddenPowerTypes = listOf(
     "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost", "Steel",
@@ -90,4 +159,5 @@ fun hiddenPowerType(ivs: List<Int>): String {
  * expansion hacks use Gen 6's flat 60); null where it isn't known.
  */
 fun hiddenPowerPower(ivs: List<Int>): Int? =
-    if (activeGame == GameKind.FIRERED || activeGame == GameKind.EMERALD || activeGame == GameKind.ORANGE_ISLANDS) ivBits(ivs, 1) * 40 / 63 + 30 else null
+    if (activeGame == GameKind.FIRERED || activeGame == GameKind.EMERALD || activeGame == GameKind.ORANGE_ISLANDS || retailDsGame)
+        ivBits(ivs, 1) * 40 / 63 + 30 else null

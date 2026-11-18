@@ -1,17 +1,34 @@
 package com.pokedaisy.app
 
-import android.content.Context
+import com.pokedaisy.app.companion.PreferenceStore
+import com.pokedaisy.app.companion.edit
+import kotlin.time.Clock
+import kotlinx.serialization.json.*
+import com.pokedaisy.app.companion.DS_RESOLUTION_MAX
 import com.pokedaisy.app.companion.FfMode
 import com.pokedaisy.app.companion.GameAspect
 import com.pokedaisy.app.companion.GridStrength
 import com.pokedaisy.app.companion.ScreenFilter
 import com.pokedaisy.app.companion.Smoothing
 import com.pokedaisy.app.companion.FfMusicMode
+import com.pokedaisy.app.companion.data.LibraryView
 
-/** Tiny SharedPreferences wrapper for app-level state. */
-class Prefs(context: Context) {
-    private val p = context.getSharedPreferences("pokedaisy", Context.MODE_PRIVATE)
-    private val appContext: Context = context.applicationContext ?: context
+/** App preferences, keys and legacy codecs shared by every host. Storage retains each platform's existing format. */
+class Prefs(
+    private val p: PreferenceStore,
+    private val defaults: Defaults = Defaults(),
+    private val dsCpuBoostDefault: () -> Boolean = { true },
+) {
+    /** Existing host defaults where the installed apps differ. An explicitly saved value always wins. */
+    data class Defaults(val hotkeysEnabled: Boolean = true, val sidePanelDocked: Boolean = false,
+                        val companionWindow: Boolean = true, val battleStyleNames: Boolean = false,
+                        val libraryListsJson: Boolean = false)
+
+    private fun libraryList(raw: String?): List<String> = if (defaults.libraryListsJson) runCatching {
+        (raw?.let(Json::parseToJsonElement) as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.orEmpty()
+    }.getOrDefault(emptyList()) else raw?.split("\n")?.filter { it.isNotBlank() }.orEmpty()
+    private fun libraryList(values: Collection<String>): String = if (defaults.libraryListsJson)
+        JsonArray(values.map(::JsonPrimitive)).toString() else values.joinToString("\n")
 
     var lastRomPath: String?
         get() = p.getString("last_rom", null)
@@ -25,12 +42,23 @@ class Prefs(context: Context) {
      * different callers and different lifetimes.
      */
     fun recentRomPaths(): List<String> =
-        p.getString("recent_roms", null)?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+        libraryList(p.getString("recent_roms", null))
 
     fun pushRecentRom(path: String) {
-        val updated = (listOf(path) + recentRomPaths().filter { it != path }).take(RECENT_CAP)
-        p.edit().putString("recent_roms", updated.joinToString("\n")).putLong("played_$path", System.currentTimeMillis()).apply()
+        recordPlay(path, Clock.System.now().toEpochMilliseconds(), last = false)
     }
+
+    /** Library launch: keep the last game, recent list and timestamp in the same storage batch. */
+    fun recordRomPlayed(path: String, now: Long = Clock.System.now().toEpochMilliseconds()) = recordPlay(path, now, last = true)
+
+    private fun recordPlay(path: String, now: Long, last: Boolean) {
+        val updated = (listOf(path) + recentRomPaths().filter { it != path }).take(RECENT_CAP)
+        p.edit().putString("recent_roms", libraryList(updated)).putLong("played_$path", now)
+            .also { if (last) it.putString("last_rom", path) }.apply()
+    }
+
+    fun romPlayTimes(): Map<String, Long> = p.keys().filter { it.startsWith("played_") }
+        .associate { it.removePrefix("played_") to p.getLong(it, 0L) }
 
     /** When the ROM at [path] was last started (the library's LAST PLAYED order); 0 = never, or before this was kept. */
     fun romLastPlayed(path: String): Long = p.getLong("played_$path", 0L)
@@ -53,14 +81,14 @@ class Prefs(context: Context) {
     /** Whether a ROM's cover (keyed by file name, like [romDisplayName]) was
      * explicitly picked by the user rather than auto-captured — a manual
      * cover is never overwritten by a later auto-capture backfill. */
-    fun romCoverManual(file: java.io.File): Boolean = p.getBoolean("cover_manual_${file.name}", false)
-    fun setRomCoverManual(file: java.io.File, manual: Boolean) =
-        p.edit().putBoolean("cover_manual_${file.name}", manual).apply()
+    fun romCoverManual(fileName: String): Boolean = p.getBoolean("cover_manual_${fileName}", false)
+    fun setRomCoverManual(fileName: String, manual: Boolean) =
+        p.edit().putBoolean("cover_manual_${fileName}", manual).apply()
 
     /** Where an automatic cover came from ([CoverArtSync.Source] name), for INFO; null = unknown (older covers). */
-    fun romCoverSource(file: java.io.File): String? = p.getString("cover_source_${file.name}", null)
-    fun setRomCoverSource(file: java.io.File, source: String?) = p.edit().apply {
-        if (source == null) remove("cover_source_${file.name}") else putString("cover_source_${file.name}", source)
+    fun romCoverSource(fileName: String): String? = p.getString("cover_source_${fileName}", null)
+    fun setRomCoverSource(fileName: String, source: String?) = p.edit().apply {
+        if (source == null) remove("cover_source_${fileName}") else putString("cover_source_${fileName}", source)
     }.apply()
 
     /** RetroAchievements account (achievements/RetroAchievements.kt): the username and the
@@ -328,65 +356,18 @@ class Prefs(context: Context) {
         get() = p.getInt("touch_controls", 0)
         set(v) = p.edit().putInt("touch_controls", v).apply()
 
-    /** The extras there were before ZOOM and REWIND (a set saved then didn't say which it knew). */
-    private val EXTRAS_BEFORE_ZOOM = setOf("FF", "QUICK_MENU", "TURBO_A", "TURBO_B", "SAVE_STATE", "LOAD_STATE")
-
-    /** SETTINGS > TOUCH CONTROLS: when they show ([touchControlsMode]), the layout, size, opacity, extras and the
-     * player's own layouts per orientation ([com.pokedaisy.app.companion.TouchLayout.encode]). */
+    /** Touch preferences use the same keys and migrations on every host. */
     var touchControlsStyle: com.pokedaisy.app.companion.TouchControlsStyle
-        get() {
-            val d = com.pokedaisy.app.companion.TouchControlsStyle()
-            fun <T : Enum<T>> pick(all: Array<T>, key: String, default: T) = p.getString(key, null)?.let { n -> all.firstOrNull { it.name == n } } ?: default
-            val oldVibration = p.getInt("touch_vibration_level", if (p.getBoolean("touch_vibration", false)) 1 else 0)
-            return com.pokedaisy.app.companion.TouchControlsStyle(
-                show = com.pokedaisy.app.companion.TouchShow.entries.getOrElse(touchControlsMode) { d.show },
-                preset = pick(com.pokedaisy.app.companion.TouchPreset.values(), "touch_preset", d.preset),
-                size = pick(com.pokedaisy.app.companion.TouchSize.values(), "touch_size", d.size),
-                look = pick(com.pokedaisy.app.companion.TouchLook.values(), "touch_look", d.look),
-                colors = pick(com.pokedaisy.app.companion.TouchColors.values(), "touch_colors", d.colors),
-                skinGba = p.getString("touch_skin_gba", null),
-                skinGb = p.getString("touch_skin_gb", null),
-                position = pick(com.pokedaisy.app.companion.TouchPosition.values(), "touch_position", d.position),
-                opacity = p.getInt("touch_opacity", d.opacity),
-                extras = p.getString("touch_extras", null)?.let { s ->
-                    val saved = s.split(',').mapNotNull { n -> com.pokedaisy.app.companion.TouchButton.values().firstOrNull { it.name == n && it.extra } }.toSet()
-                    // Extras that came after this set was saved (ZOOM, REWIND) start as their default, on.
-                    val known = p.getString("touch_extras_known", null)?.split(',')?.toSet() ?: EXTRAS_BEFORE_ZOOM
-                    saved + d.extras.filter { it.name !in known }
-                } ?: d.extras,
-                xyButtons = p.getBoolean("touch_xy", d.xyButtons),
-                eightWay = p.getBoolean("touch_eight_way", d.eightWay),
-                fadeIdle = p.getBoolean("touch_fade_idle", d.fadeIdle),
-                // VIBRATION was one row of OFF / LIGHT / MEDIUM / STRONG (touch_vibration_level), and a switch before that.
-                vibrate = p.getBoolean("touch_vibrate", oldVibration > 0),
-                vibrationStrength = p.getInt("touch_vibration_strength", if (oldVibration > 0) oldVibration else d.vibrationStrength),
-                useCustom = p.getBoolean("touch_use_custom", d.useCustom),
-                portrait = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_portrait", null)),
-                landscape = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_landscape", null)),
-            )
-        }
+        get() = com.pokedaisy.app.companion.TouchStyleCodec.read(
+            text = { p.getString(it, null) }, int = p::getInt, bool = p::getBoolean,
+        )
         set(v) {
-            touchControlsMode = v.show.ordinal
-            p.edit()
-                .putString("touch_preset", v.preset.name)
-                .putString("touch_size", v.size.name)
-                .putString("touch_look", v.look.name)
-                .putString("touch_colors", v.colors.name)
-                .putString("touch_skin_gba", v.skinGba)
-                .putString("touch_skin_gb", v.skinGb)
-                .putString("touch_position", v.position.name)
-                .putInt("touch_opacity", v.opacity)
-                .putString("touch_extras", v.extras.joinToString(",") { it.name })
-                .putString("touch_extras_known", com.pokedaisy.app.companion.TouchButton.extras.joinToString(",") { it.name })
-                .putBoolean("touch_xy", v.xyButtons)
-                .putBoolean("touch_eight_way", v.eightWay)
-                .putBoolean("touch_fade_idle", v.fadeIdle)
-                .putBoolean("touch_vibrate", v.vibrate)
-                .putInt("touch_vibration_strength", v.vibrationStrength)
-                .putBoolean("touch_use_custom", v.useCustom)
-                .putString("touch_layout_portrait", v.portrait.encode())
-                .putString("touch_layout_landscape", v.landscape.encode())
-                .apply()
+            val edit = p.edit()
+            com.pokedaisy.app.companion.TouchStyleCodec.write(v,
+                text = { k, value -> edit.putString(k, value) },
+                int = { k, value -> edit.putInt(k, value) },
+                bool = { k, value -> edit.putBoolean(k, value) })
+            edit.apply()
         }
 
     /** Whether battle-only strategic hints (move effectiveness chips, the
@@ -442,8 +423,14 @@ class Prefs(context: Context) {
 
     /** BATTLE STYLE: the battle controls' look, a [com.pokedaisy.app.companion.BattleStyle] id (0 = GEN 4, the old one). */
     var battleStyle: Int
-        get() = p.getInt("battle_style", 0)
-        set(v) = p.edit().putInt("battle_style", v).apply()
+        get() = if (defaults.battleStyleNames) com.pokedaisy.app.companion.BattleStyle.entries
+            .firstOrNull { it.name == p.getString("battle_style", null) }?.id ?: 0 else p.getInt("battle_style", 0)
+        set(v) {
+            val edit = p.edit()
+            if (defaults.battleStyleNames) edit.putString("battle_style", com.pokedaisy.app.companion.BattleStyle.of(v).name)
+            else edit.putInt("battle_style", v)
+            edit.apply()
+        }
 
     /** The Library's one-time BATTLE STYLE pick has been answered (or dismissed). */
     var battleStyleAsked: Boolean
@@ -530,7 +517,7 @@ class Prefs(context: Context) {
 
     /** Whether the emulator hotkeys ([com.pokedaisy.app.Hotkeys]) fire at all; off, every key goes to the game. */
     var hotkeysEnabled: Boolean
-        get() = p.getBoolean("hotkeys_enabled", true)
+        get() = p.getBoolean("hotkeys_enabled", defaults.hotkeysEnabled)
         set(v) = p.edit().putBoolean("hotkeys_enabled", v).apply()
 
     /** SETTINGS > FPS / CPU: the game's frames per second and the app's CPU share over the game's corner. */
@@ -654,10 +641,10 @@ class Prefs(context: Context) {
     /** SCREEN > DS RESOLUTION: a DS game's 3D at this many times the DS's own (2-8: the GPU renderer,
      * nds/pk_nds_gl.h) or the DS's own on the CPU (1, the default: melonDS's software renderer, pixel for pixel). */
     /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock (MgbaCore.pkNdsCpuBoost). Until the player sets it, on
-     * except where [DevicePerformance.looksWeak]: the boost about doubles the ARM9's work (HeartGold's frame 3.8 -> 7.3 ms
+     * except where the host reports a weak device: the boost about doubles the ARM9's work (HeartGold's frame 3.8 -> 7.3 ms
      * on the RP6), and a chip with only little cores (the RG DS's A55s) runs out of time with it, not without. */
     var dsCpuBoost: Boolean
-        get() = if (p.contains("ds_cpu_boost")) p.getBoolean("ds_cpu_boost", true) else !DevicePerformance.looksWeak(appContext)
+        get() = if (p.contains("ds_cpu_boost")) p.getBoolean("ds_cpu_boost", true) else dsCpuBoostDefault()
         set(v) = p.edit().putBoolean("ds_cpu_boost", v).apply()
 
     /** SCREEN > DS CORE: which emulator runs a DS game (companion.DsCore: AUTO, the default, MELONDS, DSPERATE). */
@@ -763,18 +750,18 @@ class Prefs(context: Context) {
 
     /** Single-screen devices: the companion's side panel is locked beside the game (see [SidePanel]). */
     var sidePanelDocked: Boolean
-        get() = p.getBoolean("side_panel_docked", false)
+        get() = p.getBoolean("side_panel_docked", defaults.sidePanelDocked)
         set(v) = p.edit().putBoolean("side_panel_docked", v).apply()
 
     /** Single-screen devices: the side panel's width, as a fraction of the screen's (see [SidePanel]). */
     var sidePanelWidth: Float
-        get() = p.getFloat("side_panel_width", 0.5f)
+        get() = p.getFloat("side_panel_width", com.pokedaisy.app.companion.SIDE_PANEL_DEFAULT_WIDTH)
         set(v) = p.edit().putFloat("side_panel_width", v).apply()
 
     /** One screen held sideways: the companion opens as a window in the middle, over the game (true), or in the side
      * panel on the right (SETTINGS > COMPANION VIEW; see [SidePanel]). */
     var companionWindow: Boolean
-        get() = p.getBoolean("companion_window", true)
+        get() = p.getBoolean("companion_window", defaults.companionWindow)
         set(v) = p.edit().putBoolean("companion_window", v).apply()
 
     /** One screen held sideways: the buttons on the game screen that open the companion - the white tab at the bottom of the
@@ -791,11 +778,22 @@ class Prefs(context: Context) {
         get() = p.getBoolean("portrait_companion_under_game", true)
         set(v) = p.edit().putBoolean("portrait_companion_under_game", v).apply()
 
-    /** SETTINGS > FOLD LAYOUT: a foldable half open lays the game and the companion out on either side of its hinge
-     * (TABLETOP: game above, companion below; BOOK: game left, companion right). On by default. */
-    var foldLayout: Boolean
-        get() = p.getBoolean("fold_layout", true)
-        set(v) = p.edit().putBoolean("fold_layout", v).apply()
+    /** SETTINGS > FOLD LAYOUT: OFF (0), HALF OPEN (1, default) or ALWAYS (2: half open and unfolded flat). It was the
+     * ON / OFF `fold_layout` until 1.6.x: an OFF there stays OFF. */
+    var foldMode: com.pokedaisy.app.companion.FoldMode
+        get() {
+            if (!p.contains("fold_mode") && !p.getBoolean("fold_layout", true)) return com.pokedaisy.app.companion.FoldMode.OFF
+            return com.pokedaisy.app.companion.FoldMode.of(p.getInt("fold_mode", com.pokedaisy.app.companion.FoldMode.HALF_OPEN.id))
+        }
+        set(v) = p.edit().putInt("fold_mode", v.id).apply()
+
+    val foldLayout: Boolean get() = foldMode != com.pokedaisy.app.companion.FoldMode.OFF
+
+    /** SETTINGS > TABLETOP CONTROLS: a foldable half open like a laptop puts the touch controls on the bottom half, either side
+     * of a narrower companion (BOTTOM SIDES, true), or on the top half beside the game (ON GAME, false: the default). */
+    var tabletopControlsBottom: Boolean
+        get() = p.getBoolean("tabletop_controls_bottom", false)
+        set(v) = p.edit().putBoolean("tabletop_controls_bottom", v).apply()
 
     /** This device has reported a hinge (a foldable): FOLD LAYOUT's row shows on both screens. */
     var foldSeen: Boolean
@@ -836,9 +834,9 @@ class Prefs(context: Context) {
         p.getString("guide_notice_ok", null)?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
 
     /** Display-only ROM name override (keyed by file name); null = use the file name. */
-    fun romDisplayName(file: java.io.File): String? = p.getString("romname_${file.name}", null)
-    fun setRomDisplayName(file: java.io.File, name: String?) = p.edit().apply {
-        if (name.isNullOrBlank()) remove("romname_${file.name}") else putString("romname_${file.name}", name.trim())
+    fun romDisplayName(fileName: String): String? = p.getString("romname_${fileName}", null)
+    fun setRomDisplayName(fileName: String, name: String?) = p.edit().apply {
+        if (name.isNullOrBlank()) remove("romname_${fileName}") else putString("romname_${fileName}", name.trim())
     }.apply()
 
     /**
@@ -848,9 +846,9 @@ class Prefs(context: Context) {
      * a file dropped directly into the roms/ folder, or picked from a provider
      * with no real filesystem path, like Drive).
      */
-    fun romSourcePath(file: java.io.File): String? = p.getString("romsrc_${file.name}", null)
-    fun setRomSourcePath(file: java.io.File, path: String?) = p.edit().apply {
-        if (path.isNullOrBlank()) remove("romsrc_${file.name}") else putString("romsrc_${file.name}", path)
+    fun romSourcePath(fileName: String): String? = p.getString("romsrc_${fileName}", null)
+    fun setRomSourcePath(fileName: String, path: String?) = p.edit().apply {
+        if (path.isNullOrBlank()) remove("romsrc_${fileName}") else putString("romsrc_${fileName}", path)
     }.apply()
 
     /** Custom folder for game saves (.sav/.srm); null = the app's own files/saves/. */
@@ -880,9 +878,9 @@ class Prefs(context: Context) {
         set(v) = p.edit().putInt("save_backups_keep", v).apply()
 
     /** [file]'s own save folder (the library menu's SAVE FOLDER); null = [SavesLocation.saveFor]'s search. */
-    fun romSaveDir(file: java.io.File): String? = p.getString("romsavedir_${file.name}", null)
-    fun setRomSaveDir(file: java.io.File, path: String?) = p.edit().apply {
-        if (path.isNullOrBlank()) remove("romsavedir_${file.name}") else putString("romsavedir_${file.name}", path)
+    fun romSaveDir(fileName: String): String? = p.getString("romsavedir_${fileName}", null)
+    fun setRomSaveDir(fileName: String, path: String?) = p.edit().apply {
+        if (path.isNullOrBlank()) remove("romsavedir_${fileName}") else putString("romsavedir_${fileName}", path)
     }.apply()
 
     /** The player's own ROMs folders (first-time setup, the library's +, Settings > FOLDERS > ROMS FOLDERS): their
@@ -903,8 +901,8 @@ class Prefs(context: Context) {
 
     /** The player's favorite games (by path): first in the library whatever its order, a star on each. */
     var favoriteRoms: Set<String>
-        get() = p.getString("favorite_roms", null)?.split("\n")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
-        set(v) = p.edit().putString("favorite_roms", v.joinToString("\n")).apply()
+        get() = libraryList(p.getString("favorite_roms", null)).toSet()
+        set(v) = p.edit().putString("favorite_roms", libraryList(v)).apply()
 
     /** Crash reports (CrashReports.kt): off until the player opts in. */
     var crashReportsEnabled: Boolean
@@ -1035,6 +1033,3 @@ class Prefs(context: Context) {
         const val RECENT_CAP = 10   // more than the 3 shown, so deleted ROMs don't starve the row
     }
 }
-
-/** DS RESOLUTION's highest scale ([Prefs.dsResolution]). */
-const val DS_RESOLUTION_MAX = 8

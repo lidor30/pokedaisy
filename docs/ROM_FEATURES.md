@@ -11,11 +11,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Yellow (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Yellow (GB) | DE / FR / IT / ES | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Yellow Legacy (GB) | 1.0.10 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
-| Red / Blue (GB) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
+| Red / Blue (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Brown (GB) | 6.0.1, 6.1.2 | — | ✅ ³⁸ | ✅ ³⁸ | ✅ ³⁸ | — | ✅ ³⁸ | — | n/a | n/a | ✅ ³⁸ | ✅ ³⁸ | — | n/a | n/a | — | — | — ³⁶ |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
-| Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
+| Gold / Silver (GBC) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
 | Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
 | Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ |
 | Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ |
@@ -101,7 +101,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Team Rocket Dragonsden | 2026 3.0.9, 3.1 (Spanish) | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
 | Too Many Types 2 | 1.5.2 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | — | — | — | ✅ ¹⁹ | — | — | ✅ |
 | Ultra Violet | 1.22 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Unbound | 2.1.1.1, 2.1.1.1 French | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
+| Unbound | 2.1.1.1, 2.1.1.1 French | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ ⁴⁰ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
 | Wishes of Tomorrow | 1.2.6 | — | ✅ ²¹ | ✅ ²¹ | ✅ ²¹ | — | — | — | — | — | — ²¹ | — | — | — | — | — | — | ◐ ³⁶ |
 | Unknown FireRed / Emerald hacks edited in place | any (proven by code) | ◐ ³⁰ | ◐ ³⁰ | ◐ ³⁰ | ◐ ³⁰ | — | — | — | ◐ ³⁰ | ◐ ³⁰ | — | — | — | — | — | — | — | — ³⁶ |
 
@@ -648,8 +648,14 @@ change to any of the places listed under "Where it's decided" updates its rows h
     the game's own callers): flown to Rustboro, Fortree, Littleroot and Route 101 (it flies to the routes you've been to,
     as the remakes do). No bag USE / GIVE / TAKE: its bag is packed its own way. Bike / surf, FREE FLIGHT and the AREA map
     weren't tried.
+40. Unbound's FLY and FREE FLIGHT (2026-11-17) go by its own party menu's rule (`FlyFns.withoutMove`, CFRU's
+    ONLY_CHECK_ITEM_FOR_HM_USAGE, read off its code at 0x08A03522, the same in the French build): a Pokémon that knows Fly
+    first, else any Pokémon once flag 0x152D (the bought device) or 0x16E4 (sandbox mode) is set, else with HM02 (item
+    438) in the bag one that CanMonLearnTMTutor (0x089F3B6C) says can learn it. Before, the quick menu said "No one in your
+    party knows FLY" while the game offered Fly (Discord). Checked headless on the user's save: HM02 given, then a Pidgey
+    lead can learn it (0), a Pikachu can't (1); the flags read 0 there (no save with the device bought to try).
 
-40. SHINY ODDS on the DS (`ShinyOdds.DsRoller`, `DsTarget`; 2026-11-14): a wild foe made shiny in the frames between the
+41. SHINY ODDS on the DS (`ShinyOdds.DsRoller`, `DsTarget`; 2026-11-14): a wild foe made shiny in the frames between the
     battle being handed its setup and copying the parties. Gen 4 (pret's pokeplatinum / pokeheartgold): the field's child
     ApplicationManager / OverlayManager is the battle's (its template's init word, `Gen4Battle.battleTemplate`) with its data
     still NULL - its init does nothing and Battle_Main's first step only makes a heap, so the BattleSystem (and its copy of

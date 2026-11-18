@@ -3201,10 +3201,16 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
     memset(menuArrowAt, 0, sizeof(menuArrowAt));
     if (!menuHideMode || !hookGba) return;
     menuHideFrames++;
-    // A double battle or the Safari Zone keeps its menu: the companion has no buttons for them.
+    // A double battle or the Safari Zone keeps its menu: the companion has no buttons for them. So do the tutorial battles:
+    // FireRed's first rival battle in Oak's lab and the Old Man's catching show run on battle_controller_oak_old_man.c,
+    // Emerald's Wally lesson on the Wally controller, which the companion's buttons don't drive - the menu went missing
+    // and only the game's cursor was left to pick with (a player's report, 2026-11-15). Emerald's first battle (Birch's)
+    // is the player's own controller, kept with the rest by the same FIRST_BATTLE bit: one battle, the menu shown.
     if (menuHideTypeFlags >> 24 == 2) {
         const uint8_t* f = (const uint8_t*) hookGba->memory.wram + (menuHideTypeFlags & 0x3FFFC);
-        if (f[0] & (1 << 0 | 1 << 7)) return;   // BATTLE_TYPE_DOUBLE, BATTLE_TYPE_SAFARI (FireRed's and Emerald's)
+        // BATTLE_TYPE_DOUBLE, BATTLE_TYPE_FIRST_BATTLE, BATTLE_TYPE_SAFARI, BATTLE_TYPE_OLD_MAN_TUTORIAL / WALLY_TUTORIAL (bit 9)
+        if (f[0] & (1 << 0 | 1 << 4 | 1 << 7)) return;
+        if (f[1] & (1 << 1)) return;
     }
     const uint16_t* io = hookGba->memory.io;
     uint16_t dispcnt = io[0], cnt = io[0x08 >> 1];
@@ -4057,9 +4063,13 @@ int pk_field_state(struct mCore* core, int runIndoors, int wildKeep) {
     int surf = surfing();
     if (surf > 0) s |= PK_FIELD_SURF;
     if (surf >= 0) s |= PK_FIELD_AVATAR;
-    wildRoll(s, wildKeep);
+    if (wildKeep >= 0) wildRoll(s, wildKeep);
     if (wildOwned) s |= PK_FIELD_WILD_HELD;
     return s;
+}
+
+int pk_field_observe(struct mCore* core) {
+    return pk_field_state(core, 0, -1);  // observation does not advance the encounter policy
 }
 
 void pk_wide_reset(void) {

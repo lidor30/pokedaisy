@@ -1,7 +1,12 @@
 package com.pokedaisy.app.cheats
 
 import com.pokedaisy.app.companion.i18n.tk
-import java.io.File
+import com.pokedaisy.app.companion.data.delete
+import com.pokedaisy.app.companion.data.isFile
+import com.pokedaisy.app.companion.data.mkdirs
+import com.pokedaisy.app.companion.data.readLines
+import com.pokedaisy.app.companion.data.writeTextAtomically
+import okio.Path
 
 /**
  * One cheat: its [name], its code [lines] as mGBA reads them ("82025838 FFFF"),
@@ -103,8 +108,8 @@ object CheatFiles {
      * own). A code's parts are joined by `+`, the way mGBA's libretro core splits them.
      */
     fun parseLibretro(lines: List<String>): List<Cheat> {
-        val desc = sortedMapOf<Int, String>()
-        val code = sortedMapOf<Int, String>()
+        val desc = mutableMapOf<Int, String>()
+        val code = mutableMapOf<Int, String>()
         val on = mutableMapOf<Int, Boolean>()
         for (raw in lines) {
             val m = LIBRETRO_KEY.matchEntire(raw.trim()) ?: continue
@@ -116,7 +121,7 @@ object CheatFiles {
                 "enable" -> on[i] = value.equals("true", ignoreCase = true)
             }
         }
-        return code.mapNotNull { (i, c) ->
+        return code.entries.sortedBy { it.key }.mapNotNull { (i, c) ->
             val parts = CheatCodes.normalize(c)
             if (parts.isEmpty()) null
             else Cheat(desc[i]?.ifBlank { null } ?: "CHEAT ${i + 1}", parts, "", on[i] ?: false)
@@ -183,7 +188,22 @@ object CheatCodes {
 }
 
 /**
- * Checks code lines with mGBA's own parser ([CheatsNative], no core needed).
+ * mGBA's own cheat-code parser, set by the host at start (the app: libpokedaisy's, no core needed).
+ * [check] gets the code's lines joined by newlines, a [CheatType.native] type and the directive so far;
+ * it answers the directive it settled on, a newline, then a `1` / `0` per line (read / not), or null.
+ */
+fun interface CheatParser {
+    fun check(code: String, type: Int, directive: String): String?
+
+    companion object {
+        /** Null (tests, no host): every line reads as bad. */
+        @kotlin.concurrent.Volatile
+        var current: CheatParser? = null
+    }
+}
+
+/**
+ * Checks code lines with mGBA's own parser ([CheatParser], no core needed).
  * [Result.cheat] holds the lines mGBA read, with the directive it settled on;
  * [Result.bad] the ones it couldn't. Null [Result.cheat] = none were readable.
  */
@@ -205,7 +225,7 @@ object CheatCheck {
 
     fun check(cheat: Cheat, type: CheatType = CheatType.AUTO): Result {
         if (cheat.lines.isEmpty()) return Result(null, emptyList())
-        val answer = CheatsNative.check(cheat.lines.joinToString("\n"), type.native, cheat.directive)
+        val answer = CheatParser.current?.check(cheat.lines.joinToString("\n"), type.native, cheat.directive)
             ?: return Result(null, cheat.lines)
         val directive = answer.substringBefore('\n')
         val flags = answer.substringAfter('\n', "")
@@ -225,16 +245,15 @@ object CheatCheck {
  * saves folder. [Prefs.cheatsEnabled][com.pokedaisy.app.Prefs.cheatsEnabled] is the
  * master switch over all of them.
  */
-class CheatStore(val file: File) {
+class CheatStore(val file: Path) {
     fun load(): List<Cheat> =
         runCatching { if (file.isFile) CheatFiles.parseMgba(file.readLines(), "CHEAT") else emptyList() }.getOrDefault(emptyList())
 
     fun save(cheats: List<Cheat>) {
-        file.parentFile?.mkdirs()
+        file.parent?.mkdirs()
         if (cheats.isEmpty()) { file.delete(); return }
-        val tmp = File(file.path + ".tmp")
-        tmp.writeText(CheatFiles.write(cheats))
-        if (!tmp.renameTo(file)) { file.delete(); tmp.renameTo(file) }
+        // To a .tmp beside it, then moved over the old file in one step.
+        file.writeTextAtomically(CheatFiles.write(cheats))
     }
 
     /** What imported: [added] cheats (all OFF), [badLines] code lines mGBA couldn't
@@ -262,8 +281,8 @@ class CheatStore(val file: File) {
     }
 
     companion object {
-        fun dir(filesDir: File) = File(filesDir, "cheats")
-        fun forCrc(filesDir: File, crc: String) = CheatStore(File(dir(filesDir), "$crc.cheats"))
+        fun dir(filesDir: Path) = filesDir / "cheats"
+        fun forCrc(filesDir: Path, crc: String) = CheatStore(dir(filesDir) / "$crc.cheats")
     }
 }
 

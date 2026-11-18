@@ -18,8 +18,18 @@ class CoopQrTest {
         assertTrue(g[0][0] && g[0][6] && g[6][0]) // finder pattern corners
     }
 
-    @Test fun decodesBack() {
-        val g = CoopQr.encode(link)
+    @Test fun decodesBack() = assertEquals(link, decode(CoopQr.encode(link)))
+
+    @Test fun everySizeDecodesBack() {
+        // Lengths at the edges of versions 1, 2, 10, 11 and up to 40 (level M's byte capacities: 14, 26, 213, 251, 2331).
+        for (len in listOf(1, 14, 15, 26, 27, 213, 214, 251, 252, 600, 1200, 2331)) {
+            val text = (0 until len).map { "abcdefghijklmnopqrstuvwxyz234567:/.?#"[(it * 7 + len) % 37] }.joinToString("")
+            val g = CoopQr.encode(text)
+            assertEquals("length $len", text, decode(g))
+        }
+    }
+
+    private fun decode(g: Array<BooleanArray>): String {
         val scale = 4
         val quiet = 4
         val side = (g.size + quiet * 2) * scale
@@ -30,6 +40,6 @@ class CoopQrTest {
             }
         }
         val bitmap = BinaryBitmap(HybridBinarizer(RGBLuminanceSource(side, side, px)))
-        assertEquals(link, QRCodeReader().decode(bitmap).text)
+        return QRCodeReader().decode(bitmap).text
     }
 }

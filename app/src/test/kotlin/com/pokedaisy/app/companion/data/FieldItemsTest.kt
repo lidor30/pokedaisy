@@ -19,7 +19,7 @@ class FieldItemsTest {
     private class FakeGame(val fns: FieldItemFns) : GameCalls {
         class Mon(
             var personality: Long, var species: Int = 1, var held: Int = 0, var egg: Boolean = false,
-            var hp: Int = 10, var maxHp: Int = 10, var status: Int = 0,
+            var hp: Int = 10, var maxHp: Int = 10, var status: Int = 0, var mail: Int = 0xFF,
             val moves: IntArray = intArrayOf(1, 2, 0, 0), val pp: IntArray = intArrayOf(5, 5, 0, 0), val maxPp: Int = 5,
         )
 
@@ -64,12 +64,17 @@ class FieldItemsTest {
                         12 -> m.held.toLong()
                         in 13..16 -> m.moves[a1 - 13].toLong()
                         45 -> if (m.egg) 1 else 0
+                        64 -> m.mail.toLong()
                         else -> error("field $a1")
                     }
                 }
                 p.setMonData -> {
-                    assertEquals(12 + p.monFieldShift, a1)
-                    if (!failSetMonData) mon(a0).held = read(a2.toLong() and 0xFFFFFFFFL, 2).let { (it[0].toInt() and 0xFF) or ((it[1].toInt() and 0xFF) shl 8) }
+                    val arg = read(a2.toLong() and 0xFFFFFFFFL, 2)
+                    when (a1 - p.monFieldShift) {
+                        12 -> if (!failSetMonData) mon(a0).held = (arg[0].toInt() and 0xFF) or ((arg[1].toInt() and 0xFF) shl 8)
+                        64 -> if (!failSetMonData) mon(a0).mail = arg[0].toInt() and 0xFF
+                        else -> error("SetMonData field $a1")
+                    }
                     0x080000C1
                 }
                 p.itemNoEffect -> if (helps(mon(a0), a1, a3)) 0 else 1
@@ -88,7 +93,7 @@ class FieldItemsTest {
 
         /** A party Pokémon's struct as the dry run copies it: a snapshot, by number. */
         private val snapshots = mutableListOf<Mon>()
-        private fun Mon.copyOf() = Mon(personality, species, held, egg, hp, maxHp, status, moves.copyOf(), pp.copyOf(), maxPp)
+        private fun Mon.copyOf() = Mon(personality, species, held, egg, hp, maxHp, status, mail, moves.copyOf(), pp.copyOf(), maxPp)
         private fun monIndex(addr: Long) = ((addr - p.party) / 100).toInt().takeIf { addr >= p.party && (addr - p.party) % 100 == 0L && it < party.size }
 
         override fun read(addr: Long, len: Int): ByteArray = when {
@@ -405,6 +410,70 @@ class FieldItemsTest {
         g.failSetMonData = false
         assertEquals(ItemUseResult.NOT_NOW, takeFromMon(support(g), t, busy = true, g = g).result)
         assertEquals(182, g.party[0].held)
+    }
+
+    /** FireRed's SaveBlock1 (behind its pointer) in the fake's RAM, a letter in party mail record [id] for [item]. */
+    private fun FakeGame.mailbox(sb1: Long = 0x0202552CL, id: Int = 2, item: Int = 121): MailboxLayout {
+        write(0x03005008L, byteArrayOf(sb1.toByte(), (sb1 shr 8).toByte(), (sb1 shr 16).toByte(), (sb1 shr 24).toByte()))
+        val rec = ByteArray(0x24) { (it + 1).toByte() }.also { it[0x20] = item.toByte(); it[0x21] = (item shr 8).toByte() }
+        write(sb1 + 0x2CD0 + id * 0x24L, rec)
+        return MailboxLayout(0x03005008L, false, 0x2CD0)
+    }
+
+    private fun FakeGame.mailItem(sb1: Long, id: Int): Int = read(sb1 + 0x2CD0 + id * 0x24L + 0x20, 2).let {
+        (it[0].toInt() and 0xFF) or ((it[1].toInt() and 0xFF) shl 8)
+    }
+
+    @Test
+    fun `take of Mail sends the letter to the PC's mailbox, never to the bag`() {
+        val g = FakeGame(FAKE_FNS)
+        val box = g.mailbox()
+        g.party += FakeGame.Mon(0x111, held = 121, mail = 2)
+        val s = FieldItemSupport(g.fns, setOf(13, 182), mailbox = box)
+        // The bag's room doesn't matter: the letter goes to the PC.
+        g.bagKinds = 1
+        val t = partyHeldItems(s, g).targets[0]
+        assertEquals(SlotVerdict.OK, t.verdict)
+        assertEquals(ItemUseOutcome(ItemUseResult.TAKEN, swapped = 121), takeFromMon(s, t, false, g))
+        assertEquals(0, g.party[0].held)
+        assertEquals(0xFF, g.party[0].mail)
+        assertEquals(mapOf(86 to 1), g.bag)
+        // party_menu.c's way: the party record keeps its words but no item, the first free PC record (6) the whole letter.
+        assertEquals(0, g.mailItem(0x0202552CL, 2))
+        assertEquals(121, g.mailItem(0x0202552CL, 6))
+        assertEquals(1.toByte(), g.read(0x0202552CL + 0x2CD0 + 6 * 0x24L, 1)[0])
+    }
+
+    @Test
+    fun `take of Mail with the mailbox full, or a SetMonData that didn't take, keeps the letter on the Pokemon`() {
+        val g = FakeGame(FAKE_FNS)
+        val box = g.mailbox()
+        for (i in 6 until 16) g.write(0x0202552CL + 0x2CD0 + i * 0x24L + 0x20, byteArrayOf(122, 0))
+        g.party += FakeGame.Mon(0x111, held = 121, mail = 2)
+        val s = FieldItemSupport(g.fns, setOf(13, 182), mailbox = box)
+        val t = partyHeldItems(s, g).targets[0]
+        assertEquals(ItemUseOutcome(ItemUseResult.MAILBOX_FULL, swapped = 121), takeFromMon(s, t, false, g))
+        assertEquals(121, g.party[0].held)
+        assertEquals(2, g.party[0].mail)
+        assertEquals(121, g.mailItem(0x0202552CL, 2))
+        // Room again, but SetMonData fails: both records and the Pokemon are put back.
+        g.write(0x0202552CL + 0x2CD0 + 9 * 0x24L + 0x20, byteArrayOf(0, 0))
+        g.failSetMonData = true
+        assertEquals(ItemUseResult.FAILED, takeFromMon(s, t, false, g).result)
+        assertEquals(121, g.party[0].held)
+        assertEquals(2, g.party[0].mail)
+        assertEquals(121, g.mailItem(0x0202552CL, 2))
+        assertEquals(0, g.mailItem(0x0202552CL, 9))
+    }
+
+    @Test
+    fun `the mailbox is offered only where the PC's moves know the boxes`() {
+        // The Poller sets retail's storage pointer on the running config (saveBlock2Ptr + 4).
+        val cfg = NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = BOX_SWAP_FIRERED_REV1.storagePtr)
+        assertEquals(MailboxLayout(cfg.saveBlock1Ptr, false, 0x2CD0), mailboxFor(FIELD_ITEMS_FIRERED_REV1, cfg, GameKind.FIRERED))
+        assertEquals(null, mailboxFor(FIELD_ITEMS_FIRERED_REV1, null, GameKind.FIRERED))
+        assertEquals(null, mailboxFor(FIELD_ITEMS_FIRERED_REV1, NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = 0x0202FFF0), GameKind.FIRERED))
+        assertEquals(null, mailboxFor(FIELD_ITEMS_FIRERED_REV1, cfg, GameKind.RECHARGED_YELLOW))
     }
 
     // --- What gets a button and a mark ---------------------------------------------

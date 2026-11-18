@@ -34,6 +34,9 @@ PokeDaisy funziona anche su Nintendo 3DS, come app homebrew: il gioco gira sullo
 
 `sdmc:/` è il nome che il 3DS dà alla radice della scheda SD: sul tuo computer, `sdmc:/3ds/` è semplicemente la cartella `3ds` della scheda.
 
+> [!TIP]
+> Preferisci avviare PokeDaisy dal menu HOME? Ogni versione ha anche `pokedaisy.cia`. Apri FBI sul 3DS (l'ha installato la configurazione del firmware personalizzato), scegli **Remote Install**, poi **Scan QR Code**, e inquadra il codice sulla pagina della versione. Oppure copia `pokedaisy.cia` sulla scheda SD e installalo dall'elenco **SD** di FBI. I passaggi qui sotto restano gli stessi, e avvii PokeDaisy dalla sua icona nel menu HOME.
+
 ## Passo 3: aggiungi i giochi e i salvataggi
 
 1. Nella radice della scheda crea una cartella `pokedaisy` e, al suo interno, una cartella `roms`: `sdmc:/pokedaisy/roms/`. (PokeDaisy le crea entrambe la prima volta che parte, se preferisci avviarlo prima una volta.)
@@ -112,6 +115,7 @@ Scarica il nuovo `pokedaisy.3dsx` e copialo sopra quello vecchio in `sdmc:/3ds/`
 - **PokeDaisy non è nell'Homebrew Launcher:** il file deve essere in `sdmc:/3ds/` e finire con `.3dsx`.
 - **Un gioco non è nell'elenco:** deve stare direttamente in `sdmc:/pokedaisy/roms/`, non in una cartella al suo interno e non compresso.
 - **Il mio salvataggio non è stato caricato:** deve avere esattamente il nome del gioco con `.sav` alla fine. A ogni avvio il salvataggio viene prima copiato in `sdmc:/pokedaisy/roms/pokedaisy-backups/`, quindi lì trovi una copia più vecchia se ti serve.
-- **Va lento:** un 3DS o 2DS originale è più lento dei modelli New. Nelle `SETTINGS` della libreria imposta `SCREEN` su `PIXEL 1x`, la modalità più leggera.
+- **Va lento:** un 3DS o 2DS originale è più lento dei modelli New. Nelle `SETTINGS` della libreria imposta `SCREEN` su `PIXEL 1x`, la modalità più leggera. Per un gioco GBA puoi anche premere `X` nella libreria e provare un altro `GBA CORE`: `GPSP` è uno sperimentale, pensato per il 3DS originale. I giochi partono senza EXPAND, che è più leggero. `EXPAND 1.5x` è nelle `SETTINGS` della libreria, se lo vuoi.
+- **Il gioco non parte:** lo schermo superiore dice perché, seguito dalla memoria del tuo 3DS. Quando ci scrivi, fai una foto di tutto il messaggio o allega `sdmc:/pokedaisy/log.txt`.
 
 Ancora bloccato? [Faccelo sapere](https://pokedaisy.com/it/feedback/#bug) e allega `sdmc:/pokedaisy/log.txt`.

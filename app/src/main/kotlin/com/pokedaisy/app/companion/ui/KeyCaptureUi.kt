@@ -29,8 +29,8 @@ import com.pokedaisy.app.companion.i18n.tr
 
 /** What a waiting [KeyCapture] asks for, one line: "Press the button on your device...". */
 fun keyCaptureHint(r: KeyCapture.Request) =
-    if (r.chord) tr("Hold the keys together, then let go. BACK cancels.")
-    else tr("Press the button on your device. BACK cancels.")
+    if (r.chord) tr("Hold the keys together, then let go. BACK or Escape cancels.")
+    else tr("Press the button on your device. BACK or Escape cancels.")
 
 /** A waiting row's value: what to do, then the keys held so far. */
 fun keyCaptureValue(capture: KeyCapture, r: KeyCapture.Request) =
