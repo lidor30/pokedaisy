@@ -1392,7 +1392,8 @@ class PokeDaisyActivity : Activity() {
     private fun dsSwitchWorks(): Boolean =
         romIsNds && ::engine.isInitialized && engine.dsSwitchMapped && dsSwitchBattle() != null
 
-    /** INSTANT TEXT on a DS game: the Gen 4 carts on melonDS (DsInstantText: code of ours, no calls on DSperate). */
+    /** INSTANT TEXT and REUSABLE TMS on a DS game: the Gen 4 carts on melonDS (DsInstantText / DsReusableTms: code of ours,
+     * none on DSperate). */
     private fun dsInstantTextWorks(): Boolean = romIsNds && romBlocked == null && !dsperate && ::engine.isInitialized &&
         engine.ndsGameCode.take(3) in DS_TEXT_CODES
 
@@ -1838,8 +1839,9 @@ class PokeDaisyActivity : Activity() {
             if (on) com.pokedaisy.app.companion.FeatureTips.used(TipId.REUSABLE_TMS)
             stored.setReusableTms(on)
             if (::engine.isInitialized) engine.setReusableTms(tmSites, on)
+            if (::engine.isInitialized) engine.dsReusableTms = on && dsInstantTextWorks()
         }
-        override val reusableTmsSupported get() = tmSites.isNotEmpty()
+        override val reusableTmsSupported get() = tmSites.isNotEmpty() || dsInstantTextWorks()
         override fun setInstantText(on: Boolean) {
             stored.setInstantText(on)
             if (::engine.isInitialized) engine.setInstantText(textPatch, on)
@@ -3021,6 +3023,7 @@ class PokeDaisyActivity : Activity() {
         e.setReusableTms(tmSites, p.reusableTms)
         e.setInstantText(textPatch, p.instantText)
         e.dsInstantText = p.instantText && dsInstantTextWorks()
+        e.dsReusableTms = p.reusableTms && dsInstantTextWorks()
         e.setHmFree(hmPatch, p.hmFree)
         e.setExpShare(expShareFound, if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(p.expShare) else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF)
         e.setLevelCap(levelCapFound, if (levelCapFound != null && p.levelCap) levelCapNow?.level ?: 0 else 0)

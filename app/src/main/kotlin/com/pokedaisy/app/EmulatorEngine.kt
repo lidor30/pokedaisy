@@ -313,11 +313,15 @@ class EmulatorEngine(
     var ndsGameCode: String = ""
         set(v) {
             field = v; ndsTaps.layout = NdsBattleTaps.layoutFor(v)
-            dsText = null; dsTextTries = 0; dsTextFrames = 0
+            dsText = null; dsTextTries = 0; dsTextFrames = 0; dsTms = null; dsTmsTries = 0
         }
 
     /** INSTANT TEXT on a Gen 4 DS game ([com.pokedaisy.app.companion.data.DsInstantText]); the activity sets it where it works. */
     @Volatile var dsInstantText = false
+    /** REUSABLE TMS on a Gen 4 DS game ([com.pokedaisy.app.companion.data.DsReusableTms]). */
+    @Volatile var dsReusableTms = false
+    @Volatile private var dsTms: com.pokedaisy.app.companion.data.DsReusableTms.Found? = null
+    private var dsTmsTries = 0
     @Volatile private var dsText: com.pokedaisy.app.companion.data.DsInstantText.Found? = null
     private var dsTextTries = 0
     private var dsTextFrames = 0
@@ -327,6 +331,13 @@ class EmulatorEngine(
     private fun dsTextTick() {
         if (++dsTextFrames % 30 != 0) return
         val read = com.pokedaisy.app.companion.data.InProcessReader::readCoreMemory
+        val tms = dsTms ?: run {
+            if (dsReusableTms && dsTextFrames >= 300 && dsTmsTries < 20) {
+                dsTmsTries++
+                com.pokedaisy.app.companion.data.DsReusableTms.find(read)?.also { dsTms = it }
+            } else null
+        }
+        if (tms != null) runCatching { com.pokedaisy.app.companion.data.DsReusableTms.sync(tms, dsReusableTms, read, MgbaCore::pkNdsCodeWrite) }
         val f = dsText ?: run {
             if (!dsInstantText || dsTextFrames < 300 || dsTextTries >= 20) return
             dsTextTries++
