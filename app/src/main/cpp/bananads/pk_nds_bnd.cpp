@@ -1,14 +1,14 @@
 // The app's third Nintendo DS core: BananaDS (third_party/bananads, GPL-3.0-or-later), as pk_ndsb_* behind pk_nds.h
 // (pk_nds_core.cpp hands it the calls while it runs; pk_nds_cores.h). It lives in libpkbananads.so (CMakeLists.txt here
 // says why), the same emulator BananaOS's handhelds run: melonDS at BananaDS's pin with BananaDS's patches, melonDS's
-// AArch64 JIT, the Banana 2D engine and Gengis Engine for the 3D, set up with BananaDS's own defaults (its emu.cpp with
-// no config file).
+// AArch64 JIT, the Banana 2D engine over melonDS's software 3D (BananaDS's render.renderer software), set up with
+// BananaDS's own defaults (its emu.cpp with no config file). Not its Gengis Engine (setRenderer says why).
 //
 // What it does as melonDS does (pk_nds.cpp): the screens as RGBA, the audio at the engine's rate, the save written once
 // the game's writes have been quiet for SAVE_QUIET_FRAMES, states behind our header carrying the save's CRC32
 // (pk_nds_state_matches_save), the field read (pk_nds_field.cpp), cheats, DS CPU BOOST. What it doesn't have, as on
-// DSperate: EXPAND, DS RESOLUTION, PC / FLY calls and STEADY music (they hook the app's patched melonDS 1.1); those
-// calls do nothing here and the settings grey them out. States are BananaDS's melonDS's own and never cross cores.
+// DSperate: DS RESOLUTION, PC / FLY calls and STEADY music (they hook the app's patched melonDS 1.1); those calls do
+// nothing here and the settings grey them out. EXPAND it has (pk_nds_wide.cpp, built against its melonDS). States are BananaDS's melonDS's own and never cross cores.
 
 #include "pk_nds_cores.h"
 #include "pk_nds_field.h"
@@ -25,7 +25,7 @@
 
 #include "GPU_Banana.h"
 #include "GPU2D_Banana.h"
-#include "gengis_renderer.h"
+#include "GPU_Banana.h"
 
 #include <android/log.h>
 #include <android/native_window.h>
@@ -49,7 +49,7 @@
 
 using namespace melonDS;
 
-// BananaDS's emu.cpp: Gengis's workers leave the emulator's core when sched.emu_share asks (never here).
+// BananaDS's emu.cpp's scheduler hooks, which its renderers may name (sched.emu_share: never here).
 namespace bananads {
 int g_emu_share = 0;
 void sched_off_emu_core() {}
@@ -84,22 +84,19 @@ struct Ds {
     bool keepStartMenu = false;
     bool cpuBoost = false;
     int menuLitFrames = 0;
-    // DS RESOLUTION: BananaDS's own hires (Gengis + the Banana 2D engine at render.scale 2-4, as BananaOS's 4x), the
-    // top screen put into the app's SurfaceTexture window from the CPU; both screens at 1x as always for the rest.
+    // DS RESOLUTION: BananaDS's hires is its Gengis Engine, not built here, so the scale stays 1 (setRenderer); the
+    // hires paths below are kept for it but never taken.
     int scale = 1;                           // in effect
     int scaleWant = 1;
     bool scalePending = false;
     bool presented = false;
     // EXPAND (pk_nds_wide.cpp, built against BananaDS's melonDS): the overworld past the screen's edges, from the game's
-    // own polygons drawn by melonDS's software 3D renderer in slices around the screen (Gengis draws the screen).
+    // own polygons drawn by melonDS's software 3D renderer in slices around the screen.
     bool wide = false;
     int winX = 0, winY = 0, winW = PK_NDS_W, winH = PK_NDS_H;   // EXPAND's window (the screen without it)
     u32 topArgb[PK_NDS_W * PK_NDS_H] {};     // the top screen at 1x as melonDS draws it (EXPAND reads it) when hires
     std::vector<u32> view;                   // EXPAND at 2x-4x: the window at 1x (pk_nds_wide_view)
     int coarseMix = 0;                       // SPU::MixShift on unseen frames
-    // EXPAND at 2x-4x: its slices drawn by Gengis at the scale too (pk_nds_wide_hires), one renderer a slice
-    std::unique_ptr<bananads::GengisRenderer3D> sliceR[9];
-    std::mutex sliceLock;
     int showHz = 0;                          // frames read back a second at most (0: all asked for)
     int64_t lastShown = 0;
     bool promisedNext = true;                // the last frame's drawNext (EXPAND's slices drawn for this one)
@@ -193,11 +190,16 @@ void bananaEnv()
     setenv("MELONDS_JIT_LOOPREGS", "1", 0);
 }
 
-// The renderer at [scale]: render.renderer gengis on render.gengis_threads 3, render.2d banana; the 2D on its own
-// thread at 2x and up (render.2d_thread's default there).
-void setRenderer(NDS& n, int scale)
+// The renderer: render.renderer software (melonDS's software 3D, threaded, as BananaDS's render.threaded default) under
+// render.2d banana, at 1x. BananaDS's Gengis Engine isn't built here: it carries C ports of DraStic's reverse-engineered
+// 3D routines (its own README's Provenance), so no hires (DS RESOLUTION) on this core. The 2D on its own thread.
+void setRenderer(NDS& n, int)
 {
-    n.SetRenderer(std::make_unique<bananads::GengisBananaRenderer>(n, 3, false, scale));
+    n.SetRenderer(std::make_unique<BananaRenderer>(n));
+    RendererSettings rs {};
+    rs.ScaleFactor = 1;
+    rs.Threaded = true;
+    n.GetRenderer().SetRenderSettings(rs);
     ds->banana = &static_cast<BananaRenderer&>(n.GetRenderer());
     ds->banana->SetSplitRing(true);
     ds->banana->SetMerge(true);
@@ -212,7 +214,7 @@ void setRenderer(NDS& n, int scale)
     // lines, not its own
     ds->banana->SetThreaded2D(true);
     ds->banana->SetLazyFrames(true);
-    ds->scale = ds->banana->Scale();
+    ds->scale = 1;
 }
 
 void bananaSetup(NDS& n)
@@ -239,63 +241,13 @@ void bananaSetup(NDS& n)
     melonDS::Banana3DWait2D = true;
     melonDS::BananaCapNeedA = false;
     melonDS::BananaHiresShown = true;
-    using bananads::GengisRenderer3D;
-    GengisRenderer3D::Help = 1;
-    GengisRenderer3D::Nice = 0;
-    GengisRenderer3D::WakeN = 1;
-    GengisRenderer3D::AbModes.clear();
-    GengisRenderer3D::OptAb.clear();
-    GengisRenderer3D::Stats = 0;
-    GengisRenderer3D::HrNeon = -1;
-    GengisRenderer3D::Verify = 0;
-    GengisRenderer3D::Lazy = 0;
-    GengisRenderer3D::Units = 3;
-    GengisRenderer3D::UnitsLow = 2;
-    GengisRenderer3D::KeySkip = 1;
-    GengisRenderer3D::VbWait = -1;
-    GengisRenderer3D::Crc = 0;
-    GengisRenderer3D::TexInval = 1;
-    GengisRenderer3D::Zva = 1;
-    GengisRenderer3D::Trim = 1;
-    GengisRenderer3D::Reuse = 1;
-    GengisRenderer3D::SetEffects(true, true);
     setRenderer(n, 1);
-}
-
-// pk_nds_wide_hires's drawing (EXPAND's helper threads): slice [slot]'s polygons by its own Gengis renderer at the
-// scale, no render threads of its own, into [out] row by row
-bool hiresDraw(void*, int slot, Polygon** polys, int n, u32* out)
-{
-    if (!ds || slot < 0 || slot >= 9) return false;
-    bananads::GengisRenderer3D* r;
-    {
-        std::lock_guard<std::mutex> l(ds->sliceLock);
-        auto& u = ds->sliceR[slot];
-        if (!u || u->Scale() != ds->scale) {
-            u = std::make_unique<bananads::GengisRenderer3D>(ds->nds->GPU.GPU3D, 0, false, ds->scale);
-            u->Slave = true;
-        }
-        r = u.get();
-    }
-    const int S = r->Scale(), W = PK_NDS_W * S;
-    r->ListOverride = polys;
-    r->ListOverrideN = (u32) n;
-    r->RenderFrame();
-    for (int line = 0; line < PK_NDS_H; line++)
-        for (int q = 0; q < S * S; q++) {
-            const u32* row = r->GetQuarter(line, q);
-            u32* dst = out + (size_t) (S * line + q / S) * W + q % S;
-            for (int k = 0; k < PK_NDS_W; k++) dst[k * S] = row[k];
-        }
-    return true;
 }
 
 // EXPAND's margins at the renderer's scale while both are on (else at 1x, as melonDS's software renderer draws them)
 void updateHires()
 {
-    pk_nds_wide_hires(ds->wide && ds->scale > 1 ? ds->scale : 1, hiresDraw, ds);   // (waits for the slices first)
-    std::lock_guard<std::mutex> l(ds->sliceLock);
-    for (auto& u : ds->sliceR) u.reset();
+    pk_nds_wide_hires(1, nullptr, nullptr);   // 1x always: no Gengis here (setRenderer)
 }
 
 // A margin texel by EXPAND's plan (pk_nds_wide.h's PK_NDS_PLAN_*): pk_nds_gl.cpp's Margin() on the CPU, [c3] the hires
@@ -867,6 +819,9 @@ int pk_ndsb_field_bits(void)
 }
 
 // The game's own functions (PC / FLY) hook the app's melonDS: none here.
+// INSTANT TEXT / REUSABLE TMS's code writes (pk_nds.cpp's, with its JIT invalidation): not here, as on DSperate. The
+// app offers them on melonDS only (PokeDaisyActivity.dsperate), so this just answers no.
+bool pk_ndsb_code_write(uint32_t, const uint8_t*, int) { return false; }
 int pk_ndsb_action(int, const uint32_t[4]) { return 0; }
 int pk_ndsb_action_status(int) { return -1; }
 bool pk_ndsb_action_results(int, uint32_t*) { return false; }
@@ -975,7 +930,8 @@ int pk_ndsb_fade(void)
 void pk_ndsb_set_scale(int scale)
 {
     if (!ds) return;
-    ds->scaleWant = scale < 2 ? 1 : scale > 4 ? 4 : scale;
+    (void) scale;
+    ds->scaleWant = 1;   // no hires without Gengis (setRenderer): DS RESOLUTION is melonDS's alone (DsCore.hasResolution)
     ds->scalePending = true;
 }
 

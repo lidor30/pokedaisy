@@ -66,8 +66,9 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/nds/dsperate.cmake")
 
 # ---------------------------------------------------------------------------
 # BananaDS (third_party/bananads + third_party/melonds-bananads): the third DS core, its own shared library
-# (bananads/CMakeLists.txt says why), built as a project of its own with this build's toolchain. AArch64 only (Gengis
-# Engine's kernels are NEON / AArch64 assembly): other ABIs get nds/pk_nds_bnd_stub.cpp, a core that never starts.
+# (bananads/CMakeLists.txt says why), built as a project of its own with this build's toolchain. AArch64 only (its
+# melonDS JIT as BananaDS ships it): other ABIs build no libpkbananads.so, and nds/pk_nds_bnd_load.cpp's dlopen() finds
+# none, so the core never starts there (DS CORE doesn't offer it: DsCore.bananaRuns).
 # ---------------------------------------------------------------------------
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     include(ExternalProject)

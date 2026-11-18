@@ -255,6 +255,8 @@ val licensesAsset by tasks.registering {
         "miniz (in DSperate) - MIT" to "third_party/dsperate/src/core/cart/miniz/LICENSE",
         "Noto Sans DSi font table (in DSperate) - SIL Open Font License 1.1" to "third_party/dsperate/src/core/io/dsi_font/LICENSE-NotoSans-OFL-1.1.txt",
         "WenQuanYi Micro Hei DSi font table (in DSperate) - GNU GPL 3.0 or later with font exception" to "third_party/dsperate/src/core/io/dsi_font/LICENSE-WenQuanYi-MicroHei.txt",
+        "BananaDS - GNU GPL 3.0 or later" to "third_party/bananads/bananads/LICENSE",
+        "melonDS (in BananaDS) - GNU GPL 3.0" to "third_party/melonds-bananads/LICENSE",
         "LCD and Scanlines shaders - MIT" to "third_party/licenses/mGBA-shaders-MIT.txt",
         "xBR, xBRZ and ScaleFX shaders (libretro glsl-shaders) - MIT, xBRZ also GNU GPL 3.0" to "third_party/licenses/libretro-shaders.txt",
         "PixelMplus - M+ FONT LICENSE" to "app/src/main/assets/fonts/LICENSE-PixelMplus.txt",

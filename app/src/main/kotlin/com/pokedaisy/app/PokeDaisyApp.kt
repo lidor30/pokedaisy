@@ -55,5 +55,8 @@ class PokeDaisyApp : Application() {
         // DS CORE's AUTO (companion.DsCore): DSperate on a weak device or a 32-bit Android.
         com.pokedaisy.app.companion.DsCore.deviceWeak = DevicePerformance.looksWeak(this)
         com.pokedaisy.app.companion.DsCore.is64Bit = android.os.Process.is64Bit()
+        // BananaDS's library is AArch64 only and uses native ELF TLS (Android 10+): offered only where it can start.
+        com.pokedaisy.app.companion.DsCore.bananaRuns = android.os.Process.is64Bit() &&
+            android.os.Build.SUPPORTED_64_BIT_ABIS.firstOrNull() == "arm64-v8a" && android.os.Build.VERSION.SDK_INT >= 29
     }
 }
