@@ -186,7 +186,7 @@ private fun u32(b: ByteArray, o: Int) = u32le(b, o)
 private const val MAIN_RAM = 0x02000000L
 private const val MAIN_RAM_END = 0x02400000L
 private fun inMain(p: Long) = p in MAIN_RAM until MAIN_RAM_END
-private const val GEN5_MON_SIZE = 0xDC
+internal const val GEN5_MON_SIZE = 0xDC
 private val EMPTY_BATTLE_MON = BattleMon(0, 0, 0, 0, 0, 0, 0, IntArray(4), IntArray(4))
 
 /** Gen 5's type ids drop Gen 4's ??? (9): FIRE is 9 .. DARK 16. The app keeps Gen 3's ids. 17 is no retail type: the

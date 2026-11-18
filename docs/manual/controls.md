@@ -270,7 +270,11 @@ A shiny one you catch stays shiny when you set the odds back to `NORMAL`, and th
 
 While the odds are raised, [achievements](achievements.md) are paused, since some sets reward catching a shiny.
 
-It works in the original FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language and revision, and in these hacks: Unbound (French too), Radical Red, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Emerald Kaizo, Emerald Legacy, Recharged Emerald (Rebalanced too), Glazed, Ultra Violet, Orange Islands, FireRed Rocket Edition, Ash Gray, Recharged Yellow, Lazarus, Emerald Seaglass, Too Many Types 2, Emerald Imperium, Super Mariomon, SoulGold, Team Rocket Edition, Elite Redux and R.O.W.E. Many hacks have better odds of their own (1 in 4096 in Unbound, Glazed, the newer Amethyst and most of the hacks rebuilt from newer source code, about 1 in 1800 in Emerald Imperium, 1 in 256 in SoulGold, about 1 in 257 in Odyssey): there `NORMAL` keeps theirs, and a choice that isn't better changes nothing. Everywhere else, the Game Boy and DS games included, it shows `N/A`.
+It works in the original FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language and revision, and in these hacks: Unbound (French too), Radical Red, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Emerald Kaizo, Emerald Legacy, Recharged Emerald (Rebalanced too), Glazed, Ultra Violet, Orange Islands, FireRed Rocket Edition, Ash Gray, Recharged Yellow, Lazarus, Emerald Seaglass, Too Many Types 2, Emerald Imperium, Super Mariomon, SoulGold, Team Rocket Edition, Elite Redux and R.O.W.E. Many hacks have better odds of their own (1 in 4096 in Unbound, Glazed, the newer Amethyst and most of the hacks rebuilt from newer source code, about 1 in 1800 in Emerald Imperium, 1 in 256 in SoulGold, about 1 in 257 in Odyssey): there `NORMAL` keeps theirs, and a choice that isn't better changes nothing.
+
+On the DS it works in Platinum (the US release), HeartGold and SoulSilver (the US and European releases), and Black, White, Black 2 and White 2 (the US and European release). There it counts for wild Pokémon in grass, caves, water and from a rod, the Safari Zone, the Bug-Catching Contest and the special ones the story puts in your path. In Platinum, HeartGold and SoulSilver the roaming ones stay as they are: the game makes one again each time you meet it, so a shiny one that ran away would come back plain. Other languages of the DS games and the DS hacks show `N/A` for now.
+
+On the Game Boy it works in Gold, Silver and Crystal (the English releases). There a Pokémon's shininess comes from its hidden strength values, so a shiny made this way gets new ones: its stats come out a little different, as any shiny's would, and it keeps its gender. It counts for wild Pokémon in grass, caves, water, from a rod or a shaken tree, in the Bug-Catching Contest and the special ones the story puts in your path. The roaming ones and the letter-shaped Pokémon of the ruins stay as they are, and so does a female of a kind that's nearly always male, since the game can't make one of those shiny. Red, Blue and Yellow have no shinies, so they show `N/A`.
 
 ## LOW HP BEEP and FIELD POISON
 
@@ -293,7 +297,7 @@ The battle starts over the same way, so try something different. Going back is a
 
 While it's on, the row shows the count so far. It starts from 0 when you turn it on and again after each shiny, and each game keeps its own. Trainers' battles don't count. It works in the Game Boy Advance games the companion knows the shiny rule of, and in Gold, Silver, Crystal and the DS games too.
 
-It works in the same games as `SHINY ODDS`, and the two go well together. Elsewhere it shows `N/A`.
+It goes well with `SHINY ODDS`. Elsewhere it shows `N/A`.
 
 ## EXP SHARE
 

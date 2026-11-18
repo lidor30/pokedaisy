@@ -499,7 +499,7 @@ private fun u16(b: ByteArray, o: Int) = u16le(b, o)
 private fun u32(b: ByteArray, o: Int) = u32le(b, o)
 private val EMPTY_BATTLE_MON = BattleMon(0, 0, 0, 0, 0, 0, 0, IntArray(4), IntArray(4))
 
-private const val GEN4_MON_SIZE = 0xEC
+internal const val GEN4_MON_SIZE = 0xEC
 private const val GEN4_BOX_SIZE = 0x88
 private const val MAIN_RAM = 0x02000000L
 private const val MAIN_RAM_END = 0x02400000L
@@ -603,6 +603,51 @@ fun decodeGen4PartyMon(
             stats = List(6) { u16(party, 8 + 2 * it) },
         ).takeIf { (ivWord ushr 30) and 1L == 0L },
     )
+}
+
+/** What SHINY ODDS ([ShinyOdds.DsRoller]) needs of a Gen 4 / 5 record: its personality, species, OT ID and egg bit. */
+class Gen4RecordFacts(val personality: Long, val species: Int, val otId: Long, val isEgg: Boolean)
+
+/** [record]'s (a whole Gen 4 / 5 record, encrypted) facts; null while the game has it decrypted in place (the flags after
+ * the personality) or when its checksum doesn't add up. */
+fun gen4RecordFacts(record: ByteArray): Gen4RecordFacts? {
+    val blocks = gen4Blocks(record) ?: return null
+    val a = blocks.second.indexOf('A') * 32
+    val b = blocks.second.indexOf('B') * 32
+    val species = u16(blocks.first, a)
+    if (species == 0) return null
+    return Gen4RecordFacts(u32(record, 0), species, u32(blocks.first, a + 4), (u32(blocks.first, b + 0x10) ushr 30) and 1L != 0L)
+}
+
+/** The decrypted blocks (still in their shuffled order) and that order, if the flags are clear and the checksum holds. */
+private fun gen4Blocks(record: ByteArray): Pair<ByteArray, String>? {
+    if (record.size < GEN4_BOX_SIZE || u16(record, 4) != 0) return null
+    val personality = u32(record, 0)
+    val checksum = u16(record, 6)
+    val blocks = gen4Crypt(record, 8, 0x80, checksum.toLong())
+    var sum = 0
+    for (i in 0 until 0x80 step 2) sum += u16(blocks, i)
+    if (sum and 0xFFFF != checksum) return null
+    return blocks to GEN4_BLOCK_ORDERS[(((personality ushr 13) and 0x1F) % 24).toInt()]
+}
+
+/**
+ * [record] (a whole Gen 4 / 5 record: 236 / 220 bytes, encrypted) under the personality [newPersonality]: its four blocks
+ * moved to the new personality's order and encrypted again with the same checksum (their contents, and so the checksum, don't
+ * change), its party fields encrypted again with the new personality. Null where [gen4RecordFacts] would be.
+ */
+fun gen4WithPersonality(record: ByteArray, newPersonality: Long): ByteArray? {
+    val (blocks, oldOrder) = gen4Blocks(record) ?: return null
+    val personality = u32(record, 0)
+    val newOrder = GEN4_BLOCK_ORDERS[(((newPersonality ushr 13) and 0x1F) % 24).toInt()]
+    val shuffled = ByteArray(0x80)
+    for ((slot, c) in newOrder.withIndex()) blocks.copyInto(shuffled, slot * 32, oldOrder.indexOf(c) * 32, oldOrder.indexOf(c) * 32 + 32)
+    val party = gen4Crypt(record, GEN4_BOX_SIZE, record.size - GEN4_BOX_SIZE, personality)
+    val out = record.copyOf()
+    for (i in 0 until 4) out[i] = (newPersonality ushr (8 * i)).toByte()
+    gen4Crypt(shuffled, 0, 0x80, u16(record, 6).toLong()).copyInto(out, 8)
+    gen4Crypt(party, 0, party.size, newPersonality).copyInto(out, GEN4_BOX_SIZE)
+    return out
 }
 
 /** A nickname's characters in the record (POKEMON_NAME_LENGTH + 1). */

@@ -195,15 +195,15 @@ class EmulatorEngine(
     /** SHINY ODDS ([com.pokedaisy.app.companion.data.ShinyOdds]): the game's foe party watched every frame, a new wild foe
      * made shiny at 1 in [shinyOdds] ([com.pokedaisy.app.companion.data.ShinyOdds.NORMAL] = the game's own odds, nothing
      * done); null = a game it doesn't know. */
-    @Volatile private var shinyRoller: com.pokedaisy.app.companion.data.ShinyOdds.Roller? = null
+    @Volatile private var shinyRoller: com.pokedaisy.app.companion.data.ShinyOdds.FoeRoller? = null
     @Volatile var shinyOdds = com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
 
-    @Volatile private var shinyTarget: com.pokedaisy.app.companion.data.ShinyOdds.Target? = null
+    @Volatile private var shinyTarget: com.pokedaisy.app.companion.data.ShinyOdds.FoeTarget? = null
 
-    fun setShinyTarget(target: com.pokedaisy.app.companion.data.ShinyOdds.Target?) {
+    fun setShinyTarget(target: com.pokedaisy.app.companion.data.ShinyOdds.FoeTarget?) {
         if (target == shinyTarget) return
         shinyTarget = target
-        shinyRoller = target?.let { com.pokedaisy.app.companion.data.ShinyOdds.Roller(it) }
+        shinyRoller = target?.roller()
     }
 
     /** PLAYER LOOK ([com.pokedaisy.app.companion.data.PlayerLook]): the patch to wear - its blocks into the ROM, then its
@@ -1598,8 +1598,10 @@ class EmulatorEngine(
                 gba && fieldGame != WideScreen.OFF -> gameOptions.fieldState(MgbaCore::pkFieldState, wildKnown = wildFlag != 0L)
                 else -> 0
             }
-            // SHINY ODDS: a new wild foe, between the frame it's made and the battle drawing it.
-            if (gba && shinyOdds < com.pokedaisy.app.companion.data.ShinyOdds.NORMAL) shinyRoller?.let { r ->
+            // SHINY ODDS: a new wild foe, between the frame it's made and the battle drawing it (a DS game's: between
+            // the battle being handed its setup and copying the parties; a Game Boy game's: between LoadEnemyMon and the
+            // battle's colours). The roller is null where it isn't checked.
+            if (shinyOdds < com.pokedaisy.app.companion.data.ShinyOdds.NORMAL) shinyRoller?.let { r ->
                 runCatching {
                     val n = r.tick(shinyOdds, InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes)
                     if (n > 0) Log.i("pokedaisy", "shiny odds: foe made shiny (1 in $shinyOdds)")

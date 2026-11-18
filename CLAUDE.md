@@ -915,6 +915,14 @@ replay, which sets it itself) with probability 1 - keep; NORMAL puts it back onc
 instead and put the cart's own back from `Gen4World.wildRates` (`MgbaCore.pkNdsWildRates`): a remembered value didn't
 survive a restart, and a resumed game stayed without wild Pokémon until a map change. Walked headless
 (mgba_dump `wild ADDR KEEP`, warp into Route 101 / Route 1 grass): OFF 360 steps, none; 50% about twice NORMAL's steps.
+**SHINY ODDS on the DS** (2026-11-14, `ShinyOdds.DsTarget` / `DsRoller`, docs/ROM_FEATURES.md's note 54): the foe rewritten in the
+battle's setup in the frames before the battle copies the parties - Gen 4: the field's child app is the battle's (`Gen4Battle.battleTemplate`'s
+init word) with its data NULL (two frames: its init does nothing, Battle_Main's first step only makes a heap), `setup->parties[1]`, wild
+types only; Gen 5: the running proc is the battle overlay's with its work NULL (~14 frames), `BATTLE_SETUP_PARAM` competitor 0, party
++0x28. Personality made shiny keeping nature / low byte / Gen 5's bits 16 and 31 (`shinyPersonality(keepBits)`), blocks re-shuffled
+(`gen4WithPersonality`). Only `ShinyOdds.DS_VERIFIED` carts (code + revision), each proven headless by a live harness driving nds_dump
+frame by frame (new games for Platinum / HG / SS: a field script gives a Pokémon and starts a wild battle). `DsShinyOddsTest` over the
+`*_shiny_window` fixtures.
 **REUSABLE TMS** (GitHub #135, GAMEPLAY on the companion, `Prefs.reusableTms` OFF, NEW tag; `ReusableTms.kt`): a ROM patch, the
 TM-number check before each `RemoveBagItem` (`cmp item, #ITEM_HM01-1; bhi`) turned into a `b`. The sites are found by their code
 when a game loads (`ReusableTms.find`, beside WildEncounters.find): the FireRed engine has three, Emerald / Ruby / Sapphire one,

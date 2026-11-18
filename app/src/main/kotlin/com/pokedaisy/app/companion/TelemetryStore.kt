@@ -198,7 +198,7 @@ class TelemetryStore {
     fun knownFieldItems(): com.pokedaisy.app.companion.data.FieldItemFns? = sampler.knownFieldItems
 
     /** SHINY ODDS' foe party and player ID, on retail FireRed / Emerald only (ShinyOdds.kt). */
-    fun knownShinyTarget(): com.pokedaisy.app.companion.data.ShinyOdds.Target? = sampler.knownShinyTarget
+    fun knownShinyTarget(): com.pokedaisy.app.companion.data.ShinyOdds.FoeTarget? = sampler.knownShinyTarget
 
     /** A Game Boy game's battle party menu, for the POKéMON switch, or null. */
     fun gbPartySwitch(): com.pokedaisy.app.companion.data.GbPartySwitch? = sampler.gbPartySwitch
