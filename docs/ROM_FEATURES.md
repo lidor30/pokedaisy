@@ -35,8 +35,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | FireRed, randomized (UPR ZX 4.6.1) | USA/Europe rev 1 | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
 | FireRed, randomized (UPR ZX 4.6.1) | USA/Europe rev 0 | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | — | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
 | Emerald, randomized (UPR ZX 4.6.1) | USA/Europe | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Ruby / Sapphire | USA rev 1 and 2 | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
-| Ruby / Sapphire | USA rev 0, ES / DE / FR / IT | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
+| Ruby / Sapphire | USA rev 1 and 2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
+| Ruby / Sapphire | USA rev 0, ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
 | Ruby / Sapphire | JP | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
 | Platinum (DS) | USA rev 1 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
 | Platinum (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
@@ -756,7 +756,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
   its `HEADLESS` table) and checked by `verify_ports.py` (action, FIGHT, BAG and POKéMON handlers on every port). One-press
   picks walked and written headless on English Sapphire rev 1 (`sapphire_rev1_battle`), German Sapphire rev 1 and
   Japanese Sapphire rev 1; the other ports' cursors are mapped through the literal pools (English's RAM in the Western
-  ones). No POKéMON switch there: R / S's party menu keeps its cursor in a sprite's data, not in a gPartyMenu.
+  ones). The POKéMON switch (2026-11-18): R / S's party menu keeps its cursor in a sprite's data, not in a gPartyMenu - the one in-use,
+  invisible sprite whose callback is SpriteCallbackDummy (`SwitchAddrs.cursorSpriteCallback`), checked headless on English and French
+  Ruby rev 1 (DOWN, A, SHIFT sent slot 1 in; gPlayerParty in battle order while the menu is up, as FireRed's); not Japanese R / S.
 - **Hide battle menu** (two screens; not a column: it follows the battle buttons): `PokeDaisyActivity.battleMenuHideSupported`
   (a BPR / BPG / BPE header running as FireRed / Emerald with the battle buttons' addresses and the one-press picks' cursors:
   the D-pad steers the hidden action menu by writing gActionSelectionCursor, `HiddenMenuSteer`), the menus found on screen by
@@ -856,7 +858,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 
 ## Next up (from the table)
 
-- Battle buttons for Emerald Rogue; the POKéMON switch for Ruby / Sapphire (their party cursor lives in a sprite).
+- Battle buttons for Emerald Rogue; the POKéMON switch for Japanese Ruby / Sapphire.
 
 ## Linux / 3DS companion: tabs read per hack
 
