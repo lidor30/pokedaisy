@@ -33,7 +33,7 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 
 **Nintendo DS:**
 
-- Pokémon Platinum: the USA release (revision 1), and the French and Spanish ones (revision 0).
+- Pokémon Platinum: the USA release (revision 1), and the French, Spanish and German ones (revision 0).
 - Pokémon HeartGold: the USA, German, French, Spanish, Italian, Japanese and Korean releases (revision 0), and the English one sold in Europe (revision 10).
 - Pokémon SoulSilver: the USA, German, French, Spanish, Italian, Japanese and Korean releases (revision 0), and the English one sold in Europe (revision 10).
 - Pokémon Black: the USA / Europe, French, German, Spanish, Italian, Japanese and Korean releases.

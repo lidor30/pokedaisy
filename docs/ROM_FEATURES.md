@@ -40,7 +40,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Ruby / Sapphire | JP | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
 | Platinum (DS) | USA rev 1 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
 | Platinum (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
-| Platinum (DS) | Spain rev 0 ³¹ | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ³¹ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
+| Platinum (DS) | Spain, Germany rev 0 ³¹ | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ³¹ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
 | HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
 | HeartGold (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
 | HeartGold (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
@@ -477,6 +477,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
     so a new game was played headless in it (its own intro): the field read and PC anywhere checked on it, EXPAND drawn in the
     player's room. FLY (no badge or flyer that early) wasn't tried. The "5216" Japanese Black is No-Intro's cart with 512 bytes
     of overlay 12 changed; on the USA save it ran screen for screen as the No-Intro cart (title, CONTINUE, the field, PC).
+    German Platinum (rev 0, 2026-11-18): the same functions again, its globals and field overlays 0x40 below the French cart's.
+    A new game played headless in the USA cart loads in it: beside the USA cart with one script, the field bits, PC anywhere,
+    FLY's checks (no flyer: refused as on the USA cart), the X menu and EXPAND in the player's room came out the same.
 
 32. Renegade Platinum (Drayano's, 1.3.0) is US Platinum rev 1 edited in place: the same header (`CPUE` rev 1) and RAM,
     its ARM9 retail's but one word (the shiny odds), so the native side runs it as Platinum (`pk_nds_field.cpp` /

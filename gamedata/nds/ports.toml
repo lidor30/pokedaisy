@@ -50,6 +50,43 @@ FieldSystem_CreateTask = 0x020509A9
 Journal_CreateEventUsedMove = 0x0202BE71
 Journal_SaveData = 0x0202B7C9
 
+# German Platinum: the French / Spanish carts' functions at the same addresses (rev 0), its globals and field overlays 0x40
+# below the French cart's (0x60 below the Spanish), the battle template 0x30. Checked headless beside the US cart.
+[[port]]
+code = "CPUD"
+rev = 0
+kind = "PLATINUM"
+base = "platinum"
+name = "Platinum (Germany)"
+title = "Pokémon Platin-Edition"
+sha1 = "d40f19ac24d67c721a4ab25e1c013154443d75b4"
+cart = "Pokemon - Platin-Edition (Germany).nds"
+sFieldSystem = 0x021C097C
+gBattleApplicationTemplate = 0x020EA3B0
+sSoundSystem = 0x02101F98
+sSeqPlayer = 0x021CB104
+sSaveDataPtr = 0x021C0934
+FieldMap_Main = 0x021D1109
+PartyMenu_Init = 0x0207E159
+OptionsMenu_Init = 0x021D0F21
+ScriptManager_Set = 0x0203E925
+FieldTask_GetEnv = 0x02050B09
+ScriptContext_CreateAndStart = 0x0203EB5D
+ScriptContext_Jump = 0x0203E8BD
+StringTemplate_New = 0x0200B37D
+String_Init = 0x02023801
+ScriptManager_GetMemberPtr = 0x0203F005
+FieldMoves_SetUsableMoves = 0x020707BD
+FieldMoves_CheckFly = 0x020709E5
+CheckFlyLocationUnlocked = 0x0203A9C5
+SaveData_GetParty = 0x0207A309
+Party_GetPokemonBySlotIndex = 0x0207A19D
+FlyContext_New = 0x020706E1
+FieldMoves_FlyTask = 0x02070715
+FieldSystem_CreateTask = 0x020509A9
+Journal_CreateEventUsedMove = 0x0202BE71
+Journal_SaveData = 0x0202B7C9
+
 [[port]]
 code = "IPKE"
 rev = 10
