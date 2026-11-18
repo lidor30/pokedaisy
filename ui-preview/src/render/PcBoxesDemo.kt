@@ -41,7 +41,7 @@ fun missingBlackDemo(state: PcBoxesState): com.pokedaisy.app.companion.ui.Missin
  * Stand-ins for the icons the app reads from the player's ROM (no game art here): a 32x64 sheet whose first frame is
  * a dot in a colour of its own per species, outlined, so the cards' layout shows as it will with real icons.
  */
-val demoIcons = MonIconLoader { species ->
+val demoIcons = MonIconLoader { species, _ ->
     val px = IntArray(32 * 64)
     val hue = (species * 47) % 360
     val fill = hsv(hue, 0.55f, 0.95f)

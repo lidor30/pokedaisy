@@ -2,9 +2,11 @@ package com.pokedaisy.app.companion.data.save
 
 import com.pokedaisy.app.companion.data.IconTables
 import com.pokedaisy.app.companion.data.LockedMap
+import com.pokedaisy.app.companion.data.NATIVE_EMERALD_KAIZO
 import com.pokedaisy.app.companion.data.NATIVE_EMERALD_RETAIL
 import com.pokedaisy.app.companion.data.NATIVE_FIRERED_REV0
 import com.pokedaisy.app.companion.data.NATIVE_FIRERED_REV1
+import com.pokedaisy.app.companion.data.NATIVE_ORANGE_ISLANDS
 import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import com.pokedaisy.app.companion.data.decodeMonIcon
@@ -16,9 +18,8 @@ import okio.Path
 /**
  * Party icons for PC BOXES / TRADE, read from the player's own ROM *file* - nothing is bundled, and no game is
  * running in the library. The same decoder as the companion's ([decodeMonIcon]) over the tables the companion
- * already knows for that ROM: retail FireRed rev 0 / 1 and Emerald by hash, the other retail games (LeafGreen,
- * Ruby, Sapphire, other languages) by game code + revision. Anything else (hacks) gets none, and
- * the screens show names instead of guessing at addresses.
+ * already knows for that ROM ([tablesFor]), each checked against the file before it's used ([open]); a ROM whose
+ * tables don't check out gets none, and the screens show names. The DS carts' come from NdsArt.monIcons.
  */
 class RomMonIcons private constructor(private val rom: Path, private val tables: IconTables) {
 
@@ -42,14 +43,27 @@ class RomMonIcons private constructor(private val rom: Path, private val tables:
 
         private fun read(f: FileHandle, addr: Long, n: Int): ByteArray = f.readFully(addr - ROM_BASE, n)
 
-        /** The icon tables for a ROM with this whole-file [sha1], header [code] and [revision]; null = not one we know. */
+        /**
+         * The icon tables for a ROM with this whole-file [sha1], header [code] and [revision]; null = not one we know.
+         * Retail by hash, the hacks edited in place by their own configs (Rocket Edition, Ash Gray, Orange Islands, Kaizo:
+         * all on retail's tables), the other retail games by code + revision; any other FireRed / LeafGreen / Emerald build
+         * (a trimmed or flash-patched dump, a randomized one, a hack nothing names) by its header's base game, which
+         * [open] then checks against the file. The save editor only opens those whose save is laid out as retail's.
+         */
         fun tablesFor(sha1: String?, code: String?, revision: Int?): IconTables? = when (sha1) {
             FIRERED_REV0_SHA1 -> NATIVE_FIRERED_REV0.iconTables
             FIRERED_REV1_SHA1 -> NATIVE_FIRERED_REV1.iconTables
             EMERALD_SHA1 -> NATIVE_EMERALD_RETAIL.iconTables
-            else -> if (code != null && revision != null && code in TelemetrySampler.OTHER_RETAIL_CODES) {
-                TelemetrySampler.otherRetailConfig(code, revision)?.iconTables
-            } else null
+            TelemetrySampler.EMERALD_KAIZO_V2_0_SHA1 -> NATIVE_EMERALD_KAIZO.iconTables
+            TelemetrySampler.ORANGE_ISLANDS_UNVERSIONED_SHA1, TelemetrySampler.ORANGE_ISLANDS_V5_7_BETA_SHA1 ->
+                NATIVE_ORANGE_ISLANDS.iconTables
+            else -> TelemetrySampler.fireRedHackConfig(sha1)?.iconTables ?: when {
+                code == null || revision == null -> null
+                code in TelemetrySampler.OTHER_RETAIL_CODES -> TelemetrySampler.otherRetailConfig(code, revision)?.iconTables
+                code == "BPRE" -> (if (revision >= 1) NATIVE_FIRERED_REV1 else NATIVE_FIRERED_REV0).iconTables
+                code == "BPEE" -> NATIVE_EMERALD_RETAIL.iconTables
+                else -> null
+            }
         }?.takeIf { it.monPresent }
 
         /**

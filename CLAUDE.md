@@ -2305,7 +2305,7 @@ and only after `SaveFileEdits` has a backup, a still-unchanged file and a read-b
 (`Gen3SaveFormat`, `Gen3SaveData.mismatch()` refuses other layouts). PC records move byte for byte; TRADE (`Gen3Trade`) keeps the
 games' own rules and after-effects (pret's `trade.c` / `link.c`: Sevii link flag, National Dex / regional dex, eggs, Mew / Deoxys'
 fateful bit, the Pokédex's three seen copies, trade evolutions + EvolutionRenameMon, R/S's National Dex) and writes both saves or
-neither (`SaveFileEdits.writeBoth`). Icons come from the ROM file (`RomMonIcons`, known tables only - never guessed). Values
+neither (`SaveFileEdits.writeBoth`). Icons come from the ROM file: GBA by `RomMonIcons` (the game's config by hash, else its header's base game, the tables checked against the file), DS by `NdsArt.monIcons` (the cart's icon archive, decoded one at a time: no play needed); an egg goes to `MonIconLoader.load(species, egg = true)`, since Gen 3's egg id 412 is BURMY on the DS. Values
 (money, coins, the bag, a Pokémon's held item and moves) take only what `Gen3Legal` allows (`SaveTablesGen.kt` from
 `scripts/gen_save_tables.py`: each game's pocket items, learnsets, TM / tutor sets, pre-evolutions); the editor throws before a
 byte changes otherwise, and key items / HMs are never taken away. Round two (2026-11-15, NEW tag `SAVE_EDITOR_PLUS`; the user's call:
