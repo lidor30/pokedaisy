@@ -270,6 +270,22 @@ class Gen3SaveFileTest {
         assertNotNull(Gen3SaveData(save).mismatch())
     }
 
+    /** pokeemerald-expansion's records (Emerald Seaglass, GitHub #1167) keep 21 bits of experience with a nickname's 11th
+     * letter above them: read as retail, more than any level 100 has. Such a save is another engine's, refused. */
+    @Test
+    fun experiencePastLevel100MeansAnotherEngine() {
+        val f = Gen3SaveFormat.EMERALD
+        fun withPcMon(exp: Long): Gen3SaveFile {
+            val (s2, s1, st) = SyntheticSave.blocks(f)
+            SyntheticSave.mon(0x1234_5678L, 0x0BAD_F00DL, 123, exp, nickname = "SCYTHER").copyInto(st, 4)
+            return parse(SyntheticSave.file(f, SyntheticSave.Slot(3, 0, s2, s1, st), null), f)
+        }
+        assertNull(Gen3SaveData(withPcMon(1_000_000)).mismatch())
+        assertNull(Gen3SaveData(withPcMon(Gen3SaveData.MAX_EXP)).mismatch())
+        // Its 11th letter 0xFF over 135 EXP (an expansion record's u32 at growth +4).
+        assertNotNull(Gen3SaveData(withPcMon(0x1FE00087L)).mismatch())
+    }
+
     @Test
     fun aTamperedWriteIsCaught() {
         val f = Gen3SaveFormat.EMERALD
