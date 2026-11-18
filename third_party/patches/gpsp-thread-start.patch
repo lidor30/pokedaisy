@@ -1,0 +1,176 @@
+diff --git a/video_thread_sys.c b/video_thread_sys.c
+--- a/video_thread_sys.c
++++ b/video_thread_sys.c
+@@ -11,6 +11,18 @@
+ static Thread vt_thread;
+ static int vt_low_prio;
+ static s32 vt_normal_prio = 0x2F;
++static volatile int vt_worker_cpu = -1;
++static void (*vt_entry)(void*);
++static void *vt_argument;
++
++static void vt_thread_entry(void *unused)
++{
++   (void)unused;
++   vt_worker_cpu = svcGetProcessorID();
++   vt_entry(vt_argument);
++}
++
++int vt_thread_cpu(void) { return vt_worker_cpu; }
+ 
+ vt_sem *vt_sem_create(void)
+ {
+@@ -32,8 +44,26 @@
+    /* one step higher priority than the emulation thread, or the lowest
+     * priority so system services on that core run first */
+    vt_normal_prio = prio > 0x18 ? prio - 1 : prio;
+-   vt_thread = threadCreate(fn, arg, 64 * 1024, vt_low_prio ? 0x3F : vt_normal_prio,
+-         core < 0 ? -2 : core, false);
++   /* PokeDaisy: some hosts cannot create a worker at the preferred priority.
++    * Retry standard and background priorities on the SAME requested core.
++    * The host's svcCreateThread wrapper logs the exact kernel error. */
++   const s32 priorities[] = { vt_low_prio ? 0x3F : vt_normal_prio, 0x30, 0x3F };
++   vt_worker_cpu = -1;
++   vt_entry = fn;
++   vt_argument = arg;
++   for (unsigned i = 0; i < sizeof(priorities) / sizeof(priorities[0]); ++i)
++   {
++      int duplicate = 0;
++      for (unsigned j = 0; j < i; ++j)
++         if (priorities[j] == priorities[i]) duplicate = 1;
++      if (duplicate) continue;
++      vt_thread = threadCreate(vt_thread_entry, NULL, 64 * 1024, priorities[i],
++            core < 0 ? -2 : core, false);
++      if (vt_thread) {
++         if (!vt_low_prio) vt_normal_prio = priorities[i];
++         break;
++      }
++   }
+    return vt_thread ? 0 : -1;
+ }
+ 
+@@ -63,6 +93,7 @@
+ #include <pthread.h>
+ #include <semaphore.h>
+ #include <time.h>
++int vt_thread_cpu(void) { return -1; }
+ #ifdef __APPLE__
+ /* PokeDaisy: macOS has no unnamed POSIX semaphores (sem_init fails), so the
+  * render thread's waits there are dispatch semaphores (the 3DS port's desktop
+diff --git a/video_thread_sys.h b/video_thread_sys.h
+--- a/video_thread_sys.h
++++ b/video_thread_sys.h
+@@ -17,6 +17,8 @@
+ /* 1 = run the render thread below system services (lower IPC latency for
+  * GPU/audio calls on the Old 3DS system core), 0 = just above the caller */
+ void vt_thread_set_low_priority(int low);
++/* PokeDaisy: actual worker CPU (-1 before entry or on a non-3DS host). */
++int vt_thread_cpu(void);
+ 
+ unsigned long long vt_now_us(void);
+ 
+diff --git a/video_thread.cc b/video_thread.cc
+--- a/video_thread.cc
++++ b/video_thread.cc
+@@ -871,21 +871,32 @@
+ void video_thread_set_low_priority(int low) { vt_thread_set_low_priority(low); }
+ void video_thread_counters(unsigned *copies, unsigned *syncs) { *copies = vram_copies; *syncs = vram_syncs; }
+ 
++/* PokeDaisy: distinguish memory pressure from thread creation failure. */
++static int pd_thread_start_error;
++int video_thread_start_error(void) { return pd_thread_start_error; }
++unsigned video_thread_snapshot_bytes(void) { return 2 * sizeof(vt_frame) + VT_NVRAM * VT_VRAM_SZ; }
++int video_thread_worker_cpu(void) { return video_thread_enabled ? vt_thread_cpu() : -1; }
++
+ int video_thread_start(int core)
+ {
+   if (video_thread_enabled)
+     return 0;
+ 
+   have_frame = 0;
++  pd_thread_start_error = 0;
+   deferred_pending = defer_req = 0;
+   slots[0] = (vt_frame*)calloc(1, sizeof(vt_frame));
++  if (!slots[0]) { pd_thread_start_error = -1; goto fail; }
+   slots[1] = (vt_frame*)calloc(1, sizeof(vt_frame));
++  if (!slots[1]) { pd_thread_start_error = -2; goto fail; }
+   sem_line = vt_sem_create();
++  if (!sem_line) { pd_thread_start_error = -3; goto fail; }
+   sem_done = vt_sem_create();
++  if (!sem_done) { pd_thread_start_error = -4; goto fail; }
+   sem_sync = vt_sem_create();
++  if (!sem_sync) { pd_thread_start_error = -5; goto fail; }
+   vt_vram_pool = (u8*)malloc(VT_NVRAM * VT_VRAM_SZ);
+-  if (!slots[0] || !slots[1] || !sem_line || !sem_done || !sem_sync || !vt_vram_pool)
+-    goto fail;
++  if (!vt_vram_pool) { pd_thread_start_error = -6; goto fail; }
+ 
+   ring_wr = ring_rd = 0;
+   rec_slot = 0;
+@@ -907,7 +918,7 @@
+   memset(vt_vram_last_use, 0, sizeof(vt_vram_last_use));
+ 
+   if (vt_thread_start(render_thread, NULL, core))
+-    goto fail;
++    { pd_thread_start_error = -7; goto fail; }
+ 
+   video_thread_enabled = 1;
+   return 0;
+diff --git a/video_thread.h b/video_thread.h
+--- a/video_thread.h
++++ b/video_thread.h
+@@ -20,6 +20,10 @@
+ /* Start the render thread on the given CPU core (-1 = any). Returns 0 on
+  * success. Must be called after retro_init() and before running frames. */
+ int video_thread_start(int core);
++/* PokeDaisy: startup allocation/creation stage (negative), or 0. */
++int video_thread_start_error(void);
++unsigned video_thread_snapshot_bytes(void);
++int video_thread_worker_cpu(void);
+ void video_thread_stop(void);
+ 
+ /* Emulation side (called by update_scanline for lines 0..159). */
+diff --git a/cpu_threaded.c b/cpu_threaded.c
+--- a/cpu_threaded.c
++++ b/cpu_threaded.c
+@@ -23,6 +23,10 @@
+ 
+ #include "common.h"
+ #include "profiler.h"
++
++/* PokeDaisy: cheap cache counters, without the full profiler or SD writes. */
++u32 pd_gpsp_rom_flushes;
++u32 pd_gpsp_ram_flushes;
+ #include "memmap.h"
+ #if defined(VITA)
+ #include <psp2/kernel/sysmem.h>
+@@ -4205,6 +4209,7 @@
+ 
+ void flush_translation_cache_ram_full(void)
+ {
++  pd_gpsp_ram_flushes++;
+   /* Flushes RAM caches avoiding doing too much work (ie. wiping unused memory) */
+ #ifdef HAVE_RAM_PAGE_INVALIDATE
+   ram_pages_reset();
+@@ -4254,6 +4259,7 @@
+ 
+ void flush_translation_cache_rom(void)
+ {
++  pd_gpsp_rom_flushes++;
+ #ifdef GPSP_PROFILE
+   prof_rom_flushes++;
+ #endif
+diff --git a/ROADMAP.md b/ROADMAP.md
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -41,6 +41,10 @@
+ 
+ ## Next up
+ 
++- 🧪 Local PokeDaisy Old3DS report (slickmaxim): diagnose failed render-worker
++  allocations, retry thread creation at standard/background priorities, report
++  the actual worker CPU and JIT-cache flushes. Hardware verification pending.
++
+ **gpSP 3D v0.1.5: fixes and quick wins** (first release through the CI pipeline: test the Nightly, then publish)
+ 
+ | Change | Asked by | Status |

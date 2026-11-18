@@ -3,6 +3,7 @@
 // list) asks its frontend for. From ratherDashing's pokedaisy-3ds fork (ctr/host.c there), with mGBA's heap file kept
 // out (see below).
 #include "host.h"
+#include "../host/pd_log_buffer.h"
 
 #include <3ds.h>
 
@@ -27,22 +28,35 @@ void userAppInit(void) {
     FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
 }
 
-#define ROM_ARENA (32u << 20) // the GBA's whole cartridge space
+#define ROM_ARENA_FULL (32u << 20) // the GBA's whole cartridge space
+// An Old 3DS's .3dsx gets 64 MB (mode 0), its heap ~31.8 MB: never the 32 MB, so no game started at all there (a player's
+// log, 2026-11-18). Half of it still plays every game of 16 MB or less on armGBA and mGBA.
+#define ROM_ARENA_HALF (16u << 20)
 static uint8_t* romArena;
+static size_t romArenaSize;
 static size_t heapAtStart; // free before the arena was asked for (host_memory_report)
 
 bool host_rom_arena_init(void) {
     heapAtStart = host_heap_free();
-    romArena = malloc(ROM_ARENA);
+    romArena = malloc(ROM_ARENA_FULL);
+    romArenaSize = romArena ? ROM_ARENA_FULL : 0;
+    if (!romArena) {
+        romArena = malloc(ROM_ARENA_HALF);
+        romArenaSize = romArena ? ROM_ARENA_HALF : 0;
+    }
     romBuffer = (uint32_t*) romArena;
-    romBufferSize = romArena ? ROM_ARENA : 0;
+    romBufferSize = romArenaSize;
     return romArena != NULL;
+}
+
+size_t host_rom_arena_size(void) {
+    return romArenaSize;
 }
 
 static size_t romUsed; // what the last game asked of the arena (host_rom_arena)
 
 void* host_rom_arena(size_t size) {
-    if (!romArena || size > ROM_ARENA) return NULL;
+    if (!romArena || size > romArenaSize) return NULL;
     memset(romArena, 0, size);
     romUsed = size;
     return romArena;
@@ -67,7 +81,7 @@ bool isEmulator(void); // armGBA's 3DS code
 void* __wrap_jitHostAllocCode(size_t* size) {
     host_lent_code_release(); // a load that failed before main.c could
     uintptr_t from = ((uintptr_t) romArena + romUsed + 0xFFF) & ~(uintptr_t) 0xFFF;
-    uintptr_t to = ((uintptr_t) romArena + ROM_ARENA) & ~(uintptr_t) 0xFFF;
+    uintptr_t to = ((uintptr_t) romArena + romArenaSize) & ~(uintptr_t) 0xFFF;
     size_t spare = romArena && romUsed && to > from ? to - from : 0;
     if (spare > *size) spare = *size & ~(size_t) 0xFFF;
     if (!lentCode && spare >= LENT_CODE_MIN && !isEmulator()) {
@@ -121,6 +135,17 @@ void __wrap_free(void* p) {
     __real_free(p);
 }
 
+// threadCreate() hides svcCreateThread's Result behind a NULL pointer.
+// Keep the real kernel reason in the startup log; allocation failures inside
+// threadCreate produce no SVC line and can be distinguished that way.
+Result __real_svcCreateThread(Handle* thread, ThreadFunc entry, u32 arg, u32* stack, s32 priority, s32 core);
+Result __wrap_svcCreateThread(Handle* thread, ThreadFunc entry, u32 arg, u32* stack, s32 priority, s32 core) {
+    Result rc = __real_svcCreateThread(thread, entry, arg, stack, priority, core);
+    host_log("thread create: core %ld, priority %ld, kernel Result %08lX",
+             (long) core, (long) priority, (unsigned long) rc);
+    return rc;
+}
+
 // libctru splits the app's memory evenly between the heap and linear memory (what the GPU and the DSP read). Here linear
 // gets what the screens' textures, the frames in flight, the sound and a Game Boy game's mGBA machine need, and the heap
 // the rest, as far as its address range goes (asked for more, the allocation fails and the app stops before main:
@@ -164,10 +189,12 @@ static bool playingOld; // host_old_3ds_stand_in
 static FILE* logFile;
 static u64 logStart;
 // While a game runs the lines wait here (host_log_hold): gpSP 3D found that writing its log to the SD card mid-game froze
-// an Old 3DS now and then. Written out when the game closes, the app goes to the HOME Menu or sleeps, or the buffer fills.
+// an Old 3DS now and then. Written out when the game closes, goes HOME or sleeps.
+// A full buffer discards its oldest complete lines, without writing the SD card.
 #define LOG_HELD_BYTES (16 * 1024)
 static char logHeld[LOG_HELD_BYTES];
 static size_t logHeldUsed;
+static unsigned logDropped;
 static bool logHolding;
 static LightLock logLock;
 static bool logLockReady;
@@ -188,10 +215,12 @@ void host_log_open(const char* path) {
 // The held lines into the file; the lock is held.
 static void log_write_held(void) {
     if (logFile && logHeldUsed) {
+        if (logDropped) fprintf(logFile, "[log] %u buffered lines discarded during gameplay\n", logDropped);
         fwrite(logHeld, 1, logHeldUsed, logFile);
         fflush(logFile);
     }
     logHeldUsed = 0;
+    logDropped = 0;
 }
 
 static void log_va(const char* format, va_list args) {
@@ -205,9 +234,7 @@ static void log_va(const char* format, va_list args) {
     line[len++] = '\n';
     LightLock_Lock(&logLock);
     if (logHolding) {
-        if (logHeldUsed + len > sizeof(logHeld)) log_write_held();
-        memcpy(logHeld + logHeldUsed, line, len);
-        logHeldUsed += len;
+        logDropped += pd_log_buffer_append(logHeld, sizeof(logHeld), &logHeldUsed, line, len);
     } else {
         fwrite(line, 1, len, logFile);
         fflush(logFile); // a crash leaves the lines so far

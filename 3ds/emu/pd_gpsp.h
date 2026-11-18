@@ -27,7 +27,8 @@ struct pd_gpsp_host {
     void* ctx;
     // A folder that may hold gba_bios.bin (else gpSP's own BIOS).
     const char* systemDir;
-    // Where the cartridge goes: at least size bytes, zeroed, never freed (the host keeps it); NULL: gpSP's own blocks.
+    // A contiguous 32 MiB cartridge, zeroed, never freed (the host keeps it).
+    // NULL callback uses a private arena. A failed allocation refuses to start.
     void* (*romBuffer)(size_t size);
     // The ROM's CRC-32 when the host knows it from an earlier start of the same file (0: worked out here).
     uint32_t knownCrc;
@@ -68,13 +69,27 @@ void pd_gpsp_run_frame(void);
 void pd_gpsp_reset(void);
 // The picture into [buffer]: 0x00BBGGRR, as mGBA's 32-bit renderer leaves it.
 void pd_gpsp_set_video(uint32_t* buffer, size_t stride);
+// Final RGB565 output, borrowed until the next core frame. stride is in pixels.
+const uint16_t* pd_gpsp_native_pixels(size_t* stride);
 // The frames from now on aren't shown (fast-forward's extra ones, the Old 3DS's catch-up): gpSP needn't draw them.
 void pd_gpsp_skip_video(bool skip);
+// The next frame drawn isn't waited for at its end: its picture is collected by pd_gpsp_collect after one or more
+// undrawn frames (host/pd_draw_pace.h). Only with the render thread.
+void pd_gpsp_draw_late(void);
+// Waits for the picture started late (its frame hook converts it into the video buffer); false = none was on its way.
+bool pd_gpsp_collect(void);
 uint32_t pd_gpsp_crc(void);
 bool pd_gpsp_recompiling(void);
 bool pd_gpsp_threaded(void);
 // The render thread's last frame: its drawing and the game thread's wait for it (microseconds; 0 without the thread).
 void pd_gpsp_render_us(unsigned* render, unsigned* wait);
+struct pd_gpsp_stats {
+    int workerCpu, startError;
+    bool threaded;
+    unsigned snapshotBytes, renderUs, waitUs, hookUs;
+    unsigned romFlushes, ramFullFlushes;
+};
+void pd_gpsp_get_stats(struct pd_gpsp_stats* out);
 // Any address, through gpSP's own memory map (what the view doesn't hold).
 uint32_t pd_gpsp_read8(uint32_t address);
 // RAM writes (EWRAM / IWRAM / io / palette / VRAM / OAM), any compiled code over them thrown out.
