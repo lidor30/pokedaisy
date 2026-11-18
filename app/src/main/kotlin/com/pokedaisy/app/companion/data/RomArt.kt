@@ -30,7 +30,7 @@ object RomArt {
     const val DIR = "rom-art"
 
     /** Bump when [OUTPUTS] grows, so ROMs scanned before get scanned again. */
-    private const val SCAN_VERSION = 27
+    private const val SCAN_VERSION = 28
 
     /** Bumped whenever new art lands on disk, so loaders can retry. */
     val updates: StateFlow<Int> get() = _updates

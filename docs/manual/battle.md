@@ -71,7 +71,7 @@ If you want to skip the `FIGHT` step, turn on `ONE-TAP MOVES` in SETTINGS (COMPA
 
 In a wild battle, a small white button with a ball on it sits at the corner of your turn's screen, by `FIGHT` (with `ONE-TAP MOVES` on, at the start of the row underneath). It shows the ball you threw last and how many you have left. Tap it and that ball is thrown at once, without opening the bag: the game plays its own throw, shakes and catch. If you're out of that kind, it shows the first ball in your bag instead.
 
-It only shows when the game would let you throw: a wild battle with one Pokémon facing you, and room for a catch (a free spot in your party, or in a box). Turn it off with `LAST BALL` in SETTINGS (COMPANION group). It's there with the `GEN 4` look of `BATTLE STYLE`, in FireRed, LeafGreen and Emerald and in the hacks on their code where the bag tab's `USE` works.
+It only shows when the game would let you throw: a wild battle with one Pokémon facing you, and room for a catch (a free spot in your party, or in a box). Turn it off with `LAST BALL` in SETTINGS (COMPANION group). It's there with the `GEN 4` look of `BATTLE STYLE`, in FireRed, LeafGreen, Emerald, Ruby and Sapphire and in the hacks on their code where the bag tab's `USE` works.
 
 ### BATTLE STYLE
 
@@ -159,6 +159,8 @@ The same pane appears when the game asks you to choose, for example after one of
 
 This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue, Brown, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
 
+On the DS it works in HeartGold and SoulSilver, in every language PokeDaisy supports, in a single battle. PokeDaisy taps the game's own touch screen for you: `POKéMON`, then your pick's panel, then its `SHIFT`. You'll see the touch screen do it, so it takes about a second. After one of your Pokémon faints, the game's own party screen is yours to tap, as usual.
+
 ![The switch pane: the party in the game's slots, one Pokémon tagged BEST, EMBERPUP tagged OUT and GALEFINCH fainted, with Choose a POKéMON. and CANCEL below](shots/companion-battle-switch.png "Choosing who to send in")
 
 ## On two screens: HIDE BATTLE MENU
@@ -167,7 +169,7 @@ With the companion on a second screen, its battle buttons do the choosing, so th
 
 Your game's buttons work on the companion's buttons too. The one the game's cursor is on is lit from the start of your turn, and the D-pad moves it the way the companion lays them out: up to `FIGHT`, down from `FIGHT` to `RUN`, left and right along `BAG`, `RUN` and `POKéMON`. A picks the lit one and B goes back, as in the game. In your moves the D-pad walks the four cards. While the menu is hidden, `FIGHT` and `POKéMON` on the companion open the game's own moves and party screen, so your buttons always work on what you see. The menu comes back by itself where the companion has no buttons for it: in a double battle, in the Safari Zone and in the games' tutorial battles (your very first battle, and the catching lessons). Nothing in the game changes; only the picture does.
 
-This is in FireRed and LeafGreen in English and Spanish, Emerald in every language but Japanese, and several hacks built on them. To see the game's menu again, turn off `HIDE BATTLE MENU` in SETTINGS (SCREEN group, on either screen). It's on by default, and only there on a device with two screens.
+This is in FireRed, LeafGreen, Emerald, Ruby and Sapphire in every language, and several hacks built on them. To see the game's menu again, turn off `HIDE BATTLE MENU` in SETTINGS (SCREEN group, on either screen). It's on by default, and only there on a device with two screens.
 
 ## On one screen: BATTLE BUTTONS
 

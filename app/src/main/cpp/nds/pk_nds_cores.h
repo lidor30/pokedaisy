@@ -22,6 +22,7 @@
     X(int, state_matches_save, (const char* path), (path)) \
     X(void, read, (uint32_t addr, uint8_t* dst, int len), (addr, dst, len)) \
     X(bool, write, (uint32_t addr, const uint8_t* src, int len), (addr, src, len)) \
+    X(bool, code_write, (uint32_t addr, const uint8_t* src, int len), (addr, src, len)) \
     X(int, field_bits, (void), ()) \
     X(int, action, (int action, const uint32_t args[4]), (action, args)) \
     X(int, action_status, (int seq), (seq)) \

@@ -175,6 +175,10 @@ data class Gen4Battle(
     val offPanelShown: Int = 0x4D0,
     /** BattleContext.command (CONTROLLER_COMMAND_*: 5 = the player chooses) and battler 0's selection step (u8 at 0). */
     val offCommand: Int = 0x08,
+    /** BattleContext.partyOrder[4][6]: each battler's party in the order its party screen shows it (the one out first; a switch
+     * swaps two). pokeplatinum's `partyOrder`, pokeheartgold's `unk_312C`: the same place in both, found headless on HeartGold
+     * (a SHIFT to slot 2 turned battler 0's 0 1 2 3 4 5 into 1 0 2 3 4 5). */
+    val offPartyOrder: Int = 0x312C,
 )
 
 /**
@@ -585,6 +589,8 @@ fun decodeGen4PartyMon(
         exp = u32(blocks, a + 8),
         personality = personality,
         isEgg = (ivWord ushr 30) and 1L != 0L,
+        // Shiny: the trainer ID and secret ID (block A +0x0C) XORed with the personality's halves under 8 (Gen 4 and 5).
+        shiny = (ivWord ushr 30) and 1L == 0L && gen45Shiny(personality, u32(blocks, a + 0x0C)),
         heldItem = u16(blocks, a + 2),
         nickname = nickname.takeIf { it.isNotBlank() },
         stats = MonStats(
@@ -679,6 +685,10 @@ private fun decodeGen4BattleMon(b: ByteArray, o: Int): BattleMon {
     )
 }
 
+/** Gen 4 / 5's shiny rule: (trainer ID ^ secret ID ^ the personality's two halves) < 8. */
+fun gen45Shiny(personality: Long, otId: Long): Boolean =
+    ((otId and 0xFFFF) xor (otId ushr 16) xor (personality and 0xFFFF) xor ((personality ushr 16) and 0xFFFF)) < 8
+
 /** The battle running now ([Gen4Battle]): its battlers (and their personalities), the foe's party, whether it's a
  * trainer's / a double. */
 private class Gen4BattleRead(
@@ -708,6 +718,27 @@ fun readGen4BattleInput(r: MemoryReader, b: Gen4Battle): Int {
         9, 10 -> BATTLE_INPUT_PARTY_OPEN
         else -> BATTLE_INPUT_BUSY
     }
+}
+
+/**
+ * POKéMON on a DS battle's touch screen: where its party screen shows the Pokémon with [personality] (0 top left, 1 top
+ * right, then down), or null - no battle, a double (its screen has two sides), a personality not in the battle's party, or
+ * the one already out (place 0). The battle's own party (BattleSystem.parties[0], the save's order) gives its index,
+ * BattleContext.partyOrder[0] where that index sits now.
+ */
+fun gen4SwitchSlot(r: MemoryReader, b: Gen4Battle, personality: Long): Int? {
+    val bs = gen4BattleSystem(r, b) ?: return null
+    val head = r.readCoreMemory(bs + b.offBattleType, b.offParties + 16 - b.offBattleType)
+    if (u32(head, 0) and GEN4_BATTLE_DOUBLES != 0L) return null
+    val ctx = u32(head, b.offBattleCtx - b.offBattleType)
+    val party = u32(head, b.offParties - b.offBattleType)
+    if (!inMain(ctx) || !inMain(party)) return null
+    val count = u32(r.readCoreMemory(party + 4, 4), 0).toInt().coerceIn(0, PARTY_SIZE)
+    val raw = r.readCoreMemory(party + 8, PARTY_SIZE * GEN4_MON_SIZE)
+    val index = (0 until count).firstOrNull { u32(raw, it * GEN4_MON_SIZE) == personality } ?: return null
+    val order = r.readCoreMemory(ctx + b.offPartyOrder, PARTY_SIZE)
+    val place = (0 until PARTY_SIZE).firstOrNull { order[it].toInt() == index } ?: return null
+    return place.takeIf { it > 0 }
 }
 
 /** CONTROLLER_COMMAND_SELECTION_SCREEN_INPUT. */
@@ -912,6 +943,8 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
     return Telemetry(
         frameCounter = 0,
         inBattle = battle != null,
+        // The battle type's trainer bit (BOSS RETRY, SHINY ALERT's count, NUZLOCKE).
+        isTrainerBattle = battle?.trainer,
         isDoubleBattle = battle?.doubles == true,
         battleInputState = if (battle != null) cfg.battle?.let { readGen4BattleInput(r, it) } ?: BATTLE_INPUT_NONE else BATTLE_INPUT_NONE,
         mapGroup = 0,
@@ -922,7 +955,11 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
         facingDirection = u32(location, 16).toInt(),
         partyCount = party.size,
         party = party,
-        battleMons = battle?.mons ?: List(4) { EMPTY_BATTLE_MON },
+        // A battler is shiny when its party record is (the foe's party, or the player's), matched by personality.
+        battleMons = battle?.let { bt ->
+            val shinies = (bt.foes + party).filter { it.shiny }.map { it.personality }.toSet()
+            bt.mons.mapIndexed { i, m -> if (bt.personalities.getOrNull(i)?.let { it != 0L && it in shinies } == true) m.copy(shiny = true) else m }
+        } ?: List(4) { EMPTY_BATTLE_MON },
         itemCount = items.size,
         items = items,
         money = u32(trainer, 0x14).takeIf { it <= 999_999 },
@@ -942,6 +979,22 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
 
 /** REPEL's kinds on a Gen 4 game, weakest first: item id and steps (Platinum's REPEL / SUPER REPEL / MAX REPEL). */
 val GEN4_REPEL_KINDS = listOf(79 to 100, 76 to 200, 77 to 250)
+
+/**
+ * The QUICK MENU's BIKE / ROD on Platinum and HeartGold / SoulSilver: the Bag's registered key item - what Y uses - right after
+ * its eight pockets (pret's struct Bag: Platinum's `u32 registeredItem`, HG / SS's `u16 registeredItems[2]`, Y's quick menu
+ * only when both are set). Null when the SaveData pointer isn't sane. Checked headless on HeartGold (2026-11-18): the register
+ * cleared, Y did nothing; the BICYCLE written there and Y held 2 frames, the player rode (PlayerAvatar state 0 -> 1).
+ */
+fun gen4RegisterAddr(cfg: Gen4Config, read: (addr: Long, len: Int) -> ByteArray): Long? {
+    val ptr = u32(read(cfg.saveDataPtr, 4), 0)
+    if (ptr !in MAIN_RAM until MAIN_RAM_END - 0x20000) return null
+    return ptr + cfg.bodyOff + cfg.bagOff + cfg.pocketSizes.sum() * 4L
+}
+
+/** Gen 4's BICYCLE and SUPER / GOOD / OLD ROD (the best first). */
+val GEN4_BIKES = listOf(450)
+val GEN4_RODS = listOf(447, 446, 445)
 
 /**
  * Uses one Repel ([itemId], [steps]) the way the game's bag does (applications/bag: SetRepelSteps, then

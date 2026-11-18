@@ -34,6 +34,8 @@
 #include <mgba/core/cheats.h>
 #include <mgba/internal/gba/gba.h>
 #include <mgba/internal/gba/cheats.h>
+#include <mgba/internal/gb/gb.h>
+#include <mgba/internal/gb/memory.h>
 #include <mgba-util/vfs.h>
 
 #include "pk_cheats.h"
@@ -74,6 +76,51 @@ static int sBlockCount;
 
 static int pk_cheats_is_gba(struct mCore* core) {
     return core && core->platform(core) == mPLATFORM_GBA;
+}
+
+// A Game Boy cart's game options (GbGamePatches.kt): addresses are PK_GB_ROM_TAG + the cart offset (bank * 0x4000 + the
+// address in its bank), so they never meet a GBA one. Written through mGBA's GBPatch8 (it copies a file-mapped ROM first).
+static int pk_cheats_is_gb(struct mCore* core) {
+    return core && core->platform(core) == mPLATFORM_GB;
+}
+
+static uint8_t* pk_gb_rom_byte(struct mCore* core, uint32_t addr) {
+    struct GB* gb = core->board;
+    if (addr < PK_GB_ROM_TAG) {
+        return NULL;
+    }
+    uint32_t off = addr - PK_GB_ROM_TAG;
+    if (!gb->memory.rom || off >= gb->memory.romSize) {
+        return NULL;
+    }
+    return (uint8_t*) gb->memory.rom + off;
+}
+
+static uint8_t pk_gb_poke(struct mCore* core, uint32_t addr, uint8_t value) {
+    struct GB* gb = core->board;
+    uint32_t off = addr - PK_GB_ROM_TAG;
+    int8_t old = 0;
+    if (off < 0x4000) {
+        GBPatch8(gb->cpu, (uint16_t) off, (int8_t) value, &old, 0);
+    } else {
+        GBPatch8(gb->cpu, (uint16_t) (0x4000 | (off & 0x3FFF)), (int8_t) value, &old, (int) (off >> 14));
+    }
+    return (uint8_t) old;
+}
+
+// The cart's own bytes back into [dst], a read of the cart buffer at [off] (pk_api_rom_read: the Poller's hash).
+void pk_cheats_overlay_gb(uint32_t off, uint8_t* dst, int len) {
+    for (int i = 0; i < sOptionCount; i++) {
+        if (sOptions[i].addr < PK_GB_ROM_TAG) {
+            continue;
+        }
+        for (int b = 0; b < sOptions[i].width; b++) {
+            uint32_t o = sOptions[i].addr - PK_GB_ROM_TAG + (uint32_t) b;
+            if (o >= off && o < off + (uint32_t) len) {
+                dst[o - off] = sOptions[i].orig[b];
+            }
+        }
+    }
 }
 
 static uint8_t* pk_rom_byte(struct mCore* core, uint32_t addr) {
@@ -252,6 +299,32 @@ void pk_cheats_swap_rom(struct mCore* core) {
 // (or was in already), 0 if the code didn't match.
 int pk_cheats_patch(struct mCore* core, uint32_t expectAddr, const uint8_t* expect, int expectLen,
                     uint32_t addr, const uint8_t* value, int len) {
+    if (pk_cheats_is_gb(core)) {
+        if (len < 1 || len > 4 || expectLen < 1 || expectLen > 64) {
+            return 0;
+        }
+        for (int i = 0; i < sOptionCount; i++) {
+            if (sOptions[i].addr == addr) {
+                return 1;
+            }
+        }
+        if (sOptionCount >= PK_MAX_OPTIONS || !pk_gb_rom_byte(core, addr) || !pk_gb_rom_byte(core, addr + (uint32_t) len - 1)) {
+            return 0;
+        }
+        for (int i = 0; i < expectLen; i++) {
+            uint8_t* rom = pk_gb_rom_byte(core, expectAddr + (uint32_t) i);
+            if (!rom || *rom != expect[i]) {
+                return 0;
+            }
+        }
+        struct pk_fix* f = &sOptions[sOptionCount++];
+        f->addr = addr;
+        f->width = len;
+        for (int b = 0; b < len; b++) {
+            f->orig[b] = pk_gb_poke(core, addr + (uint32_t) b, value[b]);
+        }
+        return 1;
+    }
     if (!pk_cheats_is_gba(core) || len < 1 || len > 4 || addr < BASE_CART0 || addr >= BASE_CART_SRAM) {
         return 0;
     }
@@ -294,6 +367,15 @@ int pk_cheats_patch(struct mCore* core, uint32_t expectAddr, const uint8_t* expe
 
 // Takes every game option's patch out again (the file's bytes back).
 void pk_cheats_unpatch(struct mCore* core) {
+    if (pk_cheats_is_gb(core)) {
+        for (int i = sOptionCount - 1; i >= 0; i--) {
+            for (int b = 0; b < sOptions[i].width; b++) {
+                if (pk_gb_rom_byte(core, sOptions[i].addr + (uint32_t) b)) {
+                    pk_gb_poke(core, sOptions[i].addr + (uint32_t) b, sOptions[i].orig[b]);
+                }
+            }
+        }
+    }
     if (pk_cheats_is_gba(core)) {
         for (int i = sOptionCount - 1; i >= 0; i--) {
             for (int b = 0; b < sOptions[i].width; b++) {

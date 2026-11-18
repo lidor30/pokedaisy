@@ -54,10 +54,13 @@ class GoldSilverDecodeTest {
         val foe = t.battleMons[BATTLE_POS_OPPONENT_LEFT]
         assertEquals("PIDGEY" to 2, speciesName(foe.species) to foe.level)
         assertTrue(t.enemyParty.isEmpty())
+        assertEquals(false, t.isTrainerBattle)
         val s = read("silver_battle", GameKind.SILVER).battleMons[BATTLE_POS_OPPONENT_LEFT]
         assertEquals("SENTRET" to 2, speciesName(s.species) to s.level)
         assertEquals(13 to 13, s.hp to s.maxHp)
         val trainer = read("gold_trainer")
+        assertEquals(true, trainer.isTrainerBattle)
+        assertEquals(null, read("gold").isTrainerBattle)
         assertEquals(listOf("GYARADOS", "DRAGONITE", "DRAGONITE", "AERODACTYL", "CHARIZARD", "DRAGONITE"),
             trainer.enemyParty.map { speciesName(it.species) })
         assertEquals("GYARADOS" to 44, trainer.battleMons[BATTLE_POS_OPPONENT_LEFT].let { speciesName(it.species) to it.level })

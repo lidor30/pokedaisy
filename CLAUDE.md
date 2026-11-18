@@ -472,7 +472,9 @@ PNGs). `RomArtTest` pins the pixels (the hacks' matched the PNGs once bundled, p
 ui-preview rebuilds the art from the decomp builds (or `-PartRoms` / `-Prom`), Paparazzi from the ROMs.
 **TRAINER CARD (the CARD tab, off the bar by default, so under MORE)**: retail FireRed /
 LeafGreen / Emerald only (`NativeConfig.trainerCard`; the hacks copy the retail
-configs, so it is set on the retail ones alone). `TrainerCard.kt` reads what `SetPlayerCardData` gathers (name, ID, play time, money, caught
+configs, so it is set on the retail ones alone; the German / French / Italian / Spanish carts, 2026-11-18, have their own
+`CardStyle.KANTO_DE` ... `HOENN_ES`: their tiles, font and widths as `*_CARD_*` blobs, their words read from the cart as a
+`*_CARD_TEXT` blob - never typed into the app - and FireRed's moved lines in `TrainerCardArt.EURO_KANTO`). `TrainerCard.kt` reads what `SetPlayerCardData` gathers (name, ID, play time, money, caught
 count regional until the National Dex, badge flags, stars, game stats XOR the encryption key, FireRed's
 Sticker Man vars); `TrainerCardArt.kt` draws the game's own card from ROM blobs `RomArt` caches raw
 (`rom-art/trainercard/*.bin`: card tiles, tilemaps, a palette per star count, badges, trainer pics,
@@ -516,7 +518,8 @@ them is the same in both).
 Panel and box fill the tab (its peach backdrop is the screen's, CompanionScreen's `PcBackdrop`, like the bag's); icons at
 whole scales, allowed past their cells like the game's. A new game needs only its storage read. **The PC's moves** (`BoxSwap.kt`,
 FireRed rev 1, LeafGreen rev 0 / 1 and Emerald; the German / French / Italian / Spanish ones and English FireRed rev 0 from
-`BOX_SWAP_PORTS`, mapped by port_field_items.py under the bag tables' keys - Japanese has none - and so Ultra Violet / Rocket Edition /
+`BOX_SWAP_PORTS`, mapped by port_field_items.py under the bag tables' keys - Japanese too, its GetBoxMonData from GetMonData's call; Ruby / Sapphire with ExpandBoxMon on their static gPokemonStorage
+(`BoxSwapFns.staticStorage`, `BOX_SWAP_RUBY` / `_SAPPHIRE`) - and so Ultra Violet / Rocket Edition /
 Ash Gray / Ghost Grey, which run rev 0's bag table; each checked by `scripts/verify_box_swap.py`, the game's functions called headless,
 not yet an in-game save and reboot: `boxSwapFor`, only with vanilla boxes at the table's own storage pointer - the CFRU hacks
 share FireRed rev 0's bag tables, and BoxMonToMon on a compressed record would wreck it), each in the running game the PC's own way, on
@@ -927,7 +930,8 @@ four-game record mixing). Not tried on a Thor yet.
 EVOLVE runs the game's own GetEvolutionTargetSpecies(mon, EVO_MODE_TRADE) + BeginEvolutionScene with gCB2_AfterEvolution =
 CB2_ReturnToField, controls locked first, from the field only. Which Pokémon get the button: the same call on each slot with its 100
 bytes put back (a held-item evolution's item would be spent otherwise). Records `TRADE_EVO_*` in gamedata (retail English FireRed
-rev 1, LeafGreen rev 0 / 1 - found in retail by the shifted `$DECOMPS` build's masked code - and Emerald); hacks / Kaizo / Legacy off.
+rev 1, LeafGreen rev 0 / 1 - found in retail by the shifted `$DECOMPS` build's masked code - and Emerald), the rest of retail (FireRed rev 0,
+every language) `TRADE_EVO_PORTS` from `port_field_items.py`; hacks / Kaizo / Legacy off.
 **INSTANT TEXT** (GitHub #111, GAMEPLAY on the companion, `Prefs.instantText` OFF, NEW tag; `InstantText.kt`): a game-option patch like REUSABLE TMS (`pkRomPatch` in 4-byte pieces, `EmulatorEngine.applyTmPatch` does both). RenderFont rewritten in its own 40 bytes (no free ROM): it goes on past RENDER_PRINT until a control code, textSpeed 0; Ruby / Sapphire: UpdateWindowText's delay turned into a `b` back to PrintNextChar. A delay of 0 (the game's own instant path) would lose everything after a page break. Found in the ROM's first 64 KB by code; gcc builds: N/A. TEXT SPEED stays: it's the emulator's speed, stops at what the device runs.
 **NO HMS NEEDED** (2026-11-14, GAMEPLAY on the companion, `Prefs.hmFree` OFF, NEW tag; `HmFree.kt`): the field moves with the badge
 alone, a game-option patch beside INSTANT TEXT's. Every field-move script runs `checkpartymove` after its badge check: ScrCmd_checkpartymove
@@ -975,7 +979,7 @@ anywhere's; found in gSpecials by masked code (HealPlayerParty = entry 0, the re
 games' rules kept (eggs, the last move, IsMonOTIDNotPlayers for traded ones, the party's last Surf unless NO HMS NEEDED). RELEARN opens in
 two steps like the TM screen (`centerRelearnStart` / `Finish`: fade, then cleanup + gFieldCallback + SetMainCallback2) and, on FireRed,
 LoadStdWindowFrameGfx first: the relearner never loads the message box palette (15), which a loaded save's recap leaves dark (black word
-boxes). Offered only when `relearnableMoves` (DexDetails.levelUp) has some.
+boxes). Ruby / Sapphire (no TM screen table): the Fallarbor tutor's own script, `special DisplayMoveTutorMenu` (`centerRelearnScript`). Offered only when `relearnableMoves` (DexDetails.levelUp) has some.
 **PLAYER LOOK** (2026-10-22, the companion's MAKEOVER group - first, a blue-framed `featuredGroupTitle`, only in a game it works in; per ROM: `Prefs.playerLookFor`, NEW tag; `PlayerLook.kt`,
 `PlayerLookRunner.kt`, docs/DEVELOPMENT.md's "PLAYER LOOK"): play retail FireRed / LeafGreen / Ruby / Sapphire / Emerald (and Kaizo, Legacy, Imperium, Ultra
 Violet: `PlayerLook.HACKS`) as another game's hero, picked from tiles of the heroes walking (`PlayerLookPicker`),
@@ -1958,6 +1962,7 @@ tiles, palette, grid and status icons (RomArt's `LGO_*` -> `partylg/`, `LetsGoPa
 fixtures are a new game played headless (setup through rev 0's ScriptContext_SetupScript), loading in all four builds; its intro
 takes ~1500 frames and its title wants held presses (`boot/lets_go.txt`). The manual can't name it in full (docs.test.js bans one
 of the names): it's "Let's Go" there.
+**Clover v1.3.3 (2026-11-18)**: FireRed 1.0 edited in place under an Emerald header (BPEE): found by hash in the small-BPEE check, run as FIRERED (`fireRedEngine` set by hand). Code that picks by the header's game code sees Emerald: check `isFireRedUnderEmeraldHeader` (its GF ROM header says "pokemon red version") where that matters (RegionMapWatch, the fanfare, RomRegionMap). It keeps its bag elsewhere, so retail FireRed's save boots with junk there: `boot/clover.txt` zeroes it and gives items with the game's own additem.
 **GS Chronicles v2.7.6 (2026-10-13)** (`GameKind.GS_CHRONICLES`, `NATIVE_GS_CHRONICLES`): Johto and Kanto on CFRU (32 MB BPRE
 rev 0, Ruki Studios), FireRed rev 0's RAM (every RAM global's pool word is rev 0's) with its tables repointed
 (`gen_cfru_tables.py gs_chronicles`; gBattleMoves at an odd 0x09D10BE3). Gotchas: its gItems is indexed by slot and the

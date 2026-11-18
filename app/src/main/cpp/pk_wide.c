@@ -1449,8 +1449,10 @@ struct Piece {
 };
 
 // Weather (field_weather.h's GFXTAG_*: 0x1201 horizontal fog .. 0x1206 rain) is screen-space sprites the
-// game lays only over its own 240 px: fog, ash and sandstorm as 64 px grids, rain and bubbles at random.
-// Repeated 256 px either way (a multiple of the grids' 64) they go on seamlessly into the margins.
+// game lays only over its own 240 x 160: fog, ash and sandstorm as 64 px grids, rain and bubbles at random.
+// Repeated 256 px each way (a multiple of the grids' 64, and OAM's own wrap) they go on seamlessly into the
+// margins: sideways, and above and below too, which ZOOM shows (GitHub #607: Route 113's ash stopped 32 px over
+// the frame with the view zoomed out, headless on Emerald).
 #define WEATHER_TAG_FIRST 0x1201
 #define WEATHER_TAG_LAST 0x1206
 #define WEATHER_REPEAT 256
@@ -1461,7 +1463,9 @@ static const uint8_t OBJ_DIMS[3][4][2] = {
     { { 8, 16 }, { 8, 32 }, { 16, 32 }, { 32, 64 } },
 };
 
-static struct Piece pieces[2][256];
+// Room for a frame's sprites (128 OAM entries, subsprites) and each weather sprite's 8 copies around it.
+#define PIECES_MAX 512
+static struct Piece pieces[2][PIECES_MAX];
 static int npieces[2] = { 0, 0 };
 static int shown = 0;   // pieces[shown]: the list drawn (the last one the frame's OAM agreed with)
 
@@ -1489,7 +1493,7 @@ static int buildPieces(const struct Snap* s, struct Piece* out) {
         if ((flags & 1) && (flags & (1 << 14)) && !(flags & (1 << 13)) && id < nspr) offscreen[id] = true;
     }
     int n = 0;
-    for (int k = 0; k < nspr && n < 256; k++) {
+    for (int k = 0; k < nspr && n < PIECES_MAX; k++) {
         int id = s->order[k];
         if (id >= nspr) continue;
         const uint8_t* sp = s->sprites + 0x44 * id;
@@ -1531,12 +1535,17 @@ static int buildPieces(const struct Snap* s, struct Piece* out) {
             n++;
             uint32_t tmpl = (uint32_t) sp[0x14] | (uint32_t) sp[0x15] << 8 | (uint32_t) sp[0x16] << 16 | (uint32_t) sp[0x17] << 24;
             uint32_t tag = !(fl & 2) && tmpl ? r16(tmpl) : 0;   // struct SpriteTemplate starts with tileTag
-            for (int k2 = -1; k2 <= 1 && tag >= WEATHER_TAG_FIRST && tag <= WEATHER_TAG_LAST; k2 += 2) {
-                if (n >= 256) break;
-                out[n] = out[n - 1 - (k2 > 0)];
-                out[n].x = x + k2 * WEATHER_REPEAT;
-                out[n].copy = true;
-                n++;
+            if (tag >= WEATHER_TAG_FIRST && tag <= WEATHER_TAG_LAST) {
+                const int o = n - 1;
+                for (int ky = -1; ky <= 1; ky++)
+                    for (int kx = -1; kx <= 1 && n < PIECES_MAX; kx++) {
+                        if (!kx && !ky) continue;
+                        out[n] = out[o];
+                        out[n].x = out[o].x + kx * WEATHER_REPEAT;
+                        out[n].y = out[o].y + ky * WEATHER_REPEAT;
+                        out[n].copy = true;
+                        n++;
+                    }
             }
             continue;
         }
@@ -1545,7 +1554,7 @@ static int buildPieces(const struct Snap* s, struct Piece* out) {
         // 4: s8 x, y; 8 (Ruby / Sapphire): u16 x, y, read as s16, + 2 bytes' padding; 6 (Epsilon Emerald): s16 x, y, a byte of
         // tile offset, a byte of shape (bits 0-1) / size (2-3) / priority (4-5) - put into the usual bits here.
         int ss = C[PK_WIDE_SUBSPRITE_SIZE];
-        for (int j = 0; j < cnt && n < 256; j++) {
+        for (int j = 0; j < cnt && n < PIECES_MAX; j++) {
             const uint8_t* sub = mem(subs + (uint32_t) (ss * j), (uint32_t) ss);
             if (!sub) break;
             uint32_t v = ss == 6 ? (uint32_t) (sub[5] & 0xF) | (uint32_t) sub[4] << 4 | (uint32_t) ((sub[5] >> 4) & 3) << 14
@@ -3048,9 +3057,13 @@ static bool onBike(void);
 // window's tiles (not on screen while the menus are up). Taken out after the
 // last line like the follower (cells and pixels the game wrote meanwhile kept): VRAM, the game and states never see it.
 // Found by shape alone, no per-game address: both layouts' left parts equal, a box beside the prompt, the frame's
-// 15-tile set (corner T .. T + 14, T + 6 its plain inside) - FireRed's and Emerald's alike. Only the battle type is read
+// 15-tile set (corner T .. T + 14, T + 7 its plain middle) - FireRed's and Emerald's alike, every language. Only the battle type is read
 // from the game (its address passed in): a double battle or the Safari Zone keeps its menus.
 static int menuHideRow = -1;              // the first tilemap row swapped this frame, -1 = none
+#define MENU_OAM_MAX 16
+static int menuOamN;                       // Ruby / Sapphire's cursor sprites hidden this frame
+static uint8_t menuOamAt[MENU_OAM_MAX];
+static uint16_t menuOamSaved[MENU_OAM_MAX];
 static uint16_t menuHideSaved[6][30];
 static uint8_t menuHideDirty[6][30];
 static uint32_t menuHideMap;               // the tilemap's VRAM byte offset
@@ -3234,8 +3247,9 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
         if (ask[row * 32] != msg[row * 32]) return;
         if ((row == 0 || row == 5) && memcmp(ask + row * 32, msg + row * 32, (size_t) split * 2)) return;
     }
-    // T + 6 must be plain: one colour all over (the inside of the box).
-    const uint8_t* fill = vram + charOff + (T + 6) * 32;
+    // T + 7, the middle of the frame's 5 x 3 tiles, must be plain: one colour all over (the inside of the box). The Western
+    // carts' T + 6 / T + 8 are plain too; the Japanese ones draw an inner edge there (2026-11-18).
+    const uint8_t* fill = vram + charOff + (T + 7) * 32;
     for (int i = 1; i < 32; i++) if (fill[i] != fill[0] || ((fill[0] ^ (fill[0] >> 4)) & 15)) return;
     int paper = fill[0] & 15;
     uint16_t want[6][30];
@@ -3244,7 +3258,7 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
             if (c < split) { want[row][c] = ask[row * 32 + c]; continue; }
             uint16_t src = msg[row * 32 + c];
             int t = src & 0x3FF;
-            want[row][c] = t >= T && t <= T + 14 ? src : (uint16_t) (pal | (T + 6));
+            want[row][c] = t >= T && t <= T + 14 ? src : (uint16_t) (pal | (T + 7));
         }
     }
     // The sign, at the box's right: as far from its right edge as from its top and bottom edges (the frame's own
@@ -3281,6 +3295,15 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
     for (int row = 4; arrow && row >= 1 && n < need; row--)
         for (int c = 28; c >= 1 && n < need; c--) {
             int t = msg[row * 32 + c] & 0x3FF;
+            if (t >= T && t <= T + 14) continue;
+            bool dup = false;
+            for (int k = 0; k < n; k++) if (arrowTiles[k] == t) dup = true;
+            if (!dup) arrowTiles[n++] = t;
+        }
+    // Ruby / Sapphire's empty message box is the blank tile all over: the hidden menu's own text tiles then, off screen this frame.
+    for (int row = 4; arrow && row >= 1 && n < need; row--)
+        for (int c = 28; c >= (vofs == 160 ? split : 1) && n < need; c--) {
+            int t = map[(at + row) * 32 + c] & 0x3FF;
             if (t >= T && t <= T + 14) continue;
             bool dup = false;
             for (int k = 0; k < n; k++) if (arrowTiles[k] == t) dup = true;
@@ -3326,7 +3349,7 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
     if (arrow) {
         int counts[16] = { 0 };
         for (int t = T; t <= T + 14; t++) {
-            if (t == T + 6) continue;
+            if (t == T + 7) continue;
             const uint8_t* tp = vram + charOff + t * 32;
             for (int i = 0; i < 32; i++) { counts[tp[i] & 15]++; counts[tp[i] >> 4]++; }
         }
@@ -3431,10 +3454,35 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
     }
     menuHideRow = at;
     menuHidden = vofs;
+    // Ruby / Sapphire draw the menu's cursor with sprites (menu_cursor.c), not in BG0: hidden for the frame too - the shown OBJ
+    // entries whose top edge is inside the box (the player's Pokémon starts above it), right of the prompt on the action menu.
+    menuOamN = 0;
+    const uint8_t* hdr = (const uint8_t*) hookGba->memory.rom;
+    if (hdr && hdr[0xAC] == 'A' && hdr[0xAD] == 'X' && (hdr[0xAE] == 'V' || hdr[0xAE] == 'P')) {
+        uint16_t* oam = hookGba->video.oam.raw;
+        for (int e = 0; e < 128 && menuOamN < MENU_OAM_MAX; e++) {
+            uint16_t a0 = oam[e * 4];
+            if ((a0 & 0x0300) == 0x0200) continue;                       // not shown
+            int y = a0 & 0xFF, x = oam[e * 4 + 1] & 0x1FF;
+            if (y < 112 || y >= 160 || (vofs == 160 && x < split * 8 - 8 && x < 256)) continue;
+            menuOamAt[menuOamN] = (uint8_t) e;
+            menuOamSaved[menuOamN++] = a0;
+            oam[e * 4] = (uint16_t) ((a0 & ~0x0300) | 0x0200);
+            r->writeOAM(r, (uint32_t) e * 4);
+        }
+    }
 }
 
 static void menuHideEnd(struct GBAVideoRenderer* r) {
     if (menuHideRow < 0 || !hookGba) return;
+    // The cursor's sprites (Ruby / Sapphire) back, but where the game wrote the entry meanwhile.
+    for (int i = 0; i < menuOamN; i++) {
+        uint16_t* w = &hookGba->video.oam.raw[menuOamAt[i] * 4];
+        if ((*w & 0x0300) != 0x0200) continue;
+        *w = menuOamSaved[i];
+        r->writeOAM(r, (uint32_t) menuOamAt[i] * 4);
+    }
+    menuOamN = 0;
     uint8_t* vram = (uint8_t*) hookGba->video.vram;
     uint16_t* map = (uint16_t*) (vram + menuHideMap);
     for (int row = 0; row < 6; row++) {

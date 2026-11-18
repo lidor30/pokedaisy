@@ -154,9 +154,9 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 
 Press L3 and the menu stays open: move with the D-pad or the left stick (on the ring, point the stick at an action), press `A` to use it, and `B` (or L3 again) closes it. You can also tap an action on the screen. While the menu is open your buttons work it, not the game, and the game keeps running underneath.
 
-An action you can't use right now is greyed out and says why, like a battle going on or nothing for it in your bag. `BIKE` and `ROD` use the game's own way of using a registered item, so the game decides the rest: where you can't ride or fish, it tells you so. They work in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in Emerald Kaizo and Ultra Violet, which run on those games, and in SoulGold, through its own `SELECT` wheel (it borrows the wheel's bottom slot for a moment, then puts back what you had there). `PC`, `FLY` and the spray show only in games where the [bag](bag.md) and [map](map.md) offer them. `FLASH` works in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language PokeDaisy supports, and in Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Ultra Violet, Gaia, Odyssey, Orange Islands, Let's Go, Glazed, Emerald Kaizo, Emerald Legacy, Recharged Emerald, Lazarus, Emerald Imperium, Heart and Soul, SoulGold and the randomized games. It asks for the badge the game's own menu asks for (Unbound, Gaia and Orange Islands ask for none).
+An action you can't use right now is greyed out and says why, like a battle going on or nothing for it in your bag. `BIKE` and `ROD` use the game's own way of using a registered item, so the game decides the rest: where you can't ride or fish, it tells you so. They work in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in Emerald Kaizo and Ultra Violet, which run on those games, and in SoulGold, through its own `SELECT` wheel (it borrows the wheel's bottom slot for a moment, then puts back what you had there). On the DS they work in Platinum, HeartGold and SoulSilver, through the item you'd register to `Y` (it's borrowed for a moment, then yours is put back). `PC`, `FLY` and the spray show only in games where the [bag](bag.md) and [map](map.md) offer them. `FLASH` works in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language PokeDaisy supports, and in Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Ultra Violet, Gaia, Odyssey, Orange Islands, Let's Go, Glazed, Emerald Kaizo, Emerald Legacy, Recharged Emerald, Lazarus, Emerald Imperium, Heart and Soul, SoulGold and the randomized games. It asks for the badge the game's own menu asks for (Unbound, Gaia and Orange Islands ask for none).
 
-Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROLS` group of Settings on either screen): each action's row carries the icon of its tile. Its `STYLE` picks how they're laid out (tap it to switch):
+Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROLS` group of Settings on either screen): each action's row carries the icon of its tile. While a game is open, the companion's page lists only the actions that game has, so one your game can't do (`HEAL` in some ROM hacks, say) isn't there to turn on. Its `STYLE` picks how they're laid out (tap it to switch):
 
 - `RING` (to start with): the actions round a circle, like the weapon wheel in a modern game, each the same distance from the next. Point the left stick at one, and its name shows in the middle, with a light tick of vibration each time you move onto another one. The D-pad steps round it too.
 - `GRID`: rows of tiles, all the same size. The D-pad steps through them.
@@ -255,7 +255,7 @@ If you turn indoor running off while inside a building, leave and re-enter to re
 
 Only random encounters change. Fishing, moves that lure wild Pokémon out and battles the story sets up still happen, and items that keep wild Pokémon away work as usual on top. The change applies at once, no restart needed.
 
-It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Brown, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
+It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Brown, Gold, Silver, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
 
 ## SHINY ODDS
 
@@ -283,7 +283,7 @@ Two of the games' old habits, each a switch in the companion's `GAMEPLAY` group.
 - **`LOW HP BEEP`** `OFF`: no more beeping in battle while your Pokémon's health bar is in the red. Every other sound stays.
 - **`FIELD POISON`** `OFF`: a poisoned Pokémon no longer loses health while you walk around, and never faints from it on the way. In battle poison works as ever, and it stays poisoned until you heal it.
 
-They work in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. Elsewhere they show `N/A`. The change applies at once, no restart needed.
+They work in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. On the Game Boy they work too, in Red, Blue, Yellow, Gold, Silver and Crystal and the hacks built on them. Elsewhere they show `N/A`. The change applies at once, no restart needed.
 
 ## BOSS RETRY
 
@@ -295,7 +295,7 @@ The battle starts over the same way, so try something different. Going back is a
 
 `SHINY ALERT` is for shiny hunting. Turn it on in the companion's `GAMEPLAY` group and it counts your wild battles in this game, and the moment a shiny one shows up it says so: fast-forward and turbo stop, the game's level-up tune plays and a line on the game screen names the Pokémon and how many battles it took. The battle waits at its menu, so you can't miss your chance to catch it.
 
-While it's on, the row shows the count so far. It starts from 0 when you turn it on and again after each shiny, and each game keeps its own. Trainers' battles don't count.
+While it's on, the row shows the count so far. It starts from 0 when you turn it on and again after each shiny, and each game keeps its own. Trainers' battles don't count. It works in the Game Boy Advance games the companion knows the shiny rule of, and in Gold, Silver, Crystal and the DS games too.
 
 It works in the GBA games `SHINY ODDS` works in (not the DS or Game Boy games yet), and the two go well together. Elsewhere it shows `N/A`.
 
@@ -307,11 +307,11 @@ Normally only the Pokémon that fought gain EXP when you win, so the rest of you
 - **`SPLIT`** counts every Pokémon in your party as having fought: a win's EXP is shared out across the whole team, as the first games' version of this did. Each gets a smaller share, but nobody gets nothing.
 - **`FULL EXP`** gives every Pokémon in your party the EXP the one that fought would have had on its own. The game's own boosts still count: a held item that shares or boosts EXP, and the bonus for a Pokémon from a trade.
 
-Eggs are left out. The game shows each Pokémon's EXP as it comes, level ups and new moves included, and evolves the ones that leveled up once the battle is over. Battles that give no EXP in the game (link battles, the Battle Frontier) still give none.
+Eggs and fainted Pokémon are left out. The game shows each Pokémon's EXP as it comes, level ups and new moves included, and evolves the ones that leveled up once the battle is over. Battles that give no EXP in the game (link battles, the Battle Frontier) still give none.
 
 While it's on, [achievements](achievements.md) are paused, since some sets reward reaching a level.
 
-It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work (Ruby and Sapphire, and hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
+It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire, in every language and release PokeDaisy supports, and in many hacks built on their code. On the Game Boy it works in Red, Blue, Yellow, Gold, Silver and Crystal and the hacks built on them. Where it can't work (hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
 
 ## LEVEL CAP
 
@@ -321,7 +321,7 @@ A Pokémon at the cap gains nothing from a win until you beat that boss. One tha
 
 Only EXP from battles is capped: items that raise a level and the day care still work. Pair it with `EXP SHARE` to keep the whole team at the cap.
 
-It works in FireRed, LeafGreen and Emerald, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work, or the game has no NEXT BOSS page to follow, the row shows `N/A`. Turning it off puts the game back as it was.
+It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work, or the game has no NEXT BOSS page to follow, the row shows `N/A`. Turning it off puts the game back as it was.
 
 ## NO HMS NEEDED
 

@@ -94,6 +94,7 @@ class OriginHeartGoldTest {
         assertEquals(77, foe.ability)                                                // Tangled Feet
         assertEquals(listOf(16), t.battleFoes.map { it.species })
         assertEquals(emptyList<Mon>(), t.enemyParty)                                 // a wild one: no FOE TEAM
+        assertEquals(false, t.isTrainerBattle)
         assertEquals(BATTLE_INPUT_NONE, t.battleInputState)                          // no battle buttons: its panels are its own
     }
 
@@ -105,6 +106,7 @@ class OriginHeartGoldTest {
         assertEquals(399, t.battleMons[BATTLE_POS_OPPONENT_LEFT].species)            // BIDOOF
         assertEquals(listOf(399), t.enemyParty.map { it.species })
         assertEquals(0, t.enemyActive)
+        assertEquals(true, t.isTrainerBattle)
     }
 
     @Test

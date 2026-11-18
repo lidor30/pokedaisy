@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
@@ -16,6 +17,38 @@ class RomRegionMapTest {
         val f = File(ROMS, name)
         assumeTrue("no ROM at $f", f.isFile)
         return RomRegionMap.read(RomRegionMap.BytesRom(f.readBytes()))!!
+    }
+
+    /** Clover: FireRed 1.0's region map code under an Emerald header, let through by its GF header ([isFireRedUnderEmeraldHeader]). */
+    @Test fun cloverHasItsOwnRegion() {
+        val f = File(ROMS, "Pokemon Clover (v1.3.3).gba")
+        assumeTrue("no ROM at $f", f.isFile)
+        assertNull(RomRegionMap.read(RomRegionMap.BytesRom(f.readBytes()))) // BPEE: not read unless told it's FireRed's
+        assertTrue(isFireRedUnderEmeraldHeader(f.readBytes().copyOf(0x200)))
+        val m = RomRegionMap.read(RomRegionMap.BytesRom(f.readBytes()), fireRed = true)!!
+        assertEquals("Veepier Town", m.sections[0x58]!!.name)
+    }
+
+    /** Elysium (both parts): its own regions on FireRed 1.0's region map code. */
+    @Test fun elysiumHasItsOwnRegions() {
+        for (part in listOf("A", "B")) {
+            val f = File(ROMS, "Pokemon Elysium (v2.5.0) (Part $part).gba")
+            assumeTrue("no ROM at $f", f.isFile)
+            val m = RomRegionMap.read(RomRegionMap.BytesRom(f.readBytes()))!!
+            assertEquals(part, "Astrantia City", m.sections[0x58 + 6]!!.name)
+        }
+    }
+
+    /** Rhythm: Vedeo on CFRU's FireRed 1.0 region map code. */
+    @Test fun rhythmHasVedeo() {
+        val m = read("Pokemon Rhythm (v1.4.0).gba")
+        assertEquals("Notewood Town", m.sections[0x58]!!.name)
+    }
+
+    /** Oops All Eevees: Kanto, CFRU's FireRed 1.0 region map code. */
+    @Test fun oopsAllEeveesHasKanto() {
+        val m = read("Pokemon Oops All Eevees (v1.3.2).gba")
+        assertEquals("Pallet Town", m.sections[0x58]!!.name)
     }
 
     @Test fun unboundHasBorrius() {

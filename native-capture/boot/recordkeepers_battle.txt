@@ -1,0 +1,25 @@
+# Pokemon RecordKeepers v1.2.1, a scripted wild battle: recordkeepers.txt, then setwildbattle 19 Lv5 (a second mon's fields zero) /
+# dowildbattle / end at 0x0203F000 through its ScriptContext_SetupScript (0x081D7BC5); dumped at its move screen (the game
+# scales the foe to Lv1).
+wait 300
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+wait 200
+poke32 0x0203F000 0x050013B6
+poke32 0x0203F004 0x00000000
+poke32 0x0203F008 0xB7000000
+poke32 0x0203F00C 0x00000002
+call 0x081D7BC5 0x0203F000
+wait 600
+press A
+wait 700
