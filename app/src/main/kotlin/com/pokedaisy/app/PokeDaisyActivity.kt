@@ -886,7 +886,7 @@ class PokeDaisyActivity : Activity() {
             val fns = fieldItemSupport()?.fns?.takeIf { it.pc != null && it.party != null } ?: return null
             return com.pokedaisy.app.companion.CenterSupport(
                 heal = true, nickname = c.nickname != null, forget = c.forget != null,
-                relearn = c.relearn != null && tmFns() != null && fns.party != null,
+                relearn = (c.relearn != null && tmFns() != null || c.relearnSpecial != null) && fns.party != null,
             )
         }
 
@@ -915,6 +915,11 @@ class PokeDaisyActivity : Activity() {
 
         /** The Move Tutor's screen in two steps, like the TM screen's: the checks and the fade, then once it's black the screen. */
         override fun centerRelearn(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) {
+            // Ruby / Sapphire: one step, the Fallarbor tutor's own script.
+            if (tmFns() == null && centerFound?.relearnSpecial != null)
+                return onCenter(done, screen = true) { fns, c, calls, busy ->
+                    com.pokedaisy.app.companion.data.centerRelearnScript(fns, c, slot, personality, busy, calls)
+                }
             val tm = tmFns() ?: return done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
             onCenter(done, screen = true) { fns, c, calls, busy ->
                 val r = com.pokedaisy.app.companion.data.centerRelearnStart(fns, c, tm, slot, personality, busy, calls)
