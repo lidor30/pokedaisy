@@ -485,7 +485,8 @@ private fun setTabs(s: CompanionSettings, tabs: List<String>, changed: (List<Str
 
 /** A DS game on DSPERATE, which has no EXPAND: ASPECT says so rather than NOT YET (GitHub #1064: a HeartGold hack read
  * as one EXPAND doesn't know). */
-private fun wideOffOnDsperate(s: CompanionSettings): Boolean = s.dsCore != null && !s.dsMelonDs
+// (BananaDS has EXPAND: only a core without it, DSperate, turns it off.)
+private fun wideOffOnDsperate(s: CompanionSettings): Boolean = s.dsCore != null && !DsCore.hasExpand(s.dsCoreRunning)
 
 /** WIDE on a game it doesn't know yet (it shows as ORIGINAL there). */
 private fun wideBadge(s: CompanionSettings, aspect: GameAspect): String? = when {
@@ -863,23 +864,23 @@ private fun homeRows(
         // A DS game: which emulator runs it (melonDS, or DSperate for weak devices); taken at the game's next start.
         s.dsCore?.let { core ->
             val now = core.valueLabel()
-            val pending = (core.runs() == DsCore.CORE_DSPERATE) == s.dsMelonDs
+            val pending = core.runs() != s.dsCoreRunning
             SettingRow(
-                tk("DS CORE"), now, labelBadge = NewFeatures.badge(NewFeatures.DS_CORE),
+                tk("DS CORE"), now, labelBadge = NewFeatures.badge(NewFeatures.DS_CORE_BANANADS),
                 subtitle = if (pending) "Takes effect when the game restarts" else "DSPERATE runs on weaker devices",
             ) {
-                select(Selector(tk("DS CORE"), DsCore.entries.map { it.label }, core.label) { l ->
-                    s.setDsCore(DsCore.entries.first { it.label == l }); changed()
+                select(Selector(tk("DS CORE"), DsCore.offered().map { it.label }, core.label) { l ->
+                    s.setDsCore(DsCore.offered().first { it.label == l }); changed()
                 })
             }
         },
         // A DS game: its 3D at 2x to 8x the DS's own on the GPU, or ORIGINAL (the CPU's, pixel for pixel). melonDS only.
         s.dsResolution?.let { scale ->
-            val can = s.dsGpuAvailable && s.dsMelonDs
+            val can = s.dsGpuAvailable && DsCore.hasResolution(s.dsCoreRunning)
             SettingRow(
                 tk("DS RESOLUTION"), if (can) dsResolutionLabel(scale) else tk("N/A"), enabled = can,
                 labelBadge = NewFeatures.badge(NewFeatures.DS_RESOLUTION),
-                subtitle = if (!s.dsMelonDs) "Unavailable on DSPERATE" else null,
+                subtitle = if (!DsCore.hasResolution(s.dsCoreRunning)) DsCore.unavailableOn(s.dsCoreRunning) else null,
             ) {
                 if (!can) return@SettingRow
                 val labels = dsResolutionLabels()
@@ -888,11 +889,12 @@ private fun homeRows(
         },
         // A DS game: its CPU at twice the DS's clock, so the game's own slow frames go (HeartGold walking). melonDS only.
         s.dsCpuBoost?.let { on ->
+            val boost = DsCore.boosts(s.dsCoreRunning)
             SettingRow(
-                tk("DS CPU BOOST"), if (s.dsMelonDs) onOff(on) else tk("N/A"), enabled = s.dsMelonDs,
+                tk("DS CPU BOOST"), if (boost) onOff(on) else tk("N/A"), enabled = boost,
                 labelBadge = NewFeatures.badge(NewFeatures.DS_CPU_BOOST),
-                subtitle = if (s.dsMelonDs) "Fewer slowdowns in DS games" else "Unavailable on DSPERATE",
-            ) { if (s.dsMelonDs) { s.setDsCpuBoost(!on); changed() } }
+                subtitle = if (boost) "Fewer slowdowns in DS games" else DsCore.unavailableOn(s.dsCoreRunning),
+            ) { if (boost) { s.setDsCpuBoost(!on); changed() } }
         },
         // A DS game on two screens: its touch screen at its 4:3 with the COMPANION bar, or stretched over the second display.
         s.dsTouchFill?.let { on ->

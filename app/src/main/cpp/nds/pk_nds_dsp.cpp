@@ -463,7 +463,7 @@ int pk_ndsd_state_matches_save(const char* path)
     u32 header[4];
     bool ok = fread(header, sizeof(header), 1, f) == 1;
     fclose(f);
-    if (ok && header[0] == PK_NDS_STATE_MAGIC_MELONDS) return 2;   // melonDS's: never loaded here
+    if (ok && (header[0] == PK_NDS_STATE_MAGIC_MELONDS || header[0] == PK_NDS_STATE_MAGIC_BANANADS)) return 2;   // another core's: never loaded here
     if (!ok || header[0] != STATE_MAGIC || header[3] == 0) return -1;
     if (d->savePath.empty() || d->saveReadOnly) return 1;
     std::vector<u8> file;

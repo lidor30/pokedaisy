@@ -121,6 +121,8 @@ interface CompanionSettings : StoredCompanionSettings {
     val dsCore: DsCore? get() = null
     fun setDsCore(core: DsCore) {}
     val dsMelonDs: Boolean get() = true
+    /** The DS core the game runs on (DsCore.CORE_*). */
+    val dsCoreRunning: Int get() = DsCore.CORE_MELONDS
 
     /** DS CPU BOOST ([com.pokedaisy.app.Prefs.dsCpuBoost]): null when the game isn't a DS one (no row). */
     val dsCpuBoost: Boolean? get() = null

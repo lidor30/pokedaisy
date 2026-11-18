@@ -1,0 +1,7 @@
+/* libpkbananads.so: only BananaDS's pk_ndsb_* calls (pk_nds_cores.h) are seen from outside. */
+{
+  global:
+    pk_ndsb_*;
+  local:
+    *;
+};

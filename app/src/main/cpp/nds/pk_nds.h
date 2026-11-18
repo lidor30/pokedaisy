@@ -21,6 +21,7 @@ bool pk_nds_is_rom(const char* path);
 
 #define PK_NDS_CORE_MELONDS 0
 #define PK_NDS_CORE_DSPERATE 1
+#define PK_NDS_CORE_BANANADS 2
 // The core the next pk_nds_init starts (PK_NDS_CORE_*; melonDS until told otherwise). Emu thread, no DS up.
 void pk_nds_set_core(int core);
 // The core that's up, or -1 with no DS game.

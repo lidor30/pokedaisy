@@ -1,0 +1,480 @@
+diff --git a/src/GPU3D.cpp b/src/GPU3D.cpp
+--- a/src/GPU3D.cpp
++++ b/src/GPU3D.cpp
+@@ -1019,6 +1019,11 @@
+     return outside;
+ }
+ 
++int GPU3D::ClipPolygonForHook(Vertex* vertices, int nverts) noexcept
++{
++    return ClipPolygon<true>(*this, vertices, nverts, 0);
++}
++
+ bool ClipCoordsEqual(Vertex* a, Vertex* b)
+ {
+     return a->Position[0] == b->Position[0] &&
+@@ -1287,6 +1292,10 @@
+         // TODO
+     }
+ 
++    // PokeDaisy: EXPAND's copies of the polygon (the hook clips its own; nothing here changes)
++    if (WideSubmitHook)
++        WideSubmitHook(*this, TempVertexBuffer, PolygonMode & 0x1 ? 4 : 3, facingview, polytype, WideHookUser);
++
+     // clipping
+ 
+     if constexpr (Fast)
+@@ -2121,6 +2130,7 @@
+     Vertex cube[8];
+     Vertex face[10];
+     int res;
++    bool wideRetried = false; // PokeDaisy
+ 
+     AddCycles(254);
+     GXStat &= ~(1<<1);
+@@ -2158,6 +2168,7 @@
+         cube[i].Position[3] = ((s64)x*ClipMatrix[3] + (s64)y*ClipMatrix[7] + (s64)z*ClipMatrix[11] + (s64)0x1000*ClipMatrix[15]) >> 12;
+     }
+ 
++retest: // PokeDaisy
+     // front face (-Z)
+     face[0] = cube[0]; face[1] = cube[1]; face[2] = cube[2]; face[3] = cube[3];
+     res = ClipPolygon<false>(*this, face, 4, 0);
+@@ -2211,6 +2222,14 @@
+         GXStat |= (1<<1);
+         return;
+     }
++
++    // PokeDaisy: missed the screen - tried once more in EXPAND's wider view (the hook maps it onto clip space), so the
++    // game draws the models past the screen's edges that its slices show
++    if (!wideRetried && WideBoxHook && WideBoxHook(*this, cube, WideHookUser))
++    {
++        wideRetried = true;
++        goto retest;
++    }
+ }
+ 
+ void GPU3D::PosTest() noexcept
+@@ -3679,6 +3698,10 @@
+ 
+         if (FlushRequest)
+         {
++            // PokeDaisy: EXPAND's polygon lists swap with these
++            if (WideSwapHook)
++                WideSwapHook(*this, RenderingEnabled, WideHookUser);
++
+             CurRAMBank = CurRAMBank?0:1;
+             CurVertexRAM = &VertexRAM[CurRAMBank ? 6144 : 0];
+             CurPolygonRAM = &PolygonRAM[CurRAMBank ? 2048 : 0];
+diff --git a/src/GPU3D.h b/src/GPU3D.h
+--- a/src/GPU3D.h
++++ b/src/GPU3D.h
+@@ -468,6 +468,31 @@
+     // while RunFast defers them, and whether one of the checks was due
+     bool FIFOChecksDeferred = false;
+     bool FIFOChecksDue = false;
++
++    // PokeDaisy (EXPAND, app/src/main/cpp/nds/pk_nds_wide.cpp): every polygon that passed culling, its vertices as
++    // transformed (before clipping), its facing and type; and the polygon lists' swap at VBlank (flushed: the game
++    // swapped its buffers this frame). Not part of the hardware state.
++public:
++    void (*WideSubmitHook)(GPU3D& gpu, const Vertex* verts, int nverts, bool facingView, int polyType, void* user) = nullptr;
++    void (*WideSwapHook)(GPU3D& gpu, bool rendering, void* user) = nullptr;
++    // A box test that missed the screen, its corners in clip space: the hook maps them into a wider view and returns
++    // true to test them again (games cull their models with box tests: without this, nothing past the edges is drawn).
++    bool (*WideBoxHook)(GPU3D& gpu, Vertex* cube, void* user) = nullptr;
++    void* WideHookUser = nullptr;
++    // The clipper the polygons go through (Z, Y, then X planes), for the hook's own copies.
++    int ClipPolygonForHook(Vertex* vertices, int nverts) noexcept;
++};
++
++// PokeDaisy (app/src/main/cpp/nds/pk_nds_wide.cpp): EXPAND on the GPU renderer (unused with BananaDS, which has
++// none; kept so pk_nds_wide.cpp builds unchanged). Not part of the hardware state.
++struct WidePolygonList
++{
++    bool Active = false;
++    Polygon* const* Polygons = nullptr;
++    int NumPolygons = 0;
++    int ViewW = 256, ViewH = 192, OffX = 0, OffY = 0;
++    int Scale = 1;
++    int CropX = 0, CropY = 0, CropW = 0, CropH = 0;
+ };
+ 
+ class Renderer3D
+diff --git a/src/GPU3D_Soft.cpp b/src/GPU3D_Soft.cpp
+--- a/src/GPU3D_Soft.cpp
++++ b/src/GPU3D_Soft.cpp
+@@ -89,6 +89,15 @@
+ 
+ void SoftRenderer3D::EnableRenderThread()
+ {
++    // PokeDaisy: not for a frame fast-forward skipped (SkippedFrame): its 2D takes no lines and VCount144 waits for no
++    // render, so the render's 192 line signals and its done would be left for the next frame, which then reads 3D lines
++    // the thread hasn't drawn yet. A restart (a VCOUNT write, the ARM7 waking), a state taken or loaded or the thread
++    // switched on mid-skip all come here; the next frame shown renders whole instead (RenderAnyway).
++    if (Threaded && Sema_RenderStart && SkippedFrame)
++    {
++        RenderAnyway = true;
++        return;
++    }
+     if (Threaded && Sema_RenderStart)
+     {
+         Platform::Semaphore_Post(Sema_RenderStart);
+@@ -846,7 +855,7 @@
+     s32 x = xstart;
+     Interpolator<0> interpX(xstart, xend+1, wl, wr, polygon->WBuffer);
+ 
+-    if (x < 0) x = 0;
++    if (x < ColumnMin) x = ColumnMin;
+     s32 xlimit;
+ 
+     // for shadow masks: set stencil bits where the depth test fails.
+@@ -856,7 +865,7 @@
+     edge = yedge | 0x1;
+     xlimit = xstart+l_edgelen;
+     if (xlimit > xend+1) xlimit = xend+1;
+-    if (xlimit > 256) xlimit = 256;
++    if (xlimit > ColumnMax) xlimit = ColumnMax;
+ 
+     if (!l_filledge) x = xlimit;
+     else
+@@ -881,10 +890,11 @@
+     }
+ 
+     // part 2: polygon inside
++    if (x < ColumnMin) x = ColumnMin; // PokeDaisy: the columns this renderer draws
+     edge = yedge;
+     xlimit = xend-r_edgelen+1;
+     if (xlimit > xend+1) xlimit = xend+1;
+-    if (xlimit > 256) xlimit = 256;
++    if (xlimit > ColumnMax) xlimit = ColumnMax;
+     if (wireframe && !edge) x = std::max(x, xlimit);
+     else for (; x < xlimit; x++)
+     {
+@@ -909,7 +919,7 @@
+     // part 3: right edge
+     edge = yedge | 0x2;
+     xlimit = xend+1;
+-    if (xlimit > 256) xlimit = 256;
++    if (xlimit > ColumnMax) xlimit = ColumnMax;
+ 
+     if (r_filledge)
+     for (; x < xlimit; x++)
+@@ -1096,7 +1106,7 @@
+     s32 x = xstart;
+     Interpolator<0> interpX(xstart, xend+1, wl, wr, polygon->WBuffer);
+ 
+-    if (x < 0) x = 0;
++    if (x < ColumnMin) x = ColumnMin;
+     s32 xlimit;
+ 
+     s32 xcov = 0;
+@@ -1105,7 +1115,7 @@
+     edge = yedge | 0x1;
+     xlimit = xstart+l_edgelen;
+     if (xlimit > xend+1) xlimit = xend+1;
+-    if (xlimit > 256) xlimit = 256;
++    if (xlimit > ColumnMax) xlimit = ColumnMax;
+     if (l_edgecov & (1<<31))
+     {
+         xcov = (l_edgecov >> 12) & 0x3FF;
+@@ -1203,10 +1213,11 @@
+     }
+ 
+     // part 2: polygon inside
++    if (x < ColumnMin) x = ColumnMin; // PokeDaisy: the columns this renderer draws
+     edge = yedge;
+     xlimit = xend-r_edgelen+1;
+     if (xlimit > xend+1) xlimit = xend+1;
+-    if (xlimit > 256) xlimit = 256;
++    if (xlimit > ColumnMax) xlimit = ColumnMax;
+ 
+     if (wireframe && !edge) x = std::max(x, xlimit);
+     else
+@@ -1294,7 +1305,7 @@
+     // part 3: right edge
+     edge = yedge | 0x2;
+     xlimit = xend+1;
+-    if (xlimit > 256) xlimit = 256;
++    if (xlimit > ColumnMax) xlimit = ColumnMax;
+     if (r_edgecov & (1<<31))
+     {
+         xcov = (r_edgecov >> 12) & 0x3FF;
+@@ -1411,6 +1422,60 @@
+     }
+ }
+ 
++void SoftRenderer3D::SkipScanline(s32 y, int npolys)
++{
++    // PokeDaisy: RenderScanline's walk down each polygon's edges, without drawing (RenderPolygonList's rows above
++    // RowMin): what Render(ShadowMask|Polygon)Scanline change in the renderer and the polygon, nothing else.
++    for (int i = 0; i < npolys; i++)
++    {
++        RendererPolygon* rp = &PolygonList[i];
++        Polygon* polygon = rp->PolyData;
++
++        if (y >= polygon->YTop && (y < polygon->YBottom || (y == polygon->YTop && polygon->YBottom == polygon->YTop)))
++        {
++            PrevIsShadowMask = polygon->IsShadowMask;
++
++            if (polygon->YTop != polygon->YBottom)
++            {
++                if (y >= polygon->Vertices[rp->NextVL]->FinalPosition[1] && rp->CurVL != polygon->VBottom)
++                    SetupPolygonLeftEdge(rp, y);
++                if (y >= polygon->Vertices[rp->NextVR]->FinalPosition[1] && rp->CurVR != polygon->VBottom)
++                    SetupPolygonRightEdge(rp, y);
++            }
++
++            rp->XL = rp->SlopeL.Step();
++            rp->XR = rp->SlopeR.Step();
++        }
++    }
++}
++
++void SoftRenderer3D::RenderPolygonList(melonDS::GPU&, Polygon** polygons, int npolys)
++{
++    // PokeDaisy: RenderPolygons for rows [RowMin, RowMax) (see the header), unthreaded.
++    ClearBuffers();
++
++    int j = 0;
++    for (int i = 0; i < npolys; i++)
++    {
++        if (polygons[i]->Degenerate) continue;
++        SetupPolygon(&PolygonList[j++], polygons[i]);
++    }
++
++    s32 ymin = std::max(0, RowMin), yend = std::min(192, RowMax);
++    for (s32 y = 0; y < yend; y++)
++    {
++        if (y < ymin)
++            SkipScanline(y, j);
++        else
++            RenderScanline(y, j);
++        // a row's final pass reads the row below it: run once that one is drawn
++        if (y > ymin)
++            ScanlineFinalPass(y-1);
++    }
++    if (yend > ymin)
++        ScanlineFinalPass(yend-1);
++}
++
+ u32 SoftRenderer3D::CalculateFogDensity(u32 pixeladdr) const
+ {
+     u32 z = DepthBuffer[pixeladdr];
+@@ -1461,7 +1526,7 @@
+         // edge marking
+         // only applied to topmost pixels
+ 
+-        for (int x = 0; x < 256; x++)
++        for (int x = ColumnMin; x < ColumnMax; x++) // PokeDaisy: was 0 .. 256
+         {
+             u32 pixeladdr = FirstPixelOffset + (y*ScanlineWidth) + x;
+ 
+@@ -1509,7 +1574,7 @@
+         u32 fogB = (GPU3D.RenderFogColor >> 9) & 0x3E; if (fogB) fogB++;
+         u32 fogA = (GPU3D.RenderFogColor >> 16) & 0x1F;
+ 
+-        for (int x = 0; x < 256; x++)
++        for (int x = ColumnMin; x < ColumnMax; x++) // PokeDaisy: was 0 .. 256
+         {
+             u32 pixeladdr = FirstPixelOffset + (y*ScanlineWidth) + x;
+             u32 density, srccolor, srcR, srcG, srcB, srcA;
+@@ -1574,7 +1639,7 @@
+         // edges were flagged and their coverages calculated during rendering
+         // this is where such edge pixels are blended with the pixels underneath
+ 
+-        for (int x = 0; x < 256; x++)
++        for (int x = ColumnMin; x < ColumnMax; x++) // PokeDaisy: was 0 .. 256
+         {
+             u32 pixeladdr = FirstPixelOffset + (y*ScanlineWidth) + x;
+ 
+@@ -1652,15 +1717,20 @@
+     }
+ 
+     // clear the screen
++    // PokeDaisy: only the rows and columns drawn (and one more each way: edge marking reads them)
++    int clearX0 = std::max(0, ColumnMin - 1), clearX1 = std::min(256, ColumnMax + 1);
++    int clearY0 = std::max(0, RowMin - 1), clearY1 = std::min(192, RowMax + 1);
+ 
+     if (GPU3D.RenderDispCnt & (1<<14))
+     {
+         u8 xoff = (GPU3D.RenderClearAttr2 >> 16) & 0xFF;
+         u8 yoff = (GPU3D.RenderClearAttr2 >> 24) & 0xFF;
++        yoff += clearY0; // PokeDaisy: the rows and columns this renderer draws
+ 
+-        for (int y = 0; y < ScanlineWidth*192; y+=ScanlineWidth)
++        for (int y = clearY0*ScanlineWidth; y < ScanlineWidth*clearY1; y+=ScanlineWidth)
+         {
+-            for (int x = 0; x < 256; x++)
++            xoff = ((GPU3D.RenderClearAttr2 >> 16) & 0xFF) + clearX0;
++            for (int x = clearX0; x < clearX1; x++)
+             {
+                 u16 val2 = GPU.ReadVRAMFlat_Texture<u16>(0x40000 + (yoff << 9) + (xoff << 1));
+                 u16 val3 = GPU.ReadVRAMFlat_Texture<u16>(0x60000 + (yoff << 9) + (xoff << 1));
+@@ -1696,9 +1766,9 @@
+ 
+         polyid |= (GPU3D.RenderClearAttr1 & 0x8000);
+ 
+-        for (int y = 0; y < ScanlineWidth*192; y+=ScanlineWidth)
++        for (int y = clearY0*ScanlineWidth; y < ScanlineWidth*clearY1; y+=ScanlineWidth)
+         {
+-            for (int x = 0; x < 256; x++)
++            for (int x = clearX0; x < clearX1; x++)
+             {
+                 u32 pixeladdr = FirstPixelOffset + y + x;
+                 ColorBuffer[pixeladdr] = color;
+@@ -1813,7 +1883,7 @@
+         return ScrolledLine;
+     }
+ 
+-    if (RenderThreadRunning.load(std::memory_order_relaxed))
++    if (!SkippedFrame && RenderThreadRunning.load(std::memory_order_relaxed))
+     {
+         if (line < 192)
+             // We need a scanline, so let's wait for the render thread to finish it.
+diff --git a/src/GPU3D_Soft.h b/src/GPU3D_Soft.h
+--- a/src/GPU3D_Soft.h
++++ b/src/GPU3D_Soft.h
+@@ -41,6 +41,13 @@
+     void RenderFrame() override;
+     void FinishRendering() override;
+     void RestartFrame() override;
++    // PokeDaisy (EXPAND): draws this list into this renderer's own buffers, now, on the calling thread - for a second,
++    // unthreaded renderer; leaves the VRAM dirty tracking alone (RenderFrame's), so the main renderer keeps it.
++    // Only columns [ColumnMin, ColumnMax) of rows [RowMin, RowMax) are cleared, rasterized and finished (the whole
++    // screen unless set); the rest of the buffer is left as it was.
++    int ColumnMin = 0, ColumnMax = 256, RowMin = 0, RowMax = 192;
++    void RenderPolygonList(melonDS::GPU& gpu, Polygon** polygons, int npolys);
++
+ 
+     u32* GetLine(int line) override;
+ 
+@@ -447,6 +454,7 @@
+     RendererPolygon PolygonList[2048];
+     void TextureLookup(u32 texparam, u32 texpal, s16 s, s16 t, u16* color, u8* alpha) const;
+     u32 RenderPixel(const Polygon* polygon, u8 vr, u8 vg, u8 vb, s16 s, s16 t) const;
++    void SkipScanline(s32 y, int npolys); // PokeDaisy: a row above RowMin, its edges stepped only
+     void PlotTranslucentPixel(u32 pixeladdr, u32 color, u32 z, u32 polyattr, u32 shadow);
+     void SetupPolygonLeftEdge(RendererPolygon* rp, s32 y) const;
+     void SetupPolygonRightEdge(RendererPolygon* rp, s32 y) const;
+@@ -491,6 +499,8 @@
+     bool Enabled;
+ 
+     bool FrameIdentical;
++    bool SkippedFrame = false;   // PokeDaisy: this frame's render was skipped (GPU::SkippingFrame)
++    bool RenderAnyway = false;   // ... so the next one can't reuse the buffers
+ 
+     u32 ScrolledLine[256];
+ 
+diff --git a/src/GPU.cpp b/src/GPU.cpp
+--- a/src/GPU.cpp
++++ b/src/GPU.cpp
+@@ -1279,6 +1279,10 @@
+     }
+     else if (VCount == 192)
+     {
++        // PokeDaisy: the frame's drawing state, before VBlank changes it
++        if (VisibleEndHook)
++            VisibleEndHook(*this, VisibleEndHookUser);
++
+         // VBlank
+ 
+         SetDispStatIRQ(0, 0);
+diff --git a/src/GPU.h b/src/GPU.h
+--- a/src/GPU.h
++++ b/src/GPU.h
+@@ -993,6 +993,23 @@
+ 
+     bool RunFIFO = false;
+ 
++    // PokeDaisy: fast-forward's frame skip. Before each frame the host says whether it and the next one will be seen
++    // (SkipDraw / SkipDrawNext). A frame runs lines 0-262: its 2D lines 0-191 draw what's on screen now, its line 215
++    // starts the next frame's 3D and line 262 the next frame's first sprites - so those follow SkipDrawNext, decided at
++    // 215 (SkippingFrame, which the 3D renderer reads and which holds through the next frame), and a frame's 2D lines
++    // are left out only when its 3D was too (the threaded renderer's line count stays in step). Engine A's display
++    // capture on (the game reads the picture back) draws whatever. Not hardware state: never saved, and nothing the
++    // game reads depends on it (BG reference points and mosaic restart at every VBlank).
++public:
++    bool SkipDraw = false;
++    bool SkipDrawNext = false;
++    bool SkippingFrame = false;
++    // PokeDaisy (pk_nds_wide.cpp): called as line 192 starts, before VBlank's IRQ and DMAs - the game's VBlank handler
++    // then sets the next frame's registers, palettes and sprites - so the host reads what this frame was drawn with.
++    void (*VisibleEndHook)(GPU& gpu, void* user) = nullptr;
++    void* VisibleEndHookUser = nullptr;
++private:
++
+     u16 VMatch[2] {};
+ 
+     std::unique_ptr<Renderer> Rend = nullptr;
+diff --git a/src/NDS.cpp b/src/NDS.cpp
+--- a/src/NDS.cpp
++++ b/src/NDS.cpp
+@@ -100,7 +100,7 @@
+ //
+ // timings for GBA slot and wifi are set up at runtime
+ 
+-thread_local NDS* NDS::Current = nullptr;
++NDS* NDS::Current = nullptr;
+ 
+ NDS::NDS() noexcept :
+     NDS(
+diff --git a/src/NDS.h b/src/NDS.h
+--- a/src/NDS.h
++++ b/src/NDS.h
+@@ -897,7 +897,10 @@
+     NDS(NDS&&) = delete;
+     NDS& operator=(NDS&&) = delete;
+ 
+-    static thread_local NDS* Current;
++    // PokeDaisy: a plain static, not thread_local. Android before API 29 has no ELF TLS, so thread_local compiles to
++    // __emutls_get_address + pthread_getspecific on every read, and the JIT's slow memory paths read this all the time
++    // (~8% of the emulation thread on the Thor). There is only ever one NDS in the app.
++    static NDS* Current;
+ protected:
+     explicit NDS(NDSArgs&& args, int type, void* userdata) noexcept;
+     virtual u32 GetSavestateConfig();
+diff --git a/src/SPU.cpp b/src/SPU.cpp
+--- a/src/SPU.cpp
++++ b/src/SPU.cpp
+@@ -1369,7 +1369,7 @@
+             if (BlipTimer >= 512 * 128)
+                 BufferAudio();
+         }
+-        NDS.ScheduleEvent(Event_SPU, true, MixInterval, 0, MixInterval >> 1);
++        NDS.ScheduleEvent(Event_SPU, true, MixInterval << MixShift, 0, (MixInterval << MixShift) >> 1);
+         return;
+     }
+     FastTailValid = FastMix;
+@@ -1419,7 +1419,7 @@
+ 
+     if (DiscardOutput)  // (patch 0091)
+     {
+-        NDS.ScheduleEvent(Event_SPU, true, MixInterval, 0, MixInterval >> 1);
++        NDS.ScheduleEvent(Event_SPU, true, MixInterval << MixShift, 0, (MixInterval << MixShift) >> 1);
+         return;
+     }
+ 
+@@ -1443,7 +1443,7 @@
+     if (BlipTimer >= 512 * 128)
+         BufferAudio();
+ 
+-    NDS.ScheduleEvent(Event_SPU, true, MixInterval, 0, MixInterval >> 1);
++    NDS.ScheduleEvent(Event_SPU, true, MixInterval << MixShift, 0, (MixInterval << MixShift) >> 1);
+ }
+ 
+ void SPU::BufferAudio()
+diff --git a/src/SPU.h b/src/SPU.h
+--- a/src/SPU.h
++++ b/src/SPU.h
+@@ -282,6 +282,10 @@
+     int ReadOutput(s16* data, int samples);
+     void SetOutputSampleRate(double rate);
+     void SetOutputSkew(double skew);
++    // PokeDaisy: a Mix every MixInterval << MixShift cycles (0: the DS's 32768 Hz). The host sets it for fast-forward's
++    // frames nobody sees (their sound is averaged down anyway): the channels run the same, sampled less often. Takes
++    // effect at the next Mix; MixChannelsFast resyncs its timers to the new step. Not saved.
++    u32 MixShift = 0;
+ 
+     u8 Read8(u32 addr);
+     u16 Read16(u32 addr);

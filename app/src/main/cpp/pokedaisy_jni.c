@@ -1547,13 +1547,13 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsCpuBoost(JNIEnv* env, jobject thiz, jboolea
     if (pk_nds_active()) pk_nds_set_cpu_boost(on == JNI_TRUE);
 }
 
-// DS CORE: which DS core the next pkInit of a DS cart starts (MgbaCore.NDS_CORE_*: 0 melonDS, 1 DSperate). Emu thread.
+// DS CORE: which DS core the next pkInit of a DS cart starts (companion.DsCore.CORE_*: 0 melonDS, 1 DSperate, 2 BananaDS). Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsSetCore(JNIEnv* env, jobject thiz, jint core) {
     pk_nds_set_core(core);
 }
 
-// The DS core that's up (MgbaCore.NDS_CORE_*), or -1 with no DS game.
+// The DS core that's up (companion.DsCore.CORE_*), or -1 with no DS game.
 JNIEXPORT jint JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsCore(JNIEnv* env, jobject thiz) {
     return pk_nds_core();

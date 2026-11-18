@@ -36,3 +36,9 @@
 	# The 3DS port's third GBA core (GBA CORE: GPSP), at its v0.1.7. The build applies
 	# third_party/patches/gpsp-pokedaisy.patch here.
 	ignore = dirty
+[submodule "third_party/bananads"]
+	path = third_party/bananads
+	url = https://github.com/JorreFog/SuperDrastic.git
+[submodule "third_party/melonds-bananads"]
+	path = third_party/melonds-bananads
+	url = https://github.com/melonDS-emu/melonDS.git

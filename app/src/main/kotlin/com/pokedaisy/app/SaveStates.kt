@@ -74,7 +74,23 @@ class SaveStates(filesDir: File, romCrc: String) {
          * core runs the game: states don't cross cores, so the engine sets it aside here and the next start on that core
          * resumes it (PokeDaisyActivity.startGame), if the save file still matches it as any resume must. */
         fun parkedResume(resume: File, core: Int): File =
-            File(resume.parentFile, if (core == DsCore.CORE_DSPERATE) "resume.dsperate" else "resume.melonds")
+            File(resume.parentFile, when (core) {
+                DsCore.CORE_DSPERATE -> "resume.dsperate"
+                DsCore.CORE_BANANADS -> "resume.bananads"
+                else -> "resume.melonds"
+            })
+
+        /** The DS core whose state [state] is (its first word: pk_nds_cores.h's PK_NDS_STATE_MAGIC_*), MELONDS if unknown. */
+        fun stateCore(state: File): Int {
+            val b = runCatching { state.inputStream().use { s -> ByteArray(4).also { if (s.read(it) != 4) return DsCore.CORE_MELONDS } } }
+                .getOrNull() ?: return DsCore.CORE_MELONDS
+            val magic = (b[0].toInt() and 0xFF) or ((b[1].toInt() and 0xFF) shl 8) or ((b[2].toInt() and 0xFF) shl 16) or ((b[3].toInt() and 0xFF) shl 24)
+            return when (magic) {
+                0x50444B50 -> DsCore.CORE_DSPERATE   // "PKDP"
+                0x42444B50 -> DsCore.CORE_BANANADS   // "PKDB"
+                else -> DsCore.CORE_MELONDS          // "PKDS"
+            }
+        }
 
         /** CRC32 of the ROM file (an archive's ROM, see [RomArchive]), as 8 lowercase hex digits. */
         fun crc32(rom: File): String {

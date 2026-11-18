@@ -767,6 +767,20 @@ off and greyed out (`PokeDaisyActivity.dsperate`). States never cross cores (`pk
 resume is parked, `SaveStates.parkedResume`). Headless: `native-capture/dsp_dump` (nds_dump's commands, arm64 Linux only), which
 can't show 32-bit ARM's alignment faults: a byte buffer cast to `u16*` / `u32*` in DSperate's NEON code faulted on a Galaxy Tab A
 (fixed in the build copy, docs/DEVELOPMENT.md); try a new DSperate on a 32-bit device. HeartGold there: DSperate 60 fps, melonDS 16.
+**BananaDS, the third DS core (DS CORE's BANANADS, NEW tag `DS_CORE_BANANADS`)**: BananaOS's DS emulator (`third_party/bananads`, the
+SuperDrastic repository's `bananads/`, GPL-3.0) on its own melonDS (`third_party/melonds-bananads`, the commit BananaDS pins), built by
+`app/src/main/cpp/bananads/CMakeLists.txt` (an ExternalProject of the app's CMake) into `libpkbananads.so`: BananaDS's melonDS patches,
+then `melonds-expand.patch` (EXPAND's hooks remade for that melonDS, `SPU::MixShift`), on a copy in the build folder; the Banana 2D
+engine over melonDS's software 3D (`BananaRenderer`, BananaDS's render.renderer software). **Not its Gengis Engine**: Gengis carries C ports
+of DraStic's reverse-engineered 3D routines (its README's Provenance), so it isn't built, and BananaDS's hires (DS RESOLUTION) goes with it. Its own library because the two melonDS
+trees can't share one; only `pk_ndsb_*` are exported (`exports.map`, `-Bsymbolic`), and it's built with native ELF TLS (melonDS
+reads a thread-local constantly), so libpokedaisy `dlopen`s it (`nds/pk_nds_bnd_load.cpp`): Android 10+ and AArch64 only,
+DS CORE offers BANANADS only there (`DsCore.bananaRuns`, set at app start; a saved BANANADS runs melonDS elsewhere). `bananads/pk_nds_bnd.cpp` is pk_nds.cpp's melonDS glue at DSperate's feature level plus
+DS CPU BOOST and EXPAND (`pk_nds_wide.cpp` built a second time, `PK_NDS_BANANADS`); no DS RESOLUTION, PC / FLY calls, STEADY or
+INSTANT TEXT / REUSABLE TMS's code writes (`pk_ndsb_code_write` says no). Its hires paths stay in the glue, never taken (scale 1). Its settings were measured on the Thor
+(uncapped FF on Black's Route 2): the 2D on its own thread at every scale, lazy frame ends, the adaptive scheduler slice
+(`slice_idle` 512, only for carts the field read knows: Golden Sun: Dark Dawn broke with it on BananaOS), at most 240 frames a
+second read back in uncapped FF and the sound mixed a quarter as often between them.
 **French DS carts (2026-11-06)**: Platinum rev 0, HeartGold / SoulSilver, Black, White (`CPUF`, `IPKF`, `IPGF`, `IRBF`, `IRAF`): the US builds at other addresses, each run headless beside its US
 cart with one script; everything but the addresses is shared. Another language: `scripts/port_nds_fns.py` (functions matched by structure and call anchors, wrong = 0 on
 every known pair: `--check scripts/port_nds_fns_known.txt`, `scripts/test_port_nds_fns.py`; an UNRESOLVED hint is a lead to check live,

@@ -19,6 +19,11 @@ class DsCoreTest {
         for (weak in listOf(false, true)) for (sixtyFour in listOf(false, true)) {
             assertEquals(DsCore.CORE_MELONDS, DsCore.MELONDS.runs(weak, sixtyFour))
             assertEquals(DsCore.CORE_DSPERATE, DsCore.DSPERATE.runs(weak, sixtyFour))
+            DsCore.bananaRuns = true
+            assertEquals(DsCore.CORE_BANANADS, DsCore.BANANADS.runs(weak, sixtyFour))
+            // Where BananaDS can't start (not arm64, Android 9 or older) a saved BANANADS runs melonDS.
+            DsCore.bananaRuns = false
+            assertEquals(DsCore.CORE_MELONDS, DsCore.BANANADS.runs(weak, sixtyFour))
         }
     }
 

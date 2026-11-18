@@ -1068,7 +1068,8 @@ class EmulatorEngine(
         if (resume != null && resume.isFile && resume.length() > 0) {
             val automatic = stateResume(rejected = { source, verdict ->
                 if (verdict == MgbaCore.STATE_OTHER_CORE) {
-                    val other = if (dsCore == DsCore.CORE_DSPERATE) DsCore.CORE_MELONDS else DsCore.CORE_DSPERATE
+                    // The core that made it (its magic word): with three cores, "the other one" isn't enough.
+                    val other = SaveStates.stateCore(File(source.toString()))
                     states.files.moveState(source, SaveStates.parkedResume(File(source.toString()), other).toOkioPath())
                     startNotice = tr("This game was left on the other DS core, so it started from the save file")
                 } else {

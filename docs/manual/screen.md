@@ -55,17 +55,18 @@ The **right stick** looks around (turn off `LOOK AROUND` in the `SCREEN` group i
 
 ## DS core: DS games on weaker devices
 
-PokeDaisy has two DS emulators. melonDS has every DS feature. DSperate needs far less from your device, so it keeps DS games at full speed on budget handhelds, older phones and tablets, and devices running 32-bit Android, where melonDS can be slow. `DS CORE` picks which one runs your DS games.
+PokeDaisy has three DS emulators. melonDS has every DS feature. DSperate needs far less from your device, so it keeps DS games at full speed on budget handhelds, older phones and tablets, and devices running 32-bit Android, where melonDS can be slow. BananaDS is the DS emulator from BananaOS, the custom firmware for the Anbernic RG DS handhelds: melonDS's core with BananaOS's speed work and its own way of drawing the screens, with `EXPAND` too. `DS CORE` picks which one runs your DS games.
 
 | Choice | What you get |
 | --- | --- |
 | `AUTO` | DSperate on a device that looks weak or runs 32-bit Android, melonDS everywhere else. The row shows which one it picked. This is the default. |
 | `MELONDS` | Always melonDS. |
 | `DSPERATE` | Always DSperate. |
+| `BANANADS` | Always BananaDS. It's only offered on a 64-bit device with Android 10 or newer. |
 
 A few things worth knowing:
 
-- **Some features are melonDS only for now.** On DSperate, `EXPAND`, `DS RESOLUTION` and `DS CPU BOOST` are greyed out, the companion's `PC` and `FLY` don't show for DS games, and fast-forward plays the music sped up (`FF MUSIC`'s `STEADY` needs melonDS). The companion's tabs, the touch screen, `DS LAYOUT`, `BATTLE BUTTONS`, cheats, achievements and your saves all work the same.
+- **Some features are melonDS only for now.** On DSperate, `EXPAND`, `DS RESOLUTION` and `DS CPU BOOST` are greyed out, the companion's `PC` and `FLY` don't show for DS games, and fast-forward plays the music sped up (`FF MUSIC`'s `STEADY` needs melonDS). On BananaDS, `EXPAND` and `DS CPU BOOST` work, but `DS RESOLUTION` is greyed out, the companion's `PC` and `FLY` don't show for DS games and fast-forward plays the music sped up. The companion's tabs, the touch screen, `DS LAYOUT`, `BATTLE BUTTONS`, cheats, achievements and your saves all work the same on all three.
 - **It applies when a DS game starts.** Change it in the companion while a game is running and it takes effect at `RESTART GAME` or the next time you open the game.
 - **Save in the game before you switch.** Each emulator only reads its own save states. When you switch, the game starts from your save file, and the place you left it on the other emulator is kept: switch back and the game picks up there again, as long as you haven't saved in the game since. Save states you made in `STATES` load only on the emulator that made them.
 

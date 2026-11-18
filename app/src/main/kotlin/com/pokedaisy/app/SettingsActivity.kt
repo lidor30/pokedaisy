@@ -206,7 +206,11 @@ class SettingsActivity : ComponentActivity() {
     /** DS RESOLUTION's GPU renderer can run here (OpenGL ES 3.2). */
     private val dsGpu by lazy { GlCaps.gles32(this) }
     /** DS games start on DSperate (DS CORE): DS RESOLUTION and DS CPU BOOST are melonDS's, greyed out then. */
-    private val dsOnDsperate get() = prefs.dsCore.runs() == DsCore.CORE_DSPERATE
+    /** DS CPU BOOST runs on the DS CORE picked (not DSperate). */
+    private val dsBoosts get() = com.pokedaisy.app.companion.DsCore.boosts(prefs.dsCore.runs())
+    /** DS RESOLUTION runs on the DS CORE picked (melonDS, BananaDS). */
+    private val dsResOk get() = com.pokedaisy.app.companion.DsCore.hasResolution(prefs.dsCore.runs())
+    private val dsUnavailable get() = com.pokedaisy.app.companion.DsCore.unavailableOn(prefs.dsCore.runs())
 
     private val updates by lazy { AppUpdateFlow(this) }
 
@@ -786,9 +790,9 @@ class SettingsActivity : ComponentActivity() {
             // DS games: which emulator runs them (companion.DsCore): melonDS, or DSperate for weak devices (AUTO picks).
             SettingRow(
                 tk("DS CORE"), prefs.dsCore.valueLabel(), subtitle = "DSPERATE runs on weaker devices",
-                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CORE),
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CORE_BANANADS),
             ) {
-                val cores = com.pokedaisy.app.companion.DsCore.entries
+                val cores = com.pokedaisy.app.companion.DsCore.offered()
                 selector = Selector(tk("DS CORE"), cores.map { it.label }, prefs.dsCore.label) { l ->
                     prefs.dsCore = cores.first { it.label == l }
                     revision++
@@ -796,10 +800,10 @@ class SettingsActivity : ComponentActivity() {
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
             // DS games: the 3D at 2x to 8x the DS's own, drawn on the GPU (nds/pk_nds_gl.h); ORIGINAL keeps the CPU's,
             // pixel for pixel. N/A without OpenGL ES 3.2, or on DSperate (melonDS's renderer).
-            (dsGpu && !dsOnDsperate).let { gpu ->
+            (dsGpu && dsResOk).let { gpu ->
                 SettingRow(
                     tk("DS RESOLUTION"), if (gpu) com.pokedaisy.app.companion.ui.dsResolutionLabel(prefs.dsResolution) else tk("N/A"),
-                    enabled = gpu, subtitle = if (dsOnDsperate) "Unavailable on DSPERATE" else null,
+                    enabled = gpu, subtitle = if (!dsResOk) dsUnavailable else null,
                     labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_RESOLUTION),
                 ) {
                     if (!gpu) return@SettingRow
@@ -811,11 +815,11 @@ class SettingsActivity : ComponentActivity() {
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
             // DS games: the emulated CPU at twice the DS's clock, so a game's own slow frames go.
             SettingRow(
-                tk("DS CPU BOOST"), if (dsOnDsperate) tk("N/A") else onOff(prefs.dsCpuBoost), enabled = !dsOnDsperate,
-                subtitle = if (dsOnDsperate) "Unavailable on DSPERATE" else "Fewer slowdowns in DS games",
+                tk("DS CPU BOOST"), if (!dsBoosts) tk("N/A") else onOff(prefs.dsCpuBoost), enabled = dsBoosts,
+                subtitle = if (!dsBoosts) dsUnavailable else "Fewer slowdowns in DS games",
                 labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CPU_BOOST),
             ) {
-                if (dsOnDsperate) return@SettingRow
+                if (!dsBoosts) return@SettingRow
                 prefs.dsCpuBoost = !prefs.dsCpuBoost
                 revision++
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
