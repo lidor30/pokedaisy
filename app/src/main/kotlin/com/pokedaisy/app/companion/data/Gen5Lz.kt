@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.RandomAccessFile
+import okio.FileHandle
 
 /**
  * The DS's compression as Black / White's cart uses it: the BIOS's LZ77 (type 0x10) and its LZ11 variant (0x11) for
@@ -59,12 +59,12 @@ object Gen5Lz {
         }
     }
 
-    fun arm9(f: RandomAccessFile, header: ByteArray): Arm9? {
+    fun arm9(f: FileHandle, header: ByteArray): Arm9? {
         val off = u32(header, 0x20)
         val ram = u32(header, 0x28)
         val size = u32(header, 0x2C).toInt()
         if (size <= 0 || size > (4 shl 20)) return null
-        val raw = ByteArray(size).also { f.seek(off); f.readFully(it) }
+        val raw = f.readFully(off, size)
         // The module parameters sit 0x1C before the nitro code's magic (0xDEC00621, 0x2106C0DE); +0x14 is where the
         // packed part ends in RAM (0: not packed).
         var params = -1

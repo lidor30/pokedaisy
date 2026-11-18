@@ -40,7 +40,7 @@ object RetailEngine {
             val top = votes.maxByOrNull { it.value }
             if (top == null || top.value < needed(sites.size) || top.key != addr.toInt()) {
                 ramOk = false
-                why += "RAM %08X: %d of %d".format(addr, votes[addr.toInt()] ?: 0, sites.size)
+                why += "RAM ${addr.hex(8, upper = true)}: ${votes[addr.toInt()] ?: 0} of ${sites.size}"
             }
         }
         if (!ramOk) return Proof(build, ramProven = false, wideRow = null, why = why)
@@ -57,7 +57,7 @@ object RetailEngine {
                 slot in build.optionalSlots -> row[slot] = 0
                 else -> {
                     rowOk = false
-                    why += "ROM slot %d (%08X): %d of %d".format(slot, build.row[slot], top?.value ?: 0, sites.size)
+                    why += "ROM slot $slot (${build.row[slot].hex(8, upper = true)}): ${top?.value ?: 0} of ${sites.size}"
                 }
             }
         }
@@ -76,7 +76,7 @@ object RetailEngine {
                 val i = s.pool + k - (s.user - RetailEngineBuild.BEFORE)
                 if (i in w.indices) w[i] = 0
             }
-            if (crc32(w) != s.crc) continue
+            if (crc32(w).toInt() != s.crc) continue
             val v = (p[0].toInt() and 0xFF) or (p[1].toInt() and 0xFF shl 8) or (p[2].toInt() and 0xFF shl 16) or
                 (p[3].toInt() and 0xFF shl 24)
             out[v] = (out[v] ?: 0) + 1
@@ -84,7 +84,6 @@ object RetailEngine {
         return out
     }
 
-    private fun crc32(b: ByteArray): Int = java.util.zip.CRC32().apply { update(b) }.value.toInt()
 }
 
 /** One retail build's fingerprints (RetailEngineGen.kt). */

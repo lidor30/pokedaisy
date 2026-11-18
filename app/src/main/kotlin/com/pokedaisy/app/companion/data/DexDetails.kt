@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /*
  * The DEX page's EVOLVE / AREA / MOVES sections, read from the ROM the way the
@@ -46,6 +48,10 @@ enum class EvoScheme {
     /** pokeemerald-expansion 1.12+ (TMT2, Heart and Soul, SoulGold): EVO_LEVEL / TRADE / ITEM / ...
      * plus a list of {condition, arg1, arg2, arg3} (IF_GENDER, IF_TIME, IF_HOLD_ITEM, ...). */
     EXPANSION_PARAMS,
+    /** Pokémon Epsilon Emerald: [EXPANSION]'s 1-30 (read off its GetEvolutionTargetSpecies' jump table, 0x088900E0), then its
+     * own 31 = a level-up holding item [param] (KOFFING + SWEET TEA) and 33 = critical hits (its FARFETCH'D form); its 32
+     * isn't on the level-up path (HAPPINY's second OVAL STONE row, beside a 21). Rows are 6 bytes {method, param, target}. */
+    EPSILON_EMERALD,
     /** Recharged Yellow: vanilla's, plus 16 = use item [param] (its LINKING CORD) while holding the
      * row's 4th u16 - the trade-with-an-item evolutions (POLIWHIRL + KING'S ROCK, ONIX + METAL COAT). */
     RECHARGED_YELLOW,
@@ -54,7 +60,7 @@ enum class EvoScheme {
 /**
  * Where a game keeps its evolutions for the DEX's EVOLVE section, when it isn't
  * [PokedexTables.evolutions]' vanilla table: a species-indexed [table] of
- * [perMon] 8-byte rows {method, param, target, extra}, or (table 0) a list per
+ * [perMon] [record]-byte rows {method, param, target, extra} (6-byte rows have no extra), or (table 0) a list per
  * species from gSpeciesInfo ([SpeciesInfoDex.evolutionsOff]) of [record]-byte
  * entries ending at method 0xFFFF - 12 bytes once a params pointer follows,
  * whose lists end at [conditionsEnd] (the enum grew with releases).
@@ -172,11 +178,12 @@ private const val MAX_FAMILY_LINKS = 24
  * is cached for the process (keyed by the game's tables, dropped when they change).
  */
 object DexDetails {
+    private val lock = SynchronizedObject()
     @Volatile private var evoFor: PokedexTables? = null
     @Volatile private var evoTable: Map<Int, List<EvoLink>>? = null
     @Volatile private var parents: Map<Int, List<EvoLink>>? = null
-    private val levelUp = ConcurrentHashMap<Int, List<LevelMove>>()
-    private val teach = ConcurrentHashMap<Int, List<TeachMove>>()
+    private val levelUp = LockedMap<Int, List<LevelMove>>()
+    private val teach = LockedMap<Int, List<TeachMove>>()
     @Volatile private var tmhm: List<Int>? = null
     @Volatile private var movesFor: Pair<PokedexTables, GuideTables?>? = null
     @Volatile private var tmhmOk: Boolean? = null
@@ -187,7 +194,7 @@ object DexDetails {
 
     /** [PokedexSource.romChanged]: every cache here starts over on the next read. */
     fun romChanged() {
-        synchronized(this) { evoFor = null; movesFor = null; spotsFor = null }
+        synchronized(lock) { evoFor = null; movesFor = null; spotsFor = null }
         MapSections.romChanged()
     }
 
@@ -207,10 +214,10 @@ object DexDetails {
     /** Every species' outgoing links, read once per ROM; null if [t] has no table or it doesn't check out. */
     fun evolutions(t: PokedexTables): Map<Int, List<EvoLink>>? {
         if (evoFor == t) return evoTable
-        synchronized(this) {
+        synchronized(lock) {
             if (evoFor == t) return evoTable
             val table = runCatching { t.gen4?.let { Gen4Dex.evolutions(it) } ?: readEvolutions(t) }
-                .onFailure { android.util.Log.w("pokedaisy", "evolutions failed", it) }
+                .onFailure { Logs.w("evolutions failed", it) }
                 .getOrNull()
                 ?.takeIf { it.size >= 10 && it.values.flatten().all { l -> l.to in 1 until t.speciesCount } }
             parents = table?.values?.flatten()?.groupBy { it.to }
@@ -248,13 +255,14 @@ object DexDetails {
         val layout = t.evoLayout ?: if (t.evolutions != 0L) EvoLayout(EvoScheme.VANILLA, table = t.evolutions) else return null
         val out = HashMap<Int, List<EvoLink>>()
         if (layout.table != 0L) {
-            val row = 8
+            val row = layout.record
             val raw = rd(layout.table, t.speciesCount * layout.perMon * row)
             for (s in 1 until t.speciesCount) {
                 val links = (0 until layout.perMon).mapNotNull { i ->
                     val o = (s * layout.perMon + i) * row
                     val m = u16le(raw, o)
-                    if (m == 0) null else link(s, layout.scheme, m, u16le(raw, o + 2), u16le(raw, o + 4), u16le(raw, o + 6), t)
+                    val extra = if (row >= 8) u16le(raw, o + 6) else 0
+                    if (m == 0) null else link(s, layout.scheme, m, u16le(raw, o + 2), u16le(raw, o + 4), extra, t)
                 }.distinct()
                 if (links.isNotEmpty()) out[s] = knownFirst(links)
             }
@@ -338,6 +346,12 @@ object DexDetails {
             EvoScheme.ROWE -> if (m <= 31) expansion(m, p) else null
             EvoScheme.MONOMYTH -> vanilla(m, p) ?: if (m in setOf(23, 25, 27, 32)) expansion(m, p) else null
             EvoScheme.EXPANSION_PARAMS -> null
+            EvoScheme.EPSILON_EMERALD -> when (m) {
+                in 1..30 -> expansion(m, p)
+                31 -> listOf(EvoReq.LevelUp, EvoReq.Hold(p))
+                33 -> listOf(EvoReq.Crits(p))
+                else -> null
+            }
             EvoScheme.RECHARGED_YELLOW -> vanilla(m, p) ?: if (m == 16) listOf(EvoReq.UseItem(p), EvoReq.Hold(extra)) else null
         } ?: listOf(EvoReq.Special)
         return EvoLink(from, target, reqs)
@@ -496,7 +510,7 @@ object DexDetails {
     private fun syncMoves(t: PokedexTables, g: GuideTables?) {
         val key = t to g
         if (movesFor == key) return
-        synchronized(this) {
+        synchronized(lock) {
             if (movesFor == key) return
             levelUp.clear(); teach.clear(); tmhmOk = null; tmhm = null
             movesFor = key
@@ -515,7 +529,7 @@ object DexDetails {
         syncMoves(t, g)
         levelUp[species]?.let { return it }
         return runCatching { readLevelUp(t, g, species) }
-            .onFailure { android.util.Log.w("pokedaisy", "learnset $species failed", it) }
+            .onFailure { Logs.w("learnset $species failed", it) }
             .getOrNull()?.also { levelUp[species] = it }
     }
 
@@ -557,7 +571,7 @@ object DexDetails {
         teach[species]?.let { return it }
         t.gen4?.let { return Gen4Dex.machines(it, species)?.also { m -> teach[species] = m } }
         return runCatching { readTeachable(t, species) }
-            .onFailure { android.util.Log.w("pokedaisy", "teachable $species failed", it) }
+            .onFailure { Logs.w("teachable $species failed", it) }
             .getOrNull()?.also { teach[species] = it }
     }
 
@@ -579,7 +593,7 @@ object DexDetails {
         val bits = rd(t.tmhmLearnsets + species * 8L, 8)
         val moves = rd(t.tmhmMoves, 58 * 2)
         return (0 until 58).filter { (bits[it / 8].toInt() shr (it % 8)) and 1 != 0 }.map { i ->
-            TeachMove(if (i < 50) "TM%02d".format(i + 1) else "HM%02d".format(i - 49), u16le(moves, i * 2))
+            TeachMove(if (i < 50) "TM${(i + 1).pad(2)}" else "HM${(i - 49).pad(2)}", u16le(moves, i * 2))
         }
     }
 
@@ -630,10 +644,10 @@ object DexDetails {
     private fun index(g: GuideTables): Map<Int, List<CatchSpot>>? {
         val seed = GuideRandomizer.wildSeed
         if (spotsFor == g && spotsSeed == seed) return spots
-        synchronized(this) {
+        synchronized(lock) {
             if (spotsFor == g && spotsSeed == seed) return spots
             val built = runCatching { buildIndex(g) }
-                .onFailure { android.util.Log.w("pokedaisy", "wild index failed", it) }
+                .onFailure { Logs.w("wild index failed", it) }
                 .getOrNull()
             spots = built
             spotsFor = g
@@ -703,6 +717,7 @@ object DexDetails {
  * port that copied English's address).
  */
 object MapSections {
+    private val lock = SynchronizedObject()
     @Volatile private var cachedFor: GuideTables? = null
     @Volatile private var groups: Long = 0
 
@@ -730,19 +745,19 @@ object MapSections {
     }
 
     fun romChanged() {
-        synchronized(this) { cachedFor = null }
+        synchronized(lock) { cachedFor = null }
     }
 
     private fun groupsFor(g: GuideTables): Long {
         if (cachedFor == g) return groups
-        synchronized(this) {
+        synchronized(lock) {
             if (cachedFor == g) return groups
             val keys = GuideRomSource.wildMapKeys(g)
             // Every wild map (SoulGold keeps a few headers for maps it dropped: 9 in 10 will do).
             fun fits(base: Long) = keys.isNotEmpty() &&
                 keys.count { runCatching { header(g, base, it shr 8, it and 0xFF) }.getOrNull() != null } * 10 >= keys.size * 9
             groups = g.mapGroups.takeIf { it != 0L && runCatching { fits(it) }.getOrDefault(false) }
-                ?: runCatching { scan(g, ::fits) }.onFailure { android.util.Log.w("pokedaisy", "gMapGroups scan failed", it) }.getOrNull()
+                ?: runCatching { scan(g, ::fits) }.onFailure { Logs.w("gMapGroups scan failed", it) }.getOrNull()
                 ?: 0L
             cachedFor = g
             return groups

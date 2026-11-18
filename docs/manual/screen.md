@@ -33,9 +33,9 @@ A few things worth knowing:
 - **Battles are wide too.** The battle scenery carries on past the edges, and Pokémon, trainers and health boxes slide in from off screen. Some hacks only draw their battle scenes as wide as the screen; there the scene is mirrored out from its edges so it still flows on. The dark band behind the text and the battle menu runs right across.
 - **Weather and caves work.** Fog, ash and rain reach the screen's edges, and a dark cave stays dark around your light.
 - **Menus and the title screen** can't be extended, so there the strips glow softly with the colours at the game's edges, and fade back into the map when you return to it.
-- **Supported games:** FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and revision), plus Unbound, Radical Red, Lazarus, SoulGold, Heart and Soul, Gaia, Odyssey, Amethyst 1.3.0, Glazed, Seaglass, Emerald Imperium, Emerald Legacy, Emerald Rogue, Too Many Types 2, Recharged Yellow, Super Mariomon, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Elite Redux, Monomyth, Sword and Shield Ultimate Plus, GS Chronicles and Celia's hack.
-- **DS games:** Platinum, HeartGold, SoulSilver, Black, White, Black 2, White 2 and Origin HeartGold. Their 3D world goes on past the screen, and so do their battles: the whole battle scene of Black, White and their sequels, sky, ground and all, and the others' battle backgrounds with the health boxes carried to the edges.
-- **On the Game Boy:** Yellow (the English cart), Yellow Legacy, Crystal, Crystal Legacy, Crystal Clear and Polished Crystal (version 3.2.3, the normal build) have it too. The town or route goes on past the small screen, with the people standing in it, and zoom and looking around work the same way. People in the next town or route show up in the strips before you cross over. Text boxes, the start menu, the save prompt and the options screen keep the map around them. Battles and the other menu screens aren't widened: the strips there are plain, in the colours along the screen's sides (white in most of them, Yellow's trainer card too; black beside a screen whose top part is black).
+- **Supported games:** FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and revision), plus Unbound, Radical Red, Lazarus, SoulGold, Heart and Soul, Gaia, Odyssey, Amethyst 1.3.0, Glazed, Seaglass, Emerald Imperium, Emerald Legacy, Emerald Rogue, Too Many Types 2, Recharged Yellow, Super Mariomon, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Elite Redux, Monomyth, Epsilon Emerald, Sword and Shield Ultimate Plus, GS Chronicles and Celia's hack.
+- **DS games:** Platinum, HeartGold, SoulSilver, Black, White, Black 2, White 2, Origin HeartGold and Heartfelt Gold. Their 3D world goes on past the screen, and so do their battles: the whole battle scene of Black, White and their sequels, sky, ground and all, and the others' battle backgrounds with the health boxes carried to the edges.
+- **On the Game Boy:** Red and Blue (the English carts), Yellow (in every language), Yellow Legacy, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear and Polished Crystal (version 3.2.3, the normal build) have it too. The town or route goes on past the small screen, with the people standing in it, and zoom and looking around work the same way. People in the next town or route show up in the strips before you cross over. Text boxes, the start menu, the save prompt and the options screen keep the map around them. Battles and the other menu screens aren't widened: the strips there are plain, in the colours along the screen's sides (white in most of them, Yellow's trainer card too; black beside a screen whose top part is black).
 
 `EXPAND` is tagged `BETA` in Settings: it works in every game listed above, but it isn't perfect yet, and now and then you may spot something at the edges that the game itself doesn't show. If you do, [tell us](https://pokedaisy.com/feedback/) where it happened.
 
@@ -198,6 +198,17 @@ Overlays are switched off on a phone held upright, where the game sits across th
 
 The game's own art stays as it is: party slots, the map, the trainer card and battle buttons keep the game's colours. Backgrounds dim behind them.
 
+## Font
+
+`FONT` sets the letters the app is written in, on both screens at once. Pick it in the top screen's Settings or in the companion's SETTINGS, under SCREEN:
+
+- `PIXEL` (the default): crisp pixel letters, like the games' own. A Game Boy game shows its own letters while it runs.
+- `SMOOTH`: soft, rounded letters that are easy to read on any screen.
+- `SMOOTH BOLD`: the same letters, heavier, closer to the games' thick menu text.
+- `SYSTEM`: your device's own font.
+
+The game's own art keeps its pixel letters: type tags, party slots and the trainer card stay as the game draws them.
+
 ## Theme
 
 `THEME` gives the whole app a colour scheme: the library, Settings, setup and the companion while you play, on both screens at once. It works like `DARK MODE`: the windows take the theme's colour, the values in the lists take its accent, and the backdrop behind them gets its own colours. You can pick it in the top screen's Settings or in the companion's SETTINGS, under SCREEN, and use it with `DARK MODE` on or off.
@@ -226,6 +237,25 @@ The dates follow your device's calendar. If two holidays overlap (`LUNAR NEW YEA
 `FPS / CPU` shows a small readout in the game's top-left corner: how many frames the game ran in the last second and how much of the CPU PokeDaisy is using. It should read about 60 at normal speed.
 
 Tap the readout to open a longer panel with frame times, late frames, the screen's refresh and pacing, audio underruns, battery temperature, thermal state and memory. It's useful when a game feels choppy; see [Troubleshooting](troubleshooting.md#the-game-feels-choppy-or-the-device-runs-hot).
+
+## Game look
+
+`COMPANION LOOK`, right under `THEME`, picks how the companion and the HUD look in a game. On `GAME` (the default), they take on the style of the game you're playing, from the colors of its own menus:
+
+| Game | Companion | HUD |
+| --- | --- | --- |
+| HeartGold, SoulSilver | Grey blue windows with a dark line, red values, orange buttons | The green menu window, with a red cursor |
+| Platinum | White windows in a brown wooden frame, cream lists | Dark slate panels with a silver line |
+| Black, White | Navy windows with a cyan rim, charcoal lists and buttons | Navy panels with a cyan rim and a magenta cursor |
+| Black 2, White 2 | Violet windows with a white rim, teal values | Violet panels with a pink cursor |
+| FireRed, LeafGreen | The bag's cream list in its gold frame | The bag's window |
+| Emerald | The bag's cream list in its steel blue frame | The bag's window |
+| Ruby, Sapphire | Emerald's frame with their bag's warmer peach list | The bag's window |
+| X, Y | Smooth green windows and a rounded font | Their own buttons and panels |
+
+Hacks that run on one of these games wear its look. Other games keep the app's own look. Your theme and `DARK MODE` still apply around them: in dark mode the light looks give way to the app's dark windows, while Black and White's darker looks stay as they are.
+
+Pick `CLASSIC` to keep the app's own look in every game, X and Y included. The HUD's own `LOOK` setting picks `GAME` for the game's style or one of the app's looks; see [HUD](hud.md).
 
 ## Light companion for slow devices
 

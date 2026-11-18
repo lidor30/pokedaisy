@@ -4,7 +4,7 @@ package com.pokedaisy.app.companion.data
 // (sha1 1ee1557d...) against retail FireRed rev 0 - do not hand-edit. What it names /
 // types differently, by FireRed's ids (ActiveTables lays these over the shared tables).
 
-internal val fireRedHackAshGray: HackText by lazy {
+val fireRedHackAshGray: HackText by lazy {
     HackText(
         species = mapOf(
             252 to "Tentacruel",

@@ -5,6 +5,7 @@
 #include "pd_armgba_internal.h"
 
 #include <stdarg.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,19 +57,41 @@ static void emu_log(const char* format, ...) {
     E.host.log(E.host.ctx, line);
 }
 
+// CRC-32 eight bytes a step (slicing-by-8): a 32 MB game's took a 3DS about 0.4 s a byte at a time.
 static uint32_t crc32_of(const void* buf, size_t size) {
-    static uint32_t table[256];
-    if (!table[1]) {
+    static uint32_t table[8][256];
+    if (!table[0][1]) {
         for (uint32_t i = 0; i < 256; i++) {
             uint32_t c = i;
             for (int k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320u ^ (c >> 1) : c >> 1;
-            table[i] = c;
+            table[0][i] = c;
         }
+        for (uint32_t i = 0; i < 256; i++)
+            for (int t = 1; t < 8; t++) table[t][i] = table[0][table[t - 1][i] & 0xFF] ^ (table[t - 1][i] >> 8);
     }
     uint32_t crc = 0xFFFFFFFFu;
     const uint8_t* p = buf;
-    for (size_t i = 0; i < size; i++) crc = table[(crc ^ p[i]) & 0xFF] ^ (crc >> 8);
+    for (; size >= 8; size -= 8, p += 8) {
+        uint32_t lo = crc ^ ((uint32_t) p[0] | (uint32_t) p[1] << 8 | (uint32_t) p[2] << 16 | (uint32_t) p[3] << 24);
+        uint32_t hi = (uint32_t) p[4] | (uint32_t) p[5] << 8 | (uint32_t) p[6] << 16 | (uint32_t) p[7] << 24;
+        crc = table[7][lo & 0xFF] ^ table[6][(lo >> 8) & 0xFF] ^ table[5][(lo >> 16) & 0xFF] ^ table[4][lo >> 24] ^
+              table[3][hi & 0xFF] ^ table[2][(hi >> 8) & 0xFF] ^ table[1][(hi >> 16) & 0xFF] ^ table[0][hi >> 24];
+    }
+    while (size--) crc = table[0][(crc ^ *p++) & 0xFF] ^ (crc >> 8);
     return ~crc;
+}
+
+// Milliseconds, for the load's log line.
+#if defined(__3DS__)
+uint64_t osGetTime(void); // libctru's
+#endif
+static uint64_t load_ms(void) {
+#if defined(__3DS__)
+    return osGetTime();
+#endif
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return (uint64_t) t.tv_sec * 1000u + (uint64_t) t.tv_nsec / 1000000u;
 }
 
 // --- what armGBA's libretro layer asks its frontend ---
@@ -77,7 +100,8 @@ static uint32_t crc32_of(const void* buf, size_t size) {
 // Frame Skip is Auto only so that fast-forward's unseen frames can be left undrawn (the sound status below): a frame
 // that is shown is always drawn. Player 1's save stays the frontend's (this file's), never armGBA's own folders. Its
 // mixer stays on the game's thread: the New 3DS's fourth core is the companion's draw thread and EXPAND's (one render
-// worker, on the third: ctr/host.c declines the second).
+// worker, on the third: ctr/host.c declines the second). Fast Flash Saves stays off here: it changes four bytes of the
+// ROM as the game is loaded, before the companion has taken the ROM's SHA-1 (pd_armgba_fast_flash_saves does it after).
 static const char* option_value(const char* key) {
     static const struct { const char* key; const char* value; } FIXED[] = {
         { "armgba_skip_bios", "enabled" },
@@ -87,7 +111,7 @@ static const char* option_value(const char* key) {
         { "armgba_player1_saves", "retroarch" },
         { "armgba_video_threads", "1" },
     };
-    if (!strcmp(key, "armgba_threaded_video")) return E.host.threaded ? "enabled" : "disabled";
+    if (!strcmp(key, "armgba_threaded_video")) return !E.host.threaded ? "disabled" : E.host.lateVideo ? "one frame late" : "enabled";
     if (!strcmp(key, "armgba_threaded_audio")) return "disabled";
     for (size_t i = 0; i < sizeof(FIXED) / sizeof(*FIXED); i++)
         if (!strcmp(key, FIXED[i].key)) return FIXED[i].value;
@@ -519,6 +543,20 @@ void pd_armgba_jit_counts(uint32_t out[4]) {
 }
 #endif
 
+// armGBA's Fast Flash Saves (savedataSkipFlashTimer): the two routines return at once, found by their code and only
+// when each is in the ROM once. A game without them is left as it is.
+bool pd_armgba_fast_flash_saves(long* start, long* stop) {
+    return E.loaded && savedataSkipFlashTimerAt(gba, start, stop);
+}
+
+// A game patch (REUSABLE TMS, INSTANT TEXT) into the cartridge, and the recompiler told: its code there is built again.
+bool pd_armgba_rom_write(uint32_t addr, const void* data, size_t len) {
+    if (!E.loaded || addr < 0x08000000u || addr - 0x08000000u + len > gba->romSize) return false;
+    memcpy(gba->rom + (addr - 0x08000000u), data, len);
+    jitInvalidate(gba, addr, (uint32_t) len);
+    return true;
+}
+
 bool pd_armgba_recompiling(void) {
     return E.loaded && gba->jit != NULL;
 }
@@ -542,9 +580,10 @@ bool ag_load(const char* romPath, const char* savePath, const struct ag_host* ho
     E.host = *host;
     snprintf(E.savePath, sizeof(E.savePath), "%s", savePath);
 
+    uint64_t t0 = load_ms();
     FILE* f = fopen(romPath, "rb");
     if (!f) {
-        snprintf(error, errorLen, "can't open the game");
+        snprintf(error, errorLen, "can't open %s (%s)", romPath, strerror(errno));
         return false;
     }
     fseek(f, 0, SEEK_END);
@@ -563,17 +602,32 @@ bool ag_load(const char* romPath, const char* savePath, const struct ag_host* ho
 #else
     uint8_t* rom = malloc((size_t) length);
 #endif
-    if (!rom || fread(rom, 1, (size_t) length, f) != (size_t) length) {
+    if (!rom) {
+        fclose(f);
+#if defined(__3DS__)
+        snprintf(error, errorLen, "no %lu KiB buffer for a %ld KiB game (%s)", (unsigned long) (bufferSize >> 10), length >> 10,
+                 hosts ? "the app's 32 MB game buffer wasn't reserved at start" : "malloc failed");
+#else
+        snprintf(error, errorLen, "no memory for a %ld KiB game", length >> 10);
+#endif
+        return false;
+    }
+    size_t got = fread(rom, 1, (size_t) length, f);
+    if (got != (size_t) length) {
+        int err = ferror(f) ? errno : 0;
         fclose(f);
 #if defined(__3DS__)
         if (!hosts)
 #endif
         free(rom);
-        snprintf(error, errorLen, "no memory for the game (%ld KiB), or it couldn't be read", length >> 10);
+        snprintf(error, errorLen, "read %lu of the game's %ld KiB from the SD card (%s)", (unsigned long) (got >> 10), length >> 10,
+                 err ? strerror(err) : "ended early");
         return false;
     }
     fclose(f);
-    E.romCrc = crc32_of(rom, (size_t) length);
+    uint64_t t1 = load_ms();
+    E.romCrc = host->knownCrc ? host->knownCrc : crc32_of(rom, (size_t) length);
+    uint64_t t2 = load_ms();
 
     retro_set_environment(environment);
     retro_set_video_refresh(video_refresh);
@@ -599,10 +653,12 @@ bool ag_load(const char* romPath, const char* savePath, const struct ag_host* ho
     if (!ok || !gba) {
         if (ok) retro_unload_game();
         retro_deinit();
-        snprintf(error, errorLen, "armGBA couldn't start it");
+        snprintf(error, errorLen, "armGBA couldn't start it (retro_load_game %s, %ld KiB game)", ok ? "ok, no machine" : "failed",
+                 length >> 10);
         return false;
     }
     E.loaded = true;
+    uint64_t t3 = load_ms();
     hblank_find();
     read_save();
     emu_log("armGBA: %s, %s, %u KiB game", gba->jit ? "recompiler" : "interpreter (no recompiler)",
@@ -613,6 +669,8 @@ bool ag_load(const char* romPath, const char* savePath, const struct ag_host* ho
         jitWarmLoad(E.warmPath);
     }
 #endif
+    emu_log("load (ms): read %u, crc %u, armGBA %u, the rest %u", (unsigned) (t1 - t0), (unsigned) (t2 - t1), (unsigned) (t3 - t2),
+            (unsigned) (load_ms() - t3));
     return true;
 }
 

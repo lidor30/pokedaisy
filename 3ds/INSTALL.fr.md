@@ -34,6 +34,9 @@ PokeDaisy fonctionne aussi sur Nintendo 3DS, comme application homebrew : votre 
 
 `sdmc:/` est le nom que la 3DS donne à la racine de la carte SD : sur votre ordinateur, `sdmc:/3ds/` est simplement le dossier `3ds` de la carte.
 
+> [!TIP]
+> Vous préférez lancer PokeDaisy depuis le menu HOME ? Chaque version propose aussi `pokedaisy.cia`. Ouvrez FBI sur la 3DS (l'installation du firmware personnalisé l'a ajouté), choisissez **Remote Install**, puis **Scan QR Code**, et scannez le code sur la page de la version. Ou copiez `pokedaisy.cia` sur la carte SD et installez-le depuis la liste **SD** de FBI. Les étapes suivantes ne changent pas, et vous lancez PokeDaisy depuis son icône du menu HOME.
+
 ## Étape 3 : ajouter vos jeux et vos sauvegardes
 
 1. À la racine de la carte, créez un dossier `pokedaisy`, et dedans un dossier `roms` : `sdmc:/pokedaisy/roms/`. (PokeDaisy crée les deux la première fois qu'il démarre, si vous préférez le lancer une fois d'abord.)
@@ -112,6 +115,8 @@ Téléchargez le nouveau `pokedaisy.3dsx` et copiez-le par-dessus l'ancien dans 
 - **PokeDaisy n'apparaît pas dans le Homebrew Launcher :** le fichier doit être dans `sdmc:/3ds/` et se terminer par `.3dsx`.
 - **Un jeu n'est pas dans la liste :** il doit être directement dans `sdmc:/pokedaisy/roms/`, pas dans un dossier à l'intérieur, et pas compressé.
 - **Ma sauvegarde n'a pas été chargée :** elle doit porter exactement le nom du jeu avec `.sav` à la fin. À chaque lancement, la sauvegarde est d'abord copiée dans `sdmc:/pokedaisy/roms/pokedaisy-backups/` : une copie plus ancienne vous y attend si besoin.
-- **C'est lent :** une 3DS ou une 2DS d'origine est plus lente que les modèles New. Dans les `SETTINGS` de la bibliothèque, mettez `SCREEN` sur `PIXEL 1x`, le mode le plus léger.
+- **C'est lent :** une 3DS ou une 2DS d'origine est plus lente que les modèles New. Dans les `SETTINGS` de la bibliothèque, mettez `SCREEN` sur `PIXEL 1x`, le mode le plus léger. Pour un jeu GBA, vous pouvez aussi appuyer sur `X` dans la bibliothèque et essayer un autre `GBA CORE` : `GPSP` est un cœur expérimental, prévu pour la 3DS d'origine. Les jeux démarrent sans EXPAND, plus léger. `EXPAND 1.5x` est disponible dans les `SETTINGS` de la bibliothèque.
+- **Un jeu demande d'installer le CIA :** lancé depuis le Homebrew Launcher, une 3DS ou 2DS d'origine n'a de place que pour les jeux de 16 Mo au plus, et aucune pour le cœur `GPSP`. Installez `pokedaisy.cia` (voir plus haut) et lancez PokeDaisy depuis le menu HOME pour jouer à des jeux plus gros ou utiliser `GPSP`.
+- **Le jeu ne démarre pas :** l'écran du haut indique pourquoi, suivi de la mémoire de votre 3DS. Quand vous nous écrivez, prenez en photo tout le message ou joignez `sdmc:/pokedaisy/log.txt`.
 
 Toujours bloqué ? [Dites-le-nous](https://pokedaisy.com/fr/feedback/#bug) en joignant `sdmc:/pokedaisy/log.txt`.

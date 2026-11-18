@@ -2,9 +2,12 @@
 
 #include <3ds.h>
 #include <citro2d.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "../core/pd_ui.h"
+#include "../core/pd_pixels.h"
+#include "host.h"
 
 #define GBA_W 240
 #define GBA_H 160
@@ -34,7 +37,8 @@ static C3D_Tex upTex;
 static C3D_RenderTarget* upTarget;
 static C3D_Tex bottomTex, topTex, overlayTex, perfTex;
 
-// A New 3DS draws on its third core, so writing the textures and waiting for the refresh come off the game's time.
+// A New 3DS draws on its fourth core, an Old 3DS on the system's (core 1, lent at 80%: host_core1_take), so writing the
+// textures and waiting for the refresh come off the game's time.
 // gpu_draw hands a job over: what the frame needs is copied into the stage (the game runs on and rewrites its buffers),
 // and the thread takes it at the next refresh. One job at a time: a game that's ahead waits for the stage, which is
 // what paces it. Without that core gpu_draw runs the job itself.
@@ -56,8 +60,10 @@ struct draw_job {
     const uint32_t* bottom;
     const uint32_t* top;
     const uint32_t* overlay;
+    const uint16_t* nativePx;
+    size_t nativeStride;
 };
-#define DRAW_STACK (64 * 1024)
+#define DRAW_STACK GPU_DRAW_STACK
 static Thread drawThread;
 static Thread wideThread;
 static LightEvent wideStart, wideDone;
@@ -71,6 +77,9 @@ static uint32_t* stageGame;
 static uint32_t* stageBottom;
 static uint32_t* stageTop;
 static uint32_t* stageOverlay;
+static const uint16_t* pendingNative;
+static size_t pendingNativeStride;
+static volatile unsigned nativeFrames;
 static aptHookCookie drawHook;
 static volatile unsigned framesShown;
 
@@ -103,7 +112,7 @@ static bool tex_init(C3D_Tex* tex, int w, int h, GPU_TEXTURE_FILTER_PARAM filter
     return true;
 }
 
-static void draw_thread_start(void);
+static void draw_thread_start(bool appCore);
 
 bool gpu_init(void) {
     gfxInitDefault();
@@ -133,7 +142,7 @@ bool gpu_init(void) {
     upTarget = C3D_RenderTargetCreateFromTex(&upTex, GPU_TEXFACE_2D, 0, -1);
     if (!upTarget) return false;
     if (!(tex_init(&bottomTex, 512, 256, GPU_NEAREST) && tex_init(&topTex, 512, 256, GPU_NEAREST))) return false;
-    draw_thread_start();
+    draw_thread_start(false);
     return true;
 }
 
@@ -192,15 +201,7 @@ uint32_t* gpu_frame_done(void) {
 
 // A 0xRRGGBB canvas into an RGB565 texture.
 static void write_canvas(C3D_Tex* tex, const uint32_t* px, int w, int h) {
-    uint16_t* t = tex->data;
-    for (int y = 0; y < h; y++) {
-        const uint32_t* row = px + y * w;
-        for (int x = 0; x < w; x++) {
-            uint32_t p = row[x];
-            t[tiled((u32) x, (u32) y, tex->width)] =
-                (uint16_t) (((p >> 19) & 0x1F) << 11 | ((p >> 10) & 0x3F) << 5 | ((p >> 3) & 0x1F));
-        }
-    }
+    pd_pixels_canvas(tex->data, tex->width, px, (unsigned) w, (unsigned) h);
     GSPGPU_FlushDataCache(tex->data, tex->size);
 }
 
@@ -249,15 +250,25 @@ static void write_tiles(C3D_Tex* tex, const uint32_t* px, int w, int h, int stri
             int wide = w - x0 < across ? w - x0 : across;
             bool inHole = x0 >= hole->x && x0 + wide <= hole->x + hole->w, offHole = x0 + wide <= hole->x || x0 >= hole->x + hole->w;
             for (int j = 0; j < down; j++) {
+                // The row's source for this tile: the game's frame inside the hole, EXPAND's picture outside it; only a
+                // tile the hole's edge cuts picks pixel by pixel.
                 const uint32_t* row = rows[j];
                 const uint32_t* inGame = gameRows[j];
                 if (inGame && inHole) row = inGame;
                 if (!inGame || inHole || offHole) inGame = NULL;
-                if (inGame && offHole) inGame = NULL;
+                uint16_t* tt = t16 + tile;
+                const uint8_t* m = morton[j];
+                if (!inGame && wide == 8) {
+                    // A whole row of the tile: (2k, 2k + 1) sit side by side in Morton order, so two texels a store.
+                    const uint32_t* p = row + x0;
+                    for (int k = 0; k < 8; k += 2)
+                        *(uint32_t*) (tt + m[k]) = (uint32_t) to565(p[k]) | (uint32_t) to565(p[k + 1]) << 16;
+                    continue;
+                }
                 for (int i = 0; i < wide; i++) {
                     int x = x0 + i;
                     uint32_t p = inGame && x >= hole->x && x < hole->x + hole->w ? inGame[x] : row[x];
-                    t16[tile + morton[j][i]] = to565(p);
+                    tt[m[i]] = to565(p);
                 }
             }
         }
@@ -301,12 +312,7 @@ void gpu_set_perf(const uint32_t* px, int x, int y, int w) {
 }
 
 static void write_perf(const uint32_t* px) {
-    uint32_t* t = perfTex.data;
-    for (int y = 0; y < 16; y++)
-        for (int x = 0; x < 128; x++) {
-            uint32_t p = px[y * 128 + x];
-            t[tiled((u32) x, (u32) y, perfTex.width)] = (p & 0xFF000000) >> 24 | (p & 0xFF) << 8 | (p & 0xFF00) << 8 | (p & 0xFF0000) << 8;
-        }
+    pd_pixels_overlay(perfTex.data, perfTex.width, px, 128, 16);
     GSPGPU_FlushDataCache(perfTex.data, perfTex.size);
 }
 
@@ -317,14 +323,7 @@ void gpu_show_overlay(bool shown, bool dim) {
 
 // 0xAARRGGBB into the RGBA8 texture (the GPU reads its bytes A, B, G, R).
 static void write_overlay(const uint32_t* px) {
-    uint32_t* t = overlayTex.data;
-    for (int y = 0; y < TOP_H; y++) {
-        const uint32_t* row = px + y * TOP_W;
-        for (int x = 0; x < TOP_W; x++) {
-            uint32_t p = row[x];
-            t[tiled((u32) x, (u32) y, overlayTex.width)] = (p & 0xFF000000) >> 24 | (p & 0xFF) << 8 | (p & 0xFF00) << 8 | (p & 0xFF0000) << 8;
-        }
-    }
+    pd_pixels_overlay(overlayTex.data, overlayTex.width, px, TOP_W, TOP_H);
     GSPGPU_FlushDataCache(overlayTex.data, overlayTex.size);
 }
 
@@ -334,6 +333,15 @@ static int gameW = GBA_W, gameH = GBA_H;
 void gpu_set_game_size(int w, int h) {
     gameW = w;
     gameH = h;
+}
+
+void gpu_set_native_pixels(const uint16_t* px, size_t stride) {
+    pendingNative = px;
+    pendingNativeStride = stride;
+}
+
+unsigned gpu_native_frames(void) {
+    return nativeFrames;
 }
 
 void gpu_hold_game(bool hold) {
@@ -355,6 +363,12 @@ static void run_job(const struct draw_job* j, bool threaded) {
         if (widePx) {
             gpu_wide_join();
             write_tiles(&wideTex[texSide], widePx, wideW, wideH, wideW, &j->hole, gamePx);
+        } else if (j->nativePx) {
+            pd_pixels_native(gameTex[texSide].data, gameTex[texSide].width, j->nativePx,
+                             (unsigned) j->nativeStride, (unsigned) gameW, (unsigned) gameH);
+            u32 used = (u32) ((gameH + 7) / 8) * (gameTex[texSide].width >> 3) * 128;
+            GSPGPU_FlushDataCache(gameTex[texSide].data, used);
+            nativeFrames++;
         } else {
             write_tiles(&gameTex[texSide], gamePx, gameW, gameH, GPU_GAME_STRIDE, &NO_HOLE, NULL);
         }
@@ -464,7 +478,8 @@ static void wide_main(void* arg) {
 
 bool gpu_wide_thread(void (*work)(void)) {
     if (wideThread) return true;
-    if (!drawThread) return false;
+    // The New 3DS's fourth core only: an Old 3DS has none to spare, and EXPAND's margins are drawn with the game there.
+    if (!drawThread || !host_is_new_3ds()) return false;
     wideWork = work;
     LightEvent_Init(&wideStart, RESET_ONESHOT);
     LightEvent_Init(&wideDone, RESET_STICKY);
@@ -484,15 +499,31 @@ void gpu_wide_join(void) {
     if (wideThread) LightEvent_Wait(&wideDone);
 }
 
-static void draw_thread_start(void) {
-    bool isNew = false;
-    APT_CheckNew3DS(&isNew);
-    if (!isNew) return;
-    stageGame = linearAlloc(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t));
-    stageBottom = linearAlloc(PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));
-    stageTop = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
-    stageOverlay = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
-    gameBufs[1] = linearMemAlign(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t), 0x80);
+static int drawCore = -1;
+
+int gpu_draw_core(void) {
+    return drawThread ? drawCore : -1;
+}
+
+// appCore: an Old 3DS's game core instead of its system core (gpu_core1_lend).
+static void draw_thread_start(bool appCore) {
+    bool isNew = host_is_new_3ds();
+    // An Old 3DS: the system's core, when it lends it (else everything stays on the game's core, as before).
+#ifdef PD_DEV
+    // The dev build's switch: sdmc:/pokedaisy-dev/draw0 keeps an Old 3DS's drawing on the game's core.
+    FILE* draw0 = isNew ? NULL : fopen("sdmc:/pokedaisy-dev/draw0", "rb");
+    if (draw0) {
+        fclose(draw0);
+        return;
+    }
+#endif
+    if (!isNew && !appCore && !host_core1_take(HOST_CORE1_PERCENT)) return;
+    // Kept when the thread stops (gpu_core1_lend): started again, it finds them.
+    if (!stageGame) stageGame = linearAlloc(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t));
+    if (!stageBottom) stageBottom = linearAlloc(PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));
+    if (!stageTop) stageTop = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
+    if (!stageOverlay) stageOverlay = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
+    if (!gameBufs[1]) gameBufs[1] = linearMemAlign(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t), 0x80);
     if (!stageGame || !stageBottom || !stageTop || !stageOverlay) return;
     LightEvent_Init(&jobReady, RESET_ONESHOT);
     LightEvent_Init(&stageFree, RESET_ONESHOT);
@@ -501,15 +532,63 @@ static void draw_thread_start(void) {
     svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
     // The New 3DS's fourth core, beside armGBA's mixer (it sleeps between batches); mGBA's renderer and armGBA's render
     // worker have the third. armGBA's second worker is kept off (pd_armgba.c): beside it this thread starved.
-    drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, 3, false);
-    if (!drawThread) drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, 2, false);
+    // An Old 3DS's system core: the job mostly waits for the refresh there, so the game no longer does.
+    // Lent core 1 away, on the game's own core: the job's waits for the refresh are still the thread's, not the game's
+    // (drawn by the game's thread instead, a stand-in Old 3DS ran FireRed at 51 frames a second, not 59).
+    static const int CORES_NEW[] = { 3, 2 }, CORES_OLD[] = { 1 }, CORES_APP[] = { 0 };
+    const int* cores = isNew ? CORES_NEW : appCore ? CORES_APP : CORES_OLD;
+    int count = isNew ? 2 : 1;
+    for (int i = 0; i < count && !drawThread; i++) {
+        drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, cores[i], false);
+        drawCore = cores[i];
+    }
     if (drawThread) aptHook(&drawHook, draw_apt_hook, NULL);
+}
+
+// An Old 3DS lets the app run one thread on its system core: a second one asking for core 1 is refused (svcCreateThread
+// E0A01839, out of resource: players' Old 3DS logs, 2026-11-18), so the draw thread there left armGBA's / gpSP's renderer
+// on the game's core, 36-44% of frames skipped. The renderer does far more of a frame's work, so it gets the core while
+// its game runs, and the draw thread moves to the game's core until gpu_core1_back.
+static void draw_thread_stop(void) {
+    while (jobsDone != jobsHanded) svcSleepThread(1000000);
+    drawStop = true;
+    LightEvent_Signal(&jobReady);
+    threadJoin(drawThread, U64_MAX);
+    threadFree(drawThread);
+    aptUnhook(&drawHook);
+    drawThread = NULL;
+    drawCore = -1;
+    drawStop = false;
+    gameDoubled = false;
+    shownBuf = gameBuf;
+}
+
+static bool core1Lent;
+
+bool gpu_core1_lend(void) {
+    if (host_is_new_3ds() || !drawThread || drawCore != 1) return false;
+    draw_thread_stop();
+    core1Lent = true;
+    draw_thread_start(true);
+    return true;
+}
+
+bool gpu_core1_back(void) {
+    if (host_is_new_3ds() || !core1Lent) return false;
+    core1Lent = false;
+    if (drawThread) draw_thread_stop();
+    draw_thread_start(false);
+    return drawThread != NULL;
 }
 
 void gpu_draw(bool game, int screenMode) {
     struct draw_job next = { game, screenMode, holdGame, overlayShown, overlayDim, perfX, perfY, perfW, false, gameW, gameH, shownBuf,
-                             widePx, wideW, wideH, wideHole, pendingBottom, pendingTop, pendingOverlay };
+                             widePx, wideW, wideH, wideHole, pendingBottom, pendingTop, pendingOverlay,
+                             pendingNative, pendingNativeStride };
     pendingBottom = pendingTop = pendingOverlay = NULL;
+    pendingNative = NULL;
+    if (!game || holdGame || widePx || gameW != GBA_W || gameH != GBA_H || next.nativeStride < GBA_W)
+        next.nativePx = NULL;
     if (!drawThread) {
         next.perfNew = perfPending;
         if (perfPending) memcpy(stagePerf, perfPx, sizeof(stagePerf));
@@ -518,12 +597,24 @@ void gpu_draw(bool game, int screenMode) {
         return;
     }
     LightEvent_Wait(&stageFree);
+    if (next.nativePx) {
+        if (stageGame) {
+            // The previous job has consumed this stage. A native image uses
+            // half its capacity; no additional Old3DS RAM is needed.
+            uint16_t* nativeStage = (uint16_t*) stageGame;
+            pd_pixels_stage_native(nativeStage, next.nativePx, (unsigned) next.nativeStride, GBA_W, GBA_H);
+            next.nativePx = nativeStage;
+            next.nativeStride = GBA_W;
+        } else {
+            next.nativePx = NULL;
+        }
+    }
     next.perfNew = perfPending;
     if (perfPending) memcpy(stagePerf, perfPx, sizeof(stagePerf));
     perfPending = false;
     // No copies of a frame the next one won't touch: the game's other buffer, the session's other window (wideFrames).
     if (!gameDoubled) {
-        if (game && !holdGame && (!widePx || wideHole.w)) memcpy(stageGame, gameBuf, GPU_GAME_STRIDE * (size_t) gameH * sizeof(uint32_t));
+        if (game && !holdGame && !next.nativePx && (!widePx || wideHole.w)) memcpy(stageGame, gameBuf, GPU_GAME_STRIDE * (size_t) gameH * sizeof(uint32_t));
         next.gamePx = stageGame;
     }
     if (next.bottom) next.bottom = memcpy(stageBottom, next.bottom, PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));

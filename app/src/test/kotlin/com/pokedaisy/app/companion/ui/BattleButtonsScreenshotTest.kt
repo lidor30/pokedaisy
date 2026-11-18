@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import app.cash.paparazzi.DeviceConfig
+import com.pokedaisy.app.companion.BattleStyle
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.ScreenOrientation
 import com.pokedaisy.app.companion.BattleInput
@@ -48,6 +49,7 @@ import org.junit.Test
  *     ./gradlew :app:recordPaparazziDebug --tests '*BattleButtons*'
  */
 class BattleButtonsScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1920, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),
@@ -67,6 +69,15 @@ class BattleButtonsScreenshotTest {
     @Test fun moveWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.MOVES) }
 
     @Test fun partyWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.PARTY) }
+
+    /** BATTLE STYLE GEN 5: the buttons and both lists in Black / White's look. */
+    @Test fun gen5() = paparazzi.snapshot { BattleScene(style = BattleStyle.GEN5) }
+
+    @Test fun gen5MoveWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.MOVES, style = BattleStyle.GEN5) }
+
+    @Test fun gen5PartyWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.PARTY, style = BattleStyle.GEN5) }
+
+    @Test fun gen5Original() = paparazzi.snapshot { BattleScene(expand = false, style = BattleStyle.GEN5) }
 
     @Test fun dark() {
         com.pokedaisy.app.companion.ui.theme.DarkMode.override = true
@@ -111,6 +122,7 @@ class BattleButtonsScreenshotTest {
 
 /** [BattleButtonsScreenshotTest]'s scenes cropped at 1:1 to the screen's right 600 px (Paparazzi scales 1920 down). */
 class BattleButtonsCloseUpScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 600, screenHeight = 1080, orientation = ScreenOrientation.PORTRAIT),
@@ -129,6 +141,12 @@ class BattleButtonsCloseUpScreenshotTest {
 
     @Test fun partyWindow() = paparazzi.snapshot { Right { BattleScene(window = BattleButtonsWindow.PARTY) } }
 
+    @Test fun gen5() = paparazzi.snapshot { Right { BattleScene(style = BattleStyle.GEN5) } }
+
+    @Test fun gen5MoveWindow() = paparazzi.snapshot { Right { BattleScene(window = BattleButtonsWindow.MOVES, style = BattleStyle.GEN5) } }
+
+    @Test fun gen5PartyWindow() = paparazzi.snapshot { Right { BattleScene(window = BattleButtonsWindow.PARTY, style = BattleStyle.GEN5) } }
+
     @Composable
     private fun Right(content: @Composable () -> Unit) {
         val px = LocalDensity.current
@@ -144,6 +162,7 @@ class BattleButtonsCloseUpScreenshotTest {
 
 /** A 20:9 phone (2400x1080): wide margins beside the battle. */
 class BattleButtonsPhoneScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 2400, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),
@@ -170,6 +189,7 @@ internal fun BattleScene(
     width: Int = 1920,
     clearTop: Int = 0,
     clearBottom: Int = 0,
+    style: BattleStyle = BattleStyle.GEN4,
 ) {
     val left = (width - 1620) / 2f
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -177,7 +197,7 @@ internal fun BattleScene(
         BattleButtons(
             snap, shown = true, BattleButtonsScreenshotTest.input, showHints = true,
             core = if (expand) null else Rect(left, 0f, left + 1620f, 1080f),
-            initialWindow = window, clearTop = clearTop, clearBottom = clearBottom,
+            initialWindow = window, clearTop = clearTop, clearBottom = clearBottom, style = style,
         )
     }
 }

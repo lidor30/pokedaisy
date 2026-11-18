@@ -43,6 +43,72 @@ style = 'CardStyle.GLAZED'
 regionalDex = 'GLAZED_REGIONAL_TO_NATIONAL'
 
 #
+# The European FireRed / LeafGreen / Emerald carts (German, French, Italian, Spanish): English's save, so English's offsets, and
+# their own card (CardStyle.KANTO_DE ...: its tiles, font and words from the cart, checked against the games' own cards).
+#
+#
+# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+[record.TRAINER_CARD_FIRERED_DE]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_FIRERED'
+kotlin = false
+style = 'CardStyle.KANTO_DE'
+
+[record.TRAINER_CARD_FIRERED_FR]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_FIRERED'
+kotlin = false
+style = 'CardStyle.KANTO_FR'
+
+[record.TRAINER_CARD_FIRERED_IT]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_FIRERED'
+kotlin = false
+style = 'CardStyle.KANTO_IT'
+
+[record.TRAINER_CARD_FIRERED_ES]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_FIRERED'
+kotlin = false
+style = 'CardStyle.KANTO_ES'
+
+[record.TRAINER_CARD_LEAFGREEN_IT]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_FIRERED'
+kotlin = false
+style = 'CardStyle.LEAFGREEN_IT'
+
+[record.TRAINER_CARD_LEAFGREEN_ES]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_FIRERED'
+kotlin = false
+style = 'CardStyle.LEAFGREEN_ES'
+
+[record.TRAINER_CARD_EMERALD_DE]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_EMERALD'
+kotlin = false
+style = 'CardStyle.HOENN_DE'
+
+[record.TRAINER_CARD_EMERALD_FR]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_EMERALD'
+kotlin = false
+style = 'CardStyle.HOENN_FR'
+
+[record.TRAINER_CARD_EMERALD_IT]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_EMERALD'
+kotlin = false
+style = 'CardStyle.HOENN_IT'
+
+[record.TRAINER_CARD_EMERALD_ES]
+schema = 'gen3_card'
+base = 'TRAINER_CARD_EMERALD'
+kotlin = false
+style = 'CardStyle.HOENN_ES'
+
+#
 # Emerald Imperium (expansion 1.10): the GF header names SaveBlock1's flags (+0x19C4) and vars
 # (+0x1AF0); gameStats follow the vars (+0x1CF0: steps and battles counted up in the fixtures);
 # the card code's literals give the frontier symbols (0x8C4), FLAG_SYS_POKEDEX_GET (0x861) and
@@ -3474,6 +3540,17 @@ metric = true
 decimalPoint = '.'
 probeCategory = 'Graine'
 
+# Unbound v2.1.1.1 IT: English's tables, the dex text translated in place, metric with a decimal comma (the game's
+# own page: "Alt." / "Peso ... kg"). BULBASAUR's category stayed English's "Seed".
+[record.POKEDEX_UNBOUND_IT]
+schema = 'gen3_pokedex'
+base = 'POKEDEX_UNBOUND'
+kotlin = false
+categoryPrefix = 'Pokémon'
+categorySuffix = ''
+metric = true
+probeCategory = 'Seed'
+
 #
 # Pokémon Wishes of Tomorrow v1.2.6 (expansion 1.15.3): the page from gSpeciesInfo (0x104-byte entries with Imperium's
 # field offsets: natDexNum +0x3C, category +0x1F, text +0x4C, smol front pic +0x58, a plain palette +0x60, footprint
@@ -3779,6 +3856,26 @@ trainers = 0x084B710C
 learnsets = 0x08506AD4
 wildHeaders = 0x089C3284
 mapGroups = 0x0886F3A8
+
+[record.POKEDEX_MONOMYTH_V1_2]
+schema = 'gen3_pokedex'
+base = 'POKEDEX_MONOMYTH'
+kotlin = false
+entries = 0x089D376C
+frontPics = 0x0849F6F4
+abilityNames = 0x084EE5DF
+palettes = 0x084880B0
+speciesInfo = 0x084F6DA0
+speciesToNational = 0x084F4504
+
+[record.GUIDE_TABLES_MONOMYTH_V1_2]
+schema = 'gen3_guide'
+base = 'GUIDE_TABLES_MONOMYTH'
+kotlin = false
+trainers = 0x084B6C60
+learnsets = 0x08506630
+wildHeaders = 0x089C2E40
+mapGroups = 0x0886EF64
 
 # SoulGold v1.2.1: v1.2's dex moved.
 #

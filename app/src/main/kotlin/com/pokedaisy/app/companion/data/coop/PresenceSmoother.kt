@@ -122,7 +122,7 @@ class PresenceSmoother(val delayMs: Long = 150, val staleMs: Long = 3000) {
             frame = PartnerFrames.index(shown.mode, shown.facing, stepping, shown.step and 1),
             hflip = shown.facing == EAST,
             blobFrame = PartnerFrames.blob(shown.mode, shown.facing),
-            bob = if (surfing) BOB[Math.floorMod(nowMs / BOB_MS, BOB.size.toLong()).toInt()] else 0,
+            bob = if (surfing) BOB[(nowMs / BOB_MS).mod(BOB.size.toLong()).toInt()] else 0,
             female = shown.female,
             lookId = shown.lookId,
         )

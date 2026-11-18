@@ -30,6 +30,9 @@ O PokeDaisy também roda no Nintendo 3DS, como app homebrew: seu jogo roda na te
 
 `sdmc:/` é o nome que o 3DS dá à raiz do cartão SD: no seu computador, `sdmc:/3ds/` é só a pasta `3ds` do cartão.
 
+> [!TIP]
+> Prefere abrir o PokeDaisy pelo menu HOME? Cada versão também tem `pokedaisy.cia`. Abra o FBI no 3DS (a instalação do firmware personalizado já o instalou), escolha **Remote Install**, depois **Scan QR Code**, e escaneie o código na página da versão. Ou copie `pokedaisy.cia` para o cartão SD e instale pela lista **SD** do FBI. Os passos abaixo são os mesmos, e você abre o PokeDaisy pelo ícone dele no menu HOME.
+
 ## Passo 3: adicione seus jogos e saves
 
 1. Na raiz do cartão, crie uma pasta `pokedaisy` e, dentro dela, uma pasta `roms`: `sdmc:/pokedaisy/roms/`. (O PokeDaisy cria as duas na primeira vez que abre, se preferir abrir uma vez antes.)
@@ -108,6 +111,8 @@ Baixe o `pokedaisy.3dsx` novo e copie por cima do antigo em `sdmc:/3ds/`. Seus j
 - **O PokeDaisy não aparece no Homebrew Launcher:** o arquivo precisa estar em `sdmc:/3ds/` e terminar em `.3dsx`.
 - **Um jogo não aparece na lista:** ele precisa estar direto em `sdmc:/pokedaisy/roms/`, não em uma pasta dentro dela e não compactado.
 - **Meu save não carregou:** ele precisa ter exatamente o nome do jogo com `.sav` no final. Todo início copia o save primeiro para `sdmc:/pokedaisy/roms/pokedaisy-backups/`, então uma cópia mais antiga está lá se você precisar.
-- **Está lento:** um 3DS ou 2DS original é mais lento que os modelos New. Nas `SETTINGS` da biblioteca, mude `SCREEN` para `PIXEL 1x`, o modo mais leve.
+- **Está lento:** um 3DS ou 2DS original é mais lento que os modelos New. Nas `SETTINGS` da biblioteca, mude `SCREEN` para `PIXEL 1x`, o modo mais leve. Em um jogo de GBA, você também pode apertar `X` na biblioteca e testar outro `GBA CORE`: o `GPSP` é um experimental, feito para o 3DS original. Os jogos abrem sem EXPAND, que é mais leve. O `EXPAND 1.5x` está nas `SETTINGS` da biblioteca se você quiser.
+- **Um jogo pede para instalar o CIA:** aberto pelo Homebrew Launcher, um 3DS ou 2DS original só tem espaço para jogos de até 16 MB, e nenhum para o núcleo `GPSP`. Instale o `pokedaisy.cia` (veja acima) e abra o PokeDaisy pelo menu HOME para jogar jogos maiores ou usar o `GPSP`.
+- **O jogo não abriu:** a tela de cima diz o motivo, seguido da memória do seu 3DS. Quando falar com a gente, tire uma foto da mensagem inteira ou anexe o `sdmc:/pokedaisy/log.txt`.
 
 Ainda com problema? [Avise a gente](https://pokedaisy.com/pt-br/feedback/#bug) e anexe `sdmc:/pokedaisy/log.txt`.

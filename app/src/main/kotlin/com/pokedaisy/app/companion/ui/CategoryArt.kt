@@ -7,11 +7,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
-import com.pokedaisy.app.RomCategory
+import com.pokedaisy.app.companion.data.RomCategory
 
 /**
  * The library's cover for a game with no art: its kind ([RomCategory]) as its initials in a 3 x 5 pixel font over
- * diagonal stripes, in the category's colour - GB grey, GBC yellow, GBA purple, NDS turquoise, HACK red. All on one
+ * diagonal stripes, in the category's colour - GB grey, GBC yellow, GBA purple, NDS turquoise, 3DS blue, HACK red. All on one
  * grid, so every block is the same whole number of screen pixels at any size.
  */
 @Composable
@@ -62,6 +62,7 @@ object CategoryLooks {
     private val GBC = CategoryLook(c(0xF5C524), c(0xE6B312), c(0xFFFFFF), c(0x8A5A00))
     private val GBA = CategoryLook(c(0x6A35A8), c(0x5A2A94), c(0xFFFFFF), c(0x24093F))
     private val NDS = CategoryLook(c(0x1FB8AA), c(0x17A396), c(0xFFFFFF), c(0x0A4C46))
+    private val N3DS = CategoryLook(c(0x2F6FD6), c(0x2561C2), c(0xFFFFFF), c(0x0B2552))
     private val HACK = CategoryLook(c(0xD9302E), c(0xC22422), c(0xFFFFFF), c(0x5C0A0A))
 
     fun of(category: RomCategory): CategoryLook = when (category) {
@@ -69,6 +70,7 @@ object CategoryLooks {
         RomCategory.GBC -> GBC
         RomCategory.GBA -> GBA
         RomCategory.NDS -> NDS
+        RomCategory.N3DS -> N3DS
         RomCategory.HACK -> HACK
     }
 }
@@ -78,6 +80,7 @@ private object PixelFont {
     const val HEIGHT = 5
 
     private val GLYPHS = mapOf(
+        '3' to listOf("110", "001", "010", "001", "110"),
         'A' to listOf("010", "101", "111", "101", "101"),
         'B' to listOf("110", "101", "110", "101", "110"),
         'C' to listOf("011", "100", "100", "100", "011"),

@@ -1,3 +1,114 @@
+diff --git a/src/cart/overrides.c b/src/cart/overrides.c
+index b8b8b5a..e46d717 100644
+--- a/src/cart/overrides.c
++++ b/src/cart/overrides.c
+@@ -129,14 +129,22 @@ static const uint32_t pokemonTable[] = {
+ 	0x61641576, 0xAEAC73E6, 0xF0815EE7,
+ };
+ 
+-// CRC-32, for checking the header's logo and for the cartridges the list knows by checksum.
++// CRC-32, for checking the header's logo and for the cartridges the list knows by checksum. A byte a step from a
++// table (PokeDaisy: bit by bit, a 32 MB hack's took a 3DS about 1.4 s of its start).
+ static uint32_t crc32(const uint8_t* data, size_t size) {
++	static uint32_t table[256];
++	if (!table[1]) {
++		for (uint32_t i = 0; i < 256; ++i) {
++			uint32_t c = i;
++			for (int b = 0; b < 8; ++b) {
++				c = (c >> 1) ^ (0xEDB88320u & -(c & 1));
++			}
++			table[i] = c;
++		}
++	}
+ 	uint32_t crc = ~0u;
+ 	for (size_t i = 0; i < size; ++i) {
+-		crc ^= data[i];
+-		for (int b = 0; b < 8; ++b) {
+-			crc = (crc >> 1) ^ (0xEDB88320u & -(crc & 1));
+-		}
++		crc = table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+ 	}
+ 	return ~crc;
+ }
+@@ -223,7 +231,8 @@ int overridesApply(struct GBA* gba) {
+ 	}
+ 	bool isPokemon = !strncmp("pokemon red version", &rom[0x108], 20) || !strncmp("pokemon emerald version", &rom[0x108], 24) || !strncmp("AXVE", &rom[0xAC], 4);
+ 	if (isPokemon) {
+-		uint32_t crc = crc32(gba->rom, gba->romSize);
++		// Every cartridge the list knows is 16 MB: a bigger ROM is a hack without its checksum (PokeDaisy).
++		uint32_t crc = gba->romSize <= 0x1000000 ? crc32(gba->rom, gba->romSize) : 0;
+ 		bool known = false;
+ 		for (size_t i = 0; i < sizeof(pokemonTable) / sizeof(*pokemonTable); ++i) {
+ 			known = known || crc == pokemonTable[i];
+diff --git a/src/cart/savedata.c b/src/cart/savedata.c
+index f78a42c..f0eb1c1 100644
+--- a/src/cart/savedata.c
++++ b/src/cart/savedata.c
+@@ -399,27 +399,53 @@ static const uint8_t flashTimerStop[] = {
+ 	0x10, 0x88, 0x88, 0x43, 0x10, 0x80, 0x06, 0x48, 0x00, 0x88, 0x18, 0x80, 0x70, 0x47,
+ };
+ 
+-static long findOnce(const uint8_t* rom, size_t size, const uint8_t* code, size_t length) {
+-	long at = -1;
+-	for (size_t i = 0; i + length <= size; i += 2) {
+-		if (rom[i] != code[0] || memcmp(&rom[i], code, length)) {
+-			continue;
++// Both routines in one pass, each found only when it's in the ROM once; their first four bytes compared as a word
++// (PokeDaisy: two passes a byte at a time cost a 32 MB game's start ~0.4 s on a 3DS).
++static void findBothOnce(const uint8_t* rom, size_t size, long* start, long* stop) {
++	uint32_t a, b;
++	memcpy(&a, flashTimerStart, 4);
++	memcpy(&b, flashTimerStop, 4);
++	*start = *stop = -1;
++	bool startTwice = false, stopTwice = false;
++	for (size_t i = 0; i + 4 <= size; i += 2) {
++		uint32_t w;
++		memcpy(&w, &rom[i], 4);
++		if (w == a && i + sizeof(flashTimerStart) <= size && !memcmp(&rom[i], flashTimerStart, sizeof(flashTimerStart))) {
++			startTwice = startTwice || *start >= 0;
++			*start = (long) i;
+ 		}
+-		if (at >= 0) {
+-			return -1;
++		if (w == b && i + sizeof(flashTimerStop) <= size && !memcmp(&rom[i], flashTimerStop, sizeof(flashTimerStop))) {
++			stopTwice = stopTwice || *stop >= 0;
++			*stop = (long) i;
+ 		}
+-		at = (long) i;
+ 	}
+-	return at;
++	if (startTwice) *start = -1;
++	if (stopTwice) *stop = -1;
+ }
+ 
+ // Call once the game is loaded into memory that can be written, before it runs.
+ bool savedataSkipFlashTimer(struct GBA* gba) {
++	long start = -2, stop = -2;
++	return savedataSkipFlashTimerAt(gba, &start, &stop);
++}
++
++// The same with the routines' places known from an earlier run of this ROM (PokeDaisy keeps them per ROM): checked
++// against the ROM's bytes, no pass. *start -2 = not known: found, and both written back (-1 = not in it once).
++bool savedataSkipFlashTimerAt(struct GBA* gba, long* startAt, long* stopAt) {
+ 	if (!gba->rom || gba->romSize < sizeof(flashTimerStart)) {
+ 		return false;
+ 	}
+-	long const start = findOnce(gba->rom, gba->romSize, flashTimerStart, sizeof(flashTimerStart));
+-	long const stop = findOnce(gba->rom, gba->romSize, flashTimerStop, sizeof(flashTimerStop));
++	long start = *startAt, stop = *stopAt;
++	if (start == -2) {
++		findBothOnce(gba->rom, gba->romSize, &start, &stop);
++		*startAt = start;
++		*stopAt = stop;
++	} else if (start >= 0 && stop >= 0 &&
++	           ((size_t) start + sizeof(flashTimerStart) > gba->romSize || (size_t) stop + sizeof(flashTimerStop) > gba->romSize ||
++	            memcmp(&gba->rom[start], flashTimerStart, sizeof(flashTimerStart)) ||
++	            memcmp(&gba->rom[stop], flashTimerStop, sizeof(flashTimerStop)))) {
++		return false;
++	}
+ 	if (start < 0 || stop < 0) {
+ 		return false;
+ 	}
 diff --git a/src/cpu/step.c b/src/cpu/step.c
 index 10bae0c..932ba86 100644
 --- a/src/cpu/step.c
@@ -24,8 +135,20 @@ index 10bae0c..932ba86 100644
  		exception(gba, MODE_UNDEFINED, 0x04, in->address + width);
  		break;
  	}
+diff --git a/src/gba.h b/src/gba.h
+index 2792663..4833cd6 100644
+--- a/src/gba.h
++++ b/src/gba.h
+@@ -1134,6 +1134,7 @@ void savedataForceType(struct GBA*, enum SavedataType);
+ void savedataInitSram(struct GBA*);
+ void savedataInitFlash(struct GBA*);
+ bool savedataSkipFlashTimer(struct GBA*);
++bool savedataSkipFlashTimerAt(struct GBA*, long* start, long* stop);
+ void savedataInitEeprom(struct GBA*);
+ uint8_t savedataReadFlash(struct GBA*, uint16_t address);
+ void savedataWriteFlash(struct GBA*, uint16_t address, uint8_t value);
 diff --git a/src/video/video.c b/src/video/video.c
-index d777015..39e729b 100644
+index 5593f3d..0e8c0e1 100644
 --- a/src/video/video.c
 +++ b/src/video/video.c
 @@ -19,6 +19,10 @@ enum {

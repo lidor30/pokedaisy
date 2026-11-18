@@ -1,5 +1,9 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.concurrent.Volatile
+
+import androidx.compose.ui.graphics.ImageBitmap
+import com.pokedaisy.app.companion.data.LockedMap
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.lerp
@@ -58,8 +62,6 @@ import androidx.compose.ui.graphics.Color
 import com.pokedaisy.app.companion.data.RomArt
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -136,6 +138,23 @@ private fun gameItemNames(game: GameKind): Map<Int, String>? = when (game) {
 /** Games whose bag prints pocket titles in caps; their item tables already are. */
 /** [id]'s name as this game's bag writes it (its own casing and spelling: "EXP. SHARE"). */
 internal fun bagItemName(id: Int): String = gameItemNames(activeGame)?.get(id) ?: itemName(id)
+
+/**
+ * Item names from a game the app's tables don't cover (a 3DS game, read from its cart: n3ds/Gen6Text.kt): set, the bag
+ * keeps the names it's given and the held-item tag asks here, instead of the running GBA / DS game's tables by id (whose
+ * ids mean other items there), and neither draws an item picture from those tables.
+ */
+val LocalItemNames = androidx.compose.runtime.staticCompositionLocalOf<((Int) -> String?)?> { null }
+
+/** [LocalItemNames] for screens hosted where nothing provides it (the game screen's companion, its HUD): the running 3DS
+ * game's, set by [com.pokedaisy.app.n3ds.N3dsSession] while it runs; null = none. */
+object OwnItemNames {
+    @Volatile var lookup: ((Int) -> String?)? = null
+}
+
+/** [LocalItemNames], else [OwnItemNames]. */
+@androidx.compose.runtime.Composable
+internal fun ownItemNames(): ((Int) -> String?)? = LocalItemNames.current ?: OwnItemNames.lookup
 
 private fun capsBagLabels(game: GameKind): Boolean =
     gameItemNames(game) != null || game == GameKind.HEART_AND_SOUL || game == GameKind.ORANGE_ISLANDS ||
@@ -232,7 +251,7 @@ private data class BagPalette(
     )
 }
 
-private val nightBags = java.util.concurrent.ConcurrentHashMap<BagPalette, BagPalette>()
+private val nightBags = LockedMap<BagPalette, BagPalette>()
 
 /** Sampled 1:1 from a FireRed bag screenshot. */
 private val FireRedBag = BagPalette(
@@ -365,6 +384,19 @@ private val RadicalRedBag = BagPalette(
  * (the tabs: red with white text), the black description bar, a light icon box with a gold
  * edge, the orange pocket arrows (underline) and a flat light-grey backdrop.
  */
+/** Pokemon X: its menus' greens (CompanionSkins.POKEMON_XY): white rows in the dark green rim, white pocket names on the
+ * green tabs, the cursor's orange underline, descriptions on a dark green band; no backdrop of its own (the party's). */
+private val XyBag = BagPalette(
+    panelLayers = listOf(Color(0xFF2B8E26) to 1, Color(0xFF8ED46A) to 2, Color(0xFF5FB043) to 2),
+    tabLayerCount = 2,
+    fill = Color(0xFFF6F7F1), divider = Color(0xFFCFDCC4),
+    text = Color(0xFF353535), textShadow = Color(0x22000000),
+    tabText = Color(0xFFFFFFFF), tabTextShadow = Color(0xFF2B6E26), tabUnderline = Color(0xFFF08A1E),
+    descLayers = listOf(Color(0xFF2B8E26) to 1), descFill = Color(0xFF2E6A28),
+    descText = Color(0xFFFFFFFF), descTextShadow = Color(0xFF1C4418),
+    iconBox = Color(0xFFE6EEDF), iconBoxEdge = Color(0xFF8ED46A),
+)
+
 private val SwordShieldBag = BagPalette(
     panelLayers = listOf(Color(0xFF393939) to 2, Color(0xFFA50018) to 1, Color(0xFFD60021) to 3, Color(0xFF292929) to 2),
     tabLayerCount = 2,
@@ -594,6 +626,19 @@ private val RedBlueBag = YellowBag.copy(
     backdrop = Color(0xFFFFEFFF) to Color(0xFFFFEFFF),
 )
 
+/**
+ * Pokémon Brown: its ITEM window in pure black on white, its own text box frame - black, cream, green, black (the game's
+ * are two pixels each of cream and green; its party screen's colours, sampled headless; over the field the frame takes the
+ * map's two middle colours), a pixel each here so the pocket tabs keep their room.
+ */
+private val BrownBag = YellowBag.copy(
+    panelLayers = listOf(Color.Black to 1, Color(0xFFF7D67B) to 1, Color(0xFF4AA55A) to 1, Color.Black to 1, Color.White to 1),
+    tabLayerCount = 4,
+    text = Color.Black, tabText = Color.Black, tabUnderline = Color.Black,
+    descLayers = listOf(Color.Black to 1, Color(0xFFF7D67B) to 1, Color(0xFF4AA55A) to 1, Color.Black to 1),
+    descText = Color.Black, iconBoxEdge = Color.Black,
+)
+
 /** PureRed / PureBlue (on a Color, headless): Yellow's ITEM window in pure black on white. */
 private val PureRgbBag = YellowBag.copy(
     panelLayers = listOf(Color.Black to 1, Color.White to 1, Color.Black to 1, Color.White to 1),
@@ -659,9 +704,8 @@ fun ItemsBackdrop(game: GameKind, modifier: Modifier = Modifier) {
     val (a, b) = pal.backdrop ?: return
     pal.pattern?.let { DsBackdrop(it, modifier); return }
     val m = rememberGbaTextMetrics()
-    val context = LocalContext.current
     val gen = rememberArtGeneration()
-    val art = remember(pal.backdropArt, gen) { pal.backdropArt?.let { GameArt.get(context, it)?.asImageBitmap() } }
+    val art = remember(pal.backdropArt, gen) { pal.backdropArt?.let { GameArt.get(it) } }
     // Dark mode: an image backdrop (SoulGold's night sky) under the game backdrops' scrim; stripes come pre-dimmed.
     val scrim = OptionColors.backdropScrim
     // HeartGold / SoulSilver: the band behind the pocket buttons, laid out in root pixels by HgssBagBody.
@@ -737,6 +781,7 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.SOULGOLD -> SoulGoldBag
     GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowBag
     GameKind.RED, GameKind.BLUE -> RedBlueBag
+    GameKind.BROWN -> BrownBag
     GameKind.PURE_RED, GameKind.PURE_BLUE -> PureRgbBag
     // Gold's and Silver's PACK is Crystal's, pixel for pixel (sampled headless in both).
     GameKind.CRYSTAL, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY -> CrystalBag
@@ -746,6 +791,7 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.POLISHED_CRYSTAL -> PolishedCrystalBag
     GameKind.MARIOMON -> MariomonBag
     GameKind.MONOMYTH -> MonomythBag
+    GameKind.POKEMON_X, GameKind.POKEMON_Y -> XyBag
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> hgssBags.getOrElse(hgssPocket) { HeartGoldBag }
     GameKind.PLATINUM -> PlatinumBag
     GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> BlackBag
@@ -755,6 +801,8 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.DREAMSTONE,
     GameKind.TMT2, GameKind.GLAZED, GameKind.IMPERIUM, GameKind.QUETZAL, GameKind.ELITE_REDUX, GameKind.TEAM_ROCKET,
     GameKind.WISHES -> EmeraldBag
+    GameKind.CERULEUM -> EmeraldBag
+    GameKind.RECORDKEEPERS -> EmeraldBag
     GameKind.FIRERED -> if (com.pokedaisy.app.companion.data.runningGhostGrey) GhostGreyBag else FireRedBag
     else -> FireRedBag
 }
@@ -786,10 +834,11 @@ fun ItemsScreen(
     val actionFocus = remember { FocusRequester() }
     val hgssState = LocalHgssBag.current ?: remember { HgssBagState() }
     val pal = bagPaletteFor(activeGame, hgssState.pocket)
-    val caps = gameItemNames(activeGame)
+    val ownNames = ownItemNames()
+    val caps = if (ownNames != null) null else gameItemNames(activeGame)
     val shown = items.map { item ->
         val name = caps?.get(item.itemId) ?: item.name
-        item.copy(name = tmMoves[item.itemId]?.let { "$name $it" } ?: name)
+        item.copy(name = (if (ownNames != null) null else tmMoves[item.itemId])?.let { "$name $it" } ?: name)
     }
     val m = rememberGbaTextMetrics()
     val u = m.u
@@ -881,7 +930,7 @@ fun ItemsScreen(
     // repeated key.
     val keys = remember(sorted) {
         val seen = HashMap<Int, Int>()
-        sorted.map { "${it.itemId}#${seen.merge(it.itemId, 1, Int::plus)!! - 1}" }
+        sorted.map { val n = seen[it.itemId] ?: 0; seen[it.itemId] = n + 1; "${it.itemId}#$n" }
     }
 
     // Keep the tapped row on screen once the window shrinks for the
@@ -1032,7 +1081,7 @@ fun ItemsScreen(
             Column(verticalArrangement = Arrangement.spacedBy(u * 4), modifier = Modifier.padding(top = u * 2)) {
                 // PC anywhere (GitHub #85): the game's own PC over the field; a "not now" pops up over the bag.
                 if (itemUse?.canPc() == true) {
-                    PcButton(pal, m, width = tabWidth - u * 4) {
+                    PcButton(pal, m, width = tabWidth - u * 4, badge = itemUse.actionBadge) {
                         itemUse.openPc { o -> if (o.result != ItemUseResult.USED) notice = ItemNotice(0, itemUseMessage(o), ok = false) }
                     }
                 }
@@ -1093,26 +1142,25 @@ private fun hgssPocketItem(pocket: Int?): Int? = when (pocket) {
 
 /** One of the bag's pocket buttons from the cart ([NdsArt.heartGoldPocket]), [open] or not; null before the art is in. */
 @Composable
-private fun hgssPocketArt(pocket: Int, open: Boolean): android.graphics.Bitmap? {
-    val context = LocalContext.current
+private fun hgssPocketArt(pocket: Int, open: Boolean): ImageBitmap? {
     val gen = rememberArtGeneration()
-    return remember(pocket, open, gen) { GameArt.get(context, "${NdsArt.heartGoldPocket(pocket, open)}.png") }
+    return remember(pocket, open, gen) { GameArt.get("${NdsArt.heartGoldPocket(pocket, open)}.png") }
 }
 
 /** The FAVORITES button in the pocket buttons' own look: a pocket button ([open] or not) with its icon painted out by
  * the fill each row has at its left edge, cached per button. */
-private val hgssBlankButtons = java.util.concurrent.ConcurrentHashMap<android.graphics.Bitmap, android.graphics.Bitmap>()
+private val hgssBlankButtons = LockedMap<ImageBitmap, ImageBitmap>()
 
-private fun hgssBlankButton(button: android.graphics.Bitmap): android.graphics.Bitmap = hgssBlankButtons.getOrPut(button) {
+private fun hgssBlankButton(button: ImageBitmap): ImageBitmap = hgssBlankButtons.getOrPut(button) {
     val w = button.width
     val px = IntArray(w * button.height)
-    button.getPixels(px, 0, w, 0, 0, w, button.height)
+    button.readPixels(px, 0, 0, w, button.height)
     val inset = 3
     for (y in inset until button.height - inset) {
         val fill = px[y * w + inset]
         for (x in inset until w - inset) px[y * w + x] = fill
     }
-    android.graphics.Bitmap.createBitmap(px, w, button.height, android.graphics.Bitmap.Config.ARGB_8888)
+    imageBitmapOf(px, w, button.height)
 }
 
 /**
@@ -1173,7 +1221,7 @@ private fun HgssBagBody(
                 ) {
                     when {
                         art != null -> Image(
-                            bitmap = (if (gamePocket >= 0) art else hgssBlankButton(art)).asImageBitmap(), contentDescription = null,
+                            bitmap = (if (gamePocket >= 0) art else hgssBlankButton(art)), contentDescription = null,
                             filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize(),
                         )
                         // No cart art yet: a drawn button, the item standing in for the pocket's icon.
@@ -1440,7 +1488,7 @@ private fun SortButton(label: String, pal: BagPalette, m: GbaTextMetrics, width:
 
 /** PC: the game's own PC (WITHDRAW, DEPOSIT...) opened on the field, styled like [SortButton]. */
 @Composable
-private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, onClick: () -> Unit) {
+private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, badge: String? = null, onClick: () -> Unit) {
     val u = m.u
     val noRipple = remember { MutableInteractionSource() }
     val focused by noRipple.collectIsFocusedAsState()
@@ -1455,10 +1503,15 @@ private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, onClick: () 
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
             .padding(horizontal = u * 6, vertical = u * 6),
     ) {
-        GbaText(tr("PC"), pal.descText, pal.descTextShadow, m)
-        // It opens the game's own PC, not a companion page (the HUD's PC has the same mark).
-        Spacer(Modifier.width(u * 3))
-        ShadowedPixelIcon(PixelIcons.inGame, pal.descText, pal.descTextShadow, m, cell = m.fontPixel.let { with(LocalDensity.current) { it.toDp() } })
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            badge?.let { OptionBadge(it, m, fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GbaText(tr("PC"), pal.descText, pal.descTextShadow, m)
+                // It opens the game's own PC, not a companion page (the HUD's PC has the same mark).
+                Spacer(Modifier.width(u * 3))
+                ShadowedPixelIcon(PixelIcons.inGame, pal.descText, pal.descTextShadow, m, cell = m.fontPixel.let { with(LocalDensity.current) { it.toDp() } })
+            }
+        }
     }
 }
 
@@ -1668,7 +1721,12 @@ private fun ItemDescriptionBar(
 
 /** What a USE / GIVE did, in the companion's words: [mon] the Pokémon it went to, [item] the item, [held]
  * what the Pokémon held before. */
-internal fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = "", held: Int = 0): String = when (o.result) {
+/** TAKE done: the item is in the bag, or a Mail (with its letter) in the PC's mailbox, as the game sends it. */
+internal fun takenMessage(item: Int, mon: String): String =
+    if (item in com.pokedaisy.app.companion.data.MAIL_ITEMS) tr("{1}'s {0} went to the PC's mailbox.", bagItemName(item), mon)
+    else tr("Received {0} from {1}.", bagItemName(item), mon)
+
+fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = "", held: Int = 0): String = when (o.result) {
     ItemUseResult.USED -> if (o.steps > 0) tr("Used! It lasts {0} steps.", o.steps) else tr("Used on {0}.", mon)
     ItemUseResult.STILL_ACTIVE -> tr("The last one is still working.")
     ItemUseResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
@@ -1680,7 +1738,8 @@ internal fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = 
         else tr("{0} is holding {1} now. {2} went back to the bag.", mon, item, bagItemName(o.swapped))
     ItemUseResult.BAG_FULL -> tr("The bag is full: {0} can't go back in it.", bagItemName(held))
     ItemUseResult.PARTY_CHANGED -> tr("The party has changed. Try again.")
-    ItemUseResult.TAKEN -> tr("Received {0} from {1}.", bagItemName(o.swapped), mon)
+    ItemUseResult.TAKEN -> takenMessage(o.swapped, mon)
+    ItemUseResult.MAILBOX_FULL -> tr("The PC's mailbox is full.")
     ItemUseResult.IN_GAME -> tr("Pick a POKéMON on the game's screen.")
 }
 

@@ -5,6 +5,7 @@ import com.pokedaisy.app.companion.TouchControlsStyle
 import com.pokedaisy.app.companion.TouchLayout
 import com.pokedaisy.app.companion.TouchPlace
 import com.pokedaisy.app.companion.TouchPreset
+import com.pokedaisy.app.companion.data.CoreKey
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -37,6 +38,11 @@ object TouchGeometry {
     /** Everything placed in a [w]x[h] area: the items, and the [preset] they came from (SIDES may fall back to CLASSIC). */
     data class Placed(val w: Float, val h: Float, val items: List<Item>, val preset: TouchPreset, val dp: Float) {
         fun item(b: TouchButton) = items.firstOrNull { it.button == b }
+
+        /** These less the controls over the box [l, t, r, b) (px): something of the game's to tap is there (a DS battle's
+         * menu), so they step aside; the rest keep their places. */
+        fun uncovering(l: Float, t: Float, r: Float, b: Float): Placed =
+            copy(items = items.filterNot { it.left < r && it.right > l && it.top < b && it.bottom > t })
     }
 
     /** The room kept from the area's edges (dp). */
@@ -516,7 +522,7 @@ object TouchGeometry {
         Shape.PILL -> x >= left - slop && x <= right + slop && y >= top - slop && y <= bottom + slop
     }
 
-    // mGBA's key bits (MgbaCore.Key), here so the math has no Android in it.
+    // mGBA's key bits (CoreKey), here so the math has no Android in it.
     const val KEY_RIGHT = 1 shl 4
     const val KEY_LEFT = 1 shl 5
     const val KEY_UP = 1 shl 6

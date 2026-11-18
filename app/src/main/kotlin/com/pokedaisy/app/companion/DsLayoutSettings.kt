@@ -54,32 +54,38 @@ object DsLayouts {
     /** A DS screen's shape (256 x 192). */
     const val ASPECT = 4f / 3f
 
+    /** A 3DS's screens: the top one 400 x 240 (5:3), the touch screen 320 x 240 (4:3). */
+    const val N3DS_TOP_ASPECT = 5f / 3f
+
     /**
      * [layout] in a [w] x [h] area. [fill]: the game takes the whole area where it's alone on it (ASPECT's EXPAND or
-     * STRETCH), else its 4:3, centred. The two-screen layouts keep both at 4:3, centred as a pair.
+     * STRETCH), else its own shape, centred. The two-screen layouts keep both at their shapes, centred as a pair.
+     * [topAspect] / [touchAspect]: the screens' shapes (a DS's both 4:3; a 3DS's top screen [N3DS_TOP_ASPECT]).
      */
-    fun arrange(layout: DsLayout, w: Int, h: Int, fill: Boolean): DsArrangement {
-        val alone = if (fill) DsBox(0, 0, w, h) else fit(w, h, 0, 0)
+    fun arrange(
+        layout: DsLayout, w: Int, h: Int, fill: Boolean,
+        topAspect: Float = ASPECT, touchAspect: Float = ASPECT,
+    ): DsArrangement {
+        val alone = if (fill) DsBox(0, 0, w, h) else fit(w, h, 0, 0, topAspect)
         return when (layout) {
             DsLayout.ONE_SCREEN -> DsArrangement(alone, null)
             DsLayout.SIDE_BY_SIDE -> {
-                // Two at one size, edge to edge.
-                val gap = 0
-                val sw = min((w - gap) / 2f, h * ASPECT)
-                val sh = sw / ASPECT
-                val pairW = sw * 2 + gap
-                val x = (w - pairW) / 2f
+                // Two at one height, edge to edge (one size on a DS).
+                val sh = min(h.toFloat(), w / (topAspect + touchAspect))
+                val tw = sh * topAspect
+                val sw = sh * touchAspect
+                val x = (w - tw - sw) / 2f
                 val y = (h - sh) / 2f
-                DsArrangement(box(x, y, sw, sh), box(x + sw + gap, y, sw, sh))
+                DsArrangement(box(x, y, tw, sh), box(x + tw, y, sw, sh))
             }
             DsLayout.LARGE_SMALL -> {
                 // The game at the full height where it leaves the small screen at least a quarter of its width (a 16:9
                 // screen: a third, beside it); the small one as wide as what's left, at most half the large one,
                 // level with its bottom edge as the DS's touch screen sits under the top one.
-                val lw = min(h * ASPECT, w / (1f + SMALL_MIN))
-                val lh = lw / ASPECT
+                val lw = min(h * topAspect, w / (1f + SMALL_MIN))
+                val lh = lw / topAspect
                 val sw = min(w - lw, lw * SMALL_MAX)
-                val sh = sw / ASPECT
+                val sh = sw / touchAspect
                 val x = (w - lw - sw) / 2f
                 val y = (h - lh) / 2f
                 DsArrangement(box(x, y, lw, lh), box(x + lw, y + lh - sh, sw, sh))
@@ -87,26 +93,28 @@ object DsLayouts {
             DsLayout.PICTURE_IN_PICTURE -> {
                 // The game as on its own; the touch screen in the bottom right corner of the screen, a margin in (the games
                 // put a new area's name top left; the HUD moves its buttons to the bottom left for it: FieldHud's dsCorner).
-                val sw = min(w * PIP_SIZE, h * PIP_SIZE * 1.6f * ASPECT)
-                val sh = sw / ASPECT
+                val sw = min(w * PIP_SIZE, h * PIP_SIZE * 1.6f * touchAspect)
+                val sh = sw / touchAspect
                 val margin = h * PIP_MARGIN
                 DsArrangement(alone, box(w - margin - sw, h - margin - sh, sw, sh))
             }
             DsLayout.STACKED -> {
-                // The DS held as it is: the game over its touch screen, both at one size.
-                val sw = min(w.toFloat(), h / 2f * ASPECT)
-                val sh = sw / ASPECT
-                val x = (w - sw) / 2f
-                val y = (h - sh * 2) / 2f
-                DsArrangement(box(x, y, sw, sh), box(x, y + sh, sw, sh))
+                // The DS held as it is: the game over its touch screen at one height (one size on a DS; a 3DS's touch
+                // screen narrower, centred under the top one).
+                val th = min(h / 2f, w / topAspect)
+                val tw = th * topAspect
+                val sw = th * touchAspect
+                val x = (w - tw) / 2f
+                val y = (h - th * 2) / 2f
+                DsArrangement(box(x, y, tw, th), box(x + (tw - sw) / 2f, y + th, sw, th))
             }
         }
     }
 
-    /** The largest 4:3 box in [w] x [h], centred, offset by ([x], [y]). */
-    fun fit(w: Int, h: Int, x: Int, y: Int): DsBox {
-        val bw = min(w.toFloat(), h * ASPECT)
-        val bh = bw / ASPECT
+    /** The largest box of [aspect] (a DS screen's 4:3) in [w] x [h], centred, offset by ([x], [y]). */
+    fun fit(w: Int, h: Int, x: Int, y: Int, aspect: Float = ASPECT): DsBox {
+        val bw = min(w.toFloat(), h * aspect)
+        val bh = bw / aspect
         return box(x + (w - bw) / 2f, y + (h - bh) / 2f, bw, bh)
     }
 

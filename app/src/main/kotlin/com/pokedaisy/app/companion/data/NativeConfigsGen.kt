@@ -96,6 +96,16 @@ val NATIVE_FIRERED_REV1 = NATIVE_FIRERED_REV0.copy(
     trainerCard = TRAINER_CARD_FIRERED,
 )
 
+// Retail FireRed 1.0 itself (the Poller's, on a retail hash only): rev 0's config is the CFRU hacks' base, so the card
+// and the battle menus' cursors go here, never on it. The cursors are rev 1's: checked headless on the retail cart
+// (2026-11-14) - RIGHT / DOWN walk the byte 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move cell + A
+// uses that move (THUNDER WAVE from cell 1).
+val NATIVE_FIRERED_REV0_RETAIL = NATIVE_FIRERED_REV0.copy(
+    trainerCard = TRAINER_CARD_FIRERED,
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
+)
+
 // ---- gamedata/gen3/retail/leafgreen.toml ----
 
 // LeafGreen (BPGE). pret/pokefirered @ c75f352 builds `leafgreen` and
@@ -121,8 +131,9 @@ val NATIVE_LEAFGREEN_REV0 = NATIVE_FIRERED_REV0.copy(
 val NATIVE_LEAFGREEN_REV1 = NATIVE_FIRERED_REV1.copy(
     pokemonStoragePtr = 0x03005010L, // BOXES, as rev 0's
     itemDescs = vanillaItems(0x083DAED4L),
+    // Not here: the language ports are built on these configs and their RAM moved. Retail's own: leafgreen_rev1_retail.
     actionCursor = 0,
-    moveCursor = 0, // FireRed's, probably, but not checked on LeafGreen yet
+    moveCursor = 0,
     monIconTable = 0x083D364CL,
     monIconPaletteIndices = 0x083D3D2CL,
     monIconPaletteTable = 0x083D3EE4L,
@@ -132,6 +143,19 @@ val NATIVE_LEAFGREEN_REV1 = NATIVE_FIRERED_REV1.copy(
     // Its foe-team RAM addresses (gEnemyParty, gBattlerPartyIndexes, ...)
     // match FireRed's in the map, so those carry over unchanged.
     guideTables = GUIDE_TABLES_LEAFGREEN_REV1,
+)
+
+// Retail LeafGreen itself (the Poller's, on a retail hash only - the language ports are built on the configs above, and
+// their RAM moved): the battle menus' cursors, FireRed's. Checked headless on both retail carts (2026-11-14): RIGHT / DOWN
+// walk the byte 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move cell + A uses that move (ICE BEAM from 3).
+val NATIVE_LEAFGREEN_REV0_RETAIL = NATIVE_LEAFGREEN_REV0.copy(
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
+)
+
+val NATIVE_LEAFGREEN_REV1_RETAIL = NATIVE_LEAFGREEN_REV1.copy(
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
 )
 
 // ---- gamedata/gen3/retail/emerald.toml ----
@@ -202,7 +226,7 @@ val NATIVE_EMERALD_ES = NATIVE_EMERALD_RETAIL.copy(
     language = 'S',
     gameCode = "BPES",
     pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_es` capture's boxes read, checksums good)
-    trainerCard = null,
+    trainerCard = TRAINER_CARD_EMERALD_ES,
     monIconTable = 0x0857E784L,
     monIconPaletteIndices = 0x0857EE64L,
     monIconPaletteTable = 0x0857F01CL,
@@ -216,7 +240,7 @@ val NATIVE_EMERALD_DE = NATIVE_EMERALD_RETAIL.copy(
     language = 'D',
     gameCode = "BPED",
     pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_de` capture's boxes read, checksums good)
-    trainerCard = null,
+    trainerCard = TRAINER_CARD_EMERALD_DE,
     monIconTable = 0x0858CAA8L,
     monIconPaletteIndices = 0x0858D188L,
     monIconPaletteTable = 0x0858D340L,
@@ -235,7 +259,7 @@ val NATIVE_EMERALD_FR = NATIVE_EMERALD_RETAIL.copy(
     language = 'F',
     gameCode = "BPEF",
     pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_fr` capture's boxes read, checksums good)
-    trainerCard = null,
+    trainerCard = TRAINER_CARD_EMERALD_FR,
     monIconTable = 0x08580020L,
     monIconPaletteIndices = 0x08580700L,
     monIconPaletteTable = 0x085808B8L,
@@ -249,7 +273,7 @@ val NATIVE_EMERALD_IT = NATIVE_EMERALD_RETAIL.copy(
     language = 'I',
     gameCode = "BPEI",
     pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_it` capture's boxes read, checksums good)
-    trainerCard = null,
+    trainerCard = TRAINER_CARD_EMERALD_IT,
     monIconTable = 0x0857838CL,
     monIconPaletteIndices = 0x08578A6CL,
     monIconPaletteTable = 0x08578C24L,
@@ -273,8 +297,11 @@ val NATIVE_EMERALD_IT = NATIVE_EMERALD_RETAIL.copy(
 // fonts aren't the Western ones the slot art is drawn with).
 val NATIVE_EMERALD_JA = NATIVE_EMERALD_RETAIL.copy(
     itemDescs = japaneseItems(0x0855CEE8L),
-    actionCursor = 0,
-    moveCursor = 0, // its RAM moved; not located yet
+    // The battle menus' cursors: gActionSelectionCursor / gMoveSelectionCursor through HandleInputChooseAction's / Move's pools
+    // (English's 0x020244AC / B0 - 0x35C), checked headless on its own save (2026-11-18): a written POKéMON cell + A opened the
+    // party menu, a written move cell + A used that move.
+    actionCursor = 0x02024150L,
+    moveCursor = 0x02024154L,
     language = 'J',
     gameCode = "BPEJ",
     trainerCard = null,
@@ -387,7 +414,7 @@ private val NATIVE_PORT_BPRD0 by lazy {
     NATIVE_FIRERED_REV0.copy(
         language = 'D',
         gameCode = "BPRD",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_DE,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -413,6 +440,8 @@ private val NATIVE_PORT_BPRD0 by lazy {
         waitForMonSelection = 0x08030584L,
         itemDescs = vanillaItems(0x083DA518L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0824FB64L,
@@ -453,7 +482,7 @@ private val NATIVE_PORT_BPRF0 by lazy {
     NATIVE_FIRERED_REV0.copy(
         language = 'F',
         gameCode = "BPRF",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_FR,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -479,6 +508,8 @@ private val NATIVE_PORT_BPRF0 by lazy {
         waitForMonSelection = 0x0803055CL,
         itemDescs = vanillaItems(0x083D3324L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0824A090L,
@@ -519,7 +550,7 @@ private val NATIVE_PORT_BPRI0 by lazy {
     NATIVE_FIRERED_REV0.copy(
         language = 'I',
         gameCode = "BPRI",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_IT,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -545,6 +576,8 @@ private val NATIVE_PORT_BPRI0 by lazy {
         waitForMonSelection = 0x08030570L,
         itemDescs = vanillaItems(0x083D1EE8L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x08248D20L,
@@ -612,6 +645,8 @@ private val NATIVE_PORT_BPRJ0 by lazy {
         waitForMonSelection = 0x0802FE04L,
         itemDescs = japaneseItems(0x083A06F8L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokemonStoragePtr = 0x03005050L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0820C274L,
@@ -681,6 +716,8 @@ private val NATIVE_PORT_BPRJ1 by lazy {
         waitForMonSelection = 0x0802FD70L,
         itemDescs = japaneseItems(0x0839BEB8L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokemonStoragePtr = 0x03004FB0L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x08207A8CL,
@@ -724,7 +761,7 @@ private val NATIVE_PORT_BPRS0 by lazy {
     NATIVE_FIRERED_REV1.copy(
         language = 'S',
         gameCode = "BPRS",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_ES,
         actionCursor = 0x02023FF8L,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
@@ -797,7 +834,7 @@ private val NATIVE_PORT_BPGD0 by lazy {
     NATIVE_LEAFGREEN_REV0.copy(
         language = 'D',
         gameCode = "BPGD",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_DE,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -823,6 +860,8 @@ private val NATIVE_PORT_BPGD0 by lazy {
         waitForMonSelection = 0x08030584L,
         itemDescs = vanillaItems(0x083DA354L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x0824FB40L,
             entries = 0x0844E940L,
@@ -862,7 +901,7 @@ private val NATIVE_PORT_BPGF0 by lazy {
     NATIVE_LEAFGREEN_REV0.copy(
         language = 'F',
         gameCode = "BPGF",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_FIRERED_FR,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -888,6 +927,8 @@ private val NATIVE_PORT_BPGF0 by lazy {
         waitForMonSelection = 0x0803055CL,
         itemDescs = vanillaItems(0x083D3160L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x0824A06CL,
             entries = 0x08446D30L,
@@ -927,7 +968,7 @@ private val NATIVE_PORT_BPGI0 by lazy {
     NATIVE_LEAFGREEN_REV0.copy(
         language = 'I',
         gameCode = "BPGI",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_LEAFGREEN_IT,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
         battleTypeFlags = 0x02022B4CL,
@@ -953,6 +994,8 @@ private val NATIVE_PORT_BPGI0 by lazy {
         waitForMonSelection = 0x08030570L,
         itemDescs = vanillaItems(0x083D1D24L),
         partyMenu = 0x0203B0A0L,
+        actionCursor = 0x02023FF8L,
+        moveCursor = 0x02023FFCL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x08248CFCL,
             entries = 0x08445098L,
@@ -1019,6 +1062,8 @@ private val NATIVE_PORT_BPGJ0 by lazy {
         waitForMonSelection = 0x0802FE04L,
         itemDescs = japaneseItems(0x083A0568L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x0820C250L,
             entries = 0x0840E258L,
@@ -1087,6 +1132,8 @@ private val NATIVE_PORT_BPGJ1 by lazy {
         waitForMonSelection = 0x0802FD70L,
         itemDescs = japaneseItems(0x0839BD28L),
         partyMenu = 0x0203B014L,
+        actionCursor = 0x02023F58L,
+        moveCursor = 0x02023F5CL,
         pokedex = POKEDEX_LEAFGREEN_REV0.copy(
             abilityNames = 0x08207A68L,
             entries = 0x08409B88L,
@@ -1129,7 +1176,7 @@ private val NATIVE_PORT_BPGS0 by lazy {
     NATIVE_LEAFGREEN_REV1.copy(
         language = 'S',
         gameCode = "BPGS",
-        trainerCard = null,
+        trainerCard = TRAINER_CARD_LEAFGREEN_ES,
         actionCursor = 0x02023FF8L,
         bagPockets = 0x0203988CL,
         battleMons = 0x02023BE4L,
@@ -2922,6 +2969,76 @@ val NATIVE_CELIA = NATIVE_FIRERED_REV0.copy(
     guideTables = GUIDE_TABLES_CELIA,
 )
 
+// ---- gamedata/gen3/hacks/ceruleum.toml ----
+
+// Pokémon Ceruleum v1.1.1 (selenol; 32 MB, BPEE, sha1 2b0b6086…; the PokeCommunity thread's xdelta over Emerald):
+// pokeemerald-expansion 1.13.2 (its RHHEXP block), gcc, no source. Mapped headless from a new game played in it (`ceruleum`:
+// the intro, then the game's own createmon / additem through its ScriptContext_SetupScript 0x081E2869, saved in game in
+// COUNCIL HQ), each RAM address also a literal-pool word whose reference count is near a plain build of expansion 1.13.2's
+// (scratch build of the tag, `nm`; its globals moved in blocks: the battle ones -4 past gBattlersCount, the field and party
+// ones far), and checked live:
+// - gPlayerParty 0x02037748 / gPlayerPartyCount 0x020374E9, gEnemyParty 0x020374F0: vanilla's 100-byte encrypted mons with
+//   expansion's packing; the egg is species 1525 (one species more than the reference: a PERSIAN form at 1524).
+// - gSaveBlock1Ptr / 2Ptr 0x03005220 / 0x0300521C; money SB1+0x490 XOR SB2+0xAC. gMain 0x0300671C.
+// - gMapHeader 0x02006808 (mapsec 13 COUNCIL HQ, regionMapSectionId +0x14 a byte), gObjectEvents 0x0200B864.
+// - gBagPockets 0x0200C46C: Emerald's five pockets (Potion x5, Repel x2 / Poke Ball x10, as given).
+// - Battle (a scripted wild RATTATA, and a double for the target screen): gBattleTypeFlags 0x0200009C, gBattlersCount
+//   0x020000A2, gBattlerPartyIndexes 0x02000134, gBattlerPositions 0x02000130, gBattleMons 0x0200054C (0x68 bytes,
+//   [TEAM_ROCKET_V3_BATTLE_MON]: offsetof on the reference), gBattleStruct 0x020000A4 with monToSwitchIntoId at +0x8B; the
+//   menus' cursors 0x020003C4 / 0x020003C8 (a written 0 + A opened the moves, a written 1 + A used AEROBLAST).
+//   gBattlerControllerFuncs 0x03002444: action / move / bag / party / target read live (0x08054719 / 0x08053741 /
+//   0x08052A65 / 0x08052AA5 / 0x08051F21: PSYCHIC in a double opened the target screen). gPartyMenu 0x020372F0 (slotId +9,
+//   a two-column grid: DOWN 0 -> 2 -> 3).
+// - Icons: gSpeciesInfo 0x08748C88 (0x104-byte entries, iconSprite +0x68, iconPalIndex +0x8A), gMonIconPaletteTable
+//   0x08CD27D8 (the GF header's); gItemsInfo 0x086FBCA8 (0x2C-byte entries: icon +0x24, its palette +0x28).
+// Names / types / moves / chart / map sections: scripts/gen_expansion_tables.py ceruleum.
+val NATIVE_CERULEUM = NATIVE_EMERALD.copy(
+    itemDescs = ItemDescTable(0x086FBCBCL, 0x2C, -8),
+    playerParty = 0x02037748L,
+    playerPartyCount = 0x020374E9L,
+    enemyParty = 0x020374F0L,
+    gMain = 0x0300671CL,
+    saveBlock1Ptr = 0x03005220L,
+    saveBlock2Ptr = 0x0300521CL,
+    encryptionKeyOff = 0xACL,
+    moneyOff = 0x490L,
+    objectEvents = 0x0200B864L,
+    mapHeader = 0x02006808L,
+    bagPockets = 0x0200C46CL,
+    bagPocketCount = 5,
+    bagPocketOrder = EMERALD_BAG_POCKET_ORDER,
+    speciesMask = 0x07FF,
+    moveMask = 0x07FF,
+    ppMask = 0x7F,
+    battleTypeFlags = 0x0200009CL,
+    battlersCount = 0x020000A2L,
+    battlerPartyIndexes = 0x02000134L,
+    battlerPositions = 0x02000130L,
+    battleMons = 0x0200054CL,
+    battleMonLayout = TEAM_ROCKET_V3_BATTLE_MON,
+    battleStructPtr = 0x020000A4L,
+    monToSwitchIntoOff = 0x8B,
+    actionCursor = 0x020003C4L,
+    moveCursor = 0x020003C8L,
+    battlerControllerFuncs = 0x03002444L,
+    handleInputChooseAction = 0x08054719L,
+    handleInputChooseMove = 0x08053741L,
+    completeWhenChoseItem = 0x08052A65L,
+    waitForMonSelection = 0x08052AA5L,
+    handleInputChooseTarget = 0x08051F21L,
+    partyMenu = 0x020372F0L,
+    eggSpecies = 1525,
+    monIconTable = 0x08748CF0L, // gSpeciesInfo[0].iconSprite
+    monIconStride = 0x104,
+    monIconPaletteIndices = 0x08748D12L, // gSpeciesInfo[0].iconPalIndex
+    monPalIdxStride = 0x104,
+    monPalIdxMask = 0x07,
+    monIconPaletteTable = 0x08CD27D8L,
+    itemIconTable = 0x086FBCCCL, // gItemsInfo[0].iconPic
+    itemIconStride = 0x2C,
+    itemPalCompressed = false,
+)
+
 // ---- gamedata/gen3/hacks/dreamstone.toml ----
 
 // Pokémon Dreamstone Mysteries (32 MB, BPEE, sha1 20e91aec…; dsmyst, no version shown in the game): the Cormoria region on
@@ -3225,6 +3342,83 @@ val NATIVE_EMERALD_ROGUE = NATIVE_EMERALD.copy(
     waitForMonSelection = 0,
     handleInputChooseTarget = 0,
     pokedex = POKEDEX_EMERALD_ROGUE,
+)
+
+// ---- gamedata/gen3/hacks/epsilon_emerald.toml ----
+
+// Pokémon Epsilon Emerald v1.0.0 (pokemerrp's demake of the 3DS Hoenn remakes; BPEE, 32 MB, sha1 8decf057…, header title
+// "EPSILON EMER"): closed, a gcc pokeemerald with an older pokeemerald-expansion battle engine (Gen 9 moves, Fairy as type
+// 18, a 19 x 19 uq4.12 type chart) that kept Emerald's species and item ids and its save: retail Emerald's save loads as it
+// is (the `epsilon_emerald` fixtures: KADABRA Lv36 first of six on ROUTE 114, money 185,092 as in Emerald).
+// - RAM by dumps of that save (scratch boots and a scripted battle each time): gSaveBlock1Ptr / 2Ptr / gPokemonStoragePtr
+// 0x0300454C.. (985 / 886 / 42 pool references), gPlayerParty 0x020251A0 with its count 3 bytes before and gEnemyParty
+// + 0x258, gMain 0x03002BE0 (+0x20 and +0x24 counted 16 between dumps 16 frames apart), gMapHeader 0x02037F68 (mapsec
+// 0x1D ROUTE 114), gObjectEvents 0x02038020 (the player at pos + 7). Party mons, money (+0x490) and the key (+0xAC) are
+// retail's.
+// - The bag (PACKED_BAG_EPSILON_EMERALD): gBagPockets 0x0203AD44 holds { *slots, u16 capacity } in 6 bytes, five pockets in
+// Emerald's order - Items (72 slots, SaveBlock1 + 0x560, running on over the old Key Items and Poké Balls slots, which its
+// bag leaves out by each item's own pocket), Poké Balls (16, + 0x650), TMs & HMs (a bit per machine, SaveBlock1 + 0x3598),
+// Berries (46, + 0x790) and Key Items (60, outside the save block at 0x02032988). Each pocket checked against the game's
+// own bag screen headless.
+// - Battle (a scripted wild ZIGZAGOON: setwildbattle takes ten bytes, ScriptContext_SetupScript 0x088C6621): gBattleMons
+// 0x02024C50 is expansion's 0x60-byte BattlePokemon (EXPANSION_BATTLE_MON: personality +0x4C, otId +0x58 matched the
+// party's); gBattlersCount / gBattlerPartyIndexes / gBattlerPositions sit before it as in retail (a switch put slot 1 into
+// gBattlerPartyIndexes[0]); gBattleTypeFlags 0x02024BB8 (4 in a wild battle, 526 references); the gBattleStruct pointer
+// 0x02025100 with the cursors + 0x10 / + 0x14 (RIGHT / DOWN walked the action byte 0 -> 1 -> 3, RIGHT the move byte 0 -> 1).
+// gBattlerControllerFuncs 0x03004520 read in each menu; the bag and party handlers have retail's code shapes, the target
+// handler is the one the move handler's literal pool names. gPartyMenu 0x0203DE3C (slotId + 9 walked 0 -> 1: a list).
+// - ROM: the GF ROM header's icon table and gItems (36-byte records, the description at + 0x14); gMonIconPaletteIndices
+// right after the 565 icons; the palette table its header names points into IWRAM, so the one before it (its first six,
+// the ROM's palettes) is the fallback; sItemIconTable is the pair table whose entry 1 is retail's MASTER BALL icon. Names, types,
+// moves, the chart: EpsilonEmeraldGen.kt (scripts/gen_epsilon_emerald_tables.py).
+// - DEX (POKEDEX_EPSILON_EMERALD, Pokedex.kt) and HERE (GUIDE_TABLES_EPSILON_EMERALD, GuideRom.kt): their tables from the ROM;
+// its dex flags are 56-byte arrays (a wild battle set SaveBlock2 + 0x60 and SaveBlock1 + 0x988, headless).
+// - PC anywhere and FLY (FIELD_ITEMS_EPSILON_EMERALD, FieldItems.kt): found through the game's own callers, checked headless.
+val NATIVE_EPSILON_EMERALD = NativeConfig(
+    itemDescs = ItemDescTable(0x08FEE438L, 36, 0x14, count = 629),
+    playerParty = 0x020251A0L,
+    playerPartyCount = 0x0202519DL,
+    battleMons = 0x02024C50L,
+    battlerPositions = 0x02024C42L,
+    battlersCount = 0x02024C38L,
+    battleTypeFlags = 0x02024BB8L,
+    battleMonLayout = EXPANSION_BATTLE_MON,
+    gMain = 0x03002BE0L,
+    saveBlock1Ptr = 0x0300454CL,
+    saveBlock2Ptr = 0x03004550L,
+    objectEvents = 0x02038020L,
+    mapHeader = 0x02037F68L,
+    bagPockets = 0x0203AD44L,
+    bagPocketCount = 5,
+    bagPocketOrder = EMERALD_BAG_POCKET_ORDER,
+    packedBag = PACKED_BAG_EPSILON_EMERALD,
+    encryptionKeyOff = 0xACL,
+    moneyOff = 0x490L,
+    monIconTable = 0x08FE0464L,
+    monIconPaletteIndices = 0x08FE0D38L,
+    monIconPaletteTable = 0x08FE0F80L,
+    // Its party icons take each species' own palette: gMonPaletteTable's (the GF header's, raw 16 colours, 8-byte {palette, tag}
+    // entries; the party screen's OBJ palettes were these, byte for byte), its shiny ones gMonShinyPaletteTable's 565 entries on.
+    monIconPalettes = 0x08BE56C0L,
+    monIconPalStride = 8,
+    monIconShinyOff = 0x11A8L,
+    eggSpecies = 446,
+    itemIconTable = 0x090A304CL,
+    battlerControllerFuncs = 0x03004520L,
+    handleInputChooseAction = 0x08875859L,
+    handleInputChooseMove = 0x088762E9L,
+    completeWhenChoseItem = 0x088783D1L,
+    waitForMonSelection = 0x08878315L,
+    handleInputChooseTarget = 0x08875B85L,
+    enemyParty = 0x020253F8L,
+    battlerPartyIndexes = 0x02024C3AL,
+    battleStructPtr = 0x02025100L,
+    actionCursor = 0x02025110L,
+    moveCursor = 0x02025114L,
+    partyMenu = 0x0203DE3CL,
+    pokedex = POKEDEX_EPSILON_EMERALD,
+    guideTables = GUIDE_TABLES_EPSILON_EMERALD,
+    fieldItems = FIELD_ITEMS_EPSILON_EMERALD,
 )
 
 // ---- gamedata/gen3/hacks/gaia.toml ----
@@ -3972,6 +4166,33 @@ val NATIVE_MONOMYTH_V1_1 = NATIVE_MONOMYTH.copy(
     guideTables = GUIDE_TABLES_MONOMYTH_V1_1,
 )
 
+// Pokémon Monomyth v1.2 (32 MB, BPEE, sha1 742e62ff…; released 2026-11-15, monomyth.jp's monomyth_v1_2.bps over retail
+// Emerald): v1.1 rebuilt again, mapped by word pairs (each v1.1 literal-pool word found at its place in v1.2's code). Its
+// RAM up to the battle globals is v1.1's, but a word was added before gMapHeader: gMapHeader, gObjectEvents, gBagPockets,
+// sLockFieldControls and gPartyMenu (and EXPAND's camera) sit 4 bytes later. Code moved by -0x1F8 around the battle
+// controllers (HandleInputChooseTarget's body changed: found by the two pool words naming it), +0x220 at the field
+// scripts; tables by -0x43C / -0x444 (gItems, the icons) and on to -0x3A8 (gItemIconTable). The user's v1.0 save loads as
+// it is (the monomyth_v1_2 fixtures: the same party, money and CATSEAR CITY building).
+val NATIVE_MONOMYTH_V1_2 = NATIVE_MONOMYTH.copy(
+    itemDescs = ItemDescTable(0x089F15ACL, 0x20, 0x18, count = 447),
+    handleInputChooseAction = 0x08048329L,
+    handleInputChooseMove = 0x08048C55L,
+    completeWhenChoseItem = 0x0804AAB9L,
+    waitForMonSelection = 0x0804A9F1L,
+    handleInputChooseTarget = 0x08048601L,
+    partyMenu = 0x0203D8D4L,
+    objectEvents = 0x02038284L,
+    mapHeader = 0x02038214L,
+    bagPockets = 0x0203C190L,
+    monIconTable = 0x089DF520L,
+    monIconPaletteIndices = 0x089DFB78L,
+    monIconPaletteTable = 0x089DFD10L,
+    itemIconTable = 0x08AAFA64L,
+    pokedex = POKEDEX_MONOMYTH_V1_2,
+    fieldItems = FIELD_ITEMS_MONOMYTH_V1_2,
+    guideTables = GUIDE_TABLES_MONOMYTH_V1_2,
+)
+
 // ---- gamedata/gen3/hacks/odyssey.toml ----
 
 // Pokemon Odyssey (English) v4.1.1 - a 32 MB BPRE hack like the others above.
@@ -3993,6 +4214,23 @@ val NATIVE_ODYSSEY = NATIVE_FIRERED_REV0.copy(
     guideTables = GUIDE_TABLES_ODYSSEY,
     itemDescs = vanillaItems(0x083DB028L),
     // FireRed's battle menu cursors (CFRU), checked headless like Unbound's (odyssey_battle's README).
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
+)
+
+// ---- gamedata/gen3/hacks/oops_all_eevees.toml ----
+
+// Pokémon Oops All Eevees! v1.3.2 Alpha (kddao16; 32 MB, the author's BPS over FireRed 1.0 rev 0, sha1 4234507f…): Kanto on
+// CFRU with DPE, every species an Eevee form. FireRed rev 0's RAM, checked on a new game played headless (it deletes retail
+// FireRed's save; `oops_all_eevees`: the intro, then the game's own givemon / additem through rev 0's ScriptContext_SetupScript,
+// saved in game). Its tables through FireRed 1.0's literal pools (gen_cfru_tables.py oops_all_eevees); the icon tables likewise:
+// gMonIconTable 0x099B7180, gMonIconPaletteIndices 0x099B6C8C, sItemIconTable 0x093C8100. The battle menus' cursors are
+// FireRed's (a written cell + A, headless: `oops_all_eevees_battle`). Kanto's map, drawn from the ROM (RomRegionMap).
+val NATIVE_OOPS_ALL_EEVEES = NATIVE_FIRERED_REV0.copy(
+    itemDescs = vanillaItems(0x093C0000L),
+    monIconTable = 0x099B7180L,
+    monIconPaletteIndices = 0x099B6C8CL,
+    itemIconTable = 0x093C8100L,
     actionCursor = 0x02023FF8L,
     moveCursor = 0x02023FFCL,
 )
@@ -4568,6 +4806,84 @@ val NATIVE_RECHARGED_YELLOW_V1_9_7 = NATIVE_RECHARGED_YELLOW_V1_9_4.copy(
     pokedex = POKEDEX_RECHARGED_YELLOW_V1_9_7,
     guideTables = GUIDE_TABLES_RECHARGED_YELLOW_V1_9_7,
     trainerCard = TRAINER_CARD_RECHARGED_YELLOW_V1_9_7,
+)
+
+// ---- gamedata/gen3/hacks/recordkeepers.toml ----
+
+// Pokémon RecordKeepers v1.2.1 (Eventide Devs; 32 MB, BPEE, sha1 8df1c972…; the Hackdex patch over Emerald): a roguelike on
+// a newer pokeemerald-expansion (its PRET x RHH splash) with no RHHEXP block or GF ROM header, gcc, no source. It deletes
+// retail Emerald's save, so it was mapped from a new game played headless (`recordkeepers`: the intro, then the game's own
+// createmon / additem through its ScriptContext_SetupScript 0x081D7BC5 - ScrCmd_createmon 0x0A1DA5E1 - saved through its
+// own START menu's SAVE in the player's room). Each RAM address is a literal-pool word whose reference count is near an
+// expansion 1.13.2 build's, checked in dumps:
+// - gPlayerParty 0x02029D8C / gPlayerPartyCount 0x02029B2D, gEnemyParty 0x02029B34: expansion's encrypted 100-byte mons;
+//   the egg is species 1530 (gSpeciesInfo's unnamed entry after the last).
+// - gSaveBlock1Ptr / 2Ptr 0x030050F8 / 0x030050F4; money SB1+0x490 XOR SB2+0x44 (3000). gMain 0x030065F4.
+// - gMapHeader 0x020017C0 (mapsec 61 for the room, a byte at +0x14), gObjectEvents 0x02006820 (the player's coords = pos + 7).
+// - gBagPockets 0x02006D78: Emerald's five pockets, each one slot in SaveBlock1 (POTION x5 / POKE BALL x10, as given).
+// - Battle (a scripted wild RATTATA): gBattleTypeFlags 0x020000BC, gBattlersCount 0x020000C2, gBattlerPositions 0x02000164,
+//   gBattlerPartyIndexes 0x02000168, gBattleMons 0x0200073C ([RECORDKEEPERS_BATTLE_MON]: 0x6C bytes). Its battle screen is its
+//   own (the moves at once, L / R switch the active battler): no battle input, and gBattleStruct isn't mapped (no NEXT pill).
+// - Icons: gSpeciesInfo 0x086BCFE8 (0x128-byte entries: iconSprite +0x6C, its own icon palette +0x100, the shiny one +0x104),
+//   gItemsInfo 0x0866C608 (0x50-byte entries: icon +0x48 LZ77, its palette +0x4C plain).
+// Names / types / moves / chart / map sections: scripts/gen_expansion_tables.py recordkeepers.
+val NATIVE_RECORDKEEPERS = NATIVE_EMERALD.copy(
+    itemDescs = ItemDescTable(0x0866C61CL, 0x50, -8),
+    playerParty = 0x02029D8CL,
+    playerPartyCount = 0x02029B2DL,
+    enemyParty = 0x02029B34L,
+    gMain = 0x030065F4L,
+    saveBlock1Ptr = 0x030050F8L,
+    saveBlock2Ptr = 0x030050F4L,
+    encryptionKeyOff = 0x44L,
+    moneyOff = 0x490L,
+    objectEvents = 0x02006820L,
+    mapHeader = 0x020017C0L,
+    bagPockets = 0x02006D78L,
+    bagPocketCount = 5,
+    bagPocketOrder = EMERALD_BAG_POCKET_ORDER,
+    speciesMask = 0x07FF,
+    moveMask = 0x07FF,
+    ppMask = 0x7F,
+    battleTypeFlags = 0x020000BCL,
+    battlersCount = 0x020000C2L,
+    battlerPartyIndexes = 0x02000168L,
+    battlerPositions = 0x02000164L,
+    battleMons = 0x0200073CL,
+    battleMonLayout = RECORDKEEPERS_BATTLE_MON,
+    battlerControllerFuncs = 0,
+    handleInputChooseAction = 0,
+    handleInputChooseMove = 0,
+    completeWhenChoseItem = 0,
+    waitForMonSelection = 0,
+    handleInputChooseTarget = 0,
+    eggSpecies = 1530,
+    monIconTable = 0x086BD054L, // gSpeciesInfo[0].iconSprite
+    monIconStride = 0x128,
+    monIconPaletteIndices = 0x086BD054L, // (unused: each species has its own palette, monIconPalettes)
+    monPalIdxStride = 0x128,
+    monPalIdxMask = 0x00,
+    monIconPalettes = 0x086BD0E8L, // gSpeciesInfo[0]'s own icon palette (+0x100; shiny +0x104)
+    itemIconTable = 0x0866C650L, // gItemsInfo[0].iconPic
+    itemIconStride = 0x50,
+    itemPalCompressed = false,
+)
+
+// ---- gamedata/gen3/hacks/rhythm.toml ----
+
+// Pokémon Rhythm v1.4.0 (invis292; 32 MB, Hackdex's xdelta over FireRed 1.0 rev 0, sha1 b0d6b913…): Vedeo on CFRU, no source.
+// FireRed rev 0's RAM, checked on a new game played headless (it deletes retail FireRed's save; `rhythm`: the intro, then the
+// game's own givemon / additem through rev 0's ScriptContext_SetupScript, saved in game). Its tables through FireRed 1.0's
+// literal pools (gen_cfru_tables.py rhythm); the icon tables likewise: gMonIconTable 0x09E89400, gMonIconPaletteIndices
+// 0x099B6C8C, sItemIconTable 0x09E51180. The battle menus' cursors are FireRed's (a written cell + A, headless: `rhythm_battle`).
+// Its region map is its own, drawn from the ROM (RomRegionMap).
+val NATIVE_RHYTHM = NATIVE_FIRERED_REV0.copy(
+    itemDescs = vanillaItems(0x09E486C0L),
+    monIconTable = 0x09E89400L,
+    monIconPaletteIndices = 0x099B6C8CL,
+    itemIconTable = 0x09E51180L,
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
 )
 
 // ---- gamedata/gen3/hacks/rowe.toml ----
@@ -5287,6 +5603,41 @@ val NATIVE_ASH_GRAY = NATIVE_ULTRA_VIOLET.copy(
     guideTables = GUIDE_TABLES_ASH_GRAY,
 )
 
+// ---- gamedata/gen3/hacks/clover.toml ----
+
+// Pokémon Clover v1.3.3 (16 MB, sha1 7eca3ef1…; poclo.net's BPS over FireRed 1.0 rev 0): FireRed 1.0 edited in place, no
+// source, but its header's game code is BPEE (title "POKEMON EMER"), so it's told apart by its hash in the small-BPEE check and
+// runs as FIRERED on the FireRed engine (Poller's fireRedEngine). Its literal pools still name rev 0's RAM, and retail FireRed's
+// save loads in it (`clover`: the save's party and bag, its own species' pictures). Its fakemon sit in FireRed's species
+// slots; names, types, moves (to 719, gMoveNames 0x08F46858 / gBattleMoves 0x08F44698), FAIRY (23) and growth rates in
+// CloverGen.kt (gen_firered_hack_tables.py clover). The POKéDEX keeps rev 0's tables in place but its ability names
+// (0x0893A1C0); HERE reads its own gWildMonHeaders (0x082CD614) over gMapGroups at rev 0's address, reshaped (43 groups).
+// Its region map is its own art on rev 0's region_map.c (RomRegionMap, let through for its CRC though the header says BPEE).
+val NATIVE_CLOVER = NATIVE_ULTRA_VIOLET.copy(
+    pokedex = POKEDEX_CLOVER,
+    guideTables = GUIDE_TABLES_CLOVER,
+)
+
+// ---- gamedata/gen3/hacks/elysium.toml ----
+
+// Pokémon Elysium v2.5.0 (black_kaiser; 16 MB each, Hackdex's two BPS patches over FireRed 1.0 rev 0): FireRed rev 0 edited in
+// place, no source, in two parts - Part A (sha1 d2440fd6…, the main game) and Part B (sha1 71bf4017…, the finale), told apart by
+// hash in the small-BPRE check and run as FIRERED with their own names (ElysiumGen.kt, gen_firered_hack_tables.py elysium: its
+// moves to 454 repointed, FAIRY in FireRed's type 9; Part B's species tables repointed too). Rev 0's RAM in both, checked on a
+// capture of each (`elysium_a`: a new game played headless, as Part A deletes retail FireRed's save; `elysium_b`: retail
+// FireRed's save, which Part B keeps), and its battle cursors (a written cell + A, headless on both). The POKéDEX: Part A keeps
+// rev 0's tables in place; Part B repointed entries, pictures, base stats, numbering, footprints, evolutions and TM learnsets
+// (their literal-pool words). HERE reads each part's own gWildMonHeaders over gMapGroups at rev 0's address.
+val NATIVE_ELYSIUM_A = NATIVE_ULTRA_VIOLET.copy(
+    pokedex = POKEDEX_ELYSIUM_A,
+    guideTables = GUIDE_TABLES_ELYSIUM_A,
+)
+
+val NATIVE_ELYSIUM_B = NATIVE_ULTRA_VIOLET.copy(
+    pokedex = POKEDEX_ELYSIUM_B,
+    guideTables = GUIDE_TABLES_ELYSIUM_B,
+)
+
 // ---- gamedata/gen3/hacks/ghost_grey.toml ----
 
 // Pokémon Ghost Grey (JoeyZeed; 32 MB, BPRE rev 0): v1.0.2 (sha1 74337272…) and v1.0.4 (0dafc011…) share every
@@ -5404,6 +5755,18 @@ val NATIVE_UNBOUND_FR = NATIVE_UNBOUND_WITH_DEX.copy(
     gameCode = UNBOUND_FR_TEXT,
     pokedex = POKEDEX_UNBOUND_FR,
     guideTables = GUIDE_TABLES_UNBOUND_FR,
+)
+
+// Pokémon Unbound v2.1.1.1 IT - the Italian fan translation (giacomo-spadoni/pokemon-unbound-ita, patch v7 over
+// English: sha1 8114e0f8…, MD5 c0b35748…). Like the French one, only text and a few pictures changed, and in place:
+// every literal pool holds English's word (species, moves, gItems, natures and map names at English's addresses,
+// the header's revision byte kept at 0), and the user's English save boots in it (`unbound_it`). Names in Italian
+// (UNBOUND_IT_TEXT, gen_unbound_fr_tables.py); its POKéDEX page is metric with a decimal comma ("Alt." / "Peso",
+// headless); its trainers keep their English names, so English's guide tables check out as they are.
+val NATIVE_UNBOUND_IT = NATIVE_UNBOUND_WITH_DEX.copy(
+    language = 'I',
+    gameCode = UNBOUND_IT_TEXT,
+    pokedex = POKEDEX_UNBOUND_IT,
 )
 
 // ---- gamedata/gen3/hacks/wishes.toml ----

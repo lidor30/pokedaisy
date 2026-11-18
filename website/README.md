@@ -1,6 +1,6 @@
 # PokeDaisy website
 
-A static [Astro](https://astro.build) site: the home page and the ROM check. Node 22.12+ (`nvm use`).
+A static [Astro](https://astro.build) site: the home page and the ROM check. Node 22.23.4+ (`nvm use`).
 
 ```sh
 npm install
@@ -83,7 +83,7 @@ By hand (this skips the release rule - deploy from a release tag's checkout): `n
 ## Analytics
 
 Anonymous visit counts in the project's Google Analytics 4 (Firebase Analytics), all in `src/lib/analytics.js`:
-a `page_view` per page, and `download_apk` (`where`, `version`), `rom_check` (`verdict`, `reason`: never the file's
+a `page_view` per page, and `download_apk` (`where`, `version`, `platform`: android, linux or 3ds), `rom_check` (`verdict`, `reason`: never the file's
 name, code or hash), `feedback_sent` (`kind`, `ok`: nothing typed) and `link_click` (`to`: GitHub, Reddit, Discord,
 Ko-fi, Patreon, coffee). Anything else, and any value off each parameter's list, is dropped before sending
 (`test/analytics.test.js`). No cookies or stored ids (the language picker's choice is the one thing kept, in `localStorage`, and never sent; every page load is a new visit, so "users" count page loads),

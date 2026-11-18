@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.i18n.stripAccents
 import androidx.compose.foundation.layout.Column
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
@@ -44,6 +45,9 @@ class SettingRow(
     val label: String, val value: String?, val badge: String? = null, val header: Boolean = false,
     val enabled: Boolean = true, val labelBadge: String? = null,
     val labelIcon: (@Composable () -> Unit)? = null,
+    /** [labelIcon]'s size in GBA pixels, when it isn't a line high (the HUD's / QUICK MENU's 16-pixel icons): the row grows
+     * to fit it. 0 = a line high. */
+    val iconPixels: Int = 0,
     /** A line under the label saying what the row is for (English, translated where it's drawn). */
     val subtitle: String? = null,
     /** Hidden words Settings' search also matches (English, space-separated): the terms players use elsewhere. */
@@ -125,6 +129,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "HOTKEYS" to "shortcuts combos save state load state slot rewind fast forward key bindings restart close quit exit app companion open panel window",
     "QUICK MENU" to "radial ring wheel circle grid style labels names icons only shortcut actions pc fly flash dark cave light repel super max bike bicycle get off dismount rod fishing wild encounters save load state fast forward l3 thumb stick",
     "STATUS BAR" to "clock time battery money location top bar",
+    "HIDE BATTLE MENU" to "hide battle menu buttons on screen fight bag pokemon run moves move list text box arrow dual screen two screens second screen bottom screen thor companion distracting clutter",
     "BATTLE BUTTONS" to "battle buttons moves fight switch run flee side touch single screen one screen expand widescreen",
     "HUD" to "field hud heads up display overlay party minimap mini map balls bag wild encounters overworld legends single screen",
     "ASPECT" to "stretch ratio fullscreen full screen size scale 3:2 wide widescreen 16:9 expand zoom",
@@ -136,13 +141,15 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "DS RESOLUTION" to "internal resolution upscale upscaling scale scaling hd high definition sharp sharper crisp 3d render renderer gpu opengl 2x 4x 6x 8x jaggies jagged blurry nintendo ds platinum heartgold soulsilver",
     "DS LAYOUT" to "screen layout screens dual screen two screens bottom screen touch screen touchscreen side by side stacked vertical hybrid picture in picture pip large small single screen one screen floating window popup nintendo ds heartgold soulsilver",
     "SHADERS" to "filter lcd crt scanlines grid gba colors color correction effects screen look smoothing xbr xbrz scalefx upscale hd edges unlit pixel transparency backlight",
+    "COMPANION LOOK" to "skin skins theme style look game heartgold soulsilver platinum black white firered leafgreen emerald ruby sapphire menus colors classic",
     "LIGHT COMPANION" to "lag laggy slow slowdown stutter performance weak device low end battery buttons late input delay unresponsive animations smooth",
     "UNLIT SCREEN" to "pixel transparency transparent backlight backlit no backlight unlit reflective backing shadow drop shadow original gba screen white",
     "SMOOTHING" to "xbr xbrz scalefx upscale upscaler hd edges smooth anti alias filter",
     "OVERLAY" to "overlay overlays border borders bezel bezels frame skin retroarch background wallpaper decoration",
     "COMPANION" to "portrait phone bottom position layout",
     "COMPANION VIEW" to "single screen one screen window modal popup middle center side panel docked layout",
-    "FOLD LAYOUT" to "foldable fold folding flip galaxy z fold pixel fold hinge tabletop flex mode book half open dual screen two screens",
+    "FOLD LAYOUT" to "foldable fold folding flip galaxy z fold pixel fold hinge tabletop flex mode book half open flat unfolded always dual screen two screens",
+    "TABLETOP CONTROLS" to "foldable fold tabletop laptop touch controls buttons dpad bottom half sides hinge flex mode",
     "COMPANION BUTTON" to "companion tab arrow edge tab open button hide white corner bottom right",
     "SWAP SCREENS" to "dual screen display switch top bottom tv cast mirror mirroring smart view hdmi external",
     "SINGLE SCREEN" to "one screen single screen dual screen multitask multitasking second screen free other apps window modal popup",
@@ -151,6 +158,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "THEME" to "colors colours look background skin style themes cherry rainbow ocean mint lavender sunset forest lemon holiday seasonal christmas halloween easter valentine lunar new year limited",
     "FPS / CPU" to "fps frame rate framerate cpu usage performance speed overlay counter 60",
     "DARK MODE" to "dark night black theme light colors appearance auto system",
+    "FONT" to "font text letters typeface readable reading pixel smooth bold system size legible",
     "RESUME GAMES" to "auto resume continue launch boot",
     "FOLDERS" to "roms folder folders multiple add link saves directory path location storage retroarch syncthing save states backup backups restore",
     "COVER ART" to "box art boxart covers steamgriddb images thumbnails api key",
@@ -166,6 +174,8 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "BATTLE HINTS" to "suggestions recommendations best move tips",
     "BATTLE STYLE" to "battle screen look theme gen 4 gen 5 platinum black white buttons design",
     "BATTLE INFO" to "hide battle info suggestions ratings effectiveness buttons only clean",
+    "ACHIEVEMENT POPUPS" to "retroachievements cheevos achievements notifications notices popup unlock fanfare sound quiet hide",
+    "PROGRESS POPUPS" to "retroachievements cheevos achievements notifications notices popup progress counter quiet hide",
     "CHALLENGE ICONS" to "retroachievements cheevos achievements leaderboard tracker badge badges corner hide icons overlay",
     "BATTLE VIEW" to "battle tab default info buttons suggestions best picks first opens",
     "GAME NAMES" to "file name filename rom title library naming",
@@ -194,14 +204,24 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "FLY ON" to "fly on vehicle balloon hot air balloon helicopter zeppelin airship blimp plane airplane aeroplane propeller ride mount bird flight free flight take off",
     "FLIGHT AREA" to "flight area where you've been where you have been anywhere visited seen places limit restrict progress story skip sequence break free flight take off fly over map achievements",
     "FLY STYLE" to "fly style scenic classic flight animation flying over map travel town cutscene bird fly to",
+    "EXP SHARE" to "exp share experience all party team whole party level up faster grinding exp all split full bench",
+    "AUTO REFILL" to "auto refill repel repels super max keep away spray wild encounters avoid use another run out wore off again automatic",
+    "LAST BALL" to "last ball throw ball catch quick ball button one tap poke ball pokeball great ultra repeat throw again catching capture",
+    "BOSS RETRY" to "boss retry try again redo rematch lost loss black out blackout white out whiteout gym leader trainer battle restart undo",
+    "LOW HP BEEP" to "low hp beep beeping alarm sound health red annoying noise mute silence",
+    "FIELD POISON" to "field poison overworld walking damage poisoned steps faint hurt outside battle",
+    "DESCRIPTIONS" to "descriptions subtitles explanations help text grey line under setting compact clean shorter list",
+    "GROUP TABS" to "group tabs side buttons rail categories left column sections hide tabs wider list",
+    "LEVEL CAP" to "level cap max level limit hard mode harder overlevel over leveled gym leader boss ace stop exp",
+    "NO HMS NEEDED" to "hm hms hidden machine machines free slave field moves cut surf strength rock smash waterfall dive fly flash without teaching badge only any pokemon",
     "REUSABLE TMS" to "reusable tm tms technical machine machines reuse infinite unlimited keep tm single use consumed used up teach moves",
+    "SHINY ALERT" to "shiny alert hunt hunting counter encounters count chain notify notification warn sparkle stop fast forward found",
     "SHINY ODDS" to "shiny shinies shiny odds shiny rate shiny hunting hunt shiny charm sparkle rare color colour chance",
     "TIPS" to "tips hints help popup pop up feature discovery introduce new features suggestions what can it do",
     "WILD ENCOUNTERS" to "wild encounters encounter rate random battles grass caves repel no encounters fewer battles",
 )
 
-private fun fold(s: String): String =
-    java.text.Normalizer.normalize(s.lowercase(), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+private fun fold(s: String): String = stripAccents(s.lowercase())
 
 /** A group's title row in [GroupedRows]. */
 fun groupTitle(label: String) = SettingRow(label, null, header = true) {}
@@ -238,7 +258,7 @@ fun GroupedRows(
     groupTabs: Boolean = false,
     footer: @Composable () -> Unit = {},
 ) {
-    val groups = if (groupTabs) rows.indices.filter { rows[it].header } else emptyList()
+    val groups = if (groupTabs && SettingsLook.tabs) rows.indices.filter { rows[it].header } else emptyList()
     // Inside [RailedWindow] the list draws the window itself, so the group tabs can stay out of it.
     val railed = LocalRailedWindow.current
     @Composable fun Card(content: @Composable () -> Unit) {
@@ -443,36 +463,57 @@ private fun GroupedRowsList(
     val gameScale = com.pokedaisy.app.companion.ui.theme.LocalGameTextScale.current
     val rowHeight = m.rowHeight * 1.2f / gameScale
     val subtitleLine = if (gameScale == 1f) m.lineHeight else subtitleMetrics(m).lineHeight + m.u * 2
-    fun heightOf(row: SettingRow) = if (row.subtitle != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA
-    Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
-        rows.forEachIndexed { i, row ->
-            if (row.header && row.featured) {
-                val track = if (tops == null) Modifier else Modifier.onGloballyPositioned { tops[i] = it.positionInParent().y.toInt() }
-                FeaturedTitle(row, m, top = if (i == 0) 1 else 6, modifier = track)
-            } else if (row.header) {
-                val track = if (tops == null) Modifier else Modifier.onGloballyPositioned { tops[i] = it.positionInParent().y.toInt() }
-                GroupTitleLine(row.label, m, first = i == 0, modifier = track)
-            } else {
-                OptionLine(
-                    row.label, row.value, selected = i == cursor, m,
-                    modifier = (if (i == reveal) Modifier.revealOnce(onRevealed) else Modifier)
-                        .then(if (i == firstRow && firstRowFocus != null) Modifier.focusRequester(firstRowFocus) else Modifier)
-                        // The companion's window: the D-pad starts on the cursor row.
-                        .focusStart(i == cursor),
-                    // A one-line row's letters sit low in their line (room above the capitals, none under): a little more
-                    // under them, so the space below matches the space above.
-                    height = heightOf(row),
-                    bottomPadding = if (row.subtitle != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
-                    divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
-                    valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = row.labelWeight ?: labelWeight,
-                    chevron = row.opensPage, slider = row.slider,
-                    onFocus = onFocused?.let { f -> { f(i) } },
-                ) { onClick(i) }
-            }
+    // DESCRIPTIONS hidden ([SettingsLook]): rows go without their grey line.
+    val descriptions = SettingsLook.descriptions
+    fun subtitleOf(row: SettingRow) = row.subtitle?.takeIf { descriptions }
+    fun heightOf(row: SettingRow) = (if (subtitleOf(row) != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA)
+        // A big icon: its size and a few pixels over and under it.
+        .let { if (row.iconPixels > 0) maxOf(it, m.u * (row.iconPixels + 8)) else it }
+    @Composable fun RowAt(i: Int, row: SettingRow) {
+        if (row.header && row.featured) {
+            val track = if (tops == null) Modifier else Modifier.onGloballyPositioned { tops[i] = it.positionInParent().y.toInt() }
+            FeaturedTitle(row, m, top = if (i == 0) 1 else 6, modifier = track)
+        } else if (row.header) {
+            val track = if (tops == null) Modifier else Modifier.onGloballyPositioned { tops[i] = it.positionInParent().y.toInt() }
+            GroupTitleLine(row.label, m, first = i == 0, modifier = track)
+        } else {
+            OptionLine(
+                row.label, row.value, selected = i == cursor, m,
+                modifier = (if (i == reveal) Modifier.revealOnce(onRevealed) else Modifier)
+                    .then(if (i == firstRow && firstRowFocus != null) Modifier.focusRequester(firstRowFocus) else Modifier)
+                    // The companion's window: the D-pad starts on the cursor row.
+                    .focusStart(i == cursor),
+                // A one-line row's letters sit low in their line (room above the capitals, none under): a little more
+                // under them, so the space below matches the space above.
+                height = heightOf(row),
+                bottomPadding = if (subtitleOf(row) != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
+                divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
+                labelIconSize = if (row.iconPixels > 0) m.u * row.iconPixels else null,
+                valueBadge = row.badge, enabled = row.enabled, subtitle = subtitleOf(row), labelWeight = row.labelWeight ?: labelWeight,
+                chevron = row.opensPage, slider = row.slider,
+                onFocus = onFocused?.let { f -> { f(i) } },
+            ) { onClick(i) }
         }
+    }
+    // A list of hundreds (an imported cheat file: RetroArch's Platinum one has 2321) is composed only where it's on
+    // screen: all of them at once held the UI thread for seconds, and the app stopped answering (GitHub #786). Its
+    // scroll position isn't [scroll]'s, which only SETTINGS' home pages (far shorter) keep.
+    if (rows.size > LAZY_ROWS && tops == null) {
+        val lazy = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = cursor.coerceIn(0, rows.size - 1))
+        androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize(), state = lazy) {
+            items(rows.size) { i -> RowAt(i, rows[i]) }
+            item { footer() }
+        }
+        return
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+        rows.forEachIndexed { i, row -> RowAt(i, row) }
         footer()
     }
 }
+
+/** Past this many rows a [GroupedRows] list is lazy. */
+private const val LAZY_ROWS = 100
 
 /** A group's title in a settings list ([groupTitle]'s look, for lists built row by row: GAME BUTTONS). [first] = the
  * list's top line, with less room above it. */
@@ -542,12 +583,54 @@ private fun Modifier.revealOnce(done: () -> Unit): Modifier = composed {
     onSizeChanged { size = it }.bringIntoViewRequester(requester)
 }
 
+/**
+ * How SETTINGS' lists look, on both screens (the two rows at the top of HOME, [settingsLookRows]): the grey description line
+ * under a row ([descriptions]; a featured group's tagline stays) and the group tabs beside a long list ([tabs]). Compose
+ * state, so a flip redraws both screens; [onChange] keeps them (the app sets it to Prefs at start).
+ */
+object SettingsLook {
+    var descriptions by mutableStateOf(true)
+    var tabs by mutableStateOf(true)
+    var onChange: ((descriptions: Boolean, tabs: Boolean) -> Unit)? = null
+
+    fun set(descriptions: Boolean = this.descriptions, tabs: Boolean = this.tabs) {
+        this.descriptions = descriptions
+        this.tabs = tabs
+        onChange?.invoke(descriptions, tabs)
+    }
+}
+
+/** SETTINGS' first two rows, on both screens: DESCRIPTIONS and GROUP TABS ([SettingsLook]). [changed] redraws the page. */
+fun settingsLookRows(changed: () -> Unit): List<SettingRow> {
+    fun shown(on: Boolean) = if (on) tk("SHOWN") else tk("HIDDEN")
+    return listOf(
+        SettingRow(
+            tk("DESCRIPTIONS"), shown(SettingsLook.descriptions),
+            labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.SETTINGS_LOOK),
+            subtitle = "The grey line under each setting",
+        ) { SettingsLook.set(descriptions = !SettingsLook.descriptions); changed() },
+        SettingRow(
+            tk("GROUP TABS"), shown(SettingsLook.tabs),
+            labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.SETTINGS_LOOK),
+            subtitle = "The group buttons beside this list",
+        ) { SettingsLook.set(tabs = !SettingsLook.tabs); changed() },
+    )
+}
+
 /** APP > TIPS, on both screens ([com.pokedaisy.app.companion.FeatureTips]): now and then a card about a feature the
  *  player hasn't found yet. */
 fun tipsRow(on: Boolean, set: (Boolean) -> Unit): SettingRow = SettingRow(
     tk("TIPS"), if (on) tk("ON") else tk("OFF"), subtitle = "Now and then, a feature you haven't tried yet",
     labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.TIPS),
 ) { set(!on) }
+
+/** COMPANION LOOK (SCREEN, under THEME, both screens): GAME = the companion and the HUD in the running game's own look
+ * where it has one ([CompanionSkins]), CLASSIC = the app's own in every game. [changed] redraws the page. */
+fun gameLookRow(changed: () -> Unit): SettingRow = SettingRow(
+    tk("COMPANION LOOK"), if (CompanionSkins.enabled) tk("GAME") else tk("CLASSIC"),
+    labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.GAME_LOOK),
+    subtitle = "The game's own style, or the app's classic one",
+) { CompanionSkins.change(!CompanionSkins.enabled); changed() }
 
 /**
  * DISPLAY OPTIONS > LIGHT COMPANION, on both screens ([com.pokedaisy.app.companion.LightCompanion]): AUTO / ON / OFF

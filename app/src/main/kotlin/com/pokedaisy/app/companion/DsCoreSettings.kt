@@ -1,7 +1,10 @@
 package com.pokedaisy.app.companion
 
-import com.pokedaisy.app.MgbaCore
+import kotlin.concurrent.Volatile
 import com.pokedaisy.app.companion.i18n.tk
+
+/** DS RESOLUTION's highest scale ([com.pokedaisy.app.Prefs.dsResolution]). */
+const val DS_RESOLUTION_MAX = 8
 
 /**
  * SETTINGS > DS CORE ([com.pokedaisy.app.Prefs.dsCore]): which emulator runs a DS game. melonDS (nds/pk_nds.cpp) has
@@ -17,17 +20,22 @@ enum class DsCore(val id: Int, val label: String) {
     DSPERATE(2, "DSPERATE"),
     ;
 
-    /** The core this choice runs here (MgbaCore.NDS_CORE_*). */
+    /** The core this choice runs here ([CORE_MELONDS] / [CORE_DSPERATE]). */
     fun runs(weak: Boolean = deviceWeak, sixtyFour: Boolean = is64Bit): Int = when (this) {
-        MELONDS -> MgbaCore.NDS_CORE_MELONDS
-        DSPERATE -> MgbaCore.NDS_CORE_DSPERATE
-        AUTO -> if (weak || !sixtyFour) MgbaCore.NDS_CORE_DSPERATE else MgbaCore.NDS_CORE_MELONDS
+        MELONDS -> DsCore.CORE_MELONDS
+        DSPERATE -> DsCore.CORE_DSPERATE
+        AUTO -> if (weak || !sixtyFour) DsCore.CORE_DSPERATE else DsCore.CORE_MELONDS
     }
 
     /** What the row shows: AUTO says which it picked ("AUTO: DSPERATE"). */
-    fun valueLabel(): String = if (this == AUTO) label + ": " + (if (runs() == MgbaCore.NDS_CORE_DSPERATE) DSPERATE.label else MELONDS.label) else label
+    fun valueLabel(): String = if (this == AUTO) label + ": " + (if (runs() == DsCore.CORE_DSPERATE) DSPERATE.label else MELONDS.label) else label
 
     companion object {
+        /** melonDS (nds/pk_nds.cpp): every DS feature. The number MgbaCore.pkNdsSetCore / pkNdsCore pass. */
+        const val CORE_MELONDS = 0
+        /** DSperate (nds/pk_nds_dsp.cpp): for weak devices; no EXPAND, DS RESOLUTION, PC / FLY calls, STEADY or DS CPU BOOST. */
+        const val CORE_DSPERATE = 1
+
         fun of(id: Int) = entries.firstOrNull { it.id == id } ?: AUTO
 
         /** This device looks weak (DevicePerformance.looksWeak), set as the app starts (PokeDaisyApp). */

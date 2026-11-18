@@ -25,7 +25,7 @@ The window beside the box shows one Pokémon's picture, its name, its kind, its 
 
 ## A Pokémon's summary
 
-Tap a Pokémon to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs and nature. The column down the right side holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
+Tap a Pokémon to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs, nature and ability. The column down the right side holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
 
 A Pokémon in a box keeps no stats of its own, so the companion works them out the way the game does when you take it out. A Pokémon in a box is always at full HP.
 
@@ -41,7 +41,7 @@ Back on the box, you see the move: each Pokémon flashes white, shrinks to a spa
 
 A few things the game itself wouldn't allow are refused:
 
-- **Mail**: a Pokémon holding Mail can't go into a box. Take the Mail off first.
+- **Mail**: a Pokémon holding Mail can't go into a box. Take the Mail off first with the summary's `TAKE`, which sends the letter to your PC's mailbox.
 - **Your last fighter**: an Egg can't take the place of the last Pokémon in your party that can battle.
 - **Not now**: you have to be walking around, with no battle, menu or text box open. Close the game's own PC first too.
 
@@ -64,4 +64,4 @@ The tab shows your boxes in:
 
 Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus and GS Chronicles have 25 boxes and SoulGold 15, and the tab shows them all.
 
-`WITHDRAW`, the swap and `DEPOSIT` work on FireRed, LeafGreen and Emerald in English, German, French, Italian and Spanish (both FireRed cartridges, both LeafGreens), and on Ultra Violet, Rocket Edition and Ash Gray. The other games show their boxes but can't move Pokémon yet. More games will follow.
+`WITHDRAW`, the swap and `DEPOSIT` work on FireRed, LeafGreen, Emerald, Ruby and Sapphire in English, German, French, Italian, Spanish and Japanese (every release of each), and on Ultra Violet, Rocket Edition and Ash Gray. The other games show their boxes but can't move Pokémon yet. More games will follow.

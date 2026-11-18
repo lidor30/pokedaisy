@@ -1,8 +1,9 @@
 package com.pokedaisy.app
 
-import java.text.Normalizer
+import com.pokedaisy.app.companion.i18n.stripAccents
 import kotlin.math.ln
 import kotlin.math.min
+import kotlin.math.roundToLong
 
 /**
  * Search over the manual: website/src/lib/docsearch.js ported line for line, so the app and /docs/ find
@@ -146,7 +147,7 @@ class DocsSearch(manual: DocsApi.Manual) {
             .take(limit)
             .map { s ->
                 val (text, marks) = snippet(s.r.body, groups)
-                Hit(s.r.page, s.r.anchor, s.r.heading, s.r.pageTitle, Math.round(s.total * 1000) / 1000.0, text, marks)
+                Hit(s.r.page, s.r.anchor, s.r.heading, s.r.pageTitle, (s.total * 1000).roundToLong() / 1000.0, text, marks)
             }
     }
 
@@ -180,7 +181,6 @@ class DocsSearch(manual: DocsApi.Manual) {
         private val FIELDS = listOf("title" to 6.0, "keywords" to 4.0, "context" to 1.5, "summary" to 2.0, "text" to 1.0)
         private val WORD = Regex("[A-Za-z0-9À-ɏ]+")
         private val SPLIT = Regex("[^a-z0-9]+")
-        private val MARKS = Regex("[̀-ͯ]")
         private val STOP = setOf(
             "a", "an", "the", "to", "of", "in", "on", "at", "and", "or", "is", "it", "its", "how", "do", "does",
             "i", "me", "my", "what", "can", "for", "with", "you", "your", "be", "are", "from", "by", "this", "that", "there", "when",
@@ -188,7 +188,7 @@ class DocsSearch(manual: DocsApi.Manual) {
 
         /** Lowercase words without accents ("Poké Ball" -> [poke, ball]). */
         fun words(text: String): List<String> =
-            MARKS.replace(Normalizer.normalize(text, Normalizer.Form.NFD), "").lowercase()
+            stripAccents(text).lowercase()
                 .split(SPLIT).filter { it.isNotEmpty() }
 
         /** A light English stemmer: plurals, -ing, -ed. */

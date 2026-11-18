@@ -1,0 +1,34 @@
+# Pokemon Elysium v2.5.0 Part A, a scripted wild battle: elysium_a.txt, then wait 200 and setwildbattle species 25 Lv5;
+# dowildbattle; end (B6 1900 05 0000 B7 02 at 0x0203FF00) through rev 0's ScriptContext_SetupScript 0x08069AE5 (Elysium
+# kept that code byte for byte); dumped at the action menu.
+wait 120
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+wait 60
+press A
+wait 90
+press A
+wait 200
+wait 200
+poke32 0x0203FF00 0x050019B6
+poke32 0x0203FF04 0x02B70000
+call 0x08069AE5 0x0203FF00
+wait 300
+press A
+wait 350
+wait 300
+press A
+wait 300
+wait 300

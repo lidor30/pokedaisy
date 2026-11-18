@@ -1,13 +1,16 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+import kotlin.time.TimeSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.util.zip.CRC32
-import java.util.zip.Deflater
+import okio.Deflater
+import okio.DeflaterSink
+import okio.Inflater
+import okio.InflaterSource
+import okio.Path
+import okio.Path.Companion.toPath
+import okio.use
 
 /**
  * Game art the companion draws with - FireRed's / Emerald's party menu (slot,
@@ -27,7 +30,7 @@ object RomArt {
     const val DIR = "rom-art"
 
     /** Bump when [OUTPUTS] grows, so ROMs scanned before get scanned again. */
-    private const val SCAN_VERSION = 27
+    private const val SCAN_VERSION = 28
 
     /** Bumped whenever new art lands on disk, so loaders can retry. */
     val updates: StateFlow<Int> get() = _updates
@@ -35,74 +38,65 @@ object RomArt {
 
     @Volatile private var running = false
 
-    /** Tells loaders new art landed in [dir] (see [RomRegionMap]). */
-    internal fun announce() {
+    /** Tells loaders new art landed in [dir] (see [RomRegionMap]); public for the app's own extractors (3DS games'). */
+    fun announce() {
         _updates.value++
     }
 
     /** Swappable so tests / previews can keep the art elsewhere (Paparazzi has no filesDir). */
     @Volatile
-    var dirOverride: File? = null
+    var dirOverride: Path? = null
+
+    /** The app's own files folder (Android's filesDir), set by the host at start: where the screens find the art. */
+    @Volatile
+    var filesDir: Path? = null
 
     /** Where the art lives: [DIR] under the app's filesDir. */
-    fun dir(filesDir: File?): File = dirOverride ?: File(filesDir, DIR)
+    fun dir(filesDir: Path?): Path = dirOverride ?: filesDir?.div(DIR) ?: DIR.toPath()
+
+    /** [dir] under the host's [RomArt.filesDir]. */
+    fun dir(): Path = dir(filesDir)
 
     /** The cached file for an art [path], or null if no ROM has supplied it yet. */
-    fun file(filesDir: File?, path: String): File? = File(dir(filesDir), path).takeIf { it.isFile }
+    fun file(filesDir: Path?, path: String): Path? = (dir(filesDir) / path).takeIf { it.isFile }
+
+    /** [file] under the host's [RomArt.filesDir]. */
+    fun file(path: String): Path? = file(filesDir, path)
 
     /**
      * Scans [rom] in the background unless a ROM with this [romKey] was
      * already scanned, or every file is already cached. A few hundred ms, once.
      */
-    fun prefetch(filesDir: File, romKey: String, rom: File) {
+    fun prefetch(filesDir: Path, romKey: String, rom: Path) {
         val dir = dir(filesDir)
-        val marker = File(dir, "scanned/v$SCAN_VERSION-$romKey")
-        if (marker.isFile || running || OUTPUTS.all { File(dir, it).isFile }) return
+        val marker = dir / "scanned/v$SCAN_VERSION-$romKey"
+        if (marker.isFile || running || OUTPUTS.all { (dir / it).isFile }) return
         running = true
-        Thread({
+        background("pokedaisy-rom-art") {
             try {
-                val t0 = System.nanoTime()
-                val wrote = extractTo(readChunked(rom), dir)
-                marker.parentFile?.mkdirs()
+                val t0 = TimeSource.Monotonic.markNow()
+                val wrote = extractTo(readRomFile(rom), dir)
                 marker.writeText(wrote.joinToString("\n"))
-                android.util.Log.i("pokedaisy", "RomArt: ${wrote.size} new files from ${rom.name} in ${(System.nanoTime() - t0) / 1_000_000} ms")
+                Logs.i("RomArt: ${wrote.size} new files from ${rom.name} in ${t0.elapsedNow().inWholeMilliseconds} ms")
                 if (wrote.isNotEmpty()) _updates.value++
             } catch (t: Throwable) {
-                android.util.Log.w("pokedaisy", "RomArt: scan failed", t)
+                Logs.w("RomArt: scan failed", t)
             } finally {
                 running = false
             }
-        }, "pokedaisy-rom-art").apply { isDaemon = true; start() }
-    }
-
-    /** The whole file, 1 MiB per read: one 32 MiB read holds a JNI critical lock (stalling GC) for ~20 ms. */
-    private fun readChunked(f: File): ByteArray {
-        val out = ByteArray(f.length().toInt())
-        f.inputStream().use { s ->
-            var o = 0
-            while (o < out.size) {
-                val n = s.read(out, o, minOf(1 shl 20, out.size - o))
-                if (n < 0) break
-                o += n
-            }
         }
-        return out
     }
 
     /** Writes every art file [rom] can supply that [dir] doesn't have yet; returns their paths. */
-    fun extractTo(rom: ByteArray, dir: File): List<String> {
-        val wanted = OUTPUTS.filter { !File(dir, it).isFile }
+    fun extractTo(rom: ByteArray, dir: Path): List<String> {
+        val wanted = OUTPUTS.filter { !(dir / it).isFile }
         if (wanted.isEmpty()) return emptyList()
         val found = find(rom)
         val images = compose(found)
         val raw = raw(found)
         return wanted.mapNotNull { path ->
             val bytes = images[path]?.png() ?: raw[path] ?: return@mapNotNull null
-            val f = File(dir, path)
-            f.parentFile?.mkdirs()
-            val tmp = File(f.parentFile, f.name + ".tmp")
-            tmp.writeBytes(bytes)
-            tmp.renameTo(f)
+            (dir / path).writeAtomically(bytes)
             path
         }
     }
@@ -168,6 +162,11 @@ object RomArt {
     /** ARGB pixels, 0 = transparent. */
     class Image(val width: Int, val height: Int, val argb: IntArray = IntArray(width * height)) {
         fun png(): ByteArray = Png.encode(this)
+
+        companion object {
+            /** A PNG that [png] wrote, else null (any other kind of PNG: this reads only what the art cache writes). */
+            fun decodePng(bytes: ByteArray): Image? = Png.decode(bytes)
+        }
     }
 
     // --- finding the blobs ---
@@ -180,7 +179,7 @@ object RomArt {
     }
 
     /** The 16-byte window hash the generator stored as [RomBlob.head]. */
-    internal fun head(b: ByteBuffer, i: Int): Long = fmix(b.getLong(i) xor fmix(b.getLong(i + 8)))
+    internal fun head(b: LittleEndianReader, i: Int): Long = fmix(b.getLong(i) xor fmix(b.getLong(i + 8)))
 
     /** [RomBlob.pre] of the 8 bytes [a] (little-endian): the scan's per-byte filter. */
     internal fun pre(a: Long): Int = ((a * -0x61c8864680b583ebL) ushr 48).toInt() // 0x9E3779B97F4A7C15
@@ -193,7 +192,7 @@ object RomArt {
         val byHead = RomBlob.entries.groupBy { it.head }
         val filter = LongArray(1 shl 10)
         RomBlob.entries.forEach { filter[it.pre ushr 6] = filter[it.pre ushr 6] or (1L shl it.pre) }
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         val found = HashMap<RomBlob, ByteArray>()
         if (rom.size < 16) return found
         var a = buf.getLong(0) shl 8 // shifted in again below, one byte per offset
@@ -223,7 +222,7 @@ object RomArt {
         } catch (_: IllegalArgumentException) {
             null // not a smol blob after all
         } ?: return null
-        val crc = CRC32().apply { update(data) }.value
+        val crc = crc32(data)
         return data.takeIf { crc == blob.crc }
     }
 
@@ -650,41 +649,65 @@ object RomArt {
                     raw[o++] = (c shr 16).toByte(); raw[o++] = (c shr 8).toByte(); raw[o++] = c.toByte(); raw[o++] = (c ushr 24).toByte()
                 }
             }
-            // Fed 16 KiB at a time: each deflate() holds a JNI critical lock
+            // okio deflates a segment (8 KiB) at a time: each deflate() holds a JNI critical lock on Android
             // (stalling GC while the game runs) for as long as its input lasts.
-            val z = ByteArrayOutputStream()
-            val def = Deflater()
-            val chunk = ByteArray(8192)
-            var at = 0
-            while (!def.finished()) {
-                if (def.needsInput()) {
-                    if (at < raw.size) {
-                        val n = minOf(16 shl 10, raw.size - at)
-                        def.setInput(raw, at, n)
-                        at += n
-                    } else {
-                        def.finish()
-                    }
-                }
-                z.write(chunk, 0, def.deflate(chunk))
-            }
-            def.end()
-            val out = ByteArrayOutputStream()
+            val z = okio.Buffer()
+            DeflaterSink(z, Deflater()).use { it.write(okio.Buffer().write(raw), raw.size.toLong()) }
+            val out = okio.Buffer()
             out.write(byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10))
             // 8-bit depth, colour type 6 (RGBA), deflate, no filter, no interlace.
-            val ihdr = ByteBuffer.allocate(13).putInt(img.width).putInt(img.height).put(byteArrayOf(8, 6, 0, 0, 0)).array()
+            val ihdr = okio.Buffer().writeInt(img.width).writeInt(img.height).write(byteArrayOf(8, 6, 0, 0, 0)).readByteArray()
             chunk(out, "IHDR", ihdr)
-            chunk(out, "IDAT", z.toByteArray())
+            chunk(out, "IDAT", z.readByteArray())
             chunk(out, "IEND", ByteArray(0))
-            return out.toByteArray()
+            return out.readByteArray()
         }
 
-        private fun chunk(out: ByteArrayOutputStream, type: String, data: ByteArray) {
-            val t = type.toByteArray(Charsets.US_ASCII)
-            out.write(ByteBuffer.allocate(4).putInt(data.size).array())
+        fun decode(bytes: ByteArray): Image? {
+            val b = okio.Buffer().write(bytes)
+            if (b.size < 8 || b.readLong() != PNG_SIGNATURE) return null
+            var w = 0; var h = 0
+            val z = okio.Buffer()
+            while (!b.exhausted()) {
+                val len = b.readInt()
+                val type = b.readUtf8(4)
+                val data = b.readByteArray(len.toLong())
+                b.skip(4)   // CRC
+                when (type) {
+                    "IHDR" -> {
+                        val d = okio.Buffer().write(data)
+                        w = d.readInt(); h = d.readInt()
+                        // 8-bit RGBA, deflate, no filter, no interlace: the only kind [encode] writes.
+                        if (d.readByteArray(5).contentEquals(byteArrayOf(8, 6, 0, 0, 0)).not()) return null
+                    }
+                    "IDAT" -> z.write(data)
+                    "IEND" -> break
+                }
+            }
+            if (w <= 0 || h <= 0) return null
+            val raw = okio.Buffer().also { out -> InflaterSource(z, Inflater()).use { out.writeAll(it) } }.readByteArray()
+            if (raw.size != h * (1 + w * 4)) return null
+            val img = Image(w, h)
+            var o = 0
+            for (y in 0 until h) {
+                if (raw[o++].toInt() != 0) return null   // a filtered row: not one [encode] wrote
+                for (x in 0 until w) {
+                    val r = raw[o++].toInt() and 0xFF; val g = raw[o++].toInt() and 0xFF
+                    val bl = raw[o++].toInt() and 0xFF; val a = raw[o++].toInt() and 0xFF
+                    img.argb[y * w + x] = (a shl 24) or (r shl 16) or (g shl 8) or bl
+                }
+            }
+            return img
+        }
+
+        private const val PNG_SIGNATURE = -0x76afb1b8f2f5e5f6L   // 89 50 4E 47 0D 0A 1A 0A
+
+        private fun chunk(out: okio.Buffer, type: String, data: ByteArray) {
+            val t = asciiBytes(type)
+            out.writeInt(data.size)
             out.write(t); out.write(data)
-            val crc = CRC32().apply { update(t); update(data) }.value
-            out.write(ByteBuffer.allocate(4).putInt(crc.toInt()).array())
+            val crc = Crc32().apply { update(t); update(data) }.value
+            out.writeInt(crc.toInt())
         }
     }
 }

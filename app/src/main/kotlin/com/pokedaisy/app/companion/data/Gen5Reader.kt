@@ -235,7 +235,7 @@ const val GEN5_NATIONAL_DEX_FLAG = 0x30000
 /** The event flags and vars (the GUIDE's [SaveProgress]), with the badges as [GEN4_BADGE_FLAG] + n, the DS clock's
  * hour as [GEN4_VAR_HOUR], like the Gen 4 games', and [GEN5_NATIONAL_DEX_FLAG]. */
 fun readGen5Progress(
-    r: MemoryReader, cfg: Gen5Config, img: Long, national: Boolean = false, hour: Int = java.time.LocalTime.now().hour,
+    r: MemoryReader, cfg: Gen5Config, img: Long, national: Boolean = false, hour: Int = localNow().hour,
 ): SaveProgress? {
     val flagBytes = cfg.numFlags / 8
     val vars = r.readCoreMemory(img + cfg.varsFlagsOff, cfg.numVars * 2)
@@ -319,9 +319,13 @@ private fun readGen5Battle(r: MemoryReader, b: Gen5Battle): Gen5BattleRead? {
     fun member(client: Int, i: Int) = u32(parties, client * b.partyStride + i * 4).takeIf { inMain(it) }
     fun mon(addr: Long?) = addr?.let { decodeGen5BattleMon(r.readCoreMemory(it, 0x140), 0) } ?: EMPTY_BATTLE_MON
     val foeOut = member(1, 0)?.let { u8(r.readCoreMemory(it + GEN5_POKE_ID, 1), 0) % 6 } ?: -1
-    val doubles = rule == 1
-    val mons = listOf(mon(member(0, 0)), mon(member(1, 0)), if (doubles) mon(member(0, 1)) else EMPTY_BATTLE_MON,
-        if (doubles) mon(member(1, 1)) else EMPTY_BATTLE_MON)
+    // Anything but a single battle (1 double, 2 triple, 3 rotation): BATTLE BUTTONS' strip is a single battle's panel, so
+    // these float the game's own touch screen in (GitHub #833). The second battler shown is a double's or triple's next one;
+    // a rotation has one out at a time.
+    val doubles = rule != 0
+    val second = rule == 1 || rule == 2
+    val mons = listOf(mon(member(0, 0)), mon(member(1, 0)), if (second) mon(member(0, 1)) else EMPTY_BATTLE_MON,
+        if (second) mon(member(1, 1)) else EMPTY_BATTLE_MON)
     val foeParty = u32(head, b.offFoeParty)
     val foes = if (inMain(foeParty)) {
         val count = u32(r.readCoreMemory(foeParty + 4, 4), 0).toInt().coerceIn(0, PARTY_SIZE)
@@ -382,7 +386,11 @@ fun readGen5Telemetry(r: MemoryReader, cfg: Gen5Config): Telemetry {
         facingDirection = u16(saved, 8),
         partyCount = party.size,
         party = party,
-        battleMons = battle?.mons ?: List(4) { EMPTY_BATTLE_MON },
+        // The foe out is shiny when its party record is (its battle struct carries no personality).
+        battleMons = battle?.let { bt ->
+            if (bt.foes.getOrNull(bt.foeActive)?.shiny == true) bt.mons.mapIndexed { i, m -> if (i == BATTLE_POS_OPPONENT_LEFT) m.copy(shiny = true) else m }
+            else bt.mons
+        } ?: List(4) { EMPTY_BATTLE_MON },
         itemCount = items.size,
         items = items,
         money = u32(r.readCoreMemory(img + cfg.moneyOff, 4), 0).takeIf { it <= 9_999_999 },
@@ -518,12 +526,15 @@ private fun gen5ConfigForRetail(kind: GameKind?, code: String): Gen5Config? = wh
  * (an emptied slot to the pocket's end, the rest in order) and the steps into [Gen5Config.repelStepsOff], which the
  * field counts down by itself. Only with the field free ([fieldFree]) and no Repel still working. Emu thread.
  */
-fun useGen5Repel(cfg: Gen5Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean): ItemUseOutcome {
+fun useGen5Repel(cfg: Gen5Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean, topUp: Boolean = false): ItemUseOutcome {
     if (!fieldFree) return ItemUseOutcome(ItemUseResult.NOT_NOW)
     val repelOff = cfg.repelStepsOff ?: return ItemUseOutcome(ItemUseResult.FAILED)
     val img = gen5Image({ a, n -> calls.read(a, n) }, cfg)
     if (img < 0) return ItemUseOutcome(ItemUseResult.FAILED)
-    if (u8(calls.read(img + repelOff, 1), 0) > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
+    // AUTO REFILL (topUp): added to the 1..REFILL_AT steps left, the byte capped at 255; otherwise only with none left.
+    val stepsLeft = u8(calls.read(img + repelOff, 1), 0)
+    if (topUp && stepsLeft !in 1..RepelRefill.REFILL_AT) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    if (!topUp && stepsLeft > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
     val pocket = img + cfg.bagOff   // the items pocket is the bag's first
     val size = cfg.pocketSizes[0]
     val raw = calls.read(pocket, size * 4)
@@ -535,10 +546,10 @@ fun useGen5Repel(cfg: Gen5Config, calls: GameCalls, itemId: Int, steps: Int, fie
         out[slot * 4 + 2] = left.toByte()
         out[slot * 4 + 3] = (left shr 8).toByte()
     } else {
-        System.arraycopy(raw, (slot + 1) * 4, out, slot * 4, (size - slot - 1) * 4)
+        raw.copyInto(out, slot * 4, (slot + 1) * 4, size * 4)
         for (i in (size - 1) * 4 until size * 4) out[i] = 0
     }
     if (!calls.write(pocket, out)) return ItemUseOutcome(ItemUseResult.FAILED)
-    if (!calls.write(img + repelOff, byteArrayOf(steps.toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
+    if (!calls.write(img + repelOff, byteArrayOf((if (topUp) minOf(255, stepsLeft + steps) else steps).toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
     return ItemUseOutcome(ItemUseResult.USED, steps = steps)
 }

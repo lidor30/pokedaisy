@@ -17,6 +17,13 @@ Many rows are on both. They're the same setting, so changing it on one screen ch
 
 ## Top screen Settings
 
+### The list itself
+
+| Setting | Choices | What it does | More |
+| --- | --- | --- | --- |
+| `DESCRIPTIONS` | **`SHOWN`**, `HIDDEN` | The grey line under each setting. Also on the companion's SETTINGS, the same switch. | [Companion](companion.md) |
+| `GROUP TABS` | **`SHOWN`**, `HIDDEN` | The group buttons beside the list. Hidden, the list takes the whole width. Also on the companion's SETTINGS. | [Companion](companion.md) |
+
 ### FF and speed
 
 | Setting | Choices | What it does | More |
@@ -53,15 +60,19 @@ The `SPEED OPTIONS` page:
 | `DS TOUCH SCREEN` | **`ORIGINAL`**, `STRETCH` | Only on a device with two screens: a DS game's touch screen at its own shape with the `COMPANION` bar under it, or stretched over the whole bottom screen with a small tab for the switch. | [Devices](devices.md#ds-games) |
 | `DS LAYOUT` | **`ONE SCREEN`**, `SIDE BY SIDE`, `LARGE + SMALL`, `PICTURE IN PICTURE`, `STACKED` | Only on a device with one screen (or with `SINGLE SCREEN` on): where a DS game's two screens go when you hold it sideways. Opens a list with a picture of each. | [Devices](devices.md#ds-layout-two-screens-on-one) |
 | `HUD` | **`ON`**, `OFF` (a page) | Your party, a minimap, your Poké Balls and `BAG` / `WILD` buttons on the game while you walk around, with `LAYOUT`, `LOOK`, `SIZE` and which parts show. | [HUD](hud.md) |
+| `HIDE BATTLE MENU` | `OFF`, **`ON`** | Only on a device with two screens: the game's own `FIGHT` / `BAG` menu and move list left off the game's screen, since you pick on the companion. | [Battle](battle.md#on-two-screens-hide-battle-menu) |
 | `BATTLE BUTTONS` | **`ON`**, `OFF` | Only on a device with one screen (or with `SINGLE SCREEN` on): `FIGHT`, `POKéMON` and `RUN` at the top right, beside the battle. | [Battle](battle.md) |
 | `DISPLAY OPTIONS` | a page | `STATUS BAR`, `SHADERS`, `OVERLAY`, `LIGHT COMPANION` and, on a phone, `COMPANION`; see the next table. | [Screen](screen.md) |
 | `COMPANION VIEW` | **`WINDOW`**, `SIDE PANEL` | Only on a device with one screen (or with `SINGLE SCREEN` on): the companion as a window in the middle, over the game, or as a panel on the right, when you hold it sideways. | [Devices](devices.md) |
-| `FOLD LAYOUT` | **`ON`**, `OFF` | Only on a folding phone: half open, the game goes on one side of the fold and the companion on the other. | [Devices](devices.md#folding-phones) |
-| `COMPANION BUTTON` | **`ON`**, `OFF` | Where `COMPANION VIEW` shows: the small button at the bottom of the screen's right edge that opens the companion. Off, `BACK` and the HUD's `COMPANION` button still do. | [Devices](devices.md) |
+| `FOLD LAYOUT` | **`HALF OPEN`**, `ALWAYS`, `OFF` | Only on a folding phone: the game goes on one side of the fold and the companion on the other, while it's half open or (`ALWAYS`) unfolded flat too. | [Devices](devices.md#folding-phones) |
+| `TABLETOP CONTROLS` | **`ON GAME`**, `BOTTOM SIDES` | Only on a folding phone, with `FOLD LAYOUT` on: with the fold across the screen, the touch controls beside the game or on the bottom half, either side of the companion. | [Devices](devices.md#folding-phones) |
+| `COMPANION BUTTON` | **`ON`**, `OFF` | Where `COMPANION VIEW` shows: the buttons on the game screen that open the companion: the small one at the bottom of the screen's right edge and the HUD's `COMPANION`. Off, `BACK`, the `COMPANION` hotkey and the quick menu still do. | [Devices](devices.md) |
 | `SWAP SCREENS` | `ON`, **`OFF`** | Only on a device with two screens: the game on the second screen and the companion on the main one. With a TV as the second screen it starts `ON`: the game on the TV. | [Devices](devices.md) |
 | `SINGLE SCREEN` | `ON`, **`OFF`** | Only on a device with two screens: play on one, the second screen free for other apps and the companion as a window over the game. | [Devices](devices.md#single-screen) |
 | `THEME` | **`POKéDAISY`**, `CHERRY`, `RAINBOW`, `OCEAN`, `MINT`, `LAVENDER`, `SUNSET`, `FOREST`, `LEMON`, and a holiday theme around its dates | Colours of the app and the companion, on both screens. | [Screen](screen.md#theme) |
+| `COMPANION LOOK` | **`GAME`**, `CLASSIC` | `GAME`: the companion and the HUD in the style of the game you're playing, where it has one. `CLASSIC`: the app's own look in every game. | [Screen](screen.md#game-look) |
 | `DARK MODE` | **`OFF`**, `ON`, `AUTO` | Dark windows on both screens. `AUTO` follows the device. | [Screen](screen.md) |
+| `FONT` | **`PIXEL`**, `SMOOTH`, `SMOOTH BOLD`, `SYSTEM` | The app's letters on both screens: pixel art or smooth ones. | [Screen](screen.md#font) |
 | `FPS / CPU` | `ON`, **`OFF`** | Frames per second and the app's CPU use in the game's corner. Tap it for more. | [Screen](screen.md) |
 
 The `DISPLAY OPTIONS` page:
@@ -102,7 +113,7 @@ The `SHADERS` page:
 
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
-| `RetroAchievements` | your user name, or **`OFF`** (tagged `BETA`) | Sign in to earn achievements (softcore). Signed in means on; `SIGN OUT` turns it off. | [Achievements](achievements.md) |
+| `RetroAchievements` | your user name, or **`OFF`** (tagged `BETA`) | Sign in to earn achievements (softcore). Signed in means on; `SIGN OUT` turns it off. Its page's `NOTIFICATIONS` section has `ACHIEVEMENT POPUPS` and `PROGRESS POPUPS`. | [Achievements](achievements.md) |
 
 ### Controls
 
@@ -129,6 +140,10 @@ The `SHADERS` page:
 ## Companion SETTINGS
 
 The companion's list puts what you change while you play first: speed and `SOUND`, then `GAMEPLAY` (a group of its own), the screen and the companion itself, with the buttons and the app's language last. `CLOSE GAME` and `RESTART GAME` sit at the bottom of the list. Tabs you've taken off the tab bar are in the `MORE` tab, left of the gear.
+
+### The list itself
+
+`DESCRIPTIONS` and `GROUP TABS` sit at the top, as on the top screen (one switch for both screens).
 
 ### Game (for an unknown ROM)
 
@@ -185,8 +200,16 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | `FLY STYLE` | `CLASSIC`, **`SCENIC`** | How flying to a town looks: the game's own animation, or flying there over the map. `N/A` where it can't work. | [Map](map.md#the-scenic-way) |
 | `FLIGHT AREA` | **`VISITED`**, `ANYWHERE` | Where `TAKE OFF` and the scenic way may fly: only over places you've already been, or anywhere the game's world goes (achievements pause once you take off). `N/A` where it can't work. | [Map](map.md#where-you-can-fly) |
 | `REUSABLE TMS` | `ON`, **`OFF`** | A TM stays in your bag after it teaches a move, like an HM. `ON` and greyed out where the game already keeps its TMs, `N/A` where it can't work. | [Bag](bag.md) |
+| `NO HMS NEEDED` | `ON`, **`OFF`** | The moves you use on the field work with the badge alone: the first Pokémon that isn't an egg does them when nobody in your party knows the move. The companion's `FLY`, `TAKE OFF` and `FLASH` too. `N/A` where it can't work. | [Controls](controls.md#no-hms-needed) |
+| `EXP SHARE` | **`OFF`**, `SPLIT`, `FULL EXP` | The whole party gains EXP from a win: `SPLIT` shares it out, `FULL EXP` gives each Pokémon what one alone would have. Achievements pause while it's on. `N/A` where it can't work. | [Controls](controls.md#exp-share) |
+| `AUTO REFILL` | `ON`, **`OFF`** | Another item that keeps wild Pokémon away goes on from your bag before the one working runs out. `N/A` where it can't work. | [Bag](bag.md#auto-refill) |
+| `LEVEL CAP` | `ON`, **`OFF`** | No Pokémon goes past the highest level on the next boss's team; the row shows the cap now. `N/A` where it can't work. | [Controls](controls.md#level-cap) |
 | `TRADE EVOS` | `ON`, **`OFF`** | A Pokémon that evolves by trading can evolve from its summary's `EVOLVE` button, through the game's own evolution. `N/A` where it can't work. | [Party](party.md#trade-evolutions) |
 | `SHINY ODDS` | **`NORMAL`**, `1 IN 4096`, `1 IN 1024`, `1 IN 512`, `1 IN 128` | How often a wild Pokémon is shiny. Pauses achievements while raised. `N/A` where it can't work. | [Controls](controls.md#shiny-odds) |
+| `SHINY ALERT` | `ON`, **`OFF`** | Counts your wild battles in this game and, when a shiny one shows up, stops fast-forward and turbo and says so. `N/A` where it can't work. | [Controls](controls.md#shiny-alert) |
+| `LOW HP BEEP` | **`ON`**, `OFF` | `OFF` stops the beeping while your Pokémon's health is in the red. `N/A` where it can't work. | [Controls](controls.md#low-hp-beep-and-field-poison) |
+| `FIELD POISON` | **`ON`**, `OFF` | `OFF` stops poison hurting your Pokémon while you walk. `N/A` where it can't work. | [Controls](controls.md#low-hp-beep-and-field-poison) |
+| `BOSS RETRY` | `ON`, **`OFF`** | Keeps a state as each trainer battle starts, and after a loss offers to go back to it. | [Controls](controls.md#boss-retry) |
 | `NUZLOCKE` | `ON`, **`OFF`** | Keeps score of a Nuzlocke run in this game: one catch per area, a faint is final. Adds the `NUZLOCKE` tab. `N/A` in the Game Boy and DS games, and in Emerald Rogue. | [Nuzlocke](nuzlocke.md) |
 | `AUTO-RUN` | `ON`, **`OFF`** | Walking on the field runs without holding B; holding B walks instead. Greyed out in games with their own. | [Controls](controls.md) |
 | `RUN INDOORS` | `ON`, **`OFF`** | Lets you run inside buildings too. `N/A` on Ruby and Sapphire. | [Controls](controls.md) |
@@ -206,15 +229,19 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | `DS TOUCH SCREEN` | as on the top screen | Only while a DS game is running on two screens. Changes the game straight away. | [Devices](devices.md#ds-games) |
 | `DS LAYOUT` | as on the top screen | Only while a DS game is running on one screen. Changes the game straight away. | [Devices](devices.md#ds-layout-two-screens-on-one) |
 | `HUD` | a page | The same rows as on the top screen; the game changes as you tap. | [HUD](hud.md) |
+| `HIDE BATTLE MENU` | as on the top screen | Only on a device with two screens, in a game it works in. Changes the game straight away. | [Battle](battle.md#on-two-screens-hide-battle-menu) |
 | `BATTLE BUTTONS` | as on the top screen | Only on a device with one screen (or with `SINGLE SCREEN` on): `FIGHT`, `POKéMON` and `RUN` beside the battle. | [Battle](battle.md) |
 | `DISPLAY OPTIONS` | a page | As on the top screen. | [Screen](screen.md) |
 | `COMPANION VIEW` | as on the top screen | Only on one screen held sideways (or with `SINGLE SCREEN` on). Switches right away. | [Devices](devices.md) |
 | `FOLD LAYOUT` | as on the top screen | Only on a folding phone. Switches right away. | [Devices](devices.md#folding-phones) |
+| `TABLETOP CONTROLS` | as on the top screen | Only on a folding phone, with `FOLD LAYOUT` on. Switches right away. | [Devices](devices.md#folding-phones) |
 | `COMPANION BUTTON` | as on the top screen | With `COMPANION VIEW`. Switches right away. | [Devices](devices.md) |
 | `SWAP SCREENS` | as on the top screen | Only with two screens. | [Devices](devices.md) |
 | `SINGLE SCREEN` | as on the top screen | Only with two screens. Switches right away, and the companion opens over the game. | [Devices](devices.md#single-screen) |
 | `THEME` | as on the top screen | Colours of the app and the companion, on both screens. | [Screen](screen.md#theme) |
+| `COMPANION LOOK` | as on the top screen | The game's own style or the app's classic one. | [Screen](screen.md#game-look) |
 | `DARK MODE` | as on the top screen | Dark windows on both screens. | [Screen](screen.md) |
+| `FONT` | as on the top screen | The app's letters on both screens. | [Screen](screen.md#font) |
 | `FPS / CPU` | as on the top screen | The performance readout. | [Screen](screen.md) |
 
 The `DISPLAY OPTIONS` page:
@@ -234,12 +261,15 @@ The `DISPLAY OPTIONS` page:
 | `BATTLE HINTS` | **`ON`**, `OFF` | Move ratings, the foe's weaknesses and suggestions during battles. | [Battle](battle.md) |
 | `BATTLE VIEW` | **`BUTTONS`**, `INFO`, `SUGGESTIONS` | What the `BATTLE` tab opens on. | [Battle](battle.md) |
 | `ONE-TAP MOVES` | `ON`, **`OFF`** | Puts your moves on the battle's first menu, so one tap picks FIGHT and the move. | [Battle](battle.md) |
-| `BATTLE STYLE` | **`GEN 4`**, `GEN 5` | The battle buttons' look: big coloured buttons, or dark plates round a red and white ball. Both work the same way. | [Battle](battle.md#battle-style) |
+| `LAST BALL` | **`ON`**, `OFF` | A button on your turn's screen in a wild battle that throws the ball you threw last, without the bag. | [Battle](battle.md#last-ball) |
+| `BATTLE STYLE` | **`GEN 4`**, `GEN 5` | The battle buttons' look, on the BATTLE tab and on one screen's `BATTLE BUTTONS`: big coloured buttons, or dark plates (round a red and white ball on the tab). Both work the same way. | [Battle](battle.md#battle-style) |
 | `FOE IVS` | `ON`, **`OFF`** | A STATS page in battle with the foe's IVs, EVs and nature. | [Battle](battle.md) |
 | `BATTLE FOCUS` | `ON`, **`OFF`** | Battle `INFO` as one page with no scrolling: one Pokémon's ability, item, stats, moves and matchups, a button to turn from the foe to yours, the foe's team down the side. No `SUGGESTIONS` or `STATS` there. | [Battle](battle.md) |
 | `TAB BAR` | **5 tabs** (a page) | Which tabs sit next to the gear: up to 5, `SHOWN` or `HIDDEN`. By default `PARTY`, `DEX`, `MAP`, `BAG` and `GUIDE`. A tab the game doesn't have gives its place to another of the game's tabs. The rest open from `MORE`, left of the gear. | [The companion](companion.md) |
 | `CLICK SOUND` | **`ON`**, `OFF` | The game's own menu click on every companion button. | [The companion](companion.md) |
 | `CHALLENGE ICONS` | **`ON`**, `OFF` | RetroAchievements' challenge badges and leaderboard values in the corner. | [Achievements](achievements.md) |
+| `ACHIEVEMENT POPUPS` | **`ON`**, `OFF` | Every RetroAchievements popup and the unlock fanfare. Achievements still unlock with it off. | [Achievements](achievements.md) |
+| `PROGRESS POPUPS` | **`ON`**, `OFF` | Only the notices when a counting achievement gets closer. Greyed out while `ACHIEVEMENT POPUPS` is off. | [Achievements](achievements.md) |
 | `TWEAKS` | a page, each **`ON`** | `PARTY ICONS MOVE`, `MAP CURSOR BLINK`, `TAB ANIMATIONS` and `JUMP TO BATTLE` (a battle opens the battle tab by itself). | [The companion](companion.md) |
 
 ### Controls

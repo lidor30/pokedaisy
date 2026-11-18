@@ -6,6 +6,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
 import java.util.zip.CRC32
+import okio.Path.Companion.toOkioPath
 
 /**
  * [RomArt] rebuilds the FireRed / Emerald art from the ROM. The ROM tests
@@ -82,7 +83,7 @@ class RomArtTest {
     /** Monomyth's ATHANTO MAP (MMY_REGION_*: its PokeNav's, a text screen of its own) and the one head its map code
      * loads: the map matched the game's own screen headless, pixel for pixel, but for its place-name window. */
     @Test fun monomythSuppliesItsRegionMap() {
-        for (v in listOf("v1.0", "v1.1")) {
+        for (v in listOf("v1.0", "v1.1", "v1.2")) {
             val images = composed(System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/gba/Pokemon Monomyth ($v).gba")
             assertEquals("bed46b86", pixels(images.getValue("regionmap/monomyth.png")))
             assertEquals("867f8756", pixels(images.getValue("regionmap/player_monomyth.png")))
@@ -214,13 +215,13 @@ class RomArtTest {
         val dir = File("build/rom-art-test").apply { deleteRecursively() }
         val rom = File(RomFileReader.FIRERED_REV1_PATH).takeIf { it.isFile }?.readBytes()
         assumeTrue(rom != null)
-        val first = RomArt.extractTo(rom!!, dir)
+        val first = RomArt.extractTo(rom!!, dir.toOkioPath())
         val raw = RomArt.raw(RomArt.find(rom))
         assertEquals(FIRERED.keys + raw.keys, first.toSet())
         assertTrue(first.filter { it.endsWith(".png") }.all { File(dir, it).readBytes().copyOfRange(1, 4).contentEquals("PNG".toByteArray()) })
         // The trainer card's blobs are kept as they decode.
         raw.forEach { (path, bytes) -> assertTrue(path, File(dir, path).readBytes().contentEquals(bytes)) }
-        assertEquals(emptyList<String>(), RomArt.extractTo(rom, dir))
+        assertEquals(emptyList<String>(), RomArt.extractTo(rom, dir.toOkioPath()))
     }
 
     private companion object {

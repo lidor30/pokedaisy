@@ -26,7 +26,7 @@ object FfMusicKey {
         if (u32(r, bgm + STATUS) and 0xFFFF == 0L) return null
         val header = u32(r, bgm + SONG_HEADER)
         if (!Gfx.inRom(header)) return null
-        "song_%07x".format(header - 0x08000000L)
+        "song_" + (header - 0x08000000L).hex(7)
     }.getOrNull()
 
     /** The BGM player's MusicPlayerInfo address in [r] (the chain's tail), or null. */
@@ -46,5 +46,5 @@ object FfMusicKey {
 
     private fun u32(r: MemoryReader, addr: Long): Long = Gfx.u32(r.readCoreMemory(addr, 4), 0)
 
-    internal fun inRam(a: Long) = a in 0x02000000L until 0x02040000L || a in 0x03000000L until 0x03008000L
+    fun inRam(a: Long) = a in 0x02000000L until 0x02040000L || a in 0x03000000L until 0x03008000L
 }

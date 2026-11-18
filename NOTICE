@@ -35,12 +35,19 @@ The app shows every license below in full under Settings > LICENSES.
   port contributors, Mozilla Public License 2.0 for the parts the 3DS build
   uses (src/, libretro/ and platform/3ds/source/; its Gambatte side, GPL-2.0, is
   left out) - https://github.com/MagnominusGit/armGBA (source of the build:
-  https://github.com/ratherDashing/armGBA/tree/3ds-v0.0.2-alpha). Parts of it
+  https://github.com/ratherDashing/armGBA/tree/3ds-v0.0.3-alpha). Parts of it
   follow mGBA's code and carry mGBA's copyright too. The 3DS port's armGBA glue
   (3ds/emu/pd_armgba*.c, 3ds/ctr/host.c) is based on ratherDashing's
   pokedaisy-3ds fork; third_party/patches/armgba-pokedaisy.patch (a BKPT hook in
   its interpreter, an H-blank interrupt hook) is our change to it, under the MPL 2.0. Its libretro layer links RetroArch's libretro-common (MIT)
   and the 7-Zip LZMA SDK (public domain), and the 3DS build zlib (zlib License).
+- 3DS build only: gpSP 3D (third_party/gpsp, bheppe's gpSP 3D at v0.1.7), gpSP by
+  Exophase with later work by notaz, davidgfnet, the libretro team and bheppe, GNU
+  GPL 2.0 or later (used here under the GPL 3.0) - https://github.com/bheppe/gpsp-3d.
+  The library's GBA CORE: GPSP. Its arm/arm_codegen.h and arm_dpimacros.h are Wild
+  West Software's (MIT-style notice in the files); its libretro layer links
+  RetroArch's libretro-common (MIT). third_party/patches/gpsp-pokedaisy.patch (the
+  cartridge in the host's buffer) and the glue (3ds/emu/pd_gpsp*.c) are ours.
 - rcheevos (third_party/rcheevos), Copyright (c) 2018 RetroAchievements.org,
   MIT License - https://github.com/RetroAchievements/rcheevos
 - The libretro GBA core over armGBA (libretro/armgba):
@@ -115,6 +122,14 @@ The app shows every license below in full under Settings > LICENSES.
   (third_party/licenses/Apache-2.0.txt; their NOTICE files in
   third_party/licenses/Apache-Commons-NOTICE.txt); XZ for Java, BSD Zero
   Clause (third_party/licenses/XZ-Java-0BSD.txt).
+- Compose Multiplatform, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - shared state and locale APIs for the iPad app.
+- Ktor, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - shared HTTP client for the offline manual.
+- kotlinx.atomicfu, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - multiplatform locks in the companion data code.
+- kotlinx-datetime, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - the device clock in the companion data code.
 - Firebase Crashlytics (with -ndk, Firebase Sessions, Installations and their
   support libraries), Apache License 2.0 - active only in builds made with the
   project's Firebase config (the official releases), and sending nothing until
@@ -122,15 +137,13 @@ The app shows every license below in full under Settings > LICENSES.
   Google Play services' play-services-basement and play-services-tasks, under
   the Android Software Development Kit License
   (https://developer.android.com/studio/terms).
-- Bouncy Castle (bcprov), Copyright (c) 2000-2024 The Legion of the Bouncy Castle
+- Bouncy Castle (its X25519 and X25519Field, copied into
+  companion/coop/x25519/), Copyright (c) 2000-2024 The Legion of the Bouncy Castle
   Inc., MIT License (third_party/licenses/BouncyCastle-MIT.txt) -
   https://www.bouncycastle.org - X25519 for the co-op link's handshake.
 - OkHttp and Okio, Copyright (c) Square, Inc., Apache License 2.0
   (third_party/licenses/Apache-2.0.txt) - https://square.github.io/okhttp/ - the
   co-op link's WebSocket to the relay.
-- ZXing core, Copyright (c) ZXing authors, Apache License 2.0
-  (third_party/licenses/Apache-2.0.txt) - https://github.com/zxing/zxing - QR
-  encoding for co-op invites.
 - Some decoders and layouts follow the community decompilations of the games
   (pret's pokered / pokeyellow / pokegold / pokecrystal / pokefirered /
   pokeemerald / pokeruby / pokeplatinum / pokeheartgold, pokeemerald-expansion,

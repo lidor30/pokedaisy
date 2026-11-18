@@ -103,7 +103,7 @@ val FIRERED_REV0_HACKS = setOf(
 fun flashBadgeRule(flash: FlashFns, read: (addr: Long, len: Int) -> ByteArray): FlashFns? {
     if (flash.badgeCheck == 0L) return flash
     val b = read(flash.badgeCheck, 16)
-    if (java.util.zip.CRC32().apply { update(b) }.value == flash.badgeCheckCrc) return flash
+    if (crc32(b) == flash.badgeCheckCrc) return flash
     val alwaysYes = byteArrayOf(0x01, 0x20) + ByteArray(8)
     if (b.copyOfRange(4, 14).contentEquals(alwaysYes)) return flash.copy(badgeFlag = NO_BADGE)
     return cfruBadgeFn(flash.badgeCheck, b, read)?.let { flash.copy(badgeFn = it) }
@@ -145,7 +145,7 @@ fun flashCandidatesFor(kind: GameKind?, gameCode: String, revision: Int, rebuild
 
 /** Whether the running ROM has [flash]'s functions where they're expected. */
 fun flashCodeMatches(flash: FlashFns, read: (addr: Long, len: Int) -> ByteArray): Boolean =
-    flash.functions.zip(flash.codeCrcs).all { (fn, crc) -> java.util.zip.CRC32().apply { update(read(fn, 32)) }.value == crc }
+    flash.functions.zip(flash.codeCrcs).all { (fn, crc) -> crc32(read(fn, 32)) == crc }
 
 enum class FlashResult {
     /** The game's FLASH is on its way (the cut-in, then the light). */
@@ -160,14 +160,15 @@ enum class FlashResult {
     FAILED,
 }
 
-/** The first party Pokémon that knows FLASH (not an egg): its slot, or null. */
+/** The first party Pokémon that knows FLASH (not an egg): its slot, or null. With NO HMS NEEDED ([HmFree.active]) the
+ * first that isn't an egg, if nobody knows it. */
 private fun flasher(p: PartyItemFns, flash: FlashFns, g: GameCalls): Int? {
     val count = (g.read(p.partyCount, 1)[0].toInt() and 0xFF).coerceAtMost(6)
-    return (0 until count).firstOrNull { slot ->
-        val mon = (p.party + slot * p.monStride).toInt()
-        g.call(p.getMonData, mon, flash.monEggField) == 0L &&
-            (0 until 4).any { g.call(p.getMonData, mon, flash.monMoveField + it) == flash.flashMove.toLong() }
-    }
+    val mons = (0 until count).map { (p.party + it * p.monStride).toInt() }
+    val able = mons.indices.filter { g.call(p.getMonData, mons[it], flash.monEggField) == 0L }
+    return able.firstOrNull { slot ->
+        (0 until 4).any { g.call(p.getMonData, mons[slot], flash.monMoveField + it) == flash.flashMove.toLong() }
+    } ?: able.firstOrNull()?.takeIf { HmFree.active }
 }
 
 private fun u32(b: ByteArray) = (0..3).fold(0L) { v, i -> v or ((b[i].toLong() and 0xFF) shl (8 * i)) }

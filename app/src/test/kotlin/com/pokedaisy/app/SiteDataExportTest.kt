@@ -4,6 +4,8 @@ import com.pokedaisy.app.companion.data.RANDOMIZED_RETAIL
 import com.pokedaisy.app.companion.data.RETAIL_DUMPS
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
 import com.pokedaisy.app.companion.data.OriginHeartGold
+import com.pokedaisy.app.companion.data.HeartfeltGold
+import com.pokedaisy.app.companion.data.SacredGold
 import com.pokedaisy.app.companion.data.RenegadePlatinum
 import com.pokedaisy.app.companion.data.Black2Redux
 import com.pokedaisy.app.companion.data.TelemetrySampler
@@ -153,6 +155,17 @@ class SiteDataExportTest {
                     "    {\"code\": ${q(RenegadePlatinum.CODE)}, \"rev\": ${RenegadePlatinum.REV}, \"offset\": ${RenegadePlatinum.SIG_OFFSET}, " +
                     "\"word\": ${RenegadePlatinum.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(RenegadePlatinum.V1_3_0_SHA1))}, " +
                     "\"version\": \"v1.3.0\"},\n" +
+                    // Heartfelt Gold (HeartfeltGold): the US HeartGold's header, its ARM9 size.
+                    "    {\"code\": ${q(HeartfeltGold.CODE)}, \"rev\": ${HeartfeltGold.REV}, \"offset\": ${HeartfeltGold.SIG_OFFSET}, " +
+                    "\"word\": ${HeartfeltGold.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(HeartfeltGold.V1_0_15_SHA1))}, " +
+                    "\"version\": \"v1.0.15\"},\n" +
+                    // Sacred Gold / Storm Silver (SacredGold): the US HeartGold's / SoulSilver's header, their ARM9 size.
+                    "    {\"code\": ${q(SacredGold.CODE_SACRED_GOLD)}, \"rev\": ${SacredGold.REV}, \"offset\": ${SacredGold.SIG_OFFSET}, " +
+                    "\"word\": ${SacredGold.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(SacredGold.SACRED_GOLD_V1_05_SHA1))}, " +
+                    "\"version\": \"v1.05\"},\n" +
+                    "    {\"code\": ${q(SacredGold.CODE_STORM_SILVER)}, \"rev\": ${SacredGold.REV}, \"offset\": ${SacredGold.SIG_OFFSET}, " +
+                    "\"word\": ${SacredGold.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(SacredGold.STORM_SILVER_V1_05_SHA1))}, " +
+                    "\"version\": \"v1.05\"},\n" +
                     // Blaze Black 2 / Volt White 2 Redux (Black2Redux): the retail Black 2's / White 2's header.
                     "    {\"code\": ${q(Black2Redux.CODE_BLACK2)}, \"rev\": ${Black2Redux.REV}, \"offset\": ${Black2Redux.SIG_OFFSET}, " +
                     "\"word\": ${Black2Redux.SIG_BLACK2}, \"title\": ${q(GameTitles.BY_SHA1.getValue(Black2Redux.BLAZE_BLACK2_V1_4_1_SHA1))}, " +

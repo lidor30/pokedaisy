@@ -1,7 +1,7 @@
 package com.pokedaisy.app.companion.data.coop
 
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
+import okio.Buffer
+import okio.IOException
 
 /** A name that says nothing: eight 0xFF bytes, the game's string terminator. */
 val COOP_NO_NAME: ByteArray get() = ByteArray(8) { 0xFF.toByte() }
@@ -88,34 +88,35 @@ object CoopBattleWire {
     /** The type and payload of [m]; throws when a field couldn't survive [decode]. */
     fun encode(m: CoopBattleMsg): Pair<Int, ByteArray> {
         val type = typeOf(m)
-        val out = ByteBuffer.allocate(payloadSize(m)).order(ByteOrder.LITTLE_ENDIAN)
-        out.putInt(m.battleId)
+        val out = Buffer()
+        out.writeIntLe(m.battleId)
         when (m) {
-            is CoopBattleMsg.Status -> { out.put(((if (m.free) 1 else 0) or (if (m.ready) 2 else 0)).toByte()); out.putShort(m.story.toShort()) }
+            is CoopBattleMsg.Status -> { out.writeByte((if (m.free) 1 else 0) or (if (m.ready) 2 else 0)); out.writeShortLe(m.story) }
             is CoopBattleMsg.Offer -> {
                 require(m.hostName.size == NAME_SIZE) { "name is ${m.hostName.size} bytes" }
-                out.put(m.kind.toByte()); out.putShort(m.trainerA.toShort()); out.putShort(m.trainerB.toShort()); out.putShort(m.species.toShort())
-                out.put(m.hostName); out.put(m.hostGender.toByte()); out.putInt(m.hostOtId)
+                out.writeByte(m.kind); out.writeShortLe(m.trainerA); out.writeShortLe(m.trainerB); out.writeShortLe(m.species)
+                out.write(m.hostName); out.writeByte(m.hostGender); out.writeIntLe(m.hostOtId)
             }
             is CoopBattleMsg.Answer -> {
-                out.put(if (m.accept) 1 else 0)
+                out.writeByte(if (m.accept) 1 else 0)
                 if (m.accept) {
                     require(m.count in 1..3 && m.team.size == m.count * CoopBattle.MON_SIZE && m.name.size == NAME_SIZE && m.partySlots.size == m.count) { "bad answer" }
-                    out.put(m.count.toByte()); out.put(m.team); out.put(m.name); out.put(m.gender.toByte()); out.putInt(m.otId)
-                    m.partySlots.forEach { out.put(it.toByte()) }
+                    out.writeByte(m.count); out.write(m.team); out.write(m.name); out.writeByte(m.gender); out.writeIntLe(m.otId)
+                    m.partySlots.forEach { out.writeByte(it) }
                 }
             }
-            is CoopBattleMsg.Cancel -> out.put(m.reason.ordinal.toByte())
+            is CoopBattleMsg.Cancel -> out.writeByte(m.reason.ordinal)
             is CoopBattleMsg.ResultAck -> {}
             is CoopBattleMsg.LinkReady -> {}
             is CoopBattleMsg.CaughtMon -> {
                 require(m.by == 1 && m.mon.isEmpty() || m.by == 2 && m.mon.size == CoopBattle.MON_SIZE) { "bad caught mon" }
-                out.put(m.by.toByte()); out.put(m.mon)
+                out.writeByte(m.by); out.write(m.mon)
             }
-            is CoopBattleMsg.StoryState -> out.put(m.state.toByte())
-            is CoopBattleMsg.LinkBlock -> { require(m.bytes.size >= 4 && (m.bytes[1].toInt() and 0xFF) == m.seq) { "bad link block" }; out.put(m.bytes) }
+            is CoopBattleMsg.StoryState -> out.writeByte(m.state)
+            is CoopBattleMsg.LinkBlock -> { require(m.bytes.size >= 4 && (m.bytes[1].toInt() and 0xFF) == m.seq) { "bad link block" }; out.write(m.bytes) }
         }
-        val payload = out.array()
+        require(out.size == payloadSize(m).toLong()) { "$m is ${out.size} bytes, not ${payloadSize(m)}" }
+        val payload = out.readByteArray()
         require(decode(type, payload) != null) { "$m would not decode" }
         return type to payload
     }
@@ -149,12 +150,14 @@ object CoopBattleWire {
         decodeChecked(type, payload)
     } catch (e: RuntimeException) {
         null
+    } catch (e: IOException) {   // a payload shorter than its fields (okio's EOFException)
+        null
     }
 
     private fun decodeChecked(type: Int, payload: ByteArray): CoopBattleMsg? {
         if (type !in STATUS..STORY_STATE || payload.size < 4) return null   // the removed replica types in between fall to the `else` below
-        val b = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
-        val id = b.int
+        val b = Buffer().write(payload)
+        val id = b.readIntLe()
         if ((id == 0) != (type == STATUS)) return null
         val msg: CoopBattleMsg = when (type) {
             STATUS -> {
@@ -170,7 +173,7 @@ object CoopBattleWire {
                 if (kind == 2 && (ta == 0 || tb == 0)) return null      // two trainers: both in 1..854
                 if (kind == 3 && (ta == 0 || tb != 0)) return null      // one trainer: A in 1..854, no B
                 if (kind == 4 && ta == 0) return null                   // story: the trainer at the spot (a double has B too)
-                val name = bytes(b, NAME_SIZE); val gender = u8(b); val otId = b.int
+                val name = bytes(b, NAME_SIZE); val gender = u8(b); val otId = b.readIntLe()
                 if (gender > 1 || !validName(name)) return null
                 CoopBattleMsg.Offer(id, kind, ta, tb, sp, name, gender, otId)
             }
@@ -183,7 +186,7 @@ object CoopBattleWire {
                     for (i in 0 until count) {
                         if (CoopBattle.check(team.copyOfRange(i * CoopBattle.MON_SIZE, (i + 1) * CoopBattle.MON_SIZE)) != CoopMonCheck.Ok) return null
                     }
-                    val name = bytes(b, NAME_SIZE); val gender = u8(b); val otId = b.int
+                    val name = bytes(b, NAME_SIZE); val gender = u8(b); val otId = b.readIntLe()
                     val slots = IntArray(count) { u8(b) }
                     if (gender > 1 || !validName(name) || slots.any { it !in 0..5 } || slots.toSet().size != count) return null
                     CoopBattleMsg.Answer(id, true, team, count, name, gender, otId, slots)
@@ -192,7 +195,7 @@ object CoopBattleWire {
             }
             CANCEL -> CoopBattleMsg.Cancel(id, CoopCancel.entries.getOrNull(u8(b)) ?: return null)
             LINK_BLOCK -> {
-                val blk = bytes(b, b.remaining())
+                val blk = b.readByteArray()
                 if (!validLinkBlock(blk)) return null
                 CoopBattleMsg.LinkBlock(id, blk[1].toInt() and 0xFF, blk)
             }
@@ -217,7 +220,7 @@ object CoopBattleWire {
             RESULT_ACK -> CoopBattleMsg.ResultAck(id)
             else -> return null
         }
-        return if (b.hasRemaining()) null else msg
+        return if (!b.exhausted()) null else msg
     }
 
     /** A player name from the network: a 0xFF terminator within the first 8 bytes, only the game's own characters (0x00-0xF4) before it. */
@@ -236,8 +239,8 @@ object CoopBattleWire {
         return size == blk.size - 4 && size <= MAX_LINK_PAYLOAD
     }
 
-    private fun u8(b: ByteBuffer) = b.get().toInt() and 0xFF
-    private fun u16(b: ByteBuffer) = b.short.toInt() and 0xFFFF
-    private fun bytes(b: ByteBuffer, n: Int): ByteArray = ByteArray(n).also { b.get(it) }
+    private fun u8(b: Buffer) = b.readByte().toInt() and 0xFF
+    private fun u16(b: Buffer) = b.readShortLe().toInt() and 0xFFFF
+    private fun bytes(b: Buffer, n: Int): ByteArray = b.readByteArray(n.toLong())
 }
 

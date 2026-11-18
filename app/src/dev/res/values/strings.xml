@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The dev build (beside the release app): its own name in the launcher. -->
+<resources>
+    <string name="app_name">PokeDaisy Dev</string>
+</resources>

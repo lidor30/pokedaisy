@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.security.MessageDigest
+import okio.Path
 
 /**
  * A Game Boy Pokémon game's own art, rebuilt from the player's ROM on its first
@@ -25,6 +24,8 @@ object Gen1Art {
     /** The town map, where MapScreen loads region maps from ([activeRegionMapImages] "yellow"). */
     const val YELLOW_TOWN_MAP = "regionmap/yellow.png"
     const val RED_BLUE_FONT = "gen1/red-blue-font.ttf"
+    /** The running Red / Blue's font: German Red / Blue's has its accented letters ([romLanguage]). */
+    fun redBlueFont(language: Char): String = if (language == 'E') RED_BLUE_FONT else "gen1/red-blue-font-${language.lowercaseChar()}.ttf"
     const val RED_BLUE_ICONS = "gen1/red_blue/pokemon"
     /** Red / Blue's town map and player ([activeRegionMapImages] "red_blue"), in their Super Game Boy colours. */
     const val RED_BLUE_TOWN_MAP_NAME = "red_blue"
@@ -38,6 +39,9 @@ object Gen1Art {
     const val YELLOW_LEGACY_FONT = "gen1/yellow-legacy-font.ttf"
     const val YELLOW_LEGACY_ICONS = "gen1/yellow_legacy/pokemon"
     const val YELLOW_LEGACY_TOWN_MAP_NAME = "yellow_legacy"
+    /** Pokémon Brown: Red's font and icon shapes, its icons for 252 species and its own Rijon town map ("brown"). */
+    const val BROWN_ICONS = "gen1/brown/pokemon"
+    const val BROWN_TOWN_MAP_NAME = "brown"
     /** Bump when what [extractTo] writes changes, so a cached ROM's art is rebuilt once. */
     private const val VERSION = 3
 
@@ -135,27 +139,33 @@ object Gen1Art {
      * there is white, light blue and black (FLY's map, headless). Their party icons have no PIKACHU shape: 14
      * icon loads a frame.
      */
-    private fun redBlue(sha1: String) = Gen1ArtTables(
+    private fun redBlue(sha1: String, language: Char = 'E', icons: Int = 0x57C0, monParty: Int = 0x590D, townMap: Int = 0x5100,
+                        townMapTiles: Int = 0x65A8, charset: Gen1Charset = Gen1Charset.EN) = Gen1ArtTables(
         sha1 = sha1,
         font = 0x04 to 0x5A80,
-        fontPath = RED_BLUE_FONT,
-        iconPointers = 0x1C to 0x57C0,
+        fontPath = redBlueFont(language),
+        iconPointers = 0x1C to icons,
         iconPointerCount = 28,
-        monPartyData = 0x1C to 0x590D,
+        monPartyData = 0x1C to monParty,
         dexCount = 151,
         iconsDir = RED_BLUE_ICONS,
         iconColors = intArrayOf(0xFFFFEFFF.toInt(), 0xFFF7B58C.toInt(), 0xFF181010.toInt()),
-        townMap = 0x1C to 0x5100,
-        townMapTiles = 0x04 to 0x65A8,
+        townMap = 0x1C to townMap,
+        townMapTiles = 0x04 to townMapTiles,
         townMapPath = RED_BLUE_TOWN_MAP,
         townMapColors = intArrayOf(0xFFFFEFFF.toInt(), 0xFFA5D6FF.toInt(), 0xFF8CBD52.toInt(), 0xFF181010.toInt()),
         playerSprite = 0x05 to 0x4180,
         playerPath = RED_BLUE_PLAYER,
         playerColors = intArrayOf(0, 0xFFFFEFFF.toInt(), 0xFFA5D6FF.toInt(), 0xFF181010.toInt()),
+        charset = charset,
     )
     val RED = redBlue(TelemetrySampler.RED_SHA1)
     val RED_RELOAD = redBlue(TelemetrySampler.RED_RELOAD_SHA1)
     val BLUE = redBlue(TelemetrySampler.BLUE_SHA1)
+    /** German Red / Blue: English's art, some of it moved (scripts/port_gen1.py; the icons, town map and player are
+     * English's pixel for pixel - RedBlueGermanDecodeTest - so they share its files), their own font (German Yellow's letters). */
+    val RED_DE = redBlue(TelemetrySampler.RED_DE_SHA1, 'D', 0x579A, 0x58E7, 0x50FE, 0x65B8, Gen1Charset.DF)
+    val BLUE_DE = redBlue(TelemetrySampler.BLUE_DE_SHA1, 'D', 0x579A, 0x58E7, 0x50FE, 0x65B8, Gen1Charset.DF)
 
     /**
      * PureRed and PureBlue v2.7.6 (pureRGB's pokered.sym: the same addresses in both). A Color cart, its default COLORS
@@ -214,7 +224,30 @@ object Gen1Art {
         iconSheet2 = 0x0E to 0x64BF,
     )
 
-    private val GAMES = listOf(YELLOW, YELLOW_RELOAD, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, RED_RELOAD, BLUE, PURE_RED, PURE_BLUE, YELLOW_LEGACY)
+    /**
+     * Pokémon Brown 6.1.2 / 6.0.1 (pokered.sym mapped into it by scripts/port_gen1.py, each checked by its bytes): Red's
+     * font and MonPartySpritePointers at Red's places, MonPartyData moved and grown to 252 species (2 a byte), its own
+     * Rijon town map (CompressedMap 1C:7B9E) over WorldMapTileGraphics redrawn in place, its player at Red's. A DMG cart
+     * run as a Super Game Boy like Red, with SGB palettes of its own (sampled headless): the party menu's icons in two browns
+     * and black on white (OBP0 straight through: pixel 1 = D68463, 2 = 7B3939, 3 = black), the town map cream / sky blue /
+     * green / black (its Fly menu), the player there in its paper, water and black.
+     */
+    private fun brown(sha1: String) = redBlue(sha1).let {
+        Gen1ArtTables(
+            sha1 = sha1, font = it.font, fontPath = it.fontPath, iconPointers = it.iconPointers, iconPointerCount = it.iconPointerCount,
+            monPartyData = 0x1C to 0x5580, dexCount = 252, iconsDir = BROWN_ICONS,
+            iconColors = intArrayOf(0xFFD68463.toInt(), 0xFF7B3939.toInt(), 0xFF000000.toInt()),
+            townMap = 0x1C to 0x7B9E, townMapTiles = it.townMapTiles, townMapPath = "regionmap/$BROWN_TOWN_MAP_NAME.png",
+            townMapColors = intArrayOf(0xFFFFF7DE.toInt(), 0xFF84DEF7.toInt(), 0xFF8CBD52.toInt(), 0xFF000000.toInt()),
+            playerSprite = it.playerSprite, playerPath = "regionmap/player_brown.png",
+            playerColors = intArrayOf(0, 0xFFFFF7DE.toInt(), 0xFF84DEF7.toInt(), 0xFF000000.toInt()),
+        )
+    }
+    val BROWN = brown(TelemetrySampler.BROWN_V6_1_2_SHA1)
+    val BROWN_V601 = brown(TelemetrySampler.BROWN_V6_0_1_SHA1)
+
+    private val GAMES = listOf(YELLOW, YELLOW_RELOAD, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, RED_RELOAD, BLUE, RED_DE, BLUE_DE, PURE_RED, PURE_BLUE, YELLOW_LEGACY,
+        BROWN, BROWN_V601)
 
     private fun off(bank: Int, addr: Int) = if (bank == 0) addr else bank * 0x4000 + (addr - 0x4000)
 
@@ -365,36 +398,31 @@ object Gen1Art {
     }
 
     /** Writes [rom]'s art into [dir] if it's a known Gen 1 cart (once per [VERSION]); returns the paths written. */
-    fun extractTo(rom: ByteArray, dir: File): List<String> {
-        val sha1 = MessageDigest.getInstance("SHA-1").digest(rom).joinToString("") { "%02x".format(it) }
+    fun extractTo(rom: ByteArray, dir: Path): List<String> {
+        val sha1 = sha1(rom).hex()
         val t = GAMES.firstOrNull { it.sha1 == sha1 } ?: return emptyList()
-        val marker = File(dir, "gen1/scanned-v$VERSION-${sha1.take(12)}")
+        val marker = dir / "gen1/scanned-v$VERSION-${sha1.take(12)}"
         if (marker.isFile) return emptyList()
         val wrote = ArrayList<String>()
         fun write(path: String, bytes: ByteArray) {
-            val out = File(dir, path)
-            out.parentFile?.mkdirs()
-            val tmp = File(out.path + ".tmp")
-            tmp.writeBytes(bytes)
-            tmp.renameTo(out)
+            (dir / path).writeAtomically(bytes)
             wrote += path
         }
         write(t.fontPath, font(rom, t))
         icons(rom, t).forEach { (dex, img) -> write("${t.iconsDir}/$dex.png", img.png()) }
         write(t.townMapPath, townMap(rom, t).png())
         write(t.playerPath, player(rom, t).png())
-        marker.parentFile?.mkdirs()
         marker.writeText(wrote.size.toString())
         return wrote
     }
 
     /** In the background, once per ROM file: a Game Boy cart is at most a few MB. */
-    fun prefetch(filesDir: File, rom: File) {
-        Thread({
+    fun prefetch(filesDir: Path, rom: Path) {
+        background("pokedaisy-gen1-art") {
             runCatching {
-                val wrote = extractTo(rom.readBytes(), RomArt.dir(filesDir))
+                val wrote = extractTo(readRomFile(rom), RomArt.dir(filesDir))
                 if (wrote.isNotEmpty()) RomArt.announce()
-            }.onFailure { android.util.Log.w("pokedaisy", "Gen1Art: failed", it) }
-        }, "pokedaisy-gen1-art").apply { isDaemon = true; start() }
+            }.onFailure { Logs.w("Gen1Art: failed", it) }
+        }
     }
 }

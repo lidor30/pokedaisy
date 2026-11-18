@@ -1,7 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 /**
- * PC anywhere, FLY and WILD ENCOUNTERS on the Game Boy games (Yellow in all five languages, Red / Blue; Crystal rev
+ * PC anywhere, FLY and WILD ENCOUNTERS on the Game Boy games (Yellow in all five languages, Red / Blue, Brown; Crystal rev
  * 0, rev 1 and Australia): the GBA's FieldItems.kt / Pc.kt / Fly.kt / WildEncounters.kt calls have no counterpart
  * here, so each game gets the way its own code already takes, from pret/pokeyellow's, pokered's and pokecrystal's
  * sources (their builds are the retail ROMs; the European Yellows' addresses mapped by scripts/port_gen1.py):
@@ -66,12 +66,19 @@ sealed class GbField {
                 'S' -> GB_FIELD_YELLOW_ES
                 else -> null
             }
-            game == GameKind.RED || game == GameKind.BLUE -> GB_FIELD_RED_BLUE
+            game == GameKind.RED || game == GameKind.BLUE -> when (romLanguage) {
+                'E' -> GB_FIELD_RED_BLUE
+                'D' -> GB_FIELD_RED_BLUE_DE
+                else -> null
+            }
             game == GameKind.PURE_RED || game == GameKind.PURE_BLUE -> GB_FIELD_PURE_RGB
+            game == GameKind.BROWN -> GB_FIELD_BROWN
             game == GameKind.YELLOW_LEGACY -> GB_FIELD_YELLOW_LEGACY
             game == GameKind.CRYSTAL && activeGen2 === GEN2_CRYSTAL -> Crystal
             game == GameKind.CRYSTAL && activeGen2 === GEN2_CRYSTAL_DE -> CrystalDe
             game == GameKind.CRYSTAL_LEGACY -> CrystalLegacy
+            game == GameKind.GOLD && activeGen2 === GEN2_GOLD -> Gold
+            game == GameKind.SILVER && activeGen2 === GEN2_SILVER -> Silver
             else -> null
         }
     }
@@ -114,6 +121,16 @@ sealed class GbField {
         /** OpenPokemonCenterPC's bank (0x18; PureRGB's 0x33) and the wild data's (3; PureRGB's 0x2C). */
         private val pcBank: Int = 0x18,
         private val wildBank: Int = 0x03,
+        /**
+         * A game's own Fly list (Brown's BuildFlyLocationsList): (a bit of wTownVisitedFlag's 16, the destination it lists)
+         * in its order; null = Red's, town map ids 0..10 by their own bits. [flyWarpMap]: a listed destination the pick
+         * turns into another map (Brown's 0xD5, SENECA CAVERNS, flies to map 0x21).
+         */
+        private val flySlots: List<Pair<Int, Int>>? = null,
+        private val flyWarpMap: Map<Int, Int> = emptyMap(),
+        /** Maps FLY works on whatever their tileset (Brown's 64 / 7E / 83), and maps it never does (B2): its own outside check. */
+        private val flyMaps: Set<Int> = emptySet(),
+        private val noFlyMaps: Set<Int> = emptySet(),
     ) : GbField() {
         private val flags7 = flags6 + 1
 
@@ -137,11 +154,14 @@ sealed class GbField {
         override fun flyTargets(g: GameCalls): FlyTargets {
             if (!free(g)) return FlyTargets(FlyResult.NOT_NOW)
             if (u8(g, badges) and 0x04 == 0) return FlyTargets(FlyResult.NO_BADGE)
-            if (u8(g, tileset) !in setOf(0, 23)) return FlyTargets(FlyResult.CANT_FLY_HERE)
+            val map = u8(g, curMap)
+            if (map in noFlyMaps || map !in flyMaps && u8(g, tileset) !in setOf(0, 23)) return FlyTargets(FlyResult.CANT_FLY_HERE)
             val slot = flyer(g).takeIf { it >= 0 } ?: return FlyTargets(FlyResult.NO_FLYER)
             val v = g.read(townsVisited, 2).let { (it[0].toInt() and 0xFF) or ((it[1].toInt() and 0xFF) shl 8) }
-            // BuildFlyLocationsList's order: the town map ids, visited ones only.
-            return FlyTargets(FlyResult.OK, (0 until NUM_CITY_MAPS).filter { v shr it and 1 != 0 }, slot)
+            // BuildFlyLocationsList's order: the town map ids (or the game's own list), visited ones only.
+            val listed = flySlots?.filter { (bit, _) -> v shr bit and 1 != 0 }?.map { it.second }
+                ?: (0 until NUM_CITY_MAPS).filter { v shr it and 1 != 0 }
+            return FlyTargets(FlyResult.OK, listed, slot)
         }
 
         private var pikachuBefore: Pair<Int, Int>? = null
@@ -150,7 +170,7 @@ sealed class GbField {
             val now = flyTargets(g)
             if (now.result != FlyResult.OK) return now.result
             if (mapsec !in now.destinations) return FlyResult.FAILED
-            put(g, destination, mapsec)
+            put(g, destination, flyWarpMap[mapsec] ?: mapsec)
             if (pikachuFlags >= 0) {
                 pikachuBefore = u8(g, pikachuFlags) to u8(g, pikachuImage)
                 put(g, pikachuFlags, pikachuBefore!!.first or 0x80)
@@ -224,15 +244,18 @@ sealed class GbField {
         private val COOLDOWN: Long,
         private val FLYPOINTS: Long,
         override val signatures: List<Pair<Long, String>>,
+        /** wDefaultSpawnpoint (Gold / Silver keep it in bank 0). */
+        private val DEFAULT_SPAWN: Long = wramx(1, 0xD001),
+        /** PCScript's bank (Gold / Silver's 0x40). */
+        private val PC_SCRIPT_BANK: Int = 0x2F,
+        /** KANTO_LANDMARK (Gold / Silver have one Johto landmark fewer: 46). */
+        private val KANTO_LANDMARK: Int = 47,
     ) : GbField() {
         private val BATTLE_MODE = cfg.battleMode
-        private val DEFAULT_SPAWN = wramx(1, 0xD001)
         private val PARTY_COUNT = cfg.partyCount          // then wPartySpecies
-        private val PC_SCRIPT_BANK = 0x2F
         private val FLY_SCRIPT_BANK = 0x03
         private val PARTY_MON_SIZE = 0x30
         private val EGG = 0xFD
-        private val KANTO_LANDMARK = 47
         private val KANTO_FLYPOINT = 12
         private val SPAWN_INDIGO = 13
 
@@ -336,6 +359,30 @@ sealed class GbField {
             0x24 * 0x4000L + (0x5C7C - 0x4000) to "010e030f",                         // Flypoints: NEUBORKIA, ROSALIA CITY
         ),
     )
+
+    /**
+     * Gold and Silver (USA / Europe), pret/pokegold's symbols (its `symbols` branch, 2026-11-18): Crystal's way in - the same
+     * RunMemScript queue, PCScript and FlyFunction.FlyScript, CheckWildEncounterCooldown - at their own addresses; PCScript in
+     * bank 0x40, wDefaultSpawnpoint in bank 0, the Kanto landmarks from 46. Silver's Fly script sits 2 bytes before Gold's.
+     */
+    open class GoldSilver(cfg: Gen2Config, flyScript: Int) : CrystalEngine(
+        cfg = cfg,
+        QUEUE = wramx(1, 0xD183), PC_SCRIPT = 0x4145, FLY_SCRIPT = flyScript, SCRIPT_RUNNING = wramx(1, 0xD15F),
+        MAP_EVENT_STATUS = wramx(1, 0xD15A), VISITED_SPAWNS = wramx(1, 0xD9EE), JOHTO_BADGES = wramx(1, 0xD57C),
+        ENVIRONMENT = wramx(1, 0xD083), PARTY_MON1_MOVES = wramx(1, 0xDA2C), COOLDOWN = wramx(1, 0xD179),
+        FLYPOINTS = 0x24 * 0x4000L + (0x5BCC - 0x4000),
+        signatures = listOf(
+            0x25 * 0x4000L + (0x7A61 - 0x4000) to "fa83d1a7c82185d12a666ffa84d1cd48", // RunMemScript
+            0x40 * 0x4000L + (0x4145 - 0x4000) to "470f1c00499084",                  // opentext, special, closetext, end
+            0x03 * 0x4000L + (flyScript - 0x4000) to "7b0e000a310f3400",             // the Fly script's first commands
+            0x25 * 0x4000L + (0x67F4 - 0x4000) to "2179d17ea7c835c837c9",           // CheckWildEncounterCooldown
+            0x24 * 0x4000L + (0x5BCC - 0x4000) to "010e030f",                         // Flypoints: NEW BARK, CHERRYGROVE
+        ),
+        DEFAULT_SPAWN = 0xCEEC, PC_SCRIPT_BANK = 0x40, KANTO_LANDMARK = 46,
+    )
+
+    object Gold : GoldSilver(GEN2_GOLD, 0x4AC2)
+    object Silver : GoldSilver(GEN2_SILVER, 0x4AC0)
 
     /** Crystal Legacy v1.3.1 (its pokecrystal.sym): Crystal's scripts and rules at its own addresses. */
     object CrystalLegacy : CrystalEngine(
@@ -475,6 +522,56 @@ val GB_FIELD_RED_BLUE = GbField.Gen1(
         0x7102BL to "7eea1ad72132d7cbde23cbfe",
         0x71070L to "213dcd36ff23fa0bd75ffa0cd75701",
         0xCEB8L to "21eb4efa5ed34f060009092a666f2aea87d8",
+    ),
+)
+
+/**
+ * Pokémon Brown 6.1.2 / 6.0.1 (the same code at the same places in both): Red's RAM and Red's PC routine, Bankswitch and wild
+ * data code, but its own town map: BuildFlyLocationsList (1D:6BE0) lists 14 places from wTownVisitedFlag's bits in an order
+ * of its own (two of them not towns: SENECA CAVERNS, whose pick flies to map 0x21, and FINAL DUNGEON), and FLY's outside
+ * check (4:792C) also allows maps 0x64 / 0x7E / 0x83 and refuses 0xB2. Checked headless on the player's save: the PC opened
+ * over the field and was backed out of; flights to GRAVEL TOWN, map 0x21 and 0xCA (the game's own Fly menu lists the same
+ * places in the same order); Route 67's path counted as grass (wGrassTile) met a battle on the second step at a rate of 255,
+ * at step 21 at the map's own 25, none in 100 steps held at 0.
+ */
+val GB_FIELD_BROWN = GbField.Gen1(
+    loopAfterWait = 0x0405, bankswitch = 0x35D6, pcRoutine = 0x651C,
+    walkCounter = 0xCFC5L, flags5 = 0xD730L, inBattle = 0xD057L, badges = 0xD356L,
+    tileset = 0xD367L, townsVisited = 0xD70BL, destination = 0xD71AL, flags6 = 0xD732L, pikachuFlags = -1L, pikachuImage = -1L,
+    partyCount = 0xD163L, partyMoves = 0xD173L, curMap = 0xD35EL, grassRate = 0xD887L,
+    waterRate = 0xD8A4L, wildDataPointers = 0x4EEB,
+    signatures = listOf(
+        0x402L to "cdaf20cdaa04fa36d7cb77c49e03fac5cfa7c2b5",           // OverworldLoopLessDelay (its own second call)
+        0x35D6L to "f0b8f578e0b8ea002001e435",                           // Bankswitch
+        0x3EF5L to "e08c21223fcd0f3f2111cfcb",
+        0x62516L to "fa09c1fe04c0cd3c3c3e01ea0ccf3e1fc3f53ef9",           // OpenPokemonCenterPC
+        0x7690EL to "626b3e8ecdb1237efed520023e21ea1ad72132d7cbde23cbfec9", // the town map's FLY pick
+        0x76BE0L to "113dcd3eff1213210bd7cb4e3e01cdd86b",                 // BuildFlyLocationsList
+        0x1392CL to "fa5ed3feb22811fe64c8fe7ec8fe83c8fa67d3a7c8fe17c9a7c9", // FLY's outside check
+        0xCEB8L to "21eb4efa5ed34f060009092a666f2aea87d8",               // LoadWildData
+    ),
+    flySlots = listOf(1 to 0x01, 0 to 0x00, 4 to 0x04, 3 to 0x03, 7 to 0x07, 11 to 0x0B, 6 to 0x06, 2 to 0x02, 10 to 0x0A,
+        5 to 0x05, 8 to 0x08, 12 to 0xD5, 9 to 0x09, 13 to 0xCA),
+    flyWarpMap = mapOf(0xD5 to 0x21),
+    flyMaps = setOf(0x64, 0x7E, 0x83),
+    noFlyMaps = setOf(0xB2),
+)
+
+/** German Red / Blue (the same code at the same places in both carts): Red's ways in, mapped by scripts/port_gen1.py. */
+val GB_FIELD_RED_BLUE_DE = GbField.Gen1(
+    loopAfterWait = 0x0405, bankswitch = 0x35F0, pcRoutine = 0x651C,
+    walkCounter = 0xCFCAL, flags5 = 0xD735L, inBattle = 0xD05CL, badges = 0xD35BL,
+    tileset = 0xD36CL, townsVisited = 0xD710L, destination = 0xD71FL, flags6 = 0xD737L, pikachuFlags = -1L, pikachuImage = -1L,
+    partyCount = 0xD168L, partyMoves = 0xD178L, curMap = 0xD363L, grassRate = 0xD88CL,
+    waterRate = 0xD8A9L, wildDataPointers = 0x4EEB,
+    signatures = listOf(
+        0x402L to "cdaf20cdba20fa3bd7cb77c49e03facacfa7c2b5",
+        0x35F0L to "f0b8f578e0b8ea002001fe35",
+        0x3F0FL to "e08c213c3fcd293f2116cfcb",
+        0x62516L to "fa09c1fe04c0cd563c3e01ea11cf3e1fc30f3ff9",
+        0x71029L to "7eea1fd72137d7cbde23cbfe",
+        0x7106EL to "213dcd36ff23fa10d75ffa11d75701",
+        0xCEB8L to "21eb4efa63d34f060009092a666f2aea8cd8",
     ),
 )
 

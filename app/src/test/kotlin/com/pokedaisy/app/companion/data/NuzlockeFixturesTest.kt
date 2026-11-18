@@ -43,11 +43,32 @@ class NuzlockeFixturesTest {
         "team_rocket_battle" to NATIVE_TEAM_ROCKET, "team_rocket_trainer" to NATIVE_TEAM_ROCKET,
         "monomyth_battle" to NATIVE_MONOMYTH, "monomyth_trainer" to NATIVE_MONOMYTH,
         "monomyth_v1_1_battle" to NATIVE_MONOMYTH_V1_1, "monomyth_v1_1_trainer" to NATIVE_MONOMYTH_V1_1,
+        "monomyth_v1_2_battle" to NATIVE_MONOMYTH_V1_2, "monomyth_v1_2_trainer" to NATIVE_MONOMYTH_V1_2,
     )
 
     // Battles whose foe isn't read (the tracker counts no encounter there): Unbound's capture is a scripted battle
     // against a Lv0 foe; Celia's battlers don't decode (its BATTLE tab shows the same).
     private val noFoe = setOf("unbound_battle", "celia_battle")
+
+    /** The catching lesson (FireRed's old man, Emerald's Wally: gBattleTypeFlags' 0x200) is no encounter of the player's
+     * (GitHub #829: LeafGreen's tutorial WEEDLE was counted). A wild battle with that flag set reads as not judged. */
+    @Test
+    fun theCatchingTutorialIsNoEncounter() {
+        val was = activeGame
+        try {
+            for ((game, name, cfg) in listOf(Triple(GameKind.EMERALD, "emerald_fr_battle", NATIVE_EMERALD_FR), Triple(GameKind.EMERALD, "sapphire_rev1_battle", NATIVE_SAPPHIRE))) {
+                activeGame = game
+                val base = FixtureMemoryReader.load(name)
+                assertEquals(name, false, readNativeTelemetry(base, cfg).isTrainerBattle)
+                val tutorial = object : MemoryReader by base {
+                    override fun readCoreMemory(addr: Long, size: Int): ByteArray = base.readCoreMemory(addr, size).also {
+                        if (addr == cfg.battleTypeFlags) it[1] = (it[1].toInt() or 0x02).toByte()
+                    }
+                }
+                assertEquals(name, null, readNativeTelemetry(tutorial, cfg).isTrainerBattle)
+            }
+        } finally { activeGame = was }
+    }
 
     @Test
     fun everyCaptureGivesTheTrackerWhatItReads() {
@@ -76,8 +97,28 @@ class NuzlockeFixturesTest {
     fun theGamesItFollows() {
         val n = com.pokedaisy.app.companion.Nuzlocke
         assertTrue(n.supports(GameKind.FIRERED) && n.supports(GameKind.EMERALD) && n.supports(GameKind.UNBOUND))
-        // A roguelike walks the same areas every run; the Game Boy and DS readers don't tell wild from trainer yet.
-        assertFalse(n.supports(GameKind.EMERALD_ROGUE))
-        assertFalse(n.supports(GameKind.YELLOW) || n.supports(GameKind.CRYSTAL) || n.supports(GameKind.PLATINUM) || n.supports(null))
+        // A roguelike walks the same areas every run.
+        assertFalse(n.supports(GameKind.EMERALD_ROGUE) || n.supports(null))
+        // The Game Boy and DS readers tell wild from trainer since 2026-11-18.
+        assertTrue(n.supports(GameKind.YELLOW) && n.supports(GameKind.CRYSTAL) && n.supports(GameKind.PLATINUM) && n.supports(GameKind.BLACK))
+    }
+
+    /** The Game Boy's party id (species, trainer ID, DVs) loses its species in the run: an evolved Pokémon is the same one. */
+    @Test
+    fun gameBoyIdsSurviveEvolving() {
+        assertEquals(nuzlockeId(gbMonKey(64, 0x1234, 0xABCD)), nuzlockeId(gbMonKey(65, 0x1234, 0xABCD)))
+        assertEquals(0xFEDCBA98L, nuzlockeId(0xFEDCBA98L))   // a GBA / DS personality as it is
+    }
+
+    /** A Game Boy and a DS battle read as the tracker sees them: wild, the foe, the party's ids. */
+    @Test
+    fun gameBoyAndDsBattles() {
+        activeGame = GameKind.GOLD
+        val gold = NuzlockeSample.of(buildSnapshotView(readGen2Telemetry(FixtureMemoryReader.load("gold_battle"), GEN2_GOLD)))
+        assertEquals(true to false, gold.inBattle to gold.trainer)
+        assertEquals(16, gold.foeSpecies)   // PIDGEY
+        assertTrue(gold.party.all { it.personality <= 0xFFFFFFFFL })
+        val trainer = NuzlockeSample.of(buildSnapshotView(readGen2Telemetry(FixtureMemoryReader.load("gold_trainer"), GEN2_GOLD)))
+        assertEquals(true, trainer.trainer)
     }
 }

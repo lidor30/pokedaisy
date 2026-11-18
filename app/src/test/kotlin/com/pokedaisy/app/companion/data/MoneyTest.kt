@@ -45,10 +45,16 @@ class MoneyTest {
         assertEquals(1_048_458L, money("quetzal_moemon_084", NATIVE_QUETZAL_MOEMON_V084))
         assertEquals(1_048_458L, money("quetzal_moemon_es_084", NATIVE_QUETZAL_MOEMON_V084_ES))
         assertEquals(1748L, money("unbound_fr", NATIVE_UNBOUND_FR))
+        assertEquals(3848L, money("unbound_it", NATIVE_UNBOUND_IT)) // English's save, booted in the Italian build
         assertEquals(2000L, money("orange_islands", NATIVE_ORANGE_ISLANDS))
         assertEquals(3080L, money("ultra_violet", NATIVE_ULTRA_VIOLET))
         // Retail FireRed's save, booted in FireRed Rocket Edition and Ash Gray.
         assertEquals(246468L, money("rocket_edition", NATIVE_ROCKET_EDITION))
+        assertEquals(246468L, money("clover", NATIVE_CLOVER)) // the same save, booted in Clover
+        assertEquals(3000L, money("elysium_a", NATIVE_ELYSIUM_A))
+        assertEquals(198199L, money("elysium_b", NATIVE_ELYSIUM_B))
+        assertEquals(5000L, money("rhythm", NATIVE_RHYTHM))
+        assertEquals(3000L, money("oops_all_eevees", NATIVE_OOPS_ALL_EEVEES))
         assertEquals(246468L, money("ash_gray", NATIVE_ASH_GRAY))
         assertEquals(246468L, money("ash_gray_fork", NATIVE_ASH_GRAY))
         // Elite Redux's save in both builds: plain (it zeroes the encryption key), its trainer card shows BP instead.
@@ -57,6 +63,7 @@ class MoneyTest {
         // Monomyth's (the user's save): SaveBlock1 +0x494 XOR the key at SaveBlock2 +0x40.
         assertEquals(1968L, money("monomyth", NATIVE_MONOMYTH))
         assertEquals(1968L, money("monomyth_v1_1", NATIVE_MONOMYTH_V1_1))
+        assertEquals(1968L, money("monomyth_v1_2", NATIVE_MONOMYTH_V1_2))
         // Team Rocket Edition: Dragonsden's save: past 999,999 (its AddMoney caps at 99,999,999).
         assertEquals(3_000_000L, money("team_rocket", NATIVE_TEAM_ROCKET))
         // Team Rocket Edition 2026 v3.1's new game: SaveBlock1 +0x490 XOR the key at SaveBlock2 +0x44.
@@ -64,6 +71,8 @@ class MoneyTest {
         // Wishes of Tomorrow's new game (its START menu: ₽3000), the randomizer one too.
         assertEquals(3000L, money("wishes", NATIVE_WISHES))
         assertEquals(3000L, money("wishes_random", NATIVE_WISHES))
+        assertEquals(258984L, money("ceruleum", NATIVE_CERULEUM))
+        assertEquals(3000L, money("recordkeepers", NATIVE_RECORDKEEPERS))
         // Dreamstone Mysteries' new game (its save screen and START menu): SaveBlock1 +0x490 XOR SaveBlock2 +0xAC.
         assertEquals(3000L, money("dreamstone", NATIVE_DREAMSTONE))
         // Ghost Grey's 1.0.3 save in each build (its trainer card: ₽163300).
@@ -85,6 +94,8 @@ class MoneyTest {
         assertEquals(185092L, money("recharged_emerald_rebalanced", NATIVE_RECHARGED_EMERALD_REBALANCED_V2_2_8))
         // Modern Emerald: SaveBlock1+0x490 under SaveBlock2's key at +0xBC (retail +0xAC); a new game's 3000.
         assertEquals(3000L, money("modern_emerald", NATIVE_MODERN_EMERALD))
+        // Epsilon Emerald: retail Emerald's save as it is, retail's offsets.
+        assertEquals(185092L, money("epsilon_emerald", NATIVE_EPSILON_EMERALD))
         // Super Mariomon: vanilla's offsets in every release (its card says P3100).
         for ((key, cfg) in listOf("mariomon_v1_5_2" to NATIVE_MARIOMON_V1_5_2, "mariomon_v1_5_1" to NATIVE_MARIOMON_V1_5_1,
                 "mariomon_v1_3" to NATIVE_MARIOMON_V1_3, "mariomon_v1_2_2" to NATIVE_MARIOMON_V1_2_2, "mariomon_v1_2_1" to NATIVE_MARIOMON_V1_2_1)) {

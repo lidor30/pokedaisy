@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import okio.Path.Companion.toOkioPath
 import android.view.KeyEvent
 import com.pokedaisy.app.Hotkeys.Action
 import org.junit.After
@@ -18,7 +19,7 @@ class HotkeyDsTriggersTest {
     private val l2 = KeyEvent.KEYCODE_BUTTON_L2
     private val r2 = KeyEvent.KEYCODE_BUTTON_R2
 
-    private val hotkeys by lazy { Hotkeys.load(tmp.newFolder()) }
+    private val hotkeys by lazy { Hotkeys.load(tmp.newFolder().toOkioPath()) }
 
     private fun press(code: Int) = hotkeys.onKey(code, true)
     private fun release(code: Int) = hotkeys.onKey(code, false)

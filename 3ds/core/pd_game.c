@@ -249,18 +249,18 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
             return;
         }
         g->title = "Unknown game";
-        g->unsupported = "Not a game the 3DS companion knows yet";
+        g->unsupported = "Not a game the companion knows yet";
         return;
     }
     if (g->revision > 1) {
         g->cfg = NULL;
         g->unsupported = "This revision isn't supported yet";
     } else if (romSize > 0x1000000) {
-        // A >16 MB FireRed / Emerald is a ROM hack: the app tells them apart
-        // by SHA1 (Poller.detect) - not ported yet.
+        // A >16 MB FireRed / Emerald is a ROM hack: identify() gives back the ones KNOWN_ROMS has by SHA-1 (as the
+        // app's Poller.detect). The words are the other unknown builds' (this runs on the 3DS and the Linux cores alike).
         g->cfg = NULL;
         g->title = g->kind == PD_GAME_FIRERED ? "FireRed ROM hack" : "Emerald ROM hack";
-        g->unsupported = "ROM hacks aren't supported on 3DS yet";
+        g->unsupported = "Not a version the companion knows";
     }
 }
 
@@ -511,6 +511,8 @@ static const struct known_rom KNOWN_ROMS[] = {
      PD_GUIDE_UNBOUND},
     {"0ce2a880aa097f1dce4e1db8ee513d0e82d15859", &PD_CONFIG_UNBOUND_FR, PD_GAME_FIRERED, "Pokémon Unbound",
      PD_GUIDE_UNBOUND},
+    {"8114e0f81eb3581f699c74a5891c7b75a130269d", &PD_CONFIG_UNBOUND_IT, PD_GAME_FIRERED, "Pokémon Unbound",
+     PD_GUIDE_UNBOUND},
     {"1d20091c4d936f5eb122db8780554dd0829ffb63", &PD_CONFIG_IMPERIUM, PD_GAME_EMERALD, "Pokémon Emerald Imperium",
      PD_GUIDE_IMPERIUM},
     {"3fa8e61ec1727cc51540c54677623f736a446e1b", &PD_CONFIG_TMT2, PD_GAME_EMERALD, "Pokémon Too Many Types 2",
@@ -572,6 +574,8 @@ static const struct known_rom KNOWN_ROMS[] = {
     {"ae1c4be9be8d706bb989602bc05731203d42860d", &PD_CONFIG_MONOMYTH, PD_GAME_EMERALD, "Pokémon Monomyth",
      PD_GUIDE_MONOMYTH},
     {"eb660caffbc26e1f09f86714d03af4c3eccd9e4d", &PD_CONFIG_MONOMYTH_V1_1, PD_GAME_EMERALD, "Pokémon Monomyth",
+     PD_GUIDE_MONOMYTH},
+    {"742e62ffa5a8d607171fdb8477eb1f417dc36086", &PD_CONFIG_MONOMYTH_V1_2, PD_GAME_EMERALD, "Pokémon Monomyth",
      PD_GUIDE_MONOMYTH},
     {"79ee6df0869c1773c8c6a5f764afc1f8d833d8bb", &PD_CONFIG_HEART_AND_SOUL, PD_GAME_EMERALD, "Pokémon Heart and Soul",
      PD_GUIDE_HEART_AND_SOUL},
@@ -651,10 +655,16 @@ static void identify(struct pd_game* g) {
         g->title = "Game Boy ROM";
         g->unsupported = "Not a Game Boy game the companion knows";
     }
-    struct pd_sha1 s;
-    pd_sha1_init(&s);
-    pd_sha1_update(&s, g->rom, g->romSize);
-    pd_sha1_hex(&s, g->sha1);
+    // A host that already knows the file's hash (the 3DS library's cache, by size and time) passes it in: hashing a
+    // 32 MB ROM took a 3DS about a second of every start.
+    bool known = strlen(g->sha1) == 40;
+    for (int i = 0; known && i < 40; i++) known = (g->sha1[i] >= '0' && g->sha1[i] <= '9') || (g->sha1[i] >= 'a' && g->sha1[i] <= 'f');
+    if (!known) {
+        struct pd_sha1 s;
+        pd_sha1_init(&s);
+        pd_sha1_update(&s, g->rom, g->romSize);
+        pd_sha1_hex(&s, g->sha1);
+    }
     g->shinyBelow = 0;
     g->retail = false;
     for (const struct pd_shiny_rom* r = pd_shiny_roms; r->sha1; r++)

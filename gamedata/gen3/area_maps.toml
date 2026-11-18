@@ -1,0 +1,1414 @@
+# AREA maps (AreaMap.kt): each ROM's map tables, by its CRC32. Written by scripts/gen_area_maps.py --scan from the
+# player's own ROMs (gMapGroups from EXPAND's rows, pk_wide_games.h, or a scan; the rest read from the ROM) - rerun
+# it rather than editing. The 3DS / Linux companion can draw the same maps from this file.
+#
+# mapGroups / mapGroupsXor / mapGroupSizes: gMapGroups. primaryTiles / primaryMetatiles / primaryPalettes: where the
+# secondary tileset starts. floorNumOff: MapHeader's floor byte (-1 = none). metatileSize: 16, 24 for three layers.
+# metatileMask: a map cell's metatile id bits (also its undefined square). mapSecWide: MapHeader's map section is a
+# u16 at +0x14, its map type at +0x18 (SoulGold). altTiles / altMetatiles / altPalettes: the numbers for a layout whose
+# byte +0x18 isn't 0 (Heart and Soul's FireRed-style layouts; the others above).
+
+[rom.ded2bb0b]
+name = "Moemon Quetzal (Alpha 0.8.4 Hotfix) (English).gba"
+mapGroups = 0x086130F0
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.91975983]
+name = "Moemon Quetzal (Alpha 0.8.4 Hotfix) (Spanish).gba"
+mapGroups = 0x0861B208
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.4881f3f8]
+name = "Pocket Monsters - Emerald (Japan).gba"
+mapGroups = 0x0845E998
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.bb640df7]
+name = "Pocket Monsters - FireRed (Japan) (Rev 1).gba"
+mapGroups = 0x08311F70
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.3b2056e9]
+name = "Pocket Monsters - FireRed (Japan).gba"
+mapGroups = 0x08316758
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.8da4601a]
+name = "Pocket Monsters - LeafGreen (Japan) (Rev 1).gba"
+mapGroups = 0x08311F50
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.0a48556b]
+name = "Pocket Monsters - LeafGreen (Japan).gba"
+mapGroups = 0x08316738
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.b448a337]
+name = "Pocket Monsters - Ruby (Japan) (Rev 1).gba"
+mapGroups = 0x082E09F0
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.cee9471a]
+name = "Pocket Monsters - Ruby (Japan).gba"
+mapGroups = 0x082E09F0
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.01bd60e3]
+name = "Pocket Monsters - Sapphire (Japan) (Rev 1).gba"
+mapGroups = 0x082E0980
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.fd1eeb78]
+name = "Pocket Monsters - Sapphire (Japan).gba"
+mapGroups = 0x082E0980
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.d12f1fdd]
+name = "Pokemon - Blattgruene Edition (Germany).gba"
+mapGroups = 0x083525AC
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.8c4d3108]
+name = "Pokemon - Edicion Esmeralda (Spain).gba"
+mapGroups = 0x08489BD4
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.9f08064e]
+name = "Pokemon - Edicion Rojo Fuego (Spain).gba"
+mapGroups = 0x0834DE70
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.b980fff5]
+name = "Pokemon - Edicion Rubi (Spain) (Rev 1).gba"
+mapGroups = 0x0830BB20
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.eb0729cf]
+name = "Pokemon - Edicion Rubi (Spain).gba"
+mapGroups = 0x0830BB20
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.2ca11d59]
+name = "Pokemon - Edicion Verde Hoja (Spain).gba"
+mapGroups = 0x0834DE50
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.f2c88931]
+name = "Pokemon - Edicion Zafiro (Spain) (Rev 1).gba"
+mapGroups = 0x0830BAB0
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.a04f5f0b]
+name = "Pokemon - Edicion Zafiro (Spain).gba"
+mapGroups = 0x0830BAB0
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.1f1c08fb]
+name = "Pokemon - Emerald Version (USA, Europe).gba"
+mapGroups = 0x08486578
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.1a81eedf]
+name = "Pokemon - Feuerrote Edition (Germany).gba"
+mapGroups = 0x083525CC
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.dd88761c]
+name = "Pokemon - FireRed Version (USA).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.84ee4776]
+name = "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba"
+mapGroups = 0x08352718
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.d69c96cc]
+name = "Pokemon - LeafGreen Version (USA).gba"
+mapGroups = 0x08352688
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.daffecec]
+name = "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba"
+mapGroups = 0x083526F8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.cae89464]
+name = "Pokemon - Rubin-Edition (Germany) (Rev 1).gba"
+mapGroups = 0x08313D70
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.15e1e280]
+name = "Pokemon - Rubin-Edition (Germany).gba"
+mapGroups = 0x08313D70
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.61641576]
+name = "Pokemon - Ruby Version (USA, Europe) (Rev 1).gba"
+mapGroups = 0x083085A0
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.aeac73e6]
+name = "Pokemon - Ruby Version (USA, Europe) (Rev 2).gba"
+mapGroups = 0x083085A0
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.f0815ee7]
+name = "Pokemon - Ruby Version (USA, Europe).gba"
+mapGroups = 0x08308588
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.b0c40c7c]
+name = "Pokemon - Saphir-Edition (Germany) (Rev 1).gba"
+mapGroups = 0x08313D04
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.6fcd7a98]
+name = "Pokemon - Saphir-Edition (Germany).gba"
+mapGroups = 0x08313D04
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.bafedae5]
+name = "Pokemon - Sapphire Version (USA, Europe) (Rev 1).gba"
+mapGroups = 0x08308530
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.9cc4410e]
+name = "Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba"
+mapGroups = 0x08308530
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.554dedc4]
+name = "Pokemon - Sapphire Version (USA, Europe).gba"
+mapGroups = 0x08308518
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.34c9df89]
+name = "Pokemon - Smaragd-Edition (Germany).gba"
+mapGroups = 0x084982A8
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.a3fdccb1]
+name = "Pokemon - Version Emeraude (France).gba"
+mapGroups = 0x0848B464
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.5dc668f6]
+name = "Pokemon - Version Rouge Feu (France).gba"
+mapGroups = 0x0834CAF8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.9f981f72]
+name = "Pokemon - Version Rubis (France) (Rev 1).gba"
+mapGroups = 0x0830F1EC
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.690fd310]
+name = "Pokemon - Version Rubis (France).gba"
+mapGroups = 0x0830F1EC
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.2ae49146]
+name = "Pokemon - Version Saphir (France) (Rev 1).gba"
+mapGroups = 0x0830F17C
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.3581a05f]
+name = "Pokemon - Version Saphir (France).gba"
+mapGroups = 0x0830F17C
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.ba3285e3]
+name = "Pokemon - Version Vert Feuille (France).gba"
+mapGroups = 0x0834CAD8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.73a72167]
+name = "Pokemon - Versione Rosso Fuoco (Italy).gba"
+mapGroups = 0x0834B788
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.9305e793]
+name = "Pokemon - Versione Rubino (Italy) (Rev 1).gba"
+mapGroups = 0x08308A78
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.c18231a9]
+name = "Pokemon - Versione Rubino (Italy).gba"
+mapGroups = 0x08308A78
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.a0aec80a]
+name = "Pokemon - Versione Smeraldo (Italy).gba"
+mapGroups = 0x084832BC
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.16974506]
+name = "Pokemon - Versione Verde Foglia (Italy).gba"
+mapGroups = 0x0834B768
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.5efe4493]
+name = "Pokemon - Versione Zaffiro (Italy) (Rev 1).gba"
+mapGroups = 0x08308A08
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.0c7992a9]
+name = "Pokemon - Versione Zaffiro (Italy).gba"
+mapGroups = 0x08308A08
+mapGroupSizes = [54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.bc60d568]
+name = "Pokemon Amethyst (v1.3.0).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 127, 62, 67, 4, 10, 18, 12, 8, 21, 21, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 4, 2, 5, 2, 1, 1, 1, 4, 10, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.a969986d]
+name = "Pokemon Amethyst (v1.4.1).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 127, 62, 67, 4, 10, 18, 12, 8, 21, 21, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 4, 2, 5, 2, 1, 1, 1, 4, 10, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.10ef71a7]
+name = "Pokemon Ash Gray (v4.5.3).gba"
+mapGroups = 0x0873E2F4
+mapGroupSizes = [43, 129, 60, 132, 4, 10, 10, 11, 6, 9, 22, 10, 8, 2, 11, 4, 2, 4, 2, 1, 1, 2, 2, 4, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 2, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.63478921]
+name = "Pokemon Ash Gray Fork Bug Fix (v1.0).gba"
+mapGroups = 0x0873E2F4
+mapGroupSizes = [43, 129, 60, 132, 4, 10, 10, 11, 6, 9, 22, 10, 8, 2, 11, 4, 2, 4, 2, 1, 1, 2, 2, 4, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 2, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.458c9fad]
+name = "Pokemon Celia's Stupid Romhack (v1.1.4).gba"
+mapGroups = 0x089DCD7C
+mapGroupSizes = [25, 127, 67, 69, 7, 6, 8, 10, 8, 9, 27, 15, 11, 3, 12, 4, 2, 2, 2, 1, 1, 2, 2, 4, 3, 3, 3, 2, 1, 1, 2, 7, 5, 10, 8, 11, 7, 5, 1, 1, 1, 2, 1, 8, 3, 28, 20, 33, 16, 19]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.b55f6446]
+name = "Pokemon Ceruleum (v1.1.1).gba"
+mapGroups = 0x08FA4FC4
+mapGroupSizes = [144, 122, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.32a408cc]
+name = "Pokemon Clover (v1.3.3).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 79, 6, 7, 9, 11, 14, 9, 59, 32, 13, 2, 36, 4, 2, 2, 2, 3, 10, 2, 2, 3, 2, 3, 32, 5, 6, 1, 1, 20, 6, 22, 8, 9, 21, 120, 11, 2, 25, 18, 20]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.dc343b57]
+name = "Pokemon Dreamstone Mysteries.gba"
+mapGroups = 0x09186E6C
+mapGroupSizes = [28, 32, 40, 31, 30, 4, 57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.7a80d68b]
+name = "Pokemon Elite Redux (2.65.3b).gba"
+mapGroups = 0x0917995C
+mapGroupSizes = [60, 5, 5, 6, 7, 8, 9, 7, 7, 14, 9, 17, 11, 24, 14, 15, 16, 2, 3, 2, 3, 1, 1, 1, 128, 14, 61, 93, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 2048
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0xFFF
+
+[rom.1d230210]
+name = "Pokemon Elite Redux (2.65.4.1b).gba"
+mapGroups = 0x091F54A0
+mapGroupSizes = [60, 5, 5, 6, 7, 8, 9, 7, 7, 14, 9, 17, 11, 24, 14, 15, 16, 2, 3, 2, 3, 1, 1, 1, 128, 14, 61, 93, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 2048
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0xFFF
+
+[rom.d6ebe711]
+name = "Pokemon Elysium (v2.5.0) (Part A).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [6, 129, 68, 79, 9, 8, 11, 12, 19, 10, 26, 12, 33, 15, 23, 12, 2, 2, 8, 4, 93, 15, 2, 3, 3, 3, 2, 1, 10, 1, 1, 10, 5, 6, 8, 8, 5, 5, 1, 1, 1, 3, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.a4a76614]
+name = "Pokemon Elysium (v2.5.0) (Part B).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [6, 129, 68, 72, 9, 8, 11, 12, 13, 10, 26, 11, 29, 7, 12, 6, 2, 2, 2, 2, 24, 13, 2, 4, 3, 3, 2, 1, 10, 1, 1, 9, 5, 6, 8, 8, 5, 5, 1, 1, 1, 3, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.9c31cc4b]
+name = "Pokemon Emerald Imperium (v1.3.1).gba"
+mapGroups = 0x08FC2F74
+mapGroupSizes = [57, 6, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 11, 23, 14, 16, 15, 2, 2, 2, 3, 1, 1, 1, 112, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.66c1cce7]
+name = "Pokemon Emerald Kaizo (v2.0).gba"
+mapGroups = 0x08486578
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.9dd7c03b]
+name = "Pokemon Emerald Legacy (v1.1.4).gba"
+mapGroups = 0x084AF90C
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.996d2c02]
+name = "Pokemon Emerald QoL (2026-09-27 build).gba"
+mapGroups = 0x0848658C
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.5e197edf]
+name = "Pokemon Emerald Randomized (v4.6.1) (seed 13578136444066).gba"
+mapGroups = 0x08486578
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.d14f12a3]
+name = "Pokemon Emerald Rogue (v2.2.1-EX).gba"
+mapGroups = 0x0928BF04
+mapGroupSizes = [9, 11, 14, 11, 5, 9, 39, 37, 28]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.14465a33]
+name = "Pokemon Emerald Seaglass (v3.0).gba"
+mapGroups = 0x08B45148
+mapGroupSizes = [66, 5, 5, 6, 7, 8, 10, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.9ff1c3ed]
+name = "Pokemon FireRed QoL (2026-09-03 build).gba"
+mapGroups = 0x08352A08
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.cccf4e05]
+name = "Pokemon FireRed QoL (2026-09-27 build).gba"
+mapGroups = 0x08353068
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.8a91b14f]
+name = "Pokemon FireRed Randomized (v4.6.1) (Rev 0, seed 19756451470906).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.c884fc15]
+name = "Pokemon FireRed Randomized (v4.6.1) (Rev 1, seed 18359028979400).gba"
+mapGroups = 0x08352718
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.f2d16ebd]
+name = "Pokemon FireRed Rocket Edition.gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.b9465c5a]
+name = "Pokemon Gaia (v3.2).gba"
+mapGroups = 0x083528DC
+mapGroupSizes = [5, 81, 22, 46, 8, 8, 7, 13, 6, 9, 6, 9, 15, 15, 11, 19, 12, 7, 1, 4, 4, 1, 1, 4, 8, 1, 21]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.e4ceffe2]
+name = "Pokemon Glazed (v9.2.0).gba"
+mapGroups = 0x08486578
+mapGroupSizes = [57, 5, 5, 6, 9, 8, 9, 9, 8, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 110, 61, 89, 2, 1, 13, 1, 1, 3, 8]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.01713508]
+name = "Pokemon Heart and Soul (v2.0.6).gba"
+mapGroups = 0x092DF5A4
+mapGroupSizes = [71, 5, 5, 6, 5, 29, 9, 10, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 7, 1, 7, 35, 28, 91, 5, 15, 1, 6, 15, 108]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+altTiles = 640
+altMetatiles = 640
+altPalettes = 7
+
+[rom.81121270]
+name = "Pokemon Hyper Emerald Lost Artifacts (v5.7).gba"
+mapGroups = 0x08A54698
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 96, 89, 97, 122]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.558ae42f]
+name = "Pokemon Lazarus (v2.0).gba"
+mapGroups = 0x08FAF098
+mapGroupSizes = [114, 8, 12, 6, 7, 22, 10, 25, 7, 31, 8, 17, 18, 31, 24, 21, 19, 2, 2, 2, 3, 1, 1, 2, 115, 63, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x3FF
+
+[rom.65b16b7c]
+name = "Pokemon Let's Go Eevee (Translation Only).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.b01198aa]
+name = "Pokemon Let's Go Eevee.gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.f0632b49]
+name = "Pokemon Let's Go Pikachu (Translation Only).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.25c3d89f]
+name = "Pokemon Let's Go Pikachu.gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.263a1187]
+name = "Pokemon Modern Emerald (v3.6).gba"
+mapGroups = 0x08CDEC28
+mapGroupSizes = [57, 5, 6, 7, 8, 9, 10, 8, 8, 15, 9, 18, 11, 24, 14, 16, 17, 2, 2, 2, 3, 1, 1, 1, 126, 61, 94, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.8441c61b]
+name = "Pokemon Monomyth (v1.0).gba"
+mapGroups = 0x0886EED8
+mapGroupSizes = [92, 13, 6, 24, 15, 24, 24, 14, 7, 4, 25, 9, 9, 13, 3, 56, 6, 42, 14, 7, 14, 29, 36, 36, 36, 36, 54, 6, 50, 14, 6, 46, 46, 12]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x3FF
+
+[rom.6ea29055]
+name = "Pokemon Monomyth (v1.1).gba"
+mapGroups = 0x0886F3A8
+mapGroupSizes = [92, 13, 6, 24, 15, 24, 24, 14, 7, 4, 25, 9, 9, 13, 3, 56, 6, 42, 14, 7, 14, 29, 36, 36, 36, 36, 54, 6, 50, 14, 6, 46, 46, 12]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x3FF
+
+[rom.c17b3cf0]
+name = "Pokemon Monomyth (v1.2).gba"
+mapGroups = 0x0886EF64
+mapGroupSizes = [92, 13, 6, 24, 15, 24, 24, 14, 7, 4, 25, 9, 9, 13, 3, 56, 6, 42, 14, 7, 14, 29, 36, 36, 36, 36, 54, 6, 50, 14, 6, 46, 46, 12]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x3FF
+
+[rom.6c5ee1b2]
+name = "Pokemon Odyssey (v4.1.1).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.04014673]
+name = "Pokemon Oops All Eevees (v1.3.2).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.de228cd3]
+name = "Pokemon Orange Islands (Beta 5.7).gba"
+# Its ROM wasn't on hand: Pokemon Orange Islands.gba's row (the same gMapGroups).
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 6, 9, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.6ab00ec6]
+name = "Pokemon Orange Islands.gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 6, 9, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.0ba1cd46]
+name = "Pokemon Quetzal (Alpha 0.8.4) (English).gba"
+mapGroups = 0x0861310C
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.d521c15a]
+name = "Pokemon Quetzal (Alpha 0.8.4) (Spanish).gba"
+mapGroups = 0x0861B224
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.ad252fd3]
+name = "Pokemon R.O.W.E. (v2.1.9.1 Experimental).gba"
+mapGroups = 0x0883937C
+mapGroupSizes = [128, 118, 23, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 111, 61, 89, 2, 1, 13, 1, 1, 3, 13]
+primaryTiles = 512
+primaryMetatiles = 2048
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0xFFF
+
+[rom.fba55dd8]
+name = "Pokemon Radical Red (v4.1).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 130, 65, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.22fa2e36]
+name = "Pokemon Recharged Emerald (v2.2.5).gba"
+mapGroups = 0x08B346B8
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.7a807544]
+name = "Pokemon Recharged Emerald (v2.2.8).gba"
+mapGroups = 0x08B36350
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.ea67c0a9]
+name = "Pokemon Recharged Emerald Rebalanced (v2.2.8).gba"
+mapGroups = 0x08B38104
+mapGroupSizes = [57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.ceffa1f8]
+name = "Pokemon Recharged Yellow (v1.8.0).gba"
+mapGroups = 0x08A356F0
+mapGroupSizes = [5, 123, 66, 66, 4, 6, 8, 10, 6, 9, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 7, 6, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 63, 15, 15]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 24
+metatileMask = 0x3FF
+
+[rom.e79d5999]
+name = "Pokemon Recharged Yellow (v1.9.0).gba"
+mapGroups = 0x08A35758
+mapGroupSizes = [5, 123, 66, 66, 4, 6, 8, 10, 6, 9, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 7, 6, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 63, 15, 15]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 24
+metatileMask = 0x3FF
+
+[rom.1ce28628]
+name = "Pokemon Recharged Yellow (v1.9.4).gba"
+mapGroups = 0x08B16238
+mapGroupSizes = [7, 123, 66, 66, 4, 6, 8, 10, 6, 9, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 7, 6, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 63, 15, 15]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 24
+metatileMask = 0x3FF
+
+[rom.def0f69e]
+name = "Pokemon Recharged Yellow (v1.9.7).gba"
+mapGroups = 0x08B3F134
+mapGroupSizes = [7, 123, 66, 66, 4, 6, 8, 10, 6, 9, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 7, 6, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 63, 15, 15]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 24
+metatileMask = 0x3FF
+
+[rom.fc3eb738]
+name = "Pokemon RecordKeepers (v1.2.1).gba"
+mapGroups = 0x09316A58
+mapGroupSizes = [19, 58, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.795b5af9]
+name = "Pokemon Rhythm (v1.4.0).gba"
+mapGroups = 0x083526A8
+mapGroupSizes = [122, 127, 60, 127, 13, 6, 8, 10, 6, 8, 20, 12, 8, 2, 15, 4, 2, 2, 2, 1, 2, 2, 2, 3, 2, 3, 2, 1, 6, 1, 1, 7, 5, 5, 8, 9, 5, 5, 1, 1, 1, 2, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.ba7394a6]
+name = "Pokemon SoulGold (v1.1.4).gba"
+mapGroups = 0x09587364
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 1, 0, 34]
+primaryTiles = 640
+primaryMetatiles = 1024
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x7FF
+mapSecWide = true
+
+[rom.6abc86cf]
+name = "Pokemon SoulGold (v1.2) (Alt 1).gba"
+mapGroups = 0x09592590
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 1, 0, 34]
+primaryTiles = 640
+primaryMetatiles = 1024
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x7FF
+mapSecWide = true
+
+[rom.98d5ca7e]
+name = "Pokemon SoulGold (v1.2) (Alt 2).gba"
+mapGroups = 0x095C04C0
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 1, 0, 34]
+primaryTiles = 640
+primaryMetatiles = 1024
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x7FF
+mapSecWide = true
+
+[rom.283238a6]
+name = "Pokemon SoulGold (v1.2).gba"
+mapGroups = 0x09592634
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 1, 0, 34]
+primaryTiles = 640
+primaryMetatiles = 1024
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x7FF
+mapSecWide = true
+
+[rom.5578ebea]
+name = "Pokemon SoulGold (v1.2.1) (Alt 1).gba"
+# Its ROM wasn't on hand: Pokemon SoulGold (v1.2.1).gba's row (the same gMapGroups).
+mapGroups = 0x095CC3A8
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 1, 0, 34]
+primaryTiles = 640
+primaryMetatiles = 1024
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x7FF
+mapSecWide = true
+
+[rom.601664c3]
+name = "Pokemon SoulGold (v1.2.1).gba"
+mapGroups = 0x095CC3A8
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 1, 0, 34]
+primaryTiles = 640
+primaryMetatiles = 1024
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 24
+metatileMask = 0x7FF
+mapSecWide = true
+
+[rom.b3287af4]
+name = "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2) (Casual Patch).gba"
+mapGroups = 0x087B1010
+mapGroupSizes = [21, 123, 60, 67, 13, 17, 36, 24, 27, 21, 30, 14, 19, 21, 12, 4, 2, 2, 2, 1, 1, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 29, 25, 23, 45, 43, 16, 2, 16, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.08e52a1a]
+name = "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2) (Casual and Performance Patch).gba"
+mapGroups = 0x087B1010
+mapGroupSizes = [21, 123, 60, 67, 13, 17, 36, 24, 27, 21, 30, 14, 19, 21, 12, 4, 2, 2, 2, 1, 1, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 29, 25, 23, 45, 43, 16, 2, 16, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.7e38c5c5]
+name = "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2) (Performance Patch).gba"
+mapGroups = 0x087B1010
+mapGroupSizes = [21, 123, 60, 67, 13, 17, 36, 24, 27, 21, 30, 14, 19, 21, 12, 4, 2, 2, 2, 1, 1, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 29, 25, 23, 45, 43, 16, 2, 16, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.d854eb09]
+name = "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2).gba"
+# Its ROM wasn't on hand: Pokemon Sword and Shield Ultimate Plus (v1.2.1.2) (Casual Patch).gba's row (the same gMapGroups).
+mapGroups = 0x087B1010
+mapGroupSizes = [21, 123, 60, 67, 13, 17, 36, 24, 27, 21, 30, 14, 19, 21, 12, 4, 2, 2, 2, 1, 1, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 29, 25, 23, 45, 43, 16, 2, 16, 1]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.d25fbccc]
+name = "Pokemon Too Many Types 2 (v1.5.2).gba"
+mapGroups = 0x09047730
+mapGroupSizes = [61, 5, 5, 6, 7, 8, 9, 11, 7, 14, 8, 17, 11, 25, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 110, 61, 90, 2, 1, 13, 1, 1, 3, 1, 4]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.ee742896]
+name = "Pokemon Ultra Violet (v1.22).gba"
+mapGroups = 0x0872AF04
+mapGroupSizes = [5, 123, 61, 66, 7, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 2, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 21, 17]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.d1920e13]
+name = "Pokemon Unbound (v2.1.1.1) (French).gba"
+mapGroups = 0x08B70498
+mapGroupsXor = 0x00B749DE
+mapGroupSizes = [6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 4, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.71677a18]
+name = "Pokemon Unbound (v2.1.1.1) (Italian v7).gba"
+mapGroups = 0x08B70498
+mapGroupsXor = 0x00B749DE
+mapGroupSizes = [6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 4, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.4b3d4957]
+name = "Pokemon Unbound (v2.1.1.1).gba"
+mapGroups = 0x08B70498
+mapGroupsXor = 0x00B749DE
+mapGroupSizes = [6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 4, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13]
+primaryTiles = 640
+primaryMetatiles = 640
+primaryPalettes = 7
+floorNumOff = 26
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.f1eeea17]
+name = "Pokemon Wishes of Tomorrow (v1.2.6).gba"
+mapGroups = 0x08F90738
+mapGroupSizes = [122, 5, 6, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.de3b5722]
+name = "Super Mariomon (v1.2.1).gba"
+mapGroups = 0x086801F4
+mapGroupSizes = [5, 7, 29, 9, 10, 18, 47, 32, 22, 21, 11, 18, 7, 17, 17, 3, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 57]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.57514c53]
+name = "Super Mariomon (v1.2.2).gba"
+mapGroups = 0x086801D4
+mapGroupSizes = [5, 7, 29, 9, 10, 18, 47, 32, 22, 21, 11, 18, 7, 17, 17, 3, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 57]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.cc412549]
+name = "Super Mariomon (v1.3).gba"
+mapGroups = 0x08680194
+mapGroupSizes = [5, 7, 29, 9, 10, 18, 47, 32, 22, 21, 11, 18, 7, 17, 17, 3, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 57]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.0aa91114]
+name = "Super Mariomon (v1.5.1 Anniversary).gba"
+mapGroups = 0x0869821C
+mapGroupSizes = [6, 7, 30, 9, 10, 18, 47, 32, 22, 21, 11, 18, 7, 17, 17, 3, 3, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 57]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+[rom.6b1d4a0f]
+name = "Super Mariomon (v1.5.2 Anniversary).gba"
+mapGroups = 0x086986B0
+mapGroupSizes = [6, 7, 30, 9, 10, 18, 47, 32, 22, 21, 11, 18, 7, 17, 17, 3, 3, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 57]
+primaryTiles = 512
+primaryMetatiles = 512
+primaryPalettes = 6
+floorNumOff = -1
+metatileSize = 16
+metatileMask = 0x3FF
+
+# Not yet (scripts/gen_area_maps.py --scan says why):
+#   Pokemon Epsilon Emerald (v1.0.0).gba: its tilesets are compressed some other way (not LZ77 or smol)
+#   Pokemon GS Chronicles (v2.7.6).gba: where secondary tiles start is unclear (best: 512, 86.5% of 66249 tile entries fit): its tilesets are laid out its own way
+#   Pokemon Generation 3 Evolved (v1.0.17).gba: where secondary tiles start is unclear (best: 640, 88.6% of 71181 tile entries fit): its tilesets are laid out its own way
+#   Pokemon Generation 3 Evolved (v1.0.22).gba: where secondary tiles start is unclear (best: 640, 88.6% of 71181 tile entries fit): its tilesets are laid out its own way
+#   Pokemon Ghost Grey (v1.0.1).gba: blocked at its developer's request (BlockedGames.kt)
+#   Pokemon Ghost Grey (v1.0.2).gba: blocked at its developer's request (BlockedGames.kt)
+#   Pokemon Ghost Grey (v1.0.4).gba: blocked at its developer's request (BlockedGames.kt)
+#   Pokemon Quetzal (Alpha 9.0) (English).gba: where secondary tiles start is unclear (best: 512, 87.4% of 143326 tile entries fit): its tilesets are laid out its own way
+#   Pokemon Quetzal (Alpha 9.0) (Spanish).gba: where secondary tiles start is unclear (best: 512, 87.4% of 143325 tile entries fit): its tilesets are laid out its own way
+#   Pokemon Quetzal (Alpha 9v1) (English).gba: where secondary tiles start is unclear (best: 512, 87.4% of 143358 tile entries fit): its tilesets are laid out its own way
+#   Pokemon Quetzal (Alpha 9v1) (Spanish).gba: where secondary tiles start is unclear (best: 512, 87.4% of 143357 tile entries fit): its tilesets are laid out its own way
+#   Pokemon Team Rocket Dragonsden Version.gba: gMapGroups not found by its shape
+#   Pokemon Team Rocket Edition 2026 (v3.1) (Spanish).gba: its maps come out scrambled (expansion 1.14 with tilesets of its own), not worked out yet

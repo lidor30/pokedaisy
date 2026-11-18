@@ -1,18 +1,34 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 // The app's data layer + Android shims, in its own module so its huge
 // generated tables compile once instead of on every UI edit.
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.compose")
+    kotlin("plugin.compose")
+}
+
+// Compose Multiplatform's libraries, by coordinates (the root module uses the same version): its Gradle plugin
+// isn't applied, the Compose compiler is Kotlin's own.
+val cmp: String by rootProject.extra
+val desktopTarget = System.getProperty("os.name").lowercase().let { os ->
+    val arm = System.getProperty("os.arch").let { it == "aarch64" || it == "arm64" }
+    when {
+        os.contains("mac") -> if (arm) "macos-arm64" else "macos-x64"
+        os.contains("win") -> "windows-x64"
+        else -> if (arm) "linux-arm64" else "linux-x64"
+    }
 }
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appSrc = fileTree(app) {
-    listOf("companion/data/**", "companion/*.kt", "companion/i18n/**", "companion/coop/**", "FeatureFlags.kt", "MgbaCore.kt", "Prefs.kt", "cheats/Cheats.kt", "GbaControls.kt", "Hotkeys.kt", "GameVolume.kt")
+    listOf("companion/data/**", "companion/*.kt", "companion/i18n/**", "companion/coop/**", "FeatureFlags.kt", "MgbaCore.kt", "Prefs.kt", "PrefsAndroid.kt", "cheats/Cheats.kt", "GbaControls.kt", "Hotkeys.kt", "GbaInput.kt", "ScriptInput.kt", "BattleInputController.kt", "InputBadges.kt", "GameVolume.kt")
         .forEach { include(it) }
+    exclude("**/*.java")   // compiled by javac below (companion/coop/x25519)
 }
 sourceSets["main"].kotlin.srcDir("shims")
+// The Java in the app's sources (CoopKeys' X25519, copied from Bouncy Castle).
+sourceSets["main"].java { srcDir(app); include("companion/coop/x25519/**") }
 // -PgameExport (the game data the 3DS port builds from: 3ds/tools/gen_games.py): MgbaCore without its native library,
 // so the app's own detection runs over ROM files on a desktop JVM. See src/render/GameExport.kt.
 val gameExport = project.hasProperty("gameExport")
@@ -72,6 +88,8 @@ object ExportCore {
     }
 }
 tasks.withType<KotlinCompile>().configureEach {
+    // FieldItemUse reaches the shared frame-work queue; compile that same source here too.
+    source(rootDir.resolve("../shared/src/commonMain/kotlin/com/pokedaisy/app/game/GameSession.kt"))
     if (gameExport) {
         dependsOn(stubCore)
         source(appSrc.matching { exclude("MgbaCore.kt") })
@@ -79,17 +97,21 @@ tasks.withType<KotlinCompile>().configureEach {
     } else {
         source(appSrc)
     }
-    kotlinOptions.jvmTarget = "17"
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
 }
 java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 dependencies {
-    api(compose.desktop.currentOs)
-    // The co-op invite as a QR code (CoopQr).
-    implementation("com.google.zxing:core:3.5.3")
+    api("org.jetbrains.compose.desktop:desktop-jvm-$desktopTarget:$cmp")
+    // CoopLockStore reads JSON.
+    implementation("org.json:json:20260814")
     // CoopPairs reads and writes pairs.json.
-    implementation("org.json:json:20240303")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     // CoopRelaySocket (the relay over WebSocket).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    // CoopKeys' X25519 (the co-op connection's Noise handshake).
-    implementation("org.bouncycastle:bcprov-jdk18on:1.79")
+    // Byte buffers, files and hashes in the data code shared with the iPad app (okio is Kotlin Multiplatform).
+    api("com.squareup.okio:okio:3.18.2")   // api: okio's Path / Source appear in the data code's functions
+    // Threads and locks in the data code shared with the iPad app (Kotlin Multiplatform).
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
 }

@@ -1,5 +1,10 @@
 package com.pokedaisy.app.companion.data.coop
 
+import com.pokedaisy.app.companion.data.hex
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+
 
 /**
  * The game side of a link battle, mirroring the native bridge (`pkCoopLink*`, `pkCoopStory*`). Emu thread only.
@@ -105,7 +110,7 @@ class CoopLinkBattle(
     private var cancelled = false
 
     // One lock for the queue and its counters (any thread adds, the emu thread drains).
-    private val inboxLock = Any()
+    private val inboxLock = SynchronizedObject()
     private val inbox = ArrayDeque<CoopBattleMsg>()
     private var inboxBytes = 0
     /** The battle id whose blocks are kept although this game has not started yet (the other player began first). */
@@ -304,7 +309,7 @@ class CoopLinkBattle(
             val why = (r[i].toInt() and 0xFF) or ((r[i + 1].toInt() and 0xFF) shl 8)
             val len = (r[i + 4].toInt() and 0xFF) or ((r[i + 5].toInt() and 0xFF) shl 8)
             val end = minOf(r.size, i + 6 + len)
-            val hex = (i + 6 until end).joinToString("") { "%02x".format(r[it].toInt() and 0xFF) }
+            val hex = (i + 6 until end).joinToString("") { (r[it].toInt() and 0xFF).hex(2) }
             out.add("check=$why ${if (r[i + 2].toInt() == 1) "give" else "take"} kind=${r[i + 3].toInt() and 0xFF} size=$len bytes=$hex")
             i = end
         }

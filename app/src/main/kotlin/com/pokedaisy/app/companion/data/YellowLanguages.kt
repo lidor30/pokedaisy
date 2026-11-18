@@ -12,6 +12,12 @@ private fun yellowText(species: Map<Int, String>, moves: Map<Int, String>, items
     )
 
 internal val YELLOW_DE_TEXT by lazy { yellowText(speciesNamesYellowDe, moveNamesYellowDe, itemNamesYellowDe, mapNamesYellowDe) }
+/** German Red / Blue ("APAD" / "APED", their product codes: [GEN1_RED_DE]): German Yellow's names, the hideout's aside
+ * (gen_gen1_tables.py red_de / blue_de checks every other name equal). */
+internal val RED_BLUE_DE_TEXT by lazy {
+    yellowText(speciesNamesYellowDe, moveNamesYellowDe, itemNamesYellowDe,
+        mapNamesYellowDe.mapValues { (_, n) -> if (n == "TEAM ROCKET HQ") "ROCKET HQ" else n })
+}
 internal val YELLOW_FR_TEXT by lazy { yellowText(speciesNamesYellowFr, moveNamesYellowFr, itemNamesYellowFr, mapNamesYellowFr) }
 internal val YELLOW_IT_TEXT by lazy { yellowText(speciesNamesYellowIt, moveNamesYellowIt, itemNamesYellowIt, mapNamesYellowIt) }
 internal val YELLOW_ES_TEXT by lazy { yellowText(speciesNamesYellowEs, moveNamesYellowEs, itemNamesYellowEs, mapNamesYellowEs) }

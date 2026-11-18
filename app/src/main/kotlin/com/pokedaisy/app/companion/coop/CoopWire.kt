@@ -58,21 +58,22 @@ class CoopHello(
     }
 
     fun encode(): ByteArray {
-        val version = appVersion.toByteArray(Charsets.US_ASCII)
-        val t = ticket?.toByteArray(Charsets.US_ASCII) ?: ByteArray(0)
-        val out = java.io.ByteArrayOutputStream(FIXED + version.size + t.size)
-        fun u16(v: Int) { out.write(v shr 8); out.write(v and 0xFF) }
+        // Both are ASCII (checked in init), so UTF-8 is their bytes.
+        val version = appVersion.encodeToByteArray()
+        val t = ticket?.encodeToByteArray() ?: ByteArray(0)
+        val out = okio.Buffer()
+        fun u16(v: Int) { out.writeByte(v shr 8); out.writeByte(v and 0xFF) }
         u16(protocol)
-        out.write(version.size)
+        out.writeByte(version.size)
         out.write(version)
-        for (i in 0 until 20) out.write(romSha1.substring(i * 2, i * 2 + 2).toInt(16))
+        for (i in 0 until 20) out.writeByte(romSha1.substring(i * 2, i * 2 + 2).toInt(16))
         u16(save.trainerId)
         u16(save.secretId)
         out.write(save.name)
-        out.write(if (female) 1 else 0)
+        out.writeByte(if (female) 1 else 0)
         u16(t.size)
         out.write(t)
-        return out.toByteArray()
+        return out.readByteArray()
     }
 
     companion object {
@@ -90,7 +91,8 @@ class CoopHello(
             fun u8(): Int = b[p++].toInt() and 0xFF
             fun u16(): Int = (u8() shl 8) or u8()
             fun ascii(n: Int): String {
-                val s = String(b, p, n, Charsets.ISO_8859_1)
+                // Latin-1: a char per byte (the callers then check it is ASCII).
+                val s = CharArray(n) { (b[p + it].toInt() and 0xFF).toChar() }.concatToString()
                 p += n
                 return s
             }

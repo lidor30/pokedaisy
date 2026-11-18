@@ -17,7 +17,7 @@ export MON_ICONS
 
 .DEFAULT_GOAL := help
 
-.PHONY: help docs-shots docs-check submodules apk install run test clean shots preview menu-shots capture-image \
+.PHONY: help sprite-pack sprite-pack-sigs docs-shots docs-check submodules apk install run test clean shots preview menu-shots capture-image \
         check gamedata stress test-roms test-quick version bump release-apk symbols release release-local \
         rom-support rom-identify rom-checklist
 
@@ -47,15 +47,26 @@ install: ## Build + install on a connected Android device (adb)
 run: install ## Build + install + launch the library screen on the connected device
 	adb shell am start -n $(PKG)/.LibraryActivity
 
+install-dev: ## Build + install the dev app (PokeDaisy Dev, $(PKG).dev) beside the release app
+	./gradlew :app:installDev
+
+run-dev: install-dev ## Build + install + launch the dev app's library screen
+	adb shell am start -n $(PKG).dev/$(PKG).LibraryActivity
+
 gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt, the DS ports' tables; see gamedata/README.md)
 	python3 scripts/gen_gamedata.py
 	python3 scripts/gen_nds_ports.py
+	python3 scripts/gen_area_maps.py
 
-test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (T='*FooTest' to pick)
-	./gradlew :app:testDebugUnitTest -Pquick $(if $(T),--tests '$(T)')
+# Unfiltered runs cover all three modules; focused filters discover their owning modules.
+MODULE ?= $(if $(strip $(T)),$(shell python3 scripts/test_module.py '$(T)'))
+UNIT_TESTS = $(if $(strip $(T)),$(foreach m,$(MODULE),:$(m):testDebugUnitTest --tests '$(T)'),:app:testDebugUnitTest :shared:testDebugUnitTest :shared-ui:testDebugUnitTest)
+
+test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (MODULE=shared T='*FooTest' to pick)
+	./gradlew $(UNIT_TESTS) -Pquick
 
 test: ## All JVM unit tests, Paparazzi renders included (CLAUDE.md: agents ask first)
-	./gradlew :app:testDebugUnitTest
+	./gradlew $(UNIT_TESTS)
 
 clean: ## gradle clean
 	./gradlew clean
@@ -66,9 +77,11 @@ check: ## Everything a PR must pass: unit tests, translations, game data, ui-pre
 	python3 scripts/check_translations.py
 	python3 scripts/gen_gamedata.py --check
 	python3 scripts/gen_nds_ports.py --check
+	python3 scripts/gen_area_maps.py --check
 	python3 scripts/check_melonds_patch.py
+	python3 scripts/check_azahar_patch.py
 	$(MAKE) -C 3ds test-configs-gen
-	./gradlew :app:testDebugUnitTest :app:assembleDebug
+	./gradlew $(UNIT_TESTS) :app:assembleDebug :shared:compileKotlinIosArm64
 	./gradlew -p ui-preview stress
 	./gradlew -p ui-preview docsSearchCheck
 	./gradlew -p ui-preview keyedStateCheck
@@ -87,7 +100,7 @@ stress: ## Rapid tab switching against memory / time budgets (ui-preview/src/ren
 
 test-roms: ## Unit tests with real ROMs too: ROM_DIR=<folder of your own dumps> (see docs/RELEASING.md)
 	@test -n "$(ROM_DIR)" || { echo "ROM_DIR=<folder with your ROMs> is required"; exit 1; }
-	POKEDAISY_ROM_DIR="$(ROM_DIR)" ./gradlew :app:testDebugUnitTest
+	POKEDAISY_ROM_DIR="$(ROM_DIR)" ./gradlew $(UNIT_TESTS)
 
 ##@ Releasing (docs/RELEASING.md)
 
@@ -137,6 +150,15 @@ shots: ## Paparazzi screenshots of the companion tabs -> app/src/test/snapshots/
 
 preview: ## Render the UI without the Android SDK (Compose Desktop) -> ui-preview/build/shots/
 	./gradlew -p ui-preview render
+
+SPRITE_ROMS ?= $(HOME)/Downloads/Game ROMs & Emulation/gba
+SPRITE_PACK ?= $(HOME)/Documents/PokeDaisy/pokedaisy-sprites.zip
+
+sprite-pack: ## SPRITE PACK zip from your own ROMs: SPRITE_ROMS=<folder> SPRITE_PACK=<out.zip> (never committed, never shared by us)
+	./gradlew -p ui-preview spritePack -Pmode=pack "-Proms=$(SPRITE_ROMS)" "-Pout=$(SPRITE_PACK)"
+
+sprite-pack-sigs: ## The follower Pokémon's CRC table a sprite pack is checked against (MonArtSigsGen.kt) from SPRITE_ROMS
+	./gradlew -p ui-preview spritePack -Pmode=sigs "-Proms=$(SPRITE_ROMS)" "-Pout=$(CURDIR)/app/src/main/kotlin/com/pokedaisy/app/companion/data/MonArtSigsGen.kt"
 
 ##@ Headless captures (Docker + libmgba)
 

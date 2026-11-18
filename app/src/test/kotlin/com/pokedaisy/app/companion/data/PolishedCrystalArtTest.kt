@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Polished Crystal's art, rebuilt from the player's own 3.2.3 ROM (skipped without it): the party minis (every species,
@@ -24,10 +25,10 @@ class PolishedCrystalArtTest {
     fun `its art, written once per build`() {
         val out = File("build/gen2-art-polished")
         out.deleteRecursively()
-        val wrote = Gen2Art.extractTo(rom(), out)
+        val wrote = Gen2Art.extractTo(rom(), out.toOkioPath())
         assertTrue(wrote.size > 300)
         for (map in Gen2Art.POLISHED_TOWN_MAPS) assertTrue(map, "regionmap/$map.png" in wrote)
-        assertTrue(Gen2Art.extractTo(rom(), out).isEmpty())   // the same build: nothing to redo
+        assertTrue(Gen2Art.extractTo(rom(), out.toOkioPath()).isEmpty())   // the same build: nothing to redo
     }
 
     @Test

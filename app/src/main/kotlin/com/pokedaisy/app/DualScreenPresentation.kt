@@ -153,7 +153,7 @@ class DualScreenPresentation(
             fly: com.pokedaisy.app.companion.FlyAction? = null,
             askForSupport: (() -> Unit)? = null,
             gamePick: com.pokedaisy.app.companion.GamePickActions? = null,
-            shareBestEffort: ((com.pokedaisy.app.companion.data.BestEffortReport) -> Unit)? = null,
+            shareBestEffort: com.pokedaisy.app.companion.data.BestEffortSharing? = null,
             topStrip: (@androidx.compose.runtime.Composable () -> Unit)? = null,
             /** The game's buttons, while they steer this companion (X on the field: [focus]). */
             keys: com.pokedaisy.app.companion.ui.CompanionKeys? = null,

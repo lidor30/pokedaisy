@@ -122,7 +122,7 @@ static void outlined(struct pd_canvas* c, int x, int y, const char* text, int sc
 }
 
 static void label(struct pd_canvas* c, int x, int y, int w, int h, const char* text, int scale) {
-    int tw = pd_text_width(text) * scale;
+    int tw = pd_text_width_scaled(text, scale);
     pd_text_scaled(c, x + (w - tw) / 2, y + (h - 18 * scale) / 2, text, GB_LOOK ? PD_TITLE_TEXT : 0xFFFFFF,
                    GB_LOOK ? PD_NO_SHADOW : LABEL_SHADOW, scale);
 }
@@ -130,15 +130,15 @@ static void label(struct pd_canvas* c, int x, int y, int w, int h, const char* t
 // The largest scale up to [max] whose label fits [w] less the button's frame and padding.
 static int fit_scale(const char* text, int w, int max) {
     int s = max;
-    while (s > 1 && pd_text_width(text) * s + 2 * s > w - 8) s--;
+    while (s > 1 && pd_text_width_scaled(text, s) + 2 * s > w - 8) s--;
     return s;
 }
 
 // A label HeartGold's way at [scale], its letters narrowed first (FittedGbaText: 2 tall, 1.5 wide) where it's too wide.
 static void outlined_label(struct pd_canvas* c, int x, int y, int w, int h, const char* text, int scale) {
     int room = w - 8 - 2 * scale, num = scale * 4, den = 4;
-    while (num > 4 && pd_text_width(text) * num / den > room) num--;
-    int tw = pd_text_width(text) * num / den, tx = x + (w - tw) / 2, ty = y + (h - 17 * scale) / 2;   // the capitals in the middle, their outline all round
+    while (num > 4 && pd_text_width_pixel(text) * num / den > room) num--;
+    int tw = pd_text_width_pixel(text) * num / den, tx = x + (w - tw) / 2, ty = y + (h - 17 * scale) / 2;   // the capitals in the middle, their outline all round
     if (num == scale * 4 || GB_LOOK) {
         outlined(c, tx, ty, text, scale);
         return;
@@ -346,7 +346,7 @@ static void action_buttons(struct pd_ui* ui, struct pd_canvas* c, const struct p
     if (busy) save_rect(c, fx, fy, fightW, fightH);
     ui_platinum(ui, c, fx, fy, fightW, fightH, HG_RED, HG_RED_LOW, busy ? -1 : HIT_BATTLE_FIGHT);
     // The active mon's icon left of the word, like the game.
-    int scale = fit_scale("FIGHT", fightW - PD_ICON, 3), tw = pd_text_width("FIGHT") * scale, iconW = PD_ICON + 6;
+    int scale = fit_scale("FIGHT", fightW - PD_ICON, 3), tw = pd_text_width_scaled("FIGHT", scale), iconW = PD_ICON + 6;
     int cx = fx + (fightW - tw - iconW) / 2;
     // (A party icon stands at the bottom of its 32 x 32: raised a little, it sits level with the word.)
     if (pd_draw_mon_icon(c, g, you->species, cx, fy + (fightH - PD_ICON) / 2 - 3, false)) cx += iconW;

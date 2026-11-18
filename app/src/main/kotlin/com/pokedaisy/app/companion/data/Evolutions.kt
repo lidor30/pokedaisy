@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import com.pokedaisy.app.companion.i18n.tr
+import kotlin.concurrent.Volatile
 
 /** One row of the ROM's evolution table: [method] (EVO_*), its [param], the [target] species. */
 data class Evolution(val method: Int, val param: Int, val target: Int)
@@ -82,7 +83,7 @@ object EvolutionSource {
         if (t.evolutions == 0L) return null
         cached(t)?.let { return it }
         val table = runCatching { read(t) }
-            .onFailure { android.util.Log.w("pokedaisy", "evolution table failed", it) }
+            .onFailure { Logs.w("evolution table failed", it) }
             .getOrNull() ?: return null
         cached = t to table
         return table

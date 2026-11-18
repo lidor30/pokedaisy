@@ -20,7 +20,7 @@ Turning `NUZLOCKE` off pauses the tracking, and the tab goes back to its `TURN O
 
 ## What it tracks
 
-**Encounters.** The first wild battle in an area uses up that area. The area is whatever the game calls the place you're in: a route, a town, a cave, a forest. Trainer battles never count. If you catch that Pokémon, the area shows `CAUGHT`; if you run, it faints or it gets away, it shows `MISSED`. While the battle is on it shows `NOW`.
+**Encounters.** The first wild battle in an area uses up that area. The area is whatever the game calls the place you're in: a route, a town, a cave, a forest. Trainer battles never count, and neither does the catching lesson someone shows you early on in FireRed, LeafGreen, Ruby, Sapphire and Emerald. If you catch that Pokémon, the area shows `CAUGHT`; if you run, it faints or it gets away, it shows `MISSED`. While the battle is on it shows `NOW`.
 
 A catch counts whether the Pokémon joins your party or goes to the PC because your party is full. One case it can't tell apart: a Pokémon sent to the PC that you'd already caught one of before. That shows as `MISSED`, and you can set it right by hand (below).
 
@@ -51,7 +51,7 @@ Anything the tracker got wrong, you can put right:
 - `NEW RUN`: forgets every encounter and fallen Pokémon. Your party right then starts the new run. Your rules stay as they were.
 
 > [!NOTE]
-> `NUZLOCKE` works in the Game Boy Advance games (the retail games and the hacks the companion reads battles for). In the Game Boy and DS games the setting shows `N/A` for now.
+> `NUZLOCKE` works in the Game Boy Advance games (the retail games and the hacks the companion reads battles for), and in the Game Boy and DS games too.
 >
 > Emerald Rogue shows `N/A` too, on purpose. It's a roguelike: every run takes you through the same areas again, so "one catch per area" can't work there.
 

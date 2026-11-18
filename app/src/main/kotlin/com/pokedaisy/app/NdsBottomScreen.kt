@@ -124,11 +124,17 @@ class NdsBottomHost(
     /** The player switched: true = the companion now. */
     private val onSwitch: (Boolean) -> Unit,
     fill: Boolean = false,
+    /** A 3DS game's touch screen (its own SurfaceView, drawn by Azahar at its 4:3) in place of the DS picture. It stays
+     * laid out while the companion shows (moved off the display): its surface going away would leave Azahar drawing into
+     * a window that's gone. */
+    private val screen: View? = null,
+    /** The finger let go in the game when the touch screen goes away. */
+    private val releaseTouch: () -> Unit = { MgbaCore.pkNdsTouch(false, 0, 0) },
 ) : FrameLayout(context) {
-    private val touchView = NdsTouchScreenView(context)
+    private val touchView = NdsTouchScreenView(context).takeIf { screen == null }
     private val touch = FrameLayout(context).apply {
         setBackgroundColor(Color.BLACK)
-        addView(touchView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        addView(screen ?: touchView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.TOP))
     }
     private val companionView = companion()
     private var label by mutableStateOf(showCompanion)
@@ -155,13 +161,13 @@ class NdsBottomHost(
             if (field == v) return
             field = v
             tabbed = v
-            touchView.stretch = v
+            touchView?.stretch = v
             relayout(width, height)
         }
 
     init {
         setBackgroundColor(Color.BLACK)
-        touchView.stretch = fill
+        touchView?.stretch = fill
         addView(touch, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(companionView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.TOP))
         addView(button, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
@@ -176,7 +182,13 @@ class NdsBottomHost(
     private fun relayout(w: Int, h: Int) {
         if (w <= 0 || h <= 0) return
         post {
+            // A 3DS touch screen is drawn centred in its surface: the surface keeps to the picture's area, above the bar.
+            screen?.layoutParams = (screen?.layoutParams as? LayoutParams)?.apply {
+                height = if (fill) LayoutParams.MATCH_PARENT
+                else minOf(h, (minOf(w.toFloat() / NdsBottomFrame.W, h.toFloat() / NdsBottomFrame.H) * NdsBottomFrame.H).toInt())
+            }
             if (fill) {
+                touch.layoutParams = (touch.layoutParams as LayoutParams).apply { height = LayoutParams.MATCH_PARENT }
                 companionView.layoutParams = (companionView.layoutParams as LayoutParams).apply { height = LayoutParams.MATCH_PARENT }
                 button.layoutParams = (button.layoutParams as LayoutParams).apply {
                     width = LayoutParams.WRAP_CONTENT
@@ -185,10 +197,12 @@ class NdsBottomHost(
                 }
             } else {
                 // The touch screen's height at its own 4:3 (NdsTouchScreenView), the button's bar the rest; a display with
-                // no room under it keeps a bar of a button's height, the companion above it.
+                // no room under it (a 4:3 one: the Retroid Pocket Duo's) keeps a bar of a button's height, the touch screen
+                // shrunk to fit above it like the companion - the button sat over its bottom row of buttons there.
                 val screenH = minOf(h, (minOf(w.toFloat() / NdsBottomFrame.W, h.toFloat() / NdsBottomFrame.H) * NdsBottomFrame.H).toInt())
                 val minBar = (resources.displayMetrics.density * 56).toInt()
                 val bar = maxOf(h - screenH, minBar)
+                touch.layoutParams = (touch.layoutParams as LayoutParams).apply { height = h - bar; gravity = Gravity.TOP }
                 companionView.layoutParams = (companionView.layoutParams as LayoutParams).apply { height = h - bar }
                 button.layoutParams = (button.layoutParams as LayoutParams).apply {
                     width = LayoutParams.MATCH_PARENT
@@ -216,9 +230,14 @@ class NdsBottomHost(
         showingCompanion = on
         label = on
         companionView.visibility = if (on) VISIBLE else GONE
-        touch.visibility = if (on) GONE else VISIBLE
+        if (screen != null) {
+            // Off the display rather than gone (see [screen]); the companion covers the rest.
+            touch.translationX = if (on) (resources.displayMetrics.widthPixels * 2).toFloat() else 0f
+        } else {
+            touch.visibility = if (on) GONE else VISIBLE
+        }
         // No stylus left down on a screen that's gone.
-        if (on) MgbaCore.pkNdsTouch(false, 0, 0)
+        if (on) releaseTouch()
     }
 }
 

@@ -193,7 +193,19 @@ void pd_font_get(const struct pd_glyph** glyphs, int* count) {
     *glyphs = custom_font;
     *count = custom_count;
 }
+static int small_font;
+void pd_font_size_set(int small) { small_font = small ? 1 : 0; }
+int pd_font_size_small(void) { return small_font; }
+int pd_font_text_small(void) { return small_font && !custom_count; }
 const struct pd_glyph* pd_font_glyph(uint32_t cp) {
+    // A game's own font (a Game Boy game's) is the game's look: it wins over the size.
+    if (!small_font || custom_count) return pd_font_pixel_glyph(cp);
+    if (cp >= 32 && cp < 127) return &pd_font_small_glyphs[cp - 32];
+    for (int i = 95; i < pd_font_small_glyph_count; i++)
+        if (pd_font_small_glyphs[i].codepoint == cp) return &pd_font_small_glyphs[i];
+    return &pd_font_small_glyphs['?' - 32];
+}
+const struct pd_glyph* pd_font_pixel_glyph(uint32_t cp) {
     for (int i = 0; i < custom_count; i++)
         if (custom_font[i].codepoint == cp) return &custom_font[i];
     if (cp >= 32 && cp < 127) return &pd_font_glyphs[cp - 32];
@@ -203,15 +215,43 @@ const struct pd_glyph* pd_font_glyph(uint32_t cp) {
     return &pd_font_glyphs['?' - 32];
 }
 
+// A smoothed letter's pixel, [k] / 256 of [color] over [dst]. The HUD / QUICK MENU's overlay keeps opacity in the top
+// byte (0 = opaque, else that much of it shows) and 0x00FF00FF for "nothing here" (quick_menu.h's QUICK_CLEAR): an edge
+// pixel goes toward opaque there, and over nothing it's the letter's colour at its coverage.
+#define OVERLAY_CLEAR 0x00FF00FFu
+static inline uint32_t text_blend(uint32_t dst, uint32_t color, int k) {
+    if (!((dst | color) >> 24) && dst != OVERLAY_CLEAR) {
+        // Both opaque (the companion's canvas): red and blue in one multiply, green in another.
+        uint32_t j = 256 - (uint32_t) k;
+        return (((dst & 0xFF00FF) * j + (color & 0xFF00FF) * (uint32_t) k) >> 8 & 0xFF00FF)
+             | (((dst & 0xFF00) * j + (color & 0xFF00) * (uint32_t) k) >> 8 & 0xFF00);
+    }
+    if (dst == OVERLAY_CLEAR) return (uint32_t) (k < 1 ? 1 : k) << 24 | (color & 0xFFFFFF);
+    int da = dst >> 24 ? (int) (dst >> 24) : 255, ca = color >> 24 ? (int) (color >> 24) : 255;
+    uint32_t rgb = pd_mix(dst & 0xFFFFFF, color & 0xFFFFFF, k);
+    if (da == 255 && ca == 255) return rgb;
+    int a = da + (ca - da) * k / 256;
+    return (a >= 255 ? 0u : (uint32_t) (a < 1 ? 1 : a) << 24) | rgb;
+}
+
 // A glyph, clipped a row at a time; [shadow]: the union of it moved right, down and both (GBA text's shadow in one pass,
 // one row taller). A glyph wholly outside the clip (a list's rows scrolled out of view) costs nothing.
 // A glyph with its coverage (pd_glyph.alpha): blended into what's behind; the shadow is the coverage moved right, down and
 // both, the most of the three (the bitmap shadow's union, softened the same way).
 static void draw_glyph_alpha(struct pd_canvas* c, int x, int y, const struct pd_glyph* g, uint32_t color, bool shadow, int r0, int r1) {
     const uint8_t* a = g->alpha;
+    const uint16_t* cover = g->cover;
     for (int row = r0; row < r1; row++) {
         uint32_t* line = c->px + (y + row) * c->w;
-        for (int col = 0; col < 17; col++) {
+        // The pixels this row can touch: the covered ones, and for the shadow those moved right, down and both.
+        uint32_t mask = 0x1FFFF;
+        if (cover) {
+            uint32_t cur = row < PD_FONT_HEIGHT ? cover[row] : 0, above = row > 0 && row - 1 < PD_FONT_HEIGHT ? cover[row - 1] : 0;
+            mask = shadow ? cur << 1 | above | above << 1 : cur;
+            if (!mask) continue;
+        }
+        for (int col = 0; mask; col++, mask >>= 1) {
+            if (!(mask & 1)) continue;
             int px = x + col;
             if (px < c->cx0 || px >= c->cx1) continue;
             int k = row < PD_FONT_HEIGHT && col < 16 ? a[row * 16 + col] : 0;
@@ -223,7 +263,7 @@ static void draw_glyph_alpha(struct pd_canvas* c, int x, int y, const struct pd_
                 if (ul > k) k = ul;
             }
             if (k >= 250) line[px] = color;
-            else if (k > 0) line[px] = pd_mix(line[px], color, k);
+            else if (k > 0) line[px] = text_blend(line[px], color, k);
         }
     }
 }
@@ -267,11 +307,71 @@ int pd_text(struct pd_canvas* c, int x, int y, const char* s, uint32_t color, ui
     return draw_run(c, x, y, s, color, false);
 }
 
+// The string at [num] / [den] of its size (smaller), smoothed: its coverage sampled 4 x 4 per pixel from the font's, a
+// shadow a pixel right / down of the result as pd_text's. For the QUICK MENU's tile labels.
+#define MINI_W 256
+int pd_text_mini_width(const char* s, int num, int den) {
+    return (pd_text_width(s) * num + den - 1) / den;
+}
+int pd_text_mini(struct pd_canvas* c, int x, int y, const char* s, uint32_t color, uint32_t shadow, int num, int den) {
+    static uint8_t src[PD_FONT_HEIGHT][MINI_W];
+    static uint8_t out[PD_FONT_HEIGHT + 1][MINI_W + 1];
+    memset(src, 0, sizeof src);
+    int sw = 0;
+    for (const char* p = s; *p;) {
+        const struct pd_glyph* g = pd_font_glyph(next_codepoint(&p));
+        for (int row = 0; row < PD_FONT_HEIGHT; row++)
+            for (int col = 0; col < 16 && sw + col < MINI_W; col++) {
+                int k = g->alpha ? g->alpha[row * 16 + col] : (g->rows[row] >> col & 1) * 255;
+                if (k > src[row][sw + col]) src[row][sw + col] = (uint8_t) k;
+            }
+        sw += g->advance;
+    }
+    if (sw > MINI_W) sw = MINI_W;
+    int ow = (sw * num + den - 1) / den, oh = (PD_FONT_HEIGHT * num + den - 1) / den;
+    memset(out, 0, sizeof out);
+    for (int oy = 0; oy < oh; oy++)
+        for (int ox = 0; ox < ow; ox++) {
+            int sum = 0;
+            for (int j = 0; j < 4; j++) {
+                int sy = ((oy * 4 + j) * den + den / 2) / (4 * num);
+                if (sy >= PD_FONT_HEIGHT) continue;
+                for (int i = 0; i < 4; i++) {
+                    int sx = ((ox * 4 + i) * den + den / 2) / (4 * num);
+                    if (sx < sw) sum += src[sy][sx];
+                }
+            }
+            out[oy][ox] = (uint8_t) (sum / 16);
+        }
+    for (int pass = shadow == PD_NO_SHADOW ? 1 : 0; pass < 2; pass++) {
+        uint32_t col = pass ? color : shadow;
+        for (int oy = 0; oy <= oh; oy++) {
+            int py = y + oy;
+            if (py < c->cy0 || py >= c->cy1) continue;
+            uint32_t* line = c->px + py * c->w;
+            for (int ox = 0; ox <= ow; ox++) {
+                int px = x + ox;
+                if (px < c->cx0 || px >= c->cx1) continue;
+                int k = oy < oh && ox < ow ? out[oy][ox] : 0;
+                if (!pass) {
+                    int l = ox > 0 && oy < oh ? out[oy][ox - 1] : 0, u = oy > 0 && ox < ow ? out[oy - 1][ox] : 0;
+                    int ul = ox > 0 && oy > 0 ? out[oy - 1][ox - 1] : 0;
+                    k = l > u ? l : u;
+                    if (ul > k) k = ul;
+                }
+                if (k >= 250) line[px] = col;
+                else if (k > 8) line[px] = text_blend(line[px], col, k);
+            }
+        }
+    }
+    return ow;
+}
+
 int pd_text_scaled(struct pd_canvas* c, int x, int y, const char* s, uint32_t color, uint32_t shadow, int scale) {
     if (scale <= 1) return pd_text(c, x, y, s, color, shadow);
     int x0 = x;
     for (const char* p = s; *p;) {
-        const struct pd_glyph* g = pd_font_glyph(next_codepoint(&p));
+        const struct pd_glyph* g = pd_font_pixel_glyph(next_codepoint(&p));
         for (int pass = shadow != PD_NO_SHADOW ? 0 : 1; pass < 2; pass++) {
             int d = pass ? 0 : scale;
             uint32_t col = pass ? color : shadow;
@@ -297,7 +397,7 @@ int pd_text_narrow_shifted(struct pd_canvas* c, int x, int y, const char* s, uin
     // narrower than others (FittedGbaText's 3 / 2 / 1.5 / 1 wide letters).
     int col = 0;
     for (const char* p = s; *p;) {
-        const struct pd_glyph* g = pd_font_glyph(next_codepoint(&p));
+        const struct pd_glyph* g = pd_font_pixel_glyph(next_codepoint(&p));
         for (int row = 0; row < PD_FONT_HEIGHT; row++) {
             uint16_t bits = g->rows[row];
             for (int k = 0; bits; k++, bits >>= 1) {
@@ -315,6 +415,16 @@ int pd_text_width(const char* s) {
     int w = 0;
     while (*s) w += pd_font_glyph(next_codepoint(&s))->advance;
     return w;
+}
+
+int pd_text_width_pixel(const char* s) {
+    int w = 0;
+    while (*s) w += pd_font_pixel_glyph(next_codepoint(&s))->advance;
+    return w;
+}
+
+int pd_text_width_scaled(const char* s, int scale) {
+    return scale <= 1 ? pd_text_width(s) : pd_text_width_pixel(s) * scale;
 }
 
 int pd_text_fit(struct pd_canvas* c, int x, int y, int max_w, const char* s, uint32_t color, uint32_t shadow) {
@@ -402,13 +512,16 @@ int pd_text_wrap(struct pd_canvas* c, int x, int y, int max_w, int lineH, int ma
 }
 
 void pd_dim(struct pd_canvas* c, int alpha) {
-    int keep = 255 - alpha;
+    uint32_t keep = (uint32_t) (255 - alpha);
+    // Each channel times keep, divided by 255 exactly as (x + 1 + (x >> 8)) >> 8 (true for every x up to 255 * 255).
+    // Red and blue go together in one multiply: each product fits its own 16 bits, so nothing carries between them.
     for (int i = 0; i < c->w * c->h; i++) {
         uint32_t p = c->px[i];
-        uint32_t r = ((p >> 16) & 0xFF) * (uint32_t) keep / 255;
-        uint32_t g = ((p >> 8) & 0xFF) * (uint32_t) keep / 255;
-        uint32_t b = (p & 0xFF) * (uint32_t) keep / 255;
-        c->px[i] = (r << 16) | (g << 8) | b;
+        uint32_t rb = (p & 0x00FF00FFu) * keep;
+        rb = ((rb + 0x00010001u + ((rb >> 8) & 0x00FF00FFu)) >> 8) & 0x00FF00FFu;
+        uint32_t g = ((p >> 8) & 0xFF) * keep;
+        g = (g + 1 + (g >> 8)) >> 8;
+        c->px[i] = rb | (g << 8);
     }
 }
 

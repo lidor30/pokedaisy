@@ -33,6 +33,19 @@ class GbFieldTest {
         )) assertTrue(name, GbField.Crystal.matches(romOf(name)))
     }
 
+    /** Gold and Silver (2026-11-18, pret/pokegold's symbols): each its own code; not Crystal's, nor each other's Fly script. */
+    @Test
+    fun `Gold's and Silver's code, each in its own cart`() {
+        val gold = romOf("Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc")
+        val silver = romOf("Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc")
+        assertTrue(GbField.Gold.matches(gold))
+        assertTrue(GbField.Silver.matches(silver))
+        assertFalse(GbField.Gold.matches(silver))
+        assertFalse(GbField.Silver.matches(gold))
+        assertFalse(GbField.Crystal.matches(gold))
+        assertFalse(GbField.Gold.matches(romOf("Pokemon - Crystal Version (USA).gbc")))
+    }
+
     @Test
     fun `each Gen 1 cart has its own config's code, and no other's`() {
         val carts = listOf(
@@ -42,13 +55,21 @@ class GbFieldTest {
             "Pokemon - Versione Gialla - Speciale Edizione Pikachu (Italy) (GBC,SGB Enhanced).gb" to GB_FIELD_YELLOW_IT,
             "Pokemon - Edicion Amarilla - Edicion Especial Pikachu (Spain) (GBC,SGB Enhanced).gb" to GB_FIELD_YELLOW_ES,
             "Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb" to GB_FIELD_RED_BLUE,
+            "Pokemon - Rote Edition (Germany) (SGB Enhanced).gb" to GB_FIELD_RED_BLUE_DE,
+            "Pokemon - Blaue Edition (Germany) (SGB Enhanced).gb" to GB_FIELD_RED_BLUE_DE,
             "Pokemon PureRed (v2.7.6).gb" to GB_FIELD_PURE_RGB,
+            "Pokemon Brown (v6.1.2).gb" to GB_FIELD_BROWN,
+            "Pokemon Brown (v6.0.1).gb" to GB_FIELD_BROWN,
         )
+        // The carts on this machine: one that's missing (German Red / Blue here) mustn't skip the others' checks.
+        var checked = 0
         for ((name, own) in carts) {
-            val rom = romOf(name)
+            val rom = File(dir, name).takeIf { it.isFile }?.readBytes() ?: continue
             for ((_, cfg) in carts) assertEquals(name, cfg === own, cfg.matches(rom))
             assertFalse(name, GbField.Crystal.matches(rom))
+            checked++
         }
+        assumeTrue("no Gen 1 cart on this machine", checked > 0)
     }
 
     /** 64 KB of bus, plus Color WRAM bank 1 at (1 << 16) | D000-DFFF, and a cart. */
@@ -121,6 +142,30 @@ class GbFieldTest {
         assertEquals(FlyTargets(FlyResult.OK, listOf(0, 1), 0), t)
         assertEquals(FlyResult.OK, GB_FIELD_RED_BLUE.fly(1, t, m))
         assertEquals(listOf(1, 0x08, 0x80, 0x55), listOf(m[0xD71A], m[0xD732], m[0xD733], m[0xD42F]))
+    }
+
+    @Test
+    fun `Brown - its own Fly list and outside check, SENECA CAVERNS flying to map 0x21`() {
+        val m = Memory()
+        m[0xD356] = 0x04
+        m[0xD163] = 2
+        m[0xD173 + 44 + 3] = 19                            // the second Pokémon knows FLY
+        m[0xD70B] = 0b0001_0011                            // GRAVEL TOWN (0), SEASHORE CITY (1), MERSON CITY (4)
+        m[0xD70C] = 0b0001_0000                            // SENECA CAVERNS
+        m[0xD35E] = 0x21
+        m[0xD367] = 5                                      // not an outside tileset
+        assertEquals(FlyResult.CANT_FLY_HERE, GB_FIELD_BROWN.flyTargets(m).result)
+        m[0xD35E] = 0x64                                   // one of its maps that allow it anyway
+        val t = GB_FIELD_BROWN.flyTargets(m)
+        // BuildFlyLocationsList's order, the game's own (headless, its Fly menu).
+        assertEquals(FlyTargets(FlyResult.OK, listOf(1, 0, 4, 0xD5), 1), t)
+        assertEquals(FlyResult.OK, GB_FIELD_BROWN.fly(0xD5, t, m))
+        assertEquals(listOf(0x21, 0x08, 0x80), listOf(m[0xD71A], m[0xD732], m[0xD733]))
+        m[0xD732] = 0
+        m[0xD733] = 0
+        m[0xD35E] = 0xB2
+        m[0xD367] = 0                                      // outside, but its check refuses this map
+        assertEquals(FlyResult.CANT_FLY_HERE, GB_FIELD_BROWN.flyTargets(m).result)
     }
 
     @Test

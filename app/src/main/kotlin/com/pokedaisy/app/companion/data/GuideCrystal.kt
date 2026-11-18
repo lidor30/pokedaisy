@@ -13,7 +13,7 @@ package com.pokedaisy.app.companion.data
 
 /** The companion's flag ids past wEventFlags: wJohtoBadges / wKantoBadges bit n, a NPC trade's wTradeFlags bit n, and the
  * clock as a var (wTimeOfDay) - the same numbers as Polished Crystal's. */
-internal const val CR_BADGE_FLAG = 0x10000
+const val CR_BADGE_FLAG = 0x10000
 internal const val CR_TRADE_FLAG = 0x20000
 internal const val CR_VAR_TIME_OF_DAY = 0x10000
 

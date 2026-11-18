@@ -1,9 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.util.zip.CRC32
+import okio.Path
 
 /** Whose sprite set a hero has: FireRed / LeafGreen's (same art in both), Emerald's, Ruby / Sapphire's (Emerald's
  * sheets, but the heroes drawn before Emerald's redraw and walking and running in one sheet) or Heart and Soul's (Emerald's
@@ -132,7 +129,7 @@ object PlayerLook {
     ) {
         /** mgba_dump's `romblocks` file (headless checks of exactly what the app puts in). */
         fun toText(): String = buildString {
-            for (b in blocks) append("block %08X %08X %s\n".format(0x08000000 + b.off, b.crc, hex(b.data)))
+            for (b in blocks) append("block ${(0x08000000 + b.off).hex(8, upper = true)} ${b.crc.hex(8, upper = true)} ${hex(b.data)}\n")
             for (p in palettes) append("pal ${p.from.joinToString("") { hex(it) }} ${hex(p.to)}\n")
             playerPal?.let { append("playerpal ${hex(it)}\n") }
         }
@@ -166,17 +163,17 @@ object PlayerLook {
      * empty tail. ~0.5 s for 16 MiB: off the UI thread. */
     fun scan(rom: ByteArray, extra: Collection<LookFingerprint> = emptyList()): Scan {
         val hits = Fingerprints.find(rom, LookBlob.entries + extra)
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         // The words pointing at a graphic: palette table entries ({ptr, tag}), picture tables ({ptr, size, tag}),
         // literal pools.
-        val targets = LookBlob.entries.flatMap { hits[it].orEmpty() }.toSortedSet().toIntArray()
+        val targets = LookBlob.entries.flatMap { hits[it].orEmpty() }.distinct().sorted()
         val refs = HashMap<Int, MutableList<Ref>>()
         var o = 0
         while (o + 8 <= rom.size) {
             val w = buf.getInt(o)
             if (w ushr 25 == 4) {
                 val off = w - 0x08000000
-                if (java.util.Arrays.binarySearch(targets, off) >= 0) {
+                if (targets.binarySearch(off) >= 0) {
                     refs.getOrPut(off) { ArrayList() } += Ref(o, buf.getShort(o + 4).toInt() and 0xFFFF, buf.getShort(o + 6).toInt() and 0xFFFF)
                 }
             }
@@ -324,10 +321,10 @@ object PlayerLook {
      */
     private fun monRecords(scan: Scan, me: LookChar, frameAt: IntArray, writes: MutableList<Pair<Int, ByteArray>>, tail: Int): Int? {
         val rom = scan.rom
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         fun u16(o: Int) = buf.getShort(o).toInt() and 0xFFFF
         fun u32(o: Int) = buf.getInt(o)
-        fun word(v: Int) = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(v).array()
+        fun word(v: Int) = le32(v)
         val sheets = LookPart.entries.filter { it.w > 0 && it != LookPart.BACK }
         val range = sheets.associateWith { p -> scan.hitsOf(me, p).firstOrNull()?.let { it until it + blob(me, p)!!.size } }
         val running = range[LookPart.EM_RUNNING] ?: range[LookPart.FR_SURF_RUN]
@@ -387,7 +384,7 @@ object PlayerLook {
      * fours: south, north, west, east; the first four stand), the first animation using a frame deciding. */
     private fun facings(rom: ByteArray, anims: Int, n: Int): Array<Pair<Int, Boolean>?> {
         val out = arrayOfNulls<Pair<Int, Boolean>>(n)
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         if (anims < 0 || anims + 4 > rom.size) return out
         for (k in 0 until 40) {
             val p = buf.getInt(anims + k * 4) - 0x08000000
@@ -438,7 +435,7 @@ object PlayerLook {
             if (at + stream.size > rom.size) return
             free = (at + stream.size + 3) and 3.inv()
             writes += at to stream
-            val ptr = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(0x08000000 + at).array()
+            val ptr = le32(0x08000000 + at)
             sites.forEach { writes += it.at to ptr }
         }
 
@@ -523,7 +520,7 @@ object PlayerLook {
         ByteArray(frame.size) { i -> val b = frame[i].toInt(); (map[b and 15] or (map[(b shr 4) and 15] shl 4)).toByte() }
 
     /** Writes merged into blocks that don't overlap (a later write wins), each with the CRC32 of the file under it. */
-    internal fun merge(rom: ByteArray, writes: List<Pair<Int, ByteArray>>): List<Block> {
+    fun merge(rom: ByteArray, writes: List<Pair<Int, ByteArray>>): List<Block> {
         val spans = writes.map { it.first to it.first + it.second.size }.sortedBy { it.first }
         val merged = ArrayList<IntArray>()
         for ((s, e) in spans) {
@@ -535,7 +532,7 @@ object PlayerLook {
             for ((at, bytes) in writes) {
                 if (at >= s && at + bytes.size <= e) bytes.copyInto(data, at - s)
             }
-            Block(s, CRC32().apply { update(rom, s, e - s) }.value.toInt(), data)
+            Block(s, crc32(rom, s, e - s).toInt(), data)
         }
     }
 
@@ -648,17 +645,17 @@ object PlayerLook {
 
     /** [data] as a GBA LZ77 stream with no back-references (8 literals after each zero flag byte), padded to 4 bytes. */
     internal fun lzLiteral(data: ByteArray): ByteArray {
-        val out = java.io.ByteArrayOutputStream()
-        out.write(0x10); out.write(data.size and 0xFF); out.write((data.size shr 8) and 0xFF); out.write((data.size shr 16) and 0xFF)
+        val out = okio.Buffer()
+        out.writeByte(0x10).writeByte(data.size and 0xFF).writeByte((data.size shr 8) and 0xFF).writeByte((data.size shr 16) and 0xFF)
         for (i in data.indices step 8) {
-            out.write(0)
+            out.writeByte(0)
             out.write(data, i, minOf(8, data.size - i))
         }
-        while (out.size() % 4 != 0) out.write(0)
-        return out.toByteArray()
+        while (out.size % 4 != 0L) out.writeByte(0)
+        return out.readByteArray()
     }
 
-    private fun hex(b: ByteArray) = b.joinToString("") { "%02X".format(it.toInt() and 0xFF) }
+    private fun hex(b: ByteArray) = b.hex(upper = true)
 }
 
 /**
@@ -667,43 +664,44 @@ object PlayerLook {
  * once all its graphics are.
  */
 object LookArt {
-    fun dir(filesDir: File?): File = File(RomArt.dir(filesDir), "look")
+    fun dir(filesDir: Path?): Path = RomArt.dir(filesDir) / "look"
 
     /** Keeps every whole hero [scan] has; returns those newly kept. Each one's region map head goes in too, where
      * [RomArt] keeps it (`regionmap/player_<hero>.png`, for the companion's MAP), if no scan of its game made it. */
-    fun keep(filesDir: File?, scan: PlayerLook.Scan): List<LookChar> = scan.chars.filter { c ->
-        val d = File(dir(filesDir), c.name.lowercase())
+    fun keep(filesDir: Path?, scan: PlayerLook.Scan): List<LookChar> = scan.chars.filter { c ->
+        val d = dir(filesDir) / c.name.lowercase()
         if (has(filesDir, c)) return@filter false
         d.mkdirs()
         LookBlob.entries.filter { it.char == c }.forEach { b ->
             val bytes = scan.data(c, b.part) ?: return@filter false
-            write(File(d, "${b.part.name.lowercase()}.bin"), bytes)
+            write(d / "${b.part.name.lowercase()}.bin", bytes)
         }
-        val head = File(RomArt.dir(filesDir), "regionmap/${c.headArt}.png")
-        if (!head.isFile) {
-            val gfx = scan.data(c, LookPart.MAP_HEAD)
-            val pal = scan.data(c, LookPart.MAP_HEAD_PAL)
-            if (gfx != null && pal != null) {
-                head.parentFile?.mkdirs()
-                write(head, RomArt.sprite(gfx, RomArt.palette(pal), 16, 16).png())
-                RomArt.announce()
-            }
-        }
+        writeHead(filesDir, c, scan.data(c, LookPart.MAP_HEAD), scan.data(c, LookPart.MAP_HEAD_PAL))
         true
     }
 
-    private fun write(f: File, bytes: ByteArray) {
-        val tmp = File(f.parentFile, f.name + ".tmp")
-        tmp.writeBytes(bytes)
-        tmp.renameTo(f)
+    /** [c]'s region map head where [RomArt] keeps it, from its kept graphics, if no scan of its game made it (a SPRITE PACK). */
+    fun keepHead(filesDir: Path?, c: LookChar) {
+        writeHead(filesDir, c, file(filesDir, c, LookPart.MAP_HEAD).takeIf { it.isFile }?.readBytes(),
+            file(filesDir, c, LookPart.MAP_HEAD_PAL).takeIf { it.isFile }?.readBytes())
     }
 
-    fun has(filesDir: File?, c: LookChar): Boolean = LookBlob.entries.filter { it.char == c }.all { file(filesDir, c, it.part).isFile }
+    private fun writeHead(filesDir: Path?, c: LookChar, gfx: ByteArray?, pal: ByteArray?) {
+        val head = RomArt.dir(filesDir) / "regionmap/${c.headArt}.png"
+        if (head.isFile || gfx == null || pal == null) return
+        head.parent?.mkdirs()
+        write(head, RomArt.sprite(gfx, RomArt.palette(pal), 16, 16).png())
+        RomArt.announce()
+    }
+
+    private fun write(f: Path, bytes: ByteArray) = f.writeAtomically(bytes)
+
+    fun has(filesDir: Path?, c: LookChar): Boolean = LookBlob.entries.filter { it.char == c }.all { file(filesDir, c, it.part).isFile }
 
     /** Heroes whose graphics are all kept. */
-    fun available(filesDir: File?): Set<LookChar> = LookChar.entries.filter { has(filesDir, it) }.toSet()
+    fun available(filesDir: Path?): Set<LookChar> = LookChar.entries.filter { has(filesDir, it) }.toSet()
 
-    fun load(filesDir: File?, c: LookChar): Map<LookPart, ByteArray>? {
+    fun load(filesDir: Path?, c: LookChar): Map<LookPart, ByteArray>? {
         if (!has(filesDir, c)) return null
         return LookBlob.entries.filter { it.char == c }.associate { it.part to file(filesDir, c, it.part).readBytes() }
             .takeIf { m -> LookBlob.entries.filter { it.char == c }.all { b -> m[b.part]?.size == b.size } }
@@ -711,7 +709,7 @@ object LookArt {
 
     /** [c] on the overworld facing down - standing, then its two steps (its own colours, cropped to the pixels they
      * use) - for the picker's tiles; null if not kept. */
-    fun walk(filesDir: File?, c: LookChar): List<RomArt.Image>? {
+    fun walk(filesDir: Path?, c: LookChar): List<RomArt.Image>? {
         val part = when (c.engine) {
             LookEngine.FIRERED -> LookPart.FR_NORMAL
             LookEngine.EMERALD, LookEngine.HEART_AND_SOUL -> LookPart.EM_WALKING
@@ -735,13 +733,13 @@ object LookArt {
     }
 
     /** [c]'s front pic (64x64, 4bpp) and its palette, for the companion's CARD; null if not kept. */
-    fun frontPic(filesDir: File?, c: LookChar): Pair<ByteArray, ByteArray>? {
+    fun frontPic(filesDir: Path?, c: LookChar): Pair<ByteArray, ByteArray>? {
         val pic = file(filesDir, c, LookPart.FRONT).takeIf { it.isFile }?.readBytes() ?: return null
         val pal = file(filesDir, c, LookPart.FRONT_PAL).takeIf { it.isFile }?.readBytes() ?: return null
         return (pic to pal).takeIf { pic.size == 2048 && pal.size == 32 }
     }
 
-    private fun file(filesDir: File?, c: LookChar, part: LookPart) = File(File(dir(filesDir), c.name.lowercase()), "${part.name.lowercase()}.bin")
+    private fun file(filesDir: Path?, c: LookChar, part: LookPart) = dir(filesDir) / c.name.lowercase() / "${part.name.lowercase()}.bin"
 }
 
 /** A graphic found in a ROM by fingerprint (the generated [LookBlob] / [TextBlob] rows): its decoded [size] and
@@ -762,7 +760,7 @@ object Fingerprints {
         val byHead = blobs.groupBy { it.head }
         val filter = LongArray(1 shl 10)
         blobs.forEach { filter[it.pre ushr 6] = filter[it.pre ushr 6] or (1L shl it.pre) }
-        val buf = ByteBuffer.wrap(rom).order(ByteOrder.LITTLE_ENDIAN)
+        val buf = LittleEndianBytes(rom)
         val hits = HashMap<LookFingerprint, MutableList<Int>>()
         if (rom.size >= 16) {
             var a = buf.getLong(0) shl 8
@@ -793,6 +791,6 @@ object Fingerprints {
         } catch (_: RuntimeException) { // a stream that isn't one after all (out of bounds, a smol header that lies)
             null
         } ?: return null
-        return data.takeIf { CRC32().apply { update(it) }.value == blob.crc }
+        return data.takeIf { crc32(it) == blob.crc }
     }
 }

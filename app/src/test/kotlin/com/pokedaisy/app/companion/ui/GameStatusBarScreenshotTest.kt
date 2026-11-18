@@ -16,6 +16,7 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.ScreenOrientation
 import com.pokedaisy.app.companion.BatteryStatus
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -25,6 +26,7 @@ import org.junit.Test
  * as the game, the pair filling the height. See CompanionScreenshotTest.
  */
 class GameStatusBarScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(

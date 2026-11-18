@@ -117,6 +117,15 @@ class M4aSongsTest {
         assertTrue(638 in s.bgmSongIds)
     }
 
+    @Test fun monomythV1_2() {
+        // v1.1's sound engine and song list, moved again; the park address with the code before it.
+        val s = songs(File(File(RomFileReader.FIRERED_REV1_PATH).parentFile, "Pokemon Monomyth (v1.2).gba").path)
+        assertEquals(0x0825A0BDL, s.songNumStart)
+        assertEquals(0x08E3B018L, s.songTable)
+        assertEquals(0x08011602L, s.idleLoop)
+        assertTrue(638 in s.bgmSongIds)
+    }
+
     @Test fun superMariomon() {
         // Agbcc's m4aSongNumStart in every release; the field's music in WORLD 1-1 (headless
         // mgba_dump `bgm`: the BGM player's song header) is a BGM-player song of its table.

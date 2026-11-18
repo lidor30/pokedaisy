@@ -3,6 +3,10 @@
 
     <uses-feature android:glEsVersion="0x00020000" android:required="true" />
 
+    <!-- The n3ds module (3DS games, built in only with the n3ds flag) needs Android 10: the app runs on 8 and loads it
+         only on 10+ (FeatureFlags.n3ds). -->
+    <uses-sdk tools:overrideLibrary="com.pokedaisy.n3ds" />
+
     <!-- Only requested/used when the user picks a custom game-saves folder in
          Settings > Folders > Change folder (see SettingsActivity). Save files are
          opened by raw path from native code, which scoped storage otherwise

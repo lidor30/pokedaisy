@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion
 
+import kotlin.concurrent.Volatile
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -189,9 +190,10 @@ object FeatureTips {
     var scheduler: TipScheduler? = null
         private set
 
-    fun init(prefs: com.pokedaisy.app.Prefs): TipScheduler =
-        scheduler ?: TipScheduler(prefs.tipStore) { available(it) }.also {
-            it.enabled = prefs.tips
+    /** The first call makes the scheduler over [store] (Prefs.tipStore on Android), [enabled] = APP > TIPS. */
+    fun init(store: TipStore, enabled: Boolean): TipScheduler =
+        scheduler ?: TipScheduler(store) { available(it) }.also {
+            it.enabled = enabled
             scheduler = it
         }
 

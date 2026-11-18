@@ -33,9 +33,13 @@ data class Gen4Config(
     val pokedexOff: Int? = null,
     /** Its National Dex byte (Pokedex.nationalDexObtained) and the game's dex tables. */
     val nationalDexOff: Int = 0,
+    /** The game has the National Dex from the start whatever that byte says (Heartfelt Gold's check returns 1). */
+    val nationalDexAlways: Boolean = false,
     /** Bytes in each of its flag arrays (caught, seen, the genders'): a bit per species, 0x40 for 493 (Origin HeartGold's
      * 0xC8, for 1600). */
     val dexFlagBytes: Int = 0x40,
+    /** Where its seen bits start in the Pokédex (Heartfelt Gold's moved to +0x400); null = right after the caught bits. */
+    val dexSeenOff: Int? = null,
     val pokedexTables: PokedexTables? = null,
     /** Each map header's place name (its map label) - the English one: [placeName] reads the cart's own. */
     val mapPlaces: Map<Int, String>,
@@ -84,7 +88,7 @@ private const val GEN4_FLAG_BYTES = 2912 / 8
 
 /** The save's event flags and vars, as the GUIDE reads them ([Gen4Config.varsFlagsOff]), with the hour as
  * [GEN4_VAR_HOUR]; null without them. */
-fun readGen4Progress(r: MemoryReader, cfg: Gen4Config, body: Long, hour: Int = java.time.LocalTime.now().hour): SaveProgress? {
+fun readGen4Progress(r: MemoryReader, cfg: Gen4Config, body: Long, hour: Int = localNow().hour): SaveProgress? {
     if (cfg.varsFlagsOff < 0) return null
     val vars = r.readCoreMemory(body + cfg.varsFlagsOff, cfg.numVars * 2)
     val flags = r.readCoreMemory(body + cfg.varsFlagsOff + cfg.numVars * 2, GEN4_FLAG_BYTES)
@@ -171,6 +175,10 @@ data class Gen4Battle(
     val offPanelShown: Int = 0x4D0,
     /** BattleContext.command (CONTROLLER_COMMAND_*: 5 = the player chooses) and battler 0's selection step (u8 at 0). */
     val offCommand: Int = 0x08,
+    /** BattleContext.partyOrder[4][6]: each battler's party in the order its party screen shows it (the one out first; a switch
+     * swaps two). pokeplatinum's `partyOrder`, pokeheartgold's `unk_312C`: the same place in both, found headless on HeartGold
+     * (a SHIFT to slot 2 turned battler 0's 0 1 2 3 4 5 into 1 0 2 3 4 5). */
+    val offPartyOrder: Int = 0x312C,
 )
 
 /**
@@ -412,6 +420,32 @@ val GEN4_ORIGIN_HEARTGOLD = gen4HeartGoldFamily(saveDataPtr = 0x021D11B4, fieldS
     formSpecies = { species, form -> OriginHeartGold.data?.formSpecies(species, form) ?: species },
 )
 
+/**
+ * Heartfelt Gold ([HeartfeltGold]): the US HeartGold's RAM and save, hg-engine's bag grown (Items 245, Key Items 92, Balls
+ * 26: include/bag.h's ITEM_POCKET_EXPANSION), so every section after it moved 0x1F0 - its SaveData's own table
+ * (arrayHeaders at +0x2F014, read live): the flags (VarsFlags) 0xFD4, the Location 0x1424, the Pokédex 0x14A8, the roamers
+ * 0x721C (REPEL's steps +0x65), the Pokégear 0xC458. Its Pokédex grew to 0x704 bytes: retail's caught bits (+0x04) and
+ * National Dex byte (+0x337, which the game no longer reads: its National Dex is always on) where they were, the seen bits at +0x400, each a bit per species id (its ARM9's Pokédex
+ * functions, edited in place: 0x02029FF8's caught check reads both); its DEX is the National Dex's 1025 from its cart
+ * ([POKEDEX_HEARTFELT]). Species to 1534 (personal records; its forms are ids of their own past the National Dex). No GUIDE.
+ */
+val GEN4_HEARTFELT_GOLD = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PTR).copy(
+    pocketSizes = intArrayOf(245, 92, 101, 12, 40, 64, 26, 30),
+    locationOff = 0x1424,
+    repelStepsOff = 0x721C + 0x65,
+    pokedexOff = 0x14A8,
+    nationalDexOff = 0x337,
+    // Pokedex_GetNatDexFlag (0x0202A55C) is `movs r0, #1` here: the dex opens on NATIONAL from the start.
+    nationalDexAlways = true,
+    dexFlagBytes = 0xC0,
+    dexSeenOff = 0x400,
+    pokedexTables = POKEDEX_HEARTFELT,
+    flagsOff = 0xFD4 + 0x170 * 2,
+    varsFlagsOff = 0xFD4,
+    pokegearWordOff = 0xC458 + 4,
+    maxSpecies = HeartfeltGold.LAST_SPECIES,
+)
+
 /** German SoulSilver rev 0 shares HeartGold's globals and save layout (IPGD, SHA-1 576cdb7e…). */
 val GEN4_SOULSILVER_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138, battleTemplate = 0x020FA438)
 
@@ -422,6 +456,11 @@ val GEN4_SOULSILVER_FR = gen4HeartGoldFamily(saveDataPtr = 0x021D2248, fieldSyst
 
 /** A DS game ([readGen4Telemetry], [readGen5Telemetry]): two screens, its own look and tables. */
 val GameKind?.isDsGame: Boolean get() = this == GameKind.PLATINUM || isHgss || isGen5
+
+/** A retail DS cart running (Gen 4 / 5 kept Gen 3's Hidden Power rule, [hiddenPowerPower]): not Origin HeartGold, Renegade
+ * Platinum or the Redux builds, whose engines may use Gen 6's flat 60. */
+internal val retailDsGame: Boolean
+    get() = activeGame.isDsGame && !originHeartGold && !renegadePlatinum && !black2Redux
 
 /** Gen 5 (Black, White, Black 2, White 2): [readGen5Telemetry], their own tables (Black's for the species and moves of
  * all four; the sequels' places, items and Town Map their own: [isBw2]). */
@@ -439,6 +478,7 @@ fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = wh
     }
     GameKind.HEARTGOLD -> when {
         originHeartGold -> GEN4_ORIGIN_HEARTGOLD
+        heartfeltGold -> GEN4_HEARTFELT_GOLD
         code == "IPKD" -> GEN4_HEARTGOLD_DE
         code == "IPKF" -> GEN4_HEARTGOLD_FR
         else -> DsPorts.byCode(code)?.let(DsPorts::gen4Config) ?: GEN4_HEARTGOLD_US
@@ -549,8 +589,19 @@ fun decodeGen4PartyMon(
         exp = u32(blocks, a + 8),
         personality = personality,
         isEgg = (ivWord ushr 30) and 1L != 0L,
+        // Shiny: the trainer ID and secret ID (block A +0x0C) XORed with the personality's halves under 8 (Gen 4 and 5).
+        shiny = (ivWord ushr 30) and 1L == 0L && gen45Shiny(personality, u32(blocks, a + 0x0C)),
         heldItem = u16(blocks, a + 2),
         nickname = nickname.takeIf { it.isNotBlank() },
+        stats = MonStats(
+            // Gen 3's IV word and order: HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF, five bits each.
+            ivs = List(6) { ((ivWord shr (5 * it)) and 0x1F).toInt() },
+            evs = List(6) { u8(blocks, a + 0x10 + it) },
+            // Gen 4's nature is the personality's; Gen 5 keeps its own byte (block B +0x19), which can differ from it.
+            nature = if (size == GEN4_MON_SIZE) (personality % 25).toInt() else u8(blocks, b + 0x19).takeIf { it < 25 } ?: (personality % 25).toInt(),
+            // Max HP, then the party fields' ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF.
+            stats = List(6) { u16(party, 8 + 2 * it) },
+        ).takeIf { (ivWord ushr 30) and 1L == 0L },
     )
 }
 
@@ -589,6 +640,10 @@ private fun decodeGen4BattleMon(b: ByteArray, o: Int): BattleMon {
     )
 }
 
+/** Gen 4 / 5's shiny rule: (trainer ID ^ secret ID ^ the personality's two halves) < 8. */
+fun gen45Shiny(personality: Long, otId: Long): Boolean =
+    ((otId and 0xFFFF) xor (otId ushr 16) xor (personality and 0xFFFF) xor ((personality ushr 16) and 0xFFFF)) < 8
+
 /** The battle running now ([Gen4Battle]): its battlers (and their personalities), the foe's party, whether it's a
  * trainer's / a double. */
 private class Gen4BattleRead(
@@ -618,6 +673,27 @@ fun readGen4BattleInput(r: MemoryReader, b: Gen4Battle): Int {
         9, 10 -> BATTLE_INPUT_PARTY_OPEN
         else -> BATTLE_INPUT_BUSY
     }
+}
+
+/**
+ * POKéMON on a DS battle's touch screen: where its party screen shows the Pokémon with [personality] (0 top left, 1 top
+ * right, then down), or null - no battle, a double (its screen has two sides), a personality not in the battle's party, or
+ * the one already out (place 0). The battle's own party (BattleSystem.parties[0], the save's order) gives its index,
+ * BattleContext.partyOrder[0] where that index sits now.
+ */
+fun gen4SwitchSlot(r: MemoryReader, b: Gen4Battle, personality: Long): Int? {
+    val bs = gen4BattleSystem(r, b) ?: return null
+    val head = r.readCoreMemory(bs + b.offBattleType, b.offParties + 16 - b.offBattleType)
+    if (u32(head, 0) and GEN4_BATTLE_DOUBLES != 0L) return null
+    val ctx = u32(head, b.offBattleCtx - b.offBattleType)
+    val party = u32(head, b.offParties - b.offBattleType)
+    if (!inMain(ctx) || !inMain(party)) return null
+    val count = u32(r.readCoreMemory(party + 4, 4), 0).toInt().coerceIn(0, PARTY_SIZE)
+    val raw = r.readCoreMemory(party + 8, PARTY_SIZE * GEN4_MON_SIZE)
+    val index = (0 until count).firstOrNull { u32(raw, it * GEN4_MON_SIZE) == personality } ?: return null
+    val order = r.readCoreMemory(ctx + b.offPartyOrder, PARTY_SIZE)
+    val place = (0 until PARTY_SIZE).firstOrNull { order[it].toInt() == index } ?: return null
+    return place.takeIf { it > 0 }
 }
 
 /** CONTROLLER_COMMAND_SELECTION_SCREEN_INPUT. */
@@ -822,6 +898,8 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
     return Telemetry(
         frameCounter = 0,
         inBattle = battle != null,
+        // The battle type's trainer bit (BOSS RETRY, SHINY ALERT's count, NUZLOCKE).
+        isTrainerBattle = battle?.trainer,
         isDoubleBattle = battle?.doubles == true,
         battleInputState = if (battle != null) cfg.battle?.let { readGen4BattleInput(r, it) } ?: BATTLE_INPUT_NONE else BATTLE_INPUT_NONE,
         mapGroup = 0,
@@ -832,7 +910,11 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
         facingDirection = u32(location, 16).toInt(),
         partyCount = party.size,
         party = party,
-        battleMons = battle?.mons ?: List(4) { EMPTY_BATTLE_MON },
+        // A battler is shiny when its party record is (the foe's party, or the player's), matched by personality.
+        battleMons = battle?.let { bt ->
+            val shinies = (bt.foes + party).filter { it.shiny }.map { it.personality }.toSet()
+            bt.mons.mapIndexed { i, m -> if (bt.personalities.getOrNull(i)?.let { it != 0L && it in shinies } == true) m.copy(shiny = true) else m }
+        } ?: List(4) { EMPTY_BATTLE_MON },
         itemCount = items.size,
         items = items,
         money = u32(trainer, 0x14).takeIf { it <= 999_999 },
@@ -854,19 +936,38 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
 val GEN4_REPEL_KINDS = listOf(79 to 100, 76 to 200, 77 to 250)
 
 /**
+ * The QUICK MENU's BIKE / ROD on Platinum and HeartGold / SoulSilver: the Bag's registered key item - what Y uses - right after
+ * its eight pockets (pret's struct Bag: Platinum's `u32 registeredItem`, HG / SS's `u16 registeredItems[2]`, Y's quick menu
+ * only when both are set). Null when the SaveData pointer isn't sane. Checked headless on HeartGold (2026-11-18): the register
+ * cleared, Y did nothing; the BICYCLE written there and Y held 2 frames, the player rode (PlayerAvatar state 0 -> 1).
+ */
+fun gen4RegisterAddr(cfg: Gen4Config, read: (addr: Long, len: Int) -> ByteArray): Long? {
+    val ptr = u32(read(cfg.saveDataPtr, 4), 0)
+    if (ptr !in MAIN_RAM until MAIN_RAM_END - 0x20000) return null
+    return ptr + cfg.bodyOff + cfg.bagOff + cfg.pocketSizes.sum() * 4L
+}
+
+/** Gen 4's BICYCLE and SUPER / GOOD / OLD ROD (the best first). */
+val GEN4_BIKES = listOf(450)
+val GEN4_RODS = listOf(447, 446, 445)
+
+/**
  * Uses one Repel ([itemId], [steps]) the way the game's bag does (applications/bag: SetRepelSteps, then
  * Bag_TryRemoveItem): one off its slot in the ITEMS pocket - an emptied slot moves to the pocket's end, the rest keep
  * their order (Pocket_SortEmpty) - and the step count into [Gen4Config.repelStepsOff]. Plain RAM writes, no game code:
  * the field counts the steps down and says when it wore off by itself. Only with the field free ([fieldFree]) and no
  * Repel still working. Emu thread, between frames.
  */
-fun useGen4Repel(cfg: Gen4Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean): ItemUseOutcome {
+fun useGen4Repel(cfg: Gen4Config, calls: GameCalls, itemId: Int, steps: Int, fieldFree: Boolean, topUp: Boolean = false): ItemUseOutcome {
     if (!fieldFree) return ItemUseOutcome(ItemUseResult.NOT_NOW)
     val repelStepsOff = cfg.repelStepsOff ?: return ItemUseOutcome(ItemUseResult.FAILED)
     val ptr = u32(calls.read(cfg.saveDataPtr, 4), 0)
     if (ptr !in MAIN_RAM until MAIN_RAM_END - 0x20000) return ItemUseOutcome(ItemUseResult.FAILED)
     val body = ptr + cfg.bodyOff
-    if (u8(calls.read(body + repelStepsOff, 1), 0) > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
+    // AUTO REFILL (topUp): added to the 1..REFILL_AT steps left, the byte capped at 255; otherwise only with none left.
+    val stepsLeft = u8(calls.read(body + repelStepsOff, 1), 0)
+    if (topUp && stepsLeft !in 1..RepelRefill.REFILL_AT) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    if (!topUp && stepsLeft > 0) return ItemUseOutcome(ItemUseResult.STILL_ACTIVE)
     val pocket = body + cfg.bagOff   // ITEMS is the bag's first pocket
     val size = cfg.pocketSizes[0]
     val raw = calls.read(pocket, size * 4)
@@ -879,11 +980,11 @@ fun useGen4Repel(cfg: Gen4Config, calls: GameCalls, itemId: Int, steps: Int, fie
         out[slot * 4 + 3] = (left shr 8).toByte()
     } else {
         // The empty slot to the end, the others moved up in order.
-        System.arraycopy(raw, (slot + 1) * 4, out, slot * 4, (size - slot - 1) * 4)
+        raw.copyInto(out, slot * 4, (slot + 1) * 4, size * 4)
         for (i in (size - 1) * 4 until size * 4) out[i] = 0
     }
     if (!calls.write(pocket, out)) return ItemUseOutcome(ItemUseResult.FAILED)
-    if (!calls.write(body + repelStepsOff, byteArrayOf(steps.toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
+    if (!calls.write(body + repelStepsOff, byteArrayOf((if (topUp) minOf(255, stepsLeft + steps) else steps).toByte()))) return ItemUseOutcome(ItemUseResult.FAILED)
     return ItemUseOutcome(ItemUseResult.USED, steps = steps)
 }
 

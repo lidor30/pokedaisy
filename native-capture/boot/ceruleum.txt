@@ -1,0 +1,16 @@
+# Pokemon Ceruleum v1.1.1, from its own save (a new game played headless: ~/Documents/RetroArch/saves/mGBA/Pokemon Ceruleum (v1.1.1).sav).
+# The title takes A, then CONTINUE puts the player in Council HQ.
+wait 300
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+wait 200

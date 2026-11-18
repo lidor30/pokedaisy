@@ -9,17 +9,40 @@
 void host_log_open(const char* path);
 void host_log(const char* format, ...) __attribute__((format(printf, 1, 2)));
 void host_log_close(void);
+// While a game runs, lines wait in RAM until hold(false), HOME or sleep.
+// A full buffer drops its oldest lines rather than writing during gameplay.
+void host_log_hold(bool hold);
+void host_log_flush(void);
 // pd_armgba_host.log.
 void host_emu_log(void* ctx, const char* line);
 
 // Azahar and Citra (they answer a system info query a console refuses).
 bool host_is_emulator(void);
 bool host_is_new_3ds(void);
+// The dev build on a New 3DS told to play as an Old one (sdmc:/pokedaisy-dev/old3ds): host_is_new_3ds says no.
+bool host_old_3ds_stand_in(void);
+// The Old 3DS's system core (core 1) lent to the app for [percent] of its time, kept at the most asked for and given back
+// to the system (30%) while the app is in the background. False when the system refused.
+#define HOST_CORE1_PERCENT 80
+bool host_core1_take(unsigned percent);
+// Core 1's time as the app asked for it and as the system has it, into the log (taken before the log opens).
+void host_core1_log(void);
+// Why a thread [who] couldn't start on [core]: the system's own answer to the same request, into the log.
+void host_log_thread_failure(const char* who, int core, size_t stack);
 size_t host_heap_free(void);
 // The cartridge buffer every game uses, reserved once at start (host_rom_arena_init, before anything else is allocated,
 // so a 32 MB game always finds it): mGBA's romBuffer for a Game Boy game, armGBA's offered ROM for a GBA one
 // (pd_armgba_host.romBuffer). armGBA frees it when a game closes: that free is skipped (host.c's __wrap_free).
 bool host_rom_arena_init(void);
 void* host_rom_arena(size_t size);
+// What host_rom_arena_init got: 32 MB, 16 MB where the app's memory has no room for 32 (an Old 3DS's .3dsx), or 0.
+size_t host_rom_arena_size(void);
+bool host_rom_arena_ready(void);
+// The memory the app was given and where it went, for an error a player can photograph and the log: the model, CIA or
+// 3dsx, the app's memory and mode, the heap / linear split, the static data, the heap free before the arena and now.
+void host_memory_report(char* out, size_t len);
+// armGBA's code memory, lent from the game buffer's unused end, made read-write again: after a game's core is gone (a
+// process that exits with memory still read-write-execute hangs the 3DS on "Closing software").
+void host_lent_code_release(void);
 
 #endif

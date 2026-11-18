@@ -108,6 +108,8 @@ HACKS = [
          save="unbound", a=dict(MAP_GROUPS=0x08B70498, MAP_GROUPS_XOR=0x00B749DE, NORMAL_BG3=0, **CFRU_UNBOUND)),
     dict(name="Unbound v2.1.1.1 FR", sha1="0ce2a880aa097f1dce4e1db8ee513d0e82d15859", family="FR", mapped=True,
          save="unbound_fr", a=dict(MAP_GROUPS=0x08B70498, MAP_GROUPS_XOR=0x00B749DE, NORMAL_BG3=0, **CFRU_UNBOUND)),
+    dict(name="Unbound v2.1.1.1 IT", sha1="8114e0f81eb3581f699c74a5891c7b75a130269d", family="FR", mapped=True,
+         save="unbound_it", a=dict(MAP_GROUPS=0x08B70498, MAP_GROUPS_XOR=0x00B749DE, NORMAL_BG3=0, **CFRU_UNBOUND)),
     dict(name="Radical Red v4.1", sha1="964f951a0fdaf209e4ea1344883ef0d557bb3a80", family="FR", mapped=True,
          save="radical_red", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x08EB1000, OBJ_GFX_TABLES=0x091468CC,
                                     OBJ_GFX_TABLE_MAX=0xFE, **CFRU_FLAGS)),
@@ -153,6 +155,18 @@ HACKS = [
     # quest log recap needs firered_hack.txt's B presses). Both moved the object palettes (mapped from the pools).
     dict(name="FireRed Rocket Edition", sha1="033d05374ae34eb84fae62c693ca8f3da23dd1bd", family="FR", mapped=True,
          save="rocket_edition", boot_file="firered_hack.txt", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x0839FDB0)),
+    # Pokémon Clover v1.3.3: FireRed rev 0 edited in place under an Emerald header (BPEE): FireRed's family by hand. Its
+    # gMapGroups sits at rev 0's address (reshaped); the object graphics table moved (0x083BD450, its pool word).
+    dict(name="Clover v1.3.3", sha1="7eca3ef1580e21b96027b721ecd3ba1aa36a6ea2", family="FR", mapped=True,
+         save="clover", boot_file="firered_hack.txt", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x083BD450)),
+    # Pokémon Elysium v2.5.0, its two parts: FireRed rev 0 edited in place; gMapGroups at rev 0's address, the object
+    # graphics table moved (its pool word). Part A boots its own new game's save (it deletes retail FireRed's), Part B
+    # retail FireRed's.
+    dict(name="Elysium v2.5.0 Part A", sha1="d2440fd6bae5a12dfc3cecc129b9bbff22d74b2e", family="FR", mapped=True,
+         save="elysium_a", boot_file="elysium_a.txt", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x0826E6A4)),
+    dict(name="Elysium v2.5.0 Part B", sha1="71bf40178a1f5c69dc1c22099623434ba1e74318", family="FR", mapped=True,
+         save="elysium_b", boot_file="firered_hack.txt", a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0)),
+    # (Part B's graphics table sits at an odd address, 0x082723DE, which the far-off people's word reads can't take: none.)
     *[dict(name=f"Ash Gray {v}", sha1=sha, family="FR", mapped=True, save=save, boot_file="firered_hack.txt",
            a=dict(MAP_GROUPS=0x0873E2F4, OBJ_GFX_INFO=0x0839FDB0))
       for v, sha, save in [("v4.5.3", "1ee1557db1e4c2e0e94c6306efcc40506bc40cc9", "ash_gray"),
@@ -194,10 +208,12 @@ HACKS = [
              SPRITE_PAL_TAGS=0x03000CF0, OBJ_GFX_VAR_FROM=301, OBJ_GFX_COUNT=300, TEMPLATE_KIND_AT=1,
              SB1_OFFSETS=0xDD8 | 0x1510 << 16)),
     # R.O.W.E.: Emerald's code (mapped), its own maps - 12-bit metatile ids (elevation in the top 4 bits) and a 2048-
-    # metatile primary tileset; gSprites moved (find_wide_addrs.py).
+    # metatile primary tileset; gSprites moved: 0x02020538, from the symbol table the ROM carries (0x08FB0670) -
+    # find_wide_addrs.py's 0x0201F5D0 was 58 entries early, which left every sprite past the sixth undrawn (the player,
+    # an NPC). Its battles run from 0x0203F300 (ScriptContext1_SetupScript 0x080D94E5, the rowe_battle fixture's).
     dict(name="R.O.W.E. v2.1.9.1", sha1="81bd0f4bfa1c04ab2c6faab1bddd10e8a390ea77", family="EM", mapped=True,
-         pending="the map is found now, but one NPC's sprite isn't drawn and a building comes out of the wrong metatiles",
-         save="rowe", a=dict(METATILE_MASK=0xFFF, PRIMARY_OVERRIDE=2048, SPRITES=0x0201F5D0)),
+         save="rowe", script=0x080D94E4, script_ram=0x0203F300,
+         a=dict(METATILE_MASK=0xFFF, PRIMARY_OVERRIDE=2048, SPRITES=0x02020538)),
     # Quetzal: its own SaveBlock1 (pos 0x470 in, the app's NativeConfig), no far-off objects (its own templates).
     dict(name="Quetzal", sha1="d0658315da1e8827f66f15c3d3a000fe747e163e", family="EM", mapped=True, save="quetzal",
          pending="most map frames differ (its own engine: not mapped beyond the RAM yet)",
@@ -301,6 +317,23 @@ HACKS = [
                 CAMERA_OFFSET=0x0203824C, PAN_OFF=0xC, OBJECT_EVENTS=0x02038280, SPRITES=0x020214D0, COORD_OFFSET=0x02022DA8,
                 COORD_OFFSET_Y=0x02022DAA, SPRITE_ORDER=0x02022A54, GMAIN=0x02020618, CONTROLS_LOCKED=0x0203BF67,
                 METATILE_SIZE=24)),
+    # v1.2: gMapHeader and everything after it 4 bytes later (VMAP, the camera, gObjectEvents, the field lock), its map
+    # groups and ScriptContext_SetupScript moved.
+    dict(name="Monomyth v1.2", sha1="742e62ffa5a8d607171fdb8477eb1f417dc36086", family="MM", save="monomyth_v1_2",
+         boot_file="monomyth.txt", script=0x08090C81,
+         a=dict(VMAP=0x02038240, MAP_HEADER=0x02038214, MAP_GROUPS=0x0886EF64, SAVE_BLOCK1_PTR=0x03001240, SB1_POS=4,
+                CAMERA_OFFSET=0x02038250, PAN_OFF=0xC, OBJECT_EVENTS=0x02038284, SPRITES=0x020214D0, COORD_OFFSET=0x02022DA8,
+                COORD_OFFSET_Y=0x02022DAA, SPRITE_ORDER=0x02022A54, GMAIN=0x02020618, CONTROLS_LOCKED=0x0203BF6B,
+                METATILE_SIZE=24)),
+    # Epsilon Emerald: a gcc pokeemerald (Emerald's maps and 16-byte metatiles, but FireRed's u32 metatile attributes: EX32)
+    # with expansion's objects (u16 graphicsId +4, spriteId +0x23). find_wide_addrs.py's dumps on retail Emerald's save (ROUTE 114, a step left first: right is a ledge);
+    # the controls lock is the byte its Lock / ArePlayerFieldControlsLocked share (0x088C657C / 0x088C6594). No far-off
+    # objects: its graphics records are 0x20 bytes (images +0x18), not the 0x24 pk_wide.c reads.
+    dict(name="Epsilon Emerald v1.0.0", sha1="8decf0571ba3f17d31c76168346e240a14e248ce", family="EX32", save="epsilon_emerald",
+         boot_file="epsilon_emerald.txt", script=0x088C6621,
+         a=dict(VMAP=0x03004580, MAP_HEADER=0x02037F68, MAP_GROUPS=0x08E299DC, SAVE_BLOCK1_PTR=0x0300454C,
+                CAMERA_OFFSET=0x03000E20, OBJECT_EVENTS=0x02038020, SPRITES=0x020206B0, COORD_OFFSET=0x02021BBC,
+                COORD_OFFSET_Y=0x02021BBE, SPRITE_ORDER=0x020217F4, GMAIN=0x03002BE0, CONTROLS_LOCKED=0x03000F2C)),
     # pokeemerald-expansion builds: scripts/find_wide_addrs.py's dumps (gMapHeader, gSaveBlock1Ptr and gMapGroups from
     # the app's NativeConfig / GuideTables), ScriptContext_SetupScript from their battle fixtures' READMEs.
     dict(name="Lazarus v2.0", sha1="7dcdc7e280bc4631487e13dd37e6e0cea04adea6", family="EX", save="lazarus_srm",

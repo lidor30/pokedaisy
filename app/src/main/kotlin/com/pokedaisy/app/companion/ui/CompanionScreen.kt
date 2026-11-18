@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import androidx.compose.animation.AnimatedContent
@@ -73,6 +75,7 @@ import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_TARGET_SELECT
 import com.pokedaisy.app.companion.data.GameKind
+import com.pokedaisy.app.companion.data.isXy
 import com.pokedaisy.app.companion.data.SnapshotView
 import com.pokedaisy.app.companion.data.showsBattle
 import com.pokedaisy.app.companion.data.hasData
@@ -137,7 +140,7 @@ fun CompanionScreen(
     /** WHICH GAME IS THIS? ([com.pokedaisy.app.companion.data.BestEffort]): the player's answers; null = no picker. */
     gamePick: com.pokedaisy.app.companion.GamePickActions? = null,
     /** The match notice's SHARE (the player's yes): sends exactly what it lists. Null = no ask. */
-    shareBestEffort: ((com.pokedaisy.app.companion.data.BestEffortReport) -> Unit)? = null,
+    shareBestEffort: com.pokedaisy.app.companion.data.BestEffortSharing? = null,
 ) {
     // Everything below is keyed on the snapshot's game: the per-game look
     // (backdrops, party slots, bag) reads the plain `activeGame` global, which
@@ -190,6 +193,8 @@ fun CompanionScreen(
         // The PARTY tab's open summary (MonDetailScreen), by party index so it
         // follows live data; null = the party slots.
         var detailIndex by remember { mutableStateOf(initialMonIndex) }
+        // A DEX detail opened from a party summary: its Back returns to that summary, not the dex list.
+        var dexBackToParty by remember { mutableStateOf<Int?>(null) }
         // BATTLE tab: touch Controls (Gen 4 style) vs. info-dense Panel — see
         // BattleControlsScreen.kt. Resets to Controls each time the BATTLE tab
         // becomes available (a fresh battle), matching selectedLabel's own reset.
@@ -278,6 +283,8 @@ fun CompanionScreen(
         // The launch's saved copy names the ones it had, which wait on LOADING for the live data.
         val cachedTabs = snapshot.cachedTabs.orEmpty()
         val available = COMPANION_TABS.filter { id ->
+            // A 3DS game: what its reader has so far (docs/3DS_GAMES_PLAN.md).
+            if (game.isXy) return@filter id in N3DS_TABS
             when (id) {
                 "DEX" -> dex != null || id in cachedTabs
                 "GUIDE" -> guide != null || id in cachedTabs
@@ -383,12 +390,14 @@ fun CompanionScreen(
             }
             backTab = current
             selectedLabel = "MORE"; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
+            dexBackToParty = null
         }
         // A chip's tap (PARTY's own included) closes an open summary; BATTLE's also returns to the controls.
         val openTab: (String) -> Unit = { title ->
             popupReturn = null
             if (title != current) backTab = current
             selectedLabel = title; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
+            dexBackToParty = null
             if (title == "BATTLE") { battleShowControls = opensOnButtons; showSuggestions = opensOnSuggestions }
         }
         // The window over the game (one screen): L / R step along the bar (round, like the game's own pages), from the gear
@@ -539,16 +548,16 @@ fun CompanionScreen(
                 // When the last switch was moments ago (a player tapping through tabs), cut
                 // instead of animating: every pane still sliding out stays composed, and
                 // a run of quick taps stacked up several full tabs at once.
-                val lastSwitchNanos = remember { longArrayOf(0L) }
+                val lastSwitch = remember { arrayOfNulls<TimeSource.Monotonic.ValueTimeMark>(1) }
                 // The tab area, with RetroAchievements' live indicators in its corner.
                 Box(Modifier.weight(1f).fillMaxSize()) {
                     AnimatedContent(
                         targetState = pane,
                         transitionSpec = {
-                            val now = System.nanoTime()
+                            val now = TimeSource.Monotonic.markNow()
                             // TWEAKS > TAB ANIMATIONS off: every switch cuts.
-                            val rapid = now - lastSwitchNanos[0] < RAPID_SWITCH_NANOS || !CompanionTweaks[CompanionTweaks.Tweak.TAB_ANIMATIONS]
-                            lastSwitchNanos[0] = now
+                            val rapid = lastSwitch[0]?.let { now - it < RAPID_SWITCH } == true || !CompanionTweaks[CompanionTweaks.Tweak.TAB_ANIMATIONS]
+                            lastSwitch[0] = now
                             if (rapid) {
                                 EnterTransition.None togetherWith ExitTransition.None
                             } else if (targetState == "LOADING" || initialState == "LOADING" || targetState == "WAITING" || initialState == "WAITING") {
@@ -595,8 +604,20 @@ fun CompanionScreen(
                                 snapshot.party, shownSlot,
                                 onIndexChange = { detailIndex = it },
                                 onBack = { detailIndex = null },
+                                onOpenDex = if (dex != null) { { i ->
+                                    val mon = snapshot.party.getOrNull(i)
+                                    val national = mon?.let {
+                                        com.pokedaisy.app.companion.data.PokedexSource.nationalOf(dex.tables, it.species)
+                                    } ?: 0
+                                    if (mon != null && national > 0) {
+                                        openTab("DEX")
+                                        dexBackToParty = i
+                                        dexUi.open = national
+                                    }
+                                } } else null,
                                 learn = learnContext,
                                 itemUse = itemUse,
+                                dexTables = dex?.tables,
                                 // The PC's DEPOSIT, where its moves work and the boxes are read: pick a box.
                                 onDeposit = if (pcBoxes != null && itemUse?.canSwapBox() == true) {
                                     { boxesUi.depositing = shownSlot }
@@ -630,6 +651,7 @@ fun CompanionScreen(
                                 inBox, lastBoxMon.value.coerceIn(0, (inBox.size - 1).coerceAtLeast(0)),
                                 onIndexChange = { i -> boxesUi.open = i; boxesUi.looked = pcBoxes.boxes[boxIndex].mons.indexOf(inBox.getOrNull(i)) },
                                 onBack = { boxesUi.open = null },
+                                dexTables = dex?.tables,
                                 // WITHDRAW into the party; with six there, SWAP's pick instead.
                                 onWithdraw = if (itemUse?.canSwapBox() == true) {
                                     {
@@ -677,7 +699,17 @@ fun CompanionScreen(
                             boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
                             BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {
-                            if (paneKey == "DEX/DETAIL") PokedexEntryScreen(dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables)
+                            if (paneKey == "DEX/DETAIL") PokedexEntryScreen(
+                                dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables,
+                                onBack = dexBackToParty?.let { partySlot ->
+                                    {
+                                        dexUi.open = null
+                                        dexBackToParty = null
+                                        detailIndex = partySlot
+                                        selectedLabel = "PARTY"
+                                    }
+                                },
+                            )
                             else PokedexScreen(
                                 dex, dexUi,
                                 holdings = remember(snapshot.party, pcBoxes) { com.pokedaisy.app.companion.data.dexHoldings(snapshot.party, pcBoxes) },
@@ -699,7 +731,9 @@ fun CompanionScreen(
                             // ones) over the party-menu backdrop - no extra window
                             // behind them, and the full tab area for bigger slots.
                             var swapNotice by remember { mutableStateOf<ItemNotice?>(null) }
-                            PartyScreen(
+                            // Pokemon X: its own party screen's slots (the game's smooth look, not the pixel ones).
+                            if (game.isXy) XyPartyScreen(snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) })
+                            else PartyScreen(
                                 snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) },
                                 onSwap = itemUse?.takeIf { it.canReorderParty() }?.let { use ->
                                     { a, b -> use.reorderParty(a, b) { r -> partySwapMessage(r)?.let { swapNotice = ItemNotice(0, it, ok = false) } } }
@@ -876,6 +910,7 @@ fun CompanionScreen(
                 onOpen = { p ->
                     if (current != "ACHIEVEMENTS") popupReturn = current
                     selectedLabel = "ACHIEVEMENTS"; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
+                    dexBackToParty = null
                     achievementFocus = AchievementFocus(p.achievementId, unlocked = p.kind != AchievementPopup.Kind.PROGRESS)
                 },
             )
@@ -891,6 +926,11 @@ fun CompanionScreen(
                     active = settings.showsTips, roomy = true,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), cardModifier = Modifier.fillMaxWidth(),
                     maxWidth = 1200.dp, onAnswer = settings::answerFlyStyle,
+                )
+                BattleRetryAskHost(
+                    active = settings.showsTips, roomy = true,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), cardModifier = Modifier.fillMaxWidth(),
+                    maxWidth = 1200.dp, onAnswer = settings::answerBattleRetry,
                 )
             }
 
@@ -979,7 +1019,8 @@ internal fun companionTabLabel(id: String): String = when (id) {
         GameKind.MARIOMON -> "POCKETS"
         GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY ->
             if (romLanguage == 'D') "BEUTEL" else "PACK"   // German Crystal's START menu
-        GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.PURE_RED, GameKind.PURE_BLUE, GameKind.YELLOW_LEGACY -> tr("ITEM")   // Gen 1's START menu (the European carts' own word)
+        GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.PURE_RED, GameKind.PURE_BLUE, GameKind.YELLOW_LEGACY,
+        GameKind.BROWN -> tr("ITEM")   // Gen 1's START menu (the European carts' own word)
         else -> tr("BAG")
     }
     else -> id
@@ -1003,7 +1044,7 @@ internal val SETTINGS_CHIP_WIDTH: androidx.compose.ui.unit.Dp
     @Composable get() = if (LocalShortCompanion.current) 40.dp else 52.dp
 
 /** Tab switches closer together than this cut instead of sliding (see the tab AnimatedContent). */
-private const val RAPID_SWITCH_NANOS = 300_000_000L
+private val RAPID_SWITCH = 300.milliseconds
 
 /** The gap between tab chips, and above the tab bar. */
 internal val TAB_GAP = 4.dp
@@ -1266,6 +1307,9 @@ private fun BlockedView(
         }
     }
 }
+
+/** The tabs a 3DS game has so far: its party, its bag and Azahar's states. */
+private val N3DS_TABS = setOf("PARTY", "ITEMS", "STATES")
 
 /** The data tabs until the first telemetry arrives: a rocking Poké Ball and
  * "LOADING...". [status] (the reader's own message) only shows up if it

@@ -1,7 +1,9 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.io.RandomAccessFile
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.Path
 
 /**
  * Whether the game has its region map (Town Map, Fly map, a wall map, the
@@ -27,21 +29,21 @@ object RegionMapWatch {
     @Volatile
     private var watches = emptyList<Watch>()
 
+    private val lock = SynchronizedObject()
+    private var generation = 0
+
     /** Scans [rom] in the background for its map pointers. */
-    fun load(rom: File) {
-        watches = emptyList()
-        Thread({
+    fun load(rom: Path?) {
+        val current = synchronized(lock) { watches = emptyList(); ++generation }
+        if (rom == null) return
+        background("pokedaisy-map-watch") {
             try {
-                watches = RandomAccessFile(rom, "r").use { f ->
-                    val n = minOf(f.length(), SCAN_END.toLong()).toInt()
-                    val b = ByteArray(n)
-                    f.readFully(b)
-                    find(b)
-                }
+                val found = withRomFile(rom) { f -> find(f.readFully(0, minOf(f.size(), SCAN_END.toLong()).toInt())) }
+                synchronized(lock) { if (generation == current) watches = found }
             } catch (t: Throwable) {
-                android.util.Log.w("pokedaisy", "RegionMapWatch: scan failed", t)
+                Logs.w("RegionMapWatch: scan failed", t)
             }
-        }, "pokedaisy-map-watch").apply { isDaemon = true; start() }
+        }
     }
 
     /** True while any of this ROM's map screens is open. */
@@ -87,7 +89,8 @@ object RegionMapWatch {
         fun u32(i: Int) = (rom[i].toLong() and 0xFF) or ((rom[i + 1].toLong() and 0xFF) shl 8) or
             ((rom[i + 2].toLong() and 0xFF) shl 16) or ((rom[i + 3].toLong() and 0xFF) shl 24)
         val end = minOf(rom.size, SCAN_END) - 8
-        return when (String(rom, 0xAC, 4, Charsets.US_ASCII)) {
+        // Pokémon Clover: FireRed 1.0 under Emerald's code - FireRed's pattern.
+        return when (if (isFireRedUnderEmeraldHeader(rom)) "BPRE" else asciiString(rom, 0xAC, 4)) {
             // the other-language FireRed / LeafGreen too: the pattern finds their own pointer (and
             // Ultra Violet's, FireRed 1.0 under its own code)
             "BPRE", "BPGE", "BPRD", "BPRF", "BPRI", "BPRS", "BPGF", "BPGI", "BPGS", "PUVV" -> {
@@ -103,7 +106,7 @@ object RegionMapWatch {
                 seen.filterValues { it >= 3 }.keys.map { Watch(it) }
             }
             "BPEE", "BPES", "BPED", "BPEF", "BPEI", "BPEJ" -> { // the European Emeralds keep English's RAM
-                val ja = String(rom, 0xAC, 4, Charsets.US_ASCII) == "BPEJ"
+                val ja = asciiString(rom, 0xAC, 4) == "BPEJ"
                 // (field map, fly map, PokéNav resources): retail's, or a rebuild's own (Emerald Legacy) - whichever
                 // the ROM's literal pools hold.
                 val candidates = if (ja) listOf(longArrayOf(JA_FIELD_REGION_MAP, JA_FLY_MAP, JA_POKENAV_RESOURCES))

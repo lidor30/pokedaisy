@@ -51,7 +51,7 @@ private fun hgBosses(w: Gen4World) = listOf(
 
 private const val HG_HM01 = 420
 private fun hm(n: Int, move: String, answer: String, hint: String, areas: List<String>) =
-    entry("HM%02d %s".format(n, move), answer, hint, Have.Item(HG_HM01 + n - 1), areas)
+    entry("HM${n.pad(2)} $move", answer, hint, Have.Item(HG_HM01 + n - 1), areas)
 
 private fun hgPages(soulSilver: Boolean): List<GuidePage> {
     val wing = if (soulSilver) "SILVER WING" else "RAINBOW WING"

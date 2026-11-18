@@ -12,6 +12,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
@@ -133,6 +134,7 @@ fun BattleControlsScreen(
     }
     val movesKnown = activeMon?.moves?.isNotEmpty() == true
     val canSwitch = battleInput?.canSwitch == true
+    val menuOnCompanion = battleInput?.menuOnCompanion == true
     // The POKéMON pane is the party screen, full height: no strips or INFO / SUGGESTIONS over it.
     val picking = (battleInputState == BATTLE_INPUT_ACTION_SELECT && choosingMon) ||
         (battleInputState == BATTLE_INPUT_PARTY_OPEN && canSwitch)
@@ -209,8 +211,9 @@ fun BattleControlsScreen(
                             )
                             if (opened < 1f) ActionButtons(
                                 activeMon, battleInput, busy, showHints, oneTapMoves,
-                                onFight = if (movesKnown) ({ choosingMove = true }) else null,
-                                onPokemon = if (canSwitch) ({ choosingMon = true }) else null,
+                                // HIDE BATTLE MENU: the game's own FIGHT / POKéMON, so the D-pad, A and B act on what's shown.
+                                onFight = if (movesKnown && !menuOnCompanion) ({ choosingMove = true }) else null,
+                                onPokemon = if (canSwitch && !menuOnCompanion) ({ choosingMon = true }) else null,
                                 modifier = Modifier.fillMaxSize(), out = opened,
                             )
                             // No taps while they slide: a disabled button would dim on its way out.
@@ -259,7 +262,8 @@ fun BattleControlsScreen(
 private const val MENU_SLIDE_MS = 280
 
 /** The game's cursor in the battle menu on screen, for a button to show where it is - once the player has moved it (a
- * ring on FIGHT every turn would say nothing). -1 till then. Polled like [rememberBattleInputBusy]. */
+ * ring on FIGHT every turn would say nothing), or at once while the game's menu is hidden ([BattleInput.menuOnCompanion]).
+ * -1 till then. Polled like [rememberBattleInputBusy]. */
 @Composable
 internal fun rememberBattleCursor(battleInput: BattleInput?): Int {
     var shown by remember(battleInput) { mutableStateOf(-1) }
@@ -269,7 +273,8 @@ internal fun rememberBattleCursor(battleInput: BattleInput?): Int {
             androidx.compose.runtime.withFrameMillis { }
             val now = battleInput.menuCursor
             if (first < 0) first = now
-            if (now >= 0 && (shown >= 0 || now != first)) shown = now
+            // The game's menu off its screen: these buttons are the menu, so its cursor shows from the start.
+            if (now >= 0 && (shown >= 0 || now != first || battleInput.menuOnCompanion)) shown = now
         }
     }
     return shown
@@ -404,9 +409,11 @@ private fun ActionButtons(
             }
         }
             Row(Modifier.fillMaxWidth().height(60.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                battleInput?.lastBall?.let { ball -> LastBallButton(ball, enabled, Modifier.fillMaxHeight().aspectRatio(1f)) { battleInput.throwBall() } }
                 if (hasBag) Bag(Modifier.weight(1f).fillMaxHeight())
                 Run(Modifier.weight(1f).fillMaxHeight())
-                Pokemon(Modifier.weight(1f).fillMaxHeight())
+                // With LAST BALL's square in the row, POKéMON's word takes a step down to fit.
+                Pokemon(Modifier.weight(1f).fillMaxHeight(), if (battleInput?.lastBall != null) 24.sp else 30.sp)
             }
         }
         return
@@ -453,6 +460,13 @@ private fun ActionButtons(
                     ButtonLabel(tr("FIGHT"), 52.sp, outlined = true)
                 }
             }
+            // LAST BALL: the last ball thrown, in one tap (BattleBall.kt), over the panel's corner left of FIGHT.
+            battleInput?.lastBall?.let { ball ->
+                LastBallButton(
+                    ball, enabled, Modifier.align(Alignment.TopStart).size(ds * LAST_BALL_SIZE)
+                        .graphicsLayer { translationX = -out * size.width * 2f },
+                ) { battleInput.throwBall() }
+            }
         }
         // Without a BAG (Elite Redux) RUN and POKéMON sit level.
         Row(
@@ -469,6 +483,31 @@ private fun ActionButtons(
         }
     }
 }
+
+/** LAST BALL's button: [ball]'s own icon on a white face, how many are left in its corner. Throws it without the bag. */
+@Composable
+private fun LastBallButton(ball: com.pokedaisy.app.companion.data.ItemView, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    PlatinumButton(
+        fill = LastBallFace, frame = LastBallFrame, modifier = modifier, enabled = enabled, battleButton = true,
+        contentPadding = PaddingValues(2.dp), pressesGame = true, onClick = onClick,
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val h = maxHeight
+            // The game's own icon from the ROM; a drawn ball where there's none (no ROM art read).
+            if (ball.iconAsset != null) ItemIcon(ball.iconAsset, size = h * 0.62f, modifier = Modifier.align(Alignment.Center), centerArt = true)
+            else Box(Modifier.align(Alignment.Center)) { PokeballDot(alive = true, dotSize = h * 0.5f) }
+            Box(Modifier.align(Alignment.BottomEnd).padding(end = 2.dp)) {
+                ButtonLabel("${ball.quantity}", (h.value * 0.32f).sp, outlined = true)
+            }
+        }
+    }
+}
+
+/** LAST BALL's size in the HeartGold layout, in DS pixels: a corner of the panel round FIGHT. */
+private const val LAST_BALL_SIZE = 38
+
+private val LastBallFace = Color(0xFFF2F0E8)
+private val LastBallFrame = Color(0xFF7A7870)
 
 /** A DS pixel of the battle pane (HeartGold's layout), for its buttons' cursor; Unspecified outside it. */
 internal val LocalHgPixel = androidx.compose.runtime.staticCompositionLocalOf { androidx.compose.ui.unit.Dp.Unspecified }
@@ -487,7 +526,8 @@ internal fun MoveGrid(
 ) {
     CompanionBackHandler(enabled = battleInput != null && !busy) { onCancel?.invoke() ?: battleInput?.back() }
     if (gen1Buttons) return Gen1MoveList(moves, battleInput, busy, showHints, modifier, onCancel)
-    val cursor = rememberBattleCursor(battleInput).takeIf { !busy } ?: -1
+    // Opened by us ([onCancel]), the game is still on its action menu: its cursor is an action's, not a move's.
+    val cursor = rememberBattleCursor(battleInput).takeIf { !busy && onCancel == null } ?: -1
     Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for (row in 0..1) {
             Row(
@@ -725,7 +765,7 @@ internal fun PlatinumButton(
             )
             .then(
                 if (enabled) {
-                    Modifier.clickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = {
+                    Modifier.menuClickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = {
                         onClick()
                         // The game sounds its own button - unless it can't be heard (FF's STEADY music mutes it).
                         if (!pressesGame || gameSilent()) sound()

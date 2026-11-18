@@ -6,6 +6,11 @@
 *.sav
 *.srm
 *.sa1
+# 3DS carts (and their saves, which are a file named `main`: never copy one into the repo).
+*.3ds
+*.cci
+*.cxi
+*.cia
 # ...nor them zipped, as patches, savestates (they hold the save too) or the app's per-state files.
 *.zip
 *.7z
@@ -21,6 +26,7 @@
 *.apk
 *.aab
 *.wav
+!3ds/ctr/cia/banner.wav
 
 # Machine-local config
 local.properties
@@ -63,6 +69,7 @@ __pycache__/
 # 3DS build output (3ds/README.md)
 3ds/ctr/build-dev/
 *.3dsx
+*.cia
 *.smdh
 
 # ROM lists for make rom-support LIST=... (scripts/rom_agent/): local paths, never committed

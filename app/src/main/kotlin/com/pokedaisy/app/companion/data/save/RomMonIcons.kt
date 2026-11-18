@@ -1,15 +1,17 @@
 package com.pokedaisy.app.companion.data.save
 
-import android.graphics.Bitmap
 import com.pokedaisy.app.companion.data.IconTables
+import com.pokedaisy.app.companion.data.LockedMap
 import com.pokedaisy.app.companion.data.NATIVE_EMERALD_RETAIL
 import com.pokedaisy.app.companion.data.NATIVE_FIRERED_REV0
 import com.pokedaisy.app.companion.data.NATIVE_FIRERED_REV1
+import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import com.pokedaisy.app.companion.data.decodeMonIcon
-import java.io.File
-import java.io.RandomAccessFile
-import java.util.concurrent.ConcurrentHashMap
+import com.pokedaisy.app.companion.data.readFully
+import com.pokedaisy.app.companion.data.withRomFile
+import okio.FileHandle
+import okio.Path
 
 /**
  * Party icons for PC BOXES / TRADE, read from the player's own ROM *file* - nothing is bundled, and no game is
@@ -18,32 +20,27 @@ import java.util.concurrent.ConcurrentHashMap
  * Ruby, Sapphire, other languages) by game code + revision. Anything else (hacks) gets none, and
  * the screens show names instead of guessing at addresses.
  */
-class RomMonIcons private constructor(private val rom: File, private val tables: IconTables) {
+class RomMonIcons private constructor(private val rom: Path, private val tables: IconTables) {
 
-    private val cache = ConcurrentHashMap<Int, Bitmap>()
-    private val missing = ConcurrentHashMap.newKeySet<Int>()
+    private val cache = LockedMap<Int, RomArt.Image>()
+    private val missing = LockedMap<Int, Unit>()
 
     /** An icon already decoded, without touching the file. */
-    fun peek(species: Int): Bitmap? = cache[species]
+    fun peek(species: Int): RomArt.Image? = cache[species]
 
     /** [species]' icon (32x64, both frames), or null. Blocking: off the UI thread. Eggs are [SPECIES_EGG]. */
-    fun get(species: Int): Bitmap? {
+    fun get(species: Int): RomArt.Image? {
         if (species <= 0 || species in missing) return null
         cache[species]?.let { return it }
-        val bmp = runCatching { RandomAccessFile(rom, "r").use { f -> decodeMonIcon(tables, species) { a, n -> read(f, a, n) } } }.getOrNull()
-        if (bmp == null) missing += species else cache[species] = bmp
+        val bmp = runCatching { withRomFile(rom) { f -> decodeMonIcon(tables, species) { a, n -> read(f, a, n) } } }.getOrNull()
+        if (bmp == null) missing[species] = Unit else cache[species] = bmp
         return bmp
     }
 
     companion object {
         private const val ROM_BASE = 0x08000000L
 
-        private fun read(f: RandomAccessFile, addr: Long, n: Int): ByteArray {
-            val out = ByteArray(n)
-            f.seek(addr - ROM_BASE)
-            f.readFully(out)
-            return out
-        }
+        private fun read(f: FileHandle, addr: Long, n: Int): ByteArray = f.readFully(addr - ROM_BASE, n)
 
         /** The icon tables for a ROM with this whole-file [sha1], header [code] and [revision]; null = not one we know. */
         fun tablesFor(sha1: String?, code: String?, revision: Int?): IconTables? = when (sha1) {
@@ -59,9 +56,9 @@ class RomMonIcons private constructor(private val rom: File, private val tables:
          * Icons for [rom] (a plain ROM file: an archive is unpacked by the caller) with [tables], once a sample of the
          * table checks out against the file - every pointer in the ROM, palette indices within the six palettes.
          */
-        fun open(rom: File, tables: IconTables): RomMonIcons? = runCatching {
-            RandomAccessFile(rom, "r").use { f ->
-                val size = f.length()
+        fun open(rom: Path, tables: IconTables): RomMonIcons? = runCatching {
+            withRomFile(rom) { f ->
+                val size = f.size()
                 fun inFile(p: Long) = p >= ROM_BASE && p - ROM_BASE < size
                 val ok = listOf(1, 25, 151, 277, 411).all { s ->
                     val ptr = u32(read(f, tables.monIconTable + s.toLong() * tables.monIconStride, 4), 0)

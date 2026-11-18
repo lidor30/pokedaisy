@@ -30,7 +30,7 @@ class BestEffortShareTest {
     @Test fun theWindowListsWhatIsSent() {
         assertEquals(
             listOf("ROM SHA-1", "ROM SIZE", "GAME CODE", "READ AS", "MATCH", "PARTS OFF", "APP VERSION"),
-            BestEffortShare.fields(r, "1.1.4").map { it.first },
+            r.shareFields("1.1.4").map { it.first },
         )
     }
 

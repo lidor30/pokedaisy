@@ -7,6 +7,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
 import java.security.MessageDigest
+import okio.Path.Companion.toOkioPath
 
 /** PC BOXES' icons read from a ROM file (skipped where the ROM isn't on this machine: CI's ROM runner has them). */
 class RomMonIconsTest {
@@ -20,7 +21,7 @@ class RomMonIconsTest {
         assumeTrue("no ROM at $path", rom.isFile)
         val tables = RomMonIcons.tablesFor(sha1(rom), code, rev)
         assertNotNull(tables)
-        assertNotNull(RomMonIcons.open(rom, tables!!))
+        assertNotNull(RomMonIcons.open(rom.toOkioPath(), tables!!))
     }
 
     @Test

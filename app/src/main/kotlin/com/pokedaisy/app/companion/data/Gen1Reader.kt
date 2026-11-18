@@ -54,6 +54,9 @@ data class Gen1Config(
     val bagSlots: Int = 20,
     /** wPartyMenuTypeOrMessageID's BATTLE_PARTY_MENU, the pick after a faint: 2 (PureRGB renumbered its menus: 1). */
     val battlePartyMenu: Int = 2,
+    /** wEnemyMonUnmodifiedMaxHP and the four stats after it: the foe's stats before any stat stage (wEnemyMon's carry
+     * them: a LEER halves its Defense there). The same in every Gen 1 cart read (the `*_battle` fixtures). */
+    val enemyUnmodified: Long = 0xCD24L,
 )
 
 /** Pokémon Yellow (USA, Europe). Red / Blue's own addresses are one byte later ([GEN1_RED]). */
@@ -148,6 +151,37 @@ val GEN1_BLUE = GEN1_RED.copy(pokedex = POKEDEX_BLUE)
 val GEN1_RED_RELOAD = GEN1_RED.copy(pokedex = POKEDEX_RED_RELOAD)
 
 /**
+ * German Red and Blue (Rote / Blaue Edition): English Red's code with German Yellow's text, which moved everything from
+ * wOnSGB up 5 bytes, as in the European Yellows (scripts/port_gen1.py from pokered.sym, every field below; checked on
+ * headless captures of a save written from the `red` fixture's game, scripts/gen1_save_from_fixture.py: the `red_de*` /
+ * `blue_de*` fixtures). The two carts share every address. Their product codes (DMG-APAD / APED) key the names.
+ */
+val GEN1_RED_DE = GEN1_RED.copy(
+    partyCount = 0xD168L,
+    partyMons = 0xD170L,
+    bagCount = 0xD322L,
+    money = 0xD34CL,
+    badges = 0xD35BL,
+    curMap = 0xD363L,
+    yCoord = 0xD366L,
+    xCoord = 0xD367L,
+    isInBattle = 0xD05CL,
+    battleMon = 0xD019L,
+    enemyMon = 0xCFEAL,
+    enemyMonPartyPos = 0xCFEDL,
+    enemyPartyCount = 0xD8A1L,
+    enemyMons = 0xD8A9L,
+    pokedex = POKEDEX_RED_DE,
+    playTime = 0xDA46L,
+    partyMenuType = 0xD082L,
+    language = 'D',
+    gameCode = "APAD",
+    battleMenuLeftX = 7,
+    battleMenuRightX = 12,
+)
+val GEN1_BLUE_DE = GEN1_RED_DE.copy(gameCode = "APED", pokedex = POKEDEX_BLUE_DE)
+
+/**
  * PureRed and PureBlue v2.7.6 (Vortyne/pureRGB, a pret/pokered fork: its `make red blue` with rgbds 1.0.3 is both releases
  * byte for byte, so its pokered.sym gives every address; pokeblue.sym's RAM is the same). A Color cart (rgbfix -c) that
  * keeps its game state in WRAM bank 1 and switches D000 to bank 2 for its palette buffers (wGBCFullPalBuffer), so
@@ -201,8 +235,18 @@ val GEN1_YELLOW_LEGACY = GEN1_YELLOW.copy(
     bagSlots = 59,
 )
 
-/** Pokémon Yellow, Red or Blue (every language), PureRed or PureBlue, Yellow Legacy: Gen 1's reader ([readGen1Telemetry]), tables and look. */
-val GameKind?.isGen1: Boolean get() = this == GameKind.YELLOW || isRedBlue || isPureRgb || this == GameKind.YELLOW_LEGACY
+/**
+ * Pokémon Brown 6.1.2 / 6.0.1 (Koolboyman's Rijon, a 2 MB hack of Red with no source): Red's RAM, every address (each wram
+ * symbol scripts/port_gen1.py maps from pokered.sym lands on Red's; checked headless on its own save, the `brown*`
+ * fixtures), its own internal species order to Dex No. 252, its own POKéDEX ([POKEDEX_BROWN]; the Poller gives 6.0.1
+ * [GEN1_BROWN_V601], so a dex cache never mixes the two carts' pages).
+ */
+val GEN1_BROWN = GEN1_RED.copy(internalToDex = gen1InternalToDexBrown, pokedex = POKEDEX_BROWN)
+val GEN1_BROWN_V601 = GEN1_BROWN.copy(pokedex = POKEDEX_BROWN_V601)
+
+/** Pokémon Yellow, Red or Blue (every language), PureRed or PureBlue, Yellow Legacy, Brown: Gen 1's reader ([readGen1Telemetry]), tables and look. */
+val GameKind?.isGen1: Boolean get() = this == GameKind.YELLOW || isRedBlue || isPureRgb || this == GameKind.YELLOW_LEGACY ||
+    this == GameKind.BROWN
 
 /** Pokémon Red or Blue: Yellow's tables, their own art, dex pages and RAM ([GEN1_RED]). */
 val GameKind?.isRedBlue: Boolean get() = this == GameKind.RED || this == GameKind.BLUE
@@ -239,6 +283,37 @@ fun decodeGen1PartyMon(raw: ByteArray, off: Int, cfg: Gen1Config): Mon? {
         genderSymbol = GENDER_SYMBOL_NONE,
         exp = exp,
         personality = gen1MonKey(raw, off),   // no personality in Gen 1: the switch's key (GbPartySwitch)
+        stats = gen1Stats(raw, off + 27, statExp = List(5) { be16(raw, off + 17 + 2 * it) }, hpStats = off + 34),
+    )
+}
+
+/**
+ * DVs at [dvs], stat experience (HP, Attack, Defense, Speed, Special), and max HP + the four stats at [hpStats], as
+ * [MonStats] lists - Special in both of their special slots.
+ */
+private fun gen1Stats(raw: ByteArray, dvs: Int, statExp: List<Int>, hpStats: Int): MonStats {
+    val s = List(5) { be16(raw, hpStats + 2 * it) }
+    return MonStats(
+        ivs = gbDvs(u8(raw, dvs), u8(raw, dvs + 1)),
+        evs = statExp + statExp[4],
+        nature = NO_NATURE,
+        stats = s + s[4],
+        kind = StatKind.GEN1,
+    )
+}
+
+/**
+ * The foe a wild battle sends out, as a party Pokémon from its battle_struct (wEnemyMon) and [unmodified] stats: its DVs
+ * and stats, no stat experience (a wild Pokémon has none) - so battle INFO's STATS has it with no party struct behind it.
+ */
+fun gen1WildFoe(raw: ByteArray, unmodified: ByteArray, cfg: Gen1Config): Mon? {
+    val b = decodeGen1BattleMon(raw, cfg) ?: return null
+    // Its DVs from the battle struct, its stats from the unmodified copy ([Gen1Config.enemyUnmodified]: max HP first).
+    val stats = gen1Stats(raw + unmodified, 12, statExp = List(5) { 0 }, hpStats = raw.size)
+    return Mon(
+        species = b.species, level = b.level, hp = b.hp, maxHp = b.maxHp, status = b.status1, moves = b.moves, pp = b.pp,
+        genderSymbol = GENDER_SYMBOL_NONE,
+        stats = stats,
     )
 }
 
@@ -356,14 +431,18 @@ fun readGen1Telemetry(r: MemoryReader, cfg: Gen1Config): Telemetry {
     val battleMons = MutableList(4) { EMPTY_BATTLE_MON }
     var enemyParty = emptyList<Mon>()
     var enemyActive = -1
+    var battleFoes = emptyList<Mon>()
     if (inBattle) {
         decodeGen1BattleMon(r.readCoreMemory(cfg.battleMon, GEN1_BATTLE_MON_SIZE), cfg)?.let { battleMons[BATTLE_POS_PLAYER_LEFT] = it }
-        decodeGen1BattleMon(r.readCoreMemory(cfg.enemyMon, GEN1_BATTLE_MON_SIZE), cfg)?.let { battleMons[BATTLE_POS_OPPONENT_LEFT] = it }
+        val enemyRaw = r.readCoreMemory(cfg.enemyMon, GEN1_BATTLE_MON_SIZE)
+        decodeGen1BattleMon(enemyRaw, cfg)?.let { battleMons[BATTLE_POS_OPPONENT_LEFT] = it }
+        if (battle == 1) battleFoes = listOfNotNull(gen1WildFoe(enemyRaw, r.readCoreMemory(cfg.enemyUnmodified, 10), cfg))
         if (battle == 2) {
             val n = u8(r.readCoreMemory(cfg.enemyPartyCount, 1), 0).coerceAtMost(PARTY_SIZE)
             val raw = r.readCoreMemory(cfg.enemyMons, PARTY_SIZE * GEN1_PARTY_MON_SIZE)
             enemyParty = (0 until n).mapNotNull { decodeGen1PartyMon(raw, it * GEN1_PARTY_MON_SIZE, cfg) }
             enemyActive = u8(r.readCoreMemory(cfg.enemyMonPartyPos, 1), 0).takeIf { it < enemyParty.size } ?: -1
+            battleFoes = enemyParty
         }
     }
 
@@ -374,6 +453,8 @@ fun readGen1Telemetry(r: MemoryReader, cfg: Gen1Config): Telemetry {
     return Telemetry(
         frameCounter = frames,
         inBattle = inBattle,
+        // wIsInBattle: 1 wild, 2 trainer (BOSS RETRY, SHINY ALERT's count, NUZLOCKE).
+        isTrainerBattle = if (inBattle) battle == 2 else null,
         isDoubleBattle = false,
         mapGroup = 0,
         mapNum = map,
@@ -389,6 +470,7 @@ fun readGen1Telemetry(r: MemoryReader, cfg: Gen1Config): Telemetry {
         items = items,
         enemyParty = enemyParty,
         enemyActive = enemyActive,
+        battleFoes = battleFoes,
         money = bcd(r.readCoreMemory(cfg.money, 3)),
         pokedex = cfg.pokedex?.let { t -> t.gen1?.let { runCatching { readGen1PokedexState(r, it, t) }.getOrNull() } },
         // The GUIDE's flags, badges and the champion's team (GuideGen1.kt).

@@ -85,7 +85,7 @@ class M4aSongs private constructor(
                 val header = u32(rom, t + n * 8) xor sig.headerXor
                 if (header !in ROM until ROM + rom.size) break
                 val ms = u16(rom, t + n * 8 + 4)
-                if (ids.putIfAbsent(header - ROM, n) == null && ms == MUSIC_PLAYER_BGM) bgm += n
+                if (header - ROM !in ids) { ids[header - ROM] = n; if (ms == MUSIC_PLAYER_BGM) bgm += n }
                 n++
             }
             if (sig.altLdr >= 0) literal(rom, at, sig.altLdr)?.let { addAlternates(rom, it, ids, bgm) }
@@ -104,7 +104,7 @@ class M4aSongs private constructor(
                 val header = u32(rom, e + 4)
                 if (header !in ROM until ROM + rom.size) break
                 val id = n.toInt() or ALT
-                if (ids.putIfAbsent(header - ROM, id) == null && u16(rom, e + 8) == MUSIC_PLAYER_BGM) bgm += id
+                if (header - ROM !in ids) { ids[header - ROM] = id; if (u16(rom, e + 8) == MUSIC_PLAYER_BGM) bgm += id }
                 e += 12
             }
         }

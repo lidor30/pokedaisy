@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.io.RandomAccessFile
+import kotlin.concurrent.Volatile
+import kotlinx.datetime.number
+import okio.Path
 
 /**
  * Pokémon Blaze Black 2 Redux / Volt White 2 Redux (v1.4.1): Drayano and AphexCubed's hacks, US / Europe Black 2 and
@@ -67,7 +68,7 @@ object Black2Redux {
 
     /** Which of the two [read] is: [CODE_BLACK2] / [CODE_WHITE2], or null for anything else. */
     fun which(read: (Long, Int) -> ByteArray?): String? {
-        val code = read(0x0C, 4)?.takeIf { it.size == 4 }?.let { String(it, Charsets.US_ASCII) } ?: return null
+        val code = read(0x0C, 4)?.takeIf { it.size == 4 }?.let { asciiString(it) } ?: return null
         val sig = when (code) {
             CODE_BLACK2 -> SIG_BLACK2
             CODE_WHITE2 -> SIG_WHITE2
@@ -79,11 +80,7 @@ object Black2Redux {
     }
 
     /** [matches] on a plain ROM file. */
-    fun matches(rom: File): Boolean = runCatching {
-        RandomAccessFile(rom, "r").use { f ->
-            matches { off, len -> if (off + len > f.length()) null else ByteArray(len).also { f.seek(off); f.readFully(it) } }
-        }
-    }.getOrDefault(false)
+    fun matches(rom: Path): Boolean = runCatching { withRomFile(rom) { matches(it.cartReader()) } }.getOrDefault(false)
 
     /** A type id of these carts' -> the app's (Gen 3's): Gen 5's ([gen5Type]), Fairy (17) in "???"'s slot, 9. */
     fun type(t: Int): Int = gen5Type(t)
@@ -109,7 +106,7 @@ object Black2Redux {
         val wildRates: List<IntArray>,
     ) {
         /** The rates for the device's season, as Black 2's world gives its own. */
-        fun wildRateWords(): IntArray = wildRates.getOrNull((java.time.LocalDate.now().monthValue - 1) % 4) ?: IntArray(0)
+        fun wildRateWords(): IntArray = wildRates.getOrNull((localNow().month.number - 1) % 4) ?: IntArray(0)
     }
 
     @Volatile var data: Data? = null

@@ -1,16 +1,19 @@
 package com.pokedaisy.app
 
-import android.view.InputDevice
-import android.view.KeyEvent
-import android.view.MotionEvent
+import com.pokedaisy.app.companion.data.CoreKey
+import com.pokedaisy.app.companion.data.KeyCodes
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import kotlin.concurrent.Volatile
 import kotlin.math.abs
 
 /**
- * Translates Android key/motion events into a live GBA key bitmask. Face /
+ * Combines canonical key events, axes and touch into a live game key bitmask. Face /
  * shoulder / menu buttons are remappable via [setControls] (GbaControls); the
  * D-pad and analog stick are fixed.
  */
-class GbaInput : Hotkeys.GameKeys {
+class GbaInput : Hotkeys.GameKeys, ScriptInput {
+    private val lock = SynchronizedObject()
     @Volatile
     var mask: Int = 0
         private set
@@ -25,6 +28,13 @@ class GbaInput : Hotkeys.GameKeys {
     @Volatile private var touchBits = 0    // from the on-screen TouchControlsView (any thread: TouchInputWindows)
     @Volatile private var scriptBits = 0   // synthetic presses (BattleInputController)
     @Volatile private var scriptExclusive = false
+    /**
+     * The QUICK MENU's TURBO: these GBA buttons (A) mash while the player holds them, as a TURBO A key would, until
+     * it's switched off. Kept apart from the steady bits ([recompute]) and pulsed by the engine ([turboMask]).
+     */
+    @Volatile var turboLatch = 0
+        set(v) { field = v; recompute() }
+    @Volatile private var latchedHeld = 0
 
     @Volatile
     private var gbaControls: Map<Int, Int> = DEFAULT_CONTROLS
@@ -103,7 +113,7 @@ class GbaInput : Hotkeys.GameKeys {
 
     /** The TURBO A / B buttons held (keys or the touch controls'), which the engine presses every other 2 frames;
      * none while a script steers. */
-    val turboMask: Int get() = if (scriptExclusive) 0 else turboBits or touchTurboBits
+    val turboMask: Int get() = if (scriptExclusive) 0 else turboBits or touchTurboBits or latchedHeld
 
     @Volatile private var touchTurboBits = 0
 
@@ -120,7 +130,7 @@ class GbaInput : Hotkeys.GameKeys {
      * buttons, D-pad, touch controls - are ignored, so they can't knock the
      * sequence off course; they count again the moment it ends.
      */
-    fun setScript(bits: Int, exclusive: Boolean) {
+    override fun setScript(bits: Int, exclusive: Boolean) {
         scriptBits = bits
         scriptExclusive = exclusive
         recompute()
@@ -135,29 +145,30 @@ class GbaInput : Hotkeys.GameKeys {
         recompute()
     }
 
-    fun onMotion(event: MotionEvent): Boolean {
-        hatBits = motionBits(event) ?: return false
+    /** Fixed D-pad / analog directions, supplied by the platform's event adapter. */
+    fun setAxes(bits: Int) {
+        hatBits = bits
         recompute()
-        return true
     }
 
     // Synchronized: the touch controls' input windows set their bits from a thread of their own (TouchInputWindows), the
     // battle scripts from the emu thread, the keys from the UI thread - each recompute must see the others' latest.
-    @Synchronized
-    private fun recompute() {
-        mask = (if (scriptExclusive) scriptBits else buttonBits or hatBits or touchBits or scriptBits) or pressBits
+    private fun recompute() = synchronized(lock) {
+        val held = buttonBits or hatBits or touchBits
+        latchedHeld = held and turboLatch
+        mask = (if (scriptExclusive) scriptBits else (held and turboLatch.inv()) or scriptBits) or pressBits
     }
 
     private fun keyToBit(keyCode: Int): Int? = when (keyCode) {
-        KeyEvent.KEYCODE_DPAD_UP -> MgbaCore.Key.UP
-        KeyEvent.KEYCODE_DPAD_DOWN -> MgbaCore.Key.DOWN
-        KeyEvent.KEYCODE_DPAD_LEFT -> MgbaCore.Key.LEFT
-        KeyEvent.KEYCODE_DPAD_RIGHT -> MgbaCore.Key.RIGHT
+        KeyCodes.DPAD_UP -> CoreKey.UP
+        KeyCodes.DPAD_DOWN -> CoreKey.DOWN
+        KeyCodes.DPAD_LEFT -> CoreKey.LEFT
+        KeyCodes.DPAD_RIGHT -> CoreKey.RIGHT
         // Some controllers (8BitDo, GameSir in a few modes) send a diagonal as one key.
-        KeyEvent.KEYCODE_DPAD_UP_LEFT -> MgbaCore.Key.UP or MgbaCore.Key.LEFT
-        KeyEvent.KEYCODE_DPAD_UP_RIGHT -> MgbaCore.Key.UP or MgbaCore.Key.RIGHT
-        KeyEvent.KEYCODE_DPAD_DOWN_LEFT -> MgbaCore.Key.DOWN or MgbaCore.Key.LEFT
-        KeyEvent.KEYCODE_DPAD_DOWN_RIGHT -> MgbaCore.Key.DOWN or MgbaCore.Key.RIGHT
+        KeyCodes.DPAD_UP_LEFT -> CoreKey.UP or CoreKey.LEFT
+        KeyCodes.DPAD_UP_RIGHT -> CoreKey.UP or CoreKey.RIGHT
+        KeyCodes.DPAD_DOWN_LEFT -> CoreKey.DOWN or CoreKey.LEFT
+        KeyCodes.DPAD_DOWN_RIGHT -> CoreKey.DOWN or CoreKey.RIGHT
         else -> controls[keyCode]   // remappable face/shoulder/menu buttons
     }
 
@@ -167,29 +178,26 @@ class GbaInput : Hotkeys.GameKeys {
          * Crystal Clear's menus want 6. */
         const val TAP_FRAMES = 6
 
-        /** The D-pad directions a joystick event holds (its HAT, else the left stick); null = not a joystick's. */
-        fun motionBits(event: MotionEvent): Int? {
-            if (event.source and InputDevice.SOURCE_JOYSTICK != InputDevice.SOURCE_JOYSTICK) return null
-            val hx = event.getAxisValue(MotionEvent.AXIS_HAT_X)
-            val hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
-            val x = if (abs(hx) > 0.5f) hx else event.getAxisValue(MotionEvent.AXIS_X)
-            val y = if (abs(hy) > 0.5f) hy else event.getAxisValue(MotionEvent.AXIS_Y)
+        /** D-pad HAT takes priority over the stick on each axis. Negative Y points up. */
+        fun axisBits(stickX: Float, stickY: Float, hatX: Float = 0f, hatY: Float = 0f): Int {
+            val x = if (abs(hatX) > DEAD) hatX else stickX
+            val y = if (abs(hatY) > DEAD) hatY else stickY
             var bits = 0
-            if (x < -DEAD) bits = bits or MgbaCore.Key.LEFT
-            if (x > DEAD) bits = bits or MgbaCore.Key.RIGHT
-            if (y < -DEAD) bits = bits or MgbaCore.Key.UP
-            if (y > DEAD) bits = bits or MgbaCore.Key.DOWN
+            if (x < -DEAD) bits = bits or CoreKey.LEFT
+            if (x > DEAD) bits = bits or CoreKey.RIGHT
+            if (y < -DEAD) bits = bits or CoreKey.UP
+            if (y > DEAD) bits = bits or CoreKey.DOWN
             return bits
         }
 
         private val DEFAULT_CONTROLS = mapOf(
-            KeyEvent.KEYCODE_BUTTON_A to MgbaCore.Key.A, KeyEvent.KEYCODE_Z to MgbaCore.Key.A,
-            KeyEvent.KEYCODE_BUTTON_B to MgbaCore.Key.B, KeyEvent.KEYCODE_X to MgbaCore.Key.B,
-            KeyEvent.KEYCODE_BUTTON_L1 to MgbaCore.Key.L, KeyEvent.KEYCODE_A to MgbaCore.Key.L,
-            KeyEvent.KEYCODE_BUTTON_R1 to MgbaCore.Key.R, KeyEvent.KEYCODE_S to MgbaCore.Key.R,
-            KeyEvent.KEYCODE_BUTTON_START to MgbaCore.Key.START, KeyEvent.KEYCODE_ENTER to MgbaCore.Key.START,
-            KeyEvent.KEYCODE_BUTTON_SELECT to MgbaCore.Key.SELECT,
-            KeyEvent.KEYCODE_BACKSLASH to MgbaCore.Key.SELECT, KeyEvent.KEYCODE_SHIFT_RIGHT to MgbaCore.Key.SELECT,
+            KeyCodes.BUTTON_A to CoreKey.A, KeyCodes.Z to CoreKey.A,
+            KeyCodes.BUTTON_B to CoreKey.B, KeyCodes.X to CoreKey.B,
+            KeyCodes.BUTTON_L1 to CoreKey.L, KeyCodes.A to CoreKey.L,
+            KeyCodes.BUTTON_R1 to CoreKey.R, KeyCodes.S to CoreKey.R,
+            KeyCodes.BUTTON_START to CoreKey.START, KeyCodes.ENTER to CoreKey.START,
+            KeyCodes.BUTTON_SELECT to CoreKey.SELECT,
+            KeyCodes.BACKSLASH to CoreKey.SELECT, KeyCodes.SHIFT_RIGHT to CoreKey.SELECT,
         )
     }
 }

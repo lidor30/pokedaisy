@@ -40,6 +40,12 @@ constexpr int OW = PK_NDS_WIDE_MAX_W, OH = PK_NDS_WIDE_MAX_H;
 // and only a sprite that has kept its place across the screen EDGE_STEADY frames (a box that has slid in; not one sliding).
 constexpr int EDGE_BAND = 5;
 constexpr int EDGE_STEADY = 8;
+// A carried box goes this far past the screen's side, then ends in its own outline (its top line's colour and
+// thickness), its corners stepped round like a pixel-art window's (BOX_CORNER: how far each row from the top / bottom
+// stops short): the box closed just past where the DS's screen ended, the battle's scene beyond it. Carried to the
+// view's edge, a box ran across the whole margin (players' reports).
+constexpr int BOX_RUN = 3;
+constexpr int BOX_CORNER[] = {2, 1};
 constexpr u32 NONE = 0xFFFFFFFFu;   // not drawn (a 3D colour's alpha is 5 bits: never this)
 // Threads drawing the slices: the slices are independent, and the 3x zoom step's (eight of them, ~4.7 screens) took
 // ~6 ms a frame on one thread on an M-series Mac, more on a handheld. They draw while the next frame runs (drawSlices).
@@ -149,6 +155,7 @@ struct Shown2D {
     u32 DispCnt = 0;
     u16 BGCnt[4] = {}, BGXPos[4] = {}, BGYPos[4] = {};
     u8 WinCnt[4] = {};
+    u8 Win0Coords[4] = {}, Win1Coords[4] = {};   // x1, x2, y1, y2 (melonDS's order)
     u16 BlendCnt = 0;
     u8 EVA = 0, EVB = 0, EVY = 0;
     u16 MasterBrightness = 0;
@@ -167,6 +174,8 @@ void takeShown2D(Shown2D& d, const GPU& gpu)
         d.BGXPos[i] = u.BGXPos[i];
         d.BGYPos[i] = u.BGYPos[i];
         d.WinCnt[i] = u.WinCnt[i];
+        d.Win0Coords[i] = u.Win0Coords[i];
+        d.Win1Coords[i] = u.Win1Coords[i];
     }
     d.BlendCnt = u.BlendCnt;
     d.EVA = u.EVA;
@@ -849,6 +858,49 @@ inline bool objOpaque(NDS* nds, u16 a0, u16 a1, u16 a2, int w, int h, int px, in
     return objPixel(nds, a0, a1, a2, w, h, px, py) != 0;
 }
 
+// Whether engine A's BG [bg] shows at screen pixel ([x], [y]) through the windows (DISPCNT bits 13-15, WININ / WINOUT):
+// WIN0, then WIN1, then the OBJ window (a sprite in OBJ-window mode with a pixel there; an affine one counts over its
+// whole box), else outside. A Gen 4 battle's stat-change effect shows its pattern layer (BG2, covering the screen) only
+// through the OBJ window, the Pokemon's shape: at the screen's sides it isn't seen, so it mustn't carry them.
+bool bgThroughWindows(NDS* nds, const Shown2D& u, int bg, int x, int y)
+{
+    u32 d = u.DispCnt;
+    if (!(d & 0xE000)) return true;
+    auto inside = [&](const u8* c) {
+        bool inX = c[0] <= c[1] ? x >= c[0] && x < c[1] : x >= c[0] || x < c[1];
+        bool inY = c[2] <= c[3] ? y >= c[2] && y < c[3] : y >= c[2] || y < c[3];
+        return inX && inY;
+    };
+    auto objWindow = [&]() {
+        if (!(d & (1 << 12))) return false;
+        static const int sizes[3][4][2] = {
+            {{8, 8}, {16, 16}, {32, 32}, {64, 64}}, {{16, 8}, {32, 8}, {32, 16}, {64, 32}}, {{8, 16}, {8, 32}, {16, 32}, {32, 64}},
+        };
+        for (int i = 0; i < 128; i++) {
+            const u8* o = &u.OAM[i * 8];
+            u16 a0 = (u16) (o[0] | o[1] << 8), a1 = (u16) (o[2] | o[3] << 8), a2 = (u16) (o[4] | o[5] << 8);
+            if (((a0 >> 10) & 3) != 2) continue;               // not an OBJ-window sprite
+            if (!(a0 & 0x100) && (a0 & 0x200)) continue;        // hidden
+            int shape = (a0 >> 14) & 3;
+            if (shape == 3) continue;
+            int w = sizes[shape][(a1 >> 14) & 3][0], h = sizes[shape][(a1 >> 14) & 3][1];
+            if ((a0 & 0x300) == 0x300) { w *= 2; h *= 2; }
+            int ox = a1 & 0x1FF, oy = a0 & 0xFF;
+            if (ox >= 256) ox -= 512;
+            if (oy >= 192) oy -= 256;
+            if (x < ox || x >= ox + w || y < oy || y >= oy + h) continue;
+            if (objPixel(nds, a0, a1, a2, w, h, x - ox, y - oy)) return true;
+        }
+        return false;
+    };
+    u8 mask;
+    if ((d & 0x2000) && inside(u.Win0Coords)) mask = u.WinCnt[0];
+    else if ((d & 0x4000) && inside(u.Win1Coords)) mask = u.WinCnt[1];
+    else if ((d & 0x8000) && objWindow()) mask = u.WinCnt[3];
+    else mask = u.WinCnt[2];
+    return (mask >> bg) & 1;
+}
+
 // Wide-frame pixel (x, y) as the screen would show it, its 3D colour [c] (NONE / alpha 0: the 3D clear there), as RGBA.
 inline u32 composed(Compose& k, int x, int y, u32 c)
 {
@@ -1174,6 +1226,10 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
             for (int y = 0; y < H3D; y++) {
                 u16 cl = pk_nds_bg_pixel(nds, bg, unitA.BGXPos[bg], y + unitA.BGYPos[bg]);
                 u16 cr = pk_nds_bg_pixel(nds, bg, W3D - 1 + unitA.BGXPos[bg], y + unitA.BGYPos[bg]);
+                // Only where the windows let the layer show (a move's effect layer seen through the Pokemon alone
+                // smeared every row's edge pixel across the margins).
+                if (cl && !bgThroughWindows(nds, unitA, bg, 0, y)) cl = 0;
+                if (cr && !bgThroughWindows(nds, unitA, bg, W3D - 1, y)) cr = 0;
                 // A row the layer covers from edge to edge (HG/SS's "look at the touch screen" bar under the field
                 // menu) carries on too; a text box stops short of the edges.
                 bool across = cl && cr;
@@ -1337,6 +1393,19 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
                     }
                 }
             }
+        // Each run of carried rows (a box, or boxes touching): its outline row (the run's first) and that line's
+        // thickness, for the end drawn past BOX_RUN.
+        int runTop[2][H3D] = {}, runBottom[2][H3D] = {}, capW[2][H3D] = {};
+        for (int side = 0; side < 2; side++)
+            for (int y = 0; y < H3D;) {
+                if (!carry[side][y]) { y++; continue; }
+                int r1 = y;
+                while (r1 + 1 < H3D && carry[side][r1 + 1]) r1++;
+                int t = 1;
+                while (y + t <= r1 && t < 3 && carry[side][y + t] == carry[side][y]) t++;
+                for (int r = y; r <= r1; r++) { runTop[side][r] = y; runBottom[side][r] = r1; capW[side][r] = t; }
+                y = r1 + 1;
+            }
         wide.cx0 = -wide.needL;
         wide.cx1 = W3D + wide.needR;
         wide.cy0 = -wide.needT;
@@ -1377,8 +1446,20 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
                     }
                     int side = x < 0 ? 0 : 1;
                     if (y >= 0 && y < H3D && carry[side][y]) {
-                        row[x] = wide.gpu ? screen(side ? W3D - 1 : 0, carryRow[side][y]) : carry[side][y];
-                        return;
+                        int d = side ? x - (W3D - 1) : -x;   // 1 = the first column past the screen
+                        int t = capW[side][y];
+                        int k = std::min(y - runTop[side][y], runBottom[side][y] - y);   // rows from the box's top / bottom
+                        int end = BOX_RUN + t - (k < 2 ? BOX_CORNER[k] : 0);
+                        if (d <= end - t) {
+                            row[x] = wide.gpu ? screen(side ? W3D - 1 : 0, carryRow[side][y]) : carry[side][y];
+                            return;
+                        }
+                        if (d <= end) {
+                            int r0 = runTop[side][y];
+                            row[x] = wide.gpu ? screen(side ? W3D - 1 : 0, carryRow[side][r0]) : carry[side][r0];
+                            return;
+                        }
+                        // Past the box's end: the scene, as anywhere else in the margin.
                     }
                     u16 c = y >= 0 && y < H3D ? pk_nds_bg_pixel(nds, 3, x + bgx, y + bgy) : 0;
                     // The background, else the backdrop (its palette's colour 0), or a sprite over it - under the

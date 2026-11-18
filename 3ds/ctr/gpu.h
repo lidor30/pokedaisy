@@ -6,12 +6,21 @@
 #define GPU_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define GPU_GAME_STRIDE 240 // the game buffer's row length in pixels
 
 bool gpu_init(void);
 void gpu_exit(void);
+// The core the draw thread runs on (3 or 2 on a New 3DS, 1 on an Old one), -1 = none: the game's core draws.
+// The screens' draw thread's stack (gpu.c), for host_log_thread_failure's same-size try.
+#define GPU_DRAW_STACK (64 * 1024)
+int gpu_draw_core(void);
+// An Old 3DS's one thread on its system core, lent to the game's renderer (gpu.c): the draw thread moves to the game's
+// core (true = it was on core 1). gpu_core1_back puts it back on core 1 (true = it started there).
+bool gpu_core1_lend(void);
+bool gpu_core1_back(void);
 
 // mGBA's video buffer: 32-bit pixels (0xXXBBGGRR), GPU_GAME_STRIDE x 160, in linear memory.
 uint32_t* gpu_game_buffer(void);
@@ -24,6 +33,9 @@ void gpu_set_bars(uint32_t rgb);
 uint32_t* gpu_frame_done(void);
 // The core's picture size: 240 x 160, a Game Boy's 160 x 144.
 void gpu_set_game_size(int w, int h);
+// Optional RGB565 frame; copied before returning when drawing asynchronously.
+void gpu_set_native_pixels(const uint16_t* px, size_t stride);
+unsigned gpu_native_frames(void);
 // New canvases (0xRRGGBB): the bottom screen's 320x240, the top's 400x240.
 void gpu_set_bottom(const uint32_t* px);
 void gpu_set_top(const uint32_t* px);

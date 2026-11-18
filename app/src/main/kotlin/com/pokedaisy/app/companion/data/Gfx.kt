@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import android.graphics.Bitmap
 
 /** Shared GBA graphics decode helpers (4bpp tiles, BGR555 palette, BIOS LZ77). */
 object Gfx {
@@ -19,7 +18,7 @@ object Gfx {
     fun decode4bpp(
         tiles: ByteArray, tilesOff: Int, palRaw: ByteArray, palOff: Int,
         wTiles: Int, hTiles: Int,
-    ): Bitmap {
+    ): RomArt.Image {
         val pal = IntArray(16)
         for (i in 0 until 16) {
             val c = (palRaw[palOff + i * 2].toInt() and 0xFF) or
@@ -48,7 +47,7 @@ object Gfx {
                 tile++
             }
         }
-        return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+        return RomArt.Image(w, h, px)
     }
 
     /**

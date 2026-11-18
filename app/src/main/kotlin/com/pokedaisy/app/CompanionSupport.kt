@@ -4,6 +4,7 @@ import com.pokedaisy.app.companion.data.BestEffortStore
 import com.pokedaisy.app.companion.data.OriginHeartGold
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
+import okio.source
 
 /**
  * Whether the second-screen companion can read [rom] - the same call
@@ -40,6 +41,9 @@ object CompanionSupport {
     }
 
     fun isSupported(rom: File): Boolean {
+        // A 3DS cart (FeatureFlags.n3ds): by its header's title id, decrypted only (never hashed: they're gigabytes).
+        if (rom.extension.lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS)
+            return FeatureFlags.n3ds() && com.pokedaisy.app.n3ds.N3dsCart.supported(rom)
         // Game Boy / Color: the exact carts the GB reader knows (Pokémon Yellow).
         if (RomIdentity.isGameBoy(rom)) return TelemetrySampler.GAME_BOY_SUPPORT && RomIdentity.sha1(rom) in TelemetrySampler.SUPPORTED_GB_SHA1S
         // A DS cart: by its header's code and revision, as detect() takes it (a 128 MB+ ROM isn't hashed).
@@ -66,9 +70,34 @@ object CompanionSupport {
         // (RandomizedRetail), as detect() takes them.
         val rev = RomIdentity.revision(rom)
         return sha1 in TelemetrySampler.RETAIL_SHA1S ||
-            com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, size) { RomArchive.open(rom) } != null ||
-            com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, rev, size) { RomArchive.open(rom) } != null
+            com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, size) { RomArchive.open(rom).source() } != null ||
+            com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, rev, size) { RomArchive.open(rom).source() } != null
     }
+
+    /**
+     * An unsupported ROM that is still a Pokémon game (GitHub #943: a player's Game Boy hacks, spin-offs and patched DS
+     * hacks never showed up from their linked folders): its file name says so, or its header's title does (a GBA
+     * cart's at 0xA0, a Game Boy one's at 0x134, a DS one's at 0). The library lists these as NOT SUPPORTED, playable as
+     * any game; anything else in a linked folder (a whole frontend's other games) stays out. Header reads only.
+     */
+    fun looksPokemon(rom: File): Boolean {
+        // An archive with no GBA / Game Boy / DS ROM in it (a zipped N64 Pokemon Snap) is nothing the app plays, whatever
+        // its name: it was listed under GBA, NOT SUPPORTED.
+        if (RomArchive.isArchive(rom) && RomArchive.romEntry(rom) == null) return false
+        if (POKEMON_NAME.containsMatchIn(rom.name)) return true
+        val title = when {
+            RomIdentity.isGameBoy(rom) -> RomArchive.readAt(rom, 0x134L, 16)
+            RomIdentity.isNds(rom) -> RomArchive.readAt(rom, 0x0L, 12)
+            else -> RomArchive.readAt(rom, 0xA0L, 12)
+        }?.let { String(it, Charsets.US_ASCII).uppercase() } ?: return false
+        return POKEMON_TITLES.any { title.startsWith(it) }
+    }
+
+    private val POKEMON_NAME = Regex("pok[eé]mon|pocket monsters", RegexOption.IGNORE_CASE)
+
+    /** Header titles of Pokémon carts: the main games and their hacks (POKEMON ..., Crystal's PM_CRYSTAL), the card games
+     * (POKECARD), Mystery Dungeon (POKEDUN). */
+    private val POKEMON_TITLES = listOf("POKEMON", "PM_", "POKECARD", "POKEDUN", "POKE DUN")
 
     /** [rom] is a game its makers asked PokéDaisy not to read ([com.pokedaisy.app.companion.data.BlockedGames]), by its
      * SHA-1. Only a GBA cart's file is hashed here (a cheap header look first); blocking. */

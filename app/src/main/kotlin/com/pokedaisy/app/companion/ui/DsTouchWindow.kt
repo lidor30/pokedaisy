@@ -226,7 +226,7 @@ fun DsShotBackdrop(shot: androidx.compose.ui.graphics.ImageBitmap?, blurred: Boo
             androidx.compose.foundation.Image(
                 shot, null,
                 Modifier.fillMaxSize().then(
-                    if (blurred && android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(u * 6, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle)
+                    if (blurred) Modifier.blur(u * 6, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle)
                     else Modifier,
                 ),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
@@ -297,7 +297,7 @@ fun DsLoader(modifier: Modifier = Modifier, ball: Boolean = true) {
                 // Three dots, each up a pixel or two in its turn.
                 for (i in 0..2) {
                     val phase = ((t * 3 - i) % 3 + 3) % 3
-                    val lift = if (phase < 1f) kotlin.math.floor(kotlin.math.sin(phase * Math.PI).toFloat() * 3f) * px else 0f
+                    val lift = if (phase < 1f) kotlin.math.floor(kotlin.math.sin(phase * kotlin.math.PI).toFloat() * 3f) * px else 0f
                     val x = kotlin.math.floor(size.width / 2f + (i - 1) * 6 * px - 1.5f * px)
                     val y = size.height - 4 * px - lift
                     drawRect(Color.Black.copy(alpha = 0.4f), Offset(x + px, y + px), androidx.compose.ui.geometry.Size(3 * px, 3 * px))

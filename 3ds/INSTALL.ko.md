@@ -34,6 +34,9 @@ PokeDaisy는 닌텐도 3DS에서도 홈브루 앱으로 실행돼요. 위 화면
 
 `sdmc:/`는 3DS가 SD 카드의 맨 위를 부르는 이름이에요. 컴퓨터에서 보면 `sdmc:/3ds/`는 그냥 카드의 `3ds` 폴더예요.
 
+> [!TIP]
+> HOME 메뉴에서 PokeDaisy를 실행하고 싶다면, 릴리스마다 `pokedaisy.cia`도 있어요. 3DS에서 FBI를 열고(커스텀 펌웨어를 설치할 때 함께 들어가요) **Remote Install**을 고르고 **Scan QR Code**를 고른 뒤 릴리스 페이지의 QR 코드를 찍으세요. 아니면 `pokedaisy.cia`를 SD 카드에 복사하고 FBI의 **SD** 목록에서 설치해요. 아래 단계는 똑같고, PokeDaisy는 HOME 메뉴의 아이콘으로 시작해요.
+
 ## 3단계: 게임과 세이브 데이터 넣기
 
 1. 카드 맨 위에 `pokedaisy` 폴더를 만들고, 그 안에 `roms` 폴더를 만들어요: `sdmc:/pokedaisy/roms/`. (PokeDaisy를 먼저 한 번 실행하면 둘 다 자동으로 만들어져요.)
@@ -112,6 +115,8 @@ PokeDaisy는 닌텐도 3DS에서도 홈브루 앱으로 실행돼요. 위 화면
 - **Homebrew Launcher에 PokeDaisy가 없어요:** 파일이 `sdmc:/3ds/`에 있고 이름이 `.3dsx`로 끝나야 해요.
 - **게임이 목록에 없어요:** `sdmc:/pokedaisy/roms/` 안에 바로 있어야 하고, 그 안의 폴더에 넣거나 압축한 채로 두면 안 돼요.
 - **세이브 데이터를 안 읽어요:** 세이브는 게임과 정확히 같은 이름에 끝이 `.sav`여야 해요. 실행할 때마다 세이브가 먼저 `sdmc:/pokedaisy/roms/pokedaisy-backups/`에 복사되니까, 예전 사본이 필요하면 거기 있어요.
-- **느려요:** 닌텐도 3DS와 2DS는 New 모델보다 느려요. 라이브러리의 `SETTINGS`에서 `SCREEN`을 가장 가벼운 모드인 `PIXEL 1x`로 바꿔 보세요.
+- **느려요:** 닌텐도 3DS와 2DS는 New 모델보다 느려요. 라이브러리의 `SETTINGS`에서 `SCREEN`을 가장 가벼운 모드인 `PIXEL 1x`로 바꿔 보세요. GBA 게임은 라이브러리에서 `X`를 눌러 다른 `GBA CORE`를 써 볼 수도 있어요. `GPSP`는 닌텐도 3DS용으로 만든 실험적인 코어예요. 게임은 가볍게 돌도록 EXPAND 없이 시작돼요. `EXPAND 1.5x`는 라이브러리의 `SETTINGS`에서 고를 수 있어요.
+- **CIA를 설치하라고 나와요:** Homebrew Launcher에서 실행하면 닌텐도 3DS와 2DS에는 16MB까지의 게임만 들어가고 `GPSP`도 쓸 수 없어요. `pokedaisy.cia`를 설치하고(위 참고) HOME 메뉴에서 실행하면 더 큰 게임과 `GPSP`를 쓸 수 있어요.
+- **게임이 시작되지 않아요:** 위 화면에 이유와 3DS의 메모리 정보가 나와요. 알려 주실 때 메시지 전체를 찍은 사진이나 `sdmc:/pokedaisy/log.txt`를 함께 보내 주세요.
 
 그래도 안 되면 `sdmc:/pokedaisy/log.txt`를 첨부해서 [알려 주세요](https://pokedaisy.com/ko/feedback/#bug).

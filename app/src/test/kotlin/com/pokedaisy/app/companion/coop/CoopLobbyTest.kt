@@ -1,8 +1,6 @@
 package com.pokedaisy.app.companion.coop
 
 import java.io.ByteArrayOutputStream
-import java.net.InetAddress
-import java.net.InetSocketAddress
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -40,7 +38,7 @@ class CoopLobbyTest {
     }
 
     private fun lobby(fake: FakeLobby) =
-        CoopLobby(fake, "https://relay.example.com", { now }, CoopBackoff(java.util.Random(1)))
+        CoopLobby(fake, "https://relay.example.com", { now }, CoopBackoff(kotlin.random.Random(1)))
 
     private fun msg(vararg parts: Any): ByteArray {
         val out = ByteArrayOutputStream()
@@ -210,7 +208,7 @@ class CoopLobbyTest {
     fun theLobbysInviteHasNoAddresses() {
         val peer = CoopPeerId("ab".repeat(32))
         val secret = ByteArray(16) { it.toByte() }
-        val full = CoopTicket(peer, secret, listOf(InetSocketAddress(InetAddress.getByAddress(byteArrayOf(192.toByte(), 168.toByte(), 1, 20)), 47321))).encode()
+        val full = CoopTicket(peer, secret, listOf(CoopAddress(byteArrayOf(192.toByte(), 168.toByte(), 1, 20), 47321))).encode()
         val shared = CoopLobbyWire.lobbyInvite(full)
         assertNotNull(shared)
         val back = CoopTicket.decode(shared!!)!!

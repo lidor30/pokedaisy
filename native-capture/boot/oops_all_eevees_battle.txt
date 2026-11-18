@@ -1,0 +1,28 @@
+# Pokemon Oops All Eevees! v1.3.2, a scripted wild battle: oops_all_eevees.txt, then setwildbattle species 133 Lv5; dowildbattle; end at
+# 0x0203F400 (CFRU uses 0x0203FF00) through rev 0's ScriptContext_SetupScript 0x08069AE5; dumped at the action menu.
+wait 300
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 200
+wait 200
+poke32 0x0203F400 0x050085B6
+poke32 0x0203F404 0x02B70000
+call 0x08069AE5 0x0203F400
+wait 600
+press A
+wait 700

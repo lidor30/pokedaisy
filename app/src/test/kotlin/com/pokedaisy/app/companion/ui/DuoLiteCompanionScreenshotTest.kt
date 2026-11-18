@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.ui
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.ScreenOrientation
+import org.junit.Before
 import org.junit.Rule
 
 /**

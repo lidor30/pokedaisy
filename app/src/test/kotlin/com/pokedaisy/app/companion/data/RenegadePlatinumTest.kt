@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Renegade Platinum (RenegadePlatinum): Platinum's reader on its RAM, on a new game played headless (the
@@ -87,11 +88,11 @@ class RenegadePlatinumTest {
     @Test
     fun `the cart - detection and its tables`() {
         assumeTrue("no Renegade Platinum ROM at $rom", rom.isFile)
-        assertTrue(RenegadePlatinum.matches(rom))
-        if (retail.isFile) assertFalse(RenegadePlatinum.matches(retail))
-        val names = NdsArt.readNames(rom)!!
+        assertTrue(RenegadePlatinum.matches(rom.toOkioPath()))
+        if (retail.isFile) assertFalse(RenegadePlatinum.matches(retail.toOkioPath()))
+        val names = NdsArt.readNames(rom.toOkioPath())!!
         assertEquals('E', names.language)
-        val data = NdsArt.readRenegade(rom)!!
+        val data = NdsArt.readRenegade(rom.toOkioPath())!!
         assertEquals(SpeciesTypes(9, 9), data.speciesTypes[35])               // CLEFAIRY: Fairy
         assertEquals(SpeciesTypes(7, 9), data.speciesTypes[429])              // MISMAGIUS: Ghost / Fairy
         assertEquals(SpeciesTypes(6, 16), data.speciesTypes[330])             // FLYGON: Bug / Dragon
@@ -127,12 +128,12 @@ class RenegadePlatinumTest {
         assertEquals(200, activeTypeEffectiveness[9 * 100 + 16])
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            assertTrue(NdsArt.extractTo(rom, dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath()))
             for (id in listOf(1, 35, 387, 493, 494)) assertTrue("$id", File(dir, "${NdsArt.RENEGADE_ICONS}/$id.png").isFile)
             for (id in listOf(1, 17, 79)) assertTrue("$id", File(dir, "${NdsArt.RENEGADE_ITEMS}/$id.png").isFile)
             for (id in listOf(1, 35, 493)) assertTrue("$id", File(dir, "${NdsArt.RENEGADE_FRONT}/$id.png").isFile)
             assertFalse(File(dir, NdsArt.PLATINUM_DEX).exists())
-            NdsArt.dir = dir
+            NdsArt.dir = dir.toOkioPath()
             val clefairy = Gen4Dex.entry(GEN4_DEX_RENEGADE, 35)!!
             assertEquals(9 to 9, clefairy.type1 to clefairy.type2)
             // The DEX's machines are the cart's: TM57's move is its own.
@@ -145,6 +146,30 @@ class RenegadePlatinumTest {
         }
     }
 
+    /** v1.3.0's shiny rate and Speed Up patches: a few bytes of code, every table read the same as v1.3.0's. */
+    @Test
+    fun `the code patches - the same check, v1_3_0's tables`() {
+        if (!rom.isFile) return
+        val base = NdsArt.readRenegade(rom.toOkioPath())!!
+        for ((name, sha1) in listOf(
+                "Pokemon Renegade Platinum (v1.3.0) (Shiny 1 in 4096).nds" to RenegadePlatinum.V1_3_0_SHINY_4096_SHA1,
+                "Pokemon Renegade Platinum (v1.3.0) (Shiny 1 in 8192).nds" to RenegadePlatinum.V1_3_0_SHINY_8192_SHA1,
+                "Pokemon Renegade Platinum (v1.3.0) (Speed Up).nds" to RenegadePlatinum.V1_3_0_SPEED_UP_SHA1)) {
+            val other = File(rom.parentFile, name)
+            if (!other.isFile) continue
+            assertEquals(name, sha1, com.pokedaisy.app.RomIdentity.sha1(other))
+            assertTrue(name, RenegadePlatinum.matches(other.toOkioPath()))
+            val data = NdsArt.readRenegade(other.toOkioPath())!!
+            assertEquals(name, base.speciesTypes, data.speciesTypes)
+            assertEquals(name, base.moveData, data.moveData)
+            assertEquals(name, base.typeChart, data.typeChart)
+            assertTrue(name, base.machines.contentEquals(data.machines))
+            assertTrue(name, base.iconPalettes.contentEquals(data.iconPalettes))
+            assertTrue(name, base.wildRates.contentEquals(data.wildRates))
+            assertEquals(name, "Pokémon Renegade Platinum", com.pokedaisy.app.GameTitles.BY_SHA1[sha1])
+        }
+    }
+
     /** v1.2.0 and v1.3.0's Classic patch: v1.3.0's code and table places, their own species / move files. */
     @Test
     fun `the other builds - the same check and tables, their own data`() {
@@ -153,10 +178,10 @@ class RenegadePlatinumTest {
             val other = File(rom.parentFile, name)
             if (!other.isFile) continue
             assertEquals(name, sha1, com.pokedaisy.app.RomIdentity.sha1(other))
-            assertTrue(name, RenegadePlatinum.matches(other))
-            val names = NdsArt.readNames(other)!!
+            assertTrue(name, RenegadePlatinum.matches(other.toOkioPath()))
+            val names = NdsArt.readNames(other.toOkioPath())!!
             assertEquals(name, 'E', names.language)
-            val data = NdsArt.readRenegade(other)!!
+            val data = NdsArt.readRenegade(other.toOkioPath())!!
             assertEquals(name, SpeciesTypes(9, 9), data.speciesTypes[35])            // CLEFAIRY: Fairy here too
             assertEquals(name, SpeciesTypes(7, 7), data.speciesTypes[429])           // MISMAGIUS: Ghost alone (v1.3.0: + Fairy)
             assertEquals(name, SpeciesTypes(4, 16), data.speciesTypes[330])          // FLYGON: Ground / Dragon (v1.3.0: Bug)
@@ -171,7 +196,7 @@ class RenegadePlatinumTest {
     @Test
     fun `the cart reader on retail Platinum - its rates, machines and palettes are the decomp's`() {
         assumeTrue("no Platinum ROM at $retail", retail.isFile)
-        val data = NdsArt.readRenegade(retail)!!
+        val data = NdsArt.readRenegade(retail.toOkioPath())!!
         assertArrayEquals(tmMovesPlatinum, data.machines)
         assertArrayEquals(iconPalettesPlatinum, data.iconPalettes.copyOfRange(0, iconPalettesPlatinum.size))
         fun byMap(t: IntArray) = (t.indices step 3).associate { t[it] to (t[it + 1] to t[it + 2]) }

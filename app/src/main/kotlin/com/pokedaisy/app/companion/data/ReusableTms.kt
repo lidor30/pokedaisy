@@ -1,10 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.io.RandomAccessFile
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.channels.FileChannel
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.Path
 
 /**
  * REUSABLE TMS (SETTINGS > GAMEPLAY, GitHub #135): a TM stays in the bag after it teaches a move, as an HM does.
@@ -29,8 +27,10 @@ import java.nio.channels.FileChannel
 object ReusableTms {
     /** One spot: [expect] is the ROM from [at] (the compare through the RemoveBagItem call); the branch to patch sits
      * [BRANCH] bytes in. */
-    class Site(val at: Long, val expect: ByteArray) {
-        val branch get() = at + BRANCH
+    class Site(val at: Long, val expect: ByteArray, private val patchAt: Long? = null, private val patchValue: ByteArray? = null) {
+        /** What's written where: the GBA's `bhi` made a `b` ([ALWAYS_SKIP]), or a Game Boy cart's own edit ([GbGamePatches]). */
+        val branch get() = patchAt ?: (at + BRANCH)
+        val value: ByteArray get() = patchValue ?: ALWAYS_SKIP
         /** Where its call goes: the build's RemoveBagItem. */
         val calls: Long get() = blTarget(at + 12, expect, 12)
     }
@@ -57,23 +57,23 @@ object ReusableTms {
 
     private val cache = HashMap<String, List<Site>>()
 
-    /** The sites in [rom], all or none. Reads the file (mapped, ~100 ms for 32 MB): call it off the UI thread; cached
+    private val lock = SynchronizedObject()
+
+    /** The sites in [rom], all or none. Reads the file (a window at a time, ~100 ms for 32 MB): call it off the UI thread; cached
      * per file. */
-    fun find(rom: File): List<Site> {
-        val key = "${rom.path}:${rom.length()}:${rom.lastModified()}"
-        synchronized(cache) { cache[key]?.let { return it } }
+    fun find(rom: Path): List<Site> {
+        val key = fileKey(rom)
+        synchronized(lock) { cache[key]?.let { return it } }
         val found = runCatching {
-            RandomAccessFile(rom, "r").use { f ->
-                find(f.channel.map(FileChannel.MapMode.READ_ONLY, 0, f.length()).order(ByteOrder.LITTLE_ENDIAN))
-            }
+            withRomFile(rom) { find(FileLittleEndian(it)) }
         }.getOrDefault(emptyList())
-        synchronized(cache) { cache[key] = found }
+        synchronized(lock) { cache[key] = found }
         return found
     }
 
-    fun find(rom: ByteBuffer): List<Site> {
+    fun find(rom: LittleEndianReader): List<Site> {
         if (rom.limit() < 0xC0) return emptyList()
-        val code = String(ByteArray(4) { rom.get(0xAC + it) }, Charsets.US_ASCII)
+        val code = asciiString(ByteArray(4) { rom.get(0xAC + it) })
         val want = expectedSites(code)
         if (want == 0) return emptyList()
         val sites = ArrayList<Site>()

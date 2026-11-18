@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data.coop
 
 import com.pokedaisy.app.companion.data.save.Gen3BoxMon
+import kotlin.concurrent.Volatile
 import kotlin.random.Random
 
 /** What the link flow knows that the core doesn't (the glue maps its own env onto it). Emu thread unless said. */

@@ -1,6 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
+import okio.Path
 
 /**
  * Draws the game's own TRAINER CARD, pixel for pixel, from the player's ROM:
@@ -30,10 +30,17 @@ object TrainerCardArt {
         val stickers: List<RomBlob> = emptyList(),
         /** Applied to the card's three palettes; null = as stored. */
         val recolor: ((Int) -> Int)? = null,
+        /** A European cart's card strings ([strings]); null = the English words in the code. */
+        val text: RomBlob? = null,
     ) {
         val all get() = (listOf(gfx, front, back, bg) + pals + listOfNotNull(
-            femalePal, badgesPal, badgesGfx, RomBlob.CARD_STAR_PAL, picMale, picMalePal, picFemale, picFemalePal, font, widths,
+            femalePal, badgesPal, badgesGfx, RomBlob.CARD_STAR_PAL, picMale, picMalePal, picFemale, picFemalePal, font, widths, text,
         ) + stickers).distinct()
+
+        /** This card in a European cart: its own tiles, FONT_NORMAL and strings, and where it redrew them, widths / tilemaps. */
+        fun localized(gfx: RomBlob, font: RomBlob, text: RomBlob, widths: RomBlob? = null, front: RomBlob? = null, back: RomBlob? = null) =
+            Blobs(gfx, front ?: this.front, back ?: this.back, bg, pals, femalePal, badgesPal, badgesGfx, picMale, picMalePal, picFemale,
+                picFemalePal, font, widths ?: this.widths, stickers, recolor, text)
     }
 
     private val KANTO = Blobs(
@@ -142,6 +149,29 @@ object TrainerCardArt {
         ),
     )
 
+    /**
+     * The European carts (2026-11-18): every one keeps English's card but its tiles (their words: TRAINERPASS, CARTE
+     * DRESSEUR, ...), FONT_NORMAL and its strings; French / Italian / Spanish also redrew a tilemap or the glyph widths, and
+     * Italian / Spanish LeafGreen their own back. The other European LeafGreens are FireRed's card byte for byte.
+     */
+    private val KANTO_DE = KANTO.localized(RomBlob.FR_DE_CARD_GFX, RomBlob.FR_DE_FONT_NORMAL, RomBlob.FR_DE_CARD_TEXT)
+    private val KANTO_FR = KANTO.localized(RomBlob.FR_FR_CARD_GFX, RomBlob.FR_FR_FONT_NORMAL, RomBlob.FR_FR_CARD_TEXT)
+    private val KANTO_IT = KANTO.localized(RomBlob.FR_IT_CARD_GFX, RomBlob.FR_IT_FONT_NORMAL, RomBlob.FR_IT_CARD_TEXT,
+        RomBlob.FR_IT_FONT_NORMAL_WIDTHS, back = RomBlob.FR_IT_CARD_BACK)
+    private val KANTO_ES = KANTO.localized(RomBlob.FR_ES_CARD_GFX, RomBlob.FR_ES_FONT_NORMAL, RomBlob.FR_ES_CARD_TEXT,
+        RomBlob.FR_ES_FONT_NORMAL_WIDTHS, back = RomBlob.FR_ES_CARD_BACK)
+    private val LEAFGREEN_IT = KANTO_IT.localized(RomBlob.FR_IT_CARD_GFX, RomBlob.FR_IT_FONT_NORMAL, RomBlob.FR_IT_CARD_TEXT,
+        back = RomBlob.LG_IT_CARD_BACK)
+    private val LEAFGREEN_ES = KANTO_ES.localized(RomBlob.FR_ES_CARD_GFX, RomBlob.FR_ES_FONT_NORMAL, RomBlob.FR_ES_CARD_TEXT,
+        back = RomBlob.LG_ES_CARD_BACK)
+    private val HOENN_DE = HOENN.localized(RomBlob.EM_DE_CARD_GFX, RomBlob.EM_DE_FONT_NORMAL, RomBlob.EM_DE_CARD_TEXT)
+    private val HOENN_FR = HOENN.localized(RomBlob.EM_FR_CARD_GFX, RomBlob.EM_FR_FONT_NORMAL, RomBlob.EM_FR_CARD_TEXT,
+        RomBlob.EM_FR_FONT_NORMAL_WIDTHS, front = RomBlob.EM_FR_CARD_FRONT)
+    private val HOENN_IT = HOENN.localized(RomBlob.EM_IT_CARD_GFX, RomBlob.EM_IT_FONT_NORMAL, RomBlob.EM_IT_CARD_TEXT,
+        RomBlob.EM_IT_FONT_NORMAL_WIDTHS)
+    private val HOENN_ES = HOENN.localized(RomBlob.EM_ES_CARD_GFX, RomBlob.EM_ES_FONT_NORMAL, RomBlob.EM_ES_CARD_TEXT,
+        RomBlob.EM_ES_FONT_NORMAL_WIDTHS, front = RomBlob.EM_ES_CARD_FRONT)
+
     private fun blobs(style: CardStyle) = when (style) {
         CardStyle.KANTO -> KANTO
         CardStyle.HOENN -> HOENN
@@ -152,10 +182,20 @@ object TrainerCardArt {
         CardStyle.LAZARUS -> LAZARUS
         CardStyle.SOULGOLD -> SOULGOLD
         CardStyle.RECHARGED_YELLOW, CardStyle.RECHARGED_YELLOW_V1_9 -> RECHARGED_YELLOW
+        CardStyle.KANTO_DE -> KANTO_DE
+        CardStyle.KANTO_FR -> KANTO_FR
+        CardStyle.KANTO_IT -> KANTO_IT
+        CardStyle.KANTO_ES -> KANTO_ES
+        CardStyle.LEAFGREEN_IT -> LEAFGREEN_IT
+        CardStyle.LEAFGREEN_ES -> LEAFGREEN_ES
+        CardStyle.HOENN_DE -> HOENN_DE
+        CardStyle.HOENN_FR -> HOENN_FR
+        CardStyle.HOENN_IT -> HOENN_IT
+        CardStyle.HOENN_ES -> HOENN_ES
     }
 
     /** Every blob a card needs, every style. */
-    val BLOBS: List<RomBlob> = (KANTO.all + HOENN.all + UNBOUND.all + GLAZED.all + IMPERIUM.all + LEGACY.all + LAZARUS.all + SOULGOLD.all + RECHARGED_YELLOW.all).distinct()
+    val BLOBS: List<RomBlob> = CardStyle.entries.flatMap { blobs(it).all }.distinct()
 
     /** One style's decoded blobs. */
     class Art internal constructor(val style: CardStyle, internal val d: Map<RomBlob, ByteArray>)
@@ -166,11 +206,11 @@ object TrainerCardArt {
         return Art(style, d)
     }
 
-    private val loaded = java.util.concurrent.ConcurrentHashMap<CardStyle, Art>()
+    private val loaded = LockedMap<CardStyle, Art>()
 
     /** [style]'s card from the cached blobs under [dir] ([RomArt.dir]); kept for [cached]. */
-    fun load(dir: File, style: CardStyle): Art? =
-        art(style) { b -> File(dir, RomArt.rawPath(b)).takeIf { it.isFile }?.readBytes() }?.also { loaded[style] = it }
+    fun load(dir: Path, style: CardStyle): Art? =
+        art(style) { b -> (dir / RomArt.rawPath(b)).takeIf { it.isFile }?.readBytes() }?.also { loaded[style] = it }
 
     /** The last [load]ed card of [style], so a screen can start drawing it without waiting. */
     fun cached(style: CardStyle): Art? = loaded[style]
@@ -313,7 +353,10 @@ object TrainerCardArt {
         }
         // BG1.
         val t = Text(img, d(b.font), d(b.widths), lay)
+        val euro = b.text?.let { strings(d(it)) }
         when {
+            euro != null && kanto -> euroKantoText(t, card, back, colon, euro, EURO_KANTO.getValue(art.style.lang))
+            euro != null -> euroHoennText(t, card, back, colon, euro, EURO_HOENN.getValue(art.style.lang))
             ry -> rechargedYellowText(t, card, back, colon, if (art.style == CardStyle.RECHARGED_YELLOW_V1_9) RY19_STAT else STAT)
             kanto -> kantoText(t, card, back, colon)
             else -> hoennText(t, card, back, colon, art.style)
@@ -512,6 +555,147 @@ object TrainerCardArt {
         }
     }
 
+    /** A European cart's CARD_TEXT: its FF-ended strings, in the order both games keep them (see [euroKantoText]). */
+    private fun strings(b: ByteArray): List<List<Int>> {
+        val out = ArrayList<List<Int>>()
+        var cur = ArrayList<Int>()
+        for (x in b) {
+            val v = x.toInt() and 0xFF
+            if (v == 0xFF) { out += cur; cur = ArrayList() } else cur += v
+        }
+        return out
+    }
+
+    /** [s] with its placeholders filled: `FD 02` / `FD 03` (STR_VAR_1 / _2) from [vars]. */
+    private fun expand(s: List<Int>, vararg vars: List<Int>): List<Int> {
+        val out = ArrayList<Int>()
+        var i = 0
+        while (i < s.size) {
+            if (s[i] == 0xFD && i + 1 < s.size) { out += vars.getOrElse(s[i + 1] - 2) { emptyList() }; i += 2 } else out += s[i++]
+        }
+        return out
+    }
+
+    /**
+     * Where a European FireRed / LeafGreen prints its card's lines - English's places but where its build moved them (each
+     * measured on the game's own card): the ID's x, the money's sign after the number or before it and the right edges
+     * money / POKéDEX end at (x = edge - 6 * characters, the game's own sum), the play time's three x, the back's name.
+     */
+    private class EuroKanto(
+        val idX: Int = 142, val yenAfter: Boolean = false, val moneyRight: Int = 134, val dexRight: Int = 136,
+        val hoursX: Int = 101, val colonX: Int = 119, val minutesX: Int = 124, val backNameX: Int = 138,
+        /** The back's wins / losses line and the wins count. */
+        val wlX: Int = 130, val winsX: Int = 144,
+    )
+
+    private val EURO_KANTO = mapOf(
+        'D' to EuroKanto(idX = 143, yenAfter = true, wlX = 132, winsX = 148),
+        'F' to EuroKanto(idX = 139, yenAfter = true, winsX = 148),
+        'I' to EuroKanto(backNameX = 148, winsX = 148),
+        'S' to EuroKanto(idX = 137, yenAfter = true, backNameX = 148, wlX = 136, winsX = 149),
+    )
+
+    /** A European Emerald: only where the money's sign goes; every place is worked out from the strings' widths. */
+    private class EuroHoenn(val yenAfter: Boolean = false)
+
+    private val EURO_HOENN = mapOf('D' to EuroHoenn(false), 'F' to EuroHoenn(true), 'I' to EuroHoenn(false), 'S' to EuroHoenn(true))
+
+    /**
+     * FireRed's card in a European cart's words: its strings are, in order, the name's label, the ID's, MONEY, the money sign,
+     * POKéDEX, an empty one, the colon, a spare, TIME, a spare, the link card's title, the HALL OF FAME line, LINK BATTLES,
+     * LINK CABLE BATTLES, the wins / losses line (its `{FC 13 x}` puts the losses at x), trades, union room, berry crush.
+     */
+    private fun euroKantoText(t: Text, c: TrainerCardInfo, back: Boolean, colon: Boolean, s: List<List<Int>>, p: EuroKanto) {
+        if (!back) {
+            t.print(20, 29, s[0] + c.name)
+            t.print(p.idX, 10, s[1] + digits(c.trainerId, 5, LEADING_ZEROS, 0))
+            val n = digits(c.money.toInt(), 6, LEFT, 0)
+            val money = if (p.yenAfter) n + s[3] else s[3] + n
+            t.print(20, 56, s[2])
+            t.print((p.moneyRight - 6 * money.size) and 0xFF, 56, money)
+            c.dexCaught?.let { dex ->
+                val d = digits(dex, 3, LEFT, 0)
+                t.print(20, 72, s[4])
+                t.print((p.dexRight - 6 * d.size) and 0xFF, 72, d)
+            }
+            t.print(20, 88, s[8])
+            t.print(p.hoursX, 88, digits(c.hours, 3, RIGHT, 0x00))
+            if (colon) t.print(p.colonX, 88, s[6])
+            t.print(p.minutesX, 88, digits(c.minutes, 2, LEADING_ZEROS, 0))
+            return
+        }
+        t.print(p.backNameX, 11, c.name)
+        if (c.hofDebut != 0) {
+            t.print(10, 35, s[11])
+            t.print(164, 35, hofTime(c.hofDebut, 0x00), STAT, STAT_SHADOW)
+        }
+        if (c.linkWins != 0 || c.linkLosses != 0) {
+            t.print(10, 51, s[12])
+            t.printRich(p.wlX, 51, s[14])
+            t.print(p.winsX, 51, digits(c.linkWins, 4, RIGHT, 0x00), STAT, STAT_SHADOW)
+            t.print(192, 51, digits(c.linkLosses, 4, RIGHT, 0x00), STAT, STAT_SHADOW)
+        }
+        if (c.trades != 0) {
+            t.print(10, 67, s[15])
+            t.print(186, 67, digits(c.trades, 5, RIGHT, 0x00), STAT, STAT_SHADOW)
+        }
+        if (c.unionRoom != 0) {
+            t.print(10, 83, s[16])
+            t.print(186, 83, digits(c.unionRoom, 5, RIGHT, 0x00), STAT, STAT_SHADOW)
+        }
+        if (c.berryCrush != 0) {
+            t.print(10, 99, s[17])
+            t.print(186, 99, digits(c.berryCrush, 5, RIGHT, 0x00), STAT, STAT_SHADOW)
+        }
+    }
+
+    /**
+     * Emerald's card in a European cart's words. Its strings: FireRed's first eighteen (with " points" for the spare after the
+     * colon and "{player}'s TRAINER CARD" as the title, worded around the name), then the link-wait line, POKéBLOCKS W/FRIENDS,
+     * its count, WON CONTESTS W/FRIENDS, BATTLE POINTS WON and its count with the BP sign; the counts' strings carry their
+     * colour switches ([Text.printRich]).
+     */
+    private fun euroHoennText(t: Text, c: TrainerCardInfo, back: Boolean, colon: Boolean, s: List<List<Int>>, p: EuroHoenn) {
+        val pad = 0x77
+        if (!back) {
+            t.print(16, 33, s[0] + c.name)
+            val id = s[1] + digits(c.trainerId, 5, LEADING_ZEROS, pad)
+            t.print((96 - t.width(id)) / 2 + 120, 9, id)
+            val n = digits(c.money.toInt(), 6, LEFT, pad)
+            val money = if (p.yenAfter) n + s[3] else s[3] + n
+            t.print(16, 57, s[2])
+            t.print(128 - t.width(money), 57, money)
+            c.dexCaught?.let { dex ->
+                val d = digits(dex, 3, LEFT, pad)
+                t.print(16, 73, s[4])
+                t.print(128 - t.width(d), 73, d)
+            }
+            t.print(16, 89, s[8])
+            val colonW = t.width(s[6])
+            val x = 128 - (colonW + 30)
+            t.print(x, 89, digits(c.hours, 3, RIGHT, pad))
+            if (colon) t.print(x + 18, 89, s[6])
+            t.print(x + 18 + colonW, 89, digits(c.minutes, 2, LEADING_ZEROS, pad))
+            return
+        }
+        val title = expand(s[10], c.name)
+        t.printRich(216 - t.width(title), 9, title)
+        fun stat(row: Int, label: List<Int>, value: List<Int>) {
+            t.print(16, row * 16 + 33, label)
+            t.printRich(216 - t.width(value), row * 16 + 33, value, STAT, STAT_SHADOW)
+        }
+        if (c.hofDebut != 0) stat(0, s[11], hofTime(c.hofDebut, pad))
+        if (c.linkWins != 0 || c.linkLosses != 0) {
+            val line = expand(s[14], digits(c.linkWins, 4, LEFT, pad), digits(c.linkLosses, 4, LEFT, pad))
+            t.print(16, 49, s[12])
+            t.printRich(216 - t.width(line), 49, line)
+        }
+        if (c.trades != 0) stat(2, s[15], digits(c.trades, 5, RIGHT, pad))
+        if (c.linkPokeblocks != 0) stat(3, s[19], expand(s[20], digits(c.linkPokeblocks, 5, RIGHT, pad)))
+        if (c.linkContests != 0) stat(4, s[21], expand(s[20], digits(c.linkContests, 5, RIGHT, pad)))
+        if (c.battlePoints != 0) stat(5, s[22], expand(s[23], digits(c.battlePoints, 5, RIGHT, pad)))
+    }
+
     /** The card's own pixels in a [render] without the backdrop: left, top, right, bottom (exclusive). */
     fun cardBounds(img: RomArt.Image): IntArray {
         var l = img.width; var t = img.height; var r = 0; var b = 0
@@ -523,6 +707,9 @@ object TrainerCardArt {
 
     private fun hofTime(hof: Int, pad: Int) =
         digits(hof ushr 16, 3, RIGHT, pad) + enc(":") + digits((hof shr 8) and 0xFF, 2, LEADING_ZEROS, pad) + enc(":") + digits(hof and 0xFF, 2, LEADING_ZEROS, pad)
+
+    /** How many bytes follow each `FC` control code (gen3's text.c). */
+    private val FC_ARGS = intArrayOf(0, 1, 1, 1, 3, 1, 1, 0, 1, 0, 0, 2, 1, 1, 1, 0, 2, 1, 1, 1, 1, 0, 0, 0, 0)
 
     private const val LEFT = 0
     private const val RIGHT = 1
@@ -590,7 +777,47 @@ object TrainerCardArt {
 
     /** FONT_NORMAL into the text window (tile 1,1): 16x16 2bpp glyphs, 1 = text, 2 = shadow. */
     private class Text(val img: RomArt.Image, val font: ByteArray, val widths: ByteArray, val lay: Layout) {
-        fun width(s: List<Int>) = s.sumOf { (widths[it].toInt() and 0xFF) + lay.spacing }
+        fun width(s: List<Int>): Int {
+            var w = 0
+            var i = 0
+            while (i < s.size) {
+                if (s[i] == 0xFC && i + 1 < s.size) {
+                    if (s[i + 1] == 0x13 && i + 2 < s.size) w = s[i + 2]
+                    i += 2 + FC_ARGS.getOrElse(s[i + 1]) { 0 }
+                    continue
+                }
+                w += (widths[s[i]].toInt() and 0xFF) + lay.spacing
+                i++
+            }
+            return w
+        }
+
+        /**
+         * [print] with the games' control codes in [s]: `FC 01 c` / `FC 02 c` switch the text / shadow colour (1 / 2 the
+         * window's, 7 / 8 the stats' red), `FC 13 x` carries on at [x0] + x.
+         */
+        fun printRich(x0: Int, y: Int, s: List<Int>, fg0: Int = lay.text, shadow0: Int = lay.shadow) {
+            var x = x0
+            var fg = fg0
+            var sh = shadow0
+            var i = 0
+            fun colour(c: Int, other: Int) = when (c) { 1 -> lay.text; 2 -> lay.shadow; 7 -> STAT; 8 -> STAT_SHADOW; else -> other }
+            while (i < s.size) {
+                if (s[i] == 0xFC && i + 1 < s.size) {
+                    val arg = s.getOrElse(i + 2) { 0 }
+                    when (s[i + 1]) {
+                        0x01 -> fg = colour(arg, fg)
+                        0x02 -> sh = colour(arg, sh)
+                        0x13 -> x = x0 + arg
+                    }
+                    i += 2 + FC_ARGS.getOrElse(s[i + 1]) { 0 }
+                    continue
+                }
+                print(x, y, listOf(s[i]), fg, sh)
+                x += (widths[s[i]].toInt() and 0xFF) + lay.spacing
+                i++
+            }
+        }
 
         fun print(x0: Int, y: Int, s: List<Int>, fg: Int = lay.text, shadow: Int = lay.shadow) {
             var x = x0

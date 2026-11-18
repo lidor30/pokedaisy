@@ -4,8 +4,10 @@ import android.content.Context
 import com.pokedaisy.app.companion.data.EMERALD_LOCALIZED_CODES
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
 import com.pokedaisy.app.companion.data.RETAIL_PORT_TITLES
+import com.pokedaisy.app.companion.data.RomCategory
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
+import okio.source
 
 /**
  * The name a game goes by in the library ("Pokémon FireRed") instead of its ROM
@@ -42,9 +44,10 @@ object GameTitles {
         "28f075915dd445cbfd902f1e1a94d5048b03a095", "e5db5b8f79e8ae819be7d60e9e1006221d80ffab",
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1,
-        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1,
-    ) + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
+    ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S + com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S +
+        com.pokedaisy.app.companion.data.SacredGold.SACRED_GOLD_SHA1S + com.pokedaisy.app.companion.data.SacredGold.STORM_SILVER_SHA1S +
+        com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
         com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
 
     private val RETAIL: Map<String, String> = mapOf(
@@ -70,10 +73,15 @@ object GameTitles {
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1 to "Pokémon Origin HeartGold",
         // Renegade Platinum v1.3.0, retail Platinum (USA rev 1) edited in place (RenegadePlatinum).
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1 to "Pokémon Renegade Platinum",
-        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1 to "Pokémon Renegade Platinum",
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1 to "Pokémon Renegade Platinum",
+    ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S.associateWith { "Pokémon Renegade Platinum" } +
+        // Heartfelt Gold v1.0.15 (and its Zoomed In patch): hg-engine over the US HeartGold (HeartfeltGold).
+        com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S.associateWith { "Pokémon Heartfelt Gold" } +
+        // Sacred Gold / Storm Silver v1.05 (Complete, and Sacred Gold's Classic): Drayano's, edited in place (SacredGold).
+        com.pokedaisy.app.companion.data.SacredGold.SACRED_GOLD_SHA1S.associateWith { "Pokémon Sacred Gold" } +
+        com.pokedaisy.app.companion.data.SacredGold.STORM_SILVER_SHA1S.associateWith { "Pokémon Storm Silver" } +
         // Blaze Black 2 / Volt White 2 Redux v1.4.1 (and their Classic / EVless patches), Black 2 / White 2 edited in place (Black2Redux).
-    ) + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S.associateWith { "Pokémon Blaze Black 2 Redux" } +
+        com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S.associateWith { "Pokémon Blaze Black 2 Redux" } +
         com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S.associateWith { "Pokémon Volt White 2 Redux" } + mapOf(
         // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
         "26ad0b9967aa279c4a266ee69f52b9b2332399a5" to "Pokémon Black",
@@ -105,6 +113,8 @@ object GameTitles {
         // pret/pokered's roms.sha1 (Blue: the build stands in for the cart).
         "ea9bcae617fdf159b045185467ae58b2e4a48b9a" to "Pokémon Red",
         "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2" to "Pokémon Blue",
+        "87d523fe1a0c548db7c5477b451ddec1eb083c06" to "Pokémon Rote Edition",
+        "20e72dc6f41493eee1fdd0cef54214e6c3389688" to "Pokémon Blaue Edition",
         // Game Boy Color (pret/pokecrystal's roms.sha1): rev 0, rev 1, Australia.
         "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133" to "Pokémon Crystal",
         "f2f52230b536214ef7c9924f483392993e226cfb" to "Pokémon Crystal",
@@ -154,6 +164,12 @@ object GameTitles {
         "f1035f615c13c46394a18fa99181c24c3cd15e12" to "Moemon Quetzal",
         "ae5d88bb823a8f9d0d07e8784da2376ff7c1ae43" to "Moemon Quetzal",
         "0ce2a880aa097f1dce4e1db8ee513d0e82d15859" to "Pokémon Unbound",
+        "8114e0f81eb3581f699c74a5891c7b75a130269d" to "Pokémon Unbound",
+        "7eca3ef1580e21b96027b721ecd3ba1aa36a6ea2" to "Pokémon Clover",
+        "d2440fd6bae5a12dfc3cecc129b9bbff22d74b2e" to "Pokémon Elysium (Part A)",
+        "71bf40178a1f5c69dc1c22099623434ba1e74318" to "Pokémon Elysium (Part B)",
+        "b0d6b91356ee4d4c8f8c70020fe0352c391a12e2" to "Pokémon Rhythm",
+        "4234507f92101a322aa5c0518a6aa1f1fe807832" to "Pokémon Oops All Eevees!",
         "8bac897de515f88e6ce92d0712ce2c018a394b37" to "Pokémon Orange Islands",
         "d2e3800e69e44c9649c3d9a15dc1cd12c1d90501" to "Pokémon Orange Islands",
         "3b6c51d8fb6b513bdd01b7bda3ed8965bc985d58" to "Pokémon Ultra Violet",
@@ -161,6 +177,7 @@ object GameTitles {
         "1ee1557db1e4c2e0e94c6306efcc40506bc40cc9" to "Pokémon Ash Gray",
         "92ed82145c013069472153391c7aab1cfbf37b75" to "Pokémon Ash Gray Fork Bug Fix",
         "ab3bc012598d73dce965450df79893aeff97c834" to "Pokémon Modern Emerald",
+        "8decf0571ba3f17d31c76168346e240a14e248ce" to "Pokémon Epsilon Emerald",
         "5b38a681b6924ef3e0bb9f6cfbf22426c4c4e523" to "Pokémon Elite Redux",
         "2f3e17e55c6afe23da97ec0f96a067eeb142ad15" to "Pokémon Elite Redux",
         "40780347d0b4df6bf491eaf12603e5422caee677" to "Pokémon Team Rocket Edition: Dragonsden Version",
@@ -168,7 +185,10 @@ object GameTitles {
         "32d9e438ab791a0477fffe9f1cca750cab5a4a80" to "Pokémon Team Rocket Edition 2026 (ES)",
         "ae1c4be9be8d706bb989602bc05731203d42860d" to "Pokémon Monomyth",
         "eb660caffbc26e1f09f86714d03af4c3eccd9e4d" to "Pokémon Monomyth",
+        "742e62ffa5a8d607171fdb8477eb1f417dc36086" to "Pokémon Monomyth",
         "60182b934d2e8eb3eef226a9bbc25e5df6becd4f" to "Pokémon Wishes of Tomorrow",
+        "2b0b608666cc2d553ce08d88fa76dce1fa577e51" to "Pokémon Ceruleum",
+        "8df1c9720842c668448d5ad880e9c48bb29d7200" to "Pokémon RecordKeepers",
         "20e91aecb3243eea7cd610659846f37062f5d709" to "Pokémon Dreamstone Mysteries",
         "20dfaea1d5317cf95fe0b493208edce7d50b865f" to "Pokémon Ghost Grey",
         "74337272566a74625d6dedefe47d2d153eb48ec1" to "Pokémon Ghost Grey",
@@ -222,6 +242,9 @@ object GameTitles {
         "c0a2c70d73ce68830a891ddd292300c90766acdd" to "Pokémon Polished Crystal",
         // PureRed / PureBlue v2.7.6 (Vortyne/pureRGB builds both byte for byte).
         "2e94d09c1e16a57eb079404c030f26fdeeac949d" to "Pokémon PureRed",
+        // Pokémon Brown 6.1.2 / 6.0.1 (Koolboyman's Rijon, a Red hack: GEN1_BROWN).
+        "24eeda80ee78fa214a6f4a85164a2492d2b017ad" to "Pokémon Brown",
+        "2d6d1f1a6010f578d67045802611a288ebd8748b" to "Pokémon Brown",
         "d419fe244fa17196f7df46ddab47c840e7573652" to "Pokémon PureBlue",
         // Pokémon Red (Gen II Graphics V2.0 / Reload)
         "ad1adc824456f593f5bdb4cbfeb0ec12b24abb6d" to "Pokémon Red (Gen II Graphics)",
@@ -261,7 +284,7 @@ object GameTitles {
     internal fun randomizedTitle(rom: File, code: String?): String? {
         if (code != "BPRE" && code != "BPEE") return null
         val size = RomArchive.romSize(rom)
-        val hit = com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, RomIdentity.revision(rom), size) { RomArchive.open(rom) }
+        val hit = com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, RomIdentity.revision(rom), size) { RomArchive.open(rom).source() }
         return hit?.let { RETAIL[it.retailSha1] }?.let { it + RANDOMIZED }
     }
 
@@ -274,8 +297,13 @@ object GameTitles {
     fun platform(context: Context, rom: File): RomCategory? =
         cache(context)[rom.absolutePath]?.takeIf { it.matches(rom) }?.platform
 
+    /** A 3DS cart image (NCSD header), never hashed: they're gigabytes. */
+    private fun is3ds(rom: File) =
+        rom.extension.lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS && com.pokedaisy.app.n3ds.N3dsCart.isCart(rom)
+
     /** [rom]'s console from its header: [categoryOf] without the hack check. */
     internal fun platformOf(rom: File, sha1: () -> String?): RomCategory = when {
+        is3ds(rom) -> RomCategory.N3DS
         RomIdentity.isNds(rom) -> RomCategory.NDS
         RomIdentity.isGameBoy(rom) -> gameBoyPlatform(rom, sha1)
         else -> RomCategory.GBA
@@ -312,6 +340,7 @@ object GameTitles {
     /** [rom]'s [RomCategory] (reads its header; [sha1] when [identify] hashed it). A Pokémon cart hashed but known as
      * neither retail nor a hack is a hack too (an unsupported one); a cart nobody hashes is its platform's. */
     private fun categoryOf(rom: File, sha1: String?, hashed: Boolean, randomized: Boolean = false): RomCategory = when {
+        is3ds(rom) -> RomCategory.N3DS
         RomIdentity.isNds(rom) -> RomCategory.NDS
         sha1 != null && sha1 in HACKS -> RomCategory.HACK
         // A randomized retail cart is still the retail game.
@@ -401,9 +430,11 @@ object GameTitles {
     private val KNOWN = "#known\t" + Integer.toHexString(BY_SHA1.keys.sorted().hashCode()) + RANDOMIZED_KNOWN
 
     /** How [RomCategory] was decided when the cache was written: a cache from before asks every file again. */
-    private const val CATEGORIES = "#categories\t4"
+    private const val CATEGORIES = "#categories\t5"
     /** The ones before: only their GB games are asked again (Polished Crystal is GBC since 3, Gold / Silver since 4). */
     private val CATEGORIES_GB_STALE = setOf("#categories\t2", "#categories\t3")
+    /** And 3DS carts (their own category since 5: before, read as GBA). */
+    private const val CATEGORIES_3DS_STALE = "#categories\t4"
 
     private fun load(context: Context): MutableMap<String, Entry> {
         val map = java.util.concurrent.ConcurrentHashMap<String, Entry>()
@@ -413,10 +444,12 @@ object GameTitles {
             var stale = true
             var categoriesStale = true
             var gbStale = false
+            var n3dsStale = false
             f.forEachLine { line ->
                 if (line == KNOWN) stale = false
                 if (line == CATEGORIES) categoriesStale = false
                 if (line in CATEGORIES_GB_STALE) { categoriesStale = false; gbStale = true }
+                if (line == CATEGORIES_3DS_STALE) { categoriesStale = false; n3dsStale = true }
                 val p = line.split('\t')
                 // A 4-column line is from before categories: no category, so identify() reads it again. A 5-column
                 // one from before platforms: a hack's is read again (the others' platform is their category).
@@ -434,6 +467,9 @@ object GameTitles {
             if (categoriesStale) map.replaceAll { _, e -> Entry(e.size, e.modified, e.title, null, null) }
             // A GB game from before these Color games were known: identify() reads it again (a retail one's category
             // is its platform, so both go).
+            else if (n3dsStale) map.replaceAll { path, e ->
+                if (path.substringAfterLast('.').lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS) Entry(e.size, e.modified, e.title, null, null) else e
+            }
             else if (gbStale) map.replaceAll { _, e ->
                 if (e.platform == RomCategory.GB) Entry(e.size, e.modified, e.title, e.category.takeIf { it == RomCategory.HACK }, null) else e
             }
@@ -452,6 +488,3 @@ object GameTitles {
         }
     }
 }
-
-/** What kind of game a ROM is, for the library's tag when it has no cover art: its platform, or a hack. */
-enum class RomCategory(val label: String) { GB("GB"), GBC("GBC"), GBA("GBA"), NDS("NDS"), HACK("HACK") }

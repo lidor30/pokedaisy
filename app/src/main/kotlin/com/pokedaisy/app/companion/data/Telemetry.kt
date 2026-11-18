@@ -125,7 +125,8 @@ data class Telemetry(
     val enemyParty: List<Mon> = emptyList(),
     /** gEnemyParty in any battle, wild ones included: where the foe battlers' IVs come from. */
     val battleFoes: List<Mon> = emptyList(),
-    /** gBattleTypeFlags' TRAINER bit: a trainer battle, not a wild one; null = not read (the NUZLOCKE tracker skips it). */
+    /** gBattleTypeFlags' TRAINER bit: a trainer battle, not a wild one; null = not read, or the catching tutorial (the
+     * NUZLOCKE tracker skips it). */
     val isTrainerBattle: Boolean? = null,
     /** [enemyParty] index of the foe that's out, and of monToSwitchIntoId (its trainer's last pick); -1 = unknown. */
     val enemyActive: Int = -1,
@@ -196,6 +197,11 @@ data class IconTables(
     // Each species' own icon palette (a pointer per gSpeciesInfo entry, [monIconStride]
     // apart) instead of an index into the 6 shared ones: SoulGold's. 0 = the shared ones.
     val monIconPalettes: Long = 0,
+    // [monIconPalettes]' stride when it isn't [monIconStride] (Epsilon Emerald's are gMonPaletteTable's 8-byte {raw palette,
+    // tag} entries, its icon table plain pointers: 0 = [monIconStride]), and where the shiny palette's pointer is from the
+    // normal one's (SoulGold's next field, 4; Epsilon's gMonShinyPaletteTable, right after gMonPaletteTable).
+    val monIconPalStride: Int = 0,
+    val monIconShinyOff: Long = 4,
     // gMonPaletteTable ({LZ77 palette, tag} per species), with gMonShinyPaletteTable right after it: a shared-palette icon's
     // shiny colours (decodeMonIcon). 0 = no shiny icons.
     val battlePalettes: Long = 0,

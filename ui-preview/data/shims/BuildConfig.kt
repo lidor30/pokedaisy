@@ -13,5 +13,7 @@ object BuildConfig {
     /** Off as in a release: the blocked-game shots show the notice. */
     @JvmField var FEATURE_ALLOW_BLOCKED = false
     @JvmField var FEATURE_KEEP_BLOCKED = false
+    /** Off as in a default build: 3DS games (the n3ds module) aren't in the preview's build. */
+    const val FEATURE_N3DS = false
     const val COOP_RELAY_URL = ""
 }

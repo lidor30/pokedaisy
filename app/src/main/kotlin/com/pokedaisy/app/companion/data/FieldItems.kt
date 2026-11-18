@@ -142,13 +142,14 @@ data class PartyItemFns(
     val heldItemField get() = MON_DATA_HELD_ITEM + monFieldShift
     val move1Field get() = MON_DATA_MOVE1 + monFieldShift
     val isEggField get() = MON_DATA_IS_EGG + monFieldShift
+    val mailField get() = MON_DATA_MAIL + monFieldShift
 }
 
 /** Whether the running ROM has [fns]' functions (its party ones too) where they're expected. */
 fun fieldItemCodeMatches(fns: FieldItemFns, readRom: (addr: Long, len: Int) -> ByteArray): Boolean {
     val party = fns.party
     val all = fns.functions.zip(fns.codeCrcs) + (party?.let { it.functions.zip(it.codeCrcs) }.orEmpty())
-    return all.all { (fn, crc) -> java.util.zip.CRC32().apply { update(readRom(fn, 32)) }.value == crc }
+    return all.all { (fn, crc) -> crc32(readRom(fn, 32)) == crc }
 }
 
 /** REPEL / SUPER REPEL / MAX REPEL: the same ids in both games. */
@@ -172,6 +173,36 @@ val PP_ALL_MOVES_ITEMS = setOf(36, 37)
 
 /** ORANGE MAIL .. RETRO MAIL (ItemIsMail). */
 val MAIL_ITEMS = (121..132).toSet()
+
+// struct Mail (global.h): 9 easy-chat words, the player's name, the trainer ID, the species and the item. The party's
+// first PARTY_SIZE records hold mail its Pokémon carry; the rest (6..15) are the PC's 10 mailbox slots.
+private const val MAIL_COUNT = 16
+private const val MAIL_SIZE = 0x24
+private const val MAIL_ITEM_OFF = 0x20
+private const val MAIL_NONE = 0xFF
+private const val MON_DATA_MAIL = 64
+
+/** Where SaveBlock1 keeps its struct Mail mail[MAIL_COUNT] (Emerald +0x2BE0, FireRed / LeafGreen +0x2CD0). */
+data class MailboxLayout(val saveBlock1Ptr: Long, val staticSaveBlock: Boolean, val mailOff: Int)
+
+/** SaveBlock1's mail[] in the retail layouts (pokeemerald / pokefirered global.h): struct offsets, the same in every language. */
+private const val MAIL_OFF_EMERALD = 0x2BE0
+private const val MAIL_OFF_FIRERED = 0x2CD0
+
+/**
+ * TAKE's PC mailbox for [fns] on the running game: only where the PC's moves ([boxSwapFor]) know its boxes - retail
+ * FireRed / LeafGreen / Emerald and the ports and in-place hacks that keep retail's SaveBlock1 - never a rebuild with its
+ * own layout (Emerald Legacy, Recharged Emerald) or Ruby / Sapphire (which run as EMERALD, with no box moves).
+ */
+fun mailboxFor(fns: FieldItemFns, cfg: NativeConfig?, kind: GameKind?): MailboxLayout? {
+    if (cfg == null || boxSwapFor(fns, cfg) == null) return null
+    val off = when (kind) {
+        GameKind.EMERALD -> MAIL_OFF_EMERALD
+        GameKind.FIRERED -> MAIL_OFF_FIRERED
+        else -> return null
+    }
+    return MailboxLayout(cfg.saveBlock1Ptr, cfg.staticSaveBlocks, off)
+}
 
 // FIELD_ITEMS_FIRERED_REV1 / _EMERALD / _LEAFGREEN_REV0 / _REV1 (and their PARTY_ITEMS_* and PC_*) are records in
 // gamedata/gen3/records/ (GameDataRecordsGen.kt), shared with the 3DS / Linux companion.
@@ -293,6 +324,14 @@ val FIELD_ITEMS_MONOMYTH_V1_1 = FIELD_ITEMS_MONOMYTH.copy(
     pc = PcFns(0x08090A60L, 57, 0x08298510L, 0x080C6535L, listOf(0xCC9E3CD3L, 0x3DECE7E0L)),
 )
 
+/** Monomyth v1.2: v1.1's functions moved +0x220; ArePlayerFieldControlsLocked reads sLockFieldControls 4 bytes later
+ * (0x0203BF6B), so its CRC is its own. Special 57 is still the PC (gSpecials 0x08298368). */
+val FIELD_ITEMS_MONOMYTH_V1_2 = FIELD_ITEMS_MONOMYTH.copy(
+    varGet = 0x08096454L, varSet = 0x0809648CL, fieldControlsLocked = 0x08090BF0L,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0xCFEC077FL),
+    pc = PcFns(0x08090C80L, 57, 0x08298368L, 0x080C6761L, listOf(0xCC9E3CD3L, 0x8DD1B5B0L)),
+)
+
 /**
  * Emerald Imperium 1.3.1 (pokeemerald-expansion 1.10.0, no source): pokeemerald-expansion's 1.10.0 tag built plain with
  * Debian's arm-none-eabi-gcc 12 as the reference, each function found in Imperium by its first instructions (literal
@@ -326,6 +365,45 @@ val FIELD_ITEMS_IMPERIUM = FieldItemFns(
         ),
     ),
     flight = FLIGHT_IMPERIUM,
+)
+
+/**
+ * Pokémon Epsilon Emerald v1.0.0 (a closed gcc pokeemerald): PC anywhere and FLY, no bag functions. Every function found
+ * through the game's own callers or retail Emerald's code masked: ScriptContext_SetupScript's pool gives gScriptCmdTable
+ * (0x08A49548), its `special` gSpecials (0x08A49938, [63] the PC, retail's code), `checkflag` FlagGet (with a range check of
+ * its own), `fadescreen` FadeScreen, `additem` VarGet; the field-lock trio over 0x03000F2C; SetUpFieldMove_Fly is FLY's slot
+ * in the party menu's field-move table (retail's code); its own SetFlyDestination (0x0896C26C, CB_ExitFlyMap's switch, split
+ * out) gives sMapHealLocations (239 rows {group, num, heal}: its routes too), Emerald's special towns (Littleroot by gender,
+ * Ever Grande 11, the Battle Frontier 22), SetWarpDestinationToHealLocation / ToMapWarp, and its caller
+ * ReturnToFieldFromFlyMapSelect. GetMapsecType (0x0896ACD4) renumbered the types: a visited town 3, a visited route 2, the
+ * Battle Frontier 5 (unvisited 4 / 1 / 0) - the three its Fly map takes. GetMonData / SetMonData by their switches from
+ * MON_DATA_STATUS (retail's field ids: MOVE1 13, IS_EGG 45). Its sections the game sends somewhere special by flag or cursor
+ * spot (0x47, 0x49, 0xEF, Rustboro's second landing) aren't in the table's rows or take its plain landing. The PC opened and
+ * closed and FLY flown headless on retail Emerald's save (docs/DEVELOPMENT.md's Epsilon Emerald section).
+ */
+val FIELD_ITEMS_EPSILON_EMERALD = FieldItemFns(
+    varGet = 0x088CBD0CL, varSet = 0x088CBD44L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x088C6594L, repelVar = 0x4021, items = 0,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0x2532A407L),
+    party = PartyItemFns(
+        getMonData = 0x0888C978L, setMonData = 0x0888D440L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x020251A0L, partyCount = 0x0202519DL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0x8C6C6D54L, 0xD1CCFDB2L),
+    ),
+    bagActions = false,
+    pc = PcFns(0x088C6620L, 63, 0x08A49938L, 0x088FFCDDL, listOf(0x794EBC3DL, 0x642C785DL)),
+    fly = FlyFns(
+        flagGet = 0x088CBE58L, badgeFlag = 0x86C, setUpFieldMoveFly = 0x08A12EDCL, getMapsecType = 0x0896ACD4L,
+        fadeScreen = 0x088DBD8CL, lockControls = 0x088C657CL, unlockControls = 0x088C6588L, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x0203DE45L, destinations = 0x0901D370L, firstMapsec = 0, count = 0xEF,
+        codeCrcs = listOf(0xC3EAF912L, 0x555680EDL, 0x68FA76C9L, 0xCE0E8C28L, 0xB9FB85A7L, 0xB037C8AFL, 0x65220897L, 0x2F1D18CAL, 0x84D77941L),
+        flyTypes = setOf(2, 3, 5), extraMapsecs = listOf(58), monMoveField = 13, monEggField = 45,
+        healWarp = HealWarp(
+            toHealLocation = 0x088ABEB8L, toMapWarp = 0x088ABE14L, returnToField = 0x088E82A8L,
+            saveBlock2Ptr = 0x03004550L, special = mapOf(15 to 11, 58 to 22),
+            genderMapsec = 0, maleHeal = 12, femaleHeal = 13,
+        ),
+    ),
 )
 
 /**
@@ -877,6 +955,8 @@ enum class ItemUseResult {
     PARTY_CHANGED,
     /** TAKE: the held item ([ItemUseOutcome.swapped]) is in the bag now. */
     TAKEN,
+    /** TAKE of Mail: the PC's 10 mailbox slots are full; it stays held. */
+    MAILBOX_FULL,
     /** A TM / HM: the game's own TM screen is opening (TmTeach.kt); the rest happens there. */
     IN_GAME,
 }
@@ -914,6 +994,8 @@ class FieldItemSupport(
     val canFlight: Boolean = false,
     /** PC anywhere's code is where [FieldItemFns.pc] says. */
     val canPc: Boolean = false,
+    /** Where TAKE sends a Mail (its own PC mailbox, not the bag); null = this game's mailbox isn't known. */
+    val mailbox: MailboxLayout? = null,
 ) {
     private val party = fns.party
     /** USE: a Repel on the spot, or medicine / a PP item on a picked Pokémon. */
@@ -931,7 +1013,12 @@ class FieldItemSupport(
 
 /** [fns]' support on the running ROM, or null when its code isn't where [fns] says (a hack
  * that moved it). The holdable items come from the ROM's gItems ([holdableItems]). */
-fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArray): FieldItemSupport? {
+fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArray): FieldItemSupport? =
+    fieldItemSupport(fns, read, null)
+
+fun fieldItemSupport(
+    fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArray, mailbox: MailboxLayout?,
+): FieldItemSupport? {
     if (!fieldItemCodeMatches(fns, read)) return null
     // No party functions: the Repels where the bag's functions are mapped, and PC anywhere (Monomyth's table is the PC alone).
     val party = fns.party ?: return FieldItemSupport(
@@ -948,7 +1035,10 @@ fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArra
         return FieldItemSupport(fns, emptySet(), repels, canFly = fly, canPc = pc, canFlight = flight)
     }
     val items = read(fns.items, party.itemCount * fns.itemSize)
-    return FieldItemSupport(fns, holdableItems(fns, items), usableItems(fns, items), canFly = fly, canPc = pc, canFlight = flight)
+    return FieldItemSupport(
+        fns, holdableItems(fns, items), usableItems(fns, items),
+        canFly = fly, canPc = pc, canFlight = flight, mailbox = mailbox,
+    )
 }
 
 /** What the bag's GIVE takes (item_menu.c's Task_ItemContext_FieldGive): importance 0 and not a key
@@ -970,7 +1060,7 @@ fun usableItems(fns: FieldItemFns, items: ByteArray): Set<Int> {
     if (p.useFuncs.isEmpty()) return all
     return all.filter { id ->
         val o = id * fns.itemSize + fns.itemFieldUseOff
-        o + 4 <= items.size && (java.nio.ByteBuffer.wrap(items, o, 4).order(java.nio.ByteOrder.LITTLE_ENDIAN).int.toLong() and 0xFFFFFFFEL) in p.useFuncs
+        o + 4 <= items.size && (s32le(items, o).toLong() and 0xFFFFFFFEL) in p.useFuncs
     }.toSet()
 }
 
@@ -1008,6 +1098,30 @@ fun useFieldItem(fns: FieldItemFns, itemId: Int, busy: Boolean, g: GameCalls): I
     // Task_UseRepel's order: its other variables cleared, the steps, the Repel used, then one out of the bag.
     val sets = fns.repelClearVars.map { it to 0 } + (fns.repelVar to steps) +
         listOfNotNull(fns.lastRepelVar.takeIf { it != 0 }?.let { it to itemId })
+    if (sets.any { (v, value) -> g.call(fns.varSet, v, value) < 0 } || g.call(fns.removeBagItem, itemId, 1) != 1L) {
+        return ItemUseOutcome(ItemUseResult.FAILED)
+    }
+    return ItemUseOutcome(ItemUseResult.USED, steps)
+}
+
+/**
+ * AUTO REFILL ([RepelRefill]): one more [itemId] on top of the steps left, while 1..[RepelRefill.REFILL_AT] are left, so the
+ * walking never stops being covered and the game's "wore off" never comes. The same calls as [useFieldItem], but past the
+ * game's own "still working" check: the steps added to what's left (a Lure's bit means none is left to add to).
+ * [ItemUseOutcome.steps] = the steps added. Emu thread.
+ */
+fun refillRepel(fns: FieldItemFns, itemId: Int, busy: Boolean, g: GameCalls): ItemUseOutcome {
+    if (itemId !in fns.repelItems || !fieldItemCodeMatches(fns, g::read)) return ItemUseOutcome(ItemUseResult.FAILED)
+    if (busy || g.call(fns.fieldControlsLocked) != 0L) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    val raw = g.call(fns.varGet, fns.repelVar).toInt()
+    val left = fns.repelSteps(raw)
+    if (left !in 1..RepelRefill.REFILL_AT || raw != left) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    if (g.call(fns.checkBagHasItem, itemId, 1) != 1L) return ItemUseOutcome(ItemUseResult.NONE_LEFT)
+    val steps = g.read(fns.items + itemId.toLong() * fns.itemSize + fns.itemParamOff, 1)[0].toInt() and 0xFF
+    if (steps == 0) return ItemUseOutcome(ItemUseResult.FAILED)
+    val total = left + steps
+    if (fns.repelLureBit != 0 && total >= fns.repelLureBit) return ItemUseOutcome(ItemUseResult.NOT_NOW)
+    val sets = listOf(fns.repelVar to total) + listOfNotNull(fns.lastRepelVar.takeIf { it != 0 }?.let { it to itemId })
     if (sets.any { (v, value) -> g.call(fns.varSet, v, value) < 0 } || g.call(fns.removeBagItem, itemId, 1) != 1L) {
         return ItemUseOutcome(ItemUseResult.FAILED)
     }
@@ -1179,7 +1293,10 @@ fun partyHeldItems(support: FieldItemSupport, g: GameCalls): PartyTargets {
             val verdict = when {
                 p.get(g, slot, p.isEggField) != 0L -> SlotVerdict.EGG
                 held == 0 -> SlotVerdict.NO_EFFECT
-                held in p.mail -> SlotVerdict.HOLDS_MAIL
+                held in p.mail ->
+                    // Mail goes to the PC's mailbox, not the bag, so its room there is what matters.
+                    if (support.mailbox != null && p.get(g, slot, p.mailField).toInt() in 0 until MAIL_COUNT) SlotVerdict.OK
+                    else SlotVerdict.HOLDS_MAIL
                 p.bagHasRoom(g, held) == false -> SlotVerdict.BAG_FULL
                 else -> SlotVerdict.OK
             }
@@ -1200,9 +1317,59 @@ fun takeFromMon(support: FieldItemSupport, target: PartyTarget, busy: Boolean, g
         p.get(g, target.slot, p.heldItemField).toInt()
     }.getOrElse { return ItemUseOutcome(ItemUseResult.FAILED) }
     if (held == 0) return ItemUseOutcome(ItemUseResult.NO_EFFECT)
-    if (held in p.mail) return ItemUseOutcome(ItemUseResult.FAILED)
+    if (held in p.mail) {
+        val mailbox = support.mailbox ?: return ItemUseOutcome(ItemUseResult.FAILED)
+        return takeMailToPc(p, mailbox, target.slot, held, g)
+    }
     if (g.call(p.addBagItem, held, 1) != 1L) return ItemUseOutcome(ItemUseResult.BAG_FULL, swapped = held)
     if (setHeldItem(p, g, target.slot, 0)) return ItemUseOutcome(ItemUseResult.TAKEN, swapped = held)
     g.call(fns.removeBagItem, held, 1)
     return ItemUseOutcome(ItemUseResult.FAILED)
 }
+
+/**
+ * TAKE of Mail: its struct comes out of the party's mail record (id 0..5) into a free PC mailbox record (6..15), then
+ * the held item and the mail id are cleared - party_menu.c's TakeMailFromMonAndSave. Never loses it: a full mailbox
+ * leaves it held, and anything that didn't take puts the two records and the Pokémon back. Emu thread.
+ */
+private fun takeMailToPc(p: PartyItemFns, box: MailboxLayout, slot: Int, held: Int, g: GameCalls): ItemUseOutcome = runCatching {
+    val sb1 = if (box.staticSaveBlock) box.saveBlock1Ptr else u32le(g.read(box.saveBlock1Ptr, 4), 0)
+    if (sb1 !in 0x02000000L until 0x04000000L) return@runCatching ItemUseOutcome(ItemUseResult.FAILED)
+    val mailId = p.get(g, slot, p.mailField).toInt()
+    if (mailId !in 0 until MAIL_COUNT) return@runCatching ItemUseOutcome(ItemUseResult.FAILED)
+    val base = sb1 + box.mailOff
+    val sourceAddr = base + mailId.toLong() * MAIL_SIZE
+    val source = g.read(sourceAddr, MAIL_SIZE)
+    if (source.size != MAIL_SIZE || u16le(source, MAIL_ITEM_OFF) != held) return@runCatching ItemUseOutcome(ItemUseResult.FAILED)
+    val free = (PARTY_SIZE until MAIL_COUNT).firstOrNull { i ->
+        u16le(g.read(base + i.toLong() * MAIL_SIZE + MAIL_ITEM_OFF, 2), 0) == 0
+    } ?: return@runCatching ItemUseOutcome(ItemUseResult.MAILBOX_FULL, swapped = held)
+    val freeAddr = base + free.toLong() * MAIL_SIZE
+    val freeBefore = g.read(freeAddr, MAIL_SIZE)
+    fun restore(): ItemUseOutcome {
+        g.write(sourceAddr, source)
+        g.write(freeAddr, freeBefore)
+        setHeldItem(p, g, slot, held)
+        setMonMail(p, g, slot, mailId)
+        return ItemUseOutcome(ItemUseResult.FAILED)
+    }
+    if (!g.write(freeAddr, source)) return@runCatching ItemUseOutcome(ItemUseResult.FAILED)
+    // The game clears only the source's item id; the words stay until another letter reuses the record.
+    if (!g.write(sourceAddr + MAIL_ITEM_OFF, ByteArray(2))) return@runCatching restore()
+    if (!setHeldItem(p, g, slot, 0)) return@runCatching restore()
+    if (!setMonMail(p, g, slot, MAIL_NONE)) return@runCatching restore()
+    val cleared = runCatching {
+        p.get(g, slot, p.heldItemField).toInt() == 0 && p.get(g, slot, p.mailField).toInt() == MAIL_NONE
+    }.getOrDefault(false)
+    if (!cleared) return@runCatching restore()
+    ItemUseOutcome(ItemUseResult.TAKEN, swapped = held)
+}.getOrElse { ItemUseOutcome(ItemUseResult.FAILED) }
+
+/** SetMonData(mon, MON_DATA_MAIL, &mailId) through [PartyItemFns.scratch] (one byte), then read back. */
+private fun setMonMail(p: PartyItemFns, g: GameCalls, slot: Int, mailId: Int): Boolean = runCatching {
+    val before = g.read(p.scratch, 1)
+    if (!g.write(p.scratch, byteArrayOf(mailId.toByte()))) return@runCatching false
+    val called = g.call(p.setMonData, p.mon(slot), p.mailField, p.scratch.toInt())
+    g.write(p.scratch, before)
+    called >= 0 && p.get(g, slot, p.mailField).toInt() == mailId
+}.getOrDefault(false)

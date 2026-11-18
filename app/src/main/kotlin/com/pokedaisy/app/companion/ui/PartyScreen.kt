@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.LockedMap
 import com.pokedaisy.app.companion.i18n.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -32,7 +33,6 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
@@ -533,6 +533,17 @@ private val RedBluePartyPaletteNight = redBluePartyPalette(Color(0xFFE8E8E8), Co
 val RedBluePartyPalette: PartyPalette get() = if (OptionColors.dark) RedBluePartyPaletteNight else RedBluePartyPaletteLight
 
 /**
+ * Pokémon Brown (a Super Game Boy, in mGBA; its own SGB palettes, sampled headless): Yellow's slots in pure black and white,
+ * Crystal's kind of "HP:" box (cream on a black frame), Red's HP bar colours.
+ */
+private fun brownPartyPalette(ink: Color, paper: Color, cursor: Color) = redBluePartyPalette(ink, paper, cursor).copy(
+    hpLabel = Color(0xFFF7D67B), hpLabelShade = Color(0xFFF7D67B),
+)
+private val BrownPartyPaletteLight = brownPartyPalette(Color.Black, Color.White, Color(0xFFDCDCDC))
+private val BrownPartyPaletteNight = brownPartyPalette(Color(0xFFE8E8E8), Color(0xFF181818), Color(0xFF3A3A3A))
+val BrownPartyPalette: PartyPalette get() = if (OptionColors.dark) BrownPartyPaletteNight else BrownPartyPaletteLight
+
+/**
  * PureRed / PureBlue on a Color (their default COLORS, OG: the Color's two-tone palettes, sampled headless): Yellow's
  * slots in pure black and white, every HP bar the screen's dark colour - PureRed's dark red, PureBlue's blue.
  */
@@ -631,6 +642,7 @@ fun partyPaletteFor(game: GameKind): PartyPalette = when (game) {
     GameKind.SOULGOLD -> SoulGoldPartyPalette
     GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowPartyPalette
     GameKind.RED, GameKind.BLUE -> RedBluePartyPalette
+    GameKind.BROWN -> BrownPartyPalette
     GameKind.PURE_RED -> PureRedPartyPalette
     GameKind.PURE_BLUE -> PureBluePartyPalette
     // Gold's and Silver's party menu is Crystal's, pixel for pixel (sampled headless in both).
@@ -672,7 +684,7 @@ private fun localPartyStyle(base: PartySlotStyle, fireRed: Boolean): PartySlotSt
     }
 }
 
-private val localStyles = java.util.concurrent.ConcurrentHashMap<String, PartySlotStyle>()
+private val localStyles = LockedMap<String, PartySlotStyle>()
 
 /**
  * Let's Go Pikachu / Eevee's slot: CFRU's party menu (its slot tilemaps, layout and FireRed's font and Poké Ball) over its own
@@ -1019,11 +1031,10 @@ internal fun DrawScope.drawPixelBitmap(bitmap: List<String>, palette: Map<Char, 
 @Composable
 internal fun HeldItemMarker(itemId: Int, u: Int, x: Float, y: Float) {
     if (itemId == 0) return
-    val context = androidx.compose.ui.platform.LocalContext.current
     val gen = rememberArtGeneration()
     val icons = androidx.compose.runtime.remember(gen) {
         // The Gen 2 games' own marks (Gen2Art), the GBA games' from RomArt.
-        GameArt.get(context, when (com.pokedaisy.app.companion.data.activeGame) {
+        GameArt.get(when (com.pokedaisy.app.companion.data.activeGame) {
             com.pokedaisy.app.companion.data.GameKind.CRYSTAL -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_HOLD_ICONS
             com.pokedaisy.app.companion.data.GameKind.CRYSTAL_CLEAR -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_CLEAR_HOLD_ICONS
             com.pokedaisy.app.companion.data.GameKind.CRYSTAL_LEGACY -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_LEGACY_HOLD_ICONS
@@ -1032,7 +1043,7 @@ internal fun HeldItemMarker(itemId: Int, u: Int, x: Float, y: Float) {
             com.pokedaisy.app.companion.data.GameKind.GOLD, com.pokedaisy.app.companion.data.GameKind.SILVER ->
                 com.pokedaisy.app.companion.data.Gen2Art.GOLD_SILVER_HOLD_ICONS
             else -> RomArt.HOLD_ICONS
-        })?.asImageBitmap()
+        })
     } ?: return
     val mail = if (com.pokedaisy.app.companion.data.activeGame.isGen2) {
         itemId in com.pokedaisy.app.companion.data.activeGen2.mailItems

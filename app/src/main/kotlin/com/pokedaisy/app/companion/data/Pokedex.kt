@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import android.graphics.Bitmap
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /** Which memory a game's seen / caught arrays are offsets into. */
 enum class DexFlagBlock { SAVE_BLOCK_1, SAVE_BLOCK_2, FIXED }
@@ -266,6 +267,15 @@ val POKEDEX_UNBOUND_FR = POKEDEX_UNBOUND.copy(
     metric = true,
     decimalPoint = '.',
     probeCategory = "Graine",
+)
+
+/** Unbound v2.1.1.1 IT: English's tables, the dex text translated in place - metric with a decimal comma
+ * ("Alt." / "Peso ... kg", headless, the game's own POKéDEX); BULBASAUR's category stayed English's "Seed". */
+val POKEDEX_UNBOUND_IT = POKEDEX_UNBOUND.copy(
+    categoryPrefix = "Pokémon",
+    categorySuffix = "",
+    metric = true,
+    probeCategory = "Seed",
 )
 
 /** Ruby (rev 1 and rev 2 share every address): Emerald's flag rules,
@@ -698,6 +708,18 @@ val POKEDEX_MONOMYTH_V1_1 = POKEDEX_MONOMYTH.copy(
     levelUpLearnsets = 0x08506AD4L,
 )
 
+/** Monomyth v1.2: v1.1's tables moved back (by -0x444 to -0x4A4; gen_monomyth_tables.py checks them equal). */
+val POKEDEX_MONOMYTH_V1_2 = POKEDEX_MONOMYTH.copy(
+    entries = 0x089D376CL,
+    frontPics = 0x0849F6F4L,
+    palettes = 0x084880B0L,
+    speciesInfo = 0x084F6DA0L,
+    speciesToNational = 0x084F4504L,
+    abilityNames = 0x084EE5DFL,
+    evoLayout = EvoLayout(EvoScheme.MONOMYTH, table = 0x085000F0L, perMon = 8, probeLevel = 31),
+    levelUpLearnsets = 0x08506630L,
+)
+
 val POKEDEX_ROWE = PokedexTables(
     entries = 0x08F592C8L,
     frontPics = 0x083E0AA4L,
@@ -1077,6 +1099,25 @@ val POKEDEX_ROCKET_EDITION = POKEDEX_ULTRA_VIOLET.copy(abilityNames = 0x08950000
  * ability names at 0x08950000, its mixed-case text. */
 val POKEDEX_GHOST_GREY = POKEDEX_ROCKET_EDITION
 
+/** Pokémon Clover v1.3.3: rev 0's tables rewritten in place (its fakemon's entries), its ability names repointed to
+ * 0x0893A1C0, its mixed-case text ("Anal Plant Pokémon" for slot 1). */
+/** Pokémon Elysium v2.5.0 Part A: rev 0's tables rewritten in place; FireRed's capitals. */
+val POKEDEX_ELYSIUM_A = POKEDEX_ULTRA_VIOLET
+
+/** Pokémon Elysium v2.5.0 Part B: its species tables repointed (every one's literal-pool word). */
+val POKEDEX_ELYSIUM_B = POKEDEX_ULTRA_VIOLET.copy(
+    entries = 0x08A3ADDCL,
+    frontPics = 0x089EE2A0L,
+    palettes = 0x089F05A0L,
+    speciesInfo = 0x089EA560L,
+    speciesToNational = 0x08A2F200L,
+    footprints = 0x08A3A51CL,
+    evolutions = 0x08A31070L,
+    tmhmLearnsets = 0x08A2FAC8L,
+)
+
+val POKEDEX_CLOVER = POKEDEX_ULTRA_VIOLET.copy(abilityNames = 0x0893A1C0L, categorySuffix = "Pokémon", probeCategory = "Anal Plant")
+
 /**
  * Pokémon Let's Go Pikachu / Eevee (both versions share these): FireRed's dex screens over 987 species, every table found
  * through rev 0's literal-pool words - entries 0x08AB7AF0 (No. 0-855: its own numbering, Kanto's 151 first; the newest
@@ -1286,6 +1327,32 @@ val POKEDEX_RECHARGED_EMERALD_V2_2_8 = rechargedEmeraldDex(
 val POKEDEX_RECHARGED_EMERALD_REBALANCED_V2_2_8 = rechargedEmeraldDex(
     0x088C72B4L, 0x086FBBB8L, 0x086F4FF4L, 0x088D224CL, 0x088CE73CL, 0x086AF914L,
     0x088CA394L, 0x088CEA74L, 0x088D7354L, 0x088D0714L, 0x088C4ED0L, lead = 4,
+)
+
+/**
+ * Pokémon Epsilon Emerald v1.0.0: Emerald's dex grown to its own 440 national numbers (1-386, its Gen 4 additions and
+ * Galar forms from 387, its EVOLOTTO 440 in an old-unown slot; 423-439 unused) and a 241-entry Hoenn dex
+ * (sHoennToNationalOrder 0x08C14EA4: TREECKO .. DEOXYS with its additions mixed in, then the rest). The front pics,
+ * palettes (raw 16 colours), base stats and ability names (17 bytes) from the GF ROM header; gPokedexEntries 0x1C-byte
+ * records by dex number (no unused pointer: BULBASAUR "Seed" 7 / 69, No. 412 GALLADE "Blade"), base stats Super Mariomon's
+ * 36-byte shape (u16 abilities at +0x18, the hidden one +0x1C), sSpeciesToNationalPokedexNum through its literal pool
+ * (0x08890B04), the footprints by BULBASAUR's retail bytes. Evolutions 7 rows of 6 bytes per species ([EvoScheme.EPSILON_EMERALD]),
+ * level-up learnsets {u16 move, u16 level} lists. Its 118 TMs' per-species bits weren't found (MOVES is level-up only).
+ * Flags: struct Pokedex's arrays are 56 bytes (owned SaveBlock2 + 0x28, seen + 0x60): a wild GALLADE (No. 412) set bit 411
+ * of seen (and of SaveBlock1 + 0x988, the GF header's seen1 = seen2). Its dex screen counts a caught one as seen and doesn't
+ * check that copy: retail Emerald's save (read 4 bytes off, as the game reads it) shows Seen 083 / Own 028 in its Hoenn
+ * Pokédex, which seen | caught over its Hoenn list gives.
+ */
+val POKEDEX_EPSILON_EMERALD = POKEDEX_EMERALD.copy(
+    entries = 0x08FCFCA4L, frontPics = 0x08BED754L, palettes = 0x08BE56C0L, speciesInfo = 0x08C18C58L,
+    speciesToNational = 0x08C14A3CL, abilityNames = 0x08C0AA9CL, footprints = 0x08FD3164L, regionalOrder = 0x08C14EA4L,
+    abilityNameLength = 17, hiddenAbilityOff = 0x1C, entryStride = 0x1C,
+    baseStats = BaseStatsLayout(stride = 0x24, genderOff = 0x12, eggGroupsOff = 0x16, abilitiesOff = 0x18, abilityU16 = true),
+    speciesCount = 565, nationalCount = 440, regionalCount = 241,
+    evolutions = 0, evoLayout = EvoLayout(EvoScheme.EPSILON_EMERALD, table = 0x08C28FCEL, perMon = 7, record = 6),
+    levelUpLearnsets = 0x08C2EC80L, tmhmLearnsets = 0, tmhmMoves = 0,
+    categorySuffix = "Pokémon", probeCategory = "Seed",
+    flags = DexFlags(DexFlagBlock.SAVE_BLOCK_2, 0x60, 0x28, 56, seenOrCaught = true),
 )
 
 /**
@@ -1536,14 +1603,15 @@ data class DexEntry(
  * [reader] is swappable so tests and previews can read a ROM file instead.
  */
 object PokedexSource {
+    private val lock = SynchronizedObject()
     @Volatile
     var reader: MemoryReader = InProcessReader
 
-    private val entries = ConcurrentHashMap<Int, DexEntry>()
-    private val sprites = ConcurrentHashMap<Int, Bitmap>()
-    private val footprints = ConcurrentHashMap<Int, Bitmap>()
-    private val baseStats = ConcurrentHashMap<Int, IntArray>()
-    private val growthRates = ConcurrentHashMap<Int, Int>()
+    private val entries = LockedMap<Int, DexEntry>()
+    private val sprites = LockedMap<Int, RomArt.Image>()
+    private val footprints = LockedMap<Int, RomArt.Image>()
+    private val baseStats = LockedMap<Int, IntArray>()
+    private val growthRates = LockedMap<Int, Int>()
     @Volatile private var nationalToSpecies: IntArray? = null
     @Volatile private var speciesToNational: IntArray? = null
     @Volatile private var regional: IntArray? = null
@@ -1551,7 +1619,7 @@ object PokedexSource {
 
     private fun sync(t: PokedexTables) {
         if (cachedFor == t) return
-        synchronized(this) {
+        synchronized(lock) {
             if (cachedFor == t) return
             entries.clear(); sprites.clear(); footprints.clear(); baseStats.clear(); growthRates.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
             cachedFor = t
@@ -1594,20 +1662,22 @@ object PokedexSource {
      * (Glazed runs on Emerald's PokedexTables) - Emerald then Glazed in one session kept Emerald's.
      */
     fun romChanged() {
-        synchronized(this) { cachedFor = null }
+        synchronized(lock) { cachedFor = null }
         DexDetails.romChanged()
         GuideRomSource.romChanged()
         EvolutionSource.romChanged()
+        AreaMaps.romChanged()
     }
 
     /** Already-loaded data only (no ROM read) - composables start from these,
      * so a page seen before draws at once instead of after a load. */
     fun cachedEntry(t: PokedexTables, national: Int): DexEntry? = if (cachedFor == t) entries[national] else null
-    fun cachedFrontSprite(t: PokedexTables, species: Int): Bitmap? = if (cachedFor == t) sprites[species] else null
-    fun cachedFootprint(t: PokedexTables, species: Int): Bitmap? = if (cachedFor == t) footprints[species] else null
+    fun cachedFrontSprite(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) sprites[species] else null
+    fun cachedFootprint(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) footprints[species] else null
     fun cachedSpeciesMap(t: PokedexTables): IntArray? = when {
         // Gen 1's and 2's tables are by Dex number - but Prism's, by its own species ids in its own dex order.
-        t.cartDex -> IntArray(t.nationalCount + 1) { n -> t.gen2?.speciesOf(n) ?: n }
+        // (Heartfelt Gold's: its own species ids past ARCEUS, Gen4DexTables.speciesOf.)
+        t.cartDex -> IntArray(t.nationalCount + 1) { n -> t.gen2?.speciesOf(n) ?: t.gen4?.species(n) ?: gen1Species(t, n) }
         cachedFor == t -> nationalToSpecies
         else -> null
     }
@@ -1637,7 +1707,7 @@ object PokedexSource {
     /** Species id for a national dex number (the first species that maps to it), or 0. */
     fun speciesFor(t: PokedexTables, national: Int): Int {
         // Its tables are by Dex number (Prism: its dex's order).
-        if (t.cartDex) return if (national !in 1..t.nationalCount) 0 else t.gen2?.speciesOf(national) ?: national
+        if (t.cartDex) return if (national !in 1..t.nationalCount) 0 else t.gen2?.speciesOf(national) ?: t.gen4?.species(national) ?: gen1Species(t, national)
         sync(t)
         val map = nationalToSpecies ?: runCatching {
             if (t.nationalToSpecies != 0L) {
@@ -1656,9 +1726,12 @@ object PokedexSource {
         return map.getOrElse(national) { 0 }
     }
 
+    /** A Game Boy (Gen 1) dex number's species: itself, or 0 for a number the game doesn't use (Brown's 231-251). */
+    private fun gen1Species(t: PokedexTables, n: Int): Int = if (t.gen1?.listed?.contains(n) == false) 0 else n
+
     /** National dex number of a species id (Hoenn species aren't in national order), or 0. */
     fun nationalOf(t: PokedexTables, species: Int): Int {
-        if (t.cartDex) return t.gen2?.dexOf(species) ?: if (species in 1..t.nationalCount) species else 0
+        if (t.cartDex) return t.gen2?.dexOf(species) ?: t.gen4?.dexOf?.invoke(species) ?: if (species in 1..t.nationalCount) species else 0
         sync(t)
         val map = speciesToNational ?: runCatching { speciesNationals(t) }.getOrNull()?.also { speciesToNational = it } ?: return 0
         return map.getOrElse(species) { 0 }
@@ -1694,21 +1767,21 @@ object PokedexSource {
         // Not cached here: before NdsArt has the cart's pages in, there's nothing yet (Gen4Dex keeps them once read).
         t.gen4?.let { g -> return Gen4Dex.entry(g, national) }
         return runCatching { readEntry(t, national) }
-            .onFailure { android.util.Log.w("pokedaisy", "dex entry $national failed", it) }
+            .onFailure { Logs.w("dex entry $national failed", it) }
             .getOrNull()?.also { entries[national] = it }
     }
 
     /** The 64x64 front sprite, as the dex page shows it. */
-    fun frontSprite(t: PokedexTables, species: Int): Bitmap? {
+    fun frontSprite(t: PokedexTables, species: Int): RomArt.Image? {
         sync(t)
         if (species <= 0) return null
         sprites[species]?.let { return it }
         t.gen2?.let { g ->
-            return runCatching { Gen2Dex.frontPixels(g, species)?.let { Bitmap.createBitmap(it, 56, 56, Bitmap.Config.ARGB_8888) } }
+            return runCatching { Gen2Dex.frontPixels(g, species)?.let { RomArt.Image(56, 56, it) } }
                 .getOrNull()?.also { sprites[species] = it }
         }
         t.gen1?.let { g ->
-            return runCatching { Gen1Dex.frontPixels(g, species)?.let { Bitmap.createBitmap(it, 56, 56, Bitmap.Config.ARGB_8888) } }
+            return runCatching { Gen1Dex.frontPixels(g, species)?.let { RomArt.Image(56, 56, it) } }
                 .getOrNull()?.also { sprites[species] = it }
         }
         t.gen4?.let { g -> return Gen4Dex.front(g, species)?.also { sprites[species] = it } }
@@ -1736,7 +1809,7 @@ object PokedexSource {
     }
 
     /** The 16x16 footprint (black on transparent). */
-    fun footprint(t: PokedexTables, species: Int): Bitmap? {
+    fun footprint(t: PokedexTables, species: Int): RomArt.Image? {
         sync(t)
         if (species <= 0) return null
         footprints[species]?.let { return it }
@@ -1757,11 +1830,11 @@ object PokedexSource {
                     px[((tile / 2) * 8 + row) * 16 + (tile % 2) * 8 + col] = 0xFF000000.toInt()
                 }
             }
-            Bitmap.createBitmap(px, 16, 16, Bitmap.Config.ARGB_8888)
+            RomArt.Image(16, 16, px)
         }.getOrNull()?.also { footprints[species] = it }
     }
 
-    private val abilityNames = ConcurrentHashMap<Pair<PokedexTables, Int>, String>()
+    private val abilityNames = LockedMap<Pair<PokedexTables, Int>, String>()
 
     /** Ability [id]'s name in the running game (battle INFO's FOE DETAILS); null = no table / unreadable. */
     fun cachedAbilityName(t: PokedexTables, id: Int): String? = abilityNames[t to id]
@@ -1868,10 +1941,10 @@ fun dexCategoryLine(t: PokedexTables, category: String): String =
 /** HT as [t]'s game prints it: "2'04"" or, in the European releases, "0,7 m". */
 /** HT / WT for [e] - a Gen 1 page's own feet / inches and pounds when it has them. */
 fun formatDexHeight(t: PokedexTables, e: DexEntry): String =
-    e.heightIn?.let { "%d'%02d\"".format(it / 12, it % 12) } ?: formatDexHeight(t, e.heightDm)
+    e.heightIn?.let { "${it / 12}'${(it % 12).pad(2)}\"" } ?: formatDexHeight(t, e.heightDm)
 
 fun formatDexWeight(t: PokedexTables, e: DexEntry): String =
-    e.weightLbs10?.let { "%d.%d lbs.".format(it / 10, it % 10) } ?: formatDexWeight(t, e.weightHg)
+    e.weightLbs10?.let { "${it / 10}.${it % 10} lbs." } ?: formatDexWeight(t, e.weightHg)
 
 fun formatDexHeight(t: PokedexTables, dm: Int): String =
     if (t.metric) metric(t, dm, "m") else formatDexHeight(dm)
@@ -1889,14 +1962,14 @@ fun formatDexHeight(dm: Int): String {
     if (inches % 10 >= 5) inches += 10
     val feet = inches / 120
     val rest = (inches - feet * 120) / 10
-    return "%d'%02d\"".format(feet, rest)
+    return "$feet'${rest.pad(2)}\""
 }
 
 /** "15.2 lbs.", the game's own rounding (DexScreen_PrintMonWeight). */
 fun formatDexWeight(hg: Int): String {
     var lbs = 100000L * hg / 4536 // hundredths of a pound
     if (lbs % 10 >= 5) lbs += 10
-    return "%d.%d lbs.".format(lbs / 100, (lbs % 100) / 10)
+    return "${lbs / 100}.${(lbs % 100) / 10} lbs."
 }
 
 /** Gen 3 (Western) text: the characters dex entries and ability names use

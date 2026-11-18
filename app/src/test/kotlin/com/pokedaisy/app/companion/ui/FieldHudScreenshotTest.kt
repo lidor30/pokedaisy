@@ -59,6 +59,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import okio.Path.Companion.toOkioPath
 
 /**
  * The FIELD HUD over a game frame on the Thor's 1920x1080 top screen: each [FieldHudLayout] in each
@@ -72,6 +73,7 @@ import org.junit.Test
  *     ./gradlew :app:recordPaparazziDebug --tests '*FieldHudScreenshotTest'
  */
 class FieldHudScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(
@@ -85,9 +87,9 @@ class FieldHudScreenshotTest {
     fun game() {
         activeGame = GameKind.FIRERED
         OptionColors.inGame = true
-        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it }
+        val art = java.io.File("build/rom-art-paparazzi").also { RomArt.dirOverride = it.toOkioPath() }
         for (path in listOf(RomFileReader.FIRERED_REV1_PATH, RomFileReader.EMERALD_PATH)) {
-            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art) }
+            java.io.File(path).takeIf { it.isFile }?.let { RomArt.extractTo(it.readBytes(), art.toOkioPath()) }
         }
         RomFileReader.load(RomFileReader.FIRERED_REV1_PATH)?.let { rom ->
             PokedexSource.reader = rom
@@ -112,6 +114,25 @@ class FieldHudScreenshotTest {
     @Test fun cornersGlass() = shot(FieldHudStyle())
 
     @Test fun cornersWindow() = shot(FieldHudStyle(look = FieldHudLook.WINDOW))
+
+    /** In a building with its own map (Silph Co. 5F, from the ROM): the minimap is its AREA map around the player, the
+     * floor beside the name. Skips without the ROM. */
+    @Test fun cornersAreaMap() {
+        com.pokedaisy.app.companion.data.activeAreaMapCrc = 0x84ee4776L   // FireRed rev 1's row
+        com.pokedaisy.app.companion.data.AreaMaps.romChanged()
+        val id = com.pokedaisy.app.companion.data.AreaMap.MapId(1, 51)
+        val area = com.pokedaisy.app.companion.data.AreaMaps.area(id) ?: return
+        com.pokedaisy.app.companion.data.AreaMaps.miniImage(id)
+        AreaMapChoice.reset()
+        shot(
+            FieldHudStyle(),
+            snap = snapshot.copy(
+                mapGroup = 1, mapNum = 51, x = 12, y = 9, mapType = 8,
+                location = com.pokedaisy.app.companion.data.lookupLocation(area.mapsec), regionMapSectionId = area.mapsec,
+            ),
+        )
+        com.pokedaisy.app.companion.data.activeAreaMapCrc = 0L
+    }
 
     @Test fun cornersWhiteGlass() = shot(FieldHudStyle(look = FieldHudLook.WHITE_GLASS))
 
@@ -267,7 +288,7 @@ class FieldHudScreenshotTest {
     @Test fun cornersBlack() {
         activeGame = GameKind.BLACK
         val rom = java.io.File(java.io.File(com.pokedaisy.app.companion.data.RETAIL_ROM_DIR).parentFile, "nds/Pokemon - Black Version (USA, Europe) (NDSi Enhanced).nds")
-        if (rom.isFile) com.pokedaisy.app.companion.data.NdsArt.extractTo(rom, java.io.File("build/rom-art-paparazzi"))
+        if (rom.isFile) com.pokedaisy.app.companion.data.NdsArt.extractTo(rom.toOkioPath(), java.io.File("build/rom-art-paparazzi").toOkioPath())
         shot(
             FieldHudStyle(),
             snap = snapshot.copy(
@@ -448,6 +469,7 @@ private fun GameFrame(name: String, expand: Boolean) {
  *     ./gradlew :app:recordPaparazziDebug --tests '*FieldHudCloseUpScreenshotTest'
  */
 class FieldHudCloseUpScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(
@@ -497,4 +519,32 @@ class FieldHudCloseUpScreenshotTest {
             ) { content() }
         }
     }
+}
+
+/**
+ * The HUD on a 1080p screen at hdpi (a Logitech G Cloud with a smaller display size, GitHub #924): the GBA pixel a couple of
+ * screen pixels, so the small text can't be smaller than the normal one - WILD's level and odds came out cut to "..".
+ *
+ *     ./gradlew :app:recordPaparazziDebug --tests '*FieldHudGCloudScreenshotTest'
+ */
+class FieldHudGCloudScreenshotTest {
+    @get:Rule
+    val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_5.copy(
+            screenWidth = 1920, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE,
+            density = com.android.resources.Density.HIGH,
+        ),
+        theme = "android:Theme.Material.NoActionBar",
+    )
+
+    private val setup = FieldHudScreenshotTest()
+
+    @Before fun game() = setup.game()
+
+    @After fun reset() = setup.reset()
+
+    @Test fun wildOpen() = paparazzi.snapshot { FieldHudScene(FieldHudStyle(), FieldHudScreenshotTest.wild, true, FieldHudPanel.WILD, "fr", FieldHudScreenshotTest.snapshot, 0 to 0, false, false, null) }
+
+    /** BATTLE BUTTONS' move list there: both lines of each move whole (the same report). */
+    @Test fun moveWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.MOVES) }
 }

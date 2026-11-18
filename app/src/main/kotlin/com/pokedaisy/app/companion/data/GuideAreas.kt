@@ -3,7 +3,7 @@ package com.pokedaisy.app.companion.data
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.i18n.trGuide
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
 
 /**
  * What's around an area, for the GUIDE's HERE page: its items and what its
@@ -29,7 +29,7 @@ data class AreaThing(
     val where: String,
 )
 
-private val areaCache = ConcurrentHashMap<GuideId, Map<Int, List<AreaThing>>>()
+private val areaCache = LockedMap<GuideId, Map<Int, List<AreaThing>>>()
 
 private fun rawAreas(guide: GuideId): List<String> = when (guide) {
     GuideId.FIRERED -> GUIDE_AREAS_FIRERED_RAW
@@ -65,8 +65,11 @@ private fun rawAreas(guide: GuideId): List<String> = when (guide) {
     GuideId.GLAZED, GuideId.IMPERIUM, GuideId.QUETZAL, GuideId.QUETZAL_V084, GuideId.LAZARUS, GuideId.SEAGLASS, GuideId.TMT2, GuideId.SOULGOLD,
     GuideId.MARIOMON, GuideId.RECHARGED_EMERALD, GuideId.ELITE_REDUX, GuideId.TEAM_ROCKET,
     GuideId.WISHES -> emptyList()
+    GuideId.CLOVER -> emptyList()
+    GuideId.ELYSIUM -> emptyList()
     GuideId.DREAMSTONE -> emptyList()
     GuideId.MONOMYTH -> emptyList()
+    GuideId.EPSILON_EMERALD -> emptyList()
     // The DS games: item balls and hidden items (scripts/gen_gen4_guide.py), keyed by place - see [areaSection].
     GuideId.PLATINUM -> PT_AREAS_RAW
     GuideId.HEARTGOLD, GuideId.SOULSILVER -> HG_AREAS_RAW

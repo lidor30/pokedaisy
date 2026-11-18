@@ -403,6 +403,54 @@ def emerald_eu_symbols(lang):
     return lambda rom: {"PartyBgGfx": (gfx, 0), "StatusGfx": (status, 0), "FontSmall": (font, 0x8000)}
 
 
+
+# The European FireReds' and Emeralds' TRAINER CARD (2026-11-18): their card tiles hold their own words (TRAINERPASS, CARTE
+# DRESSEUR, ...), FONT_NORMAL has their letters, and some redrew a tilemap or the glyph widths; everything else is English's
+# bytes. Found by mapping English's own blobs through the card code's literal pools (port_retail.py's map_literal), each
+# checked by rendering the card against the game's own (headless, the English save loaded).
+FIRERED_EU_ROMS = {
+    "ES": multi_language_rom("Pokemon - Edicion Rojo Fuego (Spain)"),
+    "DE": multi_language_rom("Pokemon - Feuerrote Edition (Germany)"),
+    "FR": multi_language_rom("Pokemon - Version Rouge Feu (France)"),
+    "IT": multi_language_rom("Pokemon - Versione Rosso Fuoco (Italy)"),
+}
+# Per language: card tiles, FONT_NORMAL, its widths (None = English's), the redrawn tilemap (None = English's), and the card's
+# strings (CARD_TEXT, raw: from the name's label through the last stat line's, each FF-ended, read by TrainerCardArt - no
+# game text in the app).
+FIRERED_EU_CARD = {
+    "DE": (0xE99218, 0x1F2FD0, None, None, (0x419D01, 190)),
+    "FR": (0xE9914C, 0x1ED50C, None, None, (0x41239E, 197)),
+    "IT": (0xE99168, 0x1EC1A4, 0x1F41A4, 0xEAF948, (0x4111C3, 185)),
+    "ES": (0xE9912C, 0x1EE86C, 0x1F686C, 0xEAF95C, (0x4144AA, 217)),
+}
+EMERALD_EU_CARD = {
+    "DE": (0xDD1C90, 0x65D388, None, None, (0x5FE319, 381)),
+    "FR": (0xDD1C74, 0x650218, 0x658218, 0xDD21D4, (0x5F1221, 388)),
+    "IT": (0xDD1AE8, 0x648938, 0x650938, None, (0x5E992D, 361)),
+    "ES": (0xDD1C40, 0x64E818, 0x656818, 0xDD21A0, (0x5EFBDB, 420)),
+}
+# The European LeafGreens are FireRed's card byte for byte but Italian / Spanish LeafGreen's back tilemap.
+LEAFGREEN_EU_CARD_BACK = {
+    "IT": (multi_language_rom("Pokemon - Versione Verde Foglia (Italy)"), 0xEAFB54),
+    "ES": (multi_language_rom("Pokemon - Edicion Verde Hoja (Spain)"), 0xEAFAF4),
+}
+
+
+def eu_card_symbols(table, lang):
+    gfx, font, widths, tilemap, text = table[lang]
+    out = {"CardGfx": (gfx, 0), "FontNormal": (font, 0x8000), "CardText": text}
+    if widths: out["FontNormalWidths"] = (widths, 0x200)
+    if tilemap: out["CardMap"] = (tilemap, 0)
+    return lambda rom: out
+
+
+def eu_card_blobs(fam, lang, table, mapname):
+    _, _, widths, tilemap, _ = table[lang]
+    return [(f"{fam}_{lang}_CARD_GFX", "CardGfx", True), (f"{fam}_{lang}_FONT_NORMAL", "FontNormal", False),
+            (f"{fam}_{lang}_CARD_TEXT", "CardText", False)] + \
+        ([(f"{fam}_{lang}_FONT_NORMAL_WIDTHS", "FontNormalWidths", False)] if widths else []) + \
+        ([(f"{fam}_{lang}_CARD_{mapname}", "CardMap", True)] if tilemap else [])
+
 # (Kotlin name, symbol, LZ77? - True / False / "smol") per game.
 GAMES = {
     "FR": ("pokefirered/pokefirered_rev1.gba", "pokefirered/pokefirered_rev1.elf", [
@@ -711,6 +759,13 @@ def fireRed_ports():
     return out
 
 
+for _lang, _rom in FIRERED_EU_ROMS.items():
+    GAMES["FRC" + _lang] = (_rom, None, eu_card_blobs("FR", _lang, FIRERED_EU_CARD, "BACK"))
+for _lang, _rom in EMERALD_EU_ROMS.items():
+    GAMES["EMC" + _lang] = (_rom, None, eu_card_blobs("EM", _lang, EMERALD_EU_CARD, "FRONT"))
+for _lang, (_rom, _) in LEAFGREEN_EU_CARD_BACK.items():
+    GAMES["LGC" + _lang] = (_rom, None, [(f"LG_{_lang}_CARD_BACK", "CardMap", True)])
+
 for _lang, _p in fireRed_ports().items():
     GAMES["FR" + _lang] = (_p["path"], None, [
         (f"FR_{_lang}_PARTY_BG_GFX", "PartyBgGfx", True),
@@ -729,7 +784,10 @@ def fireRed_symbols(p):
 ROM_SYMBOLS = {"RY": recharged_yellow_symbols, "UB": unbound_symbols, "UBFR": unbound_fr_symbols, "RR": cfru_symbols, "OD": cfru_symbols, "AM": cfru_symbols, "SS": cfru_symbols, "LGO": cfru_symbols, "LZ": lazarus_symbols, "SGL": seaglass_symbols, "SG": soulgold_symbols,
                "GZ": glazed_symbols, "IMP": imperium_symbols, "DSM": dreamstone_symbols, "WSH": wishes_symbols, "MMY": monomyth_symbols, "TR3": team_rocket_v3_symbols, "QTZ": quetzal_symbols, "HNS": hns_symbols, "RW": rowe_symbols, "MM": mariomon_symbols, "RE": recharged_emerald_symbols,
                **{"EM" + lang: emerald_eu_symbols(lang) for lang in EMERALD_EU_ROMS},
-               **{"FR" + lang: fireRed_symbols(p) for lang, p in fireRed_ports().items()}}
+               **{"FR" + lang: fireRed_symbols(p) for lang, p in fireRed_ports().items()},
+               **{"FRC" + lang: eu_card_symbols(FIRERED_EU_CARD, lang) for lang in FIRERED_EU_CARD},
+               **{"EMC" + lang: eu_card_symbols(EMERALD_EU_CARD, lang) for lang in EMERALD_EU_CARD},
+               **{"LGC" + lang: (lambda off: lambda rom: {"CardMap": (off, 0)})(off) for lang, (_, off) in LEAFGREEN_EU_CARD_BACK.items()}}
 
 
 def symbols(elf):
@@ -757,8 +815,8 @@ def main():
                       for l in FR_LANGS.values() if any(n.startswith(f"FR_{l}_") for n in kept)})
     for game, (rom_path, elf, blobs) in GAMES.items():
         path = os.path.join(ROOT, rom_path)
-        if not elf and not os.path.exists(path):
-            # A hack's ROM that isn't on this machine: keep its fingerprints as they were.
+        if not os.path.exists(path):
+            # A hack's ROM (or a decomp build) that isn't on this machine: keep its fingerprints as they were.
             missing = [name for name, _, _ in blobs if name not in kept]
             if missing:
                 raise SystemExit(f"{path} missing and no earlier rows for {missing}")

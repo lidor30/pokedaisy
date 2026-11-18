@@ -50,6 +50,17 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
     /** Extras switched on that do nothing in this game now (ZOOM without EXPAND, REWIND off or a DS game): not drawn. */
     var unavailable by mutableStateOf<Set<TouchButton>>(emptySet())
 
+    /** A DS battle's menu under the controls ([coverInWindow]), in this view's px, for [TouchControls]' covered. */
+    private var covered by mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+
+    /** Something of the game's to tap under the controls, in window px (null: nothing): the buttons over it step aside
+     * while it's there (a DS battle's FIGHT / BAG / RUN under A, B, Y and START on a phone, Discord 2026-11-10). */
+    fun coverInWindow(r: androidx.compose.ui.geometry.Rect?) {
+        val at = IntArray(2).also { getLocationInWindow(it) }
+        val local = r?.translate(-at[0].toFloat(), -at[1].toFloat())
+        if (covered != local) covered = local
+    }
+
     /** SKIN's pick for this game's system (null: the drawn buttons). */
     var skin by mutableStateOf<com.pokedaisy.app.companion.InstalledSkin?>(null)
 
@@ -123,6 +134,9 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
     /** Nothing is open over the game (UI thread, asked before every draw): the input windows may take the fingers. */
     var inputAllowed: () -> Boolean = { false }
 
+    /** UI controls to leave clear, in window coordinates; native hosts supply their current measured bounds. */
+    var inputExclusions: () -> List<androidx.compose.ui.unit.IntRect> = { emptyList() }
+
     /** Before each draw of the window this is in: the input windows follow the buttons, and step aside under an overlay. */
     private val preDraw = android.view.ViewTreeObserver.OnPreDrawListener { syncInputWindows(); true }
     private var observer: android.view.ViewTreeObserver? = null
@@ -147,7 +161,7 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
         val show = visibility == VISIBLE && isAttachedToWindow
         if (!show && inputWindows == null) return
         val windows = inputWindows ?: TouchInputWindows(this, tracker).also { inputWindows = it }
-        windows.sync(hitModel.takeIf { show }, show && inputAllowed())
+        windows.sync(hitModel.takeIf { show }, show && inputAllowed(), if (show) inputExclusions() else emptyList())
     }
 
     /** UI thread, from the activity's onConfigurationChanged: new input windows start from the new configuration
@@ -181,9 +195,10 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
                     gameAspect = gameAspect, gameBoy = !shoulders, ffOn = ffOn, ds = dsButtons, skin = skin,
                     modifier = androidx.compose.ui.Modifier.fillMaxSize(),
                     onPlaced = { placed = it; onPlaced?.invoke() },
-                    tracker = tracker.also { it.xyKeys = !dsButtons },
+                    tracker = tracker,
                     onHitModel = { hitModel = it; syncInputWindows() },
                     unavailable = unavailable,
+                    covered = covered,
                 )
             }
         }, LayoutParams(-1, -1))

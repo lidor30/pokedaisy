@@ -25,6 +25,7 @@ import org.junit.Test
  *     ./gradlew :app:recordPaparazziDebug --tests '*QuickMenuScreenshotTest'
  */
 class QuickMenuScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1920, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),
@@ -48,7 +49,7 @@ class QuickMenuScreenshotTest {
 
     private fun shot(
         look: FieldHudLook = FieldHudLook.GLASS, moves: Int = 0, fly: FlyTargets? = null, ring: Boolean = false, labels: Boolean = true,
-        actions: QuickActions = Actions(), repels: List<Int>? = null, shown: Set<QuickAction> = QuickAction.entries.toSet(),
+        actions: QuickActions = Actions(), repels: List<Int>? = null, confirm: QuickAction? = null, shown: Set<QuickAction> = QuickAction.entries.toSet(),
         snapshot: com.pokedaisy.app.companion.data.SnapshotView = FieldHudScreenshotTest.snapshot,
     ) = paparazzi.snapshot {
         val state = QuickMenuState().apply {
@@ -60,6 +61,7 @@ class QuickMenuScreenshotTest {
             repeat(moves) { key(MenuKey.RIGHT) }
             if (fly != null) this.fly = fly
             if (repels != null) this.repels = repels
+            if (confirm != null) this.confirm = confirm
         }
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             FieldHudScene(FieldHudStyle(look = look), FieldHudScreenshotTest.wild)
@@ -136,4 +138,18 @@ class QuickMenuScreenshotTest {
 
     /** FLY's places (Kanto's towns). */
     @Test fun flyList() = shot(fly = FlyTargets(FlyResult.OK, listOf(88, 89, 90, 91, 92, 93, 94, 95, 96, 97)))
+
+    /** HEAL asks first: the party as it is, YES / NO. */
+    @Test fun healConfirm() = shot(confirm = QuickAction.HEAL)
+
+    /** HEAL done: [ms] into its animation (the bars filling one by one, then the message). */
+    private fun healed(ms: Int) = paparazzi.snapshot {
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            FieldHudScene(FieldHudStyle(), FieldHudScreenshotTest.wild)
+            HealedAnimation(HealShow(FieldHudScreenshotTest.snapshot.party, id = 1), FieldHudLook.GLASS, frozenAtMs = ms) {}
+        }
+    }
+
+    @Test fun healedFilling() = healed(900)
+    @Test fun healedDone() = healed(2300)
 }

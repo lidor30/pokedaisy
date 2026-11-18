@@ -7,8 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
+import okio.Path.Companion.toOkioPath
 
 /**
  * INSTANT TEXT's patch, found in each ROM by its code ([InstantText.find]). The bytes were played headless with
@@ -16,10 +15,10 @@ import java.nio.ByteOrder
  */
 class InstantTextTest {
     private fun hex(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
-    private fun rom(size: Int, at: Int, code: ByteArray): ByteBuffer {
+    private fun rom(size: Int, at: Int, code: ByteArray): LittleEndianBytes {
         val b = ByteArray(size)
         code.copyInto(b, at)
-        return ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN)
+        return LittleEndianBytes(b)
     }
 
     // FireRed rev 1's RenderFont, its call at +0x16.
@@ -29,7 +28,7 @@ class InstantTextTest {
         val at = 0x2E90
         val patch = InstantText.find(rom(0x8000, at, font))
         assertNotNull(patch)
-        val out = rom(0x8000, at, font).array()
+        val out = rom(0x8000, at, font).bytes
         patch!!.writes.forEach { w ->
             val o = (w.addr - 0x08000000L).toInt()
             assertArrayEquals(w.expect, out.copyOfRange(o, o + w.expect.size))
@@ -46,12 +45,12 @@ class InstantTextTest {
 
     @Test fun `two copies of the code are not trusted`() {
         val r = rom(0x8000, 0x2E90, font)
-        font.copyInto(r.array(), 0x4000)
+        font.copyInto(r.bytes, 0x4000)
         assertNull(InstantText.find(r))
     }
 
     @Test fun `no known code means no patch`() {
-        assertNull(InstantText.find(ByteBuffer.allocate(0x8000).order(ByteOrder.LITTLE_ENDIAN)))
+        assertNull(InstantText.find(LittleEndianBytes(ByteArray(0x8000))))
     }
 
     private val cases = listOf(
@@ -78,7 +77,7 @@ class InstantTextTest {
             val f = File(RETAIL_ROM_DIR, name)
             if (!f.exists()) continue
             seen++
-            assertEquals(name, want, InstantText.find(f) != null)
+            assertEquals(name, want, InstantText.find(f.toOkioPath()) != null)
         }
         assumeTrue("no ROMs here", seen > 0)
     }
@@ -87,6 +86,6 @@ class InstantTextTest {
         val roms = retailRomFiles().toList()
             .filter { Regex("Rubin|Rubi|Saphir|Zafiro|Zaffiro|Rubis").containsMatchIn(it.name) && "Debug" !in it.name }
         assumeTrue("no ROMs here", roms.isNotEmpty())
-        for (f in roms) assertEquals(f.name, 1, InstantText.find(f)?.writes?.size)
+        for (f in roms) assertEquals(f.name, 1, InstantText.find(f.toOkioPath())?.writes?.size)
     }
 }

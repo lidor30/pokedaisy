@@ -12,6 +12,8 @@ import com.pokedaisy.app.companion.i18n.tk
  */
 enum class QuickAction(val label: String) {
     PC(tk("PC")),
+    /** The POKéMON CENTER's heal (companion.data.PokemonCenter): the whole party, with the nurse's jingle. */
+    HEAL(tk("HEAL")),
     FLY(tk("FLY")),
     /** FREE FLIGHT (Flight.kt): up on the FLY bird, over anything, until LAND (or B). */
     FLIGHT(tk("TAKE OFF")),
@@ -25,6 +27,11 @@ enum class QuickAction(val label: String) {
     SAVE_STATE(tk("SAVE STATE")),
     LOAD_STATE(tk("LOAD STATE")),
     FF(tk("FF")),
+    /** Holding A mashes it (GbaInput.turboLatch), until a second tap switches it off; off again each time a game starts. */
+    TURBO(tk("TURBO A")),
+    /** A DS or 3DS game on one screen: its touch screen floating in, or away again (the TOUCH SCREEN hotkey's; a phone
+     * has no L2). */
+    TOUCH_SCREEN(tk("TOUCH SCREEN")),
     /** One screen: opens the companion (its window or side panel). */
     COMPANION(tk("COMPANION")),
 }
