@@ -11,6 +11,8 @@ package com.pokedaisy.app.companion.data
  * - REUSABLE TMS, Gen 1: ItemUseTMHM's end, `ld a, [wCurItem]; call IsItemHM; ret c; jp RemoveUsedItem`, then BootedUpTMText:
  *   the `ret c` made a `ret`. Gen 2: TeachTMHM's `ld a, [wCurItem]; call IsHM; ret c; ld c, ..; callfar ChangeHappiness;
  *   call ConsumeTM; jr`: the `call ConsumeTM` three `nop`s (the happiness the move brings stays).
+ * - FIELD POISON off: Gen 1's ApplyOutOfBattlePoisonDamage skips its damage (the day care's EXP and Pikachu's mood still run),
+ *   Gen 2's DoPoisonStep takes its "no party" way out.
  * - LOW HP BEEP off: the HUD's low-health check sets the alarm's bit (`ld hl, wLowHealthAlarm; set 7, [hl]`), Gen 1's
  *   DrawPlayerHUDAndHPBar.setLowHealthAlarm, Gen 2's CheckDanger.danger: the `set` two `nop`s. The music then never hears it.
  *
@@ -21,7 +23,7 @@ package com.pokedaisy.app.companion.data
 object GbGamePatches {
     const val TAG = 0x10000000L
 
-    class Found(val tms: List<ReusableTms.Site>, val text: InstantText.Patch?, val beep: InstantText.Patch?)
+    class Found(val tms: List<ReusableTms.Site>, val text: InstantText.Patch?, val beep: InstantText.Patch?, val poison: InstantText.Patch? = null)
 
     private const val ANY = -1
     private val TEXT = sig("fa????cb??c0fa????cb??c8")
@@ -29,6 +31,8 @@ object GbGamePatches {
     private val TM2 = sig("fa????cd????d80e??21????3e??cfcd????18")
     private val BEEP1 = sig("21????cb7e3600c8afea????c921????cbfec9")
     private val BEEP2 = sig("21????cbbe18??21????cbfec9")
+    private val POISON1 = sig("fa????e603c2????ea????21????")
+    private val POISON2 = sig("fa????a728??af0e??21????")
 
     /** What [rom] (a whole Game Boy cart) has; null for anything that isn't one. */
     fun find(rom: ByteArray): Found? {
@@ -45,7 +49,13 @@ object GbGamePatches {
         val beep = (one(BEEP1)?.let { it + 16 } ?: one(BEEP2)?.let { it + 10 })?.let { at ->
             InstantText.Patch(listOf(InstantText.Write(TAG + at, rom.copyOfRange(at, at + 3), byteArrayOf(0, 0))))
         }
-        return Found(tms, text, beep)
+        // FIELD POISON off: Gen 1's `jp nz, .skipPoisonEffectAndSound` (every fourth step) made a `jp` - the day care's EXP and
+        // Pikachu's mood before it still run; Gen 2's DoPoisonStep's `jr z, .no_faint` (no party) made a `jr`.
+        val poison = one(POISON1)?.let { at -> Triple(at, POISON1, 5 to 0xC3) } ?: one(POISON2)?.let { at -> Triple(at, POISON2, 4 to 0x18) }
+        val poisonPatch = poison?.let { (at, s, p) ->
+            InstantText.Patch(listOf(InstantText.Write(TAG + at + p.first, rom.copyOfRange(at + p.first, at + s.size), byteArrayOf(p.second.toByte()))))
+        }
+        return Found(tms, text, beep, poisonPatch)
     }
 
     /** A Game Boy cart file: its header's logo check (0x104) and size. */

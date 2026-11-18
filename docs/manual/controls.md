@@ -279,7 +279,7 @@ Two of the games' old habits, each a switch in the companion's `GAMEPLAY` group.
 - **`LOW HP BEEP`** `OFF`: no more beeping in battle while your Pokémon's health bar is in the red. Every other sound stays.
 - **`FIELD POISON`** `OFF`: a poisoned Pokémon no longer loses health while you walk around, and never faints from it on the way. In battle poison works as ever, and it stays poisoned until you heal it.
 
-They work in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. On the Game Boy `LOW HP BEEP` works too, in Red, Blue, Yellow, Gold, Silver and Crystal and the hacks built on them (`FIELD POISON` doesn't there yet). Elsewhere they show `N/A`. The change applies at once, no restart needed.
+They work in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. On the Game Boy they work too, in Red, Blue, Yellow, Gold, Silver and Crystal and the hacks built on them. Elsewhere they show `N/A`. The change applies at once, no restart needed.
 
 ## BOSS RETRY
 

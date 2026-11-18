@@ -21,6 +21,7 @@ class GbGamePatchesTest {
         assertEquals(tag + 0xE47F, f.tms.single().branch)                               // 03:6374 ItemUseTMHM's end
         assertEquals(0xC9.toByte(), f.tms.single().value.single())
         assertEquals(tag + 0x3CEAE, f.beep!!.writes.single().addr)                      // 0F:4EAB .setLowHealthAlarm + 3
+        assertEquals(tag + 0xC407, f.poison!!.writes.single().addr)                     // its jp nz, in ApplyOutOfBattlePoisonDamage
     }
 
     @Test
@@ -47,6 +48,7 @@ class GbGamePatchesTest {
             val f = GbGamePatches.find(file.readBytes()) ?: return@forEach
             val polished = "Polished" in file.name || "Prism" in file.name
             if (polished) assertTrue(file.name, f.tms.isEmpty() && f.text == null && f.beep == null)
+            if ("Pokemon - " in file.name) assertNotNull(file.name, f.poison)
             if ("Pokemon - " in file.name) {
                 assertNotNull(file.name, f.text); assertNotNull(file.name, f.beep); assertEquals(file.name, 1, f.tms.size)
                 n++

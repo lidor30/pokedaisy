@@ -2857,7 +2857,7 @@ class PokeDaisyActivity : Activity() {
                     current.setReusableTms(tmSites, Prefs(this).reusableTms)
                     current.setInstantText(textPatch, Prefs(this).instantText)
                     // A Game Boy cart's LOW HP BEEP (GbGamePatches): its patch where the GBA's QuietPatches would put it.
-                    if (gameBoy) { quietFound = com.pokedaisy.app.companion.data.QuietPatches.Found(found.gbBeep, null); syncQuietPatches() }
+                    if (gameBoy) { quietFound = com.pokedaisy.app.companion.data.QuietPatches.Found(found.gbBeep, found.gbPoison); syncQuietPatches() }
                 }
             })
         }

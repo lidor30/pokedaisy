@@ -709,7 +709,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
     (`PK_GB_ROM_TAG` + the cart offset, mGBA's GBPatch8; the cart's bytes overlaid for the Poller's hash). Played headless (mgba_dump
     `rompatch`): Yellow (the nurse's line whole at once, TM01 taught and still in the bag, the alarm byte 0 at 5 HP) and Crystal (TM10
     taught and kept, the alarm byte 0). Found in every retail Red / Blue / Yellow / Gold / Silver / Crystal here and Brown, Yellow Legacy,
-    Crystal Clear, Crystal Legacy; PureRed / PureBlue get the beep only.
+    Crystal Clear, Crystal Legacy; PureRed / PureBlue get the beep only. FIELD POISON off: Gen 1's ApplyOutOfBattlePoisonDamage `jp nz`
+    (every fourth step) made a `jp`, Gen 2's DoPoisonStep `jr z, .no_faint` made a `jr`; walked headless with a poisoned lead: Yellow
+    182 HP -> 178 without, 182 with; Crystal (a repel on) 19 -> 14 without, 19 with.
 
 ## What each column is
 
