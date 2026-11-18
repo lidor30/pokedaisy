@@ -51,7 +51,7 @@ Anything the tracker got wrong, you can put right:
 - `NEW RUN`: forgets every encounter and fallen Pokémon. Your party right then starts the new run. Your rules stay as they were.
 
 > [!NOTE]
-> `NUZLOCKE` works in the Game Boy Advance games (the retail games and the hacks the companion reads battles for). In the Game Boy and DS games the setting shows `N/A` for now.
+> `NUZLOCKE` works in the Game Boy Advance games (the retail games and the hacks the companion reads battles for), and in the Game Boy and DS games too.
 >
 > Emerald Rogue shows `N/A` too, on purpose. It's a roguelike: every run takes you through the same areas again, so "one catch per area" can't work there.
 

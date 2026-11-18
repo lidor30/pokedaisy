@@ -35,14 +35,14 @@ object Nuzlocke {
     val run: NuzlockeRun get() = runState.value
 
     /**
-     * A game the tracker follows: the GBA games (the Game Boy and DS readers don't give it a battle's type yet), but not
+     * A game the tracker follows: every game whose reader says a battle's type (GBA, Game Boy, DS), but not
      * Emerald Rogue - a roguelike walks the same areas again every run, so one catch per area can't hold.
      */
     fun supports(game: GameKind?): Boolean =
-        game != null && !game.isGameBoyGame && !game.isDsGame && game != GameKind.EMERALD_ROGUE
+        game != null && game != GameKind.EMERALD_ROGUE
 
     /** A party Pokémon out of the run (fainted once), while NUZLOCKE is on. */
-    fun isDead(personality: Long): Boolean = on && runState.value.isDead(personality)
+    fun isDead(personality: Long): Boolean = on && runState.value.isDead(com.pokedaisy.app.companion.data.nuzlockeId(personality))
 
     /** [on] / [stored] are this ROM's; the two savers write changes back. */
     fun load(on: Boolean, stored: String?, saveOn: (Boolean) -> Unit, saveRun: (String) -> Unit) = synchronized(lock) {

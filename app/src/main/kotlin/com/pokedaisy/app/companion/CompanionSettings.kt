@@ -132,7 +132,7 @@ interface CompanionSettings : StoredCompanionSettings {
     val dsLayout: DsLayout? get() = null
     fun setDsLayout(layout: DsLayout) {}
 
-    /** NUZLOCKE ([Nuzlocke]): [nuzlockeSupported] = a GBA game whose party and battles are read; the switch is per game. */
+    /** NUZLOCKE ([Nuzlocke]): [nuzlockeSupported] = a game whose party and battles are read (GBA, Game Boy, DS); the switch is per game. */
     val nuzlockeSupported: Boolean get() = false
     val nuzlocke: Boolean get() = false
     fun setNuzlocke(on: Boolean) {}
