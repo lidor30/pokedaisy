@@ -71,7 +71,7 @@ If you want to skip the `FIGHT` step, turn on `ONE-TAP MOVES` in SETTINGS (COMPA
 
 In a wild battle, a small white button with a ball on it sits at the corner of your turn's screen, by `FIGHT` (with `ONE-TAP MOVES` on, at the start of the row underneath). It shows the ball you threw last and how many you have left. Tap it and that ball is thrown at once, without opening the bag: the game plays its own throw, shakes and catch. If you're out of that kind, it shows the first ball in your bag instead.
 
-It only shows when the game would let you throw: a wild battle with one Pokémon facing you, and room for a catch (a free spot in your party, or in a box). Turn it off with `LAST BALL` in SETTINGS (COMPANION group). It's there with the `GEN 4` look of `BATTLE STYLE`, in FireRed, LeafGreen and Emerald and in the hacks on their code where the bag tab's `USE` works.
+It only shows when the game would let you throw: a wild battle with one Pokémon facing you, and room for a catch (a free spot in your party, or in a box). Turn it off with `LAST BALL` in SETTINGS (COMPANION group). It's there with the `GEN 4` look of `BATTLE STYLE`, in FireRed, LeafGreen, Emerald, Ruby and Sapphire and in the hacks on their code where the bag tab's `USE` works.
 
 ### BATTLE STYLE
 
