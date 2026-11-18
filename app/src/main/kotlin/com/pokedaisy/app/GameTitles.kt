@@ -246,6 +246,10 @@ object GameTitles {
         "24eeda80ee78fa214a6f4a85164a2492d2b017ad" to "Pokémon Brown",
         "2d6d1f1a6010f578d67045802611a288ebd8748b" to "Pokémon Brown",
         "d419fe244fa17196f7df46ddab47c840e7573652" to "Pokémon PureBlue",
+        // Pokémon Red (Gen II Graphics V2.0)
+        "ad1adc824456f593f5bdb4cbfeb0ec12b24abb6d" to "Pokémon Red (Gen II Graphics)",
+        // Pokémon Yellow (Gen II Graphics V1.1)
+        "8e3d5a2b508ad832b86ae1dea72dd6d646b634c0" to "Pokémon Yellow (Gen II Graphics)",
     )
 
     /** DS carts worth hashing (128 MB each, once per file): the DS games above. */

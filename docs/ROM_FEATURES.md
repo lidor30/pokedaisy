@@ -13,6 +13,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Yellow Legacy (GB) | 1.0.10 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | Red / Blue (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
+| Red Gen II Graphics (GB) | 2.0 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | — | — | — | n/a | n/a | — | — | — ³⁶ |
+| Yellow Gen II Graphics (GB) | 1.1 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | — | — | — | n/a | n/a | — | — | — ³⁶ |
 | Brown (GB) | 6.0.1, 6.1.2 | — | ✅ ³⁸ | ✅ ³⁸ | ✅ ³⁸ | — | ✅ ³⁸ | — | n/a | n/a | ✅ ³⁸ | ✅ ³⁸ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Gold / Silver (GBC) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
@@ -1030,3 +1032,11 @@ Violet) or their engine's retail names (Kaizo, Seaglass, Too Many Types 2, Recha
 other-language retail carts use their own language's names. `make -C 3ds test-roms` checks every ROM names at least 20 sections.
 
 Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draws the FireRed 1.0 hacks' own region maps from their ROM, as the app's RomRegionMap (Unbound, Odyssey, Gaia, Amethyst, Radical Red, GS Chronicles, Sword and Shield, Orange Islands, Ash Gray, Ghost Grey; `make -C 3ds test-roms` checks them against the app's pins), and elsewhere a region map where the ROM's art is found by fingerprint (Rocket Edition, Recharged Yellow, Ultra Violet, Kaizo, Emerald Legacy, Quetzal, Emerald Rogue, Too Many Types 2); else it says "NO MAP".
+
+56. Red and Yellow with the Gen II Graphics patch (Red V2.0, Yellow V1.1; marthinmooy's PR #802, 2026-11-19): retail's RAM
+    and save untouched, so they run on Red's / Yellow's configs (`GEN1_RED_GEN2_GRAPHICS`, `GEN1_YELLOW_GEN2_GRAPHICS`), found
+    by hash. The patch redraws the Pokémon, trainers and tiles, so their art goes to files of their own (`gen1Gen2Graphics`,
+    `Gen1Art.*_GEN2_GRAPHICS_*`) and their Pokédex pictures take each species' bank from byte 27 of its base stats
+    (`picBankOffset`). Only the RAM-driven columns are marked: nothing else was played here (no copy of the hacks on the
+    machine that wrote this), and Yellow's bank 0 is 0x12 off retail's (its STEADY addresses moved with it), so
+    GbField's fixed-address checks likely turn its field features off. Their colours and music weren't compared with the game.

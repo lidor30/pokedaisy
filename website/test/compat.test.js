@@ -124,11 +124,13 @@ test('DS: Blaze Black 2 / Volt White 2 Redux by their code word, retail Black 2 
 
 test('Game Boy: Yellow only', () => {
   assert.equal(verdict(data, { platform: 'gb', sha1: 'cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1' }).title, 'Pokémon Yellow');
+  assert.equal(verdict(data, { platform: 'gb', sha1: '8e3d5a2b508ad832b86ae1dea72dd6d646b634c0' }).title, 'Pokémon Yellow (Gen II Graphics)');
   assert.equal(verdict(data, { platform: 'gb', sha1: '0'.repeat(40) }).reason, 'gb');
 });
 
 test('Game Boy: Red and Blue', () => {
   assert.equal(verdict(data, { platform: 'gb', sha1: 'ea9bcae617fdf159b045185467ae58b2e4a48b9a' }).title, 'Pokémon Red');
+  assert.equal(verdict(data, { platform: 'gb', sha1: 'ad1adc824456f593f5bdb4cbfeb0ec12b24abb6d' }).title, 'Pokémon Red (Gen II Graphics)');
   assert.equal(verdict(data, { platform: 'gb', sha1: 'd7037c83e1ae5b39bde3c30787637ba1d4c48ce2' }).title, 'Pokémon Blue');
 });
 

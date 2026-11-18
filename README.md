@@ -189,6 +189,8 @@ ROM hacks, **in the exact version listed** (another version shows a "not support
 | Yellow (GB)                    | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Yellow (GB)                    | DE / FR / IT / ES          |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Yellow Legacy (GB)             | 1.0.10                     |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
+| Red Gen II Graphics (GB)       | 2.0                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
+| Yellow Gen II Graphics (GB)    | 1.1                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
 | Brown (GB)                     | 6.0.1, 6.1.2               |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Gold / Silver (GBC)            | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Gold / Silver (GBC)            | DE (Goldene Edition, Silberne Edition) |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
