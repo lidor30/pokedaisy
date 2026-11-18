@@ -9,9 +9,9 @@ name: 3DS
 on:
   push:
     branches: [main, dev]
-    paths: ['3ds/**', 'third_party/armgba', 'third_party/mgba', 'third_party/patches/armgba*', '.github/workflows/3ds.yml']
+    paths: ['3ds/**', 'third_party/armgba', 'third_party/mgba', 'third_party/gpsp', 'third_party/patches/armgba*', 'third_party/patches/*gpsp*', '.github/workflows/3ds.yml']
   pull_request:
-    paths: ['3ds/**', 'third_party/armgba', 'third_party/mgba', 'third_party/patches/armgba*', '.github/workflows/3ds.yml']
+    paths: ['3ds/**', 'third_party/armgba', 'third_party/mgba', 'third_party/gpsp', 'third_party/patches/armgba*', 'third_party/patches/*gpsp*', '.github/workflows/3ds.yml']
   workflow_dispatch:
     inputs:
       tag:
@@ -72,6 +72,8 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: Submodules (mGBA, armGBA, gpSP)
         run: git -C src submodule update --init --depth 1 third_party/mgba third_party/armgba third_party/gpsp
+      - name: Host regressions (no ROM required)
+        run: make -C src/3ds test-old3ds
       - name: Build (devkitARM)
         run: |
           docker run --rm -v "$PWD/src:/repo" -w /repo/3ds/ctr "$DEVKITARM" bash -c \
