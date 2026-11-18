@@ -19,6 +19,14 @@ package com.pokedaisy.app.companion.data
  *   ([Found.exp]: SPLIT sets every bit each frame, like Gen 3's gSentPokesToOpponent); FULL makes the `cp 2` a `ret`, no division.
  * - LOW HP BEEP off: the HUD's low-health check sets the alarm's bit (`ld hl, wLowHealthAlarm; set 7, [hl]`), Gen 1's
  *   DrawPlayerHUDAndHPBar.setLowHealthAlarm, Gen 2's CheckDanger.danger: the `set` two `nop`s. The music then never hears it.
+ * - RUNNING SHOES: holding B while walking moves at the bike's speed ([run]). Red / Blue: .moveAhead2's bike check
+ *   (`ld a, [wWalkBikeSurfState]; dec a; jr nz, .normalPlayerSpriteAdvancement`, before the ledge check and
+ *   `call DoBikeSpeedup`) jumps to a trampoline; Yellow: DoBikeSpeedup's own first check (`...; dec a; ret nz`); Gold /
+ *   Silver / Crystal: DoPlayerMovement's .BikeCheck (`ld a, [wPlayerState]; cp PLAYER_BIKE; ret z; cp PLAYER_SKATE; ret`).
+ *   Each trampoline keeps the game's own answer for the bike (and Gen 2's skates), says "walking" for any other state
+ *   (surfing above all), and says "bike" for walking only while the joypad byte (Gen 1's hJoyHeld from DoBikeSpeedup's
+ *   Cycling Road check, Gen 2's hJoyDown from .GetDPad) has B. It goes at the very end of the hook's bank (bank 0 for
+ *   Gen 1: its caller is home code), in the cart's padding, which its write checks is still there.
  *
  * Found in Red, Blue, Yellow (every language), Gold, Silver, Crystal (rev 0, rev 1, Australia) and the hacks on that code
  * (Brown, Yellow Legacy, Crystal Clear, Crystal Legacy); PureRed / PureBlue's text check is three places, so INSTANT TEXT
@@ -28,7 +36,7 @@ object GbGamePatches {
     const val TAG = 0x10000000L
 
     class Found(val tms: List<ReusableTms.Site>, val text: InstantText.Patch?, val beep: InstantText.Patch?, val poison: InstantText.Patch? = null,
-                val exp: ExpShare.Found? = null)
+                val exp: ExpShare.Found? = null, val run: InstantText.Patch? = null)
 
     private const val ANY = -1
     private val TEXT = sig("fa????cb??c0fa????cb??c8")
@@ -40,6 +48,14 @@ object GbGamePatches {
     private val POISON2 = sig("fa????a728??af0e??21????")
     private val EXP1 = sig("fa????47af0e081600afcb388a570d20f8fe02d8")
     private val EXP2 = sig("fa????470e061600afcb388a570d20f8fe02d8")
+    // RUNNING SHOES. Red / Blue's .moveAhead2 check, and DoBikeSpeedup for hJoyHeld (`cp ROUTE_17; jr nz; ldh a, [hJoyHeld]`).
+    private val RUN_RED = sig("fa????3d200afa????cb??2003cd????")
+    private val RUN_RED_SPEEDUP = sig("fa????a7c0fa????fe1c2005f0??e670c0c3????")
+    // Yellow's DoBikeSpeedup, its own check first and hJoyHeld in its Cycling Road check.
+    private val RUN_YELLOW = sig("fa????3dc0fa????cb??c0fa????a7c0fa????fe1c2005f0??e670c0cd????c9")
+    // Gen 2's .BikeCheck and .GetDPad (`ldh a, [hJoyDown]; ld [wCurInput], a`, then the downhill bike's own code).
+    private val RUN_GS = sig("fa????fe01c8fe02c9")
+    private val RUN_GS_DPAD = sig("f0??ea????21????cb??c84fe6f0c079f680ea????c9")
 
     /** What [rom] (a whole Game Boy cart) has; null for anything that isn't one. */
     fun find(rom: ByteArray): Found? {
@@ -71,7 +87,76 @@ object GbGamePatches {
             if (flags !in 0xC000..0xDFFF) null
             else ExpShare.Found(addr, listOf(InstantText.Write(TAG + cp, rom.copyOfRange(cp, cp + 2), byteArrayOf(0xC9.toByte(), 0))), width = 1)
         }
-        return Found(tms, text, beep, poisonPatch, exp)
+        return Found(tms, text, beep, poisonPatch, exp, runPatch(rom, ::one))
+    }
+
+    /**
+     * RUNNING SHOES ([Found.run]): the hook and its trampoline, or null. The trampoline sits at the end of the hook's bank,
+     * in a run of the cart's padding (one byte, 00 or FF, to the bank's end) longer than itself: its write expects that
+     * padding, so a cart that uses the space is refused there.
+     */
+    private fun runPatch(rom: ByteArray, one: (IntArray) -> Int?): InstantText.Patch? {
+        fun u8(i: Int) = rom[i].toInt() and 0xFF
+        fun place(bank: Int, size: Int): Int? {
+            val end = (bank + 1) * 0x4000
+            if (end > rom.size) return null
+            val fill = rom[end - 1]
+            if (u8(end - 1) != 0 && u8(end - 1) != 0xFF) return null
+            var start = end
+            while (start > bank * 0x4000 && rom[start - 1] == fill) start--
+            return if (end - start > size) end - size else null
+        }
+        // A cart offset's CPU address while its bank is mapped (bank 0 at 0000-3FFF, the others at 4000-7FFF).
+        fun cpu(off: Int) = if (off < 0x4000) off else 0x4000 + off % 0x4000
+        fun jp(to: Int) = byteArrayOf(0xC3.toByte(), (to and 0xFF).toByte(), (to shr 8).toByte())
+        fun b(vararg v: Int) = ByteArray(v.size) { v[it].toByte() }
+        // A Game Boy cart's patch is written 4 bytes at most at a time (pk_cheats_patch), each piece checking its own bytes:
+        // the trampoline first, then the jump to it, so the jump never lands on a half-written trampoline.
+        fun pieces(off: Int, value: ByteArray) = (value.indices step 4).map { i ->
+            val n = minOf(4, value.size - i)
+            InstantText.Write(TAG + off + i, rom.copyOfRange(off + i, off + i + n), value.copyOfRange(i, i + n))
+        }
+        fun patch(hook: Int, hookSize: Int, trampoline: ByteArray, at: Int) = InstantText.Patch(
+            pieces(at, trampoline) + pieces(hook, jp(cpu(at)) + ByteArray(hookSize - 3)))
+        one(RUN_RED)?.let { hook ->
+            if (hook >= 0x4000) return null
+            val joy = one(RUN_RED_SPEEDUP)?.let { u8(it + 13) } ?: return null
+            val at = place(0, 21) ?: return null
+            // ld a, [wWalkBikeSurfState]; dec a; jr z, .bike; inc a; jr nz, .normal; ldh a, [hJoyHeld]; and B; jr z, .normal
+            // .bike: jp the ledge check; .normal: jp .normalPlayerSpriteAdvancement
+            val t = b(0xFA, u8(hook + 1), u8(hook + 2), 0x3D, 0x28, 9, 0x3C, 0x20, 9, 0xF0, joy, 0xE6, 0x02, 0x28, 3) +
+                jp(cpu(hook + 6)) + jp(cpu(hook + 16))
+            return patch(hook, 6, t, at)
+        }
+        one(RUN_YELLOW)?.let { hook ->
+            if (hook >= 0x4000) return null
+            val at = place(0, 16) ?: return null
+            // ld a, [wWalkBikeSurfState]; dec a; jr z, .bike; inc a; ret nz; ldh a, [hJoyHeld]; and B; ret z
+            // .bike: jp DoBikeSpeedup's ledge check
+            val t = b(0xFA, u8(hook + 1), u8(hook + 2), 0x3D, 0x28, 7, 0x3C, 0xC0, 0xF0, u8(hook + 24), 0xE6, 0x02, 0xC8) +
+                jp(cpu(hook + 5))
+            return patch(hook, 5, t, at)
+        }
+        one(RUN_GS)?.let { hook ->
+            val bank = hook / 0x4000
+            val joy = hits(rom, RUN_GS_DPAD).singleOrNull { it / 0x4000 == bank }?.let { u8(it + 1) } ?: return null
+            // Gen 2 carts keep 64 bytes or more of padding there; a hack with less is left alone (Prism: 27).
+            val at = place(bank, 18)?.takeIf { (bank + 1) * 0x4000 - it >= 18 && run(rom, bank) >= 64 } ?: return null
+            // ld a, [wPlayerState]; cp BIKE; ret z; cp SKATE; ret z; and a; ret nz; ldh a, [hJoyDown]; and B; xor B; ret
+            val t = b(0xFA, u8(hook + 1), u8(hook + 2), 0xFE, 0x01, 0xC8, 0xFE, 0x02, 0xC8, 0xA7, 0xC0, 0xF0, joy, 0xE6, 0x02, 0xEE, 0x02, 0xC9)
+            return patch(hook, 3, t, at)
+        }
+        return null
+    }
+
+    /** The padding run at the end of [bank] (one byte, 00 or FF): its length. */
+    private fun run(rom: ByteArray, bank: Int): Int {
+        val end = (bank + 1) * 0x4000
+        if (end > rom.size) return 0
+        val fill = rom[end - 1]
+        var start = end
+        while (start > bank * 0x4000 && rom[start - 1] == fill) start--
+        return end - start
     }
 
     /** A Game Boy cart file: its header's logo check (0x104) and size. */

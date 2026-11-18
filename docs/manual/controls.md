@@ -8,7 +8,7 @@ keywords: [flash, dark cave, light up cave, remap, rebind, keybind, reset contro
 
 PokeDaisy works out of the box on handhelds like the AYN Thor: the face buttons, shoulders, START and SELECT are the GBA's, and a few button combinations do emulator things like saving a state. Everything here is about changing that: which button presses what, which shortcuts exist, and what happens when you plug in a controller or play by touch.
 
-The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `WILD ENCOUNTERS`, `SHINY ODDS`, `SHINY ALERT`, `LOW HP BEEP`, `FIELD POISON`, `BOSS RETRY`, `EXP SHARE`, `LEVEL CAP` and `NO HMS NEEDED` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
+The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `RUNNING SHOES`, `WILD ENCOUNTERS`, `SHINY ODDS`, `SHINY ALERT`, `LOW HP BEEP`, `FIELD POISON`, `BOSS RETRY`, `EXP SHARE`, `LEVEL CAP` and `NO HMS NEEDED` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
 
 ## Game buttons
 
@@ -243,6 +243,8 @@ A phone held upright and held sideways each get their own layout: you edit the o
 `RUN INDOORS` lets you run inside buildings too, where the games normally make you walk. It works on games built on FireRed or Emerald. On Ruby and Sapphire it shows `N/A`: those games decide where you can run in a way PokeDaisy can't change safely.
 
 Both show `N/A` on a game PokeDaisy can't read the field of yet.
+
+`RUNNING SHOES` is for the Game Boy games, which have no running of their own: hold B while you walk on the field and you move as fast as on the bike. Let go and you walk again. It only speeds up walking: surfing stays at its own pace, and the bike and the ice work as they always do. It works in Red, Blue, Yellow, Gold, Silver and Crystal (the English releases) and the hacks that kept their code; elsewhere it shows `N/A`. The game's own files never change: PokeDaisy changes the game only while it runs.
 
 If you turn indoor running off while inside a building, leave and re-enter to restore that map's normal rule.
 

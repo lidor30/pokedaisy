@@ -986,3 +986,13 @@ Violet) or their engine's retail names (Kaizo, Seaglass, Too Many Types 2, Recha
 other-language retail carts use their own language's names. `make -C 3ds test-roms` checks every ROM names at least 20 sections.
 
 Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draws the FireRed 1.0 hacks' own region maps from their ROM, as the app's RomRegionMap (Unbound, Odyssey, Gaia, Amethyst, Radical Red, GS Chronicles, Sword and Shield, Orange Islands, Ash Gray, Ghost Grey; `make -C 3ds test-roms` checks them against the app's pins), and elsewhere a region map where the ROM's art is found by fingerprint (Rocket Edition, Recharged Yellow, Ultra Violet, Kaizo, Emerald Legacy, Quetzal, Emerald Rogue, Too Many Types 2); else it says "NO MAP".
+
+57. RUNNING SHOES on the Game Boy (2026-11-19, from marthinmooy's PR #1171, ported to `GbGamePatches.run`): B held while
+    walking gives the bike's speed. Red / Blue hook .moveAhead2's bike check (0x05CC), Yellow DoBikeSpeedup's (0x049D),
+    Gold / Silver / Crystal DoPlayerMovement's .BikeCheck (04:43CA / 20:43CA), each by its shape with its RAM and joypad
+    operands read from the cart's own code; the trampoline (21 / 16 / 18 bytes) at the end of the hook's bank in the cart's
+    padding, which its write checks. Only walking speeds up: the bike and the skates keep the game's own answer, and every
+    other state (surfing) is "not the bike". Found in English Red, Blue, Yellow, Gold, Silver, Crystal (rev 0, rev 1, AU),
+    Italian Yellow and Crystal Legacy (not played); N/A in the Spanish / German / French Yellows (12 to 14 bytes of bank 0
+    padding for a 16-byte trampoline), Brown, PureRed / PureBlue, Yellow Legacy, Crystal Clear (1 byte), Prism (27 bytes,
+    under the 64 kept) and Polished Crystal (no .GetDPad). `GbRunningShoesTest`.
