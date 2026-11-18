@@ -112,7 +112,7 @@ static bool tex_init(C3D_Tex* tex, int w, int h, GPU_TEXTURE_FILTER_PARAM filter
     return true;
 }
 
-static void draw_thread_start(void);
+static void draw_thread_start(bool appCore);
 
 bool gpu_init(void) {
     gfxInitDefault();
@@ -142,7 +142,7 @@ bool gpu_init(void) {
     upTarget = C3D_RenderTargetCreateFromTex(&upTex, GPU_TEXFACE_2D, 0, -1);
     if (!upTarget) return false;
     if (!(tex_init(&bottomTex, 512, 256, GPU_NEAREST) && tex_init(&topTex, 512, 256, GPU_NEAREST))) return false;
-    draw_thread_start();
+    draw_thread_start(false);
     return true;
 }
 
@@ -505,7 +505,8 @@ int gpu_draw_core(void) {
     return drawThread ? drawCore : -1;
 }
 
-static void draw_thread_start(void) {
+// appCore: an Old 3DS's game core instead of its system core (gpu_core1_lend).
+static void draw_thread_start(bool appCore) {
     bool isNew = host_is_new_3ds();
     // An Old 3DS: the system's core, when it lends it (else everything stays on the game's core, as before).
 #ifdef PD_DEV
@@ -516,7 +517,7 @@ static void draw_thread_start(void) {
         return;
     }
 #endif
-    if (!isNew && !host_core1_take(HOST_CORE1_PERCENT)) return;
+    if (!isNew && !appCore && !host_core1_take(HOST_CORE1_PERCENT)) return;
     // Kept when the thread stops (gpu_core1_lend): started again, it finds them.
     if (!stageGame) stageGame = linearAlloc(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t));
     if (!stageBottom) stageBottom = linearAlloc(PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));
@@ -532,8 +533,10 @@ static void draw_thread_start(void) {
     // The New 3DS's fourth core, beside armGBA's mixer (it sleeps between batches); mGBA's renderer and armGBA's render
     // worker have the third. armGBA's second worker is kept off (pd_armgba.c): beside it this thread starved.
     // An Old 3DS's system core: the job mostly waits for the refresh there, so the game no longer does.
-    static const int CORES_NEW[] = { 3, 2 }, CORES_OLD[] = { 1 };
-    const int* cores = isNew ? CORES_NEW : CORES_OLD;
+    // Lent core 1 away, on the game's own core: the job's waits for the refresh are still the thread's, not the game's
+    // (drawn by the game's thread instead, a stand-in Old 3DS ran FireRed at 51 frames a second, not 59).
+    static const int CORES_NEW[] = { 3, 2 }, CORES_OLD[] = { 1 }, CORES_APP[] = { 0 };
+    const int* cores = isNew ? CORES_NEW : appCore ? CORES_APP : CORES_OLD;
     int count = isNew ? 2 : 1;
     for (int i = 0; i < count && !drawThread; i++) {
         drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, cores[i], false);
@@ -545,9 +548,8 @@ static void draw_thread_start(void) {
 // An Old 3DS lets the app run one thread on its system core: a second one asking for core 1 is refused (svcCreateThread
 // E0A01839, out of resource: players' Old 3DS logs, 2026-11-18), so the draw thread there left armGBA's / gpSP's renderer
 // on the game's core, 36-44% of frames skipped. The renderer does far more of a frame's work, so it gets the core while
-// its game runs: the draw thread stops (the jobs it was given done) and the game's core draws, until gpu_core1_back.
-bool gpu_core1_lend(void) {
-    if (host_is_new_3ds() || !drawThread) return false;
+// its game runs, and the draw thread moves to the game's core until gpu_core1_back.
+static void draw_thread_stop(void) {
     while (jobsDone != jobsHanded) svcSleepThread(1000000);
     drawStop = true;
     LightEvent_Signal(&jobReady);
@@ -559,12 +561,23 @@ bool gpu_core1_lend(void) {
     drawStop = false;
     gameDoubled = false;
     shownBuf = gameBuf;
+}
+
+static bool core1Lent;
+
+bool gpu_core1_lend(void) {
+    if (host_is_new_3ds() || !drawThread || drawCore != 1) return false;
+    draw_thread_stop();
+    core1Lent = true;
+    draw_thread_start(true);
     return true;
 }
 
 bool gpu_core1_back(void) {
-    if (host_is_new_3ds() || drawThread) return false;
-    draw_thread_start();
+    if (host_is_new_3ds() || !core1Lent) return false;
+    core1Lent = false;
+    if (drawThread) draw_thread_stop();
+    draw_thread_start(false);
     return drawThread != NULL;
 }
 

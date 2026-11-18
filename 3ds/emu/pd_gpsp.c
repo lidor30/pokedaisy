@@ -59,6 +59,8 @@ static struct {
     size_t nativeStride;
     size_t stride;
     bool skipVideo;
+    bool lateNext;              // the next frame drawn is collected later (pd_gpsp_draw_late)
+    volatile bool latePending;  // a picture started and not collected: its hook still converts it
     uint32_t crc;
     // The save: what the file held past the save data (mGBA's clock), how big the save was, the last written copy's hash.
     uint8_t trailer[GBA_RTC_TRAILER];
@@ -194,7 +196,8 @@ static void video_refresh(const void* data, unsigned width, unsigned height, siz
 static void frame_hook(const unsigned short* left, const unsigned short* right, unsigned pitch, void* arg) {
     (void) right;
     (void) arg;
-    if (!G.video || G.skipVideo) return;
+    // A picture collected late finishes while an undrawn frame runs: it's still wanted.
+    if (!G.video || (G.skipVideo && !G.latePending)) return;
     convert(left, 240, 160, pitch * sizeof(unsigned short));
     G.hookDrew = true;
 }
@@ -541,9 +544,30 @@ uint32_t pd_gpsp_keys(void) {
 
 void pd_gpsp_run_frame(void) {
     if (!G.loaded) return;
-    if (G.skipVideo) gpsp_frontend_skip = 1;
+    if (G.skipVideo) {
+        gpsp_frontend_skip = 1;
+    } else {
+        // A drawn frame collects any picture still on its way before it starts (video_thread.cc does it itself).
+        G.latePending = false;
+        if (G.lateNext && G.threaded) {
+            video_thread_defer_next_finish();
+            G.latePending = true;
+        }
+    }
+    G.lateNext = false;
     retro_run();
     track_save();
+}
+
+void pd_gpsp_draw_late(void) {
+    G.lateNext = G.threaded;
+}
+
+bool pd_gpsp_collect(void) {
+    if (!G.latePending) return false;
+    bool done = video_thread_complete_deferred() != 0;
+    G.latePending = false;
+    return done;
 }
 
 void pd_gpsp_reset(void) {

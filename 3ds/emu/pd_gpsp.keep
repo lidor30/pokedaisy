@@ -33,3 +33,5 @@ pd_gpsp_jump
 pd_gpsp_vcount
 pd_gpsp_hblank_skips
 pd_gpsp_hblank_cost
+pd_gpsp_draw_late
+pd_gpsp_collect

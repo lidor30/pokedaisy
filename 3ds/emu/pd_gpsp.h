@@ -73,6 +73,11 @@ void pd_gpsp_set_video(uint32_t* buffer, size_t stride);
 const uint16_t* pd_gpsp_native_pixels(size_t* stride);
 // The frames from now on aren't shown (fast-forward's extra ones, the Old 3DS's catch-up): gpSP needn't draw them.
 void pd_gpsp_skip_video(bool skip);
+// The next frame drawn isn't waited for at its end: its picture is collected by pd_gpsp_collect after one or more
+// undrawn frames (host/pd_draw_pace.h). Only with the render thread.
+void pd_gpsp_draw_late(void);
+// Waits for the picture started late (its frame hook converts it into the video buffer); false = none was on its way.
+bool pd_gpsp_collect(void);
 uint32_t pd_gpsp_crc(void);
 bool pd_gpsp_recompiling(void);
 bool pd_gpsp_threaded(void);

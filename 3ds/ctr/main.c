@@ -419,14 +419,21 @@ static void show_message(const char* line1, const char* line2) {
 static bool core1Lent;
 
 static void core1_lend(const char* renderer) {
+    // The players' switch for comparing the two: sdmc:/pokedaisy/keepscreens leaves core 1 to the screens, as before.
+    FILE* keep = fopen("sdmc:" BASE_DIR "/keepscreens", "rb");
+    if (keep) {
+        fclose(keep);
+        host_log("core 1 kept for the screens (keepscreens), not lent to %s", renderer);
+        return;
+    }
     core1Lent = gpu_core1_lend();
-    if (core1Lent) host_log("core 1 lent to %s: the screens are drawn on the game's core", renderer);
+    if (core1Lent) host_log("core 1 lent to %s: the screens are drawn on core %d", renderer, gpu_draw_core());
 }
 
 static void core1_back(void) {
     if (!core1Lent) return;
     core1Lent = false;
-    host_log("core 1 back to the screens: %s", gpu_core1_back() ? "drawn on core 1" : "still drawn on the game's core");
+    host_log("core 1 back to the screens: %s", gpu_core1_back() ? "drawn on core 1" : "drawn on the game's core");
 }
 
 static void game_failed(const char* title, const char* why) {
@@ -834,7 +841,7 @@ static bool run_game(const char* file) {
 
     bool touching = false;
     unsigned fpsFrames = 0;
-    unsigned perfSeconds = 0, bottomPaints = 0;
+    unsigned perfSeconds = 0, bottomPaints = 0, newPictures = 0; // newPictures: frames whose own picture went up
     unsigned nativeWas = gpu_native_frames();
     unsigned shownWas = gpu_frames_shown();
     unsigned mixesWas = pd_mixer_mixes;
@@ -887,12 +894,43 @@ static bool run_game(const char* file) {
     const u64 bottomInterval = (SYSCLOCK_ARM11 + 29ULL) / 30;
     s64 behindTicks = 0;
     u64 loopTick = 0;
+    // gpSP's pictures on an Old 3DS at a rhythm planned from its renderer's time (host/pd_draw_pace.h): the game never
+    // waits for core 1. Off on a New 3DS, where every picture fits a refresh.
+    struct pd_draw_pace drawPace = { 0 };
+    const bool paced = gpsp && !host_is_new_3ds();
+    const unsigned refreshUs = (unsigned) (1000000 / SCREEN_HZ);
+    unsigned paceEvery = 0;
+    // The bottom screen's paint goes where a frame has time left for it (an Old 3DS): what the last one cost must fit
+    // before the refresh, else it waits for a loop with room, a second at most.
+    u64 paintCost = 0, paintedAt = 0;
     host_log("game: %s", catchUpOn ? "frames skipped to keep up (an Old 3DS)" : "every frame drawn");
     // No SD card writes for the log while the game runs (host_log_hold).
     host_log_hold(true);
 
     while ((appRunning = aptMainLoop())) {
+        u64 loopBegin = svcGetSystemTick();
         int catchUp = 0;
+        enum pd_draw_plan drawPlan = PD_DRAW_NOW;
+        if (paced) {
+            // Not where the frame just run is read at once: EXPAND builds its margins from it, FREE FLIGHT draws into it.
+            bool plannable = pd_gpsp_threaded() && !session.ff && settings.aspect != PD_ASPECT_EXPAND && !session.wideReady &&
+                             session.flightState == PK_FLIGHT_IDLE;
+            if (plannable) {
+                unsigned renderUs, waitUs;
+                pd_gpsp_render_us(&renderUs, &waitUs);
+                (void) waitUs;
+                drawPlan = pd_draw_pace_next(&drawPace, renderUs, refreshUs);
+            } else {
+                pd_draw_pace_reset(&drawPace);
+            }
+            if (drawPace.every != paceEvery) {
+                paceEvery = drawPace.every;
+                host_log("gpSP: a picture every %u frame%s", paceEvery, paceEvery == 1 ? "" : "s");
+                // A picture collected late is converted into whichever buffer is the game's then: one buffer while the
+                // rhythm is slower, the copy into the draw thread's stage taken when it's shown.
+                gpu_double_game(paceEvery <= 1);
+            }
+        }
         if (catchUpOn) {
             u64 t = svcGetSystemTick();
             if (loopTick) {
@@ -1016,7 +1054,8 @@ static bool run_game(const char* file) {
 
         struct pd_input in = { .held = gba_keys(held & ~withheld), .down = gba_keys(down & ~withheld),
                                .quickMenu = (down & KEY_Y) && !uiPtr->keyFocus,
-                               .ffHeld = held & KEY_ZR, .stickAngle = stick_angle(), .catchUp = catchUp };
+                               .ffHeld = held & KEY_ZR, .stickAngle = stick_angle(), .catchUp = catchUp,
+                               .drawPlan = drawPlan };
         DEV_MARK(coreStart);
         u64 busyStart = svcGetSystemTick();
         u64 tickNow = osGetTime();
@@ -1025,7 +1064,10 @@ static bool run_game(const char* file) {
         gb_audio_pump();
         lastTick = tickNow;
         unsigned frames = session.frame - before;
+        // The session ran it another way (another speed, a catch-up): the plan starts again from the next frame.
+        if (paced && session.drawPlan != drawPlan) pd_draw_pace_reset(&drawPace);
         if (frames) pd_session_set_video(&session, gpu_frame_done());
+        if (frames && !pd_draw_plan_holds(session.drawPlan) && !pd_session_holds_frame(&session)) newPictures++;
         audioMuted = session.ff;
         busyTicks += svcGetSystemTick() - busyStart;
         DEV_MARK(uiStart);
@@ -1041,10 +1083,12 @@ static bool run_game(const char* file) {
             if (++perfSeconds % 5 == 0) {
                 unsigned nativeNow = gpu_native_frames();
                 unsigned shownNow = gpu_frames_shown();
-                host_log("perf: emulated FPS %lu, presented FPS %lu, core+companion %u%%, bottom paints/period %u, native frames/period %u, heap %lu KiB",
+                host_log("perf: emulated FPS %lu, presented FPS %lu, new pictures/s %lu (one every %u frame%s), core+companion %u%%, bottom paints/period %u, native frames/period %u, heap %lu KiB",
                          (unsigned long) ((u64) fpsFrames * 1000 / (now - fpsStart)),
-                         (unsigned long) ((u64) (shownNow - shownWas) * 1000 / (now - perfStart)), cpu,
-                         bottomPaints, nativeNow - nativeWas, (unsigned long) (host_heap_free() >> 10));
+                         (unsigned long) ((u64) (shownNow - shownWas) * 1000 / (now - perfStart)),
+                         (unsigned long) ((u64) newPictures * 1000 / (now - perfStart)), drawPace.every ? drawPace.every : 1u,
+                         drawPace.every > 1 ? "s" : "", cpu, bottomPaints, nativeNow - nativeWas, (unsigned long) (host_heap_free() >> 10));
+                newPictures = 0;
                 if (gpsp) {
                     struct pd_gpsp_stats current;
                     pd_gpsp_get_stats(&current);
@@ -1072,13 +1116,17 @@ static bool run_game(const char* file) {
         }
 
         u64 bottomNow = svcGetSystemTick();
-        if (session.redraw && (!throttleBottom || pd_refresh_due(&bottomTimer, bottomNow, bottomInterval,
-                                            bottomUrgent || session.redrawUrgent))) {
+        bool paintUrgent = bottomUrgent || session.redrawUrgent;
+        bool paintFits = !throttleBottom || paintUrgent || bottomNow - paintedAt >= SYSCLOCK_ARM11 ||
+                         bottomNow + paintCost <= loopBegin + (u64) refreshTicks * 3 / 4;
+        if (session.redraw && paintFits && (!throttleBottom || pd_refresh_due(&bottomTimer, bottomNow, bottomInterval, paintUrgent))) {
             DEV_MARK(redrawStart);
             pd_session_draw(&session, &bottom);
             gpu_set_bottom(bottomPx);
             bottomPaints++;
             pd_refresh_mark(&bottomTimer, bottomNow);
+            paintedAt = svcGetSystemTick();
+            paintCost = paintedAt - bottomNow;
 #ifdef PD_DEV
             unsigned took = TICKS_TO_US(svcGetSystemTick() - redrawStart);
             dev.redraws++;
@@ -1088,10 +1136,11 @@ static bool run_game(const char* file) {
         DEV_MARK(drawStart);
         gpu_set_perf(perfPicture, session.perfRight - perfWidth, 3, settings.showPerf ? perfWidth : 0);
         perfPicture = NULL;
-        gpu_hold_game(pd_session_holds_frame(&session));
+        gpu_hold_game(pd_session_holds_frame(&session) || pd_draw_plan_holds(session.drawPlan));
         gpu_set_wide(session.wideReady ? pd_session_wide(&session) : NULL, session.wideW, session.wideH);
         size_t nativeStride = 0;
-        const uint16_t* nativePx = pd_pixels_native_allowed(nativeDisplay, session.wideReady,
+        // A picture collected late lands in the converted buffer (pd_gpsp.c's frame hook), not gpSP's own.
+        const uint16_t* nativePx = pd_pixels_native_allowed(nativeDisplay && drawPace.every <= 1, session.wideReady,
             session.flightState != PK_FLIGHT_IDLE, session.flightDrawn) ? pd_gpsp_native_pixels(&nativeStride) : NULL;
         gpu_set_native_pixels(nativePx, nativeStride);
         const struct pd_wide_hole* hole = &session.wideHole;

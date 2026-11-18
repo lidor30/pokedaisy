@@ -17,8 +17,8 @@ void gpu_exit(void);
 // The screens' draw thread's stack (gpu.c), for host_log_thread_failure's same-size try.
 #define GPU_DRAW_STACK (64 * 1024)
 int gpu_draw_core(void);
-// An Old 3DS's one thread on its system core, lent to the game's renderer (gpu.c): the draw thread stops, the game's core
-// draws the screens (true = it was running). gpu_core1_back starts it again (true = it did).
+// An Old 3DS's one thread on its system core, lent to the game's renderer (gpu.c): the draw thread moves to the game's
+// core (true = it was on core 1). gpu_core1_back puts it back on core 1 (true = it started there).
 bool gpu_core1_lend(void);
 bool gpu_core1_back(void);
 

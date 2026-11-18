@@ -949,9 +949,14 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
     s->core->setKeys(s->core, keys);
     // Fast-forward's frames that aren't shown: armGBA and gpSP needn't draw them.
     if (pd_armgba_is(s->core)) pd_armgba_skip_video(!last);
-    else if (pd_gpsp_is(s->core)) pd_gpsp_skip_video(!last);
+    else if (pd_gpsp_is(s->core)) {
+        // The plan's undrawn frames, and the drawn one whose picture is collected later.
+        pd_gpsp_skip_video(!last || s->drawPlan == PD_DRAW_SKIP || s->drawPlan == PD_DRAW_SKIP_LAST);
+        if (last && s->drawPlan == PD_DRAW_LATE) pd_gpsp_draw_late();
+    }
     uint64_t start = s->files.clock ? s->files.clock() : 0;
     s->core->runFrame(s->core);
+    if (last && s->drawPlan == PD_DRAW_SKIP_LAST && pd_gpsp_is(s->core)) pd_gpsp_collect();
     uint64_t ran = s->files.clock ? s->files.clock() : 0;
     s->prof.run += ran - start;
     if (s->game.kind != PD_GAME_GB) pk_wide_after_frame(s->core);
@@ -1029,7 +1034,27 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
                 memcpy(seen.bankFlags, s->shown.bankFlags, sizeof(seen.bankFlags));
                 memcpy(seen.bankVars, s->shown.bankVars, sizeof(seen.bankVars));
             }
-            if (s->ui.tab != PD_TAB_CARD) memcpy(seen.gameStats, s->shown.gameStats, sizeof(seen.gameStats));
+            if (s->ui.tab != PD_TAB_CARD) {
+                // The clock and the card's own reads tick on by themselves: only the CARD shows them.
+                memcpy(seen.gameStats, s->shown.gameStats, sizeof(seen.gameStats));
+                seen.playHours = s->shown.playHours;
+                seen.playMinutes = s->shown.playMinutes;
+                seen.battlePoints = s->shown.battlePoints;
+                memcpy(seen.museumWinners, s->shown.museumWinners, sizeof(seen.museumWinners));
+                memcpy(seen.cardFlags, s->shown.cardFlags, sizeof(seen.cardFlags));
+                memcpy(seen.cardVars, s->shown.cardVars, sizeof(seen.cardVars));
+                seen.cardMagic = s->shown.cardMagic;
+                if (s->ui.tab != PD_TAB_ACHIEVEMENTS) {
+                    memcpy(seen.achievements, s->shown.achievements, sizeof(seen.achievements));
+                    seen.frontierRecordHigh = s->shown.frontierRecordHigh;
+                }
+            }
+            // The Pokedex's marks: the DEX, GUIDE's "N of M caught here" and BATTLE's caught ball.
+            if (s->ui.tab != PD_TAB_DEX && s->ui.tab != PD_TAB_GUIDE && s->ui.tab != PD_TAB_BATTLE) {
+                memcpy(seen.dexSeen, s->shown.dexSeen, sizeof(seen.dexSeen));
+                memcpy(seen.dexCaught, s->shown.dexCaught, sizeof(seen.dexCaught));
+            }
+            if (s->ui.tab != PD_TAB_GUIDE) seen.hour = s->shown.hour;
             if (memcmp(&seen, &s->shown, sizeof(seen))) s->redraw = true;
             s->shown = s->snap;
         }
@@ -1887,6 +1912,8 @@ void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned m
     s->speedDebt += quarter;
     int count = s->speedDebt / 4;
     s->speedDebt %= 4;
+    // At 1x the plan is the loop's last frame's: catching up runs its frames undrawn before it, as ever.
+    s->drawPlan = count == 1 && quarter == 4 ? in->drawPlan : PD_DRAW_NOW;
     if (count == 1 && quarter == 4 && in->catchUp > 0) {
         count += in->catchUp;
         s->catchUpFrames += (unsigned) in->catchUp;
