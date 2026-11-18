@@ -856,7 +856,8 @@ static void tintPalettes(struct GBAVideoRenderer* r, const uint16_t* pal) {
 }
 
 // FOLLOWER (companion/data/Follower.kt): a Pokémon walking a tile behind the player, drawn as one more hardware sprite -
-// a hidden OAM entry, the last 16 OBJ tiles and an OBJ palette slot no shown sprite uses - written as each frame starts
+// a hidden OAM entry (or, in front of the player, one put in before theirs), the last 16 OBJ tiles and an OBJ palette
+// slot no shown sprite uses - written as each frame starts
 // drawing and the game's own bytes put back after its last line, so the game, its save and its states never hold it
 // (a tile the game writes in the meantime keeps the game's). Where it stands is an offset from the player's tile (map
 // connections shift every coordinate), it steps when the player does, eased by the map's own scroll (any speed).
@@ -875,6 +876,10 @@ static int followWhy, followDbg[8];                                        // wh
 static int followOam = -1, followSlot = -1;                  // this frame's OAM entry / palette slot (-1: not drawn)
 static int followShown[2] = { -1, -1 };                  // the last frame's, kept after followEnd put them back (followinfo)
 static uint16_t followSavedOam[4];
+// In front of the player (its feet lower on screen than theirs): put in at the player's first entry, the game's shown
+// entries from there to a hidden one moved down a place for the frame (RIDE ON's way). -1 = the plain free entry.
+static int followRangeFirst = -1, followRangeN;
+static uint16_t followSavedRange[128 * 4];
 static uint8_t followSavedVram[512];
 static uint8_t followDirty[256];                             // halfwords the game wrote over this frame
 
@@ -961,7 +966,7 @@ void pk_wide_extras_reset(void) {
     rideOam = rideSlot = rideRangeFirst = -1;
     followOn = followHave = false;
     followState = 0;
-    followOam = followSlot = -1;
+    followOam = followSlot = followRangeFirst = -1;
     tintR = tintG = tintB = 256;
     tintShown = false;
     menuHideMode = 0;
@@ -2995,12 +3000,24 @@ static void followBegin(struct GBAVideoRenderer* r) {
     int ox = cxPix - 16, oy = feet - 32;
     followDbg[0] = x0; followDbg[1] = y0; followDbg[2] = x1; followDbg[3] = y1; followDbg[4] = ox; followDbg[5] = oy; followDbg[6] = p; followDbg[7] = base;
     if (ox <= -32 || ox >= 240 || oy <= -32 || oy >= 160) { followWhy = 5; return; }
-    // A free entry (after the game's: drawn under them) and a palette slot no shown sprite uses.
-    int entry = -1;
-    for (int k = 127; k > last; k--) if (oamHidden(oam[k * 4])) { entry = k; break; }
+    // Its OAM entry: an earlier entry is drawn over a later one. Behind the player (its feet as high on screen as theirs
+    // or higher): a free entry after the game's, under them all. In front (lower on screen: walking toward the camera, or
+    // behind a player going north): right before the player's first entry, over the player and whatever is behind them
+    // (a Thor player's report, 2026-11-18: it was drawn under the player even in front of them).
+    int entry = -1, hole = -1, pfirst = -1;
+    bool front = oy + 32 > y1;
+    if (front) {
+        for (int k = 0; k <= last && pfirst < 0; k++) {
+            int t = oam[k * 4 + 2] & 0x3FF;
+            if (!oamHidden(oam[k * 4]) && t >= base && t < base + 16) pfirst = k;
+        }
+        for (int k = pfirst + 1; pfirst >= 0 && k < 128; k++) if (oamHidden(oam[k * 4])) { hole = k; break; }
+        if (hole < 0) front = false;
+    }
+    if (!front) for (int k = 127; k > last; k--) if (oamHidden(oam[k * 4])) { entry = k; break; }
     int slot = -1;
     for (int k = 15; k >= 0; k--) if (!used[k]) { slot = k; break; }
-    if (entry < 0 || slot < 0) { followWhy = 6; return; }
+    if ((!front && entry < 0) || slot < 0) { followWhy = 6; return; }
     // The frame: standing, or stepping in the first half of a step.
     int frame = (followDir == 3 ? 2 : followDir) * 2 + (followMoving && p < 128 ? 1 : 0);
     uint8_t* vram = (uint8_t*) hookGba->video.vram;
@@ -3008,8 +3025,23 @@ static void followBegin(struct GBAVideoRenderer* r) {
     memset(followDirty, 0, sizeof(followDirty));
     memcpy(vram + FOLLOW_VRAM, followFrames + frame * 512, 512);
     for (int i = 0; i < 512; i += 2) origWriteVRAM(r, FOLLOW_VRAM + (uint32_t) i);
+    uint16_t* raw = hookGba->video.oam.raw;
+    if (front) {
+        followRangeFirst = pfirst;
+        followRangeN = hole - pfirst + 1;
+        memcpy(followSavedRange, &raw[pfirst * 4], (size_t) followRangeN * 8);
+        int to = pfirst + 1;
+        for (int e = pfirst; e <= hole; e++) {
+            const uint16_t* was = &followSavedRange[(e - pfirst) * 4];
+            if (oamHidden(was[0])) continue;
+            memcpy(&raw[to * 4], was, 6);   // attr0-2: an entry's 4th halfword is the affine parameters', not its own
+            to++;
+        }
+        for (int e = pfirst + 1; e <= hole; e++) for (int i = 0; i < 3; i++) r->writeOAM(r, (uint32_t) e * 4 + (uint32_t) i);
+        entry = pfirst;
+    }
     memcpy(followSavedOam, &oam[entry * 4], 8);
-    uint16_t* w = &hookGba->video.oam.raw[entry * 4];
+    uint16_t* w = &raw[entry * 4];
     w[0] = (uint16_t) ((oy & 0xFF));                                       // square, 4bpp, shown
     w[1] = (uint16_t) ((ox & 0x1FF) | (2 << 14) | (followDir == 3 ? 0x1000 : 0));   // 32x32, flipped facing east
     w[2] = (uint16_t) (FOLLOW_TILE | prio << 10 | slot << 12);
@@ -3035,8 +3067,17 @@ static void followEnd(struct GBAVideoRenderer* r) {
         memcpy(vram + FOLLOW_VRAM + i * 2, followSavedVram + i * 2, 2);
         origWriteVRAM(r, FOLLOW_VRAM + (uint32_t) i * 2);
     }
-    memcpy(&hookGba->video.oam.raw[followOam * 4], followSavedOam, 8);
-    for (int k = 0; k < 3; k++) r->writeOAM(r, (uint32_t) followOam * 4 + (uint32_t) k);
+    if (followRangeFirst >= 0) {
+        uint16_t* raw = hookGba->video.oam.raw;
+        for (int e = 0; e < followRangeN; e++) {
+            memcpy(&raw[(followRangeFirst + e) * 4], &followSavedRange[e * 4], 6);
+            for (int k = 0; k < 3; k++) r->writeOAM(r, (uint32_t) (followRangeFirst + e) * 4 + (uint32_t) k);
+        }
+        followRangeFirst = -1;
+    } else {
+        memcpy(&hookGba->video.oam.raw[followOam * 4], followSavedOam, 8);
+        for (int k = 0; k < 3; k++) r->writeOAM(r, (uint32_t) followOam * 4 + (uint32_t) k);
+    }
     for (int i = 0; i < 16; i++) {
         uint16_t c = hookGba->video.palette[256 + followSlot * 16 + i];
         r->writePalette(r, (uint32_t) (0x200 + followSlot * 32 + i * 2), tintShown ? tint555(c) : c);
