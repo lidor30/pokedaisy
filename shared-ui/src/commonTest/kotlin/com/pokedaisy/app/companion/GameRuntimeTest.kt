@@ -11,7 +11,7 @@ class GameRuntimeTest {
     private fun withPlayback(patcher: RomOptionPatcher = object : RomOptionPatcher {
         override fun unpatch() {}
         override fun patch(expectAt: Long, expect: ByteArray, at: Long, value: ByteArray) = true
-    }, test: (GameRuntime, GameSession, GameBattleInput) -> Unit) {
+    }, configureField: (Long) -> Boolean = { false }, test: (GameRuntime, GameSession, GameBattleInput) -> Unit) {
         val telemetry = TelemetryStore()
         val calls = object : GameCalls {
             override fun call(fn: Long, a0: Int, a1: Int, a2: Int, a3: Int) = 0L
@@ -20,7 +20,7 @@ class GameRuntimeTest {
         }
         val session = GameSession(calls, { true }) { _, _ -> }
         val battle = GameBattleInput(telemetry, null, 0)
-        val playback = GameRuntime(session, telemetry, Prefs(PrefsCompanionSettingsTest.Store()), battle, patcher, { true })
+        val playback = GameRuntime(session, telemetry, Prefs(PrefsCompanionSettingsTest.Store()), battle, patcher, { true }, configureField = configureField)
         try { test(playback, session, battle) } finally { playback.close() }
     }
 
@@ -32,11 +32,19 @@ class GameRuntimeTest {
             override fun readCoreMemory(addr: Long, size: Int) =
                 ByteArray(size) { i -> if (addr == main + 4) (callback shr (8 * i)).toByte() else 0 }
         }
-        withPlayback { runtime, _, _ ->
+        withPlayback(configureField = { true }) { runtime, session, _ ->
             runtime.start("missing-diagnostic.gba".toPath(), "BPEE", 0)
             FfMenuWatch.load("BPEE", field, 0)
             FfMenuWatch.useKnownGMain(main, 0x439)
             repeat(19) { runtime.tick(reader); assertFalse(runtime.settledOnField) }
+            runtime.tick(reader); assertTrue(runtime.settledOnField)
+            for (overlay in listOf(GameField.LOCKED, GameField.WINDOW, GameField.BATTLE)) {
+                runtime.readField = { GameField.KNOWN or overlay }
+                runtime.tick(reader)
+                assertFalse(runtime.settledOnField)
+                assertTrue(session.onField)
+            }
+            runtime.readField = { GameField.KNOWN or GameField.AVATAR }
             runtime.tick(reader); assertTrue(runtime.settledOnField)
             callback = field + 0x100
             runtime.tick(reader); assertFalse(runtime.settledOnField)

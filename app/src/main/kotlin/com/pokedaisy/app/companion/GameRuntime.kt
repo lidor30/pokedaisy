@@ -169,8 +169,11 @@ class GameRuntime(
         val readable = gba && !blocked && telemetry.snapshot.value.blocked == null
         session.observeScreens(readable, reader = reader)
         session.observeField(readable && FfMenuWatch.onField && !map, -1, battle.gameState, battle.holdPicture)
-        settledOnField = readable && session.onField
-        fieldChanged(if (readable && fieldReadable) readField() else 0)
+        val bits = if (readable && fieldReadable) readField() else 0
+        // Native windows can own the controls while the core still reports the overworld callback.
+        val fieldWindow = bits and (GameField.LOCKED or GameField.BATTLE or GameField.WINDOW) != 0
+        settledOnField = readable && session.onField && !fieldWindow
+        fieldChanged(bits)
     }
 
     fun fieldChanged(bits: Int) {
