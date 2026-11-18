@@ -37,6 +37,14 @@ object Gen1Art {
     fun pureIcons(game: GameKind?): String = "gen1/${pureTownMapName(game)}/pokemon"
     /** Yellow Legacy: its font (two tiles redrawn), icons and town map ("yellow_legacy"), Yellow's colours. */
     const val YELLOW_LEGACY_FONT = "gen1/yellow-legacy-font.ttf"
+    /** The Gen II Graphics hacks' own art: the patch redraws the Pokémon, trainers and tiles, so retail's files (another
+     * cart's scan) can't be shared - whichever scanned second would overwrite them. */
+    const val RED_GEN2_GRAPHICS_ICONS = "gen1/red_gen2_graphics/pokemon"
+    const val RED_GEN2_GRAPHICS_TOWN_MAP_NAME = "red_gen2_graphics"
+    const val RED_GEN2_GRAPHICS_PLAYER_NAME = "player_red_gen2_graphics"
+    const val YELLOW_GEN2_GRAPHICS_ICONS = "gen1/yellow_gen2_graphics/pokemon"
+    const val YELLOW_GEN2_GRAPHICS_TOWN_MAP_NAME = "yellow_gen2_graphics"
+    const val YELLOW_GEN2_GRAPHICS_PLAYER_NAME = "player_yellow_gen2_graphics"
     const val YELLOW_LEGACY_ICONS = "gen1/yellow_legacy/pokemon"
     const val YELLOW_LEGACY_TOWN_MAP_NAME = "yellow_legacy"
     /** Pokémon Brown: Red's font and icon shapes, its icons for 252 species and its own Rijon town map ("brown"). */
@@ -95,22 +103,22 @@ object Gen1Art {
         playerSprite = 0x05 to 0x4571,         // RedSprite: 16x16 frames of 4 tiles (TL, TR, BL, BR)
         playerPath = YELLOW_PLAYER,
     )
-    val YELLOW_RELOAD = Gen1ArtTables(
-        sha1 = TelemetrySampler.YELLOW_RELOAD_SHA1,
+    val YELLOW_GEN2_GRAPHICS = Gen1ArtTables(
+        sha1 = TelemetrySampler.YELLOW_GEN2_GRAPHICS_V1_1_SHA1,
         font = YELLOW.font,
         fontPath = YELLOW.fontPath,
         iconPointers = YELLOW.iconPointers,
         iconPointerCount = YELLOW.iconPointerCount,
         monPartyData = YELLOW.monPartyData,
         dexCount = YELLOW.dexCount,
-        iconsDir = YELLOW.iconsDir,
+        iconsDir = YELLOW_GEN2_GRAPHICS_ICONS,
         iconColors = YELLOW.iconColors,
         townMap = YELLOW.townMap,
         townMapTiles = YELLOW.townMapTiles,
-        townMapPath = YELLOW.townMapPath,
+        townMapPath = "regionmap/$YELLOW_GEN2_GRAPHICS_TOWN_MAP_NAME.png",
         townMapColors = YELLOW.townMapColors,
         playerSprite = YELLOW.playerSprite,
-        playerPath = YELLOW.playerPath,
+        playerPath = "regionmap/$YELLOW_GEN2_GRAPHICS_PLAYER_NAME.png",
     )
 
     /**
@@ -160,7 +168,16 @@ object Gen1Art {
         charset = charset,
     )
     val RED = redBlue(TelemetrySampler.RED_SHA1)
-    val RED_RELOAD = redBlue(TelemetrySampler.RED_RELOAD_SHA1)
+    /** Red's art tables at Red's places, written to files of its own ([RED_GEN2_GRAPHICS_ICONS]). */
+    val RED_GEN2_GRAPHICS = redBlue(TelemetrySampler.RED_GEN2_GRAPHICS_V2_0_SHA1).let {
+        Gen1ArtTables(
+            sha1 = it.sha1, font = it.font, fontPath = it.fontPath, iconPointers = it.iconPointers, iconPointerCount = it.iconPointerCount,
+            monPartyData = it.monPartyData, dexCount = it.dexCount, iconsDir = RED_GEN2_GRAPHICS_ICONS, iconColors = it.iconColors,
+            townMap = it.townMap, townMapTiles = it.townMapTiles, townMapPath = "regionmap/$RED_GEN2_GRAPHICS_TOWN_MAP_NAME.png",
+            townMapColors = it.townMapColors, playerSprite = it.playerSprite, playerPath = "regionmap/$RED_GEN2_GRAPHICS_PLAYER_NAME.png",
+            charset = it.charset, playerColors = it.playerColors,
+        )
+    }
     val BLUE = redBlue(TelemetrySampler.BLUE_SHA1)
     /** German Red / Blue: English's art, some of it moved (scripts/port_gen1.py; the icons, town map and player are
      * English's pixel for pixel - RedBlueGermanDecodeTest - so they share its files), their own font (German Yellow's letters). */
@@ -246,7 +263,7 @@ object Gen1Art {
     val BROWN = brown(TelemetrySampler.BROWN_V6_1_2_SHA1)
     val BROWN_V601 = brown(TelemetrySampler.BROWN_V6_0_1_SHA1)
 
-    private val GAMES = listOf(YELLOW, YELLOW_RELOAD, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, RED_RELOAD, BLUE, RED_DE, BLUE_DE, PURE_RED, PURE_BLUE, YELLOW_LEGACY,
+    private val GAMES = listOf(YELLOW, YELLOW_GEN2_GRAPHICS, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, RED_GEN2_GRAPHICS, BLUE, RED_DE, BLUE_DE, PURE_RED, PURE_BLUE, YELLOW_LEGACY,
         BROWN, BROWN_V601)
 
     private fun off(bank: Int, addr: Int) = if (bank == 0) addr else bank * 0x4000 + (addr - 0x4000)

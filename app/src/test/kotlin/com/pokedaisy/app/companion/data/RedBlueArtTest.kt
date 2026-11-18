@@ -21,12 +21,8 @@ class RedBlueArtTest {
         File(gbc, "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb"),
         System.getenv("DECOMPS")?.let { File(it, "pokered/pokeblue.gbc") },
     ).firstOrNull { it.isFile }
-    private val redReload = listOfNotNull(
-        File("../Pokemon Red Reload/Pokemon Red patched.gb"),
-        File("Pokemon Red patched.gb"),
-        File(gbc, "Pokemon Red patched.gb"),
-        File(File(RETAIL_ROM_DIR).parentFile, "Pokemon Red Reload/Pokemon Red patched.gb"),
-    ).firstOrNull { it.isFile }
+    // The hack under the ROM folder's naming (CLAUDE.md): retail Red with the Gen II Graphics V2.0 patch.
+    private val redGen2Graphics = File(gbc, "Pokemon Red Gen II Graphics (v2.0).gb").takeIf { it.isFile }
 
     private fun red(): ByteArray {
         assumeTrue("Red ROM not on this machine", red.isFile)
@@ -99,21 +95,21 @@ class RedBlueArtTest {
     }
 
     @Test
-    fun `Red Reload bank and pointer resolution configuration`() {
-        assertEquals(27, GEN1_DEX_RED_RELOAD.picBankOffset)
-        assertEquals(0x2F to 0x4000, GEN1_DEX_RED_RELOAD.cgbPalettes)
-        assertEquals(0x1C to 0x65C8, GEN1_DEX_RED_RELOAD.monsterPalettes)
-        assertEquals(27, GEN1_DEX_YELLOW_RELOAD.picBankOffset)
-        assertEquals(0x42 to 0x4000, GEN1_DEX_YELLOW_RELOAD.cgbPalettes)
-        assertEquals(0x1C to 0x6995, GEN1_DEX_YELLOW_RELOAD.monsterPalettes)
+    fun `Red Gen II Graphics bank and pointer resolution configuration`() {
+        assertEquals(27, GEN1_DEX_RED_GEN2_GRAPHICS.picBankOffset)
+        assertEquals(0x2F to 0x4000, GEN1_DEX_RED_GEN2_GRAPHICS.cgbPalettes)
+        assertEquals(0x1C to 0x65C8, GEN1_DEX_RED_GEN2_GRAPHICS.monsterPalettes)
+        assertEquals(27, GEN1_DEX_YELLOW_GEN2_GRAPHICS.picBankOffset)
+        assertEquals(0x42 to 0x4000, GEN1_DEX_YELLOW_GEN2_GRAPHICS.cgbPalettes)
+        assertEquals(0x1C to 0x6995, GEN1_DEX_YELLOW_GEN2_GRAPHICS.monsterPalettes)
     }
 
     @Test
-    fun `Red Reload extracts front sprites using byte 27 bank selection`() {
-        assumeTrue("Red Reload ROM not on this machine", redReload != null)
-        val rom = redReload!!.readBytes()
+    fun `Red Gen II Graphics extracts front sprites using byte 27 bank selection`() {
+        assumeTrue("Red Gen II Graphics ROM not on this machine", redGen2Graphics != null)
+        val rom = redGen2Graphics!!.readBytes()
         Gen1Dex.rom = rom
-        val t = GEN1_DEX_RED_RELOAD
+        val t = GEN1_DEX_RED_GEN2_GRAPHICS
         try {
             // Verify pointers and banks in ROM
             // Bulbasaur (Dex 1): BaseStats at bank 0x0E addr 0x43DE -> 0x383DE
@@ -159,7 +155,7 @@ class RedBlueArtTest {
                 assertNotNull("pic $s", Gen1Dex.frontPixels(t, s))
             }
 
-            val out = File("build/gen1-art-red-reload-dex").apply { mkdirs() }
+            val out = File("build/gen1-art-red-gen2-graphics-dex").apply { mkdirs() }
             for (s in listOf(1, 4, 7, 25, 75, 150, 151)) {
                 File(out, "$s.png").writeBytes(RomArt.Image(56, 56, Gen1Dex.frontPixels(t, s)!!).png())
             }

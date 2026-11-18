@@ -89,14 +89,14 @@ private val GEN1_DEX_RED = GEN1_DEX_YELLOW.copy(
     mewPicsBank = 0x01,
 )
 
-/** Pokémon Red Gen II Graphics V2.0 (Reload): pic's bank from byte 27 of base stats, CGB palettes in bank 0x2F. */
-val GEN1_DEX_RED_RELOAD = GEN1_DEX_RED.copy(
+/** Pokémon Red Gen II Graphics V2.0: pic's bank from byte 27 of base stats, CGB palettes in bank 0x2F. */
+val GEN1_DEX_RED_GEN2_GRAPHICS = GEN1_DEX_RED.copy(
     cgbPalettes = 0x2F to 0x4000,
     picBankOffset = 27,
 )
 
-/** Pokémon Yellow Gen II Graphics V1.1 (Reload): pic's bank from byte 27 of base stats, CGB palettes in bank 0x42. */
-val GEN1_DEX_YELLOW_RELOAD = GEN1_DEX_YELLOW.copy(
+/** Pokémon Yellow Gen II Graphics V1.1: pic's bank from byte 27 of base stats, CGB palettes in bank 0x42. */
+val GEN1_DEX_YELLOW_GEN2_GRAPHICS = GEN1_DEX_YELLOW.copy(
     monsterPalettes = 0x1C to 0x6995,
     cgbPalettes = 0x42 to 0x4000,
     picBankOffset = 27,
@@ -188,9 +188,9 @@ val POKEDEX_YELLOW_ES = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_YELLOW_ES)
 val POKEDEX_RED = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_RED)
 val POKEDEX_BLUE = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_RED.copy())
 /** Red Gen II Graphics's. */
-val POKEDEX_RED_RELOAD = POKEDEX_RED.copy(gen1 = GEN1_DEX_RED_RELOAD)
+val POKEDEX_RED_GEN2_GRAPHICS = POKEDEX_RED.copy(gen1 = GEN1_DEX_RED_GEN2_GRAPHICS)
 /** Yellow Gen II Graphics's. */
-val POKEDEX_YELLOW_RELOAD = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_YELLOW_RELOAD)
+val POKEDEX_YELLOW_GEN2_GRAPHICS = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_YELLOW_GEN2_GRAPHICS)
 val POKEDEX_RED_DE = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_RED_DE)
 val POKEDEX_BLUE_DE = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_RED_DE.copy())
 /** Yellow Legacy's. */

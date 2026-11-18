@@ -117,8 +117,8 @@ val GEN1_YELLOW_FR = GEN1_YELLOW_EUROPE.copy(language = 'F', gameCode = "APSF", 
 val GEN1_YELLOW_IT = GEN1_YELLOW_EUROPE.copy(language = 'I', gameCode = "APSI", pokedex = POKEDEX_YELLOW_IT,
     battleMenuLeftX = 7, battleMenuRightX = 14)
 val GEN1_YELLOW_ES = GEN1_YELLOW_EUROPE.copy(language = 'S', gameCode = "APSS", pokedex = POKEDEX_YELLOW_ES)
-/** Pokémon Yellow Gen II Graphics V1.1 (Reload): Yellow's RAM, dedicated Gen II dex. */
-val GEN1_YELLOW_RELOAD = GEN1_YELLOW.copy(pokedex = POKEDEX_YELLOW_RELOAD)
+/** Pokémon Yellow Gen II Graphics V1.1: Yellow's RAM, dedicated Gen II dex. */
+val GEN1_YELLOW_GEN2_GRAPHICS = GEN1_YELLOW.copy(pokedex = POKEDEX_YELLOW_GEN2_GRAPHICS)
 
 /**
  * Pokémon Red and Blue (USA, Europe): pret/pokered's symbols (its red and blue builds are both carts byte for byte, and
@@ -147,8 +147,8 @@ val GEN1_RED = GEN1_YELLOW.copy(
 )
 /** Blue: Red's addresses (its own dex tables object, so a cache never mixes the two carts' pages). */
 val GEN1_BLUE = GEN1_RED.copy(pokedex = POKEDEX_BLUE)
-/** Pokémon Red Gen II Graphics V2.0 (Reload): Red's RAM, dedicated Gen II dex. */
-val GEN1_RED_RELOAD = GEN1_RED.copy(pokedex = POKEDEX_RED_RELOAD)
+/** Pokémon Red Gen II Graphics V2.0: Red's RAM, dedicated Gen II dex. */
+val GEN1_RED_GEN2_GRAPHICS = GEN1_RED.copy(pokedex = POKEDEX_RED_GEN2_GRAPHICS)
 
 /**
  * German Red and Blue (Rote / Blaue Edition): English Red's code with German Yellow's text, which moved everything from

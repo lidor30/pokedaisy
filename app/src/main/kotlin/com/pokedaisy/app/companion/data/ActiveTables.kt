@@ -101,6 +101,9 @@ private inline val brown get() = activeGame == GameKind.BROWN
 /** Brown 6.0.1 is running (its item, move and place names that 6.1.2 changed). Set with [activeGame] by the Poller. */
 @Volatile
 var brownV601 = false
+/** A Gen II Graphics hack (Red V2.0, Yellow V1.1) is running: retail's game, its own art files. Set with [activeGame] by the Poller. */
+@Volatile
+var gen1Gen2Graphics = false
 // Yellow Legacy: Yellow's species, types, items and places (gen_gen1_tables.py checks them), its own moves and chart.
 private inline val yellowLegacy get() = activeGame == GameKind.YELLOW_LEGACY
 // Pokémon Crystal (Game Boy Color): Gen 2's own tables (gen_gen2_tables.py), keyed by National Dex number. Crystal
@@ -752,11 +755,13 @@ private val regionMapImagesSeaglass = arrayOf("seaglass")
 private val regionMapImagesRechargedEmerald = arrayOf("recharged_emerald")
 
 val activeRegionMapImages: Array<String> get() = when {
+    redBlue && gen1Gen2Graphics -> arrayOf(Gen1Art.RED_GEN2_GRAPHICS_TOWN_MAP_NAME)
     redBlue -> arrayOf(Gen1Art.RED_BLUE_TOWN_MAP_NAME)   // Red's / Blue's town map, in their own colours (Gen1Art)
     brown -> arrayOf(Gen1Art.BROWN_TOWN_MAP_NAME)   // Rijon's, from its ROM (Gen1Art)
     pureRgb -> arrayOf(Gen1Art.pureTownMapName(activeGame))   // PureRed's / PureBlue's, in each one's colours (Gen1Art)
     gen4 -> emptyArray()   // Sinnoh's map comes from RegionMapModel's own; Johto / Kanto's aren't read yet
     yellowLegacy -> arrayOf(Gen1Art.YELLOW_LEGACY_TOWN_MAP_NAME)
+    yellow && gen1Gen2Graphics -> arrayOf(Gen1Art.YELLOW_GEN2_GRAPHICS_TOWN_MAP_NAME)
     yellow -> arrayOf("yellow")   // its town map, rebuilt from the ROM (Gen1Art)
     polished -> Gen2Art.POLISHED_TOWN_MAPS   // Johto, Kanto and the Orange Islands, from the ROM
     prism -> Gen2Art.PRISM_TOWN_MAPS   // Naljo, Rijon, Johto, Kanto, Sevii, Tunod
@@ -803,10 +808,12 @@ val activeRegionMapImages: Array<String> get() = when {
  */
 val activeMonSpriteDir: String get() = when {
     unbound -> "pokemon-unbound"
+    redBlue && gen1Gen2Graphics -> Gen1Art.RED_GEN2_GRAPHICS_ICONS
     redBlue -> Gen1Art.RED_BLUE_ICONS
     pureRgb -> Gen1Art.pureIcons(activeGame)
     brown -> Gen1Art.BROWN_ICONS
     yellowLegacy -> Gen1Art.YELLOW_LEGACY_ICONS
+    yellow && gen1Gen2Graphics -> Gen1Art.YELLOW_GEN2_GRAPHICS_ICONS
     yellow -> Gen1Art.YELLOW_ICONS   // its own party icons, rebuilt from the ROM
     polished -> Gen2Art.POLISHED_ICONS
     redux -> NdsArt.REDUX_ICONS
