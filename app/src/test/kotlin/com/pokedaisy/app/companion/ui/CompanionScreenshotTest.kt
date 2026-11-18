@@ -1434,6 +1434,9 @@ open class CompanionScreenshotTest {
     @Test fun crystalGuideWhereIs() = crystal("crystal", "GUIDE", guidePage = "WHERE IS")
     @Test fun crystalItems() = crystal("crystal", "ITEMS")
     @Test fun crystalBattle() = crystal("crystal_battle", "BATTLE")
+    // A shiny wild foe (the fixture's SENTRET marked so): INFO's sparkle and gold frame, the SHINY plate.
+    @Test fun crystalBattleShinyFoe() = crystal("crystal_battle", "BATTLE", shinyFoe = true)
+    @Test fun crystalBattleShinyFoeControls() = crystal("crystal_battle_menu", "BATTLE", controls = true, shinyFoe = true)
     @Test fun crystalBattleMenu() = crystal("crystal_battle_menu", "BATTLE", controls = true)
     @Test fun crystalBattleMoves() = crystal("crystal_battle", "BATTLE", controls = true)
     @Test fun crystalMap() = crystal("crystal", "MAP")
@@ -1580,7 +1583,7 @@ open class CompanionScreenshotTest {
     private fun crystal(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null, statusBar: Boolean = false,
                         clear: Boolean = false, prism: Boolean = false, gold: Boolean = false, silver: Boolean = false,
                         polished: Boolean = false, describe: Boolean = false, guidePage: String? = null,
-                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false, pokemonPictures: Boolean = false, settingsRow: String? = null, shinySlot: Int? = null) {
+                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false, pokemonPictures: Boolean = false, settingsRow: String? = null, shinySlot: Int? = null, shinyFoe: Boolean = false) {
         val game = if (legacy) GameKind.CRYSTAL_LEGACY else if (polished) GameKind.POLISHED_CRYSTAL else if (prism) GameKind.PRISM else if (clear) GameKind.CRYSTAL_CLEAR else if (gold) GameKind.GOLD
             else if (silver) GameKind.SILVER else GameKind.CRYSTAL
         var cfg = if (legacy) com.pokedaisy.app.companion.data.GEN2_CRYSTAL_LEGACY else if (polished) com.pokedaisy.app.companion.data.GEN2_POLISHED_CRYSTAL
@@ -1610,7 +1613,7 @@ open class CompanionScreenshotTest {
         val t = com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load(fixture), cfg)
         val v = buildSnapshotView(t).copy(game = game).let { s ->
             if (shinySlot == null) s else s.copy(party = s.party.mapIndexed { i, m -> if (i == shinySlot) m.copy(shiny = true) else m })
-        }
+        }.let { s -> if (!shinyFoe) s else s.copy(battleOpponent = s.battleOpponent.map { it.copy(shiny = true) }) }
         (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
         if (pokemonPictures) v.party.forEach { m -> v.pokedex?.tables?.let { PokedexSource.frontSprite(it, m.species); PokedexSource.shinyFrontSprite(it, m.species) } }
         val input = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
