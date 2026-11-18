@@ -594,9 +594,9 @@ class SaveEditorActivity : ComponentActivity() {
             val source = runCatching { com.pokedaisy.app.companion.data.NdsArt.monIcons(cart.toOkioPath()) }.getOrNull() ?: return
             MonIconLoader { species, egg -> source.get(species, egg)?.imageBitmap() }
         } else {
-            val tables = RomMonIcons.tablesFor(RomIdentity.sha1(rom), RomIdentity.gameCode(rom), RomIdentity.revision(rom)) ?: return
             val file = RomArchive.playable(rom, cacheDir) ?: rom
-            val source = RomMonIcons.open(file.toOkioPath(), tables) ?: return
+            val source = RomMonIcons.forRom(file.toOkioPath(), RomIdentity.sha1(rom), RomIdentity.gameCode(rom), RomIdentity.revision(rom))
+                ?: return
             MonIconLoader { species, egg ->
                 source.get(if (egg) com.pokedaisy.app.companion.data.save.SPECIES_EGG else species)?.imageBitmap()
             }
