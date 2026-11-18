@@ -2842,9 +2842,9 @@ class PokeDaisyActivity : Activity() {
             applyFieldPrefs(this)
         }
         engine.playback.start(r.toOkioPath(), gameCode, crc.toLong(16), gba, tablesCrc.toLongOrNull(16) ?: 0L)
-        if (gba && romBlocked == null) {
+        if ((gba || gameBoy) && romBlocked == null) {
             val current = engine
-            current.gameOptions.start(r.toOkioPath(), configureWild = { flag, _ ->
+            current.gameOptions.start(r.toOkioPath(), gameBoy = gameBoy, configureWild = { flag, _ ->
                 if (romData == r && engine === current) {
                     wildFlag = flag; current.wildFlag = flag
                     flag != 0L
@@ -2856,6 +2856,8 @@ class PokeDaisyActivity : Activity() {
                     syncHmFree(); syncExpShare(); syncLevelCap()
                     current.setReusableTms(tmSites, Prefs(this).reusableTms)
                     current.setInstantText(textPatch, Prefs(this).instantText)
+                    // A Game Boy cart's LOW HP BEEP (GbGamePatches): its patch where the GBA's QuietPatches would put it.
+                    if (gameBoy) { quietFound = com.pokedaisy.app.companion.data.QuietPatches.Found(found.gbBeep, null); syncQuietPatches() }
                 }
             })
         }

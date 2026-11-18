@@ -827,7 +827,8 @@ class EmulatorEngine(
     }
 
     val playback by lazy {
-        com.pokedaisy.app.companion.GameRuntime(gameSession, telemetry, preferences, battle, optionPatcher, { gba || nds },
+        // Every platform: a Game Boy cart's options are GbGamePatches' (pk_cheats_patch's Game Boy branch).
+        com.pokedaisy.app.companion.GameRuntime(gameSession, telemetry, preferences, battle, optionPatcher, { true },
             configureField = { fieldGame != WideScreen.OFF }, restoreOptionPatchesOnClose = false)
     }
 
