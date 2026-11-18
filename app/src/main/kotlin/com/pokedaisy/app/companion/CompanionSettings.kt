@@ -19,6 +19,8 @@ import com.pokedaisy.app.companion.i18n.tk
 interface CompanionSettings : StoredCompanionSettings {
     /** Application settings can use the shared pages without a running game or game-only actions. */
     val hasRunningGame: Boolean get() = true
+    /** Optional NEW tag when a host first gains the field HUD. */
+    val fieldHudBadge: String? get() = null
     /** Optional NEW tag when a host first gains state slots. */
     val statesBadge: String? get() = null
 
@@ -318,10 +320,6 @@ interface CompanionSettings : StoredCompanionSettings {
     val statusBarOnCompanion: Boolean get() = false
     fun setStatusBarOnCompanion(on: Boolean) {}
 
-    /** SETTINGS > HUD: the HUD over the overworld - see [Prefs.fieldHud]. */
-    val fieldHud: Boolean get() = true
-    fun setFieldHud(on: Boolean) {}
-
     /** SETTINGS > HIDE BATTLE MENU: two screens, the game's own battle menus off its screen - see
      * [com.pokedaisy.app.Prefs.hideBattleMenu]. Null = no row (one screen, or a game it doesn't work in). */
     val hideBattleMenu: Boolean? get() = null
@@ -331,9 +329,7 @@ interface CompanionSettings : StoredCompanionSettings {
     val battleButtons: Boolean get() = true
     fun setBattleButtons(on: Boolean) {}
 
-    /** The FIELD HUD's layout, look, size and parts - see [Prefs.fieldHudStyle]. */
-    val fieldHudStyle: com.pokedaisy.app.companion.FieldHudStyle get() = com.pokedaisy.app.companion.FieldHudStyle()
-    fun setFieldHudStyle(style: com.pokedaisy.app.companion.FieldHudStyle) {}
+
 
     /** SETTINGS > QUICK MENU: the actions it shows - see [Prefs.quickMenuActions]. */
     val quickMenuSupportedActions: Set<QuickAction> get() = QuickAction.entries.toSet()

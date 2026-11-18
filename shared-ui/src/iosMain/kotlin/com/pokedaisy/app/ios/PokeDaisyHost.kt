@@ -136,6 +136,16 @@ object PokeDaisyHost {
                         companion = { Companion(panels) },
                         gameOverlay = {
                             val snapshot by telemetry.snapshot.collectAsState()
+                            currentSettings?.let { hudSettings ->
+                                val hudShown = com.pokedaisy.app.companion.ui.fieldHudShown(
+                                    hudSettings.fieldHud, panels.portrait, currentRuntime?.settledOnField == true, snapshot) &&
+                                    !panels.state.side.windowOpen
+                                com.pokedaisy.app.companion.ui.FieldHud(snapshot, hudShown, hudSettings.fieldHudStyle,
+                                    itemUse = items, fly = fly, frame = panels.hudFrame(), avoid = panels.hudAvoid(),
+                                    closePanels = panels.quickMenu.visit.toInt(),
+                                    onOpenCompanion = if (!panels.portrait && (!panels.state.side.shown || panels.state.side.isWindow))
+                                        ({ panels.toggleCompanion() }) else null)
+                            }
                             quickActions?.let { actions ->
                                 com.pokedaisy.app.companion.ui.QuickMenu(panels.quickMenu, snapshot, actions,
                                     currentSettings!!.quickMenuActions, iosPreferences.fieldHudStyle.look)
