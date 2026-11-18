@@ -1964,8 +1964,13 @@ int main(int argc, char **argv) {
     while (running) {
       events();
       repeat_directions();
-      if (down(B) || down(MENU))
+      // The menu's buttons quit the list: Guide / Menu / Escape, or START and SELECT together. B no longer does: on an
+      // Xbox-style pad (a Steam Deck, a Z2 Extreme) the bottom button is labelled A but is the game's B here (the
+      // Nintendo layout), so the first press closed the program and read as a crash.
+      if (down(MENU) || (down(START) && (held >> SELECT & 1)) || (down(SELECT) && (held >> START & 1)))
         break;
+      if (down(B) && count)
+        notice("A (the right button) plays. START + SELECT quits");
       if (down(UP))
         pd_menu_move(&list, -1);
       if (down(DOWN))

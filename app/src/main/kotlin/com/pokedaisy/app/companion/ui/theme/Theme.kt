@@ -608,7 +608,7 @@ private fun buildGameBackground(game: GameKind): GameBackground? {
         GameKind.HEART_AND_SOUL -> "partybg/hns.png" to false
         // Elite Redux kept Emerald's party backdrop (and its ROM has the art).
         GameKind.ELITE_REDUX -> "partybg/emerald.png" to false
-        GameKind.UNBOUND, GameKind.RADICAL_RED, GameKind.ODYSSEY, GameKind.AMETHYST, GameKind.GS_CHRONICLES -> "partybg/cfru_tile.png" to true
+        GameKind.UNBOUND, GameKind.RADICAL_RED, GameKind.ODYSSEY, GameKind.AMETHYST, GameKind.GS_CHRONICLES, GameKind.RHYTHM, GameKind.OOPS_ALL_EEVEES -> "partybg/cfru_tile.png" to true
         else -> "partybg/firered.png" to false
     }
     // Every backdrop comes from a ROM the player has run (RomArt): until the

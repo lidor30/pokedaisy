@@ -1,0 +1,25 @@
+# Pokemon Elysium v2.5.0 Part A: its info splash pages (A), the title, CONTINUE, then the field. Its save is a new game
+# played headless (~/Documents/RetroArch/saves/mGBA/Pokemon Elysium (v2.5.0) (Part A).sav: the intro mashed through, then
+# setflag 0x828, givemon CHARMANDER Lv10 / PIKACHU Lv8 / MAGIKARP Lv5 and additem POTION x5, POKE BALL x5, REPEL x2
+# through rev 0's ScriptContext_SetupScript 0x08069AE5, saved in game in the player's room on Crysta Island). Part A
+# deletes retail FireRed's save ("The save file has been deleted").
+wait 120
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+wait 60
+press A
+wait 90
+press A
+wait 200

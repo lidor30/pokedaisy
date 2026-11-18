@@ -152,6 +152,13 @@ val LEGACY_NATIVE_UNBOUND_FR = LEGACY_NATIVE_UNBOUND_WITH_DEX.copy(
     guideTables = GUIDE_TABLES_UNBOUND_FR,
 )
 
+// Pokémon Unbound v2.1.1.1 IT - the Italian fan translation (patch v7), English's code and RAM, Italian text.
+val LEGACY_NATIVE_UNBOUND_IT = LEGACY_NATIVE_UNBOUND_WITH_DEX.copy(
+    language = 'I',
+    gameCode = UNBOUND_IT_TEXT,
+    pokedex = POKEDEX_UNBOUND_IT,
+)
+
 // Pokémon Gaia v3.2 - another large (32 MB) BPRE hack, verified 2026-09-20 the
 // same way as Unbound above: static byte comparison against the same vanilla
 // rev-0 build, against the user's own Gaia v3.2 ROM (sha1 d5b1e779…, see
@@ -339,7 +346,7 @@ val LEGACY_NATIVE_EMERALD_RETAIL = LEGACY_NATIVE_EMERALD.copy(
 val LEGACY_NATIVE_EMERALD_ES = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x0858639CL),
-    language = 'S', gameCode = "BPES", trainerCard = null,
+    language = 'S', gameCode = "BPES", trainerCard = TRAINER_CARD_EMERALD_ES,
     monIconTable = 0x0857E784L, monIconPaletteIndices = 0x0857EE64L, monIconPaletteTable = 0x0857F01CL,
     itemIconTable = 0x08617250L,
     pokedex = POKEDEX_EMERALD_ES, guideTables = GUIDE_TABLES_EMERALD_ES,
@@ -348,7 +355,7 @@ val LEGACY_NATIVE_EMERALD_ES = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 val LEGACY_NATIVE_EMERALD_DE = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x085946DCL),
-    language = 'D', gameCode = "BPED", trainerCard = null,
+    language = 'D', gameCode = "BPED", trainerCard = TRAINER_CARD_EMERALD_DE,
     monIconTable = 0x0858CAA8L, monIconPaletteIndices = 0x0858D188L, monIconPaletteTable = 0x0858D340L,
     itemIconTable = 0x086258D8L,
     handleInputChooseAction = 0x0805758CL, handleInputChooseMove = 0x08057C00L,
@@ -359,7 +366,7 @@ val LEGACY_NATIVE_EMERALD_DE = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 val LEGACY_NATIVE_EMERALD_FR = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x08587D6CL),
-    language = 'F', gameCode = "BPEF", trainerCard = null,
+    language = 'F', gameCode = "BPEF", trainerCard = TRAINER_CARD_EMERALD_FR,
     monIconTable = 0x08580020L, monIconPaletteIndices = 0x08580700L, monIconPaletteTable = 0x085808B8L,
     itemIconTable = 0x08618798L,
     pokedex = POKEDEX_EMERALD_FR, guideTables = GUIDE_TABLES_EMERALD_FR,
@@ -368,7 +375,7 @@ val LEGACY_NATIVE_EMERALD_FR = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 val LEGACY_NATIVE_EMERALD_IT = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x0858000CL),
-    language = 'I', gameCode = "BPEI", trainerCard = null,
+    language = 'I', gameCode = "BPEI", trainerCard = TRAINER_CARD_EMERALD_IT,
     monIconTable = 0x0857838CL, monIconPaletteIndices = 0x08578A6CL, monIconPaletteTable = 0x08578C24L,
     itemIconTable = 0x08610FACL,
     handleInputChooseAction = 0x0805758CL, handleInputChooseMove = 0x08057C00L,
@@ -387,7 +394,7 @@ val LEGACY_NATIVE_EMERALD_IT = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 val LEGACY_NATIVE_EMERALD_JA = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005AF4L,
     itemDescs = japaneseItems(0x0855CEE8L),
-    actionCursor = 0, moveCursor = 0, // its RAM moved; not located yet
+    actionCursor = 0x02024150L, moveCursor = 0x02024154L,
 
     language = 'J', gameCode = "BPEJ", trainerCard = null,
     playerParty = 0x02024190L, playerPartyCount = 0x0202418DL,
@@ -1597,6 +1604,26 @@ val LEGACY_NATIVE_ROCKET_EDITION = LEGACY_NATIVE_ULTRA_VIOLET.copy(
     guideTables = GUIDE_TABLES_ROCKET_EDITION,
 )
 
+// Pokémon Clover v1.3.3: FireRed 1.0 edited in place under an Emerald header; Ultra Violet's base (rev 0 + rev 1's cursors).
+val LEGACY_NATIVE_CLOVER = LEGACY_NATIVE_ULTRA_VIOLET.copy(
+    pokedex = POKEDEX_CLOVER,
+    guideTables = GUIDE_TABLES_CLOVER,
+)
+
+// Pokémon Elysium v2.5.0, its two parts: FireRed 1.0 edited in place.
+val LEGACY_NATIVE_ELYSIUM_A = LEGACY_NATIVE_ULTRA_VIOLET.copy(pokedex = POKEDEX_ELYSIUM_A, guideTables = GUIDE_TABLES_ELYSIUM_A)
+val LEGACY_NATIVE_ELYSIUM_B = LEGACY_NATIVE_ULTRA_VIOLET.copy(pokedex = POKEDEX_ELYSIUM_B, guideTables = GUIDE_TABLES_ELYSIUM_B)
+
+// Pokémon Rhythm v1.4.0: CFRU on FireRed rev 0, its icon tables and gItems repointed, FireRed's battle cursors.
+val LEGACY_NATIVE_RHYTHM = LEGACY_NATIVE_FIRERED_REV0.copy(
+    itemDescs = vanillaItems(0x09E486C0L),
+    monIconTable = 0x09E89400L,
+    monIconPaletteIndices = 0x099B6C8CL,
+    itemIconTable = 0x09E51180L,
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
+)
+
 // Pokémon Ash Gray v4.5.3 (16 MB, BPRE rev 0, sha1 1ee1557d…; its Fork Bug Fix v1.0 build, 92ed8214…,
 // differs in 493 bytes of scripts and shares this): FireRed 1.0 edited in place, no source. Its tables
 // sit at rev 0's addresses, edited in place, but for gWildMonHeaders (0x088CD1F8), gMapGroups (0x0873E2F4)
@@ -2153,4 +2180,14 @@ val LEGACY_NATIVE_MARIOMON_V1_2_1 = LEGACY_NATIVE_MARIOMON_V1_2_2.copy(
     itemIconTable = 0x088A85B8L,
     pokedex = POKEDEX_MARIOMON_V1_2_1,
     guideTables = GUIDE_TABLES_MARIOMON_V1_2_1,
+)
+
+// Pokémon Oops All Eevees! v1.3.2: CFRU on FireRed rev 0, its icon tables and gItems repointed, FireRed's battle cursors.
+val LEGACY_NATIVE_OOPS_ALL_EEVEES = LEGACY_NATIVE_FIRERED_REV0.copy(
+    itemDescs = vanillaItems(0x093C0000L),
+    monIconTable = 0x099B7180L,
+    monIconPaletteIndices = 0x099B6C8CL,
+    itemIconTable = 0x093C8100L,
+    actionCursor = 0x02023FF8L,
+    moveCursor = 0x02023FFCL,
 )

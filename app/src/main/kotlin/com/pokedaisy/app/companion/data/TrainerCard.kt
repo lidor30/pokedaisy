@@ -3,8 +3,13 @@ package com.pokedaisy.app.companion.data
 /** Which card a game draws: FireRed / LeafGreen's Kanto card, Emerald's Hoenn one, or the Kanto
  * card in Unbound's colours (see [TrainerCardArt]). */
 /** Which card a game draws: FireRed's (Kanto, Unbound's purple one) or Emerald's (Hoenn and its hacks'). */
-enum class CardStyle(val hoenn: Boolean) { KANTO(false), HOENN(true), UNBOUND(false), GLAZED(true), IMPERIUM(true), LEGACY(true), LAZARUS(true), SOULGOLD(true),
-    RECHARGED_YELLOW(false), RECHARGED_YELLOW_V1_9(false) }
+/** [lang]: a European cart's card (its own tiles, font and words, TrainerCardArt's localized styles); 'E' = English. */
+enum class CardStyle(val hoenn: Boolean, val lang: Char = 'E') { KANTO(false), HOENN(true), UNBOUND(false), GLAZED(true), IMPERIUM(true), LEGACY(true), LAZARUS(true), SOULGOLD(true),
+    RECHARGED_YELLOW(false), RECHARGED_YELLOW_V1_9(false),
+    KANTO_DE(false, 'D'), KANTO_FR(false, 'F'), KANTO_IT(false, 'I'), KANTO_ES(false, 'S'),
+    /** Italian / Spanish LeafGreen: their own back tilemap. */
+    LEAFGREEN_IT(false, 'I'), LEAFGREEN_ES(false, 'S'),
+    HOENN_DE(true, 'D'), HOENN_FR(true, 'F'), HOENN_IT(true, 'I'), HOENN_ES(true, 'S') }
 
 /**
  * Where a game keeps what its TRAINER CARD shows - both decomps'
@@ -143,6 +148,21 @@ val IMPERIUM_HOENN_TO_NATIONAL = intArrayOf(
  * own regional order (ROM 0x0831DFB8, rewritten in place) and its own card art (CardStyle.GLAZED).
  */
 val TRAINER_CARD_GLAZED = TRAINER_CARD_EMERALD.copy(style = CardStyle.GLAZED, regionalDex = GLAZED_REGIONAL_TO_NATIONAL)
+
+/**
+ * The European FireRed / LeafGreen / Emerald carts (German, French, Italian, Spanish): English's save, so English's offsets, and
+ * their own card (CardStyle.KANTO_DE ...: its tiles, font and words from the cart, checked against the games' own cards).
+ */
+val TRAINER_CARD_FIRERED_DE = TRAINER_CARD_FIRERED.copy(style = CardStyle.KANTO_DE)
+val TRAINER_CARD_FIRERED_FR = TRAINER_CARD_FIRERED.copy(style = CardStyle.KANTO_FR)
+val TRAINER_CARD_FIRERED_IT = TRAINER_CARD_FIRERED.copy(style = CardStyle.KANTO_IT)
+val TRAINER_CARD_FIRERED_ES = TRAINER_CARD_FIRERED.copy(style = CardStyle.KANTO_ES)
+val TRAINER_CARD_LEAFGREEN_IT = TRAINER_CARD_FIRERED.copy(style = CardStyle.LEAFGREEN_IT)
+val TRAINER_CARD_LEAFGREEN_ES = TRAINER_CARD_FIRERED.copy(style = CardStyle.LEAFGREEN_ES)
+val TRAINER_CARD_EMERALD_DE = TRAINER_CARD_EMERALD.copy(style = CardStyle.HOENN_DE)
+val TRAINER_CARD_EMERALD_FR = TRAINER_CARD_EMERALD.copy(style = CardStyle.HOENN_FR)
+val TRAINER_CARD_EMERALD_IT = TRAINER_CARD_EMERALD.copy(style = CardStyle.HOENN_IT)
+val TRAINER_CARD_EMERALD_ES = TRAINER_CARD_EMERALD.copy(style = CardStyle.HOENN_ES)
 
 /** Emerald Legacy's Hoenn dex (ROM 0x083465CC, HOENN_DEX_COUNT 210): retail's 202, then eight it added. */
 val LEGACY_HOENN_TO_NATIONAL = HOENN_TO_NATIONAL + intArrayOf(77, 78, 198, 215, 220, 221, 228, 229)

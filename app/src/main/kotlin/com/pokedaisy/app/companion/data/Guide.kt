@@ -173,6 +173,10 @@ enum class GuideId {
     // Quetzal Alpha 0.8.4: Hoenn alone (Alpha 9 added Johto and Kanto).
     QUETZAL_V084,
     GS_CHRONICLES,
+    // Pokémon Clover: HERE only.
+    CLOVER,
+    // Pokémon Elysium (both parts): HERE only.
+    ELYSIUM,
     RECHARGED_EMERALD,
     EMERALD_LEGACY,
     EPSILON_EMERALD,
@@ -203,8 +207,9 @@ fun guideId(game: GameKind?, live: GuideTables?): GuideId? = live?.guide ?: when
     GameKind.PLATINUM -> if (renegadePlatinum) null else GuideId.PLATINUM
     // Origin HeartGold runs as HEARTGOLD, but its world isn't HeartGold's (its own wild Pokémon, trainers, story): no guide.
     // So does Heartfelt Gold (hg-engine over the US cart: its own wild Pokémon and trainers).
-    GameKind.HEARTGOLD -> if (originHeartGold || heartfeltGold) null else GuideId.HEARTGOLD
-    GameKind.SOULSILVER -> GuideId.SOULSILVER
+    // So do Sacred Gold / Storm Silver (Drayano's: their own wild Pokémon and trainers).
+    GameKind.HEARTGOLD -> if (originHeartGold || heartfeltGold || sacredGold) null else GuideId.HEARTGOLD
+    GameKind.SOULSILVER -> if (sacredGold) null else GuideId.SOULSILVER
     GameKind.BLACK -> GuideId.BLACK
     GameKind.WHITE -> GuideId.WHITE
     // Blaze Black 2 / Volt White 2 Redux run as BLACK2 / WHITE2, but their wild Pokémon and trainers are their own: no guide.
@@ -253,6 +258,8 @@ private fun wholeGuide(id: GuideId?): GameGuide? = when (id) {
     GuideId.ELITE_REDUX -> GUIDE_ELITE_REDUX
     GuideId.TEAM_ROCKET -> GUIDE_TEAM_ROCKET
     GuideId.WISHES -> GUIDE_WISHES
+    GuideId.CLOVER -> GUIDE_CLOVER
+    GuideId.ELYSIUM -> GUIDE_ELYSIUM
     GuideId.DREAMSTONE -> GUIDE_DREAMSTONE
     GuideId.MONOMYTH -> GUIDE_MONOMYTH
     GuideId.EPSILON_EMERALD -> GUIDE_EPSILON_EMERALD

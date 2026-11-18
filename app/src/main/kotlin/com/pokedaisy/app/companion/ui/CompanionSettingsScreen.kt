@@ -483,9 +483,14 @@ private fun setTabs(s: CompanionSettings, tabs: List<String>, changed: (List<Str
     changed(ordered)
 }
 
+/** A DS game on DSPERATE, which has no EXPAND: ASPECT says so rather than NOT YET (GitHub #1064: a HeartGold hack read
+ * as one EXPAND doesn't know). */
+private fun wideOffOnDsperate(s: CompanionSettings): Boolean = s.dsCore != null && !s.dsMelonDs
+
 /** WIDE on a game it doesn't know yet (it shows as ORIGINAL there). */
 private fun wideBadge(s: CompanionSettings, aspect: GameAspect): String? = when {
     aspect != GameAspect.WIDE -> null
+    wideOffOnDsperate(s) -> null
     !s.wideSupported -> tk("NOT YET")
     else -> tk("BETA")   // still not perfect (the user's call)
 }
@@ -826,7 +831,8 @@ private fun homeRows(
         // A blocked game has no EXPAND: ORIGINAL or STRETCH, a saved EXPAND reading as ORIGINAL (what it plays as).
         run {
             val aspect = if (s.gameBlocked && s.gameAspect == GameAspect.WIDE) GameAspect.ORIGINAL else s.gameAspect
-            SettingRow(tk("ASPECT"), aspectLabel(aspect), if (s.gameBlocked) null else wideBadge(s, aspect), subtitle = "Original shape, stretched, or more of the map") {
+            val subtitle = if (aspect == GameAspect.WIDE && wideOffOnDsperate(s)) "Unavailable on DSPERATE" else "Original shape, stretched, or more of the map"
+            SettingRow(tk("ASPECT"), aspectLabel(aspect), if (s.gameBlocked) null else wideBadge(s, aspect), subtitle = subtitle) {
                 val aspects = GameAspect.entries.filter { !s.gameBlocked || it != GameAspect.WIDE }
                 select(
                     Selector(

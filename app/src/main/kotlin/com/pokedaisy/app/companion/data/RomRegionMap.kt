@@ -82,7 +82,7 @@ object RomRegionMap {
 
     /** [read] [rom], writing its screens (once per [romKey]) where [RomArt]'s art goes. */
     fun loadNow(filesDir: Path, romKey: String, rom: Path): Data? {
-        val parsed = withRomFile(rom) { read(FileRom(it)) } ?: return null
+        val parsed = withRomFile(rom) { f -> FileRom(f).let { read(it, fireRed = isFireRedUnderEmeraldHeader(it.read(0, 0x200))) } } ?: return null
         val dir = (RomArt.dir(filesDir) / "regionmap").apply { mkdirs() }
         val names = parsed.images.mapIndexed { i, img ->
             val name = "rom-$romKey-v$VERSION-$i"
@@ -102,12 +102,13 @@ object RomRegionMap {
     }
 
     /** The region map [rom] carries, or null if it isn't a FireRed 1.0 ROM whose map code is where this expects. */
-    fun read(rom: Rom): Parsed? {
+    /** [fireRed]: read it though its header names another game ([isFireRedUnderEmeraldHeader]: Pokémon Clover). */
+    fun read(rom: Rom, fireRed: Boolean = false): Parsed? {
         val header = rom.read(0xAC, 0x11)
         // Rev 1 has its code elsewhere. Anything else is taken as rev 0's code - Unbound's French
         // translation left its revision byte at 0x9E - and the literal pools below must still
         // land on data of the right shape.
-        if (header.size < 0x11 || asciiString(header, 0, 4) != "BPRE" || header[0x10].toInt() == 1) return null
+        if (header.size < 0x11 || (asciiString(header, 0, 4) != "BPRE" && !fireRed) || header[0x10].toInt() == 1) return null
 
         fun u16(b: ByteArray, i: Int) = (b[i].toInt() and 0xFF) or ((b[i + 1].toInt() and 0xFF) shl 8)
         fun ptr(at: Int): Int? {

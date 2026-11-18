@@ -24,7 +24,18 @@ data class BoxSwapFns(
     val storagePtr: Long,
     /** CRC32 of each function's first 32 bytes (boxMonToMon, boxMonRestorePP, getBoxMonData). */
     val codeCrcs: List<Long>,
+    /** Ruby / Sapphire: [storagePtr] is gPokemonStorage itself (their save blocks never move), not a pointer to it. */
+    val staticStorage: Boolean = false,
 )
+
+/** Retail Ruby / Sapphire rev 1 and 2 (pokeruby's symbols, the same addresses in all four): ExpandBoxMon is their
+ * BoxMonToMon (a BoxPokemon into a struct Pokemon, its stats and level worked out), gPokemonStorage static at 0x020300A0.
+ * Ruby's and Sapphire's ExpandBoxMon differ in a pool word. Checked by scripts/verify_box_swap.py (2026-11-18). */
+val BOX_SWAP_RUBY = BoxSwapFns(
+    boxMonToMon = 0x0803B4B4L, boxMonRestorePP = 0x08040B48L, getBoxMonData = 0x0803CBFCL, storagePtr = 0x020300A0L,
+    codeCrcs = listOf(0x00CEE9C0L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+)
+val BOX_SWAP_SAPPHIRE = BOX_SWAP_RUBY.copy(codeCrcs = listOf(0x97E898EEL, 0xD3067929L, 0xFBFC6EF8L))
 
 /** Retail FireRed rev 1: each function found byte for byte (BLs and pool words aside) from the pinned pokefirered
  * build, once each in the retail ROM; gPokemonStoragePtr = gSaveBlock2Ptr + 4 (0x03005010). */
@@ -60,8 +71,11 @@ val BOX_SWAP_LEAFGREEN_REV0 = BoxSwapFns(
  * on one of those would wreck it.
  */
 fun boxSwapFor(fields: FieldItemFns?, cfg: NativeConfig?): BoxSwapFns? {
-    if (fields == null || fields.party == null || cfg == null || cfg.pcStorage != VANILLA_PC_STORAGE) return null
+    if (fields == null || fields.party == null || cfg == null) return null
+    if (cfg.pcStorage != VANILLA_PC_STORAGE && cfg.pcStorage != STATIC_PC_STORAGE) return null
     val fns = when {
+        fields === FIELD_ITEMS_RUBY -> BOX_SWAP_RUBY
+        fields === FIELD_ITEMS_SAPPHIRE -> BOX_SWAP_SAPPHIRE
         fields === FIELD_ITEMS_FIRERED_REV1 -> BOX_SWAP_FIRERED_REV1
         fields === FIELD_ITEMS_LEAFGREEN_REV1 -> BOX_SWAP_LEAFGREEN_REV1
         fields === FIELD_ITEMS_LEAFGREEN_REV0 -> BOX_SWAP_LEAFGREEN_REV0
@@ -69,7 +83,7 @@ fun boxSwapFor(fields: FieldItemFns?, cfg: NativeConfig?): BoxSwapFns? {
         // The other languages and English FireRed rev 0: the table under the bag table's own key (port_field_items.py).
         else -> portKeyOf(fields)?.let { BOX_SWAP_PORTS[it] }
     }
-    return fns?.takeIf { cfg.pokemonStoragePtr == it.storagePtr }
+    return fns?.takeIf { cfg.pokemonStoragePtr == it.storagePtr && it.staticStorage == (cfg.pcStorage == STATIC_PC_STORAGE) }
 }
 
 /** FIELD_ITEMS_PORTS' keys by table, by identity (the hacks on FireRed rev 0's code share BPRE0's bag table object, but
@@ -123,7 +137,7 @@ private class BoxMove(val fields: FieldItemFns, val p: PartyItemFns, val fns: Bo
 
     /** Box [box]'s slot [slot] in the game's storage; null = the storage pointer isn't set (not on the field yet). */
     fun boxMon(box: Int, slot: Int): Long? {
-        val storage = u32(fns.storagePtr)
+        val storage = if (fns.staticStorage) fns.storagePtr else u32(fns.storagePtr)
         if (storage !in 0x02000000L until 0x02040000L) return null
         return storage + 4 + (box * SLOTS + slot).toLong() * BOX_MON
     }

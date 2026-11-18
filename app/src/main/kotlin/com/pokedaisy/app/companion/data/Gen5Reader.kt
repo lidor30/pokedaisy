@@ -386,7 +386,11 @@ fun readGen5Telemetry(r: MemoryReader, cfg: Gen5Config): Telemetry {
         facingDirection = u16(saved, 8),
         partyCount = party.size,
         party = party,
-        battleMons = battle?.mons ?: List(4) { EMPTY_BATTLE_MON },
+        // The foe out is shiny when its party record is (its battle struct carries no personality).
+        battleMons = battle?.let { bt ->
+            if (bt.foes.getOrNull(bt.foeActive)?.shiny == true) bt.mons.mapIndexed { i, m -> if (i == BATTLE_POS_OPPONENT_LEFT) m.copy(shiny = true) else m }
+            else bt.mons
+        } ?: List(4) { EMPTY_BATTLE_MON },
         itemCount = items.size,
         items = items,
         money = u32(r.readCoreMemory(img + cfg.moneyOff, 4), 0).takeIf { it <= 9_999_999 },

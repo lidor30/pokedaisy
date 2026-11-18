@@ -33,6 +33,19 @@ class GbFieldTest {
         )) assertTrue(name, GbField.Crystal.matches(romOf(name)))
     }
 
+    /** Gold and Silver (2026-11-18, pret/pokegold's symbols): each its own code; not Crystal's, nor each other's Fly script. */
+    @Test
+    fun `Gold's and Silver's code, each in its own cart`() {
+        val gold = romOf("Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc")
+        val silver = romOf("Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc")
+        assertTrue(GbField.Gold.matches(gold))
+        assertTrue(GbField.Silver.matches(silver))
+        assertFalse(GbField.Gold.matches(silver))
+        assertFalse(GbField.Silver.matches(gold))
+        assertFalse(GbField.Crystal.matches(gold))
+        assertFalse(GbField.Gold.matches(romOf("Pokemon - Crystal Version (USA).gbc")))
+    }
+
     @Test
     fun `each Gen 1 cart has its own config's code, and no other's`() {
         val carts = listOf(

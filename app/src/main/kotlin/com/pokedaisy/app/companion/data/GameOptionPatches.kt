@@ -19,7 +19,7 @@ object GameOptionPatches {
         val enabled = listOf(sites.isNotEmpty(), text != null, hm != null, full != null, cap != null && level in 1..99,
             beepOff != null, poisonOff != null)
         val groups: List<() -> Boolean> = listOf(
-            { sites.all { host.patch(it.at, it.expect, it.branch, ReusableTms.ALWAYS_SKIP) } },
+            { sites.all { host.patch(it.at, it.expect, it.branch, it.value) } },
             { writes(text!!.writes) }, { writes(hm!!.writes) }, { writes(full!!.full) },
             { writes(LevelCap.writes(cap!!, level)) },
             // LOW HP BEEP / FIELD POISON off (QuietPatches).

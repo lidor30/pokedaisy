@@ -425,6 +425,10 @@ fun gen2Gender(species: Int, dvs0: Int, dvs1: Int, ratios: IntArray): Int {
     }
 }
 
+/** Gen 2's shiny rule on a DV pair (Attack << 4 | Defense, Speed << 4 | Special): Defense, Speed and Special 10, Attack
+ * 2, 3, 6, 7, 10, 11, 14 or 15 (pokecrystal's CheckShininess). */
+fun gen2Shiny(dv0: Int, dv1: Int): Boolean = dv0 and 0x0F == 10 && dv1 == 0xAA && dv0 and 0x20 != 0
+
 /** A party_struct at [off] in [raw], or null for an empty / garbage slot. [egg]: wPartySpecies says EGG. */
 fun decodeGen2PartyMon(raw: ByteArray, off: Int, cfg: Gen2Config, egg: Boolean = false): Mon? {
     val species = u8(raw, off)
@@ -446,17 +450,10 @@ fun decodeGen2PartyMon(raw: ByteArray, off: Int, cfg: Gen2Config, egg: Boolean =
         isEgg = egg,
         heldItem = u8(raw, off + 1),
         personality = gen2MonKey(raw, off),   // no personality in Gen 2: the switch's key (GbPartySwitch)
-        stats = if (egg) null else gen2Stats(raw, off + 21, statExp = List(5) { be16(raw, off + 11 + 2 * it) }, hpStats = off + 36),
         shiny = !egg && gen2Shiny(u8(raw, off + 21), u8(raw, off + 22)),
+        stats = if (egg) null else gen2Stats(raw, off + 21, statExp = List(5) { be16(raw, off + 11 + 2 * it) }, hpStats = off + 36),
     )
 }
-
-/**
- * Gen 2's shininess from the DVs' two bytes (Attack / Defense, Speed / Special), as the game's CheckShininess: Defense,
- * Speed and Special 10, Attack 2, 3, 6, 7, 10, 11, 14 or 15.
- */
-fun gen2Shiny(atkDef: Int, spdSpc: Int): Boolean =
-    (atkDef and 0x0F) == 10 && spdSpc == 0xAA && ((atkDef shr 4) and 2) != 0
 
 /** DVs at [dvs], stat experience (HP, Attack, Defense, Speed, Special) and max HP + the five stats at [hpStats]. */
 private fun gen2Stats(raw: ByteArray, dvs: Int, statExp: List<Int>, hpStats: Int) = MonStats(
@@ -491,7 +488,7 @@ fun gen2WildFoe(raw: ByteArray, cfg: Gen2Config, unmodified: ByteArray? = null):
     )
     return Mon(
         species = b.species, level = b.level, hp = b.hp, maxHp = b.maxHp, status = b.status1, moves = b.moves, pp = b.pp,
-        heldItem = b.item, stats = stats,
+        heldItem = b.item, stats = stats, shiny = b.shiny,
     )
 }
 
@@ -528,6 +525,7 @@ fun decodeGen2BattleMon(raw: ByteArray, speciesCount: Int = 251): BattleMon? {
         item = u8(raw, 1),
         // Attack, Defense, Speed, Sp. Atk, Sp. Def - BattleMon's order is Gen 3's.
         stats = IntArray(5) { be16(raw, 20 + 2 * it) },
+        shiny = gen2Shiny(u8(raw, 6), u8(raw, 7)),
     )
 }
 
@@ -682,6 +680,8 @@ fun readGen2Telemetry(r: MemoryReader, cfg: Gen2Config): Telemetry {
     return Telemetry(
         frameCounter = frames,
         inBattle = inBattle,
+        // wBattleMode: 1 wild, 2 trainer (BOSS RETRY, SHINY ALERT's count, NUZLOCKE).
+        isTrainerBattle = if (inBattle) battle == 2 else null,
         isDoubleBattle = false,
         mapGroup = group,
         mapNum = num,

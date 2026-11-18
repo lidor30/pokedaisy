@@ -116,6 +116,7 @@ object ShinyOdds {
         "91291aade04b4b111cd03ae7b6e2ff460e1edd8a" to 16, // Amethyst v1.4.1 (CFRU, its own 1 in 4096)
         "b4776b82a4c7915d0fadeaa27e013523f99dfd94" to 16, // Unbound v2.1.1.1 (CFRU, its own 1 in 4096)
         "0ce2a880aa097f1dce4e1db8ee513d0e82d15859" to 16, // Unbound v2.1.1.1 FR (CFRU, its own 1 in 4096)
+        "8114e0f81eb3581f699c74a5891c7b75a130269d" to 16, // Unbound v2.1.1.1 IT (English's code: CFRU, its own 1 in 4096)
         "7dcdc7e280bc4631487e13dd37e6e0cea04adea6" to 16, // Lazarus v2.0 (its colours shift with the personality: 15 drew nearest the shiny, 16 the normal) (expansion)
         "b9f4d332d30fc88c379f9e037f9eae3b2755ead4" to 16, // Emerald Seaglass v3.0 (expansion)
         "3fa8e61ec1727cc51540c54677623f736a446e1b" to 16, // Too Many Types 2 v1.5.2 (expansion)
@@ -289,6 +290,7 @@ object ShinyOdds {
         "91291aade04b4b111cd03ae7b6e2ff460e1edd8a", // Amethyst v1.4.1
         "b4776b82a4c7915d0fadeaa27e013523f99dfd94", // Unbound v2.1.1.1
         "0ce2a880aa097f1dce4e1db8ee513d0e82d15859", // Unbound v2.1.1.1 FR
+        "8114e0f81eb3581f699c74a5891c7b75a130269d", // Unbound v2.1.1.1 IT
         "25f8840ecb58e584edf18ffde35f845e94f3f17c", // GS Chronicles v2.7.6
     )
 

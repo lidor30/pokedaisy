@@ -166,7 +166,8 @@ while you rewind.
 ## Adding games
 
 The program's game list shows the `.gb`, `.gbc`, `.gba` and `.nds` files in the `roms` folder of its data folder (and, on
-PortMaster, the firmware's folders above). Pick one with the D-pad and A. Unzip your games first.
+PortMaster, the firmware's folders above). Pick one with the D-pad and A (the button on the right). START and SELECT
+together, or the Menu or Guide button, close the program. Unzip your games first.
 
 ## Moving a save you already have
 

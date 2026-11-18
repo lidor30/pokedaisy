@@ -1,0 +1,21 @@
+# Pokemon Oops All Eevees! v1.3.2, from its own save (a new game played headless: ~/Documents/RetroArch/saves/mGBA/Pokemon Oops All Eevees (v1.3.2).sav).
+# The intro / title take A presses, then CONTINUE puts the player in their bedroom in Pallet Town.
+wait 300
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 100
+press A
+wait 200

@@ -18,16 +18,9 @@ class CrystalDecodeTest {
         return readGen2Telemetry(FixtureMemoryReader.load(fixture), GEN2_CRYSTAL)
     }
 
-    /** CheckShininess: Defense, Speed and Special 10, Attack with bit 1 (2, 3, 6, 7, 10, 11, 14, 15). */
+    /** A party Pokémon's shininess from its DVs at +21 / +22 (a player's MAGMAR: 2 / 10 / 10 / 10); never an egg. */
     @Test
-    fun gen2ShinyFollowsTheDvs() {
-        assertTrue(gen2Shiny(0x2A, 0xAA))    // a player's MAGMAR: 2 / 10 / 10 / 10
-        assertTrue(gen2Shiny(0xFA, 0xAA))
-        for (atk in listOf(0, 1, 4, 5, 8, 9, 12, 13)) assertFalse(gen2Shiny((atk shl 4) or 10, 0xAA))
-        assertFalse(gen2Shiny(0x2B, 0xAA))
-        assertFalse(gen2Shiny(0x2A, 0xBA))
-        assertFalse(gen2Shiny(0x2A, 0xAB))
-        // In the party struct: DVs at +21 / +22.
+    fun partyMonShinyByItsDvs() {
         val raw = ByteArray(48).also { it[0] = 126; it[31] = 35; it[21] = 0x2A; it[22] = 0xAA.toByte() }
         assertTrue(decodeGen2PartyMon(raw, 0, GEN2_CRYSTAL)!!.shiny)
         assertFalse(decodeGen2PartyMon(raw, 0, GEN2_CRYSTAL, egg = true)!!.shiny)
