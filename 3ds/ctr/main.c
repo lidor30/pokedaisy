@@ -414,8 +414,24 @@ static void show_message(const char* line1, const char* line2) {
 
 // A game that didn't start: why, then the memory report (host_memory_report), on the screen and in the log, so a
 // player's photo of it says what went wrong.
+// An Old 3DS's system core runs one of the app's threads: the game's renderer gets it while armGBA / gpSP plays
+// (gpu_core1_lend), the screens' draw thread when nothing does. A renderer that still didn't start gives it back.
+static bool core1Lent;
+
+static void core1_lend(const char* renderer) {
+    core1Lent = gpu_core1_lend();
+    if (core1Lent) host_log("core 1 lent to %s: the screens are drawn on the game's core", renderer);
+}
+
+static void core1_back(void) {
+    if (!core1Lent) return;
+    core1Lent = false;
+    host_log("core 1 back to the screens: %s", gpu_core1_back() ? "drawn on core 1" : "still drawn on the game's core");
+}
+
 static void game_failed(const char* title, const char* why) {
     host_lent_code_release();
+    core1_back();
     char report[256], detail[480];
     host_memory_report(report, sizeof report);
     snprintf(detail, sizeof detail, "%s. PokeDaisy %s: %s", why, PD_VERSION, report);
@@ -620,6 +636,21 @@ static bool run_game(const char* file) {
         }
     }
 #endif
+    // An Old 3DS's .3dsx has room for a 16 MB game buffer only (host.c's host_rom_arena_init): say what to do instead.
+    if (host_rom_arena_size() < (32u << 20)) {
+        const char* why = NULL;
+        if ((size_t) rom->size(rom) > host_rom_arena_size())
+            why = "this game is bigger than 16 MB, and the .3dsx only gets room for a 16 MB game on this 3DS. Install the CIA "
+                  "to play it";
+        else if (gpsp)
+            why = "gpSP needs room for a 32 MB game, and the .3dsx only gets 16 MB on this 3DS. Install the CIA, or set this "
+                  "game's GBA CORE to ARMGBA (X in the library)";
+        if (why) {
+            rom->close(rom);
+            game_failed("The game didn't start:", why);
+            return true;
+        }
+    }
     struct mCore* core = NULL;
     struct rom_id romId;
     {
@@ -655,12 +686,14 @@ static bool run_game(const char* file) {
         }
 #endif
         char error[256] = "";
+        if (emuHost.threaded) core1_lend("armGBA's renderer");
         host_log("game: %s, heap %lu KiB free", file, (unsigned long) host_heap_free() >> 10);
         core = pd_armgba_load(romSd, saveSd, &emuHost, error, sizeof(error));
         if (!core) {
             game_failed("The game didn't start (armGBA):", error);
             return true;
         }
+        if (!pd_armgba_threaded()) core1_back();
         core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
         host_log("game: running on %s; heap %lu KiB free, linear %lu KiB free",
                  pd_armgba_recompiling() ? "armGBA's recompiler" : "armGBA's INTERPRETER", (unsigned long) host_heap_free() >> 10,
@@ -688,12 +721,14 @@ static bool run_game(const char* file) {
         }
 #endif
         char error[256] = "";
+        if (emuHost.threaded) core1_lend("gpSP's renderer");
         host_log("game: %s on gpSP, heap %lu KiB free", file, (unsigned long) host_heap_free() >> 10);
         core = pd_gpsp_load(romSd, saveSd, &emuHost, error, sizeof(error));
         if (!core) {
             game_failed("The game didn't start (gpSP):", error);
             return true;
         }
+        if (!pd_gpsp_threaded()) core1_back();
         // Its renderer asked for a core and didn't get it: why (gpSP 3D's video_thread_sys.c, a 64 KiB stack).
         if (emuHost.threaded && !pd_gpsp_threaded()) host_log_thread_failure("gpSP's renderer", emuHost.renderCore, 64 * 1024);
         core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
@@ -1180,6 +1215,7 @@ static bool run_game(const char* file) {
     // armGBA writes the save if the game changed it, and its warm list; mGBA's VFile flushes on unmap.
     core->deinit(core);
     host_lent_code_release();
+    core1_back();
     host_log("game: closed");
     return appRunning;
 }
@@ -1516,10 +1552,11 @@ int main(void) {
     // The New 3DS's 804 MHz mode (a no-op on the original models; off for the dev build's Old 3DS stand-in).
     if (!host_old_3ds_stand_in()) osSetSpeedupEnable(true);
     mLogSetDefaultLogger(&silentLogger);
-    if (!arena) {
+    if (!arena || host_rom_arena_size() < (32u << 20)) {
         char report[256];
         host_memory_report(report, sizeof report);
-        host_log("no memory for the 32 MB game buffer: %s", report);
+        if (!arena) host_log("no memory for the 32 MB game buffer: %s", report);
+        else host_log("game buffer: 16 MB (no room for 32 MB: games over 16 MB and gpSP need the CIA): %s", report);
     }
     host_log("PokeDaisy: %s, heap %lu KiB free", host_is_new_3ds() ? "New 3DS" : host_old_3ds_stand_in() ? "New 3DS playing an Old 3DS" : "3DS",
              (unsigned long) host_heap_free() >> 10);

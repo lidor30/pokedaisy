@@ -28,22 +28,35 @@ void userAppInit(void) {
     FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
 }
 
-#define ROM_ARENA (32u << 20) // the GBA's whole cartridge space
+#define ROM_ARENA_FULL (32u << 20) // the GBA's whole cartridge space
+// An Old 3DS's .3dsx gets 64 MB (mode 0), its heap ~31.8 MB: never the 32 MB, so no game started at all there (a player's
+// log, 2026-11-18). Half of it still plays every game of 16 MB or less on armGBA and mGBA.
+#define ROM_ARENA_HALF (16u << 20)
 static uint8_t* romArena;
+static size_t romArenaSize;
 static size_t heapAtStart; // free before the arena was asked for (host_memory_report)
 
 bool host_rom_arena_init(void) {
     heapAtStart = host_heap_free();
-    romArena = malloc(ROM_ARENA);
+    romArena = malloc(ROM_ARENA_FULL);
+    romArenaSize = romArena ? ROM_ARENA_FULL : 0;
+    if (!romArena) {
+        romArena = malloc(ROM_ARENA_HALF);
+        romArenaSize = romArena ? ROM_ARENA_HALF : 0;
+    }
     romBuffer = (uint32_t*) romArena;
-    romBufferSize = romArena ? ROM_ARENA : 0;
+    romBufferSize = romArenaSize;
     return romArena != NULL;
+}
+
+size_t host_rom_arena_size(void) {
+    return romArenaSize;
 }
 
 static size_t romUsed; // what the last game asked of the arena (host_rom_arena)
 
 void* host_rom_arena(size_t size) {
-    if (!romArena || size > ROM_ARENA) return NULL;
+    if (!romArena || size > romArenaSize) return NULL;
     memset(romArena, 0, size);
     romUsed = size;
     return romArena;
@@ -68,7 +81,7 @@ bool isEmulator(void); // armGBA's 3DS code
 void* __wrap_jitHostAllocCode(size_t* size) {
     host_lent_code_release(); // a load that failed before main.c could
     uintptr_t from = ((uintptr_t) romArena + romUsed + 0xFFF) & ~(uintptr_t) 0xFFF;
-    uintptr_t to = ((uintptr_t) romArena + ROM_ARENA) & ~(uintptr_t) 0xFFF;
+    uintptr_t to = ((uintptr_t) romArena + romArenaSize) & ~(uintptr_t) 0xFFF;
     size_t spare = romArena && romUsed && to > from ? to - from : 0;
     if (spare > *size) spare = *size & ~(size_t) 0xFFF;
     if (!lentCode && spare >= LENT_CODE_MIN && !isEmulator()) {

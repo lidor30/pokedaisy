@@ -17,6 +17,10 @@ void gpu_exit(void);
 // The screens' draw thread's stack (gpu.c), for host_log_thread_failure's same-size try.
 #define GPU_DRAW_STACK (64 * 1024)
 int gpu_draw_core(void);
+// An Old 3DS's one thread on its system core, lent to the game's renderer (gpu.c): the draw thread stops, the game's core
+// draws the screens (true = it was running). gpu_core1_back starts it again (true = it did).
+bool gpu_core1_lend(void);
+bool gpu_core1_back(void);
 
 // mGBA's video buffer: 32-bit pixels (0xXXBBGGRR), GPU_GAME_STRIDE x 160, in linear memory.
 uint32_t* gpu_game_buffer(void);

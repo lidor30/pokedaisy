@@ -517,11 +517,12 @@ static void draw_thread_start(void) {
     }
 #endif
     if (!isNew && !host_core1_take(HOST_CORE1_PERCENT)) return;
-    stageGame = linearAlloc(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t));
-    stageBottom = linearAlloc(PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));
-    stageTop = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
-    stageOverlay = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
-    gameBufs[1] = linearMemAlign(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t), 0x80);
+    // Kept when the thread stops (gpu_core1_lend): started again, it finds them.
+    if (!stageGame) stageGame = linearAlloc(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t));
+    if (!stageBottom) stageBottom = linearAlloc(PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));
+    if (!stageTop) stageTop = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
+    if (!stageOverlay) stageOverlay = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
+    if (!gameBufs[1]) gameBufs[1] = linearMemAlign(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t), 0x80);
     if (!stageGame || !stageBottom || !stageTop || !stageOverlay) return;
     LightEvent_Init(&jobReady, RESET_ONESHOT);
     LightEvent_Init(&stageFree, RESET_ONESHOT);
@@ -539,6 +540,32 @@ static void draw_thread_start(void) {
         drawCore = cores[i];
     }
     if (drawThread) aptHook(&drawHook, draw_apt_hook, NULL);
+}
+
+// An Old 3DS lets the app run one thread on its system core: a second one asking for core 1 is refused (svcCreateThread
+// E0A01839, out of resource: players' Old 3DS logs, 2026-11-18), so the draw thread there left armGBA's / gpSP's renderer
+// on the game's core, 36-44% of frames skipped. The renderer does far more of a frame's work, so it gets the core while
+// its game runs: the draw thread stops (the jobs it was given done) and the game's core draws, until gpu_core1_back.
+bool gpu_core1_lend(void) {
+    if (host_is_new_3ds() || !drawThread) return false;
+    while (jobsDone != jobsHanded) svcSleepThread(1000000);
+    drawStop = true;
+    LightEvent_Signal(&jobReady);
+    threadJoin(drawThread, U64_MAX);
+    threadFree(drawThread);
+    aptUnhook(&drawHook);
+    drawThread = NULL;
+    drawCore = -1;
+    drawStop = false;
+    gameDoubled = false;
+    shownBuf = gameBuf;
+    return true;
+}
+
+bool gpu_core1_back(void) {
+    if (host_is_new_3ds() || drawThread) return false;
+    draw_thread_start();
+    return drawThread != NULL;
 }
 
 void gpu_draw(bool game, int screenMode) {
