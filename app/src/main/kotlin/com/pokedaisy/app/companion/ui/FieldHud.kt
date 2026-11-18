@@ -1026,14 +1026,14 @@ private fun DockDivider(m: GbaTextMetrics) {
     Box(Modifier.width(m.u).height(m.u * 30).background(ink.divider))
 }
 
-/** PARTY PICTURES in the HUD: screen pixels a side for a picture in an icon slot of [size] (whole pixels a picture pixel). */
+/** POKéMON PICTURES in the HUD: screen pixels a side for a picture in an icon slot of [size] (whole pixels a picture pixel). */
 private fun androidx.compose.ui.unit.Density.hudPictureSide(size: Dp): Int = 56 * max(1, (size.toPx() * 32f / 24f / 56f).roundToInt())
 
-/** The icon slot of a HUD party tile: the icon's size, or with PARTY PICTURES the picture's and [u] * 2 round it. */
+/** The icon slot of a HUD party tile: the icon's size, or with POKéMON PICTURES the picture's and [u] * 2 round it. */
 @Composable
 private fun hudTileIcon(m: GbaTextMetrics): Dp {
     val icon = hudIconSize(m)
-    if (LocalPartyPictures.current == null) return icon
+    if (LocalPokemonPictures.current == null) return icon
     val density = LocalDensity.current
     return androidx.compose.ui.unit.max(icon, with(density) { hudPictureSide(icon).toDp() } + m.u * 4)
 }
@@ -1100,11 +1100,11 @@ internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp, tag: Boolean = true, pict
     val upx = with(density) { u.roundToPx() }
     val fainted = !mon.isEgg && mon.hp == 0
     Box(Modifier.size(size)) {
-        val pictures = LocalPartyPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
+        val pictures = LocalPokemonPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
         if (pictures != null) {
-            // PARTY PICTURES: the front picture, about the icon's size (a whole number of screen pixels per picture pixel),
+            // POKéMON PICTURES: the front picture, about the icon's size (a whole number of screen pixels per picture pixel),
             // centred on the slot (the party's tiles make the slot the picture's size, plus a margin).
-            val pic = rememberRomBitmap(pictures, mon.species, { t, sp -> partyPicture(t, sp, cached = true) }, { t, sp -> partyPicture(t, sp, cached = false) })
+            val pic = rememberRomBitmap(pictures, mon.species, { t, sp -> pokemonPicture(t, sp, cached = true) }, { t, sp -> pokemonPicture(t, sp, cached = false) })
             val side = with(density) { hudPictureSide(pictureFor).toDp() }
             Box(Modifier.size(size).alpha(if (fainted) 0.4f else 1f), contentAlignment = Alignment.Center) {
                 Box(Modifier.wrapContentSize(unbounded = true)) { PixelImage(pic, 56, Modifier.size(side)) }
@@ -1759,7 +1759,7 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             // An unseen Pokémon stays hidden, like GUIDE > HERE's.
                             Box(Modifier.size(icon), contentAlignment = Alignment.Center) {
-                                if (w.seen) { if (LocalPartyPictures.current != null) SpeciesPicture(w.species, null, icon, fit = true) else HudSpecies(spriteAsset("pokemon", w.species), icon) } else GbaText("?", c.muted, c.shadow, m)
+                                if (w.seen) { if (LocalPokemonPictures.current != null) SpeciesPicture(w.species, null, icon, fit = true) else HudSpecies(spriteAsset("pokemon", w.species), icon) } else GbaText("?", c.muted, c.shadow, m)
                             }
                             Spacer(Modifier.width(u * 2))
                             GbaText(if (w.seen) speciesName(w.species) else "???", c.text, c.shadow, m, Modifier.weight(1f))

@@ -4749,9 +4749,9 @@ class PokeDaisyActivity : Activity() {
                 onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
                 onPanel = { hudPanelOpen.value = it },
             ) else androidx.compose.runtime.CompositionLocalProvider(
-                // PARTY PICTURES (Crystal): the HUD's party shows the front pictures too.
-                com.pokedaisy.app.companion.ui.LocalPartyPictures provides snap.pokedex?.tables?.takeIf {
-                    hudPrefs.partyPictures && com.pokedaisy.app.companion.ui.partyPicturesOffered(snap.game)
+                // POKéMON PICTURES (Crystal): the HUD's party shows the front pictures too.
+                com.pokedaisy.app.companion.ui.LocalPokemonPictures provides snap.pokedex?.tables?.takeIf {
+                    hudPrefs.pokemonPictures && com.pokedaisy.app.companion.ui.pokemonPicturesOffered(snap.game)
                 },
             ) { com.pokedaisy.app.companion.ui.FieldHud(
                 snap, shown && !dsWindowUp, hudStyle.value,

@@ -829,27 +829,27 @@ private class SlotGeometry(w: Float, h: Float) {
 }
 
 /**
- * PARTY PICTURES: the Pokédex tables to draw each slot's front picture from (the cart's, as the DEX does), in place of the
+ * POKéMON PICTURES: the Pokédex tables to draw each slot's front picture from (the cart's, as the DEX does), in place of the
  * game's party icons; null = the icons. Crystal's 251 species share 37 icons, all in one colour.
  */
-val LocalPartyPictures = androidx.compose.runtime.staticCompositionLocalOf<com.pokedaisy.app.companion.data.PokedexTables?> { null }
+val LocalPokemonPictures = androidx.compose.runtime.staticCompositionLocalOf<com.pokedaisy.app.companion.data.PokedexTables?> { null }
 
 /**
  * A PARTY PICTURE: the front picture with its inside filled white, as the game's paper shows it. The picture's colour 0 is
  * see-through everywhere, so over a dark window or the game (DARK MODE, the HUD) its white parts showed what lay behind.
  * Only what the outside can't reach is filled, so the outline stays free. Cached per tables and species.
  */
-private val partyPictureCache = java.util.concurrent.ConcurrentHashMap<Triple<Any, Int, Boolean>, com.pokedaisy.app.companion.data.RomArt.Image>()
+private val pokemonPictureCache = java.util.concurrent.ConcurrentHashMap<Triple<Any, Int, Boolean>, com.pokedaisy.app.companion.data.RomArt.Image>()
 
 /** [topLeft]: the picture cut down to what it draws (the PARTY slot lines every one up by its top-left corner). */
-internal fun partyPicture(
+internal fun pokemonPicture(
     t: com.pokedaisy.app.companion.data.PokedexTables, species: Int, cached: Boolean, topLeft: Boolean = false,
 ): com.pokedaisy.app.companion.data.RomArt.Image? {
     val key = Triple<Any, Int, Boolean>(t, species, topLeft)
-    partyPictureCache[key]?.let { return it }
+    pokemonPictureCache[key]?.let { return it }
     val src = (if (cached) PokedexSource.cachedFrontSprite(t, species) else PokedexSource.frontSprite(t, species)) ?: return null
     val filled = paperFilled(src)
-    return (if (topLeft) toTopLeft(filled) else filled).also { partyPictureCache[key] = it }
+    return (if (topLeft) toTopLeft(filled) else filled).also { pokemonPictureCache[key] = it }
 }
 
 /** [img] cut down to its drawn pixels. */
@@ -885,7 +885,7 @@ internal fun paperFilled(img: com.pokedaisy.app.companion.data.RomArt.Image): co
 }
 
 /**
- * [mon]'s party icon, or with PARTY PICTURES its front picture, filled white inside: at [size] the icon's place, the
+ * [mon]'s party icon, or with POKéMON PICTURES its front picture, filled white inside: at [size] the icon's place, the
  * picture at a whole number of screen pixels a picture pixel near the icon's size, centred, reaching past it like the icon.
  * [fit]: inside a frame (the summary's and battle INFO's party columns): the picture cut to what it draws, centred, its
  * 56-pixel box scaled to [size] for every Pokémon alike.
@@ -894,15 +894,15 @@ internal fun paperFilled(img: com.pokedaisy.app.companion.data.RomArt.Image): co
 internal fun MonIcon(mon: MonView?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) =
     SpeciesPicture(mon?.species?.takeIf { !mon.isEgg } ?: 0, mon?.iconAsset, size, modifier, fit)
 
-/** [MonIcon] by species id: [asset] (its party icon) without PARTY PICTURES or a [species] of 0. */
+/** [MonIcon] by species id: [asset] (its party icon) without POKéMON PICTURES or a [species] of 0. */
 @Composable
 internal fun SpeciesPicture(species: Int, asset: String?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) {
-    val pictures = LocalPartyPictures.current?.takeIf { species > 0 }
+    val pictures = LocalPokemonPictures.current?.takeIf { species > 0 }
     if (pictures == null) { SpeciesIcon(asset, size, modifier); return }
     val density = LocalDensity.current
     val pic = rememberRomBitmap(
         pictures, species,
-        { t, sp -> partyPicture(t, sp, cached = true, topLeft = fit) }, { t, sp -> partyPicture(t, sp, cached = false, topLeft = fit) },
+        { t, sp -> pokemonPicture(t, sp, cached = true, topLeft = fit) }, { t, sp -> pokemonPicture(t, sp, cached = false, topLeft = fit) },
     )
     val sizePx = with(density) { size.toPx() }
     val k = max(1, (sizePx * 32f / 24f / 56f).roundToInt())
@@ -935,8 +935,8 @@ private fun partyPictureScale(g: SlotGeometry): Int {
     return max(1, min((u * 0.6f).roundToInt(), room))
 }
 
-/** Games that offer PARTY PICTURES: Crystal for now (English and German, which run as CRYSTAL). */
-fun partyPicturesOffered(game: com.pokedaisy.app.companion.data.GameKind?): Boolean = game == com.pokedaisy.app.companion.data.GameKind.CRYSTAL
+/** Games that offer POKéMON PICTURES: Crystal for now (English and German, which run as CRYSTAL). */
+fun pokemonPicturesOffered(game: com.pokedaisy.app.companion.data.GameKind?): Boolean = game == com.pokedaisy.app.companion.data.GameKind.CRYSTAL
 
 @Composable
 private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, sound: Boolean = true) {
@@ -979,13 +979,13 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
         val text = colors.text ?: palette.text
         val textShadow = colors.textShadow ?: palette.textShadow
 
-        val pictures = LocalPartyPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
+        val pictures = LocalPokemonPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
         val iconDy = if (!selected) -4 else if (!bobDown) -3 else 1
         if (pictures != null) {
             // The front picture in the icon's place, inside the slot's left edge, no Poke Ball under it. It doesn't bob.
             val pic = rememberRomBitmap(
                 pictures, mon.species,
-                { t, sp -> partyPicture(t, sp, cached = true, topLeft = true) }, { t, sp -> partyPicture(t, sp, cached = false, topLeft = true) },
+                { t, sp -> pokemonPicture(t, sp, cached = true, topLeft = true) }, { t, sp -> pokemonPicture(t, sp, cached = false, topLeft = true) },
             )
             val k = partyPictureScale(g)
             if (pic != null) {

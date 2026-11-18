@@ -988,10 +988,10 @@ private fun homeRows(
         groupTitle(tk("COMPANION")),
         // Crystal: the PARTY tab's slots show each Pokémon's front picture instead of the shared party icons.
         SettingRow(
-            tk("PARTY PICTURES"), if (s.partyPictures) tk("DETAILED") else tk("GAME"), subtitle = "Each Pokémon's own picture on the PARTY tab",
-            labelBadge = NewFeatures.badge(NewFeatures.PARTY_PICTURES),
-        ) { s.setPartyPictures(!s.partyPictures); changed() }
-            .takeIf { partyPicturesOffered(com.pokedaisy.app.companion.data.activeGame) },
+            tk("POKéMON PICTURES"), if (s.pokemonPictures) tk("DETAILED") else tk("GAME"), subtitle = "Each Pokémon's own picture in place of the game's icons",
+            labelBadge = NewFeatures.badge(NewFeatures.POKEMON_PICTURES),
+        ) { s.setPokemonPictures(!s.pokemonPictures); changed() }
+            .takeIf { pokemonPicturesOffered(com.pokedaisy.app.companion.data.activeGame) },
         // Move effectiveness and the foe's weak-to/resists during battle.
         // Off: the battle buttons alone - no INFO, SUGGESTIONS or move ratings. The rows about them go with it.
         SettingRow(

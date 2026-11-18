@@ -1420,12 +1420,12 @@ open class CompanionScreenshotTest {
     @Test fun silverParty() = crystal("silver", "PARTY", silver = true)
     @Test fun silverDexEntry() = crystal("silver", "DEX", dexEntry = 155, silver = true)
     @Test fun crystalParty() = crystal("crystal", "PARTY")
-    @Test fun crystalPartyPictures() = crystal("crystal", "PARTY", partyPictures = true)
-    @Test fun crystalPartyPicturesDark() {
+    @Test fun crystalPokemonPictures() = crystal("crystal", "PARTY", pokemonPictures = true)
+    @Test fun crystalPokemonPicturesDark() {
         DarkMode.override = true
-        try { crystal("crystal", "PARTY", partyPictures = true) } finally { DarkMode.override = null }
+        try { crystal("crystal", "PARTY", pokemonPictures = true) } finally { DarkMode.override = null }
     }
-    @Test fun crystalSettingsPartyPictures() = crystal("crystal", "SETTINGS", settingsRow = "PARTY PICTURES")
+    @Test fun crystalSettingsPokemonPictures() = crystal("crystal", "SETTINGS", settingsRow = "POKéMON PICTURES")
     @Test fun crystalGuide() = crystal("crystal", "GUIDE", guidePage = "HERE")
     @Test fun crystalGuideNextBoss() = crystal("crystal", "GUIDE", guidePage = "NEXT BOSS")
     @Test fun crystalGuideWhereIs() = crystal("crystal", "GUIDE", guidePage = "WHERE IS")
@@ -1577,7 +1577,7 @@ open class CompanionScreenshotTest {
     private fun crystal(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null, statusBar: Boolean = false,
                         clear: Boolean = false, prism: Boolean = false, gold: Boolean = false, silver: Boolean = false,
                         polished: Boolean = false, describe: Boolean = false, guidePage: String? = null,
-                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false, partyPictures: Boolean = false, settingsRow: String? = null) {
+                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false, pokemonPictures: Boolean = false, settingsRow: String? = null) {
         val game = if (legacy) GameKind.CRYSTAL_LEGACY else if (polished) GameKind.POLISHED_CRYSTAL else if (prism) GameKind.PRISM else if (clear) GameKind.CRYSTAL_CLEAR else if (gold) GameKind.GOLD
             else if (silver) GameKind.SILVER else GameKind.CRYSTAL
         var cfg = if (legacy) com.pokedaisy.app.companion.data.GEN2_CRYSTAL_LEGACY else if (polished) com.pokedaisy.app.companion.data.GEN2_POLISHED_CRYSTAL
@@ -1607,7 +1607,7 @@ open class CompanionScreenshotTest {
         val t = com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load(fixture), cfg)
         val v = buildSnapshotView(t).copy(game = game)
         (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
-        if (partyPictures) v.party.forEach { m -> v.pokedex?.tables?.let { PokedexSource.frontSprite(it, m.species) } }
+        if (pokemonPictures) v.party.forEach { m -> v.pokedex?.tables?.let { PokedexSource.frontSprite(it, m.species) } }
         val input = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
             override val busy = false
             override fun selectAction(actionIndex: Int) {}
@@ -1674,7 +1674,7 @@ open class CompanionScreenshotTest {
         }
         snapshot {
             CompanionScreen(
-                v, SampleCompanion.Slots, SampleCompanion.Settings(partyPics = partyPictures, rowsShown = settingsRow?.let { setOf("BATTLE INFO", it, "ONE-TAP MOVES", "LANGUAGE", "HELP") }), initialTab = tab, battleInput = input, initialSettingsRow = settingsRow,
+                v, SampleCompanion.Slots, SampleCompanion.Settings(pokemonPics = pokemonPictures, rowsShown = settingsRow?.let { setOf("BATTLE INFO", it, "ONE-TAP MOVES", "LANGUAGE", "HELP") }), initialTab = tab, battleInput = input, initialSettingsRow = settingsRow,
                 statusBar = if (!statusBar) null else ({ GameStatusBar(if (clear) "Pokémon Crystal Clear" else "Pokémon Crystal", v.location.mapSecName, t.money, "12:34") }),
             )
         }
@@ -2414,12 +2414,12 @@ object SampleCompanion {
     class Settings(
         private var tabs: List<String> = com.pokedaisy.app.companion.DEFAULT_COMPANION_TABS,
         private var cheatList: List<com.pokedaisy.app.cheats.Cheat> = emptyList(),
-        private var partyPics: Boolean = false,
+        private var pokemonPics: Boolean = false,
         private val rowsShown: Set<String>? = null,
     ) : CompanionSettings {
         override val shownRows get() = rowsShown
-        override val partyPictures get() = partyPics
-        override fun setPartyPictures(on: Boolean) { partyPics = on }
+        override val pokemonPictures get() = pokemonPics
+        override fun setPokemonPictures(on: Boolean) { pokemonPics = on }
         override val coopEnabled = true
         override val coopLiveRefresh = false
         override val coopState get() = com.pokedaisy.app.companion.coop.CoopSession.link.state.value

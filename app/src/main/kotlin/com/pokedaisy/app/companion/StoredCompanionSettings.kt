@@ -99,9 +99,9 @@ interface StoredCompanionSettings {
     /** CHALLENGE ICONS - see [com.pokedaisy.app.Prefs.raIcons]. */
     val raIcons: Boolean get() = true
     fun setRaIcons(on: Boolean) {}
-    /** PARTY PICTURES - see [Prefs.partyPictures]. */
-    val partyPictures: Boolean get() = false
-    fun setPartyPictures(on: Boolean) {}
+    /** POKéMON PICTURES - see [Prefs.pokemonPictures]. */
+    val pokemonPictures: Boolean get() = false
+    fun setPokemonPictures(on: Boolean) {}
     /** ONE-TAP MOVES - see [Prefs.oneTapMoves]. */
     val oneTapMoves: Boolean get() = false
     fun setOneTapMoves(on: Boolean) {}
