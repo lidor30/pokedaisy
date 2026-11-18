@@ -1095,17 +1095,26 @@ private fun HudMonTag(mon: MonView, u: Dp) {
 /** The party icon; fainted ones faded with FNT on them, a status chip (PSN, SLP, ...) over its top ([tag]: the HUD's party
  * puts it in a row of its own instead), NUZLOCKE's gravestone. */
 @Composable
-internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp, tag: Boolean = true, pictureFor: Dp = size) {
+internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp, tag: Boolean = true, pictureFor: Dp? = null) {
     val density = LocalDensity.current
     val upx = with(density) { u.roundToPx() }
     val fainted = !mon.isEgg && mon.hp == 0
     Box(Modifier.size(size)) {
         val pictures = LocalPokemonPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
-        if (pictures != null) {
+        // The front picture once it has loaded; until then (or if it can't be read) the icon.
+        val pic = pictures?.let { rememberPokemonPicture(it, mon.species, mon.shiny) }
+        if (pic != null) {
             // POKéMON PICTURES: the front picture, about the icon's size (a whole number of screen pixels per picture pixel),
-            // centred on the slot (the party's tiles make the slot the picture's size, plus a margin).
-            val pic = rememberPokemonPicture(pictures, mon.species, mon.shiny)
-            val side = with(density) { hudPictureSide(pictureFor).toDp() }
+            // centred on the slot. The party's tiles make the slot the picture's size plus a margin ([pictureFor], the icon's
+            // size it stands for); anywhere else (the bag's pick, the QUICK MENU) it stays inside [size], not over its neighbours.
+            val side = with(density) {
+                val px = size.toPx()
+                when {
+                    pictureFor != null -> hudPictureSide(pictureFor).toDp()
+                    px >= 56f -> (56 * kotlin.math.floor(px / 56f).toInt()).toDp()
+                    else -> size
+                }
+            }
             Box(Modifier.size(size).alpha(if (fainted) 0.4f else 1f), contentAlignment = Alignment.Center) {
                 Box(Modifier.wrapContentSize(unbounded = true)) { PixelImage(pic, 56, Modifier.size(side)) }
             }

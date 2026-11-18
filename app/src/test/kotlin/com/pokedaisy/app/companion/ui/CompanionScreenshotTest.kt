@@ -1438,6 +1438,9 @@ open class CompanionScreenshotTest {
     @Test fun crystalBattleShinyFoe() = crystal("crystal_battle", "BATTLE", shinyFoe = true)
     @Test fun crystalBattleShinyFoeControls() = crystal("crystal_battle_menu", "BATTLE", controls = true, shinyFoe = true)
     @Test fun crystalBattleMenu() = crystal("crystal_battle_menu", "BATTLE", controls = true)
+    // POKéMON PICTURES on the battle buttons and INFO: the FIGHT button's picture inside its icon's place.
+    @Test fun crystalBattleMenuPictures() = crystal("crystal_battle_menu", "BATTLE", controls = true, pokemonPictures = true)
+    @Test fun crystalBattlePictures() = crystal("crystal_battle", "BATTLE", pokemonPictures = true)
     @Test fun crystalBattleMoves() = crystal("crystal_battle", "BATTLE", controls = true)
     @Test fun crystalMap() = crystal("crystal", "MAP")
     @Test fun crystalSettings() = crystal("crystal", "SETTINGS")

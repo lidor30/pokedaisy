@@ -992,7 +992,7 @@ private fun homeRows(
         // The game's frames per second and the app's CPU share, in the game's corner.
         SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },
         groupTitle(tk("COMPANION")),
-        // Crystal: the PARTY tab's slots show each Pokémon's front picture instead of the shared party icons.
+        // Crystal: every Pokémon in the companion and the HUD shows its front picture instead of the shared party icons.
         SettingRow(
             tk("POKéMON PICTURES"), if (s.pokemonPictures) tk("DETAILED") else tk("GAME"), subtitle = "Each Pokémon's own picture in place of the game's icons",
             labelBadge = NewFeatures.badge(NewFeatures.POKEMON_PICTURES),

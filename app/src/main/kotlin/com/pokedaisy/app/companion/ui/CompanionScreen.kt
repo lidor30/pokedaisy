@@ -184,7 +184,10 @@ fun CompanionScreen(
         LocalGameTextScale provides if (gameFont != null) gameTextScale(snapshot.game) else 1f,
         LocalGameFontWidth provides if (gameFont != null) gameFontWidth(snapshot.game) else 1f,
         // POKéMON PICTURES (Crystal): every Pokémon in the companion shows its front picture from the cart.
-        LocalPokemonPictures provides snapshot.pokedex?.tables?.takeIf { settings?.pokemonPictures == true && pokemonPicturesOffered(snapshot.game) },
+        // (Read after PokemonPicturesSwitch.version, so a flip redraws at once.)
+        LocalPokemonPictures provides snapshot.pokedex?.tables?.takeIf {
+            PokemonPicturesSwitch.version >= 0 && settings?.pokemonPictures == true && pokemonPicturesOffered(snapshot.game)
+        },
     ) { AppTheme { key(snapshot.game) {
         val game = snapshot.game
         // Until the first real data arrives (the ROM takes a few seconds to
@@ -735,14 +738,12 @@ fun CompanionScreen(
                             var swapNotice by remember { mutableStateOf<ItemNotice?>(null) }
                             // Pokemon X: its own party screen's slots (the game's smooth look, not the pixel ones).
                             if (game.isXy) XyPartyScreen(snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) })
-                            else run {
-                                PartyScreen(
-                                    snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) },
-                                    onSwap = itemUse?.takeIf { it.canReorderParty() }?.let { use ->
-                                        { a, b -> use.reorderParty(a, b) { r -> partySwapMessage(r)?.let { swapNotice = ItemNotice(0, it, ok = false) } } }
-                                    },
-                                )
-                            }
+                            else PartyScreen(
+                                snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) },
+                                onSwap = itemUse?.takeIf { it.canReorderParty() }?.let { use ->
+                                    { a, b -> use.reorderParty(a, b) { r -> partySwapMessage(r)?.let { swapNotice = ItemNotice(0, it, ok = false) } } }
+                                },
+                            )
                             // In a box of its own: this pane stretches what's put straight in it.
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                                 ItemNoticeHost(swapNotice, rememberGbaTextMetrics(), Modifier.padding(top = 12.dp)) { swapNotice = null }

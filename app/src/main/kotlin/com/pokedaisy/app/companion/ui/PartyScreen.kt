@@ -836,6 +836,17 @@ private class SlotGeometry(w: Float, h: Float) {
 val LocalPokemonPictures = androidx.compose.runtime.staticCompositionLocalOf<com.pokedaisy.app.companion.data.PokedexTables?> { null }
 
 /**
+ * Bumped each time POKéMON PICTURES is flipped ([com.pokedaisy.app.companion.PrefsCompanionSettings]). The setting itself
+ * isn't Compose state, so the companion and the HUD read this before it: a flip shows at once, not on the next sample
+ * (with LIGHT COMPANION a still field can go a while without one).
+ */
+object PokemonPicturesSwitch {
+    var version by androidx.compose.runtime.mutableStateOf(0)
+        private set
+    fun flipped() { version++ }
+}
+
+/**
  * A PARTY PICTURE: the front picture with its inside filled white, as the game's paper shows it. The picture's colour 0 is
  * see-through everywhere, so over a dark window or the game (DARK MODE, the HUD) its white parts showed what lay behind.
  * Only what the outside can't reach is filled, so the outline stays free. Cached per tables and species.
@@ -909,9 +920,10 @@ internal fun paperFilled(img: com.pokedaisy.app.companion.data.RomArt.Image): co
 
 /**
  * [mon]'s party icon, or with POKéMON PICTURES its front picture, filled white inside: at [size] the icon's place, the
- * picture at a whole number of screen pixels a picture pixel near the icon's size, centred, reaching past it like the icon.
+ * picture cut to what it draws and filling it, centred (whole screen pixels a picture pixel where they come close). It
+ * never reaches past [size]: in a button, a tile or a box's cell a bigger one covered what was next to it.
  * [fit]: inside a frame (the summary's and battle INFO's party columns): the picture cut to what it draws, centred, its
- * 56-pixel box scaled to [size] for every Pokémon alike.
+ * 56-pixel box scaled to [size] for every Pokémon alike. Until the picture has loaded, or if it can't be read: the icon.
  */
 @Composable
 internal fun MonIcon(mon: MonView?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) =
@@ -923,16 +935,27 @@ internal fun SpeciesPicture(species: Int, asset: String?, size: Dp, modifier: Mo
     val pictures = LocalPokemonPictures.current?.takeIf { species > 0 }
     if (pictures == null) { SpeciesIcon(asset, size, modifier); return }
     val density = LocalDensity.current
-    val pic = rememberPokemonPicture(pictures, species, shiny, topLeft = fit)
+    // Cut to what it draws either way: outside a frame it fills the icon's place itself, not its 56-pixel box (most
+    // pictures draw well inside theirs, and a box-sized one came out half the icon's size on the FIGHT button).
+    val pic = rememberPokemonPicture(pictures, species, shiny, topLeft = true)
+    if (pic == null) { SpeciesIcon(asset, size, modifier); return }
     val sizePx = with(density) { size.toPx() }
     val k = max(1, (sizePx * 32f / 24f / 56f).roundToInt())
+    // Whole pixels when they come within a quarter of a picture pixel of the wanted scale, never past it.
+    fun whole(f: Float, cap: Int = k) = if (f >= 1f) min(cap, floor(f).toInt()).toFloat().takeIf { it >= f - 0.25f } ?: f else f
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         if (!fit) {
-            Box(Modifier.wrapContentSize(unbounded = true)) { PixelImage(pic, 56, Modifier.size(with(density) { (56 * k).toDp() })) }
-        } else if (pic != null) {
+            val f = sizePx / max(pic.width, pic.height)
+            val s = whole(f, cap = floor(f).toInt())
+            androidx.compose.foundation.Image(
+                pic, contentDescription = null, filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                modifier = Modifier.size(with(density) { (pic.width * s).toDp() }, with(density) { (pic.height * s).toDp() }),
+            )
+        } else {
+            val scale = whole(sizePx / 56f)
             // One scale for every picture: the 56-pixel box fills the frame, so a small Pokémon stays small next to a big
-            // one, as in the game. Whole pixels when the frame allows them.
-            val scale = (sizePx / 56f).let { f -> if (f >= 1f) min(k, floor(f).toInt()).toFloat().takeIf { it >= f - 0.25f } ?: f else f }
+            // one, as in the game.
             androidx.compose.foundation.Image(
                 pic, contentDescription = null, filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
                 contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
@@ -1001,18 +1024,24 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
 
         val pictures = LocalPokemonPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
         val iconDy = if (!selected) -4 else if (!bobDown) -3 else 1
-        if (pictures != null) {
+        // The front picture, once it has loaded; until then (or if the cart's picture can't be read) the game's icon.
+        val pic = pictures?.let { rememberPokemonPicture(it, mon.species, mon.shiny, topLeft = true) }
+        if (pic != null) {
             // The front picture in the icon's place, inside the slot's left edge, no Poke Ball under it. It doesn't bob.
-            val pic = rememberPokemonPicture(pictures, mon.species, mon.shiny, topLeft = true)
-            val k = partyPictureScale(g)
-            if (pic != null) {
-                androidx.compose.foundation.Image(
-                    pic, contentDescription = null, filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
-                    contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
-                    modifier = Modifier.offset { IntOffset((g.fx + PICTURE_MARGIN * u).toInt(), (g.fy + PICTURE_MARGIN * u).toInt()) }
-                        .size(with(density) { (pic.width * k).toDp() }, with(density) { (pic.height * k).toDp() }),
-                )
-            }
+            // A tall one (the biggest have 56 rows, the scale is set for 48) a step smaller, so it stays above the HP band.
+            val room = g.dividerY - g.fy - PICTURE_MARGIN * u
+            var k = partyPictureScale(g)
+            while (k > 1 && pic.height * k > room) k--
+            val left = g.fx + PICTURE_MARGIN * u
+            val top = g.fy + PICTURE_MARGIN * u
+            androidx.compose.foundation.Image(
+                pic, contentDescription = null, filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                modifier = Modifier.offset { IntOffset(left.toInt(), top.toInt()) }
+                    .size(with(density) { (pic.width * k).toDp() }, with(density) { (pic.height * k).toDp() }),
+            )
+            // The held-item marker on the picture's bottom-right corner, as on the icon's.
+            HeldItemMarker(mon.heldItemId, u, left + pic.width * k - 6 * u, min(top + pic.height * k - 6 * u, g.dividerY - 8 * u))
         } else {
             // Poke Ball, then the icon over it: resting 4px up, bobbing -3/+1 while selected.
             Canvas(Modifier.fillMaxSize()) { drawPixelBitmap(PartyBall, palette.ball, g.fx - 6 * u, g.fy - 4 * u, u.toFloat()) }
@@ -1020,9 +1049,9 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
                 mon.iconAsset, size = with(density) { (32 * u).toDp() },
                 modifier = Modifier.offset { IntOffset((g.fx - 8 * u).toInt(), (g.fy + iconDy * u).toInt()) },
             )
+            // The held-item marker, where GbaPartySlot puts it: the resting icon's place + (16, 22). It doesn't bob.
+            HeldItemMarker(mon.heldItemId, u, g.fx - 8 * u + 16 * u, g.fy + 22 * u)
         }
-        // The held-item marker, where GbaPartySlot puts it: the resting icon's place + (16, 22). It doesn't bob.
-        HeldItemMarker(mon.heldItemId, u, g.fx - 8 * u + 16 * u, g.fy + 22 * u)
 
         // A picture is wider than the icon: the name and level start the same margin right of it.
         val textX = if (pictures != null) max(g.textX, g.fx + PICTURE_MARGIN * u + 56 * partyPictureScale(g) + PICTURE_MARGIN * u) else g.textX
