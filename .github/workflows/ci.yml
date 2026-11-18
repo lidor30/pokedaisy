@@ -32,7 +32,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       # This job builds without n3ds. Keep the optional Azahar tree (and its unrelated Android wrappers) out;
-      # required submodules remain recursive and setup-gradle still validates every checked-out wrapper.
+      # required submodules remain recursive and the wrapper validation step checks every checked-out wrapper.
       - name: Native dependencies (default features)
         run: git -c submodule.third_party/azahar.update=none submodule update --init --recursive
 
@@ -51,13 +51,10 @@ jobs:
       - name: NDK + CMake (app/build.gradle.kts pins them)
         run: sdkmanager --install "ndk;28.2.13676358" "cmake;3.22.1" "platforms;android-34"
 
-      # Every Gradle wrapper jar in the checkout is validated here instead of by setup-gradle, which can't accept one
-      # checksum: the recursive checkout brings Azahar's SDL, whose Android sample project carries a wrapper jar Gradle
-      # doesn't list. Nothing runs it (Azahar builds with CMake, and only behind the n3ds flag).
+      # Azahar is excluded above, so only the project's Gradle wrapper is required.
       - uses: gradle/actions/wrapper-validation@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
         with:
-          min-wrapper-count: 2
-          allow-checksums: 2c23278a62dc9f96ab11bee897d9f53e6479d6419135e4560ce822a6431df5e5  # third_party/azahar/externals/sdl2/SDL/android-project
+          min-wrapper-count: 1
 
       - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
         with:
