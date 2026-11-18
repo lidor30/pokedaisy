@@ -9,8 +9,14 @@
 #define SETTLE_SAMPLES 4 // samples after a battle before its encounter is settled
 #define FOE_SAMPLES 4    // a battle's samples before its foe is trusted with no menu read
 
+// A bounded copy, not snprintf: both names can sit inside the same tracker, and GCC 13's -Wrestrict calls that an
+// overlap (Ubuntu 24.04's -Werror build failed on it).
 static void copy_name(char* to, const char* from) {
-    snprintf(to, PD_NUZ_NAME, "%s", from ? from : "");
+    size_t n = 0;
+    if (from)
+        while (n < PD_NUZ_NAME - 1 && from[n]) n++;
+    if (n && to != from) memmove(to, from, n);
+    to[n] = '\0';
 }
 
 static void event(struct pd_nuz_events* e, const char* text) {
