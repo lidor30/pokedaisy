@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.readsGen2ShinyFoes
 import com.pokedaisy.app.companion.DsCore
 import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.ui.produceKeyedState
@@ -268,12 +269,15 @@ class PokeDaisyActivity : Activity() {
     /** SHINY ALERT ([com.pokedaisy.app.companion.data.ShinyHunt]): the option (cached for the emu thread), the battle
      * follower and this game's count of wild battles (Compose state: the row shows it). */
     @Volatile private var shinyAlertOn = false
+
+    /** SHINY ALERT needs foes read shiny: a game SHINY ODDS knows (its battlers' shiny check), or a Gen 2 game (the DVs). */
+    private fun shinyAlertReads(): Boolean = shinyTarget != null || com.pokedaisy.app.companion.data.activeGame.readsGen2ShinyFoes
     private val shinyHunt = com.pokedaisy.app.companion.data.ShinyHunt()
     private val shinyHuntState = androidx.compose.runtime.mutableIntStateOf(0)
 
     /** Each sample (emu thread): a wild battle counted, and a shiny foe announced, with FF and turbo stopped. */
     private fun updateShinyHunt(snap: com.pokedaisy.app.companion.data.SnapshotView) {
-        if (!snap.connected || !shinyAlertOn || shinyTarget == null) return
+        if (!snap.connected || !shinyAlertOn || !shinyAlertReads()) return
         val step = shinyHunt.sample(snap.inBattle, com.pokedaisy.app.companion.data.ShinyHunt.wild(snap), snap.battleOpponent)
         val key = romKey
         if (step.counted) {
@@ -1824,7 +1828,7 @@ class PokeDaisyActivity : Activity() {
             shinyAlertOn = on
         }
         override val shinyHuntCount get() = shinyHuntState.intValue
-        override val shinyAlertSupported get() = shinyTarget != null
+        override val shinyAlertSupported get() = shinyAlertReads()
         override val battleRetry get() = Prefs(this@PokeDaisyActivity).battleRetry
         override fun setBattleRetry(on: Boolean) {
             Prefs(this@PokeDaisyActivity).battleRetry = on

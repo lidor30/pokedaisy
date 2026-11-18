@@ -491,7 +491,7 @@ fun gen2WildFoe(raw: ByteArray, cfg: Gen2Config, unmodified: ByteArray? = null):
     )
     return Mon(
         species = b.species, level = b.level, hp = b.hp, maxHp = b.maxHp, status = b.status1, moves = b.moves, pp = b.pp,
-        heldItem = b.item, stats = stats,
+        heldItem = b.item, stats = stats, shiny = b.shiny,
     )
 }
 
@@ -528,6 +528,8 @@ fun decodeGen2BattleMon(raw: ByteArray, speciesCount: Int = 251): BattleMon? {
         item = u8(raw, 1),
         // Attack, Defense, Speed, Sp. Atk, Sp. Def - BattleMon's order is Gen 3's.
         stats = IntArray(5) { be16(raw, 20 + 2 * it) },
+        // The DVs at +6 / +7, as the battle's own sparkle and colours read them (a TRANSFORMed one takes its target's).
+        shiny = gen2Shiny(u8(raw, 6), u8(raw, 7)),
     )
 }
 
@@ -723,4 +725,10 @@ val GameKind?.isGoldSilver: Boolean get() = this == GameKind.GOLD || this == Gam
 
 /** A Gen 2 game (Gold, Silver, the Crystal family): Gen 2's reader ([readGen2Telemetry]), PACK, POKéGEAR maps and battle menus. */
 val GameKind?.isGen2: Boolean get() = isCrystalFamily || isGoldSilver
+
+/**
+ * A Gen 2 game whose battlers are read shiny by the DVs ([gen2Shiny]): every one but Polished Crystal, which keeps its own
+ * rule. SHINY ALERT works there without SHINY ODDS.
+ */
+val GameKind?.readsGen2ShinyFoes: Boolean get() = isGen2 && this != GameKind.POLISHED_CRYSTAL
 

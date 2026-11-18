@@ -293,7 +293,7 @@ The battle starts over the same way, so try something different. Going back is a
 
 While it's on, the row shows the count so far. It starts from 0 when you turn it on and again after each shiny, and each game keeps its own. Trainers' battles don't count.
 
-It works in the same games as `SHINY ODDS`, and the two go well together. Elsewhere it shows `N/A`.
+It works in the same games as `SHINY ODDS`, and the two go well together. It also works in Gold, Silver and Crystal and their hacks, except Polished Crystal. Elsewhere it shows `N/A`.
 
 ## EXP SHARE
 
