@@ -483,9 +483,6 @@ fun libraryEmptyViewText(view: LibraryView) =
 
 @Composable
 fun LibrarySearchDialog(query: String, onQuery: (String) -> Unit, m: GbaTextMetrics, small: GbaTextMetrics, onDismiss: () -> Unit) {
-    val focus = remember { FocusRequester() }
-    // A text field taking the focus brings the keyboard up by itself.
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     OptionOverlay(onDismiss, Modifier.widthIn(max = 520.dp)) {
         Column {
             OptionTitleWindow(tr("SEARCH"), m)
@@ -494,8 +491,10 @@ fun LibrarySearchDialog(query: String, onQuery: (String) -> Unit, m: GbaTextMetr
                 Column {
                     OptionTextField(
                         query, onQuery, small,
-                        Modifier.padding(horizontal = m.u * 8, vertical = m.u * 2).focusRequester(focus),
+                        Modifier.padding(horizontal = m.u * 8, vertical = m.u * 2),
                         placeholder = tr("SEARCH GAMES"), leadingIcon = com.pokedaisy.app.companion.ui.PixelIcons.search,
+                        // Opened to type in: the field and its keyboard at once.
+                        typeAtOnce = true,
                     )
                     OptionLine(tr("CLEAR"), null, selected = false, m, height = m.rowHeight * 1.3f) { onQuery(""); onDismiss() }
                     OptionLine(tr("DONE"), null, selected = true, m, height = m.rowHeight * 1.3f, onClick = onDismiss)
