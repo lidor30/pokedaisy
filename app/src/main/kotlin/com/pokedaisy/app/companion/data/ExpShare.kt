@@ -35,9 +35,27 @@ object ExpShare {
         }
     }
 
-    /** gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. A Game Boy cart's ([GbGamePatches]): its one participants
-     * byte ([width] 1) and FULL's `ret`. */
-    class Found(val sentPokes: Long, val full: List<InstantText.Write>, val width: Int = 2)
+    /**
+     * gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. A Game Boy cart's ([GbGamePatches]): its one participants
+     * byte ([width] 1), FULL's `ret`, and the battle byte ([battle]: Gen 1's wIsInBattle, read here; 0 = Gen 2's, which
+     * [mark] is given) that says when that byte is the battle's: the same RAM is the field's and the PC's buffer outside
+     * one. A DS game ([ds]) has none of them here: its native side (pk_nds.cpp's expShareTick) writes the battle's masks
+     * and patches the battle overlay itself.
+     */
+    class Found(val sentPokes: Long, val full: List<InstantText.Write>, val width: Int = 2, val ds: Boolean = false, val battle: Long = 0)
+
+    /**
+     * The DS games EXP SHARE knows: Gen 4's US carts (Platinum rev 1, HeartGold, SoulSilver: pret's BtlCmd_CalcExpGain)
+     * and Gen 5's (Black, White, Black 2, White 2: their battle overlay's EXP routine), at the addresses pk_nds_field.cpp
+     * patches, checked headless; on melonDS only - DSperate's recompiler wouldn't see a code patch. [hack]: a hack that
+     * keeps retail's header (Renegade Platinum, the Redux builds, Heartfelt Gold, Sacred Gold / Storm Silver: their battle
+     * code isn't checked).
+     */
+    fun dsFind(code: String, rev: Int, dsperate: Boolean, hack: Boolean): Found? = when {
+        dsperate || hack -> null
+        code == "CPUE" && rev == 1 || rev == 0 && code in setOf("IPKE", "IPGE", "IRBO", "IRAO", "IREO", "IRDO") -> Found(0, emptyList(), ds = true)
+        else -> null
+    }
 
     private const val ROM_BASE = 0x08000000L
     private const val ANY = -1
@@ -126,7 +144,16 @@ object ExpShare {
      * SPLIT / FULL's every frame: both flanks' bits set to [mask] (the party's slots that aren't eggs) if they aren't already.
      * Emu thread.
      */
-    fun mark(f: Found, mask: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean) {
+    fun mark(f: Found, mask: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean, gbBattle: Long = 0) {
+        if (f.width == 1) {
+            // A Game Boy cart: only while its battle byte says a wild (1) or trainer (2) battle is on. Outside one the
+            // participants byte is other RAM (Gen 2's: the field's tiles round the player, a PC box being saved). No
+            // battle byte known: nothing written.
+            val at = if (f.battle != 0L) f.battle else gbBattle
+            if (at == 0L) return
+            val battle = read(at, 1).firstOrNull()?.toInt()?.and(0xFF) ?: return
+            if (battle != 1 && battle != 2) return
+        }
         val now = read(f.sentPokes, f.width)
         val m = mask.toByte()
         if (now.size == f.width && now.all { it == m }) return

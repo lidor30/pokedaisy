@@ -47,6 +47,8 @@
 
 using namespace melonDS;
 
+static void expShareTick(void);   // EXP SHARE, after every frame (below)
+
 namespace {
 
 constexpr int SAVE_QUIET_FRAMES = 30;
@@ -75,6 +77,9 @@ struct Ds {
     int fieldBits = 0;                       // the field read after the last frame
     bool wildOff = false;                    // WILD ENCOUNTERS OFF (pk_nds_field.cpp holds the map's rates at 0)
     bool keepStartMenu = false;              // DS LAYOUT floats the X menu: it comes back after a screen left by touch
+    int expShare = 0;                        // EXP SHARE: 0 off, 1 SPLIT, 2 FULL EXP (expShareTick)
+    uint32_t expMask = 0;                    // the party slots that aren't eggs (sideGetExpMask's bits)
+    bool expPatched = false;                 // FULL EXP's patch is ours, so taking it out puts the game's back
     bool cpuBoost = false;                   // DS CPU BOOST: the ARM9 at twice the DS's clock (setArm9Shift)
     int menuLitFrames = 0;                   // frames this menu screen has been lit (its closing fade comes after)
     int scaleWant = 1;                       // DS RESOLUTION: 1 = the software renderer, 2-8 the GPU's (pk_nds_gl.h)
@@ -330,6 +335,7 @@ void pk_ndsm_run_frame(void)
     }
     ds->audioFrames = nds->SPU.ReadOutput(ds->audio.data(), (int) ds->audio.size() / 2);
     ds->fieldBits = pk_ndsm_field_bits();
+    expShareTick();
     pk_nds_call_frame(nds, ds->field);
     if (ds->wide) {
         // The overworld only: the field map on screen with nothing over it (a text box keeps it) - or a battle that's
@@ -620,6 +626,25 @@ void pk_ndsm_set_wild_off(bool off)
 void pk_ndsm_set_keep_start_menu(bool on)
 {
     if (ds) ds->keepStartMenu = on;
+}
+
+static void expWrite16(uint32_t a, uint16_t v)
+{
+    ds->nds->MainRAM[a & ds->nds->MainRAMMask] = (u8) v;
+    ds->nds->MainRAM[(a + 1) & ds->nds->MainRAMMask] = (u8) (v >> 8);
+    ds->nds->JIT.CheckAndInvalidate<0, ARMJIT_Memory::memregion_MainRAM>(a & ~3u);   // the JIT's copy of that code goes with it
+}
+
+// EXP SHARE (pk_nds_exp_share_tick): the battle's masks and FULL EXP's patch, after every frame.
+static void expShareTick(void)
+{
+    if (!ds || !ds->field) return;
+    ds->expPatched = pk_nds_exp_share_tick(ds->field, ds->expShare, ds->expMask, ds->expPatched, mainRead32, mainWrite32, expWrite16);
+}
+
+void pk_ndsm_set_exp_share(int mode, uint32_t mask)
+{
+    if (ds) { ds->expShare = mode; ds->expMask = mask; }
 }
 
 void pk_ndsm_set_cpu_boost(bool on)

@@ -546,6 +546,9 @@ void pk_ndsd_set_keep_start_menu(bool on)
 
 void pk_ndsd_set_cpu_boost(bool) {}
 
+// EXP SHARE: melonDS's alone (its FULL EXP patches the battle overlay's code, which DSperate's recompiler wouldn't see).
+void pk_ndsd_set_exp_share(int, uint32_t) {}
+
 int pk_ndsd_set_cheats(const uint32_t* words, int nWords, const int32_t* lengths, int nCheats)
 {
     if (!d) return -1;

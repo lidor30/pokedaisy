@@ -1573,6 +1573,12 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsCheats(JNIEnv* env, jobject thiz, jintArray
     return n;
 }
 
+// EXP SHARE on the DS (pk_nds.cpp's expShareTick): mode 0 off / 1 SPLIT / 2 FULL EXP, the party's non-egg slots. Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsExpShare(JNIEnv* env, jobject thiz, jint mode, jint mask) {
+    if (pk_nds_active()) pk_nds_set_exp_share((int) mode, (uint32_t) mask);
+}
+
 // INSTANT TEXT on the DS: our code into the game (pk_nds_code_write). Emu thread.
 JNIEXPORT jboolean JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsCodeWrite(JNIEnv* env, jobject thiz, jlong addr, jbyteArray bytes) {

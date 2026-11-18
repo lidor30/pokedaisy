@@ -153,8 +153,9 @@ class GameRuntime(
             fieldMovesReadable = false
             return
         }
-        if (!gba) return
+        // EXP SHARE's party in every game (a DS game's native side marks it too); the rest is the GBA's.
         options.observe(snapshot)
+        if (!gba) return
         telemetry.knownGMain()?.let { (addr, offset) -> FfMenuWatch.useKnownGMain(addr, offset) }
         if (snapshot.connected) FfMenuWatch.notePosition(snapshot.x, snapshot.y, snapshot.mapGroup, snapshot.mapNum, snapshot.inBattle)
     }

@@ -250,6 +250,9 @@ object MgbaCore {
     /** DS LAYOUT floats the X menu (one screen): it comes back after a menu screen left by touch, as after B (the game
      * closes it then: HeartGold / SoulSilver's menuInputState). Emu thread. */
     external fun pkNdsKeepStartMenu(on: Boolean)
+    /** EXP SHARE on the DS (Gen 4, melonDS: pk_nds.cpp's expShareTick): [mode] 0 off / 1 SPLIT / 2 FULL EXP, [mask] the
+     * party slots that aren't eggs. Emu thread. */
+    external fun pkNdsExpShare(mode: Int, mask: Int)
 
     /** Code of ours into a DS game ([com.pokedaisy.app.companion.data.DsInstantText]): main RAM or the spare ITCM, the JIT
      * told. False on DSperate. Emu thread. */

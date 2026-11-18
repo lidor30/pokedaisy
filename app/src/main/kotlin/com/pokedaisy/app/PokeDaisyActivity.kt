@@ -2886,6 +2886,7 @@ class PokeDaisyActivity : Activity() {
             applyFieldPrefs(this)
         }
         engine.playback.start(r.toOkioPath(), gameCode, crc.toLong(16), gba, tablesCrc.toLongOrNull(16) ?: 0L)
+        if (nds) syncDsExpShare()
         if ((gba || gameBoy) && romBlocked == null) {
             val current = engine
             current.gameOptions.start(r.toOkioPath(), gameBoy = gameBoy, configureWild = { flag, _ ->
@@ -6089,6 +6090,29 @@ class PokeDaisyActivity : Activity() {
         if (::engine.isInitialized) engine.ndsCore = if (dsperate) DsCore.CORE_DSPERATE else DsCore.CORE_MELONDS
     }
 
+    /** EXP SHARE on the DS: Gen 4's and Gen 5's US carts on melonDS (ExpShare.dsFind; none = N/A), into this game's
+     * options; again when DS CORE changes. */
+    private fun syncDsExpShare() {
+        val options = currentGameOptions() ?: return
+        if (!romIsNds || romBlocked != null) return
+        // Hacks that keep retail's header: their battle code isn't checked.
+        val hack = runCatching {
+            val path = romData!!.toOkioPath()
+            romCode == com.pokedaisy.app.companion.data.RenegadePlatinum.CODE && com.pokedaisy.app.companion.data.RenegadePlatinum.matches(path) ||
+                (romCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_BLACK2 || romCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_WHITE2) &&
+                com.pokedaisy.app.companion.data.Black2Redux.matches(path) ||
+                // hg-engine's Heartfelt Gold and Sacred Gold / Storm Silver keep the US HeartGold / SoulSilver header (rev 0):
+                // a battle engine of their own, where SPLIT would write HeartGold's BattleContext.
+                romCode == com.pokedaisy.app.companion.data.HeartfeltGold.CODE && com.pokedaisy.app.companion.data.HeartfeltGold.matches(path) ||
+                (romCode == com.pokedaisy.app.companion.data.SacredGold.CODE_SACRED_GOLD || romCode == com.pokedaisy.app.companion.data.SacredGold.CODE_STORM_SILVER) &&
+                com.pokedaisy.app.companion.data.SacredGold.matches(path)
+        }.getOrDefault(true)
+        val found = com.pokedaisy.app.companion.data.ExpShare.dsFind(romCode, romRev, dsperate, hack)
+        options.setExpFound(found)
+        Log.i("pokedaisy", "exp share: ${if (found != null) "found (DS)" else "not found"}")
+        syncExpShare()
+    }
+
     /** RESTART GAME (SETTINGS, and its hotkey): the game booted again from its save, the resume state dropped. */
     private fun restartGame() {
         if (coopRefuses()) return
@@ -6110,6 +6134,7 @@ class PokeDaisyActivity : Activity() {
         if (romIsNds) {
             val was = dsperate
             pickDsCore()
+            syncDsExpShare()
             if (was != dsperate) syncGameScreen()
         }
         engine.start(romData ?: r, save, null)

@@ -1590,6 +1590,8 @@ class EmulatorEngine(
                 MgbaCore.pkNdsKeepStartMenu(dsKeepStartMenu)
                 dsTextTick()
                 MgbaCore.pkNdsCpuBoost(ndsCpuBoost)
+                // EXP SHARE (Gen 4 / 5): the native side marks the battle's party and patches FULL EXP's division.
+                MgbaCore.pkNdsExpShare(gameOptions.dsExpShareMode, gameOptions.expSharePartyMask)
             }
             fieldState = when {
                 nds -> MgbaCore.pkFieldState(false, wildKeep)

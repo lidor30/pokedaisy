@@ -143,6 +143,26 @@ class GameOptionsTest {
         } finally { options.close() }
     }
 
+    @Test fun aDsGamesExpShareComesFromTheHostAndItsNativeSideMarksIt() {
+        val core = Core(); val options = GameOptions(core, { true })
+        val ds = ExpShare.Found(0, emptyList(), ds = true)
+        val mon = MonView(1, "test", 5, 10, 10, "", emptyList(), null)
+        var reads = 0
+        val read = { _: Long, _: Int -> reads++; byteArrayOf(0, 0) }
+        try {
+            options.setExpFound(ds)
+            assertSame(ds, options.discovery.exp)
+            options.setExpShare(options.discovery.exp, ExpShare.Mode.FULL)
+            options.observe(SnapshotView(connected = true, party = listOf(mon, mon.copy(isEgg = true), mon)))
+            assertEquals(ExpShare.Mode.FULL.id, options.dsExpShareMode); assertEquals(5, options.expSharePartyMask)
+            options.markExp(read) { _, _ -> fail("a DS game's party is marked natively") }
+            assertEquals(0, reads)
+            options.setExpShare(ds, ExpShare.Mode.OFF); assertEquals(0, options.dsExpShareMode)
+            // A GBA game's (or none) never reaches the native DS call.
+            options.setExpShare(ExpShare.Found(0x02001000, emptyList()), ExpShare.Mode.SPLIT); assertEquals(0, options.dsExpShareMode)
+        } finally { options.close() }
+    }
+
     @Test fun lateLevelCapWorkerCannotPublishAfterRetirement() = runBlocking {
         val queue = Channel<Runnable>(Channel.UNLIMITED)
         val dispatcher = object : CoroutineDispatcher() {

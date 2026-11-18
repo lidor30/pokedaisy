@@ -116,6 +116,10 @@ static u32 read32(u32 addr) { return nds->ARM9Read32(addr); }
 static void write32(u32 addr, u32 v) { nds->ARM9Write32(addr, v); }
 static int wildOff = 0;          // wildoff 1: WILD ENCOUNTERS OFF, the field read run every frame (pk_nds_field.cpp)
 static int battlesSeen = 0;      // battles started since wildoff (the field read's BATTLE bit going on)
+static void write16(u32 addr, uint16_t v) { nds->ARM9Write16(addr, v); }
+static int expShareMode = 0;     // expshare MODE MASK: EXP SHARE as the app runs it (pk_nds_exp_share_tick), every frame
+static uint32_t expShareMask = 0;
+static bool expSharePatched = false;
 
 static void onSave(PkNdsHost*, const uint8_t* data, uint32_t len, uint32_t, uint32_t)
 {
@@ -300,6 +304,7 @@ static void runFrames(int n, u32 keys)
         if (auto* cart = nds->NDSCartSlot.GetCart()) {
             if (const PkNdsFieldGame* g = pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength())) {
                 int bits = pk_nds_field_state(g, read32, write32, wildOff);
+                expSharePatched = pk_nds_exp_share_tick(g, expShareMode, expShareMask, expSharePatched, read32, write32, write16);
                 pk_nds_call_frame(nds, g);
                 battle = (bits & PK_NDS_FIELD_BATTLE) != 0;
                 if (battle && !wasBattle) battlesSeen++;
@@ -807,6 +812,11 @@ int main(int argc, char** argv)
             printf("widecount frame %llu: above %d %d %d, beside %d %d, below %d %d %d polygons\n",
                 (unsigned long long) frameCount, c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]);
             fflush(stdout);
+        } else if (!strcmp(cmd, "expshare")) {
+            // expshare MODE MASK: EXP SHARE from now on (0 off, 1 SPLIT, 2 FULL EXP; MASK the party slots), as the app runs it
+            expShareMode = (int) num(a);
+            expShareMask = num(b);
+            printf("expshare: mode %d mask %X\n", expShareMode, expShareMask);
         } else if (!strcmp(cmd, "wildoff")) {
             // wildoff 1 / 0: WILD ENCOUNTERS OFF / back on; battles counts the battles started since
             wildOff = (int) num(a);
