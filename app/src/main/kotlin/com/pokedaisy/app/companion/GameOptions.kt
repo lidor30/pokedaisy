@@ -55,6 +55,8 @@ class GameOptions internal constructor(
     private val expMode = atomic(ExpShare.Mode.OFF)
     private val expMetadata = atomic<ExpShare.Found?>(null)
     private val partyMask = atomic(0)
+    /** A Game Boy Gen 2 game's battle byte (wBattleMode) for [markExp]'s gate; 0 = none known. */
+    private val gbBattle = atomic(0L)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val discovery: Discovery get() { revision; return found.value }
     val wildFlagFound: Boolean get() { revision; return allowed() && wildAvailable.value }
@@ -120,7 +122,14 @@ class GameOptions internal constructor(
     /** Fresh samples and workers belong to this game; only native reads/writes are supplied by the hosts. */
     fun observe(snapshot: SnapshotView) {
         if (closed.value || !allowed()) return
-        partyMask.value = if (snapshot.connected) ExpShare.maskOf(snapshot.party) else 0
+        val gen2 = snapshot.game.isGen2
+        // Gen 2 pays a held Exp. Share in a pass of its own: GiveExperiencePoints run again with the participants byte set to
+        // the holders, then put back. A per-frame mark would overwrite that pass, so no mark while one is held (pokegold /
+        // pokecrystal's EXP_SHARE, 0x39; a hack that numbers it otherwise only loses this guard).
+        val holdsExpShare = gen2 && snapshot.party.any { !it.isEgg && it.heldItemId == GEN2_EXP_SHARE }
+        partyMask.value = if (snapshot.connected && !holdsExpShare) ExpShare.maskOf(snapshot.party) else 0
+        // Gen 2's battle byte, from the running game's config (Gen 1's comes with the ROM's own [ExpShare.Found.battle]).
+        gbBattle.value = if (snapshot.connected && gen2) activeGen2.battleMode else 0L
         val source = found.value.cap ?: desired.value.cap ?: return
         if (!snapshot.connected || capBosses.value == false) return
         if (!capEnabled.value && capBosses.value != null) return
@@ -145,14 +154,14 @@ class GameOptions internal constructor(
     fun markExp(read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean) {
         if (!expShareActive || partyMask.value == 0) return
         // A DS game's are marked by its native side ([dsExpShareMode]).
-        expMetadata.value?.takeIf { !it.ds }?.let { metadata -> runCatching { ExpShare.mark(metadata, partyMask.value, read, write) } }
+        expMetadata.value?.takeIf { !it.ds }?.let { metadata -> runCatching { ExpShare.mark(metadata, partyMask.value, read, write, gbBattle.value) } }
     }
 
     fun resetMetadata() {
         if (closed.value) return
         cancelDiscovery()
         found.value = Discovery(); desired.value = Patches(); wildAvailable.value = false
-        expMetadata.value = null; expMode.value = ExpShare.Mode.OFF; partyMask.value = 0
+        expMetadata.value = null; expMode.value = ExpShare.Mode.OFF; partyMask.value = 0; gbBattle.value = 0L
         capBosses.value = null; capNow.value = null; capEnabled.value = false
         HmFree.active = false; revision++
     }
@@ -237,3 +246,6 @@ class GameOptions internal constructor(
         }
     }
 }
+
+/** pokegold / pokecrystal's EXP_SHARE item id (constants/item_constants.asm). */
+private const val GEN2_EXP_SHARE = 0x39

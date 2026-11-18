@@ -6086,12 +6086,17 @@ class PokeDaisyActivity : Activity() {
     private fun syncDsExpShare() {
         val options = currentGameOptions() ?: return
         if (!romIsNds || romBlocked != null) return
-        // Renegade Platinum and the Redux builds keep retail's header: their battle code isn't checked.
+        // Hacks that keep retail's header: their battle code isn't checked.
         val hack = runCatching {
             val path = romData!!.toOkioPath()
             romCode == com.pokedaisy.app.companion.data.RenegadePlatinum.CODE && com.pokedaisy.app.companion.data.RenegadePlatinum.matches(path) ||
                 (romCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_BLACK2 || romCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_WHITE2) &&
-                com.pokedaisy.app.companion.data.Black2Redux.matches(path)
+                com.pokedaisy.app.companion.data.Black2Redux.matches(path) ||
+                // hg-engine's Heartfelt Gold and Sacred Gold / Storm Silver keep the US HeartGold / SoulSilver header (rev 0):
+                // a battle engine of their own, where SPLIT would write HeartGold's BattleContext.
+                romCode == com.pokedaisy.app.companion.data.HeartfeltGold.CODE && com.pokedaisy.app.companion.data.HeartfeltGold.matches(path) ||
+                (romCode == com.pokedaisy.app.companion.data.SacredGold.CODE_SACRED_GOLD || romCode == com.pokedaisy.app.companion.data.SacredGold.CODE_STORM_SILVER) &&
+                com.pokedaisy.app.companion.data.SacredGold.matches(path)
         }.getOrDefault(true)
         val found = com.pokedaisy.app.companion.data.ExpShare.dsFind(romCode, romRev, dsperate, hack)
         options.setExpFound(found)

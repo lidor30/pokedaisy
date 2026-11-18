@@ -68,8 +68,12 @@ object GbGamePatches {
             val cp = at + s.size - 3
             // C000-CFFF is plain WRAM; D000-DFFF read in WRAM bank 1 (a Color cart may page it), as the readers do.
             val addr = if (flags >= 0xD000) 0x10000L or flags.toLong() else flags.toLong()
+            // Gen 1 (EXP1: DivideExpDataByNumMonsGainingExp) keeps wIsInBattle right before wPartyGainExpFlags in every
+            // build of pokered's WRAM (GbExpShareGateTest checks it against each config); Gen 2's battle byte isn't next to
+            // its participants', so the host hands it to [ExpShare.mark] from the game's config.
+            val battle = if (s === EXP1) addr - 1 else 0L
             if (flags !in 0xC000..0xDFFF) null
-            else ExpShare.Found(addr, listOf(InstantText.Write(TAG + cp, rom.copyOfRange(cp, cp + 2), byteArrayOf(0xC9.toByte(), 0))), width = 1)
+            else ExpShare.Found(addr, listOf(InstantText.Write(TAG + cp, rom.copyOfRange(cp, cp + 2), byteArrayOf(0xC9.toByte(), 0))), width = 1, battle = battle)
         }
         return Found(tms, text, beep, poisonPatch, exp)
     }
