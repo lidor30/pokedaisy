@@ -891,12 +891,17 @@ internal fun paperFilled(img: com.pokedaisy.app.companion.data.RomArt.Image): co
  * 56-pixel box scaled to [size] for every Pokémon alike.
  */
 @Composable
-internal fun MonIcon(mon: MonView?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) {
-    val pictures = LocalPartyPictures.current?.takeIf { mon != null && !mon.isEgg && mon.species > 0 }
-    if (mon == null || pictures == null) { SpeciesIcon(mon?.iconAsset, size, modifier); return }
+internal fun MonIcon(mon: MonView?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) =
+    SpeciesPicture(mon?.species?.takeIf { !mon.isEgg } ?: 0, mon?.iconAsset, size, modifier, fit)
+
+/** [MonIcon] by species id: [asset] (its party icon) without PARTY PICTURES or a [species] of 0. */
+@Composable
+internal fun SpeciesPicture(species: Int, asset: String?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) {
+    val pictures = LocalPartyPictures.current?.takeIf { species > 0 }
+    if (pictures == null) { SpeciesIcon(asset, size, modifier); return }
     val density = LocalDensity.current
     val pic = rememberRomBitmap(
-        pictures, mon.species,
+        pictures, species,
         { t, sp -> partyPicture(t, sp, cached = true, topLeft = fit) }, { t, sp -> partyPicture(t, sp, cached = false, topLeft = fit) },
     )
     val sizePx = with(density) { size.toPx() }

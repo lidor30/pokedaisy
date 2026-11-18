@@ -1759,7 +1759,7 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             // An unseen Pokémon stays hidden, like GUIDE > HERE's.
                             Box(Modifier.size(icon), contentAlignment = Alignment.Center) {
-                                if (w.seen) HudSpecies(spriteAsset("pokemon", w.species), icon) else GbaText("?", c.muted, c.shadow, m)
+                                if (w.seen) { if (LocalPartyPictures.current != null) SpeciesPicture(w.species, null, icon, fit = true) else HudSpecies(spriteAsset("pokemon", w.species), icon) } else GbaText("?", c.muted, c.shadow, m)
                             }
                             Spacer(Modifier.width(u * 2))
                             GbaText(if (w.seen) speciesName(w.species) else "???", c.text, c.shadow, m, Modifier.weight(1f))

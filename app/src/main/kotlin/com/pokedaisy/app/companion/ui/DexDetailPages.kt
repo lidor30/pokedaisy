@@ -168,7 +168,7 @@ private fun FamilyMon(species: Int, national: Int, current: Int, m: GbaTextMetri
             .soundClickable(interactionSource = noRipple, indication = null, enabled = !here && national > 0) { onOpen(national) },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SpeciesIcon(spriteAsset("pokemon", species), size = m.lineHeight * 1.5f)
+        SpeciesPicture(species, spriteAsset("pokemon", species), size = m.lineHeight * 1.5f, fit = true)
         Spacer(Modifier.width(m.u * 2))
         GbaText(
             speciesName(species),
