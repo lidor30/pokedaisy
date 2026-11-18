@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 502fafb03..a8c847c3a 100644
+index 502fafb..a8c847c 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -223,7 +223,7 @@ if (CITRA_USE_PRECOMPILED_HEADERS)
@@ -12,7 +12,7 @@ index 502fafb03..a8c847c3a 100644
      file(COPY hooks/pre-commit
          DESTINATION ${PROJECT_SOURCE_DIR}/.git/hooks)
 diff --git a/CMakeModules/GenerateBuildInfo.cmake b/CMakeModules/GenerateBuildInfo.cmake
-index a7405e3b8..ca9305aed 100644
+index a7405e3..ca9305a 100644
 --- a/CMakeModules/GenerateBuildInfo.cmake
 +++ b/CMakeModules/GenerateBuildInfo.cmake
 @@ -8,14 +8,19 @@ macro(generate_build_info)
@@ -51,7 +51,7 @@ index a7405e3b8..ca9305aed 100644
          endif()
      endif()
 diff --git a/CMakeModules/GenerateSCMRev.cmake b/CMakeModules/GenerateSCMRev.cmake
-index ddc6249ca..7155f5f90 100644
+index ddc6249..7155f5f 100644
 --- a/CMakeModules/GenerateSCMRev.cmake
 +++ b/CMakeModules/GenerateSCMRev.cmake
 @@ -1,10 +1,10 @@
@@ -74,7 +74,7 @@ index ddc6249ca..7155f5f90 100644
 -configure_file("${CMAKE_SOURCE_DIR}/src/common/scm_rev.cpp.in" "scm_rev.cpp" @ONLY)
 +configure_file("${PROJECT_SOURCE_DIR}/src/common/scm_rev.cpp.in" "scm_rev.cpp" @ONLY)
 diff --git a/externals/CMakeLists.txt b/externals/CMakeLists.txt
-index a63ee57d7..b6c80687d 100644
+index a63ee57..b6c8068 100644
 --- a/externals/CMakeLists.txt
 +++ b/externals/CMakeLists.txt
 @@ -26,15 +26,15 @@ if (USE_SYSTEM_BOOST)
@@ -128,7 +128,7 @@ index a63ee57d7..b6c80687d 100644
      endif()
  
 diff --git a/externals/cmake-modules/GetGitRevisionDescription.cmake b/externals/cmake-modules/GetGitRevisionDescription.cmake
-index 087f5deea..b129af09c 100644
+index 087f5de..b129af0 100644
 --- a/externals/cmake-modules/GetGitRevisionDescription.cmake
 +++ b/externals/cmake-modules/GetGitRevisionDescription.cmake
 @@ -94,7 +94,7 @@ function(git_branch_name _var)
@@ -150,7 +150,7 @@ index 087f5deea..b129af09c 100644
  		res
  		OUTPUT_VARIABLE
 diff --git a/src/common/CMakeLists.txt b/src/common/CMakeLists.txt
-index b8659892d..76f3a894d 100644
+index b865989..76f3a89 100644
 --- a/src/common/CMakeLists.txt
 +++ b/src/common/CMakeLists.txt
 @@ -109,7 +109,7 @@ add_library(citra_common STATIC EXCLUDE_FROM_ALL
@@ -163,7 +163,7 @@ index b8659892d..76f3a894d 100644
  if (UNIX AND NOT APPLE)
    target_sources(citra_common PRIVATE
 diff --git a/src/core/memory.cpp b/src/core/memory.cpp
-index b5eb9b829..bbdc0c682 100644
+index b5eb9b8..510efce 100644
 --- a/src/core/memory.cpp
 +++ b/src/core/memory.cpp
 @@ -682,6 +682,10 @@ T MemorySystem::Read(const std::shared_ptr<PageTable>& page_table, const VAddr v
@@ -189,3 +189,38 @@ index b5eb9b829..bbdc0c682 100644
  
  #ifdef ENABLE_GDBSTUB
          if (GDBStub::CheckBreakpoint(vaddr, sizeof(T), GDBStub::BreakpointType::Write)) {
+@@ -892,10 +901,9 @@ std::string MemorySystem::ReadCString(VAddr vaddr, std::size_t max_length) {
+ }
+ 
+ MemorySystem::PhysMemRegionInfo MemorySystem::GetPhysMemRegionInfo(PAddr address) {
+-    if (address >= phys_mem_region_info_cache.region_start &&
+-        address < phys_mem_region_info_cache.region_end) {
+-        return phys_mem_region_info_cache;
+-    }
++    // PokeDaisy: no shared cache - the software renderer's worker threads call this at once, and one thread's half
++    // written cache gave another a region's start with another region's memory (host crashes in Pokemon's battles).
++    PhysMemRegionInfo phys_mem_region_info_cache{};
+ 
+     constexpr std::array memory_areas = {
+         std::make_pair(VRAM_PADDR, VRAM_SIZE),
+diff --git a/src/video_core/renderer_software/sw_rasterizer.cpp b/src/video_core/renderer_software/sw_rasterizer.cpp
+index a64c951..36989f3 100644
+--- a/src/video_core/renderer_software/sw_rasterizer.cpp
++++ b/src/video_core/renderer_software/sw_rasterizer.cpp
+@@ -561,6 +561,16 @@ std::array<Common::Vec4<u8>, 4> RasterizerSoftware::TextureColor(
+             const u8* texture_data = memory.GetPhysicalPointer(texture_address);
+             const auto info = TextureInfo::FromPicaRegister(texture.config, texture.format);
+ 
++            // PokeDaisy: a texture whose end lies outside the console's memory reads nothing (Pokemon's battles and
++            // Sun / Moon's field crashed the host here, reading past the mapped memory).
++            const u64 texture_bytes = static_cast<u64>(info.stride) * ((info.height + 7) / 8);
++            if (texture_data == nullptr || texture_bytes == 0 ||
++                !memory.IsValidPhysicalAddress(static_cast<PAddr>(texture_address + texture_bytes - 1)) ||
++                memory.GetPhysicalPointer(static_cast<PAddr>(texture_address + texture_bytes - 1)) !=
++                    texture_data + texture_bytes - 1) {
++                texture_color[i] = Common::MakeVec<u8>(0, 0, 0, 0);
++                continue;
++            }
+             // TODO: Apply the min and mag filters to the texture
+             texture_color[i] = LookupTexture(texture_data, s, t, info);
+         }

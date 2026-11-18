@@ -11,6 +11,7 @@ object N3dsCompanionData {
      * there: the PARTY tab and the HUD's summary. */
     fun party(
         sample: Gen6Reader.Sample, text: Gen6Text?, moves: List<Gen6Moves.Move>? = null, personal: List<IntArray>? = null,
+        layout: N3dsLayout = N3dsLayout.XY,
     ): List<MonView> = sample.party.map { m ->
         val species = text?.species?.getOrNull(m.species) ?: "#${m.species}"
         val types = if (m.isEgg) null else personal?.getOrNull(m.species)
@@ -23,7 +24,7 @@ object N3dsCompanionData {
             maxHp = m.maxHp,
             status = if (m.hp == 0) "FNT" else statusLabel(m.status.toLong() and 0xFFFFFFFFL),
             types = types?.distinct()?.mapNotNull { Gen6Moves.TYPES.getOrNull(it) }.orEmpty(),
-            iconAsset = Gen6IconTable.index(m.species, m.form, m.female)?.let(Gen6Icons::asset),
+            iconAsset = layout.iconIndex(m.species, m.form, m.female)?.let(layout::iconAsset),
             genderSymbol = when {
                 m.genderless -> com.pokedaisy.app.companion.data.GENDER_SYMBOL_NONE
                 m.female -> com.pokedaisy.app.companion.data.GENDER_SYMBOL_FEMALE
@@ -73,7 +74,7 @@ object N3dsCompanionData {
      * one is given (the strip's verdicts: BATTLE HINTS decides whether they show). */
     fun battleMon(
         mon: Gen6Reader.BattleMon, text: Gen6Text?, moves: List<Gen6Moves.Move>?, personal: List<IntArray>?,
-        foe: Gen6Reader.BattleMon? = null,
+        foe: Gen6Reader.BattleMon? = null, layout: N3dsLayout = N3dsLayout.XY,
     ): MonView {
         val types = personal?.getOrNull(mon.species)
         val foeTypes = foe?.let { personal?.getOrNull(it.species) }
@@ -86,7 +87,7 @@ object N3dsCompanionData {
             maxHp = mon.maxHp,
             status = if (mon.hp == 0) "FNT" else "",
             types = types?.distinct()?.mapNotNull { Gen6Moves.TYPES.getOrNull(it) }.orEmpty(),
-            iconAsset = Gen6IconTable.index(mon.species, 0, false)?.let(Gen6Icons::asset),
+            iconAsset = layout.iconIndex(mon.species, 0, false)?.let(layout::iconAsset),
             moves = mon.moves.map { m ->
                 val data = moves?.getOrNull(m.id)
                 // A status move (category 2, no power) has no multiplier, as on the other games' cards.
@@ -109,14 +110,14 @@ object N3dsCompanionData {
 
     /** A zone's wild Pokemon ([Gen6Wild]) for the HUD: per way of meeting them, each species once (its slots' chances
      * added, its levels' range), most common first. */
-    fun wild(tables: List<Gen6Wild.Table>, text: Gen6Text?): List<com.pokedaisy.app.companion.ui.XyWildRow> = tables.flatMap { t ->
+    fun wild(tables: List<Gen6Wild.Table>, text: Gen6Text?, layout: N3dsLayout = N3dsLayout.XY): List<com.pokedaisy.app.companion.ui.XyWildRow> = tables.flatMap { t ->
         t.slots.groupBy { it.species }.map { (species, slots) ->
             // Forms 30 / 31 are "any" (Scatterbug's patterns): the plain icon.
             val form = slots.first().form.takeIf { it < 30 } ?: 0
             com.pokedaisy.app.companion.ui.XyWildRow(
                 method = t.method,
                 name = text?.species?.getOrNull(species) ?: "#$species",
-                iconAsset = Gen6IconTable.index(species, form, false)?.let(Gen6Icons::asset),
+                iconAsset = layout.iconIndex(species, form, false)?.let(layout::iconAsset),
                 minLevel = slots.minOf { it.minLevel },
                 maxLevel = slots.maxOf { it.maxLevel },
                 percent = slots.sumOf { it.percent },

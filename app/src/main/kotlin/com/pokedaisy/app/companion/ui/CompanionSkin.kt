@@ -147,6 +147,72 @@ object CompanionSkins {
         ),
     )
 
+    /** Omega Ruby / Alpha Sapphire: the X menu's light grey panels in their dark grey frame (#5C5C5C), dark text, the
+     * PlayNav's orange (#FFAA44) for values and rims; smooth like X's (sampled headless, 2026-11-17). */
+    val POKEMON_ORAS = CompanionSkin(
+        id = "pokemon-oras",
+        smooth = true,
+        font = FontFamily.SansSerif,
+        fontScale = 0.82f,
+        shadow = SkinShadow.SOFT,
+        gradientFaces = true,
+        colors = SkinColors(
+            titleLayers = listOf(Color(0xFF5C5C5C) to 1, Color(0xFFFFAA44) to 2),
+            titleFill = Color(0xFFF7F7FA),
+            titleText = Color(0xFF2A2A2A),
+            titleShadow = Color(0x33000000),
+            listLayers = listOf(Color(0xFF5C5C5C) to 1, Color(0xFF9797A3) to 2, Color(0xFFF2F2F6) to 1),
+            listFill = Color(0xFFE6E6EE),
+            rowSelected = Color(0xFFFFFFFF),
+            label = Color(0xFF353535),
+            labelShadow = Color(0x26000000),
+            value = Color(0xFFD9700E),
+            valueShadow = Color(0x26000000),
+            tabSelectedFill = Color(0xFFFFFFFF),
+            tabIdleFill = Color(0xFFDADAE6),
+            onBackdrop = Color(0xFFFFFFFF),
+            onBackdropShadow = Color(0xFF4A4A52),
+            muted = Color(0xFF6E6E78),
+            mutedShadow = Color(0x1A000000),
+            divider = Color(0xFFC4C4CE),
+            frameDark = Color(0xFF5C5C5C),
+            frameLight = Color(0xFFFFAA44),
+        ),
+    )
+
+    /** Sun / Moon: the X menu's indigo bands (#2A3B90, #5768EC) round white rows, dark text, the menu's cyan-blue for
+     * values (sampled headless, 2026-11-17). */
+    val POKEMON_SM = CompanionSkin(
+        id = "pokemon-sm",
+        smooth = true,
+        font = FontFamily.SansSerif,
+        fontScale = 0.82f,
+        shadow = SkinShadow.SOFT,
+        gradientFaces = true,
+        colors = SkinColors(
+            titleLayers = listOf(Color(0xFF2A3B90) to 1, Color(0xFF5768EC) to 2),
+            titleFill = Color(0xFFF7FCFF),
+            titleText = Color(0xFF2A2A2A),
+            titleShadow = Color(0x33000000),
+            listLayers = listOf(Color(0xFF2A3B90) to 1, Color(0xFF5768EC) to 2, Color(0xFFEFFAFF) to 1),
+            listFill = Color(0xFFE2F4FA),
+            rowSelected = Color(0xFFFFFFFF),
+            label = Color(0xFF373737),
+            labelShadow = Color(0x26000000),
+            value = Color(0xFF0B86C2),
+            valueShadow = Color(0x26000000),
+            tabSelectedFill = Color(0xFFFFFFFF),
+            tabIdleFill = Color(0xFFC6E9F4),
+            onBackdrop = Color(0xFFFFFFFF),
+            onBackdropShadow = Color(0xFF21318C),
+            muted = Color(0xFF5E7480),
+            mutedShadow = Color(0x1A000000),
+            divider = Color(0xFFA9CFE0),
+            frameDark = Color(0xFF2A3B90),
+            frameLight = Color(0xFF5768EC),
+        ),
+    )
+
     // The DS and GBA skins (2026-11-16): each family's colours sampled off its own menus, headless (nds_dump / mgba_dump on
     // the player's saves): windows, text, buttons and the HUD's panels. They keep the app's pixel corners, Pixel Operator and
     // the GBA shadow (the user's rule for the HUD: the font stays Pixel Operator on GBA and DS).
@@ -422,6 +488,8 @@ object CompanionSkins {
      * that run as it ([GameKind.FIRERED] / [GameKind.EMERALD] / the DS kinds) wear its skin; the others keep [PIXEL]. */
     fun forGame(game: GameKind?, headerCode: String = romHeaderCode): CompanionSkin = when (game) {
         GameKind.POKEMON_X, GameKind.POKEMON_Y -> POKEMON_XY
+        GameKind.POKEMON_OMEGA_RUBY, GameKind.POKEMON_ALPHA_SAPPHIRE -> POKEMON_ORAS
+        GameKind.POKEMON_SUN, GameKind.POKEMON_MOON -> POKEMON_SM
         GameKind.HEARTGOLD, GameKind.SOULSILVER -> HEARTGOLD
         GameKind.PLATINUM -> PLATINUM
         GameKind.BLACK, GameKind.WHITE -> UNOVA

@@ -397,6 +397,31 @@ private val XyBag = BagPalette(
     iconBox = Color(0xFFE6EEDF), iconBoxEdge = Color(0xFF8ED46A),
 )
 
+/** Omega Ruby / Alpha Sapphire: the X menu's light grey panels in their dark grey frame, the PlayNav's orange for the
+ * tabs and the cursor (sampled headless, 2026-11-17). */
+private val OrasBag = BagPalette(
+    panelLayers = listOf(Color(0xFF5C5C5C) to 1, Color(0xFF9797A3) to 2, Color(0xFFDFDFE1) to 1),
+    tabLayerCount = 2,
+    fill = Color(0xFFF6F6F9), divider = Color(0xFFDADAE6),
+    text = Color(0xFF353535), textShadow = Color(0x22000000),
+    tabText = Color(0xFF353535), tabTextShadow = Color(0x22000000), tabUnderline = Color(0xFFFFAA44),
+    descLayers = listOf(Color(0xFF5C5C5C) to 1), descFill = Color(0xFF4A4A52),
+    descText = Color(0xFFFFFFFF), descTextShadow = Color(0xFF222222),
+    iconBox = Color(0xFFECECF2), iconBoxEdge = Color(0xFFFFAA44),
+)
+
+/** Sun / Moon: the X menu's indigo bands and its cyan, white rows (sampled headless, 2026-11-17). */
+private val SmBag = BagPalette(
+    panelLayers = listOf(Color(0xFF2A3B90) to 1, Color(0xFF5768EC) to 2, Color(0xFF435CB7) to 2),
+    tabLayerCount = 2,
+    fill = Color(0xFFF5FCFF), divider = Color(0xFFC6E6F2),
+    text = Color(0xFF373737), textShadow = Color(0x22000000),
+    tabText = Color(0xFFFFFFFF), tabTextShadow = Color(0xFF21318C), tabUnderline = Color(0xFF00CACD),
+    descLayers = listOf(Color(0xFF2A3B90) to 1), descFill = Color(0xFF21318C),
+    descText = Color(0xFFFFFFFF), descTextShadow = Color(0xFF111430),
+    iconBox = Color(0xFFE6F7FF), iconBoxEdge = Color(0xFF00CACD),
+)
+
 private val SwordShieldBag = BagPalette(
     panelLayers = listOf(Color(0xFF393939) to 2, Color(0xFFA50018) to 1, Color(0xFFD60021) to 3, Color(0xFF292929) to 2),
     tabLayerCount = 2,
@@ -792,6 +817,8 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.MARIOMON -> MariomonBag
     GameKind.MONOMYTH -> MonomythBag
     GameKind.POKEMON_X, GameKind.POKEMON_Y -> XyBag
+    GameKind.POKEMON_OMEGA_RUBY, GameKind.POKEMON_ALPHA_SAPPHIRE -> OrasBag
+    GameKind.POKEMON_SUN, GameKind.POKEMON_MOON -> SmBag
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> hgssBags.getOrElse(hgssPocket) { HeartGoldBag }
     GameKind.PLATINUM -> PlatinumBag
     GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> BlackBag

@@ -65,6 +65,10 @@ const std::map<std::string, int> BUTTONS = {
     {"HOME", Settings::NativeButton::Home},
 };
 
+// The circle pad, pushed all the way (Sun / Moon walk with it alone: their D-pad only turns the player), as keyboard
+// keys of their own through Azahar's analog_from_button.
+const std::map<std::string, int> PAD = {{"CUP", 200}, {"CDOWN", 201}, {"CLEFT", 202}, {"CRIGHT", 203}};
+
 std::vector<int> held;
 
 void setKeys(const std::string& spec) {
@@ -75,13 +79,15 @@ void setKeys(const std::string& spec) {
     std::stringstream in(spec);
     std::string name;
     while (std::getline(in, name, ',')) {
-        auto it = BUTTONS.find(name);
-        if (it == BUTTONS.end()) {
+        int code = -1;
+        if (auto it = BUTTONS.find(name); it != BUTTONS.end()) code = it->second;
+        else if (auto p = PAD.find(name); p != PAD.end()) code = p->second;
+        if (code < 0) {
             std::fprintf(stderr, "unknown key %s\n", name.c_str());
             continue;
         }
-        keyboard->PressKey(it->second);
-        held.push_back(it->second);
+        keyboard->PressKey(code);
+        held.push_back(code);
     }
 }
 
@@ -155,7 +161,27 @@ struct SaveFormat {
 constexpr SaveFormat SAVE_FORMATS[] = {
     {0x0004000000055D00, 0x40000, 1, 1, 1}, // Pokemon X (USA), seen when it formats a new save
     {0x0004000000055E00, 0x40000, 1, 1, 1}, // Pokemon Y (USA): X's save format
+    {0x000400000011C400, 0x40000, 1, 1, 1}, // Pokemon Omega Ruby (USA), seen when it formats a new save
+    {0x000400000011C500, 0x40000, 1, 1, 1}, // Pokemon Alpha Sapphire (USA): Omega Ruby's
+    {0x0004000000164800, 0x40000, 1, 1, 1}, // Pokemon Sun (USA), seen when it formats a new save
+    {0x0004000000175E00, 0x40000, 1, 1, 1}, // Pokemon Moon (USA): Sun's
 };
+
+// Each game's static module (CRS) header, where `modules` starts (found with `findcrs`).
+struct ModuleRoot {
+    u64 programId;
+    u32 root;
+};
+constexpr ModuleRoot MODULE_ROOTS[] = {
+    {0x000400000011C400, 0x01307000}, // Omega Ruby
+    {0x000400000011C500, 0x01307000}, // Alpha Sapphire
+    {0x0004000000164800, 0x00869000}, // Sun
+    {0x0004000000175E00, 0x00869000}, // Moon
+};
+
+// The static module's (CRS) header, where the loaded modules' chain starts: Pokemon X / Y's by default, `modroot`
+// sets another game's (`findcrs` looks for it).
+u32 modRoot = 0x012B6000;
 
 u32 number(const std::string& s) {
     return static_cast<u32>(std::stoul(s, nullptr, 0));
@@ -167,10 +193,14 @@ u32 number(const std::string& s) {
 // 0x012B6000), each header's name at +0x84 and the next one at +0x88. Each name after a space.
 static std::string moduleNames(Memory::MemorySystem& mem, u32 root) {
     std::string out;
-    if (mem.Read32(root + 0x80) != 0x304F5243) return out;
+    // Only mapped pages: the static module's page isn't there until the game loads it (Sun's walk crashed reading it).
+    auto proc = process();
+    auto ok = [&](u32 a) { return proc && mem.IsValidVirtualAddress(*proc, a) && mem.IsValidVirtualAddress(*proc, a + 0x88); };
+    if (!ok(root) || mem.Read32(root + 0x80) != 0x304F5243) return out;
     u32 m = mem.Read32(root + 0x88);
-    for (int n = 0; n < 32 && m != 0; n++) {
+    for (int n = 0; n < 32 && m != 0 && ok(m); n++) {
         const u32 name = mem.Read32(m + 0x84);
+        if (!ok(name)) break;
         std::string nm;
         for (u32 i = 0; i < 48; i++) {
             const char c = static_cast<char>(mem.Read8(name + i));
@@ -207,7 +237,7 @@ int main(int argc, char** argv) {
     Common::Log::SetGlobalFilter(filter);
 
     Settings::values.graphics_api = Settings::GraphicsAPI::Software;
-    Settings::values.use_cpu_jit = true;
+    Settings::values.use_cpu_jit = std::getenv("N3DS_INTERP") == nullptr; // N3DS_INTERP=1: the interpreter (Sun / Moon crash the JIT on the Mac as the field loads)
     Settings::values.is_new_3ds = new3ds;
     Settings::values.frame_limit = 0;              // flat out
     Settings::values.use_disk_shader_cache = false;
@@ -216,6 +246,8 @@ int main(int argc, char** argv) {
     for (const auto& [name, code] : BUTTONS)
         Settings::values.current_input_profile.buttons[code] = InputCommon::GenerateKeyboardParam(code);
     Settings::values.current_input_profile.touch_device = "engine:emu_window"; // the window's touches
+    Settings::values.current_input_profile.analogs[Settings::NativeAnalog::CirclePad] =
+        InputCommon::GenerateAnalogParamFromKeys(200, 201, 202, 203, 204, 1.0f);
     InputCommon::Init();
     // Every system module emulated (HLE), none loaded from a console's NAND (there's none): a front end fills this
     // from its config, and Service::Init looks each one up.
@@ -253,6 +285,8 @@ int main(int argc, char** argv) {
         std::ofstream(saveFolder.parent_path().parent_path() / "00000001.metadata", std::ios::binary)
             .write(reinterpret_cast<const char*>(meta), sizeof meta);
     }
+    for (const auto& r : MODULE_ROOTS)
+        if (r.programId == programId) modRoot = r.root;
     std::printf("program %016llx, save folder %s\n", static_cast<unsigned long long>(programId), saveFolder.c_str());
 
     HeadlessWindow emuWindow;
@@ -330,31 +364,31 @@ int main(int argc, char** argv) {
             const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
             std::printf("bench %u frames %.2f ms a frame\n", n, ms / n);
         } else if (cmd == "modules") {
-            std::printf("modules%s\n", moduleNames(mem, a.empty() ? 0x012B6000 : number(a[0])).c_str());
+            std::printf("modules%s\n", moduleNames(mem, a.empty() ? modRoot : number(a[0])).c_str());
         } else if (cmd == "waitmod" || cmd == "waitnomod") {
             // Frames until a module of that name is loaded (waitnomod: until none is), at most N (default 3000).
             const std::string want = ' ' + a.at(0) + ' ';
             const u32 most = a.size() > 1 ? number(a[1]) : 3000;
             u32 n = 0;
             for (; n < most; n++) {
-                const bool has = (moduleNames(mem, 0x012B6000) + ' ').find(want) != std::string::npos;
+                const bool has = (moduleNames(mem, modRoot) + ' ').find(want) != std::string::npos;
                 if (has == (cmd == "waitmod")) break;
                 runFrames(1);
             }
             std::printf("%s %s %s after %u frames:%s\n", cmd.c_str(), a[0].c_str(), n < most ? "ok" : "TIMED OUT", n,
-                moduleNames(mem, 0x012B6000).c_str());
+                moduleNames(mem, modRoot).c_str());
         } else if (cmd == "pressuntil") {
             // pressuntil KEYS MODULE [N]: KEYS for 2 frames every 60 until MODULE is loaded, at most N frames (3000).
             const std::string want = ' ' + a.at(1) + ' ';
             const u32 most = a.size() > 2 ? number(a[2]) : 3000;
             u32 n = 0;
-            for (; n < most && (moduleNames(mem, 0x012B6000) + ' ').find(want) == std::string::npos; n++) {
+            for (; n < most && (moduleNames(mem, modRoot) + ' ').find(want) == std::string::npos; n++) {
                 setKeys(n % 60 < 2 ? a[0] : "NONE");
                 runFrames(1);
             }
             setKeys("NONE");
             std::printf("pressuntil %s %s after %u frames:%s\n", a[1].c_str(), n < most ? "ok" : "TIMED OUT", n,
-                moduleNames(mem, 0x012B6000).c_str());
+                moduleNames(mem, modRoot).c_str());
         } else if (cmd == "watchw") {
             // watchw ADDR [FRAMES] [LEN]: runs FRAMES (default 2) with the page watched and prints who wrote the LEN
             // bytes at ADDR (default 4): the CPU's PC and LR at the write (dynarmic's PC can be its block's start) and
@@ -380,8 +414,52 @@ int main(int argc, char** argv) {
                 std::printf("watchw %08x pc=%08x lr=%08x value=%llx x%u\n", std::get<0>(k), std::get<1>(k), std::get<2>(k),
                             static_cast<unsigned long long>(std::get<3>(k)), n);
             std::printf("watchw done (%zu kinds)\n", seen.size());
+        } else if (cmd == "modroot") {
+            modRoot = number(a.at(0));
+            std::printf("modroot %08x:%s\n", modRoot, moduleNames(mem, modRoot).c_str());
+        } else if (cmd == "findcrs") {
+            // Every page whose +0x80 reads "CRO0" and whose chain (+0x88) leads to another such header: the static
+            // module's header is the one no other header points at.
+            for (const auto& vma : process()->vm_manager.vma_map) {
+                const auto& v = vma.second;
+                if (v.type != Kernel::VMAType::BackingMemory) continue;
+                for (u32 a0 = v.base; a0 + 0x1000 <= v.base + v.size; a0 += 0x1000) {
+                    if (mem.Read32(a0 + 0x80) != 0x304F5243) continue;
+                    std::printf("findcrs %08x next=%08x:%s\n", a0, mem.Read32(a0 + 0x88), moduleNames(mem, a0).c_str());
+                }
+            }
         } else if (cmd == "frames") {
             std::printf("frames %llu\n", static_cast<unsigned long long>(emuWindow.frames));
+        } else if (cmd == "echo") {
+            // echo TEXT: prints TEXT (a marker for a script driven live from another program).
+            std::string t;
+            for (const auto& w : a) t += (t.empty() ? "" : " ") + w;
+            std::printf("echo %s\n", t.c_str());
+        } else if (cmd == "peekf") {
+            const u32 addr = number(a.at(0));
+            const u32 bits = mem.Read32(addr);
+            float f;
+            std::memcpy(&f, &bits, 4);
+            std::printf("peekf %08x = %g\n", addr, f);
+        } else if (cmd == "hex") {
+            // hex ADDR LEN: LEN bytes (default 0x40) as 16-byte lines.
+            const u32 addr = number(a.at(0)), len = a.size() > 1 ? number(a[1]) : 0x40;
+            for (u32 o = 0; o < len; o += 16) {
+                std::printf("hex %08x:", addr + o);
+                for (u32 i = 0; i < 16 && o + i < len; i++) std::printf(" %02x", mem.Read8(addr + o + i));
+                std::printf("\n");
+            }
+        } else if (cmd == "search32") {
+            // search32 V [MAX]: every 4-aligned word equal to V in the game's memory (at most MAX, 64).
+            const u32 want = number(a.at(0)), most = a.size() > 1 ? number(a[1]) : 64;
+            u32 n = 0;
+            for (const auto& vma : process()->vm_manager.vma_map) {
+                const auto& v = vma.second;
+                if (v.type != Kernel::VMAType::BackingMemory) continue;
+                for (u32 p = v.base; p + 4 <= v.base + v.size && n < most; p += 4)
+                    if (mem.Read32(p) == want) std::printf("search32 %08x\n", p), n++;
+            }
+            std::printf("search32 done %u\n", n);
         } else {
             std::fprintf(stderr, "unknown command %s\n", cmd.c_str());
         }
