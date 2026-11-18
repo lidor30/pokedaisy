@@ -3404,7 +3404,9 @@ covers it). Spanish White and Korean White share Black's addresses outright. **S
 brought a third base, `platinum` (`PK_NDS_PORTS4P`: the USA rev 1 field / call tables, callSet 300 + n; its party and options
 are top-screen pages, so no X menu task is listed): its functions are the French cart's, at the same addresses, its globals and
 field overlays 0x20 above French's. No Platinum save is kept here, so it was proven on a new game played in it headless (the
-intro's yes / no and the Poké Ball are touches): the field read, the save and field pointers, PC anywhere. **Japanese and Korean carts**: the US saves load in all of them but Korean HeartGold /
+intro's yes / no and the Poké Ball are touches): the field read, the save and field pointers, PC anywhere. **German Platinum**
+(`CPUD` rev 0, 2026-11-18) is the same again, its globals and field overlays 0x40 below French's; the USA cart's save loads in
+it, so it ran beside the USA cart on a new game saved there. **Japanese and Korean carts**: the US saves load in all of them but Korean HeartGold /
 SoulSilver, whose save footer's magic is 0x20070903 (the US / Japanese carts' 0x20060623, outside the checksums: change the word
 and the US save loads). Japanese HeartGold / SoulSilver's X menu, options and Pokédex differ in code (the tool leaves them
 UNRESOLVED): read off the running game (the X menu's field task +4, each page's child init). Their text banks are numbered their own
