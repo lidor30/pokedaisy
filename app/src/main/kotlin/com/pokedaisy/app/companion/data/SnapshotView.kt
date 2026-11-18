@@ -342,7 +342,10 @@ fun spriteAsset(kind: String, id: Int): String? {
 }
 
 /** A shiny Pokémon's party icon: `<dir>/shiny/<id>.png`, drawn in its species' shiny palette (DecompIconSource). */
-fun shinyIconAsset(species: Int): String? = spriteAsset("pokemon", species)?.let { it.substringBeforeLast('/') + "/shiny/" + it.substringAfterLast('/') }
+fun shinyIconAsset(species: Int): String? = spriteAsset("pokemon", species)?.let {
+    // The Game Boy games' party icons have no shiny colours (Crystal's are one palette for all): their own icon.
+    if (activeGame.isGameBoyGame) it else it.substringBeforeLast('/') + "/shiny/" + it.substringAfterLast('/')
+}
 
 /** A party (or PC box) Pokémon as the PARTY tab and the summary show it. */
 fun partyMonView(m: Mon): MonView {

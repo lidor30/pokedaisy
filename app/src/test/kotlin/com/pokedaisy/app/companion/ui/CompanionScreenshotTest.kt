@@ -1425,6 +1425,9 @@ open class CompanionScreenshotTest {
         DarkMode.override = true
         try { crystal("crystal", "PARTY", pokemonPictures = true) } finally { DarkMode.override = null }
     }
+    // A shiny in the second slot (the fixture has none): the gold sparkle, the picture in its shiny colours.
+    @Test fun crystalPartyShiny() = crystal("crystal", "PARTY", shinySlot = 1)
+    @Test fun crystalPokemonPicturesShiny() = crystal("crystal", "PARTY", pokemonPictures = true, shinySlot = 1)
     @Test fun crystalSettingsPokemonPictures() = crystal("crystal", "SETTINGS", settingsRow = "POKéMON PICTURES")
     @Test fun crystalGuide() = crystal("crystal", "GUIDE", guidePage = "HERE")
     @Test fun crystalGuideNextBoss() = crystal("crystal", "GUIDE", guidePage = "NEXT BOSS")
@@ -1577,7 +1580,7 @@ open class CompanionScreenshotTest {
     private fun crystal(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null, statusBar: Boolean = false,
                         clear: Boolean = false, prism: Boolean = false, gold: Boolean = false, silver: Boolean = false,
                         polished: Boolean = false, describe: Boolean = false, guidePage: String? = null,
-                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false, pokemonPictures: Boolean = false, settingsRow: String? = null) {
+                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false, pokemonPictures: Boolean = false, settingsRow: String? = null, shinySlot: Int? = null) {
         val game = if (legacy) GameKind.CRYSTAL_LEGACY else if (polished) GameKind.POLISHED_CRYSTAL else if (prism) GameKind.PRISM else if (clear) GameKind.CRYSTAL_CLEAR else if (gold) GameKind.GOLD
             else if (silver) GameKind.SILVER else GameKind.CRYSTAL
         var cfg = if (legacy) com.pokedaisy.app.companion.data.GEN2_CRYSTAL_LEGACY else if (polished) com.pokedaisy.app.companion.data.GEN2_POLISHED_CRYSTAL
@@ -1605,9 +1608,11 @@ open class CompanionScreenshotTest {
             com.pokedaisy.app.companion.data.activeGen2 = cfg
         }
         val t = com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load(fixture), cfg)
-        val v = buildSnapshotView(t).copy(game = game)
+        val v = buildSnapshotView(t).copy(game = game).let { s ->
+            if (shinySlot == null) s else s.copy(party = s.party.mapIndexed { i, m -> if (i == shinySlot) m.copy(shiny = true) else m })
+        }
         (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
-        if (pokemonPictures) v.party.forEach { m -> v.pokedex?.tables?.let { PokedexSource.frontSprite(it, m.species) } }
+        if (pokemonPictures) v.party.forEach { m -> v.pokedex?.tables?.let { PokedexSource.frontSprite(it, m.species); PokedexSource.shinyFrontSprite(it, m.species) } }
         val input = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
             override val busy = false
             override fun selectAction(actionIndex: Int) {}

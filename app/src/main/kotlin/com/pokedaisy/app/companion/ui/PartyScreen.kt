@@ -47,6 +47,7 @@ import com.pokedaisy.app.companion.data.GameKind
 import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.companion.data.activeGame
+import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.data.gameText
 import com.pokedaisy.app.companion.data.localText
 import com.pokedaisy.app.companion.data.romGameCode
@@ -841,16 +842,38 @@ val LocalPokemonPictures = androidx.compose.runtime.staticCompositionLocalOf<com
  */
 private val pokemonPictureCache = java.util.concurrent.ConcurrentHashMap<Triple<Any, Int, Boolean>, com.pokedaisy.app.companion.data.RomArt.Image>()
 
-/** [topLeft]: the picture cut down to what it draws (the PARTY slot lines every one up by its top-left corner). */
+/** A picture's key bit for its shiny colours (above every species id). */
+private const val SHINY_PICTURE = 1 shl 20
+
+/**
+ * [topLeft]: the picture cut down to what it draws (the PARTY slot lines every one up by its top-left corner). [shiny]: in
+ * the species' shiny colours, as the game's summary and battles show it (Gen 2; elsewhere its usual colours).
+ */
 internal fun pokemonPicture(
-    t: com.pokedaisy.app.companion.data.PokedexTables, species: Int, cached: Boolean, topLeft: Boolean = false,
+    t: com.pokedaisy.app.companion.data.PokedexTables, species: Int, cached: Boolean, topLeft: Boolean = false, shiny: Boolean = false,
 ): com.pokedaisy.app.companion.data.RomArt.Image? {
-    val key = Triple<Any, Int, Boolean>(t, species, topLeft)
+    val key = Triple<Any, Int, Boolean>(t, if (shiny) species or SHINY_PICTURE else species, topLeft)
     pokemonPictureCache[key]?.let { return it }
-    val src = (if (cached) PokedexSource.cachedFrontSprite(t, species) else PokedexSource.frontSprite(t, species)) ?: return null
+    // A game with no shiny pictures (only Gen 2 has them here) shows its usual one.
+    val src = when {
+        shiny && cached -> PokedexSource.cachedShinyFrontSprite(t, species)
+        shiny -> PokedexSource.shinyFrontSprite(t, species) ?: PokedexSource.frontSprite(t, species)
+        cached -> PokedexSource.cachedFrontSprite(t, species)
+        else -> PokedexSource.frontSprite(t, species)
+    } ?: return null
     val filled = paperFilled(src)
     return (if (topLeft) toTopLeft(filled) else filled).also { pokemonPictureCache[key] = it }
 }
+
+/** [species]' POKéMON PICTURE from [t], loaded off the main thread once (in its [shiny] colours when it is one). */
+@Composable
+internal fun rememberPokemonPicture(
+    t: com.pokedaisy.app.companion.data.PokedexTables, species: Int, shiny: Boolean, topLeft: Boolean = false,
+): androidx.compose.ui.graphics.ImageBitmap? = rememberRomBitmap(
+    t, if (shiny) species or SHINY_PICTURE else species,
+    { tt, k -> pokemonPicture(tt, k and (SHINY_PICTURE - 1), cached = true, topLeft = topLeft, shiny = k and SHINY_PICTURE != 0) },
+    { tt, k -> pokemonPicture(tt, k and (SHINY_PICTURE - 1), cached = false, topLeft = topLeft, shiny = k and SHINY_PICTURE != 0) },
+)
 
 /** [img] cut down to its drawn pixels. */
 private fun toTopLeft(img: com.pokedaisy.app.companion.data.RomArt.Image): com.pokedaisy.app.companion.data.RomArt.Image {
@@ -892,18 +915,15 @@ internal fun paperFilled(img: com.pokedaisy.app.companion.data.RomArt.Image): co
  */
 @Composable
 internal fun MonIcon(mon: MonView?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) =
-    SpeciesPicture(mon?.species?.takeIf { !mon.isEgg } ?: 0, mon?.iconAsset, size, modifier, fit)
+    SpeciesPicture(mon?.species?.takeIf { !mon.isEgg } ?: 0, mon?.iconAsset, size, modifier, fit, shiny = mon?.shiny == true)
 
 /** [MonIcon] by species id: [asset] (its party icon) without POKéMON PICTURES or a [species] of 0. */
 @Composable
-internal fun SpeciesPicture(species: Int, asset: String?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false) {
+internal fun SpeciesPicture(species: Int, asset: String?, size: Dp, modifier: Modifier = Modifier, fit: Boolean = false, shiny: Boolean = false) {
     val pictures = LocalPokemonPictures.current?.takeIf { species > 0 }
     if (pictures == null) { SpeciesIcon(asset, size, modifier); return }
     val density = LocalDensity.current
-    val pic = rememberRomBitmap(
-        pictures, species,
-        { t, sp -> pokemonPicture(t, sp, cached = true, topLeft = fit) }, { t, sp -> pokemonPicture(t, sp, cached = false, topLeft = fit) },
-    )
+    val pic = rememberPokemonPicture(pictures, species, shiny, topLeft = fit)
     val sizePx = with(density) { size.toPx() }
     val k = max(1, (sizePx * 32f / 24f / 56f).roundToInt())
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
@@ -983,10 +1003,7 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
         val iconDy = if (!selected) -4 else if (!bobDown) -3 else 1
         if (pictures != null) {
             // The front picture in the icon's place, inside the slot's left edge, no Poke Ball under it. It doesn't bob.
-            val pic = rememberRomBitmap(
-                pictures, mon.species,
-                { t, sp -> pokemonPicture(t, sp, cached = true, topLeft = true) }, { t, sp -> pokemonPicture(t, sp, cached = false, topLeft = true) },
-            )
+            val pic = rememberPokemonPicture(pictures, mon.species, mon.shiny, topLeft = true)
             val k = partyPictureScale(g)
             if (pic != null) {
                 androidx.compose.foundation.Image(
@@ -1030,6 +1047,15 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
                 val y = g.levelMid - 4 * u
                 drawPixelBitmap(bitmap, mapOf('1' to shadow), x + u, y + u, u.toFloat())
                 drawPixelBitmap(bitmap, mapOf('1' to color), x, y, u.toFloat())
+            }
+        }
+        // A shiny one: INFO's gold sparkle left of the gender sign (the games whose icons don't show it: the Game Boy's).
+        if (mon.shiny && activeGame.isGameBoyGame) {
+            Canvas(Modifier.fillMaxSize()) {
+                val x = g.fx + g.fw - 24 * u
+                val y = g.levelMid - 4 * u
+                drawPixelBitmap(PixelIcons.sparkle, mapOf('1' to ShinyAmber), x + u, y + u, u.toFloat())
+                drawPixelBitmap(PixelIcons.sparkle, mapOf('1' to ShinyGold), x, y, u.toFloat())
             }
         }
         Box(density.at(0f, g.hpTextMid).width(with(density) { g.barRight.toDp() }), contentAlignment = Alignment.TopEnd) {

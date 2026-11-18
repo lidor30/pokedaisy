@@ -1104,7 +1104,7 @@ internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp, tag: Boolean = true, pict
         if (pictures != null) {
             // POKéMON PICTURES: the front picture, about the icon's size (a whole number of screen pixels per picture pixel),
             // centred on the slot (the party's tiles make the slot the picture's size, plus a margin).
-            val pic = rememberRomBitmap(pictures, mon.species, { t, sp -> pokemonPicture(t, sp, cached = true) }, { t, sp -> pokemonPicture(t, sp, cached = false) })
+            val pic = rememberPokemonPicture(pictures, mon.species, mon.shiny)
             val side = with(density) { hudPictureSide(pictureFor).toDp() }
             Box(Modifier.size(size).alpha(if (fainted) 0.4f else 1f), contentAlignment = Alignment.Center) {
                 Box(Modifier.wrapContentSize(unbounded = true)) { PixelImage(pic, 56, Modifier.size(side)) }

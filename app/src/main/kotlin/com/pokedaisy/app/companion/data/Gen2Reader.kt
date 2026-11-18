@@ -447,8 +447,16 @@ fun decodeGen2PartyMon(raw: ByteArray, off: Int, cfg: Gen2Config, egg: Boolean =
         heldItem = u8(raw, off + 1),
         personality = gen2MonKey(raw, off),   // no personality in Gen 2: the switch's key (GbPartySwitch)
         stats = if (egg) null else gen2Stats(raw, off + 21, statExp = List(5) { be16(raw, off + 11 + 2 * it) }, hpStats = off + 36),
+        shiny = !egg && gen2Shiny(u8(raw, off + 21), u8(raw, off + 22)),
     )
 }
+
+/**
+ * Gen 2's shininess from the DVs' two bytes (Attack / Defense, Speed / Special), as the game's CheckShininess: Defense,
+ * Speed and Special 10, Attack 2, 3, 6, 7, 10, 11, 14 or 15.
+ */
+fun gen2Shiny(atkDef: Int, spdSpc: Int): Boolean =
+    (atkDef and 0x0F) == 10 && spdSpc == 0xAA && ((atkDef shr 4) and 2) != 0
 
 /** DVs at [dvs], stat experience (HP, Attack, Defense, Speed, Special) and max HP + the five stats at [hpStats]. */
 private fun gen2Stats(raw: ByteArray, dvs: Int, statExp: List<Int>, hpStats: Int) = MonStats(

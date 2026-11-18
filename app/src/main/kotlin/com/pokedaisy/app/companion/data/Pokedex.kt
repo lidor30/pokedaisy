@@ -1581,6 +1581,7 @@ object PokedexSource {
 
     private val entries = LockedMap<Int, DexEntry>()
     private val sprites = LockedMap<Int, RomArt.Image>()
+    private val shinySprites = LockedMap<Int, RomArt.Image>()   // Gen 2's, in the shiny pair
     private val footprints = LockedMap<Int, RomArt.Image>()
     private val baseStats = LockedMap<Int, IntArray>()
     private val growthRates = LockedMap<Int, Int>()
@@ -1593,7 +1594,7 @@ object PokedexSource {
         if (cachedFor == t) return
         synchronized(lock) {
             if (cachedFor == t) return
-            entries.clear(); sprites.clear(); footprints.clear(); baseStats.clear(); growthRates.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
+            entries.clear(); sprites.clear(); shinySprites.clear(); footprints.clear(); baseStats.clear(); growthRates.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
             cachedFor = t
         }
     }
@@ -1645,6 +1646,17 @@ object PokedexSource {
      * so a page seen before draws at once instead of after a load. */
     fun cachedEntry(t: PokedexTables, national: Int): DexEntry? = if (cachedFor == t) entries[national] else null
     fun cachedFrontSprite(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) sprites[species] else null
+    fun cachedShinyFrontSprite(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) shinySprites[species] else null
+
+    /** A Game Boy Color game's front picture in its shiny colours (Gen 2 only); null elsewhere. */
+    fun shinyFrontSprite(t: PokedexTables, species: Int): RomArt.Image? {
+        sync(t)
+        if (species <= 0) return null
+        shinySprites[species]?.let { return it }
+        val g = t.gen2 ?: return null
+        return runCatching { Gen2Dex.frontPixels(g, species, shiny = true)?.let { RomArt.Image(56, 56, it) } }
+            .getOrNull()?.also { shinySprites[species] = it }
+    }
     fun cachedFootprint(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) footprints[species] else null
     fun cachedSpeciesMap(t: PokedexTables): IntArray? = when {
         // Gen 1's and 2's tables are by Dex number - but Prism's, by its own species ids in its own dex order.
