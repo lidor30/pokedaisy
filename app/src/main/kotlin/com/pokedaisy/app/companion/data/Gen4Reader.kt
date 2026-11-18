@@ -911,6 +911,22 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
 val GEN4_REPEL_KINDS = listOf(79 to 100, 76 to 200, 77 to 250)
 
 /**
+ * The QUICK MENU's BIKE / ROD on Platinum and HeartGold / SoulSilver: the Bag's registered key item - what Y uses - right after
+ * its eight pockets (pret's struct Bag: Platinum's `u32 registeredItem`, HG / SS's `u16 registeredItems[2]`, Y's quick menu
+ * only when both are set). Null when the SaveData pointer isn't sane. Checked headless on HeartGold (2026-11-18): the register
+ * cleared, Y did nothing; the BICYCLE written there and Y held 2 frames, the player rode (PlayerAvatar state 0 -> 1).
+ */
+fun gen4RegisterAddr(cfg: Gen4Config, read: (addr: Long, len: Int) -> ByteArray): Long? {
+    val ptr = u32(read(cfg.saveDataPtr, 4), 0)
+    if (ptr !in MAIN_RAM until MAIN_RAM_END - 0x20000) return null
+    return ptr + cfg.bodyOff + cfg.bagOff + cfg.pocketSizes.sum() * 4L
+}
+
+/** Gen 4's BICYCLE and SUPER / GOOD / OLD ROD (the best first). */
+val GEN4_BIKES = listOf(450)
+val GEN4_RODS = listOf(447, 446, 445)
+
+/**
  * Uses one Repel ([itemId], [steps]) the way the game's bag does (applications/bag: SetRepelSteps, then
  * Bag_TryRemoveItem): one off its slot in the ITEMS pocket - an emptied slot moves to the pocket's end, the rest keep
  * their order (Pocket_SortEmpty) - and the step count into [Gen4Config.repelStepsOff]. Plain RAM writes, no game code:

@@ -1349,6 +1349,8 @@ class PokeDaisyActivity : Activity() {
      * SaveBlock1 has the SELECT register where KeyItems expects it. */
     private fun keyItemsWork(): Boolean {
         val game = telemetry.snapshot.value.game
+        // Platinum / HeartGold / SoulSilver (and the hacks on their retail RAM): the Bag's register and Y (gen4RegisterAddr).
+        if (romIsNds) return dsKeyItemsWork()
         // SoulGold: its SELECT wheel (KeyItems.selectWheel), checked headless (GitHub #242).
         if (game == com.pokedaisy.app.companion.data.GameKind.SOULGOLD) return fieldItemSupport() != null
         if (game != com.pokedaisy.app.companion.data.GameKind.FIRERED && game != com.pokedaisy.app.companion.data.GameKind.EMERALD) return false
@@ -1361,7 +1363,36 @@ class PokeDaisyActivity : Activity() {
      * SELECT pressed for the game for 2 frames ([GbaInput.setPress]: the battle controls own setScript's channel), the player's own registered item
      * put back 20 frames later. The game does the rest: mounting, the fishing cast, or its own "can't use that here".
      */
+    private fun dsKeyItemsWork(): Boolean = romBlocked == null &&
+        !com.pokedaisy.app.companion.data.originHeartGold && !com.pokedaisy.app.companion.data.renegadePlatinum &&
+        com.pokedaisy.app.companion.data.gen4ConfigFor(telemetry.snapshot.value.game) != null
+
+    /** A DS game's BIKE / ROD: the item written into the Bag's register (HG / SS: the first slot, the second cleared so Y uses it
+     * at once), Y held 2 frames, the player's own registration put back after. The field free by its own read, as the Repel's. */
+    private fun useDsKeyItem(itemId: Int) {
+        val cfg = com.pokedaisy.app.companion.data.gen4ConfigFor(telemetry.snapshot.value.game) ?: return
+        if (!::engine.isInitialized || !engine.running) return
+        fun le32(v: Long) = ByteArray(4) { (v shr (8 * it)).toByte() }
+        fun u32(b: ByteArray) = (0 until 4).fold(0L) { a, i -> a or ((b[i].toLong() and 0xFF) shl (8 * i)) }
+        engine.requestFieldItemJob(false) { calls, _ ->
+            val ok = runCatching {
+                val f = engine.fieldState
+                if (f and MgbaCore.FIELD_SCREEN == 0 || f and (MgbaCore.FIELD_LOCKED or MgbaCore.FIELD_MENU or MgbaCore.FIELD_BATTLE) != 0) return@runCatching false
+                val addr = com.pokedaisy.app.companion.data.gen4RegisterAddr(cfg, calls::read) ?: return@runCatching false
+                val old = u32(calls.read(addr, 4))
+                // Item ids (Platinum's one u32, or HG / SS's two u16): anything else isn't the register after all.
+                if ((old and 0xFFFF) > 0x3FF || (old ushr 16) > 0x3FF || !calls.write(addr, le32(itemId.toLong()))) return@runCatching false
+                input.setPress(CoreKey.Y)
+                engine.requestFieldItemJob(false, delayFrames = 2) { _, _ -> input.setPress(0) }
+                engine.requestFieldItemJob(false, delayFrames = 30) { c, _ -> if (u32(c.read(addr, 4)) == itemId.toLong()) c.write(addr, le32(old)) }
+                true
+            }.getOrDefault(false)
+            if (!ok) runOnUiThread { showHud(com.pokedaisy.app.companion.ui.itemUseMessage(com.pokedaisy.app.companion.data.ItemUseOutcome(com.pokedaisy.app.companion.data.ItemUseResult.NOT_NOW))) }
+        }
+    }
+
     private fun useKeyItem(itemId: Int) {
+        if (romIsNds) return useDsKeyItem(itemId)
         val cfg = com.pokedaisy.app.companion.data.activeNativeConfig ?: return
         val fns = fieldItemSupport()?.fns ?: return
         if (!::engine.isInitialized || !engine.running) return
