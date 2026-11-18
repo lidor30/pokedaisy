@@ -165,4 +165,12 @@ interface StoredCompanionSettings {
      * (a [com.pokedaisy.app.companion.data.GameKind] name). */
     fun guideNoticeAccepted(game: String): Boolean
     fun acceptGuideNotice(game: String)
+    /** SETTINGS > HUD: the HUD over the overworld - see [Prefs.fieldHud]. */
+    val fieldHud: Boolean get() = true
+    fun setFieldHud(on: Boolean) {}
+
+    /** The FIELD HUD's layout, look, size and parts - see [Prefs.fieldHudStyle]. */
+    val fieldHudStyle: com.pokedaisy.app.companion.FieldHudStyle get() = com.pokedaisy.app.companion.FieldHudStyle()
+    fun setFieldHudStyle(style: com.pokedaisy.app.companion.FieldHudStyle) {}
+
 }

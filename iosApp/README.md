@@ -163,3 +163,10 @@ AUTO-RUN, RUN INDOORS and WILD ENCOUNTERS use the existing GBA field tables and 
 keys. Only the game's free field can invert B; menus, dialogue, battles, bikes, surfing, sneaking and built-in
 auto-run are preserved. Ruby/Sapphire indoor rules remain unavailable. The native field step owns the write lock;
 field observation does not change encounter ownership or its RNG. Unknown tables and Game Boy stay N/A.
+
+## Field HUD
+
+Landscape GBA games reuse the shared `FieldHud` over the native picture. `GameRuntime` publishes the settled
+`GameSession` field signal; Android and iOS use the same visibility rule and persisted HUD settings. Shared
+control placements reserve room around custom touch layouts. HUD windows reuse the companion's existing field
+actions and close when Quick Menu opens. Portrait continues to use the companion. Battle buttons remain a separate step.

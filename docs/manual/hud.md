@@ -60,3 +60,13 @@ drawn at about half the app's size: smaller pictures of your party and Poké Bal
 their pictures but no names. `LARGE` draws it at full size, with the names on the buttons. Every `LAYOUT` works at each
 size. When your party and the rest don't fit side by side, the HUD keeps to the bottom left corner, with a `MAP` button
 in place of the minimap.
+
+## On iPhone and iPad
+
+The same field HUD appears in supported GBA games when you hold the device sideways. It waits for the field
+to settle, then hides during battles and game menus. In portrait, the companion below the game shows this information.
+Open `SETTINGS` > `HUD` to change its layout, look, size and visible parts. Your choices are kept for the next game.
+The HUD makes room for your touch controls. Its party, map, bag and wild windows use the same screens and supported
+field actions as the companion. Opening `QUICK MENU` closes any open HUD window.
+
+Battle buttons are not available on iPhone or iPad yet.

@@ -913,7 +913,7 @@ private fun homeRows(
             }
         },
         // The party, a minimap, the balls and BAG / WILD over the game on the field: its own page (layout, look, size, parts).
-        SettingRow(tk("HUD"), onOff(s.fieldHud), labelBadge = NewFeatures.badge(NewFeatures.HUD), opensPage = true, subtitle = "Party, minimap and bag over the game") { navigate(Page.FIELD_HUD) },
+        SettingRow(tk("HUD"), onOff(s.fieldHud), labelBadge = s.fieldHudBadge ?: NewFeatures.badge(NewFeatures.HUD), opensPage = true, subtitle = "Party, minimap and bag over the game") { navigate(Page.FIELD_HUD) },
         // Two screens: the game's own FIGHT / BAG and move menus off its screen, the companion's buttons pick.
         s.hideBattleMenu?.let { hide ->
             SettingRow(

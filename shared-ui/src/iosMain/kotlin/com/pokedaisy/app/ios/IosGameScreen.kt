@@ -125,7 +125,8 @@ internal class IosGameScreen(
             GameScreen(state, gameHeight = { (it / aspect).roundToInt() },
                 game = { GamePicture(aspect, upright, Modifier.fillMaxSize(), gameContent) },
                 controls = { if (visible) touch.Controls(gameBoy, upright) },
-                gameOverlay = { CompositionLocalProvider(LocalCompanionBack provides back, content = gameOverlay) },
+                gameOverlay = { CompositionLocalProvider(LocalCompanionBack provides back, LocalCompanionKeys provides keys,
+                    LocalTextInputFocus provides textInputFocus, content = gameOverlay) },
                 companion = {
                     CompositionLocalProvider(LocalCompanionTopInset provides (frames?.portrait?.topInset(state.gripHeight) ?: 0),
                         LocalCompanionBack provides back, LocalCompanionKeys provides keys, LocalTextInputFocus provides textInputFocus) {
@@ -176,6 +177,16 @@ internal class IosGameScreen(
         val companion = f.companion.takeIf { f.companionShown && (upright || !state.side.isWindow) }
         return TouchStage(w.toFloat(), h.toFloat(), density, upright, picture, area, companion, aspect, gameBoy)
     }
+
+    fun hudFrame(): Rect? = frames?.let { f ->
+        stage(f, IosTouchPreferences.visible).game.translate(-f.game.left, -f.game.top)
+    }
+
+    fun hudAvoid(): List<Rect> = frames?.let { f ->
+        if (!IosTouchPreferences.visible) emptyList() else touch.placed?.items.orEmpty().map {
+            Rect(it.left, it.top, it.right, it.bottom).translate(f.controls.left - f.game.left, f.controls.top - f.game.top)
+        }
+    }.orEmpty()
 
     private fun controllerInput(buttons: Int) {
         if (!state.side.windowOpen && !quickMenu.open && !rewindUnavailable && quickNotice == null) return
