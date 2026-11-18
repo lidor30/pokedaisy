@@ -63,7 +63,7 @@ Steamはプログラムをそのフォルダで起動するので、起動オプ
 ## PortMasterの入った携帯機
 
 1. パソコンで `pokedaisy-portmaster-aarch64.zip` を展開します。中には `PokeDaisy.sh` と `pokedaisy` フォルダがあります。
-2. 両方をSDカードの、ファームウェアの `ports` フォルダにコピーします。
+2. 両方をSDカードの、ファームウェアの `ports` フォルダにコピーします。muOSでは2つのフォルダに分けます。`PokeDaisy.sh` は `ROMS/Ports` に、`pokedaisy` フォルダは `ports` に入れます（どちらもカードのいちばん上です）。
 3. ゲームは今の場所のままでかまいません。ゲームの一覧には `ports/pokedaisy/roms` と、ファームウェアの `gba`、`gb`、`gbc`、`nds` フォルダ（と `Game Boy Advance`、`Game Boy Color`、`Game Boy`、`Nintendo DS` という名前のフォルダ）が出ます。
 4. Portsの一覧からPokeDaisyを起動します。
 
