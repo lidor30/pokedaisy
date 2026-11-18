@@ -13,6 +13,8 @@ struct ag_host {
     const char* workDir;
     bool threaded;
     void* (*romBuffer)(size_t size);
+    uint32_t knownCrc;
+    bool lateVideo;
 };
 
 // Where armGBA keeps the machine's memory (stays put while the game runs).

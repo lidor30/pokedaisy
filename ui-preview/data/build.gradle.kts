@@ -24,8 +24,11 @@ val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appSrc = fileTree(app) {
     listOf("companion/data/**", "companion/*.kt", "companion/i18n/**", "companion/coop/**", "FeatureFlags.kt", "MgbaCore.kt", "Prefs.kt", "PrefsAndroid.kt", "cheats/Cheats.kt", "GbaControls.kt", "Hotkeys.kt", "GbaInput.kt", "ScriptInput.kt", "BattleInputController.kt", "InputBadges.kt", "GameVolume.kt")
         .forEach { include(it) }
+    exclude("**/*.java")   // compiled by javac below (companion/coop/x25519)
 }
 sourceSets["main"].kotlin.srcDir("shims")
+// The Java in the app's sources (CoopKeys' X25519, copied from Bouncy Castle).
+sourceSets["main"].java { srcDir(app); include("companion/coop/x25519/**") }
 // -PgameExport (the game data the 3DS port builds from: 3ds/tools/gen_games.py): MgbaCore without its native library,
 // so the app's own detection runs over ROM files on a desktop JVM. See src/render/GameExport.kt.
 val gameExport = project.hasProperty("gameExport")
@@ -100,17 +103,15 @@ java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaV
 dependencies {
     api("org.jetbrains.compose.desktop:desktop-jvm-$desktopTarget:$cmp")
     // CoopLockStore reads JSON.
-    implementation("org.json:json:20240303")
+    implementation("org.json:json:20260814")
     // CoopPairs reads and writes pairs.json.
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     // CoopRelaySocket (the relay over WebSocket).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Byte buffers, files and hashes in the data code shared with the iPad app (okio is Kotlin Multiplatform).
-    api("com.squareup.okio:okio:3.10.2")   // api: okio's Path / Source appear in the data code's functions
+    api("com.squareup.okio:okio:3.18.2")   // api: okio's Path / Source appear in the data code's functions
     // Threads and locks in the data code shared with the iPad app (Kotlin Multiplatform).
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
-    // CoopKeys' X25519 (the co-op connection's Noise handshake).
-    implementation("org.bouncycastle:bcprov-jdk18on:1.79")
 }

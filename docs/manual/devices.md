@@ -103,14 +103,14 @@ On a handheld with one screen, like the Retroid Pocket 6, the companion shares t
 
 Flipped from the companion, it switches right away.
 
-Rather not see the small button at the bottom of the screen's right edge? Turn off `COMPANION BUTTON`, right under `COMPANION VIEW`. `BACK` and the HUD's `COMPANION` button still open the companion.
+Rather not see the buttons that open it on the game screen, the small one at the bottom of the screen's right edge and the HUD's `COMPANION`? Turn off `COMPANION BUTTON`, right under `COMPANION VIEW`. `BACK`, the `COMPANION` hotkey and the quick menu's `COMPANION` still open the companion.
 
 On a tall screen, about 2.5 inches high or more like the Retroid Pocket 6, the companion's text is a little smaller in the window, so more fits on each page. On a tablet the window stops at about a handheld's size, and so do the HUD's map and a Pokémon's summary, so the game still shows around them.
 
 ### The window
 
 - **Open it:** tap `BACK`, or tap the small button at the bottom of the screen's right edge.
-- **Use your buttons:** while the window is open, your controls work the companion instead of the game. The D-pad moves the cursor and `A` picks what it's on, the way the game's own menus work. `L` and `R` move between the tabs, and `B` goes back. When there's nothing left to go back from, `B` closes the window. `START` closes it from anywhere. Your buttons follow your `GAME BUTTONS` settings, so if you moved `A` and `B`, the window follows.
+- **Use your buttons:** while the window is open, your controls work the companion instead of the game. The D-pad moves the cursor and `A` picks what it's on, the way the game's own menus work. Hold a direction to keep moving through a long list. `L` and `R` move between the tabs, and `B` goes back. When there's nothing left to go back from, `B` closes the window. `START` closes it from anywhere. Your buttons follow your `GAME BUTTONS` settings, so if you moved `A` and `B`, the window follows.
 - **Close it:** press `B` or `BACK` until it closes, press `START`, tap the X at its top right, or tap anywhere outside it.
 
 In the bag, moving the cursor shows each item's description, and `A` on the item goes to its `USE` and `GIVE` buttons. In a battle, the window's `BATTLE` tab shows `INFO` and `SUGGESTIONS` only, without the battle buttons: close the window and pick your move in the game's own menu. `FLY` on the map closes the window, so you see the flight.
@@ -157,23 +157,17 @@ With `ASPECT` set to `EXPAND`, the game fills everything above the companion, so
 
 On a folding phone, PokeDaisy uses the fold the way a two-screen handheld uses its two screens. It switches as soon as you fold or unfold, mid-game.
 
-- **Half open like a laptop** (the fold across the screen, the bottom half resting on a table): the game is on the top half and the companion fills the bottom half. In a DS game the touch screen takes the bottom half, like on a DS, with its `COMPANION` switch to bring the companion up. With no controller, the touch controls sit on the top half, beside the game.
+- **Half open like a laptop** (the fold across the screen, the bottom half resting on a table): the game is on the top half and the companion fills the bottom half. In a DS game the touch screen takes the bottom half, like on a DS, with its `COMPANION` switch to bring the companion up. With no controller, the touch controls sit on the top half, beside the game. To have them on the bottom half instead, either side of a narrower companion, set `TABLETOP CONTROLS` to `BOTTOM SIDES`.
 - **Half open like a book** (the fold down the middle): the game is on the left page and the companion on the right. `BACK` goes back inside the companion, and the companion stays open.
 - **Fully open or closed:** the usual layouts for one screen, sideways or upright, as above.
 
-The `FOLD LAYOUT` setting (in the `SCREEN` group, on both screens) turns this on or off. It's on to start with, and it only shows up once your phone has reported a fold. Off, a half open phone gets the same layout as a flat one.
+The `FOLD LAYOUT` setting (in the `SCREEN` group, on both screens) picks when this happens:
 
-## On iPhone and iPad
+- `HALF OPEN` (the default): only while the phone is half open.
+- `ALWAYS`: unfolded flat too, split at the fold the same way.
+- `OFF`: a half open phone gets the same layout as a flat one.
 
-On supported GBA games, `NO HMS NEEDED`, `EXP SHARE` and `LEVEL CAP` use the same settings and game-option rules as Android. Unknown ROM layouts show N/A.
-
-The game screen uses the same panel controls as Android. In portrait, drag the companion grip to resize it, or tap it to step through sizes and hide it. The grip stays visible when the companion is hidden, so you can bring it back.
-
-In landscape, the companion starts docked beside the game. Drag the padlock tab to change its width, tap it to lock or unlock the panel, and use the edge tabs to close or reopen it. Your sizes and docking choice are remembered. `COMPANION VIEW`, in the companion's `SETTINGS` while held sideways, switches between the side panel and a window over the game.
-
-The window keeps the game running and takes its buttons while open. Tap outside the window or its X to close it. On a controller, `B` goes back and closes the window when there's nothing left to go back from, `START` closes it, and `L` / `R` change tabs. Directions and `A` move through and use focused controls. A held button needs to be released before it returns to the game after the window closes. Keyboard typing stays with the window's text fields.
-
-The edge button stays available on iPhone and iPad, so you can always reopen a hidden landscape companion. DS games, skins and fold layouts are still Android features.
+It only shows up once your phone has reported a fold. `TABLETOP CONTROLS`, right under it, picks where the touch controls go with the fold across the screen: `ON GAME` (the default) or `BOTTOM SIDES`.
 
 ## Rotating the device
 

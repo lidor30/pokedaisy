@@ -14,6 +14,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithText
@@ -258,6 +259,26 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override fun setLevelCap(on: Boolean) { levelCapOn = on }
     override val levelCapSupported get() = true
     override val levelCapLevel get() = 14
+    private var repelRefillOn = false
+    override val repelRefill get() = repelRefillOn
+    override fun setRepelRefill(on: Boolean) { repelRefillOn = on }
+    override val repelRefillSupported get() = true
+    private var shinyAlertOn = false
+    override val shinyAlert get() = shinyAlertOn
+    override fun setShinyAlert(on: Boolean) { shinyAlertOn = on }
+    override val shinyHuntCount get() = 312
+    override val shinyAlertSupported get() = true
+    private var beepOn = true
+    override val lowHpBeep get() = beepOn
+    override fun setLowHpBeep(on: Boolean) { beepOn = on }
+    override val lowHpBeepSupported get() = true
+    private var poisonOn = true
+    override val fieldPoison get() = poisonOn
+    override fun setFieldPoison(on: Boolean) { poisonOn = on }
+    override val fieldPoisonSupported get() = true
+    private var battleRetryOn = false
+    override val battleRetry get() = battleRetryOn
+    override fun setBattleRetry(on: Boolean) { battleRetryOn = on }
     private var shinyOddsValue = com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
     override val shinyOdds get() = shinyOddsValue
     override fun setShinyOdds(odds: Int) { shinyOddsValue = odds }
@@ -583,7 +604,11 @@ class PreviewItemUse(private val party: List<MonView>, private val bagFull: Bool
     }
 }
 
+/** LAST BALL's button in the battle shots that ask for it ($g-battle-last-ball): the preview bag's first ball. */
+var previewLastBall: com.pokedaisy.app.companion.data.ItemView? = null
+
 class FakeBattleInput(override val busy: Boolean) : BattleInput {
+    override val lastBall get() = previewLastBall
     override fun selectAction(actionIndex: Int) {}
     override fun selectMove(moveIndex: Int) {}
     override fun back() {}
@@ -623,6 +648,11 @@ fun card(): SnapshotView {
 }
 
 /** A wild battle: the party's lead against a Pidgey, at [state]. */
+/** The preview bag's first ball (else a made-up one), for LAST BALL's shots. */
+fun lastBallPreview(): com.pokedaisy.app.companion.data.ItemView =
+    snapshot().items.firstOrNull { it.pocket == com.pokedaisy.app.companion.data.POCKET_POKE_BALLS }
+        ?: com.pokedaisy.app.companion.data.ItemView(4, "POKé BALL", 12, null, pocket = com.pokedaisy.app.companion.data.POCKET_POKE_BALLS)
+
 fun battle(state: Int): SnapshotView {
     val s = snapshot()
     val foe = s.party[1].copy(moves = emptyList())
@@ -964,24 +994,66 @@ fun platformLibrary(view: com.pokedaisy.app.companion.data.LibraryView = com.pok
     prefs.libraryView = view.id
 }
 
-fun pcBoxes(icons: Boolean = false): () -> (@Composable () -> Unit) = {
-    val state = pcBoxesDemo()
-    val content: @Composable () -> Unit = {
-        com.pokedaisy.app.companion.ui.PcBoxesScreen(
-            state, "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
-            icons = if (icons) demoIcons else null, onTrade = {},
+/** The SAVE EDITOR's D-pad starts, as SaveEditorActivity provides them (the `pc-boxes-focus` shot). */
+val pcBoxesStarts = com.pokedaisy.app.companion.ui.FocusStarts()
+
+fun pcBoxes(
+    icons: Boolean = false, ds: Boolean = false, missing: Boolean = false, black: Boolean = false,
+    setup: com.pokedaisy.app.companion.ui.PcBoxesState.() -> Unit = {},
+): () -> (@Composable () -> Unit) = {
+    val state = (if (black) pcBoxesBlackDemo() else if (ds) pcBoxesDsDemo() else if (missing) missingTargetDemo() else pcBoxesDemo()).apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        androidx.compose.runtime.CompositionLocalProvider(com.pokedaisy.app.companion.ui.LocalFocusStarts provides pcBoxesStarts) {
+            com.pokedaisy.app.companion.ui.PcBoxesScreen(
+                state, if (black) "Pokémon Black" else if (ds) "Pokémon HeartGold" else "Pokémon FireRed", com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {},
+                icons = if (icons) demoIcons else null, onTrade = if (black) null else ({}),
+                onMissing = { state.missing = if (black) missingBlackDemo(state) else missingDemo(state) },
+            )
+        }
+    } }
+    content
+}
+
+/** A PC slot as a trade pick. */
+fun pc(box: Int, slot: Int): com.pokedaisy.app.companion.data.save.MonRef =
+    com.pokedaisy.app.companion.data.save.MonRef.Pc(com.pokedaisy.app.companion.data.save.BoxSlot(box, slot))
+
+fun palPark(setup: com.pokedaisy.app.companion.ui.PalParkState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
+    val state = palParkDemo().apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        com.pokedaisy.app.companion.ui.PalParkScreen(
+            state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {}, iconsGba = demoIcons, iconsDs = demoIcons,
         )
-    }
+    } }
+    content
+}
+
+fun transfer(setup: com.pokedaisy.app.companion.ui.PokeTransferState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
+    val state = transferDemo().apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        com.pokedaisy.app.companion.ui.PokeTransferScreen(state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {})
+    } }
+    content
+}
+
+fun collection(setup: com.pokedaisy.app.companion.ui.CollectionState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
+    val state = collectionDemo().apply(setup)
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
+        com.pokedaisy.app.companion.ui.CollectionScreen(
+            state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, icons = { demoIcons },
+            onOpen = {}, onTrade = {}, onPalPark = {},
+        )
+    } }
     content
 }
 
 fun trade(setup: com.pokedaisy.app.companion.ui.TradeState.() -> Unit = {}): () -> (@Composable () -> Unit) = {
     val state = tradeDemo().apply(setup)
-    val content: @Composable () -> Unit = {
+    val content: @Composable () -> Unit = { com.pokedaisy.app.companion.ui.SaveEditorText {
         com.pokedaisy.app.companion.ui.TradeScreen(
             state, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), onBack = {}, onSave = {}, iconsA = demoIcons, iconsB = demoIcons,
         )
-    }
+    } }
     content
 }
 
@@ -1364,7 +1436,7 @@ fun areaMapSpot(game: GameKind): AreaSpot? {
     if (System.getProperty("rom").isNullOrBlank()) return null
     return when (game) {
         GameKind.FIRERED -> AreaSpot(1, 2, 34, 35, "3")
-        GameKind.EMERALD -> AreaSpot(24, 16, 6, 7, "5")
+        GameKind.EMERALD -> AreaSpot(24, 8, 16, 13, "3")
         GameKind.UNBOUND -> AreaSpot(53, 2, 40, 30, "3F")
         else -> null
     }
@@ -1380,7 +1452,7 @@ fun areaSnapshot(spot: AreaSpot): SnapshotView {
     val id = com.pokedaisy.app.companion.data.AreaMap.MapId(spot.group, spot.num)
     val area = com.pokedaisy.app.companion.data.AreaMaps.area(id)
     area?.floors?.forEach { com.pokedaisy.app.companion.data.AreaMaps.image(it.id) }
-    com.pokedaisy.app.companion.ui.AreaMapChoice.showArea()
+    com.pokedaisy.app.companion.ui.AreaMapChoice.reset()
     val sec = area?.mapsec ?: homeMapsec(activeGame)
     return snapshot().copy(
         mapGroup = spot.group, mapNum = spot.num, x = spot.x, y = spot.y, mapType = 4,
@@ -1695,8 +1767,8 @@ fun main(args: Array<String>) {
             val at = if (game == GameKind.EMERALD || game == GameKind.EMERALD_ROGUE) Offset(0.45f, 0.125f) else Offset(0.4375f, 0.306f)
             onRoot().performTouchInput { click(Offset(37 + 1166 * at.x, 37 + 886 * at.y)) }
         },
-        // AREA maps (-Prom=<the game's ROM>): the player on a cave's second floor (FireRed's Mt. Moon B1F, Emerald's Mt. Pyre
-        // 2F, an Unbound cave's 2F) - the AREA map first, then REGION MAP, a floor chip, ZOOM.
+        // AREA maps (-Prom=<the game's ROM>): the player on a cave's second floor (FireRed's Mt. Moon B1F, Emerald's Granite Cave
+        // B1F, an Unbound cave's 2F) - the AREA map first, then REGION MAP, a floor chip, ZOOM.
         *(areaMapSpot(game)?.let { spot ->
             arrayOf(
                 Shot("$g-area-map", bw, bh, bd, companion("MAP") { areaSnapshot(spot) }),
@@ -1789,6 +1861,9 @@ fun main(args: Array<String>) {
         Shot("$g-battle-trainer3", bw, bh, bd, companion("PARTY") { trainerBattle(BATTLE_INPUT_ACTION_SELECT).withBench() }),
         Shot("$g-battle-noinfo", bw, bh, bd, { previewBattleInfo = false; companion("PARTY") { battle(BATTLE_INPUT_ACTION_SELECT) }() }, { previewBattleInfo = true }),
         Shot("$g-battle-moves", bw, bh, bd, companion("PARTY") { battle(BATTLE_INPUT_MOVE_SELECT) }),
+        // LAST BALL: the ball button over the panel's corner, and in ONE-TAP MOVES' row.
+        Shot("$g-battle-last-ball", bw, bh, bd, { previewLastBall = lastBallPreview(); companion("PARTY") { battle(BATTLE_INPUT_ACTION_SELECT) }() }, { previewLastBall = null }),
+        Shot("$g-battle-last-ball-onetap", bw, bh, bd, { previewLastBall = lastBallPreview(); companion("PARTY", oneTap = true) { battle(BATTLE_INPUT_ACTION_SELECT) }() }, { previewLastBall = null }),
         // SETTINGS > ONE-TAP MOVES: the action menu with the moves where FIGHT was.
         Shot("$g-battle-onetap", bw, bh, bd, companion("PARTY", oneTap = true) { battle(BATTLE_INPUT_ACTION_SELECT) }),
         // The POKéMON pane: from the action menu, and over the game's own party menu.
@@ -1936,6 +2011,12 @@ fun main(args: Array<String>) {
                 blocked = com.pokedaisy.app.companion.data.BlockedGames.GHOST_GREY)
         }),
         Shot("$g-settings", bw, bh, bd, companion("SETTINGS")),
+        // DESCRIPTIONS and GROUP TABS hidden: the rows without their grey lines, the list without its tabs.
+        Shot("$g-settings-look-hidden", bw, bh, bd, companion("SETTINGS"), {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("DESCRIPTIONS")).performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("GROUP TABS")).performSemanticsAction(SemanticsActions.OnClick)
+            waitForIdle()
+        }),
         // MORE (left of the gear): the tabs off the bar as app icons, the TAB BAR link under them.
         Shot("$g-more", bw, bh, bd, companion("MORE")),
         // NUZLOCKE is under MORE in every game the tracker follows; off, the tab says so and offers TURN ON.
@@ -2058,6 +2139,22 @@ fun main(args: Array<String>) {
         // LEVEL CAP turned on: the row shows the cap now (the preview's LV 14).
         Shot("$g-settings-level-cap", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("LEVEL CAP")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // AUTO REFILL turned on.
+        Shot("$g-settings-auto-refill", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("AUTO REFILL")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // FIELD POISON turned off (LOW HP BEEP above it, still the game's).
+        Shot("$g-settings-field-poison", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("FIELD POISON")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // BOSS RETRY turned on.
+        Shot("$g-settings-boss-retry", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("BOSS RETRY")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        // SHINY ALERT turned on: the subtitle counts the hunt (the preview's 312).
+        Shot("$g-settings-shiny-alert", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("SHINY ALERT")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
         Shot("$g-settings-hm-free-on", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
@@ -2397,6 +2494,12 @@ fun main(args: Array<String>) {
         // SAVE EDITOR (a game's library menu): the save's party and boxes, then a Pokémon picked, moved and saved.
         Shot("pc-boxes", tw, th, td, pcBoxes()),
         Shot("pc-boxes-selected", tw, th, td, pcBoxes()) { onAllNodesWithText("ABRA")[0].performClick() },
+        // A controller's first D-pad press: the orange cursor ring on the selected slot (SaveEditorActivity's FocusStarts).
+        Shot("pc-boxes-focus", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("ABRA")[0].performClick()
+            waitForIdle()
+            runOnIdle { pcBoxesStarts.focusNewest() }
+        },
         Shot("pc-boxes-moving", tw, th, td, pcBoxes()) {
             onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("MOVE").performClick()
         },
@@ -2404,45 +2507,143 @@ fun main(args: Array<String>) {
             onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("MOVE").performClick()
             onNodeWithContentDescription("Next box").performClick(); onAllNodesWithText("PIDGEY")[0].performClick()
         },
+        // ABRA into the party, in CHARIZARD's place (CHARIZARD to ABRA's box slot).
+        Shot("pc-boxes-to-party", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("MOVE").performClick()
+            onAllNodesWithText("CHARIZARD")[0].performClick()
+        },
+        // The party's last fighter can't go: a notice says why.
         Shot("pc-boxes-save", tw, th, td, pcBoxes()) {
             onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("MOVE").performClick()
-            onAllNodesWithText("EGG")[0].performClick()
-            onAllNodesWithText("TREECKO")[0].performClick(); onNodeWithText("MOVE").performClick()
             onAllNodesWithText("EGG")[0].performClick(); onNodeWithText("SAVE").performClick()
         },
         Shot("pc-boxes-phone", 1080, 2400, 2.625f, pcBoxes()) { onAllNodesWithText("TREECKO")[0].performClick() },
         // With the party icons a ROM gives (stand-in dots here: no game art in this repo).
         Shot("pc-boxes-icons", tw, th, td, pcBoxes(icons = true)) { onAllNodesWithText("ABRA")[0].performClick() },
         Shot("pc-boxes-icons-phone", 1080, 2400, 2.625f, pcBoxes(icons = true)),
-        // Editing: a party Pokémon's moves and item, the BAG page, an amount, ADD ITEM.
-        Shot("pc-boxes-edit", tw, th, td, pcBoxes(icons = true)) { onAllNodesWithText("CHARIZARD")[0].performClick() },
-        Shot("pc-boxes-move", tw, th, td, pcBoxes(icons = true)) {
-            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("WING ATTACK").performClick()
+        // A Pokémon's page: INFO, STATS, MOVES and their pickers.
+        Shot("pc-boxes-page", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick()
         },
-        Shot("pc-boxes-moved-move", tw, th, td, pcBoxes(icons = true)) {
-            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("WING ATTACK").performClick()
-            onNodeWithText("BLAST BURN").performClick()
+        Shot("pc-boxes-page-stats", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+        },
+        Shot("pc-boxes-page-maxiv", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+            onNodeWithText("MAX IVs").performClick()
+        },
+        Shot("pc-boxes-page-moves", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("MOVES").performClick()
+        },
+        Shot("pc-boxes-move", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("MOVES").performClick()
+            onNodeWithText("WING ATTACK").performClick()
+        },
+        Shot("pc-boxes-page-nature", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("NATURE").performClick()
+        },
+        Shot("pc-boxes-page-shiny", tw, th, td, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("SHINY").performClick()
         },
         Shot("pc-boxes-item", tw, th, td, pcBoxes(icons = true)) {
-            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("LEFTOVERS").performClick()
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("ITEM").performClick()
         },
+        Shot("pc-boxes-page-phone", 1080, 2400, 2.625f, pcBoxes(icons = true)) {
+            onAllNodesWithText("CHARIZARD")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+        },
+        // Box tools.
+        Shot("pc-boxes-sort", tw, th, td, pcBoxes(icons = true)) { onNodeWithText("SORT").performClick() },
+        Shot("pc-boxes-sorted", tw, th, td, pcBoxes(icons = true)) { onNodeWithText("SORT").performClick(); onNodeWithText("BY LEVEL").performClick() },
+        Shot("pc-boxes-rename", tw, th, td, pcBoxes()) { onNodeWithText("RENAME").performClick() },
+        Shot("pc-boxes-search", tw, th, td, pcBoxes()) {
+            onNodeWithContentDescription("Search the boxes").performClick()
+            onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("PI")
+        },
+        Shot("pc-boxes-release", tw, th, td, pcBoxes()) { onAllNodesWithText("ABRA")[0].performClick(); onNodeWithText("RELEASE").performClick() },
+        // A DS save (HeartGold): its POKéMON page and a Pokémon's page.
+        Shot("pc-boxes-ds", tw, th, td, pcBoxes(ds = true)) { onAllNodesWithText("MEGANIUM")[0].performClick() },
+        Shot("pc-boxes-black", tw, th, td, pcBoxes(black = true)) { onAllNodesWithText("SNIVY")[0].performClick() },
+        Shot("pc-boxes-black-page", tw, th, td, pcBoxes(black = true)) {
+            onAllNodesWithText("SNIVY")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+        },
+        Shot("pc-boxes-black-bag", tw, th, td, pcBoxes(black = true)) { onNodeWithText("BAG").performClick() },
+        Shot("pc-boxes-black-trainer", tw, th, td, pcBoxes(black = true)) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-black-missing", tw, th, td, pcBoxes(black = true)) {
+            onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick()
+        },
+        Shot("pc-boxes-ds-page", tw, th, td, pcBoxes(ds = true)) {
+            onAllNodesWithText("MEGANIUM")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("STATS").performClick()
+        },
+        Shot("pc-boxes-ds-info", tw, th, td, pcBoxes(ds = true)) {
+            onAllNodesWithText("MEGANIUM")[0].performClick(); onNodeWithText("CHANGE").performClick()
+        },
+        Shot("pc-boxes-ds-item", tw, th, td, pcBoxes(ds = true)) {
+            onAllNodesWithText("MEGANIUM")[0].performClick(); onNodeWithText("CHANGE").performClick(); onNodeWithText("ITEM").performClick()
+        },
+        Shot("pc-boxes-ds-bag", tw, th, td, pcBoxes(ds = true)) { onNodeWithText("BAG").performClick(); onNodeWithText("MEDICINE").performClick() },
+        Shot("pc-boxes-ds-bag-add", tw, th, td, pcBoxes(ds = true)) {
+            onNodeWithText("BAG").performClick(); onAllNodesWithText("BERRIES")[0].performClick(); mainClock.advanceTimeBy(1000); onNodeWithText("ADD ITEM").performClick()
+        },
+        Shot("pc-boxes-ds-trainer", tw, th, td, pcBoxes(ds = true)) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-ds-trainer-phone", 1080, 2400, 2.625f, pcBoxes(ds = true)) { onNodeWithText("TRAINER").performClick() },
         Shot("pc-boxes-bag", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick() },
         Shot("pc-boxes-bag-tm", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("TMs & HMs").performClick() },
         Shot("pc-boxes-bag-amount", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("POTION").performClick() },
-        Shot("pc-boxes-bag-money", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("MONEY").performClick() },
-        Shot("pc-boxes-bag-add", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("ADD ITEM").performClick() },
+        Shot("pc-boxes-bag-add", tw, th, td, pcBoxes()) {
+            // Taps a moment apart: two quick ones read as a double tap and the second is lost.
+            onNodeWithText("BAG").performClick(); onAllNodesWithText("BERRIES")[0].performClick(); mainClock.advanceTimeBy(1000); onNodeWithText("ADD ITEM").performClick()
+        },
         Shot("pc-boxes-bag-phone", 1080, 2400, 2.625f, pcBoxes()) { onNodeWithText("BAG").performClick() },
+        // TRAINER: money, coins, the Pokédex and the event tickets.
+        Shot("pc-boxes-trainer", tw, th, td, pcBoxes()) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-bag-money", tw, th, td, pcBoxes()) { onNodeWithText("TRAINER").performClick(); onNodeWithText("MONEY").performClick() },
+        Shot("pc-boxes-trainer-event", tw, th, td, pcBoxes()) { onNodeWithText("TRAINER").performClick(); onNodeWithText("AURORA TICKET").performClick() },
+        Shot("pc-boxes-trainer-got", tw, th, td, pcBoxes()) {
+            onNodeWithText("TRAINER").performClick(); onNodeWithText("AURORA TICKET").performClick(); onAllNodesWithText("GET").let { it[it.fetchSemanticsNodes().size - 1] }.performClick()
+        },
+        Shot("pc-boxes-trainer-phone", 1080, 2400, 2.625f, pcBoxes()) { onNodeWithText("TRAINER").performClick() },
         // TRADE: two saves side by side; KADABRA sent over (it evolves on arrival), MEW refused (no event), a swap.
         // Picks are set on the state (Emerald's KADABRA is its 4th, MEW its 6th; FireRed's box 1 has slot 22 free).
         Shot("trade", tw, th, td, trade()),
-        Shot("trade-send", tw, th, td, trade { selA = BoxSlot(0, 21); selB = BoxSlot(0, 3) }),
-        Shot("trade-evolve", tw, th, td, trade { selA = BoxSlot(0, 21); selB = BoxSlot(0, 3) }) { onNodeWithText("SEND").performClick() },
-        Shot("trade-evolved", tw, th, td, trade { selA = BoxSlot(0, 21); selB = BoxSlot(0, 3) }) {
+        Shot("trade-send", tw, th, td, trade { selA = pc(0, 21); selB = pc(0, 3) }),
+        Shot("trade-evolve", tw, th, td, trade { selA = pc(0, 21); selB = pc(0, 3) }) { onNodeWithText("SEND").performClick() },
+        Shot("trade-evolved", tw, th, td, trade { selA = pc(0, 21); selB = pc(0, 3) }) {
             onNodeWithText("SEND").performClick(); onNodeWithText("EVOLVE").performClick()
         },
-        Shot("trade-refused", tw, th, td, trade { selA = BoxSlot(0, 21); selB = BoxSlot(0, 5) }),
-        Shot("trade-swap", tw, th, td, trade { selA = BoxSlot(0, 0); selB = BoxSlot(0, 0) }),
-        Shot("trade-phone", 1080, 2400, 2.625f, trade { selA = BoxSlot(0, 0); selB = BoxSlot(0, 0) }),
+        Shot("trade-refused", tw, th, td, trade { selA = pc(0, 21); selB = pc(0, 5) }),
+        Shot("trade-swap", tw, th, td, trade { selA = pc(0, 0); selB = pc(0, 0) }),
+        // From FireRed's party to the end of Emerald's.
+        Shot("trade-party", tw, th, td, trade { selA = com.pokedaisy.app.companion.data.save.MonRef.Party(1); selB = com.pokedaisy.app.companion.data.save.MonRef.Party(2) }),
+        Shot("trade-phone", 1080, 2400, 2.625f, trade { selA = pc(0, 0); selB = pc(0, 0) }),
+        // TRADE AND BACK: Emerald's KADABRA picked alone (FireRed would evolve it), its confirm, and back home as ALAKAZAM.
+        Shot("trade-back", tw, th, td, trade { selB = pc(0, 3) }),
+        Shot("trade-back-confirm", tw, th, td, trade { selB = pc(0, 3) }) { onNodeWithText("TRADE AND BACK").performClick() },
+        Shot("trade-back-done", tw, th, td, trade { selB = pc(0, 3); tradeBack() }),
+        // POKé TRANSFER: HeartGold's PC into Black's, six picked and sent; Black without its National Pokédex.
+        Shot("poke-transfer", tw, th, td, transfer()),
+        Shot("poke-transfer-picked", tw, th, td, transfer { (2 until 8).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        Shot("poke-transfer-sent", tw, th, td, transfer { (2 until 8).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) }; transfer() }),
+        Shot("poke-transfer-phone", 1080, 2400, 2.625f, transfer { (2 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        // COLLECTION: the three made-up saves' Pokémon in one list; by level, one game, a search; a Pokémon's choices.
+        Shot("collection", tw, th, td, collection()),
+        Shot("collection-level", tw, th, td, collection { sort = com.pokedaisy.app.companion.data.save.SaveCollection.Sort.LEVEL }),
+        Shot("collection-search", tw, th, td, collection { query = "tr" }),
+        Shot("collection-game", tw, th, td, collection()) { onNodeWithText("ALL GAMES").performClick() },
+        Shot("collection-picked", tw, th, td, collection { picked = shown().first { it.palParkable } }),
+        Shot("collection-phone", 1080, 2400, 2.625f, collection()),
+        // PAL PARK: FireRed's PC into HeartGold's, six picked and brought over; the egg refused.
+        Shot("pal-park", tw, th, td, palPark()),
+        Shot("pal-park-picked", tw, th, td, palPark { (0 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        Shot("pal-park-migrated", tw, th, td, palPark { (0 until 6).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) }; migrate() }),
+        Shot("pal-park-refused", tw, th, td, palPark { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, 23)) }),
+        Shot("pal-park-phone", 1080, 2400, 2.625f, palPark { (0 until 4).forEach { toggle(com.pokedaisy.app.companion.data.save.BoxSlot(0, it)) } }),
+        // MISSING: what FireRed's Pokédex lacks, and the made-up Emerald save's Pokémon that could fill it.
+        Shot("pc-boxes-missing-button", tw, th, td, pcBoxes(missing = true)) { onNodeWithText("TRAINER").performClick() },
+        Shot("pc-boxes-missing", tw, th, td, pcBoxes(missing = true)) { onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick() },
+        Shot("pc-boxes-missing-can-come", tw, th, td, pcBoxes(missing = true)) {
+            onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick(); onNodeWithText("IN MY SAVES").performClick()
+        },
+        Shot("pc-boxes-missing-phone", 1080, 2400, 2.625f, pcBoxes(missing = true)) { onNodeWithText("TRAINER").performClick(); onNodeWithText("MISSING").performClick() },
         Shot("library-expand-intro", tw, th, td, activity(expandIntro = true) { LibraryActivity() }),
         Shot("library-battle-style", tw, th, td, activity(battleStyleIntro = true) { LibraryActivity() }),
         // Picking GEN 5 closes it and saves the choice.
@@ -2880,6 +3081,21 @@ fun main(args: Array<String>) {
                 }
             }
         }),
+        // BOSS RETRY's question after a lost trainer battle (BattleRetryAsk), over the game on one screen.
+        Shot("ask-battle-retry", 1920, 1080, 2.30625f, {
+            {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF3A5A40), androidx.compose.ui.graphics.Color(0xFF1E2A22)))),
+                    contentAlignment = androidx.compose.ui.Alignment.TopCenter,
+                ) {
+                    com.pokedaisy.app.companion.ui.FeatureTipCard(
+                        com.pokedaisy.app.companion.ui.battleRetryAskText(),
+                        androidx.compose.ui.Modifier.padding(top = 24.dp).fillMaxWidth(0.54f),
+                        left = 0.7f, badge = "NEW",
+                    )
+                }
+            }
+        }),
         // The first scenic FLY's landing: keep it or the classic FLY (FlyStyleAsk), over the game on one screen and on the companion.
         Shot("ask-fly-style", 1920, 1080, 2.30625f, {
             {
@@ -3200,6 +3416,9 @@ fun main(args: Array<String>) {
             com.pokedaisy.app.companion.FavoriteItems.load(emptySet()) {} // a shot's stars don't carry into the next
             com.pokedaisy.app.companion.data.PlayerLook.worn.value = null
             com.pokedaisy.app.companion.data.randomizedRetail = null // only the randomized shots set it
+            // SETTINGS' DESCRIPTIONS / GROUP TABS are process-wide: each shot starts with both shown.
+            com.pokedaisy.app.companion.ui.SettingsLook.descriptions = true
+            com.pokedaisy.app.companion.ui.SettingsLook.tabs = true
             val content = shot.content()
             runSkikoComposeUiTest(Size(shot.w.toFloat(), shot.h.toFloat()), Density(shot.density)) {
                 // Manual clock: the party icons / map highlight animate forever,

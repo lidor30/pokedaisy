@@ -14,6 +14,8 @@ class GameBattleInput(
     input: ScriptInput? = null,
     reader: MemoryReader = InProcessReader,
     writer: ((Long, ByteArray) -> Boolean)? = null,
+    /** Calls a game function between frames (LAST BALL: [BattleInputController.throwBall]); null = no throws. */
+    caller: ((fn: Long, a0: Int, a1: Int, a2: Int, a3: Int) -> Long)? = null,
     var changed: () -> Unit = {},
     private val silent: () -> Boolean = { false },
     private val retryUnshownBattle: Boolean = false,
@@ -26,7 +28,7 @@ class GameBattleInput(
     val controller = BattleInputController(ScriptInput { bits, owns ->
         script = bits; exclusive = owns
         input?.setScript(bits, owns)
-    }, reader, writer = writer).apply {
+    }, reader, writer = writer, caller = caller).apply {
         stateNow = { telemetry.refreshBattleInputFast()?.second }
     }
 

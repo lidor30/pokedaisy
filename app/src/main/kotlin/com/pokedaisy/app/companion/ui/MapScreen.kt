@@ -111,7 +111,7 @@ fun MapScreen(
     val model = remember(snapshot.game, gen) { activeRegionMap() }
     // A cave or building with a map of its own (AreaMap.kt): its AREA map first, the region map a button away.
     val area = rememberPlayerArea(snapshot)
-    if (area != null && AreaMapChoice.showsArea(area)) {
+    if (area != null && AreaMapChoice.showsArea(area, com.pokedaisy.app.companion.data.AreaMap.MapId(snapshot.mapGroup, snapshot.mapNum))) {
         AreaMapPane(area, snapshot, onRegion = { AreaMapChoice.showRegion(area) }, modifier = modifier)
     } else Box(modifier = modifier.fillMaxSize()) {
         val playerRegion = model?.sections?.get(snapshot.regionMapSectionId)?.region?.takeIf { it in model.images.indices }
@@ -124,8 +124,10 @@ fun MapScreen(
         // FLY: its destinations once asked for, or what kept it from starting.
         var flyTargets by remember { mutableStateOf(initialFly) }
         var flyNote by remember { mutableStateOf<String?>(null) }
-        // The button shows where the ROM has FLY and someone in the party knows it (anyone, with NO HMS NEEDED).
+        // The button shows where the ROM has FLY and someone in the party knows it (anyone, with NO HMS NEEDED, or in a
+        // game whose own party menu offers Fly without the move: Unbound's, which FLY then asks).
         val canFly = fly?.canFly() == true && (com.pokedaisy.app.companion.data.HmFree.active ||
+            com.pokedaisy.app.companion.data.FlyWithoutMoveGame.active ||
             snapshot.party.any { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } })
         val openFly: (() -> Unit)? = fly?.takeIf { canFly }?.let { f ->
             {
@@ -269,7 +271,7 @@ fun MapScreen(
                         onTakeOff = takeOff, flying = flyingNow,
                         onRegion = { selection = null; cursorTile = null; shownOverride = (shown + 1) % model.images.size },
                         onMe = { selection = null; cursorTile = null; shownOverride = null },
-                        onArea = area?.let { { AreaMapChoice.showArea() } },
+                        onArea = area?.let { a -> { AreaMapChoice.showArea(a) } },
                     )
                 }
             }
@@ -360,6 +362,7 @@ internal enum class MapLabelStyle(val width: Int, val height: Int) {
             else if (game == GameKind.POLISHED_CRYSTAL) com.pokedaisy.app.companion.data.Gen2Art.POLISHED_PLAYERS.getOrNull(gender)
             else if (game == GameKind.GOLD || game == GameKind.SILVER) com.pokedaisy.app.companion.data.Gen2Art.GOLD_SILVER_PLAYER
             else if (game == GameKind.RED || game == GameKind.BLUE) "player_red_blue"
+            else if (game == GameKind.BROWN) "player_brown"
             else if (game == GameKind.PURE_RED || game == GameKind.PURE_BLUE) "player_${com.pokedaisy.app.companion.data.Gen1Art.pureTownMapName(game)}"
             else if (game != GameKind.CRYSTAL && game != GameKind.CRYSTAL_LEGACY) "player_yellow"
             else if (gender == 1) com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_PLAYER_F

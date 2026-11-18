@@ -24,6 +24,8 @@ class SaveStates(filesDir: File, romCrc: String) {
     fun bakThumbFile(slot: Int): File = File(files.bakThumbFile(slot).toString())
     val resumeFile: File get() = File(files.resumeFile.toString())
     val undoLoadFile: File get() = File(files.undoLoadFile.toString())          // pre-load snapshot
+    /** BOSS RETRY: the state taken as a trainer battle began (never a slot; one per game, overwritten by the next). */
+    val retryFile: File get() = File(files.retryFile.toString())
     /** Set when the library loads another save file into this game ([GameSaves.load]):
      * the next start boots from that save instead of resuming, since a resume (or
      * manual) state still holds the old save's progress and would write it back. */

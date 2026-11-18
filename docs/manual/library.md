@@ -37,8 +37,11 @@ Down the left edge of the library are three buttons: `GAMES`, `TOOLS` and `SETTI
 | --- | --- |
 | `PATCH A ROM` | Turns a `.bps` patch into a game (see [Patch a ROM hack](#patch-a-rom-hack)). |
 | `LINK PLAY` | Runs two to four GBA games joined as if by a link cable, to trade and battle between them (see [Link play](link-play.md)). |
-| `SAVE EDITOR` | Opens a game's save: rearrange the PC, change the bag, money and moves (see [Save editor and save trades](save-trade.md)). |
-| `TRADE SAVES` | Trades Pokémon between two of your games' save files (see [Save editor and save trades](save-trade.md)). |
+| `SAVE EDITOR` | Opens a game's save (a GBA game, Diamond / Pearl / Platinum / HeartGold / SoulSilver, or Black / White and their sequels): move Pokémon between the party and the PC, change a Pokémon's nature, IVs, EVs, level and moves, the bag, money and Pokédex, and see what the Pokédex is missing (see [Save editor and save trades](save-trade.md)). |
+| `TRADE SAVES` | Trades Pokémon between two of your games' save files, from the party or the PC, or sends one away and back to evolve it (see [Save editor and save trades](save-trade.md)). |
+| `PAL PARK` | Brings six Pokémon from a GBA game's PC to Diamond, Pearl, Platinum, HeartGold or SoulSilver, the way the DS games' Pal Park does (see [Pal Park](save-trade.md#pal-park)). |
+| `POKé TRANSFER` | Sends six Pokémon from Diamond, Pearl, Platinum, HeartGold or SoulSilver to Black, White or their sequels, the way the Poké Transfer Lab does (see [Transfer to Black and White](save-trade.md#transfer-to-black-and-white)). |
+| `COLLECTION` | Every Pokémon in all your saves in one list, to search, sort and open, trade or send to Pal Park (see [Collection](save-trade.md#collection)). |
 | `SPRITE PACK` | Loads a sprite pack file, so `MAKEOVER` has other games' looks without those games (see [Sprite packs](companion.md#sprite-packs)). |
 
 A green dot on `TOOLS` means one of them is new. `BACK` on the tools takes you back to your games.
@@ -154,7 +157,7 @@ Long-press a game, in the list or the grid, to open its menu. In list view, the 
 | `SET COVER` | Uses an image from your device as the cover. |
 | `RESET COVER` | Goes back to the automatic cover. Only shows after you picked one yourself. |
 | `LINK PLAY` | Runs this GBA game with up to three others, joined as if by a link cable. See [Link play](link-play.md). |
-| `SAVE EDITOR` | Opens the game's save: rearrange the PC, change the bag and moves, or trade with another game's save. See [Save editor and save trades](save-trade.md). |
+| `SAVE EDITOR` | Opens the game's save: move Pokémon, change them, the bag and the Pokédex, or trade with another game's save. See [Save editor and save trades](save-trade.md). |
 | `LOAD SAVE` | Puts another save file into the game. Your current save is kept as a dated copy. |
 | `RESTORE BACKUP` | Brings back one of the automatic save backups. |
 | `SAVE FOLDER` | Gives this game its own save folder, such as another emulator's. |
@@ -228,7 +231,7 @@ Every game plays, but the companion only reads the games it knows. The library t
 - `NOT SUPPORTED`: the game plays, and the companion shows a notice instead of its tabs.
 - `PARTIALLY SUPPORTED`: a ROM PokeDaisy matched to a game it knows. The party, bag, map and battles work, and whatever didn't match is switched off.
 
-From a linked folder, the library lists the supported games plus any unsupported hacks of FireRed, LeafGreen, Emerald, Ruby or Sapphire (tagged), so you can try them. When PokeDaisy can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
+From a linked folder, the library lists the supported games and every other Pokémon game it finds, Game Boy and DS ones too, tagged `NOT SUPPORTED`: they play as any game, without the companion. Games that aren't Pokémon games stay out. For an unsupported hack of FireRed, LeafGreen, Emerald, Ruby or Sapphire, PokeDaisy can try to work out which game it's built on. When PokeDaisy can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
 
 Turn on `SUPPORTED ONLY` in Settings, in the `LIBRARY` group, to leave games the companion can't read out of the library.
 
@@ -264,28 +267,3 @@ A few things to know:
 - Starting another game from the frontend while one is open switches to it; the open one is suspended first.
 
 There are step-by-step guides for [ES-DE](https://github.com/lidor30/pokedaisy/blob/main/docs/es-de/README.md) and [iiSU](https://github.com/lidor30/pokedaisy/blob/main/docs/iisu/README.md).
-
-## On iPad
-
-On your Home Screen, look for the PokeDaisy flower icon on its blue patterned background to open the app.
-
-The library, setup and application settings use the same styled screens as Android. The library fills the window
-when no game is open. Use the header to add games from Files, search, change the order, switch between a list and a
-grid, or refresh after changing files. Hold a game to mark it as a favorite or choose `LOAD SAVE`.
-
-`FAVORITES` and `RECENT` keep the games you want close by. Your choices, display mode and game history are kept when
-you reopen the app. The platform views show the consoles your library contains.
-
-Favorites come first in every sort order, and `RECENT` lists the games you played most recently first.
-Search ignores case and accents, whether you search by the displayed name or the file name.
-
-Open `SETTINGS` from the library to change appearance, language, playback defaults and touch controls before playing.
-`RUN SETUP` reopens the shared setup pages. On iPad, games picked in Files are copied into PokeDaisy's `roms` folder,
-and battery saves stay in `saves`. You can reach both folders through Files.
-Setup also includes `GAME BUTTONS`: tap a row and press a controller or keyboard button to bind it,
-or keep the defaults and choose `DONE`. These are the same bindings used in Settings and while playing.
-
-To return to the library while playing, open the companion's `SETTINGS` and choose `CLOSE GAME`. Confirm to close it.
-
-Only actions supported on iPad are offered. Folder linking, cover downloads and several Android tools still need
-platform support.

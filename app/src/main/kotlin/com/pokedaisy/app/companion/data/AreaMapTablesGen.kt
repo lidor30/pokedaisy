@@ -166,6 +166,8 @@ val AREA_MAP_TABLES: Map<Long, AreaMapTables> by lazy {
         0x8441c61bL to AreaMapTables(0x0886EED8L, 0x0L, listOf(92, 13, 6, 24, 15, 24, 24, 14, 7, 4, 25, 9, 9, 13, 3, 56, 6, 42, 14, 7, 14, 29, 36, 36, 36, 36, 54, 6, 50, 14, 6, 46, 46, 12), 512, 512, 6, -1, 24, 0x3FF),
         // Pokemon Monomyth (v1.1).gba
         0x6ea29055L to AreaMapTables(0x0886F3A8L, 0x0L, listOf(92, 13, 6, 24, 15, 24, 24, 14, 7, 4, 25, 9, 9, 13, 3, 56, 6, 42, 14, 7, 14, 29, 36, 36, 36, 36, 54, 6, 50, 14, 6, 46, 46, 12), 512, 512, 6, -1, 24, 0x3FF),
+        // Pokemon Monomyth (v1.2).gba
+        0xc17b3cf0L to AreaMapTables(0x0886EF64L, 0x0L, listOf(92, 13, 6, 24, 15, 24, 24, 14, 7, 4, 25, 9, 9, 13, 3, 56, 6, 42, 14, 7, 14, 29, 36, 36, 36, 36, 54, 6, 50, 14, 6, 46, 46, 12), 512, 512, 6, -1, 24, 0x3FF),
         // Pokemon Odyssey (v4.1.1).gba
         0x6c5ee1b2L to AreaMapTables(0x083526A8L, 0x0L, listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1), 640, 640, 7, 26, 16, 0x3FF),
         // Pokemon Orange Islands (Beta 5.7).gba

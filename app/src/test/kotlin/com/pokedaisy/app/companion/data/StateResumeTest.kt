@@ -27,13 +27,19 @@ class StateResumeTest {
         assertEquals("3", SnapshotCache.fileFor(files.resumeFile).readText())
     }
 
-    @Test fun aChangedOrUnverifiableSaveNeverReachesTheLoader() {
-        for (verdict in listOf(0, -1)) {
+    @Test fun aChangedSaveOrAnotherCoresStateNeverReachesTheLoader() {
+        for (verdict in listOf(0, 2)) {
             assertTrue(resume.save()); matches = verdict; game = 9
             assertFalse(resume.restore()); assertEquals(9, game); assertEquals(0, reads)
             assertFalse(files.resumeFile.isFile)
             assertTrue((root / "resume.replaced").isFile)
         }
+    }
+
+    /** -1: the state carries no save, so loading it can't write over the file - it resumes, as before the shared resume. */
+    @Test fun aStateWithNoSaveInsideStillResumes() {
+        assertTrue(resume.save()); matches = -1; game = 9
+        assertTrue(resume.restore()); assertEquals(3, game)
     }
 
     @Test fun aFreshBootMarkerSurvivesFailedWritesAndBlocksManualFallback() {

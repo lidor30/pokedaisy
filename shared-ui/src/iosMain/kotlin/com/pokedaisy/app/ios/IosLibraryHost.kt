@@ -2,6 +2,7 @@
 
 package com.pokedaisy.app.ios
 
+import com.pokedaisy.app.companion.ui.LibraryIcons
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -165,9 +166,9 @@ internal class IosLibraryHost(
             val cover: @Composable (Modifier) -> Unit = { LibraryCover(null, category(game.id), m, it) }
             val items = listOf(
                 LibraryMenuItem(if (game.favorite) "UNFAVORITE" else "FAVORITE",
-                    if (game.favorite) Icons.Filled.StarBorder else Icons.Filled.Star,
+                    if (game.favorite) LibraryIcons.StarBorder else Icons.Filled.Star,
                     pixel = if (game.favorite) PixelIcons.starOutline else PixelIcons.star) { prefs.toggleFavorite(key(game.id)) },
-                LibraryMenuItem("LOAD SAVE", Icons.Filled.FileOpen, opens = true) { pickSave(game.id) })
+                LibraryMenuItem("LOAD SAVE", LibraryIcons.FileOpen, opens = true) { pickSave(game.id) })
             val onPlay = {
                 if (saveImports.importing == null) { prefs.recordPlay(key(game.id)); play(game.id) }
             }

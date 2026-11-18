@@ -41,7 +41,8 @@ class PortraitPanel(
         set(v) { state.setPortrait(portrait.copy(padStrip = v)) }
     var hinge: IntRange?
         get() = portrait.hinge
-        set(v) { state.setPortrait(portrait.copy(hinge = v)) }
+        // TABLETOP CONTROLS rides with the hinge: read again each time the fold is laid out (a change re-syncs the screen).
+        set(v) { state.setPortrait(portrait.copy(hinge = v, controlsBelowHinge = prefs.tabletopControlsBottom)) }
     val tabletop get() = enabled && hinge != null
     fun setEnabled(on: Boolean) {
         if (enabled == on) return
@@ -55,7 +56,8 @@ class PortraitPanel(
     fun reveal() = state.setPortrait(portrait.copy(hidden = false), save = true)
     fun refresh() = state.setPortrait(portrait.copy(
         ratio = if (ds) prefs.portraitDsRatio else prefs.portraitCompanionRatio,
-        underGame = prefs.portraitCompanionUnderGame, hidden = prefs.portraitCompanionHidden))
+        underGame = prefs.portraitCompanionUnderGame, hidden = prefs.portraitCompanionHidden,
+        controlsBelowHinge = prefs.tabletopControlsBottom))
     fun companionBounds() = root.frames?.companion?.takeIf { enabled && root.frames?.companionShown == true }
     fun onBack(): Boolean {
         if (!enabled) return false

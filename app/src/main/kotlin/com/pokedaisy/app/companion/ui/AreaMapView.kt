@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +32,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -44,21 +47,28 @@ import kotlinx.coroutines.withContext
 
 /**
  * Which map the MAP tab and the HUD's minimap show while the player is in an area with a map of its own (AreaMap.kt):
- * the AREA map by default, the region map after REGION MAP, back with AREA MAP. Shared by both screens; a new area starts
- * on its AREA map again.
+ * on a large floor the AREA map, on a small room of it the region map ([AreaMap.Area.opensOn]); REGION MAP / AREA MAP
+ * switch, and the pick holds on every floor of the area. Shared by both screens; a new area starts on its default again.
  */
 object AreaMapChoice {
-    private var regionFor by mutableStateOf<AreaMap.MapId?>(null)
+    /** The area the player picked a map in (its key) and whether that pick was the AREA map; null = none yet. */
+    private var picked by mutableStateOf<Pair<AreaMap.MapId?, Boolean>?>(null)
 
     /** The area's key: its first floor (the same whichever floor the player is on). */
     private fun key(area: AreaMap.Area) = area.floors.firstOrNull()?.id
 
-    fun showsArea(area: AreaMap.Area?): Boolean = area != null && regionFor != key(area)
-    fun showRegion(area: AreaMap.Area) { regionFor = key(area) }
-    fun showArea() { regionFor = null }
+    fun showsArea(area: AreaMap.Area?, here: AreaMap.MapId): Boolean {
+        if (area == null) return false
+        val p = picked
+        return if (p != null && p.first == key(area)) p.second else area.opensOn(here)
+    }
+    fun showRegion(area: AreaMap.Area) { picked = key(area) to false }
+    fun showArea(area: AreaMap.Area) { picked = key(area) to true }
+    /** Back to each floor's default (previews and tests). */
+    fun reset() { picked = null }
 }
 
-/** The area the player is in, when it's worth a map ([AreaMap.Area.worthShowing]); null outdoors and in a one-room
+/** The area the player is in, when it's worth a map ([AreaMap.Area.worthShowing]); null outdoors and in a small
  * building, or before it's read. */
 @Composable
 fun rememberPlayerArea(snapshot: SnapshotView): AreaMap.Area? {
@@ -133,19 +143,40 @@ fun AreaMapPane(area: AreaMap.Area, snapshot: SnapshotView, onRegion: () -> Unit
                 if (onFloor) drawHead(headImage, left + (snapshot.x * 16 + 8) * s, top + (snapshot.y * 16 + 8) * s, maxOf(s, gba), style.cursorColor)
             }
         }
-        // A chip per floor: the one shown red, the player's with their pin.
+        // A button per floor: the one shown red, the player's with their pin. Big enough to hit: the buttons share the
+        // row (up to [FLOOR_MAX_W] each, centred) when they fit at [FLOOR_MIN_W] GBA pixels, else keep that width and
+        // the row scrolls (Silph Co.'s 11).
         if (area.floors.size > 1) {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(u * 3)) {
-                area.floors.forEachIndexed { i, f ->
-                    OptionButton(
-                        f.label, m, onClick = { shown = i }, emphasis = i == shown,
-                        pixelIcon = if (f.id == here) PixelIcons.pin else null, sidePadding = 5,
-                    )
+            val chipM = rememberGbaTextMetrics()
+            val scroll = rememberScrollState()
+            // The shown floor in view (stepping floors, or the player taking the stairs to one off the edge).
+            BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val gap = u * 3
+                val n = area.floors.size
+                val chipW = ((maxWidth - gap * (n - 1)) / n).coerceIn(u * FLOOR_MIN_W, u * FLOOR_MAX_W)
+                val stepPx = with(LocalDensity.current) { (chipW + gap).roundToPx() }
+                val viewPx = constraints.maxWidth
+                LaunchedEffect(shown, stepPx) {
+                    scroll.animateScrollTo((stepPx * shown - (viewPx - stepPx) / 2).coerceAtLeast(0))
+                }
+                Row(Modifier.horizontalScroll(scroll), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    area.floors.forEachIndexed { i, f ->
+                        OptionButton(
+                            f.label, chipM, onClick = { shown = i }, emphasis = i == shown,
+                            modifier = Modifier.width(chipW).heightIn(min = u * FLOOR_MIN_H),
+                            pixelIcon = if (f.id == here) PixelIcons.pin else null, sidePadding = 4,
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+/** A floor button's width (least, most) and least height in GBA pixels: a thumb's width on the Thor's bottom screen. */
+private const val FLOOR_MIN_W = 40
+private const val FLOOR_MAX_W = 72
+private const val FLOOR_MIN_H = 26
 
 /** The player's region-map head centred on (cx, cy), [px] screen pixels a head pixel; no head = a cursor box. */
 private fun DrawScope.drawHead(head: ImageBitmap?, cx: Float, cy: Float, px: Float, cursor: Color) {
@@ -163,30 +194,36 @@ private fun DrawScope.drawHead(head: ImageBitmap?, cx: Float, cy: Float, px: Flo
 }
 
 /**
- * The HUD minimap's AREA map: [mapW] x [mapH] GBA pixels of the player's floor around them, half size (a metatile 8
- * pixels: the room around the player, more than the screen shows), their head in the middle.
+ * The HUD minimap's AREA map: [mapW] x [mapH] GBA pixels of the player's floor around them, a quarter size (a metatile
+ * 4 pixels, [AreaMaps.miniImage]: about three screens of room around the player, the whole of most floors), their head
+ * in the middle.
  */
 @Composable
 internal fun HudAreaMap(snapshot: SnapshotView, mapW: Int, mapH: Int, u: Dp, modifier: Modifier = Modifier) {
     val id = AreaMap.MapId(snapshot.mapGroup, snapshot.mapNum)
-    val image = rememberAreaImage(id) ?: return
+    val image by produceState(AreaMaps.cachedMiniImage(id)?.imageBitmap(), id) {
+        value = withContext(Dispatchers.IO) { runCatching { AreaMaps.miniImage(id)?.imageBitmap() }.getOrNull() }
+    }
+    val img = image ?: return
     val style = MapLabelStyle.of(snapshot.game)
     val head = regionMapBitmap(style.headAsset(snapshot.playerGender, snapshot.game))
     val headImage = remember(head) { head }
     Box(modifier.size(u * mapW, u * mapH).clip(PixelRoundedShape(u * 2)).background(Color.Black)) {
         Canvas(Modifier.fillMaxSize()) {
-            val gba = u.toPx()
-            val s = gba / 2
-            val w = image.width * s
-            val h = image.height * s
-            val px = (snapshot.x * 16 + 8) * s
-            val py = (snapshot.y * 16 + 8) * s
+            // A map pixel a GBA pixel, at whole screen pixels like the region minimap.
+            val s = u.toPx()
+            val w = img.width * s
+            val h = img.height * s
+            val cell = AreaMaps.MINI_SCALE
+            val px = (snapshot.x * cell + cell / 2f) * s
+            val py = (snapshot.y * cell + cell / 2f) * s
             fun place(len: Float, room: Float, focus: Float) =
                 if (len <= room) (room - len) / 2 else (room / 2 - focus).coerceIn(room - len, 0f)
-            val left = place(w, size.width, px)
-            val top = place(h, size.height, py)
-            drawImage(image, dstOffset = IntOffset(left.toInt(), top.toInt()), dstSize = IntSize(w.toInt(), h.toInt()), filterQuality = FilterQuality.None)
-            drawHead(headImage, left + px, top + py, gba, style.cursorColor)
+            // Whole GBA pixels, so the map's pixels stay even.
+            val left = (place(w, size.width, px) / s).toInt() * s
+            val top = (place(h, size.height, py) / s).toInt() * s
+            drawImage(img, dstOffset = IntOffset(left.toInt(), top.toInt()), dstSize = IntSize(w.toInt(), h.toInt()), filterQuality = FilterQuality.None)
+            drawHead(headImage, left + px, top + py, s, style.cursorColor)
         }
     }
 }

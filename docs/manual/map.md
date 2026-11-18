@@ -8,8 +8,6 @@ keywords: [town map, region map, area map, cave map, dungeon map, building map, 
 
 The `MAP` tab is the game's town map, always open. It answers "where am I?" at a glance and "where is that town the guide mentioned?" in two taps, without digging the map out of your bag.
 
-On iPhone and iPad, supported GBA games can use `FLY` from the map with the game's own cut-in and landing. The same badge, party, destination and field checks apply as on Android. Scenic flight is coming with the expanded-rendering support.
-
 ## You on the map
 
 The map is drawn the way your game draws it: the region's own picture, your character's head on the tile where the game would put it, and the game's blinking cursor around the place you're in. The place's name sits in the game's own label: a dark strip in the top left in FireRed and its relatives, a framed window in the bottom right in Emerald and its relatives. In FireRed-style games a second strip names a cave or other place on that spot when there is one.
@@ -22,16 +20,16 @@ The cursor pulses between two sizes like the game's. To keep it still, turn off 
 
 ## Caves and buildings: the AREA map
 
-In the GBA games (FireRed, LeafGreen, Emerald, Ruby, Sapphire in every language, and most hacks), walking into a cave or a building that's bigger than the screen, or that has more than one floor, switches the `MAP` tab to that place's own map: the whole floor you're on, drawn from the game itself, with your head where you stand. The place's name and the floor sit in the bar at the top.
+In the GBA games (FireRed, LeafGreen, Emerald, Ruby, Sapphire in every language, and most hacks), walking into a big cave or building switches the `MAP` tab to that place's own map: the whole floor you're on, drawn from the game itself, with your head where you stand. The place's name and the floor sit in the bar at the top. A place counts as big when one of its floors is at least two screens wide or two screens tall, or holds more than three screens of room: caves, hideouts, towers, ships and the puzzle gyms.
 
-- A row of buttons under the map has one for each floor. Yours has a pin on it. Tap another floor to look around it, and `ME` to come back to yours. When you take the stairs, the map follows you.
+- A row of buttons under the map has one for each floor. Yours has a pin on it. Tap another floor to look around it, and `ME` to come back to yours. When you take the stairs, the map follows you. In a place with many floors, slide the row to reach the rest.
 - Floors are named the way the game names them (`B1F`, `1F`, `5F`, `RF` for a rooftop). Where the game doesn't name them, they're numbered in the game's own order. Some caves have more than one part on the same floor: those show as `3F`, `3F-2` and so on.
 - The magnifier shows the map at the game's own size around you. Drag it to look around, and tap the magnifier again to see the whole floor.
 - `REGION MAP` takes you to the region map, and `AREA MAP` there takes you back. Your pick holds until you leave for somewhere else; the next cave or building starts on its own map again.
 
-The HUD's minimap follows the same pick: in a cave or building it shows the floor around you, with the floor's name next to the place's.
+The HUD's minimap follows the same pick: in a big cave or building it shows the floor around you, zoomed out to about three screens of it, with the floor's name next to the place's. Tap it for the whole floor.
 
-A small room, like a single shop or a one-floor house, keeps the region map. So do the Game Boy and DS games, and a few hacks, for now.
+Pokémon Centers, shops, houses, department stores and the small gyms keep the region map, however many floors they have. So does a small room inside a big place, like a ship's cabin or an elevator: `AREA MAP` on the region map still opens the place's map from there. The Game Boy and DS games, and a few hacks, keep the region map everywhere for now.
 
 ## Tap a spot to name it
 
@@ -60,13 +58,13 @@ In the `PLACES` list, places that aren't on the first map say which map they're 
 
 ## Flying to a town
 
-When someone in your party knows the move that carries you between towns, a blue button for it appears under `PLACES`. Tap it for the towns you can fly to right now, pick one, and the game takes you there with its own animation, just as if you'd used the move from the party menu. With [`NO HMS NEEDED`](controls.md#no-hms-needed) on, the badge is enough: the button shows even when nobody knows the move, and your first Pokémon carries you.
+When someone in your party knows the move that carries you between towns, a blue button for it appears under `PLACES`. Tap it for the towns you can fly to right now, pick one, and the game takes you there with its own animation, just as if you'd used the move from the party menu. With [`NO HMS NEEDED`](controls.md#no-hms-needed) on, the badge is enough: the button shows even when nobody knows the move, and your first Pokémon carries you. In a game whose own party menu lets a Pokémon fly without knowing the move (Unbound: once you can fly there from the party menu), the button follows the game and the Pokémon its menu would pick carries you.
 
 The game's own rules still apply: you need the badge that allows it and you have to be outdoors, walking around, with no menu or conversation open. If something's missing, the button tells you what instead of flying.
 
-It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire in every language and on these hacks: Unbound, Radical Red, Ultra Violet, Let's Go, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, Orange Islands, Glazed (its first region), Emerald Legacy, Heart and Soul, SoulGold, Lazarus, Emerald Imperium, Emerald Seaglass, Too Many Types 2, R.O.W.E., Super Mariomon (1.5.1 and 1.5.2), Quetzal (Alpha 9, Hoenn's towns), Rocket Edition, Ash Gray and Emerald Kaizo (over the map only, see below). Emerald Rogue doesn't let anyone fly, so it has no button.
+It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire in every language and on these hacks: Unbound, Radical Red, Ultra Violet, Let's Go, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, Orange Islands, Glazed (its first region), Emerald Legacy, Heart and Soul, SoulGold, Lazarus, Emerald Imperium, Emerald Seaglass, Too Many Types 2, R.O.W.E., Super Mariomon (1.5.1 and 1.5.2), Quetzal (Alpha 9, Hoenn's towns), Epsilon Emerald (the routes you've been to are on its list too, as in the game), Rocket Edition, Ash Gray and Emerald Kaizo (over the map only, see below). Emerald Rogue doesn't let anyone fly, so it has no button.
 
-On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Crystal and Crystal Legacy. The list is the one the game's own map would give you: in Red, Blue, Yellow, Yellow Legacy, PureRed and PureBlue every town you've been to, and in Crystal and Crystal Legacy the towns you've been to in the region you're in (Kanto's once you've reached the Indigo Plateau).
+On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Brown, Crystal and Crystal Legacy. The list is the one the game's own map would give you: in Red, Blue, Yellow, Yellow Legacy, PureRed and PureBlue every town you've been to, in Brown the places you've been to in the order its own map lists them, and in Crystal and Crystal Legacy the towns you've been to in the region you're in (Kanto's once you've reached the Indigo Plateau).
 
 On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2. Black, White and their sequels ask for no badge: once someone knows the move, every town you've arrived at is on the list.
 

@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlin.concurrent.Volatile
+
 /**
  * FLY from the MAP tab, the way the game does it (FieldItems.kt's idea: the game's own functions, called between
  * frames). pokefirered's party menu: FIELD_MOVE_FLY needs FLAG_BADGE01_GET + its index (the Thunder Badge) and
@@ -56,9 +58,25 @@ data class FlyFns(
     val spots: FlySpots? = null,
     /** The Fly map's state the warp reads, pinned for the call (Unbound). */
     val regionMap: RegionMapPin? = null,
+    /** A game whose party menu offers Fly to Pokémon that don't know it (Unbound's CFRU field moves). */
+    val withoutMove: FlyWithoutMove? = null,
 ) {
     val functions get() = listOf(flagGet, setUpFieldMoveFly, getMapsecType, fadeScreen, lockControls, unlockControls) +
         (healWarp?.let { listOf(it.toHealLocation, it.toMapWarp, it.returnToField) } ?: listOf(setFlyWarpDestination))
+}
+
+/**
+ * CFRU's ONLY_CHECK_ITEM_FOR_HM_USAGE (SetPartyMonFieldSelectionActions): Fly for a Pokémon that doesn't know it
+ * once any of [flags] is set (Unbound: the bought device, sandbox mode), else with [hmItem] in the bag for a Pokémon
+ * [canLearn](mon, item, 0) says can learn it (0 = CAN_LEARN_MOVE). [canLearnCrc]: CRC32 of its first 32 bytes.
+ */
+data class FlyWithoutMove(val flags: List<Int>, val hmItem: Int, val canLearn: Long, val canLearnCrc: Long)
+
+/** The running game's FLY can go without the move ([FlyFns.withoutMove], its code found): the companion's FLY / FREE
+ * FLIGHT buttons don't ask for a Pokémon that knows it then, and the game's own rule answers when they're used. Set by
+ * the activity (any thread reads it), like [HmFree.active]. */
+object FlyWithoutMoveGame {
+    @Volatile var active = false
 }
 
 /** A list of [count] fly spots of [stride] bytes from [addr], each starting with its map section. */
@@ -155,6 +173,11 @@ fun flyUnbound(rev0: FlyFns) = rev0.copy(
     codeCrcs = listOf(0x07BEBC3AL, 0x950F2C97L, 0x31F88DE4L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0xE6E6C0C1L),
     spots = FlySpots(0x09FE6694L, 27, 10),
     regionMap = RegionMapPin(pointer = 0x020399D4L, regionOffset = 0x479B, scratch = 0x0203FFF0L),
+    // Its party menu's Fly entry (0x08A03522, the same in the French build): after the map type and the badge, flag
+    // 0x152D (the bought device) or 0x16E4 (sandbox mode) gives any Pokémon Fly, else HM02 (item 438) in the bag and
+    // CanMonLearnTMTutor (0x089F3B6C) == 0 for that one. A player whose party didn't know FLY got "No one in your
+    // party knows FLY" from the quick menu while the game's own menu offered it (Discord, 2026-11-17).
+    withoutMove = FlyWithoutMove(listOf(0x152D, 0x16E4), hmItem = 438, canLearn = 0x089F3B6CL, canLearnCrc = 0x0A68222EL),
 )
 
 /** The map sections FLY may offer: [FlyFns.spots]' sections, else the per-section table's filled entries. */
@@ -181,7 +204,7 @@ fun flyCodeMatches(fly: FlyFns, read: (addr: Long, len: Int) -> ByteArray): Bool
     fly.functions.zip(fly.codeCrcs).all { (fn, crc) ->
         val got = crc32(read(fn, 32))
         got == crc || fn == fly.getMapsecType && got == fly.getMapsecTypeAltCrc
-    }
+    } && fly.withoutMove.let { w -> w == null || crc32(read(w.canLearn, 32)) == w.canLearnCrc }
 
 enum class FlyResult {
     /** Ready ([FlyTargets.destinations]) / on its way. */
@@ -210,22 +233,32 @@ data class FlyTargets(
 
 private const val GET_MON_PERSONALITY = 0
 
-/** The first party Pokémon that knows Fly (not an egg): its slot and personality, or null. With NO HMS NEEDED
- * ([HmFree.active]) the first that isn't an egg, if nobody knows it: the game's own Fly checks no move after the menu. */
+/** The first party Pokémon that knows Fly (not an egg): its slot and personality, or null. Else the one the game's own
+ * party menu would offer Fly to without the move ([FlyFns.withoutMove]), and with NO HMS NEEDED ([HmFree.active]) the
+ * first that isn't an egg: the game's own Fly checks no move after the menu. */
 private fun flyer(fns: FieldItemFns, fly: FlyFns, g: GameCalls): Pair<Int, Long>? {
     val p = fns.party ?: return null
     val count = (g.read(p.partyCount, 1)[0].toInt() and 0xFF).coerceAtMost(6)
-    var first: Int? = null
+    val mons = ArrayList<Int>()
     for (slot in 0 until count) {
         val mon = (p.party + slot * p.monStride).toInt()
         if (g.call(p.getMonData, mon, fly.monEggField) != 0L) continue
-        if (first == null) first = slot
+        mons += slot
         if ((0 until 4).any { g.call(p.getMonData, mon, fly.monMoveField + it) == fly.flyMove.toLong() }) {
             return slot to g.call(p.getMonData, mon, GET_MON_PERSONALITY)
         }
     }
-    val slot = first?.takeIf { HmFree.active } ?: return null
+    val slot = fly.withoutMove?.let { w -> withoutMoveFlyer(fns, w, mons, g) } ?: mons.firstOrNull()?.takeIf { HmFree.active }
+        ?: return null
     return slot to g.call(p.getMonData, (p.party + slot * p.monStride).toInt(), GET_MON_PERSONALITY)
+}
+
+/** [FlyWithoutMove]'s Pokémon among [slots] (party slots, eggs left out), in the party menu's own order of checks. */
+private fun withoutMoveFlyer(fns: FieldItemFns, w: FlyWithoutMove, slots: List<Int>, g: GameCalls): Int? {
+    val p = fns.party ?: return null
+    if (w.flags.any { g.call(fns.fly!!.flagGet, it) != 0L }) return slots.firstOrNull()
+    if (fns.checkBagHasItem == 0L || g.call(fns.checkBagHasItem, w.hmItem, 1) == 0L) return null
+    return slots.firstOrNull { g.call(w.canLearn, (p.party + it * p.monStride).toInt(), w.hmItem, 0) == 0L }
 }
 
 /** Why FLY can't start now, or null: the party menu's own checks, in its order. */

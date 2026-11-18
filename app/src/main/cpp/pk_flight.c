@@ -600,7 +600,8 @@ static void flTurn(void) {
 #define FL_SRC 64
 #define FL_BIG (FL_SRC * 8)
 static uint32_t flSrc[FL_SRC * FL_SRC], flSrcHash;
-static uint32_t flBig[FL_BIG * FL_BIG], flMid[(FL_SRC * 4) * (FL_SRC * 4)];
+// From the heap at the first flight, kept (1.3 MB that a 3DS in its 80 MB mode can't spare as static data, 2026-11-17).
+static uint32_t *flBig, *flMid, *flS2;
 // Which of flBig's pixels show (a bit each, its top byte set) and their box, in flBig's pixels (flBigU0 > flBigU1: none).
 // pk_flight_draw tests the bit before it reads flBig (1 MB: a cache miss a pixel cost a 3DS ~2 ms a frame) and keeps to
 // the box turned onto the screen, so it draws the same pixels.
@@ -877,14 +878,17 @@ static void flCapture(struct mCore* core) {
     uint32_t hsh = 2166136261u;
     for (int i = 0; i < FL_SRC * FL_SRC; i++) hsh = (hsh ^ flSrc[i]) * 16777619u;
     if (hsh == flSrcHash) return;
-    flSrcHash = hsh;
-    static uint32_t s2[(FL_SRC * 2) * (FL_SRC * 2)];
-    flScale2x(flSrc, FL_SRC, FL_SRC, s2);
-    flScale2x(s2, FL_SRC * 2, FL_SRC * 2, flMid);
-    flScale2x(flMid, FL_SRC * 4, FL_SRC * 4, flBig);
     memset(flBigOpaque, 0, sizeof(flBigOpaque));
     flBigU0 = flBigV0 = FL_BIG;
     flBigU1 = flBigV1 = -1;
+    if (!flBig) flBig = malloc(sizeof(uint32_t) * FL_BIG * FL_BIG);
+    if (!flMid) flMid = malloc(sizeof(uint32_t) * (FL_SRC * 4) * (FL_SRC * 4));
+    if (!flS2) flS2 = malloc(sizeof(uint32_t) * (FL_SRC * 2) * (FL_SRC * 2));
+    if (!flBig || !flMid || !flS2) return; // no memory: no picture (flBigOpaque empty), tried again next frame
+    flSrcHash = hsh;
+    flScale2x(flSrc, FL_SRC, FL_SRC, flS2);
+    flScale2x(flS2, FL_SRC * 2, FL_SRC * 2, flMid);
+    flScale2x(flMid, FL_SRC * 4, FL_SRC * 4, flBig);
     for (int v = 0; v < FL_BIG; v++)
         for (int u = 0; u < FL_BIG; u++) {
             if (!(flBig[v * FL_BIG + u] >> 24)) continue;
@@ -1425,7 +1429,19 @@ static void flShadeUndo(void) {
 #define FL_CLOUD_PARALLAX 1.15
 #define FL_CLOUD_ALPHA 0.7
 static uint8_t flCloudMap[FL_CLOUD_N * FL_CLOUD_N];
+/* What each pixel of the sheet draws, worked out once from the map (it never changes): 0 = nothing, else 1 = the rim, 2 =
+ * the core, + 4 = its shaded underside. flDrawCloudsAt reads one byte a pixel instead of two filtered map reads (on the
+ * 3DS the clouds cost ~5 ms a frame that way, most of a frame's budget). Indexed by the pixel's offset into the sheet,
+ * wrapped as flCloudAt wraps it (2 x FL_CLOUD_N). */
+#define FL_CLOUD_PX (FL_CLOUD_N * 2)
+static uint8_t flCloudCode[FL_CLOUD_PX * FL_CLOUD_PX];
+/* Each sheet row's lit runs ([start, end) of nonzero codes, end <= FL_CLOUD_PX): drawing walks them, so the open sky between
+ * puffs costs nothing - it was a read and a branch a pixel, most of the clouds' time on a 3DS. */
+#define FL_CLOUD_RUNS 48
+static uint16_t flCloudRun[FL_CLOUD_PX][FL_CLOUD_RUNS][2];
+static uint8_t flCloudRuns[FL_CLOUD_PX];
 static int flCloudMade;
+static int flCloudAt(int px, int py);
 static double flCloudX, flCloudY;   // where the sheet is (pixels, wrapped by the map)
 
 static void flMakeClouds(void) {
@@ -1458,6 +1474,31 @@ static void flMakeClouds(void) {
         }
     }
     #undef RND
+    for (int y = 0; y < FL_CLOUD_PX; y++)
+        for (int x = 0; x < FL_CLOUD_PX; x++) {
+            int m = flCloudAt(x, y);
+            if (m < 40) { flCloudCode[y * FL_CLOUD_PX + x] = 0; continue; }
+            int under = flCloudAt(x, y + 3) < m - 30;   // the cloud thins below: its shaded side
+            flCloudCode[y * FL_CLOUD_PX + x] = (uint8_t) ((m >= 140 ? 2 : 1) | (under ? 4 : 0));
+        }
+    for (int y = 0; y < FL_CLOUD_PX; y++) {
+        const uint8_t* codes = flCloudCode + y * FL_CLOUD_PX;
+        int n = 0;
+        for (int x = 0; x < FL_CLOUD_PX;) {
+            if (!codes[x]) { x++; continue; }
+            int e = x;
+            while (e < FL_CLOUD_PX && codes[e]) e++;
+            if (n == FL_CLOUD_RUNS) {   // (never with this sheet) the rest of the row as one run, its zeros skipped one by one
+                flCloudRun[y][n - 1][1] = FL_CLOUD_PX;
+                break;
+            }
+            flCloudRun[y][n][0] = (uint16_t) x;
+            flCloudRun[y][n][1] = (uint16_t) e;
+            n++;
+            x = e;
+        }
+        flCloudRuns[y] = (uint8_t) n;
+    }
     flCloudMade = 1;
 }
 
@@ -1507,6 +1548,7 @@ static int flCloudAt(int px, int py) {
  * (pk_flight_draw_wide) leave them alone. */
 static uint8_t flBirdMask[240 * 160];
 static int flBirdMaskOn;
+static int flBirdBox[4] = { 1 << 30, -1, 1 << 30, -1 };   // the mask's set pixels' columns and rows: x0, x1, y0, y1
 static double flCloudStrength;   // the last frame's (0 = none)
 
 /** The clouds over [out]'s rows / columns [x0, x1] x [y0, y1] ([stride] a row), its pixel (x, y) being GBA frame pixel
@@ -1517,27 +1559,62 @@ static double flCloudStrength;   // the last frame's (0 = none)
 static void flDrawCloudsAt(uint32_t* out, int stride, int x0, int y0, int x1, int y1, int fx, int fy, double strength, int mask,
                            int ox, int oy, int skipW, int skipH) {
     int core = (int) (strength * FL_CLOUD_ALPHA * 256), rim = core * 5 / 9;
+    // Each code's white, premultiplied, and what's kept of the pixel under it: two channels a multiply (red and blue in one
+    // word, 16 bits apart, green in another), the same sums as a channel at a time.
+    uint32_t addRb[8], addG[8], keep[8];
+    for (int k = 1; k < 8; k++) {
+        int a = k & 2 ? core : rim, under = k & 4;
+        uint32_t wr = under ? 206 : 248, wg = under ? 220 : 250, wb = under ? 240 : 255;
+        keep[k] = (uint32_t) (256 - a);
+        addRb[k] = (wb << 16 | wr) * (uint32_t) a;
+        addG[k] = (wg << 8) * (uint32_t) a;
+    }
+    // The bird's box: only there is the mask looked at.
+    int mx0 = 1 << 30, mx1 = -1, my0 = 1 << 30, my1 = -1;
+    if (mask) {
+        mx0 = flBirdBox[0] - fx; mx1 = flBirdBox[1] - fx; my0 = flBirdBox[2] - fy; my1 = flBirdBox[3] - fy;
+    }
     for (int y = y0; y <= y1; y++) {
         uint32_t* row = out + y * stride;
         int gy = y + fy;
-        int sa = x1 + 1, sb = x1;   // the row's columns over the frame: [sa, sb]
+        int sa = x1 + 1, sb = x1;   // the row's columns over the frame: [sa, sb], left alone
         if (gy >= 0 && gy < skipH) {
             sa = -fx > x0 ? -fx : x0;
             sb = skipW - 1 - fx < x1 ? skipW - 1 - fx : x1;
         }
-        for (int x = x0; x <= x1; x++) {
-            if (x == sa && sa <= sb) { x = sb; continue; }
-            int gx = x + fx;
-            if (mask && gx >= 0 && gy >= 0 && gx < 240 && gy < 160 && flBirdMask[gy * 240 + gx]) continue;
-            int m = flCloudAt(gx + ox, gy + oy);
-            if (m < 40) continue;
-            int under = flCloudAt(gx + ox, gy + oy + 3) < m - 30;   // the cloud thins below: its shaded side
-            int a = m >= 140 ? core : rim;
-            int wr = under ? 206 : 248, wg = under ? 220 : 250, wb = under ? 240 : 255;
-            uint32_t c = row[x];
-            int r = c & 0xFF, gg = (c >> 8) & 0xFF, b = (c >> 16) & 0xFF;
-            r += ((wr - r) * a) >> 8; gg += ((wg - gg) * a) >> 8; b += ((wb - b) * a) >> 8;
-            row[x] = (c & 0xFF000000u) | (uint32_t) b << 16 | (uint32_t) gg << 8 | (uint32_t) r;
+        int sy = (gy + oy) & (FL_CLOUD_PX - 1);
+        const uint8_t* codes = flCloudCode + sy * FL_CLOUD_PX;
+        int runs = flCloudRuns[sy];
+        bool masked = y >= my0 && y <= my1;
+        // Sheet column 0 lands on out's column base, then every FL_CLOUD_PX after.
+        int base = x0 - ((x0 + fx + ox) & (FL_CLOUD_PX - 1));
+        for (; base <= x1; base += FL_CLOUD_PX) {
+            for (int r = 0; r < runs; r++) {
+                int a = base + flCloudRun[sy][r][0], b = base + flCloudRun[sy][r][1] - 1;
+                if (b < x0) continue;
+                if (a > x1) break;
+                if (a < x0) a = x0;
+                if (b > x1) b = x1;
+                for (int part = 0; part < 2; part++) {
+                    // Around the frame's own columns: the part before them, then the part after.
+                    int pa = a, pb = b;
+                    if (sa <= sb) {
+                        if (part == 0) pb = pb < sa - 1 ? pb : sa - 1;
+                        else pa = pa > sb + 1 ? pa : sb + 1;
+                    } else if (part) {
+                        break;
+                    }
+                    for (int x = pa; x <= pb; x++) {
+                        int k = codes[x - base];
+                        if (!k) continue;
+                        if (masked && x >= mx0 && x <= mx1 && flBirdMask[gy * 240 + x + fx]) continue;
+                        uint32_t c = row[x];
+                        uint32_t rb = (((c & 0xFF00FFu) * keep[k] + addRb[k]) >> 8) & 0xFF00FFu;
+                        uint32_t g = (((c & 0xFF00u) * keep[k] + addG[k]) >> 8) & 0xFF00u;
+                        row[x] = (c & 0xFF000000u) | rb | g;
+                    }
+                }
+            }
         }
     }
 }
@@ -1649,6 +1726,8 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride, int cloudsHere) {
     flDrawClouds(frame, stride, x0, y0, x1, y1, 0, 0, clouds, 0);
     flBirdMaskOn = w == 240 && h == 160;
     if (flBirdMaskOn) memset(flBirdMask, 0, sizeof(flBirdMask));
+    flBirdBox[0] = flBirdBox[2] = 1 << 30;
+    flBirdBox[1] = flBirdBox[3] = -1;
     if (flSprOn) {
         // Picture = mirror * R(-angle) * screen, around the centre; sampled in the 8x picture at the pixel's centre.
         // The same sums as one expression a pixel, the row's terms once; floor() of a value >= 0 is its truncation (and
@@ -1690,7 +1769,13 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride, int cloudsHere) {
                 uint32_t p = flBig[iv * FL_BIG + iu];
                 if (!(p >> 24)) continue;
                 frame[y * stride + x] = (frame[y * stride + x] & 0xFF000000u) | (p & 0x00FFFFFFu);
-                if (flBirdMaskOn) flBirdMask[y * 240 + x] = 1;
+                if (flBirdMaskOn) {
+                    flBirdMask[y * 240 + x] = 1;
+                    if (x < flBirdBox[0]) flBirdBox[0] = x;
+                    if (x > flBirdBox[1]) flBirdBox[1] = x;
+                    if (y < flBirdBox[2]) flBirdBox[2] = y;
+                    if (y > flBirdBox[3]) flBirdBox[3] = y;
+                }
             }
         }
     }

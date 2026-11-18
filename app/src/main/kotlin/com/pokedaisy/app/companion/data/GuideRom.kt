@@ -94,8 +94,16 @@ data class GuideTables(
 
 /** GetCurrentMapWildMonHeaderId's `i++` at night: the next header when it's the same map, while gLocalTime's hour
  * ([hourAddr]) is outside [day]. Maps of [skipGroup] (caves) and any map numbered [skipNum] never switch - the game
- * tests the two apart, so a cave's second header (Lazarus's 24.112) is never read. */
-data class NightWild(val hourAddr: Long, val day: IntRange = 7..19, val skipGroup: Int = -1, val skipNum: Int = -1) {
+ * tests the two apart, so a cave's second header (Lazarus's 24.112) is never read.
+ *
+ * Or CFRU's way (Radical Red, GitHub #941): two header arrays of their own, [dayHeaders] while the hour is in [day] and
+ * [nightHeaders] outside it, each FF FF-terminated like [GuideTables.wildHeaders]; a map in neither reads that one.
+ * Set 0 is the day's, set 1 the night's. */
+data class NightWild(
+    val hourAddr: Long, val day: IntRange = 7..19, val skipGroup: Int = -1, val skipNum: Int = -1,
+    val dayHeaders: Long = 0, val nightHeaders: Long = 0,
+) {
+    val arrays: Boolean get() = dayHeaders != 0L || nightHeaders != 0L
     fun applies(group: Int, num: Int) = group != skipGroup && num != skipNum
     /** Night by the game's clock; false while the hour isn't known (no save read yet). */
     fun isNight(p: SaveProgress?): Boolean = p?.variable(GBA_VAR_HOUR)?.takeIf { it in 0..23 }?.let { it !in day } ?: false
@@ -277,6 +285,9 @@ object GuideRomSource {
     private val encounters = LockedMap<Int, MapEncounters>()
     private val parties = LockedMap<Int, List<TrainerMon>>()
     @Volatile private var headers: Map<Int, Long>? = null
+    // [NightWild.arrays]' day and night header arrays, indexed like [headers].
+    @Volatile private var dayHeaders: Map<Int, Long>? = null
+    @Volatile private var nightHeaders: Map<Int, Long>? = null
     @Volatile private var cachedFor: GuideTables? = null
 
     /** A new ROM ([PokedexSource.romChanged]): two can share tables, so start over. */
@@ -289,7 +300,7 @@ object GuideRomSource {
         if (cachedFor == t) return
         synchronized(lock) {
             if (cachedFor == t) return
-            encounters.clear(); parties.clear(); headers = null
+            encounters.clear(); parties.clear(); headers = null; dayHeaders = null; nightHeaders = null
             cachedFor = t
         }
     }
@@ -310,7 +321,7 @@ object GuideRomSource {
         val key = group shl 8 or num
         encounters[key or (set shl 16)]?.let { return it }
         return runCatching {
-            val hdr = headerIndex(t)[key]?.let { alternateHeader(t, it, set) }
+            val hdr = timedHeader(t, key, set) ?: headerIndex(t)[key]?.let { alternateHeader(t, it, set) }
                 ?: return@runCatching MapEncounters(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
             val h = rd(hdr, wildHeaderStride(t))
             // Each method from the chosen time of day, or the first set that has it.
@@ -339,8 +350,22 @@ object GuideRomSource {
         return if (rd(alt, 2).contentEquals(id)) alt else first
     }
 
+    /** Map [key]'s header for [set] in [NightWild.arrays]' day (0) / night (1) array, or null (not there, or no such arrays). */
+    private fun timedHeader(t: GuideTables, key: Int, set: Int): Long? {
+        val n = t.nightWild?.takeIf { it.arrays } ?: return null
+        return if (set >= 1) {
+            (nightHeaders ?: indexHeaders(n.nightHeaders).also { nightHeaders = it })[key]
+        } else {
+            (dayHeaders ?: indexHeaders(n.dayHeaders).also { dayHeaders = it })[key]
+        }
+    }
+
     /** How many headers in a row map [group].[num] has (1 but for [GuideTables.wildSetVars]' and night maps). */
     private fun headerRun(t: GuideTables, group: Int, num: Int): Int {
+        if (t.nightWild?.arrays == true) {
+            val key = group shl 8 or num
+            return if (timedHeader(t, key, 0) != null || timedHeader(t, key, 1) != null) 2 else 1
+        }
         if ((group shl 8 or num) !in t.wildSetVars && t.nightWild?.applies(group, num) != true) return 1
         val first = headerIndex(t)[group shl 8 or num] ?: return 1
         var n = 1
@@ -485,17 +510,23 @@ object GuideRomSource {
     /** Map (group << 8 | num) -> its header's address, read once. */
     private fun headerIndex(t: GuideTables): Map<Int, Long> {
         headers?.let { return it }
+        return indexHeaders(t.wildHeaders, wildHeaderStride(t)).also { headers = it }
+    }
+
+    /** Map -> header address over the array at [start] ([stride] bytes a header) up to its FF terminator. */
+    private fun indexHeaders(start: Long, stride: Int = 4 + WILD_SET_SIZE): Map<Int, Long> {
         val out = HashMap<Int, Long>()
-        var addr = t.wildHeaders
+        if (!Gfx.inRom(start)) return out
+        var addr = start
         while (out.size < 512) {
             val h = rd(addr, 2)
             val group = h[0].toInt() and 0xFF
             if (group == MAP_GROUP_UNDEFINED) break
             // The first header wins, as in GetCurrentMapWildMonHeaderId.
             out.getOrPut(group shl 8 or (h[1].toInt() and 0xFF)) { addr }
-            addr += wildHeaderStride(t)
+            addr += stride
         }
-        return out.also { headers = it }
+        return out
     }
 
     /** A WildPokemonInfo's [count] slots: {u8 min, u8 max, u16 species} each; none for a null pointer. */
@@ -602,6 +633,10 @@ val GUIDE_TABLES_RADICAL_RED = GuideTables(
     probeName = "Brock",
     guide = GuideId.RADICAL_RED,
     mapGroups = 0x083526A8L,
+    // Its wild Pokemon change with the clock (GitHub #941): LoadProperMonsData (0x090C3550) reads 0x09166428 from 17:00
+    // to 3:59 (its two checks: hour - 4 > 15, hour - 17 <= 2) and 0x09166AB8 from 4:00 to 16:59, 83 maps each; the hour is
+    // the clock's +6 (0x03005EA0, the same word both checks load). Any other map: gWildMonHeaders, as before.
+    nightWild = NightWild(hourAddr = 0x03005EA6L, day = 4..16, dayHeaders = 0x09166AB8L, nightHeaders = 0x09166428L),
 )
 
 /** Odyssey v4.1.1: FireRed rev 0's gTrainers, learnsets (vanilla format) and save layout; its own gWildMonHeaders. */
@@ -953,6 +988,27 @@ val GUIDE_TABLES_ELITE_REDUX_V2_65_4_1B = GuideTables(
 )
 
 /**
+ * Pokémon Epsilon Emerald v1.0.0: HERE only. gWildMonHeaders 0x08FB3A18 (its code's literal pools; ROUTE 101 first, 145
+ * headers) are 24 bytes - land, water, rock smash, a three-Pokémon hidden set, fishing (HERE reads the four it knows;
+ * ROUTE 101's land is WURMPLE / POOCHYENA / ZIGZAGOON Lv2-3); gMapGroups 0x08E299DC (34 groups: gMapHeader's bytes found in
+ * the ROM, its group's table, the table of groups). gTrainers 0x08BFA624 is 0x24 bytes, the name at +4 (265 is Roxanne);
+ * its parties are 16-byte packed members, and its leaders draw theirs from a bigger pool (the size in bits 8-10 of +0x18,
+ * the pool in bits 11-15), so NEXT BOSS isn't given and no TrainerMon layout is set. Flags / vars are Emerald's (+0x1270 /
+ * +0x139C, as its GF header says).
+ */
+val GUIDE_TABLES_EPSILON_EMERALD = GUIDE_TABLES_EMERALD.copy(
+    trainers = 0x08BFA624L,
+    learnsets = 0,
+    wildHeaders = 0x08FB3A18L,
+    probeTrainer = 265,
+    probeName = "Roxanne",
+    guide = GuideId.EPSILON_EMERALD,
+    trainerStride = 0x24,
+    wildLayout = WildLayout(stride = 0x18, land = 0, water = 1, rockSmash = 2, fishing = 4),
+    mapGroups = 0x08E299DCL,
+)
+
+/**
  * Pokémon Team Rocket Edition: Dragonsden Version: HERE only. Vanilla-shaped tables: gWildMonHeaders 0x08C2A974 (20 bytes,
  * 443 headers, 14 literal-pool words; Route 101's land set decodes to its Lv70-85 Hoenn Pokémon), gTrainers 0x0857F588 (40
  * bytes; 415 is KANTO LEADER BROCK, whose four the headless trainer battle met, from 24-byte TrainerMons). SaveBlock1's flags / vars at +0x1CA8 /
@@ -1075,6 +1131,14 @@ val GUIDE_TABLES_MONOMYTH_V1_1 = GUIDE_TABLES_MONOMYTH.copy(
     learnsets = 0x08506AD4L,
     wildHeaders = 0x089C3284L,
     mapGroups = 0x0886F3A8L,
+)
+
+/** Monomyth v1.2: v1.1's tables moved back. */
+val GUIDE_TABLES_MONOMYTH_V1_2 = GUIDE_TABLES_MONOMYTH.copy(
+    trainers = 0x084B6C60L,
+    learnsets = 0x08506630L,
+    wildHeaders = 0x089C2E40L,
+    mapGroups = 0x0886EF64L,
 )
 
 /**

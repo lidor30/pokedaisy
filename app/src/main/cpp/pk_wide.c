@@ -73,6 +73,10 @@ static const int32_t FAMILIES[][PK_WIDE_CONFIG_SIZE - PK_WIDE_ADDRS] = {
     // callback1 there), its sFieldCameraOffset is four s16, it has 80 sprites (its snow and rain sit past 64); its SaveBlock1
     // is its own (PK_WIDE_SB1_OFFSETS / _FLAGS_AT).
     [PK_WIDE_FAMILY_MM] = { 512, 0x10, 2, 12, 0xF, 0, 0, -0x17, 4, 4, 0, 0, 0, 6, 2, 1, 80 },
+    // Epsilon Emerald: EX (Emerald's map and tilesets, expansion's objects) whose tilesets keep FireRed's u32 attributes (the
+    // layer type in bits 29-30), still at the Emerald tileset's +0x10: the u16 reading scored 830 of 1000 on its field, this 1000.
+    // Its struct Subsprite is 6 bytes (s16 x, y; a tile offset byte; shape / size / priority in a byte: buildPieces).
+    [PK_WIDE_FAMILY_EX32] = { 512, 0x10, 4, 29, 3, 0, 0, 0x439, 6, 0x23, 0, 0, 0, 6, 3, 0, 64 },
 };
 
 // Every engine row and every ROM row fills its part of the config, no more, no less.
@@ -1538,15 +1542,18 @@ static int buildPieces(const struct Snap* s, struct Piece* out) {
         }
         int bx = x - cvx, by = y - cvy;
         int cnt = (int) r8(table);
-        int ss = C[PK_WIDE_SUBSPRITE_SIZE];   // 4: s8 x, y; 8 (Ruby / Sapphire): u16 x, y, read as s16, + 2 bytes' padding
+        // 4: s8 x, y; 8 (Ruby / Sapphire): u16 x, y, read as s16, + 2 bytes' padding; 6 (Epsilon Emerald): s16 x, y, a byte of
+        // tile offset, a byte of shape (bits 0-1) / size (2-3) / priority (4-5) - put into the usual bits here.
+        int ss = C[PK_WIDE_SUBSPRITE_SIZE];
         for (int j = 0; j < cnt && n < 256; j++) {
             const uint8_t* sub = mem(subs + (uint32_t) (ss * j), (uint32_t) ss);
             if (!sub) break;
-            uint32_t v = le16(sub + ss / 2);   // the shape / size / tile / priority bits
+            uint32_t v = ss == 6 ? (uint32_t) (sub[5] & 0xF) | (uint32_t) sub[4] << 4 | (uint32_t) ((sub[5] >> 4) & 3) << 14
+                                 : le16(sub + ss / 2);   // the shape / size / tile / priority bits
             if ((v & 3) > 2) continue;
             int w = OBJ_DIMS[v & 3][(v >> 2) & 3][0], h = OBJ_DIMS[v & 3][(v >> 2) & 3][1];
-            int sx = ss == 8 ? (int16_t) le16(sub) : (signed char) sub[0];
-            int sy = ss == 8 ? (int16_t) le16(sub + 2) : (signed char) sub[1];
+            int sx = ss >= 6 ? (int16_t) le16(sub) : (signed char) sub[0];
+            int sy = ss >= 6 ? (int16_t) le16(sub + 2) : (signed char) sub[1];
             if (base.hflip) sx = -(sx + w);
             if (base.vflip) sy = -(sy + h);
             out[n] = base;
@@ -2701,7 +2708,7 @@ static int playerGraphics(void) {
     int k = playerObject();
     const uint8_t* oe = k < 0 ? NULL : mem(F.objects + 0x24u * (uint32_t) k, 0x24);
     if (!oe) return -1;
-    bool wide = F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX;
+    bool wide = F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX || F.family == PK_WIDE_FAMILY_EX32;
     return wide ? (int) le16(oe + 4) : oe[5];
 }
 
@@ -2715,7 +2722,7 @@ static int playerGraphics(void) {
  */
 int pk_look_refresh(struct mCore* core, const uint8_t* pal) {
     if (!F.locked || !F.sprites || !F.gfxInfo || !core) return 0;
-    if (F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX) return 0;
+    if (F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX || F.family == PK_WIDE_FAMILY_EX32) return 0;
     G = (struct GBA*) core->board;
     int k = playerObject();
     const uint8_t* oe = k < 0 ? NULL : mem(F.objects + 0x24u * (uint32_t) k, 0x24);
@@ -3194,10 +3201,16 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
     memset(menuArrowAt, 0, sizeof(menuArrowAt));
     if (!menuHideMode || !hookGba) return;
     menuHideFrames++;
-    // A double battle or the Safari Zone keeps its menu: the companion has no buttons for them.
+    // A double battle or the Safari Zone keeps its menu: the companion has no buttons for them. So do the tutorial battles:
+    // FireRed's first rival battle in Oak's lab and the Old Man's catching show run on battle_controller_oak_old_man.c,
+    // Emerald's Wally lesson on the Wally controller, which the companion's buttons don't drive - the menu went missing
+    // and only the game's cursor was left to pick with (a player's report, 2026-11-15). Emerald's first battle (Birch's)
+    // is the player's own controller, kept with the rest by the same FIRST_BATTLE bit: one battle, the menu shown.
     if (menuHideTypeFlags >> 24 == 2) {
         const uint8_t* f = (const uint8_t*) hookGba->memory.wram + (menuHideTypeFlags & 0x3FFFC);
-        if (f[0] & (1 << 0 | 1 << 7)) return;   // BATTLE_TYPE_DOUBLE, BATTLE_TYPE_SAFARI (FireRed's and Emerald's)
+        // BATTLE_TYPE_DOUBLE, BATTLE_TYPE_FIRST_BATTLE, BATTLE_TYPE_SAFARI, BATTLE_TYPE_OLD_MAN_TUTORIAL / WALLY_TUTORIAL (bit 9)
+        if (f[0] & (1 << 0 | 1 << 4 | 1 << 7)) return;
+        if (f[1] & (1 << 1)) return;
     }
     const uint16_t* io = hookGba->memory.io;
     uint16_t dispcnt = io[0], cnt = io[0x08 >> 1];
@@ -3776,7 +3789,8 @@ static void partnerBegin(struct GBAVideoRenderer* r) {
     bool blob = partnerReq.blob >= 0;
     if (partnerReq.frame < 0 || partnerReq.frame >= PK_PARTNER_FRAMES || partnerReq.blob >= PK_PARTNER_FRAMES || partnerReq.blob < -1 ||
         partnerReq.bob < -64 || partnerReq.bob > 64) { partnerWhy = PK_PARTNER_BAD_FRAME; return; }
-    if (!hookGba || !F.objects || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX || !selfFine.valid) { partnerWhy = PK_PARTNER_NO_PLAYER; return; }
+    if (!hookGba || !F.objects || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX ||
+        F.family == PK_WIDE_FAMILY_EX32 || !selfFine.valid) { partnerWhy = PK_PARTNER_NO_PLAYER; return; }
     G = hookGba;
     int cx, cy, px, py;
     uint32_t spriteId;
@@ -3998,7 +4012,8 @@ static void allowRunning(void) {
     uint32_t off;
     uint8_t bit;
     if (F.family == PK_WIDE_FAMILY_FR || F.family == PK_WIDE_FAMILY_FR_EX) { off = 0x19; bit = 2; }
-    else if (F.family == PK_WIDE_FAMILY_EM || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_MM) { off = 0x1A; bit = 4; }
+    else if (F.family == PK_WIDE_FAMILY_EM || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_MM ||
+             F.family == PK_WIDE_FAMILY_EX32) { off = 0x1A; bit = 4; }
     else return;
     uint8_t* p = (uint8_t*) mem(F.mapHeader + off, 1);
     if (p && !(*p & bit)) *p |= bit;
@@ -4431,12 +4446,15 @@ static bool cacheReady(int hofs, int vofs, int href, int vref, int* enabled) {
         if (lineRegs(y)[0] != (uint16_t) disp) return false;
     if (effectsUp()) return false;
     useLine(0);
-    int wl = windowLayers(0, 0);
+    // BG0 left out: the margins never draw it (their BGs are & 0x0E), so a window that only adds or takes BG0 - a field
+    // move's cut-in, a full-width band of BG0 inside WIN0 (WININ 0x3F, WINOUT 0x3E) - leaves them as they are. It used to
+    // send the whole cut-in down the full draw, which a 3DS couldn't keep up with (the surf's music broke up).
+    int wl = windowLayers(0, 0) & ~1;
     if (disp & 0xE000) {
         for (int y = 0; y < PK_WIDE_H; y++)
-            if (windowLayers(0, y) != wl || windowLayers(PK_WIDE_W - 1, y) != wl) return false;
+            if ((windowLayers(0, y) & ~1) != wl || (windowLayers(PK_WIDE_W - 1, y) & ~1) != wl) return false;
         for (int x = 0; x < PK_WIDE_W; x++)
-            if (windowLayers(x, 0) != wl || windowLayers(x, PK_WIDE_H - 1) != wl) return false;
+            if ((windowLayers(x, 0) & ~1) != wl || (windowLayers(x, PK_WIDE_H - 1) & ~1) != wl) return false;
     }
     *enabled = (disp >> 8) & wl & 0x0E;
     return *enabled != 0;
@@ -4603,6 +4621,7 @@ struct FullView {
     int bestSnap, bestCx, bestCy, bestH, bestV;
     uint32_t alpha;
     bool hold;   // FREE FLIGHT's crossing settling: the last window kept as it is (no glow)
+    bool fade;   // the frame is a fade between two maps: all black (or white)
 };
 
 /** FREE FLIGHT's smooth camera moves the window, the frame with it, so the map's name sign (BG0, the popup's corner:
@@ -4696,6 +4715,27 @@ static void fullDraw(const struct FullView* f) {
     int bestSnap = f->bestSnap, bestCx = f->bestCx, bestCy = f->bestCy, bestH = f->bestH, bestV = f->bestV;
     uint32_t alpha = f->alpha;
     PW_MARK(pw3);
+#ifdef PK_WIDE_CACHE
+    // A fade between two maps on a cached host (the 3DS): the frame is one colour, so the margins are that colour, as the
+    // game's own picture is - nothing drawn behind them (a black frame passes as a menu screen too) and the glow's mix left
+    // where it was. The per-pixel glow and the menu screen's backdrop cost a New 3DS 10-25 ms a frame there, longer than
+    // the frame, and every door, warp and battle start went through 15-30 of them (the game slowed, its music broke up).
+    if (f->fade && !valid && !battle && !overlayDim) {
+        uint32_t col = (frame[(PK_WIDE_H / 2) * PK_WIDE_W + PK_WIDE_W / 2] & 0xFFFFFF) | alpha;
+        for (int j = 0; j < v.h; j++) {
+            int Y = v.y + j;
+            uint32_t* row = out + j * v.w;
+            for (int i = 0; i < v.w; i++) row[i] = col;
+            if (holeLeft || Y < 0 || Y >= PK_WIDE_H) continue;
+            int x0 = v.x < 0 ? -v.x : 0, X0 = v.x > 0 ? v.x : 0, n = PK_WIDE_W - X0 < v.w - x0 ? PK_WIDE_W - X0 : v.w - x0;
+            if (n > 0) memcpy(row + x0, frame + Y * PK_WIDE_W + X0, (size_t) n * sizeof(uint32_t));
+        }
+        PW_MARK(pw5);
+        PW_ADD(3, pw3, pw5);
+        PW_REPORT();
+        return;
+    }
+#endif
     if (valid || battle || menu) {
         if (valid) {
             const struct Snap* s = &snaps[bestSnap];
@@ -4991,7 +5031,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
 #endif
     PW_MARK(pw3);
     PW_ADD(1, pw2, pw3);
-    struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha, flyHold };
+    struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha, flyHold, fade };
 #ifdef PK_WIDE_CACHE
     // Not while FREE FLIGHT's camera is offset: flyLabel puts the area sign back where it would be with no offset, over
     // the frame's own (moved) one - the host's copy of the frame would bring the moved one back (a doubled sign).

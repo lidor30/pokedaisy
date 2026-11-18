@@ -3,7 +3,7 @@
 # Configure with mGBA's 3DS toolchain file (it sets up devkitARM and the `3DS`
 # variable mGBA keys its platform code on) - `make 3ds` in ../ does it in Docker.
 cmake_minimum_required(VERSION 3.18)
-project(pokedaisy C ASM)
+project(pokedaisy C CXX ASM)
 
 get_filename_component(MGBA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/mgba" ABSOLUTE)
 if(NOT EXISTS "${MGBA_DIR}/CMakeLists.txt")
@@ -72,14 +72,21 @@ target_include_directories(pd_armgba_archive PRIVATE "${PORTLIBS}/include")
 target_link_directories(pd_armgba PUBLIC "${PORTLIBS}/lib")
 target_compile_options(pd_armgba PRIVATE -flto)
 set_source_files_properties("${ARMGBA_3DS}/svc.s" PROPERTIES COMPILE_OPTIONS "-x;assembler-with-cpp")
-# armGBA's second render worker goes on the fourth core, the companion's draw thread's and EXPAND's: host.c's own hook
-# declines it, so one worker on the third core draws every line.
-set_source_files_properties("${ARMGBA_3DS}/jitmem.c" PROPERTIES COMPILE_DEFINITIONS "renderThreadHostCreateSecond=armgbaSecondWorkerUnused")
+# armGBA's render workers are host.c's: one on the New 3DS's third core, or on an Old 3DS's system core (jitmem.c kept it
+# off there); the second would go on the fourth core, the companion's draw thread's and EXPAND's, so host.c declines it
+# and one worker draws every line.
+set_source_files_properties("${ARMGBA_3DS}/jitmem.c" PROPERTIES COMPILE_DEFINITIONS
+    "renderThreadHostCreate=armgbaRenderWorkerUnused;renderThreadHostCreateSecond=armgbaSecondWorkerUnused")
+
+# gpSP (GBA CORE: GPSP) with its ARM11 recompiler (emu/gpsp.cmake): one object, only pd_gpsp.h's names global.
+set(GPSP_DYNAREC ON)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../emu/gpsp.cmake")
+target_compile_options(pd_gpsp_objs PRIVATE -march=armv6k -mtune=mpcore -mfloat-abi=hard -mword-relocations -fomit-frame-pointer)
 
 file(GLOB CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../core/*.c")
 
 file(GLOB HOST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../host/*.c")
-add_executable(pokedaisy.elf main.c gpu.c devlink.c host.c ${CORE_SOURCES} ${HOST_SOURCES} ${PD_ARMGBA_GLUE}
+add_executable(pokedaisy.elf main.c gpu.c devlink.c host.c ${CORE_SOURCES} ${HOST_SOURCES} ${PD_ARMGBA_GLUE} ${PD_GPSP_GLUE}
     ../../app/src/main/cpp/pk_host.c ../../app/src/main/cpp/pk_call.c ../../app/src/main/cpp/pk_wide.c
     ../../app/src/main/cpp/pk_gb_audio.c ../../app/src/main/cpp/pk_cheats.c ../../app/src/main/cpp/pk_gb_field.c
     ../../app/src/main/cpp/pk_wide_gb.c ../../linux/fly.c ../../linux/flash.c ../../linux/flight.c ../../app/src/main/cpp/pk_flight.c ../../linux/tm_teach.c ../../linux/field_items.c ../../linux/gb_field.c ../../linux/wild.c ../../linux/hud.c
@@ -93,6 +100,9 @@ target_include_directories(pokedaisy.elf PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp")
 # mGBA's headers size its structs by these, so ours must match the library's (see the colour note above).
 target_compile_definitions(pokedaisy.elf PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_NO_GUARD PK_WIDE_CACHE FIXED_ROM_BUFFER)
+# EXPAND's buffers at the top screen's size (pk_wide.h's default is 800 x 800, ~10 MB of static memory): with that,
+# 1.6.0's static memory left the 80 MB mode under 32 MB of heap and no game started. pd_session.c checks its window fits.
+target_compile_definitions(pokedaisy.elf PRIVATE PK_WIDE_MAX_VIEW_W=400 PK_WIDE_MAX_VIEW_H=240)
 target_compile_options(pokedaisy.elf PRIVATE -std=gnu11 -O2 -Wall -Wextra)
 # The app's version, for the library's SETTINGS > APP.
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../../app/build.gradle.kts" PD_VERSION_LINE REGEX "versionName = \"")
@@ -104,9 +114,9 @@ if(PD_DEV)
     target_compile_definitions(pokedaisy.elf PRIVATE PD_DEV)
 endif()
 # citro2d draws the screens (gpu.c); citro3d and libctru come with libmgba too.
-target_link_libraries(pokedaisy.elf pd_armgba mgba citro2d citro3d ctru z m)
+target_link_libraries(pokedaisy.elf pd_armgba pd_gpsp mgba citro2d citro3d ctru z m)
 pd_mgba_renames(pokedaisy.elf)
-target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3 -Wl,--wrap=free)
+target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3 -Wl,--wrap=free -Wl,--wrap=jitHostAllocCode)
 
 if(PD_DEV)
     set(PD_TITLE "PokeDaisy [DEV]")

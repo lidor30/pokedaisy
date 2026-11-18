@@ -350,6 +350,8 @@
   "QUICK FLASH": "FLASH RAPIDO",
   "Light up a dark cave from the quick menu.": "Illumina una grotta buia dal menu rapido.",
   "Your trainer card, drawn like the game's, front and back.": "La tua scheda allenatore, disegnata come nel gioco, fronte e retro.",
+  "AREA MAP": "MAPPA ZONA",
+  "A cave's or a big building's own map, floor by floor, on the MAP tab and the HUD.": "La mappa di una grotta o di un grande edificio, piano per piano, nella scheda MAP e nell'HUD.",
   "n/a": "n.d.",
   "Nothing matches.": "Nessun risultato.",
   "Search games": "Cerca un gioco",
@@ -383,12 +385,11 @@
   "A 3DS with custom firmware and the Homebrew Launcher. An early preview.": "Un 3DS con firmware personalizzato e l'Homebrew Launcher. Una prima anteprima.",
   "The app (APK)": "L'app (APK)",
   "The app (.3dsx)": "L'app (.3dsx)",
+  "The app for the HOME Menu (.cia)": "L'app per il menu HOME (.cia)",
   "Steam Deck and Linux PCs": "Steam Deck e PC Linux",
   "TrimUI handhelds (CrossMix, NextUI)": "Portatili TrimUI (CrossMix, NextUI)",
   "PortMaster handhelds (ROCKNIX, Knulli, muOS)": "Portatili con PortMaster (ROCKNIX, Knulli, muOS)",
   "TrimUI Brick on NXRedux": "TrimUI Brick con NXRedux",
   "Cores for RetroArch, on a PC": "Core per RetroArch, su PC",
-  "Cores for RetroArch, on an ARM handheld": "Core per RetroArch, su portatile ARM",
-  "AREA MAP": "MAPPA ZONA",
-  "A cave or building's map, with its floors.": "La mappa di una grotta o di un edificio, con i suoi piani."
+  "Cores for RetroArch, on an ARM handheld": "Core per RetroArch, su portatile ARM"
 }

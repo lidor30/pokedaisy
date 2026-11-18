@@ -45,7 +45,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import com.pokedaisy.app.companion.ui.LibraryIcons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -468,6 +468,22 @@ class SettingsActivity : ComponentActivity() {
                 )
             }
 
+            confirmReset?.let { r ->
+                OptionConfirm(
+                    title = if (r == Reset.HOTKEYS) tk("RESET HOTKEYS?") else tk("RESET GAME BUTTONS?"),
+                    message = if (r == Reset.HOTKEYS) tr("Every hotkey goes back to the keys it had at first.")
+                        else tr("Every game button goes back to the key it had at first."),
+                    confirmLabel = tk("RESET"),
+                    m = m,
+                    onDismiss = { confirmReset = null },
+                    onConfirm = {
+                        if (r == Reset.HOTKEYS) Hotkeys.resetBindings(controlsDir) else GbaControls.resetBindings(controlsDir)
+                        confirmReset = null
+                        revision++
+                    },
+                )
+            }
+
             hotkeyClash?.let { c ->
                 OptionConfirm(
                     title = tk("KEY IN USE"),
@@ -714,8 +730,8 @@ class SettingsActivity : ComponentActivity() {
         // The themes on offer today: the limited-time ones only in their dates.
         val themes = com.pokedaisy.app.companion.ui.theme.availableThemes()
         fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
-        // The same groups and order as the bottom screen's SETTINGS where they overlap.
-        val rows = listOfNotNull(
+        // The same groups and order as the bottom screen's SETTINGS where they overlap; first how this list looks.
+        val rows = com.pokedaisy.app.companion.ui.settingsLookRows { revision++ } + listOfNotNull(
             groupTitle(tk("FF / SPEED")),
             SettingRow(tk("FF SPEED"), rateLabel(prefs.ffMaxSpeed)) {
                 selector = Selector(tk("FF SPEED"), rateLabels, rateLabel(prefs.ffMaxSpeed)) {
@@ -844,21 +860,19 @@ class SettingsActivity : ComponentActivity() {
                 prefs.companionWindow = !prefs.companionWindow
                 revision++
             }.takeIf { !usesSecondScreen },
-            // A foldable half open: the game on one side of the hinge, the companion on the other (once the device has
-            // shown a hinge).
-            SettingRow(
-                tk("FOLD LAYOUT"), onOff(prefs.foldLayout),
-                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.FOLD_LAYOUT),
-                subtitle = "Half open: the game on one side of the fold",
-            ) {
-                prefs.foldLayout = !prefs.foldLayout
+            // A foldable: OFF, HALF-OPEN, or ALWAYS.
+            com.pokedaisy.app.companion.ui.foldLayoutRow(
+                prefs.foldMode, { title, choices, current, onPick -> selector = Selector(title, choices, current) { onPick(it); revision++ } },
+            ) { prefs.foldMode = it }.takeIf { prefs.foldSeen && !usesSecondScreen },
+            com.pokedaisy.app.companion.ui.tabletopControlsRow(prefs.tabletopControlsBottom) {
+                prefs.tabletopControlsBottom = it
                 revision++
-            }.takeIf { prefs.foldSeen && !usesSecondScreen },
-            // The white tab at the screen's right edge that opens it (BACK and the HUD's COMPANION still do).
+            }.takeIf { prefs.foldSeen && !usesSecondScreen && prefs.foldMode != com.pokedaisy.app.companion.FoldMode.OFF },
+            // The buttons on the game screen that open it: the white edge tab and the HUD's COMPANION (BACK still does).
             SettingRow(
                 tk("COMPANION BUTTON"), onOff(prefs.companionTab),
                 labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.COMPANION_TAB),
-                subtitle = "The tab at the right edge that opens it",
+                subtitle = "The game screen's buttons that open it",
             ) {
                 prefs.companionTab = !prefs.companionTab
                 revision++
@@ -886,6 +900,8 @@ class SettingsActivity : ComponentActivity() {
                     badge = { l -> tk("LIMITED").takeIf { themes.firstOrNull { it.label == l }?.season != null } },
                 ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(it) } }
             },
+            // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
+            com.pokedaisy.app.companion.ui.gameLookRow { revision++ },
             // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
             SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
                 DarkMode.set(DarkMode.setting.next())
@@ -1856,6 +1872,20 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }
+            ResetToDefaults(m) { confirmReset = Reset.HOTKEYS }
+        }
+    }
+
+    /** What RESET TO DEFAULTS asks about ([confirmReset]): the hotkeys or the game buttons. */
+    private enum class Reset { HOTKEYS, BUTTONS }
+
+    private var confirmReset by mutableStateOf<Reset?>(null)
+
+    /** A page's RESET TO DEFAULTS, under its list (GitHub discussion #923: a key rebound by mistake, nothing left to fix it with). */
+    @Composable
+    private fun ResetToDefaults(m: GbaTextMetrics, onClick: () -> Unit) {
+        Row(Modifier.fillMaxWidth().padding(top = m.u * 4), horizontalArrangement = Arrangement.End) {
+            OptionButton(tk("RESET TO DEFAULTS"), m, onClick = { capture.cancel(); onClick() })
         }
     }
 
@@ -1880,6 +1910,7 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }
+            ResetToDefaults(m) { confirmReset = Reset.BUTTONS }
         }
     }
 

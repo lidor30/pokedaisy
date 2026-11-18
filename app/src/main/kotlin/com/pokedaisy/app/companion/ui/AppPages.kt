@@ -7,7 +7,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import com.pokedaisy.app.companion.Discord
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -275,7 +274,7 @@ fun AppPageTitle(title: String, m: GbaTextMetrics, onBack: (() -> Unit)? = null,
         OptionTitleWindow("POKéDAISY", m,
             leading = { PixelArt(LOGO_ROWS, LOGO_PALETTE, Modifier.size(m.lineHeight)) }) {
             Spacer(Modifier.width(m.u * 4))
-            OptionButton(null, m, onClick = onHelp, icon = Icons.AutoMirrored.Filled.HelpOutline, contentDescription = tr("Help"))
+            OptionButton(null, m, onClick = onHelp, icon = LibraryIcons.HelpOutline, contentDescription = tr("Help"))
         }
         Spacer(Modifier.height(m.u * 8))
     } else {

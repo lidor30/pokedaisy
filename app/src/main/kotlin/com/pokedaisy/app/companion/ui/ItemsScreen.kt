@@ -626,6 +626,19 @@ private val RedBlueBag = YellowBag.copy(
     backdrop = Color(0xFFFFEFFF) to Color(0xFFFFEFFF),
 )
 
+/**
+ * Pokémon Brown: its ITEM window in pure black on white, its own text box frame - black, cream, green, black (the game's
+ * are two pixels each of cream and green; its party screen's colours, sampled headless; over the field the frame takes the
+ * map's two middle colours), a pixel each here so the pocket tabs keep their room.
+ */
+private val BrownBag = YellowBag.copy(
+    panelLayers = listOf(Color.Black to 1, Color(0xFFF7D67B) to 1, Color(0xFF4AA55A) to 1, Color.Black to 1, Color.White to 1),
+    tabLayerCount = 4,
+    text = Color.Black, tabText = Color.Black, tabUnderline = Color.Black,
+    descLayers = listOf(Color.Black to 1, Color(0xFFF7D67B) to 1, Color(0xFF4AA55A) to 1, Color.Black to 1),
+    descText = Color.Black, iconBoxEdge = Color.Black,
+)
+
 /** PureRed / PureBlue (on a Color, headless): Yellow's ITEM window in pure black on white. */
 private val PureRgbBag = YellowBag.copy(
     panelLayers = listOf(Color.Black to 1, Color.White to 1, Color.Black to 1, Color.White to 1),
@@ -768,6 +781,7 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.SOULGOLD -> SoulGoldBag
     GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowBag
     GameKind.RED, GameKind.BLUE -> RedBlueBag
+    GameKind.BROWN -> BrownBag
     GameKind.PURE_RED, GameKind.PURE_BLUE -> PureRgbBag
     // Gold's and Silver's PACK is Crystal's, pixel for pixel (sampled headless in both).
     GameKind.CRYSTAL, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY -> CrystalBag
@@ -1705,6 +1719,11 @@ private fun ItemDescriptionBar(
 
 /** What a USE / GIVE did, in the companion's words: [mon] the Pokémon it went to, [item] the item, [held]
  * what the Pokémon held before. */
+/** TAKE done: the item is in the bag, or a Mail (with its letter) in the PC's mailbox, as the game sends it. */
+internal fun takenMessage(item: Int, mon: String): String =
+    if (item in com.pokedaisy.app.companion.data.MAIL_ITEMS) tr("{1}'s {0} went to the PC's mailbox.", bagItemName(item), mon)
+    else tr("Received {0} from {1}.", bagItemName(item), mon)
+
 fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = "", held: Int = 0): String = when (o.result) {
     ItemUseResult.USED -> if (o.steps > 0) tr("Used! It lasts {0} steps.", o.steps) else tr("Used on {0}.", mon)
     ItemUseResult.STILL_ACTIVE -> tr("The last one is still working.")
@@ -1717,7 +1736,8 @@ fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = "", held:
         else tr("{0} is holding {1} now. {2} went back to the bag.", mon, item, bagItemName(o.swapped))
     ItemUseResult.BAG_FULL -> tr("The bag is full: {0} can't go back in it.", bagItemName(held))
     ItemUseResult.PARTY_CHANGED -> tr("The party has changed. Try again.")
-    ItemUseResult.TAKEN -> tr("Received {0} from {1}.", bagItemName(o.swapped), mon)
+    ItemUseResult.TAKEN -> takenMessage(o.swapped, mon)
+    ItemUseResult.MAILBOX_FULL -> tr("The PC's mailbox is full.")
     ItemUseResult.IN_GAME -> tr("Pick a POKéMON on the game's screen.")
 }
 

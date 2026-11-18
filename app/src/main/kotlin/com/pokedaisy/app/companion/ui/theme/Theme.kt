@@ -321,11 +321,13 @@ object AppColors {
         // PureRGB's own: NONE (STRUGGLE's), CRYSTAL (a hardened rock), FLOATING, MAGMA - ours (TRI is Prism's above).
         "None" to Color(0xFF68A090), "Crystal" to Color(0xFF8CC8D8), "Floating" to Color(0xFFB8A0D8),
         "Magma" to Color(0xFFC8481C),
+        // Pokémon Brown's own (with Prism's Gas, Sound and Tri): WOOD, WIND, ABNORMAL - ours; its BIRD as Flying.
+        "Wood" to Color(0xFF8C7A3C), "Wind" to Color(0xFF8CC8B0), "Abnormal" to Color(0xFFB0689C),
+        "Bird" to Color(0xFFA890F0),
     )
 
     /** By the game's own type name: title-cased ("Fire"), or Gen 1's capitals ("FIRE", and its unused BIRD as Flying). */
-    val typeColors = typeColorsTitled + typeColorsTitled.mapKeys { it.key.uppercase() } +
-        ("BIRD" to typeColorsTitled.getValue("Flying"))
+    val typeColors = typeColorsTitled + typeColorsTitled.mapKeys { it.key.uppercase() }
 
     fun statusColor(label: String): Color = when (label) {
         "SLP" -> statusSlp; "PSN" -> statusPsn; "BRN" -> statusBrn
@@ -408,6 +410,8 @@ fun rememberGameFont(game: GameKind?): FontFamily? {
         val path = when (game) {
             GameKind.YELLOW -> com.pokedaisy.app.companion.data.Gen1Art.yellowFont(com.pokedaisy.app.companion.data.romLanguage)
             GameKind.RED, GameKind.BLUE -> com.pokedaisy.app.companion.data.Gen1Art.redBlueFont(com.pokedaisy.app.companion.data.romLanguage)
+            // Brown kept Red's font, byte for byte (Gen1Art.BROWN builds it into Red's file).
+            GameKind.BROWN -> com.pokedaisy.app.companion.data.Gen1Art.redBlueFont('E')
             GameKind.PURE_RED, GameKind.PURE_BLUE -> com.pokedaisy.app.companion.data.Gen1Art.PURE_FONT
             GameKind.YELLOW_LEGACY -> com.pokedaisy.app.companion.data.Gen1Art.YELLOW_LEGACY_FONT
             GameKind.CRYSTAL_LEGACY -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_LEGACY_FONT

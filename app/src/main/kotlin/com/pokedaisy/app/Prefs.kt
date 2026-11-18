@@ -234,6 +234,33 @@ class Prefs(
         get() = p.getInt("exp_share", 0)
         set(v) = p.edit().putInt("exp_share", v).apply()
 
+    /** GAME LOOK (DISPLAY OPTIONS on both screens, CompanionSkins.enabled): the companion and the HUD in the running game's
+     * own look. On by default. */
+    var gameLook: Boolean
+        get() = p.getBoolean("game_look", true)
+        set(v) = p.edit().putBoolean("game_look", v).apply()
+
+    /** SETTINGS' DESCRIPTIONS and GROUP TABS (both screens, SettingsLook): shown by default. */
+    var settingsDescriptions: Boolean
+        get() = p.getBoolean("settings_descriptions", true)
+        set(v) = p.edit().putBoolean("settings_descriptions", v).apply()
+    var settingsTabs: Boolean
+        get() = p.getBoolean("settings_tabs", true)
+        set(v) = p.edit().putBoolean("settings_tabs", v).apply()
+
+    /** LOW HP BEEP / FIELD POISON: the game's own (ON) or turned off by a patch (QuietPatches.kt). */
+    var lowHpBeep: Boolean
+        get() = p.getBoolean("low_hp_beep", true)
+        set(v) = p.edit().putBoolean("low_hp_beep", v).apply()
+    var fieldPoison: Boolean
+        get() = p.getBoolean("field_poison", true)
+        set(v) = p.edit().putBoolean("field_poison", v).apply()
+
+    /** AUTO REFILL: another REPEL of the kind working goes on before it runs out (RepelRefill.kt). */
+    var repelRefill: Boolean
+        get() = p.getBoolean("repel_refill", false)
+        set(v) = p.edit().putBoolean("repel_refill", v).apply()
+
     /** LEVEL CAP: no Pokémon goes past the next boss's top level (LevelCap.kt). */
     var levelCap: Boolean
         get() = p.getBoolean("level_cap", false)
@@ -281,6 +308,25 @@ class Prefs(
         set(v) = p.edit().putBoolean("rival_look", v).apply()
 
     /** Remembered speed-cycle index per ROM (keyed by CRC32). */
+    /** BOSS RETRY: a state as each trainer battle starts, offered back after a loss (BattleRetryAsk). */
+    var battleRetry: Boolean
+        get() = p.getBoolean("battle_retry", false)
+        set(v) = p.edit().putBoolean("battle_retry", v).apply()
+
+    /** SHINY ALERT: on, and its hunt's count of wild battles per ROM (since the last shiny, or since it was turned on). */
+    var shinyAlert: Boolean
+        get() = p.getBoolean("shiny_alert", false)
+        set(v) = p.edit().putBoolean("shiny_alert", v).apply()
+    fun shinyHuntFor(romKey: String): Int = p.getInt("shiny_hunt_$romKey", 0)
+    fun setShinyHuntFor(romKey: String, count: Int) = p.edit().putInt("shiny_hunt_$romKey", count).apply()
+
+    /** LAST BALL: the BATTLE tab's ball button (BattleBall.kt), and the ball last thrown per ROM (0 = none yet). */
+    var lastBallButton: Boolean
+        get() = p.getBoolean("last_ball_button", true)
+        set(v) = p.edit().putBoolean("last_ball_button", v).apply()
+    fun lastBallFor(romKey: String): Int? = p.getInt("last_ball_$romKey", 0).takeIf { it != 0 }
+    fun setLastBallFor(romKey: String, itemId: Int) = p.edit().putInt("last_ball_$romKey", itemId).apply()
+
     fun speedIndexFor(romKey: String): Int = p.getInt("speed_$romKey", 0)
     fun setSpeedIndexFor(romKey: String, index: Int) = p.edit().putInt("speed_$romKey", index).apply()
 
@@ -718,8 +764,9 @@ class Prefs(
         get() = p.getBoolean("companion_window", defaults.companionWindow)
         set(v) = p.edit().putBoolean("companion_window", v).apply()
 
-    /** One screen held sideways: the white tab at the bottom of the screen's right edge that opens the companion (SETTINGS >
-     * COMPANION BUTTON). Off, BACK and the HUD's COMPANION button still open it. */
+    /** One screen held sideways: the buttons on the game screen that open the companion - the white tab at the bottom of the
+     * screen's right edge and the HUD's COMPANION (SETTINGS > COMPANION BUTTON). Off, BACK, the COMPANION hotkey and the QUICK
+     * MENU still open it. */
     var companionTab: Boolean
         get() = p.getBoolean("companion_tab", true)
         set(v) = p.edit().putBoolean("companion_tab", v).apply()
@@ -731,11 +778,22 @@ class Prefs(
         get() = p.getBoolean("portrait_companion_under_game", true)
         set(v) = p.edit().putBoolean("portrait_companion_under_game", v).apply()
 
-    /** SETTINGS > FOLD LAYOUT: a foldable half open lays the game and the companion out on either side of its hinge
-     * (TABLETOP: game above, companion below; BOOK: game left, companion right). On by default. */
-    var foldLayout: Boolean
-        get() = p.getBoolean("fold_layout", true)
-        set(v) = p.edit().putBoolean("fold_layout", v).apply()
+    /** SETTINGS > FOLD LAYOUT: OFF (0), HALF OPEN (1, default) or ALWAYS (2: half open and unfolded flat). It was the
+     * ON / OFF `fold_layout` until 1.6.x: an OFF there stays OFF. */
+    var foldMode: com.pokedaisy.app.companion.FoldMode
+        get() {
+            if (!p.contains("fold_mode") && !p.getBoolean("fold_layout", true)) return com.pokedaisy.app.companion.FoldMode.OFF
+            return com.pokedaisy.app.companion.FoldMode.of(p.getInt("fold_mode", com.pokedaisy.app.companion.FoldMode.HALF_OPEN.id))
+        }
+        set(v) = p.edit().putInt("fold_mode", v.id).apply()
+
+    val foldLayout: Boolean get() = foldMode != com.pokedaisy.app.companion.FoldMode.OFF
+
+    /** SETTINGS > TABLETOP CONTROLS: a foldable half open like a laptop puts the touch controls on the bottom half, either side
+     * of a narrower companion (BOTTOM SIDES, true), or on the top half beside the game (ON GAME, false: the default). */
+    var tabletopControlsBottom: Boolean
+        get() = p.getBoolean("tabletop_controls_bottom", false)
+        set(v) = p.edit().putBoolean("tabletop_controls_bottom", v).apply()
 
     /** This device has reported a hinge (a foldable): FOLD LAYOUT's row shows on both screens. */
     var foldSeen: Boolean

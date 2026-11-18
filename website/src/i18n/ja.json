@@ -350,6 +350,8 @@
   "QUICK FLASH": "クイック フラッシュ",
   "Light up a dark cave from the quick menu.": "クイックメニューから くらい どうくつを あかるく します。",
   "Your trainer card, drawn like the game's, front and back.": "ゲームと おなじ トレーナーカード、おもても うらも。",
+  "AREA MAP": "このばしょ",
+  "A cave's or a big building's own map, floor by floor, on the MAP tab and the HUD.": "どうくつや おおきな たてものの ちずを、フロアごとに。MAPタブと HUDで。",
   "n/a": "なし",
   "Nothing matches.": "あてはまる ものは ありません。",
   "Search games": "ゲームを さがす",
@@ -383,12 +385,11 @@
   "A 3DS with custom firmware and the Homebrew Launcher. An early preview.": "カスタムファームウェアとHomebrew Launcherを入れた3DS。まだ早いプレビュー版です。",
   "The app (APK)": "アプリ（APK）",
   "The app (.3dsx)": "アプリ（.3dsx）",
+  "The app for the HOME Menu (.cia)": "HOMEメニュー用のアプリ（.cia）",
   "Steam Deck and Linux PCs": "Steam DeckとLinuxのPC",
   "TrimUI handhelds (CrossMix, NextUI)": "TrimUIの携帯機（CrossMix、NextUI）",
   "PortMaster handhelds (ROCKNIX, Knulli, muOS)": "PortMasterの携帯機（ROCKNIX、Knulli、muOS）",
   "TrimUI Brick on NXRedux": "NXReduxのTrimUI Brick",
   "Cores for RetroArch, on a PC": "RetroArch用のコア（PC）",
-  "Cores for RetroArch, on an ARM handheld": "RetroArch用のコア（ARMの携帯機）",
-  "AREA MAP": "このばしょ",
-  "A cave or building's map, with its floors.": "どうくつやたてもののちずを、かいごとにひょうじ。"
+  "Cores for RetroArch, on an ARM handheld": "RetroArch用のコア（ARMの携帯機）"
 }

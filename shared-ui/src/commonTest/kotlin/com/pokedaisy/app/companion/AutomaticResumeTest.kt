@@ -45,9 +45,10 @@ class AutomaticResumeTest {
         assertTrue(session(true).restore()); assertEquals(1, reads)
     }
 
-    @Test fun onlyVerifiedMatchingStatesReachTheCoreAndOtherCoreStatesCanBeParked() = temporary { files ->
+    /** A changed save (0) and another DS core's state (2) are parked; -1 (no save in the state) loads (StateResumeTest). */
+    @Test fun changedSavesAndOtherCoreStatesNeverReachTheCoreAndCanBeParked() = temporary { files ->
         var reads = 0
-        for (verdict in listOf(0, -1, 2)) {
+        for (verdict in listOf(0, 2)) {
             files.resumeFile.writeText("automatic")
             ra(files.resumeFile).writeText("progress")
             val parked = files.directory / "parked-$verdict"

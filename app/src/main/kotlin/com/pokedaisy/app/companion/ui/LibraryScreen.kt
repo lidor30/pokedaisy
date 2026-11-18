@@ -16,17 +16,11 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed as gridItemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.GridView
 import com.pokedaisy.app.companion.data.LibraryView
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.Icon
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -137,7 +131,7 @@ fun LibraryRomRow(
                     if (hasSave) {
                         Spacer(Modifier.width(m.u * 4))
                         Icon(
-                            Icons.Filled.Save, contentDescription = tr("Save file exists"),
+                            LibraryIcons.Save, contentDescription = tr("Save file exists"),
                             tint = OptionColors.label, modifier = Modifier.size(small.lineHeight),
                         )
                     }
@@ -204,7 +198,7 @@ fun LibraryRomTile(
                     if (hasSave) {
                         Spacer(Modifier.width(m.u * 2))
                         Icon(
-                            Icons.Filled.Save, contentDescription = tr("Save file exists"),
+                            LibraryIcons.Save, contentDescription = tr("Save file exists"),
                             tint = OptionColors.label, modifier = Modifier.size(small.lineHeight),
                         )
                     }
@@ -262,7 +256,7 @@ fun LibraryCover(bitmap: ImageBitmap?, category: RomCategory?, m: GbaTextMetrics
                 CategoryArt(category, Modifier.fillMaxSize())
             } else {
                 Icon(
-                    Icons.Filled.VideogameAsset, contentDescription = null,
+                    LibraryIcons.VideogameAsset, contentDescription = null,
                     tint = OptionColors.muted, modifier = Modifier.size(28.dp),
                 )
             }
@@ -443,16 +437,16 @@ fun <T> LibraryScreen(
             headerGap = m.u * if (state.hasCatalog || state.section != LibrarySection.GAMES) 8 else 4,
             header = {
                 if (state.section == LibrarySection.GAMES) {
-                    LibraryHeaderIcon(Icons.AutoMirrored.Filled.Sort, tr("Sort"), m,
+                    LibraryHeaderIcon(LibraryIcons.Sort, tr("Sort"), m,
                         Modifier.focusRequester(focus.header), compact = compact, onClick = actions.sort)
                     DisposableEffect(focus) { focus.headerAttached = true; onDispose { focus.headerAttached = false } }
                     LibraryHeaderIcon(Icons.Filled.Search, tr("SEARCH"), m, compact = compact, onClick = actions.search)
-                    LibraryHeaderIcon(if (state.grid) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView,
+                    LibraryHeaderIcon(if (state.grid) LibraryIcons.ViewList else LibraryIcons.GridView,
                         tr("Toggle view"), m, compact = compact, onClick = actions.toggleGrid)
                     LibraryHeaderIcon(Icons.Filled.Add, tr("Add games"), m, compact = compact, onClick = actions.add)
                     LibraryHeaderIcon(Icons.Filled.Refresh, tr("Refresh"), m, compact = compact, onClick = actions.refresh)
                 }
-                LibraryHeaderIcon(Icons.AutoMirrored.Filled.HelpOutline, tr("Help"), m, compact = compact, onClick = actions.help)
+                LibraryHeaderIcon(LibraryIcons.HelpOutline, tr("Help"), m, compact = compact, onClick = actions.help)
             }, overlays = overlays,
         ) {
             when (state.section) {

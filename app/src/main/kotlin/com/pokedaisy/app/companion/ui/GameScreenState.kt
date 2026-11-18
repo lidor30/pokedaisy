@@ -14,6 +14,8 @@ data class PortraitPanelState(
     val expand: Boolean = false,
     val padStrip: Int = 0,
     val hinge: IntRange? = null,
+    /** TABLETOP CONTROLS: the touch controls below the hinge, either side of a narrower companion. */
+    val controlsBelowHinge: Boolean = false,
     val canHide: Boolean = true,
 )
 
@@ -136,6 +138,12 @@ fun gameScreenFrames(width: Int, height: Int, gameHeight: Int, gripHeight: Int,
         right.coerceIn(left.coerceIn(0, w), w).toFloat(), bottom.coerceIn(top.coerceIn(0, h), h).toFloat())
     if (portrait.enabled) {
         portrait.hinge?.let {
+            if (portrait.controlsBelowHinge) {
+                // The controls take the half below the fold, the companion its middle (a margin each side for the thumbs).
+                val max = (w * 0.3f).toInt()
+                val margin = (w * 0.22f).toInt().coerceIn(minOf(120, max), max)
+                return GameScreenFrames(rect(0, it.first), rect(it.last, h), rect(it.last, h, w - margin, margin), true)
+            }
             return GameScreenFrames(rect(0, it.first), rect(0, it.first), rect(it.last, h), true)
         }
         val hidden = portrait.hidden && portrait.canHide

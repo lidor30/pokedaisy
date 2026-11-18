@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import kotlin.concurrent.Volatile
+import kotlin.math.roundToInt
 import okio.FileHandle
 import okio.Path
 
@@ -24,6 +25,12 @@ object NdsArt {
      * item icons by item id, from its own archives ([extractOrigin]). */
     const val ORIGIN_ICONS = "nds/originhg/pokemon"
     const val ORIGIN_ITEMS = "nds/originhg/items"
+    /** Heartfelt Gold ([HeartfeltGold]): its party icons by species id (1..1534) and HeartGold's item icons. */
+    const val HEARTFELT_ICONS = "nds/heartfelt/pokemon"
+    const val HEARTFELT_ITEMS = "nds/heartfelt/items"
+    /** Its DEX pages (a row per species id) and front pictures by species id ([dexHeartfelt]). */
+    const val HEARTFELT_DEX = "nds/heartfelt/dex.tsv"
+    const val HEARTFELT_FRONT = "nds/heartfelt/front"
     const val ORIGIN_EGG = 2000
     /** Its DEX pages and front pictures ([dexOrigin]), as [HEARTGOLD_DEX] / [HEARTGOLD_FRONT] are HeartGold's. */
     const val ORIGIN_DEX = "nds/originhg/dex.tsv"
@@ -127,6 +134,7 @@ object NdsArt {
         names = null
         OriginHeartGold.data = null
         RenegadePlatinum.data = null
+        HeartfeltGold.data = null
         Black2Redux.data = null
         background("pokedaisy-nds-art") {
             // The names first (a few text banks): the companion's first samples use them.
@@ -135,6 +143,8 @@ object NdsArt {
                 .onFailure { Logs.w("NdsArt: Origin HeartGold's tables failed", it) }
             runCatching { RenegadePlatinum.data = if (RenegadePlatinum.matches(rom)) readRenegade(rom) else null }
                 .onFailure { Logs.w("NdsArt: Renegade Platinum's tables failed", it) }
+            runCatching { HeartfeltGold.data = if (HeartfeltGold.matches(rom)) readHeartfelt(rom) else null }
+                .onFailure { Logs.w("NdsArt: Heartfelt Gold's tables failed", it) }
             runCatching { Black2Redux.data = if (Black2Redux.matches(rom)) readRedux(rom) else null }
                 .onFailure { Logs.w("NdsArt: the Redux hacks' tables failed", it) }
             names?.let { n ->
@@ -154,6 +164,9 @@ object NdsArt {
     /** Carts on Platinum's files: USA rev 1, France rev 0, the Platinum language ports. */
     private fun isPlatinum(code: String, rev: Int) =
         code == "CPUE" && rev == 1 || code == "CPUF" && rev == 0 || portIs(code, rev, GameKind.PLATINUM)
+
+    /** English Diamond / Pearl (any revision): the save editor's only (their text banks, read off rev 5). */
+    private fun isDiamondPearl(code: String) = code == "ADAE" || code == "APAE"
 
     /** Carts on HeartGold / SoulSilver's files: USA, Germany and France, rev 0. */
     private fun isHgss(code: String, rev: Int) =
@@ -175,10 +188,12 @@ object NdsArt {
         val black2 = code == "IREO" && rev == 0 || portIs(code, rev, GameKind.BLACK2) || white2
         val origin = OriginHeartGold.matches { off, len -> f.read(off, len) }
         val renegade = platinum && RenegadePlatinum.matches { off, len -> f.read(off, len) }
+        val heartfelt = heartGold && HeartfeltGold.matches { off, len -> f.read(off, len) }
         val redux = black2 && Black2Redux.matches { off, len -> f.read(off, len) }
         if (!platinum && !heartGold && !black && !black2 && !origin) return false
         val marker = dir / when {
             origin -> "nds/originhg-built"
+            heartfelt -> "nds/heartfelt-built"
             renegade -> "nds/renegade-built"
             redux -> "nds/redux-built"
             white2 -> "nds/white2-built"
@@ -190,10 +205,17 @@ object NdsArt {
         }
         // The Redux builds share a code and revision but not their species' records (Classic, EVless): the DEX's types
         // and stats are theirs, so the marker keeps a CRC of those too.
-        val stamp = "v$VERSION $code $rev" + if (redux) " " + (file(f, header, "/a/0/1/6")?.let { crc32(it) } ?: 0L) else ""
+        // Heartfelt Gold's art built before its DEX and its icons' own palettes is built again (" dex").
+        val stamp = "v$VERSION $code $rev" + (if (redux) " " + (file(f, header, "/a/0/1/6")?.let { crc32(it) } ?: 0L) else "") +
+            (if (heartfelt) " dex" else "")
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return false
         if (origin) {
             if (!extractOrigin(f, header, dir)) return false
+            marker.writeText(stamp)
+            return true
+        }
+        if (heartfelt) {
+            if (!extractHeartfelt(f, header, dir)) return false
             marker.writeText(stamp)
             return true
         }
@@ -271,6 +293,159 @@ object NdsArt {
         file(f, header, "/a/0/1/5")?.let { bagPockets(Narc(it), dir) }
         dexOrigin(f, header, dir)
         return true
+    }
+
+    /**
+     * Heartfelt Gold's art ([HeartfeltGold]): its party icons in HeartGold's archive grown (`/a/0/2/0`, member 0 the
+     * palettes, 7 + species each icon, the eggs' at 494 / 495) in the palette hg-engine reads for each species
+     * ([HeartfeltGold.ICON_PALETTE_FILE]); HeartGold's item icons for HeartGold's items (its `/a/0/1/8` keeps them where
+     * HeartGold's table has them), its Pokégear and bag buttons, and its DEX ([dexHeartfelt]).
+     */
+    private fun extractHeartfelt(f: FileHandle, header: ByteArray, dir: Path): Boolean {
+        val narc = Narc(file(f, header, "/a/0/2/0") ?: return false)
+        val palettes = palettes(narc.member(0))
+        val iconPalettes = file(f, header, HeartfeltGold.ICON_PALETTE_FILE)?.let { Narc(it).member(HeartfeltGold.ICON_PALETTE_MEMBER) }
+            ?: return false
+        for (species in 1..minOf(HeartfeltGold.LAST_SPECIES, iconPalettes.size - 1)) {
+            val pal = palettes.getOrNull(u8(iconPalettes, species)) ?: continue
+            val icon = icon(narc.member(7 + species), pal) ?: continue
+            write(dir, "$HEARTFELT_ICONS/$species.png", icon.png())
+        }
+        file(f, header, "/a/0/1/8")?.let { Narc(it) }?.let { items ->
+            for ((item, packed) in itemIconsHeartGold) {
+                val pal = palettes(items.member(packed and 0xFFFF)).firstOrNull() ?: continue
+                val icon = icon(items.member(packed ushr 16), pal, height = 32) ?: continue
+                write(dir, "$HEARTFELT_ITEMS/$item.png", icon.png())
+            }
+        }
+        file(f, header, "/a/1/4/4")?.let { pokegear(Narc(it), dir) }
+        file(f, header, "/a/0/1/5")?.let { bagPockets(Narc(it), dir) }
+        dexHeartfelt(f, header, dir)
+        return true
+    }
+
+    /**
+     * Heartfelt Gold's DEX ([HEARTFELT_DEX], [Gen4Dex]'s columns, a row per species id: [GEN4_DEX_HEARTFELT] maps them to
+     * Dex numbers): HeartGold's archives grown to its 1535 species. Its banks are retail's numbers (803 the descriptions,
+     * 816 the categories, 720 the abilities); the heights and weights are read from the pages' own text (814, 812: the
+     * numbers in `/a/0/7/4` stop at ARCEUS), as inches and tenths of a pound; the personal records keep each ability as
+     * a u16 (+0x16, +0x1A: its abilities run past 255) and no TM bits; the level-up moves are one file of 41 (move, level)
+     * pairs a species, 0xFFFF-ended; an evolution's target carries a form in its top bits (one to a form is left out);
+     * Johto's numbers are retail's (`/a/1/3/8`). The pictures are HeartGold's `/a/0/0/4`, six files a species, grown.
+     */
+    private fun dexHeartfelt(f: FileHandle, header: ByteArray, dir: Path) {
+        val msg = Narc(file(f, header, "/a/0/2/7") ?: return)
+        val text = msg.member(803)?.let { Gen4Text.lines(it) } ?: return
+        val category = msg.member(816)?.let { Gen4Text.lines(it) } ?: return
+        val abilities = msg.member(720)?.let { Gen4Text.lines(it) } ?: emptyList()
+        val weights = msg.member(812)?.let { Gen4Text.lines(it) } ?: emptyList()
+        val heights = msg.member(814)?.let { Gen4Text.lines(it) } ?: emptyList()
+        val personal = Narc(file(f, header, "/a/0/0/2") ?: return)
+        val johto = Narc(file(f, header, "/a/1/3/8") ?: return).member(0) ?: return
+        val learnsets = Narc(file(f, header, "/a/0/3/3") ?: return).member(0) ?: return
+        val evolutions = Narc(file(f, header, "/a/0/3/4") ?: return)
+        val species = (1..HeartfeltGold.LAST_NATIONAL).map(HeartfeltGold::speciesOf)
+        val sb = StringBuilder()
+        for (sp in species) {
+            val p = personal.member(sp) ?: continue
+            if (p.size < 0x1C) continue
+            fun b(o: Int) = u8(p, o)
+            fun ability(o: Int) = u16(p, o).let { if (it != 0) abilities.getOrElse(it) { "" } else "" }
+            val inches = HEIGHT_TEXT.find(heights.getOrElse(sp) { "" })?.let { m -> m.groupValues[1].toInt() * 12 + m.groupValues[2].toInt() }
+            val lbs10 = WEIGHT_TEXT.find(weights.getOrElse(sp) { "" })?.let { m -> m.groupValues[1].toInt() * 10 + m.groupValues[2].toInt() }
+            val levelUp = (0 until 41).asSequence().map { sp * 164 + it * 4 }.takeWhile { it + 4 <= learnsets.size }
+                .map { u16(learnsets, it) to u16(learnsets, it + 2) }.takeWhile { it.first != 0xFFFF }.toList()
+            val cells = listOf(
+                sp.toString(),
+                category.getOrElse(sp) { "" },
+                text.getOrElse(sp) { "" }.replace("\n", "\\n"),
+                // dm / hg from the page's feet / inches and pounds (the page itself shows those, columns 24 / 25)
+                (inches?.let { (it * 0.254).roundToInt() } ?: 0).toString(),
+                (lbs10?.let { (it / 2.20462).roundToInt() } ?: 0).toString(),
+                b(0).toString(), b(1).toString(), b(2).toString(), b(4).toString(), b(5).toString(), b(3).toString(),
+                b(6).toString(), b(7).toString(), b(8).toString(), b(0x10).toString(), b(0x14).toString(), b(0x15).toString(),
+                ability(0x16), ability(0x1A),
+                if (sp * 2 + 2 <= johto.size) u16(johto, sp * 2).toString() else "0",
+                evolutions.member(sp)?.let { e ->
+                    (0 until e.size / 6).mapNotNull { i ->
+                        val m = u16(e, i * 6)
+                        val to = u16(e, i * 6 + 4)
+                        if (m == 0 || to ushr 11 != 0) null else "$m,${u16(e, i * 6 + 2)},$to"
+                    }.joinToString(";")
+                } ?: "",
+                levelUp.joinToString(",") { "${it.second}:${it.first}" },
+                "",
+                "",
+                inches?.toString() ?: "",
+                lbs10?.toString() ?: "",
+            )
+            sb.append(cells.joinToString("\t") { it.replace("\t", " ") }).append('\n')
+        }
+        write(dir, HEARTFELT_DEX, sb.toString().encodeToByteArray())
+        val pics = Narc(file(f, header, "/a/0/0/4") ?: return)
+        for (sp in species) {
+            val pal = palettes(pics.member(sp * 6 + 4)).firstOrNull() ?: continue
+            val chars = ncgrData(pics.member(sp * 6 + 3))?.takeIf { it.size >= 6400 }
+                ?: ncgrData(pics.member(sp * 6 + 2))?.takeIf { it.size >= 6400 } ?: continue
+            val px = unscanPokepic(chars)
+            val img = RomArt.Image(80, 80)
+            for (y in 0 until 80) for (x in 0 until 80) {
+                val v = u8(px, y * 80 + x / 2).let { if (x and 1 == 1) it shr 4 else it and 15 }
+                if (v != 0) img.argb[y * 80 + x] = pal[v]
+            }
+            write(dir, "$HEARTFELT_FRONT/$sp.png", img.png())
+        }
+    }
+
+    /** A US page's height ("  1'04\"", the game's own apostrophe) and weight ("  19.8 lbs."). */
+    private val HEIGHT_TEXT = Regex("(\\d+)\\D(\\d{2})")
+    private val WEIGHT_TEXT = Regex("(\\d+)\\.(\\d) lbs")
+
+    /**
+     * Heartfelt Gold's tables from its cart ([HeartfeltGold.Data]): each species' types (HeartGold's 44-byte personal
+     * records, types at 6 and 7), each move's category, power and type (`/a/0/1/1`, 16 bytes a move: 2, 3, 4) under the
+     * cart's move names, and its type chart (HeartGold's triples with Fairy's rows).
+     */
+    fun readHeartfelt(rom: Path): HeartfeltGold.Data? = withRomFile(rom) { f ->
+        val header = f.read(0, 0x200)
+        val personal = Narc(file(f, header, "/a/0/0/2") ?: return null)
+        val types = HashMap<Int, SpeciesTypes>()
+        for (id in 1..HeartfeltGold.LAST_SPECIES) {
+            val p = personal.member(id) ?: continue
+            if (p.size >= 8) types[id] = SpeciesTypes(u8(p, 6), u8(p, 7))
+        }
+        val moveNames = readNames(rom)?.moves.orEmpty()
+        val moveRecords = Narc(file(f, header, "/a/0/1/1") ?: return null)
+        val moves = HashMap<Int, MoveInfo>()
+        val categories = HashMap<Int, Int>()
+        for (id in 1 until moveRecords.size) {
+            val m = moveRecords.member(id) ?: continue
+            if (m.size < 5) continue
+            val name = moveNames.getOrNull(id)?.takeIf { it.isNotBlank() && !it.startsWith("MOVE_") } ?: continue
+            moves[id] = MoveInfo(name, u8(m, 4), u8(m, 3))
+            categories[id] = u8(m, 2)
+        }
+        val chart = HashMap<Int, Int>()
+        val c = f.read(HeartfeltGold.TYPE_CHART_OFFSET, 0x400)
+        var i = 0
+        while (i + 3 <= c.size && u8(c, i) != 0xFF) {
+            val atk = u8(c, i)
+            val def = u8(c, i + 1)
+            val pct = u8(c, i + 2) * 10
+            if (atk != 0xFE && pct != 100) chart[atk * 100 + def] = pct
+            i += 3
+        }
+        // Each map header's encounter bank (0xFF = none) into its encounter archive: the walking and surfing rates, its
+        // own (what the field read puts back for WILD ENCOUNTERS, as Origin's).
+        val headers = f.read(HeartfeltGold.MAP_HEADERS_OFFSET, HeartfeltGold.MAP_HEADER_COUNT * 24)
+        val encounters = file(f, header, "/a/0/3/7")?.let { Narc(it) }
+        val rates = ArrayList<Int>()
+        for (map in 0 until HeartfeltGold.MAP_HEADER_COUNT) {
+            val bank = u8(headers, map * 24)
+            val e = if (bank == 0xFF) null else encounters?.member(bank)
+            if (e != null && e.size >= 2) rates += listOf(map, u8(e, 0), u8(e, 1))
+        }
+        HeartfeltGold.Data(types, moves, categories, chart, rates.toIntArray())
     }
 
     /**
@@ -983,6 +1158,10 @@ object NdsArt {
      * places, types. */
     private class NameBanks(val msg: String, val species: Int, val moves: Int, val items: Int, val places: Int, val types: Int)
     private val NAMES_PLATINUM = NameBanks("/msgdata/pl_msg.narc", 412, 647, 392, 433, 624)
+    private val NAMES_DIAMOND = NameBanks("/msgdata/msg.narc", 362, 588, 344, 382, 565)
+    /** Diamond / Pearl's items: ids 0..464. */
+    private const val DP_ITEMS = 465
+    private const val GRISEOUS_ORB = 112
     private val NAMES_HEARTGOLD = NameBanks("/a/0/2/7", 237, 750, 222, 279, 735)
     // The Korean HeartGold / SoulSilver's: renumbered (one species bank, not the Western carts' two, and banks fewer before
     // the rest: 233 species, 743 moves, 220 items, 274 places, 728 types; found by their line counts, read off the carts).
@@ -1022,6 +1201,7 @@ object NdsArt {
         val banks = when {
             code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> f.read(off, len) } -> NAMES_ORIGIN
             isPlatinum(code, rev) -> NAMES_PLATINUM
+            isDiamondPearl(code) -> NAMES_DIAMOND
             isHgss(code, rev) -> when (code[3]) { 'K' -> NAMES_HEARTGOLD_KO; 'J' -> NAMES_HEARTGOLD_JA; else -> NAMES_HEARTGOLD }
             else -> return null
         }
@@ -1030,6 +1210,152 @@ object NdsArt {
         val types = lines(banks.types)
         Names(lines(banks.species), lines(banks.moves), lines(banks.items), lines(banks.places),
             FIGHTING[types.getOrNull(1)?.trim()?.uppercase()] ?: 'E')
+    }
+
+    /**
+     * What the SAVE EDITOR and POKé TRANSFER need from a Black / White (or Black 2 / White 2) cart
+     * ([com.pokedaisy.app.companion.data.save.Gen5GameData]), or null for another cart: its names ([readNames]), ability names
+     * (a/0/0/2 bank 182; the sequels' 374), each species' personal record (a/0/1/6, 1..649, and the regional dex's member),
+     * level-up moves (a/0/1/8), evolutions (a/0/1/9), move PP (a/0/2/1) and item pockets (a/0/2/4).
+     */
+    fun readGen5SaveTables(rom: Path): com.pokedaisy.app.companion.data.save.Gen5GameData? {
+        val names = readNames(rom)?.takeIf { it.gen5 } ?: return null
+        return withRomFile(rom) { f ->
+            val header = f.read(0, 0x200)
+            val code = asciiString(header, 0x0C, 4)
+            val msg = Narc(file(f, header, "/a/0/0/2") ?: return null)
+            val abilities = msg.member(if (names.bw2) 374 else 182)?.let { Gen5Text.lines(it) }.orEmpty()
+            val personal = Narc(file(f, header, "/a/0/1/6") ?: return null)
+            val layout = if (names.bw2) com.pokedaisy.app.companion.data.save.Gen5Layout.B2W2 else com.pokedaisy.app.companion.data.save.Gen5Layout.BW
+            val last = com.pokedaisy.app.companion.data.save.Gen5GameData.LAST_SPECIES
+            // Level-up moves: (move, level) u16 pairs to 0xFFFF. Evolutions: seven (method, param, target) u16 triples.
+            val learnsets = file(f, header, "/a/0/1/8")?.let { Narc(it) }
+            val evolutions = file(f, header, "/a/0/1/9")?.let { Narc(it) }
+            val moves = file(f, header, "/a/0/2/1")?.let { Narc(it) }
+            val itemData = file(f, header, "/a/0/2/4")?.let { Narc(it) }
+            val levelUp = (0..last).map { s ->
+                val d = learnsets?.member(s) ?: return@map emptyList()
+                (0 until d.size / 4).map { u16(d, it * 4) to u16(d, it * 4 + 2) }.takeWhile { it.first != 0xFFFF }.map { (m, lv) -> lv to m }
+            }
+            val evos = (0..last).map { s ->
+                val d = evolutions?.member(s) ?: return@map emptyList()
+                (0 until d.size / 6).map { Triple(u16(d, it * 6), u16(d, it * 6 + 2), u16(d, it * 6 + 4)) }.filter { it.first != 0 }
+            }
+            val movePp = IntArray(moves?.size ?: 0) { m -> moves?.member(m)?.takeIf { it.size > 5 }?.let { it[5].toInt() and 0xFF } ?: 0 }
+            // Each item's bag pocket: bits 7-10 of its record's u16 at +8 (0 items, 1 medicine, 2 TMs / HMs, 3 berries, 4 key items).
+            val pockets = IntArray(itemData?.size ?: 0) { i ->
+                if (i == 0) -1 else itemData?.member(i)?.takeIf { it.size >= 10 }?.let { (u16(it, 8) shr 7) and 0xF } ?: -1
+            }
+            val regional = personal.member(layout.regionalMember)?.takeIf { it.size >= (last + 1) * 2 }
+                ?.let { r -> IntArray(last + 1) { s -> u16(r, s * 2).let { v -> if (v == 999) -1 else v } } } ?: IntArray(0)
+            com.pokedaisy.app.companion.data.save.Gen5GameData(
+                species = names.species, moveNames = names.moves, items = names.items, abilityNames = abilities,
+                personal = (0..last).map { personal.member(it) },
+                gameLanguage = when (code[3]) { 'J' -> 1; 'F' -> 3; 'I' -> 4; 'D' -> 5; 'S' -> 7; 'K' -> 8; else -> 2 },
+                layout = layout, levelUp = levelUp, evolutions = evos, movePp = movePp, itemPockets = pockets, regional = regional,
+            )
+        }
+    }
+
+    /**
+     * What the SAVE EDITOR needs from a HeartGold / SoulSilver, Platinum or English Diamond / Pearl cart
+     * ([com.pokedaisy.app.companion.data.save.Gen4GameData]), or null for another cart: the names (species, moves, items, abilities), each species' personal record (a/0/0/2),
+     * level-up moves (a/0/3/3: level << 9 | move to 0xFFFF), pre-evolutions (a/0/3/4's targets) and each move's PP
+     * (a/0/1/1, byte 6 of its 16).
+     */
+    fun readSaveTables(rom: Path): com.pokedaisy.app.companion.data.save.Gen4GameData? {
+        val names = readNames(rom) ?: return null
+        return withRomFile(rom) { f ->
+            val header = f.read(0, 0x200)
+            val code = asciiString(header, 0x0C, 4)
+            val rev = header[0x1E].toInt() and 0xFF
+            val reader = { off: Long, len: Int -> f.read(off, len) }
+            val hgss = isHgss(code, rev) && !OriginHeartGold.matches(reader)
+            // Platinum: USA rev 1 and Renegade Platinum (edited in place: its own machines).
+            val platinum = code == "CPUE" && rev == 1
+            // Diamond / Pearl: Platinum's kind of files under their older names (Pearl's personal data its own: Magmar's and
+            // Electabuzz's lines hold other items).
+            val dp = !hgss && !platinum && isDiamondPearl(code)
+            if (!hgss && !platinum && !dp) return null
+            if (dp && names.species.size != com.pokedaisy.app.companion.data.save.Gen4GameData.LAST_SPECIES + 3) return null
+            val renegade = platinum && RenegadePlatinum.matches(reader)
+            val files = when {
+                hgss -> listOf("/a/0/2/7", "/a/0/0/2", "/a/0/3/3", "/a/0/3/4", "/a/0/1/1")
+                dp -> listOf("/msgdata/msg.narc",
+                    if (code == "APAE") "/poketool/personal_pearl/personal.narc" else "/poketool/personal/personal.narc",
+                    "/poketool/personal/wotbl.narc", "/poketool/personal/evo.narc", "/poketool/waza/waza_tbl.narc")
+                else -> listOf("/msgdata/pl_msg.narc", "/poketool/personal/pl_personal.narc", "/poketool/personal/wotbl.narc",
+                    "/poketool/personal/evo.narc", "/poketool/waza/pl_waza_tbl.narc")
+            }
+            val abilityBank = if (platinum) 610 else if (dp) 552 else when (code[3]) { 'K' -> 715; 'J' -> 711; else -> 720 }
+            val abilities = Narc(file(f, header, files[0]) ?: return null).member(abilityBank)?.let { Gen4Text.lines(it) } ?: return null
+            val personal = Narc(file(f, header, files[1]) ?: return null)
+            val learnsets = Narc(file(f, header, files[2]) ?: return null)
+            val evolutions = Narc(file(f, header, files[3]) ?: return null)
+            val moves = Narc(file(f, header, files[4]) ?: return null)
+            // The regional dex's numbers (member 0, a u16 per species; 0 = not in it): Johto's a/1/3/8, Sinnoh's pl_pokezukan.
+            val regionalNumbers = file(f, header, when {
+                platinum -> "/poketool/pl_pokezukan.narc"
+                dp -> "/poketool/pokezukan.narc"
+                else -> "/a/1/3/8"
+            })?.let { Narc(it).member(0) }
+            val itemPockets = if (platinum) {
+                com.pokedaisy.app.companion.data.save.gen4ItemPocketsPlatinum.copyOf().also { it[0] = -1 }
+            } else if (dp) {
+                // Platinum's items but the GRISEOUS ORB (112) and the three past 464, which Diamond / Pearl don't have.
+                com.pokedaisy.app.companion.data.save.gen4ItemPocketsPlatinum.copyOf(DP_ITEMS).also { it[0] = -1; it[GRISEOUS_ORB] = -1 }
+            } else {
+                // Each item's field pocket: its record (save.gen4ItemDataIndexHeartGold) in item_data (a/0/1/7), bits 7-10 of +8.
+                val itemData = Narc(file(f, header, "/a/0/1/7") ?: return null)
+                IntArray(com.pokedaisy.app.companion.data.save.gen4ItemDataIndexHeartGold.size) { item ->
+                    val rec = itemData.member(com.pokedaisy.app.companion.data.save.gen4ItemDataIndexHeartGold[item])
+                    if (item == 0 || rec == null || rec.size < 10) -1 else (u16(rec, 8) shr 7) and 0xF
+                }
+            }
+            val tmMoves = when {
+                renegade -> f.read(RenegadePlatinum.TM_MOVES_OFFSET, 100 * 2).let { t -> IntArray(100) { u16(t, it * 2) } }
+                platinum || dp -> tmMovesPlatinum
+                else -> tmMovesHeartGold
+            }
+            val last = com.pokedaisy.app.companion.data.save.Gen4GameData.LAST_SPECIES
+            val pre = IntArray(last + 1)
+            for (species in 1..last) {
+                val e = evolutions.member(species) ?: continue
+                for (i in 0 until 7) {
+                    if (i * 6 + 6 > e.size) break
+                    val target = u16(e, i * 6 + 4)
+                    if (u16(e, i * 6) != 0 && target in 1..last && pre[target] == 0) pre[target] = species
+                }
+            }
+            com.pokedaisy.app.companion.data.save.Gen4GameData(
+                species = names.species, moveNames = names.moves, items = names.items, abilityNames = abilities,
+                personal = (0..last).map { personal.member(it) },
+                levelUp = (0..last).map { s ->
+                    learnsets.member(s)?.let { l ->
+                        (0 until l.size / 2).asSequence().map { u16(l, it * 2) }.takeWhile { it != 0xFFFF }
+                            .map { (it shr 9) to (it and 0x1FF) }.toList()
+                    }.orEmpty()
+                },
+                preEvolution = pre,
+                tmMoves = tmMoves,
+                movePp = IntArray(moves.size) { m -> moves.member(m)?.takeIf { it.size > 6 }?.let { it[6].toInt() and 0xFF } ?: 0 },
+                itemPockets = itemPockets,
+                evolutions = (0..last).map { sp ->
+                    val e = evolutions.member(sp) ?: return@map emptyList()
+                    (0 until 7).mapNotNull { i ->
+                        if (i * 6 + 6 > e.size) null
+                        else Triple(u16(e, i * 6), u16(e, i * 6 + 2), u16(e, i * 6 + 4)).takeIf { it.first != 0 }
+                    }
+                },
+                gameLanguage = when (code[3]) { 'J' -> 1; 'F' -> 3; 'I' -> 4; 'D' -> 5; 'S' -> 7; 'K' -> 8; else -> 2 },
+                layout = when {
+                    platinum -> com.pokedaisy.app.companion.data.save.Gen4Layout.PLATINUM
+                    dp -> com.pokedaisy.app.companion.data.save.Gen4Layout.DP
+                    else -> com.pokedaisy.app.companion.data.save.Gen4Layout.HGSS
+                },
+                regional = regionalNumbers?.let { r -> IntArray(last + 1) { sp -> if (sp * 2 + 2 <= r.size) u16(r, sp * 2) else 0 } } ?: IntArray(0),
+            )
+        }
     }
 
     /** Where one cart keeps what [dex] reads: file paths and text banks. */

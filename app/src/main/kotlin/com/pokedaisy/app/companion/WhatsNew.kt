@@ -38,10 +38,27 @@ object WhatsNew {
     /** Newest first. */
     val RELEASES: List<Notes> by lazy {
         listOf(
+            NOTES_1_6_1,
             NOTES_1_6_0,
             hotfix("1.5.0.1", NOTES_1_5_0, "1.5.0.1 HOTFIX: turning a Samsung Galaxy sideways no longer closes the game."),
         ) + OLDER
     }
+
+    private val NOTES_1_6_1 = Notes(
+        "1.6.1",
+        listOf(
+            Section(
+                FIXES,
+                listOf(
+                    "Normal speed: games no longer stutter at 1x on 120 Hz screens (AYN Thor, Retroid Pocket 6, many phones), and DS games' top screen no longer stays white.",
+                    "Library: your games stay listed after an update, and a long folder scan keeps what it has found if you leave.",
+                    "FLY in Unbound: works with any Pokémon the game's own menu would fly with, even one that doesn't know the move.",
+                    "DS on one screen: SHADERS now reach the battle buttons and messages too.",
+                    "Archives: a .zip with no game inside says so instead of closing the app.",
+                ),
+            ),
+        ),
+    )
 
     private val NOTES_1_6_0 = Notes(
         "1.6.0",
@@ -52,14 +69,15 @@ object WhatsNew {
                     "FREE FLIGHT: take off from the MAP tab or the quick menu and fly over the map yourself.",
                     "Scenic FLY: FLY takes you there through the sky. FLY STYLE brings back the classic way.",
                     "FLY ON and RIDE ON: fly in a balloon, a helicopter, a zeppelin or a plane, and ride a motorcycle or a scooter instead of the bike.",
-                    "New games: Blaze Black 2 and Volt White 2 Redux, Team Rocket Edition 2026 v3.1, and German Red, Blue, Crystal, Gold and Silver.",
-                    "FLY in more hacks: Seaglass, Too Many Types 2, R.O.W.E., Super Mariomon and Quetzal.",
+                    "New games: Epsilon Emerald, Heartfelt Gold, Pokémon Brown, Blaze Black 2 and Volt White 2 Redux, Team Rocket Edition 2026 v3.1, Monomyth v1.2, and German Red, Blue, Crystal, Gold and Silver.",
+                    "GAME LOOK: the companion and the HUD in each game's own colours.",
+                    "GAMEPLAY: NO HMS NEEDED, EXP SHARE, LEVEL CAP, AUTO REFILL, SHINY ALERT and BOSS RETRY.",
+                    "POKéMON CENTER: heal your party, relearn or forget a move and rename a Pokémon from anywhere.",
+                    "SAVE EDITOR: a Pokémon's own page (nature, IVs, EVs, level, shiny), box tools and the Pokédex, now for DS saves too.",
+                    "PAL PARK and POKé TRANSFER: bring Pokémon from your GBA saves to the DS games. COLLECTION lists every save's Pokémon.",
+                    "HIDE BATTLE MENU: on two screens, pick from the companion and keep the game's battle menu off the top screen.",
+                    "MAP: caves and big buildings get their own map, floor by floor.",
                     "DS CORE: a second DS emulator, faster on weaker devices. AUTO picks it for you.",
-                    "Polished Crystal: EXPAND widens the overworld.",
-                    "Unbound: change your party's order from the companion.",
-                    "Save states: press and hold a slot to delete it.",
-                    "DS TOUCH SCREEN: STRETCH fills the second screen with the touch screen.",
-                    "Companion: turn achievement popups off, and tap a summary's highlighted slot again for its DEX entry.",
                 ),
             ),
             Section(
@@ -68,7 +86,6 @@ object WhatsNew {
                     "Smoother play: a game that turns choppy gets smooth again by itself, and DS games skip a frame on devices that can't keep up.",
                     "STEADY music: comes back after the screen sleeps, like the AYN Thor's lid closed and opened.",
                     "DS battles on one screen: the companion's tab stays where you can tap it.",
-                    "AUTO-RUN: no longer closes Recharged Yellow's START menu.",
                 ),
             ),
         ),

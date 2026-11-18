@@ -44,6 +44,7 @@ class TelemetryStore {
         generation++
         sampler = TelemetrySampler()
         cached = null
+        com.pokedaisy.app.companion.data.romHeaderCode = ""
         _snapshot.value = SnapshotView(connected = false, error = tk("starting…"))
     }
 

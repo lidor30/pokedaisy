@@ -43,6 +43,23 @@ object SaveFileEdits {
         return Gen3SaveFormat.forGameCode(code)
     }
 
+    /** A DS cart whose save the editor reads ([com.pokedaisy.app.companion.data.save.Gen4SaveFile]) with tables from the
+     * cart: HeartGold / SoulSilver in any language (IPK / IPG), Platinum USA rev 1 (CPUE, Renegade Platinum too), English
+     * Diamond / Pearl (ADAE / APAE). Hacks that
+     * changed the tables (Origin HeartGold) are turned away when the cart is read. */
+    fun isDsEditable(rom: File): Boolean {
+        if (!com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT || !RomIdentity.isNds(rom)) return false
+        val code = RomIdentity.ndsGameCode(rom) ?: return false
+        return code.take(3) in setOf("IPK", "IPG") || code == "CPUE" && RomIdentity.ndsRevision(rom) == 1 || code == "ADAE" || code == "APAE"
+    }
+
+    /** Black / White or Black 2 / White 2 (any language): POKé TRANSFER's receiving game. */
+    fun isGen5(rom: File): Boolean {
+        if (!com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT || !RomIdentity.isNds(rom)) return false
+        val code = RomIdentity.ndsGameCode(rom) ?: return false
+        return code.take(3) in setOf("IRB", "IRA", "IRE", "IRD")
+    }
+
     /** Writes [edited] over [rom]'s save, which must still be [expected]. Blocking: off the UI thread. */
     fun commit(context: Context, prefs: Prefs, rom: File, expected: ByteArray, edited: ByteArray): Result {
         val save = SavesLocation.saveFor(context, prefs, rom)

@@ -122,8 +122,8 @@ class FieldHudScreenshotTest {
         com.pokedaisy.app.companion.data.AreaMaps.romChanged()
         val id = com.pokedaisy.app.companion.data.AreaMap.MapId(1, 51)
         val area = com.pokedaisy.app.companion.data.AreaMaps.area(id) ?: return
-        com.pokedaisy.app.companion.data.AreaMaps.image(id)
-        AreaMapChoice.showArea()
+        com.pokedaisy.app.companion.data.AreaMaps.miniImage(id)
+        AreaMapChoice.reset()
         shot(
             FieldHudStyle(),
             snap = snapshot.copy(
@@ -519,4 +519,32 @@ class FieldHudCloseUpScreenshotTest {
             ) { content() }
         }
     }
+}
+
+/**
+ * The HUD on a 1080p screen at hdpi (a Logitech G Cloud with a smaller display size, GitHub #924): the GBA pixel a couple of
+ * screen pixels, so the small text can't be smaller than the normal one - WILD's level and odds came out cut to "..".
+ *
+ *     ./gradlew :app:recordPaparazziDebug --tests '*FieldHudGCloudScreenshotTest'
+ */
+class FieldHudGCloudScreenshotTest {
+    @get:Rule
+    val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_5.copy(
+            screenWidth = 1920, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE,
+            density = com.android.resources.Density.HIGH,
+        ),
+        theme = "android:Theme.Material.NoActionBar",
+    )
+
+    private val setup = FieldHudScreenshotTest()
+
+    @Before fun game() = setup.game()
+
+    @After fun reset() = setup.reset()
+
+    @Test fun wildOpen() = paparazzi.snapshot { FieldHudScene(FieldHudStyle(), FieldHudScreenshotTest.wild, true, FieldHudPanel.WILD, "fr", FieldHudScreenshotTest.snapshot, 0 to 0, false, false, null) }
+
+    /** BATTLE BUTTONS' move list there: both lines of each move whole (the same report). */
+    @Test fun moveWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.MOVES) }
 }

@@ -100,6 +100,8 @@ fun XyFieldHud(
     // party cells and four buttons don't fit across the picture (a 4:3 screen's letterboxed 5:3, a small dense one).
     val p = minOf(maxOf(frame.height / 240f, with(density) { 2.2f * this.density }), frame.width / HUD_ROW_WIDTH)
     val margin = 5f * p
+    // X's green, Y's red (XyTint).
+    val tint = XyTint.forHud(snapshot.game)
     fun open(what: XyPanel?) { panel = what; onPanel(what != null); onTap() }
     Box(modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }) {
         // The party: a pill per Pokemon, bottom left.
@@ -119,7 +121,7 @@ fun XyFieldHud(
                 Modifier.offset { IntOffset((frame.left + margin).toInt(), (frame.bottom - margin - panelH).toInt()) }
                     .size(dp(panelW), dp(panelH)).graphicsLayer { this.alpha = bottom },
             ) {
-                Canvas(Modifier.fillMaxSize().graphicsLayer { this.alpha = PARTY_PANEL_ALPHA }) { drawXyCell(p) }
+                Canvas(Modifier.fillMaxSize().graphicsLayer { this.alpha = PARTY_PANEL_ALPHA }) { drawXyCell(p, tint) }
                 party.forEachIndexed { i, mon ->
                     val x = pad + i * (slotW + slotGap)
                     Box(
@@ -141,7 +143,7 @@ fun XyFieldHud(
             }
         }
         // The minimap, top right: the Town Map round the player's place, the pin on it; a tap opens the whole map.
-        if (map != null) XyMinimap(map, frame, p) { open(if (panel == XyPanel.MAP) null else XyPanel.MAP) }
+        if (map != null) XyMinimap(map, frame, p, tint) { open(if (panel == XyPanel.MAP) null else XyPanel.MAP) }
         // The buttons, bottom right: WILD, TOUCH, COMPANION (each where there's something for it; the minimap is MAP's).
         val buttons = listOfNotNull(
             if (wild.isNotEmpty()) WILD_BUTTON to { open(if (panel == XyPanel.WILD) null else XyPanel.WILD) } else null,
@@ -169,8 +171,8 @@ fun XyFieldHud(
             }
         }
         when (panel) {
-            XyPanel.WILD -> XyWildPanel(wild, frame, p, margin + size + label + 4f * p) { open(null) }
-            XyPanel.MAP -> map?.let { XyMapPanel(it, snapshot.location?.mapSecName.orEmpty(), frame, p, margin + size + label + 4f * p) { open(null) } }
+            XyPanel.WILD -> XyWildPanel(wild, frame, p, margin + size + label + 4f * p, tint) { open(null) }
+            XyPanel.MAP -> map?.let { XyMapPanel(it, snapshot.location?.mapSecName.orEmpty(), frame, p, margin + size + label + 4f * p, tint) { open(null) } }
             XyPanel.SUMMARY -> {
                 val m = rememberGbaTextMetrics(1f)
                 HudSummaryPanel(snapshot, summary, { summary = it }, m, itemUse) { open(null) }
@@ -193,9 +195,9 @@ private fun rememberXyArt(path: String?): androidx.compose.ui.graphics.ImageBitm
     return remember(path, gen) { path?.let { GameArt.get(it) } }
 }
 
-/** The minimap: a window on the Town Map round the player's place, in the HUD's green frame, the pin in the middle. */
+/** The minimap: a window on the Town Map round the player's place, in the HUD's frame (X's green, Y's red), the pin in the middle. */
 @Composable
-private fun XyMinimap(map: XyMapSpot, frame: Rect, p: Float, onClick: () -> Unit) {
+private fun XyMinimap(map: XyMapSpot, frame: Rect, p: Float, tint: XyTint, onClick: () -> Unit) {
     val density = LocalDensity.current
     fun dp(px: Float) = with(density) { px.toDp() }
     val picture = rememberXyArt(map.asset)
@@ -210,9 +212,9 @@ private fun XyMinimap(map: XyMapSpot, frame: Rect, p: Float, onClick: () -> Unit
         Canvas(Modifier.fillMaxSize()) {
             val r = CornerRadius(7f * p)
             drawRoundRect(Color.Black.copy(alpha = 0.3f), Offset(0f, 1.2f * p), size, r)
-            drawRoundRect(XyColors.outline, cornerRadius = r)
+            drawRoundRect(tint.outline, cornerRadius = r)
             val rim = Rect(0.8f * p, 0.8f * p, size.width - 0.8f * p, size.height - 0.8f * p)
-            drawRoundRect(Brush.verticalGradient(listOf(XyColors.rimTop, XyColors.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(6.2f * p))
+            drawRoundRect(Brush.verticalGradient(listOf(tint.rimTop, tint.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(6.2f * p))
             val inner = Rect(border, border, size.width - border, size.height - border)
             // About a third of Kalos across, the place in the middle (moved in at the map's edges).
             val k = inner.width / 110f
@@ -249,7 +251,7 @@ private fun XyMinimap(map: XyMapSpot, frame: Rect, p: Float, onClick: () -> Unit
 /** The game's Town Map in its green frame over the top screen, the place's name on a tab, the player's pin on the
  * place (its area lit). A tap anywhere closes it. */
 @Composable
-private fun XyMapPanel(map: XyMapSpot, place: String, frame: Rect, p: Float, bottomRoom: Float, onClose: () -> Unit) {
+private fun XyMapPanel(map: XyMapSpot, place: String, frame: Rect, p: Float, bottomRoom: Float, tint: XyTint, onClose: () -> Unit) {
     val density = LocalDensity.current
     fun dp(px: Float) = with(density) { px.toDp() }
     val picture = rememberXyArt(map.asset)
@@ -271,9 +273,9 @@ private fun XyMapPanel(map: XyMapSpot, place: String, frame: Rect, p: Float, bot
         Canvas(Modifier.fillMaxSize()) {
             val r = CornerRadius(8f * p)
             drawRoundRect(Color.Black.copy(alpha = 0.3f), Offset(0f, 1.5f * p), size, r)
-            drawRoundRect(XyColors.outline, cornerRadius = r)
+            drawRoundRect(tint.outline, cornerRadius = r)
             val rim = Rect(1.2f * p, 1.2f * p, size.width - 1.2f * p, size.height - 1.2f * p)
-            drawRoundRect(Brush.verticalGradient(listOf(XyColors.rimTop, XyColors.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(7f * p))
+            drawRoundRect(Brush.verticalGradient(listOf(tint.rimTop, tint.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(7f * p))
             val inner = Rect(border, border, size.width - border, size.height - border)
             picture?.let {
                 drawImage(
@@ -302,7 +304,7 @@ private fun XyMapPanel(map: XyMapSpot, place: String, frame: Rect, p: Float, bot
             Modifier.offset { IntOffset((8f * p).toInt(), (-5f * p).toInt()) }.height(dp(11f * p)),
             contentAlignment = Alignment.CenterStart,
         ) {
-            Canvas(Modifier.matchParentSize()) { drawXyTab() }
+            Canvas(Modifier.matchParentSize()) { drawXyTab(tint) }
             XyText(" $place ", 7f * p, Color.White, Color.Black, 0.7f * p, Modifier.padding(horizontal = dp(3f * p)))
         }
     }
@@ -311,7 +313,7 @@ private fun XyMapPanel(map: XyMapSpot, place: String, frame: Rect, p: Float, bot
 /** The zone's wild Pokemon: a panel on the right over the buttons, a green tab per way of meeting them, a pill per
  * Pokemon (icon, name, levels, chance). A tap outside closes it. */
 @Composable
-private fun XyWildPanel(rows: List<XyWildRow>, frame: Rect, p: Float, bottomRoom: Float, onClose: () -> Unit) {
+private fun XyWildPanel(rows: List<XyWildRow>, frame: Rect, p: Float, bottomRoom: Float, tint: XyTint, onClose: () -> Unit) {
     val density = LocalDensity.current
     fun dp(px: Float) = with(density) { px.toDp() }
     Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, null, onClick = onClose))
@@ -324,9 +326,9 @@ private fun XyWildPanel(rows: List<XyWildRow>, frame: Rect, p: Float, bottomRoom
             .drawBehind {
                 val r = CornerRadius(10f * p)
                 drawRoundRect(Color.Black.copy(alpha = 0.25f), Offset(0f, 1.5f * p), this.size, r)
-                drawRoundRect(XyColors.outline, cornerRadius = r)
+                drawRoundRect(tint.outline, cornerRadius = r)
                 val i = Rect(1.2f * p, 1.2f * p, this.size.width - 1.2f * p, this.size.height - 1.2f * p)
-                drawRoundRect(Brush.verticalGradient(listOf(XyColors.backTop, XyColors.backBottom), i.top, i.bottom), i.topLeft, i.size, CornerRadius(9f * p))
+                drawRoundRect(Brush.verticalGradient(listOf(tint.backTop, tint.backBottom), i.top, i.bottom), i.topLeft, i.size, CornerRadius(9f * p))
             },
     ) {
         Column(
@@ -335,12 +337,12 @@ private fun XyWildPanel(rows: List<XyWildRow>, frame: Rect, p: Float, bottomRoom
         ) {
             rows.groupBy { it.method }.forEach { (method, list) ->
                 Box(Modifier.height(dp(10f * p)).padding(start = dp(4f * p)), contentAlignment = Alignment.CenterStart) {
-                    Canvas(Modifier.matchParentSize()) { drawXyTab() }
+                    Canvas(Modifier.matchParentSize()) { drawXyTab(tint) }
                     XyText(" ${tr(method)} ", 6.5f * p, Color.White, Color.Black, 0.7f * p, Modifier.padding(horizontal = dp(2f * p)))
                 }
                 list.forEach { row ->
                     Row(
-                        Modifier.fillMaxWidth().height(dp(17f * p)).drawBehind { drawXyRowPill(p) },
+                        Modifier.fillMaxWidth().height(dp(17f * p)).drawBehind { drawXyRowPill(p, tint) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         SpeciesIcon(row.iconAsset, size = dp(15f * p), modifier = Modifier.padding(start = dp(4f * p)))
@@ -350,7 +352,7 @@ private fun XyWildPanel(rows: List<XyWildRow>, frame: Rect, p: Float, bottomRoom
                         val lv = if (row.minLevel == row.maxLevel) "${row.minLevel}" else "${row.minLevel}-${row.maxLevel}"
                         XyText(tr("LV {0}", lv), 5.5f * p, XyColors.name, Color.Transparent, 0f)
                         Box(Modifier.width(dp(24f * p)).padding(end = dp(4f * p)), contentAlignment = Alignment.CenterEnd) {
-                            XyText("${row.percent}%", 6.5f * p, Color.White, XyColors.outline, 0.8f * p)
+                            XyText("${row.percent}%", 6.5f * p, Color.White, tint.outline, 0.8f * p)
                         }
                     }
                 }
@@ -360,20 +362,20 @@ private fun XyWildPanel(rows: List<XyWildRow>, frame: Rect, p: Float, bottomRoom
 }
 
 /** A party cell: the pill's layers, rounded (not a full pill: it's nearly square). */
-private fun DrawScope.drawXyCell(p: Float) {
+private fun DrawScope.drawXyCell(p: Float, tint: XyTint) {
     val r = CornerRadius(8f * p)
     drawRoundRect(Color.Black.copy(alpha = 0.25f), Offset(0f, 1.2f * p), size, r)
-    drawRoundRect(XyColors.outline, cornerRadius = r)
+    drawRoundRect(tint.outline, cornerRadius = r)
     val rim = Rect(0.7f * p, 0.7f * p, size.width - 0.7f * p, size.height - 0.7f * p)
-    drawRoundRect(Brush.verticalGradient(listOf(XyColors.rimTop, XyColors.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(7.3f * p))
+    drawRoundRect(Brush.verticalGradient(listOf(tint.rimTop, tint.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(7.3f * p))
     val face = rim.deflate(1.8f * p)
     drawRoundRect(Brush.verticalGradient(listOf(XyColors.faceTop, XyColors.faceBottom), face.top, face.bottom), face.topLeft, face.size, CornerRadius(5.5f * p))
 }
 
-/** A wild row's pill: a thin dark green edge round the game's white-grey face. */
-private fun DrawScope.drawXyRowPill(p: Float) {
+/** A wild row's pill: a thin dark edge (X's green, Y's red) round the game's white-grey face. */
+private fun DrawScope.drawXyRowPill(p: Float, tint: XyTint) {
     val r = CornerRadius(size.height / 2)
-    drawRoundRect(XyColors.outline, cornerRadius = r)
+    drawRoundRect(tint.outline, cornerRadius = r)
     val face = Rect(0.9f * p, 0.9f * p, size.width - 0.9f * p, size.height - 0.9f * p)
     drawRoundRect(Brush.verticalGradient(listOf(XyColors.faceLow, XyColors.faceBottom), face.top, face.bottom), face.topLeft, face.size, CornerRadius(face.height / 2))
 }

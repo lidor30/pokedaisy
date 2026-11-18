@@ -231,25 +231,15 @@ void lib_page_backdrop(struct pd_canvas* c) {
 }
 
 int lib_battery = -1;
+bool lib_charging;
 
 int lib_battery_width(void) {
-    if (lib_battery < 0) return 0;
-    char pct[8];
-    snprintf(pct, sizeof pct, "%d%%", lib_battery > 100 ? 100 : lib_battery);
-    return 24 + pd_text_width(pct);
+    return lib_battery < 0 ? 0 : pd_battery_width(lib_battery, lib_charging);
 }
 
-// The battery, as the companion's SETTINGS title has it: its level drawn, then the percentage, ending at [end].
+// The battery, as the companion's SETTINGS title has it (pd_battery_draw), ending at [end].
 static void battery_at(struct pd_canvas* c, int end, int ty) {
-    if (lib_battery < 0) return;
-    int pct = lib_battery > 100 ? 100 : lib_battery, x = end - lib_battery_width();
-    char text[8];
-    snprintf(text, sizeof text, "%d%%", pct);
-    pd_fill(c, x, ty + 5, 18, 8, PD_TITLE_TEXT);
-    pd_fill(c, x + 1, ty + 6, 16, 6, PD_TITLE_FILL);
-    pd_fill(c, x + 2, ty + 7, 14 * pct / 100, 4, pct <= 15 ? PD_VALUE : PD_TITLE_TEXT);
-    pd_fill(c, x + 18, ty + 7, 2, 4, PD_TITLE_TEXT);
-    pd_text(c, end - pd_text_width(text), ty, text, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_battery_draw(c, end, ty, lib_battery, lib_charging);
 }
 
 void lib_battery_box(struct pd_canvas* c, int x, int y, int w, int h) {
@@ -519,7 +509,9 @@ void lib_list_draw(struct pd_library* l, struct pd_canvas* c, struct lib_list* l
             int ry = top + i * LIST_ROW_H - list->scroll;
             if (ry + LIST_ROW_H <= top || ry >= top + view) continue;
             int game = list->items[i];
-            row(l, c, &l->games[game], game, x + f + 5, ry, w - 2 * f - 10 - (total > view ? BAR_W + 4 : 0), i == list->selected);
+            int rw = w - 2 * f - 10 - (total > view ? BAR_W + 4 : 0);
+            row(l, c, &l->games[game], game, x + f + 5, ry, rw, i == list->selected);
+            if (i + 1 < list->count) pd_row_divider(c, x + f + 3, ry + LIST_ROW_H - 1, rw + 4);
             int vy = ry < top ? top : ry, vh = (ry + LIST_ROW_H > top + view ? top + view : ry + LIST_ROW_H) - vy;
             lib_hit(x + f, vy, w - 2 * f, vh, HIT_ROW + i);
         }
@@ -589,6 +581,7 @@ static void games_page(struct pd_library* l, struct pd_canvas* c) {
     bool known = l->count > 0;
     lib_list_draw(l, c, &l->list, top, LIB_H - top - LIB_M, lib_grid(l), known ? "No games here." : "No games yet.",
                   known ? NULL : "Put them in /pokedaisy/roms/");
+    lib_pick_draw(l, c); // GBA CORE (X)
 }
 
 // --- SETTINGS ---
@@ -597,7 +590,7 @@ void lib_settings_draw(struct pd_library* l, struct pd_canvas* c) {
     lib_title(c, "SETTINGS", NULL, false);
     int x = PAGE_X, y = TITLE_Y + TITLE_H + LIB_M, w = PAGE_W, h = LIB_H - y - LIB_M;
     int f = pd_list_box(c, x, y, w, h);
-    int rows = lib_settings_rows(l), rowH = 18, top = y + f + 2, view = h - 2 * f - 4, total = rows * rowH;
+    int rows = lib_settings_rows(l), rowH = pd_list_row(18), top = y + f + 2, view = h - 2 * f - 4, total = rows * rowH;
     if (l->pickRow < 0 && l->settingsFollow) {
         int at = l->settingsSelected * rowH;
         if (at < l->settingsScroll) l->settingsScroll = at - (l->settingsSelected == 1 ? rowH : 0);
@@ -629,12 +622,25 @@ void lib_settings_draw(struct pd_library* l, struct pd_canvas* c) {
                     info ? PD_MUTED_SHADOW : PD_VALUE_SHADOW);
         // A pick-list's row: a chevron at its end (the app's opensPage arrow).
         if (choices) pd_triangle(c, lx + lw - 5, pd_text_y(ry, rowH) + 6, 4, PD_RIGHT, PD_VALUE);
+        // A line under it, unless a group title follows.
+        if (r + 1 < rows) {
+            const char* nv;
+            bool nextGroup;
+            int nc;
+            lib_settings_label(l, r + 1, &nv, &nextGroup, &nc);
+            if (!nextGroup) pd_row_divider(c, lx - 2, ry + rowH - 1, lw + 4);
+        }
         int vy = ry < top ? top : ry, vh = (ry + rowH > top + view ? top + view : ry + rowH) - vy;
         lib_hit(x + f, vy, w - 2 * f, vh, HIT_SETTING + r);
     }
     pd_unclip(c);
     lib_scroll_bar(c, x + w - f - BAR_W - 2, top + 1, view - 2, total, view, &l->settingsScroll);
+    lib_pick_draw(l, c);
+}
+
+void lib_pick_draw(struct pd_library* l, struct pd_canvas* c) {
     if (l->pickRow < 0) return;
+    int rowH = pd_list_row(18);
     // The pick-list (OptionSelector): the setting's choices over the dimmed page, the current one's value red.
     const char* value;
     bool group;
@@ -642,7 +648,9 @@ void lib_settings_draw(struct pd_library* l, struct pd_canvas* c) {
     const char* label = lib_settings_label(l, l->pickRow, &value, &group, &choices);
     lib_dim(c);
     lib_hit(0, 0, LIB_W, LIB_H, HIT_PICK_CLOSE);
-    int pw = 200, ph = 30 + choices * rowH + 10;
+    // Room for every choice inside the list window's frame (its layers take up to ~10 px a side): the old +10 left the
+    // last of a short list (GAME VOLUME's 100%, GBA CORE's MGBA) out.
+    int pw = 200, ph = 27 + choices * rowH + 24;
     if (ph > LIB_H - 16) ph = LIB_H - 16;
     int px = (LIB_W - pw) / 2 + RAIL_W / 2, py = (LIB_H - ph) / 2;
     int tf = pd_title_box(c, px, py, pw, 24, PD_TITLE_FILL);
@@ -659,6 +667,7 @@ void lib_settings_draw(struct pd_library* l, struct pd_canvas* c) {
         bool current = value && !strcmp(name, value);
         pd_text_fit(c, px + lf + 8, pd_text_y(ry, rowH), pw - 2 * lf - 16, name, current ? PD_VALUE : PD_LABEL,
                     current ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
+        if (i + 1 < choices && i + 1 < first + rowsShown) pd_row_divider(c, px + lf + 4, ry + rowH - 1, pw - 2 * lf - 8);
         lib_hit(px + lf, ry, pw - 2 * lf, rowH, HIT_PICK + i);
     }
 }
@@ -668,7 +677,9 @@ void lib_settings_draw(struct pd_library* l, struct pd_canvas* c) {
 void pd_library_draw(struct pd_library* l, struct pd_canvas* c) {
     lib_hits_clear();
     lib_battery = l->batteryPct;
+    lib_charging = l->charging;
     pd_font_set(NULL, 0); // the library's own font (a Game Boy game leaves its own installed)
+    pd_font_size_set(1); // the small pixel font, as in the companion
     barShown = false;
     pd_look_apply(NULL, l->settings);
     lib_page_backdrop(c);

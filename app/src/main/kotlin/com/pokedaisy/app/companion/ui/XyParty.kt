@@ -62,6 +62,41 @@ internal object XyColors {
     val stripe = Color(0xFF7FA77A)
 }
 
+/**
+ * The colours that make a panel X's green or Y's red: its dark edge, the rim's two tones, a tab's, a panel's backdrop.
+ * The HUD takes the game's ([forHud]: Y's red, the user's call 2026-11-16; Y's own menus are X's green, so the red is
+ * ours, from Y's logo and Yveltal); the companion's party screen keeps the game's green ([GREEN]).
+ */
+internal class XyTint(
+    val outline: Color,
+    val rimTop: Color,
+    val rimBottom: Color,
+    val tabTop: Color,
+    val tabBottom: Color,
+    val backTop: Color,
+    val backBottom: Color,
+) {
+    companion object {
+        val GREEN = XyTint(
+            XyColors.outline, XyColors.rimTop, XyColors.rimBottom, XyColors.tabTop, XyColors.tabBottom,
+            XyColors.backTop, XyColors.backBottom,
+        )
+        /** Y's: the same lightness steps as X's greens, in Y's crimson. */
+        val RED = XyTint(
+            outline = Color(0xFFA0222C),
+            rimTop = Color(0xFFF7A9AC),
+            rimBottom = Color(0xFFD24F5A),
+            tabTop = Color(0xFFF29A9F),
+            tabBottom = Color(0xFFB02A36),
+            backTop = Color(0xFFE6B8BB),
+            backBottom = Color(0xFFC9939A),
+        )
+
+        fun forHud(game: com.pokedaisy.app.companion.data.GameKind?): XyTint =
+            if (game == com.pokedaisy.app.companion.data.GameKind.POKEMON_Y) RED else GREEN
+    }
+}
+
 /** The game's party backdrop: a soft green, lighter at the top, crossed by thin darker diagonal stripes. */
 @Composable
 fun XyBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
@@ -212,11 +247,11 @@ internal fun DrawScope.drawXyPill(r: Rect, h: Float) {
 }
 
 /** The level's tab: a small green pill with a dark edge. */
-internal fun DrawScope.drawXyTab() {
+internal fun DrawScope.drawXyTab(tint: XyTint = XyTint.GREEN) {
     val r = CornerRadius(size.height / 2)
-    drawRoundRect(XyColors.outline, cornerRadius = r)
+    drawRoundRect(tint.outline, cornerRadius = r)
     val i = Rect(size.height * 0.08f, size.height * 0.08f, size.width - size.height * 0.08f, size.height * 0.92f)
-    drawRoundRect(Brush.verticalGradient(listOf(XyColors.tabTop, XyColors.tabBottom), i.top, i.bottom), i.topLeft, i.size, CornerRadius(i.height / 2))
+    drawRoundRect(Brush.verticalGradient(listOf(tint.tabTop, tint.tabBottom), i.top, i.bottom), i.topLeft, i.size, CornerRadius(i.height / 2))
 }
 
 /** HP as the game's bar: a grey "HP" end, the bar green / yellow / red by what's left, in a dark frame. */

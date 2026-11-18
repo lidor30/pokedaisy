@@ -4,6 +4,7 @@ import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.data.KeyCodes
 import com.pokedaisy.app.companion.data.Logs
 import com.pokedaisy.app.companion.data.PropertiesText
+import com.pokedaisy.app.companion.data.delete
 import com.pokedaisy.app.companion.data.isFile
 import com.pokedaisy.app.companion.data.readText
 import com.pokedaisy.app.companion.data.writeTextAtomically
@@ -166,6 +167,12 @@ object GbaControls {
             return false
         }
         return true
+    }
+
+    /** Every button back to [DEFAULTS] (GitHub discussion #923: a player rebound A and couldn't press anything to put it
+     * back): the file goes, and the next read writes the defaults. */
+    fun resetBindings(dir: Path) {
+        file(dir).delete()
     }
 
     /** Leaves [btn] unbound - TURBO A / B and the GBA / Game Boy rows only ([Btn.canClear]). */

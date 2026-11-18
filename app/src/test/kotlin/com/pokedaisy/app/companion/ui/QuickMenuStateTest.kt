@@ -92,4 +92,47 @@ class QuickMenuStateTest {
         assertEquals(listOf(84, 83), used)
         assertFalse(m.open)
     }
+
+    /** A pick from a list closes it at once ([QuickMenuState.gone]: no tiles flashing back before the flight); B doesn't. */
+    @Test fun listPick_closesAtOnce() {
+        val used = mutableListOf<Int>()
+        val m = QuickMenuState().apply {
+            items = listOf(QuickAction.REPEL)
+            onRepel = { used += it }
+        }
+        m.repelKinds = listOf(86, 83)
+        m.trigger(true)
+        m.key(MenuKey.A)
+        m.key(MenuKey.A)
+        assertEquals(listOf(86), used)
+        assertTrue(m.gone)
+        m.trigger(true)
+        assertFalse(m.gone)
+        m.key(MenuKey.B)
+        assertFalse(m.open)
+        assertFalse(m.gone)
+    }
+
+    /** HEAL asks first: NO goes back to the tiles, YES heals and closes at once. */
+    @Test fun heal_asksFirst() {
+        val ran = mutableListOf<QuickAction>()
+        val m = QuickMenuState().apply {
+            items = listOf(QuickAction.HEAL)
+            onRun = { ran += it }
+        }
+        m.trigger(true)
+        m.key(MenuKey.A)
+        assertEquals(QuickAction.HEAL, m.confirm)
+        assertTrue(ran.isEmpty())
+        m.key(MenuKey.RIGHT)
+        m.key(MenuKey.A)
+        assertTrue(m.open)
+        assertEquals(null, m.confirm)
+        assertTrue(ran.isEmpty())
+        m.key(MenuKey.A)
+        m.key(MenuKey.A)
+        assertEquals(listOf(QuickAction.HEAL), ran)
+        assertFalse(m.open)
+        assertTrue(m.gone)
+    }
 }

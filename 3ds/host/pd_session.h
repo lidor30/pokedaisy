@@ -10,6 +10,8 @@
 
 #include "../../linux/fly.h"
 #include "../../linux/flight.h"
+#include "pd_rom_options.h"
+#include "../core/pd_nuzlocke.h"
 #include "../../linux/hud.h"
 #include "../../linux/quick_menu.h"
 #include "../core/pd_binput.h"
@@ -34,6 +36,9 @@ struct pd_input {
     bool quickMenu;  // QUICK MENU: pressed this loop
     bool ffHeld;     // FF HOLD
     int stickAngle;  // the left stick aims the ring: degrees clockwise from up, -1 = centred
+    // Frames run undrawn before this loop's own, at 1x only: an Old 3DS that fell a refresh or two behind catches up, so
+    // the game and its sound keep their speed while the picture skips (gpSP 3D's frame skip). 0 = none.
+    int catchUp;
 };
 
 // What the host does for the session.
@@ -53,12 +58,18 @@ struct pd_session_host {
     uint64_t (*clock)(void);
     // FLIGHT AREA's file for one save of a ROM (by its CRC32 and flight_save_key); NULL = kept for this run only.
     void (*flightAreaPath)(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len);
+    // NUZLOCKE's file for a ROM (by its CRC32: whether it's on and its run); NULL = kept for this run only.
+    void (*nuzlockePath)(void* ctx, uint32_t crc, char* path, size_t len);
 };
 
 // Clock ticks spent since the host last zeroed it: in the core, waiting for its renderer, in EXPAND, reading the snapshot,
 // FREE FLIGHT's step and its drawing.
 struct pd_session_prof {
     uint64_t run, wait, wide, snap, flightTick, flightDraw;
+    // pd_session_start's steps (with a host clock): their names and ticks, for the host's log.
+    const char* startName[16];
+    uint64_t startTicks[16];
+    int startSteps;
 };
 
 enum pd_job { PD_JOB_NONE, PD_JOB_GB_TAKEN, PD_JOB_PC, PD_JOB_REPEL, PD_JOB_BIKE, PD_JOB_BIKE_WAIT, PD_JOB_BIKE_RESTORE };
@@ -93,6 +104,7 @@ struct pd_session {
     bool leave;
     bool wasBusy;
     int speedDebt; // quarters of a frame owed at GAME SPEED
+    unsigned catchUpFrames; // pd_input.catchUp's frames run so far (the dev build's stat)
 
     // The field read (pk_field_state) and EXPAND.
     uint32_t romCrc;
@@ -140,6 +152,23 @@ struct pd_session {
     int flightState;         // pk_flight_state() after the last frame
     int flightVehicle;       // FLY ON the words were last given with
     bool flightDrawn;        // the flight's shadow went into the last frame shown
+    uint32_t flightKeysWas;  // flight_one_way: last frame's keys, and which way of two held flies
+    bool flightVertical;
+    bool uiWarm;             // pd_ui_warm done (the first draw)
+    bool flightPending;      // ... and goes into this one once it's whole (frame_whole)
+
+    // REUSABLE TMS / INSTANT TEXT: their writes for this ROM (pd_rom_options), and whether they're in.
+    struct pd_rom_write tmWrites[PD_TM_SITES_MAX], textWrites[PD_TEXT_WRITES_MAX];
+    int tmCount, textCount;
+    bool tmApplied, textApplied;
+
+    // TRADE EVOS: the config's functions checked in this ROM; EVOLVE asked (run between frames).
+    bool tradeEvoOk, evolveAsk;
+
+    // NUZLOCKE: this game's tracker, whether it's on, where it's kept.
+    struct pd_nuz_tracker nuz;
+    bool nuzOn, nuzSupported;
+    char nuzPath[300];
     bool scenic;             // the flight up there is the scenic FLY's (the trip runs faster)
     int scenicAsk;           // 1+ = FLY STYLE SCENIC to scenicMapsec, routed between two frames
     int scenicMapsec;
@@ -169,10 +198,12 @@ struct pd_session {
     // BOXES.
     struct pd_boxes boxes;
     int boxAsk; // the PC's move asked: enum pd_action
+    bool swapAsk; // the summary's SWITCH asked: ui.switchFrom / switchTo
 
     // What the overlay shows.
     char notice[64];
     int noticeFrames;
+    int lastAspect; // VIEW: a move to EXPAND 1x shows that it's experimental
     uint32_t overlayKey;
     bool overlayShown, overlayDirty, overlayDim;
 

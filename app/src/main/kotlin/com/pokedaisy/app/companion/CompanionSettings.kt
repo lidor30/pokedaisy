@@ -63,6 +63,8 @@ interface CompanionSettings : StoredCompanionSettings {
     fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) {}
     /** The first scenic FLY's question (ui.FlyStyleAsk) answered: CLASSIC switches, SCENIC / null (it timed out) keeps it. */
     fun answerFlyStyle(style: FlyStyle?) {}
+    /** BOSS RETRY's card answered: true = back to the lost battle's start ([com.pokedaisy.app.companion.ui.BattleRetryAsk]). */
+    fun answerBattleRetry(retry: Boolean) {}
 
     /** REUSABLE TMS - see [com.pokedaisy.app.Prefs.reusableTms]; [reusableTmsSupported]: the ROM's code that uses a TM
      * up is known ([com.pokedaisy.app.companion.data.ReusableTms]). */
@@ -78,6 +80,29 @@ interface CompanionSettings : StoredCompanionSettings {
      * boss left). */
     val levelCapSupported: Boolean get() = false
     val levelCapLevel: Int? get() = null
+    /** BOSS RETRY - see [com.pokedaisy.app.Prefs.battleRetry]. */
+    val battleRetry: Boolean get() = false
+    fun setBattleRetry(on: Boolean) {}
+    /** SHINY ALERT - see [com.pokedaisy.app.Prefs.shinyAlert]; [shinyHuntCount]: this game's wild battles since the last
+     * shiny (or since it was turned on). */
+    val shinyAlert: Boolean get() = false
+    fun setShinyAlert(on: Boolean) {}
+    val shinyHuntCount: Int get() = 0
+    /** Battles read a foe's shininess here (the games SHINY ODDS works in). */
+    val shinyAlertSupported: Boolean get() = false
+    /** LOW HP BEEP / FIELD POISON - see [com.pokedaisy.app.Prefs.lowHpBeep]; supported = the ROM's code is known
+     * ([com.pokedaisy.app.companion.data.QuietPatches]). */
+    val lowHpBeep: Boolean get() = true
+    fun setLowHpBeep(on: Boolean) {}
+    val lowHpBeepSupported: Boolean get() = false
+    val fieldPoison: Boolean get() = true
+    fun setFieldPoison(on: Boolean) {}
+    val fieldPoisonSupported: Boolean get() = false
+    /** AUTO REFILL - see [com.pokedaisy.app.Prefs.repelRefill]; [repelRefillSupported]: the game can take a REPEL from the
+     * companion (the quick menu's REPEL). */
+    val repelRefill: Boolean get() = false
+    fun setRepelRefill(on: Boolean) {}
+    val repelRefillSupported: Boolean get() = false
     /** NO HMS NEEDED - see [com.pokedaisy.app.Prefs.hmFree]; [hmFreeSupported]: the ROM's field move check is known
      * ([com.pokedaisy.app.companion.data.HmFree]). */
     val hmFreeSupported: Boolean get() = false
@@ -201,6 +226,12 @@ interface CompanionSettings : StoredCompanionSettings {
     /** Leaves TURBO A / B and the GBA / Game Boy rows unbound ([GbaControls.Btn.canClear]). */
     fun clearGbaControlBinding(btn: GbaControls.Btn) {}
 
+    /** GAME BUTTONS' RESET TO DEFAULTS ([GbaControls.resetBindings]). */
+    fun resetGbaControls() {}
+
+    /** HOTKEYS' RESET TO DEFAULTS ([com.pokedaisy.app.Hotkeys.resetBindings]). */
+    fun resetHotkeys() {}
+
     /** GAME BUTTONS' rows for the game running besides every game's ([GbaControls.Group.DS] or [GbaControls.Group.GBA]);
      * null = both groups (previews). */
     val buttonGroup: GbaControls.Group? get() = null
@@ -269,6 +300,9 @@ interface CompanionSettings : StoredCompanionSettings {
 
 
 
+    /** LAST BALL - see [com.pokedaisy.app.Prefs.lastBallButton]. */
+    val lastBallButton: Boolean get() = true
+    fun setLastBallButton(on: Boolean) {}
 
 
 
@@ -401,9 +435,13 @@ interface CompanionSettings : StoredCompanionSettings {
     val companionWindow: Boolean? get() = null
     fun setCompanionWindow(on: Boolean) {}
 
-    /** SETTINGS > FOLD LAYOUT ([com.pokedaisy.app.Prefs.foldLayout]); null = not a foldable (no row). */
-    val foldLayout: Boolean? get() = null
-    fun setFoldLayout(on: Boolean) {}
+    /** SETTINGS > FOLD LAYOUT ([com.pokedaisy.app.companion.FoldMode]); null = not a foldable (no row). */
+    val foldMode: FoldMode? get() = null
+    fun setFoldMode(mode: FoldMode) {}
+
+    /** SETTINGS > TABLETOP CONTROLS ([com.pokedaisy.app.Prefs.tabletopControlsBottom]); null = not a foldable (no row). */
+    val tabletopControlsBottom: Boolean? get() = null
+    fun setTabletopControlsBottom(on: Boolean) {}
 
     /** SETTINGS > COMPANION BUTTON: the edge tab that opens the companion ([com.pokedaisy.app.Prefs.companionTab]). Null
      * where [companionWindow] is (no row). */

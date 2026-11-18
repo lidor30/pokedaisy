@@ -8,7 +8,8 @@ import okio.Path.Companion.toOkioPath
 /**
  * The player's linked ROMs folders ([Prefs.romsFolders]): every ROM in them that the
  * second screen supports ([CompanionSupport]) joins the library and plays from
- * where it is - nothing is copied. Checking a ROM can mean hashing 32 MB, so each
+ * where it is - nothing is copied. Unsupported Pokémon games join too, tagged NOT SUPPORTED
+ * ([CompanionSupport.looksPokemon]); other games don't. Checking a ROM can mean hashing 32 MB, so each
  * file's verdict is cached by path + size + modified time and a rescan (every
  * time the library opens) only looks at new or changed files. ROMs packed in
  * `.zip` / `.7z` archives count too ([RomArchive]).
@@ -26,6 +27,8 @@ object RomFolder {
     private const val MAX_DS_ROM_BYTES = 512L shl 20
     /** The folder itself plus a few levels: a frontend's tree nests (`ROMs/gba/Pokemon/Retail/`, GitHub #233). */
     private const val MAX_DEPTH = 6
+    /** How often a long [scan] writes what it has checked so far. */
+    private const val PARTIAL_SAVE_NANOS = 3_000_000_000L
 
     /** A DS cart or an archive (which may hold one: GitHub #315, zipped DS games went missing) up to a DS cart's size. */
     private fun maxBytes(f: File): Long =
@@ -34,16 +37,17 @@ object RomFolder {
 
     /** [partial]: read through a PARTIAL best-effort match ([CompanionSupport.Verdict.PARTIAL]) - listed, tagged. */
     /** [tryable]: unsupported but a Gen 3 Pokémon base game - listed, tagged NOT SUPPORTED, so TRY BEST EFFORT is reachable. */
+    /** [pokemon]: unsupported, any other Pokémon game ([CompanionSupport.looksPokemon]) - listed, tagged NOT SUPPORTED. */
     private class Entry(
         val size: Long, val modified: Long, val supported: Boolean,
-        val partial: Boolean = false, val matched: Boolean = false, val tryable: Boolean = false,
+        val partial: Boolean = false, val matched: Boolean = false, val tryable: Boolean = false, val pokemon: Boolean = false,
         /** Written before TRYABLE existed ("0"): checked again once. */
         val legacy: Boolean = false,
         /** A game on [com.pokedaisy.app.companion.data.BlockedGames]' list: its BLOCKED tag (written "B" while it plays
          * anyway, "X" while it's kept off). */
         val blocked: Boolean = false,
     ) {
-        val listed get() = supported || partial || tryable
+        val listed get() = supported || partial || tryable || pokemon
     }
 
     private fun entryOf(size: Long, modified: Long, f: File): Entry {
@@ -58,7 +62,8 @@ object RomFolder {
             CompanionSupport.Verdict.MATCHED -> Entry(size, modified, true, matched = true)
             CompanionSupport.Verdict.PARTIAL -> Entry(size, modified, false, partial = true)
             CompanionSupport.Verdict.TRYABLE -> Entry(size, modified, false, tryable = true)
-            CompanionSupport.Verdict.UNSUPPORTED -> Entry(size, modified, false)
+            CompanionSupport.Verdict.UNSUPPORTED ->
+                Entry(size, modified, false, pokemon = runCatching { CompanionSupport.looksPokemon(f) }.getOrDefault(false))
         }
 
     /** The library: imported ROMs (`files/roms/`), then the linked folders' supported
@@ -163,12 +168,19 @@ object RomFolder {
         }.distinctBy { canonical(it.path) }   // one file reached through two linked names: listed once
         val old = load(context)
         val fresh = LinkedHashMap<String, Entry>()
+        var savedAt = System.nanoTime()
         candidates.forEachIndexed { i, f ->
             val size = f.length()
             val modified = f.lastModified()
             val cached = old[f.absolutePath]?.takeIf { it.size == size && it.modified == modified && !it.legacy }
             fresh[f.absolutePath] = cached
                 ?: entryOf(size, modified, f)
+            // A long scan keeps what it has checked so far: closed halfway, the next one starts from there, and the
+            // library lists the games already checked meanwhile.
+            if (cached == null && System.nanoTime() - savedAt > PARTIAL_SAVE_NANOS) {
+                save(context, LinkedHashMap(old).apply { putAll(fresh) })
+                savedAt = System.nanoTime()
+            }
             onProgress(i + 1, candidates.size)
         }
         // Imported ROMs' verdicts ([checkImported]) live in the same cache, and so do an unreadable folder's.
@@ -254,7 +266,8 @@ object RomFolder {
      * takes as retail and the DS carts by code and revision: a ROM it turned away before is checked again - a Black cart
      * linked before Black was supported stayed out of the library). */
     private val SUPPORTED = "#supported\t" + Integer.toHexString(
-        (TelemetrySampler.SUPPORTED_HACK_SHA1S.sorted() + TelemetrySampler.SUPPORTED_GB_SHA1S.sorted() +
+        // "pokemon": the cache from before unsupported Pokémon games were listed ([Entry.pokemon]) read again once.
+        (listOf("pokemon") + TelemetrySampler.SUPPORTED_HACK_SHA1S.sorted() + TelemetrySampler.SUPPORTED_GB_SHA1S.sorted() +
             com.pokedaisy.app.companion.data.RETAIL_DUMPS.map { it.sha1 } +
             TelemetrySampler.NDS_GAMES.map { (code, rev) -> "$code:$rev" }.sorted() +
             com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1).hashCode(),
@@ -267,24 +280,31 @@ object RomFolder {
     private fun load(context: Context): Map<String, Entry> {
         val f = cacheFile(context)
         if (!f.isFile) return emptyMap()
-        return runCatching {
-            val lines = f.readLines()
-            // Written before a game got its companion (an app update): only SUPPORTED answers still stand.
-            val stale = SUPPORTED !in lines
-            val blockedLine = BLOCKED
-            if (blockedLine !in lines) return@runCatching emptyMap()
-            lines.mapNotNull { line ->
-                val p = line.split('\t')
-                if (p.size != 4) return@mapNotNull null
-                val size = p[1].toLongOrNull() ?: return@mapNotNull null
-                val modified = p[2].toLongOrNull() ?: return@mapNotNull null
-                if (stale && p[3] != "1") return@mapNotNull null
-                p[0] to Entry(
-                    size, modified, p[3] == "1" || p[3] == "M" || p[3] == "B", partial = p[3] == "P", matched = p[3] == "M",
-                    tryable = p[3] == "T", legacy = p[3] == "0", blocked = p[3] == "B" || p[3] == "X",
-                )
-            }.toMap()
-        }.getOrDefault(emptyMap())
+        return runCatching { parseCache(f.readLines()) }.getOrDefault(emptyMap())
+    }
+
+    /** The paths [load] keeps from a cache file's [lines], for tests: which answers stand after an app update. */
+    internal fun cachedPaths(lines: List<String>): Set<String> = parseCache(lines).keys
+
+    private fun parseCache(lines: List<String>): Map<String, Entry> {
+        // Written before a game got its companion (an app update): only SUPPORTED answers still stand.
+        val stale = SUPPORTED !in lines
+        // Written before the blocked list changed (1.5.x's has no #blocked line at all): only a file the size of a blocked
+        // game is checked again. 1.6.0 dropped the whole cache here, and an updated library stood empty ("No ROMs yet")
+        // for the minutes a full rescan of a big folder took, from zero again if the app was closed meanwhile.
+        val blockedStale = BLOCKED !in lines
+        return lines.mapNotNull { line ->
+            val p = line.split('\t')
+            if (p.size != 4) return@mapNotNull null
+            val size = p[1].toLongOrNull() ?: return@mapNotNull null
+            val modified = p[2].toLongOrNull() ?: return@mapNotNull null
+            if (stale && p[3] != "1") return@mapNotNull null
+            if (blockedStale && com.pokedaisy.app.companion.data.BlockedGames.mayList(size)) return@mapNotNull null
+            p[0] to Entry(
+                size, modified, p[3] == "1" || p[3] == "M" || p[3] == "B", partial = p[3] == "P", matched = p[3] == "M",
+                tryable = p[3] == "T", pokemon = p[3] == "N", legacy = p[3] == "0", blocked = p[3] == "B" || p[3] == "X",
+            )
+        }.toMap()
     }
 
     private fun save(context: Context, entries: Map<String, Entry>) {
@@ -292,7 +312,7 @@ object RomFolder {
         val tmp = File(f.parentFile, "${f.name}.tmp")
         runCatching {
             tmp.writeText(SUPPORTED + "\n" + BLOCKED + "\n" + entries.entries.joinToString("") { (path, e) ->
-                "$path\t${e.size}\t${e.modified}\t${if (e.blocked) (if (e.supported) "B" else "X") else if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else "U"}\n"
+                "$path\t${e.size}\t${e.modified}\t${if (e.blocked) (if (e.supported) "B" else "X") else if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else if (e.pokemon) "N" else "U"}\n"
             })
             tmp.renameTo(f)
         }

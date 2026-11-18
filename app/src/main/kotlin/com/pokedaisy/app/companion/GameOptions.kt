@@ -30,7 +30,8 @@ class GameOptions internal constructor(
     private data class Patches(val sites: List<ReusableTms.Site> = emptyList(), val tms: Boolean = false,
                                val text: InstantText.Patch? = null, val instant: Boolean = false,
                                val hm: HmFree.Patch? = null, val full: ExpShare.Found? = null,
-                               val cap: LevelCap.Found? = null, val level: Int = 0)
+                               val cap: LevelCap.Found? = null, val level: Int = 0,
+                               val beep: InstantText.Patch? = null, val poison: InstantText.Patch? = null)
     private data class Inputs(val autoRun: Boolean = false, val indoors: Boolean = false, val wild: Int = 100)
     private val desired = atomic(Patches())
     private val inputs = atomic(Inputs())
@@ -89,6 +90,10 @@ class GameOptions internal constructor(
     }
     fun setLevelCap(found: LevelCap.Found?, level: Int) {
         desired.update { it.copy(cap = found.takeIf { level in 1..99 }, level = level.takeIf { it in 1..99 } ?: 0) }
+    }
+    /** LOW HP BEEP / FIELD POISON off: the ROM's patches ([QuietPatches.find], by the host) and which go in. */
+    fun setQuietPatches(found: QuietPatches.Found?, beepOff: Boolean, poisonOff: Boolean) {
+        desired.update { it.copy(beep = found?.beep.takeIf { beepOff }, poison = found?.poison.takeIf { poisonOff }) }
     }
     fun setExpShare(found: ExpShare.Found?, mode: ExpShare.Mode) {
         expMetadata.value = found; expMode.value = mode
@@ -186,8 +191,8 @@ class GameOptions internal constructor(
         val state = desired.value
         if (state == applied) return null
         val result = GameOptionPatches.apply(core, state.sites.takeIf { state.tms }.orEmpty(), state.text.takeIf { state.instant },
-            state.hm, state.full, state.cap, state.level)
-        applied = state; appliedAny = result.tms || result.text || result.hm || result.full || result.cap
+            state.hm, state.full, state.cap, state.level, state.beep, state.poison)
+        applied = state; appliedAny = result.tms || result.text || result.hm || result.full || result.cap || result.beep || result.poison
         Logs.i("game-option patches: text=${result.text}, reusableTms=${result.tms}")
         return result
     }

@@ -37,4 +37,18 @@ class GbaInputTurboTest {
         i.setScript(0, exclusive = false)
         assertEquals(CoreKey.A, i.turboMask)
     }
+
+    /** The QUICK MENU's TURBO A: the plain A key mashes while it's on, and only A. */
+    @Test fun theQuickMenusTurboLatchesA() {
+        val i = input()
+        i.turboLatch = com.pokedaisy.app.companion.data.CoreKey.A
+        i.onKey(aKey, true)
+        assertEquals(0, i.mask)
+        assertEquals(com.pokedaisy.app.companion.data.CoreKey.A, i.turboMask)
+        i.setTouchBits(com.pokedaisy.app.companion.data.CoreKey.B)
+        assertEquals(com.pokedaisy.app.companion.data.CoreKey.B, i.mask)
+        i.turboLatch = 0
+        assertEquals(com.pokedaisy.app.companion.data.CoreKey.A or com.pokedaisy.app.companion.data.CoreKey.B, i.mask)
+        assertEquals(0, i.turboMask)
+    }
 }

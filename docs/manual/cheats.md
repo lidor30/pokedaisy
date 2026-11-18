@@ -87,13 +87,3 @@ What a cheat already changed in your game stays changed, though. If a code gave 
 
 While any cheat is loaded, achievements pause: nothing is checked and nothing unlocks. In a game with an achievement set you see a `CHEATS ON` notice when this happens, and the achievements tab is marked as paused. Turn every cheat off (or the master switch) and they carry on, with a `CHEATS OFF` notice. See [Achievements](achievements.md).
 
-
-## On iPhone and iPad
-
-While a GBA game is running, open `SETTINGS` > `CHEATS` in the companion. Turn on the master switch to apply this
-game's enabled codes. `ADD CODE` uses the same name, code and type fields as Android. Unreadable lines are shown
-before anything is added. A code you add starts on, but the master switch still decides whether it runs.
-
-`IMPORT FILE` opens Files for a RetroArch `.cht` or mGBA `.cheats` file. Imported codes start off. Tap one to turn it
-on; `REMOVE` changes the list into codes you can remove after confirmation. Codes and their on/off choices are
-kept for this ROM when you reopen the game. Game Boy cheats are not supported by the current engine.

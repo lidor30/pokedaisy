@@ -97,4 +97,4 @@ Raising `SHINY ODDS` pauses them the same way, and the tab shows `PAUSED: SHINY 
 
 ## When the site can't be reached
 
-If you're offline when a game starts, you stay signed in. The app keeps trying again by itself (more and more slowly, up to every few minutes), and the companion's tab says it can't reach RetroAchievements. Tap `TRY AGAIN` on the tab or in Settings to try right away.
+If you're offline when a game starts, you stay signed in. A notice says the achievements are off for now, so you know nothing unlocks until the site is back. The app keeps trying again by itself (more and more slowly, up to every few minutes) and turns them on once it gets through, and the companion's tab says it can't reach RetroAchievements. Tap `TRY AGAIN` on the tab or in Settings to try right away.

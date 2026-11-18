@@ -51,7 +51,17 @@ jobs:
       - name: NDK + CMake (app/build.gradle.kts pins them)
         run: sdkmanager --install "ndk;28.2.13676358" "cmake;3.22.1" "platforms;android-34"
 
+      # Every Gradle wrapper jar in the checkout is validated here instead of by setup-gradle, which can't accept one
+      # checksum: the recursive checkout brings Azahar's SDL, whose Android sample project carries a wrapper jar Gradle
+      # doesn't list. Nothing runs it (Azahar builds with CMake, and only behind the n3ds flag).
+      - uses: gradle/actions/wrapper-validation@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        with:
+          min-wrapper-count: 2
+          allow-checksums: 2c23278a62dc9f96ab11bee897d9f53e6479d6419135e4560ce822a6431df5e5  # third_party/azahar/externals/sdl2/SDL/android-project
+
       - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        with:
+          validate-wrappers: false
 
       - name: Translations
         run: python3 scripts/check_translations.py
@@ -84,6 +94,9 @@ jobs:
   # diagnostic ROMs (PkApiCoreTest). Advisory for now (the iPad plan): make it required once it has held for a while.
   ios-shared:
     name: Shared code for iOS
+    # PRs and pushes only: the Release and Nightly workflows call this file too (workflow_call, where github.workflow
+    # is the caller's), and an advisory job mustn't hold back a signed release.
+    if: github.workflow == 'CI'
     runs-on: macos-15
     timeout-minutes: 60
     steps:
@@ -128,6 +141,9 @@ jobs:
   # emulator core into the PokeDaisyUI framework. A Mac, as the core needs Xcode (advisory for now).
   ios-app:
     name: iPad app (simulator build)
+    # PRs and pushes only: the Release and Nightly workflows call this file too (workflow_call, where github.workflow
+    # is the caller's), and an advisory job mustn't hold back a signed release.
+    if: github.workflow == 'CI'
     runs-on: macos-15
     timeout-minutes: 60
     steps:

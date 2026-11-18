@@ -213,6 +213,10 @@ fun CompanionSettingsScreen(
                                 }
                             }
                         }
+                    } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
+                        confirm = Confirm(
+                            tk("RESET GAME BUTTONS?"), tr("Every game button goes back to the key it had at first."), tk("RESET"),
+                        ) { settings.resetGbaControls(); tick++ }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     // Off, the binds stay as they are, greyed out, and every key goes to the game.
                     Page.HOTKEYS -> {
@@ -243,6 +247,10 @@ fun CompanionSettingsScreen(
                                     )
                                 }
                             }
+                        } + SettingRow(tk("RESET TO DEFAULTS"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RESET_CONTROLS)) {
+                            confirm = Confirm(
+                                tk("RESET HOTKEYS?"), tr("Every hotkey goes back to the keys it had at first."), tk("RESET"),
+                            ) { settings.resetHotkeys(); tick++ }
                         } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     }
                     Page.SHADERS -> shaderRows(settings) { tick++ } + SettingRow(tk("CANCEL"), null) { page = Page.DISPLAY }
@@ -610,7 +618,8 @@ private fun homeRows(
             }
         } else null,
     )
-    return makeover + listOfNotNull(
+    // How this list looks (DESCRIPTIONS, GROUP TABS): first, the user's call.
+    return settingsLookRows(changed) + makeover + listOfNotNull(
         groupTitle(tk("FF / SPEED")),
         // On / off - the group's title already says fast-forward.
         SettingRow("FF", onOff(s.ffToggled), labelBadge = s.playbackBadge) { s.setFfToggled(!s.ffToggled); changed() },
@@ -690,6 +699,14 @@ private fun homeRows(
         ) {
             if (s.reusableTmsSupported) { s.setReusableTms(!s.reusableTms); changed() }
         },
+        // A REPEL running low gets another of its kind on top, from the bag (RepelRefill.kt). Two values: a tap flips it.
+        SettingRow(
+            tk("AUTO REFILL"), if (s.repelRefillSupported) onOff(s.repelRefill) else tk("N/A"),
+            enabled = s.repelRefillSupported, labelBadge = NewFeatures.badge(NewFeatures.REPEL_REFILL),
+            subtitle = "Another REPEL goes on before one runs out",
+        ) {
+            if (s.repelRefillSupported) { s.setRepelRefill(!s.repelRefill); changed() }
+        },
         // The field moves (a tree, a rock, the water...) with the badge alone: the game's own move check patched to take
         // the first Pokémon when nobody knows the move (HmFree.kt); the companion's FLY and FLASH follow it.
         SettingRow(
@@ -751,6 +768,37 @@ private fun homeRows(
                     },
                 )
             }
+        },
+        // The game's beep with HP in the red, and poison's damage while walking: ON = the game's own, OFF = patched out
+        // (QuietPatches.kt). Two values: a tap flips them.
+        SettingRow(
+            tk("LOW HP BEEP"), if (s.lowHpBeepSupported) onOff(s.lowHpBeep) else tk("N/A"),
+            enabled = s.lowHpBeepSupported, labelBadge = NewFeatures.badge(NewFeatures.LOW_HP_BEEP),
+        ) {
+            if (s.lowHpBeepSupported) { s.setLowHpBeep(!s.lowHpBeep); changed() }
+        },
+        SettingRow(
+            tk("FIELD POISON"), if (s.fieldPoisonSupported) onOff(s.fieldPoison) else tk("N/A"),
+            enabled = s.fieldPoisonSupported, labelBadge = NewFeatures.badge(NewFeatures.FIELD_POISON),
+            subtitle = "Poison hurts while you walk",
+        ) {
+            if (s.fieldPoisonSupported) { s.setFieldPoison(!s.fieldPoison); changed() }
+        },
+        // A state as each trainer battle starts; after a loss the card asks to go back to it (BattleRetryAsk).
+        SettingRow(
+            tk("BOSS RETRY"), onOff(s.battleRetry),
+            labelBadge = NewFeatures.badge(NewFeatures.BOSS_RETRY), subtitle = "Lost a trainer battle? Try it again",
+        ) {
+            s.setBattleRetry(!s.battleRetry); changed()
+        },
+        // A shiny wild foe said out loud, FF and turbo stopped (ShinyHunt.kt); the subtitle counts the hunt's wild battles.
+        SettingRow(
+            tk("SHINY ALERT"), if (s.shinyAlertSupported) onOff(s.shinyAlert) else tk("N/A"),
+            enabled = s.shinyAlertSupported, labelBadge = NewFeatures.badge(NewFeatures.SHINY_ALERT),
+            subtitle = if (s.shinyAlertSupported && s.shinyAlert) tr("{0} wild battles since the last shiny", s.shinyHuntCount)
+                else "Stops FF when a shiny shows up",
+        ) {
+            if (s.shinyAlertSupported) { s.setShinyAlert(!s.shinyAlert); changed() }
         },
         // The NUZLOCKE tab and its tracker for this game (Nuzlocke.kt): first encounter per area, fainted = out of the run.
         SettingRow(
@@ -881,18 +929,18 @@ private fun homeRows(
                 labelBadge = s.companionViewBadge, subtitle = "A window over the game, or a side panel",
             ) { s.setCompanionWindow(!window); changed() }
         },
-        // A foldable half open: the game on one side of the hinge, the companion on the other.
-        s.foldLayout?.let { fold ->
-            SettingRow(
-                tk("FOLD LAYOUT"), onOff(fold), labelBadge = NewFeatures.badge(NewFeatures.FOLD_LAYOUT),
-                subtitle = "Half open: the game on one side of the fold",
-            ) { s.setFoldLayout(!fold); changed() }
+        // A foldable: OFF, HALF-OPEN, or ALWAYS.
+        s.foldMode?.let { mode ->
+            foldLayoutRow(mode, { title, choices, current, onPick -> select(Selector(title, choices, current) { onPick(it); changed() }) }) {
+                s.setFoldMode(it)
+            }
         },
-        // The white tab at the screen's right edge that opens it (BACK and the HUD's COMPANION still do).
+        s.tabletopControlsBottom?.let { bottom -> tabletopControlsRow(bottom) { s.setTabletopControlsBottom(it); changed() } },
+        // The buttons on the game screen that open it: the white edge tab and the HUD's COMPANION (BACK still does).
         s.companionTab?.let { tab ->
             SettingRow(
                 tk("COMPANION BUTTON"), onOff(tab),
-                labelBadge = NewFeatures.badge(NewFeatures.COMPANION_TAB), subtitle = "The tab at the right edge that opens it",
+                labelBadge = NewFeatures.badge(NewFeatures.COMPANION_TAB), subtitle = "The game screen's buttons that open it",
             ) { s.setCompanionTab(!tab); changed() }
         },
         // Two screens: the game and the companion trade screens (this companion moves with them).
@@ -915,6 +963,8 @@ private fun homeRows(
                 ) { l -> themes.firstOrNull { it.label == l }?.let { s.setAppTheme(it.id); com.pokedaisy.app.companion.ui.theme.AppColors.applyTheme(it) } })
             }
         },
+        // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
+        gameLookRow(changed),
         // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
         SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
             val pick = DarkMode.setting.next()
@@ -961,6 +1011,11 @@ private fun homeRows(
             }.takeIf { s.battleInfo }
         },
         SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
+        // A ball button on the battle menu: the last ball thrown, in one tap, without the bag (BattleBall.kt).
+        SettingRow(
+            tk("LAST BALL"), onOff(s.lastBallButton), subtitle = "Throw your last ball in one tap",
+            labelBadge = NewFeatures.badge(NewFeatures.LAST_BALL),
+        ) { s.setLastBallButton(!s.lastBallButton); changed() },
         // The battle buttons' look: GEN 4 (coloured buttons) or GEN 5 (dark plates round a red and white ball).
         SettingRow(
             tk("BATTLE STYLE"), s.battleStyle.label, subtitle = "The battle buttons' look",

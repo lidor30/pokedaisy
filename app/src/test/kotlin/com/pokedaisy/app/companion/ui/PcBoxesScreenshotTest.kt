@@ -4,7 +4,7 @@ import androidx.compose.runtime.remember
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.ScreenOrientation
-import com.pokedaisy.app.companion.data.save.BagPocket
+import com.pokedaisy.app.companion.data.save.PocketKind
 import com.pokedaisy.app.companion.data.save.BoxSlot
 import com.pokedaisy.app.companion.data.save.MonRef
 import com.pokedaisy.app.companion.data.save.Gen3SaveEditor
@@ -44,13 +44,25 @@ class PcBoxesScreenshotTest {
 
     @Test
     fun moving() = paparazzi.snapshot {
-        val s = remember { state().apply { selected = MonRef.Pc(BoxSlot(0, 10)); moving = BoxSlot(0, 10) } }
+        val s = remember { state().apply { selected = MonRef.Pc(BoxSlot(0, 10)); moving = MonRef.Pc(BoxSlot(0, 10)) } }
         PcBoxesScreen(s, "Pokémon FireRed", rememberGbaTextMetrics(), onBack = {}, onSave = {})
     }
 
     @Test
     fun bag() = paparazzi.snapshot {
-        val s = remember { state().apply { page = PcBoxesState.Page.BAG; pocket = BagPocket.TMHM } }
+        val s = remember { state().apply { page = PcBoxesState.Page.BAG; pocket = PocketKind.TMHM } }
+        PcBoxesScreen(s, "Pokémon FireRed", rememberGbaTextMetrics(), onBack = {}, onSave = {})
+    }
+
+    @Test
+    fun pokemonPage() = paparazzi.snapshot {
+        val s = remember { state().apply { selected = MonRef.Party(0); detail = MonRef.Party(0); detailTab = PcBoxesState.DetailTab.STATS } }
+        PcBoxesScreen(s, "Pokémon FireRed", rememberGbaTextMetrics(), onBack = {}, onSave = {})
+    }
+
+    @Test
+    fun trainer() = paparazzi.snapshot {
+        val s = remember { state().apply { page = PcBoxesState.Page.TRAINER } }
         PcBoxesScreen(s, "Pokémon FireRed", rememberGbaTextMetrics(), onBack = {}, onSave = {})
     }
 
@@ -65,7 +77,7 @@ class PcBoxesScreenshotTest {
         val s = remember {
             val (fr, e) = SyntheticSave.demoTrade()
             TradeState(TradeSide("Pokémon FireRed", Gen3SaveEditor(fr), "BPRE"), TradeSide("Pokémon Emerald", Gen3SaveEditor(e), "BPEE"))
-                .apply { selA = BoxSlot(0, 21); selB = BoxSlot(0, 3) }
+                .apply { selA = MonRef.Pc(BoxSlot(0, 21)); selB = MonRef.Pc(BoxSlot(0, 3)) }
         }
         TradeScreen(s, rememberGbaTextMetrics(), onBack = {}, onSave = {})
     }

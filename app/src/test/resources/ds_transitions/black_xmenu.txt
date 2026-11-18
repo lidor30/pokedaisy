@@ -1,0 +1,12 @@
+# black: the X menu opened, then B back out (Version Noire, nds_dump `trace`, the player's save on the field). Only the
+# touch screen fades (engine B's master brightness), the top screen stays lit: no screen change to hide.
+# count fade(hex: top | touch << 8) flat(T/B)
+30 0000 --
+11 1000 -B
+1 0000 -B
+138 0000 --
+33 0000 --
+1 1000 --
+8 1000 -B
+1 0000 -B
+47 0000 --

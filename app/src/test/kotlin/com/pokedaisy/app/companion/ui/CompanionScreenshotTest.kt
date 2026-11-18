@@ -388,6 +388,26 @@ open class CompanionScreenshotTest {
         )
     }
 
+    /** STATS in Black 2 (the black2 fixture's lead): Gen 5's IVs, EVs and stored nature, the cart's icons when it's there. */
+    @Test
+    fun partyDetailStatsBlack2() {
+        activeGame = GameKind.BLACK2
+        romLanguage = 'E'
+        romGameCode = ""
+        val rom = java.io.File(java.io.File(java.io.File(RETAIL_ROM_DIR).parentFile, "nds"), "Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced) [b].nds")
+        val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
+        try {
+            if (rom.isFile && com.pokedaisy.app.companion.data.NdsArt.extractTo(rom.toOkioPath(), dir.toOkioPath())) com.pokedaisy.app.companion.data.NdsArt.dir = dir.toOkioPath()
+            val t = com.pokedaisy.app.companion.data.readGen5Telemetry(FixtureMemoryReader.load("black2"), com.pokedaisy.app.companion.data.GEN5_BLACK2)
+            val v = buildSnapshotView(t).copy(game = GameKind.BLACK2)
+            v.party.forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
+            snapshot { AppTheme { MonDetailScreen(v.party, 0, {}, {}, initialShowStats = true) } }
+        } finally {
+            com.pokedaisy.app.companion.data.NdsArt.dir = null
+            dir.deleteRecursively()
+        }
+    }
+
     @Test
     fun partyDetail() = snapshot {
         CompanionScreen(SampleCompanion.snapshot, SampleCompanion.Slots, SampleCompanion.Settings(), initialMonIndex = 0)
@@ -396,6 +416,68 @@ open class CompanionScreenshotTest {
     @Test
     fun partyDetailStats() = snapshot {
         AppTheme { MonDetailScreen(SampleCompanion.snapshot.party, 0, {}, {}, initialShowStats = true) }
+    }
+
+    /** A Game Boy game's font, size and width over [content], as CompanionScreen provides them. */
+    @androidx.compose.runtime.Composable
+    private fun InGameFont(game: GameKind, content: @androidx.compose.runtime.Composable () -> Unit) =
+        androidx.compose.runtime.CompositionLocalProvider(
+            com.pokedaisy.app.companion.ui.theme.LocalGameFont provides com.pokedaisy.app.companion.ui.theme.rememberGameFont(game),
+            com.pokedaisy.app.companion.ui.theme.LocalGameTextScale provides com.pokedaisy.app.companion.ui.theme.gameTextScale(game),
+            com.pokedaisy.app.companion.ui.theme.LocalGameFontWidth provides com.pokedaisy.app.companion.ui.theme.gameFontWidth(game),
+            content = content,
+        )
+
+    /**
+     * A Game Boy fixture's party / foes as the companion shows them, with the game's look ([OptionColors.inGame]) and its font
+     * and icons rebuilt from [romFile] (the gb / gbc folders beside the GBA ROMs; Pixel Operator without it).
+     */
+    private fun gbSnapshot(game: GameKind, romFile: String, read: () -> com.pokedaisy.app.companion.data.Telemetry): SnapshotView {
+        activeGame = game
+        romLanguage = 'E'
+        romGameCode = ""
+        OptionColors.inGame = true
+        val rom = listOf("gb", "gbc").map { java.io.File(java.io.File(RETAIL_ROM_DIR).parentFile, "$it/$romFile") }.firstOrNull { it.isFile }
+        if (rom != null) {
+            if (game == GameKind.YELLOW) com.pokedaisy.app.companion.data.Gen1Art.extractTo(rom.readBytes(), RomArt.dirOverride!!)
+            else com.pokedaisy.app.companion.data.Gen2Art.extractTo(rom.readBytes(), RomArt.dirOverride!!)
+        }
+        val v = buildSnapshotView(read()).copy(game = game)
+        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
+        return v
+    }
+
+    /** STATS in Yellow, its own font: DVs and stat experience, one SPECIAL, no nature or Hidden Power. */
+    @Test
+    fun partyDetailStatsGen1() {
+        val v = gbSnapshot(GameKind.YELLOW, "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb") {
+            com.pokedaisy.app.companion.data.readGen1Telemetry(FixtureMemoryReader.load("yellow"), com.pokedaisy.app.companion.data.GEN1_YELLOW)
+        }
+        try {
+            snapshot { AppTheme { InGameFont(GameKind.YELLOW) { MonDetailScreen(v.party, 0, {}, {}, initialShowStats = true) } } }
+        } finally { OptionColors.inGame = false }
+    }
+
+    /** STATS in Gold, its own font: four DVs, stat experience, SP. ATK / SP. DEF sharing one DV, Hidden Power from the DVs. */
+    @Test
+    fun partyDetailStatsGen2() {
+        val v = gbSnapshot(GameKind.GOLD, "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc") {
+            com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load("gold"), com.pokedaisy.app.companion.data.GEN2_GOLD)
+        }
+        try {
+            snapshot { AppTheme { InGameFont(GameKind.GOLD) { MonDetailScreen(v.party, 0, {}, {}, initialShowStats = true) } } }
+        } finally { OptionColors.inGame = false }
+    }
+
+    /** Battle INFO's STATS in Crystal, its own font: the party CHIKORITA beside the wild SENTRET (no stat experience). */
+    @Test
+    fun battleStatsGen2() {
+        val v = gbSnapshot(GameKind.CRYSTAL, "Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc") {
+            com.pokedaisy.app.companion.data.readGen2Telemetry(FixtureMemoryReader.load("crystal_battle"), com.pokedaisy.app.companion.data.GEN2_CRYSTAL)
+        }
+        try {
+            snapshot { AppTheme { InGameFont(GameKind.CRYSTAL) { BattleStatsScreen(v.battlePlayer, v.battleOpponent, "WILD", onBack = {}) } } }
+        } finally { OptionColors.inGame = false }
     }
 
     /** TAKE (FieldItems.kt): CHARMANDER holds a LEFTOVERS, so the summary's bottom row has TAKE with its icon... */
@@ -1233,6 +1315,17 @@ open class CompanionScreenshotTest {
     @Test fun redMap() = yellow("red", "MAP", cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
     @Test fun redSettings() = yellow("red", "SETTINGS", cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
     @Test fun redDexEntry() = yellow("red", "DEX", dexEntry = 151, cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
+    // Pokémon Brown 6.1.2: its own save (the brown fixtures), its own Super Game Boy colours.
+    private val brownRom = "Pokemon Brown (v6.1.2).gb"
+    private fun brown(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null) = yellow(fixture, tab,
+        controls = controls, dexEntry = dexEntry, cfg = com.pokedaisy.app.companion.data.GEN1_BROWN, romFile = brownRom, game = GameKind.BROWN)
+    @Test fun brownParty() = brown("brown", "PARTY")
+    @Test fun brownItems() = brown("brown", "ITEMS")
+    @Test fun brownBattle() = brown("brown_battle", "BATTLE", controls = true)
+    @Test fun brownMap() = brown("brown", "MAP")
+    @Test fun brownSettings() = brown("brown", "SETTINGS")
+    @Test fun brownDex() = brown("brown", "DEX")
+    @Test fun brownDexEntry() = brown("brown", "DEX", dexEntry = 252)
     // PureRed / PureBlue v2.7.6: the retail Red save, converted by the game (the purered / pureblue fixtures).
     private val pureRedRom = "Pokemon PureRed (v2.7.6).gb"
     private val pureBlueRom = "Pokemon PureBlue (v2.7.6).gb"

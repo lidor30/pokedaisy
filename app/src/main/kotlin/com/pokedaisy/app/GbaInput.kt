@@ -28,6 +28,13 @@ class GbaInput : Hotkeys.GameKeys, ScriptInput {
     @Volatile private var touchBits = 0    // from the on-screen TouchControlsView (any thread: TouchInputWindows)
     @Volatile private var scriptBits = 0   // synthetic presses (BattleInputController)
     @Volatile private var scriptExclusive = false
+    /**
+     * The QUICK MENU's TURBO: these GBA buttons (A) mash while the player holds them, as a TURBO A key would, until
+     * it's switched off. Kept apart from the steady bits ([recompute]) and pulsed by the engine ([turboMask]).
+     */
+    @Volatile var turboLatch = 0
+        set(v) { field = v; recompute() }
+    @Volatile private var latchedHeld = 0
 
     @Volatile
     private var gbaControls: Map<Int, Int> = DEFAULT_CONTROLS
@@ -106,7 +113,7 @@ class GbaInput : Hotkeys.GameKeys, ScriptInput {
 
     /** The TURBO A / B buttons held (keys or the touch controls'), which the engine presses every other 2 frames;
      * none while a script steers. */
-    val turboMask: Int get() = if (scriptExclusive) 0 else turboBits or touchTurboBits
+    val turboMask: Int get() = if (scriptExclusive) 0 else turboBits or touchTurboBits or latchedHeld
 
     @Volatile private var touchTurboBits = 0
 
@@ -147,7 +154,9 @@ class GbaInput : Hotkeys.GameKeys, ScriptInput {
     // Synchronized: the touch controls' input windows set their bits from a thread of their own (TouchInputWindows), the
     // battle scripts from the emu thread, the keys from the UI thread - each recompute must see the others' latest.
     private fun recompute() = synchronized(lock) {
-        mask = (if (scriptExclusive) scriptBits else buttonBits or hatBits or touchBits or scriptBits) or pressBits
+        val held = buttonBits or hatBits or touchBits
+        latchedHeld = held and turboLatch
+        mask = (if (scriptExclusive) scriptBits else (held and turboLatch.inv()) or scriptBits) or pressBits
     }
 
     private fun keyToBit(keyCode: Int): Int? = when (keyCode) {

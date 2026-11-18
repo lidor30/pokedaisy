@@ -84,7 +84,7 @@ void hud_tile(struct pd_canvas *c, const struct hud_ink *ink, int x, int y, int 
 // The sizes: FieldHud's, or a 3DS's (hud_state.compact: its screen shows the game at 1.5x, a Linux handheld's at 3x and
 // more, so the same pixels cover twice as much of the picture). A compact tile overlaps the icon's see-through edges.
 struct hud_sizes { int pad, edge, tile, gap, mapW, mapH; };
-static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 20, 1, 72, 40 },
+static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 22, 3, 72, 40 },
                                MINI_SIZES = { 2, 3, 15, 1, 72, 40 }; // the cores' mini HUD: half-size party icons
 static const struct hud_sizes *sizes = &NORMAL_SIZES;
 static bool small; // hud_state.compact (not CompactLayout, the HUD without party or minimap: compact() below)
@@ -121,10 +121,10 @@ struct hud {
 };
 
 // Compact: a 3DS shows this canvas pixel for pixel and the icons come no smaller, so they go through Scale2x (edges stay
-// clean, no pixel simply dropped) and then down to 7/8 of their size, each pixel what it covers. Dropping pixels broke the
-// shapes, and the same at 1x blurred some columns and not others.
+// clean, no pixel simply dropped) and then down to SMALL_ICON (15/16 of their size; 7/8 until the user asked for a little
+// bigger), each pixel what it covers. Dropping pixels broke the shapes, and the same at 1x blurred some columns and not others.
 #define SHRUNK_CLEAR 0xFE000000u
-#define SMALL_ICON (PD_ICON * 7 / 8)
+#define SMALL_ICON (PD_ICON * 15 / 16)
 static uint32_t iconPx[PD_ICON * PD_ICON], icon2x[4 * PD_ICON * PD_ICON];
 
 static struct pd_canvas icon_begin(void) {
@@ -151,21 +151,21 @@ static void icon_scale2x(void) {
     }
 }
 
-// Over what's there: 7/16 of the 2x picture.
+// Over what's there: the 2x picture (n x n) down to SMALL_ICON square.
 static void icon_draw(struct pd_canvas *c, int x, int y) {
-  const int n = 2 * PD_ICON, total = 16 * 16;
+  const int n = 2 * PD_ICON, S = SMALL_ICON, total = n * n;
   icon_scale2x();
-  for (int oy = 0; oy < PD_ICON * 7 / 8; oy++)
-    for (int ox = 0; ox < PD_ICON * 7 / 8; ox++) {
+  for (int oy = 0; oy < S; oy++)
+    for (int ox = 0; ox < S; ox++) {
       int X = x + ox, Y = y + oy;
       if (X < c->cx0 || X >= c->cx1 || Y < c->cy0 || Y >= c->cy1)
         continue;
-      // In sevenths of a source pixel, this pixel covers [16 * o, 16 * o + 16) each way.
+      // In 1/S of a source pixel: this pixel covers [n * o, n * o + n) each way, source pixel s [S * s, S * s + S).
       int r = 0, g = 0, b = 0, cover = 0;
-      for (int sy = oy * 16 / 7; sy <= (oy * 16 + 15) / 7 && sy < n; sy++) {
-        int y0 = oy * 16 > sy * 7 ? oy * 16 : sy * 7, y1 = oy * 16 + 16 < sy * 7 + 7 ? oy * 16 + 16 : sy * 7 + 7;
-        for (int sx = ox * 16 / 7; sx <= (ox * 16 + 15) / 7 && sx < n; sx++) {
-          int x0 = ox * 16 > sx * 7 ? ox * 16 : sx * 7, x1 = ox * 16 + 16 < sx * 7 + 7 ? ox * 16 + 16 : sx * 7 + 7;
+      for (int sy = oy * n / S; sy <= (oy * n + n - 1) / S && sy < n; sy++) {
+        int y0 = oy * n > sy * S ? oy * n : sy * S, y1 = oy * n + n < sy * S + S ? oy * n + n : sy * S + S;
+        for (int sx = ox * n / S; sx <= (ox * n + n - 1) / S && sx < n; sx++) {
+          int x0 = ox * n > sx * S ? ox * n : sx * S, x1 = ox * n + n < sx * S + S ? ox * n + n : sx * S + S;
           int part = (y1 - y0) * (x1 - x0);
           uint32_t p = icon2x[sy * n + sx];
           if (part <= 0 || p == SHRUNK_CLEAR)
@@ -547,13 +547,13 @@ static void mon_icon(struct hud *u, const struct pd_mon *m, int x, int y) {
   } else if (small) {
     struct pd_canvas shrunk = icon_begin();
     pd_draw_mon_icon_shiny(&shrunk, u->g, m->species, m->shiny, 0, 0, 1, fainted);
-    icon_draw(u->c, x + (TILE - SMALL_ICON) / 2, y - 4);
+    icon_draw(u->c, x + (TILE - SMALL_ICON) / 2, y - 5);
   } else {
     pd_draw_mon_icon_shiny(u->c, u->g, m->species, m->shiny, ix, y - 5, 1, fainted);
   }
 }
 
-#define COMPACT_ICON_H 21 // what shows of it: a Pokémon stands at the bottom of its picture
+#define COMPACT_ICON_H 23 // what shows of it: a Pokémon stands at the bottom of its picture (30 px drawn)
 #define SHOWN_ICON_H (mini ? 12 : COMPACT_ICON_H)
 #define TILE_H (small ? SHOWN_ICON_H + 5 : 26 + 5)
 
@@ -665,7 +665,15 @@ static void minimap(struct hud *u, int x, int y, int mw, int mh, int lines) {
   }
   if (name && *name) {
     pd_clip(u->c, mx, my + mh + 1, mw, lines * NAME_H + 4);
-    if (small && lines == 1 && small_text(u->c, 0, 0, name, 0, true)) {
+    if (small && lines == 1 && pd_font_size_small()) {
+      // TEXT SIZE SMALL (the 3DS): its capitals are 8 too (rows 5-12 of the cell), smoothed like the rest; 4 px in from
+      // the map's edges each side, centred when it fits.
+      const int inset = 4, room = mw - 2 * inset, tw = pd_text_width(name);
+      if (tw <= room)
+        pd_text(u->c, mx + inset + (room - tw) / 2, my + mh + 3 - 5, name, u->L->text, u->L->shadow);
+      else
+        pd_text_fit(u->c, mx + inset, my + mh + 3 - 5, room, name, u->L->text, u->L->shadow);
+    } else if (small && lines == 1 && small_text(u->c, 0, 0, name, 0, true)) {
       // The capitals (the small font's rows 0-7) centred between the map and the panel's edge: 3 rows each side.
       small_text(u->c, mx + 1, my + mh + 4, name, u->L->shadow, false);
       small_text(u->c, mx, my + mh + 3, name, u->L->text, false);

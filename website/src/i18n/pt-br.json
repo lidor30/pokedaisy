@@ -350,6 +350,8 @@
   "QUICK FLASH": "FLASH RÁPIDO",
   "Light up a dark cave from the quick menu.": "Ilumine uma caverna escura pelo menu rápido.",
   "Your trainer card, drawn like the game's, front and back.": "Seu cartão de treinador, desenhado como o do jogo, frente e verso.",
+  "AREA MAP": "MAPA LOCAL",
+  "A cave's or a big building's own map, floor by floor, on the MAP tab and the HUD.": "O mapa de uma caverna ou de um prédio grande, andar por andar, na aba MAP e no HUD.",
   "n/a": "n/a",
   "Nothing matches.": "Nada encontrado.",
   "Search games": "Buscar jogos",
@@ -383,12 +385,11 @@
   "A 3DS with custom firmware and the Homebrew Launcher. An early preview.": "Um 3DS com firmware personalizado e o Homebrew Launcher. Uma prévia inicial.",
   "The app (APK)": "O app (APK)",
   "The app (.3dsx)": "O app (.3dsx)",
+  "The app for the HOME Menu (.cia)": "O app para o menu HOME (.cia)",
   "Steam Deck and Linux PCs": "Steam Deck e PCs com Linux",
   "TrimUI handhelds (CrossMix, NextUI)": "Portáteis TrimUI (CrossMix, NextUI)",
   "PortMaster handhelds (ROCKNIX, Knulli, muOS)": "Portáteis com PortMaster (ROCKNIX, Knulli, muOS)",
   "TrimUI Brick on NXRedux": "TrimUI Brick com NXRedux",
   "Cores for RetroArch, on a PC": "Núcleos para o RetroArch, no PC",
-  "Cores for RetroArch, on an ARM handheld": "Núcleos para o RetroArch, em portátil ARM",
-  "AREA MAP": "MAPA LOCAL",
-  "A cave or building's map, with its floors.": "O mapa de uma caverna ou construção, com seus andares."
+  "Cores for RetroArch, on an ARM handheld": "Núcleos para o RetroArch, em portátil ARM"
 }

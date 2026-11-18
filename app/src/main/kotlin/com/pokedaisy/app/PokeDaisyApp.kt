@@ -29,6 +29,14 @@ class PokeDaisyApp : Application() {
         com.pokedaisy.app.cheats.CheatParser.current = com.pokedaisy.app.cheats.MgbaCheatParser
         // The NEW tags' week starts with the first launch of a build that has the feature.
         Prefs(this).let { p -> com.pokedaisy.app.companion.NewFeatures.init(p.newFeatureSince, { p.newFeatureSince = it }) }
+        // SETTINGS' DESCRIPTIONS / GROUP TABS, kept across launches.
+        Prefs(this).let { p ->
+            com.pokedaisy.app.companion.ui.SettingsLook.descriptions = p.settingsDescriptions
+            com.pokedaisy.app.companion.ui.SettingsLook.tabs = p.settingsTabs
+            com.pokedaisy.app.companion.ui.SettingsLook.onChange = { d, t -> p.settingsDescriptions = d; p.settingsTabs = t }
+            com.pokedaisy.app.companion.ui.CompanionSkins.enabled = p.gameLook
+            com.pokedaisy.app.companion.ui.CompanionSkins.onChange = { p.gameLook = it }
+        }
         val prefs = Prefs(this)
         prefs.appOpenCount = (prefs.appOpenCount + 1).coerceAtMost(1000)
         CrashReports.apply(prefs.crashReportsEnabled)

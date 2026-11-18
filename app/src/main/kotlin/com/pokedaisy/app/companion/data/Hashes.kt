@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import okio.HashingSink
+import okio.SYSTEM
 import okio.blackholeSink
 import okio.buffer
 import okio.use

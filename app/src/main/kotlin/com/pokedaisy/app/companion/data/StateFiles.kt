@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion.data
 
 import okio.FileSystem
 import okio.HashingSource
+import okio.SYSTEM
 import okio.Path
 import okio.blackholeSink
 import okio.buffer
@@ -17,6 +18,8 @@ class StateFiles(val directory: Path, private val extraSidecars: List<String> = 
     fun bakThumbFile(slot: Int): Path = sidecar(bakFile(slot), ".png")
     val resumeFile get() = directory / "resume"
     val undoLoadFile get() = directory / "undo_load"
+    /** BOSS RETRY: the state taken as a trainer battle began (never a slot; one per game). */
+    val retryFile get() = directory / "battle_retry"
     val freshBootFile get() = directory / "boot_fresh"
 
     fun exists(slot: Int) = present(stateFile(slot))

@@ -1,0 +1,11 @@
+# Pokémon Brown 6.1.2 / 6.0.1 from its own save (Red's boot: the title, CONTINUE, the field in Gravel Town).
+# Pokemon Red (USA, Europe) from a save: the intro and the title screen (it takes no START until its animation is
+# over, ~1600 frames), START, CONTINUE (A), the save's summary, A: on the field (fixtures red*). The Super Game Boy
+# model (mGBA picks it for this SGB-enhanced cart), no border.
+wait 1600
+press START
+wait 200
+press A
+wait 120
+press A
+wait 300

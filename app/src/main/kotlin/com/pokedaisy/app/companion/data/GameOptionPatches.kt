@@ -9,16 +9,21 @@ interface RomOptionPatcher {
 /** Game options share one native patch set; a failed group must not leave half a feature or erase another. */
 object GameOptionPatches {
     data class Result(val tms: Boolean, val text: Boolean, val hm: Boolean = false,
-                      val full: Boolean = false, val cap: Boolean = false)
+                      val full: Boolean = false, val cap: Boolean = false,
+                      val beep: Boolean = false, val poison: Boolean = false)
     fun apply(host: RomOptionPatcher, sites: List<ReusableTms.Site>, text: InstantText.Patch?,
               hm: HmFree.Patch? = null, full: ExpShare.Found? = null,
-              cap: LevelCap.Found? = null, level: Int = 0): Result {
+              cap: LevelCap.Found? = null, level: Int = 0,
+              beepOff: InstantText.Patch? = null, poisonOff: InstantText.Patch? = null): Result {
         fun writes(items: List<InstantText.Write>) = items.all { host.patch(it.addr, it.expect, it.addr, it.value) }
-        val enabled = listOf(sites.isNotEmpty(), text != null, hm != null, full != null, cap != null && level in 1..99)
+        val enabled = listOf(sites.isNotEmpty(), text != null, hm != null, full != null, cap != null && level in 1..99,
+            beepOff != null, poisonOff != null)
         val groups: List<() -> Boolean> = listOf(
             { sites.all { host.patch(it.at, it.expect, it.branch, ReusableTms.ALWAYS_SKIP) } },
             { writes(text!!.writes) }, { writes(hm!!.writes) }, { writes(full!!.full) },
             { writes(LevelCap.writes(cap!!, level)) },
+            // LOW HP BEEP / FIELD POISON off (QuietPatches).
+            { writes(beepOff!!.writes) }, { writes(poisonOff!!.writes) },
         )
         val applied = BooleanArray(groups.size)
         host.unpatch()
@@ -33,6 +38,6 @@ object GameOptionPatches {
                 applied[failed] = false
             }
         }
-        return Result(applied[0], applied[1], applied[2], applied[3], applied[4])
+        return Result(applied[0], applied[1], applied[2], applied[3], applied[4], applied[5], applied[6])
     }
 }

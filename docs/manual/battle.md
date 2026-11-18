@@ -67,6 +67,12 @@ If you want to skip the `FIGHT` step, turn on `ONE-TAP MOVES` in SETTINGS (COMPA
 
 ![ONE-TAP MOVES on: the four move cards fill the top of the screen, BAG, RUN and POKéMON in a row below](shots/companion-battle-onetap.png "ONE-TAP MOVES")
 
+### LAST BALL
+
+In a wild battle, a small white button with a ball on it sits at the corner of your turn's screen, by `FIGHT` (with `ONE-TAP MOVES` on, at the start of the row underneath). It shows the ball you threw last and how many you have left. Tap it and that ball is thrown at once, without opening the bag: the game plays its own throw, shakes and catch. If you're out of that kind, it shows the first ball in your bag instead.
+
+It only shows when the game would let you throw: a wild battle with one Pokémon facing you, and room for a catch (a free spot in your party, or in a box). Turn it off with `LAST BALL` in SETTINGS (COMPANION group). It's there with the `GEN 4` look of `BATTLE STYLE`, in FireRed, LeafGreen and Emerald and in the hacks on their code where the bag tab's `USE` works.
+
 ### BATTLE STYLE
 
 The battle screen comes in two looks, and both work the same way. `GEN 4` is the one shown above: big coloured buttons. `GEN 5` is laid out and coloured like the fifth generation's own touch screen, and fills the whole companion screen above the tab bar. It's a big ball, red on top and pale below, with a dark band across it that swells into the `FIGHT!` button in the middle. `BAG`, `RUN` and `POKéMON` are round dark plates rising from the bottom edge, `BAG` and `POKéMON` joined to the sides and `RUN` a little lower in between. Your party's balls sit under `FIGHT!`, and in a trainer battle the trainer's sit above it. `INFO` and `SUGGESTIONS` are the two small plates in the top corners.
@@ -77,7 +83,7 @@ In `GEN 5`, `FIGHT!` grows the band into a dark field with your four moves on it
 
 ![GEN 5's moves: four dark plates edged in their type's colour over a dark field, your party's balls under them and the arrow back](shots/companion-battle-gen5-moves.png "GEN 5's moves")
 
-The first time you open PokeDaisy after this update, it asks which look you want, with both side by side. Change it any time with `BATTLE STYLE` in the companion's SETTINGS (COMPANION group). `ONE-TAP MOVES` works with either look. Yellow keeps its own black and white text boxes whichever you pick.
+The first time you open PokeDaisy after this update, it asks which look you want, with both side by side. Change it any time with `BATTLE STYLE` in the companion's SETTINGS (COMPANION group). On a device with one screen it also sets the look of the `BATTLE BUTTONS` beside the game (see below). `ONE-TAP MOVES` works with either look. Yellow keeps its own black and white text boxes whichever you pick.
 
 ## INFO: the whole matchup on one page
 
@@ -120,7 +126,7 @@ In a trainer's double battle the page shows one foe at a time, the one on the le
 
 ### Foe IVs
 
-The foe's IVs, EVs and nature are hidden by default, since knowing them is a bit of a peek. Turn on `FOE IVS` in SETTINGS and `INFO` gets a `STATS` button: your Pokémon and the foe side by side, each stat with its IV and EV, plus `NATURE` and `HIDDEN POWER`. It's the same view as the [STATS page in a summary](party.md).
+The foe's IVs, EVs and nature are hidden by default, since knowing them is a bit of a peek. Turn on `FOE IVS` in SETTINGS and `INFO` gets a `STATS` button: your Pokémon and the foe side by side, each stat with its IV and EV, plus `NATURE` and `HIDDEN POWER`. It's the same view as the [STATS page in a summary](party.md). In the Game Boy games it shows DVs and stat experience instead ([how they differ](party.md#in-the-game-boy-games)); a wild foe there never has any stat experience.
 
 ## The foe's team
 
@@ -151,7 +157,7 @@ Tap a Pokémon to send it in. PokeDaisy works the game's party menu for you, and
 
 The same pane appears when the game asks you to choose, for example after one of your Pokémon faints.
 
-This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
+This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue, Brown, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
 
 ![The switch pane: the party in the game's slots, one Pokémon tagged BEST, EMBERPUP tagged OUT and GALEFINCH fainted, with Choose a POKéMON. and CANCEL below](shots/companion-battle-switch.png "Choosing who to send in")
 
@@ -159,7 +165,7 @@ This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed,
 
 With the companion on a second screen, its battle buttons do the choosing, so the game's own menu is left off the game's screen: no `FIGHT`, `BAG`, `POKéMON` and `RUN` box, and no list of moves. The game's "What will ... do?" box runs the whole width instead, with a sign of two screens at its right, the bottom one lit, like a DS game pointing you at its touch screen. Pick on the companion as usual and the battle plays out on top.
 
-Your game's buttons work on the companion's buttons too. The one the game's cursor is on is lit from the start of your turn, and the D-pad moves it the way the companion lays them out: up to `FIGHT`, down from `FIGHT` to `RUN`, left and right along `BAG`, `RUN` and `POKéMON`. A picks the lit one and B goes back, as in the game. In your moves the D-pad walks the four cards. While the menu is hidden, `FIGHT` and `POKéMON` on the companion open the game's own moves and party screen, so your buttons always work on what you see. The menu comes back by itself where the companion has no buttons for it: in a double battle and in the Safari Zone. Nothing in the game changes; only the picture does.
+Your game's buttons work on the companion's buttons too. The one the game's cursor is on is lit from the start of your turn, and the D-pad moves it the way the companion lays them out: up to `FIGHT`, down from `FIGHT` to `RUN`, left and right along `BAG`, `RUN` and `POKéMON`. A picks the lit one and B goes back, as in the game. In your moves the D-pad walks the four cards. While the menu is hidden, `FIGHT` and `POKéMON` on the companion open the game's own moves and party screen, so your buttons always work on what you see. The menu comes back by itself where the companion has no buttons for it: in a double battle, in the Safari Zone and in the games' tutorial battles (your very first battle, and the catching lessons). Nothing in the game changes; only the picture does.
 
 This is in FireRed and LeafGreen in English and Spanish, Emerald in every language but Japanese, and several hacks built on them. To see the game's menu again, turn off `HIDE BATTLE MENU` in SETTINGS (SCREEN group, on either screen). It's on by default, and only there on a device with two screens.
 
@@ -171,19 +177,10 @@ On a device with one screen, held sideways, three buttons sit at the top right o
 - `POKéMON` opens your party as a list down the right side, drawn like the game's own party list: each Pokémon's icon over its ball (animated like the game's), name, level or status, and HP bar. `BEST` marks the one SUGGESTIONS would pick (it's highlighted, like the game's cursor) and `OUT` the one battling. Tap one to send it in.
 - `RUN` runs away. It's greyed out in a trainer battle, where you can't.
 
-To close a list without picking, tap outside it or `CANCEL` under it. The buttons look like the BATTLE tab's and dim while the battle plays out. They slide in from the right edge as a battle starts, and slide away while a list is open or the game's own party or bag screen is up. They show in single battles of the games with touch buttons, and only when there's room beside the game: not with `ASPECT` on `STRETCH`, nor while the companion is locked open beside the game. To hide them, turn off `BATTLE BUTTONS` in SETTINGS (SCREEN group, on either screen).
+To close a list without picking, tap outside it or `CANCEL` under it. The buttons look like the BATTLE tab's and follow `BATTLE STYLE`: in `GEN 5` they're dark plates in a white rim, each move edged in its type's colour and each of your Pokémon in a green rim with its HP on a pale strip. They dim while the battle plays out. They slide in from the right edge as a battle starts, and slide away while a list is open or the game's own party or bag screen is up. They show in single battles of the games with touch buttons, and only when there's room beside the game: not with `ASPECT` on `STRETCH`, nor while the companion is locked open beside the game. To hide them, turn off `BATTLE BUTTONS` in SETTINGS (SCREEN group, on either screen).
 
-In HeartGold, SoulSilver, Platinum, Black, White, Black 2 and White 2 the battle stays wide, and its text box becomes a strip across the bottom of the screen: the game's question ("What will ... do?") at the far left, and the game's four buttons at the right, `FIGHT` and `BAG` over `POKéMON` and `RUN`. Each game keeps its own look: HeartGold's and SoulSilver's coloured buttons, Platinum's, Black's and White's dark buttons with coloured words, and Black 2's and White 2's black buttons outlined in colour, those last two's round battle panels laid out as the same four buttons. They work like the GBA games' menu: corners pulsing like the game's cursor mark your choice (red in HeartGold, SoulSilver and Platinum, pink in Black and White, white and red in Black 2 and White 2); move them with the D-pad and press A, or tap a button. `FIGHT` turns the strip into your four moves, drawn like the game's own move buttons: the name, the type and the PP, and in the corner how hard the move hits the foe (`2x`, `1x`, `½x` and so on). B, or the back button beside them, goes back. `BAG` and `POKéMON` open the game's own bag and party, floating over the battle once they've faded in, and when you're done there the buttons come back. With touch controls on, the ones that would sit over the strip's buttons or moves step aside while they're up, so a tap there always reaches the battle. This is while `DS LAYOUT` is on `ONE SCREEN`. With `BATTLE BUTTONS` off, or in a double battle, the game's own battle buttons float in instead. On `PICTURE IN PICTURE` the game's own buttons are already there in the corner, so you tap those.
+In HeartGold, SoulSilver, Platinum, Black, White, Black 2 and White 2 the battle stays wide, and its text box becomes a strip across the bottom of the screen: the game's question ("What will ... do?") at the far left, and the game's four buttons at the right, `FIGHT` and `BAG` over `POKéMON` and `RUN`. Each game keeps its own look: HeartGold's and SoulSilver's coloured buttons, Platinum's, Black's and White's dark buttons with coloured words, and Black 2's and White 2's black buttons outlined in colour, those last two's round battle panels laid out as the same four buttons. They work like the GBA games' menu: corners pulsing like the game's cursor mark your choice (red in HeartGold, SoulSilver and Platinum, pink in Black and White, white and red in Black 2 and White 2); move them with the D-pad and press A, or tap a button. `FIGHT` turns the strip into your four moves, drawn like the game's own move buttons: the name, the type and the PP, and in the corner how hard the move hits the foe (`2x`, `1x`, `½x` and so on). B, or the back button beside them, goes back. `BAG` and `POKéMON` open the game's own bag and party, floating over the battle once they've faded in, and when you're done there the buttons come back. With touch controls on, the ones that would sit over the strip's buttons or moves step aside while they're up, so a tap there always reaches the battle. This is while `DS LAYOUT` is on `ONE SCREEN`. With `BATTLE BUTTONS` off, or in a double, triple or rotation battle, the game's own battle buttons float in instead, and so does the choice of which Pokémon to hit. On `PICTURE IN PICTURE` the game's own buttons are already there in the corner, so you tap those.
 
 ## Turning the hints off
 
 If you'd rather work out matchups yourself, turn off `BATTLE HINTS` in SETTINGS. The verdicts on moves, the foe's weaknesses, the warnings on your card and the `BEST` tag all go away. The facts stay: HP, types, levels, moves, power and PP. (`SUGGESTIONS` is still there if you ask for it.)
-
-## On iPad
-
-In a single battle, the companion's battle buttons can choose an action or move and return with `BACK`.
-When the game's party menu is supported, you can also choose who to send in. `ONE-TAP MOVES`, `BATTLE STYLE`,
-`BATTLE VIEW` and `BATTLE INFO` are in the companion's `SETTINGS`, alongside the hints and foe IVs.
-
-These buttons press the game's own keys. A choice may take a few frames while the game's cursor moves.
-For a double battle or a party menu the companion cannot control yet, use the game buttons.

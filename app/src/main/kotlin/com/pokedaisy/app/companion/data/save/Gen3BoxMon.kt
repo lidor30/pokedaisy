@@ -17,48 +17,83 @@ class Gen3BoxMon private constructor(
     val checksumOk: Boolean,
     /** The record as read: what an unreadable one [encode]s back to. */
     private val original: ByteArray,
-) {
+) : SaveMon {
 
-    val personality: Long get() = u32(header, 0)
+    override val game: SaveGameData get() = Gen3GameData
+    override val personality: Long get() = u32(header, 0)
     val otId: Long get() = u32(header, 4)
     val nicknameBytes: ByteArray get() = header.copyOfRange(0x08, 0x12)
     val language: Int get() = header[0x12].toInt() and 0xFF
     private val flags: Int get() = header[0x13].toInt() and 0xFF
     /** The game's own "Bad Egg" bit (set when it found the checksum wrong). */
-    val isBadEgg: Boolean get() = flags and 1 != 0 || !checksumOk
+    override val isBadEgg: Boolean get() = flags and 1 != 0 || !checksumOk
     val otNameBytes: ByteArray get() = header.copyOfRange(0x14, 0x1B)
 
     // Growth
-    val species: Int get() = u16(data, 0)
-    val heldItem: Int get() = u16(data, 2)
-    val exp: Long get() = u32(data, 4)
-    val ppBonuses: Int get() = data[8].toInt() and 0xFF
-    val friendship: Int get() = data[9].toInt() and 0xFF
+    override val species: Int get() = u16(data, 0)
+    override val heldItem: Int get() = u16(data, 2)
+    override val exp: Long get() = u32(data, 4)
+    override val ppBonuses: Int get() = data[8].toInt() and 0xFF
+    override val friendship: Int get() = data[9].toInt() and 0xFF
     // Attacks
-    val moves: IntArray get() = IntArray(4) { u16(data, 12 + it * 2) }
-    val pp: IntArray get() = IntArray(4) { data[20 + it].toInt() and 0xFF }
+    override val moves: IntArray get() = IntArray(4) { u16(data, 12 + it * 2) }
+    override val pp: IntArray get() = IntArray(4) { data[20 + it].toInt() and 0xFF }
     // EVs / condition
-    val evs: IntArray get() = IntArray(6) { data[24 + it].toInt() and 0xFF }
+    override val evs: IntArray get() = IntArray(6) { data[24 + it].toInt() and 0xFF }
     // Misc
     val metLocation: Int get() = data[37].toInt() and 0xFF
     private val origins: Int get() = u16(data, 38)
-    val metLevel: Int get() = origins and 0x7F
+    override val metLevel: Int get() = origins and 0x7F
     /** GAME_VERSION the mon was met in (1 Sapphire, 2 Ruby, 3 Emerald, 4 FireRed, 5 LeafGreen, 15 Colosseum / XD). */
     val metGame: Int get() = (origins shr 7) and 0xF
     val ball: Int get() = (origins shr 11) and 0xF
     private val ivWord: Long get() = u32(data, 40)
-    val ivs: IntArray get() = IntArray(6) { ((ivWord shr (it * 5)) and 0x1F).toInt() }
-    val isEgg: Boolean get() = (ivWord shr 30) and 1L == 1L
-    val abilityNum: Int get() = ((ivWord shr 31) and 1L).toInt()
-    private val ribbons: Long get() = u32(data, 44)
+    override val ivs: IntArray get() = IntArray(6) { ((ivWord shr (it * 5)) and 0x1F).toInt() }
+    override val isEgg: Boolean get() = (ivWord shr 30) and 1L == 1L
+    override val abilityNum: Int get() = ((ivWord shr 31) and 1L).toInt()
+    /** The ribbons word: five contest ranks (3 bits each), the twelve others' bits, then the fateful-encounter bit. */
+    val ribbons: Long get() = u32(data, 44)
     /** The top ribbon bit: the "fateful encounter" the trade code checks on Mew and Deoxys (obedience). */
     val fatefulEncounter: Boolean get() = (ribbons shr 31) and 1L == 1L
+    /** The summary's marks (circle, square, triangle, heart). */
+    val markings: Int get() = header[0x1B].toInt() and 0xFF
+    /** Condition: cool, beauty, cute, smart, tough, then sheen. */
+    val contest: IntArray get() = IntArray(6) { data[30 + it].toInt() and 0xFF }
+    /** The original trainer's gender (1 = female). */
+    val otGender: Int get() = (origins shr 15) and 1
 
-    val isEmpty: Boolean get() = checksumOk && species == 0
-    val nature: Int get() = (personality % 25).toInt()
+    override val isEmpty: Boolean get() = checksumOk && species == 0
+    override val nature: Int get() = (personality % 25).toInt()
+
+    /** The trainer ID / secret ID halves of [otId]. */
+    override val otTid: Int get() = (otId and 0xFFFF).toInt()
+    override val otSid: Int get() = ((otId shr 16) and 0xFFFF).toInt()
+
+    /** IsShinyOtIdPersonality: OT ID ^ secret ID ^ the personality's halves under 8. */
+    override val isShiny: Boolean get() = Gen3Personality.isShiny(personality, otId)
+
+    /** The species' ability this one has (its ability bit; a species with one ability always has that). */
+    override val ability: Int get() = Gen3Species.ability(species, abilityNum)
+
+    /** GetGenderFromSpeciesAndPersonality. */
+    override val gender: Gen3Gender get() = Gen3Personality.gender(species, personality)
+
+    /** The nickname in the games' Western text; a Japanese game's (language 1) is in kana the Western table can't read. */
+    override val nickname: String? get() =
+        if (language == 1) null else com.pokedaisy.app.companion.data.Gen3Text.decode(nicknameBytes, 0, 10).trim().ifEmpty { null }
+
+    override val otName: String get() = if (language == 1) "-" else com.pokedaisy.app.companion.data.Gen3Text.decode(otNameBytes, 0, 7).trim()
+
+    override val metGameLabel: String get() = when (metGame) {
+        1 -> "SAPPHIRE"; 2 -> "RUBY"; 3 -> "EMERALD"; 4 -> "FIRERED"; 5 -> "LEAFGREEN"; 15 -> "COLOSSEUM / XD"
+        else -> "?"
+    }
+
+    /** Pokérus (strain / days) as stored: 0 = never had it. */
+    override val pokerus: Int get() = data[36].toInt() and 0xFF
 
     /** Level from experience and the species' growth rate (box records keep no level byte). */
-    val level: Int get() = levelFor(species, exp)
+    override val level: Int get() = levelFor(species, exp)
 
     /**
      * This record with [species], [heldItem] and / or [nickname] (10 bytes, the game's charset) changed - what a trade
@@ -69,15 +104,33 @@ class Gen3BoxMon private constructor(
         species: Int? = null, heldItem: Int? = null, nickname: ByteArray? = null,
         /** Four move ids, their PP and the PP Up bits (2 per move) - set together. */
         moves: IntArray? = null, pp: IntArray? = null, ppBonuses: Int? = null,
+        exp: Long? = null, friendship: Int? = null,
+        /** Six values in the game's stat order (HP, Attack, Defense, Speed, Sp. Atk, Sp. Def). */
+        evs: IntArray? = null, ivs: IntArray? = null,
+        /** The ability bit (which of the species' two abilities). */
+        abilityNum: Int? = null,
     ): ByteArray {
         require(checksumOk) { "an unreadable record is never changed" }
         val h = header.copyOf()
         val d = data.copyOf()
         species?.let { putU16(d, 0, it) }
         heldItem?.let { putU16(d, 2, it) }
+        exp?.let { putU32(d, 4, it) }
         ppBonuses?.let { d[8] = it.toByte() }
+        friendship?.let { require(it in 0..255); d[9] = it.toByte() }
         moves?.let { require(it.size == 4); for (i in 0 until 4) putU16(d, 12 + i * 2, it[i]) }
         pp?.let { require(it.size == 4); for (i in 0 until 4) d[20 + i] = it[i].toByte() }
+        evs?.let { require(it.size == 6 && it.all { v -> v in 0..255 }); for (i in 0 until 6) d[24 + i] = it[i].toByte() }
+        if (ivs != null || abilityNum != null) {
+            var word = u32(d, 40)
+            ivs?.let {
+                require(it.size == 6 && it.all { v -> v in 0..31 })
+                word = word and 0x3FFFFFFFL.inv() and 0xFFFFFFFFL
+                for (i in 0 until 6) word = word or (it[i].toLong() shl (i * 5))
+            }
+            abilityNum?.let { word = (word and 0x7FFFFFFFL) or ((it.toLong() and 1L) shl 31) }
+            putU32(d, 40, word)
+        }
         nickname?.let { require(it.size == NICKNAME_BYTES); it.copyInto(h, 0x08) }
         return Gen3BoxMon(h, d, true, original).encode()
     }

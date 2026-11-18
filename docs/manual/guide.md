@@ -33,7 +33,7 @@ HERE is about the place you're standing in right now, and it changes as you walk
 
 In Crystal, Crystal Legacy and Polished Crystal the grass list follows your game's clock (morning, day or night; in Polished Crystal the evening uses the night's), and the line under `GRASS / CAVE` says which time it's for. A few fishing spots also catch something else at night. Some of Polished Crystal's side areas set their Pokémon's levels by how many badges you have, and HERE already shows the levels for yours.
 
-In Lazarus many outdoor areas have different Pokémon by day and at night. Its night runs from 8 in the evening to 7 in the morning on your game's clock. HERE lists the ones out right now, says under `GRASS / CAVE` whether that's `DAY` or `NIGHT`, and adds an `AT NIGHT` (or `BY DAY`) section for the ones that only show up at the other time. The line at the top that counts how many you've caught here counts both.
+In Lazarus and Radical Red many outdoor areas have different Pokémon by day and at night. Lazarus's night runs from 8 in the evening to 7 in the morning on your game's clock, Radical Red's from 5 in the evening to 4 in the morning. HERE lists the ones out right now, says under `GRASS / CAVE` whether that's `DAY` or `NIGHT`, and adds an `AT NIGHT` (or `BY DAY`) section for the ones that only show up at the other time. The line at the top that counts how many you've caught here counts both, and the DEX's `AREA` lists both.
 
 In Black, White, Black 2 and White 2 the wild Pokémon change with the seasons, and the season changes every month: January, May and September are spring, then summer, autumn and winter in turn. The line under `GRASS / CAVE` says which season HERE shows, going by your device's date.
 - **PEOPLE**: anyone in the area who gives you an item, a Pokémon or an egg, and in-game trades (what they offer and what they want for it). Some of them want something done first.
@@ -83,9 +83,10 @@ The pages a game gets depend on how much of it has been mapped. The [supported g
 | Unbound, Radical Red, Heart and Soul, Odyssey, Gaia, Amethyst, Celia's hack, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Sword and Shield Ultimate Plus, GS Chronicles, Recharged Yellow, Emerald Legacy, Red, Blue, Yellow, Yellow Legacy, Crystal, Crystal Legacy, Polished Crystal | NEXT BOSS, HERE with people and items, a WHERE IS built from the maps and, for most of them, a few TIPS |
 | Lazarus, Seaglass, Too Many Types 2, SoulGold, Glazed, Emerald Imperium, Quetzal (both releases, and Moemon Quetzal), Super Mariomon, Recharged Emerald, Dreamstone Mysteries, Monomyth | NEXT BOSS and the wild Pokémon in HERE |
 | Elite Redux | The wild Pokémon in HERE. Its gym leaders pick one of several teams when the battle starts, so there's no NEXT BOSS |
+| Epsilon Emerald | The wild Pokémon in HERE. Its gym leaders pick their team from a bigger group when the battle starts, so there's no NEXT BOSS |
 | Team Rocket Edition: Dragonsden Version | The wild Pokémon in HERE. Its story takes you around in its own order, so there's no NEXT BOSS yet |
 | Wishes of Tomorrow | The wild Pokémon in HERE, swapped the way your save swaps them when you play with its randomizer on. Its story takes you around its own region in its own order, so there's no NEXT BOSS yet |
-| Emerald Rogue, R.O.W.E., PureRed, PureBlue, Gold, Silver, Crystal Clear, Prism | No guide yet |
+| Emerald Rogue, R.O.W.E., PureRed, PureBlue, Brown, Gold, Silver, Crystal Clear, Prism | No guide yet |
 
 The original games' hand-written pages follow the app's language when you play a French, German, Italian, Spanish or Japanese copy. Most hacks' pages are in English.
 

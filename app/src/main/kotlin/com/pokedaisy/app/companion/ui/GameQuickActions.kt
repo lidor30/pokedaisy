@@ -27,6 +27,8 @@ class GameQuickActions(
     private val notice: (String) -> Unit,
     private val active: () -> Boolean,
     private val extra: QuickActions,
+    /** HEAL done: the party as it was before (the host shows the bars filling up); null = a notice says so. */
+    private val healed: ((List<com.pokedaisy.app.companion.data.MonView>) -> Unit)? = null,
 ) : QuickActions {
     init {
         menu.onRun = ::run
@@ -50,8 +52,14 @@ class GameQuickActions(
             QuickAction.PC -> items()?.openPc { outcome ->
                 if (active() && outcome.result != ItemUseResult.USED) notice(itemUseMessage(outcome))
             }
-            QuickAction.HEAL -> items()?.centerHeal { result ->
-                if (active()) notice(if (result == CenterResult.OK) tr("Your POKéMON are fully healed.") else centerMessage(result, ""))
+            QuickAction.HEAL -> {
+                val before = snapshot().party
+                items()?.centerHeal { result ->
+                    if (!active()) return@centerHeal
+                    val show = healed
+                    if (result == CenterResult.OK && show != null) show(before)
+                    else notice(if (result == CenterResult.OK) tr("Your POKéMON are fully healed.") else centerMessage(result, ""))
+                }
             }
             QuickAction.FLY -> {
                 val visit = menu.visit
@@ -98,4 +106,5 @@ class GameQuickActions(
     override fun riding() = extra.riding()
     override fun flying() = extra.flying()
     override fun flashDark() = extra.flashDark()
+    override fun turbo() = extra.turbo()
 }

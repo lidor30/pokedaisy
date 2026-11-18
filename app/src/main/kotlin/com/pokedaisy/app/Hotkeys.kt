@@ -4,6 +4,7 @@ import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.data.KeyCodes
 import com.pokedaisy.app.companion.data.Logs
 import com.pokedaisy.app.companion.data.PropertiesText
+import com.pokedaisy.app.companion.data.delete
 import com.pokedaisy.app.companion.data.isFile
 import com.pokedaisy.app.companion.data.readText
 import com.pokedaisy.app.companion.data.writeTextAtomically
@@ -237,6 +238,12 @@ class Hotkeys private constructor(
         private fun writeProps(filesDir: Path, props: Map<String, String>): Boolean = runCatching {
             file(filesDir).writeTextAtomically(PropertiesText.format(props, "PokeDaisy hotkeys — comma-separated chords, '+' joins keys of one chord"))
         }.isSuccess
+
+        /** Every hotkey back to [DEFAULTS] (GitHub discussion #923): the file goes, and the next read writes them. HOTKEYS
+         * ON / OFF is a setting of its own and stays. */
+        fun resetBindings(filesDir: Path) {
+            file(filesDir).delete()
+        }
 
         fun load(filesDir: Path): Hotkeys {
             val props = readProps(filesDir)

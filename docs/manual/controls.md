@@ -3,12 +3,12 @@ title: Controls, hotkeys and touch
 summary: Remap the game's buttons, set up turbo, change or turn off the hotkeys, set up the touch controls or an external controller, and what the BACK button does.
 section: player
 order: 2
-keywords: [flash, dark cave, light up cave, remap, rebind, keybind, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors, hm, hms, hm slave, hidden machine, field moves, no hms, without hms, exp share, exp all, experience, share exp, party exp, grinding, level up faster, level cap, max level, hard mode, overleveled]
+keywords: [flash, dark cave, light up cave, remap, rebind, keybind, reset controls, reset buttons, default buttons, reset hotkeys, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors, hm, hms, hm slave, hidden machine, field moves, no hms, without hms, exp share, exp all, experience, share exp, party exp, grinding, level up faster, level cap, max level, hard mode, overleveled]
 ---
 
 PokeDaisy works out of the box on handhelds like the AYN Thor: the face buttons, shoulders, START and SELECT are the GBA's, and a few button combinations do emulator things like saving a state. Everything here is about changing that: which button presses what, which shortcuts exist, and what happens when you plug in a controller or play by touch.
 
-The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `WILD ENCOUNTERS`, `SHINY ODDS`, `EXP SHARE`, `LEVEL CAP` and `NO HMS NEEDED` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
+The button settings live in the `CONTROLS` group, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS`. `AUTO-RUN`, `RUN INDOORS`, `WILD ENCOUNTERS`, `SHINY ODDS`, `SHINY ALERT`, `LOW HP BEEP`, `FIELD POISON`, `BOSS RETRY`, `EXP SHARE`, `LEVEL CAP` and `NO HMS NEEDED` change the game itself, so they're in the companion's `GAMEPLAY` group, near the top.
 
 ## Game buttons
 
@@ -35,6 +35,8 @@ To change one, tap its row (it says `PRESS A BUTTON…`) and press the button yo
 
 The new button replaces everything that row had, keyboard key included. A button can only do one thing in a game: put it on a new row and it leaves the old one in the same games. `TO COMPANION` is the exception: it shares its button with whatever else is on it.
 
+Got in a muddle, or put `A` somewhere you can't reach? `RESET TO DEFAULTS` at the bottom of the page puts every game button back the way it came, after asking first. You can tap it, so it works even when your buttons don't.
+
 > [!NOTE]
 > Buttons go by Android's names, which follow an Xbox controller's layout. On AYN and Retroid devices, `A` is the bottom face button even where the printed label says something else. If A and B feel swapped, swap them here.
 
@@ -42,21 +44,13 @@ The D-pad and the analog stick always move; they can't be remapped. The four D-p
 
 ![The top screen's GAME BUTTONS page: ALL GAMES, DS GAMES and GBA AND GAME BOY, a row for each button with the keys it's on](shots/settings-buttons.png "GAME BUTTONS on the top screen")
 
-### iPhone and iPad bindings
-
-On iPhone and iPad, `GAME BUTTONS` uses the same binding rows and button capture. Connect a controller or hardware keyboard, tap a row, press its new key, then release it. `CANCEL` or Escape leaves the binding alone. The D-pad and left stick always move. You can bind another key to a D-pad row, `TURBO A`, `TURBO B`, `START 2` or `SELECT 2`.
-
-Your existing iOS defaults stay the same: X is A, Z is B, A and S are L and R, Return is START, and Backspace or right Shift is SELECT. A controller's shoulders and triggers press L and R. Extra X and Y bindings start empty. Changing a row replaces all its old keys. The keyboard letters keep working in text fields while the companion window is open.
-
-Bindings are kept in `PokeDaisy/bindings/controls.properties` in Files. The keys use the same canonical names as Android, so you can copy a binding file between platforms. Buttons held while a capture or companion window closes need a release before they can reach the game again.
-
 ## X takes your buttons to the companion
 
 On a handheld with two screens, or a phone held upright with a controller, press `X` (the `TO COMPANION` button in `GAME BUTTONS`) while you walk around in a GBA or Game Boy game and your buttons move down to the companion, like the menu on a DS game's touch screen. A silver strip slides up along the bottom of the game with an arrow pointing down at the companion, and `L` and `R` slide in at the ends of the companion's tab bar.
 
 While your buttons are down there, the game keeps running but doesn't see them:
 
-- The D-pad moves the cursor and `A` picks what it's on.
+- The D-pad moves the cursor and `A` picks what it's on. Hold a direction to keep moving.
 - `L` and `R` move between the tabs.
 - `B` goes back, and when there's nothing left to go back from, it gives your buttons back to the game.
 - `X` or `START` give them back from anywhere. So does a tap on the silver strip.
@@ -98,7 +92,7 @@ When SELECT or START is part of a chord, the game gets it when you let go rather
 | `RESTART GAME` | Starts the game again from its save, like `RESTART GAME` in the companion's `SETTINGS` | | |
 | `CLOSE APP` | Leaves the game (it saves as usual) and closes PokeDaisy completely, so it's gone from your recent apps | | |
 | `QUICK MENU` | Opens the [quick menu](#the-quick-menu), or closes it | L3 (shown as `THUMBL`) | |
-| `COMPANION` | Opens the companion over the game on one screen, where you can hide its edge button with `COMPANION BUTTON`. Also brings it back after `CLOSE COMPANION`. On a phone held upright it hides the companion or brings it back. In a DS game with two screens it swaps the second screen between the touch screen and the companion, and your buttons go with it | | |
+| `COMPANION` | Opens the companion over the game on one screen, where you can hide its buttons on the game screen with `COMPANION BUTTON`. Also brings it back after `CLOSE COMPANION`. On a phone held upright it hides the companion or brings it back. In a DS game with two screens it swaps the second screen between the touch screen and the companion, and your buttons go with it | | |
 | `FREE FLIGHT` | Takes off to [fly over the map](map.md#flying-over-the-map), or lands | | |
 | `MUTE` | Mutes the game, or brings its sound back (`MUTE GAME` in [SOUND](fast-forward.md#game-volume-and-mute-sound)) | | |
 | `TOUCH SCREEN` | In a DS game on one screen: brings its touch screen up over the game, or closes it (see [DS layout](devices.md#ds-layout-two-screens-on-one)) | L2 | T |
@@ -109,14 +103,6 @@ When SELECT or START is part of a chord, the game gets it when you let go rather
 The speed hotkeys are explained in [Fast-forward and game speed](fast-forward.md), states and rewind in [Saves](saves.md), and zoom in [Screen](screen.md).
 
 ![The top screen's HOTKEYS page: the HOTKEYS switch, then each hotkey with its buttons](shots/settings-hotkeys.png "HOTKEYS on the top screen")
-
-### iPhone and iPad hotkeys
-
-On iPhone and iPad, `HOTKEYS` starts off so your existing trigger buttons still press L and R. Turn it on to use the speed, state, slot, `EXIT GAME`, `RESTART GAME`, `COMPANION`, `QUICK MENU` and `MUTE` shortcuts. The defaults in the table apply to these actions. Actions that need a feature still being ported are omitted.
-
-`FF HOLD` and `SLOWMO HOLD` stop when you release their keys, open a companion window or button capture, focus a text box, or put the app in the background. Fast-forward takes priority over half speed. The touch FF button keeps its own hold. On both platforms, releasing touch leaves a controller hold active, and releasing the controller leaves touch active. Changing bindings or turning hotkeys off releases the old hotkey holds. `SPEED CYCLE` goes through 1x, 1.5x, 2x, 3x and 4x, then back to 1x. From half or quarter speed it returns to 1x, using the same policy as Android.
-
-Use the shared key-capture rows to change a shortcut or chord. Escape cancels a capture. SELECT and START alone keep their game action after release; a completed shortcut takes the combination. `COMPANION` opens the shared panel, and hides or reveals it in portrait. In a companion window, B or START closes it. While you type in a text box, keyboard shortcuts and game buttons leave those keys to the text box. The binding file is `PokeDaisy/bindings/hotkeys.properties` in Files.
 
 ### Changing a hotkey
 
@@ -143,6 +129,8 @@ If you pick exactly the buttons another hotkey already has (the same buttons in 
 
 The `HOTKEYS` switch at the top of the page turns every hotkey off at once. The bindings stay as they are (greyed out) and every button goes straight to the game. It's handy if a game needs a combination that clashes with a hotkey, and you'd rather not rebind anything.
 
+`RESET TO DEFAULTS` at the bottom of the page puts every hotkey back the way it came, after asking first. The `HOTKEYS` switch stays as you set it.
+
 ## The quick menu
 
 The quick menu puts the things you'd otherwise dig through menus for under one button. Press L3 (the left stick, pushed in) and your actions pop up over the game, as a ring or in rows (see `STYLE` below). The rest of the HUD fades back while it's open, and any HUD panel you had open (a summary, the map, the bag, the wild list) closes:
@@ -150,8 +138,8 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | Action | What it does |
 | --- | --- |
 | `PC` | Opens your game's own PC right where you stand, as in the [bag](bag.md). |
-| `HEAL` | Heals the whole party, as the nurse at a POKéMON CENTER does. The other services are on a Pokémon's summary: see [CENTER](party.md#center-heal-relearn-forget-rename). |
-| `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move, or any Pokémon with [`NO HMS NEEDED`](#no-hms-needed) on. |
+| `HEAL` | Heals the whole party, as the nurse at a POKéMON CENTER does. It asks first (`YES` / `NO`), then shows each Pokémon's HP bar filling up. The other services are on a Pokémon's summary: see [CENTER](party.md#center-heal-relearn-forget-rename). |
+| `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move, or any Pokémon with [`NO HMS NEEDED`](#no-hms-needed) on. In a game whose own party menu lets a Pokémon fly without knowing the move (Unbound), it goes by the game's rule. |
 | `TAKE OFF` | Takes off on your Pokémon's bird and lets you [fly over the map](map.md#flying-over-the-map); while you're up it says `LAND` and brings you down. The original games in every language, Emerald Legacy and the hacks listed in [Map](map.md#flying-over-the-map). |
 | `FLASH` | Lights up a dark cave, the way the move does from the game's party menu: the Pokémon that knows it shows up and the cave lights up. It only shows while a Pokémon in your party knows `FLASH` (any Pokémon will do with [`NO HMS NEEDED`](#no-hms-needed) on), and it's greyed out where it isn't dark. In Emerald it also opens the sealed wall in the ancient tomb when you stand where the game asks. It needs the same badge as in the game. |
 | The keep-away spray | Uses an item from your bag that keeps wild Pokémon away (the tile shows its icon and name). With more than one kind in your bag, it lists them with how many you have and how many steps each lasts, so you pick. While one is still working it's greyed out and says how many steps are left. |
@@ -160,6 +148,7 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | `WILD` | Turns `WILD ENCOUNTERS` off, and back on the next time. An `OFF` tag on its corner says they're off. It shows in games where `WILD ENCOUNTERS` works. |
 | `SAVE STATE`, `LOAD STATE` | Saves or loads the current state slot. |
 | `FF` | Turns fast-forward on or off. |
+| `TURBO A` | Makes your A button a turbo button: hold it and A is pressed over and over, like [`TURBO A`](#turbo-a-and-b) without binding a button. Tap it again to switch it off; it's off each time you open a game. |
 | `TOUCH SCREEN` | In a DS game on one screen: brings its touch screen up over the game, or closes it, like L2. Handy on a phone, which has no L2. |
 | `COMPANION` | Opens the companion (on a device with one screen). |
 
@@ -167,7 +156,7 @@ Press L3 and the menu stays open: move with the D-pad or the left stick (on the 
 
 An action you can't use right now is greyed out and says why, like a battle going on or nothing for it in your bag. `BIKE` and `ROD` use the game's own way of using a registered item, so the game decides the rest: where you can't ride or fish, it tells you so. They work in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in Emerald Kaizo and Ultra Violet, which run on those games, and in SoulGold, through its own `SELECT` wheel (it borrows the wheel's bottom slot for a moment, then puts back what you had there). `PC`, `FLY` and the spray show only in games where the [bag](bag.md) and [map](map.md) offer them. `FLASH` works in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language PokeDaisy supports, and in Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Ultra Violet, Gaia, Odyssey, Orange Islands, Let's Go, Glazed, Emerald Kaizo, Emerald Legacy, Recharged Emerald, Lazarus, Emerald Imperium, Heart and Soul, SoulGold and the randomized games. It asks for the badge the game's own menu asks for (Unbound, Gaia and Orange Islands ask for none).
 
-Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROLS` group of Settings on either screen). Its `STYLE` picks how they're laid out (tap it to switch):
+Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROLS` group of Settings on either screen): each action's row carries the icon of its tile. Its `STYLE` picks how they're laid out (tap it to switch):
 
 - `RING` (to start with): the actions round a circle, like the weapon wheel in a modern game, each the same distance from the next. Point the left stick at one, and its name shows in the middle, with a light tick of vibration each time you move onto another one. The D-pad steps round it too.
 - `GRID`: rows of tiles, all the same size. The D-pad steps through them.
@@ -175,8 +164,6 @@ Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROL
 `LABELS` (on to start with) puts each action's name under its icon. Turn it off for icons alone, smaller and closer together: the highlighted one is then named under the row, or in the middle of the ring.
 
 To use another button, change the `QUICK MENU` hotkey.
-
-On iPhone and iPad, the same menu offers `PC`, `FLY`, the keep-away spray, `WILD ENCOUNTERS`, the current state's save and load, and `FF` where supported. Held sideways, `COMPANION` opens the companion too. The game's own checks still decide when a field action can run. Other actions are omitted until their features are available on iOS.
 
 You can open it with the `QUICK MENU` touch button, even with `HOTKEYS` off. With hotkeys on, L3 or your chosen key opens and closes it. Use the D-pad, a hardware keyboard's game bindings, or the ring's left stick to choose, then press `A`. `B` returns from a destination or item list, then closes the menu. Held buttons stay out of the game until released after closing.
 
@@ -222,8 +209,6 @@ The `EXTRA BUTTONS` group adds buttons the GBA doesn't have. Turn each one on or
 - **`REWIND`** (on to start with): rewinds the game for as long as you hold it, in GBA and Game Boy games. Turn `REWIND` on in Settings first; until then a press tells you where.
 - **`X AND Y`** (on to start with): X and Y buttons in GBA and Game Boy games, which have none of their own, round A, B, X and Y as on a DS: X on top, A right, B below, Y left. They work like a controller's X and Y, so they do whatever you put on them: by default X is `START 2` and `TO COMPANION`, Y is `SELECT 2`, and you can give them a hotkey under `HOTKEYS`. A DS game always shows its own X and Y.
 
-On iPhone and iPad, `X AND Y` uses the same buttons, layouts and editor. Each touch goes through your `GAME BUTTONS` and `HOTKEYS` bindings, just like a controller's X or Y. Existing iOS bindings are kept: if these keys are unbound, assign `START 2`, `SELECT 2` or a hotkey before using them. Closing a window, changing bindings or opening the layout editor releases held touch keys.
-
 ### Skins
 
 A skin replaces the drawn buttons with a picture of a whole controller. PokeDaisy reads skins made for the Delta emulator: `.deltaskin` files, which you can find on skin sites for Delta. Use ones made for the GBA or the Game Boy Color (a Game Boy Color skin is used for Game Boy games too). DS skins don't work yet.
@@ -237,9 +222,6 @@ Held sideways, the skin fills the screen and the game moves into the skin's own 
 ### Moving and resizing buttons: EDIT LAYOUT
 
 `EDIT LAYOUT` shows every button at its real size with a dashed outline. In a game it opens over the game itself (from the companion's `SETTINGS`); from the top screen's Settings it opens over a picture of the game's screen.
-
-Android and iPad use the same editor. Editing one orientation keeps the other one's layout. Controls that your
-current game cannot show keep their saved positions too.
 
 ![EDIT LAYOUT on a phone held sideways: the buttons with dashed outlines in the bars beside the game, the bar with DONE, SNAP ON and RESET at the top](shots/settings-touch-edit.png "EDIT LAYOUT")
 
@@ -262,10 +244,6 @@ A phone held upright and held sideways each get their own layout: you edit the o
 
 Both show `N/A` on a game PokeDaisy can't read the field of yet.
 
-On iPhone and iPad, both options work in supported GBA games and remember your choices. Auto-run follows the same
-rules: it leaves menus, conversations, battles, bikes, surfing and the game's own auto-run alone. On a new game,
-walk around for a few seconds so the field can be recognized. Game Boy games show `N/A` for now.
-
 If you turn indoor running off while inside a building, leave and re-enter to restore that map's normal rule.
 
 ## WILD ENCOUNTERS
@@ -277,11 +255,7 @@ If you turn indoor running off while inside a building, leave and re-enter to re
 
 Only random encounters change. Fishing, moves that lure wild Pokémon out and battles the story sets up still happen, and items that keep wild Pokémon away work as usual on top. The change applies at once, no restart needed.
 
-It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
-
-On iPhone and iPad, the toggle works where the GBA game's field and encounter switch are known. It can briefly show
-`N/A` while the game is checked. Your choice is remembered, including after resuming a saved state. Turning it back
-on restores random encounters when you return to the free field. Game Boy support is still to come on iOS.
+It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Brown, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
 
 ## SHINY ODDS
 
@@ -297,6 +271,29 @@ A shiny one you catch stays shiny when you set the odds back to `NORMAL`, and th
 While the odds are raised, [achievements](achievements.md) are paused, since some sets reward catching a shiny.
 
 It works in the original FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language and revision, and in these hacks: Unbound (French too), Radical Red, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Emerald Kaizo, Emerald Legacy, Recharged Emerald (Rebalanced too), Glazed, Ultra Violet, Orange Islands, FireRed Rocket Edition, Ash Gray, Recharged Yellow, Lazarus, Emerald Seaglass, Too Many Types 2, Emerald Imperium, Super Mariomon, SoulGold, Team Rocket Edition, Elite Redux and R.O.W.E. Many hacks have better odds of their own (1 in 4096 in Unbound, Glazed, the newer Amethyst and most of the hacks rebuilt from newer source code, about 1 in 1800 in Emerald Imperium, 1 in 256 in SoulGold, about 1 in 257 in Odyssey): there `NORMAL` keeps theirs, and a choice that isn't better changes nothing. Everywhere else, the Game Boy and DS games included, it shows `N/A`.
+
+## LOW HP BEEP and FIELD POISON
+
+Two of the games' old habits, each a switch in the companion's `GAMEPLAY` group. Both are `ON` (the game's own way) until you turn them off.
+
+- **`LOW HP BEEP`** `OFF`: no more beeping in battle while your Pokémon's health bar is in the red. Every other sound stays.
+- **`FIELD POISON`** `OFF`: a poisoned Pokémon no longer loses health while you walk around, and never faints from it on the way. In battle poison works as ever, and it stays poisoned until you heal it.
+
+They work in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports) and in many hacks built on their code. Elsewhere they show `N/A`. The change applies at once, no restart needed.
+
+## BOSS RETRY
+
+`BOSS RETRY` lets you take another go at a trainer battle you lost, without walking back from the Pokémon Center. Turn it on in the companion's `GAMEPLAY` group, and each time a trainer battle starts PokeDaisy keeps a save state of that moment, apart from your `STATES` slots. If you lose, a card asks whether to try that battle again: `RETRY` puts you back at its start, as if it never happened (your money and your Pokémon as they were then). `NO THANKS`, or letting the card's bar run out, leaves the game as it is.
+
+The battle starts over the same way, so try something different. Going back is a state load like any other: [`UNDO LOAD`](controls.md#hotkeys) takes you back to after the loss. It works in the GBA games and in Black, White, Black 2 and White 2, wherever the companion can tell a trainer's battle from a wild one.
+
+## SHINY ALERT
+
+`SHINY ALERT` is for shiny hunting. Turn it on in the companion's `GAMEPLAY` group and it counts your wild battles in this game, and the moment a shiny one shows up it says so: fast-forward and turbo stop, the game's level-up tune plays and a line on the game screen names the Pokémon and how many battles it took. The battle waits at its menu, so you can't miss your chance to catch it.
+
+While it's on, the row shows the count so far. It starts from 0 when you turn it on and again after each shiny, and each game keeps its own. Trainers' battles don't count.
+
+It works in the same games as `SHINY ODDS`, and the two go well together. Elsewhere it shows `N/A`.
 
 ## EXP SHARE
 
@@ -353,25 +350,3 @@ Some handhelds and controllers (Retroid's, for example) send their L2 and R2 tri
 - **A hold** leaves the game and returns to the library (or to the frontend that launched it).
 
 This works from either screen. On a device with one screen, a tap also slides the companion panel in and out; see [Devices](devices.md).
-
-## Touch controls on iPad
-
-Open the companion's `SETTINGS` > `TOUCH CONTROLS` to change the same layouts, size, look, colors, opacity and D-pad
-options as on Android. Changes apply to the controls straight away and are kept when you reopen the app.
-
-Held upright, it works as on an Android phone. With `COMPANION` at `UNDER GAME` (the default), the game is at the top,
-the companion right under it and the buttons in a space of their own along the bottom; the companion and then the game
-get a little smaller to make that space. With `AT BOTTOM`, the companion goes along the bottom of the screen and the
-buttons sit in the gap above it, or over the game when there's no gap, as on an iPad. Held sideways, the game is centered beside the companion, with touch controls over the game area.
-The preview and `EDIT LAYOUT` use the same arrangement as the game screen.
-
-`EDIT LAYOUT` pauses the game and opens the shared editor over its picture. Drag controls, resize or hide them, then
-choose `DONE`. Upright and sideways layouts are kept separately. `SHOW` > `AUTO` hides the controls while a gamepad is
-connected; `ALWAYS` and `NEVER` let you choose for yourself.
-
-You can enable `FF`, `QUICK MENU`, `TURBO A`, `TURBO B`, `SAVE STATE` and `LOAD STATE` under `EXTRA BUTTONS`. A short tap on `FF`
-toggles it; holding it speeds up the game until you release it. The state buttons use the current slot in `STATES`.
-`QUICK MENU` opens the same ring or grid as on Android. `REWIND` and `X AND Y` also use the shared bindings and controls. Skin import and zoom remain unavailable on iPad.
-
-You can also open `TOUCH CONTROLS` from the library's `SETTINGS`, with no game running. The editor uses a stand-in of
-the same game and controls panels. It keeps the layout for the orientation you are editing, ready for your next game.

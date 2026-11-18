@@ -15,7 +15,7 @@ import okio.Path
  * all read from the player's cart by [NdsArt.readRenegade] ([data]): its species' types (Fairy as type 9, "???"'s slot),
  * its moves' types, powers and categories, Gen 6's type chart, its machines (five TMs teach other moves), its icon palettes
  * and its maps' wild encounter rates. Its "Classic" patch shares every one of these places (only its species' types and
- * stats differ), so it matches too and reads its own.
+ * stats differ), so it matches too and reads its own; so do the shiny rate and Speed Up patches (a few bytes of code each).
  */
 object RenegadePlatinum {
     const val CODE = "CPUE"
@@ -24,6 +24,15 @@ object RenegadePlatinum {
     const val V1_3_0_SHA1 = "d4ee068b7e0a19a848436369f145e3154afe13ca"
     /** v1.3.0 with its "Classic" patch: only the species' data differs (pl_personal.narc). */
     const val V1_3_0_CLASSIC_SHA1 = "8b9d933ed88dd5bffed1e96e229db568b5dad237"
+    /** v1.3.0 with its "ShinyRate_1_4096" patch: one byte of the shiny check (cart 0x79E50). */
+    const val V1_3_0_SHINY_4096_SHA1 = "f4011800c9513892d862e71c93a08eaf7056acec"
+    /** v1.3.0 with its "ShinyRate_1_8192" patch: the same byte. */
+    const val V1_3_0_SHINY_8192_SHA1 = "51bff1a74f5759ed799a9698c3df21ab07269507"
+    /** v1.3.0 with its "SpeedUpPatch" (instant text, quick HP / EXP bars, no 30 fps cap): 21 bytes of the ARM9 and
+     * battle overlay 16, none of them a place this app reads or calls, so [matches] and every table below still hold. */
+    const val V1_3_0_SPEED_UP_SHA1 = "b26f7412bbd3309a1638c571864ea0b6cb71d20e"
+    /** Every v1.3.0 build named above (the add-on patches stack, so other combinations match [matches] without a title). */
+    val V1_3_0_PATCH_SHA1S = listOf(V1_3_0_CLASSIC_SHA1, V1_3_0_SHINY_4096_SHA1, V1_3_0_SHINY_8192_SHA1, V1_3_0_SPEED_UP_SHA1)
     /** v1.2.0: v1.3.0's ARM9 and every place below byte for byte, one data byte apart in overlay 16 and 12 data files
      * (species, moves, trainers, encounters...) of its own, which [NdsArt.readRenegade] reads through the file system. */
     const val V1_2_0_SHA1 = "381f9eef44564602a5f6469ee8c390fbb8ebac3a"

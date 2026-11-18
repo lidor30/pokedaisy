@@ -43,6 +43,7 @@ class NuzlockeFixturesTest {
         "team_rocket_battle" to NATIVE_TEAM_ROCKET, "team_rocket_trainer" to NATIVE_TEAM_ROCKET,
         "monomyth_battle" to NATIVE_MONOMYTH, "monomyth_trainer" to NATIVE_MONOMYTH,
         "monomyth_v1_1_battle" to NATIVE_MONOMYTH_V1_1, "monomyth_v1_1_trainer" to NATIVE_MONOMYTH_V1_1,
+        "monomyth_v1_2_battle" to NATIVE_MONOMYTH_V1_2, "monomyth_v1_2_trainer" to NATIVE_MONOMYTH_V1_2,
     )
 
     // Battles whose foe isn't read (the tracker counts no encounter there): Unbound's capture is a scripted battle

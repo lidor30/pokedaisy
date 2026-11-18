@@ -26,8 +26,16 @@ class Gen4DexTables(
     val origin: Boolean = false,
     /** The machines' moves read from the cart when they aren't fixed ([OriginHeartGold]); null = [tmMoves]. */
     val machineMoves: (() -> IntArray)? = null,
+    /** Heartfelt Gold's: HeartGold's methods, hg-engine's newer numbering from 27 ([Gen4Dex.heartfeltEvoReqs]). */
+    val heartfelt: Boolean = false,
+    /** A Dex number's species id and back, where they differ ([HeartfeltGold.speciesOf]); null = the same. The pages'
+     * rows, evolutions, moves and pictures go by species id, the entries by Dex number. */
+    val speciesOf: ((Int) -> Int)? = null,
+    val dexOf: ((Int) -> Int)? = null,
 ) {
     val moves: IntArray get() = machineMoves?.invoke() ?: tmMoves
+    fun species(national: Int): Int = speciesOf?.invoke(national) ?: national
+    fun national(species: Int): Int = dexOf?.invoke(species) ?: species
 }
 
 val GEN4_DEX_PLATINUM = Gen4DexTables(NdsArt.PLATINUM_DEX, NdsArt.PLATINUM_FRONT, tmMovesPlatinum)
@@ -68,6 +76,18 @@ val GEN4_DEX_ORIGIN = Gen4DexTables(
 val POKEDEX_ORIGIN = POKEDEX_HEARTGOLD.copy(
     speciesCount = OriginHeartGold.LAST_NATIONAL + 1, nationalCount = OriginHeartGold.LAST_NATIONAL,
     regionalCount = OriginHeartGold.LAST_NATIONAL, regionName = null, gen4 = GEN4_DEX_ORIGIN,
+)
+
+/** Heartfelt Gold's dex ([HeartfeltGold]): Johto's 256 and the National Dex's 1025, from its cart; species ids past
+ * ARCEUS are 50 past their Dex number ([HeartfeltGold.speciesOf]). No machines: its TM compatibility isn't in its
+ * personal records (MOVES lists the level-up ones). */
+val GEN4_DEX_HEARTFELT = Gen4DexTables(
+    NdsArt.HEARTFELT_DEX, NdsArt.HEARTFELT_FRONT, IntArray(0), tmCount = 0, lastSpecies = HeartfeltGold.LAST_NATIONAL,
+    heartfelt = true, speciesOf = HeartfeltGold::speciesOf, dexOf = HeartfeltGold::nationalOf,
+)
+
+val POKEDEX_HEARTFELT = POKEDEX_HEARTGOLD.copy(
+    speciesCount = HeartfeltGold.LAST_NATIONAL_SPECIES + 1, nationalCount = HeartfeltGold.LAST_NATIONAL, gen4 = GEN4_DEX_HEARTFELT,
 )
 
 /** A dex read from the cart (a Game Boy's bytes, a DS game's files), not a GBA ROM's tables. */
@@ -119,7 +139,7 @@ object Gen4Dex {
         val key = f.toString() to f.lastModified
         if (pagesFor != key) synchronized(lock) {
             if (pagesFor != key) {
-                pages = runCatching { parse(f.readLines(), t.lastSpecies, t.gen5, t.origin) }.getOrNull()
+                pages = runCatching { parse(f.readLines(), t.lastSpecies, t.gen5, t.origin, t) }.getOrNull()
                 pagesFor = key
             }
         }
@@ -135,9 +155,11 @@ object Gen4Dex {
 
     /** NdsArt's lines: species, category, description, height dm, weight hg, the six stats (the page's order), type 1 / 2,
      * catch rate, gender ratio, egg groups 1 / 2, abilities 1 / 2; then (a cart read since v8) the regional number, the
-     * evolutions, the level-up moves and the TM / HM bits; Black's a hidden ability last. Evolutions to past
-     * [lastSpecies] are dropped; [gen5]: their methods are Gen 5's ([gen5EvoReqs]). */
-    fun parse(lines: List<String>, lastSpecies: Int = 493, gen5: Boolean = false, origin: Boolean = false): Pages {
+     * evolutions, the level-up moves and the TM / HM bits; Black's a hidden ability; Heartfelt Gold's the height in inches
+     * and the weight in tenths of a pound, as its pages print them. Evolutions to past [lastSpecies] are dropped; [gen5]:
+     * their methods are Gen 5's ([gen5EvoReqs]). With [t]'s species ids apart from the Dex numbers ([Gen4DexTables.dexOf]),
+     * the first column is the species id. */
+    fun parse(lines: List<String>, lastSpecies: Int = 493, gen5: Boolean = false, origin: Boolean = false, t: Gen4DexTables? = null): Pages {
         val entries = HashMap<Int, DexEntry>()
         val regional = HashMap<Int, Int>()
         val evolutions = HashMap<Int, List<EvoLink>>()
@@ -147,9 +169,11 @@ object Gen4Dex {
             val c = line.split('\t')
             if (c.size < 19) continue
             val n = c[0].toIntOrNull() ?: continue
+            val national = t?.national(n) ?: n
+            if (national <= 0) continue
             fun i(k: Int) = c.getOrNull(k)?.toIntOrNull() ?: 0
-            entries[n] = DexEntry(
-                national = n,
+            entries[national] = DexEntry(
+                national = national,
                 species = n,
                 category = c[1].removeSuffix(" Pokémon").removeSuffix(" POKéMON"),
                 heightDm = i(3),
@@ -164,12 +188,19 @@ object Gen4Dex {
                 catchRate = i(13),
                 genderRatio = i(14),
                 eggGroups = listOf(i(15), i(16)).distinct().mapNotNull { eggGroupName(it) },
+                heightIn = c.getOrNull(24)?.toIntOrNull(),
+                weightLbs10 = c.getOrNull(25)?.toIntOrNull(),
             )
-            if (i(19) > 0) regional[i(19)] = n
+            if (i(19) > 0) regional[i(19)] = national
             c.getOrNull(20)?.takeIf { it.isNotEmpty() }?.split(';')?.mapNotNull { e ->
                 val (m, p, to) = e.split(',').map { it.toIntOrNull() ?: return@mapNotNull null }.takeIf { it.size == 3 } ?: return@mapNotNull null
-                if (to !in 1..lastSpecies || to == n) null
-                else EvoLink(n, to, if (gen5) gen5EvoReqs(m, p) else if (origin) originEvoReqs(m, p) else evoReqs(m, p))
+                if ((t?.national(to) ?: to) !in 1..lastSpecies || to == n) null
+                else EvoLink(n, to, when {
+                    gen5 -> gen5EvoReqs(m, p)
+                    origin -> originEvoReqs(m, p)
+                    t?.heartfelt == true -> heartfeltEvoReqs(m, p)
+                    else -> evoReqs(m, p)
+                })
             }?.distinct()?.takeIf { it.isNotEmpty() }?.let { evolutions[n] = it }
             c.getOrNull(21)?.takeIf { it.isNotEmpty() }?.split(',')?.mapNotNull { e ->
                 val (lv, mv) = e.split(':').map { it.toIntOrNull() ?: return@mapNotNull null }.takeIf { it.size == 2 } ?: return@mapNotNull null
@@ -203,6 +234,26 @@ object Gen4Dex {
             38 -> listOf(EvoReq.Recoil(p))
             40 -> listOf(EvoReq.LevelUp, EvoReq.Steps(p))
             41 -> listOf(level)
+            else -> listOf(EvoReq.Special)
+        }
+    }
+
+    /** Heartfelt Gold's methods (hg-engine's newer numbering, checked against its own guide's list of evolutions): HeartGold's
+     * 1 - 26 as they are, then 27 / 28 a level by day / night, 29 a level at dusk, 30 a level in the rain, 31 a move of type
+     * [p], 32 a level with a Dark Pokémon along, 36 [p] critical hits in a battle; 34 / 35 (TOXEL's natures), 37 (YAMASK's
+     * damage), 47 (a form counter) and the rest a special condition. */
+    internal fun heartfeltEvoReqs(m: Int, p: Int): List<EvoReq> {
+        val level = if (p in 1..100) EvoReq.Level(p) else EvoReq.LevelUp
+        return when (m) {
+            in 1..26 -> evoReqs(m, p)
+            27 -> listOf(level, EvoReq.Time(EvoTime.DAY))
+            28 -> listOf(level, EvoReq.Time(EvoTime.NIGHT))
+            29 -> listOf(level, EvoReq.Time(EvoTime.DUSK))
+            30 -> listOf(level, EvoReq.Weather(EvoReq.WEATHER_RAIN))
+            31 -> listOf(EvoReq.LevelUp, EvoReq.KnowsMoveType(p))
+            32 -> listOf(level, EvoReq.DarkInParty)
+            34, 35 -> listOf(level, EvoReq.Special)
+            36 -> listOf(EvoReq.Crits(p))
             else -> listOf(EvoReq.Special)
         }
     }
@@ -256,13 +307,19 @@ fun readGen4PokedexState(r: MemoryReader, cfg: Gen4Config, body: Long): PokedexS
     val off = cfg.pokedexOff ?: return null
     val tables = cfg.pokedexTables ?: return null
     val flagBytes = cfg.dexFlagBytes
-    val size = 4 + 4 * flagBytes + 0x50
-    val d = r.readCoreMemory(body + off, maxOf(size, 0x340))
-    if (d.size < maxOf(size, 0x340)) return null
+    val seenOff = cfg.dexSeenOff ?: (4 + flagBytes)
+    val size = maxOf(4 + 4 * flagBytes + 0x50, seenOff + flagBytes, 0x340)
+    val d = r.readCoreMemory(body + off, size)
+    if (d.size < size) return null
     val magic = (d[0].toLong() and 0xFF) or ((d[1].toLong() and 0xFF) shl 8) or ((d[2].toLong() and 0xFF) shl 16) or ((d[3].toLong() and 0xFF) shl 24)
     if (magic != 0xBEEFCAFEL) return null
-    fun bit(base: Int, n: Int) = (d[base + (n - 1) / 8].toInt() shr ((n - 1) % 8)) and 1 != 0
-    val seen = (1..tables.nationalCount).filter { bit(4 + flagBytes, it) }.toSet()
+    // A bit per species id (Heartfelt Gold's past ARCEUS aren't the Dex numbers: Gen4DexTables.species).
+    fun bit(base: Int, national: Int): Boolean {
+        val n = tables.gen4?.species(national) ?: national
+        val i = base + (n - 1) / 8
+        return n > 0 && i < base + flagBytes && (d[i].toInt() shr ((n - 1) % 8)) and 1 != 0
+    }
+    val seen = (1..tables.nationalCount).filter { bit(seenOff, it) }.toSet()
     val caught = (1..tables.nationalCount).filter { bit(4, it) && it in seen }.toSet()
-    return PokedexState(tables, seen, caught, national = d[cfg.nationalDexOff].toInt() != 0)
+    return PokedexState(tables, seen, caught, national = cfg.nationalDexAlways || d[cfg.nationalDexOff].toInt() != 0)
 }

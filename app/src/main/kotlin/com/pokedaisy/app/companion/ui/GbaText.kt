@@ -283,6 +283,8 @@ fun twoToneLow(fill: Color): Color = androidx.compose.ui.graphics.lerp(fill, Col
  * corners stay the shape's.
  */
 fun DrawScope.drawTwoTone(top: Color, low: Color, line: Float, paint: DrawScope.(Color) -> Unit) {
+    // A skin with flat faces (CompanionSkin.flatFaces: the GBA games, Platinum): the top colour alone.
+    if (CompanionSkins.current.flatFaces) { paint(top); return }
     // A skin's smooth faces (CompanionSkin.gradientFaces): the two colours blended top to bottom, in thin bands.
     if (CompanionSkins.current.gradientFaces) {
         val bands = 16
