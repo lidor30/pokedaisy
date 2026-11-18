@@ -251,6 +251,10 @@ object MgbaCore {
      * closes it then: HeartGold / SoulSilver's menuInputState). Emu thread. */
     external fun pkNdsKeepStartMenu(on: Boolean)
 
+    /** Code of ours into a DS game ([com.pokedaisy.app.companion.data.DsInstantText]): main RAM or the spare ITCM, the JIT
+     * told. False on DSperate. Emu thread. */
+    external fun pkNdsCodeWrite(addr: Long, bytes: ByteArray): Boolean
+
     /** A DS game's screens fading by master brightness (towards black or white): the factor 0-16, the top screen's in
      * bits 0-7, the touch screen's in 8-15; 0 = no fade. Emu thread, after [pkRunFrame]. */
     external fun pkNdsFade(): Int

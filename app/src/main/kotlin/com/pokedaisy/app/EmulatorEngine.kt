@@ -311,7 +311,29 @@ class EmulatorEngine(
 
     /** The DS game's header code: where its battle panels have their buttons ([NdsBattleTaps.layoutFor]). */
     var ndsGameCode: String = ""
-        set(v) { field = v; ndsTaps.layout = NdsBattleTaps.layoutFor(v) }
+        set(v) {
+            field = v; ndsTaps.layout = NdsBattleTaps.layoutFor(v)
+            dsText = null; dsTextTries = 0; dsTextFrames = 0
+        }
+
+    /** INSTANT TEXT on a Gen 4 DS game ([com.pokedaisy.app.companion.data.DsInstantText]); the activity sets it where it works. */
+    @Volatile var dsInstantText = false
+    @Volatile private var dsText: com.pokedaisy.app.companion.data.DsInstantText.Found? = null
+    private var dsTextTries = 0
+    private var dsTextFrames = 0
+
+    /** Every 30 frames: the printer task found (once the game has run 5 s and decompressed its ARM9; 20 tries at most, only
+     * while wanted), then its call set to the setting. Emu thread, between frames. */
+    private fun dsTextTick() {
+        if (++dsTextFrames % 30 != 0) return
+        val read = com.pokedaisy.app.companion.data.InProcessReader::readCoreMemory
+        val f = dsText ?: run {
+            if (!dsInstantText || dsTextFrames < 300 || dsTextTries >= 20) return
+            dsTextTries++
+            com.pokedaisy.app.companion.data.DsInstantText.find(read)?.also { dsText = it } ?: return
+        }
+        runCatching { com.pokedaisy.app.companion.data.DsInstantText.sync(f, dsInstantText, read, MgbaCore::pkNdsCodeWrite) }
+    }
 
     /** True while a queued battle-menu button sequence hasn't fully drained —
      * the touch battle UI should disable further taps while this is true. */
@@ -1553,6 +1575,7 @@ class EmulatorEngine(
             val wildKeep = if (wildFlag != 0L || nds) wildEncounters else 100
             if (nds) {
                 MgbaCore.pkNdsKeepStartMenu(dsKeepStartMenu)
+                dsTextTick()
                 MgbaCore.pkNdsCpuBoost(ndsCpuBoost)
             }
             fieldState = when {

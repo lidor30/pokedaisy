@@ -94,6 +94,10 @@ import com.pokedaisy.app.companion.data.lastModified
  *
  * Drop one `.gba` into `Android/data/com.pokedaisy.app/files/roms/`.
  */
+
+/** HeartGold, SoulSilver, Platinum (every language): their text printer task is DsInstantText's (INSTANT TEXT). */
+private val DS_TEXT_CODES = setOf("IPK", "IPG", "CPU")
+
 class PokeDaisyActivity : Activity() {
 
     private val input = GbaInput()
@@ -1388,6 +1392,11 @@ class PokeDaisyActivity : Activity() {
     private fun dsSwitchWorks(): Boolean =
         romIsNds && ::engine.isInitialized && engine.dsSwitchMapped && dsSwitchBattle() != null
 
+    /** INSTANT TEXT on a DS game: the Gen 4 carts on melonDS (DsInstantText: code of ours, no calls on DSperate). */
+    private fun dsInstantTextWorks(): Boolean = romIsNds && romBlocked == null && !dsperate && ::engine.isInitialized &&
+        engine.ndsGameCode.take(3) in DS_TEXT_CODES
+
+
     private fun dsKeyItemsWork(): Boolean = romBlocked == null &&
         !com.pokedaisy.app.companion.data.originHeartGold && !com.pokedaisy.app.companion.data.renegadePlatinum &&
         com.pokedaisy.app.companion.data.gen4ConfigFor(telemetry.snapshot.value.game) != null
@@ -1834,8 +1843,9 @@ class PokeDaisyActivity : Activity() {
         override fun setInstantText(on: Boolean) {
             stored.setInstantText(on)
             if (::engine.isInitialized) engine.setInstantText(textPatch, on)
+            if (::engine.isInitialized) engine.dsInstantText = on && dsInstantTextWorks()
         }
-        override val instantTextSupported get() = textPatch != null
+        override val instantTextSupported get() = textPatch != null || dsInstantTextWorks()
         override val hmFree get() = Prefs(this@PokeDaisyActivity).hmFree
         override fun setHmFree(on: Boolean) {
             if (coopRefuses()) return
@@ -3010,6 +3020,7 @@ class PokeDaisyActivity : Activity() {
         e.ndsCpuBoost = p.dsCpuBoost
         e.setReusableTms(tmSites, p.reusableTms)
         e.setInstantText(textPatch, p.instantText)
+        e.dsInstantText = p.instantText && dsInstantTextWorks()
         e.setHmFree(hmPatch, p.hmFree)
         e.setExpShare(expShareFound, if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(p.expShare) else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF)
         e.setLevelCap(levelCapFound, if (levelCapFound != null && p.levelCap) levelCapNow?.level ?: 0 else 0)

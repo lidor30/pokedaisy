@@ -737,6 +737,14 @@ change to any of the places listed under "Where it's decided" updates its rows h
     waiting on the player's selection (command 22), so that screen stays the player's. Platinum: the same structs, its party
     screen not seen yet, so not offered.
 
+51. INSTANT TEXT on the Gen 4 DS games (2026-11-18, `DsInstantText.kt`, `scripts/ds_instant_text.s`): the text printer task's one
+    `bl RenderFont` (text.c's RunTextPrinter) pointed at a routine of ours in the spare ITCM (0x01FFF000), which renders on
+    after each letter (the letter delay zeroed) until a wait, a scroll, a pause or the end, so a page comes up whole at any
+    text speed. Code into the game through `pk_nds_code_write` (main RAM or ITCM, melonDS's JIT told); found in RAM by the
+    switch around the call, one place in every HeartGold / SoulSilver / Platinum cart (and Diamond's); checked twice a second,
+    so a state from the other setting is set right. Headless: HeartGold's battle openings whole in a frame; Platinum's intro
+    at MID, every page whole with its arrow, in order. DSperate: no (no code of ours runs there).
+
 ## What each column is
 
 - **EXPAND**: ASPECT > EXPAND, the overworld rebuilt past the GBA's edges (`pk_wide.c`; a Game Boy game's past its

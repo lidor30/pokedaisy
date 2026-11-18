@@ -73,7 +73,7 @@ Turn on `INSTANT TEXT` in the companion's `SETTINGS`, `GAMEPLAY` group, and the 
 It changes the game while it runs, never your ROM file or your save, and you can switch it off at any time.
 
 > [!NOTE]
-> `INSTANT TEXT` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire and in many hacks built on their code, and on the Game Boy in Red, Blue, Yellow, Gold, Silver and Crystal (every language PokeDaisy supports), Brown, Yellow Legacy, Crystal Clear and Crystal Legacy. Where it can't work the row shows `N/A`.
+> `INSTANT TEXT` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire and in many hacks built on their code, and on the Game Boy in Red, Blue, Yellow, Gold, Silver and Crystal (every language PokeDaisy supports), Brown, Yellow Legacy, Crystal Clear and Crystal Legacy. On the DS it works in HeartGold, SoulSilver and Platinum in every language, whatever text speed the game is set to, with the `MELONDS` DS core (not `DSPERATE`). Where it can't work the row shows `N/A`.
 
 ## Slow motion
 
