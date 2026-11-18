@@ -6,9 +6,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Updates from the app's GitHub releases: the newest published release (not a
- * draft or a pre-release - those are for testing) that carries an `.apk` and
- * whose tag is a higher version than this build's versionName. Only talks to api.github.com and GitHub's download
+ * Updates from the app's GitHub releases: the newest published release (never a
+ * draft; a pre-release - a beta or rc - only with BETA UPDATES on) that carries an `.apk`
+ * and whose tag is a higher version than this build's versionName. Only talks to api.github.com and GitHub's download
  * host; no account, no key.
  */
 object AppUpdater {
@@ -24,8 +24,8 @@ object AppUpdater {
         val pageUrl: String,
     )
 
-    /** The newest release that is newer than [current], or null (none, or offline). Blocking. */
-    fun check(current: String): Release? = runCatching {
+    /** The newest release that is newer than [current], or null (none, or offline); pre-releases too when [betas]. Blocking. */
+    fun check(current: String, betas: Boolean = false): Release? = runCatching {
         val conn = (URL("https://api.github.com/repos/$REPO/releases?per_page=20").openConnection() as HttpURLConnection).apply {
             connectTimeout = 8000
             readTimeout = 8000
@@ -33,14 +33,15 @@ object AppUpdater {
             setRequestProperty("User-Agent", "PokeDaisy/$current")
         }
         val body = conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
-        newest(JSONArray(body))
+        newest(JSONArray(body), betas)
     }.getOrNull()?.takeIf { isNewer(it.version, current) }
 
-    /** The highest-versioned published, non-pre-release release with an APK in [releases] (GitHub's JSON). */
-    fun newest(releases: JSONArray): Release? {
+    /** The highest-versioned published release with an APK in [releases] (GitHub's JSON): pre-releases count only
+     *  with [betas], and then a release still outranks its own betas (1.6.2 > 1.6.2-rc.2). */
+    fun newest(releases: JSONArray, betas: Boolean = false): Release? {
         val found = (0 until releases.length()).mapNotNull { i ->
             val r = releases.getJSONObject(i)
-            if (r.optBoolean("draft") || r.optBoolean("prerelease")) return@mapNotNull null
+            if (r.optBoolean("draft") || (r.optBoolean("prerelease") && !betas)) return@mapNotNull null
             val assets = r.optJSONArray("assets") ?: return@mapNotNull null
             val apk = (0 until assets.length()).map { assets.getJSONObject(it) }
                 .firstOrNull { it.optString("name").endsWith(".apk", ignoreCase = true) } ?: return@mapNotNull null

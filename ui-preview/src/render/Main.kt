@@ -3349,6 +3349,23 @@ fun main(args: Array<String>) {
             onAllNodesWithText("ON").onFirst().performSemanticsAction(SemanticsActions.OnClick)
         },
         // Search: "rebind" isn't a row's name - its keywords find GAME BUTTONS.
+        // APP > BETA UPDATES (NEW tag): the updater's pre-release channel, under VERSION.
+        Shot("settings-beta-updates", tw, th, td, activity { SettingsActivity() }) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("BETA UPDATES")).performScrollTo()
+        },
+        Shot("settings-beta-updates-on", tw, th, td, activity { Prefs(android.content.Context()).setBetaUpdates(true); SettingsActivity() }) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("BETA UPDATES")).performScrollTo()
+        },
+        // A beta on offer (BETA UPDATES on), at the Thor bottom screen's size.
+        Shot("library-update-beta", bw, bh, bd, activity {
+            LibraryActivity().apply {
+                updates.release = com.pokedaisy.app.AppUpdater.Release(
+                    "1.6.2-beta.1",
+                    "This is a beta: tell us what you find on Discord.\n- New features to try before everyone else\n- Fixes from your reports",
+                    "", 0, "",
+                )
+            }
+        }),
         Shot("settings-search", tw, th, td, activity { SettingsActivity() }) {
             onNode(hasSetTextAction()).performTextInput("rebind")
         },
@@ -3468,6 +3485,7 @@ fun main(args: Array<String>) {
             // SETTINGS' DESCRIPTIONS / GROUP TABS are process-wide: each shot starts with both shown.
             com.pokedaisy.app.companion.ui.SettingsLook.descriptions = true
             com.pokedaisy.app.companion.ui.SettingsLook.tabs = true
+            Prefs(android.content.Context()).setBetaUpdates(false) // only settings-beta-updates-on turns it on
             val content = shot.content()
             runSkikoComposeUiTest(Size(shot.w.toFloat(), shot.h.toFloat()), Density(shot.density)) {
                 // Manual clock: the party icons / map highlight animate forever,

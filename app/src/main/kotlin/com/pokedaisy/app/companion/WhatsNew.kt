@@ -32,8 +32,8 @@ object WhatsNew {
         return Notes(version, sections)
     }
 
-    /** A hotfix's release (1.5.0.1 -> 1.5.0); any other version itself. */
-    fun releaseOf(version: String): String = version.split('.').let { if (it.size > 3) it.take(3).joinToString(".") else version }
+    /** A hotfix's or a beta's release (1.5.0.1 -> 1.5.0, 1.7.0-rc.2 -> 1.7.0); any other version itself. */
+    fun releaseOf(version: String): String = version.substringBefore('-').split('.').let { if (it.size > 3) it.take(3).joinToString(".") else it.joinToString(".") }
 
     /** Newest first. */
     val RELEASES: List<Notes> by lazy {
@@ -201,7 +201,9 @@ object WhatsNew {
         ),
     )
 
-    fun notesFor(version: String): Notes? = RELEASES.firstOrNull { it.version == version }
+    /** [version]'s notes; a beta or release candidate shows the notes of the version it's a beta of. */
+    fun notesFor(version: String): Notes? =
+        RELEASES.firstOrNull { it.version == version } ?: RELEASES.firstOrNull { it.version == version.substringBefore('-') }
 
     /**
      * [current]'s notes when they're due: the app was updated (a fresh install has nothing to tell) to a version the

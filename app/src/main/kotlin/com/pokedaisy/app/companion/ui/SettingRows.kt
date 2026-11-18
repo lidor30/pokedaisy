@@ -170,6 +170,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "RetroAchievements" to "achievements cheevos ra login account trophies",
     "LANGUAGE" to "language translation locale english japanese french german italian spanish portuguese português brazil brasil portugal idioma korean 한국어 언어",
     "VERSION" to "update upgrade check release about",
+    "BETA UPDATES" to "beta test testing tester pre-release prerelease release candidate rc early preview unstable update channel discord",
     "CRASH REPORTS" to "crash report bug crashlytics privacy diagnostics send",
     "LICENSES" to "license legal open source credits notices about",
     "RUN SETUP" to "setup onboarding wizard first time welcome",

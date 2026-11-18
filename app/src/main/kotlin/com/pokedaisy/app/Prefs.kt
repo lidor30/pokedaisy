@@ -911,6 +911,12 @@ class Prefs(
         get() = libraryList(p.getString("favorite_roms", null)).toSet()
         set(v) = p.edit().putString("favorite_roms", libraryList(v)).apply()
 
+    /** Settings > APP > BETA UPDATES: the updater offers pre-releases too (AppUpdater). Unset = on while a beta
+     *  build runs (someone who installed a beta by hand gets the next one), off otherwise. */
+    fun betaUpdates(runningBeta: Boolean): Boolean =
+        if (p.contains("beta_updates")) p.getBoolean("beta_updates", false) else runningBeta
+    fun setBetaUpdates(on: Boolean) = p.edit().putBoolean("beta_updates", on).apply()
+
     /** Crash reports (CrashReports.kt): off until the player opts in. */
     var crashReportsEnabled: Boolean
         get() = p.getBoolean("crash_reports_enabled", false)

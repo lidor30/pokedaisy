@@ -150,6 +150,9 @@ object NewFeatures {
     /** SETTINGS > DS CORE's BANANADS: BananaOS's DS emulator as a third core (companion.DsCore). */
     const val DS_CORE_BANANADS = "ds_core_bananads"
 
+    /** Settings > APP > BETA UPDATES: the in-app updater offers betas and release candidates too (AppUpdater). */
+    const val BETA_UPDATES = "beta_updates"
+
     /** SETTINGS > APP > TIPS: a card now and then about a feature the player hasn't found (FeatureTips). */
     const val TIPS = "tips"
 
@@ -301,7 +304,7 @@ object NewFeatures {
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
         DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, DS_CORE_BANANADS, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP, REPEL_REFILL, SHINY_ALERT, LAST_BALL, BOSS_RETRY, LOW_HP_BEEP, FIELD_POISON, RUNNING_SHOES, SETTINGS_LOOK,
         QUICK_TOUCH, APP_FONT, PIXEL_SMALL, PAL_PARK, SAVE_MISSING, TRADE_BACK, SAVE_COLLECTION, POKE_TRANSFER, SAVE_EDITOR_GEN5, SAVE_EDITOR_DP, QUICK_TURBO,
-        GAME_LOOK, POKEMON_PICTURES,
+        GAME_LOOK, POKEMON_PICTURES, BETA_UPDATES,
     )
 
     private const val DAYS = 7
