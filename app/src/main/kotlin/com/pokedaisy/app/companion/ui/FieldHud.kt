@@ -1259,9 +1259,22 @@ private const val REPEL_ICON_ITEM = 86
 @Composable
 private fun BallCount(item: ItemView, m: GbaTextMetrics, text: GbaTextMetrics) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        // The Game Boy games have no item icons: a drawn ball in the icon's place.
-        if (item.iconAsset != null) HudItemIcon(item.iconAsset, hudItemSize(m))
-        else PixelArt(PixelIcons.pokeBall, CAUGHT_BALL, Modifier.size(hudItemSize(m)).padding(hudItemSize(m) / 8))
+        // The Game Boy games have no item icons: Crystal's carts give each kind its ball as the battle throws it (Gen2Art),
+        // the others a drawn ball in the icon's place.
+        val thrown = if (item.iconAsset == null) com.pokedaisy.app.companion.data.Gen2Art.ballAsset(item.itemId) else null
+        val gen = rememberArtGeneration()
+        // Read off the disk once, not in composition.
+        val thrownArt by androidx.compose.runtime.produceState(thrown?.let { GameArt.peek(it) }, thrown, gen) {
+            if (thrown != null) value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { GameArt.get(thrown) }
+        }
+        when {
+            item.iconAsset != null -> HudItemIcon(item.iconAsset, hudItemSize(m))
+            thrownArt != null -> androidx.compose.foundation.Image(
+                thrownArt!!, contentDescription = null, filterQuality = FilterQuality.None,
+                modifier = Modifier.size(hudItemSize(m)).padding(hudItemSize(m) / 8),
+            )
+            else -> PixelArt(PixelIcons.pokeBall, CAUGHT_BALL, Modifier.size(hudItemSize(m)).padding(hudItemSize(m) / 8))
+        }
         // Elite Redux keeps no counts: the ball alone.
         if (com.pokedaisy.app.companion.data.bagHasCounts) GbaText("x${item.quantity}", ink.text, ink.shadow, text)
     }

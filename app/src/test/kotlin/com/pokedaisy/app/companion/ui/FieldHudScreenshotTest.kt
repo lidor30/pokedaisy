@@ -194,6 +194,23 @@ class FieldHudScreenshotTest {
         snap = snapshot.copy(items = snapshot.items.map { if (it.pocket == POCKET_POKE_BALLS) it.copy(iconAsset = null) else it }),
     )
 
+    /** Crystal's balls: each kind as its battle throws it (Gen2Art, from the cart; the drawn ball without one). */
+    @Test fun ballsCrystal() {
+        val rom = java.io.File(com.pokedaisy.app.companion.data.RETAIL_ROM_DIR).parentFile!!.let { java.io.File(it, "gbc/Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc") }
+        if (rom.isFile) com.pokedaisy.app.companion.data.Gen2Art.extractTo(rom.readBytes(), java.io.File("build/rom-art-paparazzi").toOkioPath())
+        activeGame = GameKind.CRYSTAL
+        // Decoded before the shot: Paparazzi draws before an IO load lands.
+        listOf(5, 4, 2).forEach { id -> com.pokedaisy.app.companion.data.Gen2Art.ballAsset(id)?.let { GameArt.get(it) } }
+        shot(
+            FieldHudStyle(),
+            snap = snapshot.copy(items = snapshot.items.filter { it.pocket != POCKET_POKE_BALLS } + listOf(
+                ItemView(5, "POKé BALL", 12, null, POCKET_POKE_BALLS),
+                ItemView(4, "GREAT BALL", 7, null, POCKET_POKE_BALLS),
+                ItemView(2, "ULTRA BALL", 3, null, POCKET_POKE_BALLS),
+            )),
+        )
+    }
+
     /** The bag under the game's own word: Unbound's CUBE, on the button and the panel. */
     @Test fun bagOwnWord() {
         activeGame = GameKind.UNBOUND
