@@ -1573,6 +1573,17 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsCheats(JNIEnv* env, jobject thiz, jintArray
     return n;
 }
 
+// INSTANT TEXT on the DS: our code into the game (pk_nds_code_write). Emu thread.
+JNIEXPORT jboolean JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsCodeWrite(JNIEnv* env, jobject thiz, jlong addr, jbyteArray bytes) {
+    if (!pk_nds_active()) return JNI_FALSE;
+    jsize len = (*env)->GetArrayLength(env, bytes);
+    jbyte* b = len > 0 ? (*env)->GetByteArrayElements(env, bytes, NULL) : NULL;
+    bool ok = b && pk_nds_code_write((uint32_t) addr, (const uint8_t*) b, len);
+    if (b) (*env)->ReleaseByteArrayElements(env, bytes, b, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
 // DS LAYOUT floats the X menu on one screen: it comes back after a menu screen left by touch. Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsKeepStartMenu(JNIEnv* env, jobject thiz, jboolean on) {

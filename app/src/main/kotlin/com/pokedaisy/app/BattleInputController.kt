@@ -64,6 +64,10 @@ class BattleInputController(
         val grid: Boolean = false,
         val gridOption: GridOption? = null,
         val gb: GbPartySwitch? = null,
+        /** Ruby / Sapphire: no gPartyMenu.slotId - the cursor is the party menu's invisible sprite's data[0], the one in-use,
+         * invisible sprite in gSprites ([sprites]) whose callback is SpriteCallbackDummy (this, its Thumb address). */
+        val cursorSpriteCallback: Long = 0,
+        val sprites: Long = 0,
     )
 
     /** A save option that makes the party menu a two-column grid: the byte at `*ptr + off` with any of [mask]'s bits set
@@ -422,8 +426,10 @@ class BattleInputController(
                     endSwitchLocked("party menu never opened")
                 }
             SwitchPhase.NAVIGATE -> {
-                val slot = runCatching { reader.readCoreMemory(addrs.partyMenu + PARTY_MENU_SLOT_ID, 1)[0].toInt() }.getOrNull()
-                    ?: return endSwitchLocked("cursor unreadable")
+                val slot = runCatching {
+                    if (addrs.cursorSpriteCallback != 0L) spriteCursor(addrs)
+                    else reader.readCoreMemory(addrs.partyMenu + PARTY_MENU_SLOT_ID, 1)[0].toInt()
+                }.getOrNull() ?: return endSwitchLocked("cursor unreadable")
                 val want = slotOf(addrs, target) ?: return endSwitchLocked("mon not in the party")
                 // Steps the cursor really took (dropped presses don't count).
                 if (slot != switchLastSlot) {
@@ -450,6 +456,19 @@ class BattleInputController(
             SwitchPhase.WAIT_CLOSE ->
                 if (lastKnownState != BATTLE_INPUT_PARTY_OPEN || switchFrames > CLOSE_TIMEOUT_FRAMES) endSwitchLocked("done")
         }
+    }
+
+    /** Ruby / Sapphire's party cursor ([SwitchAddrs.cursorSpriteCallback]): the one in-use, invisible sprite with that callback,
+     * its data[0] (a slot, 7 = CANCEL); null unless exactly one. */
+    private fun spriteCursor(addrs: SwitchAddrs): Int? {
+        val raw = reader.readCoreMemory(addrs.sprites, SPRITE_COUNT * SPRITE_SIZE)
+        val hits = (0 until SPRITE_COUNT).mapNotNull { i ->
+            val o = i * SPRITE_SIZE
+            val flags = raw[o + SPRITE_FLAGS].toInt()
+            if (flags and 0x05 != 0x05 || Gfx.u32(raw, o + SPRITE_CALLBACK) != addrs.cursorSpriteCallback) null
+            else ((raw[o + SPRITE_DATA0].toInt() and 0xFF) or (raw[o + SPRITE_DATA0 + 1].toInt() shl 8)).takeIf { it in 0..PARTY_MENU_CANCEL }
+        }
+        return hits.singleOrNull()
     }
 
     /** Whether the party menu is a two-column grid right now ([SwitchAddrs.grid], or its [SwitchAddrs.gridOption] set). */
@@ -1041,6 +1060,12 @@ class BattleInputController(
         private const val NUM_MOVE_ROWS = 3            // UPs that reach the top of a one-column move list from anywhere
         private const val PARTY_MENU_SLOT_ID = 9L      // struct PartyMenu.slotId, both games
         private const val PARTY_MENU_CANCEL = 7        // slotId on CANCEL (after the last mon), both games
+        // struct Sprite (0x44 bytes, 64 of them): callback +0x1C, data[0] +0x2E, flags +0x3E (bit 0 in use, bit 2 invisible).
+        private const val SPRITE_COUNT = 64
+        private const val SPRITE_SIZE = 0x44
+        private const val SPRITE_CALLBACK = 0x1C
+        private const val SPRITE_DATA0 = 0x2E
+        private const val SPRITE_FLAGS = 0x3E
         private const val MENU_TIMEOUT_FRAMES = 240    // the menu's fade-in drops presses for ~50 frames (headless, both games)
         private const val CURSOR_FRAMES = 3            // after each press, before reading the cursor again (it moves every 3)
         private const val MAX_PICK_PRESSES = 8         // a 2x2 grid needs two; the rest re-press dropped ones
@@ -1089,6 +1114,12 @@ fun battleSwitchAddrsFor(
         telemetry.retailEnginePartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
     game == com.pokedaisy.app.companion.data.GameKind.FIRERED && romCode == "BPRE" && romRev == 1 ->
         BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
+    // Retail English FireRed rev 0 and LeafGreen rev 0 / 1 (and their randomized builds): rev 1's RAM, checked headless on
+    // each retail cart (2026-11-18: POKéMON, DOWN, A, SHIFT sent party slot 1 in). By the retail hash only: the hacks edited
+    // in place share BPRE rev 0 and have lines of their own below.
+    game == com.pokedaisy.app.companion.data.GameKind.FIRERED && telemetry.retailRom() &&
+        (romCode == "BPRE" && romRev == 0 || romCode == "BPGE" && (romRev == 0 || romRev == 1)) ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
     // Recharged Emerald runs as Emerald (BPEE) but is a rebuild with its own RAM: its config carries gPartyMenu (Emerald's
     // list; headless on all three builds: a written POKéMON cell, DOWN, A, SHIFT sent party slot 1 in).
     game == com.pokedaisy.app.companion.data.GameKind.EMERALD && com.pokedaisy.app.companion.data.runningEmeraldHack != null ->
@@ -1134,6 +1165,10 @@ fun battleSwitchAddrsFor(
     // opened it, DOWN, A, SHIFT sent slot 1 in (gBattlerPartyIndexes[0] = 1).
     game == com.pokedaisy.app.companion.data.GameKind.WISHES ->
         BattleInputController.SwitchAddrs(partyMenu = 0x02031BB0L, party = 0x02031EBCL)
+    // Ceruleum: a two-column grid at its own gPartyMenu (NATIVE_CERULEUM). Headless: a written POKéMON cell + A opened it,
+    // DOWN walked slotId 0 -> 2 -> 3.
+    game == com.pokedaisy.app.companion.data.GameKind.CERULEUM ->
+        BattleInputController.SwitchAddrs(partyMenu = 0x020372F0L, party = 0x02037748L, grid = true)
     game == com.pokedaisy.app.companion.data.GameKind.AMETHYST ->
         BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L, grid = true)
     // Unbound (EN / FR): FireRed's gPartyMenu / gPlayerParty (CFRU keeps its EWRAM) under CFRU's two-column party
@@ -1200,6 +1235,16 @@ fun battleSwitchAddrsFor(
                 partyMenu = menu, party = party, monStride = 96,
                 gridOption = telemetry.knownPartyMenuStyle()?.let { (ptr, off) -> BattleInputController.GridOption(ptr, off) },
             )
+        }
+    // Ruby / Sapphire (retail, every language but Japanese): the cursor as its sprite's data[0] (SwitchAddrs.cursorSpriteCallback);
+    // gPlayerParty in battle order while the menu is up, as FireRed's. SpriteCallbackDummy is 0x08001210 in the English builds,
+    // 0x08001344 in the German ones (pokeruby's symbols) and at German's place (a `bx lr`) in French / Italian / Spanish.
+    // Headless on English Ruby rev 1 (2026-11-18): POKéMON, DOWN, A, SHIFT sent slot 1 in, and again from the battle order.
+    game == com.pokedaisy.app.companion.data.GameKind.EMERALD && telemetry.retailRom() && romCode != null &&
+        (romCode.startsWith("AXV") || romCode.startsWith("AXP")) && romCode[3] != 'J' ->
+        com.pokedaisy.app.companion.data.activeNativeConfig?.playerParty?.let { party ->
+            BattleInputController.SwitchAddrs(party = party, cursorSpriteCallback = if (romCode[3] == 'E') 0x08001211L else 0x08001345L,
+                sprites = 0x02020004L)
         }
     // The other-language FireRed / LeafGreen (RETAIL_PORTS): their mapped gPartyMenu, checked by
     // scripts/verify_ports.py's party step. (Ruby / Sapphire have no battle input.)

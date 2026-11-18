@@ -76,6 +76,9 @@ int pk_nds_action_status(int seq);
 bool pk_nds_action_results(int seq, uint32_t* out);
 // WILD ENCOUNTERS OFF: no random encounters (the field read holds the map's grass / surf rates at 0). Emu thread.
 void pk_nds_set_wild_off(bool off);
+/** Code of ours into the game (INSTANT TEXT, DsInstantText.kt): main RAM or the spare ITCM (0x01FFC000..), and the JIT
+ * told, so a block it compiled from there is compiled again. False on DSperate (no calls into the game there). Emu thread. */
+bool pk_nds_code_write(uint32_t addr, const uint8_t* src, int len);
 /** DS LAYOUT floats the X menu: it comes back after a menu screen left by touch (the game closes it then). */
 void pk_nds_set_keep_start_menu(bool on);
 /** DS CPU BOOST: the ARM9 at twice the DS's clock (fewer of a game's own slow frames). Emu thread, between frames. */

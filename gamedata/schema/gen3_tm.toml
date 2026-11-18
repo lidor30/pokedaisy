@@ -71,10 +71,30 @@ kotlin = 'Long'
 type = 'long'
 
 # CRC32 of each function's first 32 bytes: itemUseCbTmhm, showPartyMenuForItemUse, initPartyMenu, setMainCallback2,
-# returnToField, cleanupOverworld, fadeScreen, lockControls, unlockControls.
+# returnToField, cleanupOverworld, fadeScreen, lockControls, unlockControls (one that's 0 left out: Ruby / Sapphire have no
+# cleanupOverworld).
 [field.codeCrcs]
 kotlin = 'List<Long>'
 type = 'long_list'
+
+# Ruby / Sapphire (pokeruby): their party menu's exit is a fixed SetMainCallback2(sub_80A5B40), back to the bag. Set, the
+# TM screen goes the bag's way - gPokemonItemUseType ([itemUseType]) = ITEM_USE_SINGLE_MON, gPokemonItemUseCallback, then
+# sub_808B020 ([showPartyMenuForItemUse]) - and [bagReturn] is swapped for [returnToField] when it comes, until the field's own
+# CB2_Overworld ([overworld]) runs. 0 = FireRed / Emerald's way (gPartyMenu's exit callback).
+[field.itemUseType]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.bagReturn]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.overworld]
+kotlin = 'Long'
+type = 'long'
+default = 0
 
 # ITEM_TM01 and HM08: the same in every Gen 3 game.
 [field.firstTm]

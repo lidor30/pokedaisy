@@ -7,6 +7,7 @@ pd_gpsp_keys
 pd_gpsp_run_frame
 pd_gpsp_reset
 pd_gpsp_set_video
+pd_gpsp_native_pixels
 pd_gpsp_skip_video
 pd_gpsp_crc
 pd_gpsp_recompiling
@@ -19,6 +20,7 @@ pd_gpsp_save_state
 pd_gpsp_load_state
 pd_gpsp_threaded
 pd_gpsp_render_us
+pd_gpsp_get_stats
 pd_gpsp_call
 pd_gpsp_call_safe
 pd_gpsp_call_set_cap
@@ -31,3 +33,5 @@ pd_gpsp_jump
 pd_gpsp_vcount
 pd_gpsp_hblank_skips
 pd_gpsp_hblank_cost
+pd_gpsp_draw_late
+pd_gpsp_collect

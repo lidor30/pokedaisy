@@ -1,0 +1,32 @@
+# Pokemon Rhythm v1.4.0, a scripted wild battle: rhythm.txt, then setwildbattle species 25 Lv5; dowildbattle; end at
+# 0x0203F400 (CFRU uses 0x0203FF00) through rev 0's ScriptContext_SetupScript 0x08069AE5; dumped at the action menu.
+wait 120
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+press A
+wait 50
+wait 100
+wait 200
+poke32 0x0203F400 0x050019B6
+poke32 0x0203F404 0x02B70000
+call 0x08069AE5 0x0203F400
+wait 300
+press A
+wait 350
+wait 300

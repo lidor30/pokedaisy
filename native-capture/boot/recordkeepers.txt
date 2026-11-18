@@ -1,0 +1,16 @@
+# Pokemon RecordKeepers v1.2.1, from its own save (a new game played headless: ~/Documents/RetroArch/saves/mGBA/Pokemon RecordKeepers (v1.2.1).sav).
+# The PRET x RHH splash and the title take A, then CONTINUE puts the player in their room.
+wait 300
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+wait 200

@@ -45,10 +45,16 @@ class MoneyTest {
         assertEquals(1_048_458L, money("quetzal_moemon_084", NATIVE_QUETZAL_MOEMON_V084))
         assertEquals(1_048_458L, money("quetzal_moemon_es_084", NATIVE_QUETZAL_MOEMON_V084_ES))
         assertEquals(1748L, money("unbound_fr", NATIVE_UNBOUND_FR))
+        assertEquals(3848L, money("unbound_it", NATIVE_UNBOUND_IT)) // English's save, booted in the Italian build
         assertEquals(2000L, money("orange_islands", NATIVE_ORANGE_ISLANDS))
         assertEquals(3080L, money("ultra_violet", NATIVE_ULTRA_VIOLET))
         // Retail FireRed's save, booted in FireRed Rocket Edition and Ash Gray.
         assertEquals(246468L, money("rocket_edition", NATIVE_ROCKET_EDITION))
+        assertEquals(246468L, money("clover", NATIVE_CLOVER)) // the same save, booted in Clover
+        assertEquals(3000L, money("elysium_a", NATIVE_ELYSIUM_A))
+        assertEquals(198199L, money("elysium_b", NATIVE_ELYSIUM_B))
+        assertEquals(5000L, money("rhythm", NATIVE_RHYTHM))
+        assertEquals(3000L, money("oops_all_eevees", NATIVE_OOPS_ALL_EEVEES))
         assertEquals(246468L, money("ash_gray", NATIVE_ASH_GRAY))
         assertEquals(246468L, money("ash_gray_fork", NATIVE_ASH_GRAY))
         // Elite Redux's save in both builds: plain (it zeroes the encryption key), its trainer card shows BP instead.
@@ -65,6 +71,8 @@ class MoneyTest {
         // Wishes of Tomorrow's new game (its START menu: ₽3000), the randomizer one too.
         assertEquals(3000L, money("wishes", NATIVE_WISHES))
         assertEquals(3000L, money("wishes_random", NATIVE_WISHES))
+        assertEquals(258984L, money("ceruleum", NATIVE_CERULEUM))
+        assertEquals(3000L, money("recordkeepers", NATIVE_RECORDKEEPERS))
         // Dreamstone Mysteries' new game (its save screen and START menu): SaveBlock1 +0x490 XOR SaveBlock2 +0xAC.
         assertEquals(3000L, money("dreamstone", NATIVE_DREAMSTONE))
         // Ghost Grey's 1.0.3 save in each build (its trainer card: ₽163300).

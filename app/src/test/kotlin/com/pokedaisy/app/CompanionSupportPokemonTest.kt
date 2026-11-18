@@ -49,6 +49,22 @@ class CompanionSupportPokemonTest {
         assertTrue(CompanionSupport.looksPokemon(gb("Pocket Monsters - Midori.gb", "MIDORI")))
     }
 
+    /** A zip holding [entry] with [bytes]. */
+    private fun zip(name: String, entry: String, bytes: ByteArray) = java.io.File(dir, name).apply {
+        java.util.zip.ZipOutputStream(outputStream()).use { z ->
+            z.putNextEntry(java.util.zip.ZipEntry(entry)); z.write(bytes); z.closeEntry()
+        }
+        deleteOnExit()
+    }
+
+    /** A Pokémon game of another console zipped (N64's Pokemon Snap / Stadium): nothing in it the app plays, so the
+     * library leaves it out, whatever its name (a player's report: they showed up under GBA). A zipped GB game still counts. */
+    @Test fun archivesWithNoGameOfOursStayOut() {
+        val n64 = ByteArray(0x1000).also { b -> byteArrayOf(0x80.toByte(), 0x37, 0x12, 0x40).copyInto(b, 0); put(b, 0x20, "POKEMON SNAP") }
+        assertFalse(CompanionSupport.looksPokemon(zip("Pokemon Snap (USA).zip", "Pokemon Snap (USA).z64", n64)))
+        assertTrue(CompanionSupport.looksPokemon(zip("Pokemon Ambrosia.zip", "Pokemon Ambrosia.gbc", gb("ambrosia-src.gbc", "AMBROSIA").readBytes())))
+    }
+
     @Test fun otherGamesStayOut() {
         assertFalse(CompanionSupport.looksPokemon(gb("Zelda.gb", "ZELDA")))
         assertFalse(CompanionSupport.looksPokemon(nds("Mario Kart DS.nds", "MARIO KART")))

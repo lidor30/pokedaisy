@@ -31,8 +31,8 @@ The card is drawn at the largest whole size that fits the screen, so the pixels 
 
 | Game | Card |
 | --- | --- |
-| FireRed and LeafGreen (English) | The game's own card |
-| Emerald (English) | The game's own card |
+| FireRed and LeafGreen (English, German, French, Italian, Spanish) | The game's own card, in your cart's language |
+| Emerald (English, German, French, Italian, Spanish) | The game's own card, in your cart's language |
 | Unbound | FireRed's card in Unbound's purple, with Unbound's own player characters. No badges are drawn on it. |
 | Glazed | Its own badges, pictures and font |
 | Emerald Imperium | Emerald's card with Imperium's font and wording |
@@ -41,7 +41,7 @@ The card is drawn at the largest whole size that fits the screen, so the pixels 
 | Lazarus | Its own orange card and font. The stars it draws follow its own rules, while the card's colour follows the original's |
 | Recharged Yellow | FireRed's card with its own pictures, font and wording, and the six Pokémon you picked for the back |
 
-Other games don't have a CARD tab yet, including Ruby, Sapphire and the other-language versions of the original games. Many hacks draw their trainer card in a way of their own that hasn't been mapped.
+Other games don't have a CARD tab yet, including Ruby, Sapphire and the Japanese versions of the original games. Many hacks draw their trainer card in a way of their own that hasn't been mapped.
 
 > [!NOTE]
 > The card's graphics come from your ROM, so the first time you play a game it can take a moment before the CARD tab appears. That only happens once per ROM.
