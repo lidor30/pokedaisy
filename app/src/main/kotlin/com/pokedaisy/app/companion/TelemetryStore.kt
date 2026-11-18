@@ -1,7 +1,12 @@
 package com.pokedaisy.app.companion
 
+import kotlinx.atomicfu.locks.synchronized
+import kotlinx.atomicfu.locks.SynchronizedObject
+import com.pokedaisy.app.companion.data.Logs
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
+import kotlin.concurrent.Volatile
 import com.pokedaisy.app.companion.i18n.tk
-import android.util.Log
 import com.pokedaisy.app.companion.data.DecompIconSource
 import com.pokedaisy.app.companion.data.InProcessReader
 import com.pokedaisy.app.companion.data.MemoryReader
@@ -85,7 +90,7 @@ class TelemetryStore {
     @Volatile private var generation = 0
 
     private var logCount = 0
-    private var lastPublishNanos = 0L
+    private var lastPublish: TimeSource.Monotonic.ValueTimeMark? = null
 
     /**
      * LIGHT COMPANION ([LightCompanion]): whether sample [s] goes to the companion. Not when nothing it shows changed
@@ -97,7 +102,7 @@ class TelemetryStore {
         if (s.inBattle != prev.inBattle || s.battleInputState != prev.battleInputState || s.connected != prev.connected ||
             s.game != prev.game || s.unsupported != prev.unsupported) return true
         if (s.copy(frameCounter = prev.frameCounter) == prev) return false
-        return System.nanoTime() - lastPublishNanos >= LightCompanion.MIN_UPDATE_MS * 1_000_000L
+        return lastPublish.let { it == null || it.elapsedNow() >= LightCompanion.MIN_UPDATE_MS.milliseconds }
     }
 
     /** Call on the emulator thread. Returns the fresh sample so the caller
@@ -110,11 +115,28 @@ class TelemetryStore {
     @Volatile var battleChecksTaken = 0L
         private set
 
-    @Synchronized
-    fun refresh(reader: MemoryReader = InProcessReader): SnapshotView {
+    private val refreshLock = SynchronizedObject()
+
+    fun refresh(reader: MemoryReader = InProcessReader): SnapshotView = synchronized(refreshLock) {
+        refreshLocked(reader, generation, sampler)
+    }
+
+    /** Bind a copied RAM image to this game's sampler before queueing its decode. A task from a replaced game
+     * must not configure the new sampler, even if its worker only starts after reset. */
+    fun deferredRefresh(reader: MemoryReader): () -> SnapshotView? {
         val gen = generation
+        val source = sampler
+        return {
+            synchronized(refreshLock) {
+                if (gen != generation) null
+                else refreshLocked(reader, gen, source).takeIf { gen == generation }
+            }
+        }
+    }
+
+    private fun refreshLocked(reader: MemoryReader, gen: Int, source: TelemetrySampler): SnapshotView {
         samplesTaken++
-        val s = sampler.sample(reader)
+        val s = source.sample(reader)
         if (gen != generation) return s   // a new ROM started while this one was read: it's the last game's
         val c = cached
         if (c != null) {
@@ -131,17 +153,16 @@ class TelemetryStore {
         }
         if (LightCompanion.on && !lightPublishes(s)) return s
         _snapshot.value = s
-        lastPublishNanos = System.nanoTime()
+        lastPublish = TimeSource.Monotonic.markNow()
         if (logCount++ % 5 == 0) {
             // pockets=<pocket id>:<count>,... - lets scripts/smoke_test.sh (and
             // manual debugging) verify item CATEGORIZATION specifically, not
             // just that items exist. A regression that tags everything as one
             // pocket (see the 2026-09-21 native-RAM bug) still shows items>0
             // here but only ever prints a single pocket id.
-            val pockets = s.items.groupingBy { it.pocket }.eachCount().toSortedMap()
-                .entries.joinToString(",") { "${it.key}:${it.value}" }
-            Log.i(
-                "pokedaisy",
+            val pockets = s.items.groupingBy { it.pocket }.eachCount().entries.sortedBy { it.key }
+                .joinToString(",") { "${it.key}:${it.value}" }
+            Logs.i(
                 "telemetry game=$activeGame connected=${s.connected} err=${s.error} " +
                     "party=${s.party.size} inBattle=${s.inBattle} loc=${s.location.mapSecName} (${s.x},${s.y}) " +
                     "items=${s.items.size} pockets=$pockets iconTables=${com.pokedaisy.app.companion.data.DecompIconSource.tables.present}",

@@ -17,6 +17,7 @@
 //   press-to-state S [MAX] the same, pressing A now and then through the game's messages
 //   poke ADDR VALUE    a byte of RAM
 //   peek ADDR [N]      N bytes of RAM
+//   cheats [FILE]      the cheats in FILE (mGBA's .cheats format) into the core as the app loads them; none: all out
 //   state              prints the battle's state, the party's HP, the place
 //   expect WHAT ...    the script fails unless it holds: state S / hp SLOT N / inbattle 0|1
 //
@@ -34,9 +35,11 @@
 #include <mgba/core/log.h>
 #include "../../host/pd_mixer.h"
 #include "../../emu/pd_armgba.h"
+#include "../../emu/pd_gpsp.h"
 #include <mgba/internal/gba/gba.h>
 
 #include "../../../app/src/main/cpp/pk_call.h"
+#include "../../../app/src/main/cpp/pk_cheats.h"
 #include "../../../app/src/main/cpp/pk_host.h"
 #include "../../../app/src/main/cpp/pk_wide.h"
 #include "../../core/pd_games.h"
@@ -367,7 +370,8 @@ static void command(char* line) {
             const struct pd_hit* h = &session.ui.hits[i];
             printf("hit %d at %d,%d %dx%d\n", h->id, h->x, h->y, h->w, h->h);
         }
-    } else if (!strcmp(cmd, "idle") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core)) {
+    } else if (!strcmp(cmd, "idle") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core) &&
+               !pd_gpsp_is(session.core)) {
         // idle detect | remove | ignore: mGBA's busy-loop skipping, as the console sets it (detect) or not; bare, the state.
         struct GBA* gba = session.core->board;
         if (*args)
@@ -387,12 +391,15 @@ static void command(char* line) {
         double core = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
         // The same frames with mGBA's renderer skipped: what the game's own code costs, apart from drawing it.
         double bare = 0;
-        if (pd_armgba_is(session.core)) {
-            pd_armgba_skip_video(true);
+        if (pd_armgba_is(session.core) || pd_gpsp_is(session.core)) {
+            bool gp = pd_gpsp_is(session.core);
+            if (gp) pd_gpsp_skip_video(true);
+            else pd_armgba_skip_video(true);
             clock_gettime(CLOCK_MONOTONIC, &t0);
             for (int i = 0; i < n; i++) session.core->runFrame(session.core);
             clock_gettime(CLOCK_MONOTONIC, &t1);
-            pd_armgba_skip_video(false);
+            if (gp) pd_gpsp_skip_video(false);
+            else pd_armgba_skip_video(false);
             bare = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
         } else if (session.core->platform(session.core) == mPLATFORM_GBA) {
             struct GBA* gba = session.core->board;
@@ -455,10 +462,12 @@ static void command(char* line) {
         int max = 3000;
         sscanf(args, "%15s %d", name, &max);
         int want = state_id(name), i = 0;
-        // A message that waits for a button gets one, as a player would.
+        // A message that waits for a button gets one, as a player would: every 41 frames, so a game that reads the keys
+        // every other frame sees one (every 40 they all fell on the same parity: FireRed's GEN 5 battle on gpSP never
+        // got one). One frame each: a longer press reached into the menu as it opened and was taken as a pick.
         for (;;) {
             for (; i < max && (int) sim_state() != want; i++)
-                frames(1, heldKeys | (!strcmp(cmd, "press-to-state") && i % 40 == 39 ? PD_KEY_A : 0));
+                frames(1, heldKeys | (!strcmp(cmd, "press-to-state") && i % 41 == 40 ? PD_KEY_A : 0));
             // That A can land on the menu's first frame and be taken: only a state that stays counts.
             frames(8, heldKeys);
             if (i >= max || (int) sim_state() == want) break;
@@ -622,7 +631,8 @@ static void command(char* line) {
             uint8_t v = (uint8_t) value;
             pd_session_write(&session, addr, &v, 1);
         }
-    } else if (!strcmp(cmd, "io") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core)) {
+    } else if (!strcmp(cmd, "io") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core) &&
+               !pd_gpsp_is(session.core)) {
         // The display registers as the frame ended, and the DMAs set to run each line (a scene's drawing cost).
         struct GBA* gba = session.core->board;
         const uint16_t* io = gba->memory.io;
@@ -634,6 +644,25 @@ static void command(char* line) {
             const struct GBADMA* d = &gba->memory.dma[i];
             printf("DMA%d ctl %04X src %08X dst %08X count %u\n", i, d->reg, d->source, d->dest, d->count);
         }
+    } else if (!strcmp(cmd, "cheats")) {
+        char* text = NULL;
+        long n = 0;
+        FILE* f = *args ? fopen(args, "rb") : NULL;
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            n = ftell(f);
+            fseek(f, 0, SEEK_SET);
+            text = malloc((size_t) n + 1);
+            if (text) n = (long) fread(text, 1, (size_t) n, f);
+            fclose(f);
+        } else if (*args) {
+            printf("FAIL: no cheat file %s\n", args);
+            failures++;
+        }
+        int sets = pk_cheats_apply(session.core, text, text ? (size_t) n : 0);
+        printf("cheats %d\n", sets);
+        if (sets < 0) failures++;
+        free(text);
     } else if (!strcmp(cmd, "peek")) {
         unsigned addr;
         int count = 1;
@@ -653,7 +682,7 @@ static void command(char* line) {
                pd_mixer_stats.reversed, pd_mixer_stats.ended);
         if (pd_mixer_stats.differed) failures++;
 #else
-        printf("mixer: native alone (PD_SIM_MIXER_CHECK=OFF)\n");
+        printf("mixer: native alone (PD_SIM_MIXER_CHECK=OFF), %u mixes\n", pd_mixer_mixes);
 #endif
     } else if (!strcmp(cmd, "scene")) {
         // EXPAND's scene now (pk_wide.h: 0 field, 1 text, 2 overlay, 3 battle start, 4 off, 5 fade, 6 menu) and the screen mode.
@@ -722,9 +751,26 @@ int main(int argc, char** argv) {
     fclose(romFile);
     pd_game_detect(&session.game, romBytes, romLen);
     struct mCore* core = NULL;
-    // A GBA game on armGBA, as the 3DS runs it; PD_SIM_CORE=mgba keeps it on mGBA (to compare the two).
+    // A GBA game on armGBA, as the 3DS runs it; PD_SIM_CORE=mgba keeps it on mGBA, =gpsp on gpSP's interpreter (GBA
+    // CORE's other two).
     const char* coreName = getenv("PD_SIM_CORE");
-    if (pd_armgba_wants(romBytes, romLen) && !(coreName && !strcmp(coreName, "mgba"))) {
+    if (pd_armgba_wants(romBytes, romLen) && coreName && !strcmp(coreName, "gpsp")) {
+        // PD_SIM_THREADED_VIDEO=1: gpSP's renderer on a thread of its own, as on the console.
+        struct pd_gpsp_host host = { .threaded = getenv("PD_SIM_THREADED_VIDEO") != NULL, .renderCore = -1 };
+        char error[128] = "";
+        core = pd_gpsp_load(argv[1], savePath, &host, error, sizeof(error));
+        if (!core) {
+            fprintf(stderr, "gpSP: %s\n", error);
+            return 1;
+        }
+        core->setVideoBuffer(core, video, STRIDE);
+        core->reset(core);
+        free(romBytes);
+        // PD_SIM_HBLANK=0: the game's empty H-blank interrupts raised as ever (pd_gpsp.c), to compare.
+        const char* hb = getenv("PD_SIM_HBLANK");
+        if (hb && !strcmp(hb, "0")) pd_gpsp_hblank_skips(false);
+        if (getenv("PD_SIM_HBLANK_COST")) pd_gpsp_hblank_cost(atoi(getenv("PD_SIM_HBLANK_COST")));
+    } else if (pd_armgba_wants(romBytes, romLen) && !(coreName && !strcmp(coreName, "mgba"))) {
         struct pd_armgba_host host = { .threaded = getenv("PD_SIM_THREADED_VIDEO") != NULL };
         char error[128] = "";
         core = pd_armgba_load(argv[1], savePath, &host, error, sizeof(error));

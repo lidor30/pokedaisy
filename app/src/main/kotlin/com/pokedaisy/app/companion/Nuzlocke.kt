@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion
 
+import kotlinx.atomicfu.locks.synchronized
+import kotlinx.atomicfu.locks.SynchronizedObject
 import androidx.compose.runtime.mutableStateOf
 import com.pokedaisy.app.companion.data.GameKind
 import com.pokedaisy.app.companion.data.NuzlockeEvent
@@ -27,6 +29,8 @@ object Nuzlocke {
     private var saveOn: (Boolean) -> Unit = {}
     private var saveRun: (String) -> Unit = {}
 
+    private val lock = SynchronizedObject()
+
     val on: Boolean get() = onState.value
     val run: NuzlockeRun get() = runState.value
 
@@ -41,8 +45,7 @@ object Nuzlocke {
     fun isDead(personality: Long): Boolean = on && runState.value.isDead(personality)
 
     /** [on] / [stored] are this ROM's; the two savers write changes back. */
-    @Synchronized
-    fun load(on: Boolean, stored: String?, saveOn: (Boolean) -> Unit, saveRun: (String) -> Unit) {
+    fun load(on: Boolean, stored: String?, saveOn: (Boolean) -> Unit, saveRun: (String) -> Unit) = synchronized(lock) {
         this.saveOn = saveOn
         this.saveRun = saveRun
         val r = NuzlockeRun.decode(stored)
@@ -51,8 +54,7 @@ object Nuzlocke {
         onState.value = on
     }
 
-    @Synchronized
-    fun setOn(v: Boolean) {
+    fun setOn(v: Boolean) = synchronized(lock) {
         onState.value = v
         saveOn(v)
     }
@@ -61,32 +63,27 @@ object Nuzlocke {
      * A fresh sample (any thread, the activity's afterSample): what it changed goes into the run, and the notices for the
      * game screen come back, worded (none with WARNINGS off, or NUZLOCKE off).
      */
-    @Synchronized
-    fun onSample(s: SnapshotView): List<String> {
-        if (!onState.value || !s.connected || s.unsupported || !supports(s.game)) return emptyList()
+    fun onSample(s: SnapshotView): List<String> = synchronized(lock) {
+        if (!onState.value || !s.connected || s.unsupported || !supports(s.game)) return@synchronized emptyList()
         val before = tracker.run
         val events = tracker.feed(NuzlockeSample.of(s))
         if (tracker.run != before) store(tracker.run)
-        return if (tracker.run.rules.warnings) events.map(::notice) else emptyList()
+        if (tracker.run.rules.warnings) events.map(::notice) else emptyList()
     }
 
     /** The tab's changes: an encounter set by hand (null clears it), a Pokémon marked dead or alive, the rules. */
-    @Synchronized
-    fun setOutcome(area: Int, outcome: NuzlockeOutcome?) = change { r ->
+    fun setOutcome(area: Int, outcome: NuzlockeOutcome?) = synchronized(lock) { change { r ->
         r.copy(encounters = if (outcome == null) r.encounters.filter { it.area != area } else r.encounters.map { if (it.area == area) it.copy(outcome = outcome) else it })
-    }
+    } }
 
-    @Synchronized
-    fun setDead(personality: Long, dead: Boolean, where: String = "") = change { r ->
+    fun setDead(personality: Long, dead: Boolean, where: String = "") = synchronized(lock) { change { r ->
         r.copy(mons = r.mons.map { if (it.personality == personality) it.copy(dead = dead, diedIn = if (dead) where else "", diedLevel = if (dead) it.level else 0) else it })
-    }
+    } }
 
-    @Synchronized
-    fun setRules(rules: NuzlockeRules) = change { it.copy(rules = rules) }
+    fun setRules(rules: NuzlockeRules) = synchronized(lock) { change { it.copy(rules = rules) } }
 
     /** NEW RUN: every encounter and Pokémon forgotten, the rules kept. The party seen next starts it. */
-    @Synchronized
-    fun newRun() = change { NuzlockeRun(rules = it.rules) }
+    fun newRun() = synchronized(lock) { change { NuzlockeRun(rules = it.rules) } }
 
     private fun change(f: (NuzlockeRun) -> NuzlockeRun) {
         val r = f(tracker.run)

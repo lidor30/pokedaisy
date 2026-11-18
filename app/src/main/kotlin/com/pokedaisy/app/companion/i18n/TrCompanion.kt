@@ -183,6 +183,7 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     "STAT" to Tr(ja = "のうりょく", fr = "STAT", de = "WERT", it = "STAT", es = "VALOR", br = "STAT", pt = "STAT", ko = "능력치"),
     "IV" to Tr(ja = "こたいち", fr = "IV", de = "DV", it = "IV", es = "IV", br = "IV", pt = "IV", ko = "개체값"),
     "EV" to Tr(ja = "どりょくち", fr = "EV", de = "FP", it = "EV", es = "EV", br = "EV", pt = "EV", ko = "노력치"),
+    "DV" to Tr(ja = "こたいち", fr = "DV", de = "DV", it = "DV", es = "DV", br = "DV", pt = "DV", ko = "개체값"),
     "NATURE" to Tr(ja = "せいかく", fr = "NATURE", de = "WESEN", it = "NATURA", es = "NATURALEZA", br = "NATUREZA", pt = "NATUREZA", ko = "성격"),
     "HIDDEN POWER" to Tr(ja = "めざめるパワー", fr = "PUIS. CACHÉE", de = "KRAFTRESERVE", it = "INTROFORZA", es = "POD. OCULTO", br = "PODER OCULTO", pt = "PODER OCULTO", ko = "잠재파워"),
     "NO STATS FOR THIS ONE" to Tr(ja = "のうりょくの データなし", fr = "PAS DE STATS POUR CELUI-CI", de = "KEINE WERTE FÜR DIESES", it = "NESSUNA STAT. PER QUESTO", es = "SIN STATS PARA ESTE", br = "SEM STATS PARA ESTE", pt = "SEM STATS PARA ESTE", ko = "능력치 정보 없음"),
@@ -239,6 +240,8 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     "TAKE" to Tr(ja = "あずかる", fr = "PRENDRE", de = "NEHMEN", it = "PRENDI", es = "QUITAR", br = "TIRAR", pt = "TIRAR", ko = "돌려받기"),
     "{0} is holding {1}. Take it?" to Tr(ja = "{0}は {1}を もっている。 あずかる?", fr = "{0} tient {1}. Le prendre ?", de = "{0} trägt {1}. Nehmen?", it = "{0} tiene {1}. Prenderlo?", es = "{0} lleva {1}. ¿Quitárselo?", br = "{0} está segurando {1}. Tirar?", pt = "{0} está a segurar {1}. Tirar?", ko = "{0}의 지닌 물건: {1}. 돌려받을까요?"),
     "Received {0} from {1}." to Tr(ja = "{1}から {0}を あずかった。", fr = "{0} récupéré de {1}.", de = "{0} von {1} erhalten.", it = "Hai preso {0} da {1}.", es = "Has recibido {0} de {1}.", br = "Recebeu {0} de {1}.", pt = "Recebeu {0} de {1}.", ko = "{1}에게서 {0} 받았어요."),
+    "{1}'s {0} went to the PC's mailbox." to Tr(ja = "{1}の {0}を パソコンの メールボックスに おくった。", fr = "{0} de {1} est allé dans la boîte aux lettres du PC.", de = "{0} von {1} ist jetzt im Briefkasten des PCs.", it = "{0} di {1} è stato inviato alla casella di posta del PC.", es = "{0} de {1} se envió al buzón del PC.", br = "{0} de {1} foi para a caixa de correio do PC.", pt = "{0} de {1} foi para a caixa de correio do PC.", ko = "{1}의 {0}를 PC의 메일박스로 보냈어요."),
+    "The PC's mailbox is full." to Tr(ja = "パソコンの メールボックスが いっぱいです。", fr = "La boîte aux lettres du PC est pleine.", de = "Der Briefkasten des PCs ist voll.", it = "La casella di posta del PC è piena.", es = "El buzón del PC está lleno.", br = "A caixa de correio do PC está cheia.", pt = "A caixa de correio do PC está cheia.", ko = "PC의 메일박스가 가득 찼어요."),
 
     // Map.
     "MAP {0}" to Tr(ja = "マップ {0}", fr = "CARTE {0}", de = "KARTE {0}", it = "MAPPA {0}", es = "MAPA {0}", br = "MAPA {0}", pt = "MAPA {0}", ko = "지도 {0}"),

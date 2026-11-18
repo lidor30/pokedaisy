@@ -30,6 +30,9 @@ PokeDaisyはニンテンドー3DSでも自作アプリ（homebrew）として動
 
 `sdmc:/` は3DSでのSDカードのいちばん上の呼び名です。パソコンから見ると、`sdmc:/3ds/` はカードの `3ds` フォルダのことです。
 
+> [!TIP]
+> HOMEメニューから起動したい場合は、各リリースにある `pokedaisy.cia` を使えます。3DSでFBIを開き（カスタムファームウェアといっしょに入っています）、**Remote Install**、**Scan QR Code** の順に選んで、リリースページのQRコードを読み取ってください。または `pokedaisy.cia` をSDカードにコピーして、FBIの **SD** の一覧からインストールします。このあとの手順は同じで、PokeDaisyはHOMEメニューのアイコンから起動します。
+
 ## ステップ3：ゲームとセーブデータを入れる
 
 1. カードのいちばん上に `pokedaisy` フォルダを作り、その中に `roms` フォルダを作ります：`sdmc:/pokedaisy/roms/`。（先に一度PokeDaisyを起動すれば、どちらも自動で作られます。）
@@ -108,6 +111,7 @@ PokeDaisyはニンテンドー3DSでも自作アプリ（homebrew）として動
 - **Homebrew LauncherにPokeDaisyがない：** ファイルが `sdmc:/3ds/` にあり、名前が `.3dsx` で終わっている必要があります。
 - **ゲームが一覧に出ない：** `sdmc:/pokedaisy/roms/` の中に直接置き、中のフォルダには入れず、zipのままにしないでください。
 - **セーブデータが読まれない：** セーブデータはゲームとまったく同じ名前で、最後が `.sav` である必要があります。起動のたびにセーブデータは `sdmc:/pokedaisy/roms/pokedaisy-backups/` にコピーされるので、古いコピーが必要ならそこにあります。
-- **動きが遅い：** ニンテンドー3DSや2DSは、Newの本体より遅くなります。ライブラリの `SETTINGS` で `SCREEN` を `PIXEL 1x` にしてください。いちばん軽いモードです。
+- **動きが遅い：** ニンテンドー3DSや2DSは、Newの本体より遅くなります。ライブラリの `SETTINGS` で `SCREEN` を `PIXEL 1x` にしてください。いちばん軽いモードです。GBAのゲームでは、ライブラリで `X` を押して別の `GBA CORE` を試すこともできます。`GPSP` はニンテンドー3DS向けで、まだテスト中です。ゲームは軽くするためにEXPANDなしで始まります。`EXPAND 1.5x` はライブラリの `SETTINGS` で選べます。
+- **ゲームが始まらない：** 上画面に理由と、3DSのメモリの情報が出ます。報告するときは、メッセージ全体の写真か `sdmc:/pokedaisy/log.txt` を送ってください。
 
 それでも困ったら、`sdmc:/pokedaisy/log.txt` を添えて [お知らせください](https://pokedaisy.com/ja/feedback/#bug)。

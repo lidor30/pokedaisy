@@ -220,8 +220,14 @@ static void game_top(struct pd_library* l, struct pd_canvas* c) {
     int fy = y + h + 6;
     int ff = pd_title_box(c, TOP_M, fy, TOP_W - 2 * TOP_M, 24, PD_TITLE_FILL);
     pd_text_fit(c, TOP_M + ff + 6, pd_text_y(fy, 24), TOP_W - 2 * TOP_M - 2 * ff - 12, g->file, PD_MUTED, PD_MUTED_SHADOW);
-    lib_hint_bar(c, g->supported || g->console != PD_CONSOLE_GBA ? "A: PLAY   L R: VIEWS   SELECT: PAGES   START: CLOSE"
-                                                                   : "A: PLAY (no companion for it yet)   L R: VIEWS");
+    // X: the game's GBA CORE (pd_library.c's R_CORE), its pick when it isn't AUTO.
+    char hint[96];
+    const char* coreHint = g->core ? pd_core_name(g->core) : "CORE";
+    if (l->pickRow >= 0) snprintf(hint, sizeof hint, "A: PICK   B: BACK");
+    else if (g->console != PD_CONSOLE_GBA) snprintf(hint, sizeof hint, "A: PLAY   L R: VIEWS   SELECT: PAGES   START: CLOSE");
+    else if (g->supported) snprintf(hint, sizeof hint, "A: PLAY   X: %s   L R: VIEWS   SELECT: PAGES", coreHint);
+    else snprintf(hint, sizeof hint, "A: PLAY (no companion for it yet)   X: %s", coreHint);
+    lib_hint_bar(c, hint);
 }
 
 // SETTINGS: the app's name, its version, and what the row under the cursor does.

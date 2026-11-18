@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import androidx.compose.animation.AnimatedContent
@@ -138,7 +140,7 @@ fun CompanionScreen(
     /** WHICH GAME IS THIS? ([com.pokedaisy.app.companion.data.BestEffort]): the player's answers; null = no picker. */
     gamePick: com.pokedaisy.app.companion.GamePickActions? = null,
     /** The match notice's SHARE (the player's yes): sends exactly what it lists. Null = no ask. */
-    shareBestEffort: ((com.pokedaisy.app.companion.data.BestEffortReport) -> Unit)? = null,
+    shareBestEffort: com.pokedaisy.app.companion.data.BestEffortSharing? = null,
 ) {
     // Everything below is keyed on the snapshot's game: the per-game look
     // (backdrops, party slots, bag) reads the plain `activeGame` global, which
@@ -546,16 +548,16 @@ fun CompanionScreen(
                 // When the last switch was moments ago (a player tapping through tabs), cut
                 // instead of animating: every pane still sliding out stays composed, and
                 // a run of quick taps stacked up several full tabs at once.
-                val lastSwitchNanos = remember { longArrayOf(0L) }
+                val lastSwitch = remember { arrayOfNulls<TimeSource.Monotonic.ValueTimeMark>(1) }
                 // The tab area, with RetroAchievements' live indicators in its corner.
                 Box(Modifier.weight(1f).fillMaxSize()) {
                     AnimatedContent(
                         targetState = pane,
                         transitionSpec = {
-                            val now = System.nanoTime()
+                            val now = TimeSource.Monotonic.markNow()
                             // TWEAKS > TAB ANIMATIONS off: every switch cuts.
-                            val rapid = now - lastSwitchNanos[0] < RAPID_SWITCH_NANOS || !CompanionTweaks[CompanionTweaks.Tweak.TAB_ANIMATIONS]
-                            lastSwitchNanos[0] = now
+                            val rapid = lastSwitch[0]?.let { now - it < RAPID_SWITCH } == true || !CompanionTweaks[CompanionTweaks.Tweak.TAB_ANIMATIONS]
+                            lastSwitch[0] = now
                             if (rapid) {
                                 EnterTransition.None togetherWith ExitTransition.None
                             } else if (targetState == "LOADING" || initialState == "LOADING" || targetState == "WAITING" || initialState == "WAITING") {
@@ -1042,7 +1044,7 @@ internal val SETTINGS_CHIP_WIDTH: androidx.compose.ui.unit.Dp
     @Composable get() = if (LocalShortCompanion.current) 40.dp else 52.dp
 
 /** Tab switches closer together than this cut instead of sliding (see the tab AnimatedContent). */
-private const val RAPID_SWITCH_NANOS = 300_000_000L
+private val RAPID_SWITCH = 300.milliseconds
 
 /** The gap between tab chips, and above the tab bar. */
 internal val TAB_GAP = 4.dp

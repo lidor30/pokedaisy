@@ -13,6 +13,17 @@ package com.pokedaisy.app.companion
  * [start] / [end] are where the hinge begins and ends along the split (px in the game stage's own coordinates: y for
  * TABLETOP, x for BOOK); a hinge that's only a line has start == end.
  */
+/** SETTINGS > FOLD LAYOUT: OFF, HALF OPEN (the default: only while the phone is half open) or ALWAYS (unfolded flat too). */
+enum class FoldMode(val id: Int, val label: String) {
+    OFF(0, "OFF"),
+    HALF_OPEN(1, "HALF OPEN"),
+    ALWAYS(2, "ALWAYS");
+
+    companion object {
+        fun of(id: Int): FoldMode = entries.firstOrNull { it.id == id } ?: HALF_OPEN
+    }
+}
+
 data class FoldPosture(val kind: Kind, val start: Int, val end: Int) {
     enum class Kind { TABLETOP, BOOK }
 
@@ -29,11 +40,15 @@ data class FoldPosture(val kind: Kind, val start: Int, val end: Int) {
             halfOpened: Boolean, separating: Boolean, horizontal: Boolean,
             left: Int, top: Int, right: Int, bottom: Int,
             stageX: Int, stageY: Int, stageW: Int, stageH: Int,
+            foldMode: FoldMode = FoldMode.HALF_OPEN,
         ): FoldPosture? {
-            if (!halfOpened && !separating) return null
+            if (foldMode == FoldMode.OFF) return null
+            val always = foldMode == FoldMode.ALWAYS
+            if (!halfOpened && !separating && !always) return null
             if (stageW <= 0 || stageH <= 0) return null
             val kind = if (horizontal) Kind.TABLETOP else Kind.BOOK
             val size = if (horizontal) stageH else stageW
+            // Flat (ALWAYS) the feature still reports where the hinge is: the same split as half open.
             val start = (if (horizontal) top - stageY else left - stageX).coerceIn(0, size)
             val end = (if (horizontal) bottom - stageY else right - stageX).coerceIn(start, size)
             if (start < size * MIN_SIDE || size - end < size * MIN_SIDE) return null

@@ -67,7 +67,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/nds/dsperate.cmake")
 # ---------------------------------------------------------------------------
 # Our JNI bridge.
 # ---------------------------------------------------------------------------
-add_library(pokedaisy SHARED pokedaisy_jni.c pokedaisy_ra.c pk_coop_lock_jni.c pk_link.c pk_link_jni.c pk_gb_field.c
+add_library(pokedaisy SHARED pokedaisy_jni.c pokedaisy_ra.c pk_coop_lock_jni.c pk_link.c pk_link_jni.c
     nds/pk_nds_core.cpp nds/pk_nds_dsp.cpp nds/pk_nds.cpp nds/pk_nds_platform.cpp nds/pk_nds_field.cpp nds/pk_nds_field_gpu.cpp nds/pk_nds_call.cpp nds/pk_nds_call_melonds.cpp nds/pk_nds_wide.cpp
     nds/pk_nds_music.cpp nds/pk_nds_gl.cpp)
 set_target_properties(pokedaisy PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)

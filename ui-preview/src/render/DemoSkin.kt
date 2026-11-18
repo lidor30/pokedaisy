@@ -10,6 +10,8 @@ import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
+import okio.Path
+import okio.Path.Companion.toOkioPath
 
 /**
  * A Delta skin of our own for the TOUCH CONTROLS > SKINS shots (no real skin's art is ever used): drawn here with
@@ -21,7 +23,7 @@ object DemoSkin {
 
     fun install(filesDir: File): com.pokedaisy.app.companion.InstalledSkin {
         com.pokedaisy.app.companion.ui.SkinImages.decode = ::decode
-        val store = com.pokedaisy.app.companion.DeltaSkinStore(File(filesDir, "skins"))
+        val store = com.pokedaisy.app.companion.DeltaSkinStore(filesDir.toOkioPath() / "skins")
         store.load(ID)?.let { return it }
         val tmp = File.createTempFile("demo", ".deltaskin")
         java.util.zip.ZipOutputStream(tmp.outputStream()).use { z ->
@@ -30,13 +32,13 @@ object DemoSkin {
             put("landscape.png", png(LANDSCAPE_W, LANDSCAPE_H, landscape = true))
             put("portrait.png", png(PORTRAIT_W, PORTRAIT_H, landscape = false))
         }
-        val r = tmp.inputStream().use { store.import(it) }
+        val r = store.import(tmp.toOkioPath())
         tmp.delete()
         return r.added.firstOrNull() ?: error("demo skin refused: ${r.refused}")
     }
 
-    private fun decode(file: File, w: Int, h: Int): ImageBitmap? {
-        val src = ImageIO.read(file) ?: return null
+    private fun decode(file: Path, w: Int, h: Int): ImageBitmap? {
+        val src = ImageIO.read(file.toFile()) ?: return null
         val out = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
         out.createGraphics().apply {
             setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)

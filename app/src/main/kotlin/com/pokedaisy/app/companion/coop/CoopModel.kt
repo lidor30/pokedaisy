@@ -3,11 +3,12 @@ package com.pokedaisy.app.companion.coop
 import com.pokedaisy.app.companion.data.save.Gen3SaveData
 import com.pokedaisy.app.companion.data.save.Gen3SaveFile
 import com.pokedaisy.app.companion.data.save.Gen3SaveFormat
-import java.io.File
-import java.io.IOException
-import java.util.Locale
+import com.pokedaisy.app.companion.data.readBytes
+import kotlin.jvm.JvmInline
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import okio.IOException
+import okio.Path
 
 /** The co-op protocol version carried in every [CoopHello]; a partner on another one is refused. */
 const val COOP_PROTOCOL = 1
@@ -50,7 +51,7 @@ class CoopSaveId(val trainerId: Int, val secretId: Int, name: ByteArray) {
     /** The 8 raw name bytes (a copy). */
     val name: ByteArray get() = nameBytes.copyOf()
 
-    val key: String = String.format(Locale.ROOT, "%04x%04x-", trainerId, secretId) + toHex(nameBytes)
+    val key: String = hex4(trainerId) + hex4(secretId) + "-" + toHex(nameBytes)
 
     override fun equals(other: Any?): Boolean = other is CoopSaveId && other.key == key
     override fun hashCode(): Int = key.hashCode()
@@ -58,7 +59,7 @@ class CoopSaveId(val trainerId: Int, val secretId: Int, name: ByteArray) {
 
     companion object {
         /** The save in [saveFile] (Emerald's layout), or null: missing, unreadable, another layout or no trainer name. A save's content (party, boxes) is never judged: only its layout and name. */
-        fun read(saveFile: File): CoopSaveId? = try {
+        fun read(saveFile: Path): CoopSaveId? = try {
             val format = Gen3SaveFormat.forGameCode("BPEE")!!
             when (val parsed = Gen3SaveFile.parse(saveFile.readBytes(), format)) {
                 is Gen3SaveFile.Parsed.Failed -> null
@@ -125,6 +126,9 @@ interface CoopLink {
 }
 
 private const val HEX = "0123456789abcdef"
+
+/** [v] (0..0xFFFF) as 4 lowercase hex digits. */
+private fun hex4(v: Int): String = v.toString(16).padStart(4, '0')
 
 internal fun toHex(bytes: ByteArray): String = buildString(bytes.size * 2) {
     for (b in bytes) {

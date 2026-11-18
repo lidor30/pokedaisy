@@ -32,6 +32,7 @@ import okio.Path.Companion.toOkioPath
  *     ./gradlew :app:recordPaparazziDebug --tests '*SidePanel43ScreenshotTest'
  */
 class SidePanel43ScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(

@@ -7,7 +7,7 @@ import android.os.Looper
  * A D-pad direction held on a joystick's hat (or its stick) while the buttons steer the companion: Android repeats a
  * held key, but never a motion event's axes, so holding UP or DOWN on such a D-pad moved the cursor once (GitHub
  * discussion #922). Like a key's repeat: the first after [delayMs], then one every [everyMs], until the direction is let
- * go or another comes on. Directions only (bits as [MgbaCore.Key]'s); UI thread.
+ * go or another comes on. Directions only (bits as [com.pokedaisy.app.companion.data.CoreKey]'s); UI thread.
  */
 class HatRepeat(
     private val delayMs: Long = DELAY_MS,
@@ -52,7 +52,7 @@ class HatRepeat(
     companion object {
         const val DELAY_MS = 400L
         const val EVERY_MS = 90L
-        private val ORDER = listOf(MgbaCore.Key.UP, MgbaCore.Key.DOWN, MgbaCore.Key.LEFT, MgbaCore.Key.RIGHT)
+        private val ORDER = listOf(com.pokedaisy.app.companion.data.CoreKey.UP, com.pokedaisy.app.companion.data.CoreKey.DOWN, com.pokedaisy.app.companion.data.CoreKey.LEFT, com.pokedaisy.app.companion.data.CoreKey.RIGHT)
         private val DIRECTIONS = ORDER.reduce(Int::or)
         private val main by lazy { Handler(Looper.getMainLooper()) }
     }

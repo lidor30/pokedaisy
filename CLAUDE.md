@@ -170,7 +170,9 @@ the companion's reads (addresses generated from `gamedata/`: `pd_configs_gen.h`;
 draws it at 320x240 in the OPTION look; `3ds/ctr/` runs GBA games on armGBA (`third_party/armgba`, ratherDashing's 3DS
 fork at `3ds-v0.0.3-alpha`: a recompiler; MPL-2.0, its GPL-2.0-only Gambatte left out, `3ds/emu/gb_none.c`) and Game Boy
 games on libmgba (the same submodule). armGBA sits behind mGBA's own `struct mCore` (`3ds/emu/pd_armgba_core.c`), so the
-shared C (`pk_wide.c`, `linux/*.c`) needs no change for it; the app's `pk_call.c` / `pk_host.c` / `pk_cheats.c` are built
+shared C (`pk_wide.c`, `linux/*.c`) needs no change for it (a third, gpSP 3D at `third_party/gpsp`, EXPERIMENTAL, the library's GBA CORE
+GPSP, the same way: `3ds/emu/pd_gpsp*.c`, linked into one object with only `pd_gpsp.keep`'s names global; code that branches on
+`pd_armgba_is` and else assumes mGBA must check `pd_gpsp_is` too); the app's `pk_call.c` / `pk_host.c` / `pk_cheats.c` are built
 as `*_mgba` there and `3ds/emu/pd_dispatch.c` picks. Code that reaches into mGBA's CPU or renderer checks `pd_armgba_is()`
 first; armGBA's renderer can't be hooked (`pk_wide.c`'s `lineHookless`). 3ds/README.md's "Sound and speed" has the numbers. Its
 tables, font, map layouts, guides (`Guide*.kt` + `GuideAreas*Gen.kt`, by a Kotlin-subset parser in
@@ -182,7 +184,9 @@ SHA1s, checked) into `3ds/build/decomps/`, the preview passes them in, and `fixt
 fixture ROM over the decomp's start (`fixture-*-rom.gba`: the tables sit past 0x08200000) - build/ only,
 never committed. Only retail English FireRed / LeafGreen / Emerald so far (ROM table addresses for FireRed
 rev 1 and Emerald only: rev 0 / LeafGreen get MAP but no POKéDEX, and GUIDE without wild / BOSS); runs on a New 3DS
-(first tried 2026-11-04: `3ds/README.md`). Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
+(first tried 2026-11-04: `3ds/README.md`). Every release carries `pokedaisy.cia` too (HOME Menu, FBI) and its QR code, from `.github/workflows/3ds.yml`
+(release.yml's last job; on a local release run by hand, docs/RELEASING.md): the same ELF packed by `3ds/tools/make_cia.sh` with
+`3ds/ctr/cia/` (armGBA's permissions, our banner). Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
 SUGGESTIONS + the FOE TEAM, ported from BattleInfoScreen / SuggestionsScreen / CompanionScreen's foe state), and
 SETTINGS (screen mode, FF, one save state slot - states never carry the save data), with the TRAINER CARD
 under it (`pd_card`: its renders match `TrainerCardTest`'s pinned CRCs - `make preview` prints them; keep it
@@ -1062,10 +1066,21 @@ into `Mon.stats` (`MonStats.kt`): EVs substruct, Misc +4's IV word (plaintext CF
 nature = PID % 25 XOR expansion's `hiddenNatureModifier` (+0x12 bits 3-7, 0 elsewhere: Mints), stats from the
 party fields. Checked on every fixture by recomputing the stored stats from the ROM's base stats (equal, or
 1 below where EVs came after the last level-up); SoulGold's 96-byte struct didn't add up, so it gets none.
+The DS games (2026-11-14) read theirs in `decodeGen4PartyMon` (every Gen 4 / 5 game): block B +0x10's IV word (Gen 3's order),
+block A +0x10's EVs, the party fields' stats; nature = personality % 25 in Gen 4, Gen 5's own byte at block B +0x19 (it can
+differ). `DsStatsTest`: Black 2 / White 2 fixtures against the carts' personal records (KYUREM's forms by hand), Platinum /
+SoulSilver by public base stats. Hidden Power's power on the retail carts only (`retailDsGame`: not Origin / Renegade / Redux).
 Battlers get theirs by matching species / level / HP
 against the party and `Telemetry.battleFoes` (gEnemyParty, now read in wild battles too; `enemyParty` stays
 trainer-only for FOE TEAM). Hidden Power's power shows only on FIRERED/EMERALD kinds (expansion uses a flat
 60). Foe IVs sit behind SETTINGS > FOE IVS (`Prefs.showFoeIvs`, off): INFO's STATS button.
+The Game Boy games (2026-11-13) carry DVs in the same `MonStats` (`StatKind`: GEN1 / GEN2 = four DVs, HP's from their
+low bits, stat experience for EVs, Special in both special slots - Gen 1's one Special stat too; POLISHED = six DVs, EVs and
+its nature, the personality byte's low 5 bits, Gen 3's numbering), from the party struct and, for a wild foe, the battle
+struct's DVs (`gen1WildFoe` / `gen2WildFoe` -> `battleFoes`) with the stats from the unmodified copy - wEnemyMon's carry stat
+stages (a LEER halves Gen 1's Defense): Gen 1's wEnemyMonUnmodifiedMaxHP CD24 in every cart, Gen 2's wEnemyStats
+(`Gen2Config.enemyStats`: Crystal and hacks C6C1, Gold / Silver CB9F; Polished Crystal keeps stages out of its struct).
+`GbStatsTest` works every fixture's stats out again from base stats (the carts' own with `-DromDir`). Gen 2's Hidden Power (`gen2HiddenPower*`) only on Gold / Silver / Crystal / Crystal Clear; none on Gen 1 / Polished.
 **Battle POKéMON pane + automated input** (`BattleControlsScreen.PartyPicker`, `BattleInputController`):
 on FireRed rev 1 / Emerald (`switchAddrsFor`in`PokeDaisyActivity`; gPartyMenu
 FR `0x0203B0A0`/ EM`0x0203CEC8`, slotId at +9) and the hacks listed there (Unbound since
@@ -2114,11 +2129,21 @@ frame (4-20 ms) is never waited for by the GL thread (`onVsync` returns 0 for `n
 latency - waited for within 60% of a refresh, 45 of 120 were late. (3) FF on the refresh fits its group to the device
 (`FfGroupFit`: a running average of group time; a frame goes only while the smaller group keeps 3/4 of the late one's
 throughput, frames are tried back with a doubling back-off) and SPED-UP divides by the group really run. DS audio is
-resampled by `NDS_FPS` (59.83), not the GBA's. On a screen with several refreshes a frame (120 Hz), a frame drawn a refresh later goes up only on the refresh that starts the
-next frame (`EmulatorEngine.showAtTick` stamped on each published frame, `EmulatorView.readyShowAt`; GitHub #638, 2026-11-16: done within 8 ms it showed for one refresh, slower ones for
-three - DS judder at 1x on a Thor Max, smooth in FF); not yet checked on a device. (4) A GBA game whose frames keep missing the wait (3+ late draws in two 120-frame
+resampled by `NDS_FPS` (59.83), not the GBA's. (4) A GBA game whose frames keep missing the wait (3+ late draws in two 120-frame
 windows: Radical Red, 5-9 ms frames with 12-14 ms ones, GitHub #63) goes the DS way until it closes (`slowFrames`, latched -
 flipping back skips / repeats a frame; the `fps=` line says `paced=1 (slow: not waited for)`).
+**1.6.0's 1x stutter on 120 Hz screens** (2026-11-17, "lag at 1x, fine at 1.5x" from many players): 681a68bb (GitHub #638's
+"up on the refresh that starts the next frame", never checked on a device) was taken out. With it, once a game went
+[slowFrames] (a GBA game within seconds on the Thor at 120 Hz, a DS game always) each frame was replaced before its refresh
+came: on the Thor at 120 Hz, 3,653 of 3,840 FireRed frames and about half of Black's never reached the screen (`unshown=` on
+the `fps=` line), 1 and 0 without it. The DS "top screen stuck white" reports (GitHub #1047) were the same: SoulSilver's boot
+at 120 Hz with DS RESOLUTION 2x left 109-120 of every 120 frames unshown, the top screen on one picture for 10 s and more (a
+white fade, when it stopped on one), 0 without it. Check pacing on a 120 Hz screen with a non-debuggable build
+(`assembleBenchmark`).
+**No method over 10,000 dex code units on a hot path**: ART compiles none past that (at install or in the JIT), so it runs
+interpreted for good - logcat's "Method exceeds compiler instruction limit". `EmulatorEngine.loop` was 7,784 in the 1.6.0
+release (18,500 in a debuggable build, which then ran every frame interpreted); it's `GameRun` now, a method per stage of a
+frame. `python3 scripts/check_dex_methods.py <apk>` lists app methods over 10,000 (fails) and over 8,000.
 **FPS / CPU** (SETTINGS on either screen, SCREEN group, `Prefs.showPerformance`, off): flush in the game screen's
 top-left corner on a small dark box (the HUD's messages moved top-right) - frames the core ran per second
 (`EmulatorEngine.framesRun`, ~60.0 on a 60 / 120 Hz screen, 59.7 on the timer) and the app's share of the whole CPU
@@ -2356,7 +2381,7 @@ except three engine siblings (Orange Islands / Odyssey -> FireRed rev 0, Unbound
 Library: `CompanionSupport.verdict` (SUPPORTED / MATCHED / PARTIAL / TRYABLE / UNSUPPORTED) cached by `RomFolder` as
 1/M/P/T/U; linked-folder TRYABLE ROMs are listed with NOT SUPPORTED, PARTIAL ones tagged PARTIALLY SUPPORTED.
 **Sharing a BEST EFFORT match** (opt-in, `BestEffortShare.kt`): the fresh-match notice asks (`BestEffortShareNotice`,
-listing `BestEffortShare.fields` value by value); only SHARE sends - one Firestore REST create into project `pokedaisy`,
+listing `BestEffortReport.shareFields` value by value); only SHARE sends - one Firestore REST create into project `pokedaisy`,
 collection `bestEffortReports`, no SDK / API key / ids: sha1, size, gameCode, revision, matchedAs, full, off,
 appVersion (`BestEffortReport`), values regex-checked before sending (`BestEffortShareTest`). Offline: queued in
 `filesDir/best-effort-share-queue.jsonl`, sent on the next activity start; a 4xx drops it. `website/firestore.rules`

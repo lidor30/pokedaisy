@@ -13,19 +13,19 @@
 #include <mgba/internal/sm83/sm83.h>
 
 bool pk_gb_write(struct mCore* core, uint32_t addr, const uint8_t* src, int len) {
-    if (!core || core->platform(core) != mPLATFORM_GB || len <= 0) {
+    if (!core || core->platform(core) != mPLATFORM_GB || !src || len <= 0) {
         return false;
     }
     if (addr >= 0x10000u) {
         struct GB* gb = core->board;
         uint32_t bank = addr >> 16, off = addr & 0xFFFFu;
-        if (bank > 7 || off < 0xD000u || off + (uint32_t) len > 0xE000u || !gb->memory.wram) {
+        if (bank > 7 || off < 0xD000u || (uint64_t) off + (uint32_t) len > 0xE000u || !gb->memory.wram) {
             return false;
         }
         memcpy(gb->memory.wram + bank * GB_SIZE_WORKING_RAM_BANK0 + (off - 0xD000u), src, (size_t) len);
         return true;
     }
-    if (addr < 0xC000u || addr + (uint32_t) len > 0xE000u) {
+    if (addr < 0xC000u || (uint64_t) addr + (uint32_t) len > 0xE000u) {
         return false;
     }
     for (int i = 0; i < len; i++) {

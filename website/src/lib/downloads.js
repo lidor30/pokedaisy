@@ -33,6 +33,7 @@ export const PLATFORMS = [
     text: msg('A 3DS with custom firmware and the Homebrew Launcher. An early preview.'),
     files: [
       { match: 'pokedaisy.3dsx', icon: 'n3ds', label: msg('The app (.3dsx)') },
+      { match: 'pokedaisy.cia', icon: 'n3ds', label: msg('The app for the HOME Menu (.cia)') },
     ],
   },
   { id: 'windows', name: 'WINDOWS', icon: 'windows', soon: true, files: [] },

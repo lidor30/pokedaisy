@@ -1,11 +1,17 @@
 package com.pokedaisy.app.companion.ui.theme
 
-import java.time.LocalDate
-import java.time.Month
+import kotlin.time.Clock
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Month
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.datetime.todayIn
 
 /** Today, for the themes' dates: the device's; ui-preview / tests move it into a limited-time theme's window. */
 object ThemeClock {
-    var today: () -> LocalDate = { LocalDate.now() }
+    var today: () -> LocalDate = { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
 }
 
 /**
@@ -20,14 +26,14 @@ enum class Season {
     /** This season's window around the holiday of [year] (the year the holiday itself falls in), or null. */
     fun window(year: Int): ClosedRange<LocalDate>? = when (this) {
         // Spring Festival: a week of lead-up, through the Lantern Festival (day 15).
-        LUNAR_NEW_YEAR -> LUNAR_NEW_YEAR_DAYS[year]?.let { it.minusDays(7)..it.plusDays(15) }
-        VALENTINES -> LocalDate.of(year, Month.FEBRUARY, 7)..LocalDate.of(year, Month.FEBRUARY, 15)
-        ST_PATRICKS -> LocalDate.of(year, Month.MARCH, 10)..LocalDate.of(year, Month.MARCH, 18)
-        EASTER -> easter(year).let { it.minusDays(7)..it.plusDays(2) }
-        HALLOWEEN -> LocalDate.of(year, Month.OCTOBER, 17)..LocalDate.of(year, Month.NOVEMBER, 3)
-        CHRISTMAS -> LocalDate.of(year, Month.DECEMBER, 1)..LocalDate.of(year, Month.DECEMBER, 27)
+        LUNAR_NEW_YEAR -> LUNAR_NEW_YEAR_DAYS[year]?.let { it.minus(DatePeriod(days = 7))..it.plus(DatePeriod(days = 15)) }
+        VALENTINES -> LocalDate(year, Month.FEBRUARY, 7)..LocalDate(year, Month.FEBRUARY, 15)
+        ST_PATRICKS -> LocalDate(year, Month.MARCH, 10)..LocalDate(year, Month.MARCH, 18)
+        EASTER -> easter(year).let { it.minus(DatePeriod(days = 7))..it.plus(DatePeriod(days = 2)) }
+        HALLOWEEN -> LocalDate(year, Month.OCTOBER, 17)..LocalDate(year, Month.NOVEMBER, 3)
+        CHRISTMAS -> LocalDate(year, Month.DECEMBER, 1)..LocalDate(year, Month.DECEMBER, 27)
         // New Year's Day of [year]: from the last days of the year before.
-        NEW_YEAR -> LocalDate.of(year - 1, Month.DECEMBER, 28)..LocalDate.of(year, Month.JANUARY, 4)
+        NEW_YEAR -> LocalDate(year - 1, Month.DECEMBER, 28)..LocalDate(year, Month.JANUARY, 4)
     }
 
     /** The window [date] falls in, or null. Windows can cross the new year, so the years around it are checked too. */
@@ -51,15 +57,15 @@ enum class Season {
             val m = (a + 11 * h + 22 * l) / 451
             val month = (h + l - 7 * m + 114) / 31
             val day = (h + l - 7 * m + 114) % 31 + 1
-            return LocalDate.of(year, month, day)
+            return LocalDate(year, month, day)
         }
 
         /** Lunar New Year's Day (the first day of the Chinese calendar's year). */
         private val LUNAR_NEW_YEAR_DAYS = mapOf(
-            2026 to LocalDate.of(2026, 2, 17), 2027 to LocalDate.of(2027, 2, 6), 2028 to LocalDate.of(2028, 1, 26),
-            2029 to LocalDate.of(2029, 2, 13), 2030 to LocalDate.of(2030, 2, 3), 2031 to LocalDate.of(2031, 1, 23),
-            2032 to LocalDate.of(2032, 2, 11), 2033 to LocalDate.of(2033, 1, 31), 2034 to LocalDate.of(2034, 2, 19),
-            2035 to LocalDate.of(2035, 2, 8),
+            2026 to LocalDate(2026, 2, 17), 2027 to LocalDate(2027, 2, 6), 2028 to LocalDate(2028, 1, 26),
+            2029 to LocalDate(2029, 2, 13), 2030 to LocalDate(2030, 2, 3), 2031 to LocalDate(2031, 1, 23),
+            2032 to LocalDate(2032, 2, 11), 2033 to LocalDate(2033, 1, 31), 2034 to LocalDate(2034, 2, 19),
+            2035 to LocalDate(2035, 2, 8),
         )
     }
 }
