@@ -35,8 +35,9 @@ object ExpShare {
         }
     }
 
-    /** gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. */
-    class Found(val sentPokes: Long, val full: List<InstantText.Write>)
+    /** gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. A Game Boy cart's ([GbGamePatches]): its one participants
+     * byte ([width] 1) and FULL's `ret`. */
+    class Found(val sentPokes: Long, val full: List<InstantText.Write>, val width: Int = 2)
 
     private const val ROM_BASE = 0x08000000L
     private const val ANY = -1
@@ -126,15 +127,15 @@ object ExpShare {
      * Emu thread.
      */
     fun mark(f: Found, mask: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean) {
-        val now = read(f.sentPokes, 2)
+        val now = read(f.sentPokes, f.width)
         val m = mask.toByte()
-        if (now.size == 2 && now[0] == m && now[1] == m) return
-        write(f.sentPokes, byteArrayOf(m, m))
+        if (now.size == f.width && now.all { it == m }) return
+        write(f.sentPokes, ByteArray(f.width) { m })
     }
 
-    /** The party slots that aren't eggs, as getexp's bits. */
+    /** The party slots that aren't eggs or fainted, as getexp's bits (Gen 1 counts a fainted one's bit in its division). */
     fun maskOf(party: List<MonView>): Int =
-        party.take(6).withIndex().filter { !it.value.isEgg && it.value.species > 0 }.fold(0) { m, (i, _) -> m or (1 shl i) }
+        party.take(6).withIndex().filter { !it.value.isEgg && it.value.species > 0 && it.value.hp > 0 }.fold(0) { m, (i, _) -> m or (1 shl i) }
 
     private fun matches(rom: LittleEndianReader, at: Int, s: IntArray): Boolean {
         if (at < 0 || at + s.size > rom.limit()) return false

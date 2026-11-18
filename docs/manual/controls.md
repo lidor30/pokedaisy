@@ -303,11 +303,11 @@ Normally only the Pokémon that fought gain EXP when you win, so the rest of you
 - **`SPLIT`** counts every Pokémon in your party as having fought: a win's EXP is shared out across the whole team, as the first games' version of this did. Each gets a smaller share, but nobody gets nothing.
 - **`FULL EXP`** gives every Pokémon in your party the EXP the one that fought would have had on its own. The game's own boosts still count: a held item that shares or boosts EXP, and the bonus for a Pokémon from a trade.
 
-Eggs are left out. The game shows each Pokémon's EXP as it comes, level ups and new moves included, and evolves the ones that leveled up once the battle is over. Battles that give no EXP in the game (link battles, the Battle Frontier) still give none.
+Eggs and fainted Pokémon are left out. The game shows each Pokémon's EXP as it comes, level ups and new moves included, and evolves the ones that leveled up once the battle is over. Battles that give no EXP in the game (link battles, the Battle Frontier) still give none.
 
 While it's on, [achievements](achievements.md) are paused, since some sets reward reaching a level.
 
-It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work (hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
+It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire, in every language and release PokeDaisy supports, and in many hacks built on their code. On the Game Boy it works in Red, Blue, Yellow, Gold, Silver and Crystal and the hacks built on them. Where it can't work (hacks that changed how EXP is paid, like Unbound and Radical Red) the row shows `N/A`.
 
 ## LEVEL CAP
 

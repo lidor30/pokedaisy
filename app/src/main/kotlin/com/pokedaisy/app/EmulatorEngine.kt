@@ -1561,7 +1561,8 @@ class EmulatorEngine(
                     if (n > 0) Log.i("pokedaisy", "shiny odds: foe made shiny (1 in $shinyOdds)")
                 }.onFailure { Log.w("pokedaisy", "shiny odds failed", it) }
             }
-            if (gba) gameOptions.markExp(InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes)
+            // EXP SHARE: a GBA getexp's bits or a Game Boy cart's participants byte (a DS game finds none).
+            if (!nds) gameOptions.markExp(InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes)
             playback.fieldChanged(fieldState)
             val bike = MgbaCore.FIELD_AVATAR or MgbaCore.FIELD_BIKE
             riding = (fieldState and bike) == bike

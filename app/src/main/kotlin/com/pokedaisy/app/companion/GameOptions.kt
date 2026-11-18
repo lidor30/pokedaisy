@@ -164,7 +164,7 @@ class GameOptions internal constructor(
         scan = scope.launch {
             // A Game Boy cart: its own three options (GbGamePatches), nothing of the GBA's finders.
             val gb = if (gameBoy) runCatching { GbGamePatches.find(path) }.getOrNull() else null
-            val result = if (gameBoy) Discovery(sites = gb?.tms.orEmpty(), text = gb?.text, gbBeep = gb?.beep, gbPoison = gb?.poison) else Discovery(
+            val result = if (gameBoy) Discovery(sites = gb?.tms.orEmpty(), text = gb?.text, exp = gb?.exp, gbBeep = gb?.beep, gbPoison = gb?.poison) else Discovery(
                 runCatching { WildEncounters.find(path) }.getOrDefault(0L),
                 runCatching { ReusableTms.find(path) }.getOrDefault(emptyList()),
                 runCatching { InstantText.find(path) }.getOrNull(),

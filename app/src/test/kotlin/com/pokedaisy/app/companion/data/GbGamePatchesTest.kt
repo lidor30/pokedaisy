@@ -22,6 +22,9 @@ class GbGamePatchesTest {
         assertEquals(0xC9.toByte(), f.tms.single().value.single())
         assertEquals(tag + 0x3CEAE, f.beep!!.writes.single().addr)                      // 0F:4EAB .setLowHealthAlarm + 3
         assertEquals(tag + 0xC407, f.poison!!.writes.single().addr)                     // its jp nz, in ApplyOutOfBattlePoisonDamage
+        assertEquals(0x1D057L, f.exp!!.sentPokes)                                         // wPartyGainExpFlags (bank 1)
+        assertEquals(1, f.exp!!.width)
+        assertEquals(tag + 0x5547B + 17, f.exp!!.full.single().addr)                    // DivideExpDataByNumMonsGainingExp's cp 2
     }
 
     @Test
@@ -32,6 +35,8 @@ class GbGamePatchesTest {
             assertEquals(tag + 0x2C8B1, f.tms.single().branch)                          // call ConsumeTM
             assertEquals(3, f.tms.single().value.size)
             assertEquals(tag + 0x3DFBC, f.beep!!.writes.single().addr)                  // 0F:5FB9 CheckDanger.danger + 3
+            assertEquals(0xC664L, f.exp!!.sentPokes)                                     // wBattleParticipantsNotFainted
+            assertEquals(tag + 0x3F0D4 + 16, f.exp!!.full.single().addr)               // .EvenlyDivideExpAmongParticipants' cp 2
         }
         rom("Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc")?.let { r ->
             val f = GbGamePatches.find(r)!!
@@ -48,7 +53,7 @@ class GbGamePatchesTest {
             val f = GbGamePatches.find(file.readBytes()) ?: return@forEach
             val polished = "Polished" in file.name || "Prism" in file.name
             if (polished) assertTrue(file.name, f.tms.isEmpty() && f.text == null && f.beep == null)
-            if ("Pokemon - " in file.name) assertNotNull(file.name, f.poison)
+            if ("Pokemon - " in file.name) { assertNotNull(file.name, f.poison); assertNotNull(file.name, f.exp) }
             if ("Pokemon - " in file.name) {
                 assertNotNull(file.name, f.text); assertNotNull(file.name, f.beep); assertEquals(file.name, 1, f.tms.size)
                 n++

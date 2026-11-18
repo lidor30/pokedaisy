@@ -1,7 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 /**
- * GAMEPLAY's ROM options on the Game Boy games (2026-11-18): INSTANT TEXT, REUSABLE TMS and LOW HP BEEP, each one small edit of
+ * GAMEPLAY's ROM options on the Game Boy games (2026-11-18): INSTANT TEXT, REUSABLE TMS, FIELD POISON, EXP SHARE and LOW HP BEEP, each one small edit of
  * the cart's own code, found by its shape (pret's pokered / pokeyellow / pokegold / pokecrystal), every one unique in the cart
  * or none. Patched like the GBA's (`pk_cheats_patch`): only where the cart holds the shape, the cart's bytes kept for the
  * Poller's hash; addresses are [TAG] + the cart offset (bank * 0x4000 + the address in its bank).
@@ -13,6 +13,10 @@ package com.pokedaisy.app.companion.data
  *   call ConsumeTM; jr`: the `call ConsumeTM` three `nop`s (the happiness the move brings stays).
  * - FIELD POISON off: Gen 1's ApplyOutOfBattlePoisonDamage skips its damage (the day care's EXP and Pikachu's mood still run),
  *   Gen 2's DoPoisonStep takes its "no party" way out.
+ * - EXP SHARE: Gen 1's DivideExpDataByNumMonsGainingExp counts wPartyGainExpFlags' bits, Gen 2's GiveExperiencePoints
+ *   .EvenlyDivideExpAmongParticipants wBattleParticipantsNotFainted's (`ld a, [nn]; ld b, a; ... srl b; adc d; ... cp 2; ret c`),
+ *   and divides the win by them; each Pokémon with its bit set (and HP) gets its share. The byte's address comes from that load
+ *   ([Found.exp]: SPLIT sets every bit each frame, like Gen 3's gSentPokesToOpponent); FULL makes the `cp 2` a `ret`, no division.
  * - LOW HP BEEP off: the HUD's low-health check sets the alarm's bit (`ld hl, wLowHealthAlarm; set 7, [hl]`), Gen 1's
  *   DrawPlayerHUDAndHPBar.setLowHealthAlarm, Gen 2's CheckDanger.danger: the `set` two `nop`s. The music then never hears it.
  *
@@ -23,7 +27,8 @@ package com.pokedaisy.app.companion.data
 object GbGamePatches {
     const val TAG = 0x10000000L
 
-    class Found(val tms: List<ReusableTms.Site>, val text: InstantText.Patch?, val beep: InstantText.Patch?, val poison: InstantText.Patch? = null)
+    class Found(val tms: List<ReusableTms.Site>, val text: InstantText.Patch?, val beep: InstantText.Patch?, val poison: InstantText.Patch? = null,
+                val exp: ExpShare.Found? = null)
 
     private const val ANY = -1
     private val TEXT = sig("fa????cb??c0fa????cb??c8")
@@ -33,6 +38,8 @@ object GbGamePatches {
     private val BEEP2 = sig("21????cbbe18??21????cbfec9")
     private val POISON1 = sig("fa????e603c2????ea????21????")
     private val POISON2 = sig("fa????a728??af0e??21????")
+    private val EXP1 = sig("fa????47af0e081600afcb388a570d20f8fe02d8")
+    private val EXP2 = sig("fa????470e061600afcb388a570d20f8fe02d8")
 
     /** What [rom] (a whole Game Boy cart) has; null for anything that isn't one. */
     fun find(rom: ByteArray): Found? {
@@ -55,7 +62,16 @@ object GbGamePatches {
         val poisonPatch = poison?.let { (at, s, p) ->
             InstantText.Patch(listOf(InstantText.Write(TAG + at + p.first, rom.copyOfRange(at + p.first, at + s.size), byteArrayOf(p.second.toByte()))))
         }
-        return Found(tms, text, beep, poisonPatch)
+        // EXP SHARE: the participants byte's load and the `cp 2; ret c` that skips the division for one Pokémon.
+        val exp = (one(EXP1)?.let { it to EXP1 } ?: one(EXP2)?.let { it to EXP2 })?.let { (at, s) ->
+            val flags = (rom[at + 1].toInt() and 0xFF) or ((rom[at + 2].toInt() and 0xFF) shl 8)
+            val cp = at + s.size - 3
+            // C000-CFFF is plain WRAM; D000-DFFF read in WRAM bank 1 (a Color cart may page it), as the readers do.
+            val addr = if (flags >= 0xD000) 0x10000L or flags.toLong() else flags.toLong()
+            if (flags !in 0xC000..0xDFFF) null
+            else ExpShare.Found(addr, listOf(InstantText.Write(TAG + cp, rom.copyOfRange(cp, cp + 2), byteArrayOf(0xC9.toByte(), 0))), width = 1)
+        }
+        return Found(tms, text, beep, poisonPatch, exp)
     }
 
     /** A Game Boy cart file: its header's logo check (0x104) and size. */

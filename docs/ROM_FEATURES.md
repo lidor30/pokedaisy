@@ -712,6 +712,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
     Crystal Clear, Crystal Legacy; PureRed / PureBlue get the beep only. FIELD POISON off: Gen 1's ApplyOutOfBattlePoisonDamage `jp nz`
     (every fourth step) made a `jp`, Gen 2's DoPoisonStep `jr z, .no_faint` made a `jr`; walked headless with a poisoned lead: Yellow
     182 HP -> 178 without, 182 with; Crystal (a repel on) 19 -> 14 without, 19 with.
+    EXP SHARE: Gen 1's DivideExpDataByNumMonsGainingExp / Gen 2's .EvenlyDivideExpAmongParticipants load the participants byte
+    (wPartyGainExpFlags / wBattleParticipantsNotFainted, read from that load) and skip the division on `cp 2; ret c`: SPLIT sets the
+    party's bits each frame (fainted ones left out: Gen 1 counts every bit), FULL makes the `cp` a `ret`. Yellow headless (a Lv 2
+    Rattata, 16 EXP): the others got 0 / 2 / 16 with OFF / SPLIT / FULL; Crystal and Gold / Silver's places match pret's symbols.
+    Every retail cart here, Brown, Yellow Legacy, Crystal Clear, PureRed / PureBlue (not Crystal Legacy, Polished, Prism).
 
 ## What each column is
 
