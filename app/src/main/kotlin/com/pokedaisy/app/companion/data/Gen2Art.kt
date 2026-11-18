@@ -26,7 +26,7 @@ object Gen2Art {
     const val CRYSTAL_HOLD_ICONS = "gen2/crystal/hold_icons.png"
     /** The town maps, where MapScreen loads region maps from ([activeRegionMapImages]). */
     val CRYSTAL_TOWN_MAPS = arrayOf("crystal_johto", "crystal_kanto")
-    /** Each kind of ball as the battle throws it (16x16, `ball-<item id>.png`): the HUD's ball counts ([ballAsset]). */
+    /** Each kind of ball as the battle throws it (12x12: the 16x16 sprite's blank rows and columns cut; `ball-<item id>.png`): the HUD's ball counts ([ballAsset]). */
     const val CRYSTAL_BALLS = "gen2/crystal/balls"
     /** The player on the town map, by gender (MapScreen's head assets). */
     const val CRYSTAL_PLAYER = "player_chris"
