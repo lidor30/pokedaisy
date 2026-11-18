@@ -42,6 +42,8 @@ test('link clicks map to their event', () => {
     { name: 'download_apk', params: { where: 'hero', version: '1.3.2', platform: 'android' } });
   assert.deepEqual(linkEvent('https://github.com/lidor30/pokedaisy/releases/download/v1.6.0/pokedaisy.3dsx', 'downloads'),
     { name: 'download_apk', params: { where: 'downloads', version: '1.6.0', platform: '3ds' } });
+  assert.deepEqual(linkEvent('https://github.com/lidor30/pokedaisy/releases/download/v1.6.0/pokedaisy.cia', 'downloads'),
+    { name: 'download_apk', params: { where: 'downloads', version: '1.6.0', platform: '3ds' } });
   assert.deepEqual(linkEvent('https://github.com/lidor30/pokedaisy/releases/download/v1.5.0.1/pokedaisy-linux-x86_64.zip', 'downloads'),
     { name: 'download_apk', params: { where: 'downloads', version: '1.5.0.1', platform: 'linux' } });
   assert.deepEqual(linkEvent('https://github.com/lidor30/pokedaisy/releases/latest', 'footer'),

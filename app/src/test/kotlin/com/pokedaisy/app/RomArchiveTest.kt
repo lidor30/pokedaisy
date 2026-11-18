@@ -33,6 +33,15 @@ class RomArchiveTest {
 
     private fun plain(): File = tmp.newFile("FireRed.gba").apply { writeBytes(rom) }
 
+    @Test fun zippedDsAchievementsHashTheContainedCart() {
+        val bytes = ByteArray(0x1000)
+        bytes[0x15C] = 0x56; bytes[0x15D] = 0xCF.toByte()
+        val plain = tmp.newFile("Diagnostic.nds").apply { writeBytes(bytes) }
+        val archive = zip("Diagnostic.zip", "Diagnostic.nds" to bytes)
+        assertEquals(18, RomIdentity.raConsole(archive))
+        assertEquals(RomIdentity.ndsRaHash(plain), RomIdentity.raHash(archive))
+    }
+
     private fun zip(name: String, vararg entries: Pair<String, ByteArray>): File =
         File(tmp.root, name).apply {
             ZipOutputStream(outputStream()).use { z ->

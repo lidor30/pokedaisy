@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion
 
+import com.pokedaisy.app.companion.data.CoreKey
+import com.pokedaisy.app.companion.data.fixed
 import androidx.compose.ui.geometry.Rect
 import com.pokedaisy.app.companion.i18n.tk
 
@@ -97,7 +99,7 @@ enum class TouchButton(val label: String, val gba: Int, val extra: Boolean = fal
     START(tk("START"), 8), SELECT(tk("SELECT"), 4),
     /** The DS's own X and Y in a DS game; elsewhere the device's X / Y keys ([TouchControlsStyle.xyButtons]): whatever
      * GAME BUTTONS and HOTKEYS put on them (START 2, SELECT 2, TO COMPANION, a hotkey). */
-    X("X", com.pokedaisy.app.MgbaCore.Key.X), Y("Y", com.pokedaisy.app.MgbaCore.Key.Y),
+    X("X", CoreKey.X), Y("Y", CoreKey.Y),
     /** A tap turns FF on / off, held = fast while held. */
     FF(tk("FF"), 0, extra = true),
     /** Opens the QUICK MENU (a phone has no L3). */
@@ -159,8 +161,8 @@ data class TouchLayout(val places: Map<TouchButton, TouchPlace> = emptyMap()) {
 
     /** Stored as `NAME:ax,dx,ay,dy,scale,hidden;...` ([com.pokedaisy.app.Prefs.touchLayoutFor]). */
     fun encode(): String = places.entries.joinToString(";") { (b, p) ->
-        "${b.name}:${p.ax.ordinal},${"%.1f".format(java.util.Locale.ROOT, p.dx)},${p.ay.ordinal},${"%.1f".format(java.util.Locale.ROOT, p.dy)}," +
-            "${"%.2f".format(java.util.Locale.ROOT, p.scale)},${if (p.hidden) 1 else 0}"
+        "${b.name}:${p.ax.ordinal},${p.dx.toDouble().fixed(1)},${p.ay.ordinal},${p.dy.toDouble().fixed(1)}," +
+            "${p.scale.toDouble().fixed(2)},${if (p.hidden) 1 else 0}"
     }
 
     companion object {
@@ -261,7 +263,15 @@ data class TouchControlsStyle(
         /** FF and the QUICK MENU to start with (a phone has no other way to open it), ZOOM and REWIND (no R3, no hotkey). */
         val DEFAULT_EXTRAS = setOf(TouchButton.FF, TouchButton.QUICK_MENU, TouchButton.ZOOM, TouchButton.REWIND)
     }
+
+    /** Draw only controls a host can act on, preserving the stored choices for future capabilities. */
+    fun forButtons(available: Set<TouchButton>) = copy(
+        extras = extras.intersect(available), xyButtons = xyButtons && TouchButton.X in available && TouchButton.Y in available,
+    )
 }
+
+/** The docked companion's first width, as a fraction of the window (Prefs.sidePanelWidth's default; the iPad's). */
+const val SIDE_PANEL_DEFAULT_WIDTH = 0.5f
 
 /**
  * The game screen as the touch controls see it, in px: its size, the game's picture, the companion (a phone held

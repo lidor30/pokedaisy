@@ -2,6 +2,8 @@
 
 package render
 
+import kotlinx.datetime.plus
+import kotlinx.datetime.todayIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toAwtImage
@@ -914,7 +916,7 @@ fun withCheats(seeded: Boolean = true, many: Int = 0, make: () -> SettingsActivi
     // [many]: an imported cheat file's worth (RetroArch's Platinum one has 2321), GitHub #786.
     val list = if (many > 0) List(many) { i -> com.pokedaisy.app.cheats.Cheat("CODE ${i + 1}", listOf("82025838 %04X".format(i)), enabled = i % 7 == 0) }
         else previewCheats()
-    if (seeded) com.pokedaisy.app.cheats.CheatStore.forCrc(ctx.filesDir, crc).save(list)
+    if (seeded) com.pokedaisy.app.cheats.CheatStore.forCrc(okio.Path.Companion.run { ctx.filesDir.toOkioPath() }, crc).save(list)
     Prefs(ctx).cheatsEnabled = seeded
     return make().apply { intent.putExtra(SettingsActivity.EXTRA_CHEATS_ROM, rom.absolutePath) }
 }
@@ -958,7 +960,7 @@ fun favoriteLibrary() {
  * [favoriteLibrary] with a game on every console (Yellow, Crystal, a Crystal hack, Platinum), so every quick
  * view has a pill, and a play history (Emerald last, then Crystal, Unbound, Yellow) for RECENT; [view] open.
  */
-fun platformLibrary(view: com.pokedaisy.app.LibraryView = com.pokedaisy.app.LibraryView.ALL) {
+fun platformLibrary(view: com.pokedaisy.app.companion.data.LibraryView = com.pokedaisy.app.companion.data.LibraryView.ALL) {
     favoriteLibrary()
     val ctx = android.content.Context()
     val prefs = Prefs(ctx)
@@ -1069,18 +1071,37 @@ val previewTheme: com.pokedaisy.app.companion.ui.theme.ThemeSpec =
     } ?: com.pokedaisy.app.companion.ui.theme.themeById(com.pokedaisy.app.companion.ui.theme.DAISY_THEME_ID)
 
 /** A day inside [t]'s next window (today's, if it's on now); null for a theme that's always there. */
-fun previewThemeDay(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec): java.time.LocalDate? {
-    val now = java.time.LocalDate.now()
+fun previewThemeDay(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec): kotlinx.datetime.LocalDate? {
+    val now = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
     return t.season?.let { s -> (now.year..now.year + 2).firstNotNullOf { y -> s.window(y)?.takeIf { it.endInclusive >= now } } }
-        ?.let { w -> if (now in w) now else w.start.plusDays(1) }
+        ?.let { w -> if (now in w) now else w.start.plus(kotlinx.datetime.DatePeriod(days = 1)) }
+}
+
+/** What PokeDaisyApp.onCreate hands the shared screens on Android: art files and theme storage over the shim Context. */
+fun installPreviewHosts() {
+    val context = android.content.Context()
+    com.pokedaisy.app.companion.data.RomArt.filesDir = okio.Path.Companion.run { context.filesDir.toOkioPath() }
+    val prefs = Prefs(context)
+    com.pokedaisy.app.companion.ui.theme.ThemeStore.current = object : com.pokedaisy.app.companion.ui.theme.ThemeStore {
+        override var appTheme by prefs::appTheme
+        override var themeBeforeSeasonal by prefs::themeBeforeSeasonal
+        override var darkMode by prefs::darkMode
+    }
+    com.pokedaisy.app.companion.ui.DocsSources.current = com.pokedaisy.app.StoreDocsSource(context)
+    com.pokedaisy.app.companion.ui.theme.FontSource.current = com.pokedaisy.app.PreviewFonts(context)
+    // The app's own codec, over the android.graphics shims.
+    com.pokedaisy.app.companion.ui.PictureCodec.current = com.pokedaisy.app.AndroidPictures
+    com.pokedaisy.app.companion.ui.DeviceDates.current = com.pokedaisy.app.JvmDeviceDates
+    com.pokedaisy.app.cheats.CheatParser.current = com.pokedaisy.app.cheats.PreviewCheatParser
 }
 
 /** Saves and puts on [t]; for a limited-time one the theme clock moves into its window (so it isn't put away). */
 fun wearPreviewTheme(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec) {
     val day = previewThemeDay(t)
     // The docs' shots on a day with no holiday theme, so they don't change with the date they're made on.
-    val quiet = java.time.LocalDate.of(java.time.LocalDate.now().year, 6, 15).takeIf { System.getProperty("docs") == "true" }
-    com.pokedaisy.app.companion.ui.theme.ThemeClock.today = { day ?: quiet ?: java.time.LocalDate.now() }
+    val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+    val quiet = kotlinx.datetime.LocalDate(today.year, 6, 15).takeIf { System.getProperty("docs") == "true" }
+    com.pokedaisy.app.companion.ui.theme.ThemeClock.today = { day ?: quiet ?: today }
     Prefs(android.content.Context()).appTheme = t.id
     com.pokedaisy.app.companion.ui.theme.AppColors.applyTheme(t)
 }
@@ -1161,7 +1182,7 @@ fun activity(expandIntro: Boolean = false, start: Boolean = false, battleStyleIn
     prefs.coopRelayOnly = false; prefs.coopRelayUrl = null
     prefs.touchControlsStyle = com.pokedaisy.app.companion.TouchControlsStyle()
     prefs.portraitCompanionUnderGame = false
-    prefs.libraryView = com.pokedaisy.app.LibraryView.ALL.id
+    prefs.libraryView = com.pokedaisy.app.companion.data.LibraryView.ALL.id
     prefs.lastRomPath = File(roms, names[0]).absolutePath
     names.take(3).reversed().forEach { prefs.pushRecentRom(File(roms, it).absolutePath) }
     make().also { a ->
@@ -1204,9 +1225,9 @@ private val COOP_TICKET = com.pokedaisy.app.companion.coop.CoopTicket(
 private val COOP_CHOICES by lazy {
     val dir = File(android.content.Context().filesDir, "coop-saves").apply { mkdirs() }
     listOf(
-        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "a.gba"), File(dir, "a.sav"), "Pokémon Emerald", coopSave("RED", 12345), null),
-        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "b.gba"), File(dir, "b.sav"), "Pokémon Emerald (second copy)", coopSave("MAY", 777), "LEAF"),
-        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "c.gba"), File(dir, "c.sav"), "Pokémon Emerald (never saved)", null, null),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(okio.Path.Companion.run { File(dir, "a.sav").toOkioPath() }, "Pokémon Emerald", coopSave("RED", 12345), null),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(okio.Path.Companion.run { File(dir, "b.sav").toOkioPath() }, "Pokémon Emerald (second copy)", coopSave("MAY", 777), "LEAF"),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(okio.Path.Companion.run { File(dir, "c.sav").toOkioPath() }, "Pokémon Emerald (never saved)", null, null),
     )
 }
 
@@ -1233,7 +1254,7 @@ internal fun coopSettings(
     prefs.coopRelayUrl = relay
     val file = File(File(ctx.filesDir, "coop"), "pairs.json")
     file.delete()
-    if (paired) com.pokedaisy.app.companion.coop.CoopPairs(file).add(coopPair())
+    if (paired) com.pokedaisy.app.companion.coop.CoopPairs(okio.Path.Companion.run { file.toOkioPath() }).add(coopPair())
     return SettingsActivity().also { it.coop.preview = preview }
 }
 
@@ -1468,6 +1489,8 @@ fun ndsSnapshot(): SnapshotView {
 }
 
 fun main(args: Array<String>) {
+    // The app sets this at start (PokeDaisyApp): the screens find the art under it.
+    installPreviewHosts()
     // The docs' shots (gradle docsShots) never show a game's art: no ROM art, only the invented map.
     if (docsMode) installDocsArt() else romArt()
     // A DS game's art from its cart (-PndsRom): icons, item icons, the Pokégear map's pieces.
@@ -2343,13 +2366,13 @@ fun main(args: Array<String>) {
         Shot("library-views-grid", tw, th, td, activity { platformLibrary(); LibraryActivity() }) {
             onNodeWithContentDescription("Toggle view").performClick()
         },
-        Shot("library-views-favorites", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.FAVORITES); LibraryActivity() }),
-        Shot("library-views-recent", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.RECENT); LibraryActivity() }),
-        Shot("library-views-gb", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GB); LibraryActivity() }),
-        Shot("library-views-gbc", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBC); LibraryActivity() }),
-        Shot("library-views-gba", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBA); LibraryActivity() }),
-        Shot("library-views-ds", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.DS); LibraryActivity() }),
-        Shot("library-views-hacks", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.HACKS); LibraryActivity() }),
+        Shot("library-views-favorites", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.FAVORITES); LibraryActivity() }),
+        Shot("library-views-recent", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.RECENT); LibraryActivity() }),
+        Shot("library-views-gb", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GB); LibraryActivity() }),
+        Shot("library-views-gbc", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GBC); LibraryActivity() }),
+        Shot("library-views-gba", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GBA); LibraryActivity() }),
+        Shot("library-views-ds", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.DS); LibraryActivity() }),
+        Shot("library-views-hacks", tw, th, td, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.HACKS); LibraryActivity() }),
         // GAMES / TOOLS / SETTINGS: a rail down the left of a wide screen, a bar along the bottom of an upright one. Each with
         // the games, then TOOLS open.
         // A big game being got ready to start: the library dimmed under the rocking ball.
@@ -2378,7 +2401,7 @@ fun main(args: Array<String>) {
                 }
             }
         }),
-        Shot("library-views-phone", 1080, 2400, 2.625f, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBA); LibraryActivity() }) {
+        Shot("library-views-phone", 1080, 2400, 2.625f, activity { platformLibrary(com.pokedaisy.app.companion.data.LibraryView.GBA); LibraryActivity() }) {
             mainClock.advanceTimeBy(500)   // the open pill scrolled into view
         },
         // A game with no cover art: its kind (CategoryArt), at a list row's size and a grid tile's.
@@ -2390,7 +2413,7 @@ fun main(args: Array<String>) {
                 ) {
                     for (size in listOf(44.dp, 120.dp)) {
                         androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
-                            for (c in com.pokedaisy.app.RomCategory.entries) {
+                            for (c in com.pokedaisy.app.companion.data.RomCategory.entries) {
                                 com.pokedaisy.app.companion.ui.CategoryArt(c, androidx.compose.ui.Modifier.size(size))
                             }
                         }
@@ -2881,7 +2904,8 @@ fun main(args: Array<String>) {
         Shot("library-load-save", tw, th, td, activity {
             LibraryActivity().apply {
                 val ctx = android.content.Context()
-                saveLoad = LibraryActivity.PendingSaveLoad(File(ctx.filesDir, "roms/firered-hack.gba"), ByteArray(131072), "FireRed - Hall of Fame.sav")
+                val pick = saveImports.begin(File(ctx.filesDir, "roms/firered-hack.gba"))!!
+                saveImports.ready(pick, ByteArray(131072), "FireRed - Hall of Fame.sav")
             }
         }),
         // The update offer on opening the app, and while its APK downloads.

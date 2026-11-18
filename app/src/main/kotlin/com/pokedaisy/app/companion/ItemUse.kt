@@ -9,6 +9,9 @@ import com.pokedaisy.app.companion.data.PartyTargets
  * The `can*` / [marked] answers are the ROM's (they don't change in a battle or a menu, where a
  * tap gets NOT NOW); every [done] runs on the main thread. */
 interface ItemUse {
+    /** Newly available item actions on this host. */
+    val actionBadge: String? get() = null
+
     /** The game's VAR_REPEL_STEP_COUNT (FireRed 0x4020, Emerald 0x4021): the HUD's REPEL steps; null = not known here. */
     val repelVar: Int? get() = null
 

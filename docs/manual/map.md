@@ -58,7 +58,7 @@ In the `PLACES` list, places that aren't on the first map say which map they're 
 
 ## Flying to a town
 
-When someone in your party knows the move that carries you between towns, a blue button for it appears under `PLACES`. Tap it for the towns you can fly to right now, pick one, and the game takes you there with its own animation, just as if you'd used the move from the party menu. With [`NO HMS NEEDED`](controls.md#no-hms-needed) on, the badge is enough: the button shows even when nobody knows the move, and your first Pokémon carries you.
+When someone in your party knows the move that carries you between towns, a blue button for it appears under `PLACES`. Tap it for the towns you can fly to right now, pick one, and the game takes you there with its own animation, just as if you'd used the move from the party menu. With [`NO HMS NEEDED`](controls.md#no-hms-needed) on, the badge is enough: the button shows even when nobody knows the move, and your first Pokémon carries you. In a game whose own party menu lets a Pokémon fly without knowing the move (Unbound: once you can fly there from the party menu), the button follows the game and the Pokémon its menu would pick carries you.
 
 The game's own rules still apply: you need the badge that allows it and you have to be outdoors, walking around, with no menu or conversation open. If something's missing, the button tells you what instead of flying.
 

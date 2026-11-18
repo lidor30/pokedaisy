@@ -5,6 +5,7 @@ import com.pokedaisy.app.companion.TouchControlsStyle
 import com.pokedaisy.app.companion.TouchLayout
 import com.pokedaisy.app.companion.TouchPlace
 import com.pokedaisy.app.companion.TouchPreset
+import com.pokedaisy.app.companion.data.CoreKey
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -521,7 +522,7 @@ object TouchGeometry {
         Shape.PILL -> x >= left - slop && x <= right + slop && y >= top - slop && y <= bottom + slop
     }
 
-    // mGBA's key bits (MgbaCore.Key), here so the math has no Android in it.
+    // mGBA's key bits (CoreKey), here so the math has no Android in it.
     const val KEY_RIGHT = 1 shl 4
     const val KEY_LEFT = 1 shl 5
     const val KEY_UP = 1 shl 6

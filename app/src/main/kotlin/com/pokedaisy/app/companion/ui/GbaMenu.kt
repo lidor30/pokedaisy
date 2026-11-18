@@ -203,7 +203,7 @@ object OptionColors {
      * [slot] picking one of seven (a tab by its place in the bar: a full bar is seven chips, a button by
      * [nextRainbowSlot]); null = the usual look (any other theme, and the Game Boy games' black-on-white). */
     fun rainbow(slot: Int): RainbowColors? =
-        if (gen1 || !AppColors.theme.rainbow) null else RainbowColors.of(RAINBOW[Math.floorMod(slot, RAINBOW.size)], dark)
+        if (gen1 || !AppColors.theme.rainbow) null else RainbowColors.of(RAINBOW[slot.mod(RAINBOW.size)], dark)
     private val RAINBOW = listOf(0xFFE83838, 0xFFF88A20, 0xFFE0A800, 0xFF40B048, 0xFF3C88E0, 0xFF8E58D0, 0xFFE8509A).map { Color(it) }
     /** The next button's [rainbow] slot, taken once when it's first drawn: buttons drawn one after another (a header's,
      * a window's NO THANKS / TRY IT) get the next colours, so neighbours never match. (Composition runs on one thread.) */
@@ -635,6 +635,7 @@ fun OptionButton(
     focusStart: Boolean = false,
     /** RAINBOW may colour it; false keeps the usual look (STATES' buttons). */
     rainbow: Boolean = true,
+    labelBadge: String? = null,
 ) {
     val u = m.u
     val interaction = remember { MutableInteractionSource() }
@@ -704,6 +705,9 @@ fun OptionButton(
         }
         if ((icon != null || pixelIcon != null) && label != null) Spacer(Modifier.width(u * 4))
         if (label != null) GbaText(tr(label), fg, shadow, m, bold = gameBoldLabels())
+        labelBadge?.let {
+            OptionBadge(it, m, Modifier.padding(start = u * 4), fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow)
+        }
     }
 }
 
@@ -1053,6 +1057,11 @@ fun OptionTextField(
     var shown by remember { androidx.compose.runtime.mutableStateOf(false) }
     // D-pad focus (the library's and Settings' search box) shows like every other control's: the focus ring.
     var focused by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val textFocus = LocalTextInputFocus.current
+    val fieldOwner = remember { Any() }
+    androidx.compose.runtime.DisposableEffect(textFocus, fieldOwner) {
+        onDispose { textFocus?.set(fieldOwner, false) }
+    }
     val hidden = password && !shown
     BasicTextField(
         value = value,
@@ -1070,7 +1079,10 @@ fun OptionTextField(
         cursorBrush = SolidColor(OptionColors.value),
         modifier = modifier
             .fillMaxWidth()
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged {
+                focused = it.isFocused
+                textFocus?.set(fieldOwner, it.isFocused)
+            }
             .gbaFocusRing(focused, PixelRoundedShape(u * 2))
             .drawBehind { drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
             .padding(horizontal = u * 6, vertical = u * 5),

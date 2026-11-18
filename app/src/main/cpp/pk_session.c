@@ -23,6 +23,7 @@
 #include "pk_core_access.h"
 #include "pk_flight.h"
 #include "pk_host.h"
+#include "pk_gb_field.h"
 #include "pk_rewind.h"
 #include "pk_savevf.h"
 #include "pk_wide.h"
@@ -40,6 +41,15 @@
 #endif
 
 _Static_assert(sizeof(color_t) == 4, "pk_api_video's pixels are 4 bytes");
+_Static_assert(PK_API_FIELD_KNOWN == PK_FIELD_KNOWN, "field bit KNOWN");
+_Static_assert(PK_API_FIELD_LOCKED == PK_FIELD_LOCKED, "field bit LOCKED");
+_Static_assert(PK_API_FIELD_BATTLE == PK_FIELD_BATTLE, "field bit BATTLE");
+_Static_assert(PK_API_FIELD_TEXT == PK_FIELD_TEXT, "field bit TEXT");
+_Static_assert(PK_API_FIELD_BIKE == PK_FIELD_BIKE, "field bit BIKE");
+_Static_assert(PK_API_FIELD_SURF == PK_FIELD_SURF, "field bit SURF");
+_Static_assert(PK_API_FIELD_AVATAR == PK_FIELD_AVATAR, "field bit AVATAR");
+_Static_assert(PK_API_FIELD_WILD_HELD == PK_FIELD_WILD_HELD, "field bit WILD_HELD");
+_Static_assert(PK_API_FIELD_WINDOW == PK_FIELD_WINDOW, "field bit WINDOW");
 
 struct pk_session pk_session;
 pthread_rwlock_t pk_coreLock = PTHREAD_RWLOCK_INITIALIZER;
@@ -126,6 +136,29 @@ void pkRewindOff(void) {
     }
     g.rewindEntries = 0;
     g.rewindTick = 0;
+    g.rewinding = false;
+}
+
+static void pkRewindConfigure(int entries, bool reset) {
+    if (entries < 0) entries = 0;
+    if (!reset && entries == g.rewindEntries) return;
+    pkRewindOff();
+    if (entries > 0 && g.core) {
+        pk_rewind_init(&g.rewind, (size_t) entries);
+        g.rewindEntries = entries;
+    }
+}
+
+void pk_api_set_rewind(int entries) {
+    pkRewindConfigure(entries, false);
+}
+
+void pkRewindReset(void) {
+    pkRewindConfigure(g.rewindEntries, true);
+}
+
+void pk_api_set_rewinding(bool on) {
+    g.rewinding = on && g.rewindEntries > 0;
 }
 
 void pk_api_deinit(void) {
@@ -163,6 +196,7 @@ void pk_api_deinit(void) {
     g.vw = g.vh = 0;
     g.audioAvail = 0;
     pk_wide_configure(0);
+    pk_field_configure(0);
     pk_wide_extras_reset();   // FOLLOWER and DAY AND NIGHT: the closed game's lead walked on in the next one
     pk_flight_configure(NULL, 0);   // FREE FLIGHT: the next game configures its own
     g.wideCrc = 0;
@@ -211,7 +245,9 @@ bool pk_api_init(const char* romPath, const char* savePath) {
     color_t* video = calloc((size_t) w * h, sizeof(color_t));
     core->setVideoBuffer(core, video, w);
 
-    core->setAudioBufferSize(core, 2048);
+    // A quarter-speed host requests 192 kHz: about 3,215 samples per game frame. Keep enough room before
+    // pkDrainAudio runs at the frame boundary (the old 2,048-sample buffer overflowed in slow motion).
+    core->setAudioBufferSize(core, PK_AUDIO_SCRATCH_SAMPLES);
     blip_set_rates(core->getAudioChannel(core, 0), core->frequency(core), PK_SAMPLE_RATE);
     blip_set_rates(core->getAudioChannel(core, 1), core->frequency(core), PK_SAMPLE_RATE);
 
@@ -310,6 +346,91 @@ void pk_api_set_audio_rate(double rate) {
         blip_set_rates(g.core->getAudioChannel(g.core, 0), g.core->frequency(g.core), rate);
         blip_set_rates(g.core->getAudioChannel(g.core, 1), g.core->frequency(g.core), rate);
     }
+}
+
+bool pk_api_rom_patch(uint32_t expectAddr, const uint8_t* expect, int expectLen,
+                      uint32_t addr, const uint8_t* value, int len) {
+    if (!expect || !value || expectLen < 1 || expectLen > 64 || len < 1 || len > 4 ||
+        expectAddr < 0x08000000u || (uint64_t) expectAddr + expectLen > 0x0E000000u ||
+        addr < 0x08000000u || (uint64_t) addr + len > 0x0E000000u) return false;
+    pthread_rwlock_wrlock(&pk_coreLock);
+    bool ok = g.core && pk_cheats_patch(g.core, expectAddr, expect, expectLen, addr, value, len);
+    pthread_rwlock_unlock(&pk_coreLock);
+    return ok;
+}
+
+void pk_api_rom_unpatch(void) {
+    pthread_rwlock_wrlock(&pk_coreLock);
+    if (g.core) {
+        pk_coop_uninstall(g.core);
+        pk_coop_lock_uninstall(g.core);
+        pk_cheats_unpatch(g.core);
+    }
+    pthread_rwlock_unlock(&pk_coreLock);
+}
+
+char* pk_api_cheats_check(const char* code, int type, const char* directive) {
+    return pk_cheats_check(code, type, directive);
+}
+
+bool pk_api_write(uint32_t addr, const uint8_t* src, int len) {
+    if (!g.core || !src || len <= 0) return false;
+    if (!pk_is_gba(g.core)) return pk_gb_write(g.core, addr, src, len);
+    uint64_t end = (uint64_t) addr + (uint32_t) len;
+    bool ram = (addr >= 0x02000000u && end <= 0x02040000u) ||
+               (addr >= 0x03000000u && end <= 0x03008000u);
+    if (!ram) return false;
+    for (int i = 0; i < len; ++i) g.core->busWrite8(g.core, addr + (uint32_t) i, src[i]);
+    return true;
+}
+
+bool pk_api_call_safe(void) {
+    return g.core && pk_is_gba(g.core) && pk_call_safe(g.core);
+}
+
+int64_t pk_api_call(uint32_t fn, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a3) {
+    const uint32_t args[4] = {a0, a1, a2, a3};
+    uint32_t result;
+    if (!g.core || !pk_call(g.core, fn, args, &result)) return -1;
+    return (int64_t) result;
+}
+
+bool pk_api_gb_call_at(uint16_t at, uint16_t fn, uint8_t a, uint8_t b, uint16_t hl) {
+    return pk_gb_call_at(g.core, at, fn, a, b, hl, 2);
+}
+
+int pk_api_cheats_apply(const char* text) {
+    pthread_rwlock_wrlock(&pk_coreLock);
+    int count = g.core ? pk_cheats_apply(g.core, text, text ? strlen(text) : 0) : 0;
+    pthread_rwlock_unlock(&pk_coreLock);
+    return count;
+}
+
+bool pk_api_field_configure(uint32_t crc) {
+    return pk_field_configure(g.core && pk_is_gba(g.core) ? crc : 0) != 0;
+}
+
+int pk_api_field_state(void) {
+    pthread_rwlock_wrlock(&pk_coreLock);
+    int state = g.core && pk_is_gba(g.core) ? pk_field_observe(g.core) : 0;
+    pthread_rwlock_unlock(&pk_coreLock);
+    return state;
+}
+
+bool pk_api_field_wild(uint32_t addr, bool wasOff) {
+    if (addr != 0 && (addr < 0x02000000u || addr >= 0x02040000u)) return false;
+    if (!g.core || !pk_is_gba(g.core)) return false;
+    pk_field_wild(addr, wasOff);
+    return true;
+}
+
+int pk_api_field_step(bool runIndoors, int wildKeep) {
+    if (wildKeep < 0) wildKeep = 0;
+    if (wildKeep > 100) wildKeep = 100;
+    pthread_rwlock_wrlock(&pk_coreLock);
+    int state = g.core && pk_is_gba(g.core) ? pk_field_state(g.core, runIndoors, wildKeep) : 0;
+    pthread_rwlock_unlock(&pk_coreLock);
+    return state;
 }
 
 void pk_api_set_keys(uint32_t keys) {

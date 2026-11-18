@@ -13,6 +13,7 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.ScreenOrientation
 import com.pokedaisy.app.CompanionFocusStripe
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -21,6 +22,7 @@ import org.junit.Test
  * the Thor's 1920x1080 top screen: a stand-in 3:2 game at 6.75x (1620x1080), the arrow at rest. See CompanionScreenshotTest.
  */
 class CompanionFocusScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(

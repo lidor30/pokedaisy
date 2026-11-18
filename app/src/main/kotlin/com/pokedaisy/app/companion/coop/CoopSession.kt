@@ -12,6 +12,7 @@ import com.pokedaisy.app.companion.data.save.Gen3SaveData
 import com.pokedaisy.app.companion.data.save.Gen3SaveFile
 import com.pokedaisy.app.companion.data.save.Gen3SaveFormat
 import java.io.File
+import okio.Path.Companion.toOkioPath
 import java.io.IOException
 import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
@@ -164,7 +165,7 @@ object CoopSession {
         val app = context.applicationContext
         if (!FeatureFlags.coop(app)) return
         post {
-            val id = if (romSha1 == EMERALD_COOP_SHA1) CoopSaveId.read(saveFile) else null
+            val id = if (romSha1 == EMERALD_COOP_SHA1) CoopSaveId.read(saveFile.toOkioPath()) else null
             val paired = id != null && try {
                 pairsOf(app).forSave(id) != null
             } catch (e: IOException) {
@@ -236,7 +237,7 @@ object CoopSession {
     private fun pairsOf(app: Context): CoopPairs {
         pairsStore?.let { return it }
         val tr = transportOf(app)
-        val p = CoopPairs(File(File(app.filesDir, "coop"), "pairs.json"))
+        val p = CoopPairs(File(File(app.filesDir, "coop"), "pairs.json").toOkioPath())
         pairsStore = p
         val l = CoopLinkImpl(tr, p, ownHello, clock, CoopBackoff())
         impl = l
@@ -246,7 +247,7 @@ object CoopSession {
     }
 
     private fun ownFor(saveFile: File, romSha1: String?): Own? {
-        val id = CoopSaveId.read(saveFile) ?: return null
+        val id = CoopSaveId.read(saveFile.toOkioPath()) ?: return null
         val sha = romSha1 ?: return null
         return Own(id, readFemale(saveFile), sha)
     }

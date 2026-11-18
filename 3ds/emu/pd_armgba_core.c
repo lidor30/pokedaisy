@@ -209,7 +209,8 @@ bool pd_armgba_is(const struct mCore* core) {
 }
 
 struct mCore* pd_armgba_load(const char* romPath, const char* savePath, const struct pd_armgba_host* host, char* error, size_t errorLen) {
-    struct ag_host h = { host->audio, host->log, host->ctx, host->systemDir, host->workDir, host->threaded, host->romBuffer, host->knownCrc };
+    struct ag_host h = { host->audio, host->log, host->ctx, host->systemDir, host->workDir, host->threaded, host->romBuffer, host->knownCrc,
+                         host->lateVideo };
     if (!ag_load(romPath, savePath, &h, error, errorLen)) return NULL;
     memset(&agCore, 0, sizeof(agCore));
     memset(&agView, 0, sizeof(agView));

@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.coop
 import com.pokedaisy.app.companion.data.save.Gen3SaveFormat
 import com.pokedaisy.app.companion.data.save.SyntheticSave
 import java.io.File
+import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -11,6 +12,8 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
 class CoopSaveIdTest {
+    private fun readId(file: File) = CoopSaveId.read(file.toOkioPath())
+
     @get:Rule val tmp = TemporaryFolder()
 
     private val may = byteArrayOf(0xC7.toByte(), 0xBB.toByte(), 0xD3.toByte(), 0xFF.toByte())
@@ -27,7 +30,7 @@ class CoopSaveIdTest {
     }
 
     @Test fun readsIdFromSave() {
-        val id = CoopSaveId.read(emeraldFile())!!
+        val id = readId(emeraldFile())!!
         assertEquals(0x1234, id.trainerId)
         assertEquals(0xABCD, id.secretId)
         assertEquals("1234abcd-", id.key.take(9))
@@ -38,26 +41,26 @@ class CoopSaveIdTest {
         val a = emeraldFile("a.sav")
         val dir = tmp.newFolder("other")
         val b = File(dir, "renamed.srm").also { a.copyTo(it) }
-        assertEquals(CoopSaveId.read(a), CoopSaveId.read(b))
+        assertEquals(readId(a), readId(b))
     }
 
     @Test fun emptyOrForeignSaveIsNull() {
-        assertNull(CoopSaveId.read(tmp.newFile("zero.sav").also { it.writeBytes(ByteArray(0x20000)) }))
-        assertNull(CoopSaveId.read(File(tmp.root, "missing.sav")))
+        assertNull(readId(tmp.newFile("zero.sav").also { it.writeBytes(ByteArray(0x20000)) }))
+        assertNull(readId(File(tmp.root, "missing.sav")))
         val fr = Gen3SaveFormat.FIRERED_LEAFGREEN
         val (sb2, sb1, storage) = SyntheticSave.blocks(fr)
         val frBytes = SyntheticSave.file(fr, SyntheticSave.Slot(5, 0, sb2, sb1, storage), null)
         // A real FireRed save fills its last SaveBlock1 sector; Emerald's longer chunk then sums other bytes and fails its checksum.
         frBytes[4 * 0x1000 + fr.chunkSize(4) + 1] = 0x55
-        assertNull(CoopSaveId.read(tmp.newFile("fr.sav").also { it.writeBytes(frBytes) }))
+        assertNull(readId(tmp.newFile("fr.sav").also { it.writeBytes(frBytes) }))
     }
 
     @Test fun emptyTrainerNameIsNull() {
-        assertNull(CoopSaveId.read(emeraldFile("noname.sav", byteArrayOf(0xFF.toByte()))))
+        assertNull(readId(emeraldFile("noname.sav", byteArrayOf(0xFF.toByte()))))
     }
 
     @Test fun fromHelloIsTheHellosSave() {
-        val id = CoopSaveId.read(emeraldFile())!!
+        val id = readId(emeraldFile())!!
         assertNotNull(id)
         assertEquals(id, CoopSaveId(0x1234, 0xABCD, id.name))
     }

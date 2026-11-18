@@ -8,11 +8,9 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->screenMode = PD_SCREEN_SHARP;
     s->ffSpeed = PD_FF_MIN;
     s->guideNotice = 0;
-#ifdef __3DS__
-    s->aspect = PD_ASPECT_EXPAND; // with SHARP: VIEW's EXPAND 1.5x (the user's call, 2026-11-16); a game without EXPAND shows SHARP 1.5x
-#else
-    s->aspect = PD_ASPECT_ORIGINAL; // the Linux / libretro cores and the host tests keep ORIGINAL (the user's call, 2026-11-16)
-#endif
+    // SHARP 1.5x everywhere: the Linux / libretro cores and the host tests (the user's call, 2026-11-16) and the 3DS (2026-11-17:
+    // EXPAND, its default for 1.6.0, took frames and memory a 3DS in the 80 MB mode doesn't have to spare); EXPAND is in VIEW.
+    s->aspect = PD_ASPECT_ORIGINAL;
     s->autoZoom = true;
     s->wildOff = false;
     s->tabBar = PD_TAB_BAR_DEFAULT;
@@ -36,6 +34,7 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->noBattleInfo = false;
     s->battleInfoFirst = false;
     s->flyClassic = false;
+    s->expandOff = false;
     s->flightAnywhere = false;
     s->flightVehicle = 0;
     s->gameSpeed = 0;
@@ -71,6 +70,12 @@ static bool int_in(const char* v, int lo, int hi, int* out) {
 bool pd_settings_load(struct pd_settings* s, const char* path) {
     pd_settings_defaults(s);
     FILE* f = fopen(path, "r");
+    if (!f) {
+        // A save cut off between its remove and its rename (the 3DS's, pd_settings_save) left the new file as .tmp.
+        char tmp[1100];
+        snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+        f = fopen(tmp, "r");
+    }
     if (!f) return false;
     char line[128];
     while (fgets(line, sizeof(line), f)) {
@@ -138,7 +143,8 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
                     : !strcmp(key, "flyclassic") ? &s->flyClassic : !strcmp(key, "reusabletms") ? &s->reusableTms
                     : !strcmp(key, "instanttext") ? &s->instantText : !strcmp(key, "tradeevos") ? &s->tradeEvos
                     // FLIGHT AREA: "flightanywhere" as the Linux / libretro hosts write it, "flyanywhere" as 3DS builds did
-                    : !strcmp(key, "flightanywhere") || !strcmp(key, "flyanywhere") ? &s->flightAnywhere : NULL;
+                    : !strcmp(key, "flightanywhere") || !strcmp(key, "flyanywhere") ? &s->flightAnywhere
+                    : !strcmp(key, "expandoff") ? &s->expandOff : NULL;
             if (b && int_in(value, 0, 1, &on)) *b = on;
         }
     }
@@ -171,7 +177,16 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     fprintf(f, "gen5=%d\nnoinfo=%d\ninfofirst=%d\n", s->battleGen5 ? 1 : 0, s->noBattleInfo ? 1 : 0, s->battleInfoFirst ? 1 : 0);
     fprintf(f, "flyclassic=%d\nflightanywhere=%d\nflyon=%d\n", s->flyClassic ? 1 : 0, s->flightAnywhere ? 1 : 0, s->flightVehicle);
     fprintf(f, "reusabletms=%d\ninstanttext=%d\ntradeevos=%d\n", s->reusableTms ? 1 : 0, s->instantText ? 1 : 0, s->tradeEvos ? 1 : 0);
+    fprintf(f, "expandoff=%d\n", s->expandOff ? 1 : 0);
     for (int i = 0; i < PD_SCENES; i++) fprintf(f, "scene%d=%d\n", i, s->sceneSpeed[i]);
-    if (fclose(f) != 0) return false;
+    if (fclose(f) != 0) {
+        remove(tmp);
+        return false;
+    }
+#if defined(__3DS__)
+    // The SD card's rename won't replace a file: without this only the first settings.ini was ever written, and every
+    // later change (THEME, DARK MODE, VIEW ...) was gone at the next start (1.6.0).
+    remove(path);
+#endif
     return rename(tmp, path) == 0;
 }

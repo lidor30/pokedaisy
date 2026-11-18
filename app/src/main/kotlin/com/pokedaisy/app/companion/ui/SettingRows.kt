@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.i18n.stripAccents
 import androidx.compose.foundation.layout.Column
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
@@ -147,7 +148,8 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "OVERLAY" to "overlay overlays border borders bezel bezels frame skin retroarch background wallpaper decoration",
     "COMPANION" to "portrait phone bottom position layout",
     "COMPANION VIEW" to "single screen one screen window modal popup middle center side panel docked layout",
-    "FOLD LAYOUT" to "foldable fold folding flip galaxy z fold pixel fold hinge tabletop flex mode book half open dual screen two screens",
+    "FOLD LAYOUT" to "foldable fold folding flip galaxy z fold pixel fold hinge tabletop flex mode book half open flat unfolded always dual screen two screens",
+    "TABLETOP CONTROLS" to "foldable fold tabletop laptop touch controls buttons dpad bottom half sides hinge flex mode",
     "COMPANION BUTTON" to "companion tab arrow edge tab open button hide white corner bottom right",
     "SWAP SCREENS" to "dual screen display switch top bottom tv cast mirror mirroring smart view hdmi external",
     "SINGLE SCREEN" to "one screen single screen dual screen multitask multitasking second screen free other apps window modal popup",
@@ -219,8 +221,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "WILD ENCOUNTERS" to "wild encounters encounter rate random battles grass caves repel no encounters fewer battles",
 )
 
-private fun fold(s: String): String =
-    java.text.Normalizer.normalize(s.lowercase(), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+private fun fold(s: String): String = stripAccents(s.lowercase())
 
 /** A group's title row in [GroupedRows]. */
 fun groupTitle(label: String) = SettingRow(label, null, header = true) {}

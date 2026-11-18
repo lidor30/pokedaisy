@@ -11,9 +11,14 @@ struct mCore;
 /** Most GBA pixels drawn beside the game, per side (21:9 at 160 tall needs 67). */
 #define PK_WIDE_MAX_MARGIN 96
 /** The largest window pk_wide_view draws (ZOOM's farthest step: 640 x 360 on a 1080p screen, 360 x ~470 on a phone
- * held upright). */
+ * held upright). EXPAND's buffers (pk_wide.c, pk_wide_gb.c) are this size, ~10 MB at 800 x 800: a build whose window
+ * can't be as big sets its own (the 3DS: its 400 x 240 top screen, 3ds/ctr/CMakeLists.txt, which 1.6.0's memory needed). */
+#ifndef PK_WIDE_MAX_VIEW_W
 #define PK_WIDE_MAX_VIEW_W 800
+#endif
+#ifndef PK_WIDE_MAX_VIEW_H
 #define PK_WIDE_MAX_VIEW_H 800
+#endif
 
 /** Engines (the layouts below): FireRed / LeafGreen (and the CFRU hacks), Emerald, Ruby / Sapphire, every language and
  * revision, and pokeemerald-expansion. */
@@ -142,6 +147,8 @@ void pk_field_wild(uint32_t addr, bool wasOff);
 /** This frame's PK_FIELD_* bits; with [runIndoors], also lets the player run on the current map (gMapHeader); with
  * [wildKeep] < 100, leaves about that share of wild encounters (0 = none). */
 int pk_field_state(struct mCore* core, int runIndoors, int wildKeep);
+/** Reads the same flags without changing indoor permissions, encounter ownership or its RNG. */
+int pk_field_observe(struct mCore* core);
 
 /** Forgets what earlier frames left (a state load, a new core, a rewind). */
 void pk_wide_reset(void);

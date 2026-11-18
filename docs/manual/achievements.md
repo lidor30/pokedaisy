@@ -28,7 +28,7 @@ You sign in on the top screen because typing needs a keyboard, and the bottom sc
 
 RetroAchievements recognises a ROM by its exact contents, so only ROMs it knows have achievements. The retail games (FireRed, Emerald and the others) have sets, as do some popular hacks like Unbound. A patched or rebuilt ROM usually doesn't, even if it's based on a game that does.
 
-This works with any game, not only the ones the companion supports, and with Game Boy and DS games too.
+This works with any game, not only the ones the companion supports, and with Game Boy and DS games too. A DS game has the same achievements whether you keep its ROM loose or in an archive.
 
 To check a game before playing it, long-press it in the library and open `INFO`. Its RetroAchievements section says whether there's a set for that exact ROM and, when you're signed in, how many achievements you've unlocked in it. See [Library](library.md).
 

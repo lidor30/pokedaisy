@@ -1,6 +1,7 @@
 package com.pokedaisy.app
 
 import android.app.Application
+import okio.Path.Companion.toOkioPath
 
 /** Process start: counts the app open (for CrashReports' one-time ask) and applies the crash-report choice. */
 class PokeDaisyApp : Application() {
@@ -8,12 +9,26 @@ class PokeDaisyApp : Application() {
         super.onCreate()
         // The data code reads the emulator through MgbaCore (companion/data/EmulatorCore.kt).
         com.pokedaisy.app.companion.data.EmulatorCore.current = MgbaEmulatorCore
+        // The app's files folder, where the screens find the art RomArt rebuilt from the player's ROMs.
+        com.pokedaisy.app.companion.data.RomArt.filesDir = filesDir.toOkioPath()
         // The data code's log lines (companion/data/Logs.kt) go to Android's log.
         com.pokedaisy.app.companion.data.Logs.sink = com.pokedaisy.app.companion.data.Logs.Sink { tag, warning, message, error ->
             if (warning) android.util.Log.w(tag, message, error) else android.util.Log.i(tag, message)
         }
+        // THEME and DARK MODE are saved in the app's Prefs.
+        com.pokedaisy.app.companion.ui.theme.ThemeStore.current =
+            com.pokedaisy.app.companion.ui.theme.PrefsThemeStore(Prefs(this))
+        com.pokedaisy.app.companion.ui.DocsSources.current = StoreDocsSource(this)
+        // The screens' fonts (Pixel Operator and its fallbacks, the manual's, a game's own) from the app's assets.
+        com.pokedaisy.app.companion.ui.theme.FontSource.current = AndroidFonts(this)
+        // The screens' pictures: Bitmaps made from pixels, image files decoded by BitmapFactory.
+        com.pokedaisy.app.companion.ui.PictureCodec.current = AndroidPictures
+        // Dates and times the device's way (STATES' save times).
+        com.pokedaisy.app.companion.ui.DeviceDates.current = JvmDeviceDates
+        // Cheat codes checked by mGBA's own parser.
+        com.pokedaisy.app.cheats.CheatParser.current = com.pokedaisy.app.cheats.MgbaCheatParser
         // The NEW tags' week starts with the first launch of a build that has the feature.
-        com.pokedaisy.app.companion.NewFeatures.init(Prefs(this))
+        Prefs(this).let { p -> com.pokedaisy.app.companion.NewFeatures.init(p.newFeatureSince, { p.newFeatureSince = it }) }
         // SETTINGS' DESCRIPTIONS / GROUP TABS, kept across launches.
         Prefs(this).let { p ->
             com.pokedaisy.app.companion.ui.SettingsLook.descriptions = p.settingsDescriptions

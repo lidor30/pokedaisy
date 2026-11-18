@@ -148,25 +148,25 @@ class N3dsSession(
         lookY = -axis(MotionEvent.AXIS_RZ, MotionEvent.AXIS_RY)
         val hx = event.getAxisValue(MotionEvent.AXIS_HAT_X)
         val hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
-        hatBits = (if (hx < -0.5f) MgbaCore.Key.LEFT else 0) or (if (hx > 0.5f) MgbaCore.Key.RIGHT else 0) or
-            (if (hy < -0.5f) MgbaCore.Key.UP else 0) or (if (hy > 0.5f) MgbaCore.Key.DOWN else 0)
+        hatBits = (if (hx < -0.5f) com.pokedaisy.app.companion.data.CoreKey.LEFT else 0) or (if (hx > 0.5f) com.pokedaisy.app.companion.data.CoreKey.RIGHT else 0) or
+            (if (hy < -0.5f) com.pokedaisy.app.companion.data.CoreKey.UP else 0) or (if (hy > 0.5f) com.pokedaisy.app.companion.data.CoreKey.DOWN else 0)
     }
 
     /** The app's key mask ([GbaInput.mask]: GBA bits, the DS's X / Y) as the 3DS's buttons. */
     private fun buttons(mask: Int): Int {
         var b = 0
-        if (mask and MgbaCore.Key.A != 0) b = b or N3dsNative.Button.A
-        if (mask and MgbaCore.Key.B != 0) b = b or N3dsNative.Button.B
-        if (mask and MgbaCore.Key.X != 0) b = b or N3dsNative.Button.X
-        if (mask and MgbaCore.Key.Y != 0) b = b or N3dsNative.Button.Y
-        if (mask and MgbaCore.Key.UP != 0) b = b or N3dsNative.Button.UP
-        if (mask and MgbaCore.Key.DOWN != 0) b = b or N3dsNative.Button.DOWN
-        if (mask and MgbaCore.Key.LEFT != 0) b = b or N3dsNative.Button.LEFT
-        if (mask and MgbaCore.Key.RIGHT != 0) b = b or N3dsNative.Button.RIGHT
-        if (mask and MgbaCore.Key.L != 0) b = b or N3dsNative.Button.L
-        if (mask and MgbaCore.Key.R != 0) b = b or N3dsNative.Button.R
-        if (mask and MgbaCore.Key.START != 0) b = b or N3dsNative.Button.START
-        if (mask and MgbaCore.Key.SELECT != 0) b = b or N3dsNative.Button.SELECT
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.A != 0) b = b or N3dsNative.Button.A
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.B != 0) b = b or N3dsNative.Button.B
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.X != 0) b = b or N3dsNative.Button.X
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.Y != 0) b = b or N3dsNative.Button.Y
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.UP != 0) b = b or N3dsNative.Button.UP
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.DOWN != 0) b = b or N3dsNative.Button.DOWN
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.LEFT != 0) b = b or N3dsNative.Button.LEFT
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.RIGHT != 0) b = b or N3dsNative.Button.RIGHT
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.L != 0) b = b or N3dsNative.Button.L
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.R != 0) b = b or N3dsNative.Button.R
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.START != 0) b = b or N3dsNative.Button.START
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.SELECT != 0) b = b or N3dsNative.Button.SELECT
         return b
     }
 
