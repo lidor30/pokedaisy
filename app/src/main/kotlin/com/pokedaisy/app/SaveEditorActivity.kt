@@ -585,13 +585,23 @@ class SaveEditorActivity : ComponentActivity() {
         else -> o
     }
 
-    /** [rom]'s party icons from the ROM file, when it's one whose icon tables are known. Blocking; once per ROM. */
+    /** [rom]'s party icons from the ROM file: a DS cart's own archive (NdsArt.monIcons), a GBA ROM's tables when they're
+     * known and check out (RomMonIcons). Blocking; once per ROM. */
     private fun loadIcons(rom: File) {
         if (rom.absolutePath in icons) return
-        val tables = RomMonIcons.tablesFor(RomIdentity.sha1(rom), RomIdentity.gameCode(rom), RomIdentity.revision(rom)) ?: return
-        val file = RomArchive.playable(rom, cacheDir) ?: rom
-        val source = RomMonIcons.open(file.toOkioPath(), tables) ?: return
-        runOnUiThread { icons[rom.absolutePath] = MonIconLoader { source.get(it)?.imageBitmap() } }
+        val loader = if (RomIdentity.isNds(rom)) {
+            val cart = RomArchive.playable(rom, cacheDir) ?: rom
+            val source = runCatching { com.pokedaisy.app.companion.data.NdsArt.monIcons(cart.toOkioPath()) }.getOrNull() ?: return
+            MonIconLoader { species, egg -> source.get(species, egg)?.imageBitmap() }
+        } else {
+            val file = RomArchive.playable(rom, cacheDir) ?: rom
+            val source = RomMonIcons.forRom(file.toOkioPath(), RomIdentity.sha1(rom), RomIdentity.gameCode(rom), RomIdentity.revision(rom))
+                ?: return
+            MonIconLoader { species, egg ->
+                source.get(if (egg) com.pokedaisy.app.companion.data.save.SPECIES_EGG else species)?.imageBitmap()
+            }
+        }
+        runOnUiThread { icons[rom.absolutePath] = loader }
     }
 
     private fun save(ready: Page.Ready) {

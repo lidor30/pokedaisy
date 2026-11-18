@@ -164,6 +164,74 @@ object NdsArt {
         }
     }
 
+    /**
+     * A DS cart's party icons for the save tools (SAVE EDITOR, TRADE, COLLECTION, PAL PARK, POKé TRANSFER), decoded one
+     * at a time from the cart's own icon archive - nothing written, nothing bundled, the game needn't have been played.
+     * The same archives, palettes and egg as [extractTo]: HeartGold / SoulSilver, Platinum (Renegade's palettes),
+     * Diamond / Pearl (Platinum's palette table: its first 495 entries are theirs), Black / White and their sequels
+     * (Redux's palettes). Null for any other cart, and for Origin HeartGold / Heartfelt Gold, whose species ids are their own.
+     */
+    fun monIcons(rom: Path): MonIcons? = withRomFile(rom) { f ->
+        val header = f.read(0, 0x200)
+        val code = asciiString(header, 0x0C, 4)
+        val rev = header[0x1E].toInt() and 0xFF
+        val read: (Long, Int) -> ByteArray? = { off, len -> f.read(off, len) }
+        if (OriginHeartGold.matches(read)) return@withRomFile null
+        val platinum = isPlatinum(code, rev)
+        val heartGold = isHgss(code, rev)
+        val diamondPearl = isDiamondPearl(code)
+        val white = (code == "IRAO" || code == "IRAF") && rev == 0 || portIs(code, rev, GameKind.WHITE)
+        val black = (code == "IRBO" || code == "IRBF") && rev == 0 || portIs(code, rev, GameKind.BLACK) || white
+        val white2 = code == "IRDO" && rev == 0 || portIs(code, rev, GameKind.WHITE2)
+        val black2 = code == "IREO" && rev == 0 || portIs(code, rev, GameKind.BLACK2) || white2
+        if (heartGold && HeartfeltGold.matches(read)) return@withRomFile null
+        when {
+            black || black2 -> {
+                val files = if (black2 && Black2Redux.matches(read)) reduxFiles(f, code == Black2Redux.CODE_WHITE2) ?: return@withRomFile null
+                    else if (black2) GEN5_BLACK2_FILES else if (white) GEN5_WHITE_FILES else GEN5_BLACK_FILES
+                val narc = Narc(file(f, header, "/a/0/0/7") ?: return@withRomFile null)
+                MonIcons(narc::member, palettes(narc.member(0)), files.iconPalettes, files.iconBase, 2, BLACK_EGG)
+            }
+            platinum || heartGold || diamondPearl -> {
+                val path = when {
+                    platinum -> "/poketool/icongra/pl_poke_icon.narc"
+                    diamondPearl -> "/poketool/icongra/poke_icon.narc"
+                    else -> "/a/0/2/0"
+                }
+                val iconPalettes = when {
+                    platinum && RenegadePlatinum.matches(read) ->
+                        f.read(RenegadePlatinum.ICON_PALETTES_OFFSET, RenegadePlatinum.ICON_PALETTES_SIZE)
+                    platinum || diamondPearl -> iconPalettesPlatinum
+                    else -> iconPalettesHeartGold
+                }
+                val narc = Narc(file(f, header, path) ?: return@withRomFile null)
+                MonIcons(narc::member, palettes(narc.member(0)), iconPalettes, 7, 1, EGG)
+            }
+            else -> null
+        }
+    }
+
+    /** [monIcons]' reader: icon n is archive member [base] + [step] x n in palette [palIdx][n]; the egg is icon [egg]
+     * (Gen 5's odd members between are the female icons). */
+    class MonIcons internal constructor(
+        private val member: (Int) -> ByteArray?, private val palettes: List<IntArray>, private val palIdx: ByteArray,
+        private val base: Int, private val step: Int, private val egg: Int,
+    ) {
+        private val cache = LockedMap<Int, RomArt.Image>()
+        private val missing = LockedMap<Int, Unit>()
+
+        /** [species]' icon (national dex number; 32 x 64, both frames), or the egg's; null if the cart has none. */
+        fun get(species: Int, isEgg: Boolean = false): RomArt.Image? {
+            val n = if (isEgg) egg else species
+            if (n !in 1..egg || n in missing) return null
+            cache[n]?.let { return it }
+            val pal = palettes.getOrNull(palIdx.getOrNull(n)?.toInt() ?: 0)
+            val img = pal?.let { icon(member(base + step * n), it) }
+            if (img == null) missing[n] = Unit else cache[n] = img
+            return img
+        }
+    }
+
     /** Carts on Platinum's files: USA rev 1, France rev 0, the Platinum language ports. */
     private fun isPlatinum(code: String, rev: Int) =
         code == "CPUE" && rev == 1 || code == "CPUF" && rev == 0 || portIs(code, rev, GameKind.PLATINUM)
