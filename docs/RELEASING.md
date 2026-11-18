@@ -32,8 +32,9 @@ release only), and the in-app updater offers the version on the next library ope
 - Releases are immutable once published: a broken APK can't be swapped, nor a file added,
   only followed by a new version. Everything goes onto the draft.
 
-- A version with a suffix (`1.2.0-rc.1`) goes out as a **pre-release**, which the
-  in-app updater skips. Use that for test builds.
+- A version with a suffix (`1.2.0-beta.1`, `1.2.0-rc.1`) goes out as a **pre-release**: the in-app
+  updater offers it only to players with Settings > BETA UPDATES on, and the website doesn't deploy
+  for it. See "Betas and release candidates" below.
 - If a run fails, nothing is published. Fix it on `main`, delete the tag
   (`git push --delete origin v1.2.0 && git tag -d v1.2.0`), and run `make release`
   again.
@@ -41,6 +42,57 @@ release only), and the in-app updater offers the version on the next library ope
   the symbols and puts the release up as a draft with the `gh` CLI from your Mac; publish it
   the same way. Its tag push starts the Release workflow too: cancel that run (`gh run cancel`)
   rather than approve it.
+
+## Betas and release candidates
+
+Every version goes out as betas, then a release candidate, before everyone gets it (from 1.6.2 on, after
+1.6.0's device-only regressions: 120 Hz pacing, DS white screens). The point is other players' devices, so
+anyone can opt in: Settings > APP > BETA UPDATES (`Prefs.betaUpdates`; unset = on while a beta build runs).
+There's no tester list: the Discord's self-assigned **Beta tester** role and its #beta-announcements / #beta-feedback channels are where
+testers hear about a build and report back.
+
+| Stage | Tag | What goes in | How long |
+| --- | --- | --- | --- |
+| beta | `v1.6.2-beta.N` | dev frozen for the version: its features, known rough edges allowed | 3 to 5 days, a new beta when fixes pile up |
+| release candidate | `v1.6.2-rc.N` | fixes only | 2 to 3 days with no new regression |
+| release | `v1.6.2` | the last rc's code, only the version changed | |
+
+**Branches.** `main` is where a version settles: merge dev into main, tag `beta.1` there, and from then on
+only fixes land on main (each merged back into dev). New work keeps landing on dev for the version after.
+A hotfix (`1.6.3`, `1.6.2.1`) goes on main too; one that can wait a day gets an `rc.1` first.
+
+**Versions.** Every beta, every rc and the release get their own `make bump` (versionCode + 1), so each
+build installs over the one before and the release always beats the last rc:
+
+```bash
+make bump V=1.6.2-beta.1   # then beta.2, rc.1 ..., and V=1.6.2 last
+git commit -am "Version 1.6.2-beta.1" && git push
+make release               # the same flow: a draft pre-release to publish
+```
+
+WHAT'S NEW is written once, under the release's own version (`NOTES_1_6_2`, `version = "1.6.2"`): a beta
+shows it (`WhatsNew.notesFor` drops the suffix) and nobody sees it twice (`releaseOf`). What changed between
+betas goes in each pre-release's notes and the #beta-announcements post, not in the app. NEW tags start counting from a
+tester's first beta, so they fade for testers a little before everyone else.
+
+**Before tagging an rc**, the device check, on the `benchmark` build (`./gradlew :app:assembleBenchmark`; not debuggable, so the pacing
+numbers are real; it's debug-signed, so it installs over a debug build, not a release):
+
+- the Thor at 120 Hz: a GBA and a DS game at 1x, `adb logcat | grep fps=` (`unshown=` near 0)
+- the Retroid Pocket 6
+- the Samsung S9: rotate in a game, many times, fast
+- the 32-bit Galaxy Tab A: a game, tab switches, the touch controls
+- a resume from a state, a Game Boy game, an update over the last release (the library keeps its games)
+
+**Promoting.** The release is the last rc rebuilt with the version changed and nothing else. If anything
+else has to change, it's another rc. Open #beta-feedback's reports and Crashlytics' crash-free users for the rc
+before you tag the release.
+
+**Each pre-release:**
+- notes start with what to test and a line that it's a beta (the Release workflow marks it a pre-release)
+- the 3DS and Linux files go on it as on a release
+- post it in #beta-announcements with the release page's link (ping the Beta tester role)
+- issues from testers get the `beta` label; one that a beta caused blocks the rc
 
 ## The 3DS files
 

@@ -42,5 +42,11 @@ class WhatsNewTest {
         assertNull(WhatsNew.due("1.3.2", lastSeen = "1.3.2", updated = true))
         assertNull(WhatsNew.due("1.3.2", lastSeen = null, updated = false))                      // a fresh install
         assertNull(WhatsNew.due("0.0.1", lastSeen = null, updated = true))                       // no notes
+        // A beta shows its release's notes, once: not again for the next beta, nor for the release itself.
+        assertEquals("1.6.1", WhatsNew.due("1.6.1-beta.1", lastSeen = "1.6.0", updated = true)?.version)
+        assertNull(WhatsNew.due("1.6.1-beta.2", lastSeen = "1.6.1-beta.1", updated = true))
+        assertNull(WhatsNew.due("1.6.1", lastSeen = "1.6.1-rc.1", updated = true))
+        assertEquals("1.6.0", WhatsNew.releaseOf("1.6.0-rc.2"))
+        assertEquals("1.5.0", WhatsNew.releaseOf("1.5.0.1-beta.1"))
     }
 }

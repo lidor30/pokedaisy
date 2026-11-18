@@ -129,6 +129,7 @@ The `SHADERS` page:
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
 | `VERSION` | the version number | Tap to look for a newer version now. | [Install](install.md) |
+| `BETA UPDATES` | `ON`, **`OFF`** | The update offer includes beta versions too, before they go out to everyone. | [Install](install.md#beta-versions) |
 | `RUN SETUP` | | Back to the library with the first-time setup open again (ROMs folder, saves folder, game buttons, cover art). | [Install](install.md) |
 | `CRASH REPORTS` | `ON`, **`OFF`** | Sends a short report when the app crashes, only if you turn it on. Only in official builds. | [Troubleshooting](troubleshooting.md#what-does-pokedaisy-send-over-the-internet) |
 | `TIPS` | **`ON`**, `OFF` | Now and then, a card about a feature you haven't tried yet, shown in a game while you walk around. | [The companion](companion.md#tips) |

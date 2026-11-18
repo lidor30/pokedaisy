@@ -141,7 +141,7 @@ release-local: release-apk symbols ## Without CI: build, upload symbols, tag and
 	@command -v gh >/dev/null || { echo "needs the GitHub CLI (gh)"; exit 1; }
 	git tag -a "v$(VERSION)" -m "PokeDaisy $(VERSION)"
 	git push origin "v$(VERSION)"
-	gh release create "v$(VERSION)" $(RELEASE_APK) --draft --title "PokeDaisy $(VERSION)" --generate-notes
+	gh release create "v$(VERSION)" $(RELEASE_APK) --draft $(if $(findstring -,$(VERSION)),--prerelease) --title "PokeDaisy $(VERSION)" --generate-notes
 	@echo ">> v$(VERSION) is a draft: publish it with gh release edit v$(VERSION) --draft=false (cancel the Release run the tag started)"
 
 ##@ Looking at the UI

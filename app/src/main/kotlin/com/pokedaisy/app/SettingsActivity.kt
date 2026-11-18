@@ -986,6 +986,18 @@ class SettingsActivity : ComponentActivity() {
             groupTitle(tk("APP")),
             // Tap: look for a newer release on GitHub now.
             SettingRow(tk("VERSION"), if (updates.checking) tk("CHECKING…") else BuildConfig.VERSION_NAME) { updates.check(manual = true) },
+            // The updater offers betas and release candidates too (GitHub pre-releases); turning it on looks at once.
+            run {
+                val beta = prefs.betaUpdates(runningBeta = '-' in BuildConfig.VERSION_NAME)
+                SettingRow(
+                    tk("BETA UPDATES"), onOff(beta), subtitle = "Try new versions before everyone else",
+                    labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.BETA_UPDATES),
+                ) {
+                    prefs.setBetaUpdates(!beta)
+                    if (!beta) updates.check()
+                    revision++
+                }
+            },
             // Back to the library, which opens the first-time setup again.
             SettingRow(tk("RUN SETUP"), null, subtitle = "First-time setup again: folders, buttons, art") { prefs.setupRequested = true; finish() },
             // Opt-in crash reports (CrashReports.kt); only in builds that can send them.
