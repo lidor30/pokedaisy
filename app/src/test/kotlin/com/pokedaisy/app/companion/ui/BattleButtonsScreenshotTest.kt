@@ -49,6 +49,7 @@ import org.junit.Test
  *     ./gradlew :app:recordPaparazziDebug --tests '*BattleButtons*'
  */
 class BattleButtonsScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1920, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),
@@ -121,6 +122,7 @@ class BattleButtonsScreenshotTest {
 
 /** [BattleButtonsScreenshotTest]'s scenes cropped at 1:1 to the screen's right 600 px (Paparazzi scales 1920 down). */
 class BattleButtonsCloseUpScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 600, screenHeight = 1080, orientation = ScreenOrientation.PORTRAIT),
@@ -160,6 +162,7 @@ class BattleButtonsCloseUpScreenshotTest {
 
 /** A 20:9 phone (2400x1080): wide margins beside the battle. */
 class BattleButtonsPhoneScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 2400, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),

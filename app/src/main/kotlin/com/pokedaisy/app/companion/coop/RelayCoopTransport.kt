@@ -189,7 +189,7 @@ class RelayCoopTransport(
             dials.put(t.peer, dial)?.cancelled = true
             reconcile()
             kickPair(t.peer)
-            if (!relayOnly) startTcp(dial, t.addresses + (lanAddresses[t.peer] ?: emptyList()))
+            if (!relayOnly) startTcp(dial, t.addresses.map { InetSocketAddress(InetAddress.getByAddress(it.ip), it.port) } + (lanAddresses[t.peer] ?: emptyList()))
         }
         openDue()
         return 0
@@ -320,7 +320,7 @@ class RelayCoopTransport(
             } catch (e: RuntimeException) {
                 emptyList()
             }
-            found.distinct().take(MAX_ADDRESSES).map { InetSocketAddress(it, port) }
+            found.distinct().take(MAX_ADDRESSES).map { CoopAddress(it.address, port) }
         }
         val t = CoopTicket(me, inviteSecret, list).encode()
         if (t != ticket) {

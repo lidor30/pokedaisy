@@ -7,6 +7,7 @@
 #include <mgba-util/crc32.h>
 #include <mgba/core/core.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define GBA_ROM 0x08000000u
@@ -493,7 +494,9 @@ static struct placed world[WORLD_MAPS];
 static int worldCount;
 static struct edge edges[WORLD_MAPS][MAP_CONNS];
 static int nedges[WORLD_MAPS];
-static uint8_t owner[MAX_CELLS], cameFrom[MAX_CELLS];
+// From the heap at the first route, kept (a 3DS in its 80 MB mode can't spare them as static data, 2026-11-17).
+static uint8_t *owner, *cameFrom;
+static int *ring; // shortest's queue, 1 << 16
 static int gx0, gy0, gw, gh;
 
 static int world_index(int id) {
@@ -575,6 +578,13 @@ static bool build_grid(const struct pd_config *cfg, const uint8_t *rom, size_t l
   gh = y1 - gy0;
   if ((long)gw * gh > MAX_CELLS)
     return false;
+  if (!owner) owner = malloc(MAX_CELLS);
+  if (!cameFrom) cameFrom = malloc(MAX_CELLS);
+  if (!ring) ring = malloc(sizeof(int) << 16);
+  if (!owner || !cameFrom || !ring) {
+    gw = gh = 0; // no grid: cell_at finds nothing
+    return false;
+  }
   memset(owner, NO_CELL, (size_t)gw * gh);
   int undefined = cfg->flightMapGridUndefined ? cfg->flightMapGridUndefined : 0x3FF;
   for (int i = 0; i < worldCount; i++) {
@@ -636,7 +646,6 @@ static int path[FLIGHT_MAX_STEPS + 1], straight[FLIGHT_MAX_STEPS + 1], line[FLIG
 
 // A shortest path of cells (breadth first: every step costs the same, as ScenicFly's A*), or 0.
 static int shortest(int start, int goal) {
-  static int ring[1 << 16];
   memset(cameFrom, 0, (size_t)gw * gh);
   cameFrom[start] = 5; // the start
   unsigned head = 0, tail = 0;

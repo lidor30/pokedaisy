@@ -1,7 +1,9 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.pad
+import androidx.compose.ui.graphics.ImageBitmap
+import com.pokedaisy.app.companion.i18n.stripAccents
 import androidx.compose.ui.graphics.RectangleShape
-import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -46,7 +48,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -75,6 +76,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.floor
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import kotlin.math.roundToInt
+import kotlinx.coroutines.IO
 
 /** Which entries the list shows. SEEN = seen but not caught yet. [label] is English; OptionRows translates it. */
 enum class DexFilter(val label: String) { ALL(tk("ALL")), CAUGHT(tk("CAUGHT")), SEEN(tk("SEEN ONLY")), UNSEEN(tk("NOT SEEN")) }
@@ -126,7 +129,7 @@ private fun dexTypes(species: Int): List<String> = activeSpeciesTypeData[species
 
 /** The letter a species' name is filed under, accents gone; null for no name. */
 private fun dexInitial(species: Int): Char? = if (species <= 0) null else
-    java.text.Normalizer.normalize(speciesName(species), java.text.Normalizer.Form.NFD).firstOrNull { it.isLetter() }?.uppercaseChar()
+    stripAccents(speciesName(species)).firstOrNull { it.isLetter() }?.uppercaseChar()
 
 /**
  * The dex being shown, as national numbers in its own order - national, or the
@@ -341,7 +344,7 @@ private fun DexRow(
     }
 }
 
-private fun dexNo(n: Int) = "No.%03d".format(n)
+private fun dexNo(n: Int) = "No.${n.pad(3)}"
 
 internal val caughtBall = mapOf(
     'K' to Color(0xFF202020), 'R' to Color(0xFFE83028), 'W' to Color.White, 'H' to Color(0xFFF8A8A0),
@@ -594,8 +597,8 @@ private fun genderLabel(ratio: Int): String = when (ratio) {
     else -> {
         // The data is PERCENT_FEMALE(x) = x * 255 / 100 and every Gen 3 ratio
         // is a multiple of 12.5%: round back to it (31 -> 12.5%, not 12.1%).
-        val female = Math.round(ratio * 100 / 255.0 / 12.5).toInt() * 125 // tenths of a percent
-        "♂ %s%%  ♀ %s%%".format(pct(1000 - female), pct(female))
+        val female = (ratio * 100 / 255.0 / 12.5).roundToInt() * 125 // tenths of a percent
+        "♂ ${pct(1000 - female)}%  ♀ ${pct(female)}%"
     }
 }
 
@@ -605,9 +608,9 @@ private fun pct(tenths: Int) = if (tenths % 10 == 0) "${tenths / 10}" else "${te
 internal fun rememberRomBitmap(
     t: PokedexTables, species: Int,
     cached: (PokedexTables, Int) -> RomArt.Image?, load: (PokedexTables, Int) -> RomArt.Image?,
-): Bitmap? =
-    produceKeyedState(cached(t, species)?.bitmap(), t, species) {
-        if (value == null && species > 0) value = withContext(Dispatchers.IO) { load(t, species)?.bitmap() }
+): ImageBitmap? =
+    produceKeyedState(cached(t, species)?.imageBitmap(), t, species) {
+        if (value == null && species > 0) value = withContext(Dispatchers.IO) { load(t, species)?.imageBitmap() }
     }.value
 
 /**
@@ -615,7 +618,7 @@ internal fun rememberRomBitmap(
  * pixels per sprite pixel that fits, centered - pixel art stays crisp.
  */
 @Composable
-internal fun PixelImage(bitmap: Bitmap?, srcPx: Int, modifier: Modifier) {
+internal fun PixelImage(bitmap: ImageBitmap?, srcPx: Int, modifier: Modifier) {
     val density = LocalDensity.current
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val room = with(density) { minOf(maxWidth, maxHeight).toPx() }
@@ -623,7 +626,7 @@ internal fun PixelImage(bitmap: Bitmap?, srcPx: Int, modifier: Modifier) {
         val side = with(density) { (srcPx * scale).toDp() }
         if (bitmap != null) {
             Image(
-                bitmap.asImageBitmap(), contentDescription = null,
+                bitmap, contentDescription = null,
                 modifier = Modifier.size(side), filterQuality = FilterQuality.None,
             )
         }

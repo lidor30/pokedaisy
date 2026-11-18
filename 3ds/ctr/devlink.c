@@ -4,6 +4,7 @@
 #ifdef PD_DEV
 #include "devlink.h"
 #include "gpu.h"
+#include "host.h"
 
 #include <3ds.h>
 
@@ -228,6 +229,11 @@ static bool read_path(const char* name, char* out, size_t size) {
         snprintf(out, size, "sdmc:/luma/dumps/arm11%s", name + 5);
         return true;
     }
+    // "release": the released app's folder (its log, settings.ini), to read what a CIA / .3dsx run did.
+    if (!strncmp(name, "release", 7) && (name[7] == 0 || name[7] == '/') && !strstr(name, "..")) {
+        snprintf(out, size, "sdmc:/pokedaisy%s", name + 7);
+        return true;
+    }
     return dev_path(name, out, size);
 }
 
@@ -244,7 +250,10 @@ static void make_parents(const char* path) {
 
 static bool cmd_put(int fd, const char* name, size_t size) {
     char path[320], temp[330];
-    if (!dev_path(name, path, sizeof(path))) return reply_error(fd, "outside the dev folder");
+    // "release/...": a game or save copied into the released app's folder for testing a CIA (never "self" there).
+    bool release = !strncmp(name, "release/", 8);
+    if (!(release ? read_path(name, path, sizeof(path)) : dev_path(name, path, sizeof(path))))
+        return reply_error(fd, "outside the dev folder");
     snprintf(temp, sizeof(temp), "%s.part", path);
     make_parents(path);
     FILE* f = fopen(temp, "wb");
@@ -322,8 +331,7 @@ static bool cmd_stat(int fd) {
     LightLock_Lock(&lock);
     s = stats;
     LightLock_Unlock(&lock);
-    bool isNew = false;
-    APT_CheckNew3DS(&isNew);
+    bool isNew = host_is_new_3ds(); // the Old 3DS stand-in says no
     // 5 cycles an iteration: about 25 ms at the New 3DS's 804 MHz, three times that at 268.
     u64 start = svcGetSystemTick();
     for (u32 i = 4000000; i; i--) __asm__ volatile("");
@@ -336,14 +344,14 @@ static bool cmd_stat(int fd) {
                      "ag_wait_us=%u ag_render_us=%u ag_compile_us=%u ag_flush_us=%u wide_thread_us=%u draw_job_us=%u "
                      "ag_stepped=%u ag_compiled=%u ag_invalidated=%u ag_code_writes=%u mixes=%u "
                      "tot_loops=%u tot_late=%u tot_late_core=%u tot_late_draw=%u tot_late_rest=%u tot_gaps=%u tot_frames=%u queue_min=%u "
-                     "job_tex_us=%u job_begin_us=%u job_canvas_us=%u job_rest_us=%u\n",
+                     "job_tex_us=%u job_begin_us=%u job_canvas_us=%u job_rest_us=%u skipped=%u draw_core=%d gp_render_us=%u gp_wait_us=%u\n",
                      s.frames, s.coreUs, s.uiUs, s.drawUs, s.worstUs, s.late, (unsigned) linearSpaceFree(), isNew, gpu_frames_shown(), clockUs,
                      s.runUs, s.waitUs, s.wideUs, s.snapUs, s.gaps, s.drops, s.rate, s.redraws, s.redrawWorstUs,
                      s.idleMode, s.idleLoop, s.idleFails, s.flightState, s.flightTickUs, s.flightDrawUs,
                      s.agWaitUs, s.agRenderUs, s.agCompileUs, s.agFlushUs, s.wideThreadUs, s.drawJobUs,
                      s.agStepped, s.agCompiled, s.agInvalidated, s.agCodeWrites, s.mixes,
                      s.totLoops, s.totLate, s.totLateCore, s.totLateDraw, s.totLateRest, s.totGaps, s.totFrames, s.queueMin,
-                     s.jobTexUs, s.jobBeginUs, s.jobCanvasUs, s.jobRestUs);
+                     s.jobTexUs, s.jobBeginUs, s.jobCanvasUs, s.jobRestUs, s.skipped, s.drawCore, s.gpRenderUs, s.gpWaitUs);
     return reply(fd, text, (size_t) n);
 }
 
@@ -516,9 +524,9 @@ void devlink_start(void) {
     // The New 3DS's third core; else the system core, which needs its time limit raised.
     s32 priority = 0x30;
     svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
-    thread = threadCreate(link_thread, NULL, THREAD_STACK, priority + 1, 2, false);
+    thread = host_is_new_3ds() ? threadCreate(link_thread, NULL, THREAD_STACK, priority + 1, 2, false) : NULL;
     if (!thread) {
-        APT_SetAppCpuTimeLimit(30);
+        host_core1_take(30); // the most anyone asked for stays (the draw thread's 80 on an Old 3DS)
         thread = threadCreate(link_thread, NULL, THREAD_STACK, priority + 1, 1, false);
     }
 }

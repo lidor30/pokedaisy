@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.coop
 
+import kotlin.time.Clock
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class CoopLobby(
     private val connector: CoopLobbyConnector,
     private val relayUrl: String,
-    private val clock: () -> Long = System::currentTimeMillis,
+    private val clock: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val backoff: CoopBackoff = CoopBackoff(),
     private val out: MutableStateFlow<State> = MutableStateFlow(State()),
 ) {
@@ -50,7 +53,7 @@ class CoopLobby(
 
     private class Pending(val kind: Byte, val bytes: ByteArray, val host: Host? = null, val onFind: ((FindResult) -> Unit)? = null)
 
-    private val lock = Any()
+    private val lock = SynchronizedObject()
     private var socket: CoopRelaySocket? = null
     private var open = false
     private var generation = 0

@@ -26,6 +26,7 @@
 *.apk
 *.aab
 *.wav
+!3ds/ctr/cia/banner.wav
 
 # Machine-local config
 local.properties
@@ -68,6 +69,7 @@ __pycache__/
 # 3DS build output (3ds/README.md)
 3ds/ctr/build-dev/
 *.3dsx
+*.cia
 *.smdh
 
 # ROM lists for make rom-support LIST=... (scripts/rom_agent/): local paths, never committed

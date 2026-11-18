@@ -13,6 +13,22 @@ plugins {
     id("app.cash.paparazzi")
 }
 
+// The companion's screens and what they need, compiled by shared-ui/ (the root build's sharedUiSources): their paths
+// under src/main/kotlin, left out of this module's compile and lint.
+@Suppress("UNCHECKED_CAST")
+val sharedUiFiles: Set<String> = fileTree("src/main/kotlin") {
+    include(rootProject.extra["sharedUiSources"] as List<String>)
+    exclude(rootProject.extra["sharedUiAppOnly"] as List<String>)
+    exclude(rootProject.extra["sharedCoreSources"] as List<String>)
+}.map { it.relativeTo(file("src/main/kotlin")).invariantSeparatorsPath }
+    // Kotlin only: shared-ui compiles no Java, so a .java under those folders (co-op's X25519 copy) stays the app's.
+    .filter { it.endsWith(".kt") }.toSet()
+
+@Suppress("UNCHECKED_CAST")
+val sharedCoreFiles: Set<String> = fileTree("src/main/kotlin") {
+    include(rootProject.extra["sharedCoreSources"] as List<String>)
+}.map { it.relativeTo(file("src/main/kotlin")).invariantSeparatorsPath }.toSet()
+
 // Crash reports (Firebase Crashlytics, opt-in - CrashReports.kt): only with the project's
 // app/google-services.json, which stays out of this public repo (gitignored; the release
 // workflow writes it from a secret). Without it the app builds the same, reports off.
@@ -77,8 +93,8 @@ android {
         targetSdk = 34
         // Bump both for every GitHub release: the updater compares versionName
         // against the release tag (v<versionName>), Android needs versionCode to grow.
-        versionCode = 21
-        versionName = "1.6.0"
+        versionCode = 22
+        versionName = "1.6.1"
         // Whether this build can send crash reports at all (CrashReports.available).
         buildConfigField("boolean", "CRASHLYTICS", crashlytics.toString())
         buildConfigField("String", "SCREENSCRAPER_DEV_ID", "\"${buildSecret("screenscraper.devId", "SCREENSCRAPER_DEV_ID")}\"")
@@ -186,8 +202,9 @@ android {
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/licenses"))
     sourceSets["test"].java.srcDirs("src/test/kotlin", "../server/coop-relay/src/main/kotlin")
 
-    // The shared module's files are compiled there; lint reads them there too.
-    sourceSets["main"].java.filter.exclude("com/pokedaisy/app/companion/data/**", "com/pokedaisy/app/companion/i18n/**")
+    // The shared modules' files are compiled there; lint reads them there too.
+    sourceSets["main"].java.filter.exclude(sharedCoreFiles)
+    sourceSets["main"].java.filter.exclude(sharedUiFiles)
 
     testOptions {
         unitTests.isIncludeAndroidResources = false
@@ -212,6 +229,8 @@ tasks.withType<KotlinCompile>().configureEach {
     exclude { e ->
         !e.isDirectory && sharedDirs.any { e.path.startsWith(it) } && !(tests && e.file.nameWithoutExtension in appOnlyTests + sharedTestHelpers)
     }
+    // The companion's screens are compiled by shared-ui/; their tests stay here (Paparazzi).
+    if (!tests) exclude { e -> !e.isDirectory && (e.path in sharedUiFiles || e.path in sharedCoreFiles) }
 }
 
 // Settings > LICENSES: NOTICE, then the license text of everything the APK carries, as one asset
@@ -242,7 +261,7 @@ val licensesAsset by tasks.registering {
         "Galmuri - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-Galmuri.txt",
         "Atkinson Hyperlegible - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-AtkinsonHyperlegible.txt",
         "PokeAPI data - BSD 3-Clause" to "third_party/licenses/PokeAPI-BSD-3-Clause.txt",
-        "AndroidX, Jetpack Compose / Compose Multiplatform, Kotlin, kotlinx.atomicfu, kotlinx-datetime, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
+        "AndroidX, Jetpack Compose / Compose Multiplatform, Kotlin, Ktor, kotlinx.atomicfu, kotlinx-datetime, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
         "Apache Commons - NOTICE" to "third_party/licenses/Apache-Commons-NOTICE.txt",
         "XZ for Java - BSD Zero Clause" to "third_party/licenses/XZ-Java-0BSD.txt",
         "Bouncy Castle (co-op) - MIT" to "third_party/licenses/BouncyCastle-MIT.txt",
@@ -309,6 +328,8 @@ val jdkHttpServerJar by tasks.registering(Zip::class) {
 dependencies {
     // The companion's data and language code (shared/build.gradle.kts).
     implementation(project(":shared"))
+    // The companion's screens (shared-ui/build.gradle.kts).
+    implementation(project(":shared-ui"))
     // 3DS games' native library (libpk_n3ds.so), only with the n3ds flag: see settings.gradle.kts.
     if (featureFlag("n3ds")) implementation(project(":n3ds"))
     implementation("androidx.core:core-ktx:1.13.1")
@@ -337,8 +358,6 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")
 
-    // QR codes for co-op invites (encoding only).
-    implementation("com.google.zxing:core:3.5.4")
 
     // Crash reports, opt-in (CrashReports.kt). -ndk catches native crashes too (mGBA, JNI),
     // which is where most of this app's crashes have been.
@@ -349,6 +368,8 @@ dependencies {
     // Decode-logic regression tests (app/src/test) - see scripts/capture_fixture.sh
     // for how the fixtures they read (app/src/test/resources/fixtures/) get made.
     testImplementation("junit:junit:4.13.2")
+    // CoopQrTest reads the invite codes back (the app draws them with its own encoder, CoopQr).
+    testImplementation("com.google.zxing:core:3.5.3")
     // The real org.json (android.jar's is a stub in unit tests): ScreenScraperTest and DocsSearchTest parse JSON.
     testImplementation("org.json:json:20260814")
     // The co-op relay server (its sources are on the test path) for CoopRelayIntegrationTest.
@@ -367,5 +388,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
     // The local date and time in the data code shared with the iPad app (Kotlin Multiplatform).
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+    // JSON in the code shared with the iPad app (the manual's API; Kotlin Multiplatform, no compiler plugin: the element API).
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
 }
 

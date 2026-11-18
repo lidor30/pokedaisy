@@ -173,8 +173,8 @@ class BrownLiveControlsTest {
 
     companion object {
         val KEYS = listOf(
-            MgbaCore.Key.A to "A", MgbaCore.Key.B to "B", MgbaCore.Key.LEFT to "LEFT",
-            MgbaCore.Key.RIGHT to "RIGHT", MgbaCore.Key.UP to "UP", MgbaCore.Key.DOWN to "DOWN",
+            com.pokedaisy.app.companion.data.CoreKey.A to "A", com.pokedaisy.app.companion.data.CoreKey.B to "B", com.pokedaisy.app.companion.data.CoreKey.LEFT to "LEFT",
+            com.pokedaisy.app.companion.data.CoreKey.RIGHT to "RIGHT", com.pokedaisy.app.companion.data.CoreKey.UP to "UP", com.pokedaisy.app.companion.data.CoreKey.DOWN to "DOWN",
         )
     }
 }

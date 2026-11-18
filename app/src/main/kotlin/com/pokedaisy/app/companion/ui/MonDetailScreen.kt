@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import kotlinx.coroutines.IO
+
 import androidx.compose.ui.graphics.RectangleShape
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
@@ -243,7 +245,7 @@ fun MonDetailScreen(
                             val right = Modifier.weight(0.5f).fillMaxHeight().padding(start = gap)
                             val stats = mon.stats
                             if (showStats && stats != null) {
-                                MonStatsSection(stats, m, small, right, ability = individualAbility(mon, stats, dexTables))
+                                MonStatsSection(stats, m, right, ability = individualAbility(mon, stats, dexTables))
                             } else MovesSection(mon, m, small, right)
                         }
                     }
@@ -408,8 +410,9 @@ internal fun tradeEvoMessage(r: com.pokedaisy.app.companion.data.TradeEvoResult,
 
 /** What TAKE did, in the companion's words. */
 internal fun takeMessage(o: com.pokedaisy.app.companion.data.ItemUseOutcome, mon: String): String = when (o.result) {
-    com.pokedaisy.app.companion.data.ItemUseResult.TAKEN -> tr("Received {0} from {1}.", bagItemName(o.swapped), mon)
+    com.pokedaisy.app.companion.data.ItemUseResult.TAKEN -> takenMessage(o.swapped, mon)
     com.pokedaisy.app.companion.data.ItemUseResult.BAG_FULL -> tr("The bag is full: {0} can't go back in it.", bagItemName(o.swapped))
+    com.pokedaisy.app.companion.data.ItemUseResult.MAILBOX_FULL -> tr("The PC's mailbox is full.")
     com.pokedaisy.app.companion.data.ItemUseResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.ItemUseResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.ItemUseResult.PARTY_CHANGED -> tr("The party has changed. Try again.")
@@ -560,7 +563,7 @@ private val CenterPink = Color(0xFFE8687C)
 private val CenterPinkDark = Color(0xFFB03850)
 
 /** What a POKéMON CENTER service said instead of going ahead, in the companion's words. */
-internal fun centerMessage(r: com.pokedaisy.app.companion.data.CenterResult, mon: String): String = when (r) {
+fun centerMessage(r: com.pokedaisy.app.companion.data.CenterResult, mon: String): String = when (r) {
     com.pokedaisy.app.companion.data.CenterResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.CenterResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.CenterResult.EGG -> tr("Not for an EGG.")

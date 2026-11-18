@@ -38,10 +38,27 @@ object WhatsNew {
     /** Newest first. */
     val RELEASES: List<Notes> by lazy {
         listOf(
+            NOTES_1_6_1,
             NOTES_1_6_0,
             hotfix("1.5.0.1", NOTES_1_5_0, "1.5.0.1 HOTFIX: turning a Samsung Galaxy sideways no longer closes the game."),
         ) + OLDER
     }
+
+    private val NOTES_1_6_1 = Notes(
+        "1.6.1",
+        listOf(
+            Section(
+                FIXES,
+                listOf(
+                    "Normal speed: games no longer stutter at 1x on 120 Hz screens (AYN Thor, Retroid Pocket 6, many phones), and DS games' top screen no longer stays white.",
+                    "Library: your games stay listed after an update, and a long folder scan keeps what it has found if you leave.",
+                    "FLY in Unbound: works with any Pokémon the game's own menu would fly with, even one that doesn't know the move.",
+                    "DS on one screen: SHADERS now reach the battle buttons and messages too.",
+                    "Archives: a .zip with no game inside says so instead of closing the app.",
+                ),
+            ),
+        ),
+    )
 
     private val NOTES_1_6_0 = Notes(
         "1.6.0",

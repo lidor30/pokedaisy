@@ -269,6 +269,17 @@ int main(int argc, char** argv) {
     keys(PD_LIB_DOWN);
     keys(PD_LIB_DOWN);
     shot("games-down");
+    // X: the game's GBA CORE pick-list, MGBA picked, then the hint with it.
+    keys(PD_LIB_X);
+    shot("games-core");
+    keys(PD_LIB_DOWN);
+    keys(PD_LIB_DOWN);
+    keys(PD_LIB_A);
+    shot("games-core-mgba");
+    keys(PD_LIB_X);
+    keys(PD_LIB_UP);
+    keys(PD_LIB_UP);
+    keys(PD_LIB_A); // back to AUTO
     keys(PD_LIB_R);
     keys(PD_LIB_R);
     keys(PD_LIB_R);

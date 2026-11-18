@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.ui.theme
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -27,10 +26,10 @@ enum class AppFont(val label: String, private val capHeight: Float) {
      * the pixel font's (columns sized to Pixel Operator, DEFENSE beside its number, still fit). */
     val sizeScale: Float get() = if (pixel) 1f else 0.9f * PIXEL.capHeight / capHeight
 
-    fun family(context: Context): FontFamily = when (this) {
-        PIXEL -> com.pokedaisy.app.pixelFontFamily(context)
-        SMOOTH -> com.pokedaisy.app.atkinsonFamily(context, bold = false)
-        SMOOTH_BOLD -> com.pokedaisy.app.atkinsonFamily(context, bold = true)
+    fun family(): FontFamily = when (this) {
+        PIXEL -> FontSource.get().pixel()
+        SMOOTH -> FontSource.get().smooth(false)
+        SMOOTH_BOLD -> FontSource.get().smooth(true)
         SYSTEM -> FontFamily.SansSerif
     }
 }
@@ -43,12 +42,12 @@ object AppFonts {
 
     val current: AppFont get() = override ?: setting
 
-    fun load(context: Context) {
-        setting = runCatching { AppFont.entries[com.pokedaisy.app.Prefs(context).appFont] }.getOrDefault(AppFont.PIXEL)
+    fun load() {
+        setting = runCatching { AppFont.entries[ThemeStore.current?.appFont ?: 0] }.getOrDefault(AppFont.PIXEL)
     }
 
-    fun set(context: Context, font: AppFont) {
-        com.pokedaisy.app.Prefs(context).appFont = font.ordinal
+    fun set(font: AppFont) {
+        ThemeStore.current?.appFont = font.ordinal
         setting = font
     }
 }

@@ -34,6 +34,9 @@ PokeDaisy also runs on the Nintendo 3DS as a homebrew app: your game plays on th
 
 `sdmc:/` is how the 3DS names the top of the SD card: on your computer, `sdmc:/3ds/` is just the `3ds` folder on the card.
 
+> [!TIP]
+> Rather start PokeDaisy from the HOME Menu? Each release also has `pokedaisy.cia`. Open FBI on the 3DS (your custom firmware setup installed it), pick **Remote Install**, then **Scan QR Code**, and scan the code on the release's page. Or copy `pokedaisy.cia` to the SD card and install it from FBI's **SD** list. The steps below are the same, and you start PokeDaisy from its HOME Menu icon.
+
 ## Step 3: add your games and saves
 
 1. At the top of the card, make a folder called `pokedaisy`, and inside it a folder called `roms`: `sdmc:/pokedaisy/roms/`. (PokeDaisy makes both the first time it starts, if you'd rather start it once first.)
@@ -112,6 +115,7 @@ Download the newer `pokedaisy.3dsx` and copy it over the old one in `sdmc:/3ds/`
 - **PokeDaisy isn't in the Homebrew Launcher:** the file must be in `sdmc:/3ds/` and end in `.3dsx`.
 - **A game isn't listed:** it has to be right in `sdmc:/pokedaisy/roms/`, not in a folder inside it and not zipped.
 - **My save didn't load:** the save needs the game's exact name with `.sav` at the end. Every start copies the save to `sdmc:/pokedaisy/roms/pokedaisy-backups/` first, so an older copy is there if you need it.
-- **It runs slowly:** an original 3DS or 2DS is slower than the New models. In the library's `SETTINGS`, set `SCREEN` to `PIXEL 1x`, the lightest mode.
+- **It runs slowly:** an original 3DS or 2DS is slower than the New models. In the library's `SETTINGS`, set `SCREEN` to `PIXEL 1x`, the lightest mode. On a GBA game you can also press `X` in the library and try another `GBA CORE`: `GPSP` is an experimental one meant for the original 3DS. Games start without EXPAND, which is lighter. `EXPAND 1.5x` is in the library's `SETTINGS` if you want it.
+- **The game didn't start:** the top screen says why, followed by your 3DS's memory. When you tell us, take a photo of the whole message or attach `sdmc:/pokedaisy/log.txt`.
 
 Still stuck? [Tell us](https://pokedaisy.com/feedback/#bug) and attach `sdmc:/pokedaisy/log.txt`.

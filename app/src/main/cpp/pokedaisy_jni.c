@@ -2,7 +2,7 @@
 //
 // The GBA / Game Boy game itself - starting it, its frames, picture, sound, keys and memory reads - is pk_session.c,
 // behind the plain C API in pk_api.h that the iPad app calls too; the wrappers here add the DS games in front of it.
-// The rest (states, cheats, EXPAND, REWIND, the render core, the game calls...) still works on its state here as `g`
+// The rest (cheats, EXPAND, REWIND, the render core, the game calls...) still works on its state here as `g`
 // (pk_session.h) and moves under pk_api.h area by area.
 // Everything here is called from a single Kotlin "emu thread", which also copies
 // pkVideoBuffer()'s frames out for the GL thread (EmulatorView.publishFrame).
@@ -37,7 +37,6 @@
 #include "pk_coop_field.h"
 #include "pk_coop_lock.h"   // coop-lock (plan 5 Task 5)
 #include "pk_core_access.h"   // coop-lock (plan 5 Task 5)
-#include "pk_rewind.h"
 #include "pk_savevf.h"
 #include "pk_wide.h"
 #include "pk_flight.h"
@@ -234,8 +233,8 @@ Java_com_pokedaisy_app_MgbaCore_pkWideConfigure(JNIEnv* env, jobject thiz, jint 
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkFieldConfigure(JNIEnv* env, jobject thiz, jint crc, jint wildFlag, jboolean wildOff) {
     bool gba = g.core && pk_is_gba(g.core);
-    pk_field_configure(gba ? (uint32_t) crc : 0);
-    pk_field_wild(gba ? (uint32_t) wildFlag : 0, wildOff == JNI_TRUE);
+    pk_api_field_configure(gba ? (uint32_t) crc : 0);
+    pk_api_field_wild(gba ? (uint32_t) wildFlag : 0, wildOff == JNI_TRUE);
 }
 
 // This frame's PK_FIELD_* bits (pk_field_state; 0 = not a game it knows); runIndoors lets the player run indoors,
@@ -247,7 +246,7 @@ Java_com_pokedaisy_app_MgbaCore_pkFieldState(JNIEnv* env, jobject thiz, jboolean
         pk_nds_set_wild_off(wildKeep < 100);
         return pk_nds_field_bits();
     }
-    return g.core && pk_is_gba(g.core) ? pk_field_state(g.core, runIndoors, wildKeep) : 0;
+    return pk_api_field_step(runIndoors == JNI_TRUE, wildKeep);
 }
 
 // PLAYER LOOK: the player's sprite set up again from its graphics record (after the look changed, or a state loaded).
@@ -449,19 +448,13 @@ Java_com_pokedaisy_app_MgbaCore_pkWideScene(JNIEnv* env, jobject thiz) {
 // REWIND: keep [entries] states (0 = off, the buffer freed). Emu thread, like pkRunFrame.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkSetRewind(JNIEnv* env, jobject thiz, jint entries) {
-    if (entries < 0) entries = 0;
-    if (entries == g.rewindEntries) return;
-    pkRewindOff();
-    if (entries > 0 && g.core) {
-        pk_rewind_init(&g.rewind, (size_t) entries);
-        g.rewindEntries = entries;
-    }
+    pk_api_set_rewind(entries);
 }
 
 // While [on], each frame steps back through the REWIND buffer instead of forward.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkSetRewinding(JNIEnv* env, jobject thiz, jboolean on) {
-    g.rewinding = on && g.rewindEntries > 0;
+    pk_api_set_rewinding(on);
 }
 
 // --- FF-music prerecording: a second, disposable core (see `rg` above) ------
@@ -565,7 +558,7 @@ Java_com_pokedaisy_app_MgbaCore_pkRenderReadAudio(JNIEnv* env, jobject thiz, jsh
 // Whether a pkCall on the player's core can run now (pk_call_safe): the field-item jobs wait a frame when it can't.
 JNIEXPORT jboolean JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkCallSafe(JNIEnv* env, jobject thiz) {
-    return g.core && pk_is_gba(g.core) && pk_call_safe(g.core) ? JNI_TRUE : JNI_FALSE;
+    return pk_api_call_safe() ? JNI_TRUE : JNI_FALSE;
 }
 
 // Calls the game's own function `fn` (r0-r3 = a0-a3) on the player's core, between
@@ -575,12 +568,7 @@ Java_com_pokedaisy_app_MgbaCore_pkCallSafe(JNIEnv* env, jobject thiz) {
 // instead of steering the game's menus.
 JNIEXPORT jlong JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkCall(JNIEnv* env, jobject thiz, jlong fn, jint a0, jint a1, jint a2, jint a3) {
-    const uint32_t args[4] = {(uint32_t) a0, (uint32_t) a1, (uint32_t) a2, (uint32_t) a3};
-    uint32_t r0;
-    if (!g.core || !pk_call(g.core, (uint32_t) fn, args, &r0)) {
-        return -1;
-    }
-    return (jlong) r0;
+    return (jlong) pk_api_call((uint32_t) fn, (uint32_t) a0, (uint32_t) a1, (uint32_t) a2, (uint32_t) a3);
 }
 
 // FREE FLIGHT (pk_flight.h): the game's functions through pk_call.
@@ -783,49 +771,10 @@ Java_com_pokedaisy_app_MgbaCore_pkSaveState(JNIEnv* env, jobject thiz, jstring j
         (*env)->ReleaseStringUTFChars(env, jPath, path);
         return ok ? JNI_TRUE : JNI_FALSE;
     }
-    if (!g.core) {
-        return JNI_FALSE;
-    }
     const char* path = (*env)->GetStringUTFChars(env, jPath, NULL);
-    // O_RDWR: the extended (mpack) state writer reads back parts of the VFile.
-    struct VFile* vf = VFileOpen(path, O_RDWR | O_CREAT | O_TRUNC);
+    bool ok = pk_api_save_state(path);
     (*env)->ReleaseStringUTFChars(env, jPath, path);
-    if (!vf) {
-        return JNI_FALSE;
-    }
-    bool ok = mCoreSaveStateNamed(g.core, vf, SAVESTATE_SAVEDATA | SAVESTATE_RTC | SAVESTATE_METADATA);
-    vf->close(vf);
     return ok ? JNI_TRUE : JNI_FALSE;
-}
-
-// True if the save file holds exactly [data] (bytes it doesn't have yet count as
-// 0xFF, erased flash: mGBA fills a short file with that). Only the first
-// [size] bytes count, so mGBA's RTC footer on a .sav doesn't.
-static bool pk_save_file_equals(const uint8_t* data, size_t size) {
-    struct VFile* vf = g.saveVf;
-    if (!vf || g.saveReadOnly) {
-        return true;                    // no file a state load could overwrite
-    }
-    uint8_t buf[4096];
-    size_t off = 0;
-    vf->seek(vf, 0, SEEK_SET);
-    while (off < size) {
-        size_t want = size - off < sizeof(buf) ? size - off : sizeof(buf);
-        ssize_t n = vf->read(vf, buf, want);
-        if (n <= 0) {
-            break;
-        }
-        if (memcmp(buf, data + off, (size_t) n) != 0) {
-            return false;
-        }
-        off += (size_t) n;
-    }
-    for (; off < size; ++off) {
-        if (data[off] != 0xFF) {
-            return false;
-        }
-    }
-    return true;
 }
 
 // Does the save inside the state at [path] match the save file the game just
@@ -842,26 +791,9 @@ Java_com_pokedaisy_app_MgbaCore_pkStateMatchesSave(JNIEnv* env, jobject thiz, js
         (*env)->ReleaseStringUTFChars(env, jPath, path);
         return r;
     }
-    if (!g.core) {
-        return -1;
-    }
     const char* path = (*env)->GetStringUTFChars(env, jPath, NULL);
-    struct VFile* vf = VFileOpen(path, O_RDONLY);
+    int result = pk_api_state_matches_save(path);
     (*env)->ReleaseStringUTFChars(env, jPath, path);
-    if (!vf) {
-        return -1;
-    }
-    int result = -1;
-    struct mStateExtdata extdata;
-    mStateExtdataInit(&extdata);
-    if (mCoreExtractExtdata(g.core, vf, &extdata)) {
-        struct mStateExtdataItem item;
-        if (mStateExtdataGet(&extdata, EXTDATA_SAVEDATA, &item) && item.data && item.size > 0) {
-            result = pk_save_file_equals(item.data, (size_t) item.size) ? 1 : 0;
-        }
-    }
-    mStateExtdataDeinit(&extdata);
-    vf->close(vf);
     return result;
 }
 
@@ -875,19 +807,9 @@ Java_com_pokedaisy_app_MgbaCore_pkLoadState(JNIEnv* env, jobject thiz, jstring j
         (*env)->ReleaseStringUTFChars(env, jPath, path);
         return ok ? JNI_TRUE : JNI_FALSE;
     }
-    if (!g.core) {
-        return JNI_FALSE;
-    }
     const char* path = (*env)->GetStringUTFChars(env, jPath, NULL);
-    struct VFile* vf = VFileOpen(path, O_RDONLY);
+    bool ok = pk_api_load_state(path);
     (*env)->ReleaseStringUTFChars(env, jPath, path);
-    if (!vf) {
-        return JNI_FALSE;
-    }
-    bool ok = mCoreLoadStateNamed(g.core, vf, SAVESTATE_SAVEDATA | SAVESTATE_RTC);
-    vf->close(vf);
-    if (ok) pk_heal_rtc(g.core);
-    pk_wide_reset();   // the RAM it kept from the last frame is another moment's
     return ok ? JNI_TRUE : JNI_FALSE;
 }
 
@@ -953,35 +875,17 @@ Java_com_pokedaisy_app_MgbaCore_pkWriteBytes(JNIEnv* env, jobject thiz, jlong ad
         if (b) (*env)->ReleaseByteArrayElements(env, bytes, b, JNI_ABORT);
         return ok ? JNI_TRUE : JNI_FALSE;
     }
-    if (g.core && !pk_is_gba(g.core)) {
-        jbyte* gbBytes = len > 0 ? (*env)->GetByteArrayElements(env, bytes, NULL) : NULL;
-        if (!gbBytes) {
-            return JNI_FALSE;
-        }
-        bool ok = pk_gb_write(g.core, a, (const uint8_t*) gbBytes, len);
-        (*env)->ReleaseByteArrayElements(env, bytes, gbBytes, JNI_ABORT);
-        return ok ? JNI_TRUE : JNI_FALSE;
-    }
-    bool ram = (a >= 0x02000000u && a + (uint32_t) len <= 0x02040000u) || (a >= 0x03000000u && a + (uint32_t) len <= 0x03008000u);
-    if (len <= 0 || !ram || !g.core || !pk_is_gba(g.core)) {
-        return JNI_FALSE;
-    }
-    jbyte* b = (*env)->GetByteArrayElements(env, bytes, NULL);
-    if (!b) {
-        return JNI_FALSE;
-    }
-    for (jsize i = 0; i < len; i++) {
-        g.core->busWrite8(g.core, a + (uint32_t) i, (uint8_t) b[i]);
-    }
-    (*env)->ReleaseByteArrayElements(env, bytes, b, JNI_ABORT);
-    return JNI_TRUE;
+    jbyte* b = len > 0 ? (*env)->GetByteArrayElements(env, bytes, NULL) : NULL;
+    bool ok = b && pk_api_write(a, (const uint8_t*) b, len);
+    if (b) (*env)->ReleaseByteArrayElements(env, bytes, b, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
 }
 
 // A Game Boy game's own call from its main loop (pk_gb_call_at): the game runs on to `at`, then calls `fn` with A = `a`,
 // B = `b`, HL = `hl` and comes back to `at`. The emu thread, between frames - Yellow's PC anywhere (GbField.kt).
 JNIEXPORT jboolean JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkGbCallAt(JNIEnv* env, jobject thiz, jint at, jint fn, jint a, jint b, jint hl) {
-    return pk_gb_call_at(g.core, (uint16_t) at, (uint16_t) fn, (uint8_t) a, (uint8_t) b, (uint16_t) hl, 2) ? JNI_TRUE : JNI_FALSE;
+    return pk_api_gb_call_at((uint16_t) at, (uint16_t) fn, (uint8_t) a, (uint8_t) b, (uint16_t) hl) ? JNI_TRUE : JNI_FALSE;
 }
 
 // Same as pkReadBytes, from the FF-music render core (rg): FfMusicRenderer
@@ -1057,7 +961,7 @@ JNIEXPORT jstring JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkCheatsCheck(JNIEnv* env, jobject thiz, jstring jCode, jint type, jstring jDirective) {
     const char* code = (*env)->GetStringUTFChars(env, jCode, NULL);
     const char* directive = (*env)->GetStringUTFChars(env, jDirective, NULL);
-    char* result = pk_cheats_check(code, (int) type, directive);
+    char* result = pk_api_cheats_check(code, (int) type, directive);
     (*env)->ReleaseStringUTFChars(env, jDirective, directive);
     (*env)->ReleaseStringUTFChars(env, jCode, code);
     if (!result) {
@@ -1075,9 +979,7 @@ Java_com_pokedaisy_app_MgbaCore_pkCheatsCheck(JNIEnv* env, jobject thiz, jstring
 JNIEXPORT jint JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkCheatsApply(JNIEnv* env, jobject thiz, jstring jText) {
     const char* text = (*env)->GetStringUTFChars(env, jText, NULL);
-    pthread_rwlock_wrlock(&pk_coreLock);
-    int n = g.core ? pk_cheats_apply(g.core, text, strlen(text)) : 0;
-    pthread_rwlock_unlock(&pk_coreLock);
+    int n = pk_api_cheats_apply(text);
     (*env)->ReleaseStringUTFChars(env, jText, text);
     return n;
 }
@@ -1097,22 +999,13 @@ Java_com_pokedaisy_app_MgbaCore_pkRomPatch(JNIEnv* env, jobject thiz, jlong expe
     }
     (*env)->GetByteArrayRegion(env, jExpect, 0, expectLen, (jbyte*) expect);
     (*env)->GetByteArrayRegion(env, jValue, 0, len, (jbyte*) value);
-    pthread_rwlock_wrlock(&pk_coreLock);
-    int ok = g.core ? pk_cheats_patch(g.core, (uint32_t) expectAddr, expect, expectLen, (uint32_t) addr, value, len) : 0;
-    pthread_rwlock_unlock(&pk_coreLock);
-    return ok ? JNI_TRUE : JNI_FALSE;
+    return pk_api_rom_patch((uint32_t) expectAddr, expect, expectLen, (uint32_t) addr, value, len) ? JNI_TRUE : JNI_FALSE;
 }
 
 // Emu thread: takes every game option's ROM patch out again.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkRomUnpatch(JNIEnv* env, jobject thiz) {
-    pthread_rwlock_wrlock(&pk_coreLock);
-    if (g.core) {
-        pk_coop_uninstall(g.core);   // its patches go with all the rest
-        pk_coop_lock_uninstall(g.core);   // coop-lock (plan 5 Task 5)
-        pk_cheats_unpatch(g.core);
-    }
-    pthread_rwlock_unlock(&pk_coreLock);
+    pk_api_rom_unpatch();
 }
 
 // Emu thread: PLAYER LOOK's blocks (PlayerLook.kt) in place of any before - block i is

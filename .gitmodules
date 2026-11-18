@@ -30,3 +30,9 @@
 	# 3DS games (n3ds/). The build applies third_party/patches/azahar-pokedaisy.patch here and forces its key blob
 	# off; scripts/check_azahar_patch.py checks both.
 	ignore = dirty
+[submodule "third_party/gpsp"]
+	path = third_party/gpsp
+	url = https://github.com/bheppe/gpsp-3d
+	# The 3DS port's third GBA core (GBA CORE: GPSP), at its v0.1.7. The build applies
+	# third_party/patches/gpsp-pokedaisy.patch here.
+	ignore = dirty

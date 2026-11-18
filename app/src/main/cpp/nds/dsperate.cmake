@@ -41,7 +41,7 @@ endif()
 # DSperate is built with GCC upstream; the NDK's clang and bionic need a few things it doesn't. None of them is a change to
 # the submodule (the Linux port builds it unmodified): the sources clang refuses are copied into the build directory with
 # the fix, and a header forced into every file covers bionic (dsperate_android.h).
-target_compile_options(dsperate_core PRIVATE "SHELL:-include ${CMAKE_CURRENT_LIST_DIR}/dsperate_android.h")
+target_compile_options(dsperate_core PRIVATE "SHELL:-include \"${CMAKE_CURRENT_LIST_DIR}/dsperate_android.h\"")
 # Replaces [from] with [to] in src/core/[rel] (each must be there: a moved line fails the build, not the fix), into a copy
 # the library builds instead.
 function(dsperate_fix rel)

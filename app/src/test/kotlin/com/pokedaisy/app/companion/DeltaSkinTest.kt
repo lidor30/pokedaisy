@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion
 
+import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -8,7 +9,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.zip.ZipEntry
@@ -136,6 +136,10 @@ class DeltaSkinTest {
         assertEquals(0 to TouchDirs.LEFT, at(5f, 660f))
     }
 
+    /** [bytes] as a zip file the store can open (it reads from a file, as the app hands it a copied pick). */
+    private fun zipFile(bytes: ByteArray): okio.Path =
+        File.createTempFile("skin", ".deltaskin", tmp.root).apply { writeBytes(bytes) }.toOkioPath()
+
     private fun zip(vararg files: Pair<String, ByteArray>): ByteArray {
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { z -> for ((n, b) in files) { z.putNextEntry(ZipEntry(n)); z.write(b); z.closeEntry() } }
@@ -143,28 +147,28 @@ class DeltaSkinTest {
     }
 
     @Test fun importsKeepTheSkinAndItsPictures() {
-        val store = DeltaSkinStore(tmp.newFolder("skins"))
+        val store = DeltaSkinStore(tmp.newFolder("skins").toOkioPath())
         val skin = zip("info.json" to info.toByteArray(), "portrait.pdf" to byteArrayOf(1), "l3.png" to byteArrayOf(2), "__MACOSX/._info.json" to byteArrayOf(3))
-        val r = store.import(ByteArrayInputStream(skin))
+        val r = store.import(zipFile(skin))
         assertEquals(r.refused.toString(), 1, r.added.size)
         val installed = store.list().single()
         assertEquals("com.example.test", installed.id)
         assertNotNull(installed.file("portrait.pdf"))
-        assertFalse(File(installed.dir, "__MACOSX").exists())
+        assertFalse(File(installed.dir.toFile(), "__MACOSX").exists())
         // The same identifier again replaces it; a zip of skins brings each.
-        store.import(ByteArrayInputStream(skin))
+        store.import(zipFile(skin))
         assertEquals(1, store.list().size)
         val other = info.replace("com.example.test", "com.example.two")
         val pack = zip("a.deltaskin" to skin, "b.deltaskin" to zip("info.json" to other.toByteArray(), "portrait.pdf" to byteArrayOf(1), "l3.png" to byteArrayOf(2)))
-        assertEquals(2, store.import(ByteArrayInputStream(pack)).added.size)
+        assertEquals(2, store.import(zipFile(pack)).added.size)
         assertEquals(2, store.list().size)
         assertTrue(store.delete("com.example.two"))
         assertEquals(1, store.list().size)
     }
 
     @Test fun refusesWhatIsntASkinWeCanUse() {
-        val store = DeltaSkinStore(tmp.newFolder("skins"))
-        fun refused(vararg files: Pair<String, ByteArray>) = store.import(ByteArrayInputStream(zip(*files))).let { it.added.isEmpty() && it.refused.isNotEmpty() }
+        val store = DeltaSkinStore(tmp.newFolder("skins").toOkioPath())
+        fun refused(vararg files: Pair<String, ByteArray>) = store.import(zipFile(zip(*files))).let { it.added.isEmpty() && it.refused.isNotEmpty() }
         assertTrue(refused("readme.txt" to byteArrayOf(1)))
         assertTrue(refused("info.json" to "{ nope".toByteArray()))
         assertTrue(refused("info.json" to info.replace(".gba\"", ".snes\"").toByteArray(), "portrait.pdf" to byteArrayOf(1), "l3.png" to byteArrayOf(1)))
@@ -178,11 +182,11 @@ class DeltaSkinTest {
         assertNull(DeltaSkinStore.safeName("a/../../evil.png"))
         assertNull(DeltaSkinStore.safeName("C:/x.png"))
         assertNull(DeltaSkinStore.safeName(".hidden"))
-        assertEquals("pdfs${File.separator}a.pdf", DeltaSkinStore.safeName("pdfs/a.pdf"))
-        val store = DeltaSkinStore(tmp.newFolder("skins"))
+        assertEquals("pdfs/a.pdf", DeltaSkinStore.safeName("pdfs/a.pdf"))
+        val store = DeltaSkinStore(tmp.newFolder("skins").toOkioPath())
         val evil = zip("info.json" to info.toByteArray(), "portrait.pdf" to byteArrayOf(1), "l3.png" to byteArrayOf(2), "../../escape.txt" to byteArrayOf(9))
-        store.import(ByteArrayInputStream(evil))
+        store.import(zipFile(evil))
         assertFalse(File(tmp.root, "escape.txt").exists())
-        assertFalse(File(store.root.parentFile, "escape.txt").exists())
+        assertFalse(File(store.root.toFile().parentFile, "escape.txt").exists())
     }
 }

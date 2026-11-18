@@ -10,7 +10,7 @@
 //
 //     node scripts/gen_brand_images.mjs
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -320,6 +320,8 @@ try {
     }
     await new Promise((r) => setTimeout(r, 500));
     chrome.kill();
+    // iOS uses the same opaque 1024px flower-and-lattice artwork; the OS supplies the corner mask.
+    if (name === 'avatar') copyFileSync(png, join(root, 'iosApp/PokeDaisy/Assets.xcassets/AppIcon.appiconset/AppIcon.png'));
     console.log(`wrote ${png}`);
   }
 } finally {

@@ -600,7 +600,8 @@ static void flTurn(void) {
 #define FL_SRC 64
 #define FL_BIG (FL_SRC * 8)
 static uint32_t flSrc[FL_SRC * FL_SRC], flSrcHash;
-static uint32_t flBig[FL_BIG * FL_BIG], flMid[(FL_SRC * 4) * (FL_SRC * 4)];
+// From the heap at the first flight, kept (1.3 MB that a 3DS in its 80 MB mode can't spare as static data, 2026-11-17).
+static uint32_t *flBig, *flMid, *flS2;
 // Which of flBig's pixels show (a bit each, its top byte set) and their box, in flBig's pixels (flBigU0 > flBigU1: none).
 // pk_flight_draw tests the bit before it reads flBig (1 MB: a cache miss a pixel cost a 3DS ~2 ms a frame) and keeps to
 // the box turned onto the screen, so it draws the same pixels.
@@ -877,14 +878,17 @@ static void flCapture(struct mCore* core) {
     uint32_t hsh = 2166136261u;
     for (int i = 0; i < FL_SRC * FL_SRC; i++) hsh = (hsh ^ flSrc[i]) * 16777619u;
     if (hsh == flSrcHash) return;
-    flSrcHash = hsh;
-    static uint32_t s2[(FL_SRC * 2) * (FL_SRC * 2)];
-    flScale2x(flSrc, FL_SRC, FL_SRC, s2);
-    flScale2x(s2, FL_SRC * 2, FL_SRC * 2, flMid);
-    flScale2x(flMid, FL_SRC * 4, FL_SRC * 4, flBig);
     memset(flBigOpaque, 0, sizeof(flBigOpaque));
     flBigU0 = flBigV0 = FL_BIG;
     flBigU1 = flBigV1 = -1;
+    if (!flBig) flBig = malloc(sizeof(uint32_t) * FL_BIG * FL_BIG);
+    if (!flMid) flMid = malloc(sizeof(uint32_t) * (FL_SRC * 4) * (FL_SRC * 4));
+    if (!flS2) flS2 = malloc(sizeof(uint32_t) * (FL_SRC * 2) * (FL_SRC * 2));
+    if (!flBig || !flMid || !flS2) return; // no memory: no picture (flBigOpaque empty), tried again next frame
+    flSrcHash = hsh;
+    flScale2x(flSrc, FL_SRC, FL_SRC, flS2);
+    flScale2x(flS2, FL_SRC * 2, FL_SRC * 2, flMid);
+    flScale2x(flMid, FL_SRC * 4, FL_SRC * 4, flBig);
     for (int v = 0; v < FL_BIG; v++)
         for (int u = 0; u < FL_BIG; u++) {
             if (!(flBig[v * FL_BIG + u] >> 24)) continue;

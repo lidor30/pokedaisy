@@ -108,6 +108,10 @@ void lib_saves_ask_quit(struct pd_library* l);
 int lib_settings_rows(const struct pd_library* l);
 void lib_settings_act(struct pd_library* l, int row);
 void lib_settings_pick(struct pd_library* l, int choice);
+// The pick-list over the page (OptionSelector), when one is open (pickRow).
+void lib_pick_draw(struct pd_library* l, struct pd_canvas* c);
+// A game that can have its GBA CORE picked (X on it): a GBA game.
+bool lib_core_pickable(const struct pd_library_game* g);
 void lib_settings_draw(struct pd_library* l, struct pd_canvas* c);
 const char* lib_settings_label(const struct pd_library* l, int row, const char** value, bool* group, int* choices);
 const char* lib_settings_choice(const struct pd_library* l, int row, int choice);

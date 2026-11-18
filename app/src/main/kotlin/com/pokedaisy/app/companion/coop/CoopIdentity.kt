@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion.coop
 
 import java.io.File
 import java.security.SecureRandom
+import okio.Path.Companion.toOkioPath
 
 /** The device's co-op identity: the X25519 private key, made once and kept in `filesDir/coop/secret.key`. Never logged or sent. */
 object CoopIdentity {
@@ -21,8 +22,8 @@ object CoopIdentity {
         dir.mkdirs()
         val key = ByteArray(KEY_SIZE).also { SecureRandom().nextBytes(it) }
         val tmp = File(dir, "secret.key.tmp")
-        writeDurably(tmp, key)
-        replaceFile(tmp, file)
+        writeDurably(tmp.toOkioPath(), key)
+        replaceFile(tmp.toOkioPath(), file.toOkioPath())
         return key
     }
 }

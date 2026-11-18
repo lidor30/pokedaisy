@@ -2,6 +2,7 @@ package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.data.RETAIL_PORTS
 import com.pokedaisy.app.companion.data.RETAIL_PORT_TITLES
+import com.pokedaisy.app.companion.data.RomCategory
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
