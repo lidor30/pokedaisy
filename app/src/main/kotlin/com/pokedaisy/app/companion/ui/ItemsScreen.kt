@@ -1531,7 +1531,7 @@ private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, badge: Strin
             .padding(horizontal = u * 6, vertical = u * 6),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            badge?.let { OptionBadge(it, m, fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow) }
+            badge?.let { OptionBadge(it, m, fill = OptionColors.newBadge) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GbaText(tr("PC"), pal.descText, pal.descTextShadow, m)
                 // It opens the game's own PC, not a companion page (the HUD's PC has the same mark).

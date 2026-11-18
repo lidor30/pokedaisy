@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -102,7 +103,7 @@ object OptionColors {
     // keyed on the game, so a switch redraws) - only while a game is open ([inGame]):
     // the top-screen Library / Settings keep the app's own look after Yellow closes.
     // Crystal's (Gen 2) menus are the same black-on-white text boxes.
-    private val gen1 get() = inGame && activeGame.isGameBoyGame
+    internal val gen1 get() = inGame && activeGame.isGameBoyGame
 
     /** A game's skin's own palette ([CompanionSkins.current]), or null: OptionColors' own. */
     private val sk: SkinColors? get() = CompanionSkins.current.activeColors
@@ -146,6 +147,29 @@ object OptionColors {
     private fun w(light: Long, dark: Long) = tint(c(light, dark))
     private val plainTheme get() = AppColors.theme.hue == null
 
+    /** The menus' build (MENU STYLE, [com.pokedaisy.app.companion.ui.theme.UiStyle]); null = CLASSIC, and always on the
+     * Game Boy games, which keep their own windows. */
+    val style: com.pokedaisy.app.companion.ui.theme.UiStylePalette?
+        // A game's skin (GAME LOOK: the 3DS games' own look) and the Game Boy games' windows keep theirs.
+        get() = if (gen1 || sk != null) null else {
+            val current = com.pokedaisy.app.companion.ui.theme.UiStyles.current
+            // Unbound wears SUMMARY MINT in its own purple and gold (the user's call), while it's the game that's up.
+            val unbound = current == com.pokedaisy.app.companion.ui.theme.UiStyle.SUMMARY_MINT &&
+                activeGame == com.pokedaisy.app.companion.data.GameKind.UNBOUND &&
+                (inGame || com.pokedaisy.app.companion.ui.theme.UiStyles.override != null)
+            if (unbound) com.pokedaisy.app.companion.ui.theme.unboundStylePalette(dark)
+            else com.pokedaisy.app.companion.ui.theme.uiStylePalette(current, dark)
+        }
+    /** A MENU STYLE joins its windows edge to edge: a title strip straight on its list, tabs on the window's side. */
+    val joined get() = style != null
+    private fun List<Pair<Color, Int>>.tinted() = map { (color, width) -> tint(color) to width }
+    /** The title window (OptionTitleWindow) alone: [style]'s header, else the white title window. Buttons and chips keep
+     * [titleFill] / [titleLayers]. */
+    val headerFill get() = style?.let { tint(it.titleFill) } ?: titleFill
+    val headerText get() = style?.titleText ?: titleText
+    val headerShadow get() = style?.titleShadow ?: titleShadow
+    val headerLayers get() = style?.titleLayers?.tinted() ?: titleLayers
+
     val hintBar get() = if (gen1) c(0xFF181818, 0xFF303030) else c(0xFF007BC6, 0xFF0B5C94)
     val hintText get() = Color(0xFFFFFFFF)
     val hintShadow get() = if (gen1) Color.Transparent else c(0xFF636363, 0xFF06263D)
@@ -156,19 +180,21 @@ object OptionColors {
     val titleText get() = sk?.titleText ?: (if (gen1) G1_INK else w(0xFF636363, 0xFFE3E6EC))
     // The game's shadow sits between the text and the window (lighter than grey text on white): mirrored in dark.
     val titleShadow get() = sk?.titleShadow ?: (if (gen1) Color.Transparent else w(0xFFD6D6CE, 0xFF3F4652))
-    val listLayers get() = sk?.listLayers ?: (if (gen1) G1_FRAME else (if (dark) listOf(
+    val listLayers get() = sk?.listLayers ?: (if (gen1) G1_FRAME else style?.listLayers?.tinted() ?: (if (dark) listOf(
         Color(0xFF050608) to 1, Color(0xFF6F6FB8) to 1, Color(0xFF3B3653) to 2,
         Color(0xFF242932) to 1, Color(0xFF2D333E) to 2,
     ) else listOf(
         Color(0xFF293131) to 1, Color(0xFF8C8CCE) to 1, Color(0xFF736B84) to 2,
         Color(0xFFDED6DE) to 1, Color(0xFFFFFFFF) to 2,
     )).map { (color, width) -> tint(color) to width })
-    val listFill get() = sk?.listFill ?: (if (gen1) G1_PAPER else w(0xFFE0DFDF, 0xFF1D2128))
+    val listFill get() = sk?.listFill ?: (if (gen1) G1_PAPER else style?.let { tint(it.listFill) } ?: w(0xFFE0DFDF, 0xFF1D2128))
+    /** A picture's well inside a window: [listFill] in CLASSIC (its windows are white), the style's own well otherwise. */
+    val well get() = style?.let { tint(it.well) } ?: listFill
     /** The cursor row (Gen 1 marks it with its ▶; here a light grey band, a lighter slate in dark). */
     val rowSelected get() = sk?.rowSelected ?: (if (gen1) (if (activeGame.isRedBlue) c(0xFFE6D6E6, 0xFF3A3A3A) else c(0xFFDCDCDC, 0xFF3A3A3A))
-        else w(0xFFFFFFFF, 0xFF353C49))
-    val label get() = sk?.label ?: (if (gen1) G1_INK else w(0xFF575656, 0xFFCDD1D9))
-    val labelShadow get() = sk?.labelShadow ?: (if (gen1) Color.Transparent else w(0xFFBCBBB4, 0xFF3A404B))
+        else style?.let { tint(it.selected) } ?: w(0xFFFFFFFF, 0xFF353C49))
+    val label get() = sk?.label ?: (if (gen1) G1_INK else style?.let { tint(it.label) } ?: w(0xFF575656, 0xFFCDD1D9))
+    val labelShadow get() = sk?.labelShadow ?: (if (gen1) Color.Transparent else style?.let { tint(it.labelShadow) } ?: w(0xFFBCBBB4, 0xFF3A404B))
     /** FireRed's red; a theme's own colour (THEME). */
     val value get() = sk?.value ?: (if (gen1) G1_INK else if (plainTheme) c(0xFFCB0707, 0xFFFF6A5C)
         else AppColors.theme.let { if (dark) it.valueNight else it.value })
@@ -205,6 +231,17 @@ object OptionColors {
      * dark: the cursor row's slate over the list's). */
     val tabSelectedFill get() = sk?.tabSelectedFill ?: (if (gen1) rowSelected else if (dark) rowSelected else titleFill)
     val tabIdleFill get() = sk?.tabIdleFill ?: (if (gen1) G1_PAPER else listFill)
+    /** The style's keys (buttons, the tab bar's chips); null = the classic chips and buttons. */
+    val buttonKey get() = style?.button
+    fun tabKey(open: Boolean) = style?.let { if (open) it.tabOpen else it.tab }
+    /** The other side's band (battle INFO's FOE), and its shadow: the section's colours where the style has none. */
+    val foeBand get() = style?.let { tint(it.foeFill ?: it.sectionFill) }
+    /** Connected cells: your side's (and every list's) and the foe's; null in CLASSIC. */
+    val cells get() = style?.let { it.cells ?: com.pokedaisy.app.companion.ui.theme.CellColors(it.separatorDark, it.listFill, it.stripe ?: it.well, it.sectionFill, it.sectionText, it.sectionShadow) }
+    val foeCells get() = style?.let { it.foeCells } ?: cells
+    val foeBandShadow get() = style?.let { it.foeShadow ?: it.sectionShadow }
+    /** The foe's colour as text on its washed panel: the shadow on light paper, the band itself on dark. */
+    val foeInk get() = if (dark) foeBand else foeBandShadow?.let { tint(it) }
     /** RAINBOW ([com.pokedaisy.app.companion.ui.theme.ThemeSpec.rainbow]): a tab chip's or button's own colour,
      * [slot] picking one of seven (a tab by its place in the bar: a full bar is seven chips, a button by
      * [nextRainbowSlot]); null = the usual look (any other theme, and the Game Boy games' black-on-white). */
@@ -220,7 +257,7 @@ object OptionColors {
     val groupTitleText get() = if (gen1) G1_PAPER else value
     val groupTitleShadow get() = if (gen1) Color.Transparent else valueShadow
     /** The dashed line between list rows (the bag list's 6/2 dash). */
-    val divider get() = sk?.divider ?: (if (gen1) c(0xFFB0B0B0, 0xFF505050) else w(0xFFC6C5C5, 0xFF353B46))
+    val divider get() = sk?.divider ?: (if (gen1) c(0xFFB0B0B0, 0xFF505050) else style?.let { tint(it.rule ?: it.separatorDark) } ?: w(0xFFC6C5C5, 0xFF353B46))
     /** Gen 1's pictures are ink on the Game Boy's paper (the paper left clear): in dark mode they get their
      * white back, a card behind the sprite, or their outline vanishes into the dark. Null = no card. */
     val spritePaper: Color? get() = if (gen1 && dark) Color(0xFFFFFFFF) else null
@@ -300,8 +337,8 @@ interface OptionLook {
         override val listFill get() = OptionColors.listFill
         override val listLayers get() = OptionColors.listLayers
         override val frameDark get() = OptionColors.frameDark
-        override val separatorDark get() = OptionColors.tint(if (OptionColors.dark) Color(0xFF0E1116) else Color(0xFFB8B8C0))
-        override val separatorLight get() = OptionColors.tint(if (OptionColors.dark) Color(0xFF3A414D) else Color(0xFFE8E8EC))
+        override val separatorDark get() = OptionColors.tint(OptionColors.style?.separatorDark ?: if (OptionColors.dark) Color(0xFF0E1116) else Color(0xFFB8B8C0))
+        override val separatorLight get() = OptionColors.tint(OptionColors.style?.separatorLight ?: if (OptionColors.dark) Color(0xFF3A414D) else Color(0xFFE8E8EC))
         // A slate blue, the lit one white (dark mode: deeper, the lit one the cursor row's); a theme's hue (THEME).
         override val stripIdle get() = OptionColors.tint(if (OptionColors.dark) Color(0xFF2E3A52) else Color(0xFFA8B4C8))
         override val stripIdleFrame get() = OptionColors.tint(if (OptionColors.dark) Color(0xFF151B27) else Color(0xFF68748C))
@@ -319,6 +356,11 @@ val optionLook: OptionLook
 /** A dashed row divider along the bottom edge, from [start] px in - the bag
  * list's 6-on/2-off dash, 2 GBA px thick. [u] is one GBA pixel in px. */
 fun DrawScope.drawRowDivider(color: Color, u: Float, start: Float) {
+    // A MENU STYLE other than CLASSIC: one solid line (its rule), not the bag's dashes.
+    if (OptionColors.style != null) {
+        drawRect(color, Offset(start, size.height - u), Size(size.width - 2 * start, u))
+        return
+    }
     val y = size.height - u
     drawLine(
         color, Offset(start, y), Offset(size.width - start, y), strokeWidth = 2 * u,
@@ -360,14 +402,19 @@ fun OptionTitleWindow(
     leading: (@Composable () -> Unit)? = null,
     /** Lines the title may wrap to before it's cut short (a prompt on a narrow screen). */
     titleMaxLines: Int = 1,
+    /** A window sits right under it ([WindowGap]): under a MENU STYLE its bottom stays open, a strip on that window. */
+    joined: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
+    val open = joined && OptionColors.joined
     val u = m.u
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .drawBehind { drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
+            .drawBehind {
+                drawLayeredBox(OptionColors.headerLayers.inPx(u.toPx()), OptionColors.headerFill, radius = 2 * u.toPx(), openBottom = open)
+            }
             .padding(horizontal = u * 12, vertical = u * 6),
     ) {
         leading?.let { it(); Spacer(Modifier.width(u * 6)) }
@@ -378,22 +425,30 @@ fun OptionTitleWindow(
                 // A pixel arrow, a font pixel per cell like the title beside it.
                 val cell = with(androidx.compose.ui.platform.LocalDensity.current) { m.fontPixel.toDp() }
                 Box(Modifier.size(m.lineHeight).semantics { contentDescription = tr("Back") }, contentAlignment = Alignment.Center) {
-                    ShadowedPixelIcon(PixelIcons.arrowBack, OptionColors.titleText, OptionColors.titleShadow, m, cell = cell)
+                    ShadowedPixelIcon(PixelIcons.arrowBack, OptionColors.headerText, OptionColors.headerShadow, m, cell = cell)
                 }
             }
         }
         if (trailing == null) {
-            GbaText(tr(title), OptionColors.titleText, OptionColors.titleShadow, m, maxLines = titleMaxLines, modifier = Modifier.weight(1f))
+            Box(Modifier.weight(1f)) {
+                GbaText(tr(title), OptionColors.headerText, OptionColors.headerShadow, m, maxLines = titleMaxLines)
+            }
         } else {
             // The title whole; the trailing (the game's name) right-aligned after a gap, and the one
             // that shortens when both don't fit (a wide game font: "OPTI…" read badly).
-            GbaText(tr(title), OptionColors.titleText, OptionColors.titleShadow, m)
+            GbaText(tr(title), OptionColors.headerText, OptionColors.headerShadow, m)
             Box(Modifier.weight(1f).padding(start = u * 8), contentAlignment = Alignment.CenterEnd) {
-                GbaText(trailing, OptionColors.titleText, OptionColors.titleShadow, m)
+                GbaText(trailing, OptionColors.headerText, OptionColors.headerShadow, m)
             }
         }
         actions()
     }
+}
+
+/** The room between a title window and the window under it: none under a MENU STYLE, whose windows join. */
+@Composable
+fun WindowGap(m: GbaTextMetrics) {
+    if (!OptionColors.joined) Spacer(Modifier.height(m.u * 4))
 }
 
 /** The grey list window: its multi-line frame around [content]. */
@@ -402,6 +457,8 @@ fun OptionListWindow(
     m: GbaTextMetrics,
     modifier: Modifier = Modifier,
     fill: Color = optionLook.listFill,
+    /** GBA pixels more between the frame and the content (blocks of cells that have their own borders). */
+    margin: Int = 0,
     content: @Composable () -> Unit,
 ) {
     val u = m.u
@@ -410,8 +467,13 @@ fun OptionListWindow(
     val frame = layers.sumOf { it.second }
     Box(
         modifier = modifier
-            .drawBehind { drawLayeredBox(layers.inPx(u.toPx()), fill, radius = 2 * u.toPx()) }
-            .padding(horizontal = u * (frame + 2 + look.windowPadSides), vertical = u * (frame + 2)),
+            .drawBehind {
+                drawLayeredBox(layers.inPx(u.toPx()), fill, radius = 2 * u.toPx())
+            }
+            .padding(
+                horizontal = u * (frame + 2 + look.windowPadSides + margin),
+                vertical = u * (frame + 2 + margin),
+            ),
     ) { content() }
 }
 
@@ -453,6 +515,8 @@ fun OptionLine(
     leading: (@Composable () -> Unit)? = null,
     /** The value column as a [GbaSlider] with [value] after it; LEFT / RIGHT move it while the row has the D-pad. */
     slider: SettingSlider? = null,
+    /** Every other row of a list: a menu style's band under it. */
+    stripe: Boolean = false,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -467,14 +531,43 @@ fun OptionLine(
     if (enabled) LocalOverlayStart.current?.register(self, current = selected)
     val chevronCell = with(androidx.compose.ui.platform.LocalDensity.current) { m.fontPixel.toDp() }
     val chevronRoom = if (chevron) chevronCell * (PixelIcons.chevronRight.maxOf { it.length } + 1) + m.u * 4 else 0.dp
+    val style = OptionColors.style
+    val lit = selected || focused
     Box(
         contentAlignment = Alignment.CenterStart,
         modifier = modifier
             .focusRequester(self)
             .fillMaxWidth()
             .height(height)
-            .background(if (selected || focused) OptionColors.rowSelected else Color.Transparent)
-            .then(if (divider) Modifier.drawBehind { drawRowDivider(OptionColors.divider, m.u.toPx(), 4 * m.u.toPx()) } else Modifier)
+            .then(
+                Modifier.background(
+                    when {
+                        lit -> OptionColors.rowSelected
+                        stripe && style?.stripe != null -> OptionColors.tint(style.stripe)
+                        else -> Color.Transparent
+                    },
+                ),
+            )
+            .then(
+                when {
+                    style?.rule != null -> Modifier.drawBehind {
+                        // A ruled style: a solid line under every row.
+                        val px = m.u.toPx()
+                        drawRect(OptionColors.tint(style.rule), Offset(2 * px, size.height - px), Size(size.width - 4 * px, px))
+                    }
+                    style != null -> Modifier
+                    divider -> Modifier.drawBehind { drawRowDivider(OptionColors.divider, m.u.toPx(), 4 * m.u.toPx()) }
+                    else -> Modifier
+                },
+            )
+            .then(
+                if (style?.arrow != null && lit && enabled) Modifier.drawBehind {
+                    // The games' ▶ cursor, in the row's left margin.
+                    val px = m.u.toPx()
+                    val mid = (size.height / px / 2).toInt()
+                    for (i in 0..3) drawRect(OptionColors.tint(style.arrow), Offset((2 + i) * px, (mid - 3 + i) * px), Size(px, (7 - 2 * i) * px))
+                } else Modifier,
+            )
             .then(if (enabled) Modifier.soundClickable(interactionSource = interaction, indication = null, onClick = { stack?.lastClicked = self; onClick() }) else Modifier)
             .then(if (enabled && slider != null) Modifier.onPreviewKeyEvent { slider.onKey(it) } else Modifier)
             .padding(start = m.u * 8, end = m.u * 8, bottom = bottomPadding),
@@ -493,7 +586,6 @@ fun OptionLine(
                         OptionBadge(
                             it, m, Modifier.padding(start = m.u * 6),
                             fill = if (new) OptionColors.newBadge else OptionColors.value,
-                            shadow = if (new) OptionColors.newBadgeShadow else OptionColors.valueShadow.copy(alpha = 0.6f),
                         )
                     }
                 }
@@ -512,7 +604,9 @@ fun OptionLine(
                         }
                     }
                 } else if (value != null) {
-                    Row(Modifier.weight(1f - labelWeight).padding(end = chevronRoom), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.weight(1f - labelWeight).padding(end = chevronRoom), verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         if (enabled) GbaText(tr(value), OptionColors.value, OptionColors.valueShadow, m)
                         else GbaText(tr(value), OptionColors.muted, OptionColors.mutedShadow, m)
                         valueBadge?.let { OptionBadge(it, m, Modifier.padding(start = m.u * 6)) }
@@ -552,22 +646,13 @@ fun subtitleMetrics(m: GbaTextMetrics): GbaTextMetrics =
     // [DenseText] took the main text down to 1x: the subtitles stay there too (0.8 of it was two screen pixels a font pixel).
     rememberGbaTextMetrics(if (LocalDenseText.current) maxOf(1f, 0.8f * m.fontPixel / m.px) else 0.8f * m.fontPixel / m.px, gameScaled = false)
 
-/** A small tag on a row ("BETA" on a feature that isn't finished): white on the value red, pill-shaped. */
+/**
+ * A small tag on a row (NEW on a just-shipped feature, BETA, the library's NOT SUPPORTED): white on [fill] (the value red by
+ * default), drawn like the games' own type tags ([GameTagBox]: notched corners, the #424242 shadow) at the row's GBA pixel.
+ */
 @Composable
-fun OptionBadge(
-    text: String, m: GbaTextMetrics, modifier: Modifier = Modifier, fill: Color = OptionColors.value,
-    shadow: Color = OptionColors.valueShadow.copy(alpha = 0.6f),
-) {
-    // ~2/3 of the row's own text: 0.85 next to the main lists' 1.25, smaller beside denser text. [m] already holds a game
-    // font's larger size: not scaled a second time.
-    val small = rememberGbaTextMetrics(0.68f * m.fontPixel / m.px, gameScaled = false)
-    Box(
-        modifier
-            .background(fill, PixelPillShape)
-            .padding(horizontal = m.u * 5, vertical = m.u),
-    ) {
-        GbaText(tr(text), OptionColors.badgeText, shadow, small)
-    }
+fun OptionBadge(text: String, m: GbaTextMetrics, modifier: Modifier = Modifier, fill: Color = OptionColors.value) {
+    GameTagBox(tr(text), fill, m.px, modifier, OptionColors.badgeText, shadow = if (OptionColors.gen1) Color.Transparent else TAG_SHADOW)
 }
 
 /**
@@ -605,6 +690,7 @@ fun OptionRows(
                     label, value, selected = i == selected, m, modifier = Modifier.focusStart(i == selected),
                     height = rowHeight, labelWeight = labelWeight,
                     divider = dividers && i < rows.lastIndex, valueBadge = valueBadge(i), enabled = enabled(i), labelBadge = labelBadge(i),
+                    stripe = i % 2 == 1,
                     onFocus = onFocused?.let { f -> { f(i) } }, onClick = onClick,
                 )
             }
@@ -656,12 +742,15 @@ fun OptionButton(
     // A game's skin's own buttons (HeartGold's orange, Black's charcoal plates), where it has them and nothing above asks
     // for another look.
     val skin = CompanionSkins.current.activeColors?.takeIf { colors == null && labelColors == null && frameLayers == null && it.buttonFill != null }
+    // Else a style's key (a face standing on an edge), unless the button has colours of its own.
+    val key = if (colors != null || frameLayers != null || skin != null) null else OptionColors.buttonKey
     val fg = when {
         !enabled -> OptionColors.muted
         labelColors != null -> labelColors.first
         colors != null -> colors.text
         emphasis -> OptionColors.value
         skin?.buttonText != null -> skin.buttonText
+        key != null -> key.text
         else -> OptionColors.label
     }
     val shadow = when {
@@ -670,6 +759,7 @@ fun OptionButton(
         colors != null -> colors.shadow
         emphasis -> OptionColors.valueShadow
         skin?.buttonShadow != null -> skin.buttonShadow
+        key != null -> key.shadow
         else -> OptionColors.labelShadow
     }
     Row(
@@ -681,6 +771,10 @@ fun OptionButton(
             .gbaFocusRing(focused, PixelRoundedShape(u * 3))
             .heightIn(min = m.rowHeight)
             .drawBehind {
+                if (key != null) {
+                    drawKey(key, u.toPx(), 3 * u.toPx(), face = if (focused) key.low else key.face)
+                    return@drawBehind
+                }
                 drawLayeredBox(
                     (frameLayers ?: colors?.frame ?: skin?.buttonLayers ?: OptionColors.titleLayers).inPx(u.toPx()),
                     when {
@@ -700,7 +794,8 @@ fun OptionButton(
                     Modifier.semantics { this.contentDescription = contentDescription }
                 } else Modifier,
             )
-            .padding(horizontal = u * sidePadding, vertical = u * 4),
+            .padding(horizontal = u * sidePadding)
+            .padding(top = u * 4, bottom = u * (if (key != null) 6 else 4)),
     ) {
         if (icon != null) {
             Icon(icon, contentDescription, tint = fg, modifier = Modifier.size(m.lineHeight))
@@ -712,7 +807,7 @@ fun OptionButton(
         if ((icon != null || pixelIcon != null) && label != null) Spacer(Modifier.width(u * 4))
         if (label != null) GbaText(tr(label), fg, shadow, m, bold = gameBoldLabels())
         labelBadge?.let {
-            OptionBadge(it, m, Modifier.padding(start = u * 4), fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow)
+            OptionBadge(it, m, Modifier.padding(start = u * 4), fill = OptionColors.newBadge)
         }
     }
 }

@@ -467,9 +467,11 @@ fun CompanionScreen(
             val tabBar: @Composable () -> Unit = {
                 // IntrinsicSize.Min + fillMaxHeight on every chip: the icon-only
                 // SETTINGS chip stretches to the text chips' height.
+                // A style's windows sit closer: the bar a few pixels under them, its chips a pixel apart.
+                val tight = OptionColors.joined
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(top = if (tight) 4.dp else 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (tight) 3.dp else 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (shoulderHints > 0f) ShoulderHint("L", shoulderHints) { stepTab(-1) }
@@ -499,7 +501,12 @@ fun CompanionScreen(
             val gen5Full = current == "BATTLE" && controlsPane &&
                 settings?.battleStyle == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons
             // A short screen: less margin round the tabs, every pixel of its height counts.
-            val margin = if (LocalShortCompanion.current) 8.dp else 12.dp
+            // A style's (joined windows) runs closer to the screen's edges.
+            val margin = when {
+                OptionColors.joined -> if (LocalShortCompanion.current) 4.dp else 6.dp
+                LocalShortCompanion.current -> 8.dp
+                else -> 12.dp
+            }
             val dock by androidx.compose.animation.core.animateFloatAsState(if (gen5Full) 1f else 0f, tween(220), label = "gen5-dock")
             // Nothing over the tab area: the controls spill over the top margin too.
             val nothingAbove = topStrip == null && !(statusBar != null && CompanionStatusBar.shown) && !(loaded && !snapshot.connected)
@@ -1161,11 +1168,12 @@ private fun ShoulderHint(letter: String, shown: Float, onClick: () -> Unit) {
 internal fun TabChip(label: String, selected: Boolean, modifier: Modifier = Modifier, enabled: Boolean = true, slot: Int = 0, onClick: () -> Unit) {
     val m = rememberTabMetrics()
     val rainbow = OptionColors.rainbow(slot)
+    val key = if (rainbow == null) OptionColors.tabKey(selected) else null
     TabChipShell(selected, m, modifier.fillMaxHeight().alpha(if (enabled) 1f else 0.4f), onClick, enabled, rainbow) {
         GbaText(
             label,
-            if (rainbow != null) rainbow.text else if (selected) OptionColors.value else OptionColors.label,
-            if (rainbow != null) rainbow.shadow else if (selected) OptionColors.valueShadow else OptionColors.labelShadow,
+            if (rainbow != null) rainbow.text else key?.text ?: if (selected) OptionColors.value else OptionColors.label,
+            if (rainbow != null) rainbow.shadow else key?.shadow ?: if (selected) OptionColors.valueShadow else OptionColors.labelShadow,
             m,
             bold = gameBoldLabels(),
             // A long label (NUZLOCKE on a full bar) narrows its letters rather than being cut short.
@@ -1181,10 +1189,11 @@ internal fun TabChip(label: String, selected: Boolean, modifier: Modifier = Modi
 private fun IconTabChip(icon: List<String>, description: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, slot: Int = 0) {
     val m = rememberTabMetrics()
     val rainbow = OptionColors.rainbow(slot)
+    val key = if (rainbow == null) OptionColors.tabKey(selected) else null
     TabChipShell(selected, m, modifier.width(SETTINGS_CHIP_WIDTH).fillMaxHeight().semantics { contentDescription = description }, onClick, rainbow = rainbow) {
         PixelIcon(
             icon,
-            color = if (rainbow != null) rainbow.text else if (selected) OptionColors.value else OptionColors.label,
+            color = if (rainbow != null) rainbow.text else key?.text ?: if (selected) OptionColors.value else OptionColors.label,
             modifier = Modifier.size(m.u * 20),
         )
     }
@@ -1204,6 +1213,10 @@ private fun TabChipShell(
     val u = m.u
     val noRipple = remember { MutableInteractionSource() }
     val focused by noRipple.collectIsFocusedAsState()
+    // A style's keys: idle ones stand on an edge, the open one sits down on it (its label a pixel lower).
+    val key = if (rainbow == null) OptionColors.tabKey(selected) else null
+    val sink = if (key == null) 0 else if (key.pressed) 1 else 0
+    val edge = if (key == null) 0 else if (key.pressed) 1 else 2
     Box(
         modifier = modifier
             // The D-pad's focus (the companion's window): a ring flush inside the chip's 3u corner.
@@ -1212,11 +1225,13 @@ private fun TabChipShell(
                 // Idle tabs take the list window's frame + grey; the selected
                 // one the title window's white, like the OPTION screen's cursor row.
                 val px = u.toPx()
-                if (rainbow != null) drawLayeredBox((if (selected) rainbow.selectedFrame else rainbow.frame).inPx(px), rainbow.fill, radius = 3 * px, twoTone = true)
+                if (key != null) drawKey(key, px, 3 * px)
+                else if (rainbow != null) drawLayeredBox((if (selected) rainbow.selectedFrame else rainbow.frame).inPx(px), rainbow.fill, radius = 3 * px, twoTone = true)
                 else drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px, twoTone = true)
             }
             .soundClickable(interactionSource = noRipple, indication = null, enabled = enabled, onClick = onClick)
-            .padding(horizontal = if (LocalGameFont.current != null) u else u * 2, vertical = u * 6),
+            .padding(horizontal = if (LocalGameFont.current != null) u else u * 2)
+            .padding(top = u * (6 + sink), bottom = u * (6 + edge - sink)),
         contentAlignment = Alignment.Center,
     ) { content() }
 }

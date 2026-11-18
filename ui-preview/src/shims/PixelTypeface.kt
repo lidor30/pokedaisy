@@ -15,6 +15,17 @@ fun pixelFontFamily(context: android.content.Context): FontFamily = family ?: Fo
 
 @Volatile private var family: FontFamily? = null
 
+/** Desktop stand-in for the app's pixelSmallFontFamily (FONT's PIXEL SMALL): Skia picks a family's first font that has
+ * the glyph here too, so 1/2 and the kana fall to Pixel Operator and the rest like the app's. */
+fun pixelSmallFontFamily(context: android.content.Context): FontFamily = small ?: FontFamily(
+    Font("fonts/PixelSmall.ttf", context.assets),
+    Font("fonts/PixelOperator.ttf", context.assets),
+    Font("fonts/PixelMplusJP.ttf", context.assets),
+    Font("fonts/GalmuriKO.ttf", context.assets),
+).also { small = it }
+
+@Volatile private var small: FontFamily? = null
+
 /** Desktop stand-in for the app's gameFontFamily: the game's font, Pixel Operator after it. */
 fun gameFontFamily(context: android.content.Context, file: java.io.File): FontFamily? = runCatching {
     FontFamily(
@@ -35,6 +46,7 @@ fun readingFontFamily(context: android.content.Context): FontFamily = reading ?:
 /** Desktop stand-in for the app's AndroidFonts: the shims' families above. */
 class PreviewFonts(private val context: android.content.Context) : com.pokedaisy.app.companion.ui.theme.FontSource {
     override fun pixel(): FontFamily = pixelFontFamily(context)
+    override fun pixelSmall(): FontFamily = pixelSmallFontFamily(context)
     override fun smooth(bold: Boolean): FontFamily = atkinsonFamily(context, bold)
     override fun reading(): FontFamily = readingFontFamily(context)
     override fun game(file: okio.Path): FontFamily? = gameFontFamily(context, file.toFile())

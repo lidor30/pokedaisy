@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -85,42 +88,93 @@ fun TypeBadge(type: String, modifier: Modifier = Modifier, fontSize: TextUnit = 
         }
         return
     }
-    val color = AppColors.typeColors[type] ?: AppColors.muted
+    GameTag(com.pokedaisy.app.companion.data.typeLabel(type), AppColors.typeColors[type] ?: AppColors.muted, modifier, fontSize, minWidth = TYPE_TAG_W)
+}
+
+/**
+ * Every drawn tag (verdicts, types where the ROM has no tag art, statuses, multipliers), built like the games' own type
+ * tags (FireRed's sMenuInfoIcons, measured from the ROM): one flat colour, each corner notched by a single pixel, white
+ * capitals with the font's #424242 shadow a pixel right, down and diagonally ([GbaText]'s), 12 pixels tall with the
+ * lettering centred, four pixels either side. The game's capitals are 7 pixels tall; Pixel Operator's are 9 font pixels, so a font pixel is
+ * 7/9 of a GBA pixel, rounded to whole screen pixels. [fontSize] picks the size the way the ROM tags do (8 sp a step:
+ * 12 sp 1x, a move card's 16 sp 2x); [minWidth] in GBA pixels (a type tag: the game's 32).
+ */
+@Composable
+internal fun GameTag(
+    text: String, color: Color, modifier: Modifier = Modifier, fontSize: TextUnit = 12.sp, textColor: Color = Color.White,
+    minWidth: Int = 0,
+) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val scale = (fontSize.value / TYPE_TAG_SP).toInt().coerceAtLeast(1)
+    val k = with(density) { kotlin.math.round(20.dp.toPx() / 16f).toInt().coerceAtLeast(2) } * scale
+    GameTagBox(text, color, k, modifier, textColor, minWidth = minWidth)
+}
+
+/**
+ * [GameTag] at [k] screen pixels a tag pixel: the app's other tags (a settings row's NEW, the library's NEW / BLOCKED / NOT
+ * SUPPORTED, BETA, WHAT'S NEW's version) at their row's GBA pixel ([OptionBadge]).
+ */
+@Composable
+internal fun GameTagBox(
+    text: String, color: Color, k: Int, modifier: Modifier = Modifier, textColor: Color = Color.White, minWidth: Int = 0,
+    shadow: Color = TAG_SHADOW,
+) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    // The nearest whole font pixel to 7/9 of a GBA pixel that still fits the capitals and their shadow (10 font pixels) in the
+    // box with a screen pixel to spare.
+    // A short companion (the RG DS: 2 screen pixels a GBA pixel) rounds down: its narrow columns can't take 2-pixel letters,
+    // which came out bigger than the game's own tags beside them and pushed the summary's matchups off the bottom.
+    val short = LocalShortCompanion.current
+    val f = (if (short) (7 * k) / 9 else kotlin.math.round(7f * k / 9f).toInt()).coerceAtMost((12 * k - 2) / 10).coerceAtLeast(1)
+    val m = androidx.compose.runtime.remember(k, f, density) {
+        with(density) { GbaTextMetrics(k, k.toDp(), (16f * f).toSp(), f.toFloat(), (16f * f).toDp(), (20f * f).toDp()) }
+    }
+    val u = with(density) { k.toDp() }
+    // The game's tag height, 12 GBA pixels, the capitals and their shadow centred in it (as the ROM tags beside it are drawn).
+    val height = with(density) { (if (short) 10 * f + 3 * k else 12 * k).toDp() }
     Box(
         modifier = modifier
-            .clip(PixelCornerShape(3.dp))
-            .background(color)
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .height(height)
+            .widthIn(min = u * minWidth)
+            .background(color, NotchedShape(u))
+            .padding(horizontal = u * 4),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(com.pokedaisy.app.companion.data.typeLabel(type), color = Color.White, fontSize = fontSize, fontFamily = pixelFontFamily())
+        // The line is taller than a small tag (16 font pixels to the box's 12 GBA ones): laid out whole, centred over it, then
+        // a font pixel up - the game's letters sit above the middle (two pixels over them, three under with the shadow).
+        GbaText(text, textColor, shadow, m,
+            Modifier.wrapContentHeight(unbounded = true).offset { androidx.compose.ui.unit.IntOffset(0, -f) }, maxLines = 1)
+    }
+}
+
+/** The games' tag lettering's shadow (every type tag's, whatever its colour). */
+internal val TAG_SHADOW = Color(0xFF424242)
+
+/** A rectangle with a [notch]-square cut from each corner: the games' tags' one-pixel corners. */
+class NotchedShape(private val notch: Dp) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val c = with(density) { notch.toPx() }.coerceAtMost(minOf(size.width, size.height) / 2f)
+        val w = size.width
+        val h = size.height
+        return Outline.Generic(Path().apply {
+            moveTo(c, 0f); lineTo(w - c, 0f); lineTo(w - c, c); lineTo(w, c)
+            lineTo(w, h - c); lineTo(w - c, h - c); lineTo(w - c, h); lineTo(c, h)
+            lineTo(c, h - c); lineTo(0f, h - c); lineTo(0f, c); lineTo(c, c); close()
+        })
     }
 }
 
 @Composable
 fun StatusBadge(status: String, modifier: Modifier = Modifier) {
     if (status.isEmpty()) return
-    Box(
-        modifier = modifier
-            .clip(PixelRoundedShape(4.dp))
-            .background(AppColors.statusColor(status))
-            .padding(horizontal = 5.dp, vertical = 2.dp),
-    ) {
-        Text(status, color = Color.White, fontSize = 10.sp, fontFamily = pixelFontFamily())
-    }
+    GameTag(status, AppColors.statusColor(status), modifier)
 }
 
 @Composable
 fun MultiplierChip(label: String, pct: Int, modifier: Modifier = Modifier, fontSize: TextUnit = 10.sp) {
     val bg = AppColors.multiplierColor(pct)
     val fg = if (pct == 0) Color(0xFFF2B8BD) else Color.White
-    Box(
-        modifier = modifier
-            .clip(PixelRoundedShape(4.dp))
-            .background(bg)
-            .padding(horizontal = 5.dp, vertical = 2.dp),
-    ) {
-        Text(label, color = fg, fontSize = fontSize, fontFamily = pixelFontFamily())
-    }
+    GameTag(label, bg, modifier, textColor = fg)
 }
 
 /** "35" for a damaging move, "—" for a status move (power 0 in the ROM's own
@@ -190,15 +244,8 @@ private val MOVE_KIND_COLORS = mapOf(
 
 @Composable
 fun TypeBadgeWithLabel(m: TypeMatchup, modifier: Modifier = Modifier) {
-    val color = AppColors.typeColors[m.type] ?: AppColors.muted
-    Box(
-        modifier = modifier
-            .clip(PixelCornerShape(3.dp))
-            .background(color)
-            .padding(horizontal = 6.dp, vertical = 3.dp),
-    ) {
-        Text("${com.pokedaisy.app.companion.data.typeLabel(m.type)} ${m.label}", color = Color.White, fontSize = 12.sp, fontFamily = pixelFontFamily())
-    }
+    // The multiplier stays inside the tag (the user's call): a drawn tag, since the game's tag picture has no room for it.
+    GameTag("${com.pokedaisy.app.companion.data.typeLabel(m.type)} ${m.label}", AppColors.typeColors[m.type] ?: AppColors.muted, modifier)
 }
 
 @Composable

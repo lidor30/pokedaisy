@@ -910,10 +910,10 @@ class SettingsActivity : ComponentActivity() {
             // The app's text: the pixel font or a smooth one, both screens at once.
             SettingRow(
                 tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFonts.current.label, subtitle = "Pixel letters or smooth ones",
-                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.APP_FONT),
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.PIXEL_SMALL),
             ) {
                 selector = Selector(
-                    tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFont.entries.map { it.label },
+                    tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFont.menu.map { it.label },
                     com.pokedaisy.app.companion.ui.theme.AppFonts.current.label,
                 ) { l ->
                     com.pokedaisy.app.companion.ui.theme.AppFont.entries.firstOrNull { it.label == l }?.let {

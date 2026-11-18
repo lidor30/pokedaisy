@@ -128,9 +128,12 @@ fun BattleInfoScreen(
             if (onShowStats != null) TextNavButton(tr("STATS"), StatsPurple, StatsPurpleDark, onClick = onShowStats)
         },
         middle = if (foeTeam.size > 1) ({ FoeTeamStrip(foeTeam, seenFoes, shownFoe, small, onSelectFoe) }) else null,
+        cells = true,
     ) {
         Box(Modifier.fillMaxSize()) {
-            if (foeDetails) Column(Modifier.fillMaxSize()) {
+            if (foeDetails && OptionColors.joined) {
+                StyledFoeDetailsBody(player, foes, foeHeading, showHints, isCaught, dexTables, m, small, buttonRoom)
+            } else if (foeDetails) Column(Modifier.fillMaxSize()) {
                 // The player's side shrinks to a strip: YOU and the sprite level with the
                 // foe card's FOE and icon, the HP standing under them.
                 val strip = Modifier.width(m.u * (PLAYER_STRIP_ICON + 8))
@@ -148,6 +151,8 @@ fun BattleInfoScreen(
                             Modifier.fillMaxWidth().weight(1f), expanded = true, bottomRoom = buttonRoom)
                     }
                 }
+            } else if (OptionColors.joined) {
+                StyledInfoBody(player, opponent, foes, foeHeading, showHints, onToggleFoeDetails != null, isCaught, dexTables, m, small, buttonRoom)
             } else Column(Modifier.fillMaxSize()) {
                 // 1. Who's out.
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
@@ -174,6 +179,83 @@ fun BattleInfoScreen(
     }
 }
 
+/**
+ * INFO in a menu style: the classic pane's four parts as blocks of connected cells ([cell], HG / Black's) - the two
+ * cards across the top (yours, the foe's in the style's foe colour), your moves under yours, the foe's matchups, stats
+ * and moves under its own - so each reads on its own without rules across the window.
+ */
+@Composable
+private fun StyledInfoBody(
+    player: List<MonView>, opponent: List<MonView>, foes: List<MonView>, foeHeading: String, showHints: Boolean,
+    toggle: Boolean, isCaught: (Int) -> Boolean, dexTables: PokedexTables?, m: GbaTextMetrics, small: GbaTextMetrics,
+    buttonRoom: androidx.compose.ui.unit.Dp,
+) {
+    val u = m.u
+    val gap = u * 3
+    val foeSide = foeHeading.substringBefore(" · ")
+    val foeState = foeHeading.substringAfter(" · ", "")
+    val mine = OptionColors.cells!!
+    val theirs = OptionColors.foeCells!!
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap)) {
+        // Who's out: one row of two cells, yours and the foe's, sharing their edge.
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            Box(Modifier.weight(1f).fillMaxHeight().cell(mine.a, mine.line, u, top = true, bottom = true, right = false).padding(horizontal = u * 4, vertical = u * 3)) {
+                BattlerCards(tk("YOU"), player, m, small, Modifier.fillMaxWidth(), threats = if (showHints) opponent else emptyList(),
+                    sideColor = mine.head, sideShadow = mine.headShadow)
+            }
+            Box(Modifier.weight(1f).fillMaxHeight().cell(theirs.a, theirs.line, u, top = true, bottom = true, left = false).padding(horizontal = u * 4, vertical = u * 3)) {
+                BattlerCards(if (foeState.isEmpty()) foeSide else "$foeSide · $foeState", foes, m, small, Modifier.fillMaxWidth(),
+                    isCaught = isCaught, sideColor = theirs.head, sideShadow = theirs.headShadow)
+            }
+        }
+        // Your moves under your card, what the foe is weak to under its own: each a block of connected cells.
+        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+            // Your moves under "<NAME>'S MOVES" where the pane has room (the foe's column has its own headings).
+            val title = if (player.size == 1) tr("{0}'S MOVES", player[0].name) else tr("MOVES")
+            HeadedBlock(title, small, Modifier.weight(1f).fillMaxHeight(), minBody = u * INFO_MOVES_BODY_MIN, c = mine) { headed ->
+                MovesColumn(player, opponent.size, showHints, m, small, Modifier.fillMaxWidth().weight(1f), striped = true, headed = headed)
+            }
+            if (showHints || toggle) {
+                FoeDetailsColumn(foes, player.size, showHints, matchups = showHints, dexTables, m, small,
+                    Modifier.weight(1f).fillMaxHeight(), bottomRoom = buttonRoom, styled = true)
+            }
+        }
+    }
+}
+
+/**
+ * FOE DETAILS in a menu style: the player's strip (YOU over the sprites, the HP under them) and the foe's card as cells,
+ * the foe's stats, moves and matchups as blocks of cells beside the strip.
+ */
+@Composable
+private fun StyledFoeDetailsBody(
+    player: List<MonView>, foes: List<MonView>, foeHeading: String, showHints: Boolean, isCaught: (Int) -> Boolean,
+    dexTables: PokedexTables?, m: GbaTextMetrics, small: GbaTextMetrics, buttonRoom: androidx.compose.ui.unit.Dp,
+) {
+    val u = m.u
+    val gap = u * 3
+    val mine = OptionColors.cells!!
+    val theirs = OptionColors.foeCells!!
+    val strip = Modifier.width(u * (PLAYER_STRIP_ICON + 12))
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap)) {
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            Box(strip.fillMaxHeight().cell(mine.a, mine.line, u, top = true, bottom = true, right = false).padding(u * 3)) {
+                PlayerStripSprites(player, m, small, Modifier.fillMaxWidth(), sideColor = mine.head, sideShadow = mine.headShadow)
+            }
+            Box(Modifier.weight(1f).fillMaxHeight().cell(theirs.a, theirs.line, u, top = true, bottom = true, left = false).padding(horizontal = u * 4, vertical = u * 3)) {
+                BattlerCards(foeHeading, foes, m, small, Modifier.fillMaxWidth(), isCaught = isCaught, sideColor = theirs.head, sideShadow = theirs.headShadow)
+            }
+        }
+        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+            Box(strip.fillMaxHeight().cell(mine.b, mine.line, u, top = true, bottom = true).padding(u * 3)) {
+                PlayerStripHp(player, m, small, Modifier.fillMaxSize())
+            }
+            FoeDetailsColumn(foes, player.size, showHints, matchups = showHints, dexTables, m, small,
+                Modifier.weight(1f).fillMaxHeight(), expanded = true, bottomRoom = buttonRoom, styled = true)
+        }
+    }
+}
+
 /** FOE DETAILS' button: the expand / shrink corners of a "full screen" switch. */
 @Composable
 private fun FoeDetailsToggle(expanded: Boolean, m: GbaTextMetrics, onClick: () -> Unit, modifier: Modifier) {
@@ -194,14 +276,17 @@ private const val PLAYER_STRIP_ICON_DOUBLE = 22
  * [BattlerCard] does: a full icon alone, compact ones in a double battle).
  */
 @Composable
-private fun PlayerStripSprites(player: List<MonView>, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier) {
+private fun PlayerStripSprites(
+    player: List<MonView>, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier,
+    sideColor: Color? = null, sideShadow: Color? = null,
+) {
     val u = m.u
     val icon = if (player.size > 1) PLAYER_STRIP_ICON_DOUBLE else PLAYER_STRIP_ICON
     val nameLine = battlerNameLine(player.size > 1, m, small)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(u * 3), horizontalAlignment = Alignment.CenterHorizontally) {
         player.forEachIndexed { i, mon ->
             Column(horizontalAlignment = Alignment.Start) {
-                if (i == 0) SideLabel(tk("YOU"), nameLine, small)
+                if (i == 0) SideLabel(tk("YOU"), nameLine, small, sideColor, sideShadow)
                 Box(
                     Modifier.size(u * icon).clip(PixelRoundedShape(u * 4)).background(OptionColors.listFill),
                     contentAlignment = Alignment.Center,
@@ -300,6 +385,10 @@ internal fun FoeFacts(
     }
 }
 
+/** Whether [FoeFacts] has anything to show for [foe]: an ability (read or readable), a held item or stats. */
+internal fun hasFoeFacts(foe: MonView, dexTables: PokedexTables?): Boolean =
+    foe.abilityName != null || dexTables != null || foe.heldItem != null || foe.battleStats != null || foe.stats != null
+
 /** The ability's name, read from the ROM if the battle didn't give one. */
 @Composable
 internal fun rememberFoeAbility(foe: MonView, dexTables: PokedexTables?): String? = rememberLoaded(
@@ -339,13 +428,19 @@ private fun BattlerCards(
     /** The other side's Pokémon, for the [ThreatPill] (player side, hints on). */
     threats: List<MonView> = emptyList(),
     isCaught: (Int) -> Boolean = { false },
+    /** False: a panel's band already says whose side it is. */
+    showSide: Boolean = true,
+    /** A menu style's side pill in this colour (the foe's), else the section's. */
+    sideColor: Color? = null,
+    sideShadow: Color? = null,
 ) {
     val side = heading.substringBefore(" · ")
     val state = heading.substringAfter(" · ", "")
     Column(modifier, verticalArrangement = Arrangement.spacedBy(m.u * 3)) {
         if (mons.isEmpty()) GbaText(tr(side), OptionColors.value, OptionColors.valueShadow, small)
         mons.forEachIndexed { i, mon ->
-            BattlerCard(mon, compact = mons.size > 1, if (i == 0) side else null, state, m, small, threats, caught = isCaught(mon.species))
+            BattlerCard(mon, compact = mons.size > 1, if (i == 0 && showSide) side else null, state, m, small, threats, caught = isCaught(mon.species),
+                sideColor = sideColor, sideShadow = sideShadow)
         }
     }
 }
@@ -362,6 +457,8 @@ internal fun BattlerCard(
     small: GbaTextMetrics,
     threats: List<MonView>,
     caught: Boolean = false,
+    sideColor: Color? = null,
+    sideShadow: Color? = null,
 ) {
     val u = m.u
     val icon = if (compact) 22 else 36
@@ -369,7 +466,7 @@ internal fun BattlerCard(
     Row(verticalAlignment = Alignment.Top) {
         // At least the icon's width; wider when the side's word is (GEGNER, ENEMIGO).
         Column(Modifier.widthIn(min = u * icon)) {
-            if (side != null) SideLabel(side, nameLine, small)
+            if (side != null) SideLabel(side, nameLine, small, sideColor, sideShadow)
             Box(Modifier.monIconBox(u * icon, u, mon.shiny, OptionColors.listFill), contentAlignment = Alignment.Center) {
                 SpeciesIcon(mon.iconAsset, size = u * (icon - 4))
             }
@@ -411,15 +508,23 @@ private fun battlerNameLine(compact: Boolean, m: GbaTextMetrics, small: GbaTextM
 
 /** YOU / FOE / 1ST, centred on a name line [height] tall. */
 @Composable
-private fun SideLabel(side: String, height: androidx.compose.ui.unit.Dp, small: GbaTextMetrics) {
+private fun SideLabel(side: String, height: androidx.compose.ui.unit.Dp, small: GbaTextMetrics, color: Color? = null, shadow: Color? = null) {
     Box(Modifier.height(height), contentAlignment = Alignment.CenterStart) {
-        GbaText(tr(side), OptionColors.value, OptionColors.valueShadow, small, maxLines = 1)
+        // A menu style's label is a pill (INFO's YOU / FOE, SUGGESTIONS' 1ST / 2ND / 3RD).
+        if (OptionColors.joined) StylePill(tr(side), small, fill = color, shadow = shadow)
+        else GbaText(tr(side), OptionColors.value, OptionColors.valueShadow, small, maxLines = 1)
     }
 }
 
 /** YOUR MOVES: the summary's move rows, one per move, sharing out the height. */
 @Composable
-private fun MovesColumn(player: List<MonView>, foeCount: Int, showHints: Boolean, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier) {
+private fun MovesColumn(
+    player: List<MonView>, foeCount: Int, showHints: Boolean, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier,
+    /** A menu style's panel: every other move on the stripe. */
+    striped: Boolean = false,
+    /** A heading cell sits over the first move ([HeadedBlock]). */
+    headed: Boolean = false,
+) {
     val single = player.size <= 1
     Column(if (single) modifier else modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(if (single) 0.dp else m.u * 2)) {
         if (player.isEmpty()) GbaText("-", OptionColors.muted, OptionColors.mutedShadow, small)
@@ -427,9 +532,19 @@ private fun MovesColumn(player: List<MonView>, foeCount: Int, showHints: Boolean
             // (A single battle's moves need no heading - the verdicts say whose they are.)
             if (!single) GbaText(tr("{0}'S MOVES", mon.name), OptionColors.value, OptionColors.valueShadow, small)
             if (mon.moves.isEmpty()) GbaText(tr("NO MOVE DATA"), OptionColors.muted, OptionColors.mutedShadow, small)
-            val rowMod = if (single) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth().height(m.u * 56)
-            for (i in 0 until if (single) 4 else mon.moves.size) {
-                BattleMoveRow(mon.moves.getOrNull(i), showHints, foeCount, m, small, rowMod)
+            val rowMod = if (single) cappedRow(m.u).fillMaxWidth() else Modifier.fillMaxWidth().height(m.u * 56)
+            val count = if (single) 4 else mon.moves.size
+            val cells = OptionColors.cells
+            for (i in 0 until count) {
+                if (striped && cells != null) {
+                    // A block of connected move cells (HG's / Black's move boxes), in turns of the two fills.
+                    val short = LocalShortCompanion.current
+                    MoveCell(
+                        mon.moves.getOrNull(i), m, small,
+                        rowMod.cell(if (i % 2 == 0) cells.a else cells.b, cells.line, m.u, top = i == 0 && !headed, bottom = i == count - 1),
+                        oneLine = short,
+                    ) { mv -> if (showHints && foeCount >= 1) MoveVerdict(mv, foeCount, short = foeCount > 1 || short) else MoveKindIcon(mv, m) }
+                } else BattleMoveRow(mon.moves.getOrNull(i), showHints, foeCount, m, small, rowMod)
             }
         }
     }
@@ -484,10 +599,61 @@ internal fun BattleMoveRow(
     }
 }
 
+/**
+ * A move as HG / Black lay it out (a menu style's move cell): its type tag and name on the first line, then [slot] - the
+ * verdict against the foe in battle, its category elsewhere, where the games put the move's place in the 2x2 menu - with
+ * power and PP (left / most) at the right. [modifier] draws the cell. A move out of PP is faded; [forget] tags LEARN's pick.
+ */
+@Composable
+internal fun MoveCell(
+    mv: MoveView?, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier, forget: Boolean = false,
+    /** One line - tag, name, [slot] - where a cell is too short for two (battle INFO on a short companion). */
+    oneLine: Boolean = false,
+    slot: @Composable (MoveView) -> Unit,
+) {
+    val u = m.u
+    if (oneLine) {
+        Row(
+            modifier.alpha(if (mv != null && mv.pp == 0) 0.45f else 1f).padding(horizontal = u * 3),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (mv == null) { GbaText("—", OptionColors.muted, OptionColors.mutedShadow, small); return@Row }
+            TypeBadge(mv.type)
+            Spacer(Modifier.width(u * 3))
+            GbaText(mv.name, OptionColors.label, OptionColors.labelShadow, small, Modifier.weight(1f), maxLines = 1)
+            slot(mv)
+        }
+        return
+    }
+    Column(
+        modifier.alpha(if (mv != null && mv.pp == 0) 0.45f else 1f).padding(horizontal = u * 4, vertical = u * 2),
+        verticalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        if (mv == null) {
+            GbaText("—", OptionColors.muted, OptionColors.mutedShadow, small)
+            return@Column
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TypeBadge(mv.type)
+            Spacer(Modifier.width(u * 4))
+            GbaText(mv.name, OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f, fill = false), maxLines = 1)
+            if (forget) { Spacer(Modifier.width(u * 4)); ForgetTag() }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            slot(mv)
+            Spacer(Modifier.weight(1f))
+            Stat(tr("PWR"), powerLabel(mv.power), small)
+            Spacer(Modifier.width(u * 5))
+            val max = maxOf(com.pokedaisy.app.companion.data.moveStats(mv.id)?.pp ?: 0, mv.pp)
+            Stat(tr("PP"), if (max > 0 && !LocalShortCompanion.current) "${mv.pp}/$max" else "${mv.pp}", small)
+        }
+    }
+}
+
 /** How [mv] fares: one plain-words pill against a single foe, a "NAME 2x"
  * chip per foe in a double battle. Status moves ignore the type chart. */
 @Composable
-private fun MoveVerdict(mv: MoveView, foeCount: Int, short: Boolean = false, threat: Boolean = false) {
+internal fun MoveVerdict(mv: MoveView, foeCount: Int, short: Boolean = false, threat: Boolean = false) {
     // A foe's move against the player: what's good for it is bad news.
     fun color(pct: Int) = if (threat) threatColor(pct) else verdictColor(pct)
     when {
@@ -513,9 +679,7 @@ private fun MoveVerdict(mv: MoveView, foeCount: Int, short: Boolean = false, thr
 
 @Composable
 internal fun VerdictPill(text: String, color: Color) {
-    Box(Modifier.clip(PixelCornerShape(3.dp)).background(color).padding(horizontal = 6.dp, vertical = 3.dp)) {
-        Text(text, color = Color.White, fontSize = 12.sp, fontFamily = pixelFontFamily(), maxLines = 1, softWrap = false)
-    }
+    GameTag(text, color)
 }
 
 /** Darker than [AppColors.multiplierColor]'s bar colors, so white text reads on them. */
@@ -570,6 +734,8 @@ private fun FoeDetailsColumn(
     opponent: List<MonView>, playerCount: Int, showHints: Boolean, matchups: Boolean, dexTables: PokedexTables?,
     m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier,
     expanded: Boolean = false, bottomRoom: androidx.compose.ui.unit.Dp = 0.dp,
+    /** In a menu style's panel: its band names a single foe, groups sit on stripes, sub-heads over the rest. */
+    styled: Boolean = false,
 ) {
     // A new foe starts at the top.
     val scroll = key(opponent.map { it.species to it.level }) { rememberScrollState() }
@@ -584,6 +750,43 @@ private fun FoeDetailsColumn(
                     tr("RESISTS") to foe.resistances.sortedBy { it.pct },
                     tr("IMMUNE TO") to foe.immunities,
                 ).filter { it.second.isNotEmpty() }
+                if (expanded && styled) {
+                    val c = OptionColors.foeCells!!
+                    val u = m.u
+                    // (No STATS block while nothing about the foe beyond its types has been read.)
+                    if (hasFoeFacts(foe, dexTables)) Column {
+                        HeadCell(if (opponent.size > 1) foe.name else tr("STATS"), c, small)
+                        Box(Modifier.fillMaxWidth().cell(c.a, c.line, u, top = false, bottom = true).padding(horizontal = u * 4, vertical = u * 3)) {
+                            FoeFacts(foe, dexTables, m, small, wide = true)
+                        }
+                    }
+                    Column {
+                        HeadCell(tr("{0}'S MOVES", foe.name), c, small)
+                        if (foe.moves.isEmpty()) Box(Modifier.fillMaxWidth().cell(c.a, c.line, u, top = false, bottom = true).padding(u * 4)) {
+                            GbaText(tr("NO MOVE DATA"), OptionColors.muted, OptionColors.mutedShadow, small)
+                        }
+                        val rows = foe.moves.chunked(2)
+                        rows.forEachIndexed { r, pair ->
+                            val fill = if (r % 2 == 0) c.a else c.b
+                            Row(Modifier.fillMaxWidth().height(moveRow)) {
+                                for (j in 0 until 2) MoveCell(pair.getOrNull(j), m, small,
+                                    Modifier.weight(1f).fillMaxHeight().cell(fill, c.line, u, top = false, bottom = r == rows.lastIndex, left = j == 0, right = j == 1)) { v ->
+                                    if (showHints) MoveVerdict(v, playerCount, short = true, threat = true) else MoveKindIcon(v, m)
+                                }
+                            }
+                        }
+                    }
+                    if (matchups && groups.isNotEmpty()) Column {
+                        HeadCell(tr("{0} IS", foe.name), c, small)
+                        groups.forEachIndexed { g, (label, list) ->
+                            Box(Modifier.fillMaxWidth().cell(if (g % 2 == 0) c.a else c.b, c.line, u, top = false, bottom = g == groups.lastIndex)
+                                .padding(horizontal = u * 4, vertical = u * 3)) {
+                                MatchupGroup(label, list, small, inline = true)
+                            }
+                        }
+                    }
+                    return@forEachIndexed
+                }
                 if (expanded) {
                     if (opponent.size > 1) GbaText(foe.name, OptionColors.value, OptionColors.valueShadow, small)
                     FoeFacts(foe, dexTables, m, small, wide = true)
@@ -597,6 +800,39 @@ private fun FoeDetailsColumn(
                     if (matchups && groups.isNotEmpty()) {
                         Separator(m, Modifier.fillMaxWidth())
                         groups.forEach { (label, list) -> MatchupGroup(label, list, small, inline = true) }
+                    }
+                    return@forEachIndexed
+                }
+                if (styled) {
+                    val c = OptionColors.foeCells!!
+                    val u = m.u
+                    // Blocks of connected cells, each under a heading cell: what it's weak to, its stats, its moves.
+                    if (matchups) Column {
+                        HeadCell(tr("{0} IS", foe.name), c, small)
+                        if (groups.isEmpty()) Box(Modifier.fillMaxWidth().cell(c.a, c.line, u, top = false, bottom = true).padding(u * 4)) {
+                            GbaText(tr("NO MATCHUP DATA"), OptionColors.muted, OptionColors.mutedShadow, small)
+                        }
+                        groups.forEachIndexed { g, (label, list) ->
+                            Box(Modifier.fillMaxWidth().cell(if (g % 2 == 0) c.a else c.b, c.line, u, top = false, bottom = g == groups.lastIndex)
+                                .padding(horizontal = u * 4, vertical = u * 3)) {
+                                MatchupGroup(label, list, small)
+                            }
+                        }
+                    }
+                    if (hasFoeFacts(foe, dexTables)) Column {
+                        HeadCell(tr("STATS"), c, small)
+                        Box(Modifier.fillMaxWidth().cell(c.a, c.line, u, top = false, bottom = true).padding(horizontal = u * 4, vertical = u * 3)) {
+                            FoeFacts(foe, dexTables, m, small, wide = false)
+                        }
+                    }
+                    if (foe.moves.isNotEmpty()) Column {
+                        HeadCell(tr("{0}'S MOVES", foe.name), c, small)
+                        foe.moves.forEachIndexed { k, mv ->
+                            MoveCell(mv, m, small, Modifier.fillMaxWidth().height(moveRow)
+                                .cell(if (k % 2 == 0) c.a else c.b, c.line, u, top = false, bottom = k == foe.moves.lastIndex)) { v ->
+                                if (showHints) MoveVerdict(v, playerCount, short = playerCount > 1, threat = true) else MoveKindIcon(v, m)
+                            }
+                        }
                     }
                     return@forEachIndexed
                 }
@@ -618,7 +854,8 @@ private fun FoeDetailsColumn(
         if (scroll.canScrollForward) {
             Box(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(m.u * 12)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, OptionColors.titleFill))),
+                    .background(Brush.verticalGradient(listOf(Color.Transparent,
+                        if (styled) OptionColors.listFill else OptionColors.titleFill))),
             )
         }
     }
@@ -717,3 +954,6 @@ internal fun FoeSlot(mon: MonView, shown: Boolean, current: Boolean, small: GbaT
         }
     }
 }
+
+/** INFO's moves under their heading: a verdict pill on the second line needs a little more than the summary's rows. */
+internal const val INFO_MOVES_BODY_MIN = 4 * 44

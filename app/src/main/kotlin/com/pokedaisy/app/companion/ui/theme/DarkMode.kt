@@ -50,8 +50,9 @@ interface ThemeStore {
     var themeBeforeSeasonal: Int
     /** A [DarkModeSetting.ordinal]. */
     var darkMode: Int
+    /** An [AppFont.ordinal]; a store that keeps none has the default. */
     var appFont: Int
-        get() = 0
+        get() = AppFont.DEFAULT.ordinal
         set(value) {}
 
     companion object {

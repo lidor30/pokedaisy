@@ -117,6 +117,26 @@ private val BATTLE_THIN = Color(0xFFC3E3D3)
 private val BATTLE_PEACH = Color(0xFFF3D3B2)
 private val BATTLE_BANDS = listOf(16 to Color(0xFFAAAA9A), 2 to Color(0xFFB2C3A2), 2 to Color(0xFFBADBB2))
 
+/** The battle backdrop's colours: HeartGold's, or a menu style's own - its section colour washed towards white for the
+ * field, the bands and the ball's rings, its cursor colour for the ball's top half (Unbound's gold, mint's pink). */
+private class BattleTones(val base: Color, val ring: Color, val thin: Color, val top: Color, val bands: List<Pair<Int, Color>>,
+                          val place: List<Color>)
+
+private val HG_TONES = BattleTones(BATTLE_MINT, BATTLE_RING, BATTLE_THIN, BATTLE_PEACH, BATTLE_BANDS,
+    listOf(Color(0xFFBADFD7), Color(0xFFFFFFFF), Color(0xFFD3F3F7), Color(0xFFDFFFFF)))
+
+private fun battleTones(): BattleTones {
+    val style = OptionColors.style ?: return HG_TONES
+    val c = OptionColors.tint(style.sectionFill)
+    fun w(k: Float) = androidx.compose.ui.graphics.lerp(c, Color.White, k)
+    return BattleTones(
+        base = w(0.84f), ring = w(0.62f), thin = w(0.72f),
+        top = androidx.compose.ui.graphics.lerp(OptionColors.tint(style.selected), c, 0.15f),
+        bands = listOf(16 to w(0.38f), 2 to w(0.52f), 2 to w(0.66f)),
+        place = listOf(w(0.6f), Color.White, w(0.76f), w(0.86f)),
+    )
+}
+
 /**
  * The BATTLE tab's background, in the DS battle screens' manner (colours and proportions sampled from HeartGold's, drawn
  * here, no game art): pale mint between grey bands, a big faint Poké Ball in the middle. In whole DS-sized pixels.
@@ -125,11 +145,12 @@ private val BATTLE_BANDS = listOf(16 to Color(0xFFAAAA9A), 2 to Color(0xFFB2C3A2
 fun BattleBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
     val scrim = OptionColors.backdropScrim
     val wash = com.pokedaisy.app.companion.ui.theme.AppColors.theme.gameWash
+    val t = battleTones()
     Canvas(modifier) {
         val k = kotlin.math.floor(size.height / DS_ROWS).coerceAtLeast(1f)
-        drawRect(BATTLE_MINT)
+        drawRect(t.base)
         var edge = 0f
-        for ((rows, color) in BATTLE_BANDS) {
+        for ((rows, color) in t.bands) {
             val h = rows * k
             drawRect(color, Offset(0f, edge), Size(size.width, h))
             drawRect(color, Offset(0f, size.height - edge - h), Size(size.width, h))
@@ -142,12 +163,12 @@ fun BattleBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
         }
         fun half(r: Int, dy: Int) = if (dy * dy >= r * r) 0 else kotlin.math.sqrt((r * r - dy * dy).toFloat()).toInt()
         for (dy in -BALL_R..BALL_R) {
-            row(dy, half(BALL_R, dy), BATTLE_RING)
-            row(dy, half(BALL_R - 5, dy), if (dy < -BALL_BAND) BATTLE_PEACH else if (dy > BALL_BAND) BATTLE_MINT else BATTLE_RING)
-            row(dy, half(20, dy), BATTLE_RING)
-            row(dy, half(15, dy), BATTLE_MINT)
-            row(dy, half(10, dy), BATTLE_THIN)
-            row(dy, half(8, dy), BATTLE_MINT)
+            row(dy, half(BALL_R, dy), t.ring)
+            row(dy, half(BALL_R - 5, dy), if (dy < -BALL_BAND) t.top else if (dy > BALL_BAND) t.base else t.ring)
+            row(dy, half(20, dy), t.ring)
+            row(dy, half(15, dy), t.base)
+            row(dy, half(10, dy), t.thin)
+            row(dy, half(8, dy), t.base)
         }
         wash?.let { drawRect(it, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
         if (scrim > 0f) drawRect(NIGHT.copy(alpha = scrim))
@@ -160,11 +181,12 @@ fun BattlePlaceholder(modifier: Modifier = Modifier) {
     val scrim = OptionColors.backdropScrim
     fun night(c: Color) = androidx.compose.ui.graphics.lerp(c, NIGHT, scrim)
     val shape = PixelRoundedShape(5.dp)
+    val p = battleTones().place
     Box(
-        modifier.background(night(Color(0xFFBADFD7)), shape).padding(3.dp)
-            .background(night(Color(0xFFFFFFFF)), shape).padding(1.5.dp)
-            .background(night(Color(0xFFD3F3F7)), shape).padding(1.5.dp)
-            .background(night(Color(0xFFDFFFFF)), shape),
+        modifier.background(night(p[0]), shape).padding(3.dp)
+            .background(night(p[1]), shape).padding(1.5.dp)
+            .background(night(p[2]), shape).padding(1.5.dp)
+            .background(night(p[3]), shape),
     )
 }
 

@@ -147,13 +147,13 @@ fun CompanionSettingsScreen(
             } else if (!(statusBarShown && page == Page.HOME)) {
                 // A sub-page's arrow (and BACK, through it) returns to the options.
                 val titleM = rememberGbaTextMetrics()
-                OptionTitleWindow(page.title, titleM, trailing = trailing, onBack = if (page != Page.HOME) ({ if (page != Page.HELP || !ui.docs.back()) page = page.parent }) else null) {
+                OptionTitleWindow(page.title, titleM, trailing = trailing, joined = true, onBack = if (page != Page.HOME) ({ if (page != Page.HELP || !ui.docs.back()) page = page.parent }) else null) {
                     if (!statusBarShown && !application) {
                         Spacer(Modifier.width(titleM.u * 8))
                         BatteryIndicator(titleM)
                     }
                 }
-                Spacer(Modifier.height(m.u * 4))
+                WindowGap(m)
             }
             // While a row waits for keys: what to press (the game's screen asks for them too), CLEAR / CANCEL for a touch.
             if (capture != null && capturing != null && (page == Page.BUTTONS || page == Page.HOTKEYS)) {
@@ -980,8 +980,8 @@ private fun homeRows(
         },
         // The app's text: the pixel font or a smooth one, both screens at once.
         com.pokedaisy.app.companion.ui.theme.AppFonts.current.let { now ->
-            SettingRow(tk("FONT"), now.label, subtitle = "Pixel letters or smooth ones", labelBadge = NewFeatures.badge(NewFeatures.APP_FONT)) {
-                select(Selector(tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFont.entries.map { it.label }, now.label) { l ->
+            SettingRow(tk("FONT"), now.label, subtitle = "Pixel letters or smooth ones", labelBadge = NewFeatures.badge(NewFeatures.PIXEL_SMALL)) {
+                select(Selector(tk("FONT"), com.pokedaisy.app.companion.ui.theme.AppFont.menu.map { it.label }, now.label) { l ->
                     com.pokedaisy.app.companion.ui.theme.AppFont.entries.firstOrNull { it.label == l }?.let {
                         com.pokedaisy.app.companion.ui.theme.AppFonts.setting = it
                         s.setAppFont(it.ordinal)

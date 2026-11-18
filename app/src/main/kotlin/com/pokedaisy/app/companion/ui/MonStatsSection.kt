@@ -278,7 +278,7 @@ private fun StatsColumn(side: String, mons: List<MonView>, m: GbaTextMetrics, sm
             if (i > 0) Separator(m, Modifier.fillMaxWidth())
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(u * 22).clip(PixelRoundedShape(u * 4)).background(optionLook.listFill),
+                    Modifier.size(u * 22).clip(PixelRoundedShape(u * 4)).background(if (optionLook === OptionLook.Live) OptionColors.well else optionLook.listFill),
                     contentAlignment = Alignment.Center,
                 ) { SpeciesIcon(mon.iconAsset, size = u * 18) }
                 Spacer(Modifier.width(u * 4))

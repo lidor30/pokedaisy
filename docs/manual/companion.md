@@ -6,7 +6,7 @@ order: 1
 keywords: [bottom screen, second screen, tabs, tab bar, overview, back button, click, sound, language, translation, close, restart, reset, gear, more, apps, hidden tabs, extra tabs, grid, player look, hero, heroine, protagonist, character, outfit, costume, skin, sprite, play as, sprite pack, sprites, sprite pack file, sprite zip, makeover pack, fly on, balloon, hot air balloon, helicopter, zeppelin, airship, blimp, vehicle, ride, tips, hints, feature tips, popup]
 ---
 
-The companion is everything on the bottom screen while a game runs. It reads your game as you play, so your party, bag, location and battles are always up to date without opening a single menu on the top screen. It's drawn in the game's own menu style: FireRed's party screen in FireRed, Emerald's in Emerald, and each supported hack's own look where it has one.
+The companion is everything on the bottom screen while a game runs. It reads your game as you play, so your party, bag, location and battles are always up to date without opening a single menu on the top screen. Its party and bag screens are drawn in the game's own style: FireRed's party screen in FireRed, Emerald's in Emerald, and each supported hack's own look where it has one. Everything else takes its look from the Gen 3 summary pages: a teal title strip on a mint window, green section bands, keys for tabs and buttons (the open tab sits pressed in), and facts set out in ruled boxes. In Unbound the same menus wear Unbound's own purple and gold.
 
 You don't have to do anything to start it. Open a supported game and the companion fills in once the game has loaded. On a device with only one screen it lives in a panel beside the game instead (see [Devices](devices.md)).
 

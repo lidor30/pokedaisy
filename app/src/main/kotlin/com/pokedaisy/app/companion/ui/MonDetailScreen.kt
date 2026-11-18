@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -157,6 +158,8 @@ fun MonDetailScreen(
     LaunchedEffect(party, evolves != null) { evolves?.tradeEvolveTargets { tradeTargets = it } }
     val evoTarget = party.getOrNull(index)?.takeIf { !it.isEgg }?.let { tradeTargets[it.personality] }
     var evolveAsk by remember { mutableStateOf(initialEvolveAsk) }
+    // A tapped move's own page (its slot, 0..3), in the summary's window; null = the summary.
+    var openMove by remember { mutableStateOf<Int?>(null) }
     var evolveResult by remember { mutableStateOf<String?>(null) }
     // The POKéMON CENTER (PokemonCenter.kt): its list, then FORGET's moves and its question.
     val center = itemUse?.takeIf { partyOrder }?.center()
@@ -219,8 +222,13 @@ fun MonDetailScreen(
             if (mon != null) {
                 // One white window, split by separators: info over matchups
                 // on the left, the moves on the right.
-                OptionListWindow(m, Modifier.fillMaxSize(), fill = optionLook.titleFill) {
-                    Row(Modifier.fillMaxSize()) {
+                // A menu style: the window round blocks of cells with their own borders (the moves), a little more room
+                // inside its frame; the parts that aren't cells sit on the window as before.
+                val cells = OptionColors.cells?.takeIf { optionLook === OptionLook.Live }
+                OptionListWindow(m, Modifier.fillMaxSize(), fill = optionLook.titleFill, margin = if (cells != null) CELL_MARGIN else 0) {
+                    val moveOpen = openMove?.takeIf { !showLearn && mon.moves.getOrNull(it) != null }
+                    if (moveOpen != null) MoveDetailPage(mon, moveOpen, { openMove = it }, m, small)
+                    else Row(Modifier.fillMaxSize()) {
                         if (showLearn && canLearn) {
                             val options = rememberLearnOptions(learn!!, mon)
                             val pick = options?.firstOrNull { it.move == learnPick }
@@ -231,22 +239,30 @@ fun MonDetailScreen(
                                 Modifier.weight(0.5f).fillMaxHeight().padding(start = gap))
                         } else {
                             val heldItem = heldOf(i)
-                            SummaryLeftColumn(
-                                mon, m, small, gap, Modifier.weight(0.5f).fillMaxHeight().padding(end = gap),
-                                held = heldItem?.let { t ->
-                                    {
-                                        HeldItemLine(t.heldItem, small, onTake = if (t.verdict == com.pokedaisy.app.companion.data.SlotVerdict.OK) {
-                                            { takeResult = null; takeAsk = true }
-                                        } else null, bagFull = t.verdict == com.pokedaisy.app.companion.data.SlotVerdict.BAG_FULL)
-                                    }
-                                },
-                            )
-                            Separator(m, Modifier.fillMaxHeight(), vertical = true)
-                            val right = Modifier.weight(0.5f).fillMaxHeight().padding(start = gap)
+                            val held: (@Composable () -> Unit)? = heldItem?.let { t ->
+                                {
+                                    HeldItemLine(t.heldItem, small, onTake = if (t.verdict == com.pokedaisy.app.companion.data.SlotVerdict.OK) {
+                                        { takeResult = null; takeAsk = true }
+                                    } else null, bagFull = t.verdict == com.pokedaisy.app.companion.data.SlotVerdict.BAG_FULL)
+                                }
+                            }
+                            val u = m.u
+                            if (cells != null) {
+                                // A menu style: INFO and the moves / STATS each a block under a heading, where there's room.
+                                HeadedBlock(tr("INFO"), small, Modifier.weight(0.5f).fillMaxHeight().padding(end = gap), minBody = u * SUMMARY_INFO_MIN) { headed ->
+                                    SummaryLeftColumn(mon, m, small, gap, Modifier.fillMaxWidth().weight(1f).headedBody(headed, u), held = held)
+                                }
+                            } else {
+                                SummaryLeftColumn(mon, m, small, gap, Modifier.weight(0.5f).fillMaxHeight().padding(end = gap), held = held)
+                                Separator(m, Modifier.fillMaxHeight(), vertical = true)
+                            }
+                            val side = Modifier.weight(0.5f).fillMaxHeight().padding(start = gap)
                             val stats = mon.stats
                             if (showStats && stats != null) {
-                                MonStatsSection(stats, m, right, ability = individualAbility(mon, stats, dexTables))
-                            } else MovesSection(mon, m, small, right)
+                                if (cells != null) HeadedBlock(tr("STATS"), small, side, minBody = u * SUMMARY_STATS_MIN) { headed ->
+                                    MonStatsSection(stats, m, Modifier.fillMaxWidth().weight(1f).headedBody(headed, u), ability = individualAbility(mon, stats, dexTables))
+                                } else MonStatsSection(stats, m, side, ability = individualAbility(mon, stats, dexTables))
+                            } else MovesSection(mon, m, small, side, onMoveClick = { openMove = it })
                         }
                     }
                 }
@@ -254,6 +270,8 @@ fun MonDetailScreen(
         }
 
         CompanionBackHandler(onBack = onBack)
+        // BACK on a move's page goes back to the summary (newer than the summary's own, so it wins).
+        if (openMove != null) CompanionBackHandler { openMove = null }
         // No up / down arrows (STATS needed the room): the column's slots pick the Pokémon.
         val stats = party.getOrNull(index)?.stats != null && !showLearn
         val learns = canLearn && party.getOrNull(index)?.isEgg == false
@@ -638,7 +656,7 @@ internal fun InfoSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics,
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // The 32px icon at a whole multiple of the frame's GBA pixel, so it stays crisp.
                 // A shiny one: in a gold frame, as on battle INFO.
-                Box(Modifier.monIconBox(u * 36, u, mon.shiny, optionLook.listFill), contentAlignment = Alignment.Center) {
+                Box(Modifier.monIconBox(u * 36, u, mon.shiny, if (optionLook === OptionLook.Live) OptionColors.well else optionLook.listFill), contentAlignment = Alignment.Center) {
                     SpeciesIcon(mon.iconAsset, size = u * 32)
                 }
                 Spacer(Modifier.width(u * 5))
@@ -780,12 +798,33 @@ internal fun MatchupGroup(heading: String, list: List<TypeMatchup>, small: GbaTe
 
 /** The four moves, sharing out the column's height, separated by rules. */
 @Composable
-private fun MovesSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier = Modifier, forget: Int = 0) {
+private fun MovesSection(
+    mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier = Modifier, forget: Int = 0,
+    /** A tap on a move opens its page ([MoveDetailPage]); null = the rows aren't buttons (LEARN's side). */
+    onMoveClick: ((Int) -> Unit)? = null,
+) {
+    val cells = OptionColors.cells?.takeIf { optionLook === OptionLook.Live }
+    if (cells != null) {
+        // A menu style: the four moves a block of connected cells, as HG / Black draw them, under MOVES where there's room.
+        HeadedBlock(tr("MOVES"), small, modifier, minBody = m.u * MOVES_BODY_MIN) { headed ->
+            for (i in 0 until 4) {
+                val mv = mon.moves.getOrNull(i)
+                val tap = if (mv != null && onMoveClick != null) Modifier.testTag("move-$i").soundClickable { onMoveClick(i) } else Modifier
+                MoveCell(
+                    mv, m, small,
+                    cappedRow(m.u).fillMaxWidth().cell(if (i % 2 == 0) cells.a else cells.b, cells.line, m.u, top = i == 0 && !headed, bottom = i == 3).then(tap),
+                    forget = forget != 0 && mv?.id == forget,
+                ) { v -> if (v.vs.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { v.vs.forEach { MultiplierChip(it.label, it.pct) } } else MoveKindIcon(v, m) }
+            }
+        }
+        return
+    }
     Column(modifier) {
         for (i in 0 until 4) {
             if (i > 0) Separator(m, Modifier.fillMaxWidth())
             val mv = mon.moves.getOrNull(i)
-            MoveRow(mv, m, small, Modifier.weight(1f).fillMaxWidth(), forget = forget != 0 && mv?.id == forget)
+            val tap = if (mv != null && onMoveClick != null) Modifier.testTag("move-$i").soundClickable { onMoveClick(i) } else Modifier
+            MoveRow(mv, m, small, cappedRow(m.u).fillMaxWidth().then(tap), forget = forget != 0 && mv?.id == forget)
         }
     }
 }
@@ -890,11 +929,18 @@ internal fun SummaryFrame(
     buttons: @Composable RowScope.() -> Unit = {},
     /** Fills the space between [buttons] and Back (e.g. a strip of icons). */
     middle: (@Composable () -> Unit)? = null,
+    /** The content is blocks of cells ([cell]): under a menu style a little more room round them inside the frame. */
+    cells: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     if (onBack != null) CompanionBackHandler(onBack = onBack)
-    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OptionListWindow(m, Modifier.weight(1f).fillMaxWidth(), fill = optionLook.titleFill) { content() }
+    // A menu style's windows sit closer to the buttons under them.
+    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(if (OptionColors.joined) 4.dp else 8.dp)) {
+        // A MENU STYLE fills it with its own window (its paper, its lines); the HUD's GLASS keeps its own.
+        val look = optionLook
+        val fill = if (look === OptionLook.Live && OptionColors.style != null) OptionColors.listFill else look.titleFill
+        OptionListWindow(m, Modifier.weight(1f).fillMaxWidth(), fill = fill,
+            margin = if (cells && look === OptionLook.Live && OptionColors.cells != null) CELL_MARGIN else 0) { content() }
         Row(
             Modifier.fillMaxWidth().height(NavButtonSize),
             verticalAlignment = Alignment.CenterVertically,
@@ -907,3 +953,12 @@ internal fun SummaryFrame(
         }
     }
 }
+
+/** GBA pixels more room inside a window round blocks of cells (they have borders of their own). */
+internal const val CELL_MARGIN = 2
+
+/** What a summary block needs under its heading for the heading to show, in GBA pixels: the four moves at a readable
+ * height, the INFO side's name / level / HP and a line of matchups, the STATS table. */
+internal const val MOVES_BODY_MIN = 4 * 36
+internal const val SUMMARY_INFO_MIN = 150
+internal const val SUMMARY_STATS_MIN = 130

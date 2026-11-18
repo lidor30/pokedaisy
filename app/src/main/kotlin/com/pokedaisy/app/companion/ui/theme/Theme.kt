@@ -370,8 +370,8 @@ fun pixelFontFamily(): FontFamily {
     if (!font.pixel) return remember(font) { font.family() }
     com.pokedaisy.app.companion.ui.CompanionSkins.current.font?.let { return it }
     LocalGameFont.current?.let { return it }
-    // Pixel Operator + its Japanese fallback (PixelTypeface.kt), one per process.
-    return FontSource.get().pixel()
+    // Pixel Operator (or PIXEL SMALL over it) + its Japanese / Korean fallbacks (PixelTypeface.kt), one per process.
+    return if (font == AppFont.PIXEL_SMALL) FontSource.get().pixelSmall() else FontSource.get().pixel()
 }
 
 /**

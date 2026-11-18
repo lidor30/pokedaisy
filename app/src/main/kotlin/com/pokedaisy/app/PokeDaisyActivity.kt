@@ -2279,6 +2279,7 @@ class PokeDaisyActivity : Activity() {
         }
 
         override fun setDarkMode(v: Int) { Prefs(this@PokeDaisyActivity).darkMode = v }
+        override fun setAppFont(v: Int) { Prefs(this@PokeDaisyActivity).appFont = v }
         override fun setAppTheme(id: Int) {
             com.pokedaisy.app.companion.ui.theme.pickTheme(com.pokedaisy.app.companion.ui.theme.themeById(id))
         }

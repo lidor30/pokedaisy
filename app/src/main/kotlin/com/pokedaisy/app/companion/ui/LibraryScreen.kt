@@ -141,11 +141,11 @@ fun LibraryRomRow(
                     }
                     if (isNew) {
                         Spacer(Modifier.width(m.u * 4))
-                        OptionBadge(tk("NEW"), m, fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow)
+                        OptionBadge(tk("NEW"), m, fill = OptionColors.newBadge)
                     }
                     if (game.support == LibrarySupport.BLOCKED) {
                         Spacer(Modifier.width(m.u * 4))
-                        OptionBadge(tk("BLOCKED"), m, fill = LibraryBadgeColors.blocked, shadow = LibraryBadgeColors.blockedShadow)
+                        OptionBadge(tk("BLOCKED"), m, fill = LibraryBadgeColors.blocked)
                     } else if (game.support == LibrarySupport.UNSUPPORTED) {
                         Spacer(Modifier.width(m.u * 4))
                         OptionBadge(tk("NOT SUPPORTED"), m)
@@ -186,8 +186,26 @@ fun LibraryRomTile(
             cursor = cursor,
             onClick = onClick,
         ) {
+            val support = when (game.support) {
+                LibrarySupport.BLOCKED -> tk("BLOCKED") to LibraryBadgeColors.blocked
+                LibrarySupport.UNSUPPORTED -> tk("NOT SUPPORTED") to OptionColors.value
+                LibrarySupport.PARTIAL -> tk("PARTIALLY SUPPORTED") to OptionColors.muted
+                else -> null
+            }
             Column {
-                cover(Modifier.fillMaxWidth())
+                // The tags sit on the cover's top-left corner, inside its frame, so they take no line of their own.
+                Box {
+                    cover(Modifier.fillMaxWidth())
+                    if (isNew || support != null) {
+                        Column(
+                            Modifier.align(Alignment.TopStart).padding(m.u * 3),
+                            verticalArrangement = Arrangement.spacedBy(m.u * 2),
+                        ) {
+                            if (isNew) OptionBadge(tk("NEW"), m, fill = OptionColors.newBadge)
+                            support?.let { (label, fill) -> OptionBadge(label, m, fill = fill) }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(m.u * 3))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GbaText(display, OptionColors.label, OptionColors.labelShadow, small, Modifier.weight(1f))
@@ -201,21 +219,6 @@ fun LibraryRomTile(
                             LibraryIcons.Save, contentDescription = tr("Save file exists"),
                             tint = OptionColors.label, modifier = Modifier.size(small.lineHeight),
                         )
-                    }
-                }
-                val support = when (game.support) {
-                    LibrarySupport.BLOCKED -> tk("BLOCKED") to LibraryBadgeColors.blocked
-                    LibrarySupport.UNSUPPORTED -> tk("NOT SUPPORTED") to OptionColors.value
-                    LibrarySupport.PARTIAL -> tk("PARTIALLY SUPPORTED") to OptionColors.muted
-                    else -> null
-                }
-                if (isNew || support != null) {
-                    Spacer(Modifier.height(m.u * 2))
-                    Row(horizontalArrangement = Arrangement.spacedBy(m.u * 2)) {
-                        if (isNew) OptionBadge(tk("NEW"), m, fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow)
-                        support?.let { (label, fill) ->
-                            OptionBadge(label, m, fill = fill, shadow = if (fill == LibraryBadgeColors.blocked) LibraryBadgeColors.blockedShadow else OptionColors.valueShadow.copy(alpha = 0.6f))
-                        }
                     }
                 }
             }

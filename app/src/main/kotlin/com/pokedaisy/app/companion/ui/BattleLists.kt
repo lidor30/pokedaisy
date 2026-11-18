@@ -134,8 +134,9 @@ private fun MoveListRow(
 /** A small white-on-[color] tag in the HUD's pixel units (a type, a verdict). */
 @Composable
 private fun ListPill(text: String, color: Color, m: GbaTextMetrics) {
-    Box(Modifier.background(color, PixelRoundedShape(m.u * 2)).padding(horizontal = m.u * 2)) {
-        GbaText(text, Color.White, Color.Transparent, m)
+    // The games' tag look (GameTag): notched corners, the #424242 shadow.
+    Box(Modifier.background(color, NotchedShape(m.u)).padding(horizontal = m.u * 2)) {
+        GbaText(text, Color.White, TAG_SHADOW, m)
     }
 }
 
