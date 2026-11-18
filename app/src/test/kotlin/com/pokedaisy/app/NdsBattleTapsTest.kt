@@ -3,6 +3,7 @@ package com.pokedaisy.app
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_BUSY
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
+import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -87,5 +88,41 @@ class NdsBattleTapsTest {
         taps.onState(BATTLE_INPUT_MOVE_SELECT)
         run(10)
         assertEquals(listOf(128 to 90, 64 to 42), presses())
+    }
+
+    @Test
+    fun aSwitchIsPokemonThenThePanelOnceTheScreenTakesTouchesThenShift() {
+        taps.onState(BATTLE_INPUT_ACTION_SELECT)
+        taps.switchTo(3)
+        run(20)
+        assertEquals(listOf(215 to 170), presses())
+        // The party screen reported up: its panels wait out its fade (60 frames) before the panel, then SHIFT.
+        taps.onState(BATTLE_INPUT_PARTY_OPEN)
+        run(55)
+        assertEquals(listOf(215 to 170), presses())
+        run(30)
+        assertEquals(listOf(215 to 170, 192 to 71, 128 to 80), presses())
+        // The battle went on: no second try.
+        taps.onState(BATTLE_INPUT_BUSY)
+        run(100)
+        assertEquals(3, presses().size)
+        assertFalse(taps.busy)
+    }
+
+    @Test
+    fun aSwitchTheScreenDroppedIsTriedOnceMore() {
+        taps.onState(BATTLE_INPUT_PARTY_OPEN)   // the player opened the party screen in the game: just the panel and SHIFT
+        taps.switchTo(1)
+        run(200)
+        assertEquals(listOf(192 to 23, 128 to 80, 192 to 23, 128 to 80), presses())
+        assertFalse(taps.busy)
+    }
+
+    @Test
+    fun blackAndWhiteHaveNoSwitchYet() {
+        taps.layout = NdsBattleTaps.layoutFor("IRBO")
+        taps.onState(BATTLE_INPUT_ACTION_SELECT)
+        taps.switchTo(2)
+        assertFalse(taps.busy)
     }
 }

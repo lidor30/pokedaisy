@@ -97,8 +97,28 @@ class NuzlockeFixturesTest {
     fun theGamesItFollows() {
         val n = com.pokedaisy.app.companion.Nuzlocke
         assertTrue(n.supports(GameKind.FIRERED) && n.supports(GameKind.EMERALD) && n.supports(GameKind.UNBOUND))
-        // A roguelike walks the same areas every run; the Game Boy and DS readers don't tell wild from trainer yet.
-        assertFalse(n.supports(GameKind.EMERALD_ROGUE))
-        assertFalse(n.supports(GameKind.YELLOW) || n.supports(GameKind.CRYSTAL) || n.supports(GameKind.PLATINUM) || n.supports(null))
+        // A roguelike walks the same areas every run.
+        assertFalse(n.supports(GameKind.EMERALD_ROGUE) || n.supports(null))
+        // The Game Boy and DS readers tell wild from trainer since 2026-11-18.
+        assertTrue(n.supports(GameKind.YELLOW) && n.supports(GameKind.CRYSTAL) && n.supports(GameKind.PLATINUM) && n.supports(GameKind.BLACK))
+    }
+
+    /** The Game Boy's party id (species, trainer ID, DVs) loses its species in the run: an evolved Pokémon is the same one. */
+    @Test
+    fun gameBoyIdsSurviveEvolving() {
+        assertEquals(nuzlockeId(gbMonKey(64, 0x1234, 0xABCD)), nuzlockeId(gbMonKey(65, 0x1234, 0xABCD)))
+        assertEquals(0xFEDCBA98L, nuzlockeId(0xFEDCBA98L))   // a GBA / DS personality as it is
+    }
+
+    /** A Game Boy and a DS battle read as the tracker sees them: wild, the foe, the party's ids. */
+    @Test
+    fun gameBoyAndDsBattles() {
+        activeGame = GameKind.GOLD
+        val gold = NuzlockeSample.of(buildSnapshotView(readGen2Telemetry(FixtureMemoryReader.load("gold_battle"), GEN2_GOLD)))
+        assertEquals(true to false, gold.inBattle to gold.trainer)
+        assertEquals(16, gold.foeSpecies)   // PIDGEY
+        assertTrue(gold.party.all { it.personality <= 0xFFFFFFFFL })
+        val trainer = NuzlockeSample.of(buildSnapshotView(readGen2Telemetry(FixtureMemoryReader.load("gold_trainer"), GEN2_GOLD)))
+        assertEquals(true, trainer.trainer)
     }
 }

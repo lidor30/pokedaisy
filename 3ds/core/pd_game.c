@@ -511,6 +511,8 @@ static const struct known_rom KNOWN_ROMS[] = {
      PD_GUIDE_UNBOUND},
     {"0ce2a880aa097f1dce4e1db8ee513d0e82d15859", &PD_CONFIG_UNBOUND_FR, PD_GAME_FIRERED, "Pokémon Unbound",
      PD_GUIDE_UNBOUND},
+    {"8114e0f81eb3581f699c74a5891c7b75a130269d", &PD_CONFIG_UNBOUND_IT, PD_GAME_FIRERED, "Pokémon Unbound",
+     PD_GUIDE_UNBOUND},
     {"1d20091c4d936f5eb122db8780554dd0829ffb63", &PD_CONFIG_IMPERIUM, PD_GAME_EMERALD, "Pokémon Emerald Imperium",
      PD_GUIDE_IMPERIUM},
     {"3fa8e61ec1727cc51540c54677623f736a446e1b", &PD_CONFIG_TMT2, PD_GAME_EMERALD, "Pokémon Too Many Types 2",

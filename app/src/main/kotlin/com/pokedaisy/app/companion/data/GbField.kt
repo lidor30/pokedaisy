@@ -77,6 +77,8 @@ sealed class GbField {
             game == GameKind.CRYSTAL && activeGen2 === GEN2_CRYSTAL -> Crystal
             game == GameKind.CRYSTAL && activeGen2 === GEN2_CRYSTAL_DE -> CrystalDe
             game == GameKind.CRYSTAL_LEGACY -> CrystalLegacy
+            game == GameKind.GOLD && activeGen2 === GEN2_GOLD -> Gold
+            game == GameKind.SILVER && activeGen2 === GEN2_SILVER -> Silver
             else -> null
         }
     }
@@ -242,15 +244,18 @@ sealed class GbField {
         private val COOLDOWN: Long,
         private val FLYPOINTS: Long,
         override val signatures: List<Pair<Long, String>>,
+        /** wDefaultSpawnpoint (Gold / Silver keep it in bank 0). */
+        private val DEFAULT_SPAWN: Long = wramx(1, 0xD001),
+        /** PCScript's bank (Gold / Silver's 0x40). */
+        private val PC_SCRIPT_BANK: Int = 0x2F,
+        /** KANTO_LANDMARK (Gold / Silver have one Johto landmark fewer: 46). */
+        private val KANTO_LANDMARK: Int = 47,
     ) : GbField() {
         private val BATTLE_MODE = cfg.battleMode
-        private val DEFAULT_SPAWN = wramx(1, 0xD001)
         private val PARTY_COUNT = cfg.partyCount          // then wPartySpecies
-        private val PC_SCRIPT_BANK = 0x2F
         private val FLY_SCRIPT_BANK = 0x03
         private val PARTY_MON_SIZE = 0x30
         private val EGG = 0xFD
-        private val KANTO_LANDMARK = 47
         private val KANTO_FLYPOINT = 12
         private val SPAWN_INDIGO = 13
 
@@ -354,6 +359,30 @@ sealed class GbField {
             0x24 * 0x4000L + (0x5C7C - 0x4000) to "010e030f",                         // Flypoints: NEUBORKIA, ROSALIA CITY
         ),
     )
+
+    /**
+     * Gold and Silver (USA / Europe), pret/pokegold's symbols (its `symbols` branch, 2026-11-18): Crystal's way in - the same
+     * RunMemScript queue, PCScript and FlyFunction.FlyScript, CheckWildEncounterCooldown - at their own addresses; PCScript in
+     * bank 0x40, wDefaultSpawnpoint in bank 0, the Kanto landmarks from 46. Silver's Fly script sits 2 bytes before Gold's.
+     */
+    open class GoldSilver(cfg: Gen2Config, flyScript: Int) : CrystalEngine(
+        cfg = cfg,
+        QUEUE = wramx(1, 0xD183), PC_SCRIPT = 0x4145, FLY_SCRIPT = flyScript, SCRIPT_RUNNING = wramx(1, 0xD15F),
+        MAP_EVENT_STATUS = wramx(1, 0xD15A), VISITED_SPAWNS = wramx(1, 0xD9EE), JOHTO_BADGES = wramx(1, 0xD57C),
+        ENVIRONMENT = wramx(1, 0xD083), PARTY_MON1_MOVES = wramx(1, 0xDA2C), COOLDOWN = wramx(1, 0xD179),
+        FLYPOINTS = 0x24 * 0x4000L + (0x5BCC - 0x4000),
+        signatures = listOf(
+            0x25 * 0x4000L + (0x7A61 - 0x4000) to "fa83d1a7c82185d12a666ffa84d1cd48", // RunMemScript
+            0x40 * 0x4000L + (0x4145 - 0x4000) to "470f1c00499084",                  // opentext, special, closetext, end
+            0x03 * 0x4000L + (flyScript - 0x4000) to "7b0e000a310f3400",             // the Fly script's first commands
+            0x25 * 0x4000L + (0x67F4 - 0x4000) to "2179d17ea7c835c837c9",           // CheckWildEncounterCooldown
+            0x24 * 0x4000L + (0x5BCC - 0x4000) to "010e030f",                         // Flypoints: NEW BARK, CHERRYGROVE
+        ),
+        DEFAULT_SPAWN = 0xCEEC, PC_SCRIPT_BANK = 0x40, KANTO_LANDMARK = 46,
+    )
+
+    object Gold : GoldSilver(GEN2_GOLD, 0x4AC2)
+    object Silver : GoldSilver(GEN2_SILVER, 0x4AC0)
 
     /** Crystal Legacy v1.3.1 (its pokecrystal.sym): Crystal's scripts and rules at its own addresses. */
     object CrystalLegacy : CrystalEngine(

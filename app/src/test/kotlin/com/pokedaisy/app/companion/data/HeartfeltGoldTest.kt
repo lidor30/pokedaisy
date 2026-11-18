@@ -113,6 +113,7 @@ class HeartfeltGoldTest {
     fun `battle - HeartGold's battle system, a wild one`() {
         val t = read("heartfelt_gold_battle")
         assertTrue(t.inBattle)
+        assertEquals(false, t.isTrainerBattle)
         assertFalse(t.isDoubleBattle)
         val me = t.battleMons[BATTLE_POS_PLAYER_LEFT]
         val foe = t.battleMons[BATTLE_POS_OPPONENT_LEFT]

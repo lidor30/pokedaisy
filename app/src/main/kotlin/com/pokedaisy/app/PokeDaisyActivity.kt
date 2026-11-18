@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.isHgss
 import com.pokedaisy.app.companion.DsCore
 import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.ui.produceKeyedState
@@ -28,6 +29,8 @@ import android.widget.TextView
 import android.widget.Toast
 import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.data.showsBattle
+import com.pokedaisy.app.companion.data.isGen2
+import com.pokedaisy.app.companion.data.isDsGame
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -91,6 +94,10 @@ import com.pokedaisy.app.companion.data.lastModified
  *
  * Drop one `.gba` into `Android/data/com.pokedaisy.app/files/roms/`.
  */
+
+/** HeartGold, SoulSilver, Platinum (every language): their text printer task is DsInstantText's (INSTANT TEXT). */
+private val DS_TEXT_CODES = setOf("IPK", "IPG", "CPU")
+
 class PokeDaisyActivity : Activity() {
 
     private val input = GbaInput()
@@ -272,8 +279,13 @@ class PokeDaisyActivity : Activity() {
     private val shinyHuntState = androidx.compose.runtime.mutableIntStateOf(0)
 
     /** Each sample (emu thread): a wild battle counted, and a shiny foe announced, with FF and turbo stopped. */
+    /** SHINY ALERT works here: a GBA game SHINY ODDS knows (its battlers' shiny read), or a Game Boy Color / DS game whose
+     * reader works shininess out the game's way - Gen 2's DVs (not Polished Crystal's own shiny bit), Gen 4 / 5's IDs. */
+    private fun shinyAlertWorks(game: com.pokedaisy.app.companion.data.GameKind? = telemetry.snapshot.value.game): Boolean =
+        shinyTarget != null || romBlocked == null && ((game.isGen2 && game != com.pokedaisy.app.companion.data.GameKind.POLISHED_CRYSTAL) || game.isDsGame)
+
     private fun updateShinyHunt(snap: com.pokedaisy.app.companion.data.SnapshotView) {
-        if (!snap.connected || !shinyAlertOn || shinyTarget == null) return
+        if (!snap.connected || !shinyAlertOn || !shinyAlertWorks(snap.game)) return
         val step = shinyHunt.sample(snap.inBattle, com.pokedaisy.app.companion.data.ShinyHunt.wild(snap), snap.battleOpponent)
         val key = romKey
         if (step.counted) {
@@ -564,7 +576,7 @@ class PokeDaisyActivity : Activity() {
             n3ds?.let { it.battleTaps.back(); return }
             if (::engine.isInitialized) engine.battleBack()
         }
-        override val canSwitch get() = ::engine.isInitialized && engine.battleSwitchAddrs != null
+        override val canSwitch get() = ::engine.isInitialized && (engine.battleSwitchAddrs != null || dsSwitchWorks())
         override val lastBall get() = lastBallNow()
         override fun throwBall() {
             val ball = lastBallNow() ?: return
@@ -576,7 +588,14 @@ class PokeDaisyActivity : Activity() {
         }
         override fun switchTo(personality: Long) {
             closeCompanionWindow()
-            if (::engine.isInitialized) engine.battleSwitchTo(personality)
+            if (!::engine.isInitialized) return
+            if (romIsNds) {
+                val b = dsSwitchBattle() ?: return
+                val place = runCatching {
+                    com.pokedaisy.app.companion.data.gen4SwitchSlot(com.pokedaisy.app.companion.data.InProcessReader, b, personality)
+                }.getOrNull() ?: return
+                engine.battleDsSwitchTo(place)
+            } else engine.battleSwitchTo(personality)
         }
     }
 
@@ -787,6 +806,15 @@ class PokeDaisyActivity : Activity() {
             sharedItemUse.use(itemId, done)
         }
 
+        /** Ruby / Sapphire's TM party menu: its way back to the bag turned into the field (tmBagReturnWatch), a frame at a
+         * time while it runs (20 minutes at most). */
+        private fun watchTmBagReturn(tm: com.pokedaisy.app.companion.data.TmFns, frames: Int) {
+            if (frames > 20 * 60 * 60) return
+            engine.requestFieldItemJob(false, 1) { c, _ ->
+                if (runCatching { com.pokedaisy.app.companion.data.tmBagReturnWatch(tm, c) }.getOrDefault(false)) watchTmBagReturn(tm, frames + 1)
+            }
+        }
+
         /** A TM / HM: the game's own TM screen (TmTeach.kt), in two steps like FLY - the checks, the controls locked and
          * the fade to black, then once it's black the game's party menu, sent back to the field when it closes. */
         private fun openTmScreen(itemId: Int, done: (com.pokedaisy.app.companion.data.ItemUseOutcome) -> Unit) {
@@ -800,6 +828,7 @@ class PokeDaisyActivity : Activity() {
                 if (r == com.pokedaisy.app.companion.data.ItemUseResult.USED) {
                     engine.requestFieldItemJob(false, com.pokedaisy.app.companion.data.TM_FADE_FRAMES) { c, leftField ->
                         val ok = com.pokedaisy.app.companion.data.tmFinish(tm, itemId, c, leftField)
+                        if (ok && tm.bagReturn != 0L) watchTmBagReturn(tm, 0)
                         Log.i("pokedaisy", "TM screen for $itemId: ${when {
                             ok -> "open"
                             leftField -> "the game left the field during the fade, not taken"
@@ -879,7 +908,7 @@ class PokeDaisyActivity : Activity() {
             val fns = fieldItemSupport()?.fns?.takeIf { it.pc != null && it.party != null } ?: return null
             return com.pokedaisy.app.companion.CenterSupport(
                 heal = true, nickname = c.nickname != null, forget = c.forget != null,
-                relearn = c.relearn != null && tmFns() != null && fns.party != null,
+                relearn = (c.relearn != null && tmFns() != null || c.relearnSpecial != null) && fns.party != null,
             )
         }
 
@@ -908,6 +937,12 @@ class PokeDaisyActivity : Activity() {
 
         /** The Move Tutor's screen in two steps, like the TM screen's: the checks and the fade, then once it's black the screen. */
         override fun centerRelearn(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.CenterResult) -> Unit) {
+            // Ruby / Sapphire: one step, the Fallarbor tutor's own script.
+            // Ruby / Sapphire (their TM screen the bag's way, no gFieldCallback route): the Fallarbor tutor's own script.
+            if ((tmFns()?.bagReturn ?: 0L).let { tmFns() == null || it != 0L } && centerFound?.relearnSpecial != null)
+                return onCenter(done, screen = true) { fns, c, calls, busy ->
+                    com.pokedaisy.app.companion.data.centerRelearnScript(fns, c, slot, personality, busy, calls)
+                }
             val tm = tmFns() ?: return done(com.pokedaisy.app.companion.data.CenterResult.FAILED)
             onCenter(done, screen = true) { fns, c, calls, busy ->
                 val r = com.pokedaisy.app.companion.data.centerRelearnStart(fns, c, tm, slot, personality, busy, calls)
@@ -1342,6 +1377,8 @@ class PokeDaisyActivity : Activity() {
      * SaveBlock1 has the SELECT register where KeyItems expects it. */
     private fun keyItemsWork(): Boolean {
         val game = telemetry.snapshot.value.game
+        // Platinum / HeartGold / SoulSilver (and the hacks on their retail RAM): the Bag's register and Y (gen4RegisterAddr).
+        if (romIsNds) return dsKeyItemsWork()
         // SoulGold: its SELECT wheel (KeyItems.selectWheel), checked headless (GitHub #242).
         if (game == com.pokedaisy.app.companion.data.GameKind.SOULGOLD) return fieldItemSupport() != null
         if (game != com.pokedaisy.app.companion.data.GameKind.FIRERED && game != com.pokedaisy.app.companion.data.GameKind.EMERALD) return false
@@ -1354,7 +1391,54 @@ class PokeDaisyActivity : Activity() {
      * SELECT pressed for the game for 2 frames ([GbaInput.setPress]: the battle controls own setScript's channel), the player's own registered item
      * put back 20 frames later. The game does the rest: mounting, the fishing cast, or its own "can't use that here".
      */
+    /** The DS battle the POKéMON switch reads: HeartGold / SoulSilver and their ports (their party screen played headless;
+     * Platinum's, likely the same, not seen yet; not Origin HeartGold, whose battles are its own engine). */
+    private fun dsSwitchBattle(): com.pokedaisy.app.companion.data.Gen4Battle? {
+        val game = telemetry.snapshot.value.game
+        if (!game.isHgss) return null
+        return com.pokedaisy.app.companion.data.gen4ConfigFor(game)?.battle
+            ?.takeIf { it.offBattleInput != 0 && !com.pokedaisy.app.companion.data.originHeartGold }
+    }
+
+    private fun dsSwitchWorks(): Boolean =
+        romIsNds && ::engine.isInitialized && engine.dsSwitchMapped && dsSwitchBattle() != null
+
+    /** INSTANT TEXT and REUSABLE TMS on a DS game: the Gen 4 carts on melonDS (DsInstantText / DsReusableTms: code of ours,
+     * none on DSperate). */
+    private fun dsInstantTextWorks(): Boolean = romIsNds && romBlocked == null && !dsperate && ::engine.isInitialized &&
+        engine.ndsGameCode.take(3) in DS_TEXT_CODES
+
+
+    private fun dsKeyItemsWork(): Boolean = romBlocked == null &&
+        !com.pokedaisy.app.companion.data.originHeartGold && !com.pokedaisy.app.companion.data.renegadePlatinum &&
+        com.pokedaisy.app.companion.data.gen4ConfigFor(telemetry.snapshot.value.game) != null
+
+    /** A DS game's BIKE / ROD: the item written into the Bag's register (HG / SS: the first slot, the second cleared so Y uses it
+     * at once), Y held 2 frames, the player's own registration put back after. The field free by its own read, as the Repel's. */
+    private fun useDsKeyItem(itemId: Int) {
+        val cfg = com.pokedaisy.app.companion.data.gen4ConfigFor(telemetry.snapshot.value.game) ?: return
+        if (!::engine.isInitialized || !engine.running) return
+        fun le32(v: Long) = ByteArray(4) { (v shr (8 * it)).toByte() }
+        fun u32(b: ByteArray) = (0 until 4).fold(0L) { a, i -> a or ((b[i].toLong() and 0xFF) shl (8 * i)) }
+        engine.requestFieldItemJob(false) { calls, _ ->
+            val ok = runCatching {
+                val f = engine.fieldState
+                if (f and MgbaCore.FIELD_SCREEN == 0 || f and (MgbaCore.FIELD_LOCKED or MgbaCore.FIELD_MENU or MgbaCore.FIELD_BATTLE) != 0) return@runCatching false
+                val addr = com.pokedaisy.app.companion.data.gen4RegisterAddr(cfg, calls::read) ?: return@runCatching false
+                val old = u32(calls.read(addr, 4))
+                // Item ids (Platinum's one u32, or HG / SS's two u16): anything else isn't the register after all.
+                if ((old and 0xFFFF) > 0x3FF || (old ushr 16) > 0x3FF || !calls.write(addr, le32(itemId.toLong()))) return@runCatching false
+                input.setPress(CoreKey.Y)
+                engine.requestFieldItemJob(false, delayFrames = 2) { _, _ -> input.setPress(0) }
+                engine.requestFieldItemJob(false, delayFrames = 30) { c, _ -> if (u32(c.read(addr, 4)) == itemId.toLong()) c.write(addr, le32(old)) }
+                true
+            }.getOrDefault(false)
+            if (!ok) runOnUiThread { showHud(com.pokedaisy.app.companion.ui.itemUseMessage(com.pokedaisy.app.companion.data.ItemUseOutcome(com.pokedaisy.app.companion.data.ItemUseResult.NOT_NOW))) }
+        }
+    }
+
     private fun useKeyItem(itemId: Int) {
+        if (romIsNds) return useDsKeyItem(itemId)
         val cfg = com.pokedaisy.app.companion.data.activeNativeConfig ?: return
         val fns = fieldItemSupport()?.fns ?: return
         if (!::engine.isInitialized || !engine.running) return
@@ -1635,11 +1719,11 @@ class PokeDaisyActivity : Activity() {
     }
 
     /** DAY AND NIGHT works here: a GBA game (not a Game Boy or DS one) that doesn't change with the time itself. */
-    /** HIDE BATTLE MENU works in this game: FireRed, LeafGreen or Emerald's engine (their text box, pk_wide.c's
-     * menuHideBegin; not Ruby / Sapphire's, whose cursor is drawn apart and stayed over the empty box) whose battles the
-     * companion's buttons can steer (the battle input read). */
+    /** HIDE BATTLE MENU works in this game: FireRed, LeafGreen, Emerald, Ruby or Sapphire's engine (their text box, pk_wide.c's
+     * menuHideBegin; Ruby / Sapphire's cursor sprites hidden with it, the sign drawn in the hidden menu's own tiles) whose
+     * battles the companion's buttons can steer (the battle input read). */
     private fun battleMenuHideSupported() = !romIsGameBoy && !romIsNds && romBlocked == null && ::engine.isInitialized &&
-        (romCode.startsWith("BPR") || romCode.startsWith("BPG") || romCode.startsWith("BPE")) &&
+        listOf("BPR", "BPG", "BPE", "AXV", "AXP").any { romCode.startsWith(it) } &&
         com.pokedaisy.app.companion.data.activeGame.let {
             it == com.pokedaisy.app.companion.data.GameKind.FIRERED || it == com.pokedaisy.app.companion.data.GameKind.EMERALD
         } && com.pokedaisy.app.companion.data.activeNativeConfig?.hasBattleInputAddrs == true &&
@@ -1766,13 +1850,15 @@ class PokeDaisyActivity : Activity() {
             if (on) com.pokedaisy.app.companion.FeatureTips.used(TipId.REUSABLE_TMS)
             stored.setReusableTms(on)
             if (::engine.isInitialized) engine.setReusableTms(tmSites, on)
+            if (::engine.isInitialized) engine.dsReusableTms = on && dsInstantTextWorks()
         }
-        override val reusableTmsSupported get() = tmSites.isNotEmpty()
+        override val reusableTmsSupported get() = tmSites.isNotEmpty() || dsInstantTextWorks()
         override fun setInstantText(on: Boolean) {
             stored.setInstantText(on)
             if (::engine.isInitialized) engine.setInstantText(textPatch, on)
+            if (::engine.isInitialized) engine.dsInstantText = on && dsInstantTextWorks()
         }
-        override val instantTextSupported get() = textPatch != null
+        override val instantTextSupported get() = textPatch != null || dsInstantTextWorks()
         override val hmFree get() = Prefs(this@PokeDaisyActivity).hmFree
         override fun setHmFree(on: Boolean) {
             if (coopRefuses()) return
@@ -1824,7 +1910,7 @@ class PokeDaisyActivity : Activity() {
             shinyAlertOn = on
         }
         override val shinyHuntCount get() = shinyHuntState.intValue
-        override val shinyAlertSupported get() = shinyTarget != null
+        override val shinyAlertSupported get() = shinyAlertWorks()
         override val battleRetry get() = Prefs(this@PokeDaisyActivity).battleRetry
         override fun setBattleRetry(on: Boolean) {
             Prefs(this@PokeDaisyActivity).battleRetry = on
@@ -2554,6 +2640,11 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.data.HeartfeltGold.matches(r.toOkioPath())) {
             // Heartfelt Gold: the US HeartGold's header, its own maps' rates (from its cart).
             { (com.pokedaisy.app.companion.data.HeartfeltGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readHeartfelt(r.toOkioPath()))?.wildRates ?: IntArray(0) }
+        } else if ((ndsCode == com.pokedaisy.app.companion.data.SacredGold.CODE_SACRED_GOLD ||
+                ndsCode == com.pokedaisy.app.companion.data.SacredGold.CODE_STORM_SILVER) &&
+            com.pokedaisy.app.companion.data.SacredGold.matches(r.toOkioPath())) {
+            // Sacred Gold / Storm Silver: the retail headers, their own maps' rates (from their cart).
+            { (com.pokedaisy.app.companion.data.SacredGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readSacredGold(r.toOkioPath()))?.wildRates ?: IntArray(0) }
         } else when (ndsCode) {
             "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
@@ -2794,9 +2885,9 @@ class PokeDaisyActivity : Activity() {
             applyFieldPrefs(this)
         }
         engine.playback.start(r.toOkioPath(), gameCode, crc.toLong(16), gba, tablesCrc.toLongOrNull(16) ?: 0L)
-        if (gba && romBlocked == null) {
+        if ((gba || gameBoy) && romBlocked == null) {
             val current = engine
-            current.gameOptions.start(r.toOkioPath(), configureWild = { flag, _ ->
+            current.gameOptions.start(r.toOkioPath(), gameBoy = gameBoy, configureWild = { flag, _ ->
                 if (romData == r && engine === current) {
                     wildFlag = flag; current.wildFlag = flag
                     flag != 0L
@@ -2808,6 +2899,8 @@ class PokeDaisyActivity : Activity() {
                     syncHmFree(); syncExpShare(); syncLevelCap()
                     current.setReusableTms(tmSites, Prefs(this).reusableTms)
                     current.setInstantText(textPatch, Prefs(this).instantText)
+                    // A Game Boy cart's LOW HP BEEP (GbGamePatches): its patch where the GBA's QuietPatches would put it.
+                    if (gameBoy) { quietFound = com.pokedaisy.app.companion.data.QuietPatches.Found(found.gbBeep, found.gbPoison); syncQuietPatches() }
                 }
             })
         }
@@ -2940,6 +3033,8 @@ class PokeDaisyActivity : Activity() {
         e.ndsCpuBoost = p.dsCpuBoost
         e.setReusableTms(tmSites, p.reusableTms)
         e.setInstantText(textPatch, p.instantText)
+        e.dsInstantText = p.instantText && dsInstantTextWorks()
+        e.dsReusableTms = p.reusableTms && dsInstantTextWorks()
         e.setHmFree(hmPatch, p.hmFree)
         e.setExpShare(expShareFound, if (expShareFound != null) com.pokedaisy.app.companion.data.ExpShare.Mode.of(p.expShare) else com.pokedaisy.app.companion.data.ExpShare.Mode.OFF)
         e.setLevelCap(levelCapFound, if (levelCapFound != null && p.levelCap) levelCapNow?.level ?: 0 else 0)

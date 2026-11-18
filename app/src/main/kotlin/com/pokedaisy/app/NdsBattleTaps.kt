@@ -2,6 +2,7 @@ package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
+import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import java.util.ArrayDeque
 
 /**
@@ -19,6 +20,9 @@ class NdsBattleTaps(private val touch: (down: Boolean, x: Int, y: Int) -> Unit =
         /** The move panel's four cards (left to right, then down) and its way back. */
         val moves: List<Pair<Int, Int>>,
         val cancel: Pair<Int, Int>,
+        /** The party screen's six panels (left to right, then down) and the SHIFT a panel opens; null = no switch here. */
+        val partySlots: List<Pair<Int, Int>>? = null,
+        val shift: Pair<Int, Int>? = null,
     )
 
     /** The running game's panels ([layoutFor]); set before its battles. */
@@ -29,6 +33,10 @@ class NdsBattleTaps(private val touch: (down: Boolean, x: Int, y: Int) -> Unit =
         /** Waits (at most [timeout] frames) for the battle to report [state] for [settle] frames in a row (Black / White's
          * move panel says so for 3 frames between its two slides, which take no touch). */
         class WaitFor(val state: Int, val settle: Int = SETTLE_FRAMES, val timeout: Int = WAIT_FRAMES) : Step()
+        /** Nothing for [frames] frames. */
+        class Wait(val frames: Int) : Step()
+        /** If the battle still reports [state], these steps next (a switch's taps once more); else nothing. */
+        class IfStill(val state: Int, val then: List<Step>) : Step()
     }
 
     private val steps = ArrayDeque<Step>()
@@ -57,6 +65,24 @@ class NdsBattleTaps(private val touch: (down: Boolean, x: Int, y: Int) -> Unit =
         )
     }
 
+    /**
+     * POKéMON, then the party screen's panel at [place] (0 top left, 1 top right, then down: the battle's own order) and the SHIFT
+     * it opens - or, with the party screen already up (after a faint), just the panel and SHIFT. The screen fades in for about
+     * 50 frames after it's reported up and drops touches meanwhile (headless on HeartGold: a panel 45 frames after POKéMON did
+     * nothing, 60 did), so the panel waits [PARTY_SETTLE]; if the screen is still up a second after SHIFT, the panel and SHIFT
+     * once more.
+     */
+    fun switchTo(place: Int) {
+        val l = layout
+        val slot = l.partySlots?.getOrNull(place) ?: return
+        val shift = l.shift ?: return
+        val pick = listOf(Step.Tap(slot.first, slot.second), Step.Wait(SHIFT_FRAMES), Step.Tap(shift.first, shift.second))
+        val again = listOf(Step.Wait(SWITCH_CHECK_FRAMES), Step.IfStill(BATTLE_INPUT_PARTY_OPEN, pick))
+        val open = if (state == BATTLE_INPUT_PARTY_OPEN) emptyList()
+            else listOf(Step.Tap(l.actions[2].first, l.actions[2].second))
+        queue(open + Step.WaitFor(BATTLE_INPUT_PARTY_OPEN, settle = PARTY_SETTLE) + pick + again, party = true)
+    }
+
     /** The move panel's CANCEL (back to FIGHT / BAG / RUN / POKéMON). */
     fun back() {
         if (state == BATTLE_INPUT_MOVE_SELECT) layout.cancel.let { queue(listOf(Step.Tap(it.first, it.second))) }
@@ -69,11 +95,11 @@ class NdsBattleTaps(private val touch: (down: Boolean, x: Int, y: Int) -> Unit =
         phase = 0
     }
 
-    private fun queue(list: List<Step>) = synchronized(lock) {
+    private fun queue(list: List<Step>, party: Boolean = false) = synchronized(lock) {
         // One pick at a time: a second tap while one plays is dropped, as the GBA's controller does.
         if (steps.isNotEmpty()) return
-        // A pick is made from the menu the battle shows: none up, nothing to press.
-        if (state != BATTLE_INPUT_ACTION_SELECT && state != BATTLE_INPUT_MOVE_SELECT) return
+        // A pick is made from the menu the battle shows: none up, nothing to press (a switch also from the party screen).
+        if (state != BATTLE_INPUT_ACTION_SELECT && state != BATTLE_INPUT_MOVE_SELECT && !(party && state == BATTLE_INPUT_PARTY_OPEN)) return
         steps.addAll(list)
         frames = 0
         phase = 0
@@ -96,6 +122,11 @@ class NdsBattleTaps(private val touch: (down: Boolean, x: Int, y: Int) -> Unit =
                 } else if (state != step.state) { phase = 0; frames = 0 }
                 else if (++frames >= step.settle) next()
             }
+            is Step.Wait -> if (++frames >= step.frames) next()
+            is Step.IfStill -> {
+                next()
+                if (state == step.state) step.then.asReversed().forEach { steps.addFirst(it) }
+            }
         }
     }
 
@@ -113,6 +144,9 @@ class NdsBattleTaps(private val touch: (down: Boolean, x: Int, y: Int) -> Unit =
             actions = listOf(128 to 90, 40 to 170, 215 to 170, 128 to 170),
             moves = listOf(64 to 42, 192 to 42, 64 to 113, 192 to 113),
             cancel = 128 to 175,
+            // The party screen's panels (two columns of three) and the SHIFT plate a panel opens (headless on HeartGold).
+            partySlots = listOf(64 to 23, 192 to 23, 64 to 71, 192 to 71, 64 to 119, 192 to 119),
+            shift = 128 to 80,
         )
         /** Black / White's and their sequels' (headless in White and Black 2: FIGHT the big plate up top, BAG / RUN /
          * POKéMON along the bottom, the cards 2 x 2 from y 35, the return arrow bottom right). */
@@ -131,5 +165,10 @@ class NdsBattleTaps(private val touch: (down: Boolean, x: Int, y: Int) -> Unit =
          * HeartGold: 7 frames after FIGHT, a tap then or 4 / 12 frames later all used the move). A few frames' margin. */
         private const val SETTLE_FRAMES = 4
         private const val WAIT_FRAMES = 120
+        /** The party screen's fade (above): frames reported up before its panels take a touch, with a margin. */
+        private const val PARTY_SETTLE = 60
+        /** A panel's page (SHIFT) takes a touch 10 frames after the panel's (headless); a little more. */
+        private const val SHIFT_FRAMES = 12
+        private const val SWITCH_CHECK_FRAMES = 60
     }
 }

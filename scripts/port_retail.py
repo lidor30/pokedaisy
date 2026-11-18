@@ -71,7 +71,7 @@ ENGLISH = {
 ANCHORS = {
     "FR": ("BPRE1", dict(species=0x08245F50, moves=0x08247104, items=0x083DB098, natures=0x08463EC0,
                          mapnames=0x083F1D1C, small_widths=0x081EEF70, script=0x08069AF8, party_menu=0x0203B0A0,
-                         storage=0x03005010)),
+                         storage=0x03005010, action_cursor=0x02023FF8, move_cursor=0x02023FFC)),
     "RS": ("AXVE1", dict(species=0x081F7184, moves=0x081F8338, items=0x083C5580, natures=0x083C1020,
                          mapsecs=0x083E73E0, script=0x080655D8)),
 }
@@ -691,7 +691,11 @@ def toml_config(p):
            f"port = '{p['key']}'", f"language = '{lang}'"]
     if lang != "E":  # English rev 0 has no names of its own
         out.append(f"gameCode = '{p['code']}'")
-    out.append("trainerCard = 'none'")
+    # The European FireRed / LeafGreen carts' own cards (TrainerCard.kt's TRAINER_CARD_FIRERED_<lang>; Italian / Spanish
+    # LeafGreen have their own back): English's save offsets, each cart's art and words. Japanese has none yet.
+    eu = {"D": "DE", "F": "FR", "I": "IT", "S": "ES"}.get(lang)
+    game = "LEAFGREEN" if p["code"][:3] == "BPG" and lang in "IS" else "FIRERED"
+    out.append(f"trainerCard = 'TRAINER_CARD_{game}_{eu}'" if eu and p["family"] == "FR" else "trainerCard = 'none'")
     for k, (v, _) in sorted(p["fields"].items()):
         out.append(f"{k} = 0x{v:X}" if k == "inBattleOff" else f"{k} = 0x{v:08X}")
     items_base, item_stride, _ = p["layout"]["items"]
@@ -702,6 +706,13 @@ def toml_config(p):
         out.append("itemDescs = 'none'")
     if p["anchors"].get("party_menu", [None])[0]:
         out.append(f"partyMenu = 0x{p['anchors']['party_menu'][0]:08X}")
+    # The battle menus' cursors (one-press picks): gActionSelectionCursor / gMoveSelectionCursor through the action / move
+    # handlers' pools, where English's config has none to map (rev 0's). Checked headless on every FireRed / LeafGreen port
+    # (2026-11-18): a written POKéMON cell + A opened the party menu, a written move cell + A used that move.
+    for k, anchor in (("actionCursor", "action_cursor"), ("moveCursor", "move_cursor")):
+        v = p["anchors"].get(anchor, [None])[0]
+        if k not in p["fields"] and v:
+            out.append(f"{k} = 0x{v:08X}")
     # BOXES: gPokemonStoragePtr (FireRed's family: no English config holds it - the hacks share those) or the English
     # config's own, mapped (LeafGreen's, Ruby / Sapphire's gPokemonStorage); 0 where neither mapped, never English's.
     if "pokemonStoragePtr" not in p["fields"]:

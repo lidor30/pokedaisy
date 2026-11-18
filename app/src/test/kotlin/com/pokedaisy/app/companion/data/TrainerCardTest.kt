@@ -304,4 +304,41 @@ class TrainerCardTest {
         const val RY_TINT_BACK = "f2c5a87a"
         const val RY197_MAX_BACK = "797f2e18"
     }
+
+    /**
+     * The European carts' own cards (2026-11-18): each cart's tiles, font and words with English's save loaded in it. Every
+     * render below matched the game's own card pixel for pixel, front and back (headless, the card opened from the START
+     * menu; the colon blinking aside), with the play time, money and POKéDEX as those frames showed them.
+     */
+    @Test fun `European FireRed, LeafGreen and Emerald - their own cards, drawn like the game`() {
+        val fr = card("firered_vanilla", NATIVE_FIRERED_REV1).copy(hours = 50, minutes = 23, money = 246468, dexCaught = 70)
+        val lg = card("leafgreen_rev1", NATIVE_LEAFGREEN_REV1_RETAIL).copy(hours = 34, minutes = 42, money = 6098, dexCaught = 86)
+        val em = card("emerald_vanilla", NATIVE_EMERALD_RETAIL).copy(hours = 31, minutes = 27)
+        val cases = listOf(
+            Triple("Pokemon - Feuerrote Edition (Germany).gba", CardStyle.KANTO_DE, fr) to ("590e1449" to "2add9afd"),
+            Triple("Pokemon - Version Rouge Feu (France).gba", CardStyle.KANTO_FR, fr) to ("b926fae3" to "f7b5ad6b"),
+            Triple("Pokemon - Versione Rosso Fuoco (Italy).gba", CardStyle.KANTO_IT, fr) to ("e4e8ab99" to "0ced6261"),
+            Triple("Pokemon - Edicion Rojo Fuego (Spain).gba", CardStyle.KANTO_ES, fr) to ("b7ad0463" to "2c34ff55"),
+            Triple("Pokemon - Blattgruene Edition (Germany).gba", CardStyle.KANTO_DE, lg) to ("903f00b6" to "fea7afb7"),
+            Triple("Pokemon - Version Vert Feuille (France).gba", CardStyle.KANTO_FR, lg) to ("7a4845ff" to "f37ceb25"),
+            Triple("Pokemon - Versione Verde Foglia (Italy).gba", CardStyle.LEAFGREEN_IT, lg) to ("e02a243a" to "c8ed4600"),
+            Triple("Pokemon - Edicion Verde Hoja (Spain).gba", CardStyle.LEAFGREEN_ES, lg) to ("8ddd4dea" to "c818bff9"),
+            Triple("Pokemon - Smaragd-Edition (Germany).gba", CardStyle.HOENN_DE, em) to ("568cadb4" to "35ea876f"),
+            Triple("Pokemon - Version Emeraude (France).gba", CardStyle.HOENN_FR, em) to ("2f2ea4e4" to "80cdfd4f"),
+            Triple("Pokemon - Versione Smeraldo (Italy).gba", CardStyle.HOENN_IT, em) to ("a1d1c568" to "a0ddf645"),
+            Triple("Pokemon - Edicion Esmeralda (Spain).gba", CardStyle.HOENN_ES, em) to ("fdfacba0" to "2a73e832"),
+        )
+        var n = 0
+        for ((c, want) in cases) {
+            val (rom, style, info) = c
+            val bytes = File(RETAIL_ROM_DIR, rom).takeIf { it.isFile }?.readBytes() ?: continue
+            val found = RomArt.find(bytes)
+            val art = TrainerCardArt.art(style) { found[it] }
+            assertNotNull(rom, art)
+            val name = rom.substringAfter("- ").substringBefore(" (").replace(' ', '_')
+            assertEquals(rom, want, rendered(art!!, info, false, "eu_${name}_front", colon = false) to rendered(art, info, true, "eu_${name}_back"))
+            n++
+        }
+        assumeTrue("no European cart here", n > 0)
+    }
 }

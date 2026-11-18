@@ -10,7 +10,7 @@ lazy = true
 port = 'BPGD0'
 language = 'D'
 gameCode = 'BPGD'
-trainerCard = 'none'
+trainerCard = 'TRAINER_CARD_FIRERED_DE'
 bagPockets = 0x0203988C
 battleMons = 0x02023BE4
 battleTypeFlags = 0x02022B4C
@@ -36,6 +36,8 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x08030584
 itemDescs = { preset = 'vanilla', base = 0x083DA354 }
 partyMenu = 0x0203B0A0
+actionCursor = 0x02023FF8
+moveCursor = 0x02023FFC
 
 [config.port_bpgd0.pokedex]
 base = 'POKEDEX_LEAFGREEN_REV0'
@@ -78,7 +80,7 @@ lazy = true
 port = 'BPGF0'
 language = 'F'
 gameCode = 'BPGF'
-trainerCard = 'none'
+trainerCard = 'TRAINER_CARD_FIRERED_FR'
 bagPockets = 0x0203988C
 battleMons = 0x02023BE4
 battleTypeFlags = 0x02022B4C
@@ -104,6 +106,8 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x0803055C
 itemDescs = { preset = 'vanilla', base = 0x083D3160 }
 partyMenu = 0x0203B0A0
+actionCursor = 0x02023FF8
+moveCursor = 0x02023FFC
 
 [config.port_bpgf0.pokedex]
 base = 'POKEDEX_LEAFGREEN_REV0'
@@ -146,7 +150,7 @@ lazy = true
 port = 'BPGI0'
 language = 'I'
 gameCode = 'BPGI'
-trainerCard = 'none'
+trainerCard = 'TRAINER_CARD_LEAFGREEN_IT'
 bagPockets = 0x0203988C
 battleMons = 0x02023BE4
 battleTypeFlags = 0x02022B4C
@@ -172,6 +176,8 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x08030570
 itemDescs = { preset = 'vanilla', base = 0x083D1D24 }
 partyMenu = 0x0203B0A0
+actionCursor = 0x02023FF8
+moveCursor = 0x02023FFC
 
 [config.port_bpgi0.pokedex]
 base = 'POKEDEX_LEAFGREEN_REV0'
@@ -241,6 +247,8 @@ saveBlock2Ptr = 0x0300504C
 waitForMonSelection = 0x0802FE04
 itemDescs = { preset = 'japanese', base = 0x083A0568 }
 partyMenu = 0x0203B014
+actionCursor = 0x02023F58
+moveCursor = 0x02023F5C
 
 [config.port_bpgj0.pokedex]
 base = 'POKEDEX_LEAFGREEN_REV0'
@@ -312,6 +320,8 @@ saveBlock2Ptr = 0x03004FAC
 waitForMonSelection = 0x0802FD70
 itemDescs = { preset = 'japanese', base = 0x0839BD28 }
 partyMenu = 0x0203B014
+actionCursor = 0x02023F58
+moveCursor = 0x02023F5C
 
 [config.port_bpgj1.pokedex]
 base = 'POKEDEX_LEAFGREEN_REV0'
@@ -357,7 +367,7 @@ lazy = true
 port = 'BPGS0'
 language = 'S'
 gameCode = 'BPGS'
-trainerCard = 'none'
+trainerCard = 'TRAINER_CARD_LEAFGREEN_ES'
 actionCursor = 0x02023FF8
 bagPockets = 0x0203988C
 battleMons = 0x02023BE4

@@ -37,14 +37,22 @@ SCRATCH = 0x0203F800   # 100 bytes of EWRAM no game here uses (checked zero in e
 B_PRESSES = "press B\nwait 60\n" * 4 + "wait 120\n"
 
 # Saves (scripts/host_roms.conf keys) and boot scripts by game code; the English save loads in the other languages.
-SAVES = {"BPR": "firered_vanilla", "BPG": "leafgreen_rev1", "BPE": "emerald_vanilla"}
-BOOTS = {"BPR": ("default.txt", B_PRESSES), "BPG": ("leafgreen.txt", B_PRESSES), "BPE": ("default.txt", "wait 120\n")}
+SAVES = {"BPR": "firered_vanilla", "BPG": "leafgreen_rev1", "BPE": "emerald_vanilla", "AXV": "ruby_rev1", "AXP": "sapphire_rev1"}
+# Japanese FireRed / LeafGreen can't read the English saves (verify_ports.py's OWN_SAVES): their own.
+OWN_SAVES = {"BPRJ": "firered_ja", "BPGJ": "leafgreen_ja"}
+BOOTS = {"BPR": ("default.txt", B_PRESSES), "BPG": ("leafgreen.txt", B_PRESSES), "BPE": ("default.txt", "wait 120\n"),
+         "AXV": ("ruby_sapphire.txt", "press B\nwait 90\n" * 8 + "wait 120\n"), "AXP": ("ruby_sapphire.txt", "wait 120\n")}
 # The English tables (BoxSwap.kt) and the party ones they run with (FieldItems.kt's FIELD_ITEMS_*).
 ENGLISH = {
     "BPRE1": dict(rom="Pokemon - FireRed Version (USA, Europe) (Rev 1)", fieldControlsLocked=0x0806996C, getMonData=0x0803FBFC,
                   box=dict(boxMonToMon=0x0803E788, boxMonRestorePP=0x080442F8, getBoxMonData=0x0803FD58, storage=0x03005010)),
     "BPEE0": dict(rom="Pokemon - Emerald Version (USA, Europe)", fieldControlsLocked=0x08098E6C, getMonData=0x0806A518,
                   box=dict(boxMonToMon=0x08069004, boxMonRestorePP=0x0806E930, getBoxMonData=0x0806A674, storage=0x03005D94)),
+    # Ruby / Sapphire rev 1 (BOX_SWAP_RUBY / _SAPPHIRE): ExpandBoxMon, gPokemonStorage static (`static`: no pointer to follow).
+    "AXVE1": dict(rom="Pokemon - Ruby Version (USA, Europe) (Rev 1)", fieldControlsLocked=0x08065568, getMonData=0x0803CB60,
+                  box=dict(boxMonToMon=0x0803B4B4, boxMonRestorePP=0x08040B48, getBoxMonData=0x0803CBFC, storage=0x020300A0, static=True)),
+    "AXPE1": dict(rom="Pokemon - Sapphire Version (USA, Europe) (Rev 1)", fieldControlsLocked=0x0806556C, getMonData=0x0803CB60,
+                  box=dict(boxMonToMon=0x0803B4B4, boxMonRestorePP=0x08040B48, getBoxMonData=0x0803CBFC, storage=0x020300A0, static=True)),
 }
 # Hacks on English FireRed rev 0's code: rev 0's tables (fieldItemsForGame), their own saves / boots.
 HACKS = {"ultra_violet": ("default.txt", B_PRESSES), "rocket_edition": ("firered_hack.txt", ""),
@@ -93,7 +101,7 @@ def targets(only):
     for key, p in ports.items():
         if p.get("box"):
             boot, after = BOOTS[key[:3]]
-            out[key] = dict(rom=p["path"], save=conf(SAVES[key[:3]])[1], boot=boot, after=after,
+            out[key] = dict(rom=p["path"], save=conf(OWN_SAVES.get(key[:4], SAVES[key[:3]]))[1], boot=boot, after=after,
                             fieldControlsLocked=p["fieldControlsLocked"], getMonData=p["getMonData"], box=p["box"])
     for key, e in ENGLISH.items():
         rom, save = conf(SAVES[key[:3]])
@@ -129,7 +137,7 @@ def check(work, key, t):
     shutil.copy(t["save"], os.path.join(d, "rom.sav"))
     run(work, key, t, f"dump /work/{key}/before\n")
     before = Ram(os.path.join(d, "before"))
-    storage = before.u32(b["storage"])
+    storage = b["storage"] if b.get("static") else before.u32(b["storage"])
     if not 0x02000000 <= storage < 0x02040000:
         return f"storage pointer reads {storage:#x}"
     if any(before.read(SCRATCH, 100)):
