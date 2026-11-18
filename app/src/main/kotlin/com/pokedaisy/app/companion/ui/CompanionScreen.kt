@@ -733,12 +733,17 @@ fun CompanionScreen(
                             var swapNotice by remember { mutableStateOf<ItemNotice?>(null) }
                             // Pokemon X: its own party screen's slots (the game's smooth look, not the pixel ones).
                             if (game.isXy) XyPartyScreen(snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) })
-                            else PartyScreen(
-                                snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) },
-                                onSwap = itemUse?.takeIf { it.canReorderParty() }?.let { use ->
-                                    { a, b -> use.reorderParty(a, b) { r -> partySwapMessage(r)?.let { swapNotice = ItemNotice(0, it, ok = false) } } }
-                                },
-                            )
+                            else androidx.compose.runtime.CompositionLocalProvider(
+                                // PARTY PICTURES (Crystal): each slot shows the front picture from the cart.
+                                LocalPartyPictures provides snapshot.pokedex?.tables?.takeIf { settings?.partyPictures == true && partyPicturesOffered(game) },
+                            ) {
+                                PartyScreen(
+                                    snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) },
+                                    onSwap = itemUse?.takeIf { it.canReorderParty() }?.let { use ->
+                                        { a, b -> use.reorderParty(a, b) { r -> partySwapMessage(r)?.let { swapNotice = ItemNotice(0, it, ok = false) } } }
+                                    },
+                                )
+                            }
                             // In a box of its own: this pane stretches what's put straight in it.
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                                 ItemNoticeHost(swapNotice, rememberGbaTextMetrics(), Modifier.padding(top = 12.dp)) { swapNotice = null }

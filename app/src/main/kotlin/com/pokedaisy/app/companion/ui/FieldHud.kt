@@ -1026,6 +1026,18 @@ private fun DockDivider(m: GbaTextMetrics) {
     Box(Modifier.width(m.u).height(m.u * 30).background(ink.divider))
 }
 
+/** PARTY PICTURES in the HUD: screen pixels a side for a picture in an icon slot of [size] (whole pixels a picture pixel). */
+private fun androidx.compose.ui.unit.Density.hudPictureSide(size: Dp): Int = 56 * max(1, (size.toPx() * 32f / 24f / 56f).roundToInt())
+
+/** The icon slot of a HUD party tile: the icon's size, or with PARTY PICTURES the picture's and [u] * 2 round it. */
+@Composable
+private fun hudTileIcon(m: GbaTextMetrics): Dp {
+    val icon = hudIconSize(m)
+    if (LocalPartyPictures.current == null) return icon
+    val density = LocalDensity.current
+    return androidx.compose.ui.unit.max(icon, with(density) { hudPictureSide(icon).toDp() } + m.u * 4)
+}
+
 // ---- Party --------------------------------------------------------------------------------------
 
 /**
@@ -1036,7 +1048,7 @@ private fun DockDivider(m: GbaTextMetrics) {
 @Composable
 private fun HudMonTile(mon: MonView, m: GbaTextMetrics, tagRow: Boolean, onClick: () -> Unit) {
     val u = m.u
-    val icon = hudIconSize(m)
+    val icon = hudTileIcon(m)
     Column(
         Modifier.width(icon + u * 2).soundClickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1045,9 +1057,9 @@ private fun HudMonTile(mon: MonView, m: GbaTextMetrics, tagRow: Boolean, onClick
             HudMonTag(mon, u)
             Spacer(Modifier.height(u * 2))
         }
-        HudMonIcon(mon, icon, u, tag = false)
+        HudMonIcon(mon, icon, u, tag = false, pictureFor = hudIconSize(m))
         if (!mon.isEgg) {
-            // Room under the sprite (it spills past its slot) before the bar.
+            // Room under the sprite (an icon spills past its slot) before the bar.
             Spacer(Modifier.height(u * 3))
             HudHpBar(mon.hp, mon.maxHp, Modifier.fillMaxWidth().height(u * 5))
         }
@@ -1059,7 +1071,7 @@ private fun HudMonTile(mon: MonView, m: GbaTextMetrics, tagRow: Boolean, onClick
 private fun HudMonRow(mon: MonView, m: GbaTextMetrics, onClick: () -> Unit) {
     val u = m.u
     Row(Modifier.soundClickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
-        HudMonIcon(mon, hudIconSize(m), u, tag = false)
+        HudMonIcon(mon, hudTileIcon(m), u, tag = false, pictureFor = hudIconSize(m))
         if (!mon.isEgg) {
             Column(Modifier.padding(start = u).width(u * 26), verticalArrangement = Arrangement.spacedBy(u * 2)) {
                 if (mon.hp == 0 || mon.status.isNotEmpty()) HudMonTag(mon, u)
@@ -1083,12 +1095,23 @@ private fun HudMonTag(mon: MonView, u: Dp) {
 /** The party icon; fainted ones faded with FNT on them, a status chip (PSN, SLP, ...) over its top ([tag]: the HUD's party
  * puts it in a row of its own instead), NUZLOCKE's gravestone. */
 @Composable
-internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp, tag: Boolean = true) {
+internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp, tag: Boolean = true, pictureFor: Dp = size) {
     val density = LocalDensity.current
     val upx = with(density) { u.roundToPx() }
     val fainted = !mon.isEgg && mon.hp == 0
     Box(Modifier.size(size)) {
-        HudSpecies(mon.iconAsset, size, Modifier.alpha(if (fainted) 0.4f else 1f))
+        val pictures = LocalPartyPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
+        if (pictures != null) {
+            // PARTY PICTURES: the front picture, about the icon's size (a whole number of screen pixels per picture pixel),
+            // centred on the slot (the party's tiles make the slot the picture's size, plus a margin).
+            val pic = rememberRomBitmap(pictures, mon.species, { t, sp -> partyPicture(t, sp, cached = true) }, { t, sp -> partyPicture(t, sp, cached = false) })
+            val side = with(density) { hudPictureSide(pictureFor).toDp() }
+            Box(Modifier.size(size).alpha(if (fainted) 0.4f else 1f), contentAlignment = Alignment.Center) {
+                Box(Modifier.wrapContentSize(unbounded = true)) { PixelImage(pic, 56, Modifier.size(side)) }
+            }
+        } else {
+            HudSpecies(mon.iconAsset, size, Modifier.alpha(if (fainted) 0.4f else 1f))
+        }
         val status = if (fainted) "FNT" else mon.status
         if (tag && !mon.isEgg && status.isNotEmpty()) {
             // Over the icon's top edge, as wide as it needs (the icon box is narrower than "PSN" at some sizes).

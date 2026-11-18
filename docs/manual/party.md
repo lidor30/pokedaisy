@@ -3,7 +3,7 @@ title: Party and summaries
 summary: Your team at a glance, each Pokémon's full summary, its exact IVs and EVs, which new moves are worth learning, and the POKéMON CENTER's services anywhere.
 section: companion
 order: 2
-keywords: [team, pokemon, summary, ivs, evs, nature, ability, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade, pokemon center, center, heal, heal anywhere, nurse, move relearner, move tutor, relearn, remember move, move deleter, delete move, forget move, name rater, nickname, rename]
+keywords: [team, pokemon, summary, party pictures, pictures, sprites, front sprite, detailed icons, ivs, evs, nature, ability, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade, pokemon center, center, heal, heal anywhere, nurse, move relearner, move tutor, relearn, remember move, move deleter, delete move, forget move, name rater, nickname, rename]
 ---
 
 The `PARTY` tab is your team, live. Glance down and you know who's hurt, who's poisoned and who's about to level up, without pausing to open the game's menu.
@@ -19,6 +19,10 @@ The slots are your game's own party screen: FireRed and Emerald use their real s
 ![The PARTY tab: EMBERPUP Lv12 with full HP, GALEFINCH poisoned and low on HP, BUBBLEFIN and THORNLET](shots/companion-party.png "The PARTY tab")
 
 The icons bounce like they do in the game. If you'd rather they stood still, turn off `PARTY ICONS MOVE` in SETTINGS > `TWEAKS`.
+
+### PARTY PICTURES in Crystal
+
+Pokémon Crystal's party screen has only a few dozen icons, shared by kinds that look alike, all in one colour, so a leafy starter and every other plant look the same. Set `PARTY PICTURES` to `DETAILED` in SETTINGS (COMPANION group) and each slot shows that Pokémon's own picture instead, the one you see in battle and in the `DEX`, in its own colours. The picture is read from your cartridge file like the rest of the game's art. The HUD's party over the game follows the same setting. `GAME`, the default, keeps the game's icons. The setting only appears while you play Crystal.
 
 To change the order, press and hold a Pokémon, drag it onto another one and let go: they trade places, in your game too. The summary's `SWITCH` does the same: tap it, your party opens, and tap the Pokémon to trade with. `CANCEL` or BACK goes back to the summary. This works in the Game Boy Advance games while you're free to walk around, not in a battle or a conversation.
 

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import com.pokedaisy.app.companion.data.PokedexSource
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -824,6 +826,78 @@ private class SlotGeometry(w: Float, h: Float) {
     val hpTextMid = barY + 7 * u + 3 * u
 }
 
+/**
+ * PARTY PICTURES: the Pokédex tables to draw each slot's front picture from (the cart's, as the DEX does), in place of the
+ * game's party icons; null = the icons. Crystal's 251 species share 37 icons, all in one colour.
+ */
+val LocalPartyPictures = androidx.compose.runtime.staticCompositionLocalOf<com.pokedaisy.app.companion.data.PokedexTables?> { null }
+
+/**
+ * A PARTY PICTURE: the front picture with its inside filled white, as the game's paper shows it. The picture's colour 0 is
+ * see-through everywhere, so over a dark window or the game (DARK MODE, the HUD) its white parts showed what lay behind.
+ * Only what the outside can't reach is filled, so the outline stays free. Cached per tables and species.
+ */
+private val partyPictureCache = java.util.concurrent.ConcurrentHashMap<Triple<Any, Int, Boolean>, com.pokedaisy.app.companion.data.RomArt.Image>()
+
+/** [topLeft]: the picture cut down to what it draws (the PARTY slot lines every one up by its top-left corner). */
+internal fun partyPicture(
+    t: com.pokedaisy.app.companion.data.PokedexTables, species: Int, cached: Boolean, topLeft: Boolean = false,
+): com.pokedaisy.app.companion.data.RomArt.Image? {
+    val key = Triple<Any, Int, Boolean>(t, species, topLeft)
+    partyPictureCache[key]?.let { return it }
+    val src = (if (cached) PokedexSource.cachedFrontSprite(t, species) else PokedexSource.frontSprite(t, species)) ?: return null
+    val filled = paperFilled(src)
+    return (if (topLeft) toTopLeft(filled) else filled).also { partyPictureCache[key] = it }
+}
+
+/** [img] cut down to its drawn pixels. */
+private fun toTopLeft(img: com.pokedaisy.app.companion.data.RomArt.Image): com.pokedaisy.app.companion.data.RomArt.Image {
+    val w = img.width; val h = img.height; val px = img.argb
+    var left = w; var top = h; var right = -1; var bottom = -1
+    for (y in 0 until h) for (x in 0 until w) if ((px[y * w + x] ushr 24) != 0) {
+        if (x < left) left = x; if (y < top) top = y; if (x > right) right = x; if (y > bottom) bottom = y
+    }
+    if (right < 0) return img
+    val cw = right - left + 1; val ch = bottom - top + 1
+    val out = IntArray(cw * ch)
+    for (y in 0 until ch) for (x in 0 until cw) out[y * cw + x] = px[(y + top) * w + x + left]
+    return com.pokedaisy.app.companion.data.RomArt.Image(cw, ch, out)
+}
+
+/** [img] with every see-through pixel the border can't reach (4-way) made white. */
+internal fun paperFilled(img: com.pokedaisy.app.companion.data.RomArt.Image): com.pokedaisy.app.companion.data.RomArt.Image {
+    val w = img.width; val h = img.height; val px = img.argb
+    val outside = BooleanArray(w * h)
+    val stack = IntArray(w * h); var top = 0
+    fun push(i: Int) { if (!outside[i] && (px[i] ushr 24) == 0) { outside[i] = true; stack[top++] = i } }
+    for (x in 0 until w) { push(x); push((h - 1) * w + x) }
+    for (y in 0 until h) { push(y * w); push(y * w + w - 1) }
+    while (top > 0) {
+        val i = stack[--top]; val x = i % w
+        if (x > 0) push(i - 1); if (x < w - 1) push(i + 1)
+        if (i >= w) push(i - w); if (i < w * (h - 1)) push(i + w)
+    }
+    val out = px.copyOf()
+    for (i in out.indices) if ((out[i] ushr 24) == 0 && !outside[i]) out[i] = 0xFFFFFFFF.toInt()
+    return com.pokedaisy.app.companion.data.RomArt.Image(w, h, out)
+}
+
+/** Slot pixels between a PARTY PICTURE and the slot's left and top edges, and the name on its right. */
+private const val PICTURE_MARGIN = 3
+
+/**
+ * Screen pixels per PARTY PICTURE pixel: whole ones, about the icon's size (its 16 pixels at 2 slot pixels each), but a
+ * picture of 48 rows (most are; the biggest have 56) no taller than the name area under the top margin.
+ */
+private fun partyPictureScale(g: SlotGeometry): Int {
+    val u = g.u
+    val room = floor((g.dividerY - g.fy - PICTURE_MARGIN * u) / 48f).toInt()
+    return max(1, min((u * 0.6f).roundToInt(), room))
+}
+
+/** Games that offer PARTY PICTURES: Crystal for now (English and German, which run as CRYSTAL). */
+fun partyPicturesOffered(game: com.pokedaisy.app.companion.data.GameKind?): Boolean = game == com.pokedaisy.app.companion.data.GameKind.CRYSTAL
+
 @Composable
 private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, sound: Boolean = true) {
     val density = LocalDensity.current
@@ -865,25 +939,45 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
         val text = colors.text ?: palette.text
         val textShadow = colors.textShadow ?: palette.textShadow
 
-        // Poke Ball, then the icon over it: resting 4px up, bobbing -3/+1 while selected.
-        Canvas(Modifier.fillMaxSize()) { drawPixelBitmap(PartyBall, palette.ball, g.fx - 6 * u, g.fy - 4 * u, u.toFloat()) }
+        val pictures = LocalPartyPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
         val iconDy = if (!selected) -4 else if (!bobDown) -3 else 1
-        SpeciesIcon(
-            mon.iconAsset, size = with(density) { (32 * u).toDp() },
-            modifier = Modifier.offset { IntOffset((g.fx - 8 * u).toInt(), (g.fy + iconDy * u).toInt()) },
-        )
+        if (pictures != null) {
+            // The front picture in the icon's place, inside the slot's left edge, no Poke Ball under it. It doesn't bob.
+            val pic = rememberRomBitmap(
+                pictures, mon.species,
+                { t, sp -> partyPicture(t, sp, cached = true, topLeft = true) }, { t, sp -> partyPicture(t, sp, cached = false, topLeft = true) },
+            )
+            val k = partyPictureScale(g)
+            if (pic != null) {
+                androidx.compose.foundation.Image(
+                    pic, contentDescription = null, filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                    contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                    modifier = Modifier.offset { IntOffset((g.fx + PICTURE_MARGIN * u).toInt(), (g.fy + PICTURE_MARGIN * u).toInt()) }
+                        .size(with(density) { (pic.width * k).toDp() }, with(density) { (pic.height * k).toDp() }),
+                )
+            }
+        } else {
+            // Poke Ball, then the icon over it: resting 4px up, bobbing -3/+1 while selected.
+            Canvas(Modifier.fillMaxSize()) { drawPixelBitmap(PartyBall, palette.ball, g.fx - 6 * u, g.fy - 4 * u, u.toFloat()) }
+            SpeciesIcon(
+                mon.iconAsset, size = with(density) { (32 * u).toDp() },
+                modifier = Modifier.offset { IntOffset((g.fx - 8 * u).toInt(), (g.fy + iconDy * u).toInt()) },
+            )
+        }
         // The held-item marker, where GbaPartySlot puts it: the resting icon's place + (16, 22). It doesn't bob.
         HeldItemMarker(mon.heldItemId, u, g.fx - 8 * u + 16 * u, g.fy + 22 * u)
 
-        val textWidth = with(density) { (g.fx + g.fw - 4 * u - g.textX).toDp() }
-        GbaText(mon.shownName, text, textShadow, nameM, density.at(g.textX, g.nameMid, nameM).width(textWidth))
+        // A picture is wider than the icon: the name and level start the same margin right of it.
+        val textX = if (pictures != null) max(g.textX, g.fx + PICTURE_MARGIN * u + 56 * partyPictureScale(g) + PICTURE_MARGIN * u) else g.textX
+        val textWidth = with(density) { (g.fx + g.fw - 4 * u - textX).toDp() }
+        GbaText(mon.shownName, text, textShadow, nameM, density.at(textX, g.nameMid, nameM).width(textWidth))
         if (!showHp) return@BoxWithConstraints
 
         val status = if (mon.hp == 0) "FNT" else mon.status
         if (status.isNotEmpty()) {
-            StatusChip(status, u, chipText, Modifier.offset { IntOffset((g.textX + 6 * u).toInt(), (g.levelMid - 5 * u).toInt()) })
+            StatusChip(status, u, chipText, Modifier.offset { IntOffset((textX + 6 * u).toInt(), (g.levelMid - 5 * u).toInt()) })
         } else {
-            GbaText(tr("Lv{0}", mon.level), text, textShadow, nameM, density.at(g.textX + 6 * u, g.levelMid, nameM))
+            GbaText(tr("Lv{0}", mon.level), text, textShadow, nameM, density.at(textX + 6 * u, g.levelMid, nameM))
         }
         val gender = when (mon.genderSymbol) {
             GENDER_SYMBOL_MALE -> Triple(PixelIcons.male, palette.male, palette.maleShadow)

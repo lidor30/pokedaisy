@@ -415,6 +415,12 @@ class Prefs(
         get() = p.getBoolean("look_around", true)
         set(v) = p.edit().putBoolean("look_around", v).apply()
 
+    /** PARTY PICTURES (Crystal): the PARTY tab's slots show each Pokémon's front picture from the cart instead of the
+     * game's party icons, which 251 species share 37 of. Off (GAME) by default. */
+    var partyPictures: Boolean
+        get() = p.getBoolean("party_pictures", false)
+        set(v) = p.edit().putBoolean("party_pictures", v).apply()
+
     /** ONE-TAP MOVES: the battle controls' action menu shows the moves where FIGHT is, a tap
      * picking FIGHT and the move in one go. Off by default. */
     var oneTapMoves: Boolean
