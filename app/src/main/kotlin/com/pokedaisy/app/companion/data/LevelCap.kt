@@ -19,8 +19,8 @@ import okio.Path
  * The `cmp`'s 100 becomes the cap and `bne` / `beq` become `bcc` / `bcs`. Items that raise a level and the day care aren't
  * getexp: they still work.
  *
- * Found in agbcc's getexp ([ExpShare.getexp], so only where the game runs it): FireRed / LeafGreen / Emerald in every
- * language and the hacks on that code. Patched with the other game options ([com.pokedaisy.app.EmulatorEngine]'s
+ * Found in agbcc's getexp ([ExpShare.getexp], so only where the game runs it): FireRed / LeafGreen / Emerald / Ruby / Sapphire
+ * in every language and the hacks on that code. Patched with the other game options ([com.pokedaisy.app.EmulatorEngine]'s
  * applyTmPatch), again whenever the cap moves. Played headless on FireRed rev 1 and Emerald.
  */
 object LevelCap {
