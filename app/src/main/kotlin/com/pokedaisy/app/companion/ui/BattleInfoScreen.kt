@@ -210,7 +210,11 @@ private fun StyledInfoBody(
         }
         // Your moves under your card, what the foe is weak to under its own: each a block of connected cells.
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-            MovesColumn(player, opponent.size, showHints, m, small, Modifier.weight(1f).fillMaxHeight(), striped = true)
+            // Your moves under "<NAME>'S MOVES" where the pane has room (the foe's column has its own headings).
+            val title = if (player.size == 1) tr("{0}'S MOVES", player[0].name) else tr("MOVES")
+            HeadedBlock(title, small, Modifier.weight(1f).fillMaxHeight(), minBody = u * INFO_MOVES_BODY_MIN, c = mine) { headed ->
+                MovesColumn(player, opponent.size, showHints, m, small, Modifier.fillMaxWidth().weight(1f), striped = true, headed = headed)
+            }
             if (showHints || toggle) {
                 FoeDetailsColumn(foes, player.size, showHints, matchups = showHints, dexTables, m, small,
                     Modifier.weight(1f).fillMaxHeight(), bottomRoom = buttonRoom, styled = true)
@@ -518,6 +522,8 @@ private fun MovesColumn(
     player: List<MonView>, foeCount: Int, showHints: Boolean, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier,
     /** A menu style's panel: every other move on the stripe. */
     striped: Boolean = false,
+    /** A heading cell sits over the first move ([HeadedBlock]). */
+    headed: Boolean = false,
 ) {
     val single = player.size <= 1
     Column(if (single) modifier else modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(if (single) 0.dp else m.u * 2)) {
@@ -526,7 +532,7 @@ private fun MovesColumn(
             // (A single battle's moves need no heading - the verdicts say whose they are.)
             if (!single) GbaText(tr("{0}'S MOVES", mon.name), OptionColors.value, OptionColors.valueShadow, small)
             if (mon.moves.isEmpty()) GbaText(tr("NO MOVE DATA"), OptionColors.muted, OptionColors.mutedShadow, small)
-            val rowMod = if (single) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth().height(m.u * 56)
+            val rowMod = if (single) cappedRow(m.u).fillMaxWidth() else Modifier.fillMaxWidth().height(m.u * 56)
             val count = if (single) 4 else mon.moves.size
             val cells = OptionColors.cells
             for (i in 0 until count) {
@@ -535,7 +541,7 @@ private fun MovesColumn(
                     val short = LocalShortCompanion.current
                     MoveCell(
                         mon.moves.getOrNull(i), m, small,
-                        rowMod.cell(if (i % 2 == 0) cells.a else cells.b, cells.line, m.u, top = i == 0, bottom = i == count - 1),
+                        rowMod.cell(if (i % 2 == 0) cells.a else cells.b, cells.line, m.u, top = i == 0 && !headed, bottom = i == count - 1),
                         oneLine = short,
                     ) { mv -> if (showHints && foeCount >= 1) MoveVerdict(mv, foeCount, short = foeCount > 1 || short) else MoveKindIcon(mv, m) }
                 } else BattleMoveRow(mon.moves.getOrNull(i), showHints, foeCount, m, small, rowMod)
@@ -948,3 +954,6 @@ internal fun FoeSlot(mon: MonView, shown: Boolean, current: Boolean, small: GbaT
         }
     }
 }
+
+/** INFO's moves under their heading: a verdict pill on the second line needs a little more than the summary's rows. */
+internal const val INFO_MOVES_BODY_MIN = 4 * 44

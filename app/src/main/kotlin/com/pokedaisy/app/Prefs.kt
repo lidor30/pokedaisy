@@ -978,9 +978,10 @@ class Prefs(
         get() = p.getInt("dark_mode", 0)
         set(v) = p.edit().putInt("dark_mode", v).apply()
 
-    /** SETTINGS > FONT: the app's text font by AppFont ordinal (0 PIXEL, the default; companion/ui/theme/AppFont.kt). */
+    /** SETTINGS > FONT: the app's text font by AppFont ordinal (companion/ui/theme/AppFont.kt). Unset = AppFont.DEFAULT
+     * (PIXEL SMALL, 4): a player who picked PIXEL (0) keeps it. */
     var appFont: Int
-        get() = p.getInt("app_font", 0)
+        get() = p.getInt("app_font", 4)   // AppFont.PIXEL_SMALL.ordinal (PrefsCompanionSettingsTest checks it)
         set(v) = p.edit().putInt("app_font", v).apply()
 
     /** User-supplied SteamGridDB API key (Settings > Cover Art) — see

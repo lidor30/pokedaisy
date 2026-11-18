@@ -72,7 +72,7 @@ The `SPEED OPTIONS` page:
 | `THEME` | **`POKéDAISY`**, `CHERRY`, `RAINBOW`, `OCEAN`, `MINT`, `LAVENDER`, `SUNSET`, `FOREST`, `LEMON`, and a holiday theme around its dates | Colours of the app and the companion, on both screens. | [Screen](screen.md#theme) |
 | `COMPANION LOOK` | **`GAME`**, `CLASSIC` | `GAME`: the companion and the HUD in the style of the game you're playing, where it has one. `CLASSIC`: the app's own look in every game. | [Screen](screen.md#game-look) |
 | `DARK MODE` | **`OFF`**, `ON`, `AUTO` | Dark windows on both screens. `AUTO` follows the device. | [Screen](screen.md) |
-| `FONT` | **`PIXEL`**, `SMOOTH`, `SMOOTH BOLD`, `SYSTEM` | The app's letters on both screens: pixel art or smooth ones. | [Screen](screen.md#font) |
+| `FONT` | **`PIXEL SMALL`**, `PIXEL`, `SMOOTH`, `SMOOTH BOLD`, `SYSTEM` | The app's letters on both screens: pixel art or smooth ones. | [Screen](screen.md#font) |
 | `FPS / CPU` | `ON`, **`OFF`** | Frames per second and the app's CPU use in the game's corner. Tap it for more. | [Screen](screen.md) |
 
 The `DISPLAY OPTIONS` page:

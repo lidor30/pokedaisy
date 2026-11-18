@@ -349,6 +349,7 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "FONT" to Tr(ja = "フォント", fr = "POLICE", de = "SCHRIFT", it = "CARATTERE", es = "FUENTE", br = "FONTE", pt = "TIPO DE LETRA", ko = "글꼴"),
     "PIXEL" to Tr(ja = "ドット", fr = "PIXEL", de = "PIXEL", it = "PIXEL", es = "PÍXEL", br = "PIXEL", pt = "PIXEL", ko = "픽셀"),
     "SMOOTH" to Tr(ja = "なめらか", fr = "LISSE", de = "GLATT", it = "LISCIO", es = "SUAVE", br = "SUAVE", pt = "SUAVE", ko = "매끄럽게"),
+    "PIXEL SMALL" to Tr(ja = "ドット ちいさめ", fr = "PIXEL PETIT", de = "PIXEL KLEIN", it = "PIXEL PICCOLO", es = "PÍXEL PEQUEÑO", br = "PIXEL PEQUENO", pt = "PIXEL PEQUENO", ko = "픽셀 작게"),
     "SMOOTH BOLD" to Tr(ja = "なめらか ふと", fr = "LISSE GRAS", de = "GLATT FETT", it = "LISCIO GRASSETTO", es = "SUAVE NEGRITA", br = "SUAVE NEGRITO", pt = "SUAVE NEGRITO", ko = "매끄럽게 굵게"),
     "SYSTEM" to Tr(ja = "システム", fr = "SYSTÈME", de = "SYSTEM", it = "SISTEMA", es = "SISTEMA", br = "SISTEMA", pt = "SISTEMA", ko = "시스템"),
     "Pixel letters or smooth ones" to Tr(ja = "ドットの もじか なめらかな もじ", fr = "Lettres en pixels ou lisses", de = "Pixel-Buchstaben oder glatte", it = "Lettere a pixel o lisce", es = "Letras de píxeles o suaves", br = "Letras em pixels ou suaves", pt = "Letras em píxeis ou suaves", ko = "픽셀 글자 또는 매끄러운 글자"),

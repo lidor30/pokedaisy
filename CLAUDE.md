@@ -303,8 +303,11 @@ tag + name, then the verdict or category, PWR, PP). Unbound wears it in its own 
 START menu) - the only per-game palette (the user's call). Drawn tags (`GameTag`) copy FireRed's type tags measured from the ROM
 (12 GBA px tall, a 1 px notch per corner, the #424242 shadow), multipliers inside them. The BATTLE backdrop takes the style's
 colours (`battleTones`). `UiStyle.CLASSIC` is the old OPTION look (Game Boy games always; ui-preview `-Pstyle=CLASSIC`). FONT
-(SETTINGS > SCREEN on both screens, `AppFonts`, NEW tag): PIXEL / SMOOTH / SMOOTH BOLD / SYSTEM, smooth ones at Pixel Operator's
-capital height. **Under it, the app's pieces are FireRed's OPTION screen** (`companion/ui/GbaMenu.kt`): white
+(SETTINGS > SCREEN on both screens, `AppFonts`, NEW tag): PIXEL SMALL (the default since 2026-11-18, the user's call: the Linux / 3DS
+HUD's small font as `assets/fonts/PixelSmall.ttf`, written by `scripts/gen_small_font.py` from `3ds/tools/gen_font.py`'s SMALL_GLYPHS,
+over Pixel Operator for what it lacks; stored ordinal 4 - `Prefs.appFont`'s default, so a player who picked PIXEL keeps it) / PIXEL /
+SMOOTH / SMOOTH BOLD / SYSTEM, smooth ones at Pixel Operator's capital height. Every tag is a game tag (`GameTag` / `GameTagBox`:
+notched corners, the #424242 shadow): `OptionBadge` (NEW, BETA, the library's NOT SUPPORTED / BLOCKED) at its row's GBA pixel. **Under it, the app's pieces are FireRed's OPTION screen** (`companion/ui/GbaMenu.kt`): white
 title window, grey multi-line list window, `LABEL  VALUE` rows with grey labels / red
 values and a white row as the cursor, white framed buttons, black-out overlays. Text is
 `GbaText` sized by `GbaTextMetrics` (whole screen pixels per font pixel, so the pixel

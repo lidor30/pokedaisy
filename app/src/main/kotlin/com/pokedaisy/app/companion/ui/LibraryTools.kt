@@ -95,7 +95,7 @@ private fun ToolCard(tool: LibraryTool, m: GbaTextMetrics, small: GbaTextMetrics
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GbaText(label, OptionColors.label, OptionColors.labelShadow, m)
                 tool.newBadge?.let {
-                    OptionBadge(it, m, Modifier.padding(start = u * 6), fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow)
+                    OptionBadge(it, m, Modifier.padding(start = u * 6), fill = OptionColors.newBadge)
                 }
             }
             Spacer(Modifier.height(u * 2))

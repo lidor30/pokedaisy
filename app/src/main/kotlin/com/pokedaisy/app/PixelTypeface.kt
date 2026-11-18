@@ -26,6 +26,7 @@ import okio.Path
 class AndroidFonts(context: Context) : FontSource {
     private val app = context.applicationContext
     override fun pixel(): FontFamily = pixelFontFamily(app)
+    override fun pixelSmall(): FontFamily = pixelSmallFontFamily(app)
     override fun smooth(bold: Boolean): FontFamily = atkinsonFamily(app, bold)
     override fun reading(): FontFamily = readingFontFamily(app)
     override fun game(file: Path): FontFamily? = gameFontFamily(app, file.toFile())
@@ -37,6 +38,31 @@ fun pixelFontFamily(context: Context): FontFamily {
         pixelFamily ?: buildPixelFamily(context.applicationContext).also { pixelFamily = it }
     }
 }
+
+/** SETTINGS > FONT's PIXEL SMALL: PixelSmall.ttf over Pixel Operator and its fallbacks, built once like [pixelFontFamily]. */
+fun pixelSmallFontFamily(context: Context): FontFamily {
+    pixelSmallFamily?.let { return it }
+    return synchronized(fontLock) {
+        pixelSmallFamily ?: run {
+            val app = context.applicationContext
+            val plain = { FontFamily(ComposeFont("fonts/PixelSmall.ttf", app.assets)) }
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) plain()
+            else runCatching {
+                val assets = assetFamilies(app)
+                val small = AndroidFontFamily.Builder(Font.Builder(app.assets, "fonts/PixelSmall.ttf").build()).build()
+                val typeface = Typeface.CustomFallbackBuilder(small)
+                    .addCustomFallback(assets.pixel)
+                    .addCustomFallback(assets.japanese)
+                    .addCustomFallback(assets.korean)
+                    .setSystemFallback("sans-serif")
+                    .build()
+                FontFamily(androidx.compose.ui.text.font.Typeface(typeface))
+            }.getOrElse { plain() }
+        }.also { pixelSmallFamily = it }
+    }
+}
+
+@Volatile private var pixelSmallFamily: FontFamily? = null
 
 /** A game's own font file ([file], e.g. Yellow's from Gen1Art) over Pixel Operator for anything it lacks. */
 fun gameFontFamily(context: Context, file: java.io.File): FontFamily? {

@@ -14,6 +14,9 @@ interface FontSource {
     /** Pixel Operator with its Japanese and Korean fallbacks: the app's one font. */
     fun pixel(): FontFamily
 
+    /** SETTINGS > FONT's PIXEL SMALL (PixelSmall.ttf) over [pixel] for anything it lacks. */
+    fun pixelSmall(): FontFamily = pixel()
+
     /** Atkinson Hyperlegible (regular, bold, italic): the manual's paragraphs. */
     fun smooth(bold: Boolean): FontFamily = reading()
 

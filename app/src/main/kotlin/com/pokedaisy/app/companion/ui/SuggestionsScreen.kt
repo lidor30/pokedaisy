@@ -107,14 +107,21 @@ fun SuggestionsScreen(
             }
             // Up to three picks sharing the window's height, ruled apart.
             val picks = ranked.take(3)
+            if (styled) {
+                // The picks' table under SUGGESTIONS where the pane has room for it.
+                HeadedBlock(tr("SUGGESTIONS"), small, Modifier.fillMaxWidth().weight(1f), minBody = m.u * SUGGESTIONS_BODY_MIN) { headed ->
+                    picks.forEachIndexed { i, s ->
+                        SuggestionRow(i, s, isOut(s.mon, active), foe, gap, m, small, cappedRow(m.u, SUGGESTION_ROW_MAX).fillMaxWidth(),
+                            styled = true, last = i == picks.lastIndex, headed = headed)
+                    }
+                    repeat(3 - picks.size) { Spacer(Modifier.weight(1f)) }
+                }
+                return@Column
+            }
             picks.forEachIndexed { i, s ->
                 val out = isOut(s.mon, active)
-                if (styled) {
-                    SuggestionRow(i, s, out, foe, gap, m, small, Modifier.weight(1f).fillMaxWidth(), styled = true, last = i == picks.lastIndex)
-                    return@forEachIndexed
-                }
                 if (i > 0) Separator(m, Modifier.fillMaxWidth().padding(vertical = m.u * 2))
-                SuggestionRow(i, s, out, foe, gap, m, small, Modifier.weight(1f).fillMaxWidth())
+                SuggestionRow(i, s, out, foe, gap, m, small, cappedRow(m.u, SUGGESTION_ROW_MAX).fillMaxWidth())
             }
             repeat(3 - picks.size) { Spacer(Modifier.weight(1f)) }
         }
@@ -167,6 +174,8 @@ private fun SuggestionRow(
     /** A menu style: the card and the move two connected cells, a row of the picks' table ([last] closes it). */
     styled: Boolean = false,
     last: Boolean = false,
+    /** The table has a heading cell over its first row. */
+    headed: Boolean = false,
 ) {
     val move = if (s.bestMove.power == 0) s.bestMove.copy(vs = emptyList()) else s.bestMove.copy(vs = listOf(MoveVsFoe(foe.name, formatMultiplier(s.movePct), s.movePct)))
     if (styled) {
@@ -174,12 +183,12 @@ private fun SuggestionRow(
         val u = m.u
         val fill = if (index % 2 == 0) c.a else c.b
         Row(modifier.height(IntrinsicSize.Min)) {
-            Box(Modifier.weight(1f).fillMaxHeight().cell(fill, c.line, u, top = index == 0, bottom = last, right = false)
+            Box(Modifier.weight(1f).fillMaxHeight().cell(fill, c.line, u, top = index == 0 && !headed, bottom = last, right = false)
                 .padding(horizontal = u * 4, vertical = u * 2), contentAlignment = Alignment.CenterStart) {
                 BattlerCard(s.mon, compact = false, side = RankLabels[index], state = if (out) tk("OUT") else "", m, small, threats = listOf(foe),
                     sideColor = c.head, sideShadow = c.headShadow)
             }
-            MoveCell(move, m, small, Modifier.weight(1f).fillMaxHeight().cell(fill, c.line, u, top = index == 0, bottom = last, left = false)) { mv ->
+            MoveCell(move, m, small, Modifier.weight(1f).fillMaxHeight().cell(fill, c.line, u, top = index == 0 && !headed, bottom = last, left = false)) { mv ->
                 MoveVerdict(mv, 1)
             }
         }
@@ -262,3 +271,6 @@ private fun EmptyNote(content: @Composable () -> Unit) {
     if (c == null) content()
     else Box(Modifier.fillMaxWidth().padding(12.dp)) { content() }
 }
+
+/** What SUGGESTIONS' three picks need under their heading for it to show, in GBA pixels. */
+internal const val SUGGESTIONS_BODY_MIN = 3 * SUGGESTION_ROW_MAX

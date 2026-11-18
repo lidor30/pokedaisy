@@ -202,7 +202,8 @@ The game's own art stays as it is: party slots, the map, the trainer card and ba
 
 `FONT` sets the letters the app is written in, on both screens at once. Pick it in the top screen's Settings or in the companion's SETTINGS, under SCREEN:
 
-- `PIXEL` (the default): crisp pixel letters, like the games' own. A Game Boy game shows its own letters while it runs.
+- `PIXEL SMALL` (the default): small, crisp pixel letters, a little shorter and narrower than `PIXEL`, so more fits on a line. A Game Boy game shows its own letters while it runs.
+- `PIXEL`: the taller pixel letters the app used before.
 - `SMOOTH`: soft, rounded letters that are easy to read on any screen.
 - `SMOOTH BOLD`: the same letters, heavier, closer to the games' thick menu text.
 - `SYSTEM`: your device's own font.

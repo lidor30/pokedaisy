@@ -1,11 +1,14 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,7 +27,8 @@ internal fun StylePill(text: String, small: GbaTextMetrics, modifier: Modifier =
     val u = small.u
     val f = fill ?: style?.let { OptionColors.tint(it.sectionFill) } ?: OptionColors.value
     Box(
-        modifier.drawBehind { drawPixelRoundRect(f, radius = 3 * u.toPx(), step = u.toPx()) }.padding(horizontal = u * 4, vertical = u),
+        // Notched like the games' tags (GameTag), the other tags beside it.
+        modifier.background(f, NotchedShape(u)).padding(horizontal = u * 4, vertical = u),
         contentAlignment = Alignment.Center,
     ) {
         GbaText(text, style?.sectionText ?: Color.White, shadow ?: style?.sectionShadow ?: OptionColors.valueShadow, small, maxLines = 1)
@@ -80,4 +84,49 @@ internal fun HeadCell(
         GbaText(text, c.headText, shadow, small, Modifier.weight(1f), maxLines = 1)
         trailing?.invoke(this)
     }
+}
+
+/** The most a move's row grows to, in GBA pixels, where a list shares out a tall pane (the summary's four moves, battle
+ * INFO's, the move page's). Past it the rows keep their size and the list ends early instead of stretching down. */
+internal const val MOVE_ROW_MAX = 50
+
+/** SUGGESTIONS' rows (a Pokémon's card beside its best move): three lines on the left, so a little more room. */
+internal const val SUGGESTION_ROW_MAX = 66
+
+/** A row's share of a [ColumnScope]'s height, but at most [max] GBA pixels ([u] each): it fills its share up to that. */
+internal fun androidx.compose.foundation.layout.ColumnScope.cappedRow(u: androidx.compose.ui.unit.Dp, max: Int = MOVE_ROW_MAX): Modifier =
+    Modifier.weight(1f, fill = false).heightIn(max = u * max).fillMaxHeight()
+
+/**
+ * A block of cells with a heading cell over it ([title], in the block's heading colours) - but only where the pane has
+ * room for the heading and [minBody] under it; a pane too short (the RG DS) keeps its rows. [content] is told whether the
+ * heading is there, so its first cell joins it ([cell]'s `top`). In CLASSIC (no cells) there's never a heading.
+ */
+@Composable
+internal fun HeadedBlock(
+    title: String,
+    small: GbaTextMetrics,
+    modifier: Modifier,
+    minBody: androidx.compose.ui.unit.Dp,
+    c: com.pokedaisy.app.companion.ui.theme.CellColors? = OptionColors.cells,
+    content: @Composable ColumnScope.(headed: Boolean) -> Unit,
+) {
+    if (c == null) {
+        Column(modifier) { content(false) }
+        return
+    }
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
+        val head = small.lineHeight + small.u * 4
+        val headed = !constraints.hasBoundedHeight || maxHeight - head >= minBody
+        Column(Modifier.fillMaxWidth().then(if (constraints.hasBoundedHeight) Modifier.fillMaxHeight() else Modifier)) {
+            if (headed) HeadCell(title, c, small)
+            content(headed)
+        }
+    }
+}
+
+/** The body of a [HeadedBlock] that isn't cells of its own (the summary's INFO, STATS): one cell under the heading. */
+internal fun Modifier.headedBody(headed: Boolean, u: androidx.compose.ui.unit.Dp): Modifier {
+    val c = OptionColors.cells ?: return this
+    return if (!headed) this else cell(c.a, c.line, u, top = false, bottom = true).padding(horizontal = u * 4, vertical = u * 3)
 }

@@ -107,15 +107,31 @@ internal fun GameTag(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val scale = (fontSize.value / TYPE_TAG_SP).toInt().coerceAtLeast(1)
     val k = with(density) { kotlin.math.round(20.dp.toPx() / 16f).toInt().coerceAtLeast(2) } * scale
+    GameTagBox(text, color, k, modifier, textColor, minWidth = minWidth)
+}
+
+/**
+ * [GameTag] at [k] screen pixels a tag pixel: the app's other tags (a settings row's NEW, the library's NEW / BLOCKED / NOT
+ * SUPPORTED, BETA, WHAT'S NEW's version) at their row's GBA pixel ([OptionBadge]).
+ */
+@Composable
+internal fun GameTagBox(
+    text: String, color: Color, k: Int, modifier: Modifier = Modifier, textColor: Color = Color.White, minWidth: Int = 0,
+    shadow: Color = TAG_SHADOW,
+) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
     // The nearest whole font pixel to 7/9 of a GBA pixel that still fits the capitals and their shadow (10 font pixels) in the
     // box with a screen pixel to spare.
-    val f = kotlin.math.round(7f * k / 9f).toInt().coerceAtMost((12 * k - 2) / 10).coerceAtLeast(1)
+    // A short companion (the RG DS: 2 screen pixels a GBA pixel) rounds down: its narrow columns can't take 2-pixel letters,
+    // which came out bigger than the game's own tags beside them and pushed the summary's matchups off the bottom.
+    val short = LocalShortCompanion.current
+    val f = (if (short) (7 * k) / 9 else kotlin.math.round(7f * k / 9f).toInt()).coerceAtMost((12 * k - 2) / 10).coerceAtLeast(1)
     val m = androidx.compose.runtime.remember(k, f, density) {
         with(density) { GbaTextMetrics(k, k.toDp(), (16f * f).toSp(), f.toFloat(), (16f * f).toDp(), (20f * f).toDp()) }
     }
     val u = with(density) { k.toDp() }
     // The game's tag height, 12 GBA pixels, the capitals and their shadow centred in it (as the ROM tags beside it are drawn).
-    val height = with(density) { (12 * k).toDp() }
+    val height = with(density) { (if (short) 10 * f + 3 * k else 12 * k).toDp() }
     Box(
         modifier = modifier
             .height(height)
@@ -126,13 +142,13 @@ internal fun GameTag(
     ) {
         // The line is taller than a small tag (16 font pixels to the box's 12 GBA ones): laid out whole, centred over it, then
         // a font pixel up - the game's letters sit above the middle (two pixels over them, three under with the shadow).
-        GbaText(text, textColor, TAG_SHADOW, m,
+        GbaText(text, textColor, shadow, m,
             Modifier.wrapContentHeight(unbounded = true).offset { androidx.compose.ui.unit.IntOffset(0, -f) }, maxLines = 1)
     }
 }
 
 /** The games' tag lettering's shadow (every type tag's, whatever its colour). */
-private val TAG_SHADOW = Color(0xFF424242)
+internal val TAG_SHADOW = Color(0xFF424242)
 
 /** A rectangle with a [notch]-square cut from each corner: the games' tags' one-pixel corners. */
 class NotchedShape(private val notch: Dp) : Shape {

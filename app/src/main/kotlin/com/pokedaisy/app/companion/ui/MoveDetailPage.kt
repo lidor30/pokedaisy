@@ -61,7 +61,7 @@ internal fun MoveDetailPage(
 ) {
     val c = OptionColors.cells
     Row(modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
-        Column(Modifier.weight(0.42f).fillMaxHeight()) {
+        HeadedBlock(tr("MOVES"), small, Modifier.weight(0.42f).fillMaxHeight(), minBody = m.u * MOVES_BODY_MIN) { headed ->
             for (i in 0 until 4) {
                 val mv = mon.moves.getOrNull(i)
                 val fill = when {
@@ -71,7 +71,7 @@ internal fun MoveDetailPage(
                     else -> c.b
                 }
                 MovePick(mv, i == selected, m, small,
-                    Modifier.weight(1f).fillMaxWidth().cell(fill, c?.line ?: OptionColors.divider, m.u, top = i == 0, bottom = i == 3)) { onSelect(i) }
+                    cappedRow(m.u).fillMaxWidth().cell(fill, c?.line ?: OptionColors.divider, m.u, top = i == 0 && !headed, bottom = i == 3)) { onSelect(i) }
             }
         }
         val mv = mon.moves.getOrNull(selected)

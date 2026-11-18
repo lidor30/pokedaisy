@@ -239,21 +239,29 @@ fun MonDetailScreen(
                                 Modifier.weight(0.5f).fillMaxHeight().padding(start = gap))
                         } else {
                             val heldItem = heldOf(i)
-                            SummaryLeftColumn(
-                                mon, m, small, gap, Modifier.weight(0.5f).fillMaxHeight().padding(end = gap),
-                                held = heldItem?.let { t ->
-                                    {
-                                        HeldItemLine(t.heldItem, small, onTake = if (t.verdict == com.pokedaisy.app.companion.data.SlotVerdict.OK) {
-                                            { takeResult = null; takeAsk = true }
-                                        } else null, bagFull = t.verdict == com.pokedaisy.app.companion.data.SlotVerdict.BAG_FULL)
-                                    }
-                                },
-                            )
-                            Separator(m, Modifier.fillMaxHeight(), vertical = true)
+                            val held: (@Composable () -> Unit)? = heldItem?.let { t ->
+                                {
+                                    HeldItemLine(t.heldItem, small, onTake = if (t.verdict == com.pokedaisy.app.companion.data.SlotVerdict.OK) {
+                                        { takeResult = null; takeAsk = true }
+                                    } else null, bagFull = t.verdict == com.pokedaisy.app.companion.data.SlotVerdict.BAG_FULL)
+                                }
+                            }
+                            val u = m.u
+                            if (cells != null) {
+                                // A menu style: INFO and the moves / STATS each a block under a heading, where there's room.
+                                HeadedBlock(tr("INFO"), small, Modifier.weight(0.5f).fillMaxHeight().padding(end = gap), minBody = u * SUMMARY_INFO_MIN) { headed ->
+                                    SummaryLeftColumn(mon, m, small, gap, Modifier.fillMaxWidth().weight(1f).headedBody(headed, u), held = held)
+                                }
+                            } else {
+                                SummaryLeftColumn(mon, m, small, gap, Modifier.weight(0.5f).fillMaxHeight().padding(end = gap), held = held)
+                                Separator(m, Modifier.fillMaxHeight(), vertical = true)
+                            }
                             val side = Modifier.weight(0.5f).fillMaxHeight().padding(start = gap)
                             val stats = mon.stats
                             if (showStats && stats != null) {
-                                MonStatsSection(stats, m, side, ability = individualAbility(mon, stats, dexTables))
+                                if (cells != null) HeadedBlock(tr("STATS"), small, side, minBody = u * SUMMARY_STATS_MIN) { headed ->
+                                    MonStatsSection(stats, m, Modifier.fillMaxWidth().weight(1f).headedBody(headed, u), ability = individualAbility(mon, stats, dexTables))
+                                } else MonStatsSection(stats, m, side, ability = individualAbility(mon, stats, dexTables))
                             } else MovesSection(mon, m, small, side, onMoveClick = { openMove = it })
                         }
                     }
@@ -797,14 +805,14 @@ private fun MovesSection(
 ) {
     val cells = OptionColors.cells?.takeIf { optionLook === OptionLook.Live }
     if (cells != null) {
-        // A menu style: the four moves a block of connected cells, as HG / Black draw them.
-        Column(modifier) {
+        // A menu style: the four moves a block of connected cells, as HG / Black draw them, under MOVES where there's room.
+        HeadedBlock(tr("MOVES"), small, modifier, minBody = m.u * MOVES_BODY_MIN) { headed ->
             for (i in 0 until 4) {
                 val mv = mon.moves.getOrNull(i)
                 val tap = if (mv != null && onMoveClick != null) Modifier.testTag("move-$i").soundClickable { onMoveClick(i) } else Modifier
                 MoveCell(
                     mv, m, small,
-                    Modifier.weight(1f).fillMaxWidth().cell(if (i % 2 == 0) cells.a else cells.b, cells.line, m.u, top = i == 0, bottom = i == 3).then(tap),
+                    cappedRow(m.u).fillMaxWidth().cell(if (i % 2 == 0) cells.a else cells.b, cells.line, m.u, top = i == 0 && !headed, bottom = i == 3).then(tap),
                     forget = forget != 0 && mv?.id == forget,
                 ) { v -> if (v.vs.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { v.vs.forEach { MultiplierChip(it.label, it.pct) } } else MoveKindIcon(v, m) }
             }
@@ -816,7 +824,7 @@ private fun MovesSection(
             if (i > 0) Separator(m, Modifier.fillMaxWidth())
             val mv = mon.moves.getOrNull(i)
             val tap = if (mv != null && onMoveClick != null) Modifier.testTag("move-$i").soundClickable { onMoveClick(i) } else Modifier
-            MoveRow(mv, m, small, Modifier.weight(1f).fillMaxWidth().then(tap), forget = forget != 0 && mv?.id == forget)
+            MoveRow(mv, m, small, cappedRow(m.u).fillMaxWidth().then(tap), forget = forget != 0 && mv?.id == forget)
         }
     }
 }
@@ -948,3 +956,9 @@ internal fun SummaryFrame(
 
 /** GBA pixels more room inside a window round blocks of cells (they have borders of their own). */
 internal const val CELL_MARGIN = 2
+
+/** What a summary block needs under its heading for the heading to show, in GBA pixels: the four moves at a readable
+ * height, the INFO side's name / level / HP and a line of matchups, the STATS table. */
+internal const val MOVES_BODY_MIN = 4 * 36
+internal const val SUMMARY_INFO_MIN = 150
+internal const val SUMMARY_STATS_MIN = 130

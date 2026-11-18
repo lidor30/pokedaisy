@@ -103,7 +103,7 @@ object OptionColors {
     // keyed on the game, so a switch redraws) - only while a game is open ([inGame]):
     // the top-screen Library / Settings keep the app's own look after Yellow closes.
     // Crystal's (Gen 2) menus are the same black-on-white text boxes.
-    private val gen1 get() = inGame && activeGame.isGameBoyGame
+    internal val gen1 get() = inGame && activeGame.isGameBoyGame
 
     /** A game's skin's own palette ([CompanionSkins.current]), or null: OptionColors' own. */
     private val sk: SkinColors? get() = CompanionSkins.current.activeColors
@@ -586,7 +586,6 @@ fun OptionLine(
                         OptionBadge(
                             it, m, Modifier.padding(start = m.u * 6),
                             fill = if (new) OptionColors.newBadge else OptionColors.value,
-                            shadow = if (new) OptionColors.newBadgeShadow else OptionColors.valueShadow.copy(alpha = 0.6f),
                         )
                     }
                 }
@@ -647,22 +646,13 @@ fun subtitleMetrics(m: GbaTextMetrics): GbaTextMetrics =
     // [DenseText] took the main text down to 1x: the subtitles stay there too (0.8 of it was two screen pixels a font pixel).
     rememberGbaTextMetrics(if (LocalDenseText.current) maxOf(1f, 0.8f * m.fontPixel / m.px) else 0.8f * m.fontPixel / m.px, gameScaled = false)
 
-/** A small tag on a row ("BETA" on a feature that isn't finished): white on the value red, pill-shaped. */
+/**
+ * A small tag on a row (NEW on a just-shipped feature, BETA, the library's NOT SUPPORTED): white on [fill] (the value red by
+ * default), drawn like the games' own type tags ([GameTagBox]: notched corners, the #424242 shadow) at the row's GBA pixel.
+ */
 @Composable
-fun OptionBadge(
-    text: String, m: GbaTextMetrics, modifier: Modifier = Modifier, fill: Color = OptionColors.value,
-    shadow: Color = OptionColors.valueShadow.copy(alpha = 0.6f),
-) {
-    // ~2/3 of the row's own text: 0.85 next to the main lists' 1.25, smaller beside denser text. [m] already holds a game
-    // font's larger size: not scaled a second time.
-    val small = rememberGbaTextMetrics(0.68f * m.fontPixel / m.px, gameScaled = false)
-    Box(
-        modifier
-            .background(fill, PixelPillShape)
-            .padding(horizontal = m.u * 5, vertical = m.u),
-    ) {
-        GbaText(tr(text), OptionColors.badgeText, shadow, small)
-    }
+fun OptionBadge(text: String, m: GbaTextMetrics, modifier: Modifier = Modifier, fill: Color = OptionColors.value) {
+    GameTagBox(tr(text), fill, m.px, modifier, OptionColors.badgeText, shadow = if (OptionColors.gen1) Color.Transparent else TAG_SHADOW)
 }
 
 /**
@@ -817,7 +807,7 @@ fun OptionButton(
         if ((icon != null || pixelIcon != null) && label != null) Spacer(Modifier.width(u * 4))
         if (label != null) GbaText(tr(label), fg, shadow, m, bold = gameBoldLabels())
         labelBadge?.let {
-            OptionBadge(it, m, Modifier.padding(start = u * 4), fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow)
+            OptionBadge(it, m, Modifier.padding(start = u * 4), fill = OptionColors.newBadge)
         }
     }
 }

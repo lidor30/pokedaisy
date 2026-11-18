@@ -97,6 +97,10 @@ class PrefsCompanionSettingsTest {
         val oldFont = com.pokedaisy.app.companion.ui.theme.AppFonts.setting
         try {
             com.pokedaisy.app.companion.ui.theme.ThemeStore.current = com.pokedaisy.app.companion.ui.theme.PrefsThemeStore(prefs)
+            // Never picked: the default, PIXEL SMALL (Prefs' literal must be its ordinal).
+            assertEquals(com.pokedaisy.app.companion.ui.theme.AppFont.DEFAULT.ordinal, prefs.appFont)
+            com.pokedaisy.app.companion.ui.theme.AppFonts.load()
+            assertEquals(com.pokedaisy.app.companion.ui.theme.AppFont.PIXEL_SMALL, com.pokedaisy.app.companion.ui.theme.AppFonts.setting)
             PrefsCompanionSettings(prefs).setAppFont(2)
             com.pokedaisy.app.companion.ui.theme.AppFonts.load()
             assertEquals(com.pokedaisy.app.companion.ui.theme.AppFont.SMOOTH_BOLD, com.pokedaisy.app.companion.ui.theme.AppFonts.setting)
@@ -104,7 +108,7 @@ class PrefsCompanionSettingsTest {
             assertEquals(3, prefs.appFont)
             prefs.appFont = 99
             com.pokedaisy.app.companion.ui.theme.AppFonts.load()
-            assertEquals(com.pokedaisy.app.companion.ui.theme.AppFont.PIXEL, com.pokedaisy.app.companion.ui.theme.AppFonts.setting)
+            assertEquals(com.pokedaisy.app.companion.ui.theme.AppFont.DEFAULT, com.pokedaisy.app.companion.ui.theme.AppFonts.setting)
         } finally {
             com.pokedaisy.app.companion.ui.theme.ThemeStore.current = oldStore
             com.pokedaisy.app.companion.ui.theme.AppFonts.setting = oldFont
