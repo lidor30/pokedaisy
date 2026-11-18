@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.isHgss
 import com.pokedaisy.app.companion.DsCore
 import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.ui.produceKeyedState
@@ -571,7 +572,7 @@ class PokeDaisyActivity : Activity() {
             n3ds?.let { it.battleTaps.back(); return }
             if (::engine.isInitialized) engine.battleBack()
         }
-        override val canSwitch get() = ::engine.isInitialized && engine.battleSwitchAddrs != null
+        override val canSwitch get() = ::engine.isInitialized && (engine.battleSwitchAddrs != null || dsSwitchWorks())
         override val lastBall get() = lastBallNow()
         override fun throwBall() {
             val ball = lastBallNow() ?: return
@@ -583,7 +584,14 @@ class PokeDaisyActivity : Activity() {
         }
         override fun switchTo(personality: Long) {
             closeCompanionWindow()
-            if (::engine.isInitialized) engine.battleSwitchTo(personality)
+            if (!::engine.isInitialized) return
+            if (romIsNds) {
+                val b = dsSwitchBattle() ?: return
+                val place = runCatching {
+                    com.pokedaisy.app.companion.data.gen4SwitchSlot(com.pokedaisy.app.companion.data.InProcessReader, b, personality)
+                }.getOrNull() ?: return
+                engine.battleDsSwitchTo(place)
+            } else engine.battleSwitchTo(personality)
         }
     }
 
@@ -1368,6 +1376,18 @@ class PokeDaisyActivity : Activity() {
      * SELECT pressed for the game for 2 frames ([GbaInput.setPress]: the battle controls own setScript's channel), the player's own registered item
      * put back 20 frames later. The game does the rest: mounting, the fishing cast, or its own "can't use that here".
      */
+    /** The DS battle the POKéMON switch reads: HeartGold / SoulSilver and their ports (their party screen played headless;
+     * Platinum's, likely the same, not seen yet; not Origin HeartGold, whose battles are its own engine). */
+    private fun dsSwitchBattle(): com.pokedaisy.app.companion.data.Gen4Battle? {
+        val game = telemetry.snapshot.value.game
+        if (!game.isHgss) return null
+        return com.pokedaisy.app.companion.data.gen4ConfigFor(game)?.battle
+            ?.takeIf { it.offBattleInput != 0 && !com.pokedaisy.app.companion.data.originHeartGold }
+    }
+
+    private fun dsSwitchWorks(): Boolean =
+        romIsNds && ::engine.isInitialized && engine.dsSwitchMapped && dsSwitchBattle() != null
+
     private fun dsKeyItemsWork(): Boolean = romBlocked == null &&
         !com.pokedaisy.app.companion.data.originHeartGold && !com.pokedaisy.app.companion.data.renegadePlatinum &&
         com.pokedaisy.app.companion.data.gen4ConfigFor(telemetry.snapshot.value.game) != null

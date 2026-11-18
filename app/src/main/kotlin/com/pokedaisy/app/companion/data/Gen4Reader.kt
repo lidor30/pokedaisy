@@ -175,6 +175,10 @@ data class Gen4Battle(
     val offPanelShown: Int = 0x4D0,
     /** BattleContext.command (CONTROLLER_COMMAND_*: 5 = the player chooses) and battler 0's selection step (u8 at 0). */
     val offCommand: Int = 0x08,
+    /** BattleContext.partyOrder[4][6]: each battler's party in the order its party screen shows it (the one out first; a switch
+     * swaps two). pokeplatinum's `partyOrder`, pokeheartgold's `unk_312C`: the same place in both, found headless on HeartGold
+     * (a SHIFT to slot 2 turned battler 0's 0 1 2 3 4 5 into 1 0 2 3 4 5). */
+    val offPartyOrder: Int = 0x312C,
 )
 
 /**
@@ -669,6 +673,27 @@ fun readGen4BattleInput(r: MemoryReader, b: Gen4Battle): Int {
         9, 10 -> BATTLE_INPUT_PARTY_OPEN
         else -> BATTLE_INPUT_BUSY
     }
+}
+
+/**
+ * POKéMON on a DS battle's touch screen: where its party screen shows the Pokémon with [personality] (0 top left, 1 top
+ * right, then down), or null - no battle, a double (its screen has two sides), a personality not in the battle's party, or
+ * the one already out (place 0). The battle's own party (BattleSystem.parties[0], the save's order) gives its index,
+ * BattleContext.partyOrder[0] where that index sits now.
+ */
+fun gen4SwitchSlot(r: MemoryReader, b: Gen4Battle, personality: Long): Int? {
+    val bs = gen4BattleSystem(r, b) ?: return null
+    val head = r.readCoreMemory(bs + b.offBattleType, b.offParties + 16 - b.offBattleType)
+    if (u32(head, 0) and GEN4_BATTLE_DOUBLES != 0L) return null
+    val ctx = u32(head, b.offBattleCtx - b.offBattleType)
+    val party = u32(head, b.offParties - b.offBattleType)
+    if (!inMain(ctx) || !inMain(party)) return null
+    val count = u32(r.readCoreMemory(party + 4, 4), 0).toInt().coerceIn(0, PARTY_SIZE)
+    val raw = r.readCoreMemory(party + 8, PARTY_SIZE * GEN4_MON_SIZE)
+    val index = (0 until count).firstOrNull { u32(raw, it * GEN4_MON_SIZE) == personality } ?: return null
+    val order = r.readCoreMemory(ctx + b.offPartyOrder, PARTY_SIZE)
+    val place = (0 until PARTY_SIZE).firstOrNull { order[it].toInt() == index } ?: return null
+    return place.takeIf { it > 0 }
 }
 
 /** CONTROLLER_COMMAND_SELECTION_SCREEN_INPUT. */

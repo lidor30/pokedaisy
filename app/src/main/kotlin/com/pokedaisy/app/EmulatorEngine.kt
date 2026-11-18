@@ -346,6 +346,12 @@ class EmulatorEngine(
     /** Switch to the party mon with this personality. Call from the UI thread. */
     fun battleSwitchTo(personality: Long) = battleInput.switchTo(personality)
 
+    /** A DS game's POKéMON: the party screen's panel at [place] and its SHIFT ([NdsBattleTaps.switchTo]). */
+    fun battleDsSwitchTo(place: Int) = ndsTaps.switchTo(place)
+
+    /** The running DS game's party screen is mapped ([NdsBattleTaps.Layout.partySlots]). */
+    val dsSwitchMapped: Boolean get() = ndsTaps.layout.partySlots != null
+
     init { battle.stateObserved = ndsTaps::onState }
 
     fun setFastForwardHeld(on: Boolean) {

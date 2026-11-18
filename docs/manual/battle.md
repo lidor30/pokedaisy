@@ -159,6 +159,8 @@ The same pane appears when the game asks you to choose, for example after one of
 
 This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue, Brown, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
 
+On the DS it works in HeartGold and SoulSilver, in every language PokeDaisy supports, in a single battle. PokeDaisy taps the game's own touch screen for you: `POKéMON`, then your pick's panel, then its `SHIFT`. You'll see the touch screen do it, so it takes about a second. After one of your Pokémon faints, the game's own party screen is yours to tap, as usual.
+
 ![The switch pane: the party in the game's slots, one Pokémon tagged BEST, EMBERPUP tagged OUT and GALEFINCH fainted, with Choose a POKéMON. and CANCEL below](shots/companion-battle-switch.png "Choosing who to send in")
 
 ## On two screens: HIDE BATTLE MENU

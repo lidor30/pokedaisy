@@ -43,14 +43,14 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Platinum (DS) | USA rev 1 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
 | Platinum (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
 | Platinum (DS) | Spain rev 0 ³¹ | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ³¹ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
-| HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
-| HeartGold (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
-| HeartGold (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
-| SoulSilver (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
-| SoulSilver (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
-| SoulSilver (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
-| HeartGold (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
-| SoulSilver (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
+| HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
+| HeartGold (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
+| HeartGold (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
+| SoulSilver (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
+| SoulSilver (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
+| SoulSilver (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
+| HeartGold (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
+| SoulSilver (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — | — ³⁶ |
 | Black (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
 | Black (DS) | France | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
 | Black (DS) | Germany, Spain, Italy, Japan, Korea ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
@@ -727,6 +727,15 @@ change to any of the places listed under "Where it's decided" updates its rows h
     ID's x, the money's sign after the number, the back's name and wins): `TrainerCardArt.EURO_KANTO`; Emerald's are worked out
     from the strings. All twelve rendered against the game's own card headless, front and back, pixel for pixel
     (`TrainerCardTest`). Japanese: not yet.
+
+50. The DS POKéMON switch (2026-11-18, HeartGold / SoulSilver, single battles): the companion's pick tapped on the game's touch screen
+    (`NdsBattleTaps.switchTo`): POKéMON, the party screen's panel where the battle shows that Pokémon (BattleContext.partyOrder at
+    +0x312C, the battle's party index of its personality: `gen4SwitchSlot`), its SHIFT. The party screen drops touches while it
+    fades in (a panel 45 frames after POKéMON did nothing, 60 did): the panel waits 60 frames after the screen is reported up, and
+    a screen still up a second after SHIFT gets the panel and SHIFT once more. Played headless on the player's HeartGold (a wild
+    PIDGEY by `WildBattle`; the order and the slot read back after each switch). After a faint the game's controller isn't
+    waiting on the player's selection (command 22), so that screen stays the player's. Platinum: the same structs, its party
+    screen not seen yet, so not offered.
 
 ## What each column is
 
