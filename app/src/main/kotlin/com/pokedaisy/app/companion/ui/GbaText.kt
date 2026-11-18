@@ -157,17 +157,19 @@ fun GbaText(
     // current text's: a label that changed in place at the same width (a tab chip when BATTLE takes a place in the bar) isn't
     // laid out again, and its copies drew the old word under the new one (DEX over MAP).
     val measurer = androidx.compose.ui.text.rememberTextMeasurer(cacheSize = 0)
-    val laid = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+    // Plain storage, not Compose state: it's written in layout and read in the draw right after, nothing to observe.
+    val laid = remember { arrayOfNulls<androidx.compose.ui.text.TextLayoutResult>(1) }
     Box(modifier) {
         Text(
             text, color = color, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
-            onTextLayout = { laid.value = it },
+            onTextLayout = { laid[0] = it },
             modifier = Modifier.drawBehind {
-                // A text that changed in place at the same size may not be laid out again (no onTextLayout): measure it here then.
-                val layout = laid.value?.takeIf { it.layoutInput.text.text == text } ?: measurer.measure(
+                // A text that changed in place at the same size may not be laid out again (no onTextLayout): measure it here
+                // then, once, and keep it (GbaText is on every screen; measuring in every draw added up).
+                val layout = laid[0]?.takeIf { it.layoutInput.text.text == text } ?: measurer.measure(
                     text, style, overflow = TextOverflow.Ellipsis, maxLines = maxLines,
                     constraints = androidx.compose.ui.unit.Constraints(maxWidth = size.width.roundToInt().coerceAtLeast(0)),
-                )
+                ).also { laid[0] = it }
                 if (shadow.alpha > 0f) when (CompanionSkins.current.shadow) {
                     SkinShadow.PIXEL -> for ((dx, dy) in listOf(k to 0, 0 to k, k to k)) {
                         drawText(layout, color = shadow, topLeft = Offset((dx + b).toFloat(), dy.toFloat()))
