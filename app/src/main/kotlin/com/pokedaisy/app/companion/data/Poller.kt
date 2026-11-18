@@ -931,10 +931,11 @@ class TelemetrySampler {
         }
 
     /** A DS cart's SHINY ODDS: one it was checked on ([ShinyOdds.DS_VERIFIED]), the retail engine only (not Origin HeartGold's,
+     * Heartfelt Gold's or Sacred Gold / Storm Silver's - hg-engine and Drayano's, under the US HeartGold / SoulSilver header -
      * nor Renegade Platinum / the Redux builds, whose shiny rules are their own). */
     private val dsShinyTarget: ShinyOdds.DsTarget?
         get() {
-            if (dsOrigin || dsRenegade || dsRedux || "$dsGameCode$dsRevision" !in ShinyOdds.DS_VERIFIED) return null
+            if (dsOrigin || dsHeartfelt || dsSacredGold || dsRenegade || dsRedux || "$dsGameCode$dsRevision" !in ShinyOdds.DS_VERIFIED) return null
             // By the game's kind: the other generation's config can be left over from an earlier cart.
             return if (kind.isGen5) gen5Cfg?.battle?.let { ShinyOdds.DsTarget(gen5 = true, systemPtr = it.gameSystemPtr, battleOverlay = it.battleOverlay) }
                 else gen4Cfg?.battle?.let { ShinyOdds.DsTarget(gen5 = false, systemPtr = it.fieldSystemPtr, battleTemplate = it.battleTemplate) }

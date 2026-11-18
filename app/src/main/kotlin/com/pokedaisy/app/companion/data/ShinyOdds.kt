@@ -406,7 +406,7 @@ object ShinyOdds {
     /**
      * The DS carts SHINY ODDS was checked on (code + revision): a scripted (Gen 4: a new game's) or a grass (Gen 5: the
      * player's saves) wild battle, the foe made shiny in its window and the battle drawing it in its shiny colours, beside
-     * the same battle left alone - headless, docs/ROM_FEATURES.md's note 41.
+     * the same battle left alone - headless, docs/ROM_FEATURES.md's note 54.
      */
     val DS_VERIFIED: Set<String> = setOf(
         "CPUE1",                    // Platinum (USA, rev 1)
@@ -417,11 +417,13 @@ object ShinyOdds {
     )
 
     /**
-     * Gen 4's battle types a wild foe can be made shiny in: a wild Pokémon (0), doubles with a partner, the Safari Zone, a
-     * roaming one, the Bug-Catching Contest - not a trainer's, a link, the Battle Frontier, Pal Park (your own Pokémon from a
-     * GBA game) or the catching tutorial (pret's BATTLE_TYPE_*: TRAINER, LINK, TAG, FRONTIER, PAL_PARK, TUTORIAL, DEBUG).
+     * Gen 4's battle types a wild foe can be made shiny in: a wild Pokémon (0), doubles with a partner, the Safari Zone, the
+     * Bug-Catching Contest - not a trainer's, a link, the Battle Frontier, Pal Park (your own Pokémon from a GBA game), the
+     * catching tutorial, or a roaming one: the game builds the roamer again from its stored personality at each meeting, so
+     * a shiny one that fled came back plain (Gen 2 leaves its roamers alone for the same reason). pret's BATTLE_TYPE_*:
+     * TRAINER, LINK, TAG, FRONTIER, ROAMER, PAL_PARK, CATCH_TUTORIAL, DEBUG (include/constants/battle.h).
      */
-    private const val GEN4_NOT_WILD = 0x1L or 0x4L or 0x10L or 0x80L or 0x200L or 0x400L or (1L shl 31)
+    private const val GEN4_NOT_WILD = 0x1L or 0x4L or 0x10L or 0x80L or 0x100L or 0x200L or 0x400L or (1L shl 31)
 
     /** Gen 5's BATTLE_SETUP_PARAM competitor: 0 a wild Pokémon. */
     private const val GEN5_WILD = 0L

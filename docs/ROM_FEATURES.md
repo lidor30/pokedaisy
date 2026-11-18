@@ -764,7 +764,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
     ApplicationManager / OverlayManager is the battle's (its template's init word, `Gen4Battle.battleTemplate`) with its data
     still NULL - its init does nothing and Battle_Main's first step only makes a heap, so the BattleSystem (and its copy of
     `FieldBattleDTO` / `BattleSetup.parties[1]`) comes two frames later; wild battle types only (not TRAINER / LINK / TAG /
-    FRONTIER / PAL_PARK / TUTORIAL / DEBUG). Gen 5: the GameSystem's running proc is the battle overlay's with its work
+    FRONTIER / ROAMER - rebuilt from its stored personality at each meeting, so a shiny one that fled came back plain -
+    / PAL_PARK / TUTORIAL / DEBUG). Gen 5: the GameSystem's running proc is the battle overlay's with its work
     (the main module) NULL, ~14 frames; `BATTLE_SETUP_PARAM` competitor 0 (wild), foe party at +0x28. The record's
     personality is swapped for a shiny one (the Pokémon's own OT ID, a wild one's the player's) keeping the nature (Gen 4's
     is the personality's), the low byte (gender, ability bit), Gen 5's ability bit 16 and wild bit 31, WURMPLE's branch;

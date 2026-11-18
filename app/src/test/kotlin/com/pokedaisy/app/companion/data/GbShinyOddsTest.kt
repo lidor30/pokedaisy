@@ -10,7 +10,7 @@ import kotlin.random.Random
 
 /**
  * SHINY ODDS on Gold / Silver / Crystal ([ShinyOdds.GbRoller]) over a fake RAM laid out as the games' own. The numbers are
- * the headless runs' (docs/ROM_FEATURES.md's note 42): a Lv3 SENTRET in Route 29's grass, DVs 4E 61 in Crystal, its stats
+ * the headless runs' (docs/ROM_FEATURES.md's note 55): a Lv3 SENTRET in Route 29's grass, DVs 4E 61 in Crystal, its stats
  * as the game worked them out.
  */
 class GbShinyOddsTest {
