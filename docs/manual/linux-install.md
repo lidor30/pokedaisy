@@ -65,7 +65,7 @@ The app keeps everything in its own folder and runs fullscreen. On CrossMix it r
 ## Handhelds with PortMaster
 
 1. Extract `pokedaisy-portmaster-aarch64.zip` on your computer. Inside are `PokeDaisy.sh` and a `pokedaisy` folder.
-2. Copy both into your firmware's `ports` folder on the SD card.
+2. Copy both into your firmware's `ports` folder on the SD card. On muOS they go to two folders: `PokeDaisy.sh` into `ROMS/Ports`, and the `pokedaisy` folder into `ports`, both at the top of the card.
 3. Your games can stay where they are: the game list shows `ports/pokedaisy/roms` and the firmware's own `gba`, `gb`, `gbc` and `nds` folders (and the ones named `Game Boy Advance`, `Game Boy Color`, `Game Boy` and `Nintendo DS`).
 4. Start PokeDaisy from the Ports list.
 

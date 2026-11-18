@@ -36,11 +36,26 @@ object SaveFileEdits {
         if (RomIdentity.isGameBoy(rom)) return null
         if (RomArchive.romSize(rom) > 0x1000000L) return null
         val code = RomIdentity.gameCode(rom)
-        // Emerald Legacy keeps retail's header but not its SaveBlock1 (a 120-slot ITEMS pocket moves everything after
-        // it): the bag and flags would be edited at retail's offsets. Only a full 16 MB Emerald can be it.
-        if (code == "BPEE" && RomArchive.romSize(rom) == 0x1000000L &&
-            RomIdentity.sha1(rom) == com.pokedaisy.app.companion.data.TelemetrySampler.EMERALD_LEGACY_V1_1_4_SHA1) return null
+        // 16 MB builds under a retail header whose save isn't retail's: read as retail, they come out as other species at
+        // the wrong levels, and an edit would be written at retail's offsets. Only a full 16 MB ROM can be one.
+        if ((code == "BPEE" || code == "BPRE") && RomArchive.romSize(rom) == 0x1000000L && RomIdentity.sha1(rom) in NOT_RETAIL_SAVES) return null
         return Gen3SaveFormat.forGameCode(code)
+    }
+
+    /**
+     * The 16 MB builds the Poller knows whose save isn't laid out as their header's retail game's:
+     * - Emerald Legacy: a 120-slot ITEMS pocket moves everything after it in SaveBlock1.
+     * - Emerald Seaglass: pokeemerald-expansion's records (National Dex species ids, experience in 21 bits with a nickname's
+     *   11th letter above it, its own shiny odds; GitHub #1167: COLLECTION showed its Pokémon at level 100 and none shiny).
+     * - Recharged Emerald / Recharged Yellow: SaveBlock1s of their own past the bag.
+     * - Clover: FireRed's save under an Emerald header.
+     */
+    private val NOT_RETAIL_SAVES = with(com.pokedaisy.app.companion.data.TelemetrySampler) {
+        setOf(
+            EMERALD_LEGACY_V1_1_4_SHA1, EMERALD_SEAGLASS_V3_0_SHA1, CLOVER_V1_3_3_SHA1,
+            RECHARGED_EMERALD_V2_2_5_SHA1, RECHARGED_EMERALD_V2_2_8_SHA1, RECHARGED_EMERALD_REBALANCED_V2_2_8_SHA1,
+            RECHARGED_YELLOW_V1_8_0_SHA1, RECHARGED_YELLOW_V1_9_0_SHA1, RECHARGED_YELLOW_V1_9_4_SHA1, RECHARGED_YELLOW_V1_9_7_SHA1,
+        )
     }
 
     /** A DS cart whose save the editor reads ([com.pokedaisy.app.companion.data.save.Gen4SaveFile]) with tables from the

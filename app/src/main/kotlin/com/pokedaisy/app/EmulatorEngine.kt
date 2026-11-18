@@ -1199,6 +1199,8 @@ class EmulatorEngine(
         // audio goes out instead of the game's. Off for the run if a copy ever fails to start (SPED-UP stands in).
         var dsMusicOn = false
         var dsMusicOk = true
+        // A flat-out DS menu change (dsHeldFast, FF off): its own frames unheard, the copy's music instead (musicStep).
+        var holdMusic = false
         var dsMusicBgm = -1
         var dsMusicWait = -1   // game frames since a copy became due (-1: none due)
         var dsMusicState = -1  // pkNdsBgmState when the copy was taken (-1: taken unsettled, after the longest wait)
@@ -1670,8 +1672,11 @@ class EmulatorEngine(
             val awaitingClip = mode == FfMusicMode.STEADY && clip == null && ffMusicKey != null &&
                 ffMusicWillRender?.invoke(ffMusicKey) == true
             // A DS game: no clips, the copy (above). Like a clip it follows the FF the player asked for, so it
-            // plays straight through SMART's 1x menus.
-            val dsBgm = if (nds && dsMusicOk && mode == FfMusicMode.STEADY && ffWanted) MgbaCore.pkNdsBgm() else -1
+            // plays straight through SMART's 1x menus. It also plays through a menu change the hold runs flat out
+            // (dsHeldFast: POKéMON or BAG from Black's X menu, both screens changing), which was silent (GitHub #1143);
+            // the game's own sound comes back after it, the song that much further on.
+            holdMusic = dsHeldFast && !ffWanted
+            val dsBgm = if (nds && dsMusicOk && (mode == FfMusicMode.STEADY && ffWanted || holdMusic)) MgbaCore.pkNdsBgm() else -1
             if (dsBgm >= 0) {
                 // A copy is due when FF comes on and for each new song: taken once the sound driver has the song
                 // (a few frames on) and it's settled (pkNdsBgmState: no volume fade runs, and its player isn't
@@ -1722,7 +1727,8 @@ class EmulatorEngine(
             // only as SPED-UP (which STEADY falls back to only for a song or ROM it can't
             // render). Slow-mo stays muted.
             val spedUp = speed > 1f && clip == null && mode != FfMusicMode.OFF && !awaitingClip && !dsMusicOn
-            wantPaused = rewinding || battleInput.holdFrame || dsHeldFast && !ffWanted ||
+            // A flat-out hold with no copy to play (DSperate, a copy that failed): silent, as before.
+            wantPaused = rewinding || battleInput.holdFrame || holdMusic && !dsMusicOk ||
                 !((speed == 1f && clip == null) || spedUp || dsMusicOn)
         }
 
@@ -1834,7 +1840,8 @@ class EmulatorEngine(
                     queued += w / 2
                     dsMusicFrames += w / 2
                 }
-            } else if (n > 0 && !paused && track != null) {
+            } else if (n > 0 && !paused && track != null && !holdMusic) {
+                // (A flat-out hold's own frames are never heard: the copy's music goes out once it's up.)
                 if (vsyncMode) {
                     // The play head wraps as an unsigned int; the difference doesn't care.
                     val played = track.playbackHeadPosition
