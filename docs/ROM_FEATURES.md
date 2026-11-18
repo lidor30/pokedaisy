@@ -451,6 +451,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
     loading dots and all, after every battle (a player's report); they're the battle closing now (`gen5SinceBattle`: no
     MENU / TOUCH until the field map is back, other overlays only for the first 16 reads), and the X menu right after
     floats in as before.
+    A new game's intro (Black 2 / White 2 headless, 2026-11-19): there's no GameSystem yet, so nothing was read and the name
+    entry's keyboard never came up on one screen (a player's report). The running app's overlay is a static word there
+    (0x02141910, White 2 0x02141950; `PkNdsGen5Touch.introOverlay`): 31 on the player's and the rival's name entry, 21
+    through the rest, 0 from the field on, so 31 floats the touch screen in. Black / White's word isn't mapped (their
+    intros aren't laid out the same).
 28. Let's Go Pikachu / Eevee (FireRed rev 0 edited in place; all four builds share rev 0's RAM, code and tables for these),
     checked headless on Let's Go Pikachu with its new game's save (the `lets_go` fixtures' READMEs): EXPAND by `verify_wide.py`
     on all four (map 440/440, battle 895/895 exact); a written action cell 2 + A opened the party menu and a written move

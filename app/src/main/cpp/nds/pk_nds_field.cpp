@@ -515,6 +515,10 @@ struct PkNdsGen5Touch {
     uint32_t startMenuEvent;  // the X menu's event function (Thumb)
     int touchOnly[4];         // apps' overlays all on the touch screen (0: none)
     int offScd, offInput, offSubscreen;   // btlv_core -> btlv_scd, btlv_scd -> btlv_input, btlv_scd's opened screen
+    // Before the GameSystem exists (a new game's intro): the running app's overlay (a static word, 0 = not mapped) and
+    // the name entry's, whose keyboard is on the touch screen (the player's and the rival's names).
+    uint32_t introOverlay;
+    int nameEntryOverlay;
 };
 
 // The bag (Black / White 70, their sequels 142) isn't one: the item picked shows on the top screen, its picture, count
@@ -530,8 +534,11 @@ static const PkNdsGen5Touch GEN5_TOUCH[] = {
     // (party 165, trainer card 186, options 140; the Pokédex, 302, and the bag, 142, both screens), btlv_scd 0x1C4 into the core,
     // btlv_input 0xBC into it, the opened screen at +0xA4; the rest Black's. White 2: Black 2's code 0x40 higher (its X
     // menu's function and apps checked on its save; its battle not reached headless: Black 2's structs).
-    { &BLACK2_US, 0x0215A875, { 165, 186, 140, 0 }, 0x1C4, 0xBC, 0xA4 },
-    { &WHITE2_US, 0x0215A8B5, { 165, 186, 140, 0 }, 0x1C4, 0xBC, 0xA4 },
+    // Their intros (Discord, 2026-11-17: the name entry's keyboard never came up on one screen): the running app's overlay
+    // at 0x02141910 (White 2: 0x02141950), 31 on the name entry, 21 through the rest, 0 from the field on (headless, a new
+    // game on each).
+    { &BLACK2_US, 0x0215A875, { 165, 186, 140, 0 }, 0x1C4, 0xBC, 0xA4, 0x02141910, 31 },
+    { &WHITE2_US, 0x0215A8B5, { 165, 186, 140, 0 }, 0x1C4, 0xBC, 0xA4, 0x02141950, 31 },
 };
 
 // The language ports (gamedata/nds/ports.toml, pk_nds_ports_gen.h): each its base cart's tables with its own words. Built
@@ -879,13 +886,18 @@ static int gen5FieldState(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t),
 {
     int bits = PK_NDS_FIELD_KNOWN;
     uint32_t gs = read32(g->fieldSystemPtr);
-    if (!inMainRam(gs)) return bits;   // the title screen, the intro
+    const PkNdsGen5Touch* touch = gen5Touch(g);
+    if (!inMainRam(gs)) {
+        // The title screen, the intro: nothing to read but the name entry, a screen on both (the prompt over its keyboard).
+        if (touch && touch->introOverlay && (int) read32(touch->introOverlay) == touch->nameEntryOverlay)
+            bits |= PK_NDS_FIELD_MENU | PK_NDS_FIELD_LOCKED | PK_NDS_FIELD_TOUCH;
+        return bits;
+    }
     uint32_t proc = gen5Proc(g, read32, gs);
     if (!proc) return bits;
     int overlay = (int) read32(proc + g->offProcOverlay);
     uint32_t fieldMap = read32(gs + g->offFieldMap);
     uint32_t event = read32(gs + g->offEvent);
-    const PkNdsGen5Touch* touch = gen5Touch(g);
     if (overlay == g->battleOverlay) {
         gen5SinceBattle = 0;
         return bits | PK_NDS_FIELD_BATTLE | PK_NDS_FIELD_LOCKED | (touch ? gen5BattleTouch(g, touch, read32, proc) : 0);
