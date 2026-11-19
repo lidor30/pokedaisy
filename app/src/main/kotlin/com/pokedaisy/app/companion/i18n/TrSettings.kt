@@ -263,6 +263,7 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "BIKE SPEED" to Tr(ja = "じてんしゃ そくど", fr = "VITESSE VÉLO", de = "RADTEMPO", it = "VELOCITÀ BICI", es = "VEL. BICI", br = "VEL. BICICLETA", pt = "VEL. BICICLETA", ko = "자전거 속도"),
     "SURF SPEED" to Tr(ja = "なみのり そくど", fr = "VITESSE SURF", de = "SURFTEMPO", it = "VELOCITÀ SURF", es = "VEL. SURF", br = "VEL. SURFE", pt = "VEL. SURF", ko = "파도타기 속도"),
     "AUTO-RUN" to Tr(ja = "オートダッシュ", fr = "COURSE AUTO", de = "AUTO-RENNEN", it = "CORSA AUTO", es = "CORRER AUTO", br = "CORRIDA AUTO", pt = "CORRIDA AUTO", ko = "자동 달리기"),
+    "RUNNING SHOES" to Tr(ja = "ランニングシューズ", fr = "CHAUSSURES DE SPORT", de = "TURBOTRETER", it = "SCARPE DA CORSA", es = "DEPORTIVAS", br = "TÊNIS DE CORRIDA", pt = "TÉNIS DE CORRIDA", ko = "러닝슈즈"),
     "Holding B walks instead" to Tr(ja = "Bを おすと あるく", fr = "Maintenir B pour marcher", de = "B halten zum Gehen", it = "Tieni premuto B per camminare", es = "Mantén B para caminar", br = "Segure B para andar", pt = "Mantenha B para andar", ko = "B를 누르고 있으면 걸어요"),
     "RUN INDOORS" to Tr(ja = "なかでも ダッシュ", fr = "COURIR DEDANS", de = "DRINNEN RENNEN", it = "CORRERE DENTRO", es = "CORRER DENTRO", br = "CORRER DENTRO", pt = "CORRER DENTRO", ko = "실내 달리기"),
     "INSTANT TEXT" to Tr(ja = "もじ いっしゅん", fr = "TEXTE INSTANTANÉ", de = "SOFORT-TEXT", it = "TESTO ISTANTANEO", es = "TEXTO INSTANTÁNEO", br = "TEXTO INSTANTÂNEO", pt = "TEXTO INSTANTÂNEO", ko = "텍스트 즉시 표시"),

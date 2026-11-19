@@ -768,6 +768,15 @@ private fun homeRows(
             enabled = s.fieldReadable && !s.autoRunBuiltIn,
             subtitle = if (s.autoRunBuiltIn) "This game has its own auto-run" else null,
         ) { if (s.fieldReadable) { s.setAutoRun(!s.autoRun); changed() } },
+        // RUNNING SHOES (Gen 1 & 2): hold B to run on overworld. N/A on unsupported games.
+        SettingRow(
+            tk("RUNNING SHOES"),
+            if (s.runningShoesSupported) onOff(s.runningShoes) else tk("N/A"),
+            enabled = s.runningShoesSupported,
+            subtitle = "Hold B to run (for gen 1 & 2)",
+        ) {
+            if (s.runningShoesSupported) { s.setRunningShoes(!s.runningShoes); changed() }
+        },
         // Every map lets the player run (buildings too); FireRed / Emerald engines.
         SettingRow(tk("RUN INDOORS"), if (s.runIndoorsSupported) onOff(s.runIndoors) else tk("N/A"), enabled = s.runIndoorsSupported) { if (s.runIndoorsSupported) { s.setRunIndoors(!s.runIndoors); changed() } },
         // This game's cheats on / off (the codes are typed or imported in the top screen's Settings).

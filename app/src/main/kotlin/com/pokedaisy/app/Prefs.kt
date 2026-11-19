@@ -148,6 +148,15 @@ class Prefs(context: Context) {
         get() = p.getBoolean("auto_run", false)
         set(v) = p.edit().putBoolean("auto_run", v).apply()
 
+    /** RUNNING SHOES (Gen 1 & 2): hold B on overworld to run at bike speed. */
+    var runningShoes: Boolean
+        get() = p.getBoolean("running_shoes", false)
+        set(v) = p.edit().putBoolean("running_shoes", v).apply()
+
+    var runningShoesSpeed: Int
+        get() = p.getInt("running_shoes_speed", 2)
+        set(v) = p.edit().putInt("running_shoes_speed", v).apply()
+
     /** RUN INDOORS: every map lets the player run (gMapHeader.allowRunning). */
     var runIndoors: Boolean
         get() = p.getBoolean("run_indoors", false)

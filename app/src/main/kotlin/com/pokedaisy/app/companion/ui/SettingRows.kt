@@ -188,6 +188,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "TWEAKS" to "animations bounce blink cursor jump to battle effects motion",
     "SCENE SPEEDS" to "battle speed text speed instant text fast text menu speed overworld speed faster battles quality of life qol bike speed surf speed faster bike faster surfing",
     "AUTO-RUN" to "auto run autorun running shoes run sprint dash always run hold b",
+    "RUNNING SHOES" to "running shoes run sprint dash hold b fast walk overworld gen 1 gen 2 speed bike",
     "RUN INDOORS" to "run inside buildings indoor running shoes houses",
     "MAKEOVER" to "makeover look looks style customize customise appearance costume outfit skin dress up player rival",
     "FOLLOWER" to "follower following pokemon walking pokemon partner companion pet behind you lead heartgold soulsilver yellow pikachu",

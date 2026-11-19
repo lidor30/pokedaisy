@@ -1034,6 +1034,31 @@ Java_com_pokedaisy_app_MgbaCore_pkRomRead(JNIEnv* env, jobject thiz, jlong off, 
     return out;
 }
 
+// Writes bytes into the Game Boy cartridge's in-memory ROM buffer [off, off + len).
+// Modifies emulated memory only, never touching the ROM file on disk. Emu thread.
+JNIEXPORT jboolean JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkRomWrite(JNIEnv* env, jobject thiz, jlong off, jbyteArray bytes) {
+    jsize len = bytes ? (*env)->GetArrayLength(env, bytes) : 0;
+    if (off < 0 || len <= 0) {
+        return JNI_FALSE;
+    }
+    pthread_rwlock_wrlock(&pk_coreLock);
+    bool ok = false;
+    if (g.core && g.core->platform(g.core) == mPLATFORM_GB) {
+        struct GB* gb = g.core->board;
+        if (gb && gb->memory.rom && (size_t) off + (size_t) len <= gb->pristineRomSize) {
+            jbyte* b = (*env)->GetByteArrayElements(env, bytes, NULL);
+            if (b) {
+                memcpy((uint8_t*) gb->memory.rom + off, b, (size_t) len);
+                (*env)->ReleaseByteArrayElements(env, bytes, b, JNI_ABORT);
+                ok = true;
+            }
+        }
+    }
+    pthread_rwlock_unlock(&pk_coreLock);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
 // 0 = GBA, 1 = Game Boy / Color, 2 = Nintendo DS, -1 = no core.
 JNIEXPORT jint JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkPlatform(JNIEnv* env, jobject thiz) {

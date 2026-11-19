@@ -249,6 +249,8 @@ object MgbaCore {
     const val PLATFORM_NDS = 2
     /** A Game Boy / Color cart's ROM bytes (it's bank-switched, so not on the bus whole); null on GBA. */
     external fun pkRomRead(off: Long, len: Int): ByteArray?
+    /** Writes [bytes] into a Game Boy / Color cart's in-memory ROM buffer at [off]; never modifies disk files. */
+    external fun pkRomWrite(off: Long, bytes: ByteArray): Boolean
 
     // --- Nintendo DS (nds/pk_nds.cpp: melonDS) ---
     // A DS cart goes through the calls above too: [pkVideoBuffer] is its top screen, [pkReadBytes] reads main RAM

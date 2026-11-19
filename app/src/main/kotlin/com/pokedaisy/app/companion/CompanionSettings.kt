@@ -50,6 +50,13 @@ interface CompanionSettings {
     val autoRunBuiltIn: Boolean get() = false
     fun setAutoRun(on: Boolean) {}
 
+    /** RUNNING SHOES (Gen 1 & 2): hold B on overworld to run - see [com.pokedaisy.app.Prefs.runningShoes]. */
+    val runningShoes: Boolean get() = false
+    val runningShoesSpeed: Int get() = 2
+    val runningShoesSupported: Boolean get() = false
+    fun setRunningShoes(on: Boolean) {}
+    fun setRunningShoesSpeed(speed: Int) {}
+
     /** RUN INDOORS - see [com.pokedaisy.app.Prefs.runIndoors]; [runIndoorsSupported]: a FireRed / Emerald engine the
      * field reads know (Ruby / Sapphire tell indoor maps by their type, which other things read too). */
     val runIndoors: Boolean get() = false

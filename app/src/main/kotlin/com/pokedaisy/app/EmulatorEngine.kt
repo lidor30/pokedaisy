@@ -225,6 +225,17 @@ class EmulatorEngine(
         tmPatchDirty = true
     }
 
+    /** RUNNING SHOES: in-memory ROM patch for Gen 1 & Gen 2 overworld movement. */
+    @Volatile private var runningShoes = false
+    @Volatile private var runningShoesSpeed = 2
+    @Volatile private var runningShoesDirty = false
+
+    fun setRunningShoes(on: Boolean, speed: Int) {
+        runningShoes = on
+        runningShoesSpeed = speed
+        runningShoesDirty = true
+    }
+
     /** SHINY ODDS ([com.pokedaisy.app.companion.data.ShinyOdds]): the game's foe party watched every frame, a new wild foe
      * made shiny at 1 in [shinyOdds] ([com.pokedaisy.app.companion.data.ShinyOdds.NORMAL] = the game's own odds, nothing
      * done); null = a game it doesn't know. */
@@ -257,6 +268,10 @@ class EmulatorEngine(
     /** A Game Boy game's PC / FLY / WILD ENCOUNTERS ([com.pokedaisy.app.companion.data.GbField], its code checked), or
      * null. WILD ENCOUNTERS OFF holds the game's own encounter state every frame ([gbWildHeld]). */
     @Volatile var gbField: com.pokedaisy.app.companion.data.GbField? = null
+        set(v) {
+            field = v
+            if (v != null) runningShoesDirty = true
+        }
     /** Whether [gbField]'s wild encounters were held last frame (null = not known yet: put back once on the field). */
     private var gbWildHeld: Boolean? = null
 
@@ -849,6 +864,7 @@ class EmulatorEngine(
     /** Hard stop, no state written. */
     fun stop() {
         running = false
+        RunningShoes.resetState()
         nudgeSleep()
         thread?.join(3000)
         if (thread?.isAlive != true) thread = null
@@ -2148,6 +2164,15 @@ class EmulatorEngine(
         runCatching { RetroAchievements.setCheatsActive(n > 0) }
     }
 
+    /** RUNNING SHOES onto emulated ROM buffer (emu thread). */
+    private fun applyRunningShoes() {
+        runningShoesDirty = false
+        if (!gba && !nds) {
+            val game = com.pokedaisy.app.companion.data.activeGame
+            RunningShoes.applyPatch(game, runningShoes)
+        }
+    }
+
     /** REUSABLE TMS, INSTANT TEXT, NO HMS NEEDED, FULL EXP and LEVEL CAP onto the ROM (emu thread): what's on patched, the rest the file's bytes. */
     private fun applyTmPatch() {
         tmPatchDirty = false
@@ -2239,6 +2264,7 @@ class EmulatorEngine(
     private fun servicePending(runFieldJobs: Boolean = true) {
         repeat(emuJobs.size) { emuJobs.poll()?.let { job -> runCatching(job).onFailure { Log.e("pokedaisy", "emu job failed", it) } } }
         if (cheatsDirty) applyCheats()
+        if (runningShoesDirty) applyRunningShoes()
         // Never during a co-op battle: both reach pkRomUnpatch / pkRomUnblock, which uninstall co-op (they stay dirty until it ends).
         if (tmPatchDirty && !CoopGuards.battleActive()) { applyTmPatch(); coopLock?.requestReinstall() }
         if (lookDirty && !CoopGuards.battleActive()) { applyLook(); coopLock?.requestReinstall() }

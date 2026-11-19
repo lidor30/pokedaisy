@@ -2063,6 +2063,19 @@ class PokeDaisyActivity : Activity() {
             Prefs(this@PokeDaisyActivity).autoRun = on
             if (::engine.isInitialized) engine.autoRun = on
         }
+        override val runningShoes get() = Prefs(this@PokeDaisyActivity).runningShoes
+        override val runningShoesSpeed get() = Prefs(this@PokeDaisyActivity).runningShoesSpeed
+        override val runningShoesSupported get() = RunningShoes.isSupported(com.pokedaisy.app.companion.data.activeGame)
+        override fun setRunningShoes(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).runningShoes = on
+            if (::engine.isInitialized) engine.setRunningShoes(on, Prefs(this@PokeDaisyActivity).runningShoesSpeed)
+        }
+        override fun setRunningShoesSpeed(speed: Int) {
+            Prefs(this@PokeDaisyActivity).runningShoesSpeed = speed
+            if (::engine.isInitialized && Prefs(this@PokeDaisyActivity).runningShoes) {
+                engine.setRunningShoes(true, speed)
+            }
+        }
         override val runIndoors get() = Prefs(this@PokeDaisyActivity).runIndoors
         override fun setRunIndoors(on: Boolean) {
             Prefs(this@PokeDaisyActivity).runIndoors = on
@@ -2912,6 +2925,7 @@ class PokeDaisyActivity : Activity() {
             return
         }
         freshLaunch = true
+        RunningShoes.resetState()
         // An archive unpacks once (cached after) - ~0.5 s for 32 MiB, on the black screen. One with no game in it (a PC
         // fan game's zip) is said so, not played: read as the ROM it threw on its CRC and closed the app (Crashlytics,
         // 1.6.0: "No GBA ROM in Pokemon Uranium.zip").
@@ -3254,7 +3268,12 @@ class PokeDaisyActivity : Activity() {
                         BattleInputController.CursorAddrs(action = action, move = move, menus = menus)
                     }
                 // WILD ENCOUNTERS on a Game Boy game is held by the engine, frame by frame.
-                if (snap.connected && romIsGameBoy) engine.gbField = gbField()
+                if (snap.connected && romIsGameBoy) {
+                    engine.gbField = gbField()
+                    // Gen 2 has no gbField (null), so gbField setter never fires runningShoesDirty.
+                    // Re-apply running shoes on every connect so game-switching works for all GB games.
+                    engine.setRunningShoes(companionSettings.runningShoes, companionSettings.runningShoesSpeed)
+                }
                 // A shiny foe: RUN leaves Unbound's "Are you sure you want to run away?" to the player.
                 engine.battleRunAsksFirst = snap.battleOpponent.any { it.shiny }
                 if (snap.connected) battleGen1Menus = snap.game.isGen1 ||
@@ -3426,6 +3445,7 @@ class PokeDaisyActivity : Activity() {
         e.bikeSpeed = p.bikeSpeed
         e.surfSpeed = p.surfSpeed
         e.autoRun = p.autoRun
+        e.setRunningShoes(p.runningShoes, p.runningShoesSpeed)
         e.runIndoors = p.runIndoors && companionSettings.runIndoorsSupported
         e.wildFlag = wildFlag
         e.wildEncounters = p.wildEncounters
