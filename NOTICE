@@ -63,8 +63,9 @@ The app shows every license below in full under Settings > LICENSES.
   PokeDaisy's files for it (libretro/pd_agba_*, libretro/armgba/) change none of
   armGBA's files.
 - zlib (third_party/zlib, v1.3.1), Copyright (C) 1995-2024 Jean-loup Gailly and
-  Mark Adler, the zlib License - https://zlib.net (the armGBA libretro core
-  only, never the APK: its glue calls it; the cross toolchain has none).
+  Mark Adler, the zlib License - https://zlib.net (the armGBA libretro core,
+  whose glue calls it, the cross toolchain having none, and its contrib/puff
+  inflate in the Linux host's game list for cover art; never the APK).
 - DSperate (third_party/dsperate), Copyright (C) 2026 DSperate contributors,
   GNU GPL 3.0 or later - https://github.com/beebono/DSperate (source: the
   submodule's pinned commit). The app's second DS core (its core library only,

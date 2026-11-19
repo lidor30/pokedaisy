@@ -25,6 +25,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "library.h"
+
 // The window's size without POCKET_FULLSCREEN / POCKET_WINDOW.
 #define W 512
 #define H 384
@@ -1402,6 +1404,44 @@ static const char *core_for(const char *path) {
     return "pokedaisy_ds_libretro.so";
   return NULL;
 }
+/* The game list shows the main Pokemon games only (the firmware's folders hold every other game too), told by the cart's
+ * header: a GBA game code of FireRed / LeafGreen / Emerald / Ruby / Sapphire (the hacks keep theirs) or a hack's own,
+ * a Game Boy title of Red / Blue / Green / Yellow / Gold / Silver / Crystal and their hacks (not Pinball, the card
+ * games or Puzzle Challenge), a DS game code of Diamond / Pearl / Platinum / HeartGold / SoulSilver / Black / White /
+ * their sequels. */
+static bool pokemon_rom(const char *path) {
+  unsigned char h[0x150];
+  FILE *f = fopen(path, "rb");
+  size_t n = f ? fread(h, 1, sizeof h, f) : 0;
+  if (f)
+    fclose(f);
+  const char *ext = strrchr(path, '.');
+  if (!ext)
+    return false;
+  if (!strcasecmp(ext, ".gba")) {
+    static const char *const codes[] = {"BPR", "BPG", "BPE", "AXV", "AXP", "MON", "PUV"};
+    for (size_t i = 0; n >= 0xB0 && i < sizeof codes / sizeof *codes; i++)
+      if (!memcmp(h + 0xAC, codes[i], 3))
+        return true;
+    return false;
+  }
+  if (!strcasecmp(ext, ".nds")) {
+    static const char *const codes[] = {"ADA", "APA", "CPU", "IPK", "IPG", "IRB", "IRA", "IRE", "IRD"};
+    for (size_t i = 0; n >= 0x10 && i < sizeof codes / sizeof *codes; i++)
+      if (!memcmp(h + 0x0C, codes[i], 3))
+        return true;
+    return false;
+  }
+  if (n < 0x144)
+    return false;
+  char title[17] = {0};
+  memcpy(title, h + 0x134, 16);
+  static const char *const spinOffs[] = {"POKECARD", "POKEPINBALL", "POKEMON PC", "POKEMONPC", "POKEMON-CG", "POKEMON PINB"};
+  for (size_t i = 0; i < sizeof spinOffs / sizeof *spinOffs; i++)
+    if (!strncmp(title, spinOffs[i], strlen(spinOffs[i])))
+      return false;
+  return !strncmp(title, "POKE", 4) || !strncmp(title, "PM_", 3) || !strncmp(title, "PK", 2);
+}
 #ifdef POCKET_DSPERATE
 extern int pd_ds_run(const char *, const char *, int, const char *, SDL_Renderer *, bool (*)(void));
 static bool ds_running(void) { return running != 0; }
@@ -1834,6 +1874,129 @@ static const char *base_name(const char *p) {
   const char *s = strrchr(p, '/');
   return s ? s + 1 : p;
 }
+/* ---- the library (library.c): the host's own SETTINGS rows, and its canvases and covers on the screen ---- */
+static const char *lib_label(int row) {
+  static const char *const LABELS[] = {"LCD FILTER", "FF SPEED", "REWIND", "A/B BUTTONS"};
+  return LABELS[row];
+}
+static const char *lib_group(int row) { return row == 0 ? "SCREEN" : row < 3 ? "FF / SPEED" : "CONTROLS"; }
+static void lib_value(int row, char *out, int len) {
+  if (row == 0)
+    snprintf(out, (size_t)len, "%s", hostSet.lcd ? "ON" : "OFF");
+  else if (row == 1 && hostSet.ffSpeed)
+    snprintf(out, (size_t)len, "%dx", hostSet.ffSpeed);
+  else if (row == 1)
+    snprintf(out, (size_t)len, "MAX");
+  else if (row == 2)
+    snprintf(out, (size_t)len, "%s", hostSet.rewind ? "ON" : "OFF");
+  else
+    snprintf(out, (size_t)len, "%s", hostSet.swapAB ? "SWAPPED" : "NORMAL");
+}
+static void lib_step(int row, int dir) {
+  if (row == 0)
+    hostSet.lcd = !hostSet.lcd;
+  else if (row == 1) {
+    // MAX, 2x ... 8x, round.
+    int v = hostSet.ffSpeed ? hostSet.ffSpeed - 1 : 0; // 0 MAX, 1..7 = 2x..8x
+    v = (v + dir + 8) % 8;
+    hostSet.ffSpeed = v ? v + 1 : 0;
+  } else if (row == 2)
+    hostSet.rewind = !hostSet.rewind;
+  else
+    hostSet.swapAB = swapFace = !hostSet.swapAB;
+  host_save();
+}
+#ifndef POCKET_VERSION
+#define POCKET_VERSION "dev"
+#endif
+static const struct lib_host libraryHost = {4, lib_label, lib_group, lib_value, lib_step, POCKET_VERSION};
+
+/* The library at a finer grain than the overlay (its 320x240 is the companion's): about 640x480 on a 1280x960 panel. Its
+ * page, then the covers at the screen's own resolution, then a second canvas with the legend and the menus. */
+static uint32_t libraryTopPx[OVERLAY_MAX_W * OVERLAY_MAX_H];
+static SDL_Texture *libraryTopTexture, *coverTextures[1024];
+static unsigned coverSerials[1024];
+static int libraryTopW, libraryTopH;
+static void library_textures_free(void) {
+  for (int i = 0; i < 1024; i++)
+    if (coverTextures[i]) {
+      SDL_DestroyTexture(coverTextures[i]);
+      coverTextures[i] = NULL;
+    }
+  if (libraryTopTexture)
+    SDL_DestroyTexture(libraryTopTexture);
+  libraryTopTexture = NULL;
+}
+static void library_present(void) {
+  int ow = W, oh = H;
+  SDL_GetRendererOutputSize(renderer, &ow, &oh);
+  int s = ow / 560 < oh / 400 ? ow / 560 : oh / 400;
+  if (s < 1)
+    s = 1;
+  int w = ow / s, h = oh / s;
+  w = w > OVERLAY_MAX_W ? OVERLAY_MAX_W : w;
+  h = h > OVERLAY_MAX_H ? OVERLAY_MAX_H : h;
+  int x0 = (ow - w * s) / 2, y0 = (oh - h * s) / 2;
+  SDL_RenderClear(renderer);
+  pd_canvas_init(&overlay, w, h, overlayPx);
+  library_draw(&overlay);
+  overlay_draw(true);
+  struct lib_cover covers[64];
+  int n = library_covers(covers, 64);
+  for (int i = 0; i < n; i++) {
+    const struct lib_cover *cv = &covers[i];
+    if (cv->game < 0 || cv->game >= 1024)
+      continue;
+    SDL_Texture **t = &coverTextures[cv->game];
+    if (!*t || coverSerials[cv->game] != cv->serial + 1) {
+      if (!*t) {
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+        *t = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, cv->size, cv->size);
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+        if (*t)
+          SDL_SetTextureBlendMode(*t, SDL_BLENDMODE_BLEND);
+      }
+      if (*t)
+        SDL_UpdateTexture(*t, NULL, cv->px, cv->size * 4);
+      coverSerials[cv->game] = cv->serial + 1;
+    }
+    if (!*t)
+      continue;
+    SDL_Rect clip = {x0 + cv->clipX * s, y0 + cv->clipY * s, cv->clipW * s, cv->clipH * s};
+    SDL_Rect dst = {x0 + cv->x * s, y0 + cv->y * s, cv->w * s, cv->h * s};
+    SDL_RenderSetClipRect(renderer, &clip);
+    SDL_RenderCopy(renderer, *t, NULL, &dst);
+    SDL_RenderSetClipRect(renderer, NULL);
+  }
+  if (library_dimmed()) {
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150);
+    SDL_RenderFillRect(renderer, NULL);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+  }
+  struct pd_canvas top;
+  pd_canvas_init(&top, w, h, libraryTopPx);
+  library_draw_top(&top, KEY_COLOR);
+  if (!libraryTopTexture || libraryTopW != w || libraryTopH != h) {
+    if (libraryTopTexture)
+      SDL_DestroyTexture(libraryTopTexture);
+    libraryTopTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, w, h);
+    if (libraryTopTexture)
+      SDL_SetTextureBlendMode(libraryTopTexture, SDL_BLENDMODE_BLEND);
+    libraryTopW = w;
+    libraryTopH = h;
+  }
+  for (int i = 0; i < w * h; i++) {
+    uint32_t p = libraryTopPx[i] & 0xFFFFFF;
+    libraryTopPx[i] = p == KEY_COLOR ? 0 : 0xFF000000u | p;
+  }
+  if (libraryTopTexture) {
+    SDL_UpdateTexture(libraryTopTexture, NULL, libraryTopPx, w * 4);
+    SDL_Rect r = {x0, y0, w * s, h * s};
+    SDL_RenderCopy(renderer, libraryTopTexture, NULL, &r);
+  }
+  SDL_RenderPresent(renderer);
+}
 static int cmp(const void *a, const void *b) { return strcasecmp(base_name(*(char *const *)a), base_name(*(char *const *)b)); }
 static void exe_dir(const char *argv0) {
   char p[PATH_MAX];
@@ -1935,54 +2098,56 @@ int main(int argc, char **argv) {
     run_game(rom, frames, shot, false);
   else {
     /* DATA/roms, then the folders POCKET_ROM_DIRS names (colon-separated: the PortMaster launcher passes the
-     * firmware's own gba / gb / gbc / nds folders), by file name. */
+     * firmware's own gba / gb / gbc / nds folders), by file name. Those hold every other game too, so only their
+     * Pokemon games are listed (pokemon_rom); DATA/roms lists whatever was put there. */
     static char *paths[1024];
-    static const char *names[1024];
     int count = 0;
     char dirs[4096];
     snprintf(dirs, sizeof dirs, "%s/roms%s%s", root, getenv("POCKET_ROM_DIRS") ? ":" : "",
              getenv("POCKET_ROM_DIRS") ? getenv("POCKET_ROM_DIRS") : "");
     char *save = NULL;
-    for (char *dir = strtok_r(dirs, ":", &save); dir; dir = strtok_r(NULL, ":", &save)) {
+    bool firmware = false;
+    for (char *dir = strtok_r(dirs, ":", &save); dir; dir = strtok_r(NULL, ":", &save), firmware = true) {
       DIR *d = opendir(dir);
       struct dirent *e;
       while (d && (e = readdir(d)) && count < 1024) {
         if (core_for(e->d_name)) {
           snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
-          paths[count++] = strdup(path);
+          if (!firmware || pokemon_rom(path))
+            paths[count++] = strdup(path);
         }
       }
       if (d)
         closedir(d);
     }
     qsort(paths, count, sizeof(*paths), cmp);
-    for (int i = 0; i < count; i++)
-      names[i] = base_name(paths[i]);
-    struct pd_menu list;
-    pd_menu_init(&list, "PokeDaisy Linux", names, count);
+    library_open(paths, count, root, savesDir, &libraryHost);
     int ticks = 0;
-    while (running) {
+    while (running && !library_quit()) {
       events();
       repeat_directions();
-      // The menu's buttons quit the list: Guide / Menu / Escape, or START and SELECT together. B no longer does: on an
-      // Xbox-style pad (a Steam Deck, a Z2 Extreme) the bottom button is labelled A but is the game's B here (the
-      // Nintendo layout), so the first press closed the program and read as a crash.
-      if (down(MENU) || (down(START) && (held >> SELECT & 1)) || (down(SELECT) && (held >> START & 1)))
-        break;
-      if (down(B) && count)
-        notice("A (the right button) plays. START + SELECT quits");
-      if (down(UP))
-        pd_menu_move(&list, -1);
-      if (down(DOWN))
-        pd_menu_move(&list, 1);
-      if (down(A) && count)
-        appError = 0, run_game(paths[list.selected], 0, NULL, true); // the last game's result is the exit status
-      SDL_RenderClear(renderer);
-      overlay_begin();
-      pd_menu_draw(&list, &overlay);
-      overlay_notice();
-      overlay_draw(true);
-      SDL_RenderPresent(renderer);
+      static const int LIB_KEYS[][2] = {{A, LIB_A},       {B, LIB_B},         {X, LIB_X},           {Y, LIB_Y},
+                                        {L, LIB_L},       {R, LIB_R},         {UP, LIB_UP},         {DOWN, LIB_DOWN},
+                                        {LEFT, LIB_LEFT}, {RIGHT, LIB_RIGHT}, {START, LIB_START},   {SELECT, LIB_SELECT},
+                                        {MENU, LIB_MENU}};
+      unsigned libDown = 0;
+      for (size_t i = 0; i < sizeof LIB_KEYS / sizeof *LIB_KEYS; i++)
+        if (down(LIB_KEYS[i][0]))
+          libDown |= (unsigned)LIB_KEYS[i][1];
+      // START + SELECT (dev's quit chord) asks to close as START or Menu do.
+      if ((down(START) && (held >> SELECT & 1)) || (down(SELECT) && (held >> START & 1)))
+        libDown = (libDown & ~(unsigned)LIB_SELECT) | LIB_START;
+      library_keys(libDown);
+      library_tick();
+      const char *game = library_picked();
+      if (game) {
+        char picked[PATH_MAX];
+        snprintf(picked, sizeof picked, "%s", game);
+        appError = 0;
+        run_game(picked, 0, NULL, true); // the last game's result is the exit status
+        library_played(picked);
+      }
+      library_present();
       if (frames && ++ticks >= frames) {
         if (shot && !capture(shot))
           appError = 1;
@@ -1990,6 +2155,8 @@ int main(int argc, char **argv) {
       }
       SDL_Delay(16);
     }
+    library_close();
+    library_textures_free();
     for (int i = 0; i < count; i++)
       free(paths[i]);
   }

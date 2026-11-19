@@ -46,7 +46,8 @@ for path,license_name in [('LICENSE','mGBA-MPL-2.0.txt'),('src/third-party/blip_
 if any('_gba_' in c.name for c in a.core):
     # armGBA's own code is MPL 2.0; its Game Boy side (Gambatte, GPL 2.0) is not built into the core.
     shutil.copy2(repo/'third_party/armgba/LICENSES/MPL-2.0.txt',licenses/'armGBA-MPL-2.0.txt')
-    shutil.copy2(repo/'third_party/zlib/LICENSE',licenses/'zlib.txt')
+# zlib: the armGBA core's, and the host's own (its game list decodes cover art with zlib's puff).
+shutil.copy2(repo/'third_party/zlib/LICENSE',licenses/'zlib.txt')
 ds_core=any('_ds_' in c.name for c in a.core)
 if ds_core:
     tree=repo/'third_party/dsperate-lr'
