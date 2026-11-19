@@ -531,13 +531,17 @@ void pd_dim(struct pd_canvas* c, int alpha) {
     uint32_t keep = (uint32_t) (255 - alpha);
     // Each channel times keep, divided by 255 exactly as (x + 1 + (x >> 8)) >> 8 (true for every x up to 255 * 255).
     // Red and blue go together in one multiply: each product fits its own 16 bits, so nothing carries between them.
-    for (int i = 0; i < c->w * c->h; i++) {
-        uint32_t p = c->px[i];
-        uint32_t rb = (p & 0x00FF00FFu) * keep;
-        rb = ((rb + 0x00010001u + ((rb >> 8) & 0x00FF00FFu)) >> 8) & 0x00FF00FFu;
-        uint32_t g = ((p >> 8) & 0xFF) * keep;
-        g = (g + 1 + (g >> 8)) >> 8;
-        c->px[i] = rb | (g << 8);
+    // Inside the clip only, like every other draw: under pd_canvas_limit (a list's redraw) a whole-canvas dim darkened
+    // what lay outside the list again on every step, until the screen around MAP's PLACES / FLY lists was black.
+    for (int y = c->cy0; y < c->cy1; y++) {
+        for (int i = y * c->w + c->cx0, end = y * c->w + c->cx1; i < end; i++) {
+            uint32_t p = c->px[i];
+            uint32_t rb = (p & 0x00FF00FFu) * keep;
+            rb = ((rb + 0x00010001u + ((rb >> 8) & 0x00FF00FFu)) >> 8) & 0x00FF00FFu;
+            uint32_t g = ((p >> 8) & 0xFF) * keep;
+            g = (g + 1 + (g >> 8)) >> 8;
+            c->px[i] = rb | (g << 8);
+        }
     }
 }
 

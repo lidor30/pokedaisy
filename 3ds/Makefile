@@ -147,7 +147,7 @@ GB_ROMS ?= $(BUILD)/roms
 gb_preview = $(if $(wildcard $(GB_ROMS)/$(2)),$(BUILD)/pd_preview $(FIXTURES)/$(1) GB $(BUILD)/shots $(1) $(GB_ROMS)/$(2),@echo "preview: no $(GB_ROMS)/$(2), $(1) skipped")
 
 # make test-scroll: a list dragged on the bottom screen is redrawn alone (pd_ui_draw_scrolled, the press, each step and the
-# release), and every such picture must equal a whole redraw pixel for pixel: DEX, BAG, GUIDE and SETTINGS, small and
+# release), and every such picture must equal a whole redraw pixel for pixel: DEX, BAG, GUIDE, SETTINGS and MAP's PLACES, small and
 # normal font, a field and a battle fixture. A mismatch's pictures go to build/scroll-shots/.
 scroll_check = PD_PREVIEW_DEX_ONLY=1 PD_PREVIEW_SCROLL_CHECK=1 $(1) $(BUILD)/pd_preview $(FIXTURES)/$(2) $(3) $(BUILD)/scroll-shots $(2) $(call rom_if,$(4))
 test-scroll: $(BUILD)/pd_preview

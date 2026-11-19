@@ -1,4 +1,3 @@
-#include <time.h>
 // pd_preview - renders the 3DS companion from a RAM fixture (the ewram.bin /
 // iwram.bin dumps under app/src/test/resources/fixtures/) into PNGs laid out
 // like the 3DS: the 400x240 top screen over the 320x240 bottom one. No ROM, no
@@ -378,12 +377,14 @@ dex_only:
         static uint32_t ref[1024 * 768];
         struct pd_canvas rc;
         pd_canvas_init(&rc, uiW, uiH, ref);
-        const enum pd_tab tabs[] = { PD_TAB_DEX, PD_TAB_BAG, PD_TAB_GUIDE, PD_TAB_SETTINGS };
-        const char* names[] = { "dex", "bag", "guide", "settings" };
+        // GUIDE past its first-open notice (else no list), and MAP's PLACES: a list over the dimmed map.
+        settings.guideNotice = ~0;
+        const enum pd_tab tabs[] = { PD_TAB_DEX, PD_TAB_BAG, PD_TAB_GUIDE, PD_TAB_SETTINGS, PD_TAB_MAP };
+        const char* names[] = { "dex", "bag", "guide", "settings", "map-places" };
         int failures = 0;
-        for (int t = 0; t < 4; t++) {
+        for (int t = 0; t < (int) (sizeof tabs / sizeof tabs[0]); t++) {
             ui.tab = tabs[t];
-            ui.overlay = PD_OVERLAY_NONE;
+            ui.overlay = tabs[t] == PD_TAB_MAP ? PD_OVERLAY_PLACES : PD_OVERLAY_NONE;
             draw(&p);
             const struct pd_hit* box = NULL;
             for (int i = 0; i < ui.hitCount; i++)
