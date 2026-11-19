@@ -182,8 +182,9 @@ other core, won't load.
 ## Controls
 
 The program uses your controller's layout: the button on the right acts as the game's A and the one at the bottom
-as B, as on a Nintendo controller. If that feels backwards on your device, set `A/B BUTTONS` to `SWAPPED` in the
-menu. Controllers can be plugged in or pulled out while you play.
+as B, as on a Nintendo controller. On ROCKNIX the buttons follow their labels instead, so the button marked A is A,
+as long as the firmware's controller layout is Nintendo (its default). If that feels backwards on your device, set
+`A/B BUTTONS` to `SWAPPED` in the menu. Controllers can be plugged in or pulled out while you play.
 
 On a keyboard: arrows move, Z is A, X is B, Enter is START, Backspace is SELECT, Q and E are L and R, Tab is X and F
 is Y. Hold Space to fast forward and R to rewind, F2 saves a state, F4 loads it, and Escape opens the menu. A touch

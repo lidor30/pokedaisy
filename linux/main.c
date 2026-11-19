@@ -146,7 +146,24 @@ static int keyboard(SDL_Keycode k) {
     return -1;
   }
 }
+/* POCKET_FACE_LABELS=1: the controller mapping already names the face buttons by their labels (ROCKNIX's PortMaster mapping in
+ * its Nintendo layout: SDL's "a" is the button marked A, wherever it sits), so A is A. Else SDL's are an Xbox pad's places
+ * (A at the bottom) and the game's follow the GBA's: the bottom one is B, the right one A. */
+static bool faceLabels;
 static int controller_button(int button) {
+  if (faceLabels)
+    switch (button) {
+    case SDL_CONTROLLER_BUTTON_A:
+      return A;
+    case SDL_CONTROLLER_BUTTON_B:
+      return B;
+    case SDL_CONTROLLER_BUTTON_X:
+      return X;
+    case SDL_CONTROLLER_BUTTON_Y:
+      return Y;
+    default:
+      break;
+    }
   switch (button) {
   case SDL_CONTROLLER_BUTTON_A:
     return B;
@@ -1878,6 +1895,7 @@ int main(int argc, char **argv) {
   snprintf(savesDir, sizeof savesDir, "%s/saves", root);
   snprintf(hostIni, sizeof hostIni, "%s/host.ini", root);
   host_load();
+  faceLabels = getenv("POCKET_FACE_LABELS") && !strcmp(getenv("POCKET_FACE_LABELS"), "1");
   comboMenu = !(getenv("POCKET_MENU_COMBO") && !strcmp(getenv("POCKET_MENU_COMBO"), "off"));
   // A window manager can give another window the focus over the game (plorpOS's in-game menu on the GKD): the
   // controller has to keep reaching the host then.
