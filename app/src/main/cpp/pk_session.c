@@ -24,6 +24,7 @@
 #include "pk_flight.h"
 #include "pk_host.h"
 #include "pk_gb_field.h"
+#include "pk_perf.h"
 #include "pk_rewind.h"
 #include "pk_savevf.h"
 #include "pk_wide.h"
@@ -31,6 +32,7 @@
 
 #ifdef __ANDROID__
 #include <android/log.h>
+#include <sys/system_properties.h>
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "pokedaisy/jni", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "pokedaisy/jni", __VA_ARGS__)
 #define PK_LOG_MGBA(category, line) __android_log_print(ANDROID_LOG_ERROR, "pokedaisy/mgba", "%s: %s", category, line)
@@ -206,6 +208,16 @@ void pk_api_deinit(void) {
     pthread_rwlock_unlock(&pk_coreLock);
 }
 
+// The speed settings below (pk_perf.h, EXPAND's margin cache) on, unless `adb shell setprop debug.pokedaisy.perf 0` says
+// otherwise for the next game started: how they were timed against the app without them, one install for both.
+static bool pkPerfOn(void) {
+#ifdef __ANDROID__
+    char v[PROP_VALUE_MAX] = "";
+    if (__system_property_get("debug.pokedaisy.perf", v) > 0 && v[0] == '0') return false;
+#endif
+    return true;
+}
+
 // The player's core, for pokedaisy_ra.c (RetroAchievements' memory reads and ROM hash).
 struct mCore* pkMainCore(void) {
     return g.core;
@@ -285,8 +297,16 @@ bool pk_api_init(const char* romPath, const char* savePath) {
     }
 
     core->reset(core);
+    bool perf = pkPerfOn();
+    pk_idle_detect(core, perf);   // the game's wait for VBlank skipped, not run (pk_perf.h)
     pk_heal_rtc(core);
     pk_rest_reset();   // a new game: its own main loop depth
+#ifdef PK_WIDE_CACHE
+    // EXPAND's margins kept between frames, only what changed drawn: the same pixels as drawing them all (mode 2: every
+    // animated cell redrawn at once), about 0.6 ms less a frame on an A510 core (pk_wide_cache).
+    pk_wide_cache(perf ? 2 : 0);
+#endif
+    if (!perf) LOGI("speed settings off (debug.pokedaisy.perf 0)");
 
     const uint8_t* romFile = NULL;
     size_t romFileSize = 0;

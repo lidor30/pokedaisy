@@ -3899,6 +3899,41 @@ blocking writes held the loop. A device whose audio takes writes in big chunks s
 reporter measured 60-88 ms: the loop stops for 4-5 frames, then runs them back to back); if that's what's left, the
 next step is the timer with non-blocking writes and rate control.
 
+### Speed settings (2026-11-19, from the 3DS port)
+
+Two of the 3DS port's findings are on for the player's GBA core (`pk_session.c`'s `pk_api_init`):
+
+- **Idle loops found, not only known** (`pk_perf.h`'s `pk_idle_detect`): mGBA's IDLE_LOOP_DETECT, so a game's spin on
+  its VBlank flag halts the CPU instead of running. mGBA's own table knows Emerald's loop; FireRed's (080008BE) it now
+  finds. Radical Red already waits in the BIOS (halted), so nothing changes there. A game with a table entry keeps it.
+  Checked headless: an in-game save and a reboot from it, `pk_call` from the halted loop (CPU state put back as it was).
+- **EXPAND's margin cache** (`PK_WIDE_CACHE`, defined for `pk_api` in `pk_api.cmake`; `pk_wide_cache(2)`): the margins
+  kept between frames, only the cells that changed drawn again. Mode 2 redraws every animated cell at once, so its pixels
+  are the full draw's: `mgba_dump`'s `widecrcs` hashed the whole EXPAND picture of 1000 walking frames and the boot (title,
+  CONTINUE, fades) with the cache off and on, FireRed / Emerald / Radical Red, every frame equal - after fixing cells that
+  scroll out of the window and come back (they had missed the tiles written meanwhile: water a frame of its animation
+  behind for ~27 frames). `widecheck` turns the cache off (it compares the full draw), so `verify_wide.py` doesn't cover it.
+
+Measured on the Thor's A510 cores (2.0 GHz, standing in for a weak device), EXPAND on, standing on the field:
+
+| | `mgba_dump bench`, one core (ms a frame) | the app, `fps=`'s `work=` (3 cores, 80 s each) |
+|---|---|---|
+| FireRed | 4.3 -> 2.7 (idle loops, no EXPAND); EXPAND 3.65 -> 3.05 (cache) | 7.02 -> 4.77, worst 9.96 -> 7.77 |
+| Emerald | unchanged (idle loop known); EXPAND 3.6 -> 3.0 (cache) | 8.36 -> 5.29, late draws 7 -> 0 |
+| Radical Red | unchanged (halted in the BIOS); EXPAND 4.15 -> 3.5 (cache) | 9.01 -> 6.06, late draws 32 -> 0 |
+
+The app's window is wider than `mgba_dump`'s 22 px margins (ZOOM's levels), so the cache saves more there. A/B them on a
+device with `adb shell setprop debug.pokedaisy.perf 0` (both off from the next game start; any other value or none =
+on). `mgba_dump` takes `PK_IDLE=1` for the app's idle loops (left out by default: every capture so far was made without),
+`widecache M` in a `-DPK_WIDE_CACHE` build. Built with the NDK's clang against the app's own `libmgba.a`
+(`app/.cxx/RelWithDebInfo/*/arm64-v8a/mgba/`) it runs on a device from `/data/local/tmp`, `taskset 1` for one small core.
+
+Tried and left out: mGBA's renderer on its own thread (`threadedVideo`): on two A510 cores a frame came 3-9% sooner at best
+(Emerald without EXPAND later), for 0.2-0.3 ms more CPU a frame; it would also need a wait before every read of the frame
+(the proxy's finishFrame doesn't wait). EXPAND's drawing on another thread (`pk_wide_later`) and the host filling the
+frame's own rectangle (`pk_wide_hole`): with the cache on, EXPAND's whole cost on an A510 is ~0.4-0.6 ms a frame, about
+what the threaded renderer gave, for more moving parts. Both stay 3DS only.
+
 ## Build
 
 ```bash
