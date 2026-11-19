@@ -13,6 +13,10 @@ DsGame ds_companion_game(const char* sha1);
 // Maps the digest of a known decrypted dump to the digest of the retail dump it
 // is the same ROM as, so every digest check downstream sees one id per game.
 const char* ds_canonical_sha1(const char* sha1);
+// The cart behind a ROM's digest, once per loaded ROM and before ds_companion_game: a US cart's canonical digest, or, for
+// a language port this reader takes (data_gen.h's ports), the digest of the US game it shares its tables and save layout
+// with. Every read after it goes through that cart's own globals.
+const char* ds_open_cart(const char* sha1);
 int ds_egg_icon(DsGame game);
 struct DsMon {
   int species=0, level=0, hp=0, maxHp=0, heldItem=0;

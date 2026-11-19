@@ -137,8 +137,14 @@ Platinum. The new battle paths need live retail ROM testing.
 
 | Games | Exact revisions | Companion and Quick Menu |
 | --- | --- | --- |
-| HeartGold, SoulSilver | USA rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
-| Black, White, Black 2, White 2 | USA/Europe rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
+| HeartGold, SoulSilver | USA rev 0, Germany rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
+| Black, White, Black 2, White 2 | USA/Europe rev 0, Germany rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
+
+The German carts (`ports` in the generated `data_gen.h`, from the app's `NdsPortsGen.kt` and German HeartGold /
+SoulSilver config) read as their US game through their own addresses: `ds_open_cart` picks them by the ROM's hash.
+The companion's names stay English; text the cart supplies (Dex pages, item descriptions) is the cart's German. They
+were run on a Retroid Pocket Nova: SoulSilver and White from a save, the others to the title. A ROM file longer than a
+DS card (a dump with bytes added at its end) is refused by the core.
 
 Party shows HP, EXP to the next level, type matchups, moves, power and PP.
 A opens the selected party member's summary or Bag item's details. In a party

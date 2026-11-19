@@ -23,7 +23,7 @@ find_package(Python3 COMPONENTS Interpreter REQUIRED)
 set(DS_DATA ${CMAKE_CURRENT_BINARY_DIR}/data_gen.h)
 set(DATA_READER ${ROOT}/linux/dsperate/gen_data.py)
 set(DATA_INPUTS ${KOTLIN}/GameTitles.kt)
-foreach(name Gen4Reader Gen4TablesPlatinum Gen4TablesHeartGold Gen4Dex Gen4MachinesPlatinum Gen4TownMapPlatinum Gen4TownMapHeartGold PokegearMap Gen5TownMapBlack Gen5TownMapBlack2 Gen5Reader Gen5DexBlack Gen5TablesBlack Gen5ItemsBlack Gen5TablesBlack2 NdsArt RegionMapModel MonStats Gen4Charmap)
+foreach(name Gen4Reader Gen4TablesPlatinum Gen4TablesHeartGold Gen4Dex Gen4MachinesPlatinum Gen4TownMapPlatinum Gen4TownMapHeartGold PokegearMap Gen5TownMapBlack Gen5TownMapBlack2 Gen5Reader Gen5DexBlack Gen5TablesBlack Gen5ItemsBlack Gen5TablesBlack2 NdsArt NdsPortsGen RegionMapModel MonStats Gen4Charmap)
   list(APPEND DATA_INPUTS ${KOTLIN}/companion/data/${name}.kt)
 endforeach()
 add_custom_command(OUTPUT ${DS_DATA}
