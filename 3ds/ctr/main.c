@@ -902,7 +902,7 @@ static bool run_game(const char* file) {
     unsigned paceEvery = 0;
     // The bottom screen's paint goes where a frame has time left for it (an Old 3DS): what the last one cost must fit
     // before the refresh, else it waits for a loop with room, a second at most.
-    u64 paintCost = 0, paintedAt = 0;
+    u64 paintCost = 0, scrollCost = 0, paintedAt = 0; // what the last whole paint / scroll-only paint took
     host_log("game: %s", catchUpOn ? "frames skipped to keep up (an Old 3DS)" : "every frame drawn");
     // No SD card writes for the log while the game runs (host_log_hold).
     host_log_hold(true);
@@ -1020,10 +1020,16 @@ static bool run_game(const char* file) {
 
         int touchX, touchY;
         if (read_touch(held, &touchX, &touchY)) {
-            session.redraw |= pd_ui_touch(uiPtr, touchX, touchY, true);
+            if (pd_ui_touch(uiPtr, touchX, touchY, true)) {
+                if (uiPtr->touchScrollOnly) session.redrawScroll = true;
+                else session.redraw = true;
+            }
             touching = true;
         } else if (touching) {
-            session.redraw |= pd_ui_touch(uiPtr, 0, 0, false);
+            if (pd_ui_touch(uiPtr, 0, 0, false)) {
+                if (uiPtr->touchScrollOnly) session.redrawScroll = true;
+                else session.redraw = true;
+            }
             touching = false;
             bottomUrgent = true;
         }
@@ -1117,16 +1123,21 @@ static bool run_game(const char* file) {
 
         u64 bottomNow = svcGetSystemTick();
         bool paintUrgent = bottomUrgent || session.redrawUrgent;
-        bool paintFits = !throttleBottom || paintUrgent || bottomNow - paintedAt >= SYSCLOCK_ARM11 ||
-                         bottomNow + paintCost <= loopBegin + (u64) refreshTicks * 3 / 4;
-        if (session.redraw && paintFits && (!throttleBottom || pd_refresh_due(&bottomTimer, bottomNow, bottomInterval, paintUrgent))) {
+        // A New 3DS paints every redraw at once, but a list scrolled under the finger waits for a loop with room
+        // (two refreshes at most): with the game's frame near its budget, painting it anyway made that frame late.
+        const bool scrollOnly = session.redrawScroll && !session.redraw;
+        bool paintFits = (!throttleBottom && !scrollOnly) || paintUrgent ||
+                         bottomNow - paintedAt >= (throttleBottom ? SYSCLOCK_ARM11 : (u64) refreshTicks * 2) ||
+                         bottomNow + (scrollOnly ? scrollCost : paintCost) <= loopBegin + (u64) refreshTicks * 3 / 4;
+        if ((session.redraw || session.redrawScroll) && paintFits && (!throttleBottom || pd_refresh_due(&bottomTimer, bottomNow, bottomInterval, paintUrgent))) {
             DEV_MARK(redrawStart);
             pd_session_draw(&session, &bottom);
             gpu_set_bottom(bottomPx);
             bottomPaints++;
             pd_refresh_mark(&bottomTimer, bottomNow);
             paintedAt = svcGetSystemTick();
-            paintCost = paintedAt - bottomNow;
+            if (scrollOnly) scrollCost = paintedAt - bottomNow;
+            else paintCost = paintedAt - bottomNow;
 #ifdef PD_DEV
             unsigned took = TICKS_TO_US(svcGetSystemTick() - redrawStart);
             dev.redraws++;

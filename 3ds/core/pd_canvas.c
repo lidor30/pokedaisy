@@ -10,21 +10,37 @@ void pd_canvas_init(struct pd_canvas* c, int w, int h, uint32_t* px) {
     c->w = w;
     c->h = h;
     c->px = px;
+    c->lx0 = c->ly0 = c->lx1 = c->ly1 = 0;
     pd_unclip(c);
 }
 
 void pd_clip(struct pd_canvas* c, int x, int y, int w, int h) {
-    c->cx0 = x < 0 ? 0 : x;
-    c->cy0 = y < 0 ? 0 : y;
-    c->cx1 = x + w > c->w ? c->w : x + w;
-    c->cy1 = y + h > c->h ? c->h : y + h;
+    const bool limited = c->lx1 > c->lx0;
+    const int x0 = limited ? c->lx0 : 0, y0 = limited ? c->ly0 : 0;
+    const int x1 = limited && c->lx1 < c->w ? c->lx1 : c->w, y1 = limited && c->ly1 < c->h ? c->ly1 : c->h;
+    c->cx0 = x < x0 ? x0 : x;
+    c->cy0 = y < y0 ? y0 : y;
+    c->cx1 = x + w > x1 ? x1 : x + w;
+    c->cy1 = y + h > y1 ? y1 : y + h;
 }
 
 void pd_unclip(struct pd_canvas* c) {
-    c->cx0 = 0;
-    c->cy0 = 0;
-    c->cx1 = c->w;
-    c->cy1 = c->h;
+    pd_clip(c, 0, 0, c->w, c->h);
+}
+
+void pd_canvas_limit(struct pd_canvas* c, int x, int y, int w, int h) {
+    c->lx0 = 0;
+    c->lx1 = 0;
+    pd_clip(c, x, y, w, h);
+    c->lx0 = c->cx0;
+    c->ly0 = c->cy0;
+    c->lx1 = c->cx1;
+    c->ly1 = c->cy1;
+}
+
+void pd_canvas_unlimit(struct pd_canvas* c) {
+    c->lx0 = c->ly0 = c->lx1 = c->ly1 = 0;
+    pd_unclip(c);
 }
 
 static inline void plot(struct pd_canvas* c, int x, int y, uint32_t color) {

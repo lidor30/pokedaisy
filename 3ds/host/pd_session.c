@@ -1944,8 +1944,10 @@ void pd_session_draw(struct pd_session* s, struct pd_canvas* bottom) {
         pd_ui_warm(&s->ui, bottom, &s->game);
         s->uiWarm = true;
     }
-    pd_ui_draw(&s->ui, bottom, &s->game, &s->shown, &s->host);
+    if (!s->redraw && s->redrawScroll) pd_ui_draw_scrolled(&s->ui, bottom, &s->game, &s->shown, &s->host);
+    else pd_ui_draw(&s->ui, bottom, &s->game, &s->shown, &s->host);
     s->redraw = false;
+    s->redrawScroll = false;
     s->redrawUrgent = false;
 }
 

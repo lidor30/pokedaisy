@@ -24,7 +24,7 @@ test-old3ds:
 	cmake --build $(BUILD)/old3ds-tests -j4
 	ctest --test-dir $(BUILD)/old3ds-tests --output-on-failure
 
-.PHONY: preview library-preview docs-shots test-save 3ds-dev cia test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+.PHONY: preview library-preview docs-shots test-scroll test-save 3ds-dev cia test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
 
 $(BUILD)/pd_font_test: core/pd_canvas.c core/pd_canvas.h core/pd_font.h core/pd_font_gen.c test/font_test.c
 	@mkdir -p $(BUILD)
@@ -145,6 +145,19 @@ rom_if = $(if $(wildcard $(1)),$(1),)
 # Silver, linked or copied under these names (make preview GB_ROMS=<dir>).
 GB_ROMS ?= $(BUILD)/roms
 gb_preview = $(if $(wildcard $(GB_ROMS)/$(2)),$(BUILD)/pd_preview $(FIXTURES)/$(1) GB $(BUILD)/shots $(1) $(GB_ROMS)/$(2),@echo "preview: no $(GB_ROMS)/$(2), $(1) skipped")
+
+# make test-scroll: a list dragged on the bottom screen is redrawn alone (pd_ui_draw_scrolled, the press, each step and the
+# release), and every such picture must equal a whole redraw pixel for pixel: DEX, BAG, GUIDE and SETTINGS, small and
+# normal font, a field and a battle fixture. A mismatch's pictures go to build/scroll-shots/.
+scroll_check = PD_PREVIEW_DEX_ONLY=1 PD_PREVIEW_SCROLL_CHECK=1 $(1) $(BUILD)/pd_preview $(FIXTURES)/$(2) $(3) $(BUILD)/scroll-shots $(2) $(call rom_if,$(4))
+test-scroll: $(BUILD)/pd_preview
+	@mkdir -p $(BUILD)/scroll-shots
+	$(call scroll_check,,firered_vanilla,BPRE,$(FR_ROM))
+	$(call scroll_check,PD_PREVIEW_NORMAL_FONT=1,firered_vanilla,BPRE,$(FR_ROM))
+	$(call scroll_check,,emerald_vanilla,BPEE,$(EM_ROM))
+	$(call scroll_check,PD_PREVIEW_NORMAL_FONT=1,emerald_vanilla,BPEE,$(EM_ROM))
+	$(call scroll_check,,emerald_de_battle,BPEE,$(EM_ROM))
+	$(call scroll_check,PD_PREVIEW_NORMAL_FONT=1,emerald_de_battle,BPEE,$(EM_ROM))
 
 preview: $(BUILD)/pd_preview
 	@mkdir -p $(BUILD)/shots
