@@ -64,6 +64,8 @@ set_target_properties(pk_api PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # structs change shape with them - mCoreRewindContext is ~100 bytes longer with
 # USE_PTHREADS - so every file that includes its headers must see the same ones, or mGBA writes past ours.
 target_compile_definitions(pk_api PUBLIC USE_PTHREADS M_CORE_GBA M_CORE_GB)
+# EXPAND's margin cache (pk_wide_cache), as the 3DS port has it: pk_session.c turns it on.
+target_compile_definitions(pk_api PUBLIC PK_WIDE_CACHE)
 target_include_directories(pk_api PUBLIC
     "${PK_API_DIR}"
     "${MGBA_DIR}/include"

@@ -1763,12 +1763,14 @@ static uint8_t ringMeta[RING_PX][RING_PX];  // prio << 4 | layer
 struct RingCell {
     int x, y;
     uint32_t stamp;
+    uint32_t looked;   // the cached frame (ringFrame) that last looked at it
     uint16_t e[3];
     const void* f;
     bool stale;
 };
 static struct RingCell ringCells[RING_CELLS][RING_CELLS];
 static uint32_t ringStamp = 1, ringKey;
+static uint32_t ringFrame;   // cached frames drawn (cacheDraw)
 static uint16_t ringPal[256];
 static int cacheMode;                 // 0 off, 1 on, 2 on with no limit on stale cells (the same pixels as the rebuild)
 static bool ringOn;                   // this frame's sprites read the cache
@@ -4630,6 +4632,7 @@ static void cacheDraw(const struct Snap* s, const uint32_t* frame, uint32_t* out
         ringStamp++;
     }
     int staleLeft = cacheMode == 2 ? 1 << 30 : CACHE_STALE_CELLS;
+    ringFrame++;
     int c0 = (cx + v.x) >> 3, c1 = (cx + v.x + v.w - 1) >> 3, r0 = (cy + v.y) >> 3, r1 = (cy + v.y + v.h - 1) >> 3;
     for (int r = r0; r <= r1; r++) {
         for (int c = c0; c <= c1; c++) {
@@ -4643,7 +4646,11 @@ static void cacheDraw(const struct Snap* s, const uint32_t* frame, uint32_t* out
             uint16_t e[3];
             const struct Foreign* f;
             cellEntries(s, c * 8, r * 8, enabled, e, &f);
-            bool fresh = cell->stamp != ringStamp || cell->x != c || cell->y != r || cell->f != f || memcmp(cell->e, e, sizeof(e));
+            // A cell the last cached frame didn't look at (out of the window) missed the tiles written meanwhile: walking
+            // back, water came back in a frame of its animation from when it left (verified against the rebuild).
+            bool fresh = cell->stamp != ringStamp || cell->looked != ringFrame - 1 || cell->x != c || cell->y != r ||
+                cell->f != f || memcmp(cell->e, e, sizeof(e));
+            cell->looked = ringFrame;
             if (!fresh) {
                 if (cellWritten(e, f, enabled)) cell->stale = true;
                 if (!cell->stale || staleLeft <= 0) continue;
