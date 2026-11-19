@@ -418,11 +418,25 @@ static void show_message(const char* line1, const char* line2) {
 // (gpu_core1_lend), the screens' draw thread when nothing does. A renderer that still didn't start gives it back.
 static bool core1Lent;
 
+// A players' test switch: an empty file sdmc:/pokedaisy/<name>, or <name>.txt (Windows hides the ending, and a tester's
+// keepscreens.txt once did nothing).
+static bool sd_switch(const char* name) {
+    static const char* const ends[] = { "", ".txt" };
+    for (int i = 0; i < 2; i++) {
+        char path[96];
+        snprintf(path, sizeof path, "sdmc:" BASE_DIR "/%s%s", name, ends[i]);
+        FILE* f = fopen(path, "rb");
+        if (f) {
+            fclose(f);
+            return true;
+        }
+    }
+    return false;
+}
+
 static void core1_lend(const char* renderer) {
     // The players' switch for comparing the two: sdmc:/pokedaisy/keepscreens leaves core 1 to the screens, as before.
-    FILE* keep = fopen("sdmc:" BASE_DIR "/keepscreens", "rb");
-    if (keep) {
-        fclose(keep);
+    if (sd_switch("keepscreens")) {
         host_log("core 1 kept for the screens (keepscreens), not lent to %s", renderer);
         return;
     }
@@ -708,14 +722,19 @@ static bool run_game(const char* file) {
         gpu_double_game(true);
         gpu_set_bars(0);
     } else if (gpsp) {
-        // gpSP: its ARM11 recompiler, its renderer on the New 3DS's third core or an Old 3DS's system core (lent at 80%),
+        // gpSP: its ARM11 recompiler, its renderer on the New 3DS's third core (an Old 3DS's draws with the game, below),
         // drawing a few lines behind the game (the same picture, no frame later: EXPAND is fine), the cartridge in the arena.
         rom->close(rom);
         dspBase = GPSP_RATE;
         if (hasSound) ndspChnSetRate(0, dspBase);
         char romSd[520];
         snprintf(romSd, sizeof(romSd), "sdmc:%s", romPath);
-        bool renderCore = host_is_new_3ds() || host_core1_take(HOST_CORE1_PERCENT);
+        // An Old 3DS draws gpSP's pictures with the game and keeps core 1 for the screens (test5): a tester's Unbound ran
+        // better that way (52-57 FPS, 20-25 pictures shown a second) than with core 1 lent to gpSP's renderer.
+        // sdmc:/pokedaisy/lendcore1 lends it as test4 did, for comparing the two.
+        bool lend = host_is_new_3ds() || sd_switch("lendcore1");
+        if (!lend) host_log("gpSP drawn with the game, core 1 kept for the screens (an Old 3DS; lendcore1 lends it)");
+        bool renderCore = host_is_new_3ds() || (lend && host_core1_take(HOST_CORE1_PERCENT));
         struct pd_gpsp_host emuHost = { .audio = armgba_audio, .log = host_emu_log, .systemDir = "sdmc:" SYSTEM_DIR,
                                         .romBuffer = host_rom_arena, .knownCrc = romId.known ? romId.crc : 0,
                                         .threaded = renderCore, .renderCore = host_is_new_3ds() ? 2 : 1 };
@@ -847,6 +866,8 @@ static bool run_game(const char* file) {
     unsigned mixesWas = pd_mixer_mixes;
     struct pd_gpsp_stats gpspWas = { 0 };
     if (gpsp) pd_gpsp_get_stats(&gpspWas);
+    struct pd_armgba_cache cacheWas = { 0 };
+    if (armgba) pd_armgba_cache_get(&cacheWas);
     u64 busyTicks = 0;
     const uint32_t* perfPicture = NULL;
     int perfWidth = 0;
@@ -1104,6 +1125,15 @@ static bool run_game(const char* file) {
                              current.romFlushes - gpspWas.romFlushes,
                              current.ramFullFlushes - gpspWas.ramFullFlushes, pd_mixer_mixes - mixesWas);
                     gpspWas = current;
+                }
+                if (armgba) {
+                    // Its compiled code thrown away whole: everything is compiled again after it (a stutter each time).
+                    struct pd_armgba_cache current;
+                    pd_armgba_cache_get(&current);
+                    host_log("armGBA perf: code %u of %u KiB, blocks compiled %u, flushes (out of room) %u, flushes (asked) %u",
+                             current.codeUsedKiB, current.codeSizeKiB, current.compiled - cacheWas.compiled,
+                             current.fullFlushes - cacheWas.fullFlushes, current.askedFlushes - cacheWas.askedFlushes);
+                    cacheWas = current;
                 }
                 mixesWas = pd_mixer_mixes;
                 bottomPaints = 0;
