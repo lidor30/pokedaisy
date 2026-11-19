@@ -546,6 +546,10 @@ struct pd_ui {
     int touchX0, touchY0, touchLastY;
     int pressedId; // what the stylus went down on (-1 = nothing)
     bool barDragging;                 // the stylus is on a list's bar
+    // The last pd_ui_touch changed nothing outside a list's box (a row pressed or let go, a drag, its bar): pd_ui_draw_scrolled
+    // redraws that box alone.
+    bool touchScrollOnly;
+    int scrollAreaX, scrollAreaY, scrollAreaW, scrollAreaH;
     int barY, barH, barThumb, barMax; // that bar, as last drawn
     bool keyFocus; // the game's buttons are on the companion: pd_ui_focus_*, L / R keys at the tab bar's ends
     int focusId;   // the hit a host's D-pad focus is on, drawn as that part's own cursor (-1 = none)
@@ -589,8 +593,14 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s);
 void pd_ui_warm(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g);
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host);
-// Stylus: down / held / up at (x, y). Returns true if the screen needs a redraw.
+// Stylus: down / held / up at (x, y). Returns true if the screen needs a redraw: with touchScrollOnly set, only the
+// list being dragged moved (pd_ui_draw_scrolled).
 bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down);
+// When nothing but pd_ui_touch's scroll-only changes (touchScrollOnly) came since the last draw, over the picture it left:
+// the list's box alone (the same pixels a whole redraw gives there; the rest of the canvas is left as it was). The host
+// keeps track of that; with no list box known it's a whole pd_ui_draw.
+void pd_ui_draw_scrolled(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
+                         const struct pd_snapshot* s, const struct pd_host_info* host);
 // Buttons the GBA doesn't have (the 3DS's X / Y): next / previous tab, BACK.
 // Controller access to the same TAB BAR / MORE overlays used by touch hosts.
 int pd_ui_tab_menu_count(const struct pd_ui*);

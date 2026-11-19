@@ -198,10 +198,10 @@ bool pd_party_screen(struct pd_canvas* c, const struct pd_game* g) {
     }
     if (!back.art) return false;
     uint32_t from = 0, to = 0;
-    for (int y = 0; y < c->h; y++) {
+    for (int y = c->cy0; y < c->cy1; y++) {
         // Past the slots' rows is the game's text box, and past the screen nothing: the backdrop goes on, a tile at a time.
         int sy = y < SCREEN_SLOTS_BOTTOM ? y : SCREEN_SLOTS_BOTTOM - 8 + y % 8;
-        for (int x = 0; x < c->w; x++) {
+        for (int x = c->cx0; x < c->cx1; x++) {
             int sx = x < SCREEN_W ? x : SCREEN_W - 8 + x % 8;
             uint32_t p = back.tiled ? back.art[y % CELL * CELL + x % CELL] : back.art[sy * SCREEN_W + sx];
             if (p != from) {
@@ -248,7 +248,13 @@ bool pd_party_backdrop(struct pd_canvas* c, const struct pd_game* g) {
             }
         }
     }
-    memcpy(c->px, back.view, (size_t) c->w * c->h * sizeof(*c->px));
+    if (c->cx0 == 0 && c->cy0 == 0 && c->cx1 == c->w && c->cy1 == c->h) {
+        memcpy(c->px, back.view, (size_t) c->w * c->h * sizeof(*c->px));
+    } else {
+        // Only the clip's part (pd_canvas_limit: a list's redraw).
+        for (int y = c->cy0; y < c->cy1; y++)
+            memcpy(c->px + y * c->w + c->cx0, back.view + y * c->w + c->cx0, (size_t) (c->cx1 - c->cx0) * sizeof(*c->px));
+    }
     return true;
 }
 

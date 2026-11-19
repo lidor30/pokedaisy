@@ -25,10 +25,11 @@ CAP_ROWS = 8          # the capitals' rows from the art's first row; the baselin
 FAMILY = "PokeDaisy Pixel Small"
 
 
-def outline(art):
-    """Rectangles (x0, y0, x1, y1) in font units, one per run of lit pixels in a row of the art."""
+def outline(art, top=0):
+    """Rectangles (x0, y0, x1, y1) in font units, one per run of lit pixels in a row of the art (its rows start
+    `top` rows above the small font's top: an accented capital's mark, SMALL_GLYPHS' optional third item)."""
     out = []
-    for r, line in enumerate(art):
+    for r, line in enumerate(art, top):
         x = 0
         while x < len(line):
             if line[x] != "#":
@@ -44,7 +45,7 @@ def outline(art):
 
 def build():
     chars = sorted(gen_font.SMALL_GLYPHS, key=ord)
-    outs = [[]] + [outline(gen_font.SMALL_GLYPHS[c][1]) for c in chars]
+    outs = [[]] + [outline(*gen_font.SMALL_GLYPHS[c][1:3]) for c in chars]
     advs = [4 * PX] + [(gen_font.SMALL_GLYPHS[c][0] + 1) * PX for c in chars]   # .notdef, then width + a pixel apart
     glyf = bytearray()
     loca = []

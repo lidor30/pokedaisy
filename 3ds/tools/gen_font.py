@@ -10,6 +10,7 @@ cell (ascent 13, descent 3); a row is a bitmask, bit 0 = leftmost pixel.
     python3 3ds/tools/gen_font.py      (needs Pillow)
 """
 import os
+import unicodedata
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -21,8 +22,9 @@ SIZE = 16
 # Rasterized this many times larger and sampled at each pixel's centre: at
 # 16 px FreeType's hinting breaks diagonal strokes (é's accent got a gap).
 SCALE = 10
-# ASCII plus the few non-ASCII letters the names use (Poké Ball, Pokémon ...).
-EXTRA = "é×·"
+# ASCII plus the non-ASCII characters the names use (Poké Ball, Pokémon ...) and the European games' letters (German,
+# French, Italian, Spanish names and titles: Pokémon Blattgrüne Edition read "Blattgr?ne" before).
+EXTRA = "é×·" + "ÀÁÂÄÇÈÉÊËÌÍÎÏÑÒÓÔÖÙÚÛÜßàáâäçèêëìíîïñòóôöùúûüŒœ¡¿‘’“”…"
 CHARS = [chr(c) for c in range(32, 127)] + list(EXTRA)
 
 # Pixel Operator has no gender symbols; these are drawn here, on the font's
@@ -38,6 +40,23 @@ PIXEL_GLYPHS = {
         "#...#..",
         ".###...",
         ".......",
+    ]),
+    "º": (5, [
+        ".##.",
+        "#..#",
+        "#..#",
+        ".##.",
+        "....",
+        "####",
+    ]),
+    "ª": (5, [
+        ".##.",
+        "...#",
+        ".###",
+        "#..#",
+        ".###",
+        "....",
+        "####",
     ]),
     "♀": (6, [
         ".###.",
@@ -206,6 +225,64 @@ SMALL_GLYPHS = {
 }
 
 
+# The small accented letters are their base letter's art with the mark drawn over it (lower case: in the two empty rows
+# above the x-height; capitals: rows above the capitals, an offset the art carries as its third item).
+SMALL_MARKS = {  # (row, x from the letter's centre); rows -1 / -2 sit right above the art's top
+    "\u0300": [(-2, -1), (-1, 0)],           # grave
+    "\u0301": [(-2, 1), (-1, 0)],            # acute (é's own shape, above)
+    "\u0302": [(-2, 0), (-1, -1), (-1, 1)],  # circumflex
+    "\u0308": [(-1, -1), (-1, 1)],           # diaeresis
+    "\u0303": [(-2, -1), (-2, 0), (-1, 1), (-2, 2), (-1, -2)],  # tilde
+}
+
+
+def small_composed(ch):
+    base, *marks = unicodedata.decomposition(ch).split()
+    base = chr(int(base, 16))
+    mark = chr(int(marks[0], 16))
+    width, art = SMALL_GLYPHS[base][:2]
+    art = [list(line) for line in art]
+    top = 0
+    if base == "i":  # the dotless stem, centred in three columns
+        width, art = 3, [list("..."), list("...")] + [list(".#.") for _ in range(6)]
+    centre = width // 2
+    if mark == "\u0327":  # cedilla: under the letter's foot
+        while len(art) < 10:
+            art.append(["."] * width)
+        art[8][centre] = "#"
+        art[9][centre - 1] = "#"
+        return (width, ["".join(line) for line in art])
+    if base.isupper():
+        art = [["."] * width for _ in range(3)] + art
+        top = -3
+        offset = 2  # the mark's rows -1 / -2 land on 1 / 0, a row clear of the capital
+    else:
+        offset = 2  # the two empty rows above a lower-case letter
+    for dy, dx in SMALL_MARKS[mark]:
+        x = min(max(centre + dx, 0), width - 1)
+        art[offset + dy][x] = "#"
+    return (width, ["".join(line) for line in art], top)
+
+
+SMALL_GLYPHS.update({
+    "ß": (5, [".##..", "#..#.", "#..#.", "#.#..", "#..#.", "#...#", "#...#", "#.##."]),
+    "Œ": (7, [".######", "#..#...", "#..#...", "#..####", "#..#...", "#..#...", "#..#...", ".######"]),
+    "œ": (7, [".......", ".......", ".##.##.", "#..#..#", "#..####", "#..#...", "#..#..#", ".##.##."]),
+    "¡": (1, [".", ".", "#", ".", "#", "#", "#", "#", "#", "#"]),
+    "¿": (5, ["..#..", ".....", "..#..", "..#..", ".#...", "#....", "#...#", ".###."]),
+    "‘": (2, [".#", "#.", "#."]),
+    "’": (2, [".#", ".#", "#."]),
+    "“": (4, [".#.#", "#.#.", "#.#."]),
+    "”": (4, [".#.#", ".#.#", "#.#."]),
+    "…": (5, [".....", ".....", ".....", ".....", ".....", ".....", ".....", "#.#.#"]),
+    "º": (3, [".#.", "#.#", ".#.", "...", "###"]),
+    "ª": (3, ["##.", ".##", "#.#", "...", "###"]),
+})
+for _ch in EXTRA:
+    if _ch not in SMALL_GLYPHS and unicodedata.decomposition(_ch):
+        SMALL_GLYPHS[_ch] = small_composed(_ch)
+
+
 def small(out):
     count = len(CHARS) + len(PIXEL_GLYPHS)
     order = CHARS + list(PIXEL_GLYPHS)
@@ -215,13 +292,14 @@ def small(out):
     out.append("// its diagonal steps softened (pd_font_small_alpha / _cover).")
     alphas, covers, glyphs = [], [], []
     for ch in order:
-        width, art = SMALL_GLYPHS[ch]
+        width, art, *rest = SMALL_GLYPHS[ch]
+        top = rest[0] if rest else 0
         assert all(len(line) == width for line in art), ch
         rows = [0] * SIZE
         for y, line in enumerate(art):
             for x, px in enumerate(line):
                 if px == "#":
-                    rows[SMALL_TOP + y] |= 1 << x
+                    rows[SMALL_TOP + top + y] |= 1 << x
         lit = lambda x, y: 0 <= x < 16 and 0 <= y < SIZE and rows[y] >> x & 1
         alpha = [0] * 256
         for y in range(SIZE):

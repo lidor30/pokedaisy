@@ -273,12 +273,23 @@ static uint8_t* read_file(const char* path, size_t* size) {
 }
 
 // The whole file to a new one first, then over the old: a crash or a full card can't leave half a save.
+// One heap copy written at once: pd_armgba.c's write_from_heap says why.
+static bool write_from_heap(FILE* f, const uint8_t* a, size_t aLen, const uint8_t* b, size_t bLen) {
+    uint8_t* copy = malloc(aLen + bLen);
+    if (!copy) return fwrite(a, 1, aLen, f) == aLen && (!bLen || fwrite(b, 1, bLen, f) == bLen);
+    memcpy(copy, a, aLen);
+    if (bLen) memcpy(copy + aLen, b, bLen);
+    bool ok = fwrite(copy, 1, aLen + bLen, f) == aLen + bLen;
+    free(copy);
+    return ok;
+}
+
 static bool write_file(const char* path, const uint8_t* a, size_t aLen, const uint8_t* b, size_t bLen) {
     char temp[1100];
     snprintf(temp, sizeof(temp), "%s.tmp", path);
     FILE* f = fopen(temp, "wb");
     if (!f) return false;
-    bool ok = fwrite(a, 1, aLen, f) == aLen && (!bLen || fwrite(b, 1, bLen, f) == bLen);
+    bool ok = write_from_heap(f, a, aLen, b, bLen);
     ok = fclose(f) == 0 && ok;
     if (!ok) {
         remove(temp);
