@@ -558,6 +558,20 @@ void pd_armgba_jit_counts(uint32_t out[4]) {
 }
 #endif
 
+void pd_armgba_cache_get(struct pd_armgba_cache* out) {
+    memset(out, 0, sizeof(*out));
+#if defined(__3DS__)
+    if (!E.loaded) return;
+    struct JitCounts c;
+    jitCounts(&c);
+    out->codeUsedKiB = c.codeUsed >> 10;
+    out->codeSizeKiB = c.codeSize >> 10;
+    out->compiled = (unsigned) c.compiled;
+    out->fullFlushes = (unsigned) c.fullFlushes[1];
+    out->askedFlushes = (unsigned) c.fullFlushes[0];
+#endif
+}
+
 // armGBA's Fast Flash Saves (savedataSkipFlashTimer): the two routines return at once, found by their code and only
 // when each is in the ROM once. A game without them is left as it is.
 bool pd_armgba_fast_flash_saves(long* start, long* stop) {

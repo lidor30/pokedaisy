@@ -55,6 +55,13 @@ struct mCore* pd_armgba_load(const char* romPath, const char* savePath, const st
 // Whether core is the one pd_armgba_load handed out.
 bool pd_armgba_is(const struct mCore* core);
 bool pd_armgba_recompiling(void);
+// The recompiler's code memory and the times it was thrown away whole: running totals (all 0 without one).
+struct pd_armgba_cache {
+    unsigned codeUsedKiB, codeSizeKiB, compiled;
+    unsigned fullFlushes;  // out of room: code memory or the heap
+    unsigned askedFlushes; // the cartridge changed, work RAM's waits changed
+};
+void pd_armgba_cache_get(struct pd_armgba_cache* out);
 bool pd_armgba_threaded(void);
 // Ruby, Sapphire, FireRed, LeafGreen and Emerald start and stop a timeout timer round every byte they save, the worst
 // case for the recompiler's exact events (a save held the game at about 41 FPS for four seconds on a New 3DS). This
