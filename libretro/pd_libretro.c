@@ -986,15 +986,19 @@ static void wide_tick(void) {
 /* The canvas for a fw x fh game on the panel: the panel over the game's whole scale (one less for ZOOM OUT), so the
  * frontend shows it at exactly that integer scale. EXPAND's window is the whole canvas. */
 static void canvas_for(int fw, int fh, int kind, int *w, int *h) {
-  int s = panelW / fw < panelH / fh ? panelW / fw : panelH / fh;
+  int s;
+  if (kind == CANVAS_MENU) {
+    // The companion and its menus: the largest whole scale that still leaves them 320x240, the host menu's rule and
+    // about the size Android draws its companion at (a font pixel ~1/240-1/270 of the screen's height). Taking it
+    // from the game's scale less one drew a 640x480 screen's companion at 1x, everything half its size.
+    s = panelW / 320 < panelH / 240 ? panelW / 320 : panelH / 240;
+  } else {
+    s = panelW / fw < panelH / fh ? panelW / fw : panelH / fh;
+    if (kind != CANVAS_EXPAND && s > 1)
+      s--;
+  }
   if (s < 1)
     s = 1;
-  if (kind != CANVAS_EXPAND && s > 1)
-    s--;
-  // The companion and its menus are laid out for 320x240 at least: a Game Boy game's ZOOM OUT on a 1024x768 panel is
-  // 256x192, where text overran its boxes. Menus step down until the canvas holds them.
-  while (kind == CANVAS_MENU && s > 1 && (panelW / s < 320 || panelH / s < 240))
-    s--;
   int x = panelW / s, y = panelH / s;
   *w = x < fw ? fw : x > CANVAS_MAX_W ? CANVAS_MAX_W : x;
   *h = y < fh ? fh : y > CANVAS_MAX_H ? CANVAS_MAX_H : y;
