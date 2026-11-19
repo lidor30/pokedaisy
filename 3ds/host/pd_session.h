@@ -109,6 +109,9 @@ struct pd_session {
     const uint32_t* video; // the core's frame, PD_GAME_STRIDE wide
     unsigned frame;
     bool redraw;
+    // Only a list moved under the stylus since the last draw (pd_ui.touchScrollOnly): pd_session_draw redraws its box alone
+    // while [redraw] stays false.
+    bool redrawScroll;
     bool redrawUrgent, snapshotRequested;
     uint64_t companionMs;
     struct pd_refresh_timer snapshotTimer;
