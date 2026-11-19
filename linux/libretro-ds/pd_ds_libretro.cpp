@@ -160,8 +160,23 @@ int screen_override=0, cursor_x=128, cursor_y=96;
 int layout=0; // 0 top, 1 bottom, 2 side by side, 3 stacked
 // The frame as the frontend takes it: XRGB8888 as drawn, or (rgb565) converted into pixels.
 bool rgb565=false;
-uint16_t pixels[512*384];
-uint32_t ui_pixels[341*256],quick_stage[512*384];
+// The companion's canvas: 341x256 (the Brick's 1024x768 at 3x) unless the frontend names its screen (pokedaisy_panel, as
+// the SDL host does), then the largest whole scale that still leaves it 320x240, as the GB / GBA core's companion and
+// Android's (a font pixel ~1/240-1/270 of the screen's height): a fixed 341x256 was half the width of a 1280x720 or an
+// 854x480 screen and drawn 1:1 on a 640x480 one.
+constexpr int uiMaxW=640,uiMaxH=480;
+int uiW=341,uiH=256;
+void choose_companion_canvas(){
+  uiW=341;uiH=256;
+  retro_variable v{"pokedaisy_panel",nullptr};
+  int w=0,h=0;
+  if(!environment || !environment(RETRO_ENVIRONMENT_GET_VARIABLE,&v) || !v.value || std::sscanf(v.value,"%dx%d",&w,&h)!=2 || w<=0 || h<=0)
+    return;
+  const int s=std::max(1,std::min(w/320,h/240));
+  uiW=std::clamp(w/s,320,uiMaxW);uiH=std::clamp(h/s,240,uiMaxH);
+}
+uint16_t pixels[uiMaxW*uiMaxH];
+uint32_t ui_pixels[uiMaxW*uiMaxH],quick_stage[512*384];
 // The frontend's video callback, its time kept out of the frame's work (it may wait for the screen).
 void show(const void* px,unsigned w,unsigned h,size_t pitch){
   if(!ownSkip){video(px,w,h,pitch);return;}
@@ -277,7 +292,7 @@ bool env(unsigned cmd,void* data) {
 void geometry(unsigned w,unsigned h) {
   if(width==w && height==h)return;
   width=w;height=h;
-  retro_game_geometry g{w,h,512,384,float(w)/h};
+  retro_game_geometry g{w,h,uiMaxW,uiMaxH,float(w)/h};
   environment(RETRO_ENVIRONMENT_SET_GEOMETRY,&g);
 }
 void refresh() {
@@ -396,10 +411,13 @@ void choose_layout() {
 }
 void draw_companion() {
   presentedField=false;
-  pd_canvas c;pd_canvas_init(&c,341,256,ui_pixels);
+  // The host sends the panel again when its window changes size (a desktop window, gamescope): looked at twice a second.
+  static unsigned panelCheck=0;
+  if(panelCheck++%30==0)choose_companion_canvas();
+  pd_canvas c;pd_canvas_init(&c,uiW,uiH,ui_pixels);
   shell.draw(&c,snapshot,companionGame!=DsGame::Unsupported,map,icons);
-  geometry(341,256);
-  submit(ui_pixels,341,256);
+  geometry(uiW,uiH);
+  submit(ui_pixels,uiW,uiH);
 }
 constexpr int repelItems[]={79,76,77};
 int repelChoices[3],repelCount=0,repelSelected=0;
@@ -1188,7 +1206,7 @@ RETRO_API void retro_set_input_state(retro_input_state_t cb){pd_ds::input=cb;ds_
 RETRO_API void retro_get_system_info(retro_system_info* info){ds_get_system_info(info);info->library_name="PokeDaisy DS";info->library_version="0.4-one-screen";}
 RETRO_API void retro_get_system_av_info(retro_system_av_info* info){
   ds_get_system_av_info(info);
-  info->geometry={512,384,512,384,4.f/3.f};
+  info->geometry={512,384,pd_ds::uiMaxW,pd_ds::uiMaxH,4.f/3.f};
 }
 RETRO_API bool retro_load_game(const retro_game_info* info){
   pd_ds::clear();pd_ds::width=512;pd_ds::height=384;
@@ -1229,6 +1247,7 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
       ds_battle_set_base_pp(ds_move_base_pp(rom,pd_ds::companionGame));
     }
   }
+  pd_ds::choose_companion_canvas();
   const auto old_layout=opt("pokedaisy_ds_layout");
   pd_ds::shell.init(dir(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY),
     old_layout=="top"?1:old_layout=="bottom"?2:old_layout=="stacked"?4:0,opt("pokedaisy_ds_hud")=="enabled");

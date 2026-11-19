@@ -206,7 +206,8 @@ move them) - so the companion, HUD, quick menu, FLY / PC / REPEL / BIKE, WILD EN
 never drift from them (the old host carried its own copy of each and fell behind; replaced 2026-11-10). The shared C
 those cores build - `linux/hud.c`, `quick_menu.c`, `fly.c`, `field_items.c`, `wild.c`, `3ds/core/` (the 3DS port's companion,
 so a companion change for 3DS shows in the cores too) - stays in `linux/`. The host tells the core the screen (its
-`pokedaisy_panel` option, any `WxH`; the core picks its canvas) and shows the frame at a whole scale, and owns what a frontend
+`pokedaisy_panel` option, any `WxH`; the core picks its canvas: the companion, the DS core's too, at the largest whole scale that
+leaves it 320x240, like Android's ~240-270 font pixels a screen; 341x256 for the DS without a panel) and shows the frame at a whole scale, and owns what a frontend
 owns: input (keyboard, SDL controllers with hotplug and mappings from `DATA/gamecontrollerdb.txt` / `SDL_GAMECONTROLLERCONFIG`,
 the TrimUI raw fallback, the HOTKEYS page's buttons, the touch screen / mouse as RETRO_DEVICE_POINTER), sound
 (resampled to keep ~60 ms queued), pacing (the screen at 58-62 Hz, else a timer), the battery save (`DATA/saves/<rom>.sav`,

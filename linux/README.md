@@ -74,7 +74,8 @@ layout.
 
 `POCKET_FULLSCREEN=1` uses SDL's current display mode. The host tells the core the screen's size (its
 `pokedaisy_panel` option), so the core picks its canvas for that screen (EXPAND at the game's whole scale, the
-companion at the largest whole scale keeping 320x240), and the host shows the frame at the largest whole scale that
+companion at the largest whole scale keeping 320x240: 320x240 on 640x480, 426x240 on 1280x720, 341x256 on 1024x768,
+480x270 on 1920x1080, the DS core's companion too), and the host shows the frame at the largest whole scale that
 fits, centred. `POCKET_WINDOW=WxH` opens the window at a device's panel size instead (1280x800, 1280x720, 640x480,
 720x720 ...), to try a layout on a desktop. The screen paces the game when it runs at 58-62 Hz and presents wait for
 it, else a timer does; the sound is resampled a little faster or slower to keep up. Audio-device failure is logged
