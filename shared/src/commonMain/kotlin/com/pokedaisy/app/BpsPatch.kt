@@ -1,11 +1,11 @@
 package com.pokedaisy.app
 
-import java.util.zip.CRC32
+import com.pokedaisy.app.companion.data.crc32 as romCrc
 
 /**
  * A BPS patch (byuu's format, what most ROM hacks ship as): `BPS1`, the source / target sizes, a metadata string,
  * the actions, then the source, target and patch CRC32s. The source CRC is what finds the ROM a patch is for
- * ([RomPatcher.findBase]); the target CRC checks the result. Pure, no Android: [BpsPatchTest].
+ * ([RomPatchFiles.findBase]); the target CRC checks the result. Pure, no Android: [BpsPatchTest].
  */
 class BpsPatch private constructor(
     private val bytes: ByteArray,
@@ -45,18 +45,18 @@ class BpsPatch private constructor(
             when ((data and 3).toInt()) {
                 SOURCE_READ -> {
                     if (out + n > source.size) throw Error(Reason.DAMAGED)
-                    System.arraycopy(source, out, target, out, n)
+                    source.copyInto(target, out, out, out + n)
                 }
                 TARGET_READ -> {
                     if (c.at + n > end) throw Error(Reason.DAMAGED)
-                    System.arraycopy(bytes, c.at, target, out, n)
+                    bytes.copyInto(target, out, c.at, c.at + n)
                     c.at += n
                 }
                 SOURCE_COPY -> {
                     val d = c.number()
                     sourceRel += if (d and 1L != 0L) -(d shr 1) else d shr 1
                     if (sourceRel < 0 || sourceRel + n > source.size) throw Error(Reason.DAMAGED)
-                    System.arraycopy(source, sourceRel.toInt(), target, out, n)
+                    source.copyInto(target, out, sourceRel.toInt(), sourceRel.toInt() + n)
                     sourceRel += n
                 }
                 else -> {   // TARGET_COPY: may overlap what it writes (a run), so byte by byte.
@@ -103,12 +103,12 @@ class BpsPatch private constructor(
             val targetSize = c.number()
             val metaSize = c.number()
             if (metaSize > end - c.at) throw Error(Reason.DAMAGED)
-            val meta = String(bytes, c.at, metaSize.toInt(), Charsets.UTF_8).trim()
+            val meta = bytes.decodeToString(c.at, c.at + metaSize.toInt()).trim()
             c.at += metaSize.toInt()
             return BpsPatch(bytes, sourceSize, targetSize, meta, c.at, u32(bytes, end), u32(bytes, end + 4))
         }
 
-        fun crc32(b: ByteArray, len: Int): Long = CRC32().apply { update(b, 0, len) }.value
+        fun crc32(b: ByteArray, len: Int): Long = romCrc(b, len = len)
 
         private fun u32(b: ByteArray, i: Int): Long =
             (b[i].toLong() and 0xFF) or ((b[i + 1].toLong() and 0xFF) shl 8) or
@@ -124,6 +124,7 @@ class BpsPatch private constructor(
                 if (at >= end) throw Error(Reason.DAMAGED)
                 val x = bytes[at++].toInt() and 0xFF
                 data += (x and 0x7F) * shift
+                if (data < 0) throw Error(Reason.DAMAGED)
                 if (x and 0x80 != 0) return data
                 shift = shift shl 7
                 data += shift

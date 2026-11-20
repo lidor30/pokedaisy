@@ -29,6 +29,14 @@ class RomIdentityReader(
     fun headerTitle(): String? = readAt(0xA0, 12)?.takeIf { it.size == 12 }?.let {
         asciiString(it).trimEnd('\u0000', ' ').takeIf { title -> title.all { c -> c in ' '..'~' } }
     }
+    fun gameBoyRevision(): Int? = readAt(0x14C, 1)?.firstOrNull()?.toInt()?.and(0xFF)
+    fun gameBoyTitle(): String? = readAt(0x134, 16)?.let { bytes ->
+        // In a Color header the last byte is the mode flag rather than part of the title.
+        val size = if (bytes.size == 16 && bytes[15].toInt() and 0x80 != 0) 15 else bytes.size
+        asciiString(bytes, 0, size).substringBefore('\u0000').trimEnd().takeIf { title ->
+            title.isNotEmpty() && title.all { it in ' '..'~' }
+        }
+    }
     fun sha1(): String? = digest { HashingSource.sha1(it) }
     fun md5(): String? = digest { HashingSource.md5(it) }
     fun raHash(): String? = if (isNds()) ndsRaHash() else md5()

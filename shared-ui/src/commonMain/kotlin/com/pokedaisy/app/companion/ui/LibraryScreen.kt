@@ -113,7 +113,7 @@ fun LibraryRomRow(
     val favorite = game.favorite
     LibraryCard(
         // In the launcher only its cursor gets the white fill (two white rows read as two cursors).
-        selected, m, Modifier.fillMaxWidth(),
+        selected, m, Modifier.fillMaxWidth().semantics { contentDescription = display },
         onLongClick = onLongClick, upTo = upTo,
         cursor = cursor,
         onClick = onClick,
@@ -180,7 +180,7 @@ fun LibraryRomTile(
     val favorite = game.favorite
     Box {
         LibraryCard(
-            selected, m, Modifier.fillMaxWidth(),
+            selected, m, Modifier.fillMaxWidth().semantics { contentDescription = display },
             onLongClick = onLongClick,
             upTo = upTo,
             cursor = cursor,

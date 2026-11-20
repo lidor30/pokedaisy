@@ -69,7 +69,8 @@ def fold(s: str) -> str:
 
 def app_title(sha1: str) -> str:
     """The library's title from the app's own sources (not the website's export, which may be stale)."""
-    gt = (REPO / "app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt").read_text()
+    src = REPO / "shared/src/commonMain/kotlin/com/pokedaisy/app"
+    gt = (src / "GameTitleCatalog.kt").read_text() + (src / "companion/data/RetailLookTitles.kt").read_text()
     m = re.search(rf'"{sha1}"\s+to\s+"([^"]+)"', gt)
     if m:
         return m.group(1)

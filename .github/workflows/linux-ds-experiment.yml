@@ -6,7 +6,7 @@ on:
       - '3ds/core/**'
       - 'app/src/main/cpp/nds/pk_nds_field.*'
       - 'shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/**'
-      - 'app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt'
+      - 'shared/src/commonMain/kotlin/com/pokedaisy/app/GameTitleCatalog.kt'
       - 'third_party/mgba'
       - 'gamedata/**'
       - 'shared/src/commonMain/cpp/pk_savevf.*'

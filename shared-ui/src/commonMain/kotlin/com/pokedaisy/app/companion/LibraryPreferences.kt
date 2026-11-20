@@ -21,9 +21,10 @@ class LibraryPreferences private constructor(private val storage: Storage, priva
                 now: () -> Long = { Clock.System.now().toEpochMilliseconds() }) : this(legacy(read, write), now)
     private val prefs get() = storage.prefs
     private data class Record(val grid: Boolean, val sort: LibrarySort, val view: LibraryView,
-        val favorites: Set<String>, val played: Map<String, Long>, val added: Map<String, Long>, val last: String?)
+        val favorites: Set<String>, val played: Map<String, Long>, val added: Map<String, Long>, val last: String?,
+        val names: Map<String, String>)
     private fun read() = Record(prefs.libraryViewMode == 1, LibrarySort.of(prefs.librarySort), LibraryView.of(prefs.libraryView),
-        prefs.favoriteRoms, prefs.romPlayTimes(), storage.added.all().mapValues { it.value.millis }, prefs.lastRomPath)
+        prefs.favoriteRoms, prefs.romPlayTimes(), storage.added.all().mapValues { it.value.millis }, prefs.lastRomPath, prefs.romDisplayNames())
     private var record by mutableStateOf(read())
     val grid get() = record.grid
     val sort get() = record.sort
@@ -48,6 +49,16 @@ class LibraryPreferences private constructor(private val storage: Storage, priva
         if (last == id) prefs.lastRomPath = null
         record = read()
     }
+    /** Display-only aliases use the persisted filename key on both platforms. */
+    fun displayName(id: String, fallback: String): String = record.names[id] ?: fallback
+
+    fun rename(id: String, proposed: String, fallback: String) {
+        val name = proposed.trim().takeUnless { it.isBlank() || it == fallback }
+        if (name == record.names[id]) return
+        prefs.setRomDisplayName(id, name)
+        record = read()
+    }
+
     fun isNew(id: String) = storage.added.isNew(id, now())
 
     fun <T> ordered(roms: List<T>, order: LibrarySort = sort, id: (T) -> String): List<T> {

@@ -2,6 +2,8 @@ package com.pokedaisy.app
 
 import java.io.File
 import java.util.zip.CRC32
+import okio.Path.Companion.toOkioPath
+import okio.source
 
 /**
  * PATCH A ROM (the library's +, Settings > LIBRARY): a BPS patch applied to a ROM the player already has. The patch
@@ -11,26 +13,7 @@ import java.util.zip.CRC32
  */
 object RomPatcher {
 
-    /** Base ROMs a patch is often for, by CRC32 (checked on the player's own dumps): the name "not found" gives. */
-    val KNOWN_BASES: Map<Long, String> = mapOf(
-        0xDD88761CL to "Pokémon FireRed (USA)",
-        0x84EE4776L to "Pokémon FireRed (USA, Europe) (Rev 1)",
-        0xD69C96CCL to "Pokémon LeafGreen (USA)",
-        0xDAFFECECL to "Pokémon LeafGreen (USA, Europe) (Rev 1)",
-        0x1F1C08FBL to "Pokémon Emerald (USA, Europe)",
-        0x61641576L to "Pokémon Ruby (USA, Europe) (Rev 1)",
-        0xAEAC73E6L to "Pokémon Ruby (USA, Europe) (Rev 2)",
-        0xBAFEDAE5L to "Pokémon Sapphire (USA, Europe) (Rev 1)",
-        0x9CC4410EL to "Pokémon Sapphire (USA, Europe) (Rev 2)",
-        0x9F7FDD53L to "Pokémon Red (USA, Europe)",
-        0xD6DA8A1AL to "Pokémon Blue (USA, Europe)",
-        0x7D527D62L to "Pokémon Yellow (USA, Europe)",
-        0xEE6F5188L to "Pokémon Crystal (USA)",
-        0x3358E30AL to "Pokémon Crystal (USA, Europe) (Rev 1)",
-        0xBB6DD80CL to "Pokémon Crystal (Australia)",
-        0x6BDE3C3EL to "Pokémon Gold (USA, Europe)",
-        0x8AD48636L to "Pokémon Silver (USA, Europe)",
-    )
+    val KNOWN_BASES get() = RomPatchFiles.KNOWN_BASES
 
     /** What a ROM is, by its header: the extension and the folder names its kind is kept under. */
     enum class Platform(val extension: String, val folders: List<String>) {
@@ -56,16 +39,11 @@ object RomPatcher {
     fun findBase(
         candidates: List<File>, size: Long, crc: Long, cache: CrcCache? = null, onProgress: (Float) -> Unit = {},
     ): File? {
-        val sized = candidates.distinctBy { it.absolutePath }
-            .filter { it.isFile && runCatching { RomArchive.romSize(it) }.getOrDefault(-1L) == size }
-        // Ones already known first: a second look for the same patch is instant.
-        val ordered = sized.sortedBy { cache?.get(it) == null }
-        ordered.forEachIndexed { i, f ->
-            val c = cache?.get(f) ?: runCatching { crcOf(f) }.getOrNull()?.also { cache?.put(f, it) }
-            onProgress((i + 1f) / ordered.size)
-            if (c == crc) return f
-        }
-        return null
+        return RomPatchFiles.findBase(candidates.distinctBy { it.absolutePath }, size, crc,
+            sizeOf = { if (it.isFile) RomArchive.romSize(it) else -1 },
+            cached = { cache?.get(it) != null },
+            crcOf = { file -> cache?.get(file) ?: crcOf(file).also { cache?.put(file, it) } },
+            onProgress = onProgress)
     }
 
     /** [rom]'s CRC32 (the ROM inside, for an archive). */
@@ -120,10 +98,7 @@ object RomPatcher {
     private val GB_EXTENSIONS = setOf("gb", "gbc")
 
     /** The patched ROM's file: the patch's name with [extension] (`Unbound.bps` -> `Unbound.gba`). */
-    fun outputName(patchName: String, extension: String): String {
-        val base = patchName.substringBeforeLast('.').trim().ifEmpty { "patched" }
-        return RomUris.sanitizeFileName("$base.$extension")
-    }
+    fun outputName(patchName: String, extension: String): String = RomPatchFiles.outputName(patchName, extension)
 
     /** What [apply] did: [file] holds the patched ROM; [existed] = the same ROM was already there, so it was kept. */
     class Result(val file: File, val existed: Boolean)
@@ -134,42 +109,9 @@ object RomPatcher {
      * [BpsPatch.Error] or an IO error; nothing is left behind on a failure.
      */
     fun apply(patch: BpsPatch, base: File, dir: File, name: String, onProgress: (Float) -> Unit = {}): Result {
-        if (patch.sourceSize + patch.targetSize > BpsPatch.MAX_BYTES) throw BpsPatch.Error(BpsPatch.Reason.TOO_BIG)
-        onProgress(0f)
-        val source = RomArchive.open(base).use { it.readBytes() }
-        onProgress(0.1f)
-        val target = patch.apply(source) { onProgress(0.1f + it * 0.8f) }
-        dir.mkdirs()
-        val stem = name.substringBeforeLast('.')
-        val ext = name.substringAfterLast('.', "")
-        var out = File(dir, name)
-        var n = 2
-        while (out.exists()) {
-            if (out.length() == target.size.toLong() && runCatching { crcOf(out) }.getOrNull() == patch.targetCrc) {
-                onProgress(1f)
-                return Result(out, existed = true)
-            }
-            out = File(dir, "$stem ($n).$ext")
-            n++
-        }
-        val tmp = File(dir, ".${out.name}.part")
-        try {
-            tmp.outputStream().use { s ->
-                val chunk = 1 shl 20
-                var at = 0
-                while (at < target.size) {
-                    val len = minOf(chunk, target.size - at)
-                    s.write(target, at, len)
-                    at += len
-                    onProgress(0.9f + 0.1f * at / target.size)
-                }
-            }
-            if (!tmp.renameTo(out)) throw java.io.IOException("couldn't name ${out.name}")
-        } finally {
-            tmp.delete()
-        }
-        onProgress(1f)
-        return Result(out, existed = false)
+        val result = RomPatchFiles.apply(patch, dir.toOkioPath(), name,
+            readBase = { RomArchive.open(base).source() }, onProgress = onProgress)
+        return Result(result.path.toFile(), result.existed)
     }
 
     /** CRC32s already worked out, by path + size + modified time (`filesDir/rom-crcs.tsv`). */

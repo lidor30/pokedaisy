@@ -847,6 +847,10 @@ class Prefs(
 
     /** Display-only ROM name override (keyed by file name); null = use the file name. */
     fun romDisplayName(fileName: String): String? = p.getString("romname_${fileName}", null)
+    fun romDisplayNames(): Map<String, String> = p.keys().mapNotNull { key ->
+        if (!key.startsWith("romname_")) null
+        else p.getString(key, null)?.let { key.removePrefix("romname_") to it }
+    }.toMap()
     fun setRomDisplayName(fileName: String, name: String?) = p.edit().apply {
         if (name.isNullOrBlank()) remove("romname_${fileName}") else putString("romname_${fileName}", name.trim())
     }.apply()

@@ -17,12 +17,17 @@ internal class LegacyLibraryStore(read: () -> String?, private val save: (String
         "last_rom" -> json["last"] as? JsonPrimitive
         "recent_roms" -> JsonPrimitive((json["recent"] as? JsonArray ?: JsonArray(
             dates("played").entries.sortedByDescending { it.value }.map { JsonPrimitive(it.key) })).toString())
-        else -> key.takeIf { it.startsWith("played_") }?.removePrefix("played_")?.let {
-            ((json["played"] as? JsonObject)?.get(it) as? JsonPrimitive)?.longOrNull?.takeIf { time -> time >= 0 }
-        }?.let(::JsonPrimitive)
+        else -> when {
+            key.startsWith("played_") -> ((json["played"] as? JsonObject)?.get(key.removePrefix("played_")) as? JsonPrimitive)
+                ?.longOrNull?.takeIf { it >= 0 }?.let(::JsonPrimitive)
+            key.startsWith("romname_") -> ((json["names"] as? JsonObject)?.get(key.removePrefix("romname_")) as? JsonPrimitive)
+                ?.takeIf { it.isString }
+            else -> null
+        }
     }
     override fun keys(): Set<String> = setOf("library_view_mode", "library_sort", "library_view", "favorite_roms", "last_rom", "recent_roms") +
-        dates("played").keys.map { "played_$it" }
+        dates("played").keys.map { "played_$it" } +
+        (json["names"] as? JsonObject).orEmpty().keys.map { "romname_$it" }
     override fun contains(key: String) = value(key) != null
     override fun getBoolean(key: String, default: Boolean) = value(key)?.booleanOrNull ?: default
     override fun getInt(key: String, default: Int) = value(key)?.intOrNull ?: default
@@ -38,10 +43,19 @@ internal class LegacyLibraryStore(read: () -> String?, private val save: (String
             "favorite_roms", "recent_roms" -> updated[if (key == "favorite_roms") "favorites" else "recent"] =
                 Json.parseToJsonElement(value as String)
             "last_rom" -> if (value == null) updated.remove("last") else updated["last"] = JsonPrimitive(value as String)
-            else -> if (key.startsWith("played_")) {
-                val played = (updated["played"] as? JsonObject)?.toMutableMap() ?: mutableMapOf()
-                played[key.removePrefix("played_")] = JsonPrimitive(value as Long)
-                updated["played"] = JsonObject(played)
+            else -> when {
+                key.startsWith("played_") -> {
+                    val played = (updated["played"] as? JsonObject)?.toMutableMap() ?: mutableMapOf()
+                    played[key.removePrefix("played_")] = JsonPrimitive(value as Long)
+                    updated["played"] = JsonObject(played)
+                }
+                key.startsWith("romname_") -> {
+                    val names = (updated["names"] as? JsonObject)?.toMutableMap() ?: mutableMapOf()
+                    val id = key.removePrefix("romname_")
+                    if (value == null) names.remove(id) else names[id] = JsonPrimitive(value as String)
+                    if (names.isEmpty()) updated.remove("names") else updated["names"] = JsonObject(names)
+                }
+                else -> Unit
             }
         }
         commit(JsonObject(updated))
