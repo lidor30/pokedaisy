@@ -44,6 +44,7 @@ internal class IosCompanionSettings(
     private val presentFrom: () -> platform.UIKit.UIViewController? = { game?.view?.window?.rootViewController },
     private val looks: PlayerLookSession? = null,
     private val tradeSupported: () -> Boolean = { false },
+    private val coop: IosCoopGame? = null,
     private val stored: com.pokedaisy.app.companion.PrefsCompanionSettings =
         com.pokedaisy.app.companion.PrefsCompanionSettings(iosPreferences,
             languageRomCode = { romCode }, allowDisableResume = onDisableResume),
@@ -65,12 +66,12 @@ internal class IosCompanionSettings(
     override val textLooks get() = looks?.textChoices.orEmpty()
     override val textLook get() = looks?.textSelected
     override val textLookBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_TEXT_LOOK)
-    override fun setTextLook(style: String?) { looks?.selectText(style) }
+    override fun setTextLook(style: String?) { if (coop?.refuseBattle() != true) looks?.selectText(style) }
     override val rideVehicleSupported get() = looks?.supported == true
     override val rideVehicle get() = looks?.vehicle ?: com.pokedaisy.app.companion.data.RideVehicle.BIKE
     override val rideVehicleBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_RIDE_ON)
     override fun setRideVehicle(v: com.pokedaisy.app.companion.data.RideVehicle) { looks?.selectRide(v) }
-    override fun setPlayerLook(look: String?) { looks?.select(look) }
+    override fun setPlayerLook(look: String?) { if (coop?.refuseBattle() != true) looks?.select(look) }
 
     var canAutoRefill: () -> Boolean = { false }
     override val repelRefill get() = iosPreferences.repelRefill
@@ -147,13 +148,14 @@ internal class IosCompanionSettings(
 
     override val cheats get() = cheatHost()?.list.orEmpty()
     override fun setCheatsEnabled(on: Boolean) {
+        if (coop?.refuseCheats(on) == true) return
         stored.setCheatsEnabled(on)
         cheatHost()?.apply()
     }
     override val cheatsBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_CHEATS)
     override val cheatsEditable get() = cheatHost()?.editable == true
     override fun setCheatEnabled(index: Int, on: Boolean) {
-        cheatHost()?.setEnabled(index, on)
+        if (coop?.refuseCheats(on) != true) cheatHost()?.setEnabled(index, on)
     }
     override fun addCheat(cheat: com.pokedaisy.app.cheats.Cheat) { cheatHost()?.add(cheat) }
     override fun removeCheat(index: Int) { cheatHost()?.remove(index) }
@@ -179,6 +181,7 @@ internal class IosCompanionSettings(
     var actions: com.pokedaisy.app.companion.GameActions? = null
     var rewindUnavailable: () -> Unit = {}
     fun showRewindDenied() {
+        if (coop?.refuseLoad() == true) return
         if (!rewind) rewindUnavailable()
     }
     fun releaseRewind() {
@@ -250,6 +253,28 @@ internal class IosCompanionSettings(
     override val resumeBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IPAD_RESUME)
 
     override fun setAppTheme(id: Int) = pickTheme(themeById(id))
+
+    override val coopEnabled get() = coop != null
+    override val coopSettingsInLibrary get() = true
+    override val coopState get() = IosCoopHost.session.link.state.value
+    override val coopPairs get() = IosCoopHost.session.pairsList()
+    override val coopLock get() = coop?.storyLock?.ui?.value
+    override val coopLockActions get() = coop?.storyLock
+    override val coopRelayOnly get() = IosCoopHost.relayOnly
+    override val coopRelayValue get() = com.pokedaisy.app.companion.coop.CoopRelay.rowValue(
+        iosPreferences.coopRelayUrl, IosCoopHost.defaultRelay,
+    )
+    override var coopNearbyRange: Int
+        get() = iosPreferences.coopNearbyRange
+        set(value) { iosPreferences.coopNearbyRange = value }
+
+    override fun setCoopRelayOnly(on: Boolean) {
+        IosCoopHost.session.changeRelay { iosPreferences.coopRelayOnly = on }
+    }
+
+    override fun coopUnpair(save: com.pokedaisy.app.companion.coop.CoopSaveId) {
+        IosCoopHost.session.unpair(save)
+    }
 
     override val gameName: String get() = if (game == null) "" else activeGame.displayName()
     override val romFileName: String get() = romPath.orEmpty().substringAfterLast('/')

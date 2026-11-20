@@ -48,4 +48,6 @@ If you'd rather evolve a Pokémon without trading it at all, see [Trade evolutio
 
 ## Play co-op with a friend
 
+On iPhone and iPad, open the library's `SETTINGS`, then `CO-OP` and `PAIR`. Pick a retail English Emerald save and send your friend the invite link or room code. On the same Wi-Fi, select them under `NEARBY` or enter their address under `BY IP`. You can use `RELAY ONLY` when playing over the internet with a configured relay.
+
 Open your paired saves to see each other in the game. When a nearby partner starts a supported battle, accept the prompt to join. In the companion's `CO-OP` settings, `PLAY TOGETHER ONLY` lets you agree to wait for each other before certain story events. Save in the game before leaving. Save-state loading and rewind are blocked while this mode is on, and cheats cannot be enabled while co-op is active.

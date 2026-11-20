@@ -28,6 +28,12 @@ targets:
       path: PokeDaisy/Info.plist
       properties:
         CFBundleDisplayName: PokeDaisy
+        CFBundleURLTypes:
+          - CFBundleURLName: PokeDaisy co-op invite
+            CFBundleURLSchemes: [pokedaisy]
+        NSLocalNetworkUsageDescription: PokeDaisy uses your local network to find nearby Emerald co-op partners.
+        NSBonjourServices: [_pdcoop._tcp]
+        PokeDaisyCoopRelayURL: "$(POKEDAISY_COOP_RELAY_URL)"
         # The app's Documents (roms/, saves/) show in Files, so saves can be copied out and in.
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true

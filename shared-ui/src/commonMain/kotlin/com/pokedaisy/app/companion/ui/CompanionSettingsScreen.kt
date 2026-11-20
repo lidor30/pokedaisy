@@ -1167,6 +1167,7 @@ internal fun coopRows(
     if (!s.coopEnabled) return emptyList()
     val state = s.coopState
     val pairs = s.coopPairs
+    val setup = if (s.coopSettingsInLibrary) "In the library: Settings > CO-OP" else "On the top screen: Settings > CO-OP"
     val partnerName = when (state) {
         is com.pokedaisy.app.companion.coop.CoopState.Off -> null
         is com.pokedaisy.app.companion.coop.CoopState.Connecting -> state.partner.name
@@ -1175,7 +1176,8 @@ internal fun coopRows(
     }
     val why = when (state) {
         is com.pokedaisy.app.companion.coop.CoopState.Off -> when (state.reason) {
-            com.pokedaisy.app.companion.coop.CoopOffReason.NOT_PAIRED -> "Pair it on the top screen: CO-OP"
+            com.pokedaisy.app.companion.coop.CoopOffReason.NOT_PAIRED ->
+                if (s.coopSettingsInLibrary) setup else "Pair it on the top screen: CO-OP"
             com.pokedaisy.app.companion.coop.CoopOffReason.CHEATS_ON -> "Turn cheats off to play together"
             com.pokedaisy.app.companion.coop.CoopOffReason.NOT_EMERALD -> "Co-op needs English Pokémon Emerald."
             else -> null
@@ -1193,12 +1195,12 @@ internal fun coopRows(
         groupTitle(tk("CO-OP"), requiresGameSupport = true),
         SettingRow(tk("LINK"), coopLinkLabel(state), subtitle = why) {},
         SettingRow(tk("PAIR"), null, enabled = false,
-            labelBadge = NewFeatures.badge(NewFeatures.COOP),
-            subtitle = "On the top screen: Settings > CO-OP") {},
+            labelBadge = NewFeatures.badge(if (s.coopSettingsInLibrary) NewFeatures.IOS_COOP else NewFeatures.COOP),
+            subtitle = setup) {},
         SettingRow(tk("PARTNERS"), if (pairs.isEmpty()) tk("NONE") else pairs.size.toString(), opensPage = true) { navigate(Page.COOP_PARTNERS) },
         nearbyRangeRow(s.coopNearbyRange, pick) { s.coopNearbyRange = it },
         SettingRow(tk("RELAY"), s.coopRelayValue, enabled = false,
-            subtitle = "Change it in Settings on the top screen") {},
+            subtitle = if (s.coopSettingsInLibrary) setup else "Change it in Settings on the top screen") {},
         SettingRow(tk("RELAY ONLY"), if (s.coopRelayOnly) tk("ON") else tk("OFF")) { s.setCoopRelayOnly(!s.coopRelayOnly); changed() },
     ) + listOfNotNull(
         coopLockRow(s.coopLock, s.coopLockActions, partnerName ?: "", askLock),

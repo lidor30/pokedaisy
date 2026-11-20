@@ -513,6 +513,7 @@ interface CompanionSettings : StoredCompanionSettings {
 
     /** CO-OP shows only while its feature flag is on (read once by the activity, never per recomposition). */
     val coopEnabled: Boolean get() = false
+    val coopSettingsInLibrary: Boolean get() = false
     /** SETTINGS re-reads the link once a second while it shows (LINK's retry countdown); previews turn it off so they can go idle. */
     val coopLiveRefresh: Boolean get() = true
     /** CO-OP (see [com.pokedaisy.app.companion.coop.CoopSession]): the link's state, the pairings, the relay and its RELAY ONLY switch. */

@@ -166,14 +166,22 @@ class RelayServer(private val config: RelayConfig, private val tap: ((ByteArray)
             val room = roomOf(handshake.resourceDescriptor)
             if (room == null) { conn.close(4400); return }
             val id = ids.incrementAndGet()
-            when (val joined = rooms.join(id, clientIp(conn, handshake), room)) {
+            val ip = clientIp(conn, handshake)
+            // A second peer must not observe room membership before the first peer's socket is available.
+            val joined = synchronized(rooms) {
+                rooms.join(id, ip, room).also {
+                    if (it is RelayRooms.Join.Ok) {
+                        conn.setAttachment(id)
+                        sockets[id] = conn
+                    }
+                }
+            }
+            when (joined) {
                 is RelayRooms.Join.Refused -> {
                     closeCodes.getOrPut(joined.code) { AtomicLong() }.incrementAndGet()
                     conn.close(joined.code)
                 }
                 is RelayRooms.Join.Ok -> {
-                    conn.setAttachment(id)
-                    sockets[id] = conn
                     val other = joined.other
                     if (other != null) {
                         val joinedMsg = byteArrayOf(KIND_PEER_JOINED)

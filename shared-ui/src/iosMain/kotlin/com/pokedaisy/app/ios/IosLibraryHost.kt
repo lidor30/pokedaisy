@@ -13,6 +13,9 @@ import androidx.compose.ui.window.ComposeUIViewController
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import com.pokedaisy.app.companion.SaveImportFlow
+import com.pokedaisy.app.companion.coop.CoopRelay
+import com.pokedaisy.app.companion.i18n.tk
+import com.pokedaisy.app.CoopSettingsPages
 import com.pokedaisy.app.GameInfo
 import com.pokedaisy.app.GameInfoDialog
 import com.pokedaisy.app.GameInfoDetails
@@ -103,6 +106,16 @@ internal class IosLibraryHost(
     private var scale by mutableStateOf(1f)
     private lateinit var host: UIViewController
     private lateinit var appSettings: IosCompanionSettings
+    private enum class CoopPage(val title: String) { HOME("CO-OP"), PAIR("PAIR"), PARTNERS("PARTNERS"), RELAY("RELAY") }
+    private var coopPage by mutableStateOf<CoopPage?>(null)
+    private var coopRevision by mutableIntStateOf(0)
+    private val coopPages by lazy {
+        CoopSettingsPages(
+            session = { IosCoopHost.session },
+            host = IosCoopHost.pairingHost({ paths }, ::label, { host }),
+            changed = { coopRevision++ },
+        )
+    }
     private val back = CompanionBack()
     private val focus = LibraryFocus()
 
@@ -119,6 +132,17 @@ internal class IosLibraryHost(
                 }
             }
             DisposableEffect(Unit) { onDispose { saveImports.close(); patches.close(); setup?.close() } }
+            val coopInvite by IosCoopHost.invite.collectAsState()
+            val availableForInvite = setup == null && link == null && tradeRequest == null &&
+                editingSave == null && collection == null
+            LaunchedEffect(coopInvite, availableForInvite) {
+                val ticket = coopInvite
+                if (ticket != null && availableForInvite) {
+                    library.selectSection(LibrarySection.SETTINGS)
+                    openCoopPair(ticket)
+                    IosCoopHost.consumeInvite(ticket)
+                }
+            }
             val capturing = appSettings.keyCapture.active
             LaunchedEffect(capturing) {
                 if (capturing) while (true) {
@@ -228,7 +252,9 @@ internal class IosLibraryHost(
             settings = {
                 var account by remember { mutableStateOf(false) }
                 Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
-                    if (account) {
+                    if (coopPage != null) {
+                        CoopSettings(m, small)
+                    } else if (account) {
                         CompanionBackHandler { account = false }
                         Column {
                             OptionTitleWindow(tr("RetroAchievements"), m, onBack = { account = false })
@@ -244,6 +270,8 @@ internal class IosLibraryHost(
                                 SettingRow("RUN SETUP", null, opensPage = true,
                                     labelBadge = NewFeatures.badge(NewFeatures.IOS_SETUP_BUTTONS)) { setup?.close(); setup = newSetup(fromSettings = true) },
                                 SettingRow("RetroAchievements", null, opensPage = true) { account = true },
+                                SettingRow(tk("CO-OP"), null, opensPage = true,
+                                    labelBadge = NewFeatures.badge(NewFeatures.IOS_COOP)) { coopPage = CoopPage.HOME },
                             ))
                     }
                 }
@@ -283,6 +311,62 @@ internal class IosLibraryHost(
             if (reason == SetupFlow.Exit.COMPLETE) iosPreferences.setupDone = true
             setup = null
         })
+
+    private fun openCoopPair(ticket: String?) {
+        if (coopPage == CoopPage.PAIR) coopPages.leave()
+        coopPages.open(ticket)
+        coopPage = CoopPage.PAIR
+    }
+
+    @Composable
+    private fun CoopSettings(m: GbaTextMetrics, small: GbaTextMetrics) {
+        val page = coopPage ?: return
+        fun back() {
+            if (page == CoopPage.PAIR && coopPages.picking) {
+                coopPages.leave()
+                return
+            }
+            if (page == CoopPage.PAIR) coopPages.leave()
+            coopPage = if (page == CoopPage.HOME) null else CoopPage.HOME
+        }
+        CompanionBackHandler { back() }
+        DisposableEffect(Unit) {
+            onDispose {
+                coopPages.leave()
+                coopPage = null
+            }
+        }
+        Column(Modifier.fillMaxSize()) {
+            OptionTitleWindow(tk(page.title), m, onBack = { back() })
+            Spacer(Modifier.height(m.u * 4))
+            when (page) {
+                CoopPage.HOME -> {
+                    LaunchedEffect(coopRevision) { coopPages.loadPairs() }
+                    val rows = listOf(
+                        SettingRow(tk("PAIR"), null, opensPage = true) { openCoopPair(null) },
+                        SettingRow(tk("PARTNERS"), coopPages.pairs.size.takeIf { it > 0 }?.toString() ?: tk("NONE"),
+                            opensPage = true) { coopPage = CoopPage.PARTNERS },
+                        SettingRow(tk("RELAY"), CoopRelay.rowValue(iosPreferences.coopRelayUrl, IosCoopHost.defaultRelay),
+                            opensPage = true) { coopPage = CoopPage.RELAY },
+                        SettingRow(tk("RELAY ONLY"), tk(if (IosCoopHost.relayOnly) "ON" else "OFF")) {
+                            if (IosCoopHost.session.changeRelay { iosPreferences.coopRelayOnly = !iosPreferences.coopRelayOnly }) {
+                                coopRevision++
+                            }
+                        },
+                    )
+                    OptionListWindow(m, Modifier.fillMaxWidth()) {
+                        GroupedRows(rows, m, cursor = -1, onClick = { rows[it].onClick() })
+                    }
+                }
+                CoopPage.PAIR -> coopPages.PairPage(m, small) { coopPage = CoopPage.HOME }
+                CoopPage.PARTNERS -> {
+                    coopPages.PartnersPage(m, coopRevision)
+                    coopPages.UnpairConfirm(m)
+                }
+                CoopPage.RELAY -> coopPages.RelayPage(m, small)
+            }
+        }
+    }
 
     @Composable
     private fun Setup(flow: SetupFlow<Int>) {
