@@ -651,12 +651,14 @@ static bool run_game(const char* file) {
     bool gpsp = armgba && (pickedCore == PD_CORE_GPSP || autoGpsp);
     if (armgba && (pickedCore == PD_CORE_MGBA || gpsp)) armgba = false;
 #ifdef PD_DEV
-    // The dev build's switch for comparing the cores: sdmc:/pokedaisy-dev/armgba/mgba runs GBA games on mGBA.
+    // The dev build's switch for comparing the cores: sdmc:/pokedaisy-dev/armgba/mgba runs GBA games on mGBA (also
+    // where AUTO would have picked gpSP).
     {
         FILE* useMgba = fopen("sdmc:" WORK_DIR "/mgba", "rb");
         if (useMgba) {
             fclose(useMgba);
             armgba = false;
+            gpsp = false;
         }
     }
 #endif
