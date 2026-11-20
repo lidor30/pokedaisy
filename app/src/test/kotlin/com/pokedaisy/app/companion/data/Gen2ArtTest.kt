@@ -108,6 +108,37 @@ class Gen2ArtTest {
     }
 
     @Test
+    fun `Gold and Silver throw Crystal's balls, English and German alike`() {
+        val crystal = Gen2Art.balls(rom(), Gen2Art.CRYSTAL)
+        var checked = 0
+        for ((name, t) in listOf(
+            "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc" to Gen2Art.GOLD,
+            "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc" to Gen2Art.SILVER,
+            "Pokemon - Goldene Edition (Germany) (SGB Enhanced) (GB Compatible).gbc" to Gen2Art.GOLD_DE,
+            "Pokemon - Silberne Edition (Germany) (SGB Enhanced) (GB Compatible).gbc" to Gen2Art.SILVER_DE,
+        )) {
+            val f = File(dir, name).takeIf { it.isFile } ?: continue
+            val balls = Gen2Art.balls(f.readBytes(), t)
+            assertEquals(name, crystal.keys, balls.keys)
+            for ((id, img) in crystal) assertTrue("$name ball $id", img.argb.contentEquals(balls.getValue(id).argb))
+            checked++
+        }
+        assumeTrue("no Gold / Silver ROM on this machine", checked > 0)
+    }
+
+    @Test
+    fun `the HUD lightens the blue balls only`() {
+        val balls = Gen2Art.balls(rom(), Gen2Art.CRYSTAL)
+        val hud = balls.mapValues { Gen2Art.hudLegible(it.value) }
+        for (id in listOf(0x04, 0xA0, 0xA1)) {   // GREAT, LURE, FAST: the blue palette
+            assertEquals(setOf(0xFF000000.toInt(), 0xFF5263FF.toInt(), 0xFFA0B1FF.toInt()), hud.getValue(id).argb.filter { it != 0 }.toSet())
+        }
+        for ((id, img) in balls) if (id !in listOf(0x04, 0xA0, 0xA1)) assertTrue("ball $id", img.argb.contentEquals(hud.getValue(id).argb))
+        val out = File("build/gen2-art/balls-hud").also { it.mkdirs() }
+        for ((id, img) in hud) File(out, "ball-$id.png").writeBytes(img.png())
+    }
+
+    @Test
     fun `the font parses`() {
         val ttf = Gen2Art.font(rom(), Gen2Art.CRYSTAL)
         val fontClass = Class.forName("java.awt.Font")

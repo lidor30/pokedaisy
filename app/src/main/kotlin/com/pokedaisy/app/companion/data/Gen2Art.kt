@@ -28,6 +28,7 @@ object Gen2Art {
     val CRYSTAL_TOWN_MAPS = arrayOf("crystal_johto", "crystal_kanto")
     /** Each kind of ball as the battle throws it (12x12: the 16x16 sprite's blank rows and columns cut; `ball-<item id>.png`): the HUD's ball counts ([ballAsset]). */
     const val CRYSTAL_BALLS = "gen2/crystal/balls"
+    const val GOLD_SILVER_BALLS = "gen2/gold_silver/balls"
     /** The player on the town map, by gender (MapScreen's head assets). */
     const val CRYSTAL_PLAYER = "player_chris"
     const val CRYSTAL_PLAYER_F = "player_kris"
@@ -63,7 +64,7 @@ object Gen2Art {
     val PRISM_TOWN_MAPS = arrayOf("prism_naljo", "prism_rijon", "prism_johto", "prism_kanto", "prism_sevii", "prism_tunod")
 
     /** Bump when what [extractTo] writes changes, so a cached ROM's art is rebuilt once. */
-    private const val VERSION = 5
+    private const val VERSION = 7
 
     /** Where a Gen 2 game's own art sits in its ROM (bank, address). */
     class Gen2ArtTables(
@@ -222,6 +223,11 @@ object Gen2Art {
         playerSprites = listOf(0x30 to 0x4000),
         objectPals = 0x02 to 0x78AE,
         playerPaths = listOf("regionmap/$GOLD_SILVER_PLAYER.png"),
+        // Crystal's thrown ball, byte for byte: the same graphics, BallColors and BattleObjectPals, at their own places.
+        ballGfx = 0x21 to 0x515A,
+        ballColors = 0x33 to 0x51B1,
+        battleObjectPals = 0x02 to 0x5C09,
+        ballsDir = GOLD_SILVER_BALLS,
     )
 
     /** Silver: Gold's art, the party icons' tables 0x1A bytes earlier. */
@@ -230,16 +236,21 @@ object Gen2Art {
             it.name, setOf(TelemetrySampler.SILVER_SHA1), it.font, it.fontPath, 0x23 to 0x6A56, 0x23 to 0x695B, it.eggIcon,
             0x23 to 0x68C1, it.partyMenuObPals, it.iconsDir, it.holdIconsPath, it.townMapGfx, it.townMaps, it.townMapPalMap,
             it.pokegearPals, it.townMapPaths, it.playerSprites, it.objectPals, it.playerPaths,
+            ballGfx = it.ballGfx, ballColors = it.ballColors, battleObjectPals = it.battleObjectPals, ballsDir = it.ballsDir,
         )
     }
 
-    /** German Gold / Silver: English's art, the party icons' tables 2 bytes later, the town maps 0x32 later. */
+    /**
+     * German Gold / Silver: English's art, the party icons' tables 2 bytes later, the town maps 0x32 later, the ball's
+     * graphics a byte earlier and BallColors a byte later.
+     */
     val GOLD_DE = GOLD.let {
         Gen2ArtTables(
             it.name, setOf(TelemetrySampler.GOLD_DE_SHA1), it.font, it.fontPath, 0x23 to 0x6A72, 0x23 to 0x6977, it.eggIcon,
             0x23 to 0x68DD, it.partyMenuObPals, it.iconsDir, it.holdIconsPath, it.townMapGfx,
             listOf(0x24 to 0x5F84, 0x24 to 0x60ED), 0x24 to 0x5EDE, it.pokegearPals, it.townMapPaths, it.playerSprites,
             it.objectPals, it.playerPaths,
+            ballGfx = 0x21 to 0x5159, ballColors = 0x33 to 0x51B2, battleObjectPals = it.battleObjectPals, ballsDir = it.ballsDir,
         )
     }
     val SILVER_DE = GOLD_DE.let {
@@ -247,6 +258,7 @@ object Gen2Art {
             it.name, setOf(TelemetrySampler.SILVER_DE_SHA1), it.font, it.fontPath, 0x23 to 0x6A58, 0x23 to 0x695D, it.eggIcon,
             0x23 to 0x68C3, it.partyMenuObPals, it.iconsDir, it.holdIconsPath, it.townMapGfx, it.townMaps, it.townMapPalMap,
             it.pokegearPals, it.townMapPaths, it.playerSprites, it.objectPals, it.playerPaths,
+            ballGfx = it.ballGfx, ballColors = it.ballColors, battleObjectPals = it.battleObjectPals, ballsDir = it.ballsDir,
         )
     }
 
@@ -547,13 +559,39 @@ object Gen2Art {
         }
     }
 
-    /** The thrown ball's picture for item [itemId] in the running game (Crystal's carts), else null. */
-    fun ballAsset(itemId: Int): String? {
-        if (activeGame != GameKind.CRYSTAL) return null
-        return "$CRYSTAL_BALLS/ball-${if (itemId in CRYSTAL_BALL_COLOURED) itemId else -1}.png"
+    /**
+     * A ball for the HUD's dark glass: the blue palette (GREAT, LURE, FAST BALL) lightened, its darker blue 30% and its
+     * lighter one 50% toward white. The game's own blues sit close to the black outline and to each other, made to be
+     * seen against the battle's light ground; the other colours are left as the game has them.
+     */
+    fun hudLegible(img: RomArt.Image): RomArt.Image {
+        val colours = img.argb.filter { it != 0 && it != 0xFF000000.toInt() }.distinct()
+        fun ch(c: Int, s: Int) = (c shr s) and 0xFF
+        val blue = colours.isNotEmpty() && colours.all { ch(it, 0) - maxOf(ch(it, 16), ch(it, 8)) > 100 }
+        if (!blue) return img
+        val byLight = colours.sortedBy { ch(it, 16) + ch(it, 8) + ch(it, 0) }
+        fun lift(c: Int, f: Float): Int {
+            fun m(s: Int) = (ch(c, s) + (255 - ch(c, s)) * f).toInt().coerceIn(0, 255)
+            return (0xFF shl 24) or (m(16) shl 16) or (m(8) shl 8) or m(0)
+        }
+        val map = byLight.mapIndexed { i, c -> c to lift(c, if (i == 0) 0.3f else 0.5f) }.toMap()
+        return RomArt.Image(img.width, img.height, IntArray(img.argb.size) { map[img.argb[it]] ?: img.argb[it] })
     }
 
-    /** The balls Crystal's BallColors names (MASTER ... LOVE BALL); any other is drawn in its last entry's colour. */
+    /** The thrown ball's picture for item [itemId] in the running game (Crystal's, Gold's and Silver's carts), else null. */
+    fun ballAsset(itemId: Int): String? {
+        val dir = when (activeGame) {
+            GameKind.CRYSTAL -> CRYSTAL_BALLS
+            GameKind.GOLD, GameKind.SILVER -> GOLD_SILVER_BALLS
+            else -> return null
+        }
+        return "$dir/ball-${if (itemId in CRYSTAL_BALL_COLOURED) itemId else -1}.png"
+    }
+
+    /**
+     * The balls Crystal's BallColors names (MASTER ... LOVE BALL); any other is drawn in its last entry's colour. Gold /
+     * Silver's table is the same bytes, their ball ids the same.
+     */
     private val CRYSTAL_BALL_COLOURED = setOf(0x01, 0x02, 0x04, 0x05, 0x9D, 0x9F, 0xA0, 0xA1, 0xA4, 0xA5, 0xA6)
 
     /** Town map [i] (160x144): its tilemap over TownMapGFX, each tile in the palette TownMapPals gives it. */
@@ -622,7 +660,7 @@ object Gen2Art {
         write(t.holdIconsPath, holdIcons(rom, t).png())
         t.townMapPaths.forEachIndexed { i, path -> townMap(rom, t, i)?.let { write(path, it.png()) } }
         t.playerPaths.forEachIndexed { g, path -> write(path, player(rom, t, g).png()) }
-        t.ballsDir?.let { d -> balls(rom, t).forEach { (id, img) -> write("$d/ball-$id.png", img.png()) } }
+        t.ballsDir?.let { d -> balls(rom, t).forEach { (id, img) -> write("$d/ball-$id.png", hudLegible(img).png()) } }
         marker.writeText(stamp)
         return wrote
     }
