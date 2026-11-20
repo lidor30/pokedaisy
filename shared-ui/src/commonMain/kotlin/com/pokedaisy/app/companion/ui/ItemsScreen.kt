@@ -1131,6 +1131,7 @@ fun ItemsScreen(
                 onFavorite = { FavoriteItems.toggle(item.itemId) },
                 actionFocus = actionFocus,
                 message = message,
+                useBadge = itemUse?.useBadge(item.itemId),
                 // An item used or given away to the last leaves the bag: nothing left to tap.
                 onUse = itemUse?.takeIf { it.canUse(item.itemId) && items.any { i -> i.itemId == item.itemId } }?.let { use ->
                     {
@@ -1668,6 +1669,7 @@ private fun ItemDescriptionBar(
     onFavorite: (() -> Unit)? = null,
     /** What the last USE / GIVE did, in place of the description. */
     message: String? = null,
+    useBadge: String? = null,
     /** USE / GIVE buttons; null = none for this item here. */
     onUse: (() -> Unit)? = null,
     onGive: (() -> Unit)? = null,
@@ -1735,7 +1737,7 @@ private fun ItemDescriptionBar(
                 if (onUse != null || onGive != null) {
                     Spacer(Modifier.weight(1f))
                     Row(horizontalArrangement = Arrangement.spacedBy(u * 6)) {
-                        if (onUse != null) OptionButton("USE", m, onClick = onUse, modifier = Modifier.action(true))
+                        if (onUse != null) OptionButton("USE", m, onClick = onUse, modifier = Modifier.action(true), labelBadge = useBadge)
                         if (onGive != null) OptionButton("GIVE", m, onClick = onGive, modifier = Modifier.action(onUse == null))
                     }
                 }
@@ -1773,13 +1775,14 @@ fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = "", held:
 /** What a USE / GIVE did, popped up over the bag ([ItemNoticeWindow]). */
 data class ItemNotice(val itemId: Int, val text: String, val ok: Boolean = true)
 
-private const val ITEM_NOTICE_MILLIS = 2600L
+internal const val ITEM_NOTICE_MILLIS = 2600L
 
 /** [notice] (if any) in an [ItemNoticeWindow], gone after a moment or on a tap ([onGone]); a newer one starts its own time. */
 @Composable
-internal fun ItemNoticeHost(notice: ItemNotice?, m: GbaTextMetrics, modifier: Modifier, onGone: () -> Unit) {
+internal fun ItemNoticeHost(notice: ItemNotice?, m: GbaTextMetrics, modifier: Modifier,
+                            millis: Long = ITEM_NOTICE_MILLIS, onGone: () -> Unit) {
     val n = notice ?: return
-    LaunchedEffect(n) { kotlinx.coroutines.delay(ITEM_NOTICE_MILLIS); onGone() }
+    LaunchedEffect(n, millis) { kotlinx.coroutines.delay(millis); onGone() }
     ItemNoticeWindow(n, m, modifier, onGone)
 }
 
@@ -1804,4 +1807,3 @@ private fun ItemNoticeWindow(n: ItemNotice, m: GbaTextMetrics, modifier: Modifie
         GbaText(n.text, OptionColors.titleText, OptionColors.titleShadow, m, maxLines = 3)
     }
 }
-

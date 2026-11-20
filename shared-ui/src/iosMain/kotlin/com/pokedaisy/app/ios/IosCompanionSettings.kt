@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import com.pokedaisy.app.GbaControls
 import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.companion.CompanionSettings
+import com.pokedaisy.app.companion.SharedSetting
 import com.pokedaisy.app.companion.FfMusicMode
 import com.pokedaisy.app.companion.GameAspect
 import com.pokedaisy.app.companion.GridStrength
@@ -57,10 +58,18 @@ internal class IosCompanionSettings(
 
     override val hasRunningGame get() = game != null
     override val gamePickBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_GAME_PICKER)
-    override val shownRows: Set<String> get() = setOf("CLICK SOUND", "BATTLE HINTS", "FOE IVS", "TAB BAR", "DARK MODE", "THEME", "LANGUAGE", "HELP",
-        "FF", "FF SPEED", "GAME SPEED", "GAME VOLUME", "MUTE GAME", "ONE-TAP MOVES", "BATTLE INFO", "BATTLE STYLE", "BATTLE VIEW", "BATTLE FOCUS", "RESUME GAMES", "TOUCH CONTROLS", "COMPANION VIEW", "SPEED OPTIONS", "INSTANT TEXT", "REUSABLE TMS", "AUTO-RUN", "RUN INDOORS", "WILD ENCOUNTERS", "GAME BUTTONS", "HOTKEYS", "QUICK MENU", "HUD", "REWIND", "CHEATS")
-        .let { if (game == null) it - "GAME SPEED" - "FF" else it }
-        .let { if (cheatHost()?.supported != true) it - "CHEATS" else it }
+    override val shownRows: Set<SharedSetting> get() = setOf(
+        SharedSetting.CLICK_SOUND, SharedSetting.BATTLE_HINTS, SharedSetting.FOE_IVS, SharedSetting.TAB_BAR,
+        SharedSetting.DARK_MODE, SharedSetting.THEME, SharedSetting.LANGUAGE, SharedSetting.HELP,
+        SharedSetting.FF, SharedSetting.FF_SPEED, SharedSetting.GAME_SPEED, SharedSetting.GAME_VOLUME,
+        SharedSetting.MUTE_GAME, SharedSetting.ONE_TAP_MOVES, SharedSetting.BATTLE_INFO, SharedSetting.BATTLE_STYLE,
+        SharedSetting.BATTLE_VIEW, SharedSetting.BATTLE_FOCUS, SharedSetting.RESUME_GAMES, SharedSetting.TOUCH_CONTROLS,
+        SharedSetting.COMPANION_VIEW, SharedSetting.SPEED_OPTIONS, SharedSetting.INSTANT_TEXT, SharedSetting.REUSABLE_TMS,
+        SharedSetting.AUTO_RUN, SharedSetting.RUN_INDOORS, SharedSetting.WILD_ENCOUNTERS, SharedSetting.GAME_BUTTONS,
+        SharedSetting.HOTKEYS, SharedSetting.QUICK_MENU, SharedSetting.HUD, SharedSetting.REWIND,
+        SharedSetting.CHEATS,
+    ).let { if (game == null) it - SharedSetting.GAME_SPEED - SharedSetting.FF else it }
+        .let { if (cheatHost()?.supported != true) it - SharedSetting.CHEATS else it }
 
     override val cheats get() = cheatHost()?.list.orEmpty()
     override fun setCheatsEnabled(on: Boolean) { stored.setCheatsEnabled(on); cheatHost()?.apply() }
@@ -165,6 +174,7 @@ internal class IosCompanionSettings(
             when (change) {
                 com.pokedaisy.app.companion.PrefsCompanionSettings.Change.PLAYBACK -> applyPlayback()
                 com.pokedaisy.app.companion.PrefsCompanionSettings.Change.FIELD_OPTIONS -> optionsChanged()
+                com.pokedaisy.app.companion.PrefsCompanionSettings.Change.PICTURE -> Unit
             }
         }
         applyPlayback(); reloadBindings()

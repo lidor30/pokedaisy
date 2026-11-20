@@ -35,6 +35,46 @@ class StateFilesTest {
         assertFalse(SnapshotCache.fileFor(files.bakFile(2)).isFile)
     }
 
+    @Test fun achievementProgressFollowsTheCommittedStateAndItsUndoCopy() {
+        val bundled = StateFiles(root / "with-achievements", listOf(StateFiles.ACHIEVEMENT_PROGRESS_SUFFIX))
+        val state = bundled.stateFile(0)
+        assertTrue(bundled.saveSlot(0, {
+            it.writeText("first")
+            StateFiles.writeAchievementProgress(it) { byteArrayOf(1, 2, 3) }
+            true
+        }))
+        assertArrayEquals(byteArrayOf(1, 2, 3), StateFiles.readAchievementProgress(state))
+
+        assertFalse(bundled.saveSlot(0, {
+            StateFiles.writeAchievementProgress(it) { byteArrayOf(4, 5, 6) }
+            false
+        }))
+        assertArrayEquals(byteArrayOf(1, 2, 3), StateFiles.readAchievementProgress(state))
+
+        assertTrue(bundled.saveSlot(0, {
+            it.writeText("second")
+            StateFiles.writeAchievementProgress(it) { null }
+            true
+        }))
+        assertNull(StateFiles.readAchievementProgress(state))
+        assertTrue(bundled.undoSave(0))
+        assertEquals("first", state.readText())
+        assertArrayEquals(byteArrayOf(1, 2, 3), StateFiles.readAchievementProgress(state))
+    }
+
+    @Test fun failedAchievementCaptureOrPublishClearsStaleProgress() {
+        val state = files.resumeFile
+        StateFiles.writeAchievementProgress(state) { byteArrayOf(1) }
+        StateFiles.writeAchievementProgress(state) { error("serializer failed") }
+        assertNull(StateFiles.readAchievementProgress(state))
+
+        StateFiles.writeAchievementProgress(state) { byteArrayOf(1) }
+        // A directory at the atomic writer's temporary path blocks publishing a replacement.
+        (files.directory / "resume.ra.tmp" / "keep").writeText("obstruction")
+        StateFiles.writeAchievementProgress(state) { byteArrayOf(2) }
+        assertNull(StateFiles.readAchievementProgress(state))
+    }
+
     @Test fun theRomKeySurvivesARenameButNotChangedContents() {
         val a = root / "a.gba"; val b = root / "b.gba"
         a.writeText("same game"); b.writeText("same game")

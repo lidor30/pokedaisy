@@ -184,7 +184,7 @@ class TipScheduler(private val store: TipStore, private val available: (TipId) -
 object FeatureTips {
     /** Whether a tip's feature is there to try in the running game (and not on already). */
     @Volatile
-    var available: (TipId) -> Boolean = { false }
+    internal var available: (TipId) -> Boolean = { false }
 
     @Volatile
     var scheduler: TipScheduler? = null
@@ -196,6 +196,15 @@ object FeatureTips {
             it.enabled = enabled
             scheduler = it
         }
+
+    /** The game screen is going away, including any unanswered card on it. */
+    fun endGame() {
+        available = { false }
+        scheduler?.let {
+            it.current?.let(it::timedOut)
+            it.save()
+        }
+    }
 
     /** The player found [tip]'s feature: no card for it, ever. */
     fun used(tip: TipId) = scheduler?.used(tip)

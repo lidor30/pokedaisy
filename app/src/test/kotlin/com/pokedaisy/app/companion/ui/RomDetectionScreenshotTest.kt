@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.SharedSetting
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -44,7 +46,7 @@ class RomDetectionScreenshotTest {
                     GameOption("FIRERED", "Sea Glass", false, false)), miss = BestEffort.Miss.NO_PARTY))
             val settings = object : CompanionSettings by SampleCompanion.Settings() {
                 override val gamePickBadge = NewFeatures.NEW_TAG
-                override val shownRows = setOf("LANGUAGE", "HELP")
+                override val shownRows = setOf(SharedSetting.LANGUAGE, SharedSetting.HELP)
             }
             BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
                 val dp = LocalDensity.current.density

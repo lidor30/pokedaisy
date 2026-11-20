@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.FLY_MOVE
 import com.pokedaisy.app.companion.data.FlyWithoutMoveGame
 import com.pokedaisy.app.companion.data.HmFree
 
@@ -855,6 +856,7 @@ fun quickMenuRows(
         groupTitle(tk("SHOW")),
     ) + QuickAction.entries.filter { it in available }.map { a ->
         val badge = when (a) {
+            QuickAction.BIKE, QuickAction.ROD -> NewFeatures.badge(NewFeatures.REGISTERED_ITEMS)
             QuickAction.FLASH -> NewFeatures.badge(NewFeatures.QUICK_FLASH)
             QuickAction.FLIGHT -> NewFeatures.badge(NewFeatures.FREE_FLIGHT)
             QuickAction.HEAL -> NewFeatures.badge(NewFeatures.POKEMON_CENTER)
@@ -895,6 +897,7 @@ private fun quickRowIcon(action: QuickAction): @Composable () -> Unit = {
 /** SETTINGS' row for the page. */
 fun quickMenuBadge(): String? = NewFeatures.badge(NewFeatures.QUICK_MENU) ?: NewFeatures.badge(NewFeatures.QUICK_FLASH)
     ?: NewFeatures.badge(NewFeatures.FREE_FLIGHT) ?: NewFeatures.badge(NewFeatures.QUICK_TOUCH) ?: NewFeatures.badge(NewFeatures.QUICK_TURBO)
+    ?: NewFeatures.badge(NewFeatures.REGISTERED_ITEMS)
 
 /** MOVE_FLASH (the quick menu's FLASH tile, the party check). */
 const val FLASH_MOVE = 148

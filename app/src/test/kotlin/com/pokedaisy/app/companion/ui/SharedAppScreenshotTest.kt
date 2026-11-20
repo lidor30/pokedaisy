@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.SharedSetting
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -47,7 +49,7 @@ class SharedAppScreenshotTest {
         val settings = object : CompanionSettings by SampleCompanion.Settings() {
             override val hasRunningGame = false
             override val resumeGamesEditable = true
-            override val shownRows = setOf("TOUCH CONTROLS", "RESUME GAMES", "LANGUAGE", "HELP", "DARK MODE", "THEME", "FF SPEED", "TAB BAR")
+            override val shownRows = setOf(SharedSetting.TOUCH_CONTROLS, SharedSetting.RESUME_GAMES, SharedSetting.LANGUAGE, SharedSetting.HELP, SharedSetting.DARK_MODE, SharedSetting.THEME, SharedSetting.FF_SPEED, SharedSetting.TAB_BAR)
         }
         val m = rememberGbaTextMetrics()
         Frame(LibrarySection.SETTINGS) {

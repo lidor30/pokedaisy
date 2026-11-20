@@ -4,6 +4,7 @@ import okio.FileSystem
 import okio.HashingSource
 import okio.SYSTEM
 import okio.Path
+import okio.Path.Companion.toPath
 import okio.blackholeSink
 import okio.buffer
 import okio.use
@@ -37,8 +38,8 @@ class StateFiles(val directory: Path, private val extraSidecars: List<String> = 
             if (!writer(tmp) || !present(tmp)) return false
             if (previous != null && present(target)) copyBundle(target, previous)
             tmp.moveTo(target)
-            optional(sidecar(target, ".png"), thumbnail)
-            optional(SnapshotCache.fileFor(target), snapshot)
+            optional(sidecar(target, ".png")) { thumbnail }
+            optional(SnapshotCache.fileFor(target)) { snapshot }
             for (suffix in extraSidecars) copyOptional(sidecar(tmp, suffix), sidecar(target, suffix))
             true
         } catch (_: Exception) { false } finally {
@@ -78,17 +79,31 @@ class StateFiles(val directory: Path, private val extraSidecars: List<String> = 
     }
 
     private fun copyOptional(from: Path, to: Path) {
-        runCatching { optional(to, from.takeIf { it.isFile }?.readBytes()) }
-            .onFailure { runCatching { to.delete() } }
-    }
-
-    private fun optional(path: Path, bytes: ByteArray?) {
-        // A stale thumbnail/cache must not describe the newly committed state if writing its replacement fails.
-        runCatching { if (bytes == null) path.delete() else path.writeAtomically(bytes) }
-            .onFailure { runCatching { path.delete() } }
+        optional(to) { from.takeIf { it.isFile }?.readBytes() }
     }
 
     companion object {
+        const val ACHIEVEMENT_PROGRESS_SUFFIX = ".ra"
+
+        fun achievementProgressFile(state: Path): Path = "$state$ACHIEVEMENT_PROGRESS_SUFFIX".toPath()
+
+        /** Capture progress for a successful core write. Missing or failed progress clears the previous sidecar. */
+        fun writeAchievementProgress(state: Path, capture: () -> ByteArray?) {
+            optional(achievementProgressFile(state), capture)
+        }
+
+        fun readAchievementProgress(state: Path): ByteArray? = runCatching {
+            achievementProgressFile(state).takeIf { it.isFile }?.readBytes()
+        }.getOrNull()
+
+        private fun optional(path: Path, read: () -> ByteArray?) {
+            // An old sidecar would describe the wrong state after a failed replacement.
+            runCatching {
+                val bytes = read()
+                if (bytes == null) path.delete() else path.writeAtomically(bytes)
+            }.onFailure { runCatching { path.delete() } }
+        }
+
         private fun present(path: Path) = path.isFile && path.length > 0
         private fun sidecar(path: Path, suffix: String) = path.parent!! / "${path.name}$suffix"
 

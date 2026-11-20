@@ -115,6 +115,20 @@ class FieldFlashActionTest {
         after.game.close();after.current=null;after.deliver();assertEquals(0,after.handedOver)
     }
 
+    @Test fun quickMenuUsesSharedAvailabilityRefusalAndSilentGameHandoff() {
+        val h=Harness();val notices=mutableListOf<String>();var live=true
+        val prefs=Prefs(PrefsCompanionSettingsTest.Store())
+        val actions=GameQuickActions(QuickMenuState(),prefs,PrefsCompanionSettingsTest.Settings(prefs),{h.snapshot},
+            {h.items},{null},{},{notices+=it},{live},object:QuickActions {
+                override fun offered(action:QuickAction)=false
+                override fun run(action:QuickAction) { fail("FLASH must use the shared owner") }
+            },flash={h.action})
+        assertTrue(actions.offered(QuickAction.FLASH))
+        h.badge=false;actions.run(QuickAction.FLASH);h.frame();h.deliver();assertEquals(1,notices.size)
+        h.badge=true;actions.run(QuickAction.FLASH);h.frame();h.deliver();assertEquals(1,notices.size);assertEquals(1,h.handedOver)
+        h.lit=false;actions.run(QuickAction.FLASH);h.frame();live=false;h.deliver();assertEquals(1,notices.size)
+    }
+
     @Test fun signatureCacheRejectsNonLiveAndUnknownGamesAndRetriesFailedReads() {
         val h=Harness();var reads=0;var throwRead=true
         val cache=FieldFlashSupport { _,n -> reads++;check(!throwRead);ByteArray(n) }

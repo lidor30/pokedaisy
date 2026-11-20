@@ -19,6 +19,9 @@ object PlaybackPolicy {
         else -> scene
     }
 
+    /** OFF follows the running rate. SMART's normal-speed menus keep the game's sound. */
+    fun muteFastAudio(speed: Float, mode: FfMusicMode): Boolean = mode == FfMusicMode.OFF && speed > 1f
+
     enum class Scene { FIELD, TEXT, BATTLE, MENU, BIKE, SURF }
 
     fun scene(battleState: Int, menu: Boolean, map: Boolean, battling: Boolean, field: Int): Scene = when {

@@ -12,8 +12,10 @@ import org.junit.Test
 class ShinyTest {
     private val lead = 0x02039024 - 0x02000000   // NATIVE_SOULGOLD_V1_2's playerParty, in the fixture's EWRAM
 
+    private fun ram() = requireNotNull(javaClass.getResourceAsStream("/fixtures/soulgold_v12/ewram.bin")).use { it.readBytes() }
+
     private fun cyndaquil(value: Int?, modifier: Boolean = false): Mon {
-        val ram = checkNotNull(javaClass.getResourceAsStream("/fixtures/soulgold_v12/ewram.bin")).use { it.readBytes() }
+        val ram = ram()
         if (modifier) ram[lead + 0x1F] = (ram[lead + 0x1F].toInt() or 0x40).toByte()
         if (value != null) {
             val otId = u32(ram, lead + 4)
@@ -28,7 +30,7 @@ class ShinyTest {
 
     @Test fun theSavesLeadIsNotShiny() {
         val m = cyndaquil(null)
-        assertEquals(0x1CF6, shinyValue(m.personality, u32(checkNotNull(javaClass.getResourceAsStream("/fixtures/soulgold_v12/ewram.bin")).use { it.readBytes() }, lead + 4)))
+        assertEquals(0x1CF6, shinyValue(m.personality, u32(ram(), lead + 4)))
         assertFalse(m.shiny)
     }
 

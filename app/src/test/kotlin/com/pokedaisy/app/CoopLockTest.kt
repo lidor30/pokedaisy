@@ -11,6 +11,7 @@ import com.pokedaisy.app.companion.coop.lock.CoopLockWire
 import com.pokedaisy.app.companion.coop.lock.LockMsg
 import com.pokedaisy.app.companion.coop.lock.LockRefusal
 import com.pokedaisy.app.companion.coop.lock.LockWait
+import okio.Path.Companion.toOkioPath
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -71,14 +72,14 @@ class CoopLockTest {
 
     @After fun tearDown() { CoopGuards.reset(); CoopGuards.battleActive = { false }; dir.deleteRecursively() }
 
-    private fun lock(store: CoopLockStore = CoopLockStore(File(dir, "locks.json"))) =
+    private fun lock(store: CoopLockStore = CoopLockStore(File(dir, "locks.json").toOkioPath())) =
         CoopLock(link, store, "own", "partner", native, { party }, { now })
 
     private fun connect() { link.st.value = CoopState.Connected(partner, true) }
     private fun CoopLock.msg(m: LockMsg) { val (t, p) = CoopLockWire.encode(m); onMessage(CoopMessage(t, p)) }
 
     @Test fun proposeAndAcceptLocksBoth() {
-        val a = lock(CoopLockStore(File(dir, "a.json"))); val b = lock(CoopLockStore(File(dir, "b.json")))
+        val a = lock(CoopLockStore(File(dir, "a.json").toOkioPath())); val b = lock(CoopLockStore(File(dir, "b.json").toOkioPath()))
         connect(); a.onFrame(); b.onFrame()
         a.propose()
         assertTrue(a.ui.value.proposalSent)
@@ -113,7 +114,7 @@ class CoopLockTest {
     }
 
     private fun lockedLock(): CoopLock {
-        val store = CoopLockStore(File(dir, "locks.json")); store.lock("own", "partner")
+        val store = CoopLockStore(File(dir, "locks.json").toOkioPath()); store.lock("own", "partner")
         return lock(store)
     }
 
@@ -257,7 +258,7 @@ class CoopLockTest {
     }
 
     @Test fun staleLockNeverTouchesTheGuards() {
-        val store = CoopLockStore(File(dir, "locks.json")); store.lock("own", "partner")
+        val store = CoopLockStore(File(dir, "locks.json").toOkioPath()); store.lock("own", "partner")
         val newer = lock(store); newer.start()
         assertTrue(CoopGuards.held); assertTrue(CoopGuards.statesBlocked)
         val stale = lock(store)
@@ -278,14 +279,14 @@ class CoopLockTest {
         l.msg(LockMsg.Hold(0)); l.onFrame()
         assertTrue(link.sent.none { it is LockMsg.Status })
         // a disagreeing Status (they are locked, we are not) is answered once
-        val u = lock(CoopLockStore(File(dir, "u.json"))); u.onFrame(); link.sent.clear()
+        val u = lock(CoopLockStore(File(dir, "u.json").toOkioPath())); u.onFrame(); link.sent.clear()
         u.msg(LockMsg.Status(true)); u.onFrame()
         assertEquals(listOf<LockMsg>(LockMsg.Status(false)), link.sent.filter { it is LockMsg.Status })
     }
 
     @Test fun statusRepliesStopWhenTheStoreCannotUnlock() {
         val f = File(dir, "locks.json")
-        val store = CoopLockStore(f); store.lock("own", "partner")
+        val store = CoopLockStore(f.toOkioPath()); store.lock("own", "partner")
         val l = lock(store); connect(); l.onFrame()
         File(dir, "locks.json.tmp").mkdirs()   // the write of the unlock now fails
         link.sent.clear()
@@ -329,7 +330,7 @@ class CoopLockTest {
             override fun held(): IntArray = throw IllegalStateException("boom")
             override fun setActive(on: Boolean) { throw IllegalStateException("boom") }
         }
-        val l = CoopLock(link, CoopLockStore(File(dir, "n.json")).also { it.lock("own", "partner") }, "own", "partner", bad, { 0 }, { now })
+        val l = CoopLock(link, CoopLockStore(File(dir, "n.json").toOkioPath()).also { it.lock("own", "partner") }, "own", "partner", bad, { 0 }, { now })
         connect(); l.onFrame(); l.onFrame(); l.close()
     }
 

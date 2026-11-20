@@ -44,6 +44,13 @@ interface StoredCompanionSettings {
     fun setReusableTms(on: Boolean) {}
     /** INSTANT TEXT - see [com.pokedaisy.app.Prefs.instantText]; [CompanionSettings.instantTextSupported]: the ROM's text code is known
      * ([com.pokedaisy.app.companion.data.InstantText]). */
+    val lowHpBeep: Boolean get() = true
+    fun setLowHpBeep(on: Boolean) {}
+    val fieldPoison: Boolean get() = true
+    fun setFieldPoison(on: Boolean) {}
+    /** RUNNING SHOES (a Game Boy game): B held while walking moves at the bike's speed. Off by default. */
+    val runningShoes: Boolean get() = false
+    fun setRunningShoes(on: Boolean) {}
     val instantText: Boolean get() = false
     fun setInstantText(on: Boolean) {}
     /** TRADE EVOLUTIONS - see [com.pokedaisy.app.Prefs.tradeEvolutions]; [CompanionSettings.tradeEvolutionsSupported]: this game's
@@ -124,6 +131,12 @@ interface StoredCompanionSettings {
      * above the game - see [Prefs.statusBar]. */
     val statusBar: Boolean
     fun setStatusBar(on: Boolean)
+    /** Shows the status bar over the companion's tabs. */
+    val statusBarOnCompanion: Boolean get() = false
+    fun setStatusBarOnCompanion(on: Boolean) {}
+    /** Shows the FPS / CPU readout over the game. */
+    val showPerformance: Boolean get() = false
+    fun setShowPerformance(on: Boolean) {}
     /** SOUND > GAME VOLUME, in percent of the device's volume (100 = the device's) - see [Prefs.gameVolume]. */
     val gameVolume: Int get() = 100
     fun setGameVolume(percent: Int) {}

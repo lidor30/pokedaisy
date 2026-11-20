@@ -19,6 +19,8 @@ import com.pokedaisy.app.companion.i18n.tk
 interface CompanionSettings : StoredCompanionSettings {
     /** Application settings can use the shared pages without a running game or game-only actions. */
     val hasRunningGame: Boolean get() = true
+    /** Optional NEW tag when a host first gains battle buttons. */
+    val battleButtonsBadge: String? get() = null
     /** Optional NEW tag when a host first gains the field HUD. */
     val fieldHudBadge: String? get() = null
     /** Optional NEW tag when a host first gains state slots. */
@@ -37,6 +39,7 @@ interface CompanionSettings : StoredCompanionSettings {
      * 0 = SAME (GAME SPEED's) - see [com.pokedaisy.app.Prefs.battleSpeed]. */
     val speedOptionsBadge: String? get() = null
     val ffMusicModes: List<FfMusicMode> get() = FfMusicMode.entries
+    val ffMusicBadge: String? get() = null
     val fieldMovesReadable: Boolean get() = false
 
     /** Whether the running game's field can be read for TEXT SPEED and AUTO-RUN (WIDE's tables know it). */
@@ -55,6 +58,7 @@ interface CompanionSettings : StoredCompanionSettings {
     val flyStyle: FlyStyle get() = FlyStyle.CLASSIC
     fun setFlyStyle(style: FlyStyle) {}
     val flyStyleSupported: Boolean get() = false
+    val flightBadge: String? get() = null
     /** FLIGHT AREA (where [flyStyleSupported]) - see [com.pokedaisy.app.Prefs.flightAreaId]. */
     val flightArea: FlightAreaMode get() = FlightAreaMode.SEEN
     fun setFlightArea(mode: FlightAreaMode) {}
@@ -63,7 +67,7 @@ interface CompanionSettings : StoredCompanionSettings {
     fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) {}
     /** The first scenic FLY's question (ui.FlyStyleAsk) answered: CLASSIC switches, SCENIC / null (it timed out) keeps it. */
     fun answerFlyStyle(style: FlyStyle?) {}
-    /** BOSS RETRY's card answered: true = back to the lost battle's start ([com.pokedaisy.app.companion.ui.BattleRetryAsk]). */
+    /** BOSS RETRY's card answered: true = back to the lost battle's start ([com.pokedaisy.app.companion.ui.BattleRetryAskHost]). */
     fun answerBattleRetry(retry: Boolean) {}
 
     /** REUSABLE TMS - see [com.pokedaisy.app.Prefs.reusableTms]; [reusableTmsSupported]: the ROM's code that uses a TM
@@ -72,6 +76,8 @@ interface CompanionSettings : StoredCompanionSettings {
     val reusableTmsSupported: Boolean get() = false
     /** The game's own TMs never run out ([com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN]): the row says so. */
     val reusableTmsBuiltIn: Boolean get() = false
+    /** Platform introduction badge shared by HM, EXP and level-cap settings. */
+    val gameplayModifiersBadge: String? get() = null
     /** EXP SHARE - see [com.pokedaisy.app.Prefs.expShare]; [expShareSupported]: the game's getexp is known
      * ([com.pokedaisy.app.companion.data.ExpShare]). */
     val expShareSupported: Boolean get() = false
@@ -82,6 +88,8 @@ interface CompanionSettings : StoredCompanionSettings {
     val levelCapLevel: Int? get() = null
     /** BOSS RETRY - see [com.pokedaisy.app.Prefs.battleRetry]. */
     val battleRetry: Boolean get() = false
+    val battleRetryAsking: Boolean get() = false
+    val battleRetryBadge: String? get() = null
     fun setBattleRetry(on: Boolean) {}
     /** SHINY ALERT - see [com.pokedaisy.app.Prefs.shinyAlert]; [shinyHuntCount]: this game's wild battles since the last
      * shiny (or since it was turned on). */
@@ -90,29 +98,27 @@ interface CompanionSettings : StoredCompanionSettings {
     val shinyHuntCount: Int get() = 0
     /** Battles read a foe's shininess here (the games SHINY ODDS works in). */
     val shinyAlertSupported: Boolean get() = false
+    val shinyAlertBadge: String? get() = null
     /** LOW HP BEEP / FIELD POISON - see [com.pokedaisy.app.Prefs.lowHpBeep]; supported = the ROM's code is known
      * ([com.pokedaisy.app.companion.data.QuietPatches]). */
-    val lowHpBeep: Boolean get() = true
-    fun setLowHpBeep(on: Boolean) {}
     val lowHpBeepSupported: Boolean get() = false
-    val fieldPoison: Boolean get() = true
-    fun setFieldPoison(on: Boolean) {}
+    val lowHpBeepBadge: String? get() = null
     val fieldPoisonSupported: Boolean get() = false
-    /** RUNNING SHOES (a Game Boy game): B held while walking moves at the bike's speed. Off by default. */
-    val runningShoes: Boolean get() = false
-    fun setRunningShoes(on: Boolean) {}
+    val fieldPoisonBadge: String? get() = null
     val runningShoesSupported: Boolean get() = false
     /** AUTO REFILL - see [com.pokedaisy.app.Prefs.repelRefill]; [repelRefillSupported]: the game can take a REPEL from the
      * companion (the quick menu's REPEL). */
     val repelRefill: Boolean get() = false
     fun setRepelRefill(on: Boolean) {}
     val repelRefillSupported: Boolean get() = false
+    val repelRefillBadge: String? get() = null
     /** NO HMS NEEDED - see [com.pokedaisy.app.Prefs.hmFree]; [hmFreeSupported]: the ROM's field move check is known
      * ([com.pokedaisy.app.companion.data.HmFree]). */
     val hmFreeSupported: Boolean get() = false
     val instantTextSupported: Boolean get() = false
 
     val tradeEvolutionsSupported: Boolean get() = false
+    val tradeEvolutionsBadge: String? get() = NewFeatures.badge(NewFeatures.TRADE_EVOLUTIONS)
 
     /** DS RESOLUTION ([com.pokedaisy.app.Prefs.dsResolution]): the scale, null when the game isn't a DS one (no row);
      * [dsGpuAvailable] false = this device can't run the GPU renderer (no OpenGL ES 3.2), so the DS's own it is. */
@@ -142,6 +148,7 @@ interface CompanionSettings : StoredCompanionSettings {
 
     /** NUZLOCKE ([Nuzlocke]): [nuzlockeSupported] = a game whose party and battles are read (GBA, Game Boy, DS); the switch is per game. */
     val nuzlockeSupported: Boolean get() = false
+    val nuzlockeBadge: String? get() = null
     val nuzlocke: Boolean get() = false
     fun setNuzlocke(on: Boolean) {}
     /** SHINY ODDS: a wild foe is shiny 1 in [shinyOdds] - see [com.pokedaisy.app.Prefs.shinyOdds]; [shinyOddsChoices] the
@@ -151,11 +158,16 @@ interface CompanionSettings : StoredCompanionSettings {
     fun setShinyOdds(odds: Int) {}
     val shinyOddsChoices: List<Int> get() = com.pokedaisy.app.companion.data.ShinyOdds.CHOICES
     val shinyOddsSupported: Boolean get() = false
+    val shinyOddsBadge: String? get() = NewFeatures.badge(NewFeatures.SHINY_ODDS)
+    val shinyOddsPausesAchievements: Boolean get() = true
 
     /** PLAYER LOOK ([com.pokedaisy.app.companion.data.PlayerLook]): [playerLookSupported] = a FireRed / LeafGreen /
      * Emerald game; [playerLooks] = the heroes it can wear now (another game's, kept from the player's own ROMs);
      * [playerLook] = the one worn, by name (null = the game's own). */
     val playerLookSupported: Boolean get() = false
+    val playerLookBadge: String? get() = null
+    val rideVehicleSupported: Boolean get() = playerLookSupported
+    val rideVehicleBadge: String? get() = null
     val playerLooks: List<String> get() = emptyList()
     val playerLook: String? get() = null
     /** The player's own hero here, by name (the picker's OFF tile); null before the save has a gender. */
@@ -168,16 +180,20 @@ interface CompanionSettings : StoredCompanionSettings {
     fun setRideVehicle(v: com.pokedaisy.app.companion.data.RideVehicle) {}
     /** RIVAL LOOK: the rival of the other gender ([rivalLookSupported]: Emerald, Ruby, Sapphire) dressed up with the player. */
     val rivalLookSupported: Boolean get() = false
+    val rivalLookBadge: String? get() = null
     /** FOLLOWER: the party's lead walks behind the player ([followerSupported]: a GBA game it's drawn in; [followerReady]:
      * Pokémon sprites kept, from Heart and Soul). */
     val followerSupported: Boolean get() = false
     val followerReady: Boolean get() = false
+    val followerBadge: String? get() = null
     /** DAY AND NIGHT ([com.pokedaisy.app.companion.data.DayNight]): the overworld tinted by the clock. */
     val dayNightSupported: Boolean get() = false
+    val dayNightBadge: String? get() = NewFeatures.badge(NewFeatures.DAY_NIGHT)
     /** TEXT LOOK: the other games' text looks kept ([textLooks], "FIRERED" / "EMERALD"), the one on ([textLook], null =
      * the game's own). */
     val textLooks: List<String> get() = emptyList()
     val textLook: String? get() = null
+    val textLookBadge: String? get() = null
     fun setTextLook(style: String?) {}
 
 
@@ -191,6 +207,10 @@ interface CompanionSettings : StoredCompanionSettings {
     val touchButtons: Set<TouchButton> get() = TouchButton.entries.toSet()
     val touchXyBadge: String? get() = null
     val touchSkinsSupported: Boolean get() = true
+    val touchSkinsBadge: String? get() = NewFeatures.badge(NewFeatures.TOUCH_SKINS)
+    /** Null keeps import in the platform's app settings. The callback reports the native picker's completed import. */
+    val importTouchSkin: (((Pair<String, String>) -> Unit) -> Unit)? get() = null
+    fun deleteTouchSkin(skin: InstalledSkin) {}
     val touchBadge: String? get() = NewFeatures.badge(NewFeatures.TOUCH_CONTROLS)
 
     /** A host has newly enabled ROM-detection recovery through SETTINGS > PLAYS AS. */
@@ -289,9 +309,8 @@ interface CompanionSettings : StoredCompanionSettings {
      * SETTINGS shows the emulator's rows only. */
     val gameBlocked: Boolean get() = false
 
-    /** A host that runs only part of the app (the iPad app, so far): SETTINGS' HOME shows only these rows (English
-     * labels), each group's title kept over the ones left. Null = every row. */
-    val shownRows: Set<String>? get() = null
+    /** A host that runs only part of the app (the iPad app, so far): SETTINGS' HOME, DISPLAY OPTIONS and SHADERS show only these shared settings, each group's title kept over the ones left. Null = every row. */
+    val shownRows: Set<SharedSetting>? get() = null
 
     /** Opens a web link ([url]) in the browser - a blocked game's button ([com.pokedaisy.app.companion.data.BlockedAction]). */
     fun openUrl(url: String) {}
@@ -312,6 +331,7 @@ interface CompanionSettings : StoredCompanionSettings {
 
     /** LAST BALL - see [com.pokedaisy.app.Prefs.lastBallButton]. */
     val lastBallButton: Boolean get() = true
+    val lastBallBadge: String? get() = null
     fun setLastBallButton(on: Boolean) {}
 
 
@@ -326,9 +346,7 @@ interface CompanionSettings : StoredCompanionSettings {
 
 
 
-    /** The status bar over the companion's tabs instead of over the game - see [Prefs.statusBarOnCompanion]. */
-    val statusBarOnCompanion: Boolean get() = false
-    fun setStatusBarOnCompanion(on: Boolean) {}
+    val statusBarBadge: String? get() = null
 
     /** SETTINGS > HIDE BATTLE MENU: two screens, the game's own battle menus off its screen - see
      * [com.pokedaisy.app.Prefs.hideBattleMenu]. Null = no row (one screen, or a game it doesn't work in). */
@@ -337,14 +355,13 @@ interface CompanionSettings : StoredCompanionSettings {
 
 
 
+
     /** SETTINGS > QUICK MENU: the actions it shows - see [Prefs.quickMenuActions]. */
     val quickMenuSupportedActions: Set<QuickAction> get() = QuickAction.entries.toSet()
     val quickMenuBadge: String? get() = null
 
 
-    /** FPS / CPU over the game's corner - see [Prefs.showPerformance]. */
-    val showPerformance: Boolean get() = false
-    fun setShowPerformance(on: Boolean) {}
+    val performanceBadge: String? get() = null
 
     /** RetroAchievements popups - see [Prefs.raPopups]. The top screen's Settings > RetroAchievements has the same
      * switches; off also mutes the unlock fanfare. */
@@ -357,6 +374,7 @@ interface CompanionSettings : StoredCompanionSettings {
 
     /** Whether WIDE knows the running game (WideScreen.gameFor); it shows as ORIGINAL otherwise. */
     val wideSupported: Boolean get() = false
+    val pictureBadge: String? get() = null
 
     /** EXPAND's LOOK AROUND - see [com.pokedaisy.app.Prefs.lookAround]. */
     val lookAround: Boolean get() = true
@@ -390,11 +408,20 @@ interface CompanionSettings : StoredCompanionSettings {
 
     /** A tip's TRY IT. */
     fun tryTip(tip: TipId) {}
+    val tipsBadge: String? get() = null
+    val clickSoundBadge: String? get() = null
 
     /** SCREEN > OVERLAY's choices, as (key, label) - see [com.pokedaisy.app.Prefs.overlay]; empty = no row (no game).
      * Imported in the top screen's Settings (a file picker); picked here, live. */
     val overlayChoices: List<Pair<String, String>> get() = emptyList()
     val overlay: String get() = ""
+    val overlayBadge: String? get() = null
+    val overlayRevision: Int get() = 0
+    val importOverlay: (((OverlayImport.Completed) -> Unit) -> Unit)? get() = null
+    fun cancelOverlayImport() {}
+    fun deleteOverlay(id: String) {}
+    fun deleteAllOverlays() {}
+
     fun setOverlay(key: String) {}
 
 

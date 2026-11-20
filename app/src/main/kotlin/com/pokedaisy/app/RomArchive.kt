@@ -139,7 +139,7 @@ object RomArchive {
      * own (`FireRed.gba.zip` -> `FireRed.gba`, `FireRed`). Cached per archive.
      */
     fun saveNames(rom: File): List<String> {
-        if (!isArchive(rom)) return listOf(rom.nameWithoutExtension)
+        if (!isArchive(rom)) return listOf(romFileStem(rom.name))
         val stamp = rom.lastModified() * 31 + rom.length()
         synchronized(nameCache) { nameCache[rom.absolutePath]?.takeIf { it.first == stamp }?.let { return it.second } }
         val own = rom.nameWithoutExtension

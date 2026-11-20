@@ -1,4 +1,4 @@
-LCD and Scanlines shaders (ported in app/src/main/kotlin/com/pokedaisy/app/ScreenShaders.kt), from mGBA's res/shaders:
+LCD and Scanlines shaders (ported in shared-ui/src/commonMain/kotlin/com/pokedaisy/app/ScreenShaders.kt), from mGBA's res/shaders:
 
 LCD Shader
 

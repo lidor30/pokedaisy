@@ -638,7 +638,7 @@ class Prefs(
         get() = p.getBoolean("status_bar", false)
         set(v) = p.edit().putBoolean("status_bar", v).apply()
 
-    /** The status bar over the companion's tabs instead of over the game (CompanionStatusBar). */
+    /** The status bar over the companion's tabs instead of over the game. */
     var statusBarOnCompanion: Boolean
         get() = p.getBoolean("status_bar_on_companion", false)
         set(v) = p.edit().putBoolean("status_bar_on_companion", v).apply()

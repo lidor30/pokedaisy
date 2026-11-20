@@ -1,4 +1,4 @@
-/* FLY from the QUICK MENU (fly.h): app/.../companion/data/Fly.kt's flyTargets / flyStart / flyFinish over the
+/* FLY from the QUICK MENU (fly.h): shared/.../companion/data/Fly.kt's flyTargets / flyStart / flyFinish over the
  * config's generated FLY fields - keep the two in step. The party comes from the snapshot (the moves the
  * companion already reads) rather than GetMonData, the field's lock from the host's scene. GPL-3.0. */
 #include "fly.h"

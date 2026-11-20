@@ -54,6 +54,11 @@ class GameScreenScreenshotTest {
         installTestHosts(paparazzi.context)
         paparazzi.snapshot { Scene(hud = true, sidePanel = SidePanelState(enabled = true)) }
     }
+    @Test fun battleButtonsPhoneLandscape() {
+        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(orientation = ScreenOrientation.LANDSCAPE))
+        installTestHosts(paparazzi.context)
+        paparazzi.snapshot { Scene(battleOverlay = true, sidePanel = SidePanelState(enabled = true)) }
+    }
     @Test fun controller() = paparazzi.snapshot { Scene(visible = false) }
     @Test fun gameBoy() = paparazzi.snapshot { Scene(gameBoy = true) }
     @Test fun landscape() {
@@ -78,7 +83,7 @@ class GameScreenScreenshotTest {
     }
 
     @Composable private fun Scene(
-        visible: Boolean = true, gameBoy: Boolean = false, portraitHidden: Boolean = false, quick: Boolean = false, hud: Boolean = false,
+        visible: Boolean = true, gameBoy: Boolean = false, portraitHidden: Boolean = false, quick: Boolean = false, hud: Boolean = false, battleOverlay: Boolean = false,
         sidePanel: SidePanelState = SidePanelState(enabled = true, open = true, window = false, docked = true),
     ) {
         AppTheme {
@@ -120,6 +125,14 @@ class GameScreenScreenshotTest {
                             avoid = TouchGeometry.place(style, maxWidth.value * dp, maxHeight.value * dp, dp, false).items.map {
                                 androidx.compose.ui.geometry.Rect(it.left, it.top, it.right, it.bottom)
                             })
+                        if (battleOverlay) {
+                            val frame = fittedGamePicture(maxWidth.value * dp, maxHeight.value * dp, 1.5f, false)
+                            val placed = TouchGeometry.place(style, maxWidth.value * dp, maxHeight.value * dp, dp, false)
+                            val clear = TouchGeometry.hudClear(placed, frame.left, frame.right)
+                            BattleButtons(BattleButtonsScreenshotTest.battle, true, BattleButtonsScreenshotTest.input, true,
+                                core = frame, clearTop = clear.first, clearBottom = clear.second,
+                                avoid = placed.items.map { androidx.compose.ui.geometry.Rect(it.left, it.top, it.right, it.bottom) })
+                        }
                         if (quick) QuickMenu(menu, SampleCompanion.snapshot, actions, offered, FieldHudLook.GLASS) },
                     controls = { if (visible) TouchControls(style, portrait, TouchInput(), Modifier.fillMaxSize(),
                         gameAspect = if (gameBoy) 160f / 144 else 1.5f, gameBoy = gameBoy) })

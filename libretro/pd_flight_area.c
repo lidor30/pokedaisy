@@ -1,4 +1,4 @@
-/* FLIGHT AREA (pd_flight_area.h): app/.../companion/data/FlightArea.kt's Keeper, readMaps, seed, saveKey and SeenMaps, with
+/* FLIGHT AREA (pd_flight_area.h): shared/.../companion/data/FlightArea.kt's Keeper, readMaps, seed, saveKey and SeenMaps, with
  * ScenicFly.destination / here and Fly.kt's flyTownSections / flyVisitedTowns - keep the two in step. GPL-3.0. */
 #include "pd_flight_area.h"
 

@@ -1,18 +1,49 @@
 package com.pokedaisy.app.companion
 
+import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.Prefs
 import com.pokedaisy.app.companion.data.*
 import com.pokedaisy.app.game.GameSession
+import kotlin.random.Random
 import kotlin.test.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
+import kotlinx.atomicfu.atomic
+import okio.FileSystem
 import okio.Path.Companion.toPath
 
 class GameRuntimeTest {
+    @Test fun samplerAndUiBindingsAlwaysReturnTheSameLoadedGameFieldOwners() = runBlocking {
+        repeat(20) {
+            withPlayback { runtime, _, _ ->
+                val owners = runBlocking {
+                    val ready = atomic(0); val go = atomic(false)
+                    val requests = List(16) { async(Dispatchers.Default) {
+                        ready.incrementAndGet()
+                        while (!go.value) yield()
+                        runtime.bindGameBoyFields({ false }, { _, _ -> null }, { it() }, {}) to
+                            runtime.bindRegisteredItems({ null }, {}, {})
+                    } }
+                    while (ready.value != requests.size) yield()
+                    go.value = true
+                    requests.awaitAll()
+                }
+                for ((gb, registered) in owners) {
+                    assertSame(runtime.gameBoyFields, gb)
+                    assertSame(runtime.registeredItems, registered)
+                }
+            }
+        }
+    }
+
     private fun withPlayback(patcher: RomOptionPatcher = object : RomOptionPatcher {
         override fun unpatch() {}
         override fun patch(expectAt: Long, expect: ByteArray, at: Long, value: ByteArray) = true
-    }, configureField: (Long) -> Boolean = { false }, test: (GameRuntime, GameSession, GameBattleInput) -> Unit) {
-        val telemetry = TelemetryStore()
+    }, configureField: (Long) -> Boolean = { false }, telemetry: TelemetryStore = TelemetryStore(),
+        prefs: Prefs = Prefs(PrefsCompanionSettingsTest.Store()), test: (GameRuntime, GameSession, GameBattleInput) -> Unit) {
         val calls = object : GameCalls {
             override fun call(fn: Long, a0: Int, a1: Int, a2: Int, a3: Int) = 0L
             override fun read(addr: Long, len: Int) = ByteArray(len)
@@ -20,8 +51,82 @@ class GameRuntimeTest {
         }
         val session = GameSession(calls, { true }) { _, _ -> }
         val battle = GameBattleInput(telemetry, null, 0)
-        val playback = GameRuntime(session, telemetry, Prefs(PrefsCompanionSettingsTest.Store()), battle, patcher, { true }, configureField = configureField)
+        val playback = GameRuntime(session, telemetry, prefs, battle, patcher, { true }, configureField = configureField)
         try { test(playback, session, battle) } finally { playback.close() }
+    }
+
+    @Test fun gameBoyAndDsRuntimesContinueExistingNuzlockeRuns() = preservingTelemetryGame {
+        val prefs = Prefs(PrefsCompanionSettingsTest.Store())
+        val cases = listOf(GameKind.CRYSTAL to "crystal.gbc", GameKind.PLATINUM to "platinum.nds")
+        for ((index, case) in cases.withIndex()) {
+            val (game, filename) = case
+            val crc = index.toLong() + 1
+            val key = crc.toString(16).padStart(8, '0')
+            val initial = NuzlockeMon(123L, 25, "Pikachu", 5)
+            prefs.setNuzlockeFor(key, true)
+            prefs.setNuzlockeRunFor(key, NuzlockeRun(mons = listOf(initial)).encode())
+            val telemetry = TelemetryStore()
+            withPlayback(telemetry = telemetry, prefs = prefs) { runtime, _, _ ->
+                runtime.start(filename.toPath(), null, crc, gba = false)
+                val lead = MonView(species = 25, name = "Pikachu", level = 6, hp = 10, maxHp = 10,
+                    status = "", types = emptyList(), iconAsset = null, personality = initial.personality)
+                val live = SnapshotView(connected = true, game = game, party = listOf(lead))
+                telemetry.publish(live)
+                assertTrue(runtime.nuzlockeSupported, "Existing Nuzlocke run for $game must be available")
+                assertTrue(Nuzlocke.on)
+                runtime.observeNuzlocke(live)
+                assertEquals(listOf(initial.copy(level = 6)), NuzlockeRun.decode(prefs.nuzlockeRunFor(key)).mons)
+
+                val unsupported = live.copy(unsupported = true, party = listOf(lead.copy(level = 7)))
+                telemetry.publish(unsupported)
+                assertFalse(runtime.nuzlockeSupported)
+                runtime.observeNuzlocke(unsupported)
+                assertEquals(6, NuzlockeRun.decode(prefs.nuzlockeRunFor(key)).mons.single().level)
+
+                val nextKey = "00000003"
+                prefs.setNuzlockeFor(nextKey, true)
+                withPlayback(prefs = prefs) { next, _, _ ->
+                    next.start("emerald.gba".toPath(), "BPEE", 3)
+                    runtime.observeNuzlocke(live.copy(party = listOf(lead.copy(level = 8))))
+                    runtime.close()
+                    assertTrue(Nuzlocke.on)
+                    assertTrue(Nuzlocke.run.mons.isEmpty())
+                    assertEquals(6, NuzlockeRun.decode(prefs.nuzlockeRunFor(key)).mons.single().level)
+                    assertNull(prefs.nuzlockeRunFor(nextKey))
+                }
+            }
+        }
+    }
+
+    @Test fun blockedRomDoesNotStartANuzlockeRun() = preservingTelemetryGame {
+        val prefs = Prefs(PrefsCompanionSettingsTest.Store())
+        val blocked = BlockedGames.GHOST_GREY
+        val key = blocked.crc32s.first()
+        prefs.setNuzlockeFor(key, true)
+        val telemetry = TelemetryStore()
+        val enforced = BlockedGames.enforced
+        BlockedGames.enforced = true
+        try {
+            withPlayback(telemetry = telemetry, prefs = prefs) { runtime, _, _ ->
+                runtime.start("blocked.gba".toPath(), "BPEE", key.toLong(16))
+                telemetry.publish(SnapshotView(connected = true, game = GameKind.EMERALD))
+                assertFalse(runtime.nuzlockeSupported)
+                assertTrue(prefs.nuzlockeFor(key))
+            }
+        } finally {
+            BlockedGames.enforced = enforced
+        }
+    }
+
+    private fun preservingTelemetryGame(test: () -> Unit) {
+        val originalGame = activeGame
+        val originalIcons = DecompIconSource.tables
+        try {
+            test()
+        } finally {
+            activeGame = originalGame
+            DecompIconSource.tables = originalIcons
+        }
     }
 
     @Test fun hudWaitsForSettledFieldAndDropsImmediatelyForMenusAndTeardown() {
@@ -53,6 +158,72 @@ class GameRuntimeTest {
             assertTrue(runtime.settledOnField)
             runtime.quiesce(); assertFalse(runtime.settledOnField)
             runtime.start("missing-diagnostic.gb".toPath(), null, 0)
+            assertFalse(runtime.settledOnField)
+        }
+    }
+
+    @Test fun originalFieldWindowsHideTheHudEvenWhenTheFieldCallbackDoesNotChange() {
+        val main = 0x03001000L
+        val field = 0x08001235L
+        val reader = object : MemoryReader {
+            override fun readCoreMemory(addr: Long, size: Int) =
+                ByteArray(size) { i -> if (addr == main + 4) (field shr (8 * i)).toByte() else 0 }
+        }
+        withPlayback { runtime, session, _ ->
+            runtime.start("missing-diagnostic.gba".toPath(), "BPEE", 0)
+            FfMenuWatch.load("BPEE", field, 0)
+            FfMenuWatch.useKnownGMain(main, 0x439)
+            repeat(20) { runtime.tick(reader) }
+            assertTrue(runtime.settledOnField)
+            for (overlay in listOf(GameField.LOCKED or GameField.TEXT, GameField.LOCKED, GameField.WINDOW, GameField.BATTLE)) {
+                runtime.fieldChanged(GameField.KNOWN or GameField.AVATAR or overlay)
+                assertFalse(runtime.settledOnField, "Native field overlay $overlay must hide the HUD")
+                assertTrue(session.onField, "Presentation must not change field-job ownership")
+            }
+            runtime.fieldChanged(GameField.KNOWN or GameField.AVATAR)
+            assertTrue(runtime.settledOnField)
+            runtime.close(); runtime.fieldChanged(GameField.KNOWN or GameField.AVATAR)
+            assertFalse(runtime.settledOnField)
+        }
+    }
+
+    @Test fun unknownFieldBitsAndOtherPlatformsRetainTheirExistingFieldSignal() {
+        withPlayback { runtime, session, _ ->
+            runtime.start("missing-diagnostic.gb".toPath(), null, 0)
+            repeat(20) { session.observeField(true, com.pokedaisy.app.WideCamera.SCENE_FIELD, 0, false) }
+            runtime.fieldChanged(0)
+            assertTrue(runtime.settledOnField)
+            // Non-GBA hosts already derive their own field readiness. Do not reinterpret their native bitmaps here.
+            runtime.fieldChanged(GameField.KNOWN or GameField.LOCKED or GameField.WINDOW)
+            assertTrue(runtime.settledOnField)
+            session.close(); runtime.fieldChanged(0)
+            assertFalse(runtime.settledOnField)
+        }
+    }
+
+    @Test fun expandedTextAndMenuScenesHideTheHudEvenWhileTheFieldCallbackRemainsActive() {
+        val main = 0x03001000L
+        val field = 0x08001235L
+        val reader = object : MemoryReader {
+            override fun readCoreMemory(addr: Long, size: Int) =
+                ByteArray(size) { i -> if (addr == main + 4) (field shr (8 * i)).toByte() else 0 }
+        }
+        withPlayback { runtime, _, _ ->
+            runtime.start("missing-diagnostic.gba".toPath(), "BPEE", 0)
+            FfMenuWatch.load("BPEE", field, 0)
+            FfMenuWatch.useKnownGMain(main, 0x439)
+            repeat(20) { runtime.tick(reader, com.pokedaisy.app.WideCamera.SCENE_FIELD) }
+            assertTrue(runtime.settledOnField)
+            runtime.tick(reader, com.pokedaisy.app.WideCamera.SCENE_FADE)
+            assertTrue(runtime.settledOnField)
+            runtime.tick(reader, com.pokedaisy.app.WideCamera.SCENE_TEXT)
+            assertFalse(runtime.settledOnField)
+            runtime.tick(reader, com.pokedaisy.app.WideCamera.SCENE_FADE)
+            assertFalse(runtime.settledOnField)
+            repeat(19) { runtime.tick(reader, com.pokedaisy.app.WideCamera.SCENE_FIELD); assertFalse(runtime.settledOnField) }
+            runtime.tick(reader, com.pokedaisy.app.WideCamera.SCENE_FIELD)
+            assertTrue(runtime.settledOnField)
+            runtime.tick(reader, com.pokedaisy.app.WideCamera.SCENE_MENU)
             assertFalse(runtime.settledOnField)
         }
     }
@@ -113,6 +284,40 @@ class GameRuntimeTest {
             var ran = false
             session.post { ran = true }; session.servicePosted()
             assertFalse(ran)
+        }
+    }
+
+    @Test fun framePatchesWaitForCoopAndRewindThenReinstallTheStoryLockInOrder() {
+        val steps = mutableListOf<String>()
+        val patcher = object : RomOptionPatcher {
+            override fun unpatch() { steps += "unpatch options" }
+            override fun patch(expectAt: Long, expect: ByteArray, at: Long, value: ByteArray): Boolean {
+                steps += "patch options"
+                return true
+            }
+        }
+        withPlayback(patcher) { runtime, _, _ ->
+            runtime.options.setReusableTms(listOf(ReusableTms.Site(0x08001000L, ByteArray(16))), true)
+            var appearanceChanged = true
+            fun frame(work: GameSession.FrameWork, coopBattleActive: Boolean = false) = runtime.beforeFrame(work) {
+                runtime.serviceFramePatches(coopBattleActive, {
+                    steps += "appearance"
+                    appearanceChanged.also { appearanceChanged = false }
+                }) { steps += "story lock" }
+            }
+
+            frame(GameSession.FrameWork.ADVANCING, coopBattleActive = true)
+            frame(GameSession.FrameWork.REWINDING)
+            assertTrue(steps.isEmpty())
+            assertTrue(runtime.options.dirty)
+
+            frame(GameSession.FrameWork.HELD)
+            assertEquals(listOf("unpatch options", "patch options", "story lock", "appearance", "story lock"), steps)
+            assertFalse(runtime.options.dirty)
+
+            steps.clear()
+            frame(GameSession.FrameWork.ADVANCING)
+            assertEquals(listOf("appearance"), steps)
         }
     }
 
@@ -184,6 +389,80 @@ class GameRuntimeTest {
         actions.hotkey(com.pokedaisy.app.Hotkeys.Event(com.pokedaisy.app.Hotkeys.Action.LOAD_STATE, true))
         assertEquals(listOf(true, false), held)
         assertFalse(settings.ffToggled)
+    }
+
+    @Test fun acceptedStateLoadsRestoreEffectsInOrderAndRejectedLoadsKeepTheCurrentSnapshot() {
+        val directory = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "pokedaisy-load-effects-${Random.nextLong().toULong()}"
+        val telemetry = TelemetryStore()
+        val originalGame = activeGame
+        val originalCode = romGameCode
+        val originalLanguage = romLanguage
+        val originalHeader = romHeaderCode
+        val originalIcons = DecompIconSource.tables
+        try {
+            withPlayback(telemetry = telemetry) { runtime, _, _ ->
+                val files = StateFiles(directory)
+                val state = files.stateFile(3)
+                state.writeText("state")
+                SnapshotCache.fileFor(state).writeBytes(SnapshotCache.encode(SnapshotView(connected = true, game = GameKind.EMERALD, x = 3)))
+                val live = SnapshotView(connected = true, game = GameKind.EMERALD, x = 9)
+                telemetry.publish(live)
+                val retry = runtime.battleRetry
+                retry.set(true)
+                val fainted = MonView(species = 25, name = "A", level = 5, hp = 0, maxHp = 10,
+                    status = "", types = emptyList(), iconAsset = null)
+                retry.observe(live.copy(inBattle = true, isTrainerBattle = true, party = listOf(fainted)), true) { true }
+                retry.observe(live, true) { error("The battle ended") }
+                assertTrue(retry.asking)
+                val steps = mutableListOf<String>()
+                val results = mutableListOf<Pair<Hotkeys.Action, Boolean>>()
+                var accept = false
+                val slots = runtime.bindStates {
+                    StateSlotController(files, onCore = { it() }, write = { it.writeText("undo"); true },
+                        read = { steps += "read"; accept },
+                        beforeLoad = {},
+                        loaded = { path ->
+                            runtime.afterStateLoad(
+                                restoreProgress = {
+                                    assertTrue(retry.asking)
+                                    steps += "progress"
+                                },
+                                settleAppearance = {
+                                    assertFalse(retry.asking)
+                                    steps += "appearance"
+                                },
+                                reinstallStoryLock = {
+                                    assertSame(live, telemetry.snapshot.value)
+                                    steps += "story lock"
+                                },
+                                companionState = path,
+                            )
+                        },
+                        completed = { action, _, ok -> results += action to ok })
+                }
+
+                slots.requestLoad(3)
+                slots.requestUndoLoad()
+                assertEquals(listOf("read", "read"), steps)
+                assertSame(live, telemetry.snapshot.value)
+                assertTrue(retry.asking)
+                assertEquals(listOf(Hotkeys.Action.LOAD_STATE to false, Hotkeys.Action.UNDO_LOAD to false), results)
+
+                steps.clear()
+                accept = true
+                slots.requestLoad(3)
+                assertEquals(listOf("read", "progress", "appearance", "story lock"), steps)
+                assertEquals(3, telemetry.snapshot.value.x)
+                assertEquals(Hotkeys.Action.LOAD_STATE to true, results.last())
+            }
+        } finally {
+            directory.deleteRecursively()
+            activeGame = originalGame
+            romGameCode = originalCode
+            romLanguage = originalLanguage
+            romHeaderCode = originalHeader
+            DecompIconSource.tables = originalIcons
+        }
     }
 
     @Test fun ownedStateControllersAreRetiredEvenWhenBoundAfterClose() {

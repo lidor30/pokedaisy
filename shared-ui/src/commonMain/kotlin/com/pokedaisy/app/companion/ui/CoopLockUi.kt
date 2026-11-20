@@ -11,10 +11,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.pokedaisy.app.CoopLock
+import com.pokedaisy.app.LockNotice
 import com.pokedaisy.app.companion.NewFeatures
 import com.pokedaisy.app.companion.coop.lock.CoopLockActions
 import com.pokedaisy.app.companion.coop.lock.CoopLockUi
@@ -143,5 +152,45 @@ fun CoopWaitOverlay(wait: LockWait, partnerName: String, onCloseGame: () -> Unit
                 }
             }
         }
+    }
+}
+
+/** Displays joined battles and story locks, and releases captured game input when the overlay leaves. */
+@Composable
+fun CoopGameOverlays(
+    battle: CoopOverlayState,
+    lock: CoopLock?,
+    partner: String,
+    proposalOnGameScreen: Boolean,
+    closeGame: () -> Unit,
+    showNotice: (String) -> Unit,
+    captureInput: ((Boolean) -> Unit)? = null,
+) {
+    val ui = lock?.ui?.collectAsState()?.value
+    val notice = lock?.notice?.collectAsState()?.value
+    var dismissed by remember(lock, ui?.partnerProposed) { mutableStateOf(false) }
+    val proposal = ui?.partnerProposed == true && proposalOnGameScreen && !dismissed
+    val captured = battle.takesKeys || proposal || ui?.waiting == LockWait.Partner
+    DisposableEffect(captureInput, captured) {
+        captureInput?.invoke(captured)
+        onDispose { captureInput?.invoke(false) }
+    }
+
+    CoopBattleOverlays(battle)
+    ui?.waiting?.let { CoopWaitOverlay(it, partner, closeGame) }
+    if (proposal && lock != null) CoopLockProposal(partner, lock) { dismissed = true }
+    LaunchedEffect(lock, ui?.partnerProposed, proposalOnGameScreen) {
+        if (ui?.partnerProposed == true && !proposalOnGameScreen) {
+            showNotice(tr("{0} wants to PLAY TOGETHER ONLY.", partner))
+        }
+    }
+    LaunchedEffect(lock, notice) {
+        val text = when (notice) {
+            LockNotice.PARTNER_TURNED_OFF -> tr("Your partner turned off PLAY TOGETHER ONLY.")
+            LockNotice.NO_STORY_HOLD -> tr("Story events can't wait for your partner in this game")
+            null -> return@LaunchedEffect
+        }
+        showNotice(text)
+        lock?.clearNotice()
     }
 }

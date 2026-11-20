@@ -1,4 +1,4 @@
-/* FLASH from the QUICK MENU (flash.h): app/.../companion/data/Flash.kt's useFlash / flashDark over the config's generated
+/* FLASH from the QUICK MENU (flash.h): shared/.../companion/data/Flash.kt's useFlash / flashDark over the config's generated
  * FLASH fields - keep the two in step. The party comes from the snapshot (the moves the companion already reads) rather
  * than GetMonData, like fly.c. GPL-3.0. */
 #include "flash.h"

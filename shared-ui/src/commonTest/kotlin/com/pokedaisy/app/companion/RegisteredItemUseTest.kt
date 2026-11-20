@@ -120,4 +120,24 @@ class RegisteredItemUseTest {
         assertFalse(CoreKey.DOWN in cancelled.presses); assertEquals(262, cancelled.register)
     }
 
+    @Test fun closingTheRuntimeRestoresBeforeRetiringTheCoreQueue() {
+        val h = Harness()
+        val previousConfig = activeNativeConfig
+        activeNativeConfig = h.cfg
+        val telemetry = TelemetryStore().apply { showCached(SnapshotView(connected = true, game = GameKind.EMERALD)) }
+        val runtime = GameRuntime(h.session, telemetry,
+            com.pokedaisy.app.Prefs(PrefsCompanionSettingsTest.Store()), GameBattleInput(telemetry, null, 0),
+            object : RomOptionPatcher {
+                override fun unpatch() {}
+                override fun patch(expectAt: Long, expect: ByteArray, at: Long, value: ByteArray) = true
+            }, { true })
+        try {
+            val registered = runtime.bindRegisteredItems({ h.fields }, { h.pressed = it }, { fail("refused") })
+            registered.use(259); h.frames()
+            assertEquals(259, h.register); assertEquals(CoreKey.SELECT, h.pressed)
+            runtime.close()
+            assertEquals(262, h.register); assertEquals(0, h.pressed)
+            h.frames(300); assertEquals(262, h.register)
+        } finally { runtime.close(); activeNativeConfig = previousConfig }
+    }
 }

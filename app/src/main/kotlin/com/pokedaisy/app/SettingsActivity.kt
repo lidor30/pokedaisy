@@ -1433,7 +1433,7 @@ class SettingsActivity : ComponentActivity() {
     // ---- co-op --------------------------------------------------------------
 
     /** CO-OP's pages and their state (PAIR, PARTNERS, RELAY); internal for ui-preview's stand-in ([CoopSettingsPages.preview]). */
-    internal val coop by lazy { CoopSettingsPages(this, { prefs }) { revision++ } }
+    internal val coop by lazy { androidCoopSettings(this, { prefs }) { revision++ } }
 
     /** The CO-OP group, only while the co-op flag is on; the companion's SETTINGS has the same rows in the same place. */
     private fun coopRows(): List<SettingRow> {
@@ -1452,9 +1452,7 @@ class SettingsActivity : ComponentActivity() {
             ) { prefs.coopNearbyRange = it },
             SettingRow(tk("RELAY"), CoopRelay.rowValue(prefs.coopRelayUrl, BuildConfig.COOP_RELAY_URL), opensPage = true) { screen = Screen.COOP_RELAY },
             SettingRow(tk("RELAY ONLY"), onOff(prefs.coopRelayOnly), subtitle = "Hide your IP address from your partner") {
-                prefs.coopRelayOnly = !prefs.coopRelayOnly
-                CoopSession.restart(this, prefs)
-                revision++
+                if (CoopSession.bind(this, prefs).changeRelay { prefs.coopRelayOnly = !prefs.coopRelayOnly }) revision++
             },
             // PLAY TOGETHER ONLY: no game runs behind this screen, so it only says it needs one (the row is the game's SETTINGS').
             *listOfNotNull(

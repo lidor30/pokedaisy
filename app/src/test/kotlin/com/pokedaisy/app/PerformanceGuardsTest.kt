@@ -11,10 +11,11 @@ import java.io.File
  */
 class PerformanceGuardsTest {
     private val src = listOf(File("src/main/kotlin"), File("app/src/main/kotlin")).first { it.isDirectory }
-    private val root = src.absoluteFile.normalize().parentFile.parentFile.parentFile.parentFile
-    private val kotlinRoots = listOf(src, File(root, "shared/src/commonMain/kotlin"), File(root, "shared-ui/src/commonMain/kotlin"))
-    private fun read(path: String) = kotlinRoots.map { File(it, "com/pokedaisy/app/$path") }.first { it.isFile }.readText()
-    private fun kotlinFiles() = kotlinRoots.asSequence().flatMap { it.walkTopDown() }.filter { it.isFile && it.extension == "kt" }
+    private val appDir = File(src, "com/pokedaisy/app")
+    private fun read(path: String) = File(appDir, path).readText()
+    private val repo = src.absoluteFile.normalize().parentFile.parentFile.parentFile.parentFile
+    private fun kotlinFiles() = sequenceOf(src, File(repo, "shared/src/commonMain/kotlin"), File(repo, "shared-ui/src/commonMain/kotlin"))
+        .flatMap { root -> root.walkTopDown() }.filter { it.isFile && it.extension == "kt" }
 
     @Test
     fun `fonts are only built by PixelTypeface, once per process`() {
@@ -43,11 +44,14 @@ class PerformanceGuardsTest {
         )
         val activity = read("PokeDaisyActivity.kt")
         // onPause's work (pauseGame: onPause skips it only for the pause around a move to the other screen).
-        val onPause = activity.substring(activity.indexOf("private fun pauseGame()")).substringBefore("\n    }\n")
+        val onPause = lambda(activity, "private fun pauseGame() {")
         assertTrue(
             "onPause must unbind the view before stopping the engine",
-            onPause.indexOf("view.unbindCoreBlocking()") in 0 until onPause.indexOf("engine.stop"),
+            onPause.indexOf("view.unbindCoreBlocking()") in 0 until onPause.indexOf("stopEngineWithResume()"),
         )
+        val stop = lambda(activity, "private fun stopEngineWithResume() {")
+        assertTrue("the stop helper must reach both engine stop paths", "engine.stop()" in stop && "engine.stopWithSuspend(" in stop)
+        assertTrue("pauseGame must route every stop through that helper", "engine.stop" !in onPause)
         assertTrue("the activity must wire onCoreStopping to the view's unbind", "view.unbindCoreBlocking()" in lambda(activity, "onCoreStopping = {"))
     }
 
@@ -72,8 +76,8 @@ class PerformanceGuardsTest {
     @Test
     fun `nothing on the emu loop's per-frame path can end the game by throwing`() {
         val engine = read("EmulatorEngine.kt")
-        val frame = engine.substring(engine.indexOf("MgbaCore.pkRunFrame()")).take(600)
-        assertTrue("RetroAchievements.onFrame must be inside a try", Regex("""try \{\s+RetroAchievements\.onFrame\(\)""") in frame)
+        val frame = lambda(engine, "fun runCore() {")
+        assertTrue("RetroAchievements.onFrame must be inside a try", Regex("""try \{\s+if \(frameWork == com\.pokedaisy\.app\.game\.GameSession\.FrameWork\.ADVANCING\)\s+RetroAchievements\.onFrame\(\)""") in frame)
         assertTrue("the AudioTrack is built inside runCatching", "runCatching { buildAudioTrack(" in engine)
     }
 
@@ -82,7 +86,7 @@ class PerformanceGuardsTest {
         // The companion's ROM readers call pkReadBytes from IO threads.
         val cpp = File(src.parentFile, "cpp")
         val jni = File(cpp, "pokedaisy_jni.c").readText()
-        val session = File(root, "shared/src/commonMain/cpp/pk_session.c").readText()
+        val session = File(src.parentFile, "../../../shared/src/commonMain/cpp/pk_session.c").readText()
         // JNI keeps the DS path; the portable C API owns the GBA / Game Boy path and its lock now.
         val readAny = lambda(jni, "static bool pk_read_any(")
         assertCoreLockCovers(readAny, "pthread_rwlock_rdlock(&pk_coreLock)", "pk_nds_read(", "DS reads")

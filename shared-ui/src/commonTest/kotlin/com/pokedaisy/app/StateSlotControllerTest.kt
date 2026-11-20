@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.Hotkeys.Action
 import com.pokedaisy.app.companion.StateSlotController
 import com.pokedaisy.app.companion.data.*
 import kotlin.random.Random
@@ -39,6 +40,22 @@ class StateSlotControllerTest {
         assertEquals(5, game)
         rejectBackup = false; rejectWrite = true; slots.requestLoad(0)
         assertEquals(5, game); assertEquals(2, errors)
+    }
+
+    @Test fun blockedLoadsPreserveTheUndoSnapshotAndSkipTheCore() {
+        files.stateFile(0).writeText("saved slot")
+        files.undoLoadFile.writeText("existing undo")
+        var coreCalls = 0
+        var backupCalls = 0
+        val controller = StateSlotController(files, onCore = { action -> coreCalls++; action() },
+            write = { it.writeText("new undo"); true }, read = { true }, beforeLoad = { backupCalls++ },
+            allowed = { it != Action.LOAD_STATE && it != Action.UNDO_LOAD })
+
+        controller.requestLoad(0)
+        controller.requestUndoLoad()
+        assertEquals(0, coreCalls)
+        assertEquals(0, backupCalls)
+        assertEquals("existing undo", files.undoLoadFile.readText())
     }
 
     @Test fun deletesAndInvalidSlotRequestsDoNotReachOtherFiles() {
