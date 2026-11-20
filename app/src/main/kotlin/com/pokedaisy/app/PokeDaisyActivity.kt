@@ -4876,7 +4876,7 @@ class PokeDaisyActivity : Activity() {
                 // POKéMON PICTURES (Crystal): the HUD's party shows the front pictures too.
                 com.pokedaisy.app.companion.ui.LocalPokemonPictures provides snap.pokedex?.tables?.takeIf {
                     // The switch's version first: Prefs isn't Compose state, and a flip should show at once.
-                    com.pokedaisy.app.companion.ui.PokemonPicturesSwitch.version >= 0 &&
+                    com.pokedaisy.app.companion.PokemonPicturesSwitch.version >= 0 &&
                         hudPrefs.pokemonPictures && com.pokedaisy.app.companion.ui.pokemonPicturesOffered(snap.game)
                 },
             ) { com.pokedaisy.app.companion.ui.FieldHud(

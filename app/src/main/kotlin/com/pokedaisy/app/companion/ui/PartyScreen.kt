@@ -836,22 +836,11 @@ private class SlotGeometry(w: Float, h: Float) {
 val LocalPokemonPictures = androidx.compose.runtime.staticCompositionLocalOf<com.pokedaisy.app.companion.data.PokedexTables?> { null }
 
 /**
- * Bumped each time POKéMON PICTURES is flipped ([com.pokedaisy.app.companion.PrefsCompanionSettings]). The setting itself
- * isn't Compose state, so the companion and the HUD read this before it: a flip shows at once, not on the next sample
- * (with LIGHT COMPANION a still field can go a while without one).
- */
-object PokemonPicturesSwitch {
-    var version by androidx.compose.runtime.mutableStateOf(0)
-        private set
-    fun flipped() { version++ }
-}
-
-/**
  * A PARTY PICTURE: the front picture with its inside filled white, as the game's paper shows it. The picture's colour 0 is
  * see-through everywhere, so over a dark window or the game (DARK MODE, the HUD) its white parts showed what lay behind.
  * Only what the outside can't reach is filled, so the outline stays free. Cached per tables and species.
  */
-private val pokemonPictureCache = java.util.concurrent.ConcurrentHashMap<Triple<Any, Int, Boolean>, com.pokedaisy.app.companion.data.RomArt.Image>()
+private val pokemonPictureCache = com.pokedaisy.app.companion.data.LockedMap<Triple<Any, Int, Boolean>, com.pokedaisy.app.companion.data.RomArt.Image>()
 
 /** A picture's key bit for its shiny colours (above every species id). */
 private const val SHINY_PICTURE = 1 shl 20

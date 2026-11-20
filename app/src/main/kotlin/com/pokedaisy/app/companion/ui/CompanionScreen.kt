@@ -186,7 +186,7 @@ fun CompanionScreen(
         // POKéMON PICTURES (Crystal): every Pokémon in the companion shows its front picture from the cart.
         // (Read after PokemonPicturesSwitch.version, so a flip redraws at once.)
         LocalPokemonPictures provides snapshot.pokedex?.tables?.takeIf {
-            PokemonPicturesSwitch.version >= 0 && settings?.pokemonPictures == true && pokemonPicturesOffered(snapshot.game)
+            com.pokedaisy.app.companion.PokemonPicturesSwitch.version >= 0 && settings?.pokemonPictures == true && pokemonPicturesOffered(snapshot.game)
         },
     ) { AppTheme { key(snapshot.game) {
         val game = snapshot.game

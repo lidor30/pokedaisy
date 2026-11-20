@@ -35,7 +35,7 @@ class PrefsCompanionSettings(
     override val pokemonPictures get() = prefs.pokemonPictures
     override fun setPokemonPictures(on: Boolean) {
         prefs.pokemonPictures = on
-        com.pokedaisy.app.companion.ui.PokemonPicturesSwitch.flipped()
+        PokemonPicturesSwitch.flipped()
     }
     override val oneTapMoves get() = prefs.oneTapMoves
     override fun setOneTapMoves(on: Boolean) { prefs.oneTapMoves = on }
