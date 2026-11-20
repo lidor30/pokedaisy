@@ -5,6 +5,7 @@ import com.pokedaisy.app.companion.data.save.Gen3SaveEditor
 import com.pokedaisy.app.companion.data.save.SyntheticSave
 import com.pokedaisy.app.companion.data.save.TradeSide
 import com.pokedaisy.app.companion.ui.MonIconLoader
+import com.pokedaisy.app.companion.ui.MonSpriteLoader
 import com.pokedaisy.app.companion.ui.PcBoxesState
 import com.pokedaisy.app.companion.ui.TradeState
 
@@ -54,6 +55,22 @@ val demoIcons = MonIconLoader { species, _ ->
         }
     }
     imageBitmapOf(px, 32, 64)
+}
+
+/** A stand-in for the front pictures the app reads from the player's ROM (no game art here). */
+val demoSprites = MonSpriteLoader { species ->
+    val px = IntArray(64 * 64)
+    val hue = (species * 47) % 360
+    val fill = hsv(hue, 0.55f, 0.95f)
+    val ink = hsv(hue, 0.7f, 0.45f)
+    for (y in 0 until 64) for (x in 0 until 64) {
+        val d = (x - 31.5f) * (x - 31.5f) + (y - 31.5f) * (y - 31.5f)
+        when {
+            d < 20f * 20f -> px[y * 64 + x] = fill
+            d < 23f * 23f -> px[y * 64 + x] = ink
+        }
+    }
+    imageBitmapOf(px, 64, 64)
 }
 
 private fun hsv(h: Int, s: Float, v: Float): Int {

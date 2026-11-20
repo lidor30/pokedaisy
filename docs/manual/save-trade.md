@@ -30,6 +30,8 @@ At the top of a box, the magnifier searches every box and your party by name or 
 
 ### A Pokémon's page
 
+The left side shows its name, number, original trainer and where you met it, with a picture from your own game when PokeDaisy knows that game's art. Games whose art it doesn't know leave the space empty.
+
 The page has three tabs. Rows you can change have a little arrow at their end.
 
 - `INFO`: its nickname, level, nature, ability, gender, whether it's shiny, its held item and its friendship. You can raise its level, but never below the level it had when you opened the save. Only Pokémon you caught yourself can be renamed, like in the game.
