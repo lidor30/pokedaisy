@@ -1416,7 +1416,7 @@ file's own CRC). Checked with mgba_dump's `wideon 22 <retail CRC>` (the new CRC 
 seed of each game, every option on: walking, 636 of 637 frames exact (the first after `wideon` has no snapshot, retail
 the same); a scripted wild battle and a trainer battle with `layers 0x18` + `widecheck all`: exactly as many inexact frames
 as retail on the same script. The field item / FLY / PC functions pass their code CRCs, WILD ENCOUNTERS' switch and REUSABLE
-TMS' sites are found where retail's are (`RandomizedRetailTest`), and PLAYER LOOK is offered (`PlayerLookRunner`). The
+TMS' sites are found where retail's are (`RandomizedRetailTest`), and PLAYER LOOK is offered (`PlayerLookAssets`). The
 library names it "Pokémon FireRed (Randomized)" (`GameTitles.randomizedTitle`, translated when shown), the website's ROM
 check takes the same rule (`compat.js`' `randomizedRetailOf`, over `compat.json`'s `randomizedRetail`).
 
@@ -1606,7 +1606,7 @@ player's own ROM of that game, and the running ROM is patched **in memory only**
   needs their folders added); their front picture is smol (`LookBlob.smol`, `Smol.decompressAny`), which the script
   finds by trying every target of a ROM pointer.
 - **Keeping heroes** (`LookArt`): any scan leaves its whole heroes decoded in `rom-art/look/<hero>/` and their region
-  map head in `regionmap/player_<hero>.png`. `PlayerLookRunner` scans the running ROM on load, then the library's other
+  map head in `regionmap/player_<hero>.png`. `PlayerLookAssets` scans the running ROM on load, then the library's other
   FireRed / LeafGreen / Ruby / Sapphire / Emerald ROMs for heroes still missing (each file once,
   `rom-art/look/scanned.txt`), builds every patch either gender could wear and lets go of the bytes. Only retail carts
   (`GameTitles.isRetail`, `RetailDumps`) and the hacks in `PlayerLook.HACKS` (Kaizo, Legacy, Imperium, Ultra Violet: each
@@ -1673,8 +1673,8 @@ width / height, the bike record's OAM and subsprite tables, `TRACKS_BIKE_TIRE` -
 table into the six frames (in the tail, remapped into the slot like a hero's: `wearMon`); each entry's frame is the way the
 record's animations show it (`facings`: animations in fours, south / north / west / east, the first four standing). The
 back picture fills every throw frame (moved down by its empty bottom rows, `MonArt.asTrainerBack`: the player's picture is
-centred at y 80, a Pokémon's at 80 + its back y_offset, which is those rows), the front picture and palette go where a hero's do. `PlayerLookRunner` observes the party and prepares the selected costume from the running game’s scan.
-`PokedexSource.nationalOf` resolves the national numbers. Played headless (`PlayerLookTest.pokemonLooks` -> `<game>-<hero>-as-mon<n>.txt`) in Emerald,
+centred at y 80, a Pokémon's at 80 + its back y_offset, which is those rows), the front picture and palette go where a hero's do. `PlayerLookSession` observes the party and prepares the selected costume from the running game’s scan.
+`PokemonCostumes.party` resolves the national numbers with `PokedexSource.nationalOf`. Played headless (`PlayerLookTest.pokemonLooks` -> `<game>-<hero>-as-mon<n>.txt`) in Emerald,
 FireRed, Ruby and Sapphire: walking, running, both bikes, the card, a battle.
 A look changed mid-game leaves the player's sprite on the old record (a Pokémon's 32x32 shape, a frame table in the tail
 the next look rewrites) and the old colours (a palette swap by content can't know a Pokémon's, nor tell Emerald's May's from
@@ -1693,7 +1693,7 @@ skips a `from` of under 3 colours for the same reason, and `EmulatorEngine.setPl
 ### TEXT LOOK (another game's text boxes and letters)
 
 MAKEOVER > TEXT LOOK (`TextLook.kt`, `Prefs.textLookFor`) puts FireRed's dialogue box and normal font in Emerald, or
-Emerald's in FireRed / LeafGreen, in the same patch as PLAYER LOOK's (`PlayerLookRunner` combines the blocks). The pieces are
+Emerald's in FireRed / LeafGreen, in the same patch as PLAYER LOOK's (`PlayerAppearance` combines the blocks). The pieces are
 found by fingerprint in one pass with the heroes (`PlayerLook.scan(rom, TextBlob.entries)`, `Fingerprints.find`;
 `TextLookSigsGen.kt` from `scripts/gen_text_look_sigs.py`: FireRed's `menu_message.4bpp` + `stdpal_0`, `latin_normal.fwlatfont`
 and text.c's widths; Emerald's `message_box.png` and `latin_normal.png` converted as gbagfx does - `latfont`, four 2bpp tiles a
