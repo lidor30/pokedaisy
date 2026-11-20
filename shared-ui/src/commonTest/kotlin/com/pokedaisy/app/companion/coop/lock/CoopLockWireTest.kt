@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.coop.lock
 
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class CoopLockWireTest {
     @Test fun roundTripsEach() { listOf(LockMsg.Propose(0), LockMsg.Answer(true, 0), LockMsg.Off, LockMsg.Status(true), LockMsg.Hold(7))

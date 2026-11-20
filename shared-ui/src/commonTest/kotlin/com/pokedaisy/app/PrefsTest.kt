@@ -2,8 +2,7 @@ package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.PreferenceStore
 import com.pokedaisy.app.companion.TouchControlsStyle
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class PrefsTest {
     private class Store(val values: MutableMap<String, Any?> = mutableMapOf()) : PreferenceStore {

@@ -11,6 +11,8 @@ import com.pokedaisy.app.companion.i18n.tk
  * from the update. Every new feature gets one (CLAUDE.md): add its id to [ALL] and the badge to its row.
  */
 object NewFeatures {
+    /** Shared battle buttons on iPhone and iPad. */
+    const val IOS_BATTLE_BUTTONS = "ios_battle_buttons"
     /** Shared field HUD on iPhone and iPad. */
     const val IOS_FIELD_HUD = "ios_field_hud"
     /** GAME BUTTONS in the shared iPhone/iPad setup wizard. */
@@ -19,11 +21,43 @@ object NewFeatures {
     const val IOS_GAME_BINDINGS = "ios_game_bindings"
     const val IOS_GAME_HOTKEYS = "ios_game_hotkeys"
     const val IOS_REWIND = "ios_rewind"
+    const val IOS_TOUCH_SKINS = "ios_touch_skins"
+    const val IOS_SCREEN_BORDERS = "ios_screen_borders"
+    const val IOS_OVERLAY_IMPORTS = "ios_overlay_imports"
+    const val IOS_STATUS_BAR = "ios_status_bar"
+    const val IOS_PERFORMANCE = "ios_performance"
+    const val IOS_TIPS = "ios_tips"
+    const val IOS_FF_AUDIO = "ios_ff_audio"
+    const val IOS_STEADY_MUSIC = "ios_steady_music"
+    const val IOS_CLICK_SOUND = "ios_click_sound"
+    const val IOS_DAY_NIGHT = "ios_day_night"
+    const val IOS_SHINY_ODDS = "ios_shiny_odds"
+    const val IOS_FLIGHT = "ios_flight"
+    const val IOS_AUTO_REFILL = "ios_auto_refill"
+    const val IOS_SHINY_ALERT = "ios_shiny_alert"
+    const val IOS_LAST_BALL = "ios_last_ball"
+    const val IOS_BOSS_RETRY = "ios_boss_retry"
+    const val IOS_LOW_HP_BEEP = "ios_low_hp_beep"
+    const val IOS_FIELD_POISON = "ios_field_poison"
+    const val IOS_NUZLOCKE = "ios_nuzlocke"
+    const val IOS_FOLLOWER = "ios_follower"
     const val IOS_TOUCH_XY = "ios_touch_xy"
     const val IOS_CHEATS = "ios_cheats"
     const val IOS_FIELD_ITEMS = "ios_field_items"
     const val IOS_CLASSIC_FLY = "ios_classic_fly"
+    const val IOS_GB_FIELD_ACTIONS = "ios_gb_field_actions"
+    const val IOS_GB_ENCOUNTERS = "ios_gb_encounters"
+    const val IOS_GAMEPLAY_MODIFIERS = "ios_gameplay_modifiers"
+    const val IOS_TRADE_EVOLUTION = "ios_trade_evolution"
+    const val IOS_PARTY_STORAGE = "ios_party_storage"
+    const val IOS_MOVE_SCREENS = "ios_move_screens"
+    const val IOS_PARTY_SERVICES = "ios_party_services"
+    const val IOS_EXPAND = "ios_expand"
+    const val IOS_FLASH = "ios_flash"
+    const val IOS_HEAL = "ios_heal"
     const val IOS_QUICK_MENU = "ios_quick_menu"
+    /** Shared registered-item transactions; BIKE / ROD also available on iOS. */
+    const val REGISTERED_ITEMS = "registered_items"
 
     /** SETTINGS > HUD (companion.ui.FieldHud). */
     const val HUD = "hud"
@@ -280,16 +314,38 @@ object NewFeatures {
     const val IOS_GAME_SCREEN = "ios_game_screen"
 
     val ALL = listOf(
+        IOS_BATTLE_BUTTONS,
         IOS_FIELD_HUD,
         IOS_SETUP_BUTTONS,
         IOS_GAME_BINDINGS,
         IOS_GAME_HOTKEYS,
         IOS_REWIND,
         IOS_TOUCH_XY,
+        IOS_TOUCH_SKINS,
+        IOS_SCREEN_BORDERS,
+        IOS_OVERLAY_IMPORTS,
+        IOS_STATUS_BAR,
+        IOS_PERFORMANCE,
+        IOS_TIPS,
+        IOS_FF_AUDIO,
+        IOS_STEADY_MUSIC,
+        IOS_CLICK_SOUND,
+        IOS_DAY_NIGHT, IOS_SHINY_ODDS, IOS_FLIGHT, IOS_FOLLOWER, IOS_AUTO_REFILL, IOS_SHINY_ALERT, IOS_LAST_BALL, IOS_BOSS_RETRY, IOS_LOW_HP_BEEP, IOS_FIELD_POISON, IOS_NUZLOCKE,
         IOS_CHEATS,
         IOS_FIELD_ITEMS,
         IOS_CLASSIC_FLY,
+        IOS_GB_FIELD_ACTIONS,
+        IOS_GB_ENCOUNTERS,
+        IOS_HEAL,
+        IOS_FLASH,
+        IOS_EXPAND,
+        IOS_PARTY_SERVICES,
+        IOS_MOVE_SCREENS,
+        IOS_PARTY_STORAGE,
+        IOS_TRADE_EVOLUTION,
+        IOS_GAMEPLAY_MODIFIERS,
         IOS_QUICK_MENU,
+        REGISTERED_ITEMS,
         IOS_FIELD_OPTIONS,
         IOS_GAME_OPTIONS,
         IOS_SCENE_SPEEDS,

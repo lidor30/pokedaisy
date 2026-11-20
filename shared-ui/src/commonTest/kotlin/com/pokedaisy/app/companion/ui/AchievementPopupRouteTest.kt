@@ -1,9 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
-import org.junit.After
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /**
  * GitHub #500: a DS game's touch screen sits where the companion goes, so RetroAchievements' popups played out on a hidden
@@ -14,14 +11,14 @@ class AchievementPopupRouteTest {
     private val hiddenCompanion: () -> Boolean = { !touchScreenUp }
     private val windowCompanion: () -> Boolean = { false }
 
-    @After
+    @AfterTest
     fun tearDown() {
         AchievementPopupRoute.remove(hiddenCompanion)
         AchievementPopupRoute.remove(windowCompanion)
     }
 
     @Test
-    fun `no companion on screen - the game's host shows it`() {
+    fun aHiddenCompanionRoutesPopupsToTheGame() {
         AchievementPopupRoute.add(hiddenCompanion)
         AchievementPopupRoute.add(windowCompanion)
         assertFalse(AchievementPopupRoute.companionSeen())
@@ -30,7 +27,7 @@ class AchievementPopupRouteTest {
     }
 
     @Test
-    fun `the companion on screen - it shows it, not the game's host`() {
+    fun aVisibleCompanionShowsPopups() {
         AchievementPopupRoute.add(hiddenCompanion)
         touchScreenUp = false   // COMPANION on the bottom screen
         assertTrue(AchievementPopupRoute.companionSeen())
@@ -39,7 +36,7 @@ class AchievementPopupRouteTest {
     }
 
     @Test
-    fun `no companion at all (one screen, none composed) - the game's host`() {
+    fun aGameWithoutACompanionShowsPopups() {
         assertTrue(AchievementPopupRoute.takes(overGame = true, shown = { true }))
     }
 }

@@ -1,8 +1,8 @@
 package com.pokedaisy.app.companion.ui.theme
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class AppFontTest {
     /** Prefs.appFont stores ordinals: the old ones keep their meaning, and its default (a literal) is PIXEL SMALL's. */

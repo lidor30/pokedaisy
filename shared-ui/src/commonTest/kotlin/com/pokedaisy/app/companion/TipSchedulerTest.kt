@@ -7,9 +7,7 @@ import com.pokedaisy.app.companion.TipScheduler.Companion.FIRST_TIP_AFTER
 import com.pokedaisy.app.companion.TipScheduler.Companion.GAP
 import com.pokedaisy.app.companion.TipScheduler.Companion.MINUTE
 import com.pokedaisy.app.companion.TipScheduler.Companion.MOMENT_TTL
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import kotlin.test.*
 
 class TipSchedulerTest {
     private class Store : TipStore {

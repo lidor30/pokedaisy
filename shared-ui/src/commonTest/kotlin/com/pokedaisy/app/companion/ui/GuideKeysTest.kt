@@ -3,8 +3,7 @@ package com.pokedaisy.app.companion.ui
 import com.pokedaisy.app.companion.data.GuideEntry
 import com.pokedaisy.app.companion.data.GuidePage
 import com.pokedaisy.app.companion.data.GuideSection
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.*
 
 /** The GUIDE's LazyColumn keys: a repeated entry must not reuse a key (it crashed HERE on FireRed). */
 class GuideKeysTest {

@@ -9,8 +9,7 @@ import com.pokedaisy.app.companion.ui.TouchPressed
 import com.pokedaisy.app.companion.ui.TouchPressTracker
 import com.pokedaisy.app.companion.ui.excludeTouchRegions
 import com.pokedaisy.app.companion.ui.touchHits
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class TouchInputRegionsTest {
     private fun IntRect.has(x: Int, y: Int) = x >= left && x < right && y >= top && y < bottom
@@ -21,7 +20,7 @@ class TouchInputRegionsTest {
         for (y in -10..40) for (x in -10..40) {
             val expected = regions.any { it.has(x, y) } && reserved.none { it.has(x, y) }
             val count = actual.count { it.has(x, y) }
-            assertEquals("$x,$y in $actual", if (expected) 1 else 0, count)
+            assertEquals(if (expected) 1 else 0, count, "$x,$y in $actual")
         }
     }
 

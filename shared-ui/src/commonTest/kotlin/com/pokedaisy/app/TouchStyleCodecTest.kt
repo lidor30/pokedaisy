@@ -1,8 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.*
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class TouchStyleCodecTest {
     private val saved = mutableMapOf<String, Any?>()

@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.*
 
 class BatteryBitmapTest {
     /** Filled columns of the battery's middle row. */

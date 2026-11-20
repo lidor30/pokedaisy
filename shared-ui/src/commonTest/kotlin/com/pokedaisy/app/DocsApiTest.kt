@@ -1,8 +1,6 @@
 package com.pokedaisy.app
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import kotlin.test.*
 
 /** The docs API's JSON read into the manual's blocks, every block type the reader draws. */
 class DocsApiTest {
@@ -53,6 +51,7 @@ class DocsApiTest {
         assertNull(m.page("missing"))
     }
 
-    @Test(expected = IllegalArgumentException::class)
-    fun refusesAnotherVersion() { DocsApi.parse("""{"version": 2}""") }
+    @Test fun refusesAnotherVersion() {
+        assertFailsWith<IllegalArgumentException> { DocsApi.parse("""{"version": 2}""") }
+    }
 }

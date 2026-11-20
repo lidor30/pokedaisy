@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.coop.lock
 
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class CoopStoryHoldTest {
     private var now = 10_000L

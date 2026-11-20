@@ -1,8 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.ui.*
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class GameScreenStateTest {
     @Test fun hiddenOrDisabledCompanionsReleaseNativeFocusButDsStaysVisible() {
@@ -97,7 +96,7 @@ class GameScreenStateTest {
             for (p in listOf(PortraitPanelState(), PortraitPanelState(enabled = true), PortraitPanelState(enabled = true, hidden = true))) {
                 val f = gameScreenFrames(w, h, 267, 28, side, p)
                 for (r in listOf(f.game, f.controls, f.companion)) {
-                    assertTrue("$r in $w x $h", r.left >= 0 && r.top >= 0 && r.right <= w && r.bottom <= h)
+                    assertTrue(r.left >= 0 && r.top >= 0 && r.right <= w && r.bottom <= h, "$r in $w x $h")
                     assertTrue(r.width >= 0 && r.height >= 0)
                 }
             }

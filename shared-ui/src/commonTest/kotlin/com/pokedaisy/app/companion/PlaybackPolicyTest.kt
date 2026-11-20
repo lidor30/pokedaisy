@@ -2,8 +2,10 @@ package com.pokedaisy.app.companion
 
 import com.pokedaisy.app.companion.data.*
 import com.pokedaisy.app.companion.PlaybackPolicy.Scene
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlin.test.Test
 
 class PlaybackPolicyTest {
     private fun scene(battle: Int = BATTLE_INPUT_NONE, menu: Boolean = false, map: Boolean = false,
@@ -48,6 +50,15 @@ class PlaybackPolicyTest {
         assertEquals(3f, PlaybackPolicy.requestedSpeed(true, 3f, true, .25f))
         assertEquals(.5f, PlaybackPolicy.requestedSpeed(false, 3f, true, 4f))
         assertEquals(.25f, PlaybackPolicy.requestedSpeed(false, 3f, false, .25f))
+    }
+
+    @Test fun offMutesFastRatesButKeepsSoundForNormalSpeedSmartMenus() {
+        val capped = PlaybackPolicy.smartSpeed(4f, true, BATTLE_INPUT_NONE, menu = true, map = false)
+        assertTrue(PlaybackPolicy.muteFastAudio(4f, FfMusicMode.OFF))
+        assertFalse(PlaybackPolicy.muteFastAudio(capped, FfMusicMode.OFF))
+        assertFalse(PlaybackPolicy.muteFastAudio(.5f, FfMusicMode.OFF))
+        assertFalse(PlaybackPolicy.muteFastAudio(4f, FfMusicMode.SPED_UP))
+        assertFalse(PlaybackPolicy.muteFastAudio(4f, FfMusicMode.STEADY))
     }
 
     @Test fun cycleWrapsAt4xAndLeavesBothSlowStepsForTheSpeedPicker() {

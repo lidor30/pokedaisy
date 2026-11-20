@@ -10,10 +10,22 @@ import okio.Path
 class StateTransactionsTest {
     private inline fun temporary(test: (StateFiles) -> Unit) {
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "pokedaisy-state-transactions-${Random.nextLong().toULong()}"
-        val files = StateFiles(root, extraSidecars = listOf(".ra"))
+        val files = StateFiles(root, extraSidecars = listOf(StateFiles.ACHIEVEMENT_PROGRESS_SUFFIX))
         try { test(files) } finally { root.deleteRecursively() }
     }
     private fun ra(path: Path) = path.parent!! / "${path.name}.ra"
+
+    @Test fun achievementSidecarLookupTreatsMissingAndNonFilesAsNoProgress() = temporary { files ->
+        val state = files.stateFile(2)
+        val sidecar = StateFiles.achievementProgressFile(state)
+        assertEquals("ss2.ra", sidecar.name)
+        assertNull(StateFiles.readAchievementProgress(state))
+        sidecar.mkdirs()
+        assertNull(StateFiles.readAchievementProgress(state))
+        sidecar.delete()
+        sidecar.writeText("progress")
+        assertContentEquals("progress".encodeToByteArray(), StateFiles.readAchievementProgress(state))
+    }
 
     @Test fun stateAndAchievementSidecarsFollowSaveUndoAndDelete() = temporary { files ->
         var moment = "first"
@@ -39,6 +51,27 @@ class StateTransactionsTest {
         slots.requestDelete(4)
         assertFalse(files.exists(4)); assertFalse(ra(files.stateFile(4)).isFile)
         assertFalse(ra(files.bakFile(4)).isFile)
+    }
+
+    @Test fun battleRetryDoesNotTouchAUserSlotAndCanBeUndone() = temporary { files ->
+        var moment = "trainer start"
+        val events = mutableListOf<Triple<Hotkeys.Action, Int, Boolean>>()
+        val slots = StateSlotController(files, onCore = { it() },
+            write = { path -> path.writeText(moment); true },
+            read = { path -> moment = path.readText(); true },
+            beforeLoad = {}, initialIndex = 3,
+            completed = { action, index, ok -> events += Triple(action, index, ok) })
+
+        assertTrue(slots.captureRetry())
+        moment = "after loss"
+        slots.loadRetry()
+        assertEquals("trainer start", moment)
+        assertEquals(3, slots.currentIndex)
+        assertFalse(files.exists(3))
+        assertEquals(Triple(Hotkeys.Action.LOAD_STATE, -1, true), events.single())
+
+        slots.requestUndoLoad()
+        assertEquals("after loss", moment)
     }
 
     @Test fun failedPartialWritesPreserveSlotsAndNeverReuseStagedSidecars() = temporary { files ->

@@ -1,10 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
 import com.pokedaisy.app.companion.QuickAction
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /** The QUICK MENU's button: a press opens it for the D-pad + A; letting go never runs anything. */
 class QuickMenuStateTest {

@@ -1,8 +1,6 @@
 package com.pokedaisy.app.companion
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import kotlin.test.*
 
 /** FOLD LAYOUT's postures: half open across = TABLETOP, down the middle = BOOK, flat = none (unless the hinge hides
  * pixels), in the stage's own coordinates. */

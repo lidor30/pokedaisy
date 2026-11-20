@@ -5,8 +5,7 @@ import com.pokedaisy.app.companion.TouchPosition
 import com.pokedaisy.app.companion.ui.TouchGeometry
 import com.pokedaisy.app.companion.ui.SidePanelState
 import com.pokedaisy.app.companion.ui.gamePanelLayout
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class GamePanelLayoutTest {
     @Test fun panelsFitTabletsAndSmallMultitaskingWindows() {
@@ -15,7 +14,7 @@ class GamePanelLayoutTest {
                 val stage = gamePanelLayout(w, h, 1f, visible, gameBoy = gb, underGame = under, style = TouchControlsStyle())
                 val companion = stage.companion!!
                 for (r in listOf(stage.game, stage.area, companion)) {
-                    assertTrue("$r in $w x $h", r.left >= 0f && r.top >= 0f && r.right <= w && r.bottom <= h)
+                    assertTrue(r.left >= 0f && r.top >= 0f && r.right <= w && r.bottom <= h, "$r in $w x $h")
                     assertTrue(r.width >= 0f && r.height >= 0f)
                 }
                 if (!visible) assertEquals(0f, stage.area.height, 0f)
@@ -33,8 +32,8 @@ class GamePanelLayoutTest {
         for ((w, h) in listOf(744f to 1100f, 402f to 778f, 400f to 1000f)) {
             val stage = gamePanelLayout(w, h, 1f, underGame = true, style = style)
             val companion = stage.companion!!
-            assertEquals("$w x $h", h, stage.area.bottom, 0f)
-            assertEquals("$w x $h", companion.bottom, stage.area.top, 0.5f)
+            assertEquals(h, stage.area.bottom, 0f, "$w x $h")
+            assertEquals(companion.bottom, stage.area.top, 0.5f, "$w x $h")
             assertTrue(stage.area.height >= TouchGeometry.naturalHeight(style, w, 1f) - 1)
             assertFalse(stage.area.overlaps(stage.game))
             assertEquals(stage.game.bottom, companion.top, 0.5f)

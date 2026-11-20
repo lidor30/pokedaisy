@@ -2,8 +2,7 @@ package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.TelemetryStore
 import com.pokedaisy.app.companion.data.GameKind
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class BattleSwitchAddrsTest {
     private val telemetry = TelemetryStore()

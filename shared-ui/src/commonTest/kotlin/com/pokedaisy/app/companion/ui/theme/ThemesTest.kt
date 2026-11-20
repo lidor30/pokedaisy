@@ -1,15 +1,10 @@
 package com.pokedaisy.app.companion.ui.theme
 
 import androidx.compose.ui.graphics.Color
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import kotlinx.datetime.LocalDate
 import com.pokedaisy.app.companion.i18n.L10n
 import com.pokedaisy.app.companion.ui.shortDate
+import kotlin.test.*
 
 /** THEME: the limited-time themes' dates, their popup once per window, an ended one giving way, and the tint. */
 class ThemesTest {
@@ -103,7 +98,7 @@ class ThemesTest {
         val want = mapOf("EN" to "OCT 3", "JA" to "10月3日", "KO" to "10월 3일", "FR" to "3 OCT.", "DE" to "3 OKT.",
             "IT" to "3 OTT", "ES" to "3 OCT", "BR" to "3 OUT.", "PT" to "3 OUT.")
         try {
-            for ((code, text) in want) { L10n.apply(code, null); assertEquals(code, text, shortDate(date)) }
+            for ((code, text) in want) { L10n.apply(code, null); assertEquals(text, shortDate(date), code) }
         } finally { L10n.apply("EN", null) }
     }
 }

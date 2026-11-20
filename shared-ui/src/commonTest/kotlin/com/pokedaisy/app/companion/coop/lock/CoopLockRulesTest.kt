@@ -3,8 +3,7 @@ package com.pokedaisy.app.companion.coop.lock
 import com.pokedaisy.app.companion.coop.lock.CoopLockRules.holdForLink
 import com.pokedaisy.app.companion.coop.lock.CoopLockRules.refusal
 import com.pokedaisy.app.companion.coop.lock.LockRefusal.*
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class CoopLockRulesTest {
     @Test fun refusalOrder() { assertEquals(NOT_PAIRED, refusal(false, false, 3, 3)); assertEquals(NOT_CONNECTED, refusal(true, false, 0, 0))

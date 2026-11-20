@@ -1,8 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.ui.SidePanelState
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class SidePanelStateTest {
     @Test fun windowStartsClosedAndOwnsInputOnlyWhileOpen() {
