@@ -46,7 +46,7 @@ target_link_libraries(pd_armgba PUBLIC pd_armgba_archive)
 set(PD_ARMGBA_GLUE "${CMAKE_CURRENT_LIST_DIR}/pd_armgba_core.c" "${CMAKE_CURRENT_LIST_DIR}/pd_dispatch.c")
 
 function(pd_mgba_renames target)
-    get_filename_component(cpp "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../../app/src/main/cpp" ABSOLUTE)
+    get_filename_component(cpp "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../../shared/src/commonMain/cpp" ABSOLUTE)
     set_source_files_properties("${cpp}/pk_call.c" TARGET_DIRECTORY ${target} PROPERTIES COMPILE_DEFINITIONS
         "pk_call=pk_call_mgba;pk_call_safe=pk_call_safe_mgba;pk_call_set_cap=pk_call_set_cap_mgba;pk_rest_note=pk_rest_note_mgba;pk_rest_reset=pk_rest_reset_mgba")
     set_source_files_properties("${cpp}/pk_host.c" TARGET_DIRECTORY ${target} PROPERTIES COMPILE_DEFINITIONS

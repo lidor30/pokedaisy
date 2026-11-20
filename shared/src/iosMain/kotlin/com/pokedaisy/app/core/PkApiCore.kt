@@ -55,7 +55,7 @@ import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
 
 /**
- * The iPad's emulator core: a GBA or Game Boy game on mGBA through the plain C API in app/src/main/cpp/pk_api.h (built
+ * The iPad's emulator core: a GBA or Game Boy game on mGBA through the plain C API in shared/src/commonMain/cpp/pk_api.h (built
  * by shared/native/build_ios_core.sh, reached through cinterop), the same code Android's JNI bridge calls. [start] opens
  * a game and makes it the data code's [EmulatorCore.current]; [stop] closes it.
  *

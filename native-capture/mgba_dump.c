@@ -78,7 +78,7 @@
 //                        Image.open("x.ppm").save("x.png")'` converts it
 //   cheat TYPE CODE    - add a cheat (TYPE auto/cb/gs/ar, CODE's lines joined by
 //                        '+') and load the list into the core the way the app
-//                        does (app/src/main/cpp/pk_cheats.c, compiled in below)
+//                        does (shared/src/commonMain/cpp/pk_cheats.c, compiled in below)
 //   cheatclear         - take every cheat out again
 //   gbpark SPIN        - GB: park the main loop on SPIN (a `jr @`) once interrupts are on
 //                        (the app's pkRenderGbPark); a SPIN in WRAM gets the `jr @` written first
@@ -192,44 +192,44 @@
 // repo is there to compile it from (the capture scripts mount native-capture/
 // alone; mount the repo root and build from native-capture/ to get it).
 #if defined(__has_include)
-#if __has_include("../app/src/main/cpp/pk_cheats.c")
-#include "../app/src/main/cpp/pk_cheats.c"
+#if __has_include("../shared/src/commonMain/cpp/pk_cheats.c")
+#include "../shared/src/commonMain/cpp/pk_cheats.c"
 #define HAVE_PK_CHEATS 1
-#if __has_include("../app/src/main/cpp/pk_coop.c")
-#include "../app/src/main/cpp/pk_coop.c"
-#include "../app/src/main/cpp/pk_coop_field.c"
-#include "../app/src/main/cpp/pk_coop_after.c"
+#if __has_include("../shared/src/commonMain/cpp/pk_coop.c")
+#include "../shared/src/commonMain/cpp/pk_coop.c"
+#include "../shared/src/commonMain/cpp/pk_coop_field.c"
+#include "../shared/src/commonMain/cpp/pk_coop_after.c"
 // coop-field (plan 4 Task 7)
 // coop-after (plan 4 Task 8)
 // romcheck's last counts (and the mark romchecksame compares to)
 static int lastRomDiffs[3], markRomDiffs[3];
-#include "../app/src/main/cpp/pk_coop_lock.c"   // coop-lock (plan 5 Task 5)
-#include "../app/src/main/cpp/pk_coop_link.c"   // the link bridge (plan 6 Task 1)
-#include "../app/src/main/cpp/pk_coop_link_start.c"   // task 2: a joined trainer battle starts as a link battle
-#include "../app/src/main/cpp/pk_coop_link_wild.c"   // task 3: wild as a link battle
-#include "../app/src/main/cpp/pk_coop_link_story.c"   // task 6: story battles
-#include "../app/src/main/cpp/pk_coop_link_drop.c"   // a dropped link (plan 6 Task 7)
-#include "../app/src/main/cpp/pk_coop_link_rewards.c"   // task 4: EXP, the BAG and catching in a link battle
-#include "../app/src/main/cpp/pk_coop_link_end.c"   // task 5: the end of a joined link battle
+#include "../shared/src/commonMain/cpp/pk_coop_lock.c"   // coop-lock (plan 5 Task 5)
+#include "../shared/src/commonMain/cpp/pk_coop_link.c"   // the link bridge (plan 6 Task 1)
+#include "../shared/src/commonMain/cpp/pk_coop_link_start.c"   // task 2: a joined trainer battle starts as a link battle
+#include "../shared/src/commonMain/cpp/pk_coop_link_wild.c"   // task 3: wild as a link battle
+#include "../shared/src/commonMain/cpp/pk_coop_link_story.c"   // task 6: story battles
+#include "../shared/src/commonMain/cpp/pk_coop_link_drop.c"   // a dropped link (plan 6 Task 7)
+#include "../shared/src/commonMain/cpp/pk_coop_link_rewards.c"   // task 4: EXP, the BAG and catching in a link battle
+#include "../shared/src/commonMain/cpp/pk_coop_link_end.c"   // task 5: the end of a joined link battle
 #define HAVE_PK_COOP 1
 #endif
 #endif
-#if __has_include("../app/src/main/cpp/pk_wide.c")
-#include "../app/src/main/cpp/pk_wide.c"
-#include "../app/src/main/cpp/pk_wide_gb.c"
-#include "../app/src/main/cpp/pk_gb_field.c"
+#if __has_include("../shared/src/commonMain/cpp/pk_wide.c")
+#include "../shared/src/commonMain/cpp/pk_wide.c"
+#include "../shared/src/commonMain/cpp/pk_wide_gb.c"
+#include "../shared/src/commonMain/cpp/pk_gb_field.c"
 #define HAVE_PK_WIDE 1
 #endif
-#if __has_include("../app/src/main/cpp/pk_flight.c")
-#include "../app/src/main/cpp/pk_flight.c"
+#if __has_include("../shared/src/commonMain/cpp/pk_flight.c")
+#include "../shared/src/commonMain/cpp/pk_flight.c"
 #define HAVE_PK_FLIGHT 1
 #endif
-#if __has_include("../app/src/main/cpp/pk_perf.h")
-#include "../app/src/main/cpp/pk_perf.h"
+#if __has_include("../shared/src/commonMain/cpp/pk_perf.h")
+#include "../shared/src/commonMain/cpp/pk_perf.h"
 #define HAVE_PK_PERF 1
 #endif
-#if __has_include("../app/src/main/cpp/pk_gb_audio.c")
-#include "../app/src/main/cpp/pk_gb_audio.c"
+#if __has_include("../shared/src/commonMain/cpp/pk_gb_audio.c")
+#include "../shared/src/commonMain/cpp/pk_gb_audio.c"
 #define HAVE_PK_GB_AUDIO 1
 #endif
 #endif

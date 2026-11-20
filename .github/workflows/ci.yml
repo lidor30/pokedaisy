@@ -101,7 +101,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - run: git submodule update --init third_party/mgba
+      - run: git submodule update --init third_party/mgba third_party/rcheevos
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
@@ -148,7 +148,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - run: git submodule update --init third_party/mgba
+      - run: git submodule update --init third_party/mgba third_party/rcheevos
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
@@ -205,7 +205,7 @@ jobs:
       - name: Keyed state
         run: ./gradlew -p ui-preview keyedStateCheck --stacktrace
 
-  # The emulator core's plain C API (app/src/main/cpp/pk_api.h) built off Android, as the iPad app builds it, and run
+  # The emulator core's plain C API (shared/src/commonMain/cpp/pk_api.h) built off Android, as the iPad app builds it, and run
   # on linux/make_diagnostic.py's ROMs: a JNI dependency or an Android-only call in it fails here.
   core-api:
     name: Core C API (host)
@@ -215,8 +215,8 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
-      - run: git submodule update --init third_party/mgba
-      - run: cmake -S app/src/main/cpp/test -B "$RUNNER_TEMP/pk_api" -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      - run: git submodule update --init third_party/mgba third_party/rcheevos
+      - run: cmake -S shared/src/commonTest/cpp -B "$RUNNER_TEMP/pk_api" -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - run: cmake --build "$RUNNER_TEMP/pk_api" -j4
       - run: ctest --test-dir "$RUNNER_TEMP/pk_api" --output-on-failure
 

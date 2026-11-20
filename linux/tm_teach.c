@@ -2,7 +2,7 @@
  * fields - keep the two in step. GPL-3.0. */
 #include "tm_teach.h"
 
-#include "../app/src/main/cpp/pk_call.h"
+#include "../shared/src/commonMain/cpp/pk_call.h"
 #include "field_items.h"
 #include <mgba-util/crc32.h>
 #include <mgba/core/core.h>

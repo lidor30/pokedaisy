@@ -2,7 +2,7 @@
  * around its underlying file. Shared by GB/GBC/GBA, independent of companion.
  */
 #include "host_io.h"
-#include "../app/src/main/cpp/pk_savevf.h"
+#include "../shared/src/commonMain/cpp/pk_savevf.h"
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>

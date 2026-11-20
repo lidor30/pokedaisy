@@ -24,7 +24,7 @@ get_directory_property(MGBA_DIR_DEFS DIRECTORY ${MGBA} COMPILE_DEFINITIONS)
 list(REMOVE_ITEM MGBA_DIR_DEFS USE_PTHREADS) # threading is off; pk_rewind.c is not built
 get_target_property(MGBA_INC mgba_libretro INCLUDE_DIRECTORIES)
 list(FILTER MGBA_SRC EXCLUDE REGEX "platform/libretro/libretro\\.c$") # pd_libretro.c includes it, renamed
-set(APP ${CMAKE_CURRENT_SOURCE_DIR}/../app/src/main/cpp)
+set(APP ${CMAKE_CURRENT_SOURCE_DIR}/../shared/src/commonMain/cpp)
 file(GLOB PD_CORE CONFIGURE_DEPENDS ../3ds/core/*.c)
 add_library(pokedaisy_gbc_libretro SHARED ${MGBA_SRC} pd_libretro.c pd_lr_mem.c ${PD_CORE}
   ../linux/hud.c ../linux/quick_menu.c ../linux/fly.c ../linux/flight.c ../linux/flash.c ../linux/field_items.c ../linux/wild.c ../linux/gb_field.c

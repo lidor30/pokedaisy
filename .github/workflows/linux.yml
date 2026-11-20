@@ -1,10 +1,10 @@
 name: Linux foundation
 on:
   pull_request:
-    paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/test/configs_gen_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/armgba', 'third_party/zlib', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
+    paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/test/configs_gen_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'shared/src/commonMain/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/armgba', 'third_party/zlib', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   push:
     branches: [main, dev]
-    paths: ['linux/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/armgba', 'third_party/zlib', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
+    paths: ['linux/**', '3ds/**', 'shared/src/commonMain/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/armgba', 'third_party/zlib', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   workflow_dispatch:
   workflow_call:
     inputs:

@@ -3,7 +3,7 @@
  * pk_flight.c (after every frame); this decides when it may, what it's told, and the scenic route. GPL-3.0, see ../NOTICE. */
 #ifndef POCKET_FLIGHT_H
 #define POCKET_FLIGHT_H
-#include "../app/src/main/cpp/pk_flight.h"
+#include "../shared/src/commonMain/cpp/pk_flight.h"
 #include "fly.h"
 #include "pd_game.h"
 #include "pd_snapshot.h"

@@ -1,6 +1,6 @@
-# The emulator core's C API (app/src/main/cpp/pk_api.h) for Kotlin on iOS. The library is built by
+# The emulator core's C API (shared/src/commonMain/cpp/pk_api.h) for Kotlin on iOS. The library is built by
 # shared/native/build_ios_core.sh; shared/build.gradle.kts passes its folder (-libraryPath) and pk_api.h's (includeDirs).
-headers = pk_api.h
-headerFilter = pk_api.h
+headers = pk_api.h pk_link_api.h pk_ra_client.h pk_coop_api.h
+headerFilter = pk_api.h pk_link_api.h pk_ra_client.h pk_coop_api.h
 package = com.pokedaisy.app.core.pkapi
 staticLibraries = libpkcore.a

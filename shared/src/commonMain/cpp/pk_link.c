@@ -156,9 +156,14 @@ static void closeGame(struct PkLinkPlayer* p) {
 static bool openGame(struct PkLinkPlayer* p, const char* romPath, const char* savePath, int sampleRate) {
     struct VFile* rom = VFileOpen(romPath, O_RDONLY);
     if (!rom) return false;
+    if (mCoreIsCompatible(rom) != mPLATFORM_GBA) {
+        rom->close(rom);
+        return false;
+    }
     p->core = mCoreFindVF(rom);
-    if (!p->core || p->core->platform(p->core) != mPLATFORM_GBA || !p->core->init(p->core)) {
-        if (p->core) p->core->deinit(p->core);
+    if (!p->core || !p->core->init(p->core)) {
+        // A bare core exists before init, but deinit needs the CPU and board created by init.
+        free(p->core);
         p->core = NULL;
         rom->close(rom);
         return false;
@@ -166,6 +171,11 @@ static bool openGame(struct PkLinkPlayer* p, const char* romPath, const char* sa
     mCoreInitConfig(p->core, NULL);
     p->core->desiredVideoDimensions(p->core, &p->w, &p->h);
     p->video = calloc((size_t) p->w * p->h, sizeof(color_t));
+    if (!p->video) {
+        rom->close(rom);
+        closeGame(p);
+        return false;
+    }
     p->core->setVideoBuffer(p->core, p->video, p->w);
     p->core->setAudioBufferSize(p->core, 2048);
     blip_set_rates(p->core->getAudioChannel(p->core, 0), p->core->frequency(p->core), sampleRate);
@@ -186,7 +196,10 @@ static bool openGame(struct PkLinkPlayer* p, const char* romPath, const char* sa
 
 bool pk_link_open(int n, const char* const* roms, const char* const* saves, int sampleRate) {
     pk_link_close(0);
-    if (n < 2 || n > PK_LINK_MAX) return false;
+    if (n < 2 || n > PK_LINK_MAX || !roms || !saves || sampleRate <= 0) return false;
+    for (int i = 0; i < n; i++) {
+        if (!roms[i] || !saves[i]) return false;
+    }
     for (int i = 0; i < n; i++) {
         if (!openGame(&players[i], roms[i], saves[i], sampleRate)) {
             for (int k = 0; k <= i; k++) closeGame(&players[k]);
@@ -275,12 +288,23 @@ unsigned pk_link_video_h(int i) {
     return i >= 0 && i < count ? players[i].h : 0;
 }
 
+bool pk_link_copy_video(int i, void* out, size_t capacity) {
+    const color_t* video = pk_link_video(i);
+    size_t pixels = (size_t) pk_link_video_w(i) * pk_link_video_h(i);
+    if (!video || !out || sizeof(color_t) != 4 || capacity < pixels * 4) return false;
+    // mGBA stores layer bits in the fourth byte. A display image needs opaque alpha.
+    uint8_t* rgba = out;
+    memcpy(rgba, video, pixels * 4);
+    for (size_t k = 0; k < pixels; k++) rgba[k * 4 + 3] = 0xFF;
+    return true;
+}
+
 void pk_link_set_keys(int i, uint32_t keys) {
     if (i >= 0 && i < count) players[i].core->setKeys(players[i].core, keys);
 }
 
 int pk_link_read_audio(int i, int16_t* out, int maxFrames) {
-    if (i < 0 || i >= count) return 0;
+    if (i < 0 || i >= count || !out || maxFrames <= 0) return 0;
     struct PkLinkPlayer* p = &players[i];
     int n = p->audioFrames < maxFrames ? p->audioFrames : maxFrames;
     memcpy(out, p->audio, (size_t) n * 2 * sizeof(int16_t));

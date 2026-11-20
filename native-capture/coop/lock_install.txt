@@ -1,4 +1,4 @@
-# Co-op lock (app/src/main/cpp/pk_coop_lock.c), Task 5: install CRC-checks ScriptContext_SetupScript & co. and puts in
+# Co-op lock (shared/src/commonMain/cpp/pk_coop_lock.c), Task 5: install CRC-checks ScriptContext_SetupScript & co. and puts in
 # the code + story-table block (0x08FFE000-0x08FFEFFF) and the head patch (the function's first 8 bytes ->
 # `ldr r3, [pc, #0]; bx r3; .word <our entry | 1>`); the ROM still reads as the file for everyone but the CPU (the Poller's
 # and RetroAchievements' view: romcheck). Its RAM (0x0203F400-0x0203F4FF) starts zeroed.

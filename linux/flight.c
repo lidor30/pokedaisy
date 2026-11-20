@@ -3,7 +3,7 @@
  * bus, the game's functions through pk_call. GPL-3.0. */
 #include "flight.h"
 
-#include "../app/src/main/cpp/pk_call.h"
+#include "../shared/src/commonMain/cpp/pk_call.h"
 #include <mgba-util/crc32.h>
 #include <mgba/core/core.h>
 #include <stdio.h>

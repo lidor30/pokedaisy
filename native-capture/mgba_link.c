@@ -1,5 +1,5 @@
 // mgba_link - two to four GBA games joined by a link cable, headless, scripted from stdin like mgba_dump. The games
-// run on the app's own LINK PLAY code (app/src/main/cpp/pk_link.c: mGBA's lockstep link with Qt's
+// run on the app's own LINK PLAY code (shared/src/commonMain/cpp/pk_link.c: mGBA's lockstep link with Qt's
 // MultiplayerController callbacks on one thread), so what passes here is what the app runs.
 //
 // stdin commands, one per line (SIDE = 0..3, or all / both for every game):
@@ -36,8 +36,8 @@
 #include <mgba/core/core.h>
 #include <mgba/core/log.h>
 
-#include "../app/src/main/cpp/pk_savevf.c"
-#include "../app/src/main/cpp/pk_link.c"
+#include "../shared/src/commonMain/cpp/pk_savevf.c"
+#include "../shared/src/commonMain/cpp/pk_link.c"
 
 enum {
     KEY_A = 1 << 0, KEY_B = 1 << 1, KEY_SELECT = 1 << 2, KEY_START = 1 << 3,

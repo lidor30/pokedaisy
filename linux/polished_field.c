@@ -2,7 +2,7 @@
  * Polished's addresses / script entry come from pinned release symbols. */
 #include "polished_field.h"
 #include "polished_action_data.h"
-#include "../app/src/main/cpp/pk_gb_field.h"
+#include "../shared/src/commonMain/cpp/pk_gb_field.h"
 #include <string.h>
 bool polished_field_supported(const char *sha) {
   return sha && !strcmp(sha,PD_PC_ACTION_SHA);

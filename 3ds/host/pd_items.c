@@ -6,7 +6,7 @@
 #include <mgba-util/crc32.h>
 #include <mgba/core/core.h>
 
-#include "../../app/src/main/cpp/pk_call.h"
+#include "../../shared/src/commonMain/cpp/pk_call.h"
 #include "../core/pd_games.h"
 
 #define MON_SIZE 100

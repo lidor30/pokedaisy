@@ -1,4 +1,4 @@
-/* What the shared game-code layer (app/src/main/cpp/pk_wide.c, later pk_call.c) reads from the emulator, in armGBA's
+/* What the shared game-code layer (shared/src/commonMain/cpp/pk_wide.c, later pk_call.c) reads from the emulator, in armGBA's
  * case: a view over the machine, with the shapes and names of mGBA's struct GBA / struct GBAVideoRenderer / struct mCore
  * that those files were written against. Neutral on purpose: pd_agba_view.c (which sees armGBA's own struct GBA) and the
  * shim headers under armgba/shim/ (which give pk_wide.c the mGBA names) both include it, and neither includes the other's

@@ -38,10 +38,10 @@
 #include "../../emu/pd_gpsp.h"
 #include <mgba/internal/gba/gba.h>
 
-#include "../../../app/src/main/cpp/pk_call.h"
-#include "../../../app/src/main/cpp/pk_cheats.h"
-#include "../../../app/src/main/cpp/pk_host.h"
-#include "../../../app/src/main/cpp/pk_wide.h"
+#include "../../../shared/src/commonMain/cpp/pk_call.h"
+#include "../../../shared/src/commonMain/cpp/pk_cheats.h"
+#include "../../../shared/src/commonMain/cpp/pk_host.h"
+#include "../../../shared/src/commonMain/cpp/pk_wide.h"
 #include "../../core/pd_games.h"
 #include "../../core/pd_romart.h"
 #include "../../core/pd_settings.h"

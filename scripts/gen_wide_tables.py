@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """WIDE (pk_wide.c) for every retail release the user owns, and the ROM hacks in HACKS: maps the English references' addresses
-into each ROM and writes app/src/main/cpp/pk_wide_games.h, a table keyed by the ROM's CRC32.
+into each ROM and writes shared/src/commonMain/cpp/pk_wide_games.h, a table keyed by the ROM's CRC32.
 
     scripts/gen_wide_tables.py <roms dir> [<more roms dirs>...]
 
@@ -25,7 +25,7 @@ ROOT = os.path.join(HERE, "..")
 sys.path.insert(0, HERE)
 from port_retail import Rom, map_literal, map_code  # noqa: E402
 
-OUT_H = os.path.join(ROOT, "app", "src", "main", "cpp", "pk_wide_games.h")
+OUT_H = os.path.join(ROOT, "shared", "src", "commonMain", "cpp", "pk_wide_games.h")
 OUT_JSON = os.path.join(ROOT, "build", "wide", "wide.json")
 
 # pk_wide.h's PK_WIDE_* address slots, in order.

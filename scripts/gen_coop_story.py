@@ -2,7 +2,7 @@
 """Co-op lock (pk_coop_lock.c) and story events: retail English Emerald's story moments, trainer wins, addresses and
 struct offsets, from pret/pokeemerald built byte for byte as retail (agbcc). Writes
 
-- app/src/main/cpp/pk_coop_lock_emerald.h: the hook's addresses / CRC / struct offsets / script bytes and the story
+- shared/src/commonMain/cpp/pk_coop_lock_emerald.h: the hook's addresses / CRC / struct offsets / script bytes and the story
   table (`COOP_LK_STORY`) as C data (everything `#define` or `static const`: the header may be included twice), and
   `COOP_LK_CODE[]`: scripts/coop_lock_emerald.s (the story hook's Thumb code) assembled with binutils at
   `COOP_LK_CODE_ADDR` = 0x08FFE000, every value above handed to it as `.set COOP_LK_<name>`, then 0xFF up to
@@ -53,7 +53,7 @@ sys.path.insert(0, HERE)
 import gen_coop_emerald as gce  # noqa: E402
 
 REPO = os.path.join(HERE, "..")
-OUT_H = os.path.join(REPO, "app", "src", "main", "cpp", "pk_coop_lock_emerald.h")
+OUT_H = os.path.join(REPO, "shared", "src", "commonMain", "cpp", "pk_coop_lock_emerald.h")
 OUT_KT_DIR = os.path.join(REPO, "app", "src", "main", "kotlin", "com", "pokedaisy", "app", "companion", "data", "coop")
 
 ROM_BASE = 0x08000000

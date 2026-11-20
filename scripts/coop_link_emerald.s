@@ -1,4 +1,4 @@
-@ The co-op link bridge on retail English Emerald (plan 6, app/src/main/cpp/pk_coop_link.c): link.c's block layer without the
+@ The co-op link bridge on retail English Emerald (plan 6, shared/src/commonMain/cpp/pk_coop_link.c): link.c's block layer without the
 @ cable. Our Thumb code, assembled by scripts/gen_coop_emerald.py at COOP_EM_LINK_CODE_ADDR (the ROM's empty tail, 0x08FFD000:
 @ below the story lock's 0x08FFE000) into pk_coop_emerald.h's COOP_EM_LINK_CODE.
 @
@@ -487,7 +487,7 @@ link_entry_STORYSTART:
 link_story_callr3:
     bx r3
 @ ---------------------------------------------------------------------------------------------------------------------
-@ task 4: EXP, the BAG and catching in a joined link battle (app/src/main/cpp/pk_coop_link_rewards.c puts these in for the
+@ task 4: EXP, the BAG and catching in a joined link battle (shared/src/commonMain/cpp/pk_coop_link_rewards.c puts these in for the
 @ battle: the table pointers of Cmd_getexp / Cmd_handlelearnnewmove / HandleAction_UseItem point at the first three, the game
 @ functions the last four replace get a head patch like the block layer's). The rewards' RAM (struct pk_coop_link_rewards,
 @ pk_coop.h) is at link_rw.

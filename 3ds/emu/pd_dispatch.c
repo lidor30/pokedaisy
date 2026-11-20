@@ -7,9 +7,9 @@
 
 #include <mgba/core/core.h>
 
-#include "../../app/src/main/cpp/pk_call.h"
-#include "../../app/src/main/cpp/pk_cheats.h"
-#include "../../app/src/main/cpp/pk_host.h"
+#include "../../shared/src/commonMain/cpp/pk_call.h"
+#include "../../shared/src/commonMain/cpp/pk_cheats.h"
+#include "../../shared/src/commonMain/cpp/pk_host.h"
 
 int pk_call_mgba(struct mCore* core, uint32_t fn, const uint32_t args[4], uint32_t* r0);
 int pk_call_safe_mgba(struct mCore* core);

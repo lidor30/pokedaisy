@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Co-op joined battles (pk_coop.c and the link bridge): retail English Emerald's addresses, code CRCs and struct offsets, from pret/pokeemerald
-built byte for byte as retail (agbcc), written to app/src/main/cpp/pk_coop_emerald.h.
+built byte for byte as retail (agbcc), written to shared/src/commonMain/cpp/pk_coop_emerald.h.
 
     scripts/gen_coop_emerald.py <pokeemerald dir>
 
@@ -39,7 +39,7 @@ import tempfile
 import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT_H = os.path.join(HERE, "..", "app", "src", "main", "cpp", "pk_coop_emerald.h")
+OUT_H = os.path.join(HERE, "..", "shared", "src", "commonMain", "cpp", "pk_coop_emerald.h")
 ASM_LINK = os.path.join(HERE, "coop_link_emerald.s")
 # The link bridge's code (plan 6): its own 4 KB below the story lock's (0x08FFE000) and co-op's (0x08FFF000).
 LINK_CODE_ADDR = 0x08FFD000

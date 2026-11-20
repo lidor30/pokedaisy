@@ -1,0 +1,17 @@
+--- a/src/rc_client.c
++++ b/src/rc_client.c
+@@ -6217 +6217 @@
+-static void rc_client_raise_mastery_event(rc_client_t* client, rc_client_subset_info_t* subset)
++static void rc_client_raise_mastery_event(rc_client_t* client, const rc_client_game_info_t* game, rc_client_subset_info_t* subset)
+@@ -6224 +6224 @@
+-  if (subset == client->game->subsets)
++  if (subset == game->subsets)
+@@ -6384 +6384 @@
+-static void rc_client_subset_raise_pending_events(rc_client_t* client, rc_client_subset_info_t* subset)
++static void rc_client_subset_raise_pending_events(rc_client_t* client, const rc_client_game_info_t* game, rc_client_subset_info_t* subset)
+@@ -6396 +6396 @@
+-    rc_client_raise_mastery_event(client, subset);
++    rc_client_raise_mastery_event(client, game, subset);
+@@ -6408 +6408 @@
+-    rc_client_subset_raise_pending_events(client, subset);
++    rc_client_subset_raise_pending_events(client, game, subset);
