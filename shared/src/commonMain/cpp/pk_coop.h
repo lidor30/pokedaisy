@@ -16,6 +16,8 @@ struct mCore;
 // Calls the game's Thumb function `fn` with r0-r3 = args between frames, to its return; returns r0, or 0xFFFFFFFF if
 // it never returned (the app's pk_call / mgba_dump's `call`).
 typedef uint32_t (*pk_coop_call_fn)(struct mCore* core, uint32_t fn, const uint32_t args[4]);
+/** Bridge into the player's bounded Thumb call helper. Caller owns the core lock. */
+uint32_t pk_coop_game_call(struct mCore* core, uint32_t fn, const uint32_t args[4]);
 
 // The retail check: 1 = the first 32 bytes of every function co-op reads or calls match retail English Emerald's (the lock's and the
 // link bridge's own head patches don't count), 0 = not (pk_coop_refused says which function, or "not a GBA game"). Changes nothing in

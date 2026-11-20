@@ -23,7 +23,7 @@ val pkCoreDir = layout.buildDirectory.dir("pkcore")
 val buildIosCore by tasks.registering(Exec::class) {
     description = "Builds the emulator core (pk_api.h) for the iPad and the iPad simulator."
     val cpp = rootDir.resolve("shared/src/commonMain/cpp")
-    inputs.files(fileTree(cpp) { include("pk_*.c", "pk_*.h", "pk_api.cmake") })
+    inputs.files(fileTree(cpp) { include("pk_*.c", "pk_*.h", "pk_*.cmake", "pk_*.patch", "pk_*.inc") })
     inputs.files(fileTree(projectDir.resolve("native")))
     outputs.dir(pkCoreDir)
     commandLine(projectDir.resolve("native/build_ios_core.sh").path, pkCoreDir.get().asFile.path)

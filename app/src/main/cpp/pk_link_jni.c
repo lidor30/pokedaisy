@@ -2,14 +2,8 @@
 // the frames out included: nothing here is touched from two threads.
 
 #include <jni.h>
-#include <string.h>
-
-#include "pk_host.h"
-#include "pk_link.h"
-
-#define PK_LINK_SAMPLE_RATE 48000
-
-extern void (*pk_link_after_reset)(struct mCore*);
+#include "pk_api.h"
+#include "pk_link_api.h"
 
 JNIEXPORT jboolean JNICALL
 Java_com_pokedaisy_app_LinkCore_pkLinkOpen(JNIEnv* env, jobject thiz, jobjectArray jRoms, jobjectArray jSaves) {
@@ -24,8 +18,7 @@ Java_com_pokedaisy_app_LinkCore_pkLinkOpen(JNIEnv* env, jobject thiz, jobjectArr
         roms[i] = (*env)->GetStringUTFChars(env, romStrings[i], NULL);
         saves[i] = (*env)->GetStringUTFChars(env, saveStrings[i], NULL);
     }
-    pk_link_after_reset = pk_heal_rtc;   // the RTC fix-up, as the player's own core gets it
-    bool ok = pk_link_open(n, roms, saves, PK_LINK_SAMPLE_RATE);
+    bool ok = pk_link_open_with_rtc(n, roms, saves);
     for (int i = 0; i < n; i++) {
         (*env)->ReleaseStringUTFChars(env, romStrings[i], roms[i]);
         (*env)->ReleaseStringUTFChars(env, saveStrings[i], saves[i]);
@@ -62,13 +55,10 @@ Java_com_pokedaisy_app_LinkCore_pkLinkVideoHeight(JNIEnv* env, jobject thiz, jin
  * in its top byte, which a Bitmap would read as transparency. False if it doesn't fit. */
 JNIEXPORT jboolean JNICALL
 Java_com_pokedaisy_app_LinkCore_pkLinkCopyVideo(JNIEnv* env, jobject thiz, jint i, jobject dst) {
-    const color_t* video = pk_link_video(i);
-    unsigned w = pk_link_video_w(i), h = pk_link_video_h(i);
-    uint32_t* out = dst ? (uint32_t*) (*env)->GetDirectBufferAddress(env, dst) : NULL;
-    if (!video || !out || sizeof(color_t) != 4 || (*env)->GetDirectBufferCapacity(env, dst) < (jlong) w * h * 4) return JNI_FALSE;
-    const uint32_t* in = (const uint32_t*) video;
-    for (unsigned k = 0; k < w * h; k++) out[k] = in[k] | 0xFF000000u;
-    return JNI_TRUE;
+    if (!dst) return JNI_FALSE;
+    void* out = (*env)->GetDirectBufferAddress(env, dst);
+    jlong capacity = (*env)->GetDirectBufferCapacity(env, dst);
+    return capacity >= 0 && pk_link_copy_video(i, out, (size_t) capacity) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jint JNICALL
@@ -87,7 +77,7 @@ Java_com_pokedaisy_app_LinkCore_pkLinkSetAudioRate(JNIEnv* env, jobject thiz, jd
 
 JNIEXPORT jint JNICALL
 Java_com_pokedaisy_app_LinkCore_pkLinkSampleRate(JNIEnv* env, jobject thiz) {
-    return PK_LINK_SAMPLE_RATE;
+    return PK_API_SAMPLE_RATE;
 }
 
 JNIEXPORT jboolean JNICALL

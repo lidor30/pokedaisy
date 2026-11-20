@@ -23,6 +23,7 @@
 #include "pk_core_access.h"
 #include "pk_flight.h"
 #include "pk_host.h"
+#include "pk_ra_memory.h"
 #include "pk_gb_field.h"
 #include "pk_perf.h"
 #include "pk_rewind.h"
@@ -53,6 +54,15 @@ _Static_assert(PK_API_FIELD_AVATAR == PK_FIELD_AVATAR, "field bit AVATAR");
 _Static_assert(PK_API_FIELD_WILD_HELD == PK_FIELD_WILD_HELD, "field bit WILD_HELD");
 _Static_assert(PK_API_FIELD_WINDOW == PK_FIELD_WINDOW, "field bit WINDOW");
 
+_Static_assert(PK_API_WIDE_SCENE_FIELD == PK_WIDE_SCENE_FIELD, "wide scene FIELD");
+_Static_assert(PK_API_WIDE_SCENE_TEXT == PK_WIDE_SCENE_TEXT, "wide scene TEXT");
+_Static_assert(PK_API_WIDE_SCENE_OVERLAY == PK_WIDE_SCENE_OVERLAY, "wide scene OVERLAY");
+_Static_assert(PK_API_WIDE_SCENE_BATTLE_START == PK_WIDE_SCENE_BATTLE_START, "wide scene BATTLE_START");
+_Static_assert(PK_API_WIDE_SCENE_OFF == PK_WIDE_SCENE_OFF, "wide scene OFF");
+_Static_assert(PK_API_WIDE_SCENE_FADE == PK_WIDE_SCENE_FADE, "wide scene FADE");
+_Static_assert(PK_API_WIDE_SCENE_MENU == PK_WIDE_SCENE_MENU, "wide scene MENU");
+_Static_assert(PK_API_WIDE_MAX_WIDTH == PK_WIDE_MAX_VIEW_W && PK_API_WIDE_MAX_HEIGHT == PK_WIDE_MAX_VIEW_H, "wide window bounds");
+
 struct pk_session pk_session;
 pthread_rwlock_t pk_coreLock = PTHREAD_RWLOCK_INITIALIZER;
 
@@ -65,15 +75,20 @@ pthread_rwlock_t pk_coreLock = PTHREAD_RWLOCK_INITIALIZER;
 static void pk_mgba_log(struct mLogger* logger, int category, enum mLogLevel level, const char* format, va_list args) {
     (void) logger;
     if (!(level & (mLOG_FATAL | mLOG_ERROR))) return;
-    static struct timespec windowStart;
+    static pthread_mutex_t logLock = PTHREAD_MUTEX_INITIALIZER;
+    static time_t windowSecond;
     static int inWindow;
+    if (pthread_mutex_trylock(&logLock) != 0) return;
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
-    if (now.tv_sec != windowStart.tv_sec) {
-        windowStart = now;
+    if (now.tv_sec != windowSecond) {
+        windowSecond = now.tv_sec;
         inWindow = 0;
     }
-    if (++inWindow > 5) return;
+    bool allowed = inWindow < 5;
+    if (allowed) ++inWindow;
+    pthread_mutex_unlock(&logLock);
+    if (!allowed) return;
     char line[256];
     vsnprintf(line, sizeof(line), format, args);
     PK_LOG_MGBA(mLogCategoryName(category), line);
@@ -218,7 +233,7 @@ static bool pkPerfOn(void) {
     return true;
 }
 
-// The player's core, for pokedaisy_ra.c (RetroAchievements' memory reads and ROM hash).
+// Internal access for the Android co-op bridge and native tests.
 struct mCore* pkMainCore(void) {
     return g.core;
 }
@@ -430,6 +445,8 @@ int pk_api_cheats_apply(const char* text) {
     return count;
 }
 
+bool pk_api_field_knows(uint32_t crc) { return pk_field_knows(crc) != 0; }
+
 bool pk_api_field_configure(uint32_t crc) {
     return pk_field_configure(g.core && pk_is_gba(g.core) ? crc : 0) != 0;
 }
@@ -457,6 +474,78 @@ int pk_api_field_step(bool runIndoors, int wildKeep) {
     return state;
 }
 
+void pk_api_set_tint(int red, int green, int blue) {
+    pthread_rwlock_wrlock(&pk_coreLock);
+    if (g.core && pk_is_gba(g.core)) pk_tint_set(g.core, red, green, blue);
+    pthread_rwlock_unlock(&pk_coreLock);
+}
+
+int pk_api_look_blocks(const int32_t* addrs, const int32_t* lengths, const int32_t* crcs,
+                       int count, const uint8_t* data, int size) {
+    if (count < 0 || size < 0 || (count && (!addrs || !lengths || !crcs || !data))) return -1;
+    pthread_rwlock_wrlock(&pk_coreLock);
+    int result = -1;
+    if (g.core && pk_is_gba(g.core)) {
+        // Co-op shares the overlay store. Remove its hooks before replacing any blocks.
+        pk_coop_uninstall(g.core);
+        pk_coop_lock_uninstall(g.core);
+        pk_cheats_unblock(g.core);
+        int offset = 0;
+        int i = 0;
+        for (; i < count; i++) {
+            uint32_t address = (uint32_t) addrs[i];
+            int length = lengths[i];
+            if (length < 1 || length > size - offset || address < 0x08000000u ||
+                address >= 0x0E000000u || (uint32_t) length > 0x02000000u - (address & 0x01FFFFFFu) ||
+                !pk_cheats_block(g.core, address, data + offset, length, (uint32_t) crcs[i])) break;
+            offset += length;
+        }
+        if (i == count && offset == size) result = count;
+        else pk_cheats_unblock(g.core);
+    } else if (!count && !size) {
+        result = 0;
+    }
+    pthread_rwlock_unlock(&pk_coreLock);
+    return result;
+}
+
+int pk_api_look_repalette(const uint8_t* from, int fromBytes, const uint8_t* to, int toBytes) {
+    if (!from || !to || fromBytes < 32 || fromBytes % 32 || toBytes != 32) return 0;
+    pthread_rwlock_wrlock(&pk_coreLock);
+    int swapped = g.core && pk_is_gba(g.core) ? pk_cheats_repalette(g.core, from, fromBytes / 32, to) : 0;
+    pthread_rwlock_unlock(&pk_coreLock);
+    return swapped;
+}
+
+bool pk_api_look_refresh(const uint8_t* palette, int paletteBytes) {
+    pthread_rwlock_wrlock(&pk_coreLock);
+    bool done = g.core && pk_is_gba(g.core) && pk_look_refresh(g.core, paletteBytes == 32 ? palette : NULL);
+    pthread_rwlock_unlock(&pk_coreLock);
+    return done;
+}
+
+void pk_api_follower_set(const uint8_t* frames, int frameBytes, const uint8_t* palette, int paletteBytes) {
+    bool valid = frames && palette && frameBytes == PK_API_FOLLOWER_FRAME_BYTES &&
+                 paletteBytes == PK_API_FOLLOWER_PALETTE_BYTES;
+    pk_follower_set(valid ? frames : NULL, valid ? palette : NULL);
+}
+
+void pk_api_follower_show(bool on) {
+    if (g.core && pk_is_gba(g.core)) pk_follower_show(g.core, on);
+}
+
+_Static_assert(PK_API_RIDE_FRAME_BYTES == PK_RIDE_BYTES, "ride sprite bytes");
+
+void pk_api_ride_set(const uint8_t* frames, int frameBytes, const uint8_t* palette, int paletteBytes, int width) {
+    bool valid = frames && palette && frameBytes == PK_API_RIDE_FRAME_BYTES &&
+                 paletteBytes == 32 && (width == 32 || width == 64);
+    pk_ride_set(valid ? frames : NULL, valid ? palette : NULL, width);
+}
+
+void pk_api_ride_show(bool on) {
+    if (g.core && pk_is_gba(g.core)) pk_ride_show(g.core, on);
+}
+
 void pk_api_set_keys(uint32_t keys) {
     if (g.core) {
         g.core->setKeys(g.core, keys);
@@ -478,6 +567,58 @@ int pk_api_finish_save(int maxFrames) {
     if (!g.core) return 0;
     return pk_finish_save(g.core, maxFrames, pkDropAudio);
 }
+
+bool pk_api_wide_knows(uint32_t crc) { return pk_wide_knows(crc) != 0; }
+
+bool pk_api_wide_add_derived(uint32_t crc, uint32_t baseCrc, const int32_t* row, int count) {
+    return row && count > 0 && pk_wide_add_derived(crc, baseCrc, row, count);
+}
+
+bool pk_api_wide_configure(uint32_t crc) {
+    uint32_t want = g.core ? crc : 0;
+    if (want != g.wideCrc) g.wideCrc = pk_wide_configure(want) ? want : 0;
+    return g.wideCrc != 0;
+}
+
+void pk_api_wide_set_view(int x, int y, int width, int height) {
+    g.viewX = x;
+    g.viewY = y;
+    g.viewW = width < 0 ? 0 : width > PK_WIDE_MAX_VIEW_W ? PK_WIDE_MAX_VIEW_W : width;
+    g.viewH = height < 0 ? 0 : height > PK_WIDE_MAX_VIEW_H ? PK_WIDE_MAX_VIEW_H : height;
+}
+
+const void* pk_api_wide_video(void) { return g.wide; }
+int pk_api_wide_width(void) { return g.wideW; }
+int pk_api_wide_height(void) { return g.wideH; }
+void pk_api_wide_set_draw(bool draw) { g.wideSkipNext = !draw; }
+bool pk_api_wide_skipped(void) { return g.wideSkipped; }
+int pk_api_wide_fault(void) { return g.core ? pk_wide_fault() : 0; }
+bool pk_api_wide_wants_close(void) { return !g.wideW || pk_wide_wants_close(); }
+int pk_api_wide_scene(void) { return g.wideW ? pk_wide_scene() : PK_WIDE_SCENE_OFF; }
+
+static int apiFlightCall(struct mCore* core, uint32_t fn, const uint32_t args[4], uint32_t* r0) {
+    return pk_call(core, fn, args, r0);
+}
+
+void pk_api_flight_configure(const uint32_t* words, int count) {
+    pk_flight_set_call(apiFlightCall);
+    pk_flight_configure(words && count >= PK_FLIGHT_WORDS ? words : NULL,
+                        words && count >= PK_FLIGHT_WORDS ? PK_FLIGHT_WORDS : 0);
+}
+
+int pk_api_flight_take_off(void) {
+    return g.core && pk_is_gba(g.core) ? pk_flight_take_off(g.core) : PK_FLIGHT_NOT_CONFIGURED;
+}
+void pk_api_flight_land(void) { pk_flight_land(); }
+int pk_api_flight_route(const uint8_t* directions, int count) {
+    static const uint8_t empty = 0;
+    if (!directions && count > 0) return PK_FLIGHT_NOT_NOW;
+    return pk_flight_route(directions ? directions : &empty, count);
+}
+void pk_api_flight_area(const uint8_t* bits, int count) { pk_flight_set_area(bits, count); }
+bool pk_api_flight_area_turned(void) { return pk_flight_area_turned() != 0; }
+int pk_api_flight_state(void) { return pk_flight_state(); }
+int pk_api_flight_route_done(void) { return pk_flight_route_done(); }
 
 // WIDE: the core's frame is the size the configured game's rebuild expects (the GBA's 240 x 160, a Game Boy's 160 x 144).
 static bool pkWideFrameFits(void) {
@@ -628,6 +769,13 @@ bool pk_api_read(uint32_t addr, uint8_t* dst, int len) {
     }
     pthread_rwlock_unlock(&pk_coreLock);
     return ok;
+}
+
+uint32_t pk_api_ra_read_memory(uint32_t address, uint8_t* out, uint32_t bytes) {
+    pthread_rwlock_rdlock(&pk_coreLock);
+    uint32_t done = pk_ra_read_memory(g.core, address, out, bytes);
+    pthread_rwlock_unlock(&pk_coreLock);
+    return done;
 }
 
 bool pk_api_rom_code(char out[5]) {

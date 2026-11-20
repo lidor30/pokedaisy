@@ -22,6 +22,15 @@ for p,n in fix:code[p]=(labels[n]-p-1)&255
 r[0x150:0x150+len(code)]=bytes(code);r[0x14d]=(-sum(r[0x134:0x14d])-25)&255
 Path('diagnostic.gb').write_bytes(r)
 
+# The sound renderer parks the CPU with VBlank interrupts enabled. Keep the main diagnostic's polling loop
+# unchanged and give the renderer a second fixture with a VBlank handler and a tiny callable GB routine.
+r[0x40] = 0xd9 # RETI
+loop = 0x150 + labels['loop']
+r[loop:loop + 3] = bytes([0xc3, 0x00, 0x03]) # JP 0300
+r[0x300:0x30a] = bytes([0xaf, 0xe0, 0x0f, 0x3e, 1, 0xe0, 0xff, 0xfb, 0x18, 0xfe]) # Clear IF, set IE, EI, JR @
+r[0x310:0x314] = bytes([0xea, 0x02, 0xc1, 0xc9]) # Store A in WRAM and return
+Path('diagnostic-sound.gb').write_bytes(r)
+
 # Original ARM7TDMI diagnostic. Mode 3 one-pixel stripes, then an idle loop.
 # Format fields are enough for mGBA; no commercial logo or ROM code included.
 import struct
