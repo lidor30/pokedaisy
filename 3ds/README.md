@@ -163,7 +163,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   the save editor reads it, the rest from `cards/<game>.card`, what the game looked like when it was last left). SETTINGS
   holds the settings that aren't a game's: the library's LAYOUT (LIST / GRID) and SORT, THEME, DARK MODE, VIEW, the sound, the
   battle buttons, HUD and FLY STYLE. X on a GBA game picks its **GBA CORE** (AUTO / ARMGBA / MGBA / GPSP, `enum pd_game_core`,
-  the pick-list SETTINGS uses): AUTO is armGBA; MGBA is slower but the one to try when a game misbehaves on armGBA; GPSP
+  the pick-list SETTINGS uses): AUTO is armGBA on a New 3DS and gpSP on an Old 3DS with room for a 32 MB game (the CIA; the .3dsx keeps armGBA there); MGBA is slower but the one to try when a game misbehaves on armGBA; GPSP
   (EXPERIMENTAL, "Sound and speed"). Kept per
   file as `library.tsv`'s sixth column (only when picked); the top screen's hint says the pick (X: MGBA).
 - **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported, round two
