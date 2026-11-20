@@ -306,6 +306,10 @@ interface CompanionSettings : StoredCompanionSettings {
 
 
 
+    /** ITEM POPUPS - see [com.pokedaisy.app.Prefs.itemPopups]. */
+    val itemPopups: Boolean get() = true
+    fun setItemPopups(on: Boolean) {}
+
     /** LAST BALL - see [com.pokedaisy.app.Prefs.lastBallButton]. */
     val lastBallButton: Boolean get() = true
     fun setLastBallButton(on: Boolean) {}

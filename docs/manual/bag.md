@@ -3,7 +3,7 @@ title: Bag
 summary: Every pocket of your bag with icons and descriptions, favorite items, which Pokémon can use a TM, teaching a TM or HM, reusable TMs, a keep-away item that never runs out, and using an item from the bottom screen.
 section: companion
 order: 4
-keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, hidden machine, teach move, learn move, forget move, description, sort, use item, berries, key items, star, starred, pin, favourite, auto refill, refill, wore off, run out, use another, wild encounters, keep away, spray]
+keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, hidden machine, teach move, learn move, forget move, description, sort, use item, berries, key items, star, starred, pin, favourite, auto refill, refill, wore off, run out, use another, wild encounters, keep away, spray, obtained, pickup, gain, received, toast]
 ---
 
 The bag tab shows everything you're carrying, pocket by pocket, as the game has it right now. It's handy for a quick count before a long cave, or for reading what an item does without digging through the game's menus.
@@ -19,6 +19,10 @@ Each row has the item's name and how many you have. TMs and HMs show the move th
 The button under the pockets changes the order. Each tap moves to the next: the game's own order, by name, by type, or by count (most first).
 
 ![The bag tab with its pocket tabs on the left and the item list on the right](shots/companion-bag.png "The bag tab")
+
+## Item gains
+
+When your bag gains an item, a small `OBTAINED` card slides in at the top of the game screen: the item's icon and name, and `×N` when you got more than one. It covers anything that adds to the bag, such as a pickup, a purchase, or an item taken back from a Pokémon or the PC. Using or selling an item doesn't show it, and neither does loading a save state. It stays for a couple of seconds, then fades by itself. Turn it off with `ITEM POPUPS` in SETTINGS (COMPANION group).
 
 ## Item details
 

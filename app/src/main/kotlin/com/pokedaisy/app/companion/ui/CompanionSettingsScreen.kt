@@ -1072,6 +1072,11 @@ private fun homeRows(
             tk("PROGRESS POPUPS"), onOff(s.raProgressPopups), enabled = s.raPopups,
             subtitle = "A notice when a counting achievement gets closer", labelBadge = NewFeatures.badge(NewFeatures.RA_POPUPS),
         ) { s.setRaProgressPopups(!s.raProgressPopups); changed() },
+        // The OBTAINED card over the game when the bag gains an item (ItemToast.kt).
+        SettingRow(
+            tk("ITEM POPUPS"), onOff(s.itemPopups), subtitle = "A card over the game when you get an item",
+            labelBadge = NewFeatures.badge(NewFeatures.ITEM_POPUPS),
+        ) { s.setItemPopups(!s.itemPopups); changed() },
         // Small on / off preferences: the icons' bounce, the map cursor's blink, tab slides, the battle jump.
         SettingRow(tk("TWEAKS"), null, opensPage = true, subtitle = "Small animations and the battle jump") { navigate(Page.TWEAKS) },
     ) + coopRows(s, changed, navigate, pick = { title, choices, current, onPick -> select(Selector(title, choices, current) { onPick(it); changed() }) }, askLock = askLock) + listOfNotNull(

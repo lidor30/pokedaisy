@@ -456,6 +456,10 @@ class PokeDaisyActivity : Activity() {
     private val tipWildEnds = ArrayDeque<Long>()
     private val hudUpright = androidx.compose.runtime.mutableStateOf(false)
     private val hudClear = androidx.compose.runtime.mutableStateOf(0 to 0)
+    /** Bumped when a savestate loads: the item toast starts its bag baseline over. */
+    private val itemToastReset = androidx.compose.runtime.mutableIntStateOf(0)
+    /** ITEM POPUPS (SETTINGS > COMPANION). */
+    private val itemToastOn = androidx.compose.runtime.mutableStateOf(true)
     private val hudFrame = androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
     /** Where the HUD keeps to while touch controls show held sideways, when the game's own picture gives it no frame
      * (EXPAND): the game's middle columns ([syncHudClear]). */
@@ -1960,6 +1964,11 @@ class PokeDaisyActivity : Activity() {
             battleRetryOn = on
         }
         override fun answerBattleRetry(retry: Boolean) = this@PokeDaisyActivity.answerBattleRetry(retry)
+        override val itemPopups get() = Prefs(this@PokeDaisyActivity).itemPopups
+        override fun setItemPopups(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).itemPopups = on
+            itemToastOn.value = on
+        }
         override val lastBallButton get() = Prefs(this@PokeDaisyActivity).lastBallButton
         override fun setLastBallButton(on: Boolean) {
             Prefs(this@PokeDaisyActivity).lastBallButton = on
@@ -2734,6 +2743,7 @@ class PokeDaisyActivity : Activity() {
         repelRefillOn = Prefs(this).repelRefill
         shinyAlertOn = Prefs(this).shinyAlert
         lastBallOn = Prefs(this).lastBallButton
+        itemToastOn.value = Prefs(this).itemPopups
         battleRetryOn = Prefs(this).battleRetry
         retryTaken = false
         retryLost = false
@@ -2861,7 +2871,11 @@ class PokeDaisyActivity : Activity() {
                     Hotkeys.Action.UNDO_LOAD -> if (ok) tr("Undid load") else if (CoopGuards.statesBlockedBy(CoopGuards.StateBlock.LOCK)) tr("Not while you play together only") else tr("Nothing to undo")
                     else -> ""
                 }
-                if (msg.isNotEmpty()) runOnUiThread { showHud(msg) }
+                val reloaded = ok && (action == Hotkeys.Action.LOAD_STATE || action == Hotkeys.Action.UNDO_LOAD)
+                if (msg.isNotEmpty() || reloaded) runOnUiThread {
+                    if (reloaded) itemToastReset.intValue++
+                    if (msg.isNotEmpty()) showHud(msg)
+                }
             }
             onSlotChanged = { slot ->
                 val text = if (states?.exists(slot) == true) tr("Slot {0} (used)", slot) else tr("Slot {0} (empty)", slot)
@@ -4992,6 +5006,11 @@ class PokeDaisyActivity : Activity() {
                         kotlinx.coroutines.delay(500)
                     }
                 }
+                // ITEM POPUPS: a bag gain, a small card top centre (clear of the HUD's corners and the area's name).
+                if (itemToastOn.value) com.pokedaisy.app.companion.ui.ItemToastHost(
+                    snap.items, snap.connected, snap.hasData, itemToastReset.intValue, snap.frameCounter,
+                    androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.TopCenter).padding(top = clearTop + 8.dp),
+                )
                 if (!companionSeen) {
                     val clearBottom = with(androidx.compose.ui.platform.LocalDensity.current) { hudClear.value.second.toDp() }
                     com.pokedaisy.app.companion.ui.AchievementIndicators(

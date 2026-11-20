@@ -325,6 +325,11 @@ class Prefs(
     fun shinyHuntFor(romKey: String): Int = p.getInt("shiny_hunt_$romKey", 0)
     fun setShinyHuntFor(romKey: String, count: Int) = p.edit().putInt("shiny_hunt_$romKey", count).apply()
 
+    /** ITEM POPUPS: the OBTAINED card over the game when the bag gains an item (ItemToast.kt). */
+    var itemPopups: Boolean
+        get() = p.getBoolean("item_popups", true)
+        set(v) = p.edit().putBoolean("item_popups", v).apply()
+
     /** LAST BALL: the BATTLE tab's ball button (BattleBall.kt), and the ball last thrown per ROM (0 = none yet). */
     var lastBallButton: Boolean
         get() = p.getBoolean("last_ball_button", true)
