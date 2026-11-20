@@ -81,6 +81,10 @@ const ALIASES = {
   'FireRed / Emerald, randomized': ['FireRed, randomized (UPR ZX 4.6.1)', 'Emerald, randomized (UPR ZX 4.6.1)'],
   Quetzal: ['Quetzal', 'Quetzal, Moemon Quetzal'],
   'Moemon Quetzal': ['Quetzal, Moemon Quetzal'],
+  'Sacred Gold (DS)': ['Sacred Gold (DS), Storm Silver (DS)'],
+  'Storm Silver (DS)': ['Sacred Gold (DS), Storm Silver (DS)'],
+  'Elysium (Part A)': ['Elysium (Part A), Elysium (Part B)'],
+  'Elysium (Part B)': ['Elysium (Part A), Elysium (Part B)'],
 };
 /**
  * Rows no games-table game owns: hacks the app proves by their code (never listed by name), and Emerald Kaizo,
