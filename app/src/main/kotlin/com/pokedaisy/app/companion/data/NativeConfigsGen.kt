@@ -213,6 +213,13 @@ val NATIVE_EMERALD_RETAIL = NATIVE_EMERALD.copy(
     battlerPartyIndexes = 0x0202406EL,
     battleStructPtr = 0x0202449CL,
     monToSwitchIntoOff = 0x5C,
+    // sMonSummaryScreen's pointer (EWRAM, pokemon_summary_screen.o after party_menu.o and mirage_tower.o in sym_ewram.ld):
+    // its mode / newMove tell the move-learning summary apart. 0x0203CF20, four bytes later, is gLastViewedMonIndex (7
+    // literals); the pointer's own address is the one the summary screen's functions load 30+ times.
+    summaryScreen = 0x0203CF1CL,
+    // gPartyMenu (0x0203CEC8, slotId +9) and gMoveToLearn (gBattleStruct + 0x46; both ROMs carry the address in ten places).
+    partyMenu = 0x0203CEC8L,
+    moveToLearn = 0x020244E2L,
 )
 
 // The European Emerald releases (BPES / BPED / BPEF / BPEI): every RAM address
@@ -302,6 +309,10 @@ val NATIVE_EMERALD_JA = NATIVE_EMERALD_RETAIL.copy(
     // party menu, a written move cell + A used that move.
     actionCursor = 0x02024150L,
     moveCursor = 0x02024154L,
+    // Its own build: retail's summary-screen pointer / gMoveToLearn / gPartyMenu aren't its addresses.
+    summaryScreen = 0,
+    moveToLearn = 0,
+    partyMenu = 0,
     language = 'J',
     gameCode = "BPEJ",
     trainerCard = null,
@@ -3234,6 +3245,9 @@ val NATIVE_EMERALD_KAIZO = NATIVE_EMERALD_RETAIL.copy(
 val NATIVE_EMERALD_LEGACY = NATIVE_EMERALD_RETAIL.copy(
     gameCode = LEGACY_TEXT,
     itemDescs = vanillaItems(0x085B6210L),
+    // A rebuild: retail's sMonSummaryScreen / gMoveToLearn aren't its EWRAM addresses.
+    summaryScreen = 0,
+    moveToLearn = 0,
     gMain = 0x030024A0L,
     saveBlock1Ptr = 0x03005F6CL,
     saveBlock2Ptr = 0x03005F70L,

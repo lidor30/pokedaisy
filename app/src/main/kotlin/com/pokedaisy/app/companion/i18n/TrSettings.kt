@@ -591,6 +591,7 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "RING" to Tr(ja = "リング", fr = "ANNEAU", de = "RING", it = "ANELLO", es = "ANILLO", br = "ANEL", pt = "ANEL", ko = "링"),
     "Still working: {0} steps left" to Tr(ja = "まだ きいています: のこり {0}ほ", fr = "Encore actif : {0} pas restants", de = "Wirkt noch: {0} Schritte übrig", it = "Ancora attivo: {0} passi", es = "Aún activo: quedan {0} pasos", br = "Ainda ativo: faltam {0} passos", pt = "Ainda ativo: faltam {0} passos", ko = "아직 효과 중: {0}걸음 남음"),
     "{0} steps" to Tr(ja = "{0}ほ", fr = "{0} pas", de = "{0} Schritte", it = "{0} passi", es = "{0} pasos", br = "{0} passos", pt = "{0} passos", ko = "{0}걸음"),
+    "MOVE ADVICE" to Tr(ja = "わざの アドバイス", fr = "CONSEIL D'ATTAQUE", de = "ATTACKEN-TIPP", it = "CONSIGLIO MOSSE", es = "CONSEJO DE MOVIMIENTO", br = "DICA DE GOLPE", pt = "DICA DE GOLPE", ko = "기술 조언"),
     "REPEL STEPS" to Tr(ja = "むしよけの ほすう", fr = "PAS DE REPOUSSE", de = "SCHUTZ-SCHRITTE", it = "PASSI REPELLENTE", es = "PASOS DE REPELENTE", br = "PASSOS DE REPELENTE", pt = "PASSOS DE REPELENTE", ko = "스프레이 걸음 수"),
     "Party, map and more on the field" to Tr(ja = "フィールドで てもち マップ など", fr = "Équipe, carte et plus sur le terrain", de = "Team, Karte und mehr im Gelände", it = "Squadra, mappa e altro sul campo", es = "Equipo, mapa y más en el campo", br = "Equipe, mapa e mais no campo", pt = "Equipe, mapa e mais no campo", ko = "필드에서 파티, 지도 등을 보여 줘요"),
     // BATTLE BUTTONS.

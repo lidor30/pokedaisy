@@ -325,6 +325,8 @@ val LEGACY_NATIVE_EMERALD_RETAIL = LEGACY_NATIVE_EMERALD.copy(
     // From the unpatched (byte-identical) build's map; headless on retail: presses land back to back.
     actionCursor = 0x020244ACL,
     moveCursor = 0x020244B0L,
+    // The move-learning card (gamedata's summaryScreen / moveToLearn, with gPartyMenu for a TM's move).
+    partyMenu = 0x0203CEC8L, summaryScreen = 0x0203CF1CL, moveToLearn = 0x020244E2L,
     trainerCard = TRAINER_CARD_EMERALD,
     pokedex = POKEDEX_EMERALD,
     guideTables = GUIDE_TABLES_EMERALD,
@@ -395,6 +397,7 @@ val LEGACY_NATIVE_EMERALD_JA = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     pokemonStoragePtr = 0x03005AF4L,
     itemDescs = japaneseItems(0x0855CEE8L),
     actionCursor = 0x02024150L, moveCursor = 0x02024154L,
+    partyMenu = 0, summaryScreen = 0, moveToLearn = 0,
 
     language = 'J', gameCode = "BPEJ", trainerCard = null,
     playerParty = 0x02024190L, playerPartyCount = 0x0202418DL,
@@ -1141,6 +1144,7 @@ val LEGACY_NATIVE_EMERALD_KAIZO = LEGACY_NATIVE_EMERALD_RETAIL.copy(pokemonStora
 // species 412-414 are Deoxys forms, so an egg is flagged (eggSpecies) rather than read as vanilla's 412.
 val LEGACY_NATIVE_EMERALD_LEGACY = LEGACY_NATIVE_EMERALD_RETAIL.copy(
     gameCode = LEGACY_TEXT,
+    summaryScreen = 0, moveToLearn = 0,
     itemDescs = vanillaItems(0x085B6210L),
     gMain = 0x030024A0L,
     saveBlock1Ptr = 0x03005F6CL,

@@ -4937,6 +4937,11 @@ class PokeDaisyActivity : Activity() {
                 onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
                 onPanel = { hudPanelOpen.value = it },
             ) }
+            // MOVE ADVICE: the card over the game while its summary asks which move to forget (also in a battle or a menu,
+            // where the HUD itself is hidden).
+            if (hudOn.value && !hudUpright.value && snap.moveLearning != null && hudStyle.value.shows(com.pokedaisy.app.companion.FieldHudPart.MOVE_ADVICE)) {
+                com.pokedaisy.app.companion.ui.MoveLearningHudCard(snap, hudStyle.value)
+            }
             // A DS game: the game's own buttons over the end of its text box, driven like Gen 3's menus.
             if (romIsNds) {
                 // A DS battle's menu is drawn by the floating window's view, under its dim ([buildDsStageViews]).
