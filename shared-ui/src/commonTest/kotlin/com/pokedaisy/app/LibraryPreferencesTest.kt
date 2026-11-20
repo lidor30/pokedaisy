@@ -3,8 +3,7 @@ package com.pokedaisy.app
 import com.pokedaisy.app.companion.LibraryPreferences
 import com.pokedaisy.app.companion.LibrarySort
 import com.pokedaisy.app.companion.data.LibraryView
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class LibraryPreferencesTest {
     private var saved: String? = null
@@ -20,6 +19,22 @@ class LibraryPreferencesTest {
         assertEquals(LibraryView.FAVORITES, reopened.view)
         assertEquals(setOf("a,quoted\"é.gba"), reopened.favorites)
         reopened.toggleFavorite("a,quoted\"é.gba"); assertTrue(open().favorites.isEmpty())
+    }
+
+    @Test fun displayAliasPreservesTheFilenameKeyAndCanBeRemoved() {
+        val id = "Café - Original.gbc"
+        val prefs = open()
+        prefs.recordAdded(listOf(id))
+        prefs.recordPlay(id)
+        prefs.toggleFavorite(id)
+        prefs.rename(id, "  Night Route  ", "Café - Original")
+        val reopened = open()
+        assertEquals("Night Route", reopened.displayName(id, "Café - Original"))
+        assertEquals(id, reopened.last)
+        assertEquals(setOf(id), reopened.favorites)
+        assertEquals(setOf(id), reopened.added.keys)
+        reopened.rename(id, "  ", "Café - Original")
+        assertEquals("Café - Original", open().displayName(id, "Café - Original"))
     }
 
     @Test fun playHistoryAndAddedDatesKeepTheirOriginalIdentity() {

@@ -6,7 +6,6 @@ import okio.Path.Companion.toOkioPath
 
 /** Android locations and its existing RZIP decoder; import/backup/rollback rules are common. */
 fun GameSaves.backupName(current: File, now: Long = System.currentTimeMillis()): String = backupName(current.name, now)
-fun GameSaves.backups(dir: File, romBaseName: String): List<File> = backups(dir.toOkioPath(), romBaseName).map { File(it.toString()) }
 fun GameSaves.load(context: Context, prefs: Prefs, rom: File, picked: ByteArray): GameSaves.Result {
     val bytes = when (val decoded = RzipSave.decode(picked)) {
         RzipSave.Result.NotRzip -> picked

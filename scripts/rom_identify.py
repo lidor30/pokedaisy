@@ -85,14 +85,15 @@ def repo_sha1s() -> set[str]:
 
 
 def repo_titles() -> dict[str, str]:
-    """SHA-1 -> library title: the website's export, then GameTitles' own pairs (newer than the export), the DS ports."""
+    """SHA-1 -> library title: the website's export, then the shared catalog's own pairs (newer than the export), the DS ports."""
     titles: dict[str, str] = {}
     compat = REPO / "website" / "src" / "data" / "compat.json"
     if compat.exists():
         titles.update(json.loads(compat.read_text()).get("titles", {}))
     consts = dict(re.findall(r'val\s+(\w+)\s*=\s*"([0-9a-f]{40})"', git("grep", "-hE", r'val\s+\w+\s*=\s*"[0-9a-f]{40}"',
                                                                             "--", "app/src/main", "shared/src/commonMain")))
-    text = (REPO / "app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt").read_text()
+    src = REPO / "shared/src/commonMain/kotlin/com/pokedaisy/app"
+    text = (src / "GameTitleCatalog.kt").read_text() + (src / "companion/data/RetailLookTitles.kt").read_text()
     for key, title in re.findall(r'([\w.]+|"[0-9a-f]{40}")\s+to\s+"([^"]+)"', text):
         sha = key.strip('"') if key.startswith('"') else consts.get(key.split(".")[-1])
         if sha:

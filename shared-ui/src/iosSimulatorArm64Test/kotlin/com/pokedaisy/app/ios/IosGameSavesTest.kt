@@ -34,6 +34,8 @@ class IosGameSavesTest {
             assertContentEquals(picked, fs.read(current) { readByteArray() })
             val named = GameSaves.backups(current.parent!!, base).single()
             assertContentEquals(old, fs.read(named) { readByteArray() })
+            val snapshot = StateFiles.batteryBackups(current).single()
+            assertEquals(setOf(named, snapshot), iosSaveBackups(current).toSet())
             assertTrue(fs.exists(states.freshBootFile)); assertFalse(fs.exists(states.resumeFile))
             assertFalse(fs.exists(SnapshotCache.fileFor(states.resumeFile)))
             assertNotNull(PokeDaisyHost.loadSave(rom.toString(), byteArrayOf()))

@@ -111,6 +111,8 @@ If you see `BASE ROM NOT FOUND`, none of your games has the checksum the patch w
 
 If the companion doesn't support the patched game, you're told so and it stays out of the library, but the file is still saved. `ASK FOR SUPPORT` asks for the game to be added. If it was saved in PokeDaisy's own games folder, Settings > `HIDDEN GAMES` can still show it in the library.
 
+On iPhone and iPad, use `+ → PATCH A ROM` or `TOOLS → PATCH A ROM` and choose the patch in Files. First add the clean GBA, Game Boy or Game Boy Color base ROM to your library. The patched copy is saved to `PokeDaisy/roms` in Files and is ready to play from the library.
+
 ### File types
 
 - `.gba` files, and Game Boy / Game Boy Color `.gb` and `.gbc`.
@@ -120,7 +122,7 @@ If the companion doesn't support the patched game, you're told so and it stays o
 
 PokeDaisy recognizes the games it supports and shows their proper names ("Pokémon FireRed", "Pokémon Unbound") whatever the file is called. Other games show their file name, tidied up: dump tags like `(USA, Europe)` and numbering are dropped.
 
-To call a game something else, use `RENAME` in its menu. It only changes what the library shows; the file keeps its name, so its save is still found.
+To call a game something else, use `RENAME` in its menu. On iPhone and iPad, touch and hold a game, or tap the menu button in list view. It only changes what the library shows; the file keeps its name, so its save is still found.
 
 Prefer your own file names? Set `GAME NAMES` to `FILE NAME` in Settings, in the `LIBRARY` group.
 
@@ -213,6 +215,8 @@ With the touch screen, a tap on a game opens it straight away, and a long press 
 Prefer the library without the cursor and legend? Turn off `DUAL-SCREEN LAUNCHER` in Settings, in the `LIBRARY` group.
 
 ## Game info
+
+On iPhone and iPad, touch and hold a game and choose `INFO` to see its ROM header and fingerprints, battery save and backups, and occupied save-state slots. For a cartridge PokeDaisy recognizes by its fingerprint, the game details can show its catalog name. In list view you can also open `INFO` from the game’s menu button.
 
 `INFO` in a game's menu shows what PokeDaisy knows about it, in sections:
 

@@ -122,7 +122,7 @@ private object SkiaPictures : PictureCodec {
 
 /** Dates and times the device's way (STATES' save times). */
 @OptIn(BetaInteropApi::class)
-private object FoundationDates : DeviceDates {
+internal object FoundationDates : DeviceDates {
     private val format = NSDateFormatter().apply {
         dateStyle = NSDateFormatterShortStyle
         timeStyle = NSDateFormatterShortStyle
