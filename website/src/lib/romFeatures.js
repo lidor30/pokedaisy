@@ -36,6 +36,7 @@ export const FEATURE_GROUPS = [
     ['Shiny odds', msg('SHINY ODDS'), msg('Wild Pokémon turn up shiny at the odds you pick.')],
     ['TMs from the bag', msg('TEACH A TM'), msg('USE on a TM or HM in the companion\'s bag opens the game\'s own screen for teaching it.')],
     ['FLASH', msg('QUICK FLASH'), msg('Light up a dark cave from the quick menu.')],
+    ['Wild pin', msg('WILD PIN'), msg('Pin a wild Pokémon in the area\'s list and it\'s the next one you meet.')],
   ]],
 ];
 export const FEATURE_COLUMNS = FEATURE_GROUPS.flatMap(([, rows]) => rows.map((r) => r[0]));
