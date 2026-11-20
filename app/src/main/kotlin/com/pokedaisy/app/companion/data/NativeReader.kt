@@ -456,7 +456,9 @@ private const val SUMMARY_NEW_MOVE_OFF = 0x40C4
 /** What sMonSummaryScreen says right now: its mode, curMonIndex and newMove. */
 private data class SummarySelect(val mode: Int, val mon: Int, val newMove: Int)
 
-fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
+/** [moveWatch]: the sampler's own [MoveLearningWatch], for the move-learning card; null (BEST EFFORT's candidates, tests)
+ * = no card read. */
+fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig, moveWatch: MoveLearningWatch? = null): Telemetry {
     val frameCounter = runCatching { u32le(client.readCoreMemory(cfg.gMainVblankCtr, 4), 0) }.getOrDefault(0L)
 
     // --- party ---
@@ -594,7 +596,7 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
     // gPartyMenu.data1 (s16 at +0xE): the move a TM / tutor / party-menu learn is teaching.
     val menuMove = if (cfg.partyMenu == 0L) 0 else
         runCatching { u16le(client.readCoreMemory(cfg.partyMenu + 14, 4), 0) }.getOrDefault(0)
-    val moveLearning = MoveLearningWatch.check(
+    val moveLearning = moveWatch?.check(
         levelMove = levelMove,
         menuMove = menuMove,
         mode = summary?.mode ?: 0,

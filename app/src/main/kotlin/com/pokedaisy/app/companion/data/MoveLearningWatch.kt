@@ -11,8 +11,10 @@ internal const val SUMMARY_MODE_SELECT_MOVE = 3
  * gMoveToLearn / gPartyMenu.data1 keep the last move too. So the bytes alone would show "learning" under any
  * later menu. A move counts as a new event when gMoveToLearn or gPartyMenu.data1 changes, or when the select-move
  * screen comes up; a panel already showing stays until the screen's mode changes or the page goes away.
+ *
+ * One per sampler (its own game): BEST EFFORT reads candidate configs through the same reader, which must not move it.
  */
-object MoveLearningWatch {
+class MoveLearningWatch {
     private var started = false
     private var lastLevelMove = 0
     private var lastMenuMove = 0

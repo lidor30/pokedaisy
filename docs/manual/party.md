@@ -3,7 +3,7 @@ title: Party and summaries
 summary: Your team at a glance, each Pokémon's full summary, its exact IVs and EVs, which new moves are worth learning, and the POKéMON CENTER's services anywhere.
 section: companion
 order: 2
-keywords: [team, pokemon, summary, pokemon pictures, party pictures, pictures, sprites, front sprite, detailed icons, ivs, evs, nature, ability, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade, pokemon center, center, heal, heal anywhere, nurse, move relearner, move tutor, relearn, remember move, move deleter, delete move, forget move, name rater, nickname, rename, move details, move info, move page, accuracy, effect, priority, category, physical, special]
+keywords: [team, pokemon, summary, pokemon pictures, party pictures, pictures, sprites, front sprite, detailed icons, ivs, evs, nature, ability, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, move replacement, replacement, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box, trade, trade evolution, evolve, evolution, no trade, pokemon center, center, heal, heal anywhere, nurse, move relearner, move tutor, relearn, remember move, move deleter, delete move, forget move, name rater, nickname, rename, move details, move info, move page, accuracy, effect, priority, category, physical, special]
 ---
 
 The `PARTY` tab is your team, live. Glance down and you know who's hurt, who's poisoned and who's about to level up, without pausing to open the game's menu.
@@ -124,6 +124,8 @@ Each entry shows the move's type, power, accuracy (`ACC`) and PP, and a verdict:
 | `FORGET` and a move name | Worth learning, in place of that move. |
 | `SKIP` | Not better than what it already knows. |
 | `LEARNED` | It already knows this one. |
+
+When the game itself asks which move to forget, Emerald shows the same advice in a small card at the top right of the game screen: `MOVE REPLACEMENT`, then `FORGET` and the move you would lose beside `LEARN` and the new move, each move in its type's colour. It needs no tab switch, and it goes away with the game's screen. Turn it off with `MOVE ADVICE` in SETTINGS > HUD.
 
 Tap an entry to see why. The reasons are short and specific, such as `NEW 2x ON` and the types it would start hitting hard, `YOUR TYPE: x1.5`, `ACCURACY 70%`, or that the move runs on its weaker attacking stat. The move it would replace gets a red `FORGET` tag on the left, so you can see exactly what you'd give up. Tap the entry again to close it.
 

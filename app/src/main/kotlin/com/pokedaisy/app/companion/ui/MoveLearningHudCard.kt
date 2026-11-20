@@ -23,7 +23,6 @@ import com.pokedaisy.app.companion.FieldHudStyle
 import com.pokedaisy.app.companion.data.MoveLearning
 import com.pokedaisy.app.companion.data.SnapshotView
 import com.pokedaisy.app.companion.data.Verdict
-import com.pokedaisy.app.companion.data.moveData
 import com.pokedaisy.app.companion.data.lookupMove
 import com.pokedaisy.app.companion.data.typeName
 import com.pokedaisy.app.companion.i18n.tr
@@ -36,12 +35,15 @@ import kotlin.math.roundToInt
  * the normal HUD is hidden in a battle or menu, and goes when the game's page does.
  */
 @Composable
-internal fun MoveLearningHudCard(snapshot: SnapshotView, style: FieldHudStyle, modifier: Modifier = Modifier) {
+fun MoveLearningHudCard(snapshot: SnapshotView, style: FieldHudStyle, modifier: Modifier = Modifier) {
     val ml = snapshot.moveLearning ?: return
     val mon = snapshot.party.getOrNull(ml.partyIndex) ?: return
     val tables = snapshot.pokedex?.tables ?: return
     if (!MoveLearning.available(tables, snapshot.guideTables)) return
-    val advice = remember(tables, mon, ml.move) { MoveLearning.advise(tables, mon, ml.move) }
+    // Off the UI thread: the advice reads the ROM's TM / learnset tables the first time (DexDetails, cached after).
+    val advice = androidx.compose.runtime.produceState<com.pokedaisy.app.companion.data.MoveAdvice?>(null, tables, mon, ml.move) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { MoveLearning.advise(tables, mon, ml.move) }
+    }.value ?: return
     // The same whole-screen-pixel density FieldHud draws its own text with: at the plain device density the card's
     // glyphs land on fractional pixels and look soft next to the HUD.
     val base = LocalDensity.current
@@ -73,26 +75,26 @@ internal fun MoveLearningHudCard(snapshot: SnapshotView, style: FieldHudStyle, m
                         old > 0 -> {
                             GbaText(tr("FORGET"), colors.muted, colors.shadow, m)
                             Spacer(Modifier.width(u * 2))
-                            GbaText((moveData[old]?.name ?: "#$old"), typeColor(old), colors.shadow, m)
+                            GbaText(lookupMove(old).name, typeColor(old), colors.shadow, m)
                             Spacer(Modifier.width(u * 5))
                             GbaText(tr("LEARN"), colors.muted, colors.shadow, m)
                             Spacer(Modifier.width(u * 2))
-                            GbaText((moveData[ml.move]?.name ?: "#${ml.move}"), typeColor(ml.move), colors.shadow, m)
+                            GbaText(lookupMove(ml.move).name, typeColor(ml.move), colors.shadow, m)
                         }
                         advice.verdict == Verdict.SKIP -> {
                             GbaText(tr("SKIP"), colors.muted, colors.shadow, m)
                             Spacer(Modifier.width(u * 2))
-                            GbaText((moveData[ml.move]?.name ?: "#${ml.move}"), typeColor(ml.move), colors.shadow, m)
+                            GbaText(lookupMove(ml.move).name, typeColor(ml.move), colors.shadow, m)
                         }
                         advice.verdict == Verdict.KNOWN -> {
                             GbaText(tr("LEARNED"), colors.muted, colors.shadow, m)
                             Spacer(Modifier.width(u * 2))
-                            GbaText((moveData[ml.move]?.name ?: "#${ml.move}"), typeColor(ml.move), colors.shadow, m)
+                            GbaText(lookupMove(ml.move).name, typeColor(ml.move), colors.shadow, m)
                         }
                         else -> {
                             GbaText(tr("LEARN"), colors.muted, colors.shadow, m)
                             Spacer(Modifier.width(u * 2))
-                            GbaText((moveData[ml.move]?.name ?: "#${ml.move}"), typeColor(ml.move), colors.shadow, m)
+                            GbaText(lookupMove(ml.move).name, typeColor(ml.move), colors.shadow, m)
                         }
                     }
                 }

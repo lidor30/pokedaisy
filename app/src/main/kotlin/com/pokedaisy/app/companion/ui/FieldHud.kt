@@ -183,6 +183,7 @@ fun fieldHudRows(
         SettingRow(p.label, onOff(style.shows(p)), enabled = on, labelBadge = when (p) {
             FieldHudPart.PC -> NewFeatures.badge(NewFeatures.HUD_PC)
             FieldHudPart.REPEL -> NewFeatures.badge(NewFeatures.HUD_REPEL)
+            FieldHudPart.MOVE_ADVICE -> NewFeatures.badge(NewFeatures.HUD_MOVE_ADVICE)
             else -> null
         }, labelIcon = hudPartIcon(p), iconPixels = ROW_ICON_PIXELS) {
             setStyle(style.copy(hidden = if (style.shows(p)) style.hidden + p else style.hidden - p))
@@ -205,6 +206,7 @@ private fun hudPartIcon(part: FieldHudPart): @Composable () -> Unit = {
         FieldHudPart.PC -> PixelArt(PC_ICON, PC_COLORS, fill)
         FieldHudPart.BAG -> PixelArt(BAG_ICON, BAG_COLORS, fill)
         FieldHudPart.WILD -> PixelArt(GRASS_ICON, GRASS_COLORS, fill)
+        FieldHudPart.MOVE_ADVICE -> TabIcons.forTab("PARTY")?.let { PixelArt(it.bitmap, it.palette, fill) }
     }
 }
 

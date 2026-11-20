@@ -16,6 +16,8 @@ import kotlinx.coroutines.channels.Channel
  * reads never race a frame. Detection (ROM code, size and hash) is cached.
  */
 class TelemetrySampler {
+    /** The game's move-learning summary (the HUD's MOVE ADVICE card): this sampler's game only. */
+    private val moveWatch = MoveLearningWatch()
 
     init {
         resetNativeBagCache()
@@ -357,7 +359,7 @@ class TelemetrySampler {
                 itemTextChosen = true
                 onGameIdentified?.invoke(kind!!.name, beMatch?.candidate?.title)
                 PokedexSource.romChanged()
-                MoveLearningWatch.reset()
+                moveWatch.reset()
                 // A DS cart: its text's language once NdsArt has read it (it applies it itself when it lands later), else the header's.
                 (nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language
                     ?: dsLanguage)?.let { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(it) }
@@ -398,7 +400,7 @@ class TelemetrySampler {
 
             val telemetry = when (kind) {
                 // English Unbound leaves nativeCfg null (see detect()); its French translation sets its own.
-                GameKind.UNBOUND -> readNativeTelemetry(reader, nativeCfg ?: unboundCfg)
+                GameKind.UNBOUND -> readNativeTelemetry(reader, nativeCfg ?: unboundCfg, moveWatch)
                 GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.PURE_RED, GameKind.PURE_BLUE, GameKind.YELLOW_LEGACY,
                 GameKind.BROWN ->
                     readGen1Telemetry(reader, gen1Cfg ?: GEN1_YELLOW)
@@ -410,7 +412,7 @@ class TelemetrySampler {
                 else -> {
                     unsupportedHackLabel?.let { return SnapshotView(connected = false, error = it, unsupported = true, blocked = blocked) }
                     val cfg = nativeCfg ?: return SnapshotView(connected = false, error = "no telemetry source")
-                    readNativeTelemetry(reader, cfg)
+                    readNativeTelemetry(reader, cfg, moveWatch)
                 }
             }
             lastError = null
