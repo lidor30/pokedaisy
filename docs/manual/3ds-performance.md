@@ -10,7 +10,7 @@ On an original Nintendo 3DS or 2DS, the game and companion share a small amount 
 
 ## Choose a core and view
 
-Select your game in the library, press **X** and try `GBA CORE: GPSP`. It is experimental. Keep the same game, save and view when comparing it with another core.
+When the app runs as the CIA, `GBA CORE: AUTO` already plays GBA games on `GPSP` here, an experimental core that is faster on these models than `ARMGBA`. To compare, select your game in the library, press **X** and pick another `GBA CORE`. Keep the same game, save and view when comparing two cores. A started `.3dsx` has room for a 16 MiB game only, so `AUTO` stays on `ARMGBA` there.
 
 For a separate display comparison, try `SCREEN: PIXEL 1x` without EXPAND. It avoids the extra scaling pass used by the sharper enlarged views. You can switch back if you prefer the larger picture.
 

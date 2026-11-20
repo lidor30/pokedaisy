@@ -649,16 +649,21 @@ static bool run_game(const char* file) {
     size_t nameLen = strlen(file);
     bool gbName = (nameLen > 3 && !strcasecmp(file + nameLen - 3, ".gb")) || (nameLen > 4 && !strcasecmp(file + nameLen - 4, ".gbc"));
     bool armgba = !gbName && pd_armgba_wants(header, sizeof(header));
-    // The game's GBA CORE (X in the library): MGBA plays it on mGBA, GPSP on gpSP; AUTO and ARMGBA on armGBA.
-    bool gpsp = armgba && pickedCore == PD_CORE_GPSP;
+    // The game's GBA CORE (X in the library): MGBA plays it on mGBA, GPSP on gpSP, ARMGBA on armGBA. AUTO is armGBA on a
+    // New 3DS and gpSP on an Old 3DS with room for a 32 MB game (the CIA): there armGBA ran FireRed at 36-42 FPS, gpSP
+    // drawn with the game at 52-55 (the dev build's Old 3DS mode, 2026-11-20). The .3dsx's 16 MB buffer keeps armGBA.
+    bool autoGpsp = pickedCore == PD_CORE_AUTO && !host_is_new_3ds() && host_rom_arena_size() >= (32u << 20);
+    bool gpsp = armgba && (pickedCore == PD_CORE_GPSP || autoGpsp);
     if (armgba && (pickedCore == PD_CORE_MGBA || gpsp)) armgba = false;
 #ifdef PD_DEV
-    // The dev build's switch for comparing the cores: sdmc:/pokedaisy-dev/armgba/mgba runs GBA games on mGBA.
+    // The dev build's switch for comparing the cores: sdmc:/pokedaisy-dev/armgba/mgba runs GBA games on mGBA (also
+    // where AUTO would have picked gpSP).
     {
         FILE* useMgba = fopen("sdmc:" WORK_DIR "/mgba", "rb");
         if (useMgba) {
             fclose(useMgba);
             armgba = false;
+            gpsp = false;
         }
     }
 #endif
