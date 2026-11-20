@@ -55,6 +55,7 @@ class EmulatorEngine(
     private val battle: com.pokedaisy.app.companion.GameBattleInput,
     private val preferences: Prefs,
     private val telemetry: com.pokedaisy.app.companion.TelemetryStore,
+    private val musicSource: SteadyMusicSource? = null,
 ) {
     private var thread: Thread? = null
     @Volatile var running = false
@@ -276,8 +277,6 @@ class EmulatorEngine(
     /** The field screen is up, positively: FfMenuWatch's learned callback on a GBA game, the field map process on a DS. */
     private val fieldScreen get() = if (nds) fieldState and MgbaCore.FIELD_SCREEN != 0 else gba && FfMenuWatch.onField
 
-    /** A Game Boy game's music tables: its STEADY FF-music key comes from Gen1Music instead of the m4a engine. */
-    @Volatile var gen1Music: com.pokedaisy.app.companion.data.Gen1MusicTables? = null
     var onStateResult: ((action: Hotkeys.Action, slot: Int, ok: Boolean) -> Unit)? = null
     var onSlotChanged: ((slot: Int) -> Unit)? = null
     var onSpeedChanged: ((label: String) -> Unit)? = null
@@ -286,7 +285,7 @@ class EmulatorEngine(
      * actually changes — a cached clip (its loop, intro and when the song
      * started), or null to stop (nothing cached yet for this state, or FF
      * isn't active). Post the player's work to the UI thread yourself (see FfMusicPlayer). */
-    var onFfMusicChanged: ((clip: FfMusicPlayer.Clip?) -> Unit)? = null
+    var onFfMusicChanged: ((clip: SteadyMusicClip?) -> Unit)? = null
 
     /** Fired (emu thread) in STEADY when the game starts a song with no clip
      * yet ([FfMusicKey]) - hand it to [FfMusicRenderer.request]. */
@@ -1188,12 +1187,7 @@ class EmulatorEngine(
         var lastSample = 0L
         var lastBattleInputSample = 0L
         val ffClipNotice = SteadyClipNotice()
-        var requestedKey: String? = null
-        // The song playing and when it started (elapsedRealtime), so a clip picks up
-        // where the song is: from the top for a song that just started, further on
-        // when FF comes on mid-song. A key blinking off for a moment isn't a new song.
-        var songKey: String? = null
-        var songStartedAt = 0L
+        val steady = SteadyMusic(ffMusicCache, android.os.SystemClock::elapsedRealtime)
         // SPED-UP: the core's audio averaged down to real time (a box
         // filter, so it's the game's own sound pitched and tempo'd up).
         val spedUpOut = ShortArray(scratch.size)
@@ -1466,7 +1460,7 @@ class EmulatorEngine(
                 // STEADY's clip: the activity released its player as the screen went off, so it's told again (the
                 // lid closed and opened on the Thor left FF silent). The song held meanwhile: its start moves on.
                 ffClipNotice.forget()
-                songStartedAt += android.os.SystemClock.elapsedRealtime() - sleptAt
+                steady.holdFor(android.os.SystemClock.elapsedRealtime() - sleptAt)
                 if (!paused) runCatching { track?.play() }
                 // As after the audio pausing below: flush() put the play head back at 0. And the frames due while
                 // it slept are not owed.
@@ -1649,35 +1643,14 @@ class EmulatorEngine(
             val mode = ffMusicMode
             // The song the game is playing right now (FfMusicKey): read
             // every frame, so a clip starts and stops exactly with it.
-            val ffMusicKey = if (gba) FfMusicKey.current(InProcessReader)
-                else gen1Music?.let { com.pokedaisy.app.companion.data.Gen1Music.current(InProcessReader, it) }
-            if (ffMusicKey != null && ffMusicKey != songKey) {
-                songKey = ffMusicKey
-                songStartedAt = android.os.SystemClock.elapsedRealtime()
-            }
-            // STEADY: have each new song rendered on its own, at any
-            // speed, so its clip is usually ready before FF needs it.
-            if (mode != FfMusicMode.STEADY) requestedKey = null
-            else if (ffMusicKey != null && ffMusicKey != requestedKey) {
-                requestedKey = ffMusicKey
-                ffMusicCache.notePlayed(ffMusicKey)   // the songs played longest ago go first when the cache is full
-                if (!ffMusicCache.complete(ffMusicKey)) runCatching { onFfMusicWanted?.invoke(ffMusicKey) }
-            }
-            // The clip follows the FF the player asked for, not SMART's 1x stretches: it
-            // plays straight through a menu instead of handing over to the game's music
-            // (at another spot in the song) and starting over when FF picks up again.
-            val clip = if (ffWanted && mode == FfMusicMode.STEADY && ffMusicKey != null) {
-                ffMusicCache.fileIfCached(ffMusicKey)
-            } else null
-            if (ffClipNotice.changed(clip)) {
-                onFfMusicChanged?.invoke(
-                    clip?.let { FfMusicPlayer.Clip(it, ffMusicCache.introIfCached(ffMusicKey!!), songStartedAt) },
-                )
-            }
-            // STEADY with the song's clip still rendering: FF stays silent until it's in (it used to
-            // play the song SPED-UP meanwhile, then switch) - unless no clip will ever come.
-            val awaitingClip = mode == FfMusicMode.STEADY && clip == null && ffMusicKey != null &&
-                ffMusicWillRender?.invoke(ffMusicKey) == true
+            val ffMusicKey = musicSource?.current(InProcessReader)
+            steady.observe(ffMusicKey, mode == FfMusicMode.STEADY, ffWanted,
+                request = { key -> runCatching { onFfMusicWanted?.invoke(key) } },
+                willRender = { key -> ffMusicWillRender?.invoke(key) == true })
+            val desired = steady.clip
+            val clip = desired?.loop
+            if (ffClipNotice.changed(clip)) onFfMusicChanged?.invoke(desired)
+            val awaitingClip = steady.awaitingClip
             // A DS game: no clips, the copy (above). Like a clip it follows the FF the player asked for, so it
             // plays straight through SMART's 1x menus. It also plays through a menu change the hold runs flat out
             // (dsHeldFast: POKéMON or BAG from Black's X menu, both screens changing), which was silent (GitHub #1143);

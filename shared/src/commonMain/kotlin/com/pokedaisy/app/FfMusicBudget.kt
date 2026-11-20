@@ -1,7 +1,27 @@
 package com.pokedaisy.app
 
-import java.io.File
-import java.util.concurrent.Executors
+import com.pokedaisy.app.companion.data.delete
+import com.pokedaisy.app.companion.data.isDirectory
+import com.pokedaisy.app.companion.data.isFile
+import com.pokedaisy.app.companion.data.lastModified
+import com.pokedaisy.app.companion.data.length
+import com.pokedaisy.app.companion.data.listFiles
+import com.pokedaisy.app.companion.data.readLines
+import com.pokedaisy.app.companion.data.writeTextAtomically
+import kotlin.concurrent.Volatile
+import kotlin.time.Clock
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import okio.FileSystem
+import okio.Path
+import okio.SYSTEM
+import okio.buffer
+import okio.use
 
 /**
  * Keeps every ROM's STEADY clips ([FfMusicCache]) under one budget: at most [MAX_BYTES], and at most a quarter of what
@@ -13,7 +33,7 @@ import java.util.concurrent.Executors
  * (`.played`: `<rom crc> <song key> <millis>` per line, newest last; file times aren't reliable on Android's external
  * storage). The background pass only fills free room ([hasRoom]) and never pushes anything out.
  */
-internal object FfMusicBudget {
+object FfMusicBudget {
     /** 1.5 GB. */
     const val MAX_BYTES = 1536L shl 20
 
@@ -22,7 +42,8 @@ internal object FfMusicBudget {
 
     private const val PLAYED = ".played"
 
-    private val writer = Executors.newSingleThreadExecutor { r -> Thread(r, "pokedaisy-ffmusic-budget").apply { isDaemon = true } }
+    private val writer = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
+    private val lock = SynchronizedObject()
 
     /** The newest [notePlayed] song ("crc/key"): never trimmed (it's likely playing). */
     @Volatile private var lastPlayed: String? = null
@@ -30,52 +51,53 @@ internal object FfMusicBudget {
     fun budget(clipBytes: Long, freeBytes: Long): Long = minOf(MAX_BYTES, (clipBytes + freeBytes) / 4)
 
     /** Notes that [rom]'s song [key] just played, off the calling thread (the emu thread calls it). */
-    fun notePlayed(root: File, rom: String, key: String, now: Long = System.currentTimeMillis()) {
+    fun notePlayed(root: Path, rom: String, key: String, now: Long = Clock.System.now().toEpochMilliseconds()) {
         lastPlayed = "$rom/$key"
-        writer.execute { append(root, rom, key, now) }
+        writer.launch { append(root, rom, key, now) }
     }
 
-    @Synchronized
-    internal fun append(root: File, rom: String, key: String, now: Long) {
-        runCatching { File(root, PLAYED).appendText("$rom $key $now\n") }
+    fun append(root: Path, rom: String, key: String, now: Long) {
+        synchronized(lock) {
+            runCatching {
+                FileSystem.SYSTEM.appendingSink(root / PLAYED).buffer().use { it.writeUtf8("$rom $key $now\n") }
+            }
+        }
     }
 
     /** A cached song: both its files. [played] is null for one never played (prefetched only). */
-    class Song(val rom: String, val key: String, val files: List<File>, val bytes: Long, val written: Long, val played: Long?)
+    class Song(val rom: String, val key: String, val files: List<Path>, val bytes: Long, val written: Long, val played: Long?)
 
     /** Every song under [root]: one directory per ROM, a song's loop and intro files. */
-    @Synchronized
-    fun songs(root: File): List<Song> {
+    fun songs(root: Path): List<Song> = synchronized(lock) {
         val played = readPlayed(root)
-        return root.listFiles()?.filter { it.isDirectory }.orEmpty().flatMap { dir ->
-            dir.listFiles()?.filter { it.isFile && !it.name.startsWith(".") && !it.name.endsWith(".tmp") }.orEmpty()
+        root.listFiles().filter { it.isDirectory }.flatMap { dir ->
+            dir.listFiles().filter { it.isFile && !it.name.startsWith(".") && !it.name.endsWith(".tmp") }
                 .groupBy { songKey(it.name) }
                 .filterKeys { it != null }
                 .map { (key, files) ->
-                    Song(dir.name, key!!, files, files.sumOf { it.length() }, files.maxOf { it.lastModified() }, played["${dir.name}/$key"])
+                    Song(dir.name, key!!, files, files.sumOf { it.length }, files.maxOf { it.lastModified }, played["${dir.name}/$key"])
                 }
         }
     }
 
     /** Whether a background recording fits: the clips stay [BACKGROUND_HEADROOM] under the budget. */
-    fun hasRoom(root: File, freeBytes: Long = root.usableSpace, now: Long = System.currentTimeMillis()): Boolean {
+    fun hasRoom(root: Path, freeBytes: Long, now: Long = Clock.System.now().toEpochMilliseconds()): Boolean {
         val used = used(root, now)
         return used + BACKGROUND_HEADROOM <= budget(used, freeBytes)
     }
 
     // The clips' total from the last scan: every write trims (a scan), so it's only stale for what other ROMs'
     // renderers wrote meanwhile - and the background pass asks before every song.
-    private var usedRoot: File? = null
+    private var usedRoot: Path? = null
     private var usedBytes = 0L
     private var usedAt = 0L
 
-    @Synchronized
-    private fun used(root: File, now: Long): Long {
+    private fun used(root: Path, now: Long): Long = synchronized(lock) {
         if (root != usedRoot || now - usedAt > USED_FRESH_MILLIS) remember(root, songs(root).sumOf { it.bytes }, now)
-        return usedBytes
+        usedBytes
     }
 
-    private fun remember(root: File, bytes: Long, now: Long) {
+    private fun remember(root: Path, bytes: Long, now: Long) {
         usedRoot = root; usedBytes = bytes; usedAt = now
     }
 
@@ -85,8 +107,7 @@ internal object FfMusicBudget {
      * Deletes songs until the clips fit the budget: never-played ones first (oldest written first), then played ones,
      * longest ago first. [keep] ("crc/key") and the newest played song stay whatever. Returns the bytes freed.
      */
-    @Synchronized
-    fun trim(root: File, keep: Set<String> = emptySet(), freeBytes: Long = root.usableSpace): Long {
+    fun trim(root: Path, keep: Set<String> = emptySet(), freeBytes: Long): Long = synchronized(lock) {
         val songs = songs(root)
         var used = songs.sumOf { it.bytes }
         val limit = budget(used, freeBytes)
@@ -98,26 +119,29 @@ internal object FfMusicBudget {
                 .sortedWith(compareBy<Song>({ it.played != null }, { it.played ?: it.written }))
             for (s in order) {
                 if (used <= limit) break
-                s.files.forEach { it.delete() }
-                deleted += s
-                used -= s.bytes
-                freed += s.bytes
+                val reclaimed = s.files.sumOf { path ->
+                    val bytes = path.length
+                    if (path.delete()) bytes else 0L
+                }
+                if (s.files.none { it.isFile }) deleted += s
+                used -= reclaimed
+                freed += reclaimed
             }
         }
-        remember(root, used, System.currentTimeMillis())
+        remember(root, used, Clock.System.now().toEpochMilliseconds())
         compactPlayed(root, songs - deleted)
-        return freed
+        freed
     }
 
     /** "crc/key" -> when it last played. */
-    private fun readPlayed(root: File): Map<String, Long> {
-        val f = File(root, PLAYED)
+    private fun readPlayed(root: Path): Map<String, Long> {
+        val f = root / PLAYED
         if (!f.isFile) return emptyMap()
         val out = HashMap<String, Long>()
         runCatching {
-            f.forEachLine { line ->
+            f.readLines().forEach { line ->
                 val parts = line.split(' ')
-                val at = parts.getOrNull(2)?.toLongOrNull() ?: return@forEachLine
+                val at = parts.getOrNull(2)?.toLongOrNull() ?: return@forEach
                 out["${parts[0]}/${parts[1]}"] = maxOf(at, out["${parts[0]}/${parts[1]}"] ?: 0L)
             }
         }
@@ -125,17 +149,15 @@ internal object FfMusicBudget {
     }
 
     /** Rewrites the log with one line per song still cached, once it has grown well past that. */
-    private fun compactPlayed(root: File, songs: List<Song>) {
-        val f = File(root, PLAYED)
+    private fun compactPlayed(root: Path, songs: List<Song>) {
+        val f = root / PLAYED
         if (!f.isFile) return
         val lines = runCatching { f.readLines() }.getOrNull() ?: return
         val cached = songs.mapTo(HashSet()) { "${it.rom}/${it.key}" }
         if (lines.size <= 2 * cached.size + 200) return
         val played = readPlayed(root).filterKeys { it in cached }
-        val tmp = File(root, "$PLAYED.tmp")
         runCatching {
-            tmp.writeText(played.entries.sortedBy { it.value }.joinToString("") { (k, at) -> "${k.replace('/', ' ')} $at\n" })
-            if (!tmp.renameTo(f)) tmp.delete()
+            f.writeTextAtomically(played.entries.sortedBy { it.value }.joinToString("") { (k, at) -> "${k.replace('/', ' ')} $at\n" })
         }
     }
 

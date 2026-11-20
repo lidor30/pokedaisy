@@ -1,13 +1,17 @@
 package com.pokedaisy.app
 
-import java.io.BufferedOutputStream
-import java.io.File
-import java.io.FileOutputStream
-import java.io.RandomAccessFile
-import java.security.MessageDigest
+import okio.BufferedSink
+import okio.FileSystem
+import okio.HashingSink
+import okio.Path
+import okio.Path.Companion.toPath
+import okio.SYSTEM
+import okio.blackholeSink
+import okio.buffer
+import okio.use
 
 /**
- * Writes interleaved 16-bit stereo PCM as a FLAC file, the STEADY clips' format ([FfMusicCache]): lossless and
+ * Writes interleaved 16-bit stereo PCM as a FLAC file for STEADY clips: lossless and
  * sample-exact, so a clip cut at the song's own loop ([M4aLoopSplice]) still loops without a gap - AAC / Opus / MP3
  * pad the start and end of a file, which would put a gap at every seam. MediaPlayer plays it on every Android version
  * the app runs on. About half a WAV's size for the games' music (silence and held notes much less).
@@ -17,7 +21,7 @@ import java.security.MessageDigest
  * VERBATIM when nothing beats it - plus a STREAMINFO with the samples' MD5 and a SEEKTABLE (MediaPlayer seeks into a
  * clip when FF comes on mid-song). `FlacWriterTest` decodes what it writes and checks every sample.
  */
-internal object FlacWriter {
+object FlacWriter {
     /** Samples per channel in each frame (4096: the format's usual size, a code of its own in the frame header). */
     const val BLOCK = 4096
 
@@ -26,62 +30,68 @@ internal object FlacWriter {
 
     /** Writes [len] shorts of [pcm] from [from] (interleaved stereo, so [len] / 2 samples per channel) to [file],
      * through a temp file so a half-written one is never read as valid. */
-    fun write(file: File, pcm: ShortArray, len: Int, sampleRate: Int, from: Int = 0) {
+    fun write(file: Path, pcm: ShortArray, len: Int, sampleRate: Int, from: Int = 0) {
         val samples = len / 2
         val frames = (samples + BLOCK - 1) / BLOCK
         val seekPoints = (frames + SEEK_EVERY - 1) / SEEK_EVERY
         val headerSize = 4 + 4 + STREAMINFO_SIZE + if (seekPoints > 0) 4 + SEEK_POINT_SIZE * seekPoints else 0
-        val tmp = File(file.parentFile, "${file.name}.tmp")
-        val md5 = MessageDigest.getInstance("MD5")
+        val tmp = (file.parent ?: ".".toPath()) / "${file.name}.tmp"
+        val digest = HashingSink.md5(blackholeSink())
+        val md5 = digest.buffer()
+        val files = FileSystem.SYSTEM
         val frameOffsets = LongArray(frames)
         var minFrame = 0
         var maxFrame = 0
         val enc = FrameEncoder(sampleRate)
-        BufferedOutputStream(FileOutputStream(tmp), 1 shl 16).use { out ->
-            out.write(ByteArray(headerSize))   // filled in below, once the frames' sizes are known
-            var offset = 0L
-            for (f in 0 until frames) {
-                val first = f * BLOCK
-                val size = enc.encode(pcm, from + first * 2, minOf(BLOCK, samples - first), f, md5)
-                out.write(enc.out.buf, 0, size)
-                frameOffsets[f] = offset
-                offset += size
-                minFrame = if (f == 0) size else minOf(minFrame, size)
-                maxFrame = maxOf(maxFrame, size)
+        try {
+            files.openReadWrite(tmp).use { output ->
+                output.resize(0)
+                output.sink(headerSize.toLong()).buffer().use { out ->
+                    var offset = 0L
+                    for (f in 0 until frames) {
+                        val first = f * BLOCK
+                        val size = enc.encode(pcm, from + first * 2, minOf(BLOCK, samples - first), f, md5)
+                        out.write(enc.out.buf, 0, size)
+                        frameOffsets[f] = offset
+                        offset += size
+                        minFrame = if (f == 0) size else minOf(minFrame, size)
+                        maxFrame = maxOf(maxFrame, size)
+                    }
+                }
+                val header = BitWriter(headerSize)
+                header.write(0x664C6143, 32)   // "fLaC"
+                header.write(if (seekPoints > 0) 0 else 1, 1)   // last metadata block?
+                header.write(0, 7)   // STREAMINFO
+                header.write(STREAMINFO_SIZE, 24)
+                header.write(BLOCK, 16)
+                header.write(BLOCK, 16)
+                header.write(minFrame, 24)
+                header.write(maxFrame, 24)
+                header.write(sampleRate, 20)
+                header.write(1, 3)   // channels - 1
+                header.write(15, 5)   // bits per sample - 1
+                header.write((samples.toLong() ushr 32).toInt(), 4)
+                header.write(samples, 32)
+                md5.flush()
+                for (b in digest.hash.toByteArray()) header.write(b.toInt() and 0xFF, 8)
+                if (seekPoints > 0) {
+                    header.write(1, 1)
+                    header.write(3, 7)   // SEEKTABLE
+                    header.write(SEEK_POINT_SIZE * seekPoints, 24)
+                    for (p in 0 until seekPoints) {
+                        val f = p * SEEK_EVERY
+                        val sample = f.toLong() * BLOCK
+                        header.write((sample ushr 32).toInt(), 32); header.write(sample.toInt(), 32)
+                        header.write((frameOffsets[f] ushr 32).toInt(), 32); header.write(frameOffsets[f].toInt(), 32)
+                        header.write(minOf(BLOCK, samples - f * BLOCK), 16)
+                    }
+                }
+                check(header.pos == headerSize)
+                output.write(0L, header.buf, 0, headerSize)
             }
-        }
-        val header = BitWriter(headerSize)
-        header.write(0x664C6143, 32)   // "fLaC"
-        header.write(if (seekPoints > 0) 0 else 1, 1)   // last metadata block?
-        header.write(0, 7)   // STREAMINFO
-        header.write(STREAMINFO_SIZE, 24)
-        header.write(BLOCK, 16)
-        header.write(BLOCK, 16)
-        header.write(minFrame, 24)
-        header.write(maxFrame, 24)
-        header.write(sampleRate, 20)
-        header.write(1, 3)   // channels - 1
-        header.write(15, 5)   // bits per sample - 1
-        header.write((samples.toLong() ushr 32).toInt(), 4)
-        header.write(samples, 32)
-        for (b in md5.digest()) header.write(b.toInt() and 0xFF, 8)
-        if (seekPoints > 0) {
-            header.write(1, 1)
-            header.write(3, 7)   // SEEKTABLE
-            header.write(SEEK_POINT_SIZE * seekPoints, 24)
-            for (p in 0 until seekPoints) {
-                val f = p * SEEK_EVERY
-                val sample = f.toLong() * BLOCK
-                header.write((sample ushr 32).toInt(), 32); header.write(sample.toInt(), 32)
-                header.write((frameOffsets[f] ushr 32).toInt(), 32); header.write(frameOffsets[f].toInt(), 32)
-                header.write(minOf(BLOCK, samples - f * BLOCK), 16)
-            }
-        }
-        check(header.pos == headerSize)
-        RandomAccessFile(tmp, "rw").use { it.write(header.buf, 0, headerSize) }
-        if (!tmp.renameTo(file)) {
-            tmp.delete()
-            error("couldn't move ${tmp.name} into place")
+            files.atomicMove(tmp, file)
+        } finally {
+            runCatching { files.delete(tmp) }
         }
     }
 
@@ -103,7 +113,7 @@ private class FrameEncoder(private val sampleRate: Int) {
     private val sums = LongArray(1 shl MAX_PARTITION_ORDER)
 
     /** Encodes [n] samples per channel of [pcm] from [at] as frame [index]; returns its size in bytes. */
-    fun encode(pcm: ShortArray, at: Int, n: Int, index: Int, md5: MessageDigest): Int {
+    fun encode(pcm: ShortArray, at: Int, n: Int, index: Int, md5: BufferedSink): Int {
         for (i in 0 until n) {
             val l = pcm[at + 2 * i].toInt()
             val r = pcm[at + 2 * i + 1].toInt()
@@ -113,7 +123,7 @@ private class FrameEncoder(private val sampleRate: Int) {
             pcmBytes[4 * i] = l.toByte(); pcmBytes[4 * i + 1] = (l shr 8).toByte()
             pcmBytes[4 * i + 2] = r.toByte(); pcmBytes[4 * i + 3] = (r shr 8).toByte()
         }
-        md5.update(pcmBytes, 0, n * 4)
+        md5.write(pcmBytes, 0, n * 4)
         val (pl, pr, pm, ps) = plans
         plan(left, n, 16, pl); plan(right, n, 16, pr); plan(mid, n, 16, pm); plan(side, n, 17, ps)
         // Independent, left / side, right / side, mid / side: the cheapest pair (FLAC's channel assignments 1, 8-10).
@@ -189,7 +199,7 @@ private class FrameEncoder(private val sampleRate: Int) {
         while (finest < MAX_PARTITION_ORDER && n % (1 shl (finest + 1)) == 0 && (n shr (finest + 1)) > order) finest++
         val parts = 1 shl finest
         val partLen = n shr finest
-        java.util.Arrays.fill(sums, 0, parts, 0L)
+        sums.fill(0L, 0, parts)
         for (i in order until n) sums[i / partLen] += fold(residual[i]).toLong()
         var bestBits = Long.MAX_VALUE
         var bestOrder = 0
@@ -215,7 +225,7 @@ private class FrameEncoder(private val sampleRate: Int) {
         p.bits = fixedBits
         // The chosen partitioning's parameters (the sums were merged in place: redo them at that order).
         val len = n shr bestOrder
-        java.util.Arrays.fill(sums, 0, 1 shl bestOrder, 0L)
+        sums.fill(0L, 0, 1 shl bestOrder)
         for (i in order until n) sums[i / len] += fold(residual[i]).toLong()
         p.wideParams = false
         for (j in 0 until (1 shl bestOrder)) {

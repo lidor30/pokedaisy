@@ -9,6 +9,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.get
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.toKString
+import okio.Path.Companion.toPath
 import platform.posix.getenv
 import platform.posix.unlink
 import kotlin.test.AfterTest
@@ -30,6 +31,31 @@ class PkApiCoreTest {
 
     @AfterTest
     fun close() = PkApiCore.stop()
+
+    @Test
+    fun soundRenderHandleDeliversPcmAndParksWithoutChangingThePlayer() {
+        assertTrue(PkApiCore.start("$dir/diagnostic.gb", null))
+        repeat(30) { PkApiCore.runFrame() }
+        val playerBytes = PkApiCore.read(0xC000, 1)
+        val render = openSoundRenderCore("$dir/diagnostic-sound.gb".toPath())
+        try {
+            assertEquals(PkApiCore.SAMPLE_RATE, render.sampleRate)
+            val samples = ShortArray(4096)
+            var audible = false
+            repeat(30) {
+                render.frame()
+                val count = render.audio(samples)
+                audible = audible || (0 until count).any { samples[it] != 0.toShort() }
+            }
+            assertTrue(audible)
+            assertTrue(render.parkGb(0xC100))
+            assertTrue(render.gbCall(0x310, 0x39, 0, 0xC100))
+            assertContentEquals(byteArrayOf(0x39), render.readCoreMemory(0xC102, 1))
+            assertContentEquals(playerBytes, PkApiCore.read(0xC000, 1))
+        } finally {
+            render.close()
+        }
+    }
 
     @Test
     fun gameBoyRunsAndIsRead() {

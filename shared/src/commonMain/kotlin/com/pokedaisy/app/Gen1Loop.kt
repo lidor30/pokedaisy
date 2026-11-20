@@ -31,7 +31,16 @@ class Gen1LoopWatch(private val reader: MemoryReader, private val t: Gen1MusicTa
         val f = frames++
         if (found) return
         val state = runCatching {
-            t.channelState.joinToString("") { (a, n) -> reader.readCoreMemory(a, n).joinToString("") { "%02x".format(it) } }
+            buildString {
+                val hex = "0123456789abcdef"
+                t.channelState.forEach { (address, length) ->
+                    reader.readCoreMemory(address, length).forEach { byte ->
+                        val value = byte.toInt() and 0xFF
+                        append(hex[value shr 4])
+                        append(hex[value and 0xF])
+                    }
+                }
+            }
         }.getOrNull() ?: return
         still = if (state == last) still + 1 else 0
         last = state

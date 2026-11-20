@@ -128,7 +128,9 @@ object PokeDaisyHost {
             }
         }
         return ComposeUIViewController(configure = { configureUiAutomation() }) {
-            AppTheme {
+            AppTheme { androidx.compose.runtime.CompositionLocalProvider(
+                com.pokedaisy.app.companion.ui.LocalClickSound provides ::playGameClick,
+            ) {
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
                     panels.Content(
                         gameContent = { UIKitViewController(factory = { current }, modifier = Modifier.fillMaxSize(),
@@ -153,8 +155,15 @@ object PokeDaisyHost {
                         })
                     touch.EditorOverlay()
                 }
-            }
+            } }
         }
+    }
+
+    private var steadyMusic: IosSteadyMusic? = null
+    private var gameClick: IosGameClickSound? = null
+
+    private fun playGameClick() {
+        if (settings?.clickSound == true) gameClick?.play()
     }
 
     @Composable
@@ -162,7 +171,7 @@ object PokeDaisyHost {
         val snapshot by telemetry.snapshot.collectAsState()
         Box(Modifier.fillMaxSize()) {
             CompanionScreen(snapshot, slots = slots, settings = settings, battleInput = battle, gamePick = telemetry.gamePick,
-                back = panels.back, keys = panels.keys, itemUse = items, fly = fly)
+                back = panels.back, keys = panels.keys, clickSound = ::playGameClick, itemUse = items, fly = fly)
             stateError?.let { message ->
                 OptionConfirm(tr("SAVE STATES"), message, tr("OK"), rememberGbaTextMetrics(),
                     onConfirm = { stateError = null }, onDismiss = { stateError = null }, cancelLabel = null)
@@ -255,7 +264,7 @@ object PokeDaisyHost {
                 s.rewindChanged = { g.rewindEnabled = s.rewind; g.holdRewind(s.rewindHeld) }
                 s.rewindChanged()
             }
-        battle = com.pokedaisy.app.companion.GameBattleInput(telemetry, code, revision, changed = { sample() }, silent = { g.muted || g.volume == 0f || g.speed == 0.0 }).also { b ->
+        battle = com.pokedaisy.app.companion.GameBattleInput(telemetry, code, revision, changed = { sample() }, silent = { g.audioSilent }).also { b ->
             g.frameKeys = b::keys
             g.holdPicture = { b.holdPicture }
             g.quietPress = { b.quietPress }
@@ -277,7 +286,12 @@ object PokeDaisyHost {
                     com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN)) }
             }
             g.beforeFrame = p::beforeFrame
-            g.afterFrame = { p.tick(); gameOptions.tick(); gameOptions.markExp(PkApiCore::read, PkApiCore::write) }
+            g.afterFrame = {
+                p.tick()
+                steadyMusic?.frame(currentSettings.ffMusicMode, p.requestedSpeedNow() > 1f, currentSettings.clickSound)
+                gameOptions.tick()
+                gameOptions.markExp(PkApiCore::read, PkApiCore::write)
+            }
         }
         val p = playback!!
         val fields = com.pokedaisy.app.companion.data.FieldItemSupportCache()
@@ -319,7 +333,16 @@ object PokeDaisyHost {
         val currentOptions = p.options
         g.onCoreStarted = {
             if (game === g) {
-                p.start(romPath.toPath(), code, if (code != null) runCatching { com.pokedaisy.app.companion.data.romCrc32(romPath.toPath()) }.getOrDefault(0L) else 0L)
+                val rom = romPath.toPath()
+                val crc = runCatching { com.pokedaisy.app.companion.data.romCrc32(rom) }.getOrDefault(0L)
+                p.start(rom, code, if (code != null) crc else 0L)
+                if (!p.blocked) {
+                    val key = crc.toString(16).padStart(8, '0')
+                    val click = IosGameClickSound(g, key).also { gameClick = it }
+                    steadyMusic = IosSteadyMusic(g, rom, key, code != null, click).also {
+                        g.onMusicPause = it::pause
+                    }
+                }
                 currentOptions.start(romPath.toPath(), PkApiCore::configureWild)
                 currentCheats.start()
                 g.withState { resume.restore() }
@@ -368,6 +391,10 @@ object PokeDaisyHost {
     /** Writes the running game's save and closes it; the companion goes back to waiting. */
     fun closeGame() {
         stateError = null
+        steadyMusic?.close()
+        steadyMusic = null
+        gameClick?.close()
+        gameClick = null
         playback?.quiesce()
         items = null
         fly = null

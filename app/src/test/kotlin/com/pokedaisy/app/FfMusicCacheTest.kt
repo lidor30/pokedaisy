@@ -14,15 +14,15 @@ class FfMusicCacheTest {
     @Test fun gameBoyClipsFromBeforeItsSoundChangedAreRecordedAgain() {
         val dir = tmp.root
         // Clips a Game Boy game had before the stamp (mGBA's own resampling, GitHub #269 / #327) - and a GBA game's.
-        clip(FfMusicCache(dir, "0000000a"), "gb_02_eb")
-        FfMusicCache(dir, "0000000a").prefetched = true
-        clip(FfMusicCache(dir, "0000000b"), "song_06d96f4")
+        clip(androidFfMusicCache(dir, "0000000a"), "gb_02_eb")
+        androidFfMusicCache(dir, "0000000a").prefetched = true
+        clip(androidFfMusicCache(dir, "0000000b"), "song_06d96f4")
 
-        val gb = FfMusicCache(dir, "0000000a", gameBoy = true)
+        val gb = androidFfMusicCache(dir, "0000000a", gameBoy = true)
         assertFalse(gb.has("gb_02_eb"))
         assertFalse(gb.prefetched)   // the background pass runs again
         clip(gb, "gb_02_eb")
-        assertTrue(FfMusicCache(dir, "0000000a", gameBoy = true).has("gb_02_eb"))   // only once
-        assertTrue(FfMusicCache(dir, "0000000b").has("song_06d96f4"))   // a GBA game's clips stay
+        assertTrue(androidFfMusicCache(dir, "0000000a", gameBoy = true).has("gb_02_eb"))   // only once
+        assertTrue(androidFfMusicCache(dir, "0000000b").has("song_06d96f4"))   // a GBA game's clips stay
     }
 }

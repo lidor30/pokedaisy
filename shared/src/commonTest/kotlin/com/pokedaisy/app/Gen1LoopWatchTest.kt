@@ -3,11 +3,7 @@ package com.pokedaisy.app
 import com.pokedaisy.app.companion.data.GEN1_MUSIC_YELLOW
 import com.pokedaisy.app.companion.data.Gen1Music
 import com.pokedaisy.app.companion.data.MemoryReader
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 class Gen1LoopWatchTest {
     /** WRAM C000-C0FF whose CHAN1 command pointer is [ptr] and note delay [delay]. */

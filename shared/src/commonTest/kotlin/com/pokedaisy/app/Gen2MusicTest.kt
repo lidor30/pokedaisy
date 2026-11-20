@@ -4,10 +4,7 @@ import com.pokedaisy.app.companion.data.GEN2_MUSIC_CRYSTAL_REV1
 import com.pokedaisy.app.companion.data.Gen1Music
 import com.pokedaisy.app.companion.data.MemoryReader
 import com.pokedaisy.app.companion.data.TelemetrySampler
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Test
+import kotlin.test.*
 
 class Gen2MusicTest {
     /** Crystal's audio WRAM, C100-C2FF. */
@@ -32,6 +29,16 @@ class Gen2MusicTest {
         assertEquals(Gen1Music.key(0, 0x34), Gen1Music.current(r, GEN2_MUSIC_CRYSTAL_REV1))
     }
 
+    @Test fun steadyMusicSourcePairsAKnownCartridgeWithItsLiveSongKey() {
+        val source = assertNotNull(SteadyMusicSource.forCartridge(gba = false) { GEN2_MUSIC_CRYSTAL_REV1.sha1 })
+        val r = FakeWram()
+        r.channel(0, 0x34, on = true)
+        assertEquals(Gen1Music.key(0, 0x34), source.current(r))
+        assertNull(SteadyMusicSource.forCartridge(gba = false) { "unknown SHA-1" })
+        assertNull(SteadyMusicSource.forCartridge(gba = false) { null })
+        assertNotNull(SteadyMusicSource.forCartridge(gba = true) { error("GBA doesn't need the Game Boy hash") })
+    }
+
     @Test fun silenceIsNoSong() {
         val r = FakeWram()
         r.channel(0, 0x34, on = false)
@@ -42,7 +49,7 @@ class Gen2MusicTest {
     @Test fun gen2GamesHaveTheirMusicTables() {
         val games = TelemetrySampler.CRYSTAL_CLEAR_SHA1S + TelemetrySampler.POLISHED_CRYSTAL_SHA1S +
             TelemetrySampler.GOLD_SHA1 + TelemetrySampler.SILVER_SHA1
-        for (sha1 in games) assertNotNull(sha1, Gen1Music.forSha1(sha1))
+        for (sha1 in games) assertNotNull(Gen1Music.forSha1(sha1), sha1)
     }
 
     @Test fun goldReadsItsOwnChannels() {

@@ -57,7 +57,7 @@ internal class IosCompanionSettings(
 
     override val hasRunningGame get() = game != null
     override val gamePickBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_GAME_PICKER)
-    override val shownRows: Set<String> get() = setOf("BATTLE HINTS", "FOE IVS", "TAB BAR", "DARK MODE", "THEME", "LANGUAGE", "HELP",
+    override val shownRows: Set<String> get() = setOf("CLICK SOUND", "BATTLE HINTS", "FOE IVS", "TAB BAR", "DARK MODE", "THEME", "LANGUAGE", "HELP",
         "FF", "FF SPEED", "GAME SPEED", "GAME VOLUME", "MUTE GAME", "ONE-TAP MOVES", "BATTLE INFO", "BATTLE STYLE", "BATTLE VIEW", "BATTLE FOCUS", "RESUME GAMES", "TOUCH CONTROLS", "COMPANION VIEW", "SPEED OPTIONS", "INSTANT TEXT", "REUSABLE TMS", "AUTO-RUN", "RUN INDOORS", "WILD ENCOUNTERS", "GAME BUTTONS", "HOTKEYS", "QUICK MENU", "HUD", "REWIND", "CHEATS")
         .let { if (game == null) it - "GAME SPEED" - "FF" else it }
         .let { if (cheatHost()?.supported != true) it - "CHEATS" else it }
@@ -176,6 +176,8 @@ internal class IosCompanionSettings(
         game.speed = if (requested.isInfinite()) 0.0 else requested.toDouble()
         game.volume = gameVolume / 100f
         game.muted = gameMuted
+        val music = ffMusicMode
+        game.muteAudioAtSpeed = { it > 1.0 && music == FfMusicMode.OFF }
         playbackChanged()
     }
 
@@ -186,10 +188,8 @@ internal class IosCompanionSettings(
         d.setFloat(v, "game_speed:$romPath"); applyPlayback()
     }
 
-    // Not on the iPad yet: never shown (shownRows), so fixed values.
-    override val ffMusicMode = FfMusicMode.SPED_UP
-    override fun setFfMusicMode(mode: FfMusicMode) {}
-    override val ffMusicModes = listOf(FfMusicMode.SPED_UP)
+    override val ffMusicMode get() = stored.ffMusicMode
+    override fun setFfMusicMode(mode: FfMusicMode) = stored.setFfMusicMode(mode)
     override val speedOptionsBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_SCENE_SPEEDS)
     override val fieldReadable get() = playback()?.fieldReadable == true
     override val fieldMovesReadable get() = playback()?.fieldMovesReadable == true
@@ -216,8 +216,8 @@ internal class IosCompanionSettings(
     override fun setHotkeyBinding(action: Hotkeys.Action, keyNames: List<String>?, takeFrom: List<Hotkeys.Action>) {
         bindings.setHotkey(action, keyNames, takeFrom)
     }
-    override val clickSound = false
-    override fun setClickSound(on: Boolean) {}
+    override val clickSound get() = stored.clickSound
+    override fun setClickSound(on: Boolean) = stored.setClickSound(on)
     override val statusBar = false
     override fun setStatusBar(on: Boolean) {}
     override val gameAspect = GameAspect.ORIGINAL
