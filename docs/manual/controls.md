@@ -213,9 +213,11 @@ The `EXTRA BUTTONS` group adds buttons the GBA doesn't have. Turn each one on or
 
 A skin replaces the drawn buttons with a picture of a whole controller. PokeDaisy reads skins made for the Delta emulator: `.deltaskin` files, which you can find on skin sites for Delta. Use ones made for the GBA or the Game Boy Color (a Game Boy Color skin is used for Game Boy games too). DS skins don't work yet.
 
-- **`IMPORT SKIN`** (on the top screen's Settings only): pick a `.deltaskin` file, or a zip with several in it. A single new skin is switched on for its games right away. Importing a skin you already have again updates it.
+- **`IMPORT SKIN`** (on Android's top-screen Settings, or in `TOUCH CONTROLS` on iPhone and iPad): pick a `.deltaskin` file, or a zip with several in it. A single new skin is switched on for its games right away. Importing a skin you already have again updates it.
 - **`GBA SKIN`** and **`GAME BOY SKIN`**: which skin those games use, or `NONE` for the drawn buttons. You can pick them from the companion too.
 - **`DELETE SKIN`**: removes a skin from PokeDaisy. The file you imported it from isn't touched.
+
+iPhone and iPad use the same skins, settings and touch areas as Android. Import a skin from Files; cancelling leaves your choices in place.
 
 Held sideways, the skin fills the screen and the game moves into the skin's own screen. Held upright, the game and the companion keep their places and only the button part of the skin shows, in the space for the buttons. A skin that has no picture for the way you hold your device gives way to the drawn buttons. While a skin is on, the settings that change the drawn buttons (`LAYOUT`, `LOOK`, `COLORS`, `SIZE` and the extra buttons) are greyed out. `OPACITY` works on skins that allow it; the others are always solid around the game. A skin's menu button opens the [quick menu](#the-quick-menu), and its fast-forward, quick save and quick load buttons work like the extra buttons.
 
@@ -261,6 +263,8 @@ It works on the Game Boy Advance originals in every language and on almost every
 
 ## SHINY ODDS
 
+This setting is also available on iPhone and iPad, using the same supported games and wild-foe checks as Android.
+
 `SHINY ODDS` sets how often a wild Pokémon is shiny. It's in the companion's `GAMEPLAY` group and opens a list:
 
 - **`NORMAL`** (the default) leaves the game's own odds, 1 in 8192 in the original games.
@@ -270,7 +274,7 @@ It counts for every wild Pokémon you meet, in grass, caves, water and from a ro
 
 A shiny one you catch stays shiny when you set the odds back to `NORMAL`, and the Pokémon you caught before are never touched. A shiny made this way keeps its nature, gender, ability, IVs and moves. The one thing that gives it away is a link between its hidden values that the game's own shinies have and save checkers look for, so a checker may flag it if you move it on to a newer game.
 
-While the odds are raised, [achievements](achievements.md) are paused, since some sets reward catching a shiny.
+On Android, while the odds are raised, [achievements](achievements.md) are paused, since some sets reward catching a shiny.
 
 It works in the original FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language and revision, and in these hacks: Unbound (French too), Radical Red, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Emerald Kaizo, Emerald Legacy, Recharged Emerald (Rebalanced too), Glazed, Ultra Violet, Orange Islands, FireRed Rocket Edition, Ash Gray, Recharged Yellow, Lazarus, Emerald Seaglass, Too Many Types 2, Emerald Imperium, Super Mariomon, SoulGold, Team Rocket Edition, Elite Redux and R.O.W.E. Many hacks have better odds of their own (1 in 4096 in Unbound, Glazed, the newer Amethyst and most of the hacks rebuilt from newer source code, about 1 in 1800 in Emerald Imperium, 1 in 256 in SoulGold, about 1 in 257 in Odyssey): there `NORMAL` keeps theirs, and a choice that isn't better changes nothing.
 
@@ -303,6 +307,8 @@ It goes well with `SHINY ODDS`. Elsewhere it shows `N/A`.
 
 ## EXP SHARE
 
+This setting is also available on iPhone and iPad, with the same supported games.
+
 Normally only the Pokémon that fought gain EXP when you win, so the rest of your team falls behind unless you swap them in. `EXP SHARE`, in the companion's `GAMEPLAY` group, opens a list:
 
 - **`OFF`** (the default) leaves the game's own rules.
@@ -317,6 +323,8 @@ It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire, in every language an
 
 ## LEVEL CAP
 
+This setting is also available on iPhone and iPad, with the same supported games.
+
 A level cap keeps your team from outgrowing the story, the way many hard-mode hacks do. Turn on `LEVEL CAP` in the companion's `GAMEPLAY` group and no Pokémon goes past the highest level on the next boss's team: the same boss the guide's [NEXT BOSS](guide.md#next-boss-the-next-gym-leader) page shows. The row says the cap now, like `LV 14`.
 
 A Pokémon at the cap gains nothing from a win until you beat that boss. One that reaches the cap during a win stops there, and the rest of that win's EXP is lost. Beat the boss and the cap moves up to the next one's top level by itself. Once every boss is beaten there's no cap.
@@ -326,6 +334,8 @@ Only EXP from battles is capped: items that raise a level and the day care still
 It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire, in every language and release PokeDaisy supports, and in many hacks built on their code. Where it can't work, or the game has no NEXT BOSS page to follow, the row shows `N/A`. Turning it off puts the game back as it was.
 
 ## NO HMS NEEDED
+
+This setting is also available on iPhone and iPad, with the same supported games.
 
 In the games, the moves you use out on the field (cutting down a small tree, smashing a cracked rock, pushing a boulder, crossing water, climbing a waterfall, diving) need two things: the right badge, and a Pokémon in your party that knows the move. That second part means teaching those moves to Pokémon you'd rather keep for battles, or carrying one around just for them.
 

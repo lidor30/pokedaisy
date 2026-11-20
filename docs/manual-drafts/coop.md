@@ -79,11 +79,12 @@ same Wi-Fi list stays empty, for example on a network that blocks discovery.
 
 `PARTNERS` lists every pairing, one row each, with the save it belongs to. A save has one partner. To pair it
 with someone else, tap the row and choose `UNPAIR` first. The same list is in the companion's SETTINGS.
+Finish a joined battle before unpairing your current partner. You can still remove a pairing for another save.
 
 ## Relay and relay only
 
 Players connect directly when they can. When they can't, a relay server passes the traffic along. A build
-comes with a relay of its own, or you type one. With no relay at all, only `SAME WI-FI` and `BY IP` work.
+comes with a relay of its own, or you type one. Finish a joined battle before changing the relay settings. With no relay at all, only `SAME WI-FI` and `BY IP` work.
 
 | Setting | What it does |
 | --- | --- |

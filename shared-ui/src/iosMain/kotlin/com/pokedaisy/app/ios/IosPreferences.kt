@@ -5,9 +5,10 @@ import com.pokedaisy.app.companion.FfMusicMode
 import com.pokedaisy.app.companion.PreferenceStore
 import platform.Foundation.NSUserDefaults
 
-/** The existing iOS defaults domain. Shared settings retain the three defaults of installed iOS builds. */
+/** The existing iOS defaults domain, with the defaults of installed iOS builds. */
 internal val iosPreferences = Prefs(DefaultsPreferenceStore(NSUserDefaults.standardUserDefaults),
-    Prefs.Defaults(hotkeysEnabled = false, sidePanelDocked = true, companionWindow = false, battleStyleNames = true, ffMusicMode = FfMusicMode.SPED_UP))
+    Prefs.Defaults(hotkeysEnabled = false, sidePanelDocked = true, companionWindow = false, battleStyleNames = true,
+        ffMusicMode = FfMusicMode.SPED_UP))
 
 internal class DefaultsPreferenceStore(private val d: NSUserDefaults) : PreferenceStore {
     override fun keys(): Set<String> = d.dictionaryRepresentation().keys.filterIsInstance<String>().toSet()

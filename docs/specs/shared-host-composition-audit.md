@@ -1,7 +1,7 @@
 # Shared host composition audit
 
-Audited after D1-D3 on 15 November 2026. Sources remain compiled in place under `app/`.
-The shared module directory describes a compilation target, not where every shared source must live.
+This audit records D1–D3 on 15 November 2026, when portable Kotlin sources still lived under
+`app/`. The [module guide](../../shared-ui/README.md) shows their current locations.
 
 ## Ownership after the cleanup
 

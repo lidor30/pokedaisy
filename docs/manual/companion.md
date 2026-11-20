@@ -158,6 +158,8 @@ It works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (both of Emerald's bi
 The vehicles are drawn by PokeDaisy over the game, so your game and your save don't change. The row shows in the games that have `TAKE OFF`, it starts on `BIRD`, and your pick is the same in every game. Changing it in the air swaps your ride at once. The game's own flying animation (`FLY STYLE` set to `CLASSIC`) keeps its bird.
 ### DAY AND NIGHT
 
+On iPhone and iPad, `DAY AND NIGHT` is also in the shared `SETTINGS` under `MAKEOVER`, with the same clock and game support as Android.
+
 With `DAY AND NIGHT` on, the map follows your device's clock: a soft pink at dawn, the game's own colours by day, an orange glow at dusk and a deep blue at night. Only the outdoors changes, and only while you walk around: text boxes and menus keep their colours, buildings stay lit, and battles look as they always do. It eases in and out as you go between them.
 
 It works in every GBA game except those that already change with the time of day themselves (Unbound, Heart and Soul, Elite Redux). It's off to start with. Your game and your save don't change: only the picture does.
@@ -175,6 +177,8 @@ One card doesn't wait the half hour: the first time you play a DS game on a one-
 - Leave it, and it goes by itself when its bar runs out. It may come back once, much later.
 
 A card only shows while you're walking around the field, never in a battle, a menu or a conversation. There are always at least 5 minutes of play between two cards, and a feature you already use never gets one. Turn them off with `TIPS` in the `APP` group, on either screen.
+
+On iPhone and iPad, tips appear over the game in supported GBA games. The app waits for a clear field before showing one.
 
 ### LANGUAGE
 
@@ -197,3 +201,5 @@ On a device with two screens there's also `CLOSE COMPANION`. It hands the compan
 
 > [!TIP]
 > Not sure what a row does? `HELP`, the last row of SETTINGS, opens this manual right on the bottom screen.
+
+On iPhone and iPad, `FLY STYLE`, `FLIGHT AREA` and `FLY ON` use the same supported GBA games and flight behavior as Android. Choose `TAKE OFF` on the map or quick menu to fly yourself, then `LAND` or `B` to land. With `SCENIC`, a destination connected by a route you may cross is flown over the map; other destinations use `CLASSIC` where the game supports it. `EXPAND` zooms out during the scenic journey. Your seen-map limit stays on unless you choose `ANYWHERE`.

@@ -24,7 +24,7 @@ The icons bounce like they do in the game. If you'd rather they stood still, tur
 
 Pokémon Crystal's party screen has only a few dozen icons, shared by kinds that look alike, all in one colour, so a leafy starter and every other plant look the same. Set `POKéMON PICTURES` to `DETAILED` in SETTINGS (COMPANION group) and each slot shows that Pokémon's own picture instead, the one you see in battle and in the `DEX`, in its own colours, a shiny one in its shiny colours. The picture is read from your cartridge file like the rest of the game's art. The same pictures show everywhere else the companion and the HUD draw a Pokémon: the summary, battle `INFO`, the `DEX` list and its `EVOLVE` page, `GUIDE` and the HUD's wild Pokémon. `GAME`, the default, keeps the game's icons. The setting only appears while you play Crystal.
 
-To change the order, press and hold a Pokémon, drag it onto another one and let go: they trade places, in your game too. The summary's `SWITCH` does the same: tap it, your party opens, and tap the Pokémon to trade with. `CANCEL` or BACK goes back to the summary. This works in the Game Boy Advance games while you're free to walk around, not in a battle or a conversation.
+To change the order, press and hold a Pokémon, drag it onto another one and let go: they trade places, in your game too. The summary's `SWITCH` does the same: tap it, your party opens, and tap the Pokémon to trade with. `CANCEL` or BACK goes back to the summary. This works on Android, iPhone and iPad in recognized Game Boy Advance games while you're free to walk around, not in a battle or a conversation. If the party changes before the move runs, nothing is swapped; try again.
 
 These controls also work in the supported English version of Pokémon Unbound. Changing party order is separate from choosing a Pokémon to send into battle.
 
@@ -68,6 +68,8 @@ Some Pokémon only evolve when traded, some of them while holding an item. If yo
 
 The game decides, by its own rules: a Pokémon holding the item that stops evolution doesn't get the button, and one that needs a held item uses it up, as in a real trade. It works on the field, with no menu, text or battle open. **Save in the game** to keep it.
 
+The same trade-evolution setting and native game scene work on Android, iPhone and iPad. Target previews keep held items in place; the game consumes an evolution item only when the confirmed evolution needs it.
+
 > [!NOTE]
 > `TRADE EVOS` works in FireRed, LeafGreen and Emerald, in every language and release. In other games it shows `N/A`. To trade for real between two of your games, see [Link play](link-play.md).
 
@@ -79,6 +81,12 @@ The services you'd normally walk to a town for are on every Pokémon's summary: 
 - `RELEARN A MOVE`: the game's own screen for teaching this Pokémon a move it could have learned by now, as the move tutor does, free. It's only there when there's something to relearn.
 - `FORGET A MOVE`: pick one of its moves and confirm, and it's gone, as the move deleter does it, field moves included.
 - `NICKNAME`: the game's own naming screen for this Pokémon.
+
+On iPhone and iPad, `HEAL THE PARTY` and the Quick Menu's `HEAL` use the same verified GBA healing script as
+Android. The game restores HP, PP and status and plays its own jingle. `NICKNAME` and `FORGET A MOVE` also use the
+same verified game services on both platforms. Naming opens the game's own screen; forgetting keeps the game's
+checks for your current party and moves. `RELEARN A MOVE` also opens the game's own Move Tutor screen on both
+platforms, where its code and move lists are recognized. Games only offer services whose code PokeDaisy recognizes.
 
 The games' own rules stay: an egg gets none of these, a Pokémon keeps at least one move, and only the trainer who caught a Pokémon can rename it, so one from a trade can't be renamed. The last Pokémon in your party that can cross water can't forget that move, unless [`NO HMS NEEDED`](controls.md#no-hms-needed) is on. Everything works out on the field, with no menu, text or battle open. **Save in the game** to keep the changes.
 

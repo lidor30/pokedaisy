@@ -1,8 +1,8 @@
 # Shared host composition
 
 The C1-C6 extraction shares the main behaviors. This follow-up gives those behaviors clearer ownership and
-removes implementation inheritance from the hosts. Keep sources compiled in place under `app/` and each change
-in a separate PR with a chained base, so it can be copied upstream independently.
+removes implementation inheritance from the hosts. At this stage, sources compiled in place under `app/` and each change
+used a chained PR for independent upstream review. The [module guide](../../shared-ui/README.md) records the current layout.
 
 ## D1: Compose settings persistence
 

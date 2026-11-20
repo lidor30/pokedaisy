@@ -1,18 +1,21 @@
 # Shared UI
 
-This module compiles the common Compose screens and their models for both Android and iOS.
-Shared screens and models live in `src/commonMain`. Android links this module and the iOS app
-links the framework it builds.
+Android and iOS use the Compose screens, settings, library flows and loaded-game controllers in
+`shared-ui/src/commonMain/kotlin`. This module depends on `:shared` for game rules, decoding,
+save transactions and emulator contracts. The desktop preview also reads these module directories.
 
-`src/iosMain` contains the Apple platform adapters and the remaining host orchestration being
-consolidated into common implementations used by both platforms.
+| Change | Implementation | Tests |
+| --- | --- | --- |
+| Game rule, decoding, save transaction or emulator policy | `shared/src/commonMain/kotlin` | `shared/src/commonTest`, or `shared/src/androidUnitTest` for JVM fixtures |
+| Screen, settings action or coordination between the UI and an active game | `shared-ui/src/commonMain/kotlin` | `shared-ui/src/commonTest`; Android screenshots in `app/src/test` |
+| Portable emulator code or generated C table | `shared/src/commonMain/cpp` | `shared/src/commonTest/cpp` |
 
-Both hosts now use common preferences, companion settings, game actions, cheats, option patches, battle input,
-sampling, playback policy, ROM identity, save importing, library models, state slots, automatic resume and the
-offline manual cache. Screen preferences and theme storage also have one implementation. Platform entry points supply native effects
-and capabilities to those models.
+Android Activities supply the platform lifecycle, file access, audio, display, input and JNI transports.
+The Swift entry point calls the Apple adapters in `shared-ui/src/iosMain` and `shared/src/iosMain`
+for UIKit, audio, controllers and the native core. A shared feature can receive a platform operation
+through its existing host interface. For example, `GameRuntime` owns the loaded game's controllers
+on both platforms, while each host schedules work against its emulator.
 
-The [host composition plan](../docs/specs/shared-host-composition.md) and
-[remaining-host audit](../docs/specs/shared-host-composition-audit.md) describe controller ownership, native
-transports and the remaining composition sites. Settings persistence uses a concrete delegate; `GameRuntime`
-owns the loaded game's controller lifetime on both platforms.
+The [development guide](../docs/DEVELOPMENT.md#the-shared-module-shared-android-and-ios) covers builds
+and test commands. The [host composition audit](../docs/specs/shared-host-composition-audit.md) records
+the migration of settings, input and game lifetime ownership.
