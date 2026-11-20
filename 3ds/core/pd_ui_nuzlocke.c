@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "pd_icon.h"
+#include "pd_tr.h"
 #include "pd_nuzlocke.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
@@ -36,11 +37,11 @@ static struct row* add(enum row_kind kind) {
 
 static void group_row(const char* title) {
     struct row* r = add(ROW_GROUP);
-    if (r) snprintf(r->label, sizeof r->label, "%s", title);
+    if (r) snprintf(r->label, sizeof r->label, "%s", pd_tr(title));
 }
 
 static const char* outcome_label(enum pd_nuz_outcome o) {
-    return o == PD_NUZ_NOW ? "NOW" : o == PD_NUZ_CAUGHT ? "CAUGHT" : "MISSED";
+    return pd_tr(o == PD_NUZ_NOW ? "NOW" : o == PD_NUZ_CAUGHT ? "CAUGHT" : "MISSED");
 }
 
 static void build(const struct pd_game* g, const struct pd_host_info* host) {
@@ -58,11 +59,11 @@ static void build(const struct pd_game* g, const struct pd_host_info* host) {
         snprintf(r->sub, sizeof r->sub, "%s", pd_species_name(g, here->species, buf, sizeof buf));
     } else {
         r->area = -1;
-        snprintf(r->value, sizeof r->value, "FREE");
-        snprintf(r->sub, sizeof r->sub, "Your first wild POKéMON here is this area's catch");
+        snprintf(r->value, sizeof r->value, "%s", pd_tr("FREE"));
+        snprintf(r->sub, sizeof r->sub, "%s", pd_tr("Your first wild POKéMON here is this area's catch"));
     }
     group_row("TEAM");
-    if (!pd_nuz_alive(run)) snprintf(add(ROW_NONE)->label, sizeof r->label, "Nobody yet");
+    if (!pd_nuz_alive(run)) snprintf(add(ROW_NONE)->label, sizeof r->label, "%s", pd_tr("Nobody yet"));
     for (int i = 0; i < run->monCount; i++) {
         const struct pd_nuz_mon* m = &run->mons[i];
         if (m->dead || !(r = add(ROW_MON))) continue;
@@ -71,11 +72,11 @@ static void build(const struct pd_game* g, const struct pd_host_info* host) {
         snprintf(r->label, sizeof r->label, "%s", m->name);
         snprintf(r->name, sizeof r->name, "%s", m->name);
         snprintf(r->value, sizeof r->value, "Lv%d", m->level);
-        if (m->areaName[0]) snprintf(r->sub, sizeof r->sub, "Joined in %s", m->areaName);
-        else snprintf(r->sub, sizeof r->sub, "With you from the start");
+        if (m->areaName[0]) snprintf(r->sub, sizeof r->sub, pd_tr("Joined in %s"), m->areaName);
+        else snprintf(r->sub, sizeof r->sub, "%s", pd_tr("With you from the start"));
     }
     group_row("ENCOUNTERS");
-    if (!run->encCount) snprintf(add(ROW_NONE)->label, sizeof r->label, "None yet");
+    if (!run->encCount) snprintf(add(ROW_NONE)->label, sizeof r->label, "%s", pd_tr("None yet"));
     for (int i = run->encCount - 1; i >= 0; i--) {
         const struct pd_nuz_encounter* e = &run->enc[i];
         if (!(r = add(ROW_ENCOUNTER))) break;
@@ -95,37 +96,37 @@ static void build(const struct pd_game* g, const struct pd_host_info* host) {
             snprintf(r->label, sizeof r->label, "%s", m->name);
             snprintf(r->name, sizeof r->name, "%s", m->name);
             snprintf(r->value, sizeof r->value, "Lv%d", m->diedLevel);
-            if (m->diedIn[0]) snprintf(r->sub, sizeof r->sub, "Fainted in %s", m->diedIn);
+            if (m->diedIn[0]) snprintf(r->sub, sizeof r->sub, pd_tr("Fainted in %s"), m->diedIn);
         }
     }
     group_row("RULES");
     r = add(ROW_DUPES);
-    snprintf(r->label, sizeof r->label, "DUPES CLAUSE");
-    snprintf(r->value, sizeof r->value, "%s", run->dupes ? "ON" : "OFF");
-    snprintf(r->sub, sizeof r->sub, "A POKéMON you've caught before doesn't use up an area");
+    snprintf(r->label, sizeof r->label, "%s", pd_tr("DUPES CLAUSE"));
+    snprintf(r->value, sizeof r->value, "%s", pd_tr(run->dupes ? "ON" : "OFF"));
+    snprintf(r->sub, sizeof r->sub, "%s", pd_tr("A POKéMON you've caught before doesn't use up an area"));
     r = add(ROW_WARNINGS);
-    snprintf(r->label, sizeof r->label, "WARNINGS");
-    snprintf(r->value, sizeof r->value, "%s", run->warnings ? "ON" : "OFF");
-    snprintf(r->sub, sizeof r->sub, "Notices on the game screen as the run goes");
+    snprintf(r->label, sizeof r->label, "%s", pd_tr("WARNINGS"));
+    snprintf(r->value, sizeof r->value, "%s", pd_tr(run->warnings ? "ON" : "OFF"));
+    snprintf(r->sub, sizeof r->sub, "%s", pd_tr("Notices on the game screen as the run goes"));
     r = add(ROW_NEW_RUN);
-    snprintf(r->label, sizeof r->label, "NEW RUN");
+    snprintf(r->label, sizeof r->label, "%s", pd_tr("NEW RUN"));
 }
 
 // While it's off for this game: what it does, and the same switch as SETTINGS' NUZLOCKE.
 static void off_page(struct pd_ui* ui, struct pd_canvas* c) {
     int x = MARGIN, w = c->w - 2 * MARGIN, y = CONTENT_Y;
     int f = pd_title_box(c, x, y, w, TITLE_H, PD_TITLE_FILL);
-    pd_text(c, x + f + 6, pd_text_y(y, TITLE_H), "NUZLOCKE", PD_TITLE_TEXT, PD_TITLE_SHADOW);
-    pd_text_right(c, x + w - f - 6, pd_text_y(y, TITLE_H), "OFF", PD_VALUE, PD_VALUE_SHADOW);
+    pd_text(c, x + f + 6, pd_text_y(y, TITLE_H), pd_tr("NUZLOCKE"), PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text_right(c, x + w - f - 6, pd_text_y(y, TITLE_H), pd_tr("OFF"), PD_VALUE, PD_VALUE_SHADOW);
     y += TITLE_H + 4;
     int h = c->h - y - MARGIN;
     int lf = pd_list_box(c, x, y, w, h);
     int ix = x + lf + 6, iw = w - 2 * (lf + 6), ty = y + lf + 4;
     ty += pd_text_wrap(c, ix, ty, iw, pd_lh(16), 6,
-                       "NUZLOCKE tracking is off for this game. Turn it on and the companion keeps score of your run: only "
-                       "the first wild POKéMON in each area counts, and a POKéMON that faints is out for good.",
+                       pd_tr("NUZLOCKE tracking is off for this game. Turn it on and the companion keeps score of your run: only "
+                       "the first wild POKéMON in each area counts, and a POKéMON that faints is out for good."),
                        PD_LABEL, PD_LABEL_SHADOW) * pd_lh(16) + 4;
-    pd_text_wrap(c, ix, ty, iw, pd_lh(16), 2, "You can turn it off again in SETTINGS, under GAMEPLAY.", PD_MUTED, PD_MUTED_SHADOW);
+    pd_text_wrap(c, ix, ty, iw, pd_lh(16), 2, pd_tr("You can turn it off again in SETTINGS, under GAMEPLAY."), PD_MUTED, PD_MUTED_SHADOW);
     ui_button(ui, c, ix, y + h - lf - 30, iw, 24, "TURN ON", HIT_NUZ_ON);
     ui->startId = HIT_NUZ_ON;
 }
@@ -143,9 +144,9 @@ void ui_nuzlocke_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     build(g, host);
     int x = MARGIN, w = c->w - 2 * MARGIN, y = CONTENT_Y;
     int f = pd_title_box(c, x, y, w, TITLE_H, PD_TITLE_FILL);
-    pd_text(c, x + f + 6, pd_text_y(y, TITLE_H), "NUZLOCKE", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text(c, x + f + 6, pd_text_y(y, TITLE_H), pd_tr("NUZLOCKE"), PD_TITLE_TEXT, PD_TITLE_SHADOW);
     char counts[40];
-    snprintf(counts, sizeof counts, "%d ALIVE · %d FAINTED", pd_nuz_alive(host->nuzRun), pd_nuz_dead(host->nuzRun));
+    snprintf(counts, sizeof counts, pd_tr("%d ALIVE · %d FAINTED"), pd_nuz_alive(host->nuzRun), pd_nuz_dead(host->nuzRun));
     pd_text_right(c, x + w - f - 6, pd_text_y(y, TITLE_H), counts, PD_VALUE, PD_VALUE_SHADOW);
     y += TITLE_H + 4;
     int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
@@ -222,7 +223,7 @@ void ui_nuzlocke_overlay(struct pd_ui* ui, struct pd_canvas* c) {
         for (int i = 0; i < 3; i++) {
             bool on = i == ui->nuzValue || ui->pressedId == HIT_NUZ_PICK + i;
             if (on) pd_fill(c, ix - 4, ry, iw + 8, row, PD_ROW_SELECTED);
-            pd_text(c, ix + 10, pd_text_y(ry, row), OPTIONS[i], on ? PD_VALUE : PD_LABEL, on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
+            pd_text(c, ix + 10, pd_text_y(ry, row), pd_tr(OPTIONS[i]), on ? PD_VALUE : PD_LABEL, on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
             if (i == ui->nuzValue) pd_triangle(c, ix, ry + 4, 5, PD_RIGHT, PD_VALUE);
             ui_add_hit(ui, ix - 4, ry, iw + 8, row, HIT_NUZ_PICK + i);
             if (i < 2) ui_row_divider(c, ix - 2, ry + row - 1, iw + 4);
@@ -243,15 +244,15 @@ static void confirm(struct pd_ui* ui, enum pd_nuz_edit edit, const char* name, u
     ui->nuzEdit = edit;
     ui->nuzPersonality = personality;
     if (edit == PD_NUZ_EDIT_DEAD) {
-        snprintf(ui->nuzTitle, sizeof ui->nuzTitle, "%s FAINTED?", name);
-        snprintf(ui->nuzMessage, sizeof ui->nuzMessage, "Marks %s as out of the run, as if it had fainted.", name);
+        snprintf(ui->nuzTitle, sizeof ui->nuzTitle, pd_tr("%s FAINTED?"), name);
+        snprintf(ui->nuzMessage, sizeof ui->nuzMessage, pd_tr("Marks %s as out of the run, as if it had fainted."), name);
     } else if (edit == PD_NUZ_EDIT_ALIVE) {
-        snprintf(ui->nuzTitle, sizeof ui->nuzTitle, "BRING BACK %s?", name);
-        snprintf(ui->nuzMessage, sizeof ui->nuzMessage, "Puts %s back in the run, for a faint that shouldn't count.", name);
+        snprintf(ui->nuzTitle, sizeof ui->nuzTitle, pd_tr("BRING BACK %s?"), name);
+        snprintf(ui->nuzMessage, sizeof ui->nuzMessage, pd_tr("Puts %s back in the run, for a faint that shouldn't count."), name);
     } else {
-        snprintf(ui->nuzTitle, sizeof ui->nuzTitle, "NEW RUN?");
-        snprintf(ui->nuzMessage, sizeof ui->nuzMessage,
-                 "Forgets every encounter and fainted POKéMON of this run. Your party right now starts the new one.");
+        snprintf(ui->nuzTitle, sizeof ui->nuzTitle, "%s", pd_tr("NEW RUN?"));
+        snprintf(ui->nuzMessage, sizeof ui->nuzMessage, "%s",
+                 pd_tr("Forgets every encounter and fainted POKéMON of this run. Your party right now starts the new one."));
     }
     ui->overlay = PD_OVERLAY_NUZ_CONFIRM;
 }

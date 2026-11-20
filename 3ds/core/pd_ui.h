@@ -113,6 +113,7 @@ struct pd_settings {
     bool reusableTms;    // REUSABLE TMS: a TM stays in the bag after it teaches (ReusableTms.kt's patch)
     bool instantText;    // INSTANT TEXT: a text box's words at once (InstantText.kt's patch)
     bool tradeEvos;      // TRADE EVOS: the summary's EVOLVE for a Pokémon that evolves by trading
+    int language;        // LANGUAGE: PD_LANG_AUTO or an enum pd_lang (pd_tr.h)
     int sceneSpeed[5];   // SCENE SPEEDS (BATTLE, TEXT, MENU, BIKE, SURF) while FF is off: an index into PD_SCENE_SPEEDS, 0 = SAME
 };
 
@@ -270,6 +271,7 @@ enum pd_overlay {
     PD_OVERLAY_PICK_SCENE,    // a SCENE SPEEDS row's speed (scenePick)
     PD_OVERLAY_NUZ_PICK,      // NUZLOCKE: an encounter's outcome by hand
     PD_OVERLAY_NUZ_CONFIRM,   // NUZLOCKE: FAINTED? / BRING BACK? / NEW RUN?
+    PD_OVERLAY_PICK_LANGUAGE, // LANGUAGE: AUTO, then the languages
 };
 
 // Optional presentation data for another emulator; IDs stay native to that backend.

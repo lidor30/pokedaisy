@@ -24,7 +24,7 @@ SIZE = 16
 SCALE = 10
 # ASCII plus the non-ASCII characters the names use (Poké Ball, Pokémon ...) and the European games' letters (German,
 # French, Italian, Spanish names and titles: Pokémon Blattgrüne Edition read "Blattgr?ne" before).
-EXTRA = "é×·" + "ÀÁÂÄÇÈÉÊËÌÍÎÏÑÒÓÔÖÙÚÛÜßàáâäçèêëìíîïñòóôöùúûüŒœ¡¿‘’“”…"
+EXTRA = "é×·" + "ÀÁÂÄÇÈÉÊËÌÍÎÏÑÒÓÔÖÙÚÛÜßàáâäçèêëìíîïñòóôöùúûüŒœ¡¿‘’“”…" + "ãõÃÕ°"  # Portuguese (the menus' translations, gen_tr.py), Italian 1°
 CHARS = [chr(c) for c in range(32, 127)] + list(EXTRA)
 
 # Pixel Operator has no gender symbols; these are drawn here, on the font's
@@ -276,6 +276,7 @@ SMALL_GLYPHS.update({
     "”": (4, [".#.#", ".#.#", "#.#."]),
     "…": (5, [".....", ".....", ".....", ".....", ".....", ".....", ".....", "#.#.#"]),
     "º": (3, [".#.", "#.#", ".#.", "...", "###"]),
+    "°": (3, [".#.", "#.#", ".#."]),
     "ª": (3, ["##.", ".##", "#.#", "...", "###"]),
 })
 for _ch in EXTRA:

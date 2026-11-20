@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "pd_game.h"
+#include "pd_tr.h"
 #include "pd_icon.h"
 #include "pd_library_internal.h"
 #include "pd_save.h"
@@ -207,7 +208,7 @@ static const char* item_text(struct pd_library_saves* s, int item, char* buf, si
     if (!item) return "NONE";
     const char* name = pd_item_name(&s->names, item);
     if (name && name[0]) snprintf(buf, len, "%s", name);
-    else snprintf(buf, len, "ITEM %d", item);
+    else snprintf(buf, len, pd_tr("ITEM %d"), item);
     return buf;
 }
 
@@ -415,8 +416,8 @@ static const char* number_title(const struct pd_library_saves* s) {
     case N_COINS: return "COINS";
     case N_LEVEL: return "LEVEL";
     case N_FRIENDSHIP: return "FRIENDSHIP";
-    case N_IV: snprintf(buf, sizeof buf, "%s IV", STAT_NAMES[s->numberArg]); return buf;
-    case N_EV: snprintf(buf, sizeof buf, "%s EV", STAT_NAMES[s->numberArg]); return buf;
+    case N_IV: snprintf(buf, sizeof buf, pd_tr("%s IV"), STAT_NAMES[s->numberArg]); return buf;
+    case N_EV: snprintf(buf, sizeof buf, pd_tr("%s EV"), STAT_NAMES[s->numberArg]); return buf;
     default: return "HOW MANY";
     }
 }
@@ -428,7 +429,7 @@ static void number_done(struct pd_library_saves* s, bool ok) {
     long v = s->number;
     if (v < s->numberMin || v > s->numberMax) {
         char line[64];
-        snprintf(line, sizeof line, "From %ld to %ld.", s->numberMin, s->numberMax);
+        snprintf(line, sizeof line, pd_tr("From %ld to %ld."), s->numberMin, s->numberMax);
         message(s, "NOT THAT ONE", line, NULL);
         return;
     }
@@ -547,7 +548,7 @@ static void pick_move(struct pd_library_saves* s, int slot) {
     }
     sort_pick(s, s->pickCount && s->pickIds[0] == 0 ? 1 : 0);
     char title[24];
-    snprintf(title, sizeof title, "MOVE %d", slot + 1);
+    snprintf(title, sizeof title, pd_tr("MOVE %d"), slot + 1);
     open_pick(s, P_MOVE, slot, title, known[slot]);
 }
 
@@ -754,7 +755,7 @@ static void page_act(struct pd_library* l) {
         struct pd_mon mm;
         char name[24], line[96];
         pd_save_mon_at(sv, at, &mm);
-        snprintf(line, sizeof line, "Release %s (%s)?", mm.nickname, species_text(s, mm.species, name, sizeof name));
+        snprintf(line, sizeof line, pd_tr("Release %s (%s)?"), mm.nickname, species_text(s, mm.species, name, sizeof name));
         confirm(s, C_RELEASE, at, "RELEASE", line, "It's gone once the save is written.");
     }
 }
@@ -849,8 +850,8 @@ static void trainer_act(struct pd_library* l) {
     else if (r == T_REGISTER) confirm(s, C_REGISTER, 0, "POKéDEX", "Mark every Pokémon in the party and the PC", "as caught?");
     else if (r == T_MISSING) open_missing(l);
     else if (r == T_SEEN || r == T_CAUGHT) {
-        snprintf(line, sizeof line, "Mark all of the %s Pokédex as %s?", d.national ? "National" : d.region[0] == 'K' ? "Kanto" : "Hoenn",
-                 r == T_SEEN ? "seen" : "caught");
+        snprintf(line, sizeof line, pd_tr("Mark all of the %s Pokédex as %s?"), d.national ? pd_tr("National") : d.region[0] == 'K' ? "Kanto" : "Hoenn",
+                 pd_tr(r == T_SEEN ? "seen" : "caught"));
         confirm(s, r == T_SEEN ? C_SEEN : C_CAUGHT, 0, "POKéDEX", line, d.national ? NULL : "The regional one: no National Dex yet.");
     } else if (r >= T_EVENT) {
         enum pd_save_event e = (enum pd_save_event) (r - T_EVENT);
@@ -858,7 +859,7 @@ static void trainer_act(struct pd_library* l) {
         if (st == PD_EVENT_HAS) message(s, pd_save_event_name(e), "It's in the bag already.", pd_save_event_note(sv));
         else if (st == PD_EVENT_DONE) message(s, pd_save_event_name(e), "This save got it once already.", NULL);
         else {
-            snprintf(line, sizeof line, "Give the %s, as its event did?", pd_save_event_name(e));
+            snprintf(line, sizeof line, pd_tr("Give the %s, as its event did?"), pd_save_event_name(e));
             confirm(s, C_EVENT, e, "EVENT", line, pd_save_event_note(sv));
         }
     }
@@ -910,11 +911,11 @@ static void do_trade(struct pd_library* l, bool evolve) {
     }
     const struct pd_library_game* g = &l->games[to->game];
     const char* game = !strncmp(g->title, "Pokémon ", strlen("Pokémon ")) ? g->title + strlen("Pokémon ") : g->title;
-    if (fromA && fromB) snprintf(s->tradeNote, sizeof s->tradeNote, "%.24s and %.24s traded.", ma.nickname, mb.nickname);
-    else snprintf(s->tradeNote, sizeof s->tradeNote, "%.24s went to %.40s.", sent->nickname, game);
+    if (fromA && fromB) snprintf(s->tradeNote, sizeof s->tradeNote, pd_tr("%.24s and %.24s traded."), ma.nickname, mb.nickname);
+    else snprintf(s->tradeNote, sizeof s->tradeNote, pd_tr("%.24s went to %.40s."), sent->nickname, game);
     if (evolves) {
         size_t n = strlen(s->tradeNote);
-        snprintf(s->tradeNote + n, sizeof s->tradeNote - n, " It evolved into %s.", species_text(s, evolves, name, sizeof name));
+        snprintf(s->tradeNote + n, sizeof s->tradeNote - n, pd_tr(" It evolved into %s."), species_text(s, evolves, name, sizeof name));
     }
     a->mark = b->mark = PD_AT_NONE;
 }
@@ -949,7 +950,7 @@ static void do_trade_back(struct pd_library* l) {
         message(s, "THE GAMES WON'T", no, NULL);
         return;
     }
-    snprintf(s->tradeNote, sizeof s->tradeNote, "%.20s went to %.30s and came back as %s.", m.nickname, short_title(&l->games[partner->game]),
+    snprintf(s->tradeNote, sizeof s->tradeNote, pd_tr("%.20s went to %.30s and came back as %s."), m.nickname, short_title(&l->games[partner->game]),
              species_text(s, into, name, sizeof name));
     home->mark = PD_AT_NONE;
 }
@@ -970,8 +971,8 @@ static void start_trade(struct pd_library* l) {
         struct pd_mon m;
         pd_save_mon_at(&home->save, home->mark, &m);
         char line2[120];
-        snprintf(line1, sizeof line1, "%.20s goes to %.24s,", m.nickname, short_title(&l->games[partner->game]));
-        snprintf(line2, sizeof line2, "becomes %s and comes back.", species_text(s, into, name, sizeof name));
+        snprintf(line1, sizeof line1, pd_tr("%.20s goes to %.24s,"), m.nickname, short_title(&l->games[partner->game]));
+        snprintf(line2, sizeof line2, pd_tr("becomes %s and comes back."), species_text(s, into, name, sizeof name));
         confirm(s, C_TRADE_BACK, 0, "TRADE AND BACK", line1, line2);
         s->yes = "TRADE BACK";
         s->no = "CANCEL";
@@ -1003,8 +1004,8 @@ static void start_trade(struct pd_library* l) {
     }
     char line1[120], line2[120], name[24];
     const struct pd_mon* first = evoA ? &ma : &mb;
-    snprintf(line1, sizeof line1, "%.20s evolves into %s.", first->nickname, species_text(s, evoA ? evoA : evoB, name, sizeof name));
-    if (evoA && evoB) snprintf(line2, sizeof line2, "%.20s evolves into %s.", mb.nickname, species_text(s, evoB, name, sizeof name));
+    snprintf(line1, sizeof line1, pd_tr("%.20s evolves into %s."), first->nickname, species_text(s, evoA ? evoA : evoB, name, sizeof name));
+    if (evoA && evoB) snprintf(line2, sizeof line2, pd_tr("%.20s evolves into %s."), mb.nickname, species_text(s, evoB, name, sizeof name));
     else snprintf(line2, sizeof line2, "Or trade it as it is?");
     confirm(s, C_EVOLVE, 0, "EVOLVING", line1, line2);
     s->yes = "EVOLVE";
@@ -1378,7 +1379,7 @@ static void box_view(struct pd_library* l, struct pd_canvas* c, struct side* sid
     int x = PAGE_X, w = PAGE_W;
     // The party's or the box's name between its arrows (L / R).
     char name[24], head[40];
-    if (side->box == PARTY_VIEW) snprintf(head, sizeof head, "PARTY  %d/6", pd_save_party_count(&side->save));
+    if (side->box == PARTY_VIEW) snprintf(head, sizeof head, pd_tr("PARTY  %d/6"), pd_save_party_count(&side->save));
     else {
         pd_save_box_name(&side->save, side->box, name, sizeof name);
         snprintf(head, sizeof head, "%s  %d/%d", name, pd_save_box_count(&side->save, side->box), BOX_SLOTS);
@@ -1416,7 +1417,7 @@ static void box_view(struct pd_library* l, struct pd_canvas* c, struct side* sid
                 draw_mon(s, c, &m, cx + (cw - 32) / 2, cy + (ch - 32) / 2 - 1, held);
             }
         } else if (party && i == count && (s->held != PD_AT_NONE || s->page == PD_PAGE_TRADE)) {
-            pd_text_fit(c, cx + 10, pd_text_y(cy, ch), cw - 14, "Join the party", PD_MUTED, PD_MUTED_SHADOW);
+            pd_text_fit(c, cx + 10, pd_text_y(cy, ch), cw - 14, pd_tr("Join the party"), PD_MUTED, PD_MUTED_SHADOW);
         }
         lib_hit(cx, cy, cw, ch, HIT_SLOT + i);
     }
@@ -1483,7 +1484,7 @@ static void pick_dialog(struct pd_library* l, struct pd_canvas* c) {
     lib_hit(0, 0, LIB_W, LIB_H, HIT_PICK_CLOSE);
     int x = PAGE_X + 8, w = PAGE_W - 16, y = 10, th = 24;
     int tf = pd_title_box(c, x, y, w, th, PD_TITLE_FILL);
-    pd_text_fit(c, x + tf + 6, pd_text_y(y, th), w - 2 * tf - 12, s->pickTitle, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text_fit(c, x + tf + 6, pd_text_y(y, th), w - 2 * tf - 12, pd_tr(s->pickTitle), PD_TITLE_TEXT, PD_TITLE_SHADOW);
     int ly = y + th + 3, lh = LIB_H - ly - BUTTON_H - 2 * LIB_M - 2;
     int f = pd_list_box(c, x, ly, w, lh);
     int top = ly + f + 2, view = lh - 2 * f - 4, total = s->pickCount * ROW_H;
@@ -1496,7 +1497,7 @@ static void pick_dialog(struct pd_library* l, struct pd_canvas* c) {
         if (ry + ROW_H <= top || ry >= top + view) continue;
         bool on = i == s->pickSelected || l->pressedHit == HIT_CHOICE + i;
         if (on) pd_fill(c, lx - 4, ry, lw + 8, ROW_H, PD_ROW_SELECTED);
-        pd_text_fit(c, lx, pd_text_y(ry, ROW_H), lw, s->pickLabels[i], on ? PD_VALUE : PD_LABEL, on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
+        pd_text_fit(c, lx, pd_text_y(ry, ROW_H), lw, pd_tr(s->pickLabels[i]), on ? PD_VALUE : PD_LABEL, on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
         int vy = ry < top ? top : ry, vh = (ry + ROW_H > top + view ? top + view : ry + ROW_H) - vy;
         lib_hit(x + f, vy, w - 2 * f, vh, HIT_CHOICE + i);
     }
@@ -1518,10 +1519,10 @@ static void editor_tabs(struct pd_library* l, struct pd_canvas* c) {
     int w = (PAGE_W - gap * (TABS - 1) - (bw ? bw + gap : 0)) / TABS;
     if (bw) lib_battery_box(c, PAGE_X + PAGE_W - bw, y, bw, TITLE_H);
     for (int i = 0; i < TABS; i++) {
-        int x = PAGE_X + i * (w + gap), tw = pd_text_width(NAMES[i]);
+        int x = PAGE_X + i * (w + gap), tw = pd_text_width(pd_tr(NAMES[i]));
         bool on = s->tab == i;
         pd_layered_two_tone(c, x, y, w, TITLE_H, 3, pd_cur->chip, pd_cur->chipCount, on ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill, 0);
-        pd_text_fit(c, x + (w - tw > 8 ? (w - tw) / 2 : 4), pd_text_y(y, TITLE_H), w - 8, NAMES[i], on ? PD_VALUE : PD_LABEL,
+        pd_text_fit(c, x + (w - tw > 8 ? (w - tw) / 2 : 4), pd_text_y(y, TITLE_H), w - 8, pd_tr(NAMES[i]), on ? PD_VALUE : PD_LABEL,
                     on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
         if (on) pd_fill(c, x + 6, y + TITLE_H - 5, w - 12, 2, PD_VALUE);
         lib_hit(x, y, w, TITLE_H, HIT_TAB + i);
@@ -1553,9 +1554,9 @@ static void row_list(struct pd_library* l, struct pd_canvas* c, int y, int h, co
         const struct row_draw* r = &rows[i];
         int ty = pd_text_y(ry, ROW_H);
         if (r->group) {
-            if (pd_cur->groupTitleFill != PD_NO_SHADOW) pd_fill(c, lx - 4, ry + 1, pd_text_width(r->label) + 8, ROW_H - 2, pd_cur->groupTitleFill);
-            pd_text(c, lx, ty, r->label, pd_cur->groupTitleText, pd_cur->groupTitleShadow);
-            if (r->value[0]) pd_text_right(c, lx + lw, ty, r->value, PD_MUTED, PD_MUTED_SHADOW);
+            if (pd_cur->groupTitleFill != PD_NO_SHADOW) pd_fill(c, lx - 4, ry + 1, pd_text_width(pd_tr(r->label)) + 8, ROW_H - 2, pd_cur->groupTitleFill);
+            pd_text(c, lx, ty, pd_tr(r->label), pd_cur->groupTitleText, pd_cur->groupTitleShadow);
+            if (r->value[0]) pd_text_right(c, lx + lw, ty, pd_tr(r->value), PD_MUTED, PD_MUTED_SHADOW);
             continue;
         }
         bool on = i == sel || l->pressedHit == HIT_EDIT_ROW + ids[i];
@@ -1569,11 +1570,11 @@ static void row_list(struct pd_library* l, struct pd_canvas* c, int y, int h, co
             // ◀ value ▶: the arrows step it, a tap on the row opens its window.
             pd_triangle(c, vx, ty + 3, 4, PD_LEFT, on ? PD_VALUE : PD_MUTED);
             pd_triangle(c, lx + lw - 5, ty + 3, 4, PD_RIGHT, on ? PD_VALUE : PD_MUTED);
-            pd_text_fit(c, vx + 10, ty, vw - 22, r->value, vc, vs);
+            pd_text_fit(c, vx + 10, ty, vw - 22, pd_tr(r->value), vc, vs);
             lib_hit(vx - 6, vy, 22, vh, HIT_EDIT_DEC + ids[i]);
             lib_hit(lx + lw - 16, vy, 24, vh, HIT_EDIT_INC + ids[i]);
         } else {
-            pd_text_fit(c, vx, ty, vw, r->value, vc, vs);
+            pd_text_fit(c, vx, ty, vw, pd_tr(r->value), vc, vs);
         }
     }
     pd_unclip(c);
@@ -1682,10 +1683,10 @@ static void bag_tab(struct pd_library* l, struct pd_canvas* c) {
     struct pd_save* sv = &s->sides[0].save;
     // The pockets' chips, each as wide as its name and the room left shared out (BERRIES is the long one).
     int y = TITLE_Y + TITLE_H + LIB_M, gap = 3, text = 0;
-    for (int i = 0; i < PD_BAG_POCKETS; i++) text += pd_text_width(POCKET_NAMES[i]);
+    for (int i = 0; i < PD_BAG_POCKETS; i++) text += pd_text_width(pd_tr(POCKET_NAMES[i]));
     int extra = (PAGE_W - gap * (PD_BAG_POCKETS - 1) - text) / PD_BAG_POCKETS, x = PAGE_X;
     for (int i = 0; i < PD_BAG_POCKETS; i++) {
-        int w = i == PD_BAG_POCKETS - 1 ? PAGE_X + PAGE_W - x : pd_text_width(POCKET_NAMES[i]) + extra;
+        int w = i == PD_BAG_POCKETS - 1 ? PAGE_X + PAGE_W - x : pd_text_width(pd_tr(POCKET_NAMES[i])) + extra;
         lib_button(c, x, y, w, 20, POCKET_NAMES[i], s->pocket == i, HIT_POCKET + i);
         x += w + gap;
     }
@@ -1750,7 +1751,7 @@ static void missing_tab(struct pd_library* l, struct pd_canvas* c) {
     static int lastRow = -1;
     if (!s->missingCount) {
         int f = pd_list_box(c, PAGE_X, y, PAGE_W, 60);
-        pd_text(c, PAGE_X + f + 8, y + f + 16, "Every Pokémon this Pokédex lists is caught.", PD_LABEL, PD_LABEL_SHADOW);
+        pd_text(c, PAGE_X + f + 8, y + f + 16, pd_tr("Every Pokémon this Pokédex lists is caught."), PD_LABEL, PD_LABEL_SHADOW);
     } else {
         row_list(l, c, y, LIB_H - y - BUTTON_H - 2 * LIB_M, rows, ids, s->missingCount, s->missingRow, &s->missingScroll, 170,
                  lastRow != s->missingRow);
@@ -1796,7 +1797,7 @@ static void trainer_tab(struct pd_library* l, struct pd_canvas* c) {
             snprintf(r->value, sizeof r->value, "%d/%d", have, d.national ? 386 : d.regionalSize);
         } else if (id == T_MISSING) {
             r->label = "MISSING";
-            snprintf(r->value, sizeof r->value, "%d NOT CAUGHT", (d.national ? 386 - d.caught : d.regionalSize - d.regionalCaught));
+            snprintf(r->value, sizeof r->value, pd_tr("%d NOT CAUGHT"), (d.national ? 386 - d.caught : d.regionalSize - d.regionalCaught));
         } else if (id == TG_EVENTS) {
             r->label = "EVENTS";
             r->group = true;
@@ -1827,7 +1828,7 @@ void lib_saves_draw(struct pd_library* l, struct pd_canvas* c) {
     } else if (s->stage == LOADING) {
         lib_title(c, tool_title(s), NULL, false);
         int f = pd_list_box(c, PAGE_X, 60, PAGE_W, 60);
-        pd_text(c, PAGE_X + f + 10, 60 + f + 16, "Loading the game...", PD_LABEL, PD_LABEL_SHADOW);
+        pd_text(c, PAGE_X + f + 10, 60 + f + 16, pd_tr("Loading the game..."), PD_LABEL, PD_LABEL_SHADOW);
         l->dirty = true;
     } else if (s->page == PD_PAGE_EDITOR) {
         editor_tabs(l, c);
@@ -1876,10 +1877,10 @@ void lib_saves_draw(struct pd_library* l, struct pd_canvas* c) {
 static void mon_window(struct pd_library_saves* s, struct pd_canvas* c, const struct pd_mon* m, int x, int y, int w, int h, const char* heading,
                        const char* empty) {
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
-    if (heading) pd_text_fit(c, x + f + 6, y + f + 2, w - 2 * f - 12, heading, PD_MUTED, PD_MUTED_SHADOW);
+    if (heading) pd_text_fit(c, x + f + 6, y + f + 2, w - 2 * f - 12, pd_tr(heading), PD_MUTED, PD_MUTED_SHADOW);
     int top = y + f + (heading ? 20 : 4);
     if (!m) {
-        pd_text_fit(c, x + f + 6, top + 4, w - 2 * f - 12, empty, PD_LABEL, PD_LABEL_SHADOW);
+        pd_text_fit(c, x + f + 6, top + 4, w - 2 * f - 12, pd_tr(empty), PD_LABEL, PD_LABEL_SHADOW);
         return;
     }
     // The icon at twice its size on a well, then who it is.
@@ -1897,7 +1898,7 @@ static void mon_window(struct pd_library_saves* s, struct pd_canvas* c, const st
         snprintf(text, sizeof text, "%s%s", pd_nature_names[m->personality % 25], m->shiny ? "  SHINY" : "");
         pd_text_fit(c, tx, top + 36, tw, text, PD_LABEL, PD_LABEL_SHADOW);
         char item[32];
-        snprintf(text, sizeof text, "ITEM  %s", item_text(s, m->heldItem, item, sizeof item));
+        snprintf(text, sizeof text, pd_tr("ITEM  %s"), item_text(s, m->heldItem, item, sizeof item));
         pd_text_fit(c, tx, top + 54, tw, text, PD_MUTED, PD_MUTED_SHADOW);
     }
     // Its moves, two to a row.
@@ -1923,8 +1924,8 @@ static void stats_window(struct pd_library_saves* s, struct pd_canvas* c, int at
     int nature = (int) (pd_box_mon_personality(&m) % 25), up = pd_nature_raises(nature), down = pd_nature_lowers(nature);
     int lx = x + f + 6, ty = y + f + 4, cw = w - 2 * f - 12;
     static const char* const SHORT[6] = { "HP", "ATK", "DEF", "SPD", "SP.A", "SP.D" };
-    pd_text_right(c, lx + cw - 34, ty, "IV", PD_MUTED, PD_MUTED_SHADOW);
-    pd_text_right(c, lx + cw, ty, "EV", PD_MUTED, PD_MUTED_SHADOW);
+    pd_text_right(c, lx + cw - 34, ty, pd_tr("IV"), PD_MUTED, PD_MUTED_SHADOW);
+    pd_text_right(c, lx + cw, ty, pd_tr("EV"), PD_MUTED, PD_MUTED_SHADOW);
     for (int i = 0; i < 6; i++) {
         int ry = ty + 18 + i * 17;
         // The nature's stats: raised red, lowered blue (the summary's colours).
@@ -1979,16 +1980,16 @@ static void glance(struct pd_library_saves* s, struct pd_canvas* c, int x) {
     char text[40], name[16];
     pd_save_trainer_name(&side->save, name, sizeof name);
     int ty = TOP_M + f + 4;
-    pd_text(c, x + f + 6, ty, "PLAYER", PD_LABEL, PD_LABEL_SHADOW);
+    pd_text(c, x + f + 6, ty, pd_tr("PLAYER"), PD_LABEL, PD_LABEL_SHADOW);
     pd_text_fit(c, x + f + 6, ty + 16, w - 2 * f - 12, name, PD_VALUE, PD_VALUE_SHADOW);
-    pd_text(c, x + f + 6, ty + 38, "MONEY", PD_LABEL, PD_LABEL_SHADOW);
+    pd_text(c, x + f + 6, ty + 38, pd_tr("MONEY"), PD_LABEL, PD_LABEL_SHADOW);
     pd_text_fit(c, x + f + 6, ty + 54, w - 2 * f - 12, money_text(pd_save_money(&side->save), text, sizeof text), PD_VALUE, PD_VALUE_SHADOW);
     struct pd_save_dex d;
     pd_save_dex_counts(&side->save, &d);
     snprintf(text, sizeof text, "%d / %d", d.national ? d.caught : d.regionalCaught, d.national ? 386 : d.regionalSize);
-    pd_text(c, x + f + 6, ty + 76, "POKéDEX", PD_LABEL, PD_LABEL_SHADOW);
+    pd_text(c, x + f + 6, ty + 76, pd_tr("POKéDEX"), PD_LABEL, PD_LABEL_SHADOW);
     pd_text_fit(c, x + f + 6, ty + 92, w - 2 * f - 12, text, PD_VALUE, PD_VALUE_SHADOW);
-    if (pd_save_changed(&side->save)) pd_text_fit(c, x + f + 6, ty + 122, w - 2 * f - 12, "Not saved yet", PD_MUTED, PD_MUTED_SHADOW);
+    if (pd_save_changed(&side->save)) pd_text_fit(c, x + f + 6, ty + 122, w - 2 * f - 12, pd_tr("Not saved yet"), PD_MUTED, PD_MUTED_SHADOW);
 }
 
 static void bag_top(struct pd_library_saves* s, struct pd_canvas* c) {
@@ -1998,30 +1999,30 @@ static void bag_top(struct pd_library_saves* s, struct pd_canvas* c) {
     int n = pd_save_pocket(sv, p, st, 64), x = TOP_M, w = 236, h = TOP_BODY_END - TOP_M;
     int f = pd_title_box(c, x, TOP_M, w, h, PD_TITLE_FILL);
     int lx = x + f + 6, ty = TOP_M + f + 4, cw = w - 2 * f - 12;
-    pd_text(c, lx, ty, POCKET_NAMES[p], PD_MUTED, PD_MUTED_SHADOW);
+    pd_text(c, lx, ty, pd_tr(POCKET_NAMES[p]), PD_MUTED, PD_MUTED_SHADOW);
     char text[64], name[32];
     if (s->bagRow >= n) {
-        snprintf(text, sizeof text, "%d of %d places used.", n, pd_save_pocket_slots(sv, p));
+        snprintf(text, sizeof text, pd_tr("%d of %d places used."), n, pd_save_pocket_slots(sv, p));
         pd_text_fit(c, lx, ty + 24, cw, text, PD_LABEL, PD_LABEL_SHADOW);
         pd_text_wrap(c, lx, ty + 48, cw, 16, 4,
-                     p == PD_BAG_KEY ? "Key items come from the story. The event tickets are on TRAINER."
-                                     : "ADD AN ITEM offers what this game files in this pocket, and only that.",
+                     p == PD_BAG_KEY ? pd_tr("Key items come from the story. The event tickets are on TRAINER.")
+                                     : pd_tr("ADD AN ITEM offers what this game files in this pocket, and only that."),
                      PD_MUTED, PD_MUTED_SHADOW);
         return;
     }
     int item = st[s->bagRow].item;
     pd_text_fit(c, lx, ty + 24, cw, item_text(s, item, name, sizeof name), PD_LABEL, PD_LABEL_SHADOW);
     if (p != PD_BAG_KEY) {
-        snprintf(text, sizeof text, "x%d  (a stack holds %d)", st[s->bagRow].quantity, pd_save_stack_max(sv, p, item));
+        snprintf(text, sizeof text, pd_tr("x%d  (a stack holds %d)"), st[s->bagRow].quantity, pd_save_stack_max(sv, p, item));
         pd_text_fit(c, lx, ty + 42, cw, text, PD_VALUE, PD_VALUE_SHADOW);
     }
     int teaches = pd_save_tmhm_move(item);
     if (teaches) {
-        snprintf(text, sizeof text, "TEACHES  %s", move_text(s, teaches, name, sizeof name));
+        snprintf(text, sizeof text, pd_tr("TEACHES  %s"), move_text(s, teaches, name, sizeof name));
         pd_text_fit(c, lx, ty + 64, cw, text, PD_LABEL, PD_LABEL_SHADOW);
     }
     if (pd_save_stack_fixed(p, item))
-        pd_text_wrap(c, lx, ty + 90, cw, 16, 3, p == PD_BAG_KEY ? "Key items stay: the story needs them." : "HMs are handed out once and stay.", PD_MUTED,
+        pd_text_wrap(c, lx, ty + 90, cw, 16, 3, p == PD_BAG_KEY ? pd_tr("Key items stay: the story needs them.") : pd_tr("HMs are handed out once and stay."), PD_MUTED,
                      PD_MUTED_SHADOW);
 }
 
@@ -2032,7 +2033,7 @@ static void missing_top(struct pd_library* l, struct pd_canvas* c) {
     int f = pd_title_box(c, x, TOP_M, w, h, PD_TITLE_FILL);
     int lx = x + f + 8, ty = TOP_M + f + 6, cw = w - 2 * f - 16;
     char text[160], name[24], owned[24];
-    snprintf(text, sizeof text, "MISSING  %d NOT CAUGHT", s->missingCount);
+    snprintf(text, sizeof text, pd_tr("MISSING  %d NOT CAUGHT"), s->missingCount);
     pd_text(c, lx, ty, text, PD_MUTED, PD_MUTED_SHADOW);
     if (!s->missingCount) return;
     const struct pd_missing* e = &missing[s->missingRow];
@@ -2040,20 +2041,20 @@ static void missing_top(struct pd_library* l, struct pd_canvas* c) {
     pd_text_fit(c, lx, ty + 24, cw, text, PD_VALUE, PD_VALUE_SHADOW);
     const char* game = missing_game(l, e);
     if (!game) {
-        pd_text_wrap(c, lx, ty + 52, cw, 16, 3, "None of your other GBA saves has one, or one that evolves into it by trading.", PD_LABEL, PD_LABEL_SHADOW);
+        pd_text_wrap(c, lx, ty + 52, cw, 16, 3, pd_tr("None of your other GBA saves has one, or one that evolves into it by trading."), PD_LABEL, PD_LABEL_SHADOW);
         return;
     }
     char where[24];
     if (PD_AT_IS_PARTY(e->at)) snprintf(where, sizeof where, "PARTY");
-    else snprintf(where, sizeof where, "BOX %d", e->at / PD_SAVE_BOX_SLOTS + 1);
+    else snprintf(where, sizeof where, pd_tr("BOX %d"), e->at / PD_SAVE_BOX_SLOTS + 1);
     species_text(s, e->owned, owned, sizeof owned);
     if (e->way == PD_MISSING_TRADE_BACK)
-        snprintf(text, sizeof text, "Your %s Lv%d (%s) evolves into it on a trip to %s and back: TRADE SAVES, pick it alone, then Y.", owned, e->level, where, game);
+        snprintf(text, sizeof text, pd_tr("Your %s Lv%d (%s) evolves into it on a trip to %s and back: TRADE SAVES, pick it alone, then Y."), owned, e->level, where, game);
     else if (e->way == PD_MISSING_EVOLVES)
-        snprintf(text, sizeof text, "%s's %s Lv%d (%s) evolves into it as it arrives: TRADE SAVES.", game, owned, e->level, where);
-    else snprintf(text, sizeof text, "%s has one, Lv%d (%s): TRADE SAVES brings it.", game, e->level, where);
+        snprintf(text, sizeof text, pd_tr("%s's %s Lv%d (%s) evolves into it as it arrives: TRADE SAVES."), game, owned, e->level, where);
+    else snprintf(text, sizeof text, pd_tr("%s has one, Lv%d (%s): TRADE SAVES brings it."), game, e->level, where);
     pd_text_wrap(c, lx, ty + 52, cw, 16, 4, text, PD_LABEL, PD_LABEL_SHADOW);
-    if (!e->reachable) pd_text_wrap(c, lx, ty + 52 + 4 * 16 + 8, cw, 16, 3, e->why, PD_VALUE, PD_VALUE_SHADOW);
+    if (!e->reachable) pd_text_wrap(c, lx, ty + 52 + 4 * 16 + 8, cw, 16, 3, pd_tr(e->why), PD_VALUE, PD_VALUE_SHADOW);
 }
 
 static void trainer_top(struct pd_library_saves* s, struct pd_canvas* c) {
@@ -2078,16 +2079,16 @@ static void trainer_top(struct pd_library_saves* s, struct pd_canvas* c) {
     lines[3].label = "BADGES";
     snprintf(lines[3].value, sizeof lines[3].value, "%d", pd_save_badges(sv));
     lines[4].label = d.region[0] == 'K' ? "KANTO DEX" : "HOENN DEX";
-    snprintf(lines[4].value, sizeof lines[4].value, "%d seen, %d caught", d.regionalSeen, d.regionalCaught);
+    snprintf(lines[4].value, sizeof lines[4].value, pd_tr("%d seen, %d caught"), d.regionalSeen, d.regionalCaught);
     lines[5].label = "NATIONAL DEX";
-    if (d.national) snprintf(lines[5].value, sizeof lines[5].value, "%d seen, %d caught", d.seen, d.caught);
+    if (d.national) snprintf(lines[5].value, sizeof lines[5].value, pd_tr("%d seen, %d caught"), d.seen, d.caught);
     else snprintf(lines[5].value, sizeof lines[5].value, "not yet");
     for (int i = 0; i < 6; i++) {
         int ry = ty + 30 + i * 22;
-        pd_text(c, lx, ry, lines[i].label, PD_LABEL, PD_LABEL_SHADOW);
-        pd_text_fit(c, vx, ry, x + w - f - 8 - vx, lines[i].value, PD_VALUE, PD_VALUE_SHADOW);
+        pd_text(c, lx, ry, pd_tr(lines[i].label), PD_LABEL, PD_LABEL_SHADOW);
+        pd_text_fit(c, vx, ry, x + w - f - 8 - vx, pd_tr(lines[i].value), PD_VALUE, PD_VALUE_SHADOW);
     }
-    if (pd_save_changed(sv)) pd_text(c, lx, ty + 30 + 6 * 22 + 4, "Not saved yet", PD_MUTED, PD_MUTED_SHADOW);
+    if (pd_save_changed(sv)) pd_text(c, lx, ty + 30 + 6 * 22 + 4, pd_tr("Not saved yet"), PD_MUTED, PD_MUTED_SHADOW);
 }
 
 void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
@@ -2095,7 +2096,7 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
     lib_page_backdrop(c);
     if (s->stage == PICK_A || s->stage == PICK_B || s->stage == LOADING) {
         tool_help(s, c);
-        lib_hint_bar(c, s->stage == LOADING ? "Loading..." : s->stage == PICK_B ? "A: OPEN THE SECOND SAVE   B: BACK" : "A: OPEN ITS SAVE   B: GAMES");
+        lib_hint_bar(c, s->stage == LOADING ? pd_tr("Loading...") : s->stage == PICK_B ? pd_tr("A: OPEN THE SECOND SAVE   B: BACK") : pd_tr("A: OPEN ITS SAVE   B: GAMES"));
         return;
     }
     if (s->page == PD_PAGE_EDITOR) {
@@ -2105,23 +2106,23 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
             bool has = pd_save_mon_at(&side->save, s->monAt, &m);
             mon_window(s, c, has ? &m : NULL, TOP_M, TOP_M, 236, TOP_BODY_END - TOP_M, NULL, "");
             stats_window(s, c, s->monAt, TOP_M + 242, TOP_M, TOP_W - 2 * TOP_M - 242, TOP_BODY_END - TOP_M);
-            lib_hint_bar(c, "LEFT RIGHT: CHANGE   A: PICK   L R: NEXT   X: SAVE   B: BACK");
+            lib_hint_bar(c, pd_tr("LEFT RIGHT: CHANGE   A: PICK   L R: NEXT   X: SAVE   B: BACK"));
             return;
         }
         if (s->tab == TAB_BAG) {
             bag_top(s, c);
             glance(s, c, TOP_M + 242);
-            lib_hint_bar(c, "A: HOW MANY   Y: ADD   L R: POCKETS   X: SAVE   SELECT: TABS");
+            lib_hint_bar(c, pd_tr("A: HOW MANY   Y: ADD   L R: POCKETS   X: SAVE   SELECT: TABS"));
             return;
         }
         if (s->tab == TAB_TRAINER && s->missingOpen) {
             missing_top(l, c);
-            lib_hint_bar(c, "UP DOWN: STEP   L R: PAGE   B: BACK");
+            lib_hint_bar(c, pd_tr("UP DOWN: STEP   L R: PAGE   B: BACK"));
             return;
         }
         if (s->tab == TAB_TRAINER) {
             trainer_top(s, c);
-            lib_hint_bar(c, "A: CHANGE   X: SAVE   SELECT: TABS   B: CLOSE");
+            lib_hint_bar(c, pd_tr("A: CHANGE   X: SAVE   SELECT: TABS   B: CLOSE"));
             return;
         }
         struct pd_mon m;
@@ -2129,8 +2130,8 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
         bool has = at != PD_AT_NONE && pd_save_mon_at(&side->save, at, &m);
         mon_window(s, c, has ? &m : NULL, TOP_M, TOP_M, 236, TOP_BODY_END - TOP_M, s->held != PD_AT_NONE ? "MOVING" : NULL, "An empty place.");
         glance(s, c, TOP_M + 242);
-        lib_hint_bar(c, s->held != PD_AT_NONE ? "A: PUT IT HERE   L R: PARTY / BOXES   B: PUT IT BACK"
-                                              : "A: MOVE   Y: EDIT   L R: PARTY / BOXES   X: SAVE   SELECT: TABS");
+        lib_hint_bar(c, s->held != PD_AT_NONE ? pd_tr("A: PUT IT HERE   L R: PARTY / BOXES   B: PUT IT BACK")
+                                              : pd_tr("A: MOVE   Y: EDIT   L R: PARTY / BOXES   X: SAVE   SELECT: TABS"));
         return;
     }
     // TRADE: each side's pick, the arrow between them, and whether the games would do it.
@@ -2153,7 +2154,7 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
     int tripInto = 0;
     if (trip_home(s, &tripInto)) {
         char name[24];
-        snprintf(why, sizeof why, "Picked alone: Y trades it there and back as %s.", species_text(s, tripInto, name, sizeof name));
+        snprintf(why, sizeof why, pd_tr("Picked alone: Y trades it there and back as %s."), species_text(s, tripInto, name, sizeof name));
         status = why;
     }
     struct side *a = &s->sides[0], *b = &s->sides[1];
@@ -2165,10 +2166,10 @@ void lib_saves_draw_top(struct pd_library* l, struct pd_canvas* c) {
         if (no) status = no;
         else if (evolves) {
             char name[24];
-            snprintf(why, sizeof why, "Ready. It evolves into %s on arrival.", species_text(s, evolves, name, sizeof name));
+            snprintf(why, sizeof why, pd_tr("Ready. It evolves into %s on arrival."), species_text(s, evolves, name, sizeof name));
             status = why;
         } else status = "Ready to trade.";
     }
-    pd_text_wrap(c, TOP_M + f + 8, sy + f + 2, TOP_W - 2 * TOP_M - 2 * f - 16, 16, 2, status, PD_LABEL, PD_LABEL_SHADOW);
-    lib_hint_bar(c, "A: PICK   L R: BOXES   X: OTHER SIDE   Y: TRADE   SELECT: SAVE");
+    pd_text_wrap(c, TOP_M + f + 8, sy + f + 2, TOP_W - 2 * TOP_M - 2 * f - 16, 16, 2, pd_tr(status), PD_LABEL, PD_LABEL_SHADOW);
+    lib_hint_bar(c, pd_tr("A: PICK   L R: BOXES   X: OTHER SIDE   Y: TRADE   SELECT: SAVE"));
 }

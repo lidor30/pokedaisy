@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../core/pd_tr.h"
 #include "../core/pd_canvas.h"
 #include "../core/pd_card.h"
 #include "../core/pd_romart.h"
@@ -212,6 +213,7 @@ static void drag(struct preview* p, int id, int dy) {
 }
 
 int main(int argc, char** argv) {
+    if (getenv("PD_PREVIEW_LANG")) pd_tr_force(pd_lang_of_code(getenv("PD_PREVIEW_LANG"))); // DE, FR, IT, ES, BR, PT
     if (argc != 5 && argc != 6) {
         fprintf(stderr, "usage: pd_preview <fixture dir> <BPRE|BPGE|BPEE> <out dir> <name> [rom]\n");
         return 2;
@@ -271,7 +273,7 @@ int main(int argc, char** argv) {
     struct pd_host_info host = { .count = 2, .hasState = true };
     host.labels[0] = "SOURCE";
     snprintf(host.values[0], sizeof(host.values[0]), "%s", name);
-    host.labels[1] = "SPEED";
+    host.labels[1] = "SPEED|emulation";
     snprintf(host.values[1], sizeof(host.values[1]), "100%% (60 FPS)");
     snprintf(host.stateWhen, sizeof(host.stateWhen), "10-09 12:30");
 

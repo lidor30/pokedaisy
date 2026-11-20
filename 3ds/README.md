@@ -142,6 +142,10 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     COMPANION, with the app's group tabs down the left outside the list's window (a tap scrolls to the group,
     the group in view lit); TAB BAR (which tabs sit on the bar, at most five; the rest open from MORE, a grid of
     tiles across the whole width), CLOSE GAME / RESTART GAME. The list scrolls (a drag) where it doesn't fit.
+    LANGUAGE (last row, also in the library's SETTINGS): the menus in English, French, German, Italian, Spanish or
+    Portuguese, AUTO = the game's language, else the console's; `pd_tr("EN")` (`pd_tr.c`) looks the English up in `pd_tr_gen.c`, which
+    `tools/gen_tr.py` writes from the app's `Tr*.kt` plus `tools/tr_3ds.txt` (`make tables`; `make test-tr` fails while stale).
+    Game data, guide prose and bag pocket names stay as they are; Japanese / Korean wait for their glyphs.
   - **TRAINER CARD** (the button in SETTINGS' title, like the app's TOOLS): the
     game's own card, drawn from your ROM's art pixel for pixel - name, ID,
     money, POKéDEX, play time with its blinking colon, badges, stars, the

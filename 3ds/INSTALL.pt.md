@@ -86,6 +86,8 @@ Durante o jogo, os botões da GBA são os mesmos da 3DS (o botão deslizante fun
 
 Para sair de um jogo, use `CLOSE GAME` no fim das `SETTINGS` do companheiro. O botão **HOME** e fechar a consola também funcionam.
 
+Os menus existem em inglês, francês, alemão, italiano, espanhol e português. `LANGUAGE` nas `SETTINGS` da biblioteca (e no fim das do companheiro) escolhe um; `AUTO` segue o idioma do jogo, senão o da sua 3DS.
+
 ![A página SETTINGS da biblioteca numa 3DS: VIEW, SORT, THEME, DARK MODE, SCREEN, ASPECT e o som](../docs/manual/shots/3ds-settings.png "As SETTINGS da biblioteca: o aspeto e o ecrã para todos os jogos")
 
 ## Que jogos funcionam

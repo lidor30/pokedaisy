@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "pd_binput.h"
+#include "pd_tr.h"
 #include "pd_gb.h"
 #include "pd_icon.h"
 #include "pd_tables.h"
@@ -99,6 +100,7 @@ void ui_platinum(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int
 }
 
 void ui_platinum_label(struct pd_canvas* c, int x, int y, int w, int h, const char* text) {
+    text = pd_tr(text);
     pd_text(c, x + (w - pd_text_width(text)) / 2, pd_text_y(y, h), text, GB_LOOK ? PD_TITLE_TEXT : 0xFFFFFF,
             GB_LOOK ? PD_NO_SHADOW : 0x383838);
 }
@@ -162,7 +164,7 @@ static void hg_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w
                       uint32_t fill, uint32_t frame, int id, bool enabled) {
     if (!enabled) save_rect(c, x, y, w, h);
     ui_platinum(ui, c, x, y, w, h, fill, frame, enabled ? id : -1);
-    outlined_label(c, x, y, w, h, text, scale);
+    outlined_label(c, x, y, w, h, pd_tr(text), scale);
     if (!enabled) ui_fade_rect(c, saved, x, y, w, h, DISABLED_ALPHA);
 }
 
@@ -259,8 +261,8 @@ static void move_card(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
         int cy = GB_LOOK ? ty + 18 : py + 3 + split + (ph - 4 - split - 12) / 2;
         int cx = ix + ui_type_badge(c, ix, cy, type) + 3;
         int power = pd_move_power(ui_game, move);
-        if (power > 0) snprintf(buf, sizeof(buf), "PWR %d", power);
-        else snprintf(buf, sizeof(buf), "PWR -");
+        if (power > 0) snprintf(buf, sizeof(buf), pd_tr("PWR %d"), power);
+        else snprintf(buf, sizeof(buf), "%s", pd_tr("PWR -"));
         if (cx + pd_text_width(buf) > ix + iw - 20) {
             if (power > 0) snprintf(buf, sizeof(buf), "%d", power);
             else snprintf(buf, sizeof(buf), "-");
@@ -348,12 +350,14 @@ static void action_buttons(struct pd_ui* ui, struct pd_canvas* c, const struct p
     if (busy) save_rect(c, fx, fy, fightW, fightH);
     ui_platinum(ui, c, fx, fy, fightW, fightH, HG_RED, HG_RED_LOW, busy ? -1 : HIT_BATTLE_FIGHT);
     // The active mon's icon left of the word, like the game.
-    int scale = fit_scale("FIGHT", fightW - PD_ICON, 3), tw = pd_text_width_scaled("FIGHT", scale), iconW = PD_ICON + 6;
+    // The word in the menus' language, at the largest scale (up to 3) that fits beside the icon.
+    const char* fight = pd_tr("FIGHT");
+    int scale = fit_scale(fight, fightW - PD_ICON, 3), tw = pd_text_width_scaled(fight, scale), iconW = PD_ICON + 6;
     int cx = fx + (fightW - tw - iconW) / 2;
     // (A party icon stands at the bottom of its 32 x 32: raised a little, it sits level with the word.)
     if (pd_draw_mon_icon(c, g, you->species, cx, fy + (fightH - PD_ICON) / 2 - 3, false)) cx += iconW;
     else cx += iconW / 2;
-    outlined(c, cx, fy + (fightH - 17 * scale) / 2, "FIGHT", scale);
+    outlined(c, cx, fy + (fightH - 17 * scale) / 2, fight, scale);
     if (busy) ui_fade_rect(c, saved, fx, fy, fightW, fightH, DISABLED_ALPHA);
     // The row's ends flush with the move places' (HeartGold's 254 of 256 rounds to the pane's own edges).
     int rowW = w, bw = WIDE(82), bh = DS(46);
@@ -377,12 +381,13 @@ static void party_picker(struct pd_ui* ui, struct pd_canvas* c, const struct pd_
     ui_party_grid(ui, &top, g, s, best, ui_out_slots(s));
     int x = MARGIN, w = c->w - 2 * MARGIN;
     pd_title_box(c, x, y, w, barH, PD_TITLE_FILL);
-    pd_text(c, x + 8, pd_text_y(y, barH), "Choose a POKéMON.", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text(c, x + 8, pd_text_y(y, barH), pd_tr("Choose a POKéMON."), PD_TITLE_TEXT, PD_TITLE_SHADOW);
     if (busy) return;
     ui_button(ui, c, x + w - 70, y + 3, 66, barH - 6, "CANCEL", HIT_BATTLE_CANCEL);
 }
 
 static void centered(struct pd_canvas* c, int y, int h, const char* text) {
+    text = pd_tr(text);
     pd_text(c, (c->w - pd_text_width(text)) / 2, pd_text_y(y, h), text, PD_ON_BACKDROP, PD_ON_BACKDROP_SHADOW);
 }
 
@@ -428,8 +433,8 @@ void ui_battle_controls(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
         int y = ballTop + ballH + 4;
         if (ui_battle_info_on(ui)) {
             int infoW = 72, suggestW = 112, btnH = 26, rowX = (c->w - infoW - suggestW - 6) / 2;
-            button(ui, c, rowX, y, infoW, btnH, "INFO", 1, INFO_PURPLE, INFO_PURPLE_DARK, HIT_BATTLE_INFO, true);
-            button(ui, c, rowX + infoW + 6, y, suggestW, btnH, "SUGGESTIONS", 1, SUGGEST_GOLD, SUGGEST_GOLD_DARK, HIT_BATTLE_SUGGEST, true);
+            button(ui, c, rowX, y, infoW, btnH, pd_tr("INFO"), 1, INFO_PURPLE, INFO_PURPLE_DARK, HIT_BATTLE_INFO, true);
+            button(ui, c, rowX + infoW + 6, y, suggestW, btnH, pd_tr("SUGGESTIONS"), 1, SUGGEST_GOLD, SUGGEST_GOLD_DARK, HIT_BATTLE_SUGGEST, true);
             y += btnH + 5;
         }
         int bottom = c->h - 2;

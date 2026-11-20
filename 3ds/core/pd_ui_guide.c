@@ -10,6 +10,7 @@
 #include <strings.h>
 
 #include "pd_dex.h"
+#include "pd_tr.h"
 #include "pd_gb_world.h"
 #include "pd_guide.h"
 #include "pd_randomized.h"
@@ -78,7 +79,10 @@ static int steps(const struct view_entry* e) {
 }
 
 // The pages sit in a column (GuideScreen's): room for their whole names.
+// Their titles come from the generated guides; named here so gen_tr.py keeps their translations.
 static const char* page_label(const char* title) {
+    static const char* const TITLES[] = { "TIPS", "WHERE IS", "STUCK?" };
+    (void) TITLES;
     return title;
 }
 
@@ -151,10 +155,10 @@ static bool caught_species(const struct pd_game* g, const struct pd_snapshot* s,
 // "around PALLET TOWN" or "in the GYM".
 static void where_text(const struct pd_area_thing* t, const char* place, char* out, size_t len) {
     if (t->where && *t->where) {
-        snprintf(out, len, "in the %s", t->where);
+        snprintf(out, len, pd_tr("in the %s"), t->where);
     } else {
-        if (*place) snprintf(out, len, "around %s", place);
-        else snprintf(out, len, "nearby");  // a hack's map sections have no names here
+        if (*place) snprintf(out, len, pd_tr("around %s"), place);
+        else snprintf(out, len, "%s", pd_tr("nearby"));  // a hack's map sections have no names here
     }
 }
 
@@ -168,22 +172,22 @@ static void area_entry(const struct pd_game* g, const struct pd_snapshot* s, con
     switch (t->kind) {
     case PD_AREA_MON:
         snprintf(e->title, sizeof(e->title), "%s", pd_species_name(g, t->id, name, sizeof(name)));
-        snprintf(e->answerBuf, sizeof(e->answerBuf), "Someone %s gives you this POKéMON.", at);
+        snprintf(e->answerBuf, sizeof(e->answerBuf), pd_tr("Someone %s gives you this POKéMON."), at);
         break;
     case PD_AREA_EGG:
-        snprintf(e->title, sizeof(e->title), "AN EGG");
-        snprintf(e->answerBuf, sizeof(e->answerBuf), "Someone %s gives you an EGG: %s.", at,
+        snprintf(e->title, sizeof(e->title), "%s", pd_tr("AN EGG"));
+        snprintf(e->answerBuf, sizeof(e->answerBuf), pd_tr("Someone %s gives you an EGG: %s."), at,
                  pd_species_name(g, t->id, name, sizeof(name)));
         break;
     case PD_AREA_TRADE:
-        snprintf(e->title, sizeof(e->title), "TRADE FOR %s", pd_species_name(g, t->id, name, sizeof(name)));
-        snprintf(e->answerBuf, sizeof(e->answerBuf), "Someone %s trades it for your %s.", at,
+        snprintf(e->title, sizeof(e->title), pd_tr("TRADE FOR %s"), pd_species_name(g, t->id, name, sizeof(name)));
+        snprintf(e->answerBuf, sizeof(e->answerBuf), pd_tr("Someone %s trades it for your %s."), at,
                  pd_species_name(g, t->wants, buf, sizeof(buf)));
         break;
     case PD_AREA_HIDDEN:
         if (!e->owned) {
-            snprintf(e->title, sizeof(e->title), "HIDDEN ITEM");
-            snprintf(e->hintBuf, sizeof(e->hintBuf), "Buried %s.", at);
+            snprintf(e->title, sizeof(e->title), "%s", pd_tr("HIDDEN ITEM"));
+            snprintf(e->hintBuf, sizeof(e->hintBuf), pd_tr("Buried %s."), at);
             e->hint = e->hintBuf;
             snprintf(e->answerBuf, sizeof(e->answerBuf), "%s", pd_item_name(g, t->id));
             break;
@@ -198,9 +202,9 @@ static void area_entry(const struct pd_game* g, const struct pd_snapshot* s, con
             snprintf(e->title, sizeof(e->title), "%s", item);
         }
         if (t->kind == PD_AREA_ITEM || t->kind == PD_AREA_HIDDEN) {
-            snprintf(e->answerBuf, sizeof(e->answerBuf), "Lying %s.", at);
+            snprintf(e->answerBuf, sizeof(e->answerBuf), pd_tr("Lying %s."), at);
         } else {
-            snprintf(e->answerBuf, sizeof(e->answerBuf), "Someone %s gives it to you.", at);
+            snprintf(e->answerBuf, sizeof(e->answerBuf), pd_tr("Someone %s gives it to you."), at);
         }
         break;
     }
@@ -311,7 +315,7 @@ static void build_where(const struct pd_game* g, const struct pd_snapshot* s) {
             if (mon) {
                 if (sec != 2) continue;
                 snprintf(name, sizeof(name), "%s%s", pd_species_name(g, t->id, sp, sizeof(sp)),
-                         t->kind == PD_AREA_EGG ? " (egg)" : "");
+                         t->kind == PD_AREA_EGG ? pd_tr(" (egg)") : "");
             } else {
                 if (!gift && t->kind != PD_AREA_ITEM) continue;
                 const char* item = pd_item_name(g, t->id);
@@ -327,18 +331,18 @@ static void build_where(const struct pd_game* g, const struct pd_snapshot* s) {
             if (!e) break;
             const char* area = pd_mapsec_name(g, t->mapsec);
             snprintf(e->title, sizeof(e->title), "%s", name);
-            const char* lying = t->kind == PD_AREA_ITEM ? "Lying" : "Someone";
             if (!area[0]) {  // a hack's map sections have no names here: say only what the data knows
-                if (t->where[0]) snprintf(e->answerBuf, sizeof(e->answerBuf), "%s in the %s.", lying, t->where);
-                else snprintf(e->answerBuf, sizeof(e->answerBuf), t->kind == PD_AREA_ITEM ? "Lying around." : "Someone has it.");
+                if (t->where[0]) snprintf(e->answerBuf, sizeof(e->answerBuf),
+                                      pd_tr(t->kind == PD_AREA_ITEM ? "Lying in the %s." : "Someone in the %s."), t->where);
+                else snprintf(e->answerBuf, sizeof(e->answerBuf), "%s", pd_tr(t->kind == PD_AREA_ITEM ? "Lying around." : "Someone has it."));
             } else {
-                snprintf(e->hintBuf, sizeof(e->hintBuf), "In %s.", area);
+                snprintf(e->hintBuf, sizeof(e->hintBuf), pd_tr("In %s."), area);
                 e->hint = e->hintBuf;
                 if (t->kind == PD_AREA_ITEM)
-                    snprintf(e->answerBuf, sizeof(e->answerBuf), t->where[0] ? "Lying in the %s (%s)." : "Lying around %s.",
+                    snprintf(e->answerBuf, sizeof(e->answerBuf), pd_tr(t->where[0] ? "Lying in the %s (%s)." : "Lying around %s."),
                              t->where[0] ? t->where : area, area);
                 else
-                    snprintf(e->answerBuf, sizeof(e->answerBuf), t->where[0] ? "Someone in the %s (%s)." : "Someone around %s.",
+                    snprintf(e->answerBuf, sizeof(e->answerBuf), pd_tr(t->where[0] ? "Someone in the %s (%s)." : "Someone around %s."),
                              t->where[0] ? t->where : area, area);
             }
             e->answer = e->answerBuf;
@@ -355,7 +359,7 @@ static void build_where(const struct pd_game* g, const struct pd_snapshot* s) {
 }
 
 void pd_ui_guide_boss_note(char* note, size_t size, const char* place, int count, int ace, int best) {
-    snprintf(note, size, "%.40s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d", place, count, ace, best);
+    snprintf(note, size, pd_tr("%.40s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d"), place, count, ace, best);
 }
 
 // A boss team's members, one entry each: level, then types as the hint, then species, moves and item as the answer.
@@ -363,7 +367,7 @@ static void team_entries(const struct pd_game* g, const struct pd_team_mon* team
     for (int i = 0; i < n; i++) {
         struct view_entry* e = add_entry();
         if (!e) break;
-        snprintf(e->title, sizeof(e->title), "POKéMON %d", i + 1);
+        snprintf(e->title, sizeof(e->title), pd_tr("POKéMON %d"), i + 1);
         snprintf(e->detail, sizeof(e->detail), "LV%d", team[i].level);
         int t1, t2;
         pd_species_types(g, team[i].species, &t1, &t2);
@@ -386,7 +390,7 @@ static void team_entries(const struct pd_game* g, const struct pd_team_mon* team
             first = false;
         }
         if (team[i].item && len < (int) sizeof(e->answerBuf)) {
-            snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, ". HOLDS %s",
+            snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, pd_tr(". HOLDS %s"),
                      pd_item_name(g, team[i].item));
         }
         e->answer = e->answerBuf;
@@ -420,7 +424,7 @@ static void build_world_bosses(const struct pd_game* g, const struct pd_snapshot
             int top = 0;
             for (int i = 1; i < n; i++) top = team[i].level > team[top].level ? i : top;
             // The heading is long enough as it is: what tells the teams apart goes first under it.
-            if (teams > 1) snprintf(where, sizeof(where), "WITH %s - %s", pd_species_name(g, team[top].species, name, sizeof(name)), boss->where);
+            if (teams > 1) snprintf(where, sizeof(where), pd_tr("WITH %s - %s"), pd_species_name(g, team[top].species, name, sizeof(name)), boss->where);
             else snprintf(where, sizeof(where), "%s", boss->where);
             team_section(g, boss->title, where, !shown, best, team, n);
             shown++;
@@ -460,12 +464,12 @@ static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, c
             if (team[i].level > ace) { ace = team[i].level; aceSpecies = team[i].species; }
         }
         char heading[56], note[160];
-        snprintf(heading, sizeof(heading), shown || vi ? "%s" : "NEXT: %s", boss->title);
+        snprintf(heading, sizeof(heading), shown || vi ? "%s" : pd_tr("NEXT: %s"), boss->title);
         if (var) {
             size_t hl = strlen(heading);
             char with[40];
             if (var->label[0]) snprintf(heading + hl, sizeof(heading) - hl, " (%s)", var->label);
-            else snprintf(heading + hl, sizeof(heading) - hl, " (WITH %s)", pd_species_name(g, aceSpecies, with, sizeof(with)));
+            else snprintf(heading + hl, sizeof(heading) - hl, pd_tr(" (WITH %s)"), pd_species_name(g, aceSpecies, with, sizeof(with)));
         }
         pd_ui_guide_boss_note(note, sizeof note, boss->where, n, ace, best);
         add_section(heading, note);
@@ -485,7 +489,7 @@ static int note_lines(const char* note, int w) {
 
 static int draw_hint(struct pd_canvas* c, int x, int y, int w, const char* text) {
     char hint[260];
-    snprintf(hint, sizeof hint, "HINT: %s", text);
+    snprintf(hint, sizeof hint, pd_tr("HINT: %s"), text);
     return pd_text_wrap(c, x, y, w, LINE, 4, hint, PD_MUTED, PD_MUTED_SHADOW);
 }
 
@@ -510,7 +514,7 @@ static void draw_list(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w
     const int focus = ui->guideController ? ui->guideRowFocus : ui->focusId - HIT_GUIDE_ROW;
     int total = 0, focusTop = -1, focusH = 0;
     for (int si = 0; si < sectionCount; si++) {
-        total += ROW + LINE * note_lines(sections[si].note, w - 12);
+        total += ROW + LINE * note_lines(pd_tr(sections[si].note), w - 12);
         for (int i = sections[si].first; i < sections[si].first + sections[si].count; i++) {
             int eh = entry_height(ui, i, w - 30);
             if (focus == i) focusTop = total, focusH = eh;
@@ -529,10 +533,10 @@ static void draw_list(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w
     int cy = y - ui->guideScroll;
     for (int si = 0; si < sectionCount; si++) {
         const struct view_section* sec = &sections[si];
-        pd_text_fit(c, x + 6, pd_text_y(cy, ROW), w - 12, sec->heading, PD_VALUE, PD_VALUE_SHADOW);
+        pd_text_fit(c, x + 6, pd_text_y(cy, ROW), w - 12, pd_tr(sec->heading), PD_VALUE, PD_VALUE_SHADOW);
         cy += ROW;
         if (*sec->note) {
-            cy += LINE * pd_text_wrap(c, x + 6, cy, w - 12, LINE, 3, sec->note, PD_MUTED, PD_MUTED_SHADOW);
+            cy += LINE * pd_text_wrap(c, x + 6, cy, w - 12, LINE, 3, pd_tr(sec->note), PD_MUTED, PD_MUTED_SHADOW);
         }
         for (int i = sec->first; i < sec->first + sec->count; i++) {
             const struct view_entry* e = &entries[i];
@@ -544,7 +548,7 @@ static void draw_list(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w
                 if (e->owned) ui_ball(c, x + 6, cy + 4, true);
                 // What the next tap shows: the HINT, then the ANSWER.
                 int st = steps(e), level = open ? ui->guideLevel : 0;
-                const char* tag = level >= st ? "" : (e->hint && level == 0) ? "HINT" : "ANSWER";
+                const char* tag = level >= st ? "" : pd_tr((e->hint && level == 0) ? "HINT" : "ANSWER");
                 int right = x + w - 8;
                 if (*tag) right -= pd_text_width(tag) + 8;
                 if (*tag) pd_text(c, right + 8, ty, tag, PD_MUTED, PD_MUTED_SHADOW);
@@ -579,7 +583,7 @@ static int draw_pages(struct pd_ui* ui, struct pd_canvas* c, const char* const* 
     // window over a list window, the open page the white row.
     int colW = c->w * 30 / 100;
     int tf = pd_title_box(c, MARGIN, CONTENT_Y, colW, CHIP_H, PD_TITLE_FILL);
-    pd_text(c, MARGIN + tf + 6, pd_text_y(CONTENT_Y, CHIP_H), "GUIDE", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text(c, MARGIN + tf + 6, pd_text_y(CONTENT_Y, CHIP_H), pd_tr("GUIDE"), PD_TITLE_TEXT, PD_TITLE_SHADOW);
     int py = CONTENT_Y + CHIP_H + 4;
     int pf = pd_list_box(c, MARGIN, py, colW, c->h - py - MARGIN);
     int rowH = (c->h - py - MARGIN - 2 * pf) / (count > 0 ? count : 1);
@@ -675,7 +679,7 @@ void ui_guide_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     const int noticeBit = 1 << (g->guide >= PD_GUIDE_RUBY && bit < 31 ? bit : (int)g->kind);
     guide_begin(ui, pageCount, noticeBit, gd->verified);
     const char* labels[MAX_PAGES];
-    for (int i = 0; i < pageCount; i++) labels[i] = pages[i].label;
+    for (int i = 0; i < pageCount; i++) labels[i] = pd_tr(pages[i].label);
 
     entryCount = sectionCount = 0;
     if (!pageCount) {
@@ -695,7 +699,7 @@ void ui_guide_notice(struct pd_ui* ui, struct pd_canvas* c) {
     ui_add_hit(ui, 0, 0, c->w, c->h, HIT_SCRIM);
     int x = MARGIN, w = c->w - 2 * MARGIN, y = CONTENT_Y + 4;
     int f = pd_title_box(c, x, y, w, 24, PD_TITLE_FILL);
-    pd_text(c, x + f + 6, pd_text_y(y, 24), "BEFORE YOU READ", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text(c, x + f + 6, pd_text_y(y, 24), pd_tr("BEFORE YOU READ"), PD_TITLE_TEXT, PD_TITLE_SHADOW);
     y += 28;
     char text[400];
     snprintf(text, sizeof(text),
@@ -707,7 +711,7 @@ void ui_guide_notice(struct pd_ui* ui, struct pd_canvas* c) {
     int ty = y + lf + 2;
     ty += LINE * pd_text_wrap(c, x + lf + 6, ty, w - 2 * (lf + 6), LINE, 6, text, PD_LABEL, PD_LABEL_SHADOW) + 4;
     pd_text_wrap(c, x + lf + 6, ty, w - 2 * (lf + 6), LINE, 2,
-                 "HERE and BOSS come straight from the game's own data.", PD_MUTED, PD_MUTED_SHADOW);
+                 pd_tr("HERE and BOSS come straight from the game's own data."), PD_MUTED, PD_MUTED_SHADOW);
     y += h + 4;
     ui_button(ui, c, x, y, 120, 24, "GO BACK", HIT_NOTICE_BACK);
     ui_button(ui, c, x + w - 140, y, 140, 24, "I UNDERSTAND", HIT_NOTICE_OK);

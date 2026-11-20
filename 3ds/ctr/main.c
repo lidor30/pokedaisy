@@ -36,6 +36,7 @@
 #include "../core/pd_save.h"
 #include "../core/pd_settings.h"
 #include "../core/pd_style.h"
+#include "../core/pd_tr.h"
 #include "../host/pd_session.h"
 #include "../host/pd_mixer.h"
 #include "../emu/pd_armgba.h"
@@ -849,7 +850,7 @@ static bool run_game(const char* file) {
     session.host = (struct pd_host_info) { .count = 2 };
     session.host.labels[0] = "FILE";
     snprintf(session.host.values[0], sizeof(session.host.values[0]), "%s", file);
-    session.host.labels[1] = "SPEED";
+    session.host.labels[1] = "SPEED|emulation";
     snprintf(session.host.values[1], sizeof(session.host.values[1]), "-");
     pd_session_start(&session, core, gpu_game_buffer(), &settings, &files);
     if (pickedSha1[0] && strcasecmp(session.game.sha1, pickedSha1))
@@ -1636,6 +1637,20 @@ static bool pick_rom(char* out, size_t outLen) {
     return running && picked;
 }
 
+// LANGUAGE's AUTO without a game (or with a game in a language the menus don't have): the console's own language.
+static void read_system_language(void) {
+    u8 lang = CFG_LANGUAGE_EN, region = CFG_REGION_EUR;
+    if (R_SUCCEEDED(cfguInit())) {
+        CFGU_GetSystemLanguage(&lang);
+        CFGU_SecureInfoGetRegion(&region);
+        cfguExit();
+    }
+    pd_tr_set_system(lang == CFG_LANGUAGE_FR ? PD_LANG_FR : lang == CFG_LANGUAGE_DE ? PD_LANG_DE :
+                     lang == CFG_LANGUAGE_IT ? PD_LANG_IT : lang == CFG_LANGUAGE_ES ? PD_LANG_ES :
+                     // A US console's Portuguese is Brazil's (the app's ofLocale: pt-BR), a European one's Portugal's.
+                     lang == CFG_LANGUAGE_PT ? (region == CFG_REGION_USA ? PD_LANG_BR : PD_LANG_PT) : PD_LANG_EN);
+}
+
 int main(void) {
     // First, while the heap is whole: the 32 MB every game is read into.
     bool arena = host_rom_arena_init();
@@ -1654,6 +1669,7 @@ int main(void) {
              (unsigned long) (linearSpaceFree() >> 10), (unsigned long) (host_heap_free() >> 10));
     // The New 3DS's 804 MHz mode (a no-op on the original models; off for the dev build's Old 3DS stand-in).
     if (!host_old_3ds_stand_in()) osSetSpeedupEnable(true);
+    read_system_language();
     mLogSetDefaultLogger(&silentLogger);
     // The CIA asks a New 3DS for its 124 MB mode (pokedaisy.rsf), which some launches didn't get: what this one got.
     if (host_is_new_3ds() && !envIsHomebrew())

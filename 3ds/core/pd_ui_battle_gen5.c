@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "pd_binput.h"
+#include "pd_tr.h"
 #include "pd_font.h"
 #include "pd_icon.h"
 #include "pd_tables.h"
@@ -670,9 +671,9 @@ static void small_plate(struct pd_ui* ui, struct pd_canvas* c, const struct g5* 
 
 static void info_plates(struct pd_ui* ui, struct pd_canvas* c, const struct g5* g) {
     int m = glen(g, 3.f), h = glen(g, 21.f);
-    small_plate(ui, c, g, m, m, gx(g, 70.f), h, "INFO", INFO_COLORS, HIT_BATTLE_INFO);
+    small_plate(ui, c, g, m, m, gx(g, 70.f), h, pd_tr("INFO"), INFO_COLORS, HIT_BATTLE_INFO);
     int sw = gx(g, 110.f);
-    small_plate(ui, c, g, c->w - m - sw, m, sw, h, "SUGGESTIONS", SUGGEST_COLORS, HIT_BATTLE_SUGGEST);
+    small_plate(ui, c, g, c->w - m - sw, m, sw, h, pd_tr("SUGGESTIONS"), SUGGEST_COLORS, HIT_BATTLE_SUGGEST);
 }
 
 // The party's balls in a row of six: a ball per member (greyed once fainted), a dot per empty slot - yours from the left
@@ -748,8 +749,8 @@ static void move_plate(struct pd_ui* ui, struct pd_canvas* c, const struct g5* g
     ui_type_badge(c, lx, ty + pitch + 2, type);
     pd_text(c, lx + tagW + 4, ty + pitch, ppText, PLATE_TEXT, PLATE_TEXT_SHADOW);
     int power = pd_move_power(ui_game, move);
-    if (power > 0) snprintf(pwr, sizeof(pwr), "PWR %d", power);
-    else snprintf(pwr, sizeof(pwr), "PWR -");
+    if (power > 0) snprintf(pwr, sizeof(pwr), pd_tr("PWR %d"), power);
+    else snprintf(pwr, sizeof(pwr), "%s", pd_tr("PWR -"));
     int pct = hints && foe && foe->species && power > 0 ? pd_type_multiplier_pct(ui_game, type, foe->type1, foe->type2) : -1;
     int chipW = pct >= 0 ? ui_mult_chip(NULL, 0, 0, pct) + 3 : 0, pw = pd_text_width(pwr);
     int px = x + (w - pw - chipW) / 2;
@@ -826,11 +827,11 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct g5* g
     int nx = x + PD_ICON + 3 * d, ny = y + 7 * d, right = x + w - 7 * d;
     const char* mark = m->egg ? NULL : m->gender == PD_GENDER_MALE ? "♂" : m->gender == PD_GENDER_FEMALE ? "♀" : NULL;
     int markW = mark ? pd_text_width(mark) + 2 : 0;
-    pd_text_fit(c, nx, ny, right - nx - markW, m->egg ? "EGG" : m->nickname, SLOT_TEXT, SLOT_TEXT_SHADOW);
+    pd_text_fit(c, nx, ny, right - nx - markW, m->egg ? pd_tr("EGG") : m->nickname, SLOT_TEXT, SLOT_TEXT_SHADOW);
     if (mark) pd_text(c, right - markW + 2, ny, mark, m->gender == PD_GENDER_MALE ? MALE_BLUE : FEMALE_RED, PD_NO_SHADOW);
     // Ours: BEST (BATTLE HINTS' pick) / OUT on the rim's top right.
     if (best || out) {
-        const char* tag = best ? "BEST" : "OUT";
+        const char* tag = pd_tr(best ? "BEST" : "OUT");
         int tw = pd_text_width(tag) + 6;
         pd_round_rect(c, x + w - 10 * d - tw, y - 2 * d, tw, 12, 2, best ? SUGGEST_GOLD : VERDICT_GREY);
         pd_text(c, x + w - 10 * d - tw + 3, y - 4 * d, tag, 0xFFFFFF, PD_NO_SHADOW);
@@ -870,7 +871,7 @@ static void party_picker5(struct pd_ui* ui, struct pd_canvas* c, const struct g5
     pd_fill(c, boxL, boxY, boxR - boxL, boxH, 0x000000);
     pd_fill(c, boxL + d, boxY + d, boxR - boxL - 2 * d, boxH - 2 * d, MSG_BOX_LINE);
     pd_fill(c, boxL + 2 * d, boxY + 2 * d, boxR - boxL - 4 * d, boxH - 4 * d, MSG_BOX_FILL);
-    pd_text(c, boxL + 6 * d, pd_text_y(boxY, boxH), "Choose a POKéMON.", MSG_BOX_TEXT, MSG_BOX_SHADOW);
+    pd_text(c, boxL + 6 * d, pd_text_y(boxY, boxH), pd_tr("Choose a POKéMON."), MSG_BOX_TEXT, MSG_BOX_SHADOW);
     back_disc(ui, c, g, !busy, 30.f, 170.f);
 }
 
@@ -911,12 +912,12 @@ void ui_battle_gen5(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
             ui->startId = HIT_BATTLE_FIGHT;
             int k = (int) lroundf(g->s * 1.3f);
             if (k < 1) k = 1;
-            label5(c, c->w / 2, (int) g->bandY, "FIGHT!", (struct label_colors) { FIGHT_RED, FIGHT_RED }, 0x000000, k, 0);
+            label5(c, c->w / 2, (int) g->bandY, pd_tr("FIGHT!"), (struct label_colors) { FIGHT_RED, FIGHT_RED }, 0x000000, k, 0);
             party_balls(c, g, s->party, s->partyCount, 119.f, false);
         }
-        word_disc(ui, c, g, 39.5f, 154.f, -1, "BAG", BAG_COLORS, HIT_BATTLE_BAG, enabled);
-        word_disc(ui, c, g, 127.5f, 170.f, 0, "RUN", RUN_COLORS, HIT_BATTLE_RUN, enabled);
-        word_disc(ui, c, g, 215.5f, 154.f, 1, "POKéMON", MON_COLORS, HIT_BATTLE_POKEMON, enabled);
+        word_disc(ui, c, g, 39.5f, 154.f, -1, pd_tr("BAG"), BAG_COLORS, HIT_BATTLE_BAG, enabled);
+        word_disc(ui, c, g, 127.5f, 170.f, 0, pd_tr("RUN"), RUN_COLORS, HIT_BATTLE_RUN, enabled);
+        word_disc(ui, c, g, 215.5f, 154.f, 1, pd_tr("POKéMON"), MON_COLORS, HIT_BATTLE_POKEMON, enabled);
         if (!oneTap && ui_battle_info_on(ui)) info_plates(ui, c, g);
         return;
     }
@@ -931,8 +932,8 @@ void ui_battle_gen5(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         back_disc(ui, c, g, !busy, 38.f, 154.f);
         return;
     }
-    if (st == PD_BATTLE_TARGET) message_band(c, g, "Confirming target...");
-    else if (!ui->ranAway && !busy) message_band(c, g, "Waiting for your turn...");
+    if (st == PD_BATTLE_TARGET) message_band(c, g, pd_tr("Confirming target..."));
+    else if (!ui->ranAway && !busy) message_band(c, g, pd_tr("Waiting for your turn..."));
     if (ui_battle_info_on(ui)) info_plates(ui, c, g);
 }
 

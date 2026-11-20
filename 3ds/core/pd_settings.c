@@ -1,4 +1,5 @@
 #include "pd_settings.h"
+#include "pd_tr.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,6 +50,7 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->theme = 8; // POKéDAISY
     s->libraryGrid = false;
     s->libraryRecent = false;
+    s->language = PD_LANG_AUTO;
 }
 
 const int PD_FF_SPEEDS[PD_FF_CHOICES] = {2, 3, 4, 5, 6, 8, 10, 0};
@@ -94,6 +96,12 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
         else if (!strcmp(key, "ffnormal")) s->ffNormal = atoi(value) != 0;
         else if (!strcmp(key, "cheats")) s->cheats = atoi(value) != 0;
         else if (!strcmp(key, "theme")) int_in(value, 0, 99, &s->theme);
+        else if (!strcmp(key, "lang")) {
+            char code[8];
+            snprintf(code, sizeof code, "%s", value);
+            code[strcspn(code, "\r\n")] = 0;
+            s->language = pd_lang_of_code(code);
+        }
         else if (!strcmp(key, "librarygrid")) s->libraryGrid = atoi(value) != 0;
         else if (!strcmp(key, "libraryrecent")) s->libraryRecent = atoi(value) != 0;
         else if (!strcmp(key, "aspect")) int_in(value, 0, PD_ASPECTS - 1, &s->aspect);
@@ -177,7 +185,7 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     fprintf(f, "gen5=%d\nnoinfo=%d\ninfofirst=%d\n", s->battleGen5 ? 1 : 0, s->noBattleInfo ? 1 : 0, s->battleInfoFirst ? 1 : 0);
     fprintf(f, "flyclassic=%d\nflightanywhere=%d\nflyon=%d\n", s->flyClassic ? 1 : 0, s->flightAnywhere ? 1 : 0, s->flightVehicle);
     fprintf(f, "reusabletms=%d\ninstanttext=%d\ntradeevos=%d\n", s->reusableTms ? 1 : 0, s->instantText ? 1 : 0, s->tradeEvos ? 1 : 0);
-    fprintf(f, "expandoff=%d\n", s->expandOff ? 1 : 0);
+    fprintf(f, "expandoff=%d\nlang=%s\n", s->expandOff ? 1 : 0, pd_lang_code(s->language));
     for (int i = 0; i < PD_SCENES; i++) fprintf(f, "scene%d=%d\n", i, s->sceneSpeed[i]);
     if (fclose(f) != 0) {
         remove(tmp);

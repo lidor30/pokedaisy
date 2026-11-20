@@ -135,7 +135,12 @@ static void test_handheld_navigation(void) {
     assert(pd_ui_settings_control(&ui, 1, false));
     assert(ui.settingsNavId == HIT_SETTING + SETTING_HUD);
     assert(pd_ui_settings_control(&ui, 20, false));
-    assert(ui.settingsNavId == HIT_SETTING + SETTING_TAB_BAR && ui.settingsScroll > 0);
+    // The last row: LANGUAGE, under the game's own rows; TAB BAR above it.
+    assert(ui.settingsNavId == HIT_SETTING + SETTING_LANGUAGE && ui.settingsScroll > 0);
+    pd_ui_draw(&ui, &canvas, &game, &snap, &host);
+    assert(has(&ui, ui.settingsNavId));
+    assert(pd_ui_settings_control(&ui, -1, false));
+    assert(ui.settingsNavId == HIT_SETTING + SETTING_TAB_BAR);
     pd_ui_draw(&ui, &canvas, &game, &snap, &host);
     assert(has(&ui, ui.settingsNavId));
     assert(pd_ui_settings_control(&ui, 0, true) && ui.overlay == PD_OVERLAY_TAB_BAR);
