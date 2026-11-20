@@ -86,7 +86,7 @@ Im Spiel sind die Tasten des GBA die gleichen Tasten des 3DS (das Schiebepad fun
 
 Um ein Spiel zu verlassen, nutze `CLOSE GAME` ganz unten in den `SETTINGS` des Begleiters. Die **HOME**-Taste und das Zuklappen der Konsole funktionieren auch.
 
-Die Menüs gibt es auf Englisch, Französisch, Deutsch, Italienisch, Spanisch und Portugiesisch. `LANGUAGE` in den `SETTINGS` der Bibliothek (und ganz unten in denen des Begleiters) wählt eine aus; `AUTO` folgt der Sprache deines 3DS.
+Die Menüs gibt es auf Englisch, Französisch, Deutsch, Italienisch, Spanisch und Portugiesisch. `LANGUAGE` in den `SETTINGS` der Bibliothek (und ganz unten in denen des Begleiters) wählt eine aus; `AUTO` folgt der Sprache des Spiels, sonst der deines 3DS.
 
 ![Die SETTINGS-Seite der Bibliothek auf einem 3DS: VIEW, SORT, THEME, DARK MODE, SCREEN, ASPECT und der Ton](../docs/manual/shots/3ds-settings.png "Die SETTINGS der Bibliothek: Aussehen und Bildschirm für alle Spiele")
 
