@@ -267,7 +267,7 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
 
 // Game Boy games: a config with the Gen 3 fields empty, the reader's addresses (pd_gb.c) and the game's own names.
 extern const struct pd_text pd_text_gb_yellow, pd_text_gb_yellow_de, pd_text_gb_yellow_fr, pd_text_gb_yellow_it,
-    pd_text_gb_yellow_es, pd_text_gb_yellow_legacy, pd_text_gb_pure_rgb, pd_text_gb_crystal, pd_text_gb_gold_silver,
+    pd_text_gb_yellow_es, pd_text_gb_yellow_legacy, pd_text_gb_pure_rgb, pd_text_gb_crystal, pd_text_gb_gold_silver, pd_text_gb_crystal_de, pd_text_gb_gold_silver_de,
     pd_text_gb_crystal_clear, pd_text_gb_prism, pd_text_gb_polished, pd_text_gb_polished_faithful;
 #define PD_GB_BAG { PD_POCKET_ITEMS, PD_POCKET_BALLS, PD_POCKET_TMHM, PD_POCKET_BERRIES, PD_POCKET_KEY }
 #define PD_GB_CONFIG(NAME, GB, TEXT) \
@@ -285,6 +285,9 @@ PD_GB_CONFIG(PURE_BLUE, pd_gb_pure_red, gb_pure_rgb)
 PD_GB_CONFIG(CRYSTAL, pd_gb_crystal, gb_crystal)
 PD_GB_CONFIG(GOLD, pd_gb_gold, gb_gold_silver)
 PD_GB_CONFIG(SILVER, pd_gb_gold, gb_gold_silver)
+PD_GB_CONFIG(CRYSTAL_DE, pd_gb_crystal_de, gb_crystal_de)
+PD_GB_CONFIG(GOLD_DE, pd_gb_gold_de, gb_gold_silver_de)
+PD_GB_CONFIG(SILVER_DE, pd_gb_gold_de, gb_gold_silver_de)
 PD_GB_CONFIG(CRYSTAL_CLEAR, pd_gb_crystal_clear, gb_crystal_clear)
 PD_GB_CONFIG(PRISM, pd_gb_prism, gb_prism)
 PD_GB_CONFIG(YUME_BLUE, pd_gb_yume_blue, gb_yellow)
@@ -338,6 +341,9 @@ static const struct gb_rom GB_ROMS[] = {
     {"a0fc810f1d4e124434f7be2c989ab5b5892ddf36", &PD_GB_CONFIG_CRYSTAL, "Pokémon Crystal"},
     {"d8b8a3600a465308c9953dfa04f0081c05bdcb94", &PD_GB_CONFIG_GOLD, "Pokémon Gold"},
     {"49b163f7e57702bc939d642a18f591de55d92dae", &PD_GB_CONFIG_SILVER, "Pokémon Silver"},
+    {"accb584293ba056152f1fd908439b019017ff2fe", &PD_GB_CONFIG_CRYSTAL_DE, "Pokémon Kristall-Edition"},
+    {"9254195d461ea942eaaa08cc4b83de3cf82aea0d", &PD_GB_CONFIG_GOLD_DE, "Pokémon Goldene Edition"},
+    {"8ecc58d621faaedf2a934bd2583d527220df7bb9", &PD_GB_CONFIG_SILVER_DE, "Pokémon Silberne Edition"},
     {"a1c4da6b0057c98fe4ebea45d6812a484fc69abd", &PD_GB_CONFIG_CRYSTAL_CLEAR, "Pokémon Crystal Clear"},
     {"6fc677bf7a9db103cb9ee11ac08d26782e69ae41", &PD_GB_CONFIG_CRYSTAL_CLEAR, "Pokémon Crystal Clear"},
     {"84d5c4924c3f1f3fc690669148b7e392948fb23d", &PD_GB_CONFIG_CRYSTAL_CLEAR, "Pokémon Crystal Clear"},
@@ -378,6 +384,11 @@ static const struct pd_gb_icons GB_ICONS_CRYSTAL = { .gen = 2, .pointers = GB_OF
     .bank = 0x23, .menuPal = GB_OFF(0x02, 0x7681), .eggIcon = 0x1C };
 static const struct pd_gb_icons GB_ICONS_GOLD_SILVER = { .gen = 2, .pointers = GB_OFF(0x23, 0x6A70), .data = GB_OFF(0x23, 0x6975),
     .bank = 0x23, .menuPal = GB_OFF(0x02, 0x7AC6), .eggIcon = 0x1C };
+// German Gold / Silver (Gen2Art.GOLD_DE / SILVER_DE): the icon tables a few bytes later, each version its own.
+static const struct pd_gb_icons GB_ICONS_GOLD_DE = { .gen = 2, .pointers = GB_OFF(0x23, 0x6A72), .data = GB_OFF(0x23, 0x6977),
+    .bank = 0x23, .menuPal = GB_OFF(0x02, 0x7AC6), .eggIcon = 0x1C };
+static const struct pd_gb_icons GB_ICONS_SILVER_DE = { .gen = 2, .pointers = GB_OFF(0x23, 0x6A58), .data = GB_OFF(0x23, 0x695D),
+    .bank = 0x23, .menuPal = GB_OFF(0x02, 0x7AC6), .eggIcon = 0x1C };
 
 // Gen 1's DEX pages (Gen1Dex.kt's GEN1_DEX_YELLOW / GEN1_DEX_RED, as ROM offsets).
 static const struct pd_gb_dex1 GB_DEX_YELLOW = { .baseStats = GB_OFF(0x0E, 0x43DE), .dexEntryPointers = GB_OFF(0x10, 0x450B),
@@ -391,15 +402,18 @@ static const struct pd_gb_dex1 GB_DEX_RED = { .baseStats = GB_OFF(0x0E, 0x43DE),
 static void gb_font(const struct pd_game* g, const struct pd_config* cfg) {
     pd_gb_dex_use(cfg == &PD_GB_CONFIG_YELLOW ? &GB_DEX_YELLOW : cfg == &PD_GB_CONFIG_RED || cfg == &PD_GB_CONFIG_BLUE ? &GB_DEX_RED : NULL);
     pd_gb_icons_use(cfg == &PD_GB_CONFIG_YELLOW ? &GB_ICONS_YELLOW : cfg == &PD_GB_CONFIG_RED || cfg == &PD_GB_CONFIG_BLUE ? &GB_ICONS_RED_BLUE :
-                    cfg == &PD_GB_CONFIG_CRYSTAL ? &GB_ICONS_CRYSTAL : cfg == &PD_GB_CONFIG_GOLD || cfg == &PD_GB_CONFIG_SILVER ? &GB_ICONS_GOLD_SILVER :
+                    cfg == &PD_GB_CONFIG_CRYSTAL || cfg == &PD_GB_CONFIG_CRYSTAL_DE ? &GB_ICONS_CRYSTAL :
+                    cfg == &PD_GB_CONFIG_GOLD || cfg == &PD_GB_CONFIG_SILVER ? &GB_ICONS_GOLD_SILVER :
+                    cfg == &PD_GB_CONFIG_GOLD_DE ? &GB_ICONS_GOLD_DE : cfg == &PD_GB_CONFIG_SILVER_DE ? &GB_ICONS_SILVER_DE :
                     NULL);
     uint32_t off = 0;
     enum pd_gb_charset cs = PD_GB_CHARS_GEN1;
     if (cfg == &PD_GB_CONFIG_YELLOW) off = 0x04 * 0x4000 + (0x4600 - 0x4000);
     else if (cfg == &PD_GB_CONFIG_RED || cfg == &PD_GB_CONFIG_BLUE) off = 0x04 * 0x4000 + (0x5A80 - 0x4000);
     else if (cfg == &PD_GB_CONFIG_PURE_RED || cfg == &PD_GB_CONFIG_PURE_BLUE) { off = 0x04 * 0x4000 + (0x5F00 - 0x4000); cs = PD_GB_CHARS_PURE; }
-    else if (cfg == &PD_GB_CONFIG_CRYSTAL || cfg == &PD_GB_CONFIG_CRYSTAL_CLEAR) { off = 0x3E * 0x4000 + (0x4200 - 0x4000); cs = PD_GB_CHARS_GEN2; }
-    else if (cfg == &PD_GB_CONFIG_GOLD || cfg == &PD_GB_CONFIG_SILVER) { off = 0x3E * 0x4000 + (0x42F2 - 0x4000); cs = PD_GB_CHARS_GEN2; }
+    else if (cfg == &PD_GB_CONFIG_CRYSTAL || cfg == &PD_GB_CONFIG_CRYSTAL_DE || cfg == &PD_GB_CONFIG_CRYSTAL_CLEAR) { off = 0x3E * 0x4000 + (0x4200 - 0x4000); cs = PD_GB_CHARS_GEN2; }
+    else if (cfg == &PD_GB_CONFIG_GOLD || cfg == &PD_GB_CONFIG_SILVER || cfg == &PD_GB_CONFIG_GOLD_DE ||
+             cfg == &PD_GB_CONFIG_SILVER_DE) { off = 0x3E * 0x4000 + (0x42F2 - 0x4000); cs = PD_GB_CHARS_GEN2; }
     else if (cfg == &PD_GB_CONFIG_PRISM) { off = 0x3D * 0x4000 + (0x720D - 0x4000); cs = PD_GB_CHARS_GEN2; }
     else if (cfg == &PD_GB_CONFIG_POLISHED || cfg == &PD_GB_CONFIG_POLISHED_FAITHFUL) {
         cs = PD_GB_CHARS_POLISHED;
@@ -685,10 +699,11 @@ static void identify(struct pd_game* g) {
             g->title = r->title;
             g->guide = r->cfg == &PD_GB_CONFIG_RED ? PD_GUIDE_GB_RED : r->cfg == &PD_GB_CONFIG_BLUE ? PD_GUIDE_GB_BLUE :
                        r->cfg == &PD_GB_CONFIG_YELLOW || r->cfg == &PD_GB_CONFIG_YELLOW_DE || r->cfg == &PD_GB_CONFIG_YELLOW_FR ||
-                       r->cfg == &PD_GB_CONFIG_YELLOW_IT || r->cfg == &PD_GB_CONFIG_YELLOW_ES ? PD_GUIDE_GB_YELLOW : r->cfg == &PD_GB_CONFIG_CRYSTAL ? PD_GUIDE_GB_CRYSTAL :
+                       r->cfg == &PD_GB_CONFIG_YELLOW_IT || r->cfg == &PD_GB_CONFIG_YELLOW_ES ? PD_GUIDE_GB_YELLOW : r->cfg == &PD_GB_CONFIG_CRYSTAL || r->cfg == &PD_GB_CONFIG_CRYSTAL_DE ? PD_GUIDE_GB_CRYSTAL :
                        r->cfg == &PD_GB_CONFIG_POLISHED || r->cfg == &PD_GB_CONFIG_POLISHED_FAITHFUL ? PD_GUIDE_GB_POLISHED :
                        r->cfg == &PD_GB_CONFIG_YELLOW_LEGACY ? PD_GUIDE_GB_YELLOW_LEGACY :
                        r->cfg == &PD_GB_CONFIG_CRYSTAL_LEGACY ? PD_GUIDE_GB_CRYSTAL_LEGACY : PD_GUIDE_NONE;
+            g->language = r->cfg->gb->language ? r->cfg->gb->language : 'E';
             g->hackMaps = true;
             g->unsupported = NULL;
             gb_font(g, r->cfg);

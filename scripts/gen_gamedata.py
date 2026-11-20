@@ -1272,6 +1272,12 @@ GB_TEXTS = {
                    "typeEffectivenessCrystal", "speciesTypeDataCrystal"),
     "gb_gold_silver": ("speciesNamesCrystal", "itemNamesGoldSilver", "moveDataCrystal", "typeNamesCrystal",
                        "typeEffectivenessCrystal", "speciesTypeDataCrystal"),
+    "gb_crystal_de": ("speciesNamesCrystal + speciesNamesCrystalDe", "itemNamesCrystal + itemNamesCrystalDe",
+                      "moveDataCrystal RENAMED moveNamesCrystalDe", "typeNamesCrystal", "typeEffectivenessCrystal",
+                      "speciesTypeDataCrystal"),
+    "gb_gold_silver_de": ("speciesNamesCrystal + speciesNamesGoldSilverDe", "itemNamesGoldSilver + itemNamesGoldSilverDe",
+                          "moveDataCrystal RENAMED moveNamesGoldSilverDe", "typeNamesCrystal", "typeEffectivenessCrystal",
+                          "speciesTypeDataCrystal"),
     "gb_crystal_clear": ("speciesNamesCrystal", "itemNamesCrystalClear", "moveDataCrystal", "typeNamesCrystal",
                          "typeEffectivenessCrystal", "speciesTypeDataCrystal"),
     "gb_prism": ("speciesNamesPrism", "itemNamesPrism", "moveDataPrism", "typeNamesPrism",
@@ -1288,7 +1294,9 @@ GB_TEXTS = {
 GB_MAPSECS = {"gb_yellow": "mapSecDataYellow", "gb_yellow_legacy": "mapSecDataYellow",
               **{f"gb_yellow_{l}": f"mapSecDataYellow + mapNamesYellow{l.capitalize()}" for l in ("de", "fr", "it", "es")},
               "gb_pure_rgb": "mapSecDataPureRgb", "gb_crystal": "mapSecDataCrystal",
-              "gb_gold_silver": "mapSecDataGoldSilver", "gb_crystal_clear": "mapSecDataCrystalClear", "gb_prism": "mapSecDataPrism",
+              "gb_gold_silver": "mapSecDataGoldSilver",
+              "gb_crystal_de": "mapSecDataCrystal + landmarkNamesCrystalDe",
+              "gb_gold_silver_de": "mapSecDataGoldSilver + landmarkNamesGoldSilverDe", "gb_crystal_clear": "mapSecDataCrystalClear", "gb_prism": "mapSecDataPrism",
               "gb_polished": "mapSecDataPolishedCrystal", "gb_polished_faithful": "mapSecDataPolishedCrystal"}
 GB_INT_TABLES = {  # C name: (Kotlin intArrayOf val, C element type)
     "pd_gb_internal_to_dex_yellow": "gen1InternalToDexYellow",

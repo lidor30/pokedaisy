@@ -27,6 +27,7 @@ struct gb_field {
   uint16_t wildDataPointers;
   uint8_t pcBank, wildBank;
   struct sig sigs[8];
+  uint32_t flypoints; /* Crystal: its Flypoints table (0 = CR_FLYPOINTS) */
 };
 
 /* ---- the carts (GbField.kt's GB_FIELD_* and Crystal) ---- */
@@ -105,6 +106,14 @@ static const struct gb_field GB_FIELDS[] = {
       {0x03 * 0x4000 + (0x4AA3 - 0x4000), "7c0e0016300f3500"},                 // FlyScript
       {0x25 * 0x4000 + (0x68C7 - 0x4000), "2152d47ea7c835c837c9"},             // CheckWildEncounterCooldown
       {0x24 * 0x4000 + (0x5C5E - 0x4000), "010e030f"}}},                        // Flypoints: NEW BARK, CHERRYGROVE
+    /* German Crystal (Kristall, GbField.CrystalDe): Crystal's RAM and scripts, its Flypoints table 0x1E later. */
+    {"Crystal DE", true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0,
+     {{0x25 * 0x4000 + (0x7C31 - 0x4000), "fa5cd4a7c8215ed42a666ffa5dd4cd09"}, // RunMemScript
+      {0x2F * 0x4000 + (0x41A9 - 0x4000), "470f1c00499185"},                   // PCScript
+      {0x03 * 0x4000 + (0x4AA3 - 0x4000), "7c0e0000300f3500"},                 // FlyScript
+      {0x25 * 0x4000 + (0x68C7 - 0x4000), "2152d47ea7c835c837c9"},             // CheckWildEncounterCooldown
+      {0x24 * 0x4000 + (0x5C7C - 0x4000), "010e030f"}},                        // Flypoints: NEUBORKIA, ROSALIA CITY
+     0x24 * 0x4000 + (0x5C7C - 0x4000)},
 };
 
 /* Crystal (rev 0, rev 1, Australia: one set of addresses) */
@@ -254,8 +263,8 @@ static int cr_landmark(struct mCore *c) {
 }
 /* The Fly map's points as (landmark, spawn), the ROM's own table; FlyMap shows Kanto's from a Kanto landmark once
  * Indigo Plateau is visited, else Johto's. Returns how many, into [lm] / [sp]. */
-static int cr_shown_points(struct mCore *c, const uint8_t *rom, size_t len, int *lm, int *sp) {
-  const uint8_t *raw = rom_at(rom, len, CR_FLYPOINTS, 64);
+static int cr_shown_points(const struct gb_field *f, struct mCore *c, const uint8_t *rom, size_t len, int *lm, int *sp) {
+  const uint8_t *raw = rom_at(rom, len, f->flypoints ? f->flypoints : CR_FLYPOINTS, 64);
   if (!raw)
     return 0;
   int all = 0;
@@ -317,7 +326,7 @@ void gb_field_fly_targets(struct mCore *c, const struct gb_field *f, const uint8
       out->result = FLY_NO_FLYER;
       return;
     }
-    int lm[32], sp[32], n = cr_shown_points(c, rom, len, lm, sp);
+    int lm[32], sp[32], n = cr_shown_points(f, c, rom, len, lm, sp);
     for (int i = 0; i < n && out->count < FLY_MAX_TOWNS; i++)
       if (cr_visited(c, sp[i]))
         out->towns[out->count++] = lm[i];
@@ -362,7 +371,7 @@ enum fly_result gb_field_fly(struct mCore *c, const struct gb_field *f, const ui
   if (now.result != FLY_OK)
     return now.result;
   if (f->crystal) {
-    int lm[32], sp[32], n = cr_shown_points(c, rom, len, lm, sp), spawn = -1;
+    int lm[32], sp[32], n = cr_shown_points(f, c, rom, len, lm, sp), spawn = -1;
     for (int i = 0; i < n && spawn < 0; i++)
       if (lm[i] == mapsec && cr_visited(c, sp[i]))
         spawn = sp[i];

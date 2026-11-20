@@ -35,6 +35,7 @@ static const int POLISHED_CAUGHT[] = { 16, 155, 0 }, POLISHED_SEEN[] = { 16, 152
 static const struct want WANT[] = {
     W("red", RED, 151), W("blue", BLUE, 151), W("yellow", YELLOW, 151), W("purered", PURE_RED, 151),
     W("crystal", CRYSTAL, 251), W("gold", GOLD, 251), W("silver", GOLD, 251), W("crystal_clear", CRYSTAL_CLEAR, 251),
+    W("crystal_de", CRYSTAL_DE, 251), W("gold_de", GOLD_DE, 251), W("silver_de", SILVER_DE, 251),
     { "polished_crystal", &PD_GB_CONFIG_POLISHED, 0x123, POLISHED_CAUGHT, POLISHED_SEEN },
 };
 
