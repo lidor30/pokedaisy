@@ -24,7 +24,7 @@ test-old3ds:
 	cmake --build $(BUILD)/old3ds-tests -j4
 	ctest --test-dir $(BUILD)/old3ds-tests --output-on-failure
 
-.PHONY: preview library-preview docs-shots test-scroll test-save 3ds-dev cia test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+.PHONY: preview library-preview docs-shots test-scroll test-save 3ds-dev cia test-shiny test-roms test-gbguide test-gbdex test-dex test-font test-tr 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
 
 $(BUILD)/pd_font_test: core/pd_canvas.c core/pd_canvas.h core/pd_font.h core/pd_font_gen.c test/font_test.c
 	@mkdir -p $(BUILD)
@@ -32,6 +32,10 @@ $(BUILD)/pd_font_test: core/pd_canvas.c core/pd_canvas.h core/pd_font.h core/pd_
 
 test-font: $(BUILD)/pd_font_test
 	$(BUILD)/pd_font_test
+
+# The menus' translations (pd_tr_gen.c) match the app's tables and tr_3ds.txt.
+test-tr:
+	python3 tools/gen_tr.py --check
 
 $(BUILD)/pd_stats_test: $(CORE_SRC) $(wildcard core/*.h) test/stats_test.c desktop/pd_png.c
 	@mkdir -p $(BUILD)
@@ -188,6 +192,7 @@ tables:
 	python3 tools/gen_gb_world.py
 	python3 tools/gen_randomized.py
 	python3 tools/gen_font.py
+	python3 tools/gen_tr.py
 	python3 tools/gen_icon.py
 	python3 tools/gen_icons.py
 	python3 tools/gen_save_tables.py

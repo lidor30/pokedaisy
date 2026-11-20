@@ -86,6 +86,8 @@ PokeDaisy는 닌텐도 3DS에서도 홈브루 앱으로 실행돼요. 위 화면
 
 게임을 끝낼 때는 컴패니언의 `SETTINGS` 맨 아래에 있는 `CLOSE GAME`을 써요. **HOME** 버튼이나 본체를 닫아도 돼요.
 
+메뉴는 영어, 프랑스어, 독일어, 이탈리아어, 스페인어, 포르투갈어로 볼 수 있어요. 라이브러리의 `SETTINGS`(그리고 컴패니언의 `SETTINGS` 맨 아래)에 있는 `LANGUAGE`에서 고르고, `AUTO`는 3DS의 언어를 따라가요.
+
 ![3DS 라이브러리의 SETTINGS 페이지: VIEW, SORT, THEME, DARK MODE, SCREEN, ASPECT와 소리 설정](../docs/manual/shots/3ds-settings.png "라이브러리의 SETTINGS: 모든 게임에 쓰이는 모양과 화면 설정")
 
 ## 플레이할 수 있는 게임

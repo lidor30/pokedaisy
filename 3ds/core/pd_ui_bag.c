@@ -8,6 +8,7 @@
 #include <strings.h>
 
 #include "pd_games.h"
+#include "pd_tr.h"
 #include "pd_icon.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
@@ -165,7 +166,7 @@ static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         // The open tab reaches onto the list's frame (beside the list only: with the shoulder hints it stands alone).
         const bool joined = open && !ui->shoulderTabs;
         int f = joined ? open_tab(c, p, x, y, panelX, fill, y == CONTENT_Y) : pd_layered_box(c, x, y, w, TAB_H, 3, p->panel, p->tabLayers, fill);
-        const char* name = ui->bagSource ? ui->bagSource->pocketName(ui->bagSource->ctx,v->pockets[i]) : v->pockets[i] < 0 ? "ALL" : pd_pocket_name(v->pockets[i]);
+        const char* name = ui->bagSource ? ui->bagSource->pocketName(ui->bagSource->ctx,v->pockets[i]) : v->pockets[i] < 0 ? pd_tr("ALL") : pd_pocket_name(v->pockets[i]);
         // The capitals (font rows 4-12, the shadow 13), a free row and the open tab's 2-row underline, centred as one block
         // on every tab: the line never touches the letters (a tab's inside is only 16-20 rows).
         int capTop = y + f + (TAB_H - 2 * f - 13 + 1) / 2;
@@ -194,7 +195,7 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
     int ix = x + f, iy = y + f + 1, iw = w - 2 * f, ih = h - 2 * f - 2;
     ui_add_scroll_hit(ui, ix, iy, iw, ih, HIT_BAG_LIST);
     if (v->count == 0) {
-        pd_text(c, ix + 14, pd_text_y(iy, BAG_ROW), "The bag is empty.", p->text, p->textShadow);
+        pd_text(c, ix + 14, pd_text_y(iy, BAG_ROW), pd_tr("The bag is empty."), p->text, p->textShadow);
         return;
     }
     int maxScroll = v->count * BAG_ROW - ih;
@@ -222,7 +223,7 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         const char* name = row->name;
         char fallback[16];
         if (!*name) {
-            snprintf(fallback, sizeof(fallback), "ITEM %d", it->id);
+            snprintf(fallback, sizeof(fallback), pd_tr("ITEM %d"), it->id);
             name = fallback;
         }
         pd_text_fit(c, ix + 14, pd_text_y(ry, BAG_ROW), iw - 64, name, p->text, p->textShadow);
@@ -271,7 +272,7 @@ static void item_picker(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
     ui_item_grid(ui, &top, g, s);
     int x = MARGIN, w = c->w - 2 * MARGIN;
     char text[64];
-    snprintf(text, sizeof(text), ui->itemGive ? "Give %s to which POKéMON?" : "Use %s on which POKéMON?", pd_item_name(g, ui->itemId));
+    snprintf(text, sizeof(text), pd_tr(ui->itemGive ? "Give %s to which POKéMON?" : "Use %s on which POKéMON?"), pd_item_name(g, ui->itemId));
     int f = pd_title_box(c, x, y, w, barH, PD_TITLE_FILL);
     pd_text_fit(c, x + f + 5, pd_text_y(y, barH), w - 84, text, PD_TITLE_TEXT, PD_TITLE_SHADOW);
     ui_button(ui, c, x + w - 68, y + 3, 62, barH - 6, "CANCEL", HIT_ITEM_CANCEL);
@@ -384,9 +385,9 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         static const char* const SORTS[3] = { "DEFAULT", "NAME", "COUNT" };
         int sy = sortY, sw = tabW - 4;
         pd_layered_two_tone(c, MARGIN, sy, sw, 22, 3, p->desc, p->descLayers, p->descFill, 0);
-        const char* sortLabel = SORTS[ui->bagSort];
+        const char* sortLabel = pd_tr(SORTS[ui->bagSort]);
         char hint[16];
-        snprintf(hint, sizeof hint, "SEL %s", sortLabel);
+        snprintf(hint, sizeof hint, pd_tr("SEL %s"), sortLabel);
         if (ui->shoulderTabs && pd_text_width(hint) <= sw - 8) sortLabel = hint;
         pd_text(c, MARGIN + (sw - pd_text_width(sortLabel)) / 2, pd_text_y(sy, 22), sortLabel, p->descText, p->descTextShadow);
         ui_add_hit(ui, MARGIN, sy, sw, 22, HIT_BAG_SORT);

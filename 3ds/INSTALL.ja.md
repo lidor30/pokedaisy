@@ -86,6 +86,8 @@ PokeDaisyはニンテンドー3DSでも自作アプリ（homebrew）として動
 
 ゲームをやめるときは、コンパニオンの `SETTINGS` のいちばん下にある `CLOSE GAME` を使います。**HOME** ボタンや本体を閉じるのも使えます。
 
+メニューは英語、フランス語、ドイツ語、イタリア語、スペイン語、ポルトガル語で表示できます。ライブラリの `SETTINGS`(とコンパニオンの `SETTINGS` のいちばん下)にある `LANGUAGE` で選び、`AUTO` なら 3DS の言語に合わせます。
+
 ![3DSのライブラリのSETTINGSページ：VIEW、SORT、THEME、DARK MODE、SCREEN、ASPECTと音の設定](../docs/manual/shots/3ds-settings.png "ライブラリのSETTINGS：すべてのゲームに共通の見た目と画面の設定")
 
 ## 遊べるゲーム

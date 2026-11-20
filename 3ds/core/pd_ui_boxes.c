@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "pd_boxes.h"
+#include "pd_tr.h"
 #include "pd_icon.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
@@ -143,7 +144,7 @@ static void arrow(struct pd_canvas* c, int x, int y, bool right, int id, struct 
 }
 
 static const char* shown_name(const struct pd_mon* m, char* buf, size_t len) {
-    if (m->egg) snprintf(buf, len, "EGG");
+    if (m->egg) snprintf(buf, len, "%s", pd_tr("EGG"));
     else if (*m->nickname) snprintf(buf, len, "%s", m->nickname);
     else return pd_species_name(ui_game, m->species, buf, len);
     return buf;
@@ -152,7 +153,7 @@ static const char* shown_name(const struct pd_mon* m, char* buf, size_t len) {
 static void panel(struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m, int x, int y, int w, int h) {
     pd_fill(c, x, y, w, h, shade(PC_FRAME));
     pd_fill(c, x + 2, y + 2, w - 4, 18, shade(PC_PANEL_TOP));
-    pd_text(c, x + (w - pd_text_width("PKMN DATA")) / 2, pd_text_y(y + 2, 18), "PKMN DATA", shade(PC_TITLE_TEXT), 0);
+    pd_text(c, x + (w - pd_text_width(pd_tr("PKMN DATA"))) / 2, pd_text_y(y + 2, 18), pd_tr("PKMN DATA"), shade(PC_TITLE_TEXT), 0);
     pd_fill(c, x + 2, y + 20, w - 4, h - 22, shade(PC_PANEL));
     pd_fill(c, x + 2, y + 20, w - 4, 1, shade(PC_LIP));
     int wx = x + 8, wy = y + 25, ww = w - 16, wh = 70;
@@ -217,7 +218,7 @@ void ui_boxes_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
         if (grid.cy1 > grid.h) grid.cy1 = grid.h;
         ui_party_grid(ui, &grid, g, s, -1, 0);
         const struct pd_mon* m = ui->boxSlot >= 0 ? &b->mons[ui->boxSlot] : NULL;
-        snprintf(buf, sizeof(buf), s->partyCount >= PD_PARTY_SIZE ? "Party full: swap %s with which POKéMON?" : "Swap %s with which POKéMON?",
+        snprintf(buf, sizeof(buf), pd_tr(s->partyCount >= PD_PARTY_SIZE ? "Party full: swap %s with which POKéMON?" : "Swap %s with which POKéMON?"),
                  m ? shown_name(m, name, sizeof(name)) : "");
         int y = c->h - 32, w = c->w - 2 * MARGIN;
         int f = pd_title_box(c, MARGIN, y, w, 30, PD_TITLE_FILL);
@@ -227,7 +228,7 @@ void ui_boxes_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     }
     if (ui->boxSummary >= 0 && b->has[ui->boxSummary]) {
         int shown = 0, n = fill_column(b, ui->boxSummary, &shown);
-        ui_mon_summary(ui, c, g, s, &b->mons[ui->boxSummary], column, n, shown, false, ui->boxMoves ? "WITHDRAW" : NULL);
+        ui_mon_summary(ui, c, g, s, &b->mons[ui->boxSummary], column, n, shown, false, ui->boxMoves ? pd_tr("WITHDRAW") : NULL);
         if (*ui->boxMessage) ui_box_message(ui, c);
         return;
     }
@@ -269,7 +270,7 @@ void ui_boxes_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     int rowH = 20, top = 22, y = (c->h - rows * rowH - top - 16) / 2;
     if (y < 2) y = 2;
     int f = pd_list_box(c, x, y, w, rows * rowH + top + 12);
-    pd_text(c, x + f + 6, y + f, ui->boxDepositing ? "Deposit in which BOX?" : "BOXES", PD_LABEL, PD_LABEL_SHADOW);
+    pd_text(c, x + f + 6, y + f, ui->boxDepositing ? pd_tr("Deposit in which BOX?") : pd_tr("BOXES"), PD_LABEL, PD_LABEL_SHADOW);
     int gx = x + f + 4, gw = (w - 2 * f - 8) / cols, gy = y + f + top - 4;
     for (int i = 0; i < b->boxCount; i++) {
         int cx = gx + (i % cols) * gw, cy = gy + (i / cols) * rowH;

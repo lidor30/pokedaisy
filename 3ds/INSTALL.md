@@ -86,6 +86,8 @@ In a game, the GBA's buttons are the 3DS's own (the circle pad works as the D-pa
 
 To leave a game, use `CLOSE GAME` at the bottom of the companion's `SETTINGS`. The **HOME** button and closing the lid work too.
 
+The menus come in English, French, German, Italian, Spanish and Portuguese. `LANGUAGE` in the library's `SETTINGS` (and at the end of the companion's) picks one; `AUTO` follows your 3DS's language.
+
 ![The library's SETTINGS page on a 3DS: VIEW, SORT, THEME, DARK MODE, SCREEN, ASPECT and the sound](../docs/manual/shots/3ds-settings.png "The library's SETTINGS: the look and screen settings for every game")
 
 ## Which games work

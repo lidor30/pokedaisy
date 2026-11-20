@@ -2,6 +2,7 @@
 // Each tab draws itself in its own file (pd_ui_party.c, _battle, _bag,
 // _settings); pd_ui_internal.h has what they share.
 #include "pd_font.h"
+#include "pd_tr.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -34,7 +35,7 @@ static const char* const TAB_LABELS[PD_TAB_COUNT] = {
     [PD_TAB_ACHIEVEMENTS] = "CHEEVOS",
 };
 
-const char* ui_tab_label(enum pd_tab t) { return t < PD_TAB_COUNT ? TAB_LABELS[t] : ""; }
+const char* ui_tab_label(enum pd_tab t) { return t < PD_TAB_COUNT ? pd_tr(TAB_LABELS[t]) : ""; }
 
 const struct pd_art* ui_tab_art(enum pd_tab t) {
     for (int i = 0; i < UI_BAR_CHOICES; i++)
@@ -304,14 +305,29 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         pd_text(c, x + (SHOULDER_W - pd_text_width("L")) / 2, pd_text_y(by, CHIP_H), "L", PD_TITLE_TEXT, PD_TITLE_SHADOW);
         x += SHOULDER_W + CHIP_GAP;
     }
+    // Equal chips while every label fits one; a longer word (another language's) gets its width and the rest
+    // share what's left, so no label runs over its chip.
+    int widths[PD_MAX_BAR_TABS + 1], textW = 0;
+    bool equal = true;
     for (int i = 0; i < n; i++) {
-        int w = room / n + (i < room % n ? 1 : 0);
+        widths[i] = pd_text_width(ui_tab_label(tabs[i])) + 6;
+        textW += widths[i];
+        equal &= widths[i] <= room / n;
+    }
+    for (int i = 0, extra = room - textW; i < n; i++) {
+        if (equal || extra < 0) widths[i] = room / n + (i < room % n ? 1 : 0);
+        else widths[i] += extra / n + (i < extra % n ? 1 : 0);
+    }
+    for (int i = 0; i < n; i++) {
+        int w = widths[i];
         enum pd_tab t = tabs[i];
         bool open = ui->tab == t && ui->overlay != PD_OVERLAY_MORE;
         chip(ui, c, x, w, open, HIT_TAB + (int) t);
-        int tw = pd_text_width(TAB_LABELS[t]);
-        pd_text(c, x + (w - tw) / 2, pd_text_y(by, CHIP_H), TAB_LABELS[t], open ? PD_VALUE : PD_TITLE_TEXT,
-                open ? PD_VALUE_SHADOW : PD_TITLE_SHADOW);
+        const char* label = ui_tab_label(t);
+        int tw = pd_text_width(label);
+        if (tw > w - 4) tw = w - 4;
+        pd_text_fit(c, x + (w - tw) / 2, pd_text_y(by, CHIP_H), tw, label, open ? PD_VALUE : PD_TITLE_TEXT,
+                    open ? PD_VALUE_SHADOW : PD_TITLE_SHADOW);
         x += w + CHIP_GAP;
     }
     // MORE: lit while a tab it opens is up.
@@ -552,6 +568,7 @@ static void act(struct pd_ui* ui, int id) {
             if (ui->overlay == PD_OVERLAY_PICK_SCENE && i < PD_SCENE_SPEED_COUNT) ui->settings->sceneSpeed[ui->scenePick] = i;
             if (ui->overlay == PD_OVERLAY_PICK_VOLUME) ui->settings->gameVolume = (i + 1) * 20;
             if (ui->overlay == PD_OVERLAY_PICK_FLY_ON && i < 4) ui->settings->flightVehicle = i;
+            if (ui->overlay == PD_OVERLAY_PICK_LANGUAGE && i <= PD_LANGS) ui->settings->language = i == 0 ? PD_LANG_AUTO : i - 1;
             close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
         } else if (id == HIT_YES && ui->overlay == PD_OVERLAY_CONFIRM_RESET) {
             pd_settings_defaults(ui->settings);
@@ -601,6 +618,8 @@ static void act(struct pd_ui* ui, int id) {
         ui->action = PD_ACTION_NUZLOCKE_TOGGLE;
     } else if (id == HIT_SETTING + SETTING_FLY_ON) {
         ui->overlay = PD_OVERLAY_PICK_FLY_ON;
+    } else if (id == HIT_SETTING + SETTING_LANGUAGE) {
+        ui->overlay = PD_OVERLAY_PICK_LANGUAGE;
     } else if (id == HIT_SETTING + SETTING_DARK || id == HIT_SETTING + SETTING_FF_MODE || id == HIT_SETTING + SETTING_CHEATS) {
         bool* flag = id == HIT_SETTING + SETTING_DARK ? &ui->settings->darkMode :
             id == HIT_SETTING + SETTING_FF_MODE ? &ui->settings->ffNormal : &ui->settings->cheats;

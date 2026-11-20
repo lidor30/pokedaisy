@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "pd_ui_internal.h"
+#include "pd_tr.h"
 
 #define TITLE_ROW 24
 #define UNDO_ROW 22
@@ -17,21 +18,21 @@ static void thumb(struct pd_canvas* c, const uint32_t* px, int x, int y, int w, 
 void ui_states_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_info* host) {
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_ROW, PD_TITLE_FILL);
-    pd_text(c, x + f + 6, pd_text_y(CONTENT_Y, TITLE_ROW), "SAVE STATES", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text(c, x + f + 6, pd_text_y(CONTENT_Y, TITLE_ROW), pd_tr("SAVE STATES"), PD_TITLE_TEXT, PD_TITLE_SHADOW);
     char name[16];
-    snprintf(name, sizeof(name), "SLOT %d", host->slotSelected);
+    snprintf(name, sizeof(name), pd_tr("SLOT %d"), host->slotSelected);
     pd_text_right(c, x + w - f - 6, pd_text_y(CONTENT_Y, TITLE_ROW), name, PD_TITLE_TEXT, PD_TITLE_SHADOW);
 
     int y = CONTENT_Y + TITLE_ROW + 3, half = (w - 4) / 2;
     if (host->undoSave) ui_button(ui, c, x, y, half, UNDO_ROW, "UNDO SAVE", HIT_STATE_UNDO_SAVE);
     else {
         pd_title_box(c, x, y, half, UNDO_ROW, PD_LIST_FILL);
-        pd_text(c, x + (half - pd_text_width("UNDO SAVE")) / 2, pd_text_y(y, UNDO_ROW), "UNDO SAVE", PD_MUTED, PD_MUTED_SHADOW);
+        pd_text(c, x + (half - pd_text_width(pd_tr("UNDO SAVE"))) / 2, pd_text_y(y, UNDO_ROW), pd_tr("UNDO SAVE"), PD_MUTED, PD_MUTED_SHADOW);
     }
     if (host->undoLoad) ui_button(ui, c, x + half + 4, y, half, UNDO_ROW, "UNDO LOAD", HIT_STATE_UNDO_LOAD);
     else {
         pd_title_box(c, x + half + 4, y, half, UNDO_ROW, PD_LIST_FILL);
-        pd_text(c, x + half + 4 + (half - pd_text_width("UNDO LOAD")) / 2, pd_text_y(y, UNDO_ROW), "UNDO LOAD", PD_MUTED, PD_MUTED_SHADOW);
+        pd_text(c, x + half + 4 + (half - pd_text_width(pd_tr("UNDO LOAD"))) / 2, pd_text_y(y, UNDO_ROW), pd_tr("UNDO LOAD"), PD_MUTED, PD_MUTED_SHADOW);
     }
     y += UNDO_ROW + 3;
 
@@ -47,14 +48,14 @@ void ui_states_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_i
         int lf = pd_list_box(c, cx, y, cw, ch);
         int ix = cx + lf + 2, iw = cw - 2 * (lf + 2), iy = y + lf + 1;
         if (sel) pd_fill(c, ix - 2, iy - 1, iw + 4, ch - 2 * lf + 2, PD_ROW_SELECTED);
-        snprintf(name, sizeof(name), "SLOT %d", i);
+        snprintf(name, sizeof(name), pd_tr("SLOT %d"), i);
         pd_text(c, ix + 2, iy - 1, name, PD_LABEL, PD_LABEL_SHADOW);
         if (sel) pd_triangle(c, ix + iw - 6, iy + 3, 4, PD_LEFT, PD_VALUE);
         int th = iw * 2 / 3, ty = iy + 16;
         pd_fill(c, ix, ty, iw, th, pd_cur->imageWell);
         if (slot->thumb) thumb(c, slot->thumb, ix + 1, ty + 1, iw - 2, th - 2);
         ty += th + 2;
-        pd_text_fit(c, ix, ty, iw, slot->used ? slot->when : "EMPTY", PD_MUTED, PD_MUTED_SHADOW);
+        pd_text_fit(c, ix, ty, iw, slot->used ? slot->when : pd_tr("EMPTY"), PD_MUTED, PD_MUTED_SHADOW);
         ui_add_hit(ui, cx, y, cw, ch, HIT_STATE_SLOT + i);
         if (sel) {
             int by = y + ch - lf - 21, bw = (iw - 2) / 2;

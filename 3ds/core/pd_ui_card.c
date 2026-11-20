@@ -61,7 +61,7 @@ void ui_card_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
         ui_notice(c, "NO TRAINER CARD", "The card's art wasn't found in this ROM.", NULL);
         return;
     }
-    const char* caption = ui->cardBack ? "TAP TO SEE THE FRONT" : "TAP TO FLIP THE CARD";
+    const char* caption = pd_tr(ui->cardBack ? "TAP TO SEE THE FRONT" : "TAP TO FLIP THE CARD");
     int areaH = c->h - CONTENT_Y - MARGIN;
     int gap = 6;
     int x = (c->w - r->w) / 2;

@@ -6,6 +6,7 @@
 #include "pd_games.h"
 #include "pd_gb.h"
 #include "pd_icons_gen.h"
+#include "pd_tr.h"
 #include "pd_ui.h"
 
 const struct pd_look* pd_cur = &pd_themes[0].look[0];
@@ -84,6 +85,10 @@ void pd_battle_backdrop(struct pd_canvas* c) {
 }
 
 void pd_look_apply(const struct pd_game* g, const struct pd_settings* s) {
+    // LANGUAGE follows the same calls: the setting when given (a call without settings keeps the last), the game's letter.
+    static int language = PD_LANG_AUTO;
+    if (s) language = s->language;
+    pd_tr_apply(language, g ? g->language : 0);
     int dark = s && s->darkMode ? 1 : 0;
     pd_dark = dark;
     const struct pd_theme* theme = &pd_themes[0];

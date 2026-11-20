@@ -19,6 +19,7 @@
 #include "polished_action_data.h"
 #include "hud.h"
 #include "pd_guide.h"
+#include "pd_tr.h"
 #include "pk_call.h"
 #include "pk_flight.h"
 #include "pd_flight_gen.h"
@@ -1120,6 +1121,13 @@ RETRO_API void retro_get_system_av_info(struct retro_system_av_info *info) {
 }
 
 RETRO_API bool retro_load_game(const struct retro_game_info *g) {
+  /* LANGUAGE's AUTO with no game language the menus have: the frontend's. */
+  unsigned lang = RETRO_LANGUAGE_ENGLISH;
+  if (realEnv && realEnv(RETRO_ENVIRONMENT_GET_LANGUAGE, &lang))
+    pd_tr_set_system(lang == RETRO_LANGUAGE_FRENCH ? PD_LANG_FR : lang == RETRO_LANGUAGE_GERMAN ? PD_LANG_DE :
+                     lang == RETRO_LANGUAGE_ITALIAN ? PD_LANG_IT : lang == RETRO_LANGUAGE_SPANISH ? PD_LANG_ES :
+                     lang == RETRO_LANGUAGE_PORTUGUESE_BRAZIL ? PD_LANG_BR :
+                     lang == RETRO_LANGUAGE_PORTUGUESE_PORTUGAL ? PD_LANG_PT : PD_LANG_EN);
   /* No game: armGBA offers "Start Core" (SET_SUPPORT_NO_GAME), but the companion needs one (PD_BE_AFTER_LOAD reads it). */
   if (!g || !mgba_retro_load_game(g))
     return false;

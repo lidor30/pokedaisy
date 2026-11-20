@@ -7,6 +7,7 @@
 
 #include "pd_icons_gen.h"
 #include "pd_style.h"
+#include "pd_tr.h"
 #include "pd_ui.h"
 
 // Where a tab's content starts: the tab bar is along the bottom, like the app's
@@ -158,6 +159,7 @@ enum setting_row {
     SETTING_INSTANT_TEXT,
     SETTING_TRADE_EVOS,
     SETTING_NUZLOCKE,
+    SETTING_LANGUAGE,   // LANGUAGE: a pick-list, AUTO first
     SETTING_SCENE,      // + enum pd_scene: SCENE SPEEDS' rows, each a pick-list
 };
 
