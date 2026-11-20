@@ -68,6 +68,8 @@ Backups go into a `pokedaisy-backups` folder beside the save, named after the ga
 
 To bring one back, long-press the game in the library and tap `RESTORE BACKUP`. Pick a backup by its date and time, then confirm with `LOAD`. Your current save is kept as a dated copy first, so restoring is never a one-way trip.
 
+On iPhone and iPad, `RESTORE BACKUP` lists the copies made before playing as well as the dated copies kept by `LOAD SAVE`. They are kept under `PokeDaisy/saves` in Files. Restoring keeps the current save and starts the game from the selected save on the next launch.
+
 ### Change how backups are kept
 
 Open Settings > `FOLDERS` > `SAVE BACKUPS`:

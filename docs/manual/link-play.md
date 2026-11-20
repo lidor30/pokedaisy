@@ -18,7 +18,7 @@ Every game starts from its own save, the one it plays normally, and PokeDaisy ba
 
 ## Playing
 
-The games run at the same time. One has the buttons and the sound, framed in orange; the others keep running behind a dim. Tap a game to play it, or press `L2` / `R2` (or click a stick) on a controller to move to the previous or next one. On a two-screen Android device the games are split between the screens.
+The games run at the same time. One has the buttons and the sound, framed in orange; the others keep running behind a dim. Tap a game to play it, or press `L2` / `R2` (or click a stick) on a controller to move to the previous or next one. On iPhone and iPad, the touch controls play the highlighted game. On a two-screen Android device the games are split between the screens.
 
 The `FF` button in the bottom right corner fast-forwards every game at once, up to four times the normal speed, with the sound off while it's on. Tap it again to go back to normal.
 
