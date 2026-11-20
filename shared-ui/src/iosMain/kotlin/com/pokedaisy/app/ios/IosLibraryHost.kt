@@ -28,6 +28,7 @@ import com.pokedaisy.app.companion.LibraryPreferences
 import com.pokedaisy.app.companion.LibrarySort
 import com.pokedaisy.app.companion.NewFeatures
 import com.pokedaisy.app.companion.data.*
+import com.pokedaisy.app.companion.data.save.MonRef
 import com.pokedaisy.app.companion.i18n.L10n
 import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.ui.*
@@ -62,6 +63,15 @@ internal class IosLibraryHost(
     private enum class AddChoice(val label: String) { ROM("ADD A ROM FILE"), PATCH("PATCH A ROM") }
     private var choosingAdd by mutableStateOf(false)
     private var choosingSaveGame by mutableStateOf(false)
+    private var restorePath by mutableStateOf<String?>(null)
+
+    private data class LinkRequest(val initial: String? = null)
+    private var link by mutableStateOf<LinkRequest?>(null)
+    private var choosingEditSave by mutableStateOf(false)
+    private var collection by mutableStateOf<CollectionState?>(null)
+    private var collectionPick: MonRef? = null
+    private var tradeRequest by mutableStateOf<IosTradeRequest?>(null)
+    private var editingSave by mutableStateOf<String?>(null)
     private var infoPath by mutableStateOf<String?>(null)
     private var renaming by mutableStateOf<String?>(null)
     private var notice by mutableStateOf<Pair<String, String>?>(failed?.let { tr("ERROR") to it.substringAfterLast('/') })
@@ -129,10 +139,30 @@ internal class IosLibraryHost(
                     val density = androidx.compose.ui.platform.LocalDensity.current.density
                     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
                         SideEffect { screen = DpSize(maxWidth, maxHeight); scale = density }
+                        val edit = editingSave
                         val flow = setup
-                        if (flow == null) Library() else Setup(flow)
-                        Dialogs()
-                        touch.EditorOverlay()
+                        val collectionScreen = collection
+                        val trade = tradeRequest
+                        val linkRequest = link
+                        if (linkRequest != null) {
+                            IosLinkPlay(paths.filter { category(it) == RomCategory.GBA }, linkRequest.initial, ::label,
+                                onClose = { link = null }, onSaves = ::refreshGames)
+                        } else if (trade != null) {
+                            IosSaveTrade(paths, trade, ::label, onClose = { tradeRequest = null }, onSaved = ::refreshGames)
+                        } else if (edit != null) {
+                            IosSaveEditor(edit, label(edit), paths, ::label,
+                                onClose = { editingSave = null; collectionPick = null },
+                                onSaved = ::refreshGames, onTrade = { tradeRequest = it }, initialPick = collectionPick)
+                        } else if (collectionScreen != null) {
+                            IosSaveCollection(paths, ::label, collectionScreen,
+                                onClose = { collection = null; collectionPick = null },
+                                onOpen = { path, at -> collectionPick = at; editingSave = path },
+                                onTrade = { path, at -> tradeRequest = IosTradeRequest(first = path, firstPick = at) })
+                        } else {
+                            if (flow == null) Library() else Setup(flow)
+                            Dialogs()
+                            touch.EditorOverlay()
+                        }
                     }
                 }
             } }
@@ -181,6 +211,14 @@ internal class IosLibraryHost(
             LibraryTool("PATCH", "PATCH A ROM", "Turn a .bps patch into a game", NewFeatures.badge(NewFeatures.ROM_PATCH), ::pickPatch),
             LibraryTool("load_save", "LOAD SAVE", "The game starts from this save next time, not from where you left off.", null,
                 open = { if (paths.isEmpty()) library.selectSection(LibrarySection.GAMES) else choosingSaveGame = true }),
+            LibraryTool("EDIT", "SAVE EDITOR", "Change a game's Pokémon, bag and Pokédex",
+                NewFeatures.badge(NewFeatures.IOS_SAVE_EDITOR), open = { choosingEditSave = true }),
+            LibraryTool("TRADE", "TRADE SAVES", "Move Pokémon between your games' saves",
+                NewFeatures.badge(NewFeatures.IOS_SAVE_TRADE), open = { tradeRequest = IosTradeRequest() }),
+            LibraryTool("LINK", "LINK PLAY", "Play two to four GBA games with a link cable",
+                null, open = { link = LinkRequest() }),
+            LibraryTool("COLLECTION", "COLLECTION", "Every Pokémon in all your saves, in one list",
+                NewFeatures.badge(NewFeatures.IOS_SAVE_COLLECTION), open = { collection = CollectionState() }),
         )
         val state = LibraryPresentation(shown, library.grid, library.section, views, view,
             projection.counts, games.isNotEmpty(), library.query,
@@ -213,13 +251,20 @@ internal class IosLibraryHost(
             var menu by remember(game.id) { mutableStateOf(false) }
             val openMenu = libraryLongPress { menu = true }
             val cover: @Composable (Modifier) -> Unit = { LibraryCover(null, category(game.id), m, it) }
-            val items = listOf(
+            val items = listOfNotNull(
                 LibraryMenuItem(if (game.favorite) "UNFAVORITE" else "FAVORITE",
                     if (game.favorite) LibraryIcons.StarBorder else Icons.Filled.Star,
                     pixel = if (game.favorite) PixelIcons.starOutline else PixelIcons.star) { prefs.toggleFavorite(key(game.id)) },
                 LibraryMenuItem("INFO", Icons.Filled.Info, opens = true) { infoPath = game.id },
                 LibraryMenuItem("RENAME", Icons.Filled.Edit, opens = true) { renaming = game.id },
-                LibraryMenuItem("LOAD SAVE", LibraryIcons.FileOpen, opens = true) { pickSave(game.id) })
+                LibraryMenuItem("LOAD SAVE", LibraryIcons.FileOpen, opens = true) { pickSave(game.id) },
+                LibraryMenuItem("RESTORE BACKUP", LibraryIcons.History, opens = true) { restorePath = game.id },
+                if (category(game.id) == RomCategory.GBA)
+                    LibraryMenuItem("LINK PLAY", LibraryIcons.Link, opens = true) { link = LinkRequest(game.id) }
+                else null,
+                if (category(game.id) == RomCategory.GBA)
+                    LibraryMenuItem("SAVE EDITOR", LibraryIcons.Inventory2, opens = true) { editingSave = game.id }
+                else null)
             val onPlay = {
                 playGame(game.id)
             }
@@ -304,6 +349,45 @@ internal class IosLibraryHost(
         PatchWindow(patches, m, small, onPlay = { playGame(it.toString()) }, describePath = ::patchDisplayPath)
         if (choosingSaveGame && paths.isNotEmpty()) OptionSelector(tr("LOAD SAVE"), paths, paths.first(), ::label, m,
             onPick = { choosingSaveGame = false; pickSave(it) }, onDismiss = { choosingSaveGame = false })
+        restorePath?.let { game ->
+            var files by remember(game) { mutableStateOf<List<Pair<Path, String>>?>(null) }
+            LaunchedEffect(game) {
+                files = withContext(Dispatchers.Default) {
+                    val save = RomPicker.savePathFor(game).toPath()
+                    runCatching {
+                        iosSaveBackups(save).map { backup ->
+                            val date = FoundationDates.shortDateTime(backup.lastModified)
+                            backup to "$date  ${GameInfoDetails.sizeLabel(backup.length)}"
+                        }
+                    }.getOrDefault(emptyList())
+                }
+            }
+            val backups = files
+            if (backups.isNullOrEmpty()) {
+                OptionConfirm(tr("RESTORE BACKUP"),
+                    if (backups == null) "…" else tr("No backups of this game's save yet"),
+                    tr("CLOSE"), m, onConfirm = { restorePath = null }, onDismiss = { restorePath = null }, cancelLabel = null)
+            } else {
+                LibraryRestoreBackupDialog(backups, { it.second }, m,
+                    onPick = { (path, _) ->
+                        val pick = saveImports.begin(game) ?: return@LibraryRestoreBackupDialog
+                        restorePath = null
+                        scope.launch {
+                            val bytes = withContext(Dispatchers.Default) {
+                                runCatching { GameSaves.readPicked(FileSystem.SYSTEM.source(path)) }.getOrNull()
+                            }
+                            finishSaveRead(pick, bytes, path.name)
+                        }
+                    },
+                    onDismiss = { restorePath = null },
+                )
+            }
+        }
+        if (choosingEditSave) {
+            IosSaveEditorPicker(paths, ::label,
+                onPick = { choosingEditSave = false; editingSave = it },
+                onClose = { choosingEditSave = false })
+        }
         LaunchedEffect(saveImports.importing) {
             val picked = saveImports.importing ?: return@LaunchedEffect
             val result = withContext(NonCancellable + Dispatchers.Default) {

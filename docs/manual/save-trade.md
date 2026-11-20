@@ -12,6 +12,8 @@ Everything the editor offers is something the game itself could have: a nature, 
 
 ## Save editor
 
+On iPhone and iPad, `SAVE EDITOR` works with supported GBA saves from FireRed, LeafGreen, Emerald, Ruby and Sapphire. Open it from `TOOLS` or the game's menu. Saving keeps a copy of the previous battery save under `PokeDaisy/saves/pokedaisy-backups` and makes the game start from the edited save on its next launch.
+
 Tap `TOOLS` in the library, then `SAVE EDITOR`, and pick a game. Or open a game's menu in the library (long-press it) and pick `SAVE EDITOR` there. The editor has three pages: `POKéMON`, `BAG` and `TRAINER`. Nothing is written until you tap `SAVE`, and `UNDO ALL` drops every change.
 
 With a controller or a keyboard, the D-pad moves an orange cursor (the first press puts it on the Pokémon you picked, or on the open page's button), A presses what it's on and B goes back.
@@ -50,6 +52,8 @@ A Pokémon's nature, gender, ability and shininess all come from one hidden numb
 
 The `POKéDEX` window counts what you've seen and caught. `ADD MINE` marks every Pokémon in your party and boxes as caught, `ALL SEEN` marks every Pokémon as seen, and `ALL CAUGHT` marks every Pokémon as caught, even the ones you don't have.
 
+On iPhone and iPad, `MISSING` scans your supported GBA saves and opens a trade with the Pokémon selected.
+
 `MISSING` lists every Pokémon this Pokédex hasn't caught yet (the region's until you have the National Pokédex), in the Pokédex's order, and looks through your other games' saves for one of each. A row shows where the best one is (the game, then its box or party) and its level. Tap it to open the trade that brings it, with that Pokémon already picked: you only pick where it lands. For a DS game, a Pokémon in a GBA game's PC comes through [Pal Park](#pal-park). For Black, White, Black 2 and White 2, a Pokémon in a HeartGold, SoulSilver or Platinum PC comes through [Poké Transfer](#transfer-to-black-and-white): tap it to open the transfer with it picked, then pick the other five. A Pokémon that only evolves by trading counts too: one in another save that evolves as it arrives, or one of this save's own that could make a [trade and back](#trade-and-back) (tap it to open the trade with it picked). A row that can't come yet says why, by the games' own rules (no National Pokédex yet, the island part of the story, a Pokémon holding mail). `IN MY SAVES` shows only the ones that can come. Save your changes before you bring one over.
 
 `EVENT TICKETS` lists the tickets Nintendo once handed out at events, the ones that open a ferry to a faraway island. `GET` puts one in your key items pocket, the way the event did. The game's port only takes you there after the Hall of Fame (in FireRed and LeafGreen, once you have the pass for all the Sevii Islands). A ticket you already have, or have already used, isn't offered again.
@@ -78,7 +82,9 @@ The 3DS app has the same editor for FireRed, LeafGreen, Emerald, Ruby and Sapphi
 
 ## Trade between saves
 
-On Android, PokeDaisy backs up both saves and recovers an interrupted write before opening a game. If one of your saves is on removable storage, reconnect it so PokeDaisy can finish recovering.
+On iPhone and iPad, use `TRADE SAVES` for the supported GBA games. Each game needs a readable battery save.
+
+On Android, iPhone and iPad, PokeDaisy backs up both saves and recovers an interrupted write before opening a game. If one of your saves is on removable storage, reconnect it so PokeDaisy can finish recovering.
 
 Tap `TOOLS` in the library, then `TRADE SAVES`, and pick the game to trade from and then the one to trade with. `BACK` on the second pick lets you choose the first game again, and `BACK` from the trade takes you back to `TOOLS`. (In a game's `SAVE EDITOR`, `TRADE` starts a trade from that game, and `BACK` returns to its boxes.)
 
@@ -124,6 +130,8 @@ It keeps the Lab's rules:
 Each one arrives the way the Lab makes it: the same Pokémon with its trainer, nature, IVs, EVs, moves (at full PP), ribbons and ball, its friendship back to the start, and "arrived" today at the level it has now. It counts as caught in the receiving game's Pokédex. You don't have to play the catching game on the other side: all six always make it.
 
 ## Collection
+
+On iPhone and iPad, `COLLECTION` lists Pokémon from your supported GBA saves. Tap a Pokémon to open its save in the editor or pick it for a trade.
 
 Tap `TOOLS` in the library, then `COLLECTION`, to see every Pokémon in all your saves in one list: the party and every box of each game the save editor can read. The title counts them, and how many different kinds you have. Each row shows the Pokémon's number, name and level, with the game and the box it's in (or `PARTY`) under it, and a `SHINY` tag on a shiny one.
 

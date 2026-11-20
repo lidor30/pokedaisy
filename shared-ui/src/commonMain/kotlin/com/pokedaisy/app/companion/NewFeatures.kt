@@ -30,6 +30,9 @@ object NewFeatures {
     const val IOS_FF_AUDIO = "ios_ff_audio"
     const val IOS_STEADY_MUSIC = "ios_steady_music"
     const val IOS_CLICK_SOUND = "ios_click_sound"
+    const val IOS_SAVE_EDITOR = "ios_save_editor"
+    const val IOS_SAVE_TRADE = "ios_save_trade"
+    const val IOS_SAVE_COLLECTION = "ios_save_collection"
     const val IOS_SCALEFX_SMOOTHING = "ios_scalefx_smoothing"
     const val IOS_DAY_NIGHT = "ios_day_night"
     const val IOS_SHINY_ODDS = "ios_shiny_odds"
@@ -340,6 +343,9 @@ object NewFeatures {
         IOS_FF_AUDIO,
         IOS_STEADY_MUSIC,
         IOS_CLICK_SOUND,
+        IOS_SAVE_EDITOR,
+        IOS_SAVE_TRADE,
+        IOS_SAVE_COLLECTION,
         IOS_SCREEN_EFFECTS, IOS_COMPANION_EFFECTS, IOS_GAME_SMOOTHING, IOS_XBR_SMOOTHING, IOS_SCALEFX_SMOOTHING, IOS_DAY_NIGHT, IOS_SHINY_ODDS, IOS_FLIGHT, IOS_FOLLOWER, IOS_PLAYER_LOOK, IOS_RIVAL_LOOK, IOS_TEXT_LOOK, IOS_RIDE_ON, IOS_POKEMON_COSTUMES, IOS_AUTO_REFILL, IOS_SHINY_ALERT, IOS_LAST_BALL, IOS_BOSS_RETRY, IOS_LOW_HP_BEEP, IOS_FIELD_POISON, IOS_NUZLOCKE,
         IOS_CHEATS,
         IOS_FIELD_ITEMS,
