@@ -967,8 +967,16 @@ private fun partyPictureScale(g: SlotGeometry): Int {
     return max(1, min((u * 0.6f).roundToInt(), room))
 }
 
-/** Games that offer POKéMON PICTURES: Crystal for now (English and German, which run as CRYSTAL). */
-fun pokemonPicturesOffered(game: com.pokedaisy.app.companion.data.GameKind?): Boolean = game == com.pokedaisy.app.companion.data.GameKind.CRYSTAL
+/**
+ * Games that offer POKéMON PICTURES: Crystal, Gold and Silver (English and German, which run as those kinds). Their pictures
+ * come from the same Gen 2 decoder the DEX uses (`Gen2Dex.frontPixels`: Gold / Silver through FixPicBank), shiny colours too.
+ */
+fun pokemonPicturesOffered(game: com.pokedaisy.app.companion.data.GameKind?): Boolean = when (game) {
+    com.pokedaisy.app.companion.data.GameKind.CRYSTAL,
+    com.pokedaisy.app.companion.data.GameKind.GOLD,
+    com.pokedaisy.app.companion.data.GameKind.SILVER -> true
+    else -> false
+}
 
 @Composable
 private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, sound: Boolean = true) {
