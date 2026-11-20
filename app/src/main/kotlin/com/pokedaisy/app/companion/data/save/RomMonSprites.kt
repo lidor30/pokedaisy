@@ -63,9 +63,11 @@ class RomMonSprites private constructor(private val rom: Path, private val table
             withRomFile(rom) { f ->
                 val size = f.size()
                 fun inFile(p: Long) = p >= ROM_BASE && p - ROM_BASE < size
+                // Each pointer must land in the file on an LZ77 stream (0x10): a hack that moved its table elsewhere
+                // would otherwise show retail's leftover pictures.
                 val ok = listOf(1, 25, 151, 277, 411).all { s ->
                     val ptr = Gfx.u32(read(f, tables.frontPics + s.toLong() * 8L, 8), 0)
-                    inFile(ptr)
+                    inFile(ptr) && read(f, ptr, 1)[0].toInt() == 0x10
                 }
                 if (ok) RomMonSprites(rom, tables) else null
             }
