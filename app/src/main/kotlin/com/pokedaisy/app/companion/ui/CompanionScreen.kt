@@ -267,6 +267,23 @@ fun CompanionScreen(
         val dexUi = remember { DexUiState(dexListState) }
         // BOXES tab: the box on show and its open summary, kept across tab switches.
         val boxesUi = remember { BoxesUiState() }
+        // SORT, offered from the BOXES tab's PKMN DATA panel.
+        val boxSorter = itemUse?.takeIf { it.canSortBoxes() }
+        val startBoxSort: (() -> Unit)? = boxSorter?.let { use ->
+            {
+                boxesUi.confirmSort = false
+                boxesUi.sorting = true
+                use.sortBoxes { r ->
+                    boxesUi.sorting = false
+                    boxesUi.swapTitle = "SORT"
+                    boxesUi.swapMessage = boxSortMessage(r)
+                    if (r == com.pokedaisy.app.companion.data.BoxSortResult.SORTED) {
+                        boxesUi.looked = null
+                        boxesUi.open = null
+                    }
+                }
+            }
+        }
         val pcBoxes = snapshot.pcBoxes
         val openBoxMon = pcBoxes?.let { b -> boxesUi.open?.takeIf { it in boxSummaryList(b.boxes[boxesUi.boxOf(b)]).indices } }
         val lastBoxMon = remember { mutableStateOf(0) }
@@ -707,22 +724,28 @@ fun CompanionScreen(
                                 },
                             )
                         } else if (tab == "BOXES" && pcBoxes != null) {
-                            BoxesScreen(pcBoxes, boxesUi, snapshot.pokedex?.tables, Modifier.fillMaxSize())
+                            BoxesScreen(
+                                pcBoxes, boxesUi, snapshot.pokedex?.tables, Modifier.fillMaxSize(),
+                                onSort = boxSorter?.let { { boxesUi.confirmSort = true } },
+                                sorting = boxesUi.sorting,
+                            )
+                            if (startBoxSort != null) BoxSortConfirm(boxesUi, startBoxSort)
                             boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
                             BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {
-                            if (paneKey == "DEX/DETAIL") PokedexEntryScreen(
-                                dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables,
-                                onBack = dexBackToParty?.let { partySlot ->
-                                    {
-                                        dexUi.open = null
-                                        dexBackToParty = null
-                                        detailIndex = partySlot
-                                        selectedLabel = "PARTY"
-                                    }
-                                },
-                            )
-                            else PokedexScreen(
+                            if (paneKey == "DEX/DETAIL") {
+                                PokedexEntryScreen(
+                                    dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables,
+                                    onBack = dexBackToParty?.let { partySlot ->
+                                        {
+                                            dexUi.open = null
+                                            dexBackToParty = null
+                                            detailIndex = partySlot
+                                            selectedLabel = "PARTY"
+                                        }
+                                    },
+                                )
+                            } else PokedexScreen(
                                 dex, dexUi,
                                 holdings = remember(snapshot.party, pcBoxes) { com.pokedaisy.app.companion.data.dexHoldings(snapshot.party, pcBoxes) },
                             )

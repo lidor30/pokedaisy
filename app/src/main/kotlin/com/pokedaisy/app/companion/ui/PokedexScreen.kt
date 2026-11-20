@@ -455,7 +455,7 @@ private fun EntryPage(
                 }
                 DexMark(caught, seen, Modifier.size(u * 12))
             }
-            // The sprite gets whatever height the text below leaves it.
+            // The sprite gets whatever height the text below and the SORT button leave it.
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 val sprite = rememberRomBitmap(t, species, PokedexSource::cachedFrontSprite, PokedexSource::frontSprite)
                 val paper = OptionColors.spritePaper

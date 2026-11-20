@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion
 
+import com.pokedaisy.app.companion.data.BoxSortResult
 import com.pokedaisy.app.companion.data.ItemUseOutcome
 import com.pokedaisy.app.companion.data.ItemUseResult
 import com.pokedaisy.app.companion.data.PartyTarget
@@ -68,6 +69,12 @@ interface ItemUse {
 
     /** Whether the PC's moves work here (BoxSwap.kt): a box Pokémon's WITHDRAW / SWAP, a party one's DEPOSIT. */
     fun canSwapBox(): Boolean = false
+
+    /** Whether the BOXES tab's SORT works here: every box rewritten in Pokédex order (the same games as [canSwapBox]). */
+    fun canSortBoxes(): Boolean = false
+
+    /** Sorts every box by Pokédex number in the running game (same species lowest level first). */
+    fun sortBoxes(done: (BoxSortResult) -> Unit) = done(BoxSortResult.FAILED)
 
     /** Swaps box [box]'s slot [slot] ([boxPersonality]) with party slot [partySlot] ([partyPersonality]) in the game. */
     fun swapBox(
