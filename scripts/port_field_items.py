@@ -13,7 +13,7 @@ Sapphire rev 0, whose tables are written straight from their ELFs - it
      others' shift), RAM globals and gItems through the literal pools that load them (port_retail.py's helpers),
   3. checks what it found against the ROM itself: gItems' records hold ids 1..8 and the Repel's 100 steps, and the
      mapped field-use routines are what gItems points at for a Potion, an Ether, a PP Up and a Repel,
-  4. writes app/.../companion/data/FieldItemsPortsGen.kt (FIELD_ITEMS_PORTS, by game code + revision).
+  4. writes shared/.../companion/data/FieldItemsPortsGen.kt (FIELD_ITEMS_PORTS, by game code + revision).
 
 A ROM where anything fails to map or check is reported and left out (it keeps no USE / GIVE / TAKE).
 """
@@ -29,7 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from port_retail import B, Rom, detect_items, map_code, map_code_masked, map_literal, nearest_english  # noqa: E402
 
-OUT = os.path.join(HERE, "..", "app", "src", "main", "kotlin", "com", "pokedaisy", "app", "companion", "data",
+OUT = os.path.join(HERE, "..", "shared", "src", "commonMain", "kotlin", "com", "pokedaisy", "app", "companion", "data",
                    "FieldItemsPortsGen.kt")
 
 FUNCS = ("varGet", "varSet", "checkBagHasItem", "removeBagItem", "fieldControlsLocked",

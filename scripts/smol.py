@@ -1,5 +1,5 @@
 """pokeemerald-expansion's "smol" graphics compression, for the generators -
-the Python twin of app/.../companion/data/Smol.kt (same bytes out).
+the Python twin of shared/.../companion/data/Smol.kt (same bytes out).
 
     decode(src) -> (decoded bytes, raw length consumed)
 

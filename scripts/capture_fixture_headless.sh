@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Captures a real memory snapshot for one game via headless libmgba - NO
 # Android device, emulator, or adb involved - into
-# app/src/test/resources/fixtures/<key>/{ewram.bin,iwram.bin,README.txt},
+# test-fixtures/resources/fixtures/<key>/{ewram.bin,iwram.bin,README.txt},
 # exactly like scripts/capture_fixture.sh does from a physical device. The
 # two are interchangeable as far as the JVM tests are concerned; this one
 # also runs unmodified on a Linux CI runner (e.g. GitHub Actions), since it's
@@ -23,7 +23,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CAPTURE_DIR="$SCRIPT_DIR/../native-capture"
 CONF="$SCRIPT_DIR/host_roms.conf"
-OUT_ROOT="$SCRIPT_DIR/../app/src/test/resources/fixtures"
+OUT_ROOT="$SCRIPT_DIR/../test-fixtures/resources/fixtures"
 IMAGE="pokedaisy-capture"
 
 KEY="${1:-}"

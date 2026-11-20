@@ -6,7 +6,7 @@ the user owns (nothing is downloaded):
 
 Writes ItemNamesRogue.kt, MapSecDataRogue.kt, MoveDataRogue.kt,
 SpeciesNamesRogue.kt, SpeciesTypesRogue.kt and TypeChartRogue.kt under
-app/src/main/kotlin/.../companion/data. Item descriptions aren't written: the app
+shared/src/commonMain/kotlin/.../companion/data. Item descriptions aren't written: the app
 reads them from the player's ROM (RomItemText, NATIVE_EMERALD_ROGUE.itemDescs).
 
 Rogue (Pokabbie/pokeemerald-rogue, `expansion` branch = v2.2.1) mixes vanilla

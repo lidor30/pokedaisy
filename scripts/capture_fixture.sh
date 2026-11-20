@@ -2,8 +2,8 @@
 # Captures a real-device memory snapshot for one game (full EWRAM + IWRAM, via
 # PokeDaisyActivity's EXTRA_DUMP_FIXTURE debug hook - see
 # dumpFixtureIfPending() in PokeDaisyActivity.kt) into
-# app/src/test/resources/fixtures/<key>/{ewram,iwram}.bin, for the JVM decode
-# tests under app/src/test to replay against (FakeMemoryReader).
+# test-fixtures/resources/fixtures/<key>/{ewram,iwram}.bin, for the JVM decode
+# JVM decode tests to replay against (FixtureMemoryReader).
 #
 # Deliberately ONE game per run, not a batch-capture-everything loop: a
 # fixture is a frozen "this is the known-correct output" baseline, so it
@@ -21,7 +21,7 @@ KEY="${1:-}"
 SERIAL="${2:-}"
 PKG="com.pokedaisy.app"
 DEVICE_BASE="/storage/emulated/0/Android/data/$PKG/files"
-OUT_ROOT="$SCRIPT_DIR/../app/src/test/resources/fixtures"
+OUT_ROOT="$SCRIPT_DIR/../test-fixtures/resources/fixtures"
 
 if [[ -z "$KEY" ]]; then
     echo "Usage: $0 <key> [device-serial]" >&2

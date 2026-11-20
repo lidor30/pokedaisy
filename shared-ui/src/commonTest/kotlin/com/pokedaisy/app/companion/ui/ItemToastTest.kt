@@ -1,8 +1,8 @@
 package com.pokedaisy.app.companion.ui
 
 import com.pokedaisy.app.companion.data.ItemView
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.assertEquals
+import kotlin.test.Test
 
 /** [itemTotals] / [itemGains]: what the bag toast counts as a new item. */
 class ItemToastTest {
@@ -25,7 +25,7 @@ class ItemToastTest {
     }
 
     @Test
-    fun `a wholesale change is a reload, not a pile of pickups`() {
+    fun `a wholesale reload is not a pile of pickups`() {
         val before = (1..20).associateWith { 1 }
         val after = before + (21..30).associateWith { 1 }
         assertEquals(emptyMap<Int, Int>(), itemGainNotices(before, after))
@@ -37,7 +37,7 @@ class ItemToastTest {
     }
 
     @Test
-    fun `an impossible stack is a torn read, not a pickup`() {
+    fun `an impossible stack indicates a torn read`() {
         assertEquals(emptyMap<Int, Int>(), itemGainNotices(mapOf(1 to 1), mapOf(1 to 1, 2 to 40000)))
     }
 

@@ -68,7 +68,7 @@ import os
 import struct
 import sys
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin",
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin",
                        "com", "pokedaisy", "app", "companion", "data")
 
 SHA1 = "d0658315da1e8827f66f15c3d3a000fe747e163e"

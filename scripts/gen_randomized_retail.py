@@ -33,8 +33,8 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/RandomizedRetailGen.kt"
-DATA = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data"
+OUT = ROOT / "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/RandomizedRetailGen.kt"
+DATA = ROOT / "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data"
 UPR_VERSION = "4.6.1"
 
 # UPR's offsets-file entry for each retail ROM, and the guide data the game reads.

@@ -28,7 +28,7 @@ Dex number).
 Red and Blue (pret/pokered's builds, = retail) write nothing: every table, read from their own
 addresses (pokered.sym), is checked equal to Yellow's, so the app keeps one set (the Yellow files).
 
-Writes app/src/main/kotlin/.../companion/data/{SpeciesNames,SpeciesTypes,MoveData,
+Writes shared/src/commonMain/kotlin/.../companion/data/{SpeciesNames,SpeciesTypes,MoveData,
 ItemNames,TypeChart,MapSecData,Gen1Species}<Suffix>.kt; for the German, French, Italian and
 Spanish carts, only their names (YellowText<Lang>Gen.kt): their species ids, types, moves' types
 and powers, base stats and type chart are English's byte for byte (checked here), their map ids too.
@@ -49,7 +49,7 @@ import os
 import struct
 import sys
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin",
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin",
                        "com", "pokedaisy", "app", "companion", "data")
 
 GAMES = {

@@ -17,7 +17,7 @@ rootProject.name = "PokeDaisy"
 include(":app")
 // The companion's data and language code, for Android and iOS (shared/build.gradle.kts).
 include(":shared")
-// The companion's screens for iOS, compiled where they live (shared-ui/build.gradle.kts).
+// Shared companion screens for Android and iOS (shared-ui/build.gradle.kts).
 include(":shared-ui")
 
 // 3DS games (Azahar, n3ds/): its own module, because Azahar's CMake wants 3.25+ and the app's native build is on 3.22.

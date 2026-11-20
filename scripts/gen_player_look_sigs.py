@@ -26,7 +26,7 @@ import smol
 from gen_rom_art_sigs import head, lz77, pre
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-KOTLIN = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/data/PlayerLookSigsGen.kt")
+KOTLIN = os.path.join(HERE, "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/PlayerLookSigsGen.kt")
 FR = decomp("pokefirered", "graphics")
 EM = decomp("pokeemerald", "graphics")
 RS = decomp("pokeruby", "graphics")

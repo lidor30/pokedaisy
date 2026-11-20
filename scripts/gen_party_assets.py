@@ -36,7 +36,7 @@ from decomps import decomp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = decomp()
-KOTLIN = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/ui/PartySlotStylesGen.kt")
+KOTLIN = os.path.join(HERE, "../shared-ui/src/commonMain/kotlin/com/pokedaisy/app/companion/ui/PartySlotStylesGen.kt")
 
 # Per-game facts, each read off that game's own decomp source (cited).
 GAMES = {

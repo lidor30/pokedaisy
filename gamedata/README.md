@@ -10,7 +10,7 @@ reads (phase 2: retail FireRed / LeafGreen / Emerald's Pokédex, guide, trainer-
 tables, their bag orders and the field items' functions: `FIELD_ITEMS_*` with their `PARTY_ITEMS_*`, `PC_*`
 and `FLY_*`). The outputs:
 
-- the app's `app/src/main/kotlin/com/pokedaisy/app/companion/data/NativeConfigsGen.kt` (the configs) and
+- the app's `shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/NativeConfigsGen.kt` (the configs) and
   `GameDataRecordsGen.kt` (the records);
 - `3ds/core/pd_configs_gen.h`, the 3DS port's `struct pd_config`s, which the Linux host builds too
   (`targets/3ds.toml`).

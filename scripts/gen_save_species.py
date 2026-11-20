@@ -16,7 +16,7 @@ import sys
 from decomps import decomp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/data/save/SaveSpeciesGen.kt")
+OUT = os.path.join(HERE, "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/save/SaveSpeciesGen.kt")
 NUM_SPECIES = 412   # SPECIES_EGG: species 0..411
 STATS = ["baseHP", "baseAttack", "baseDefense", "baseSpeed", "baseSpAttack", "baseSpDefense"]
 

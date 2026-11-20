@@ -21,7 +21,7 @@ no config of their own), it
      the strings the configs probe (dex category, trainer); item descriptions
      aren't written (the app reads them from the player's ROM: itemDescs),
   5. writes gamedata/gen3/ports/<game>.toml (one config per ROM, by game code +
-     revision) and runs scripts/gen_gamedata.py, app/.../companion/data/
+     revision) and runs scripts/gen_gamedata.py, shared/.../companion/data/
      RetailPortsGen.kt (titles by SHA1, names by code) and GameText<CODE>Gen.kt
      per game code, plus build/ports/ports.json for scripts/verify_ports.py,
      which boots each ROM headlessly with the English save and checks it.
@@ -40,7 +40,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
-DATA = os.path.join(ROOT, "app", "src", "main", "kotlin", "com", "pokedaisy", "app", "companion", "data")
+DATA = os.path.join(ROOT, "shared", "src", "commonMain", "kotlin", "com", "pokedaisy", "app", "companion", "data")
 OUT_JSON = os.path.join(ROOT, "build", "ports", "ports.json")
 
 sys.path.insert(0, HERE)

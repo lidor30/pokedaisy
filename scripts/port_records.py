@@ -18,7 +18,7 @@ import re
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-KT = os.path.join(ROOT, "app/src/main/kotlin")
+KT_ROOTS = ("app/src/main/kotlin", "shared/src/commonMain/kotlin")
 OUT = os.path.join(ROOT, "gamedata/gen3/records/ported.toml")
 
 
@@ -72,8 +72,9 @@ def expand_helper(name, body, sources):
 
 def kt_sources():
     out = {}
-    for path in glob.glob(os.path.join(KT, "**", "*.kt"), recursive=True):
-        out[path] = open(path, encoding="utf-8").read()
+    for source in KT_ROOTS:
+        for path in glob.glob(os.path.join(ROOT, source, "**", "*.kt"), recursive=True):
+            out[path] = open(path, encoding="utf-8").read()
     return out
 
 

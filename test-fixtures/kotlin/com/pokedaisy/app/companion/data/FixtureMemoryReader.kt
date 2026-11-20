@@ -2,7 +2,7 @@ package com.pokedaisy.app.companion.data
 
 /**
  * Replays a captured real-device EWRAM+IWRAM snapshot (see
- * scripts/capture_fixture.sh, which writes app/src/test/resources/fixtures/<key>/
+ * scripts/capture_fixture.sh, which writes test-fixtures/resources/fixtures/<key>/
  * {ewram,iwram}.bin via PokeDaisyActivity's dumpFixtureIfPending()) as a
  * [MemoryReader] - so readNativeTelemetry can be exercised
  * against real device state with no device or emulator needed.
@@ -42,7 +42,7 @@ class FixtureMemoryReader private constructor(
         private const val EWRAM_BASE = 0x02000000L
         private const val IWRAM_BASE = 0x03000000L
 
-        /** [key] must match a directory under app/src/test/resources/fixtures/
+        /** [key] must match a directory under test-fixtures/resources/fixtures/
          * (and a line in scripts/roms.conf - that's where it came from). */
         /** A dump outside the fixtures: [dir]/ewram.bin + iwram.bin (scripts/verify_ports.py's). */
         fun fromDir(dir: java.io.File): FixtureMemoryReader =

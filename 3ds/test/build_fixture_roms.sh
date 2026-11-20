@@ -4,7 +4,7 @@
 set -euo pipefail
 cd /repo/3ds
 mkdir -p build
-FIXTURES=/repo/app/src/test/resources/fixtures
+FIXTURES=/repo/test-fixtures/resources/fixtures
 GCC="$DEVKITARM/bin/arm-none-eabi-gcc"
 OBJCOPY="$DEVKITARM/bin/arm-none-eabi-objcopy"
 GBAFIX=/opt/devkitpro/tools/bin/gbafix

@@ -20,7 +20,7 @@ Normally you don't invoke this directly — use
 copying the ROM/save (never touches your real save file — always works on a
 disposable copy, since the emulator can write to it), running the boot
 sequence, and writing the result into
-`app/src/test/resources/fixtures/<key>/`.
+`test-fixtures/resources/fixtures/<key>/`.
 
 To run it by hand (e.g. to iterate on a new boot sequence):
 

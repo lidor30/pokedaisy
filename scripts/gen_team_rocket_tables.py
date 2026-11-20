@@ -4,7 +4,7 @@ DragonsdenTV's closed pokeemerald build on an older pokeemerald-expansion; nothi
 
     scripts/gen_team_rocket_tables.py "<Pokemon Team Rocket Dragonsden Version.gba>"
 
-Writes app/src/main/kotlin/.../companion/data/TeamRocketGen.kt. Every table was found from the ROM and headless dumps of
+Writes shared/src/commonMain/kotlin/.../companion/data/TeamRocketGen.kt. Every table was found from the ROM and headless dumps of
 its one save (NativeReader.kt's NATIVE_TEAM_ROCKET says how) and is checked here against the save's party and bag:
   - gSpeciesNames: inline 11-byte names, mixed case, 1395 of them (SPECIES_EGG is 1395; National Dex order to 1025's
     Terapagos at 1379, then its own forms). The GF ROM header (0x08000144) points at it.

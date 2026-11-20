@@ -7,7 +7,7 @@ straight from the ROM the user owns (nothing is downloaded):
     scripts/gen_gen2_tables.py prism <rom.gbc>
     scripts/gen_gen2_tables.py crystal_legacy <Crystal Legacy v1.3.1.gbc> --base <Crystal rom.gbc> ...
 
-Writes app/src/main/kotlin/.../companion/data/{SpeciesNames,SpeciesTypes,MoveData,
+Writes shared/src/commonMain/kotlin/.../companion/data/{SpeciesNames,SpeciesTypes,MoveData,
 ItemNames,TypeChart,MapSecData,Gen2Species}<Suffix>.kt.
 
 Addresses (bank:address) are pret/pokecrystal's symbols: its `make` output is byte-identical
@@ -46,7 +46,7 @@ import re
 import struct
 import sys
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin",
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin",
                        "com", "pokedaisy", "app", "companion", "data")
 
 GAMES = {

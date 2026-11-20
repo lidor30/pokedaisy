@@ -14,7 +14,7 @@ game's boot script, twice:
           then (FireRed / LeafGreen) A -> moves, B, RIGHT A -> bag, B, LEFT DOWN
           A -> party, each with gBattlerControllerFuncs[0] read (peeks.txt)
 
-then runs PortsVerifyTest (app/src/test), which reads each dump with the
+then runs PortsVerifyTest (shared/src/androidUnitTest), which reads each dump with the
 ported config and compares it with English's: the same party, bag, money and
 place; the dex and guide tables found in the ROM; the probe trainer's party;
 the battlers; the battle handlers. It writes build/ports/report.md.

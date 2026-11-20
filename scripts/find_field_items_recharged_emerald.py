@@ -25,7 +25,7 @@ Recharged numbers struct Pokemon's fields its own way: nine fields of its own si
 so MON_DATA_SPECIES is 20, HELD_ITEM 21, MOVE1 22, IS_EGG 54, HP 66 (GetBoxMonData compares with the separator;
 ItemUseCB_Medicine passes HP / MAX_HP) - [PartyItemFns.monFieldShift]. Every address is checked here against the
 ROM, then headless (docs/DEVELOPMENT.md's Recharged Emerald section), and written to
-app/.../companion/data/FieldItemsRechargedEmeraldGen.kt.
+shared/.../companion/data/FieldItemsRechargedEmeraldGen.kt.
 """
 import hashlib
 import os
@@ -34,7 +34,7 @@ import sys
 import zlib
 
 B = 0x08000000
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin", "com", "pokedaisy",
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin", "com", "pokedaisy",
                    "app", "companion", "data", "FieldItemsRechargedEmeraldGen.kt")
 
 BUILDS = (

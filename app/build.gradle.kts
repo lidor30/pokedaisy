@@ -1,6 +1,5 @@
 import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.Properties
 import java.net.URI
 import java.nio.file.FileSystems
@@ -12,22 +11,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("app.cash.paparazzi")
 }
-
-// The companion's screens and what they need, compiled by shared-ui/ (the root build's sharedUiSources): their paths
-// under src/main/kotlin, left out of this module's compile and lint.
-@Suppress("UNCHECKED_CAST")
-val sharedUiFiles: Set<String> = fileTree("src/main/kotlin") {
-    include(rootProject.extra["sharedUiSources"] as List<String>)
-    exclude(rootProject.extra["sharedUiAppOnly"] as List<String>)
-    exclude(rootProject.extra["sharedCoreSources"] as List<String>)
-}.map { it.relativeTo(file("src/main/kotlin")).invariantSeparatorsPath }
-    // Kotlin only: shared-ui compiles no Java, so a .java under those folders (co-op's X25519 copy) stays the app's.
-    .filter { it.endsWith(".kt") }.toSet()
-
-@Suppress("UNCHECKED_CAST")
-val sharedCoreFiles: Set<String> = fileTree("src/main/kotlin") {
-    include(rootProject.extra["sharedCoreSources"] as List<String>)
-}.map { it.relativeTo(file("src/main/kotlin")).invariantSeparatorsPath }.toSet()
 
 // Crash reports (Firebase Crashlytics, opt-in - CrashReports.kt): only with the project's
 // app/google-services.json, which stays out of this public repo (gitignored; the release
@@ -200,11 +183,8 @@ android {
     sourceSets["dev"].res.srcDirs("src/debug/res", "src/dev/res")
     sourceSets["main"].java.srcDirs("src/main/kotlin")
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/licenses"))
-    sourceSets["test"].java.srcDirs("src/test/kotlin", "../server/coop-relay/src/main/kotlin")
-
-    // The shared modules' files are compiled there; lint reads them there too.
-    sourceSets["main"].java.filter.exclude(sharedCoreFiles)
-    sourceSets["main"].java.filter.exclude(sharedUiFiles)
+    sourceSets["test"].java.srcDirs("src/test/kotlin", "../server/coop-relay/src/main/kotlin", "../test-fixtures/kotlin")
+    sourceSets["test"].resources.srcDir("../test-fixtures/resources")
 
     testOptions {
         unitTests.isIncludeAndroidResources = false
@@ -215,22 +195,6 @@ kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
     }
-}
-
-// companion/data and companion/i18n are compiled by shared/ (Android + iOS), so the app leaves them out of its own
-// compile, and their tests too but those that also use the app's classes (the root build's appOnlyTests).
-@Suppress("UNCHECKED_CAST")
-val appOnlyTests = rootProject.extra["appOnlyTests"] as List<String>
-@Suppress("UNCHECKED_CAST")
-val sharedTestHelpers = rootProject.extra["sharedTestHelpers"] as List<String>
-val sharedDirs = listOf("com/pokedaisy/app/companion/data/", "com/pokedaisy/app/companion/i18n/")
-tasks.withType<KotlinCompile>().configureEach {
-    val tests = name.contains("UnitTest")
-    exclude { e ->
-        !e.isDirectory && sharedDirs.any { e.path.startsWith(it) } && !(tests && e.file.nameWithoutExtension in appOnlyTests + sharedTestHelpers)
-    }
-    // The companion's screens are compiled by shared-ui/; their tests stay here (Paparazzi).
-    if (!tests) exclude { e -> !e.isDirectory && (e.path in sharedUiFiles || e.path in sharedCoreFiles) }
 }
 
 // Settings > LICENSES: NOTICE, then the license text of everything the APK carries, as one asset
@@ -368,7 +332,7 @@ dependencies {
     implementation("com.google.firebase:firebase-crashlytics-ndk")
 
     // Decode-logic regression tests (app/src/test) - see scripts/capture_fixture.sh
-    // for how the fixtures they read (app/src/test/resources/fixtures/) get made.
+    // for how the fixtures they read (test-fixtures/resources/fixtures/) get made.
     testImplementation("junit:junit:4.13.2")
     // CoopQrTest reads the invite codes back (the app draws them with its own encoder, CoopQr).
     testImplementation("com.google.zxing:core:3.5.3")

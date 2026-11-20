@@ -83,6 +83,6 @@ X Y`, joined with commas (`A,UP`), or `NONE`.
 
 ## Fixtures
 
-`app/src/test/resources/fixtures/platinum`, `platinum_battle`, `heartgold`, the `black*` and the `white*` ones (Black 2's and White 2's too) were made with it; each `README.txt` says
+`test-fixtures/resources/fixtures/platinum`, `platinum_battle`, `heartgold`, the `black*` and the `white*` ones (Black 2's and White 2's too) were made with it; each `README.txt` says
 from which ROM, save and boot sequence. Their `mainram.bin` keeps only the ranges the readers use (zeros elsewhere), so
 the files stay small in git.

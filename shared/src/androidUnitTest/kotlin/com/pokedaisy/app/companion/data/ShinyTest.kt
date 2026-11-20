@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * SoulGold's party menu draws shiny Pokémon in their shiny icon palette (GitHub #228). Its rule, found headless on v1.1.4
@@ -14,7 +13,7 @@ class ShinyTest {
     private val lead = 0x02039024 - 0x02000000   // NATIVE_SOULGOLD_V1_2's playerParty, in the fixture's EWRAM
 
     private fun cyndaquil(value: Int?, modifier: Boolean = false): Mon {
-        val ram = File("src/test/resources/fixtures/soulgold_v12/ewram.bin").readBytes()
+        val ram = checkNotNull(javaClass.getResourceAsStream("/fixtures/soulgold_v12/ewram.bin")).use { it.readBytes() }
         if (modifier) ram[lead + 0x1F] = (ram[lead + 0x1F].toInt() or 0x40).toByte()
         if (value != null) {
             val otId = u32(ram, lead + 4)
@@ -29,7 +28,7 @@ class ShinyTest {
 
     @Test fun theSavesLeadIsNotShiny() {
         val m = cyndaquil(null)
-        assertEquals(0x1CF6, shinyValue(m.personality, u32(File("src/test/resources/fixtures/soulgold_v12/ewram.bin").readBytes(), lead + 4)))
+        assertEquals(0x1CF6, shinyValue(m.personality, u32(checkNotNull(javaClass.getResourceAsStream("/fixtures/soulgold_v12/ewram.bin")).use { it.readBytes() }, lead + 4)))
         assertFalse(m.shiny)
     }
 

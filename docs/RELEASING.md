@@ -257,7 +257,7 @@ already has your ROMs.
 What it needs:
 
 - **ROMs only.** No save files: the saves and memory dumps the tests use are already
-  committed as fixtures (`app/src/test/resources/fixtures/`). No decomp builds either:
+  committed as fixtures (`test-fixtures/resources/fixtures/`). No decomp builds either:
   only the generator scripts and `ui-preview` use `$DECOMPS`, not the tests.
 - Your ROMs, named the way the tests expect. The tests read
   `~/Downloads/Game ROMs & Emulation/gba/` on your Mac by default (every language's GBA carts), and from beside it `gbc/`

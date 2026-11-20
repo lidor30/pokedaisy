@@ -11,7 +11,7 @@ PlayerLook's frames are untouched there), the vehicle goes round and under it: a
 in the vehicle's palette in the low 6 bits (0 = none), 0x40 FRONT (over the rider: a fairing, a windscreen, a leg shield),
 0x80 LEG (the rider's leg and shoe: over the body, under FRONT). RideOn.kt maps the colours onto the hero's palette.
 
-Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/RideVehiclesGen.kt and, with --preview DIR, PNGs at 8x.
+Writes shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/RideVehiclesGen.kt and, with --preview DIR, PNGs at 8x.
 
 Usage: scripts/gen_ride_vehicles.py [--preview DIR]
 """
@@ -415,4 +415,4 @@ if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     if "--preview" in sys.argv:
         preview(sys.argv[sys.argv.index("--preview") + 1])
-    write(os.path.join(here, "../app/src/main/kotlin/com/pokedaisy/app/companion/data/RideVehiclesGen.kt"))
+    write(os.path.join(here, "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/RideVehiclesGen.kt"))

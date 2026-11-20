@@ -1,20 +1,14 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest
 
-// The companion's data and language code (app/.../companion/data and companion/i18n) as a Kotlin Multiplatform
-// module, compiled where it lives: Android for the app, iOS for the iPad app. Nothing in those folders may use
-// java.* or android.* (the iOS compile fails on it); what differs by platform comes in from outside
-// (EmulatorCore, Logs' sink). The app depends on it and leaves those folders out of its own compile.
+// Portable emulator interfaces, game data and language data for Android and iOS.
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val appSrc = rootDir.resolve("app/src/main/kotlin")
-@Suppress("UNCHECKED_CAST")
-val sharedCoreSources = rootProject.extra["sharedCoreSources"] as List<String>
-val appTest = rootDir.resolve("app/src/test/kotlin/com/pokedaisy/app/companion")
+val sharedJvmFixtures = rootDir.resolve("test-fixtures")
 
 // The emulator core for iOS (pk_api.h: mGBA + the app's portable C), built with Xcode's tools by
 // native/build_ios_core.sh into build/pkcore/<slice>/libpkcore.a, reached from iosMain through cinterop (PkApiCore).
@@ -40,10 +34,6 @@ val diagnosticRoms by tasks.registering(Exec::class) {
     commandLine("python3", script.path)
 }
 
-// The data / i18n tests that also use the app's own classes stay the app's (root build.gradle.kts).
-@Suppress("UNCHECKED_CAST")
-val appOnlyTests = rootProject.extra["appOnlyTests"] as List<String>
-
 kotlin {
     androidTarget {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
@@ -58,9 +48,6 @@ kotlin {
 
     sourceSets {
         commonMain {
-            kotlin.srcDir(appSrc)
-            kotlin.include(sharedCoreSources)
-            kotlin.include("com/pokedaisy/app/game/**")
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
                 implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
@@ -77,9 +64,7 @@ kotlin {
             dependencies { implementation(kotlin("test")) }
         }
         androidUnitTest {
-            kotlin.srcDir(appTest.resolve("data"))
-            kotlin.srcDir(appTest.resolve("i18n"))
-            kotlin.exclude(appOnlyTests.map { "**/$it.kt" })
+            kotlin.srcDir(sharedJvmFixtures.resolve("kotlin"))
             dependencies {
                 implementation("junit:junit:4.13.2")
                 // The real org.json (android.jar's is a stub in unit tests).
@@ -95,7 +80,7 @@ android {
     defaultConfig { minSdk = 26 }
     // The fixtures the data tests load from the classpath. Set on Android's own test source set: a resource
     // folder added to the Kotlin androidUnitTest source set doesn't reach AGP's unit-test resources.
-    sourceSets["test"].resources.srcDir(rootDir.resolve("app/src/test/resources"))
+    sourceSets["test"].resources.srcDir(sharedJvmFixtures.resolve("resources"))
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

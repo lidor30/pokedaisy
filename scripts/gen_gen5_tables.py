@@ -4,7 +4,7 @@ decomp for Gen 5, so everything comes from the cart's file system and its ARM9).
 
     python3 -I scripts/gen_gen5_tables.py <Black.nds> [<White.nds> [<Black 2.nds> <White 2.nds>]]   # (USA, Europe)
 
-Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen5TablesBlack.kt (species, moves, places) and
+Writes shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Gen5TablesBlack.kt (species, moves, places) and
 Gen5ItemsBlack.kt (items, their pockets and icons, the party icons' palettes): two files, since one
 class's static initializer can't hold them all. Numbers and the game's own names only - no art, no prose.
 The carts are IRBO / IRAO / IREO / IRDO rev 0 (USA, Europe).
@@ -44,7 +44,7 @@ import sys
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data")
+OUT_DIR = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data")
 
 
 # ---- the cart: file system, NARC, text, BLZ (self-contained: run with python3 -I) ----

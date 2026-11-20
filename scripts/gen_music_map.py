@@ -3,7 +3,7 @@
 player use (id-only — no audio; see FfMusicRenderer.kt for how the actual
 clips get recorded, on-device, from the real ROM).
 
-Emits (into app/src/main/kotlin/.../companion/data/):
+Emits (into shared/src/commonMain/kotlin/.../companion/data/):
   - MapMusicFireRed.kt / MapMusicEmerald.kt
 
 Source of truth: a pokefirered/pokeemerald checkout (pinned commit, see this
@@ -139,7 +139,7 @@ def main() -> None:
     class_suffix = "FireRed" if game == "firered" else "Emerald"
     out_dir = os.path.join(
         os.path.dirname(__file__), "..",
-        "app/src/main/kotlin/com/pokedaisy/app/companion/data",
+        "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data",
     )
     out_path = os.path.join(out_dir, f"MapMusic{class_suffix}.kt")
 

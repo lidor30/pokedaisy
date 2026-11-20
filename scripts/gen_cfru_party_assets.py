@@ -53,8 +53,8 @@ from PIL import Image
 from decomps import decomp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-KT_UI = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/ui/CfruPartyStylesGen.kt")
-KT_DATA = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/data/GenderRatiosCfru.kt")
+KT_UI = os.path.join(HERE, "../shared-ui/src/commonMain/kotlin/com/pokedaisy/app/companion/ui/CfruPartyStylesGen.kt")
+KT_DATA = os.path.join(HERE, "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GenderRatiosCfru.kt")
 FR_DECOMP = decomp("pokefirered")
 FR_ROM = open(os.path.join(FR_DECOMP, "pokefirered_rev1.gba"), "rb").read()
 

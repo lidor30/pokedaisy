@@ -80,7 +80,7 @@ def git(*args: str) -> str:
 
 def repo_sha1s() -> set[str]:
     """Every SHA-1 the app's code, game data or the website's data names (detection, titles, configs)."""
-    out = git("grep", "-ohE", "[0-9a-f]{40}", "--", "app/src/main", "gamedata", "website/src/data")
+    out = git("grep", "-ohE", "[0-9a-f]{40}", "--", "app/src/main", "shared/src/commonMain", "gamedata", "website/src/data")
     return set(out.split())
 
 
@@ -91,7 +91,7 @@ def repo_titles() -> dict[str, str]:
     if compat.exists():
         titles.update(json.loads(compat.read_text()).get("titles", {}))
     consts = dict(re.findall(r'val\s+(\w+)\s*=\s*"([0-9a-f]{40})"', git("grep", "-hE", r'val\s+\w+\s*=\s*"[0-9a-f]{40}"',
-                                                                            "--", "app/src/main")))
+                                                                            "--", "app/src/main", "shared/src/commonMain")))
     text = (REPO / "app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt").read_text()
     for key, title in re.findall(r'([\w.]+|"[0-9a-f]{40}")\s+to\s+"([^"]+)"', text):
         sha = key.strip('"') if key.startswith('"') else consts.get(key.split(".")[-1])
@@ -127,7 +127,7 @@ def config_files(sha1: str, title: str, file_name: str) -> list[str]:
     """Where the repo names the game: the files naming its SHA-1 (detection, titles), then the game data TOML that
     holds its config (configs name their game, not its hash: retail's under retail/ and ports/, a hack's under
     hacks/ by a word of its title)."""
-    named = [Path(l).name for l in git("grep", "-l", sha1, "--", "gamedata", "app/src/main").splitlines()
+    named = [Path(l).name for l in git("grep", "-l", sha1, "--", "gamedata", "app/src/main", "shared/src/commonMain").splitlines()
              if l and "ShinyOdds" not in l]
     gen3 = REPO / "gamedata" / "gen3"
     if RETAIL_NAME.match(file_name):

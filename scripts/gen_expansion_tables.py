@@ -4,7 +4,7 @@ ROM hack, straight from the ROM the user owns (nothing is downloaded).
 
     scripts/gen_expansion_tables.py <game-key> <rom.gba>
 
-Writes app/src/main/kotlin/.../companion/data/{SpeciesNames,ItemNames,MoveData,
+Writes shared/src/commonMain/kotlin/.../companion/data/{SpeciesNames,ItemNames,MoveData,
 SpeciesTypes,TypeChart,MapSecData,GenderRatios}<Suffix>.kt (or a game's `only` few).
 
 Every expansion release moves these tables and changes the struct sizes, so
@@ -27,7 +27,7 @@ import os
 import struct
 import sys
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin",
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin",
                        "com", "pokedaisy", "app", "companion", "data")
 
 # Newer expansion type ids (include/constants/pokemon.h): 0 None, 10 Mystery,

@@ -4,7 +4,7 @@ nothing is downloaded).
 
     scripts/gen_elite_redux_tables.py <Pokemon Elite Redux (2.65.3b).gba> <Pokemon Elite Redux (2.65.4.1b).gba>
 
-Writes app/src/main/kotlin/.../companion/data/EliteReduxGen.kt: 2.65.4.1b's tables whole, and 2.65.3b's as what differs
+Writes shared/src/commonMain/kotlin/.../companion/data/EliteReduxGen.kt: 2.65.4.1b's tables whole, and 2.65.3b's as what differs
 from them (its RAM never holds an id only 2.65.4.1b has, so 2.65.4.1b's names stand in for the rest). Every table was
 found headless (see NativeReader.kt's NATIVE_ELITE_REDUX_*) and is checked here against the save's party and bag and the
 game's own screens:

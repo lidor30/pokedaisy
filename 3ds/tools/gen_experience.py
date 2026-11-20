@@ -1,7 +1,7 @@
 """Reuse upstream's six experience tables; no curves inferred or ROM data read."""
 from pathlib import Path
 import re,hashlib,sys
-source=Path(__file__).resolve().parents[2]/'app/src/main/kotlin/com/pokedaisy/app/companion/data/ExpTables.kt'
+source=Path(__file__).resolve().parents[2]/'shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/ExpTables.kt'
 policy=source.with_name('SnapshotView.kt')
 assert 'intArrayOf(0, 3, 4, 5).getOrNull(it)' in policy.read_text(),'Review upstream Polished growth mapping'
 raw=source.read_text();body=raw.split('val gen3ExperienceTables:',1)[1]

@@ -4,7 +4,7 @@ pokeemerald build, game code MONE, 32 MB; nothing is downloaded).
 
     scripts/gen_monomyth_tables.py "<Pokemon Monomyth (v1.0).gba>" "<... (v1.1).gba>" "<... (v1.2).gba>"
 
-Writes app/src/main/kotlin/.../companion/data/MonomythGen.kt. The newer builds (told apart by hash) are checked against
+Writes shared/src/commonMain/kotlin/.../companion/data/MonomythGen.kt. The newer builds (told apart by hash) are checked against
 v1.0: every table must equal v1.0's (the same data, moved: the app reads one set of tables for all three, game code BPEE
 from v1.1) but what NEWER_DIFFS lets differ, which is written as an overlay (v1.2: one move's power, `moveDataMonomythV1_2`). Its tables keep vanilla pokeemerald's shapes (names in
 arrays of their own, not inline like pokeemerald-expansion's) with sizes and ids of its own, every one found in the ROM

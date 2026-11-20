@@ -5,7 +5,7 @@ on:
       - 'linux/**'
       - '3ds/core/**'
       - 'app/src/main/cpp/nds/pk_nds_field.*'
-      - 'app/src/main/kotlin/com/pokedaisy/app/companion/data/**'
+      - 'shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/**'
       - 'app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt'
       - 'third_party/mgba'
       - 'gamedata/**'

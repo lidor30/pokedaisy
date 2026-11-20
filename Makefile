@@ -159,7 +159,7 @@ sprite-pack: ## SPRITE PACK zip from your own ROMs: SPRITE_ROMS=<folder> SPRITE_
 	./gradlew -p ui-preview spritePack -Pmode=pack "-Proms=$(SPRITE_ROMS)" "-Pout=$(SPRITE_PACK)"
 
 sprite-pack-sigs: ## The follower Pokémon's CRC table a sprite pack is checked against (MonArtSigsGen.kt) from SPRITE_ROMS
-	./gradlew -p ui-preview spritePack -Pmode=sigs "-Proms=$(SPRITE_ROMS)" "-Pout=$(CURDIR)/app/src/main/kotlin/com/pokedaisy/app/companion/data/MonArtSigsGen.kt"
+	./gradlew -p ui-preview spritePack -Pmode=sigs "-Proms=$(SPRITE_ROMS)" "-Pout=$(CURDIR)/shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/MonArtSigsGen.kt"
 
 ##@ Headless captures (Docker + libmgba)
 

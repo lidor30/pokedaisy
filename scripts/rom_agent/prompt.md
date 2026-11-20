@@ -84,7 +84,7 @@ CLAUDE.md is already in your context. Then read, before changing anything:
 4. **Implement it like its siblings**: the config in `gamedata/` (+ `make gamedata`), name tables from a
    generator in `scripts/` (extend the closest one's `GAMES` table rather than writing a new script when it
    fits; names are read from the ROM, never typed in), a `GameKind` only if the game really needs its own look
-   or rules. A fixture under `app/src/test/resources/fixtures/<key>/` with the `README.txt` the others have
+   or rules. A fixture under `test-fixtures/resources/fixtures/<key>/` with the `README.txt` the others have
    (what was on the game's own screens, `~` paths), and a `<Game>DecodeTest` asserting those values.
 5. **Then the extras**, each proven headless the way its own section says (one-press picks: write the cursor,
    press A, check the PP spent; FLY: land; EXPAND: `widecheck` exact on walking captures; field items: the call,

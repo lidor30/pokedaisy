@@ -21,7 +21,7 @@ from decomps import decomp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = sys.argv[1] if len(sys.argv) > 1 else decomp("pokefirered")
-OUT = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/data/ExpTables.kt")
+OUT = os.path.join(HERE, "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/ExpTables.kt")
 
 GROWTH = ["GROWTH_MEDIUM_FAST", "GROWTH_ERRATIC", "GROWTH_FLUCTUATING",
           "GROWTH_MEDIUM_SLOW", "GROWTH_FAST", "GROWTH_SLOW"]

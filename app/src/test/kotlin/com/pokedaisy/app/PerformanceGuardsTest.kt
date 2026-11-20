@@ -11,9 +11,10 @@ import java.io.File
  */
 class PerformanceGuardsTest {
     private val src = listOf(File("src/main/kotlin"), File("app/src/main/kotlin")).first { it.isDirectory }
-    private val appDir = File(src, "com/pokedaisy/app")
-    private fun read(path: String) = File(appDir, path).readText()
-    private fun kotlinFiles() = src.walkTopDown().filter { it.isFile && it.extension == "kt" }
+    private val root = src.absoluteFile.normalize().parentFile.parentFile.parentFile.parentFile
+    private val kotlinRoots = listOf(src, File(root, "shared/src/commonMain/kotlin"), File(root, "shared-ui/src/commonMain/kotlin"))
+    private fun read(path: String) = kotlinRoots.map { File(it, "com/pokedaisy/app/$path") }.first { it.isFile }.readText()
+    private fun kotlinFiles() = kotlinRoots.asSequence().flatMap { it.walkTopDown() }.filter { it.isFile && it.extension == "kt" }
 
     @Test
     fun `fonts are only built by PixelTypeface, once per process`() {
@@ -81,7 +82,7 @@ class PerformanceGuardsTest {
         // The companion's ROM readers call pkReadBytes from IO threads.
         val cpp = File(src.parentFile, "cpp")
         val jni = File(cpp, "pokedaisy_jni.c").readText()
-        val session = File(src.parentFile, "../../../shared/src/commonMain/cpp/pk_session.c").readText()
+        val session = File(root, "shared/src/commonMain/cpp/pk_session.c").readText()
         // JNI keeps the DS path; the portable C API owns the GBA / Game Boy path and its lock now.
         val readAny = lambda(jni, "static bool pk_read_any(")
         assertCoreLockCovers(readAny, "pthread_rwlock_rdlock(&pk_coreLock)", "pk_nds_read(", "DS reads")

@@ -10,7 +10,7 @@
 # leaves out its dex's last two (HOUNDOUR / HOUNDOOM, as the card's rule does), and CaughtMew adds a fifth star.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_EMERALD_LEGACY]
 schema = 'gen3_card'
 base = 'TRAINER_CARD_EMERALD'
@@ -34,7 +34,7 @@ extraStarFlag = 0x1CA
 # own regional order (ROM 0x0831DFB8, rewritten in place) and its own card art (CardStyle.GLAZED).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_GLAZED]
 schema = 'gen3_card'
 base = 'TRAINER_CARD_EMERALD'
@@ -47,7 +47,7 @@ regionalDex = 'GLAZED_REGIONAL_TO_NATIONAL'
 # their own card (CardStyle.KANTO_DE ...: its tiles, font and words from the cart, checked against the games' own cards).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_FIRERED_DE]
 schema = 'gen3_card'
 base = 'TRAINER_CARD_FIRERED'
@@ -116,7 +116,7 @@ style = 'CardStyle.HOENN_ES'
 # points at SB2+0x98E. Each checked headless by poking it and opening the game's card.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_IMPERIUM]
 schema = 'gen3_card'
 kotlin = false
@@ -146,7 +146,7 @@ frontierBpOff = 0x98E
 # the HALL OF FAME, flags 0x29 and 0x4A6, the frontier symbols. Each checked by poking it and opening the game's card.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_LAZARUS]
 schema = 'gen3_card'
 kotlin = false
@@ -181,7 +181,7 @@ drawnStarFlags = { kotlin = 'listOf(0x29, 0x4A6)' }
 # icons (vars 0x4043.., tint 0x4042). Each checked by poking it and opening the game's card.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_RECHARGED_YELLOW_V1_8_0]
 schema = 'gen3_card'
 kotlin = false
@@ -214,7 +214,7 @@ monPaletteTable = 0x0864D848
 
 # v1.9.0: the same card code and save; its icon tables moved, and its text palette's red is lighter.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_RECHARGED_YELLOW_V1_9_0]
 schema = 'gen3_card'
 base = 'TRAINER_CARD_RECHARGED_YELLOW_V1_8_0'
@@ -223,7 +223,7 @@ style = 'CardStyle.RECHARGED_YELLOW_V1_9'
 monIconTable = 0x0886ABD0
 monPaletteTable = 0x0864A95C
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_RECHARGED_YELLOW_V1_9_4]
 schema = 'gen3_card'
 base = 'TRAINER_CARD_RECHARGED_YELLOW_V1_9_0'
@@ -231,7 +231,7 @@ kotlin = false
 monIconTable = 0x0894ABD4
 monPaletteTable = 0x0872A8D8
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_RECHARGED_YELLOW_V1_9_7]
 schema = 'gen3_card'
 base = 'TRAINER_CARD_RECHARGED_YELLOW_V1_9_0'
@@ -248,7 +248,7 @@ monPaletteTable = 0x08750978
 # 80 of its 120 achievements - no museum or frontier symbols. Each checked by poking it and reopening the game's card.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_SOULGOLD]
 schema = 'gen3_card'
 kotlin = false
@@ -278,7 +278,7 @@ achievementIds = 'SOULGOLD_ACHIEVEMENT_IDS'
 
 # The v1.2 builds: their gSpeciesInfo marks six more of the regional dex legendary (1009, 1010, 1020-1023).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_SOULGOLD_V1_2]
 schema = 'gen3_card'
 base = 'TRAINER_CARD_SOULGOLD'
@@ -292,7 +292,7 @@ allRegionalSkip = { kotlin = 'SOULGOLD_CARD_SKIPPED.toSet() + setOf(1009, 1010, 
 # CFRU's dex flags in SaveBlock1 and the National Dex always on.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_UNBOUND]
 schema = 'gen3_card'
 base = 'TRAINER_CARD_FIRERED'
@@ -308,7 +308,7 @@ stickerVar = -1
 # area): seen at +0x310, owned at +0x38D, 1000 bits each, no anti-cheat copies.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.CFRU_DEX_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -324,7 +324,7 @@ bytes = 125
 # trainer flags: offsetof with agbcc against its headers).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.EMERALD_LEGACY_DEX_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -334,7 +334,7 @@ caught = 0x28
 bytes = 52
 seenCopies = [0xAF0, 0x3B34]
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_CELIA_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -344,7 +344,7 @@ caught = 0x28
 bytes = 49
 firstBit = 0
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_DREAMSTONE_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -353,7 +353,7 @@ seen = 0x3494
 caught = 0x3515
 bytes = 129
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ELITE_REDUX_V2_65_4_1B_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -362,7 +362,7 @@ seen = 0x2E54
 caught = 0x2F10
 bytes = 188
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_ROGUE_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -374,7 +374,7 @@ firstBit = 0
 bySpecies = true
 seenOrCaught = true
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_SEAGLASS_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -383,7 +383,7 @@ seen = 0x28FC
 caught = 0x2932
 bytes = 54
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_GAIA_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -392,7 +392,7 @@ seen = 0x0203C400
 caught = 0x0203C45B
 bytes = 91
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_HEART_AND_SOUL_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -401,7 +401,7 @@ seen = 0x39C0
 caught = 0x3A7F
 bytes = 191
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_IMPERIUM_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -410,7 +410,7 @@ seen = 0x2F58
 caught = 0x2FD9
 bytes = 129
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_LAZARUS_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -419,7 +419,7 @@ seen = 0x32A8
 caught = 0x3329
 bytes = 129
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_MARIOMON_V1_5_1_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -428,7 +428,7 @@ seen = 0x3790
 caught = 0x37A4
 bytes = 20
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ODYSSEY_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -437,7 +437,7 @@ seen = 0x5C
 caught = 0x28
 bytes = 52
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -448,7 +448,7 @@ bytes = 150
 seenLevels = true
 caughtRegions = [0x3850, 0x304C, 0x3254]
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL_V084_FLAGS]
 schema = 'gen3_dexflags'
 base = 'POKEDEX_QUETZAL_FLAGS'
@@ -456,7 +456,7 @@ kotlin = false
 caughtRegions = []
 caughtFromLevel = true
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RADICAL_RED_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -465,7 +465,7 @@ seen = 0x310
 caught = 0x3B4
 bytes = 164
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_EMERALD_REBALANCED_V2_2_8_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -474,7 +474,7 @@ seen = 96  # = 0x5C + (4)
 caught = 44  # = 0x28 + (4)
 bytes = 52
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_EMERALD_V2_2_5_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -483,7 +483,7 @@ seen = 92  # = 0x5C + (0)
 caught = 40  # = 0x28 + (0)
 bytes = 52
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_EMERALD_V2_2_8_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -492,7 +492,7 @@ seen = 92  # = 0x5C + (0)
 caught = 40  # = 0x28 + (0)
 bytes = 52
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_YELLOW_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -501,7 +501,7 @@ seen = 0x5C
 caught = 0x28
 bytes = 52
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ROWE_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -510,7 +510,7 @@ seen = 0x3320
 caught = 0x33DC
 bytes = 0xBC
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RUBY_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -520,7 +520,7 @@ caught = 0x28
 bytes = 52
 seenCopies = [0x938, 0x3A8C]
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_SOULGOLD_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -529,7 +529,7 @@ seen = 0x31F8
 caught = 0x3279
 bytes = 129
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_TMT2_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -538,7 +538,7 @@ seen = 0x289C
 caught = 0x2920
 bytes = 132
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_WISHES_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -547,7 +547,7 @@ seen = 0x359C
 caught = 0x361D
 bytes = 129
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_IMPERIUM_DEX_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -556,7 +556,7 @@ seen = 0x2F58
 caught = 0x2FD9
 bytes = 129
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_LAZARUS_DEX_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -565,7 +565,7 @@ seen = 0x32A8
 caught = 0x3329
 bytes = 0x81
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_RECHARGED_YELLOW_V1_8_0_DEX_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -574,7 +574,7 @@ seen = 0x5C
 caught = 0x28
 bytes = 0x34
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TrainerCard.kt.
 [record.TRAINER_CARD_SOULGOLD_DEX_FLAGS]
 schema = 'gen3_dexflags'
 kotlin = false
@@ -594,7 +594,7 @@ bytes = 0x81
 # (sDescriptionSubmenu) ends at 0x0203D28D: the scratch word is free.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
 [record.FIELD_ITEMS_EMERALD_LEGACY]
 schema = 'gen3_field_items'
 kotlin = false
@@ -612,7 +612,7 @@ pc = 'PC_EMERALD_LEGACY'
 
 # Pokemon - Sapphire Version (USA, Europe).gba (SHA1 3ccbbd45...), from AXPE0.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXPE0]
 schema = 'gen3_field_items'
 kotlin = false
@@ -631,7 +631,7 @@ fly = 'FIELD_ITEMS_PORTS_AXPE0_FLY'
 
 # Pokemon - Ruby Version (USA, Europe).gba (SHA1 f28b6ffc...), from AXVE0.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXVE0]
 schema = 'gen3_field_items'
 kotlin = false
@@ -650,7 +650,7 @@ fly = 'FIELD_ITEMS_PORTS_AXVE0_FLY'
 
 # Pokemon - FireRed Version (USA, Europe).gba (SHA1 41cb23d8...), from BPRE0.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_BPRE0]
 schema = 'gen3_field_items'
 kotlin = false
@@ -669,7 +669,7 @@ fly = 'FIELD_ITEMS_PORTS_BPRE0_FLY'
 
 # Retail Ruby rev 1 / rev 2 (AXVE; SHA1 610b96a9... / 5b64eacf...).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
 [record.FIELD_ITEMS_RUBY]
 schema = 'gen3_field_items'
 kotlin = false
@@ -687,7 +687,7 @@ fly = 'FLY_RUBY'
 
 # Retail Sapphire rev 1 / rev 2 (AXPE; SHA1 4722efb8... / 89b45fb1...): Ruby's code a few bytes on.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
 [record.FIELD_ITEMS_SAPPHIRE]
 schema = 'gen3_field_items'
 base = 'FIELD_ITEMS_RUBY'
@@ -706,7 +706,7 @@ fly = 'FLY_SAPPHIRE'
 # Pokémon in gLastFieldPokeMenuOpened and gSaveBlock2 in place. FLAG_BADGE06_GET, its sMapHealLocations as Emerald's.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
 [record.FLY_RUBY]
 schema = 'gen3_fly'
 kotlin = false
@@ -729,7 +729,7 @@ mapHeader = 0x0202E828
 # MAPSEC_EVER_GRANDE_CITY, MAPSEC_BATTLE_TOWER (HEAL_LOCATION_EVER_GRANDE_CITY, _BATTLE_TOWER_OUTSIDE)
 healWarp = 'FLY_RUBY_HEAL_WARP'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXPE0_FLY]
 schema = 'gen3_fly'
 base = 'FLY_RUBY'
@@ -746,7 +746,7 @@ mapHeader = 0x0202E828
 codeCrcs = [0xAC4D17B2, 0x6F375BAA, 0x22721D44, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xD0FDB342]
 healWarp = 'FIELD_ITEMS_PORTS_AXPE0_FLY_HEAL_WARP'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXVE0_FLY]
 schema = 'gen3_fly'
 base = 'FLY_RUBY'
@@ -763,7 +763,7 @@ mapHeader = 0x0202E828
 codeCrcs = [0xAC4D17B2, 0x6F375BAA, 0x22721D44, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xD5F7FEC3]
 healWarp = 'FIELD_ITEMS_PORTS_AXVE0_FLY_HEAL_WARP'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_BPRE0_FLY]
 schema = 'gen3_fly'
 base = 'FLY_FIRERED_REV1'
@@ -789,7 +789,7 @@ codeCrcs = [0x07BEBC3A, 0x950F2C97, 0x9A186C79, 0xF9959006, 0x0111A86E, 0xBAB654
 # location ids are retail's.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
 [record.FLY_EMERALD_LEGACY]
 schema = 'gen3_fly'
 base = 'FLY_EMERALD'
@@ -808,7 +808,7 @@ healWarp = 'FLY_EMERALD_LEGACY_HEAL_WARP'
 
 # Retail Sapphire rev 1 / rev 2: Ruby's code a few bytes on (mapped from Ruby's by scripts/port_field_items.py).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
 [record.FLY_SAPPHIRE]
 schema = 'gen3_fly'
 base = 'FLY_RUBY'
@@ -827,7 +827,7 @@ codeCrcs = [0xAC4D17B2, 0x6F375BAA, 0x0190971B, 0xF9959006, 0xA003C21A, 0x9807B4
 # records; learnsets are CFRU's.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_AMETHYST]
 schema = 'gen3_guide'
 kotlin = false
@@ -845,7 +845,7 @@ mapGroups = 0x083526A8
 # Amethyst v1.4.1: the same loader and flags (0x93C / 0x945), the tables moved; the gym leaders'
 # records and parties are byte for byte v1.3.0's in all four. Its own area data (AMETHYST_V141).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_AMETHYST_V1_4_1]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_AMETHYST'
@@ -862,7 +862,7 @@ altTrainers = [0x08A1861C, 0x08A02384, 0x08A0FD08]
 # literal-pool words) and gMapGroups (0x0872AF04); FireRed's SaveBlock1 flags / vars.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_ULTRA_VIOLET]
 schema = 'gen3_guide'
 kotlin = false
@@ -874,7 +874,7 @@ mapGroups = 0x0872AF04
 
 # Pokémon Ash Gray: rev 0's gTrainers / learnsets, its own gWildMonHeaders and gMapGroups (all their literal-pool words).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_ASH_GRAY]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_ULTRA_VIOLET'
@@ -883,7 +883,7 @@ wildHeaders = 0x088CD1F8
 guide = 'GuideId.ASH_GRAY'
 mapGroups = 0x0873E2F4
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_CELIA]
 schema = 'gen3_guide'
 kotlin = false
@@ -905,7 +905,7 @@ mapGroups = 0x089DCD7C
 # GetVarPointer's literals, 0x0810E820 / 0x0810E672).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_DREAMSTONE]
 schema = 'gen3_guide'
 kotlin = false
@@ -935,7 +935,7 @@ mapGroups = 0x09186E6C
 # teams each, levelled to the cap and picked at run time. SaveBlock1's flags / vars at +0x1978 / +0x1C78 (767 flag bytes).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_ELITE_REDUX_V2_65_4_1B]
 schema = 'gen3_guide'
 kotlin = false
@@ -959,7 +959,7 @@ mapGroups = 0x091F54A0
 
 # 2.65.3b's: the same shapes at its own addresses.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_ELITE_REDUX_V2_65_3B]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_ELITE_REDUX_V2_65_4_1B'
@@ -968,7 +968,7 @@ trainers = 0x089A9DC0
 wildHeaders = 0x08FC13D4
 mapGroups = 0x0917995C
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_EMERALD_DE]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_EMERALD'
@@ -982,7 +982,7 @@ mapGroups = 0x084982A8
 # The European Emerald releases: English's tables, moved (found through the
 # literal pools of English's code); ROXANNE is each game's own name for her.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_EMERALD_ES]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_EMERALD'
@@ -993,7 +993,7 @@ wildHeaders = 0x085563A4
 probeName = 'PETRA'
 mapGroups = 0x08489BD4
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_EMERALD_FR]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_EMERALD'
@@ -1004,7 +1004,7 @@ wildHeaders = 0x08557C34
 probeName = 'ROXANNE'
 mapGroups = 0x0848B464
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_EMERALD_IT]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_EMERALD'
@@ -1017,7 +1017,7 @@ mapGroups = 0x084832BC
 
 # Japanese Emerald: 0x20-byte trainers - trainerName[6] at +4, partySize at +0x18, the party at +0x1C.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_EMERALD_JA]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_EMERALD'
@@ -1041,7 +1041,7 @@ trainerPartyOff = 0x1C
 # Pokémon Emerald Kaizo v2.0: retail's tables at retail's addresses, rewritten in place (its trainers' teams, base
 # stats, TM compatibility) - only gWildMonHeaders moved, to 0x08E3D4A4 (all 13 literal-pool refs).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_EMERALD_KAIZO]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_EMERALD'
@@ -1054,7 +1054,7 @@ wildHeaders = 0x08E3D4A4
 # second set of wild Pokémon in the header after their first, picked by a var (wild_encounter.c's
 # GetCurrentMapWildMonHeaderId), listed here by map.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_EMERALD_LEGACY]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_EMERALD'
@@ -1087,7 +1087,7 @@ wildSetVars = { kotlin = 'mapOf( (0 shl 8 or 16) to 0x40F7, (0 shl 8 or 17) to 0
 
 # Gaia v3.2: rev 0's gTrainers (its leaders at FireRed's 414..421), learnsets and wild headers moved.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_GAIA]
 schema = 'gen3_guide'
 kotlin = false
@@ -1102,7 +1102,7 @@ mapGroups = 0x083528DC
 # Pokémon Ghost Grey: rev 0's gTrainers (414 is its first leader, ASTON), learnsets and gMapGroups, its own
 # gWildMonHeaders (0x09300100, all 14 literal-pool words); mixed-case text.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_GHOST_GREY]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_ULTRA_VIOLET'
@@ -1116,7 +1116,7 @@ probeName = 'Aston'
 # pools still name them), its gWildMonHeaders repointed to 0x094CA3F4 (all 13 refs); retail's
 # SaveBlock1 flags / vars. Its first gym leader, SPARKY, holds ROXANNE's slot.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_GLAZED]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_EMERALD'
@@ -1132,7 +1132,7 @@ guide = 'GuideId.GLAZED'
 # (rewritten in place: 43 groups).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_GS_CHRONICLES]
 schema = 'gen3_guide'
 kotlin = false
@@ -1156,7 +1156,7 @@ mapGroups = 0x083526A8
 # vars from the game's own GetFlagPointer / GetVarPointer literals.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_HEART_AND_SOUL]
 schema = 'gen3_guide'
 kotlin = false
@@ -1189,7 +1189,7 @@ mapGroups = 0x092DF5A4
 # 0x19C4 / 0x1AF0 (GetFlagPointer / GetVarPointer literals).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_IMPERIUM]
 schema = 'gen3_guide'
 kotlin = false
@@ -1222,7 +1222,7 @@ mapGroups = 0x08FC2F74
 # (gLocalTime 0x030039A8's hour outside 7..19; 37 outdoor maps have one), except in map group 24 or a map
 # numbered 106; then ALTERING CAVE (24.106) adds VAR_ALTERING_CAVE_WILD_SET (0x403E), as Emerald does.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_LAZARUS]
 schema = 'gen3_guide'
 kotlin = false
@@ -1256,7 +1256,7 @@ nightWild = { kotlin = 'NightWild(hourAddr = 0x030039AAL, skipGroup = 24, skipNu
 # Flags / vars at SaveBlock1+0x1468 / +0x1594 (the GF header's offsets), 300 flag bytes.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_MARIOMON_V1_5_1]
 schema = 'gen3_guide'
 kotlin = false
@@ -1278,7 +1278,7 @@ trainerPartyOff = 4
 trainerMon = 'GUIDE_TABLES_MARIOMON_V1_5_1_TRAINER_MON'
 mapGroups = 0x0869821C
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_MARIOMON_V1_2_1]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_MARIOMON_V1_5_1'
@@ -1288,7 +1288,7 @@ learnsets = 0x08461C70
 wildHeaders = 0x087AF104
 mapGroups = 0x086801F4
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_MARIOMON_V1_2_2]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_MARIOMON_V1_5_1'
@@ -1298,7 +1298,7 @@ learnsets = 0x08461C50
 wildHeaders = 0x087AF0E4
 mapGroups = 0x086801D4
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_MARIOMON_V1_3]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_MARIOMON_V1_5_1'
@@ -1308,7 +1308,7 @@ learnsets = 0x08461C10
 wildHeaders = 0x087AF0C8
 mapGroups = 0x08680194
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_MARIOMON_V1_5_2]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_MARIOMON_V1_5_1'
@@ -1320,7 +1320,7 @@ mapGroups = 0x086986B0
 
 # Odyssey v4.1.1: FireRed rev 0's gTrainers, learnsets (vanilla format) and save layout; its own gWildMonHeaders.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_ODYSSEY]
 schema = 'gen3_guide'
 kotlin = false
@@ -1339,7 +1339,7 @@ mapGroups = 0x083526A8
 # SaveBlock1 flags / vars. gMapGroups is rev 0's (0x083526A8).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_ORANGE_ISLANDS]
 schema = 'gen3_guide'
 kotlin = false
@@ -1362,7 +1362,7 @@ mapGroups = 0x083526A8
 # at +0x1D4, 0x5000+ at +0x332C (GetFlagPointer / GetVarPointer).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_QUETZAL]
 schema = 'gen3_guide'
 kotlin = false
@@ -1391,7 +1391,7 @@ altMapSecGroups = [34, 35]
 # Quetzal Spanish Alpha 9 v0: English's tables at its own addresses (English's literal pools,
 # read at the same place in its code); its trainers carry Spanish names (265 is PETRA).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_QUETZAL_ES]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_QUETZAL'
@@ -1402,7 +1402,7 @@ probeName = 'PETRA'
 altTrainers = [0x0998AE7C, 0x099963D0]
 mapGroups = 0x08934070
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_QUETZAL_ES_V1]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_QUETZAL_ES'
@@ -1416,7 +1416,7 @@ mapGroups = 0x08947E24
 # Johto / Kanto trainer tables or map groups (34 groups, 124 wild headers). gTrainers, gWildMonHeaders and gMapGroups
 # through Alpha 9's literal pools; 265 is ROXANNE (PETRA), 961 her HARD twin, as in Alpha 9.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_QUETZAL_V084]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_QUETZAL'
@@ -1428,7 +1428,7 @@ altTrainers = []
 mapGroups = 0x0861310C
 altMapSecGroups = 'none'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_QUETZAL_MOEMON_V084]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_QUETZAL_V084'
@@ -1437,7 +1437,7 @@ trainers = 0x08406A48
 wildHeaders = 0x08F34144
 mapGroups = 0x086130F0
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_QUETZAL_V084_ES]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_QUETZAL_V084'
@@ -1447,7 +1447,7 @@ wildHeaders = 0x08F3C278
 probeName = 'PETRA'
 mapGroups = 0x0861B224
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_QUETZAL_MOEMON_V084_ES]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_QUETZAL_V084_ES'
@@ -1459,7 +1459,7 @@ mapGroups = 0x0861B208
 # Quetzal Alpha 9 v1: v0's tables at v1's addresses (v0's literal pools read in v1's code; Kanto's trainers by their
 # records), each v0's entry for entry, pointers followed.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_QUETZAL_V1]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_QUETZAL'
@@ -1476,7 +1476,7 @@ mapGroups = 0x0893C438
 # CFRU's 3-byte format at 0x0980175C.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RADICAL_RED]
 schema = 'gen3_guide'
 kotlin = false
@@ -1499,7 +1499,7 @@ mapGroups = 0x083526A8
 # header (gMapHeader's bytes in the ROM -> its group's table -> the table of groups).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_EMERALD]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_EMERALD'
@@ -1520,7 +1520,7 @@ trainerPartyOff = 4
 trainerMon = 'GUIDE_TABLES_RECHARGED_EMERALD_TRAINER_MON'
 trainerHardPartyOff = 0x20
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_EMERALD_REBALANCED_V2_2_8]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_RECHARGED_EMERALD'
@@ -1533,7 +1533,7 @@ sb1FlagsOff = 0x1348
 sb1VarsOff = 0x1474
 wildLayout = { kotlin = 'WildLayout(stride = 0x24, land = 0, water = 2, rockSmash = 4, fishing = 6)' }
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_EMERALD_V2_2_5]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_RECHARGED_EMERALD'
@@ -1543,7 +1543,7 @@ learnsets = 0x088D8D94
 wildHeaders = 0x08A3F59C
 mapGroups = 0x08B346B8
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_EMERALD_V2_2_8]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_RECHARGED_EMERALD'
@@ -1565,7 +1565,7 @@ mapGroups = 0x08B36350
 # on the user's three-badge save). Every release moved the tables; the layouts are the same.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_YELLOW]
 schema = 'gen3_guide'
 kotlin = false
@@ -1586,7 +1586,7 @@ trainerPartyOff = 4
 trainerMon = 'GUIDE_TABLES_RECHARGED_YELLOW_TRAINER_MON'
 trainerHardPartyOff = 0x20
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_YELLOW_V1_8_0]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_RECHARGED_YELLOW'
@@ -1597,7 +1597,7 @@ wildHeaders = 0x08962648
 mapGroups = 0x08A356F0
 guide = 'GuideId.RECHARGED_YELLOW_V180'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_YELLOW_V1_9_0]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_RECHARGED_YELLOW'
@@ -1608,7 +1608,7 @@ wildHeaders = 0x08962810
 mapGroups = 0x08A35758
 guide = 'GuideId.RECHARGED_YELLOW_V190'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_YELLOW_V1_9_4]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_RECHARGED_YELLOW'
@@ -1619,7 +1619,7 @@ wildHeaders = 0x08A42E88
 mapGroups = 0x08B16238
 guide = 'GuideId.RECHARGED_YELLOW_V194'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_YELLOW_V1_9_7]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_RECHARGED_YELLOW'
@@ -1631,7 +1631,7 @@ mapGroups = 0x08B3F134
 
 # FireRed Rocket Edition: rev 0's tables and maps, its own story's guide (GuideRocketEdition.kt).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_ROCKET_EDITION]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_ULTRA_VIOLET'
@@ -1649,7 +1649,7 @@ probeName = 'Brock'  # its text is mixed case
 # 0x1340 (include/global.h). Trainer 265 is ROXANNE here too.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RUBY]
 schema = 'gen3_guide'
 kotlin = false
@@ -1664,7 +1664,7 @@ probeName = 'ROXANNE'
 guide = 'GuideId.RUBY'
 mapGroups = 0x083085A0
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SAPPHIRE]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_RUBY'
@@ -1679,7 +1679,7 @@ mapGroups = 0x08308530
 # TrainerMons, gWildMonHeaders 0x08A4E8B8 (17 refs, 137 headers of 24 bytes: land, water, rock smash,
 # hidden, fishing).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SEAGLASS]
 schema = 'gen3_guide'
 kotlin = false
@@ -1707,7 +1707,7 @@ mapGroups = 0x08B45148
 # headers of 84 bytes; set 0 the default). Flags 0x1898 (0x2AA bytes), vars 0x1C10 (not right after the flags: the
 # fixtures' VAR_STARTER_SPECIES 0x4051 = 155 sits at +0x1CB2).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SOULGOLD]
 schema = 'gen3_guide'
 kotlin = false
@@ -1734,7 +1734,7 @@ mapSecWide = true
 
 # v1.2 / v1.2b / v1.2c: the same layouts, ids, flags and scripts; only the tables moved.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SOULGOLD_V1_2]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_SOULGOLD'
@@ -1744,7 +1744,7 @@ wildHeaders = 0x09420BA8
 altTrainers = [0x084B4470]
 mapGroups = 0x09592634
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SOULGOLD_V1_2B]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_SOULGOLD'
@@ -1754,7 +1754,7 @@ wildHeaders = 0x09420B04
 altTrainers = [0x084B43D8]
 mapGroups = 0x09592590
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SOULGOLD_V1_2C]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_SOULGOLD'
@@ -1770,7 +1770,7 @@ mapGroups = 0x095C04C0
 # 0x0892E408 (all 14 literal-pool words), gMapGroups 0x087B1010.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SWORD_SHIELD]
 schema = 'gen3_guide'
 kotlin = false
@@ -1790,7 +1790,7 @@ mapGroups = 0x087B1010
 # +0x1F6C, as its GF ROM header (0x08000150) says.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_TEAM_ROCKET]
 schema = 'gen3_guide'
 kotlin = false
@@ -1810,7 +1810,7 @@ trainerMon = 'GUIDE_TABLES_TEAM_ROCKET_TRAINER_MON'
 # NORMAL array 0x0854696C (0x2C-byte records); 0x24-byte TrainerMons; gWildMonHeaders 0x08F3C590 (14 refs,
 # 135 headers of 84 bytes: four time-of-day sets, only the first filled).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_TMT2]
 schema = 'gen3_guide'
 kotlin = false
@@ -1841,7 +1841,7 @@ mapGroups = 0x09047730
 # 3-byte learnsets at 0x09A2457C (the same literal-pool route).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_UNBOUND]
 schema = 'gen3_guide'
 kotlin = false
@@ -1857,7 +1857,7 @@ mapGroupsXor = 0x00B749DE
 
 # Unbound v2.1.1.1 FR: English's tables, its trainers renamed in place (MIRSKLE is Sylvain).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_UNBOUND_FR]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_UNBOUND'
@@ -1873,7 +1873,7 @@ probeName = 'Sylvain'
 # time-of-day sets with only the first filled). SaveBlock1's flags / vars at +0x1270 / +0x13A0 (its GF ROM header).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_WISHES]
 schema = 'gen3_guide'
 kotlin = false
@@ -1899,7 +1899,7 @@ wildSet = 0
 mapGroups = 0x08F90738
 trainerIdVar = true
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
 [record.FLY_RUBY_HEAL_WARP]
 schema = 'gen3_heal_warp'
 kotlin = false
@@ -1913,7 +1913,7 @@ maleHeal = 12
 femaleHeal = 13
 saveBlock2Static = true
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXPE0_FLY_HEAL_WARP]
 schema = 'gen3_heal_warp'
 base = 'FLY_RUBY_HEAL_WARP'
@@ -1923,7 +1923,7 @@ toMapWarp = 0x08053490
 returnToField = 0x080865BC
 saveBlock2Ptr = 0x02024EA4
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXVE0_FLY_HEAL_WARP]
 schema = 'gen3_heal_warp'
 base = 'FLY_RUBY_HEAL_WARP'
@@ -1933,7 +1933,7 @@ toMapWarp = 0x08053490
 returnToField = 0x080865BC
 saveBlock2Ptr = 0x02024EA4
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Fly.kt.
 [record.FLY_EMERALD_LEGACY_HEAL_WARP]
 schema = 'gen3_heal_warp'
 base = 'HEAL_WARP_EMERALD'
@@ -1943,7 +1943,7 @@ toMapWarp = 0x08085CD0
 returnToField = 0x080B850C
 saveBlock2Ptr = 0x03005F70
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
 [record.FIELD_ITEMS_EMERALD_LEGACY_PARTY]
 schema = 'gen3_party_items'
 base = 'PARTY_ITEMS_EMERALD'
@@ -1955,7 +1955,7 @@ addBagItem = 0x080DA0BC
 codeCrcs = [0xA0496642, 0xC8B48F7B, 0xEADAC6C9, 0x3510B884]
 useFuncs = [135272256, 135272340, 135272368, 135272796]
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXPE0_PARTY]
 schema = 'gen3_party_items'
 kotlin = false
@@ -1972,7 +1972,7 @@ unholdablePockets = [5, 3]
 codeCrcs = [0x7D459654, 0x59B8ECA4, 0xEADAC6C9, 0x891E35D5]
 useFuncs = [135044528, 135044668, 135044696, 135045140]
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXVE0_PARTY]
 schema = 'gen3_party_items'
 kotlin = false
@@ -1989,7 +1989,7 @@ unholdablePockets = [5, 3]
 codeCrcs = [0x7D459654, 0x59B8ECA4, 0xEADAC6C9, 0x891E35D5]
 useFuncs = [135044528, 135044668, 135044696, 135045140]
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_BPRE0_PARTY]
 schema = 'gen3_party_items'
 kotlin = false
@@ -2010,7 +2010,7 @@ useFuncs = [134878944, 134878972, 134879000, 134879640]
 # party in IWRAM, 349 items, no PokemonItemUseNoEffect (its party menu runs the effect, like Emerald's). EWRAM's
 # last symbol ends at 0x0203A3D5 and gSharedMem's offsets stop at 0x1FFF0, so the scratch word is free here too.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItems.kt.
 [record.RUBY_SAPPHIRE_PARTY]
 schema = 'gen3_party_items'
 kotlin = false
@@ -2027,7 +2027,7 @@ unholdablePockets = [5, 3]  # POCKET_KEY_ITEMS, POCKET_TM_HM
 codeCrcs = [0x7D459654, 0x59B8ECA4, 0xEADAC6C9, 0x891E35D5]
 useFuncs = [135044560, 135044700, 135044728, 135045172]  # the same in both, revs 1 and 2
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXPE0_PC]
 schema = 'gen3_pc'
 kotlin = false
@@ -2037,7 +2037,7 @@ specials = 0x0814B194
 pcFn = 0x08096101
 codeCrcs = [0xBC36478C, 0xA79046B8]
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_AXVE0_PC]
 schema = 'gen3_pc'
 kotlin = false
@@ -2047,7 +2047,7 @@ specials = 0x0814B194
 pcFn = 0x08096101
 codeCrcs = [0xBC36478C, 0x62C153A4]
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/FieldItemsPortsGen.kt.
 [record.FIELD_ITEMS_PORTS_BPRE0_PC]
 schema = 'gen3_pc'
 kotlin = false
@@ -2059,7 +2059,7 @@ codeCrcs = [0xAAC00946, 0x9662F022]
 
 # Emerald Legacy v1.1.4 (its own build's ELF): ShowPokemonStorageSystemPC is still special 63 in its gSpecials.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pc.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pc.kt.
 [record.PC_EMERALD_LEGACY]
 schema = 'gen3_pc'
 kotlin = false
@@ -2074,7 +2074,7 @@ codeCrcs = [0xEF3698BA, 0x3BE7A304]
 # Ruby / Sapphire rev 1 and 2 (the same in both revisions): ShowPokemonStorageSystem, special 60, the same five
 # commands (pokeruby's opcodes are Emerald's). The other languages' come with FieldItemsPortsGen.kt.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pc.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pc.kt.
 [record.PC_RUBY]
 schema = 'gen3_pc'
 kotlin = false
@@ -2084,7 +2084,7 @@ specials = 0x0814B1B4
 pcFn = 0x08096121
 codeCrcs = [0xBC36478C, 0x62C153A4]
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pc.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pc.kt.
 [record.PC_SAPPHIRE]
 schema = 'gen3_pc'
 kotlin = false
@@ -2103,7 +2103,7 @@ codeCrcs = [0xBC36478C, 0xA79046B8]
 # references sits before them).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_AMETHYST]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2125,7 +2125,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.CFRU, table = 0x09BD4F3CL, perMon = 
 
 # Amethyst v1.4.1: the same dex (entries byte for byte), its tables moved; 26 more species.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_AMETHYST_V1_4_1]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_AMETHYST'
@@ -2148,7 +2148,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.CFRU, table = 0x09AAB2FCL, perMon = 
 # game's own list.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_CELIA]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2178,7 +2178,7 @@ nationalMagicOff = -1
 # list). The game titles that list HOENN (expansion's leftover word); the app names the region the game is in.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_DREAMSTONE]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2220,7 +2220,7 @@ evolutionsOff = 0xA0
 # 29 caught = its title screen's POKéDEX 29.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ELITE_REDUX_V2_65_4_1B]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2251,7 +2251,7 @@ baseStats = { kotlin = 'BaseStatsLayout(stride = 0x2C, genderOff = 0x12, eggGrou
 
 # 2.65.3b: the same shapes at its own addresses.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ELITE_REDUX_V2_65_3B]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_ELITE_REDUX_V2_65_4_1B'
@@ -2263,7 +2263,7 @@ speciesInfo = 0x08BF5B84
 speciesToNational = 0x08BF2C4E
 abilityNames = 0x08FC6DE4
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_DE]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_EMERALD'
@@ -2292,7 +2292,7 @@ metric = true
 # and kilograms.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_ES]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_EMERALD'
@@ -2313,7 +2313,7 @@ categoryPrefix = 'POKéMON'
 categorySuffix = ''
 metric = true
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_FR]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_EMERALD'
@@ -2333,7 +2333,7 @@ probeCategory = 'GRAINE'
 categorySuffix = ''
 metric = true
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_IT]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_EMERALD'
@@ -2361,7 +2361,7 @@ metric = true
 # "ひよこポケモン", "0.4m", "2.5kg" (TORCHIC's, headless).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_JA]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_EMERALD'
@@ -2389,7 +2389,7 @@ metric = true
 decimalPoint = '.'
 unitSpace = false
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_LEGACY]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_EMERALD'
@@ -2420,7 +2420,7 @@ flags = 'EMERALD_LEGACY_DEX_FLAGS'
 # the user's save, Seen 4 / Caught 2 after poking MAREEP caught and PAWMI (1305) seen.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_ROGUE]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2456,7 +2456,7 @@ evolutionsOff = 0x8C
 # Emerald Seaglass v3.0: its own numbering puts Hoenn first (TREECKO = No. 1,
 # BULBASAUR = 141), 430 in all; the HOENN dex has 212.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_EMERALD_SEAGLASS]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2493,7 +2493,7 @@ evolutionsOff = 0x98
 # and VENUSAUR (caught) appear in the game's own list.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_GAIA]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2518,7 +2518,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.GAIA, table = 0x08A9556CL, perMon = 
 # 0x60), edited in place - its CRYSTAL ONIX (species 409) and rebalanced starters among them.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ORANGE_ISLANDS]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_FIRERED_REV1'
@@ -2537,7 +2537,7 @@ evolutions = 0x08259754
 # still name them), the dex text edited in place; TM / HM learnsets and moves rev 0's too.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ULTRA_VIOLET]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_ORANGE_ISLANDS'
@@ -2547,7 +2547,7 @@ tmhmMoves = 0x0845A5A4
 
 # FireRed Rocket Edition: rev 0's tables but its ability names, repointed to 0x08950000; its mixed-case text.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ROCKET_EDITION]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_ULTRA_VIOLET'
@@ -2555,7 +2555,7 @@ kotlin = false
 abilityNames = 0x08950000
 categorySuffix = 'Pokémon'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_GHOST_GREY]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_ROCKET_EDITION'
@@ -2573,7 +2573,7 @@ kotlin = false
 # the game counts them.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_GS_CHRONICLES]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2612,7 +2612,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.CFRU, table = 0x097AC008L, perMon = 
 #
 # Pokémon Heart and Soul v2.0.6: national 1-1080, the JOHTO dex is a u32 list (282).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_HEART_AND_SOUL]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2651,7 +2651,7 @@ evolutionsOff = 0xA4
 # dex screen ("No0004 Charmander, Lizard Pokémon", NATIONAL 1 / 1).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_IMPERIUM]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2688,7 +2688,7 @@ evolutionsOff = 0xA0
 # user's save, so its flags are matched to the save (FENNEKIN seen and
 # caught), not to the game's screen.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_LAZARUS]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2735,7 +2735,7 @@ evolutionsOff = 0x9C
 # Ember 6 - its moves on the save).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_MARIOMON_V1_5_1]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2771,7 +2771,7 @@ nationalMagic = 0xDA
 
 # v1.3 / v1.2.x: one species fewer (no TIPTRON: NUM_SPECIES 1401), 153 dex numbers, 151 in the WORLD list.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_MARIOMON_V1_3]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_MARIOMON_V1_5_1'
@@ -2789,7 +2789,7 @@ speciesCount = 1401
 nationalCount = 153
 regionalCount = 151
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_MARIOMON_V1_2_1]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_MARIOMON_V1_3'
@@ -2804,7 +2804,7 @@ regionalOrder = 0x08425BE0
 evoLayout = { kotlin = 'EvoLayout(EvoScheme.EXPANSION, table = 0x084466A0L, perMon = 10)' }
 levelUpLearnsets = 0x08461C70
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_MARIOMON_V1_2_2]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_MARIOMON_V1_3'
@@ -2819,7 +2819,7 @@ regionalOrder = 0x08425BC0
 evoLayout = { kotlin = 'EvoLayout(EvoScheme.EXPANSION, table = 0x08446680L, perMon = 10)' }
 levelUpLearnsets = 0x08461C50
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_MARIOMON_V1_5_2]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_MARIOMON_V1_5_1'
@@ -2856,7 +2856,7 @@ levelUpLearnsets = 0x08474230
 # table of contents read Seen National 8 / Owned 2 for the user's save.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ODYSSEY]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2885,7 +2885,7 @@ evolutions = 0x08259754
 # game's own dex: SEEN 6 / OWN 1 on the user's save, CHARMANDER "Lizard", 0.6 m, 8.5 kg.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -2920,7 +2920,7 @@ probeCategory = 'Seed'
 # English's code, read at the same place in its code); the dex text is Spanish - its page reads
 # "POKéMON Semilla", "ALT. 0,7 m", "PESO 6,9 kg" (headless, the game's own POKéDEX).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL_ES]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_QUETZAL'
@@ -2940,7 +2940,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.QUETZAL, table = 0x08594A50L, perMon
 levelUpLearnsets = 0x085B57E8
 probeCategory = 'Semilla'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL_ES_V1]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_QUETZAL_ES'
@@ -2960,7 +2960,7 @@ levelUpLearnsets = 0x085C9398
 # literal pools, each table checked against Alpha 9's bytes (entries, footprints, evolutions, learnsets). Its own POKéDEX
 # reads SEEN 466 / OWN 347 on the Spanish Alpha 9 save.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL_V084]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_QUETZAL'
@@ -2982,7 +2982,7 @@ flags = 'POKEDEX_QUETZAL_V084_FLAGS'
 
 # Moemon Quetzal English / Spanish Alpha 0.8.4 Hotfix: their base builds' tables, moved (their own pictures).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL_MOEMON_V084]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_QUETZAL_V084'
@@ -2999,7 +2999,7 @@ levelUpLearnsets = 0x084A70E0
 
 # Quetzal Spanish Alpha 0.8.4: English 0.8.4's shapes at its own addresses, Alpha 9 Spanish's wording.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL_V084_ES]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_QUETZAL_V084'
@@ -3018,7 +3018,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.QUETZAL, table = 0x0848E5FCL, perMon
 levelUpLearnsets = 0x084AF07C
 probeCategory = 'Semilla'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL_MOEMON_V084_ES]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_QUETZAL_V084_ES'
@@ -3036,7 +3036,7 @@ levelUpLearnsets = 0x084AF17C
 # Quetzal Alpha 9 v1 (English / Spanish): v0 rebuilt - every table its own address, each v0's entry for entry (pointers
 # followed: the pages, pics, palettes, footprints, evolutions and learnsets they point at are v0's bytes).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_QUETZAL_V1]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_QUETZAL'
@@ -3059,7 +3059,7 @@ levelUpLearnsets = 0x085BDA28
 # nationalMagic made the game's table of contents add National mode.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RADICAL_RED]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -3078,7 +3078,7 @@ nationalCount = 1025
 flags = 'POKEDEX_RADICAL_RED_FLAGS'
 evoLayout = { kotlin = 'EvoLayout(EvoScheme.CFRU_RADICAL_RED, table = 0x097CD9B0L, perMon = 16)' }
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_EMERALD_REBALANCED_V2_2_8]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_EMERALD'
@@ -3100,7 +3100,7 @@ probeCategory = 'Seed'
 flags = 'POKEDEX_RECHARGED_EMERALD_REBALANCED_V2_2_8_FLAGS'
 sb2DexOff = 28  # = 0x18 + (4)
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_EMERALD_V2_2_5]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_EMERALD'
@@ -3122,7 +3122,7 @@ probeCategory = 'Seed'
 flags = 'POKEDEX_RECHARGED_EMERALD_V2_2_5_FLAGS'
 sb2DexOff = 24  # = 0x18 + (0)
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_EMERALD_V2_2_8]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_EMERALD'
@@ -3155,7 +3155,7 @@ sb2DexOff = 24  # = 0x18 + (0)
 # unused spot): owned 31 / seen 58 on the user's save, what its POKéDEX screen shows.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_YELLOW]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -3173,7 +3173,7 @@ categorySuffix = 'Pokémon'
 probeCategory = 'Seed'
 flags = 'POKEDEX_RECHARGED_YELLOW_FLAGS'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_YELLOW_V1_8_0]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_RECHARGED_YELLOW'
@@ -3189,7 +3189,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.RECHARGED_YELLOW, table = (0x088658C
 tmhmLearnsets = 0x0885EC18  # = (0x0885EC18)
 tmhmMoves = 0x08847F84  # = (0x08847F84)
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_YELLOW_V1_9_0]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_RECHARGED_YELLOW'
@@ -3205,7 +3205,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.RECHARGED_YELLOW, table = (0x0886537
 tmhmLearnsets = 0x0885E6D4  # = (0x0885E6D4)
 tmhmMoves = 0x08847A40  # = (0x08847A40)
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_YELLOW_V1_9_4]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_RECHARGED_YELLOW'
@@ -3221,7 +3221,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.RECHARGED_YELLOW, table = (0x0894538
 tmhmLearnsets = 0x0893E6D8  # = (0x0893E6D8)
 tmhmMoves = 0x08927A44  # = (0x08927A44)
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RECHARGED_YELLOW_V1_9_7]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_RECHARGED_YELLOW'
@@ -3246,7 +3246,7 @@ tmhmMoves = 0x08950854  # = (0x08950854)
 # yet on this save, so not compared with the game's own screen.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_ROWE]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -3278,7 +3278,7 @@ nationalMagicOff = -1
 # Ruby (rev 1 and rev 2 share every address): Emerald's flag rules,
 # seen copies at SaveBlock1+0x938/+0x3A8C, two-page dex text.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_RUBY]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -3302,7 +3302,7 @@ nationalMagic = 0xDA
 
 # Sapphire (rev 1 and rev 2): Ruby's layout, its own ROM addresses.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_SAPPHIRE]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_RUBY'
@@ -3330,7 +3330,7 @@ tmhmMoves = 0x083764AC
 # never sets an Emerald-style nationalMagic (its "National" label is an
 # all-caught check), so it stays at 0 and the tab opens on Johto, like the game.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_SOULGOLD]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -3370,7 +3370,7 @@ evolutionsOff = 0xB4
 # SoulGold v1.2: v1.1.4's dex moved (gSpeciesInfo 0x120 bytes per entry, the
 # same offsets inside), the Johto list and ability names byte for byte the same.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_SOULGOLD_V1_2]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_SOULGOLD'
@@ -3393,7 +3393,7 @@ evolutionsOff = 0xB4
 
 # The second SoulGold v1.2 build (sha1 5d6a0362...): the same tables 0x98 / 0x9C earlier.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_SOULGOLD_V1_2B]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_SOULGOLD_V1_2'
@@ -3404,7 +3404,7 @@ regionalOrder = 0x08F0EDDC
 
 # The third SoulGold v1.2 build (sha1 2be7c99a...): the same tables 0x18C / 0x190 later than the first.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_SOULGOLD_V1_2C]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_SOULGOLD_V1_2'
@@ -3424,7 +3424,7 @@ regionalOrder = 0x08F0EF6C
 # lists one dex in national order; three Gen 9 species carry No. 1018-1019, which have no entries.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_SWORD_SHIELD]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -3450,7 +3450,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.CFRU, table = 0x099C2C06L, perMon = 
 # everything after the types by one or two), its own numbering up to 1052
 # (CHIMCHAR = 397), the HOENN dex (398, SPRIGATITO first).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_TMT2]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -3501,7 +3501,7 @@ evolutionsOff = 0xA0
 # game's own "Numerical Mode: Borrius" list in RAM, then found in the ROM.
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_UNBOUND]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -3529,7 +3529,7 @@ evoLayout = { kotlin = 'EvoLayout(EvoScheme.CFRU, table = 0x099F3A7AL, perMon = 
 # Unbound v2.1.1.1 FR: English's tables, the dex text translated in place - its page reads
 # "Pokémon Graine", "Ta 0.7m", "Po 16.8 kg" (headless, the game's own POKéDEX).
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_UNBOUND_FR]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_UNBOUND'
@@ -3561,7 +3561,7 @@ probeCategory = 'Seed'
 # SEEN 1 / OWN 1 in the regional list (PIKACHU, No. 164; the party's other four aren't in it).
 #
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_WISHES]
 schema = 'gen3_pokedex'
 kotlin = false
@@ -3594,7 +3594,7 @@ levelUpOff = 0x94
 teachableOff = 0x98
 evolutionsOff = 0xA0
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_AMETHYST_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3604,7 +3604,7 @@ speciesOff = 4
 itemOff = 6
 levelOff = 2
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_DREAMSTONE_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3614,7 +3614,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_ELITE_REDUX_V2_65_4_1B_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3624,7 +3624,7 @@ speciesOff = 2
 itemOff = 4
 levelOff = 0
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_EMERALD_LEGACY_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3634,7 +3634,7 @@ speciesOff = 0x1A
 itemOff = 0x1C
 levelOff = 0x19
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_HEART_AND_SOUL_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3644,7 +3644,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_IMPERIUM_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3654,7 +3654,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_LAZARUS_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3664,7 +3664,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_MARIOMON_V1_5_1_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3674,7 +3674,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_QUETZAL_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3684,7 +3684,7 @@ speciesOff = 0x0A
 itemOff = 0x0E
 levelOff = 8
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_EMERALD_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3694,7 +3694,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_RECHARGED_YELLOW_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3704,7 +3704,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SEAGLASS_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3714,7 +3714,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SOULGOLD_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3724,7 +3724,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1C
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_TEAM_ROCKET_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3734,7 +3734,7 @@ speciesOff = 4
 itemOff = 6
 levelOff = 2
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_TMT2_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3744,7 +3744,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_WISHES_TRAINER_MON]
 schema = 'gen3_trainer_mon'
 kotlin = false
@@ -3754,7 +3754,7 @@ speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt (POKEDEX_LETS_GO): Let's Go's tables, its dex flags
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt (POKEDEX_LETS_GO): Let's Go's tables, its dex flags
 # in EWRAM by its own numbers (to 855).
 [record.POKEDEX_LETS_GO_FLAGS]
 schema = 'gen3_dexflags'
@@ -3780,7 +3780,7 @@ speciesCount = 987
 nationalCount = 855
 flags = 'POKEDEX_LETS_GO_FLAGS'
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt: Let's Go's tables (Eevee's own wild headers).
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt: Let's Go's tables (Eevee's own wild headers).
 [record.GUIDE_TABLES_LETS_GO_PIKACHU]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_ULTRA_VIOLET'
@@ -3797,7 +3797,7 @@ base = 'GUIDE_TABLES_LETS_GO_PIKACHU'
 kotlin = false
 wildHeaders = 0x0874AC1C
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt / GuideRom.kt (POKEDEX_MONOMYTH, GUIDE_TABLES_MONOMYTH):
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt / GuideRom.kt (POKEDEX_MONOMYTH, GUIDE_TABLES_MONOMYTH):
 # what the 3DS / Linux companion reads of Monomyth so far - its dex flags and save offsets. Its dex pages (packed egg
 # groups, its own evolution scheme) and trainers (TrainerMon strides of its own) aren't read there yet.
 [record.POKEDEX_MONOMYTH_FLAGS]
@@ -3879,7 +3879,7 @@ mapGroups = 0x0886EF64
 
 # SoulGold v1.2.1: v1.2's dex moved.
 #
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
 [record.POKEDEX_SOULGOLD_V1_2_1]
 schema = 'gen3_pokedex'
 base = 'POKEDEX_SOULGOLD_V1_2'
@@ -3888,7 +3888,7 @@ speciesInfo = 0x087DD964
 abilityNames = 0x08F1B3D8
 regionalOrder = 0x08F1A588
 
-# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+# From shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
 [record.GUIDE_TABLES_SOULGOLD_V1_2_1]
 schema = 'gen3_guide'
 base = 'GUIDE_TABLES_SOULGOLD'

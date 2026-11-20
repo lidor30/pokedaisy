@@ -21,7 +21,7 @@ import re
 from decomps import decomp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/data/save/SaveTablesGen.kt")
+OUT = os.path.join(HERE, "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/save/SaveTablesGen.kt")
 
 FAMILIES = [("RS", "pokeruby"), ("E", "pokeemerald"), ("FRLG", "pokefirered")]
 POCKETS = {"POCKET_ITEMS": 1, "POCKET_POKE_BALLS": 2, "POCKET_TM_HM": 3, "POCKET_TM_CASE": 3,

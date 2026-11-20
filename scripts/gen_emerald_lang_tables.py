@@ -6,7 +6,7 @@ so the companion shows a game's names in its own language.
     scripts/gen_emerald_lang_tables.py <es|de|fr|it|ja|kaizo|legacy> <rom.gba>
     scripts/gen_emerald_lang_tables.py en <english rom.gba>   (checks only)
 
-Writes app/src/main/kotlin/.../companion/data/EmeraldText<Lang>Gen.kt: species,
+Writes shared/src/commonMain/kotlin/.../companion/data/EmeraldText<Lang>Gen.kt: species,
 move, item, nature and map section names, keyed by the same
 ids as English (Gen 3's ids don't change between languages), plus the small
 font's glyph widths (the party slot's names; a few localized glyphs differ).
@@ -36,7 +36,7 @@ import struct
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(HERE, "..", "app", "src", "main", "kotlin", "com", "pokedaisy", "app", "companion", "data")
+OUT_DIR = os.path.join(HERE, "..", "shared", "src", "commonMain", "kotlin", "com", "pokedaisy", "app", "companion", "data")
 
 NUM_SPECIES = 412      # SPECIES_NONE .. SPECIES_CHIMECHO (+ the unused slots in between)
 MOVES_COUNT = 355

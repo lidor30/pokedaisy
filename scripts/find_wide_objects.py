@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Finds the far-off objects' addresses (pk_wide.h's OBJ_* / SPRITE_PAL_TAGS / ELEVATION_PRIO / CONTROLS_LOCKED slots,
 and the save's templates) in a ROM hack with no symbols (a pokeemerald-expansion or other gcc build), from the ROM and
-one RAM dump of the game standing on a map (a fixture: app/src/test/resources/fixtures/<name>/{ewram,iwram}.bin).
+one RAM dump of the game standing on a map (a fixture: test-fixtures/resources/fixtures/<name>/{ewram,iwram}.bin).
 
     scripts/find_wide_objects.py ROM FIXTURE [FIXTURE...] --objects ADDR --sprites ADDR --save1 ADDR --header ADDR [--vanilla]
 
@@ -46,7 +46,7 @@ def main():
     rom = open(a.rom, "rb").read()
     dumps = []
     for f in a.fixture:
-        fx = f if os.path.isdir(f) else os.path.join(ROOT, "app", "src", "test", "resources", "fixtures", f)
+        fx = f if os.path.isdir(f) else os.path.join(ROOT, "test-fixtures", "resources", "fixtures", f)
         dumps.append((open(os.path.join(fx, "ewram.bin"), "rb").read(), open(os.path.join(fx, "iwram.bin"), "rb").read()))
     ew, iw = dumps[0]
 

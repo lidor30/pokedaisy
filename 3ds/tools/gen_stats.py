@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 root = Path(__file__).resolve().parents[2]
-data = root / "app/src/main/kotlin/com/pokedaisy/app/companion/data"
+data = root / "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data"
 source = (data / "MonStats.kt").read_text()
 
 def names(decl, count):

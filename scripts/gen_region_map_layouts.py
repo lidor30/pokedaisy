@@ -20,7 +20,7 @@ from decomps import decomp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = decomp()
-KOTLIN = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/data/RegionMapLayoutsGen.kt")
+KOTLIN = os.path.join(HERE, "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/RegionMapLayoutsGen.kt")
 
 # (Kotlin name, rom, elf, [symbols], layers, width, height, offset x, offset y, MAPSEC_NONE)
 GAMES = [

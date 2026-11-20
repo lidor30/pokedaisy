@@ -29,7 +29,7 @@ naming the gift wins). Each one's command bytes are then looked for in its label
 3.2.1 laid one script out under other labels: there, the map's whole script section). Sub-map names come from the map
 labels ("VioletOnixTradeHouse" in VIOLET CITY -> "ONIX TRADE HOUSE"). A map whose landmark is SPECIAL (0) is left out.
 
-Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/GuidePolishedCrystalGen.kt.
+Writes shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuidePolishedCrystalGen.kt.
 """
 import os
 import re

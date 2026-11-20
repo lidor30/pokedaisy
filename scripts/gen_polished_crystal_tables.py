@@ -36,7 +36,7 @@ import re
 import struct
 import sys
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin", "com", "pokedaisy",
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin", "com", "pokedaisy",
                        "app", "companion", "data")
 SRC = os.path.join(os.environ.get("DECOMPS", ""), "polishedcrystal", "src")
 

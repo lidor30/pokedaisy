@@ -10,7 +10,7 @@ labels, file offset = bank * 0x4000 + (address - 0x4000)), so what differs betwe
 exclusive wild Pokémon, Yellow's rod and trade data) comes out right; the source gives what the bytes mean (constants:
 species / item / move / map ids, event flags, toggleable objects, trainer classes) and the map scripts' gifts.
 
-Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen1Gen.kt: per build a prefix, G1Y_ (Yellow), G1R_
+Writes shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideGen1Gen.kt: per build a prefix, G1Y_ (Yellow), G1R_
 (Red) and G1B_ (Blue), with the RAM it reads and three raw tables (species are National Dex numbers, items the bag's
 own item ids - TMs / HMs 0xC9+ / 0xC4+ -, moves the stored ids).
 

@@ -7,7 +7,7 @@ item balls, read from the player's own cart (there is no pret decomp for Gen 5).
     python3 -I scripts/gen_gen5_guide.py <Pokemon Black 2 (USA, Europe).nds>    # IREO, rev 0
     python3 -I scripts/gen_gen5_guide.py <Pokemon White 2 (USA, Europe).nds>    # IRDO, rev 0
 
-Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen5BlackGen.kt (or GuideGen5WhiteGen.kt,
+Writes shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideGen5BlackGen.kt (or GuideGen5WhiteGen.kt,
 GuideGen5Black2Gen.kt, GuideGen5White2Gen.kt): numbers only (species, levels, items and moves by id, zone ids, trainer
 ids, flags) - no text of the game's, which the companion takes from its own tables (Gen5TablesBlack.kt: White's names
 are Black's). Gen5World (GuideGen5.kt) reads it back. Black and White differ in their wild Pokémon, the eighth leader
@@ -47,7 +47,7 @@ import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data")
+OUT_DIR = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data")
 
 
 # ---- the cart: file system, NARC, text (self-contained: run with python3 -I) ----

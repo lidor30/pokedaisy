@@ -25,7 +25,7 @@ class CoopLinkSafetyTest {
 
     @Test fun linkDriverNeverTouchesGameMemory() {
         for (name in listOf("CoopLinkBattle.kt", "CoopLinkFlow.kt")) {
-            val text = File("src/main/kotlin/com/pokedaisy/app/companion/data/coop/$name").readText()
+            val text = File("../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/coop/$name").readText()
             for (word in listOf("MgbaCore", "pkWrite", "pkCall", "EmulatorEngine")) assertTrue("$name mentions $word", !text.contains(word))
         }
     }

@@ -830,7 +830,7 @@ def main():
 
 # --- Co-op presence (the partner on screen): the ROM addresses Kotlin needs, in their own output. ---
 
-OUT_KT = os.path.join(HERE, "..", "app", "src", "main", "kotlin", "com", "pokedaisy", "app", "companion", "data", "coop",
+OUT_KT = os.path.join(HERE, "..", "shared", "src", "commonMain", "kotlin", "com", "pokedaisy", "app", "companion", "data", "coop",
                       "CoopEmeraldGen.kt")
 # gFieldEffectObjectPic_SurfBlob: three 32x32 4bpp frames (south, north, west), drawn with the hero's palette.
 SURF_BLOB_BYTES = 3 * 512

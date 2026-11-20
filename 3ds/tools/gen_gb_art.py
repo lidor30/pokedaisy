@@ -10,7 +10,7 @@ import re
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-SRC = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen2PolishedCrystalGen.kt")
+SRC = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Gen2PolishedCrystalGen.kt")
 OUT = os.path.join(ROOT, "3ds/core/pd_gb_art_gen.c")
 
 
