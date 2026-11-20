@@ -45,7 +45,8 @@ else:
     for art in ('cover.png','screenshot.png','marquee.png'):
         shutil.copy2(repo/'linux/portmaster'/art,dest/art)
     desc=('The PokeDaisy companion beside your Pokemon games on one screen: party, bag, map, guide and Pokedex read live '
-          'from the game, a HUD over the overworld, EXPAND to the screen\'s edges and a quick menu (PC, FLY, REPEL). '
+          'from the game, a HUD over the overworld, EXPAND to the screen\'s edges and a quick menu (the PC, flying to a town, '
+          'the keep-away spray). '
           'GBA, Game Boy and DS games; bring your own.')
     (dest/'gameinfo.xml').write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n<gameList>\n  <game>\n    <path>./PokeDaisy.sh</path>\n'

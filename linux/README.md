@@ -95,7 +95,8 @@ against a stand-in PortMaster (native builds). The package has been played from 
 handheld (GKD 350H): the firmware's ROM folders in the game list, the host menu on MENU, A/B BUTTONS.
 The package carries the port's art for the firmware's game list (`cover.png`, `screenshot.png`, `marquee.png`, PortMaster's
 `gameinfo.xml` and `port.json`): PokeDaisy's own flower, page and font, never a game's art. `linux/portmaster/make_art.py`
-draws the cover and marquee; the screenshot is the game list over made-up file names.
+draws the cover and marquee; the screenshot is the game list (the library) over made-up games with no covers, taken
+headless with `POCKET_WINDOW=640x480` and `--shot` (no real game's name or art).
 
 ## TrimUI cross-build and launcher
 

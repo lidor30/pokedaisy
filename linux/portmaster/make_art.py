@@ -1,7 +1,8 @@
 """The PortMaster port's art for the firmware's game list (EmulationStation): cover.png (its box), marquee.png (its logo) in
 linux/portmaster/, from PokeDaisy's own pieces only - the flower (3ds/core's PD_LOGO), the app's page (DaisyBackdrop's
 blobs and dot grid), the OPTION window and the Pixel Operator font. Never a game's art. screenshot.png is the game
-list itself over made-up file names (see linux/README.md's PortMaster section). Run after the logo changes (needs Pillow):
+list itself (the library) over made-up games, no covers (see linux/README.md's PortMaster section). Run after the
+logo changes (needs Pillow):
 
     python3 linux/portmaster/make_art.py"""
 from pathlib import Path
