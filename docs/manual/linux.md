@@ -196,7 +196,8 @@ are coming to this version.
 games), and your favorites and last played games from that list come along too. A game without one gets its console's
 picture until a cover is found. For the hacks, PokeDaisy can fetch covers from SteamGridDB, as the app does: put your
 own SteamGridDB API key (from its Preferences, API) in a file named `steamgriddb-key.txt` in the data folder
-(`ports/pokedaisy` on PortMaster). Each game is looked up once, and its cover is kept in the `covers` folder there.
+(`ports/pokedaisy` on PortMaster). Each game is looked up once, and its cover is kept in the `covers` folder there;
+when SteamGridDB can't be reached (no Wi-Fi), it tries again the next time you start PokeDaisy.
 Delete a file in `covers` to have that game looked up again.
 
 **Filling the screen.** Games start on `EXPAND`, the picture rebuilt out to the screen's edges. `ASPECT` in `SETTINGS`

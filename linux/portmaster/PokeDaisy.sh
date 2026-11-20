@@ -38,7 +38,7 @@ done
 export POCKET_ROM_DIRS="$ROM_DIRS"
 # shellcheck disable=SC2154
 export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
-# gptokeyb gives PortMaster's exit hotkey; the game list's B and the game menu's quit work too.
+# gptokeyb gives PortMaster's exit hotkey; the game list's START (it asks first) and the game menu's QUIT work too.
 if [ -n "$GPTOKEYB" ]; then
   $GPTOKEYB "pokedaisy-linux" &
 fi

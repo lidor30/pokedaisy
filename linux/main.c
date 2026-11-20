@@ -1419,9 +1419,10 @@ static bool pokemon_rom(const char *path) {
   if (!ext)
     return false;
   if (!strcasecmp(ext, ".gba")) {
-    static const char *const codes[] = {"BPR", "BPG", "BPE", "AXV", "AXP", "MON", "PUV"};
+    // Retail's first three letters (the fourth is the language); a hack's own code whole (Monomyth, Ultra Violet).
+    static const char *const codes[] = {"BPR", "BPG", "BPE", "AXV", "AXP", "MONE", "PUVV"};
     for (size_t i = 0; n >= 0xB0 && i < sizeof codes / sizeof *codes; i++)
-      if (!memcmp(h + 0xAC, codes[i], 3))
+      if (!memcmp(h + 0xAC, codes[i], strlen(codes[i])))
         return true;
     return false;
   }
@@ -1997,7 +1998,20 @@ static void library_present(void) {
   }
   SDL_RenderPresent(renderer);
 }
-static int cmp(const void *a, const void *b) { return strcasecmp(base_name(*(char *const *)a), base_name(*(char *const *)b)); }
+/* By file name; the same file in two folders: DATA/roms' first (the library keeps the first), then by path. */
+static bool in_data_roms(const char *p) {
+  size_t n = strlen(root);
+  return !strncmp(p, root, n) && !strncmp(p + n, "/roms/", 6);
+}
+static int cmp(const void *a, const void *b) {
+  const char *x = *(char *const *)a, *y = *(char *const *)b;
+  int c = strcasecmp(base_name(x), base_name(y));
+  if (!c)
+    c = strcmp(base_name(x), base_name(y));
+  if (!c && in_data_roms(x) != in_data_roms(y))
+    c = in_data_roms(x) ? -1 : 1;
+  return c ? c : strcmp(x, y);
+}
 static void exe_dir(const char *argv0) {
   char p[PATH_MAX];
   ssize_t n = readlink("/proc/self/exe", p, sizeof p - 1);
@@ -2121,6 +2135,7 @@ int main(int argc, char **argv) {
         closedir(d);
     }
     qsort(paths, count, sizeof(*paths), cmp);
+    settings_migrate(); // before the library writes its first settings: an old DATA/settings.ini wins
     library_open(paths, count, root, savesDir, &libraryHost);
     int ticks = 0;
     while (running && !library_quit()) {
@@ -2144,7 +2159,9 @@ int main(int argc, char **argv) {
         char picked[PATH_MAX];
         snprintf(picked, sizeof picked, "%s", game);
         appError = 0;
+        library_pause(true); // no hashing or cover downloads while a game plays
         run_game(picked, 0, NULL, true); // the last game's result is the exit status
+        library_pause(false);
         library_played(picked);
       }
       library_present();

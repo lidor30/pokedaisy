@@ -9,7 +9,7 @@
 #include "puff.h"
 
 #define MAX_FILE (24u << 20)
-#define MAX_SIDE 4096
+#define MAX_SIDE 2048 // a cover is drawn at 320: a bigger picture costs a 1 GB handheld up to 48 MB to decode
 
 static uint32_t be32(const unsigned char *p) { return (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3]; }
 

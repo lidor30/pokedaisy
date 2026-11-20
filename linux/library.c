@@ -6,13 +6,19 @@
 
 #include <SDL.h>
 #include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
+#include <signal.h>
+#include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "cover_png.h"
 #include "pd_games.h"
@@ -52,7 +58,7 @@ struct game {
   // Filled by the worker: the cover's pixels, then its state; a hash, then hashed.
   uint32_t *coverPx;
   SDL_atomic_t coverState, hashed;
-  char workerSha1[41];
+  char workerSha1[41]; // the worker's own copy (it never reads sha1, the UI thread's): set, then hashed = 2
   unsigned serial;
   char coverFile[PATH_MAX]; // DATA/covers/<file>.png: a fetched cover
   bool coverFit;            // a box (no square icon on SteamGridDB): drawn whole
@@ -73,7 +79,7 @@ static const char *picked;
 static char notice[96];
 static unsigned noticeUntil;
 static SDL_Thread *worker;
-static SDL_atomic_t stopWorker;
+static SDL_atomic_t stopWorker, pauseWorker;
 // Where the games were drawn last frame (for library_covers) and the content's place.
 static int contentY, contentH, contentX, contentW;
 
@@ -221,6 +227,7 @@ static void titles_load(void) {
     if (sscanf(line, "%ld\t%ld\t%40[0-9a-f]\t%255[^\n]", &size, &mtime, sha1, file) == 4 && (g = by_file(file)) &&
         g->size == size && g->mtime == mtime) {
       snprintf(g->sha1, sizeof g->sha1, "%s", sha1);
+      snprintf(g->workerSha1, sizeof g->workerSha1, "%s", sha1); // before the worker starts
       g->sha1Known = true;
       SDL_AtomicSet(&g->hashed, 1);
       name_by_sha1(g);
@@ -359,7 +366,8 @@ static void cover_guess(struct game *g) {
 
 /* ---- SteamGridDB (the app's SteamGridDbClient): square icons, the preferred uploader's first, through the firmware's
  * curl. Only with the player's own key (DATA/steamgriddb-key.txt; never bundled), each game once: DATA/covers/<file>.png,
- * or <file>.none when there's nothing. ---- */
+ * or <file>.none when SteamGridDB answered that it has nothing. No answer at all (offline, a timeout, no curl) writes
+ * nothing: that game is asked for again next start, and a few in a row end the pass for this one. ---- */
 
 #define SGDB_API "https://www.steamgriddb.com/api/v2"
 #define SGDB_PREFERRED "76561198034412095" // SteamGridDbClient.PREFERRED_AUTHOR_STEAM64
@@ -396,7 +404,14 @@ static void sgdb_key_load(void) {
   fclose(f);
 }
 
-/* Only what a URL of ours or SteamGridDB's CDN holds: never anything a shell reads. */
+/* While a game plays the worker waits (no hashing, no downloads); true once it's to stop. */
+static bool stopping(void) {
+  while (SDL_AtomicGet(&pauseWorker) && !SDL_AtomicGet(&stopWorker))
+    SDL_Delay(100);
+  return SDL_AtomicGet(&stopWorker) != 0;
+}
+
+/* Only what a URL of ours or SteamGridDB's CDN holds. */
 static bool url_safe(const char *u) {
   if (strncmp(u, "https://", 8))
     return false;
@@ -406,38 +421,169 @@ static bool url_safe(const char *u) {
   return true;
 }
 
-/* GET [url] with the key: the body (malloc'd), NULL on failure. */
-static char *http_get(const char *url) {
-  if (!url_safe(url) || !sgdbKey[0])
-    return NULL;
-  char cmd[1024];
-  snprintf(cmd, sizeof cmd, "curl -fsS --max-time 20 -H 'Authorization: Bearer %s' '%s' 2>/dev/null", sgdbKey, url);
-  FILE *p = popen(cmd, "r");
-  if (!p)
-    return NULL;
-  size_t len = 0, cap = 1 << 16;
-  char *body = malloc(cap);
-  size_t n;
-  while (body && (n = fread(body + len, 1, cap - len - 1, p)) > 0) {
-    len += n;
-    if (len + 1 >= cap) {
-      if (cap >= (4u << 20))
+enum net {
+  NET_OK,   // an answer with something in it
+  NET_NONE, // SteamGridDB answered: nothing there
+  NET_FAIL, // no answer (offline, DNS, a timeout, a failed download, the server's own trouble): ask again next start
+  NET_STOP, // no use going on: no curl, or the key refused
+};
+
+/* curl runs without a shell, the key in a config file only we can read (never on its command line, which `ps` shows);
+ * library_close kills a running one, so quitting doesn't wait for a download. */
+static char curlConfig[PATH_MAX];
+static SDL_mutex *curlLock;
+static pid_t curlPid;
+extern char **environ;
+
+static bool curl_config_write(void) {
+  const char *tmp = getenv("TMPDIR");
+  for (int at = 0; at < 3; at++) {
+    const char *dir = at == 0 ? tmp : at == 1 ? "/tmp" : dataDir;
+    if (!dir || !*dir)
+      continue;
+    snprintf(curlConfig, sizeof curlConfig, "%s/pokedaisy-sgdb-XXXXXX", dir);
+    int fd = mkstemp(curlConfig); // 0600
+    if (fd < 0)
+      continue;
+    char text[256];
+    int n = snprintf(text, sizeof text, "header = \"Authorization: Bearer %s\"\n", sgdbKey);
+    bool ok = write(fd, text, (size_t)n) == n;
+    close(fd);
+    if (ok)
+      return true;
+    remove(curlConfig);
+  }
+  curlConfig[0] = 0;
+  return false;
+}
+
+/* curl [args] -> its exit status, -1 when it couldn't start (or the worker is stopping); its output into *out (malloc'd,
+ * NUL-ended) when out is given. */
+static int curl_run(const char *const *args, char **out) {
+  if (out)
+    *out = NULL;
+  int fd[2] = {-1, -1};
+  if (out && pipe(fd))
+    return -1;
+  if (out) { // ours alone: not handed to curl but as its stdout, nor to anything else started meanwhile
+    fcntl(fd[0], F_SETFD, FD_CLOEXEC);
+    fcntl(fd[1], F_SETFD, FD_CLOEXEC);
+  }
+  posix_spawn_file_actions_t fa;
+  posix_spawn_file_actions_init(&fa);
+  posix_spawn_file_actions_addopen(&fa, 2, "/dev/null", O_WRONLY, 0);
+  if (out)
+    posix_spawn_file_actions_adddup2(&fa, fd[1], 1);
+  else
+    posix_spawn_file_actions_addopen(&fa, 1, "/dev/null", O_WRONLY, 0);
+  const char *argv[24];
+  int n = 0;
+  argv[n++] = "curl";
+  argv[n++] = "-K";
+  argv[n++] = curlConfig;
+  for (int i = 0; args[i] && n < 23; i++)
+    argv[n++] = args[i];
+  argv[n] = NULL;
+  pid_t pid = 0;
+  SDL_LockMutex(curlLock);
+  int err = SDL_AtomicGet(&stopWorker) ? ECANCELED : posix_spawnp(&pid, "curl", &fa, NULL, (char *const *)argv, environ);
+  if (!err)
+    curlPid = pid;
+  SDL_UnlockMutex(curlLock);
+  posix_spawn_file_actions_destroy(&fa);
+  if (out)
+    close(fd[1]);
+  if (err) {
+    if (out)
+      close(fd[0]);
+    return -1;
+  }
+  if (out) {
+    size_t len = 0, cap = 1 << 16;
+    char *body = malloc(cap), drain[4096];
+    bool whole = body != NULL;
+    for (;;) {
+      ssize_t got = whole ? read(fd[0], body + len, cap - len - 1) : read(fd[0], drain, sizeof drain);
+      if (got < 0 && errno == EINTR)
+        continue;
+      if (got <= 0)
         break;
-      char *grown = realloc(body, cap *= 2);
-      if (!grown) {
-        free(body);
-        body = NULL;
-      } else
-        body = grown;
+      if (!whole)
+        continue; // too big: read to its end so curl can finish, keep none of it
+      len += (size_t)got;
+      if (len + 1 >= cap) {
+        char *grown = cap < (4u << 20) ? realloc(body, cap * 2) : NULL;
+        if (grown) {
+          body = grown;
+          cap *= 2;
+        } else {
+          free(body);
+          body = NULL;
+          whole = false;
+        }
+      }
     }
+    close(fd[0]);
+    if (body)
+      body[len] = 0;
+    *out = body;
   }
-  int status = pclose(p);
-  if (!body || status) {
-    free(body);
-    return NULL;
+  SDL_LockMutex(curlLock);
+  curlPid = 0; // still unreaped here, so a kill until now hit this curl, never another process
+  SDL_UnlockMutex(curlLock);
+  int status = 0;
+  while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+    ;
+  int rc = WIFEXITED(status) ? WEXITSTATUS(status) : 255;
+  if (rc && out) {
+    free(*out);
+    *out = NULL;
   }
-  body[len] = 0;
-  return body;
+  return rc;
+}
+
+static void curl_kill(void) {
+  if (!curlLock)
+    return;
+  SDL_LockMutex(curlLock);
+  if (curlPid > 0)
+    kill(curlPid, SIGKILL);
+  SDL_UnlockMutex(curlLock);
+}
+
+/* GET [url] with the key: NET_OK with the body (malloc'd) in *body, else what kind of nothing. */
+static enum net http_get(const char *url, char **body) {
+  *body = NULL;
+  if (!url_safe(url))
+    return NET_NONE;
+  if (stopping())
+    return NET_FAIL;
+  const char *args[] = {"-sS", "--connect-timeout", "8", "--max-time", "20", "-w", "\n%{http_code}", url, NULL};
+  char *out = NULL;
+  int rc = curl_run(args, &out);
+  if (rc < 0) {
+    if (!SDL_AtomicGet(&stopWorker))
+      fprintf(stderr, "Cover: no curl: no covers from SteamGridDB\n");
+    return SDL_AtomicGet(&stopWorker) ? NET_FAIL : NET_STOP;
+  }
+  if (rc || !out)
+    return NET_FAIL;
+  char *nl = strrchr(out, '\n');
+  int code = nl ? atoi(nl + 1) : 0;
+  if (nl)
+    *nl = 0;
+  if (code == 200) {
+    *body = out;
+    return NET_OK;
+  }
+  free(out);
+  if (code == 404)
+    return NET_NONE;
+  if (code == 401 || code == 403) {
+    fprintf(stderr, "Cover: SteamGridDB refused the key (HTTP %d)\n", code);
+    return NET_STOP;
+  }
+  return NET_FAIL; // 429, 5xx: next start
 }
 
 /* A JSON string's value after [key] from [from] (\/ unescaped), false if none before [end]. */
@@ -521,13 +667,18 @@ static const char *ds_english(const struct game *g) {
   return NULL;
 }
 
-static int sgdb_game(const struct game *g) {
-  for (size_t i = 0; g->sha1Known && i < sizeof SGDB_GAMES / sizeof *SGDB_GAMES; i++)
-    if (!strcmp(SGDB_GAMES[i].sha1, g->sha1))
-      return SGDB_GAMES[i].id;
+/* The game's SteamGridDB id into *id: NET_OK, NET_NONE when no search found it, else no answer. */
+static enum net sgdb_game(const struct game *g, int *id) {
+  *id = 0;
+  bool known = g->workerSha1[0] != 0;
+  for (size_t i = 0; known && i < sizeof SGDB_GAMES / sizeof *SGDB_GAMES; i++)
+    if (!strcmp(SGDB_GAMES[i].sha1, g->workerSha1)) {
+      *id = SGDB_GAMES[i].id;
+      return NET_OK;
+    }
   // Else SteamGridDB's own search, by the game's name, taken only when the hit names it. The name as the worker knows it
   // (the UI thread renames a game by its hash meanwhile).
-  const struct pd_game_entry *e = g->sha1Known ? pd_game_entry_for(g->sha1) : NULL;
+  const struct pd_game_entry *e = known ? pd_game_entry_for(g->workerSha1) : NULL;
   const char *title = e ? e->title : ds_english(g) ? ds_english(g) : g->title;
   // Its search is literal: the name, the name without "Pokémon", and that with a capitals-only word dotted (R.O.W.E.).
   char queries[4][128];
@@ -559,34 +710,41 @@ static int sgdb_game(const struct game *g) {
       char term[384], url[512];
       url_encode(queries[q], term, sizeof term);
       snprintf(url, sizeof url, SGDB_API "/search/autocomplete/%s", term);
-      char *body = http_get(url);
-      int id = 0;
-      for (const char *at = body ? strstr(body, "\"id\":") : NULL; at && !id; at = strstr(at + 5, "\"id\":")) {
+      char *body;
+      enum net r = http_get(url, &body);
+      if (r == NET_FAIL || r == NET_STOP)
+        return r;
+      for (const char *at = body ? strstr(body, "\"id\":") : NULL; at && !*id; at = strstr(at + 5, "\"id\":")) {
         int hit = atoi(at + 5);
         const char *next = strstr(at + 5, "\"id\":");
         char name[160];
         if (hit && json_string(at, next, "name", name, sizeof name) && name_matches(title, name, loose))
-          id = hit;
+          *id = hit;
       }
       free(body);
-      if (id)
-        return id;
+      if (*id)
+        return NET_OK;
     }
-  return 0;
+  return NET_NONE;
 }
 
-/* The game's icon into DATA/covers/<file>.png: the preferred uploader's, else the best voted (the API's order). */
-static bool sgdb_fetch(struct game *g) {
-  int id = sgdb_game(g);
-  if (!id) {
+/* The game's icon into DATA/covers/<file>.png: the preferred uploader's, else the best voted (the API's order). NET_OK
+ * when it's there, NET_NONE when SteamGridDB has none, else no answer. */
+static enum net sgdb_fetch(struct game *g) {
+  int id;
+  enum net r = sgdb_game(g, &id);
+  if (r == NET_NONE)
     fprintf(stderr, "Cover: %s: not on SteamGridDB\n", g->file);
-    return false;
-  }
+  if (r != NET_OK)
+    return r;
   char url[256], best[512] = "", icon[512];
   bool preferred = false;
   for (int page = 0; page < 6 && !preferred; page++) {
     snprintf(url, sizeof url, SGDB_API "/icons/game/%d?mimes=image/png&page=%d", id, page);
-    char *body = http_get(url);
+    char *body;
+    r = http_get(url, &body);
+    if ((r == NET_FAIL || r == NET_STOP) && !best[0])
+      return r; // a later page lost: the best of those read
     if (!body || !strstr(body, "\"success\":true")) {
       free(body);
       break;
@@ -614,7 +772,10 @@ static bool sgdb_fetch(struct game *g) {
   // No square icon: the game's box (SteamGridDB's 600 x 900 grids), drawn whole.
   if (!best[0]) {
     snprintf(url, sizeof url, SGDB_API "/grids/game/%d?mimes=image/png&dimensions=600x900", id);
-    char *body = http_get(url);
+    char *body;
+    r = http_get(url, &body);
+    if (r == NET_FAIL || r == NET_STOP)
+      return r;
     for (const char *at = body ? strstr(body, "\"url\":\"") : NULL; at && !best[0]; at = strstr(at + 6, "\"url\":\""))
       if (json_string(at, NULL, "url", icon, sizeof icon) && url_safe(icon))
         snprintf(best, sizeof best, "%s", icon);
@@ -628,25 +789,25 @@ static bool sgdb_fetch(struct game *g) {
   }
   fprintf(stderr, "Cover: %s: SteamGridDB game %d, %s\n", g->file, id, best[0] ? (g->coverFit ? "a box" : "an icon") : "no art");
   if (!best[0])
-    return false;
-  char tmp[PATH_MAX + 8], cmd[2 * PATH_MAX + 600];
+    return NET_NONE;
+  if (stopping())
+    return NET_FAIL;
+  char tmp[PATH_MAX + 8];
   snprintf(tmp, sizeof tmp, "%s.tmp", g->coverFile);
-  // The file names are ours, quoted: a ' in one would break out, so such a game goes without.
-  if (strchr(tmp, '\''))
-    return false;
-  snprintf(cmd, sizeof cmd, "curl -fsSL --max-time 30 -o '%s' '%s' 2>/dev/null", tmp, best);
-  if (system(cmd) || rename(tmp, g->coverFile)) {
+  const char *args[] = {"-fsSL", "--connect-timeout", "8", "--max-time", "30", "-o", tmp, best, NULL};
+  int rc = curl_run(args, NULL);
+  if (rc || rename(tmp, g->coverFile)) {
     remove(tmp);
-    return false;
+    return rc < 0 && !SDL_AtomicGet(&stopWorker) ? NET_STOP : NET_FAIL;
   }
-  return true;
+  return NET_OK;
 }
 
 /* ---- the worker: covers, then hashes ---- */
 
 static int work(void *unused) {
   (void)unused;
-  for (int i = 0; i < gameCount && !SDL_AtomicGet(&stopWorker); i++) {
+  for (int i = 0; i < gameCount && !stopping(); i++) {
     struct game *g = &games[i];
     if (SDL_AtomicGet(&g->coverState) != CS_PATH)
       continue;
@@ -661,7 +822,7 @@ static int work(void *unused) {
     }
   }
   static unsigned char buf[1 << 20];
-  for (int i = 0; i < gameCount && !SDL_AtomicGet(&stopWorker); i++) {
+  for (int i = 0; i < gameCount && !stopping(); i++) {
     struct game *g = &games[i];
     // DS carts run to 512 MB: they go by their file name.
     if (g->console == C_DS || SDL_AtomicGet(&g->hashed))
@@ -672,19 +833,18 @@ static int work(void *unused) {
     struct pd_sha1 s;
     pd_sha1_init(&s);
     size_t n;
-    while (!SDL_AtomicGet(&stopWorker) && (n = fread(buf, 1, sizeof buf, f)) > 0)
+    while (!stopping() && (n = fread(buf, 1, sizeof buf, f)) > 0)
       pd_sha1_update(&s, buf, n);
     fclose(f);
     if (SDL_AtomicGet(&stopWorker))
       break;
-    pd_sha1_hex(&s, g->workerSha1);
-    snprintf(g->sha1, sizeof g->sha1, "%s", g->workerSha1); // read by sgdb_game below, on this thread
-    g->sha1Known = true;
+    pd_sha1_hex(&s, g->workerSha1); // the UI thread copies it into sha1 once hashed is 2 (library_tick)
     SDL_MemoryBarrierRelease();
     SDL_AtomicSet(&g->hashed, 2);
   }
-  // No art from the firmware: SteamGridDB's, once, with the player's key.
-  for (int i = 0; sgdbKey[0] && i < gameCount && !SDL_AtomicGet(&stopWorker); i++) {
+  // No art from the firmware: SteamGridDB's, with the player's key. ".none" only once it answered there's nothing.
+  bool config = sgdbKey[0] && curl_config_write();
+  for (int i = 0, failed = 0; config && i < gameCount && !stopping(); i++) {
     struct game *g = &games[i];
     if (SDL_AtomicGet(&g->coverState) != CS_NONE)
       continue;
@@ -693,7 +853,18 @@ static int work(void *unused) {
     struct stat st;
     if (!stat(none, &st))
       continue;
-    if (!sgdb_fetch(g)) {
+    enum net r = sgdb_fetch(g);
+    if (r == NET_STOP)
+      break;
+    if (r == NET_FAIL) {
+      if (!SDL_AtomicGet(&stopWorker) && ++failed >= 3) {
+        fprintf(stderr, "Cover: SteamGridDB doesn't answer: the rest next start\n");
+        break;
+      }
+      continue;
+    }
+    failed = 0;
+    if (r == NET_NONE) {
       FILE *f = fopen(none, "w");
       if (f)
         fclose(f);
@@ -707,6 +878,8 @@ static int work(void *unused) {
     } else
       free(px);
   }
+  if (config)
+    remove(curlConfig);
   return 0;
 }
 
@@ -860,12 +1033,16 @@ void library_open(char *const *paths, int count, const char *data, const char *s
   }
   relist();
   SDL_AtomicSet(&stopWorker, 0);
-  worker = gameCount ? SDL_CreateThread(work, "library", NULL) : NULL;
+  SDL_AtomicSet(&pauseWorker, 0);
+  if (!curlLock)
+    curlLock = SDL_CreateMutex();
+  worker = gameCount && curlLock ? SDL_CreateThread(work, "library", NULL) : NULL;
 }
 
 void library_close(void) {
   if (worker) {
     SDL_AtomicSet(&stopWorker, 1);
+    curl_kill(); // a download in flight ends now, not at its timeout
     SDL_WaitThread(worker, NULL);
     worker = NULL;
   }
@@ -876,12 +1053,16 @@ void library_close(void) {
   gameCount = shownCount = 0;
 }
 
+void library_pause(bool paused) { SDL_AtomicSet(&pauseWorker, paused); }
+
 void library_tick(void) {
   bool renamed = false;
   for (int i = 0; i < gameCount; i++) {
     struct game *g = &games[i];
     if (SDL_AtomicGet(&g->hashed) == 2) {
       SDL_MemoryBarrierAcquire();
+      snprintf(g->sha1, sizeof g->sha1, "%s", g->workerSha1); // the worker is done with it: hashed was 2
+      g->sha1Known = true;
       SDL_AtomicSet(&g->hashed, 1);
       char before[96];
       snprintf(before, sizeof before, "%s", g->title);

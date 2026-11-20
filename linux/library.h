@@ -55,6 +55,8 @@ bool library_dimmed(void);
 const char *library_picked(void);
 /* The player closed the app. */
 bool library_quit(void);
+/* A game is playing: the background work (hashing, cover downloads) waits until it's false again. */
+void library_pause(bool paused);
 /* Back from a game: it's the last played, the cursor on it, its save looked for again. */
 void library_played(const char *path);
 void library_close(void);
