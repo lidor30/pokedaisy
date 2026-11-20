@@ -40,6 +40,11 @@ object NewFeatures {
     const val IOS_LOW_HP_BEEP = "ios_low_hp_beep"
     const val IOS_FIELD_POISON = "ios_field_poison"
     const val IOS_NUZLOCKE = "ios_nuzlocke"
+    const val IOS_POKEMON_COSTUMES = "ios_pokemon_costumes"
+    const val IOS_RIDE_ON = "ios_ride_on"
+    const val IOS_TEXT_LOOK = "ios_text_look"
+    const val IOS_RIVAL_LOOK = "ios_rival_look"
+    const val IOS_PLAYER_LOOK = "ios_player_look"
     const val IOS_FOLLOWER = "ios_follower"
     const val IOS_TOUCH_XY = "ios_touch_xy"
     const val IOS_CHEATS = "ios_cheats"
@@ -330,7 +335,7 @@ object NewFeatures {
         IOS_FF_AUDIO,
         IOS_STEADY_MUSIC,
         IOS_CLICK_SOUND,
-        IOS_DAY_NIGHT, IOS_SHINY_ODDS, IOS_FLIGHT, IOS_FOLLOWER, IOS_AUTO_REFILL, IOS_SHINY_ALERT, IOS_LAST_BALL, IOS_BOSS_RETRY, IOS_LOW_HP_BEEP, IOS_FIELD_POISON, IOS_NUZLOCKE,
+        IOS_DAY_NIGHT, IOS_SHINY_ODDS, IOS_FLIGHT, IOS_FOLLOWER, IOS_PLAYER_LOOK, IOS_RIVAL_LOOK, IOS_TEXT_LOOK, IOS_RIDE_ON, IOS_POKEMON_COSTUMES, IOS_AUTO_REFILL, IOS_SHINY_ALERT, IOS_LAST_BALL, IOS_BOSS_RETRY, IOS_LOW_HP_BEEP, IOS_FIELD_POISON, IOS_NUZLOCKE,
         IOS_CHEATS,
         IOS_FIELD_ITEMS,
         IOS_CLASSIC_FLY,

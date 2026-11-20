@@ -10,6 +10,7 @@ import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.FfMusicMode
 import com.pokedaisy.app.companion.GameAspect
+import com.pokedaisy.app.companion.PlayerLookSession
 import com.pokedaisy.app.companion.Smoothing
 import com.pokedaisy.app.companion.changeExpandedZoom
 import com.pokedaisy.app.companion.zoomFactors
@@ -41,11 +42,36 @@ internal class IosCompanionSettings(
     private val gameScreen: () -> IosGameScreen? = { null },
     private val playback: () -> com.pokedaisy.app.companion.GameRuntime? = { null },
     private val presentFrom: () -> platform.UIKit.UIViewController? = { game?.view?.window?.rootViewController },
+    private val looks: PlayerLookSession? = null,
     private val tradeSupported: () -> Boolean = { false },
     private val stored: com.pokedaisy.app.companion.PrefsCompanionSettings =
         com.pokedaisy.app.companion.PrefsCompanionSettings(iosPreferences,
             languageRomCode = { romCode }, allowDisableResume = onDisableResume),
 ) : CompanionSettings, com.pokedaisy.app.companion.StoredCompanionSettings by stored {
+    override val playerLookSupported get() = looks?.supported == true
+    override val playerLookBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_POKEMON_COSTUMES) ?:
+        com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_PLAYER_LOOK)
+    override val playerLooks get() = looks?.choices.orEmpty()
+    override val playerLook get() = looks?.selected
+    override fun playerLookLabel(name: String) = looks?.costumeLabel(name) ?: super<CompanionSettings>.playerLookLabel(name)
+    override val playerLookOwn get() = looks?.own
+    override val rivalLookSupported get() = looks?.rivalSupported == true
+    override val rivalLookBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_RIVAL_LOOK)
+    override fun setRivalLook(on: Boolean) {
+        if (!rivalLookSupported) return
+        stored.setRivalLook(on)
+        looks?.apply()
+    }
+    override val textLooks get() = looks?.textChoices.orEmpty()
+    override val textLook get() = looks?.textSelected
+    override val textLookBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_TEXT_LOOK)
+    override fun setTextLook(style: String?) { looks?.selectText(style) }
+    override val rideVehicleSupported get() = looks?.supported == true
+    override val rideVehicle get() = looks?.vehicle ?: com.pokedaisy.app.companion.data.RideVehicle.BIKE
+    override val rideVehicleBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_RIDE_ON)
+    override fun setRideVehicle(v: com.pokedaisy.app.companion.data.RideVehicle) { looks?.selectRide(v) }
+    override fun setPlayerLook(look: String?) { looks?.select(look) }
+
     var canAutoRefill: () -> Boolean = { false }
     override val repelRefill get() = iosPreferences.repelRefill
     override val repelRefillSupported get() = canAutoRefill()

@@ -123,7 +123,7 @@ Your save stays exactly as it was. The change only lives in the game's memory wh
 > [!NOTE]
 > `PLAYER LOOK` works on the original FireRed, LeafGreen, Ruby, Sapphire and Emerald carts, in every language, and on Emerald Kaizo, Emerald Legacy, Emerald Imperium and Ultra Violet. Poses only one game has, like Emerald's wheelies and diving, use the nearest pose the other hero has.
 
-You can also walk around as one of your own Pokémon. With a game whose Pokémon follow you (Heart and Soul, R.O.W.E., Recharged Yellow or Emerald Seaglass) played here or in your library, the tiles also show the Pokémon in your party, walking as they follow you in that game. With more than one of those games, each Pokémon comes from one of them only, and its tile says which. Pick one and it takes your place on the map (walking, running, on a bike and surfing), on the trainer card and with its back to you in battle. Only the first 386 can be picked, and a few of the very biggest aren't among them.
+You can also walk around as one of your own Pokémon. With a game whose Pokémon follow you (Heart and Soul, R.O.W.E., Recharged Yellow or Emerald Seaglass) played here or in your library, the tiles also show the Pokémon in your party, walking as they follow you in that game. With more than one of those games, each Pokémon comes from one of them only, and its tile says which. Pick one and it takes your place on the map (walking, running, on a bike and surfing), on the trainer card and with its back to you in battle. Only the first 386 can be picked, and a few of the very biggest aren't among them. You keep your current look while the costume is getting ready. If it can't be put on or the Pokémon leaves your party, your own hero returns.
 
 ### RIVAL LOOK
 

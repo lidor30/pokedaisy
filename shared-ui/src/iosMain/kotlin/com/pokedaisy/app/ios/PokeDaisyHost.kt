@@ -3,6 +3,8 @@
 
 package com.pokedaisy.app.ios
 
+import com.pokedaisy.app.companion.data.FfMenuWatch
+import com.pokedaisy.app.companion.data.GameField
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +25,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeUIViewController
+import com.pokedaisy.app.companion.GamePlayerLook
+import com.pokedaisy.app.companion.GameRide
+import com.pokedaisy.app.companion.PlayerLookSession
 import com.pokedaisy.app.companion.data.AppearanceAssets
 import com.pokedaisy.app.companion.FeatureTips
 import com.pokedaisy.app.companion.TipId
@@ -311,13 +316,16 @@ object PokeDaisyHost {
         }.getOrElse { onFailed(); return UIViewController() }
         val g = GameViewController(romPath, savePath, onFailed)
         game = g
+        val lookRenderer = GamePlayerLook(PkApiCore)
+        val ride = GameRide(PkApiCore)
+        val currentLook = PlayerLookSession(iosPreferences, appFilesDir(), lookRenderer::select).also { playerLook = it }
         val defaults = platform.Foundation.NSUserDefaults.standardUserDefaults
         var currentRuntime: com.pokedaisy.app.companion.GameRuntime? = null
         val stateSnapshot = { telemetry.forState()?.takeIf { it.hasData && !it.unsupported }?.let(SnapshotCache::encode) }
         fun stateLoaded(runtime: com.pokedaisy.app.companion.GameRuntime, state: Path) {
             runtime.afterStateLoad(
                 restoreProgress = {},
-                settleAppearance = {},
+                settleAppearance = { if (currentLook.supported) lookRenderer.settle() },
                 companionState = state,
             )
         }
@@ -344,7 +352,7 @@ object PokeDaisyHost {
             onDisableResume = {
                 runCatching { resume.startFresh(); true }.getOrElse { resumeFailed(); false }
             }, onEditTouch = { if (game === g) touch.edit() }, readTouchStage = { touch.readStage().takeIf { game === g } }, gameScreen = { screen.takeIf { game === g } }, playback = { currentRuntime },
-            tradeSupported = { game === g && evolution?.supported() == true })
+            looks = currentLook, tradeSupported = { game === g && evolution?.supported() == true })
             .also { s ->
                 L10n.apply(s.appLanguage, code)
                 g.rewindEnabled = s.rewind
@@ -385,7 +393,7 @@ object PokeDaisyHost {
             }
             g.beforeFrame = { work ->
                 p.beforeFrame(work) {
-                    p.serviceFramePatches(false, { false }) {}
+                    p.serviceFramePatches(false, { lookRenderer.service() }) {}
                 }
                 if (work == com.pokedaisy.app.game.GameSession.FrameWork.ADVANCING) {
                     g.camera.flying = p.flight?.state?.let { it != 0 } == true
@@ -397,6 +405,12 @@ object PokeDaisyHost {
                 p.flight?.afterFrame()
                 p.tick(wideScene = if (g.expanded) PkApiCore.wideScene else -1)
                 steadyMusic?.frame(currentSettings.ffMusicMode, p.requestedSpeedNow() > 1f, currentSettings.clickSound)
+                // Native flags identify a clear field even while the callback watcher is learning it.
+                val gameOwnsScreen = p.fieldState and (GameField.LOCKED or GameField.BATTLE or GameField.WINDOW) != 0
+                val field = !p.session.mapOpen && !gameOwnsScreen &&
+                    (p.fieldState and GameField.KNOWN != 0 || p.onField && !FfMenuWatch.battling)
+                if (field) lookRenderer.fieldFrame()
+                ride.step(p.riding && !p.session.mapOpen && !gameOwnsScreen, lookRenderer.ride)
                 gameOptions.markExp(PkApiCore::read, PkApiCore::write)
             }
         }
@@ -503,6 +517,7 @@ object PokeDaisyHost {
         val currentBattle = battle!!
         g.beforeRewind = { p.battleRetry.reset(); p.cancelFieldActions(); currentBattle.cancel() }
         val currentOptions = p.options
+        var lookScanStarted = false
         g.onCoreStarted = {
             if (game === g) {
                 val crc = runCatching { com.pokedaisy.app.companion.data.romCrc32(romPath.toPath()) }.getOrDefault(0L)
@@ -524,6 +539,14 @@ object PokeDaisyHost {
                     steadyMusic = IosSteadyMusic(g, romPath.toPath(), key, code != null, click).also {
                         g.onMusicPause = it::pause
                     }
+                }
+                ride.reset()
+                if (code != null && !blocked) {
+                    if (!lookScanStarted) {
+                        lookScanStarted = true
+                        currentLook.load(romPath.toPath(), code, key, library = ::appearanceLibrary)
+                    }
+                    if (currentLook.supported) lookRenderer.service(force = true)
                 }
                 if (code != null) p.bindFollower(PkApiCore, appFilesDir()) { current ->
                     AppearanceAssets(appFilesDir()).prepareFollowers(
@@ -582,6 +605,7 @@ object PokeDaisyHost {
                         }
                     }
                 }
+                if (it.blocked == null) currentLook.observe(it) else currentLook.close()
                 if (it.blocked != null && g.wideSupported) g.setExpandedTables(0)
             }, periodMillis = SAMPLE_MILLIS, onShinyFound = { alert ->
                 if (live()) {
@@ -620,6 +644,7 @@ object PokeDaisyHost {
         platform.Foundation.NSLog("PokeDaisy: couldn't update resume data")
     }
 
+    private var playerLook: PlayerLookSession? = null
     private var steadyMusic: IosSteadyMusic? = null
     private var gameClick: IosGameClickSound? = null
 
@@ -636,6 +661,8 @@ object PokeDaisyHost {
         gameClick?.close()
         gameClick = null
         game?.pause()
+        playerLook?.close()
+        playerLook = null
         playback?.quiesce()
         items = null
         fly = null

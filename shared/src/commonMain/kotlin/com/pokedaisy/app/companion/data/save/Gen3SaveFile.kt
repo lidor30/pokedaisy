@@ -216,6 +216,24 @@ class Gen3SaveFile private constructor(
         /** Both slots; Hall of Fame and the rest come after, and aren't needed. */
         const val MIN_SIZE = 2 * SECTORS_PER_SLOT * SECTOR
 
+        /** An initial gender for appearance before RAM is available. A SaveBlock2 sector is enough, even
+         * when the rest of the save is incomplete or has a ROM hack's layout. */
+        fun playerFemale(bytes: ByteArray): Boolean? {
+            var bestCounter = -1L
+            var female: Boolean? = null
+            for (sector in 0 until minOf(32, bytes.size / SECTOR)) {
+                val base = sector * SECTOR
+                if (u32(bytes, base + SIGNATURE_OFF) != SIGNATURE || u16(bytes, base + ID_OFF) != 0) continue
+                val counter = u32(bytes, base + COUNTER_OFF)
+                val gender = bytes[base + 8].toInt() and 0xFF
+                if (counter > bestCounter && gender <= 1) {
+                    bestCounter = counter
+                    female = gender == 1
+                }
+            }
+            return female
+        }
+
         /** save.c's CalculateChecksum: the u32 words of [size] bytes summed, both halves folded into a u16. */
         fun checksum(b: ByteArray, off: Int, size: Int): Int {
             var sum = 0L
