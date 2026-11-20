@@ -7,7 +7,7 @@
 <p>
   <a href="https://github.com/lidor30/pokedaisy/releases/latest"><img src="https://img.shields.io/github/v/release/lidor30/pokedaisy?style=for-the-badge&label=release&color=2f81f7" alt="Latest PokeDaisy release"></a>
   <a href="https://github.com/lidor30/pokedaisy/releases"><img src="https://img.shields.io/github/downloads/lidor30/pokedaisy/total?style=for-the-badge&label=downloads&color=5c8a3c" alt="Total downloads"></a>
-  <a href="https://discord.gg/vcmyKZZV5q"><img src="https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join PokeDaisy on Discord"></a>
+  <a href="https://discord.gg/vcmyKZZV5q"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv9%2Finvites%2FvcmyKZZV5q%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=Discord&color=5865F2&style=for-the-badge&logo=discord&logoColor=white" alt="Join PokeDaisy on Discord"></a>
   <a href="https://www.reddit.com/r/PokeDaisy/"><img src="https://img.shields.io/reddit/subreddit-subscribers/PokeDaisy?style=for-the-badge&logo=reddit&logoColor=white&label=r%2FPokeDaisy&color=FF4500" alt="r/PokeDaisy on Reddit"></a>
 </p>
 
@@ -25,6 +25,12 @@ PokeDaisy plays Game Boy, Game Boy Color, GBA and Nintendo DS games on Android h
 from Red to Black 2 and White 2 and dozens of ROM hacks. Next to the game runs a live companion that reads it as you
 play: your party, bag, map, battle matchups, Pokedex and a spoiler-free guide, drawn in the game's own menu style. On
 a dual-screen handheld it gets the bottom screen; on one screen it opens over the game.
+
+<p align="center">
+  <a href="https://buymeacoffee.com/lidor30g"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Support PokeDaisy on Buy Me a Coffee"></a>
+  <a href="https://www.patreon.com/cw/pokedaisy"><img src="https://img.shields.io/badge/Patreon-support-F96854?style=for-the-badge&logo=patreon&logoColor=white" alt="Support PokeDaisy on Patreon"></a>
+  <a href="https://ko-fi.com/pokedaisy"><img src="https://img.shields.io/badge/Ko--fi-support-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" alt="Support PokeDaisy on Ko-fi"></a>
+</p>
 
 ## The companion
 

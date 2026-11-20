@@ -400,7 +400,7 @@ const title = 'POKEDAISY'.split('');
   .platforms { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); text-decoration: none; font-size: var(--t-s); letter-spacing: 0.0625em; }
   .platforms span { margin-left: 4px; }
   .platforms:hover span { color: var(--red); text-decoration: underline; }
-  /* Every APK download from GitHub releases: counted at build, refreshed in the browser. Big: it's the proof. */
+  /* Every file downloaded from GitHub releases: counted at build, refreshed in the browser. Big: it's the proof. */
   .downloads { display: inline-flex; align-items: center; gap: 14px; margin-top: 36px; text-decoration: none; color: var(--ink); }
   .downloads[hidden] { display: none; }
   .dl-count { font-size: calc(var(--t-xl) * 0.85); line-height: 1; text-shadow: var(--bold); letter-spacing: 0.0625em; }
@@ -517,7 +517,7 @@ const title = 'POKEDAISY'.split('');
 </style>
 
 <script>
-  import { apkDownloads } from '../lib/releases.js';
+  import { releaseDownloads } from '../lib/releases.js';
 
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -579,7 +579,7 @@ const title = 'POKEDAISY'.split('');
   fetch('https://api.github.com/repos/lidor30/pokedaisy/releases?per_page=100', { headers: { Accept: 'application/vnd.github+json' } })
     .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
     .then((list: any[]) => {
-      const n = apkDownloads(list);
+      const n = releaseDownloads(list);
       if (dl && n > Number(dl.querySelector('[data-downloads-count]')!.textContent!
         .replace(/\D/g, ''))) {
         dl.querySelector('[data-downloads-count]')!.textContent = n.toLocaleString(document.documentElement.lang);

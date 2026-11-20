@@ -33,18 +33,18 @@ export async function getReleases() {
   return cached;
 }
 
-/** Every APK download across all releases (pre-releases too), summed. The page refreshes it in the browser. */
-export function apkDownloads(list) {
+/** Every file's downloads across all releases (pre-releases too), summed: GitHub's own total, so the APK, the Linux
+ *  packages, the 3DS files and their QR codes all count. The page refreshes it in the browser. */
+export function releaseDownloads(list) {
   return list
     .filter((r) => !r.draft)
     .flatMap((r) => r.assets ?? [])
-    .filter((a) => a.name.endsWith('.apk'))
     .reduce((n, a) => n + (a.download_count ?? 0), 0);
 }
 
 let downloads;
 
-/** [apkDownloads] at build time, every page of releases; 0 offline (the page then shows nothing until it reads them). */
+/** [releaseDownloads] at build time, every page of releases; 0 offline (the page then shows nothing until it reads them). */
 export async function getDownloads() {
   if (downloads !== undefined) return downloads;
   try {
@@ -58,7 +58,7 @@ export async function getDownloads() {
       all = all.concat(list);
       if (list.length < 100) break;
     }
-    downloads = apkDownloads(all);
+    downloads = releaseDownloads(all);
   } catch (e) {
     console.warn(`[releases] couldn't count downloads: ${e.message}`);
     downloads = 0;

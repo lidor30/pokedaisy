@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { markdown, highlights, apkDownloads } from '../src/lib/releases.js';
+import { markdown, highlights, releaseDownloads } from '../src/lib/releases.js';
 
 test('release notes keep their markdown', () => {
   assert.equal(markdown('## New\n- **Big** `x` [site](https://a.b/c)'),
@@ -15,12 +15,12 @@ test("release notes can't inject HTML", () => {
   assert.ok(!highlights('## New\n- <script>alert(1)</script>')[0].includes('<script'));
 });
 
-test('downloads count every APK, pre-releases too, never drafts or other files', () => {
+test('downloads count every file, pre-releases too, never drafts', () => {
   const apk = (n) => ({ name: 'PokeDaisy-1.0.apk', download_count: n });
-  assert.equal(apkDownloads([
-    { assets: [apk(10), { name: 'notes.txt', download_count: 99 }] },
+  assert.equal(releaseDownloads([
+    { assets: [apk(10), { name: 'pokedaisy-linux-x86_64.zip', download_count: 99 }] },
     { prerelease: true, assets: [apk(5)] },
     { draft: true, assets: [apk(1000)] },
     { assets: [] },
-  ]), 15);
+  ]), 114);
 });
