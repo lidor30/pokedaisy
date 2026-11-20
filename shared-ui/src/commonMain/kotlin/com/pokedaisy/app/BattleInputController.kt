@@ -45,6 +45,8 @@ class BattleInputController(
     /** Calls one of the game's functions between frames (r0-r3, r0 back; -1 = it never returned): LAST BALL's
      * RemoveBagItem and fade ([throwBall]). Null = no throws. */
     private val caller: ((fn: Long, a0: Int, a1: Int, a2: Int, a3: Int) -> Long)? = null,
+    /** A host can enable the throw's verified writes while leaving ordinary menu navigation alone. */
+    private val ballWriter: ((Long, ByteArray) -> Boolean)? = writer,
 ) {
 
     /**
@@ -736,7 +738,7 @@ class BattleInputController(
      * turned round. The game throws it. If any of that can't be done the bag just opens, as BAG would.
      */
     fun throwBall(fns: com.pokedaisy.app.companion.data.BattleBall.Fns, itemId: Int, removeBagItem: Long) {
-        if (caller == null || writer == null) return
+        if (caller == null || ballWriter == null) return
         synchronized(lock) {
             pendingMoveIndex = null
             pickCellLocked(1, move = false)
@@ -754,7 +756,7 @@ class BattleInputController(
         val want = (f.openBag or 1L).toInt()
         val battler = (0 until MAX_BATTLERS).firstOrNull { le32(raw, it * 4) == want } ?: return
         val call = caller ?: return endThrowLocked("no caller")
-        val write = writer ?: return endThrowLocked("no writer")
+        val write = ballWriter ?: return endThrowLocked("no writer")
         val removed = call(throwRemove, throwItem, 1, 0, 0)
         if (removed == CALL_NOT_NOW) return   // mid-interrupt: the next frame (the bag's fade takes ~16)
         if (removed != 1L) return endThrowLocked("RemoveBagItem said no: the bag opens")

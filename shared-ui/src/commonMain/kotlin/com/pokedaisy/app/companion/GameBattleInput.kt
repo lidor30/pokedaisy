@@ -19,6 +19,7 @@ class GameBattleInput(
     var changed: () -> Unit = {},
     private val silent: () -> Boolean = { false },
     private val retryUnshownBattle: Boolean = false,
+    ballWriter: ((Long, ByteArray) -> Boolean)? = writer,
 ) : BattleInput {
     private var script = 0
     private var exclusive = false
@@ -28,9 +29,14 @@ class GameBattleInput(
     val controller = BattleInputController(ScriptInput { bits, owns ->
         script = bits; exclusive = owns
         input?.setScript(bits, owns)
-    }, reader, writer = writer, caller = caller).apply {
+    }, reader, writer = writer, caller = caller, ballWriter = ballWriter).apply {
         stateNow = { telemetry.refreshBattleInputFast()?.second }
     }
+
+    var ball: GameLastBall? = null
+        internal set
+    override val lastBall get() = ball?.current
+    override fun throwBall() { ball?.throwBall() }
 
     override val busy get() = controller.isBusy
     override val menuCursor get() = controller.menuCursor

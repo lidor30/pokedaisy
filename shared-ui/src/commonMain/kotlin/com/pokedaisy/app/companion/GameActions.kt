@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion
 
 import com.pokedaisy.app.Hotkeys
+import com.pokedaisy.app.game.RewindHold
+import com.pokedaisy.app.game.RewindHold.Source
 import kotlin.time.TimeSource
 
 private val actionClockOrigin = TimeSource.Monotonic.markNow()
@@ -13,8 +15,10 @@ class GameActions(
     private val hold: (Hotkeys.Action, Boolean) -> Unit,
     private val companion: () -> Unit,
     private val nowMillis: () -> Long = { actionClockOrigin.elapsedNow().inWholeMilliseconds },
+    private val rewindHold: RewindHold = RewindHold(),
+    private val canRewind: () -> Boolean = { true },
+    private val rewindDenied: () -> Unit = {},
 ) {
-    enum class Source { HARDWARE, TOUCH }
     private var closed = false
     private var ffDownAt: Long? = null
     private val held = mutableMapOf<Hotkeys.Action, Set<Source>>()
@@ -26,20 +30,45 @@ class GameActions(
         if (before.isNotEmpty() != after.isNotEmpty()) hold(action, after.isNotEmpty())
     }
 
+    private fun rewind(source: Source, down: Boolean) =
+        rewindChanged(rewindHold.update(source, down, allowed = !down || canRewind()))
+
+    private fun rewindChanged(change: RewindHold.Change) {
+        when (change) {
+            RewindHold.Change.STARTED -> hold(Hotkeys.Action.REWIND_HOLD, true)
+            RewindHold.Change.STOPPED -> hold(Hotkeys.Action.REWIND_HOLD, false)
+            RewindHold.Change.DENIED -> rewindDenied()
+            RewindHold.Change.UNCHANGED -> Unit
+        }
+    }
+
     /** Release one input owner without cancelling the other's holds. Called on the host's input thread. */
     fun cancelHardware() = release(Source.HARDWARE)
     private fun release(source: Source) {
+        rewind(source, false)
         for (action in held.keys.toList()) hold(action, false, source)
     }
 
     /** State changes can quarantine a particular action until a new press. */
     fun release(action: Hotkeys.Action) {
+        if (action == Hotkeys.Action.REWIND_HOLD) {
+            rewindChanged(rewindHold.revoke())
+            return
+        }
         if (action == Hotkeys.Action.FF_HOLD) ffDownAt = null
         if (held.remove(action)?.isNotEmpty() == true) hold(action, false)
     }
 
+    /** End the toggle and every FF hold, including a touch that would otherwise toggle on release. */
+    fun stopFastForward() {
+        if (closed) return
+        if (settings.ffToggled) settings.setFfToggled(false)
+        release(Hotkeys.Action.FF_HOLD)
+    }
+
     fun clear() {
         ffDownAt = null
+        rewindChanged(rewindHold.clear())
         for (action in held.keys.toList()) release(action)
     }
 
@@ -53,6 +82,10 @@ class GameActions(
     fun hotkey(event: Hotkeys.Event): Boolean {
         val action = event.action
         if (closed) return action in BASIC_ACTIONS
+        if (action == Hotkeys.Action.REWIND_HOLD) {
+            rewind(Source.HARDWARE, event.pressed)
+            return true
+        }
         if (action in HELD) {
             hold(action, event.pressed, Source.HARDWARE)
             return true
@@ -93,7 +126,7 @@ class GameActions(
             }
             TouchButton.SAVE_STATE -> if (down) slots.requestSave(slots.currentIndex)
             TouchButton.LOAD_STATE -> if (down) slots.requestLoad(slots.currentIndex)
-            TouchButton.REWIND -> hold(Hotkeys.Action.REWIND_HOLD, down, Source.TOUCH)
+            TouchButton.REWIND -> rewind(Source.TOUCH, down)
             else -> return false
         }
         return true
@@ -105,7 +138,7 @@ class GameActions(
     }
 
     companion object {
-        private val HELD = setOf(Hotkeys.Action.FF_HOLD, Hotkeys.Action.SLOWMO_HOLD, Hotkeys.Action.REWIND_HOLD)
+        private val HELD = setOf(Hotkeys.Action.FF_HOLD, Hotkeys.Action.SLOWMO_HOLD)
         val BASIC_ACTIONS = listOf(Hotkeys.Action.SAVE_STATE, Hotkeys.Action.LOAD_STATE, Hotkeys.Action.UNDO_SAVE,
             Hotkeys.Action.UNDO_LOAD, Hotkeys.Action.SLOT_NEXT, Hotkeys.Action.SLOT_PREV, Hotkeys.Action.FF_HOLD,
             Hotkeys.Action.FF_TOGGLE, Hotkeys.Action.SPEED_CYCLE, Hotkeys.Action.SLOWMO_HOLD, Hotkeys.Action.REWIND_HOLD,

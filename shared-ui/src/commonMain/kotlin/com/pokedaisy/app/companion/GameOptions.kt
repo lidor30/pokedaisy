@@ -27,11 +27,11 @@ class GameOptions internal constructor(
                          val text: InstantText.Patch? = null, val hm: HmFree.Patch? = null,
                          val exp: ExpShare.Found? = null, val cap: LevelCap.Found? = null,
                          val center: PokemonCenter.Found? = null,
-                         /** A Game Boy cart's LOW HP BEEP off ([GbGamePatches]: the GBA's comes from QuietPatches, by the host). */
+                         /** A Game Boy cart's LOW HP BEEP off ([GbGamePatches]: the GBA's comes from QuietPatches). */
                          val gbBeep: InstantText.Patch? = null,
                          val gbPoison: InstantText.Patch? = null,
                          /** A Game Boy cart's RUNNING SHOES ([GbGamePatches.Found.run]). */
-                         val gbRun: InstantText.Patch? = null)
+                         val gbRun: InstantText.Patch? = null, val quiet: QuietPatches.Found? = null)
     private data class Patches(val sites: List<ReusableTms.Site> = emptyList(), val tms: Boolean = false,
                                val text: InstantText.Patch? = null, val instant: Boolean = false,
                                val hm: HmFree.Patch? = null, val full: ExpShare.Found? = null,
@@ -72,6 +72,9 @@ class GameOptions internal constructor(
      * frame): the mode's id while it's on, else 0; [expSharePartyMask] the party it marks. */
     val dsExpShareMode: Int get() = if (expShareActive && expMetadata.value?.ds == true) expMode.value.id else 0
     val expSharePartyMask: Int get() = partyMask.value
+    val runningShoesSupported get() = allowed() && discovery.gbRun != null
+    val lowHpBeepSupported get() = allowed() && (discovery.quiet?.beep ?: discovery.gbBeep) != null
+    val fieldPoisonSupported get() = allowed() && (discovery.quiet?.poison ?: discovery.gbPoison) != null
     val levelCapSupported get() = allowed() && discovery.cap != null && capBosses.value != false
     val levelCapNow: LevelCap.Cap? get() { revision; return capNow.value }
     val dirty get() = !closed.value && if (allowed()) desired.value != applied else appliedAny
@@ -103,9 +106,19 @@ class GameOptions internal constructor(
     fun setLevelCap(found: LevelCap.Found?, level: Int) {
         desired.update { it.copy(cap = found.takeIf { level in 1..99 }, level = level.takeIf { it in 1..99 } ?: 0) }
     }
-    /** LOW HP BEEP / FIELD POISON off: the ROM's patches ([QuietPatches.find], by the host) and which go in. */
+    /** Used by the Android host until discovery and preferences move to this runtime. */
     fun setQuietPatches(found: QuietPatches.Found?, beepOff: Boolean, poisonOff: Boolean) {
         desired.update { it.copy(beep = found?.beep.takeIf { beepOff }, poison = found?.poison.takeIf { poisonOff }) }
+    }
+
+    fun setQuietOptions(beep: Boolean, poison: Boolean) {
+        val metadata = found.value
+        desired.update {
+            it.copy(
+                beep = (metadata.quiet?.beep ?: metadata.gbBeep).takeUnless { beep },
+                poison = (metadata.quiet?.poison ?: metadata.gbPoison).takeUnless { poison },
+            )
+        }
     }
     /** RUNNING SHOES: the cart's patch ([Discovery.gbRun]) in while [on]. */
     fun setRunningShoes(found: InstantText.Patch?, on: Boolean) {
@@ -173,14 +186,22 @@ class GameOptions internal constructor(
         HmFree.active = false; revision++
     }
 
-    fun settingsChanged(s: CompanionSettings) {
-        autoRun = s.autoRun; runIndoors = s.runIndoors; wildEncounters = s.wildEncounters
+    fun settingsChanged(
+        s: CompanionSettings,
+        runIndoorsSupported: Boolean = true,
+        reusableTmsBuiltIn: Boolean = s.reusableTmsBuiltIn,
+    ) {
+        autoRun = s.autoRun
+        runIndoors = s.runIndoors && runIndoorsSupported
+        wildEncounters = s.wildEncounters
         val metadata = found.value
-        setReusableTms(metadata.sites, s.reusableTms && !s.reusableTmsBuiltIn)
+        setReusableTms(metadata.sites, s.reusableTms && !reusableTmsBuiltIn)
         setInstantText(metadata.text, s.instantText)
         setHmFree(metadata.hm, s.hmFree)
         setExpShare(metadata.exp, s.expShare)
         setLevelCapEnabled(s.levelCap)
+        setQuietOptions(s.lowHpBeep, s.fieldPoison)
+        setRunningShoes(metadata.gbRun, s.runningShoes)
     }
 
     /** Discovery reads files off-thread; publication, availability checks and host notifications use its UI dispatcher. */
@@ -198,7 +219,8 @@ class GameOptions internal constructor(
                 runCatching { HmFree.find(path) }.getOrNull(),
                 runCatching { ExpShare.find(path) }.getOrNull(),
                 runCatching { LevelCap.find(path) }.getOrNull(),
-                runCatching { PokemonCenter.find(path) }.getOrNull())
+                runCatching { PokemonCenter.find(path) }.getOrNull(),
+                quiet = runCatching { QuietPatches.find(path) }.getOrNull())
             withContext(publish) {
                 if (closed.value || ticket != generation.value || !allowed()) return@withContext
                 found.value = result

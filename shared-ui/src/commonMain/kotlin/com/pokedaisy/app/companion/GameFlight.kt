@@ -34,7 +34,7 @@ class GameFlight(
 ) {
     private val closed = atomic(false)
     private val generation = atomic(0)
-    private val areaQueued = atomic(false)
+    private val areaQueued = atomic<Any?>(null)
     private val configurationQueued = atomic<Any?>(null)
     private val scenicRun = atomic(false)
     private val observedState = atomic(FlightCore.IDLE)
@@ -93,17 +93,18 @@ class GameFlight(
                 }
             }
         }
-        if (!areaQueued.compareAndSet(false, true)) return
+        val request = Any()
+        if (!areaQueued.compareAndSet(null, request)) return
         val onGround = standing() && !inBattle()
         session.requestField(false) { calls, busy ->
             try {
-                if (closed.value || support() == null) return@requestField
+                if (areaQueued.value !== request || closed.value || support() == null) return@requestField
                 area(fields, calls, onGround && !busy)
                 if (core.flightAreaTurned) ui {
                     val timeNow = now()
                     if (timeNow - toldAt >= 4000) { toldAt = timeNow; turned() }
                 }
-            } finally { areaQueued.value = false }
+            } finally { areaQueued.compareAndSet(request, null) }
         }
     }
 
@@ -124,6 +125,7 @@ class GameFlight(
     fun reset() {
         cancelActions(); keeper.resend(); anywhereSent = false
         configurationQueued.value = null
+        areaQueued.value = null
         observedState.value = FlightCore.IDLE; stateRevision++; scenicRun.value = false
     }
 

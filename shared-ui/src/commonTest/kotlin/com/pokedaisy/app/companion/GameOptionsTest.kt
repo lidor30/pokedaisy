@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion
 
+import com.pokedaisy.app.Prefs
 import com.pokedaisy.app.companion.data.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
@@ -41,6 +42,28 @@ class GameOptionsTest {
             assertFalse(indoor); assertEquals(0, keep)
             options.wildEncounters = 17; options.fieldState(step, wildKnown = true)
             assertEquals(100, keep)
+        } finally { options.close() }
+    }
+
+    @Test fun settingsUpdatePreservesTheHostsIndoorsSupportAndEncounterRates() {
+        val prefs = Prefs(PrefsCompanionSettingsTest.Store()).apply {
+            autoRun = true
+            runIndoors = true
+            wildEncounters = 0
+        }
+        val settings = PrefsCompanionSettingsTest.Settings(prefs)
+
+        val options = GameOptions(Core(), { true })
+        try {
+            options.settingsChanged(settings, runIndoorsSupported = false)
+            assertTrue(options.autoRun)
+            options.fieldState({ indoors, wild ->
+                assertFalse(indoors)
+                assertEquals(0, wild)
+                GameField.AVATAR
+            }, wildKnown = true)
+            options.settingsChanged(settings)
+            assertTrue(options.runIndoors)
         } finally { options.close() }
     }
 

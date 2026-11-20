@@ -46,6 +46,7 @@ class GameFlightTest {
         var areaWrites = 0
         var nativeState = 0
         var turned = false
+        var turnPolls = 0
         var notices = 0
         var handoffs = 0
         val deliveries = mutableListOf<() -> Unit>()
@@ -68,7 +69,7 @@ class GameFlightTest {
             override fun flightLand() { lands++ }
             override fun setFlightRoute(directions: ByteArray) = 0
             override fun setFlightArea(bits: ByteArray?) { areaWrites++ }
-            override val flightAreaTurned get() = turned.also { turned = false }
+            override val flightAreaTurned get() = turned.also { turned = false; turnPolls++ }
             override val flightState get() = nativeState
         }
         val session = GameSession(calls, { true }) { _, e -> throw e }
@@ -153,6 +154,39 @@ class GameFlightTest {
         h.owner.sync(); h.frame(); h.deliver(); assertEquals(1, h.areaWrites)
         h.owner.reset(); h.owner.sync(); h.frame(); h.deliver(); assertEquals(2, h.areaWrites)
         h.owner.close()
+    }
+
+    @Test fun restartDiscardsPendingAreaWorkAndResendsToTheNewCore() {
+        val h = Harness()
+        try {
+            h.owner.sync()
+            h.owner.reset()
+            h.session.reset()
+            h.owner.sync()
+            h.frame()
+
+            assertEquals(1, h.configured)
+            assertEquals(1, h.areaWrites)
+        } finally {
+            h.owner.close()
+        }
+    }
+
+    @Test fun staleAreaCallbackCannotClearTheNewCoreRequest() {
+        val h = Harness()
+        try {
+            h.owner.sync()
+            h.session.requestField(false) { _, _ -> h.owner.sync() }
+            h.owner.reset()
+            h.owner.sync()
+            h.frame()
+            h.frame()
+
+            assertEquals(1, h.areaWrites)
+            assertEquals(1, h.turnPolls)
+        } finally {
+            h.owner.close()
+        }
     }
 
     @Test fun stateChangesInvalidateQueuedStartsAndPendingUiHandoffs() {

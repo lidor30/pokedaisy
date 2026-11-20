@@ -197,6 +197,15 @@ object FeatureTips {
             scheduler = it
         }
 
+    /** The game screen is going away, including any unanswered card on it. */
+    fun endGame() {
+        available = { false }
+        scheduler?.let {
+            it.current?.let(it::timedOut)
+            it.save()
+        }
+    }
+
     /** The player found [tip]'s feature: no card for it, ever. */
     fun used(tip: TipId) = scheduler?.used(tip)
 

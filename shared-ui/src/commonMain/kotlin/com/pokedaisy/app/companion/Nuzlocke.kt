@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.atomicfu.locks.SynchronizedObject
 import androidx.compose.runtime.mutableStateOf
+import com.pokedaisy.app.Prefs
 import com.pokedaisy.app.companion.data.GameKind
 import com.pokedaisy.app.companion.data.NuzlockeEvent
 import com.pokedaisy.app.companion.data.NuzlockeOutcome
@@ -18,8 +19,8 @@ import com.pokedaisy.app.companion.i18n.tr
 /**
  * SETTINGS > NUZLOCKE and the NUZLOCKE tab, for the running ROM (another game's areas and Pokémon mean nothing here):
  * whether it's on and its run ([com.pokedaisy.app.companion.data.NuzlockeTracker]). Compose state, so the tab and the
- * party's marks follow each sample; the activity [load]s each ROM's from Prefs (keyed by its CRC32) and every change is
- * stored through `save`. Off keeps the run, to pick up where it was when it's turned on again; NEW RUN clears it.
+ * party's marks follow samples from the active game. Prefs keeps a run per ROM CRC32. Turning it off keeps progress,
+ * and NEW RUN clears it.
  * Previews start off and store nothing ([preview] shows one).
  */
 object Nuzlocke {
@@ -30,6 +31,8 @@ object Nuzlocke {
     private var saveRun: (String) -> Unit = {}
 
     private val lock = SynchronizedObject()
+    private var generation = 0
+    const val NOTICE_MILLIS = 3500L
 
     val on: Boolean get() = onState.value
     val run: NuzlockeRun get() = runState.value
@@ -44,8 +47,29 @@ object Nuzlocke {
     /** A party Pokémon out of the run (fainted once), while NUZLOCKE is on. */
     fun isDead(personality: Long): Boolean = on && runState.value.isDead(com.pokedaisy.app.companion.data.nuzlockeId(personality))
 
-    /** [on] / [stored] are this ROM's; the two savers write changes back. */
+    /** Start this ROM's live run and return the identity used by its sampler and teardown. */
+    fun start(prefs: Prefs, romKey: String): Int = synchronized(lock) {
+        loadRun(prefs.nuzlockeFor(romKey), prefs.nuzlockeRunFor(romKey),
+            { prefs.setNuzlockeFor(romKey, it) }, { prefs.setNuzlockeRunFor(romKey, it) })
+        ++generation
+    }
+
+    fun close(game: Int) = synchronized(lock) {
+        if (game == generation) {
+            generation++
+            loadRun(false, null, {}, {})
+        }
+    }
+
+    /** Compatibility entry for the Android host until it owns a run through [start]. */
     fun load(on: Boolean, stored: String?, saveOn: (Boolean) -> Unit, saveRun: (String) -> Unit) = synchronized(lock) {
+        loadRun(on, stored, saveOn, saveRun)
+        generation++
+    }
+
+    fun onSample(s: SnapshotView): List<String> = synchronized(lock) { onSample(generation, s) }
+
+    private fun loadRun(on: Boolean, stored: String?, saveOn: (Boolean) -> Unit, saveRun: (String) -> Unit) {
         this.saveOn = saveOn
         this.saveRun = saveRun
         val r = NuzlockeRun.decode(stored)
@@ -63,8 +87,8 @@ object Nuzlocke {
      * A fresh sample (any thread, the activity's afterSample): what it changed goes into the run, and the notices for the
      * game screen come back, worded (none with WARNINGS off, or NUZLOCKE off).
      */
-    fun onSample(s: SnapshotView): List<String> = synchronized(lock) {
-        if (!onState.value || !s.connected || s.unsupported || !supports(s.game)) return@synchronized emptyList()
+    fun onSample(game: Int, s: SnapshotView): List<String> = synchronized(lock) {
+        if (game != generation || !onState.value || !s.connected || s.unsupported || !supports(s.game)) return@synchronized emptyList()
         val before = tracker.run
         val events = tracker.feed(NuzlockeSample.of(s))
         if (tracker.run != before) store(tracker.run)
@@ -97,7 +121,10 @@ object Nuzlocke {
     }
 
     /** Screenshot tests and ui-preview: [r] shown, on, stored nowhere. */
-    fun preview(r: NuzlockeRun) = load(true, r.encode(), {}, {})
+    fun preview(r: NuzlockeRun): Int = synchronized(lock) {
+        loadRun(true, r.encode(), {}, {})
+        ++generation
+    }
 
     private fun notice(e: NuzlockeEvent): String = when (e) {
         is NuzlockeEvent.FirstEncounter -> tr("First encounter in {0}: {1}", e.areaName, e.foe)
