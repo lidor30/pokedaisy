@@ -44,5 +44,6 @@ class UnboundDecodeTest {
         }
         val t = readNativeTelemetry(reader, NATIVE_UNBOUND)
         assertTrue(t.party[0].isEgg)
+        assertEquals(GENDER_SYMBOL_NONE, t.party[0].genderSymbol)
     }
 }

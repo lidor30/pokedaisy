@@ -66,19 +66,6 @@ val MonView.eggHatchName: String? get() =
     if (!isEgg || species <= 0 || species == SPECIES_EGG_VANILLA || species == activeNativeConfig?.eggSpecies) null
     else speciesName(species)
 
-/**
- * Does this string read as text, or is it a translated ROM's own character set decoded as ours?
- * Those come out as rows of "?", of accented Latin letters, or of U+FFFD boxes - the decoder's
- * unknown-byte glyph, which no real game text contains. A short name with more than a third such
- * characters, or any U+FFFD at all, is unreadable and the caller falls back to a name it knows.
- */
-fun String.readsAsText(): Boolean {
-    if (isBlank()) return false
-    if (contains('\uFFFD')) return false
-    val odd = count { it == '?' || it.code in 0xC0..0x24F || it.code in 0xE0..0xFF }
-    return odd * 3 < length
-}
-
 /** [total] EXP; this level starts at [levelStart], the next at [nextLevel] (== levelStart at Lv100). */
 data class ExpProgress(val total: Long, val levelStart: Long, val nextLevel: Long) {
     val toNext: Long get() = (nextLevel - total).coerceAtLeast(0)

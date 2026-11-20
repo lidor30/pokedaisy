@@ -354,9 +354,10 @@ fun decodeBoxMon(
         BoxRecordFormat.CFRU -> cfruBoxSubstructs(raw, off, movePp)
     } ?: return null
     if (dec.species == 0) return null
-    // Vanilla keeps the flag in the header byte too; CFRU's compressed record keeps only the IV word's bit.
+    // Vanilla keeps the flag in the header byte too; CFRU's compressed record keeps only the IV word's bit, and so do
+    // the plain structs that keep their egg there (Quetzal: its header byte isn't vanilla's flags).
     val egg = (dec.ivWord shr 30) and 1L == 1L ||
-        (format != BoxRecordFormat.CFRU && (raw[off + layout.flags].toInt() and layout.eggMask) != 0)
+        (format != BoxRecordFormat.CFRU && !layout.eggInIvWord && (raw[off + layout.flags].toInt() and layout.eggMask) != 0)
     val rate = growthRate(dec.species)?.takeIf { it in expTables.indices } ?: gen3GrowthRates.getOrNull(dec.species)?.toInt()
     val level = boxMonLevel(expTables, rate, dec.exp)
     val ivs = List(6) { ((dec.ivWord shr (5 * it)) and 0x1F).toInt() }

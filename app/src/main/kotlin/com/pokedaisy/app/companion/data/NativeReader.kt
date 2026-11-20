@@ -1017,16 +1017,9 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
     if (egg) {
         // The egg keeps its species: the summary draws the egg's name and icon from isEgg, but the species' own
         // types and base stats let the companion show matchups and a STATS page before it hatches. [eggSpecies]
-        // replaces it only where a hack stores a placeholder instead of the real species; the hatch species'
-        // gender comes from the same ratio the game uses.
-        val r = if (eggSpecies == 0) ratios.getOrNull(species) ?: 255 else 255
-        val gender = when (r) {
-            255 -> GENDER_SYMBOL_NONE
-            0 -> GENDER_SYMBOL_MALE
-            254 -> GENDER_SYMBOL_FEMALE
-            else -> if ((raw[off].toInt() and 0xFF) < r) GENDER_SYMBOL_FEMALE else GENDER_SYMBOL_MALE
-        }
-        return copy(species = if (eggSpecies != 0) eggSpecies else species, genderSymbol = gender, isEgg = true)
+        // replaces it only where a hack stores a placeholder instead of the real species. No gender, as the game
+        // shows none on an egg (the party slots draw the symbol).
+        return copy(species = if (eggSpecies != 0) eggSpecies else species, genderSymbol = GENDER_SYMBOL_NONE, isEgg = true)
     }
     if (species !in ratios.indices) return this
     if (species == 29 || species == 32) {
