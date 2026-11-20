@@ -122,6 +122,8 @@ The clock follows your device's 12 or 24 hour setting. Money shows for the games
 
 ## Shaders
 
+On iPhone and iPad, `DISPLAY OPTIONS` > `SHADERS` offers `FILTER`, `GRID`, `GBA COLORS` and `UNLIT SCREEN` for the game picture. Choices are remembered and combine with `ORIGINAL`, `STRETCH`, `EXPAND` and game borders. `ON COMPANION` also applies your filter and GBA colors to the companion, HUD and panel controls. Touch controls and touch-skin artwork keep their own look. `SMOOTHING` offers `OFF`, `xBRZ`, `xBR` and `SCALEFX`, using the same presets as Android.
+
 `SHADERS` opens a page of effects for how the game is drawn. They stack: you can have smoothing, the GBA's colours, the unlit screen and a filter all at once.
 
 ![The SHADERS page with FILTER, GRID, SMOOTHING, GBA COLORS, UNLIT SCREEN and ON COMPANION rows](shots/settings-shaders.png)
@@ -149,6 +151,8 @@ The clock follows your device's 12 or 24 hour setting. Money shows for the games
 - `xBR`: rounder and softer.
 - `SCALEFX`: the most even outlines.
 
+On iPhone and iPad, tap to switch between `OFF`, `xBRZ`, `xBR` and `SCALEFX`. Smoothing combines with your filter, GBA colors and unlit screen setting.
+
 Smoothing only applies to the game, never to the companion. On devices whose graphics chip can't run it, the row shows `N/A`.
 
 ### GBA COLORS
@@ -161,7 +165,7 @@ The first GBA had no light behind its screen. Light from the room went in throug
 
 ### On the companion too
 
-`ON COMPANION` (on by default) puts the same `FILTER` and `GBA COLORS` (not `UNLIT SCREEN`) over the companion screen and the status bar, so both screens match. The grid is sized to the game's pixels, so the lines line up with the top screen's. This needs Android 13 or newer; on older devices the companion keeps its plain look. A DS game's touch screen is part of the game, so it gets `FILTER` and `GBA COLORS` either way (Android 13 and newer).
+`ON COMPANION` (on by default) puts the same `FILTER` and `GBA COLORS` (not `UNLIT SCREEN`) over the companion screen, so both screens match. The grid is sized to the game's pixels. On iPhone and iPad it also styles the HUD and panel controls. On Android it also styles the app's status bar and needs Android 13 or newer; on older Android devices the companion keeps its plain look. A DS game's touch screen is part of the game, so it gets `FILTER` and `GBA COLORS` either way (Android 13 and newer).
 
 ## Overlay: a frame around the game
 

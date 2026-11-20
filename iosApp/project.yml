@@ -20,6 +20,10 @@ targets:
       - path: ../app/src/main/assets/fonts
         type: folder
         buildPhase: resources
+      # Original libretro shaders; iOS adapts their transport syntax rather than copying algorithms.
+      - path: ../app/src/main/assets/shaders
+        type: folder
+        buildPhase: resources
     info:
       path: PokeDaisy/Info.plist
       properties:

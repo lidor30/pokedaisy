@@ -30,6 +30,7 @@ object NewFeatures {
     const val IOS_FF_AUDIO = "ios_ff_audio"
     const val IOS_STEADY_MUSIC = "ios_steady_music"
     const val IOS_CLICK_SOUND = "ios_click_sound"
+    const val IOS_SCALEFX_SMOOTHING = "ios_scalefx_smoothing"
     const val IOS_DAY_NIGHT = "ios_day_night"
     const val IOS_SHINY_ODDS = "ios_shiny_odds"
     const val IOS_FLIGHT = "ios_flight"
@@ -46,6 +47,10 @@ object NewFeatures {
     const val IOS_RIVAL_LOOK = "ios_rival_look"
     const val IOS_PLAYER_LOOK = "ios_player_look"
     const val IOS_FOLLOWER = "ios_follower"
+    const val IOS_XBR_SMOOTHING = "ios_xbr_smoothing"
+    const val IOS_GAME_SMOOTHING = "ios_game_smoothing"
+    const val IOS_COMPANION_EFFECTS = "ios_companion_effects"
+    const val IOS_SCREEN_EFFECTS = "ios_screen_effects"
     const val IOS_TOUCH_XY = "ios_touch_xy"
     const val IOS_CHEATS = "ios_cheats"
     const val IOS_FIELD_ITEMS = "ios_field_items"
@@ -335,7 +340,7 @@ object NewFeatures {
         IOS_FF_AUDIO,
         IOS_STEADY_MUSIC,
         IOS_CLICK_SOUND,
-        IOS_DAY_NIGHT, IOS_SHINY_ODDS, IOS_FLIGHT, IOS_FOLLOWER, IOS_PLAYER_LOOK, IOS_RIVAL_LOOK, IOS_TEXT_LOOK, IOS_RIDE_ON, IOS_POKEMON_COSTUMES, IOS_AUTO_REFILL, IOS_SHINY_ALERT, IOS_LAST_BALL, IOS_BOSS_RETRY, IOS_LOW_HP_BEEP, IOS_FIELD_POISON, IOS_NUZLOCKE,
+        IOS_SCREEN_EFFECTS, IOS_COMPANION_EFFECTS, IOS_GAME_SMOOTHING, IOS_XBR_SMOOTHING, IOS_SCALEFX_SMOOTHING, IOS_DAY_NIGHT, IOS_SHINY_ODDS, IOS_FLIGHT, IOS_FOLLOWER, IOS_PLAYER_LOOK, IOS_RIVAL_LOOK, IOS_TEXT_LOOK, IOS_RIDE_ON, IOS_POKEMON_COSTUMES, IOS_AUTO_REFILL, IOS_SHINY_ALERT, IOS_LAST_BALL, IOS_BOSS_RETRY, IOS_LOW_HP_BEEP, IOS_FIELD_POISON, IOS_NUZLOCKE,
         IOS_CHEATS,
         IOS_FIELD_ITEMS,
         IOS_CLASSIC_FLY,

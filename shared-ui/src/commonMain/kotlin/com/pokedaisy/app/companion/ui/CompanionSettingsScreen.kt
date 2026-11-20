@@ -279,7 +279,8 @@ fun CompanionSettingsScreen(
                             ) { settings.resetHotkeys(); tick++ }
                         } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     }
-                    Page.SHADERS -> shaderRows(settings) { tick++ } + SettingRow(tk("CANCEL"), null) { page = Page.DISPLAY }
+                    Page.SHADERS -> shaderRows(settings) { tick++ }
+                        .let { rows -> settings.shownRows?.let { onlyRows(rows, it) } ?: rows } + SettingRow(tk("CANCEL"), null) { page = Page.DISPLAY }
                     Page.FIELD_HUD -> fieldHudRows(
                         settings.fieldHud, settings.fieldHudStyle,
                         setOn = { settings.setFieldHud(it); tick++ },
@@ -1281,7 +1282,7 @@ private fun displayRows(s: CompanionSettings, changed: () -> Unit, navigate: (Pa
             })
         },
         // FILTER (LCD / LCD PAPER / SCANLINES / CRT) and GBA COLORS, on their own page.
-        SettingRow(tk("SHADERS"), s.screenFilter.label, setting = SharedSetting.SHADERS, opensPage = true, subtitle = "LCD, CRT and scanline looks, smoothing") { navigate(Page.SHADERS) },
+        SettingRow(tk("SHADERS"), s.screenFilter.label, setting = SharedSetting.SHADERS, opensPage = true, labelBadge = s.shadersBadge, subtitle = "LCD, CRT and scanline looks, smoothing") { navigate(Page.SHADERS) },
         // A frame around the game: NONE, the built-in ones, the player's imports (added on the top screen). Live.
         s.overlayChoices.takeIf { it.isNotEmpty() }?.let { choices ->
             val current = choices.firstOrNull { it.first == s.overlay }?.second ?: choices.first().second
@@ -1333,8 +1334,12 @@ private fun shaderRows(s: CompanionSettings, changed: () -> Unit): List<SettingR
             if (s.screenFilter.hasGrid) { s.setGridStrength(s.gridStrength.next()); changed() }
         },
         // OFF / xBRZ / xBR / SCALEFX, cycling too: smooths the game's edges before FILTER (the game only).
-        SettingRow(tk("SMOOTHING"), if (s.smoothingAvailable) s.smoothing.label else tk("N/A"), setting = SharedSetting.SMOOTHING, enabled = s.smoothingAvailable) {
-            if (s.smoothingAvailable) { s.setSmoothing(s.smoothing.next()); changed() }
+        SettingRow(tk("SMOOTHING"), if (s.smoothingAvailable) s.smoothing.label else tk("N/A"), setting = SharedSetting.SMOOTHING, enabled = s.smoothingAvailable, labelBadge = s.smoothingBadge) {
+            if (s.smoothingAvailable) {
+                val modes = s.smoothingModes
+                if (modes.isNotEmpty()) s.setSmoothing(modes[(modes.indexOf(s.smoothing) + 1) % modes.size])
+                changed()
+            }
         },
         // The colours as the GBA's own LCD showed them; stacks with any filter.
         SettingRow(tk("GBA COLORS"), if (s.gbaColors) tk("ON") else tk("OFF"), setting = SharedSetting.GBA_COLORS) { s.setGbaColors(!s.gbaColors); changed() },
@@ -1343,7 +1348,7 @@ private fun shaderRows(s: CompanionSettings, changed: () -> Unit): List<SettingR
             s.setUnlitScreen(!s.unlitScreen); changed()
         },
         // FILTER and GBA COLORS over this screen too (and the status bar).
-        SettingRow(tk("ON COMPANION"), if (s.companionShaders) tk("ON") else tk("OFF"), setting = SharedSetting.ON_COMPANION) { s.setCompanionShaders(!s.companionShaders); changed() },
+        SettingRow(tk("ON COMPANION"), if (s.companionShaders) tk("ON") else tk("OFF"), setting = SharedSetting.ON_COMPANION, labelBadge = s.companionShadersBadge) { s.setCompanionShaders(!s.companionShaders); changed() },
     )
 }
 

@@ -115,7 +115,8 @@ The app shows every license below in full under Settings > LICENSES.
   xBR level 2 and xBRZ freescale's xBR code, Copyright (C) 2011-2016 Hyllian, MIT
   License; xBRZ, Copyright (C) Zenju, GNU GPL 3.0 (from HqMAME); ScaleFX,
   Copyright (c) 2016 Sp00kyFox, MIT License
-  (third_party/licenses/libretro-shaders.txt).
+  (third_party/licenses/libretro-shaders.txt). iOS bundles the same original
+  assets; its Metal adapter translates shader transport and vector syntax at runtime.
 - Pixel Operator font (app/src/main/assets/fonts), by Jayvee Enaguas,
   CC0 1.0 (public domain dedication).
 - Atkinson Hyperlegible (app/src/main/assets/fonts, website/public/fonts: the manual's

@@ -138,7 +138,7 @@ internal class IosCompanionSettings(
     override val gamePickBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_GAME_PICKER)
     override val shownRows get() = SharedSetting.available(
         running = game != null, cheats = cheatHost()?.supported == true, gba = romCode != null,
-    ) - SharedSetting.SHADERS
+    )
 
     override val cheats get() = cheatHost()?.list.orEmpty()
     override fun setCheatsEnabled(on: Boolean) {
@@ -392,7 +392,15 @@ internal class IosCompanionSettings(
     override fun cancelOverlayImport() = IosOverlays.cancel()
     override fun deleteOverlay(id: String) { IosOverlays.delete(id).invokeOnCompletion { gameScreen()?.refreshPicture() } }
     override fun deleteAllOverlays() { IosOverlays.deleteAll().invokeOnCompletion { gameScreen()?.refreshPicture() } }
-    override val smoothingAvailable = false
-    override val smoothing = Smoothing.OFF
-    override fun setSmoothing(mode: Smoothing) {}
+    override val shadersBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_SCREEN_EFFECTS)
+    override val companionShadersBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_COMPANION_EFFECTS)
+    override val smoothingBadge get() = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_SCALEFX_SMOOTHING)
+        ?: com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_XBR_SMOOTHING)
+        ?: com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.IOS_GAME_SMOOTHING)
+    override val smoothingModes get() = IosSmoothing.modes
+    override val smoothingAvailable get() = smoothingModes.size > 1
+    override val smoothing get() = stored.smoothing.takeIf { it in smoothingModes } ?: Smoothing.OFF
+    override fun setSmoothing(mode: Smoothing) {
+        if (mode in smoothingModes) stored.setSmoothing(mode)
+    }
 }
