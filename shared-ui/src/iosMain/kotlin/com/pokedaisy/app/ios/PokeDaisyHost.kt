@@ -261,7 +261,11 @@ object PokeDaisyHost {
             }, onEditTouch = { if (game === g) touch.edit() }, readTouchStage = { touch.readStage().takeIf { game === g } }, gameScreen = { screen.takeIf { game === g } }, playback = { currentRuntime })
             .also { s ->
                 L10n.apply(s.appLanguage, code)
-                s.rewindChanged = { g.rewindEnabled = s.rewind; g.holdRewind(s.rewindHeld) }
+                s.rewindChanged = {
+                    g.rewindEnabled = s.rewind
+                    g.rewindHold.update(com.pokedaisy.app.game.RewindHold.Source.HARDWARE, s.rewindHeld)
+                    g.applyRewindHold()
+                }
                 s.rewindChanged()
             }
         battle = com.pokedaisy.app.companion.GameBattleInput(telemetry, code, revision, changed = { sample() }, silent = { g.audioSilent }).also { b ->
@@ -285,7 +289,9 @@ object PokeDaisyHost {
                 g.frameKeys = { held -> bKeys(o.keys(held, p.fieldState, p.onField,
                     com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN)) }
             }
-            g.beforeFrame = p::beforeFrame
+            g.beforeFrame = { work ->
+                if (work == com.pokedaisy.app.game.GameSession.FrameWork.ADVANCING) p.beforeFrame()
+            }
             g.afterFrame = {
                 p.tick()
                 steadyMusic?.frame(currentSettings.ffMusicMode, p.requestedSpeedNow() > 1f, currentSettings.clickSound)

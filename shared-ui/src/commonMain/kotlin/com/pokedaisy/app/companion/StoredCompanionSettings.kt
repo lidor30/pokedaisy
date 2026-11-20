@@ -176,4 +176,8 @@ interface StoredCompanionSettings {
     val fieldHudStyle: com.pokedaisy.app.companion.FieldHudStyle get() = com.pokedaisy.app.companion.FieldHudStyle()
     fun setFieldHudStyle(style: com.pokedaisy.app.companion.FieldHudStyle) {}
 
+    /** SETTINGS > BATTLE BUTTONS: one screen, FIGHT, POKéMON and RUN beside a battle - see [Prefs.battleButtons]. */
+    val battleButtons: Boolean get() = true
+    fun setBattleButtons(on: Boolean) {}
+
 }

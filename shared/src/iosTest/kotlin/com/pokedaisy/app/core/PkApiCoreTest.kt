@@ -58,6 +58,106 @@ class PkApiCoreTest {
     }
 
     @Test
+    fun appearanceBlocksAcceptTheSignedCrcAndRejectAMismatchedBatch() {
+        val addresses = intArrayOf(0x080000A0, 0x080000A1)
+        val lengths = intArrayOf(1, 1)
+        val crcs = intArrayOf(0xB969BE79u.toInt(), 0)
+        val bytes = byteArrayOf(0x11, 0x22)
+        assertEquals(-1, PkApiCore.replaceLookBlocks(addresses, lengths, crcs, bytes))
+        assertTrue(PkApiCore.start("$dir/diagnostic.gba", null))
+        assertEquals(-1, PkApiCore.replaceLookBlocks(addresses, lengths, crcs, bytes))
+        assertEquals(1, PkApiCore.replaceLookBlocks(
+            addresses.copyOf(1), lengths.copyOf(1), crcs.copyOf(1), bytes.copyOf(1)))
+        assertEquals(0, PkApiCore.replaceLookBlocks(intArrayOf(), intArrayOf(), intArrayOf(), byteArrayOf()))
+        assertEquals(1, PkApiCore.replaceLookBlocks(
+            addresses.copyOf(1), lengths.copyOf(1), crcs.copyOf(1), bytes.copyOf(1)))
+        assertTrue(!PkApiCore.refreshLook(null))
+        assertEquals(0, PkApiCore.repaletteLook(byteArrayOf(), ByteArray(32)))
+    }
+
+    @Test
+    fun followerAssetsCannotEnableAnUnknownGameOrLeakAcrossCoreTeardown() {
+        val frames = ByteArray(3072) { 0x11 }
+        val palette = ByteArray(32) { 0xFF.toByte() }
+        fun setAndClear() {
+            PkApiCore.setFollower(frames, palette)
+            PkApiCore.showFollower(true)
+            PkApiCore.setFollower(frames.copyOf(3071), palette)
+            PkApiCore.setFollower(frames, palette.copyOf(31))
+            PkApiCore.setFollower(frames, null)
+            PkApiCore.setFollower(null, palette)
+            PkApiCore.setFollower(null, null)
+            PkApiCore.showFollower(false)
+        }
+        setAndClear()
+        for (cart in listOf("diagnostic.gb", "diagnostic.gba")) {
+            assertTrue(PkApiCore.start("$dir/$cart", null))
+            repeat(30) { PkApiCore.runFrame() }
+            val before = assertNotNull(PkApiCore.stateThumbnail())
+            PkApiCore.setFollower(frames, palette); PkApiCore.showFollower(true)
+            repeat(10) { PkApiCore.runFrame() }
+            assertContentEquals(before, PkApiCore.stateThumbnail())
+            setAndClear(); PkApiCore.stop(); setAndClear()
+        }
+    }
+
+    @Test
+    fun flightTransportWithoutVerifiedConfigurationIsInertOnBothPlatforms() {
+        fun idle() {
+            PkApiCore.configureFlight(intArrayOf(1, 2, 3))
+            assertEquals(0, PkApiCore.flightState)
+            assertEquals(-1, PkApiCore.flightTakeOff())
+            assertEquals(-3, PkApiCore.setFlightRoute(byteArrayOf(1, 4)))
+            assertEquals(-3, PkApiCore.setFlightRoute(byteArrayOf()))
+            assertEquals(-1, PkApiCore.flightRouteDone)
+            assertTrue(!PkApiCore.flightAreaTurned)
+            PkApiCore.setFlightArea(byteArrayOf(0))
+            PkApiCore.setFlightArea(null)
+            PkApiCore.flightLand()
+            PkApiCore.configureFlight(null)
+        }
+        idle()
+        for (cart in listOf("diagnostic.gb", "diagnostic.gba")) {
+            assertTrue(PkApiCore.start("$dir/$cart", null))
+            repeat(30) { PkApiCore.runFrame() }
+            val frame = assertNotNull(PkApiCore.stateThumbnail())
+            idle()
+            repeat(3) { PkApiCore.runFrame() }
+            assertContentEquals(frame, PkApiCore.stateThumbnail())
+            PkApiCore.stop(); idle()
+        }
+    }
+
+    @Test
+    fun expandedRendererBridgeKeepsUnknownGamesOnTheirOriginalPicture() {
+        assertTrue(PkApiCore.fieldKnows(0x1F1C08FB))
+        assertTrue(!PkApiCore.fieldKnows(0))
+        assertTrue(PkApiCore.wideKnows(0x1F1C08FB))
+        assertTrue(!PkApiCore.wideKnows(0))
+        assertTrue(!PkApiCore.configureWide(0x1F1C08FB))
+        assertTrue(!PkApiCore.addWideDerived(1, 0x1F1C08FB, intArrayOf()))
+        for (cart in listOf("diagnostic.gb", "diagnostic.gba")) {
+            assertTrue(PkApiCore.start("$dir/$cart", null))
+            val buffer = assertNotNull(PkApiCore.wideVideo())
+            assertTrue(!PkApiCore.configureWide(0))
+            PkApiCore.setWideView(-10, -10, Int.MAX_VALUE, Int.MAX_VALUE)
+            PkApiCore.setWideDraw(false)
+            repeat(3) {
+                PkApiCore.runFrame()
+                assertEquals(buffer, PkApiCore.wideVideo())
+                assertEquals(0, PkApiCore.wideWidth); assertEquals(0, PkApiCore.wideHeight)
+                assertTrue(!PkApiCore.wideSkipped); assertEquals(0, PkApiCore.wideFault)
+                assertNotNull(PkApiCore.video())
+            }
+            PkApiCore.setWideView(0, 0, 0, 0); PkApiCore.setWideDraw(true)
+            PkApiCore.stop()
+            assertNull(PkApiCore.wideVideo()); assertEquals(0, PkApiCore.wideWidth)
+            assertTrue(PkApiCore.wideWantsClose)
+            assertEquals(com.pokedaisy.app.WideCamera.SCENE_OFF, PkApiCore.wideScene)
+        }
+    }
+
+    @Test
     fun gameBoyRunsAndIsRead() {
         val save = "$dir/pk_api_ios.sav"
         unlink(save)
@@ -221,6 +321,21 @@ class PkApiCoreTest {
         assertTrue(calls.write(0xC100, byteArrayOf(0x12, 0x34)))
         assertContentEquals(byteArrayOf(0x12, 0x34), calls.read(0xC100, 2))
         assertContentEquals("PD-TEST-GB".encodeToByteArray(), calls.rom(0x134, 10))
+        // The diagnostic waits on LY in its main loop. Hook that actual CPU address, run a tiny RAM
+        // routine, and return to the loop: the same GB call bridge the Gen 1 PC uses, without a retail ROM.
+        val program = assertNotNull(calls.rom(0x150, 96))
+        val wait = byteArrayOf(0xF0.toByte(), 0x44, 0xFE.toByte(), 0x90.toByte())
+        val loop = (0..program.size - wait.size).first { at ->
+            program.copyOfRange(at, at + wait.size).contentEquals(wait)
+        } + 0x150
+        val routine = byteArrayOf(0xEA.toByte(), 0x23, 0xC1.toByte(), // ld [c123],a
+            0x78, 0xEA.toByte(), 0x24, 0xC1.toByte(), // ld a,b; ld [c124],a
+            0x7C, 0xEA.toByte(), 0x25, 0xC1.toByte(), // ld a,h; ld [c125],a
+            0x7D, 0xEA.toByte(), 0x26, 0xC1.toByte(), 0xC9.toByte()) // ld a,l; ld [c126],a; ret
+        assertTrue(calls.write(0xC100, routine))
+        assertTrue(calls.gbCallAt(loop, 0xC100, 0x5A, 0x6B, 0x1234))
+        PkApiCore.runFrame()
+        assertContentEquals(byteArrayOf(0x5A, 0x6B, 0x12, 0x34), calls.read(0xC123, 4))
         PkApiCore.stop()
         assertEquals(-1L, calls.call(0x03004001))
     }

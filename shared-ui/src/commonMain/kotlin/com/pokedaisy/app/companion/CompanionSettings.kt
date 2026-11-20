@@ -335,10 +335,6 @@ interface CompanionSettings : StoredCompanionSettings {
     val hideBattleMenu: Boolean? get() = null
     fun setHideBattleMenu(on: Boolean) {}
 
-    /** SETTINGS > BATTLE BUTTONS: one screen, FIGHT, POKéMON and RUN beside a battle - see [Prefs.battleButtons]. */
-    val battleButtons: Boolean get() = true
-    fun setBattleButtons(on: Boolean) {}
-
 
 
     /** SETTINGS > QUICK MENU: the actions it shows - see [Prefs.quickMenuActions]. */

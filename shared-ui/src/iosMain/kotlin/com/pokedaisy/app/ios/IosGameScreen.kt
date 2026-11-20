@@ -123,7 +123,7 @@ internal class IosGameScreen(
                 state.setPortrait(state.portrait.copy(enabled = upright, underGame = IosTouchPreferences.underGame, padStrip = strip))
             }
             GameScreen(state, gameHeight = { (it / aspect).roundToInt() },
-                game = { GamePicture(aspect, upright, Modifier.fillMaxSize(), gameContent) },
+                game = { GamePicture(aspect, upright, Modifier.fillMaxSize(), content = gameContent) },
                 controls = { if (visible) touch.Controls(gameBoy, upright) },
                 gameOverlay = { CompositionLocalProvider(LocalCompanionBack provides back, LocalCompanionKeys provides keys,
                     LocalTextInputFocus provides textInputFocus, content = gameOverlay) },

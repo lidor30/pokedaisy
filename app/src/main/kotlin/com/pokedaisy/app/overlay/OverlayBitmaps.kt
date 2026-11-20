@@ -32,7 +32,7 @@ internal object OverlayBitmaps {
             inSampleSize = sample
             inPreferredConfig = Bitmap.Config.ARGB_8888
         }
-        val bmp = BitmapFactory.decodeFile(layer.file.path, opts) ?: return null
+        val bmp = BitmapFactory.decodeFile(layer.file.toString(), opts) ?: return null
         val window = layer.viewport ?: run {
             val px = IntArray(bmp.width * bmp.height)
             bmp.getPixels(px, 0, bmp.width, 0, 0, bmp.width, bmp.height)

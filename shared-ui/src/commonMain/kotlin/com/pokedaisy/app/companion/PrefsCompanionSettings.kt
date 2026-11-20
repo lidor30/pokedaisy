@@ -15,6 +15,8 @@ class PrefsCompanionSettings(
 ) : StoredCompanionSettings {
     enum class Change { PLAYBACK, FIELD_OPTIONS }
     var changed: (Change) -> Unit = {}
+    override val battleButtons get() = hudRevision.let { prefs.battleButtons }
+    override fun setBattleButtons(on: Boolean) { prefs.battleButtons = on; hudRevision++ }
     private var hudRevision by mutableIntStateOf(0)
     override val fieldHud get() = hudRevision.let { prefs.fieldHud }
     override fun setFieldHud(on: Boolean) { prefs.fieldHud = on; hudRevision++ }

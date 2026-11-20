@@ -3,6 +3,8 @@
 package com.pokedaisy.app.game
 
 import com.pokedaisy.app.core.PkApiCore
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.cValue
@@ -50,6 +52,38 @@ class GameRendererTest {
 
         val w = 480
         val h = 320
+        val px = renderPixels(renderer, w, h)
+        var lit = 0
+        for (y in 0 until h) for (x in 0 until w) {
+            val src = ((y / 2) * 240 + x / 2) * 4
+            val dst = (y * w + x) * 4
+            // RGBX in, BGRA out.
+            val want = listOf(frame[src + 2], frame[src + 1], frame[src], (-1).toByte())
+            val got = listOf(px[dst], px[dst + 1], px[dst + 2], px[dst + 3])
+            assertEquals(want, got, "pixel $x, $y")
+            if (want[0] != 0.toByte() || want[1] != 0.toByte() || want[2] != 0.toByte()) lit++
+        }
+        assertTrue(lit > 0, "the diagnostic frame is all black")
+    }
+    @Test
+    fun expandedWindowsSampleTheirLogicalPixelsInsideTheCapacityTexture() {
+        val renderer = GameRenderer.create() ?: return
+        for (w in listOf(2, 3, 2)) {
+            val h = 2
+            val bytes = ByteArray(w * h * 4) { i -> if (i % 4 == 3) 0 else ((i / 4 + 1) * (i % 4 + 1) * 17).toByte() }
+            val window = com.pokedaisy.app.WideCamera.Window(0, 0, w, h, 0f, 0f, 2f)
+            bytes.usePinned { assertTrue(renderer.uploadFrame(it.addressOf(0), w, h, window)) }
+            val actual = renderPixels(renderer, w * 2, h * 2)
+            for (y in 0 until h * 2) for (x in 0 until w * 2) {
+                val src = ((y / 2) * w + x / 2) * 4
+                val dst = (y * w * 2 + x) * 4
+                assertEquals(listOf(bytes[src + 2], bytes[src + 1], bytes[src], (-1).toByte()),
+                    (0..3).map { actual[dst + it] }, "logical $w x $h pixel $x,$y")
+            }
+        }
+    }
+
+    private fun renderPixels(renderer: GameRenderer, w: Int, h: Int): ByteArray {
         val device = renderer.device
         val desc = MTLTextureDescriptor.texture2DDescriptorWithPixelFormat(
             MTLPixelFormatBGRA8Unorm, w.toULong(), h.toULong(), mipmapped = false,
@@ -82,16 +116,7 @@ class GameRendererTest {
         buffer.waitUntilCompleted()
 
         val px = assertNotNull(out.contents()).reinterpret<ByteVar>()
-        var lit = 0
-        for (y in 0 until h) for (x in 0 until w) {
-            val src = ((y / 2) * 240 + x / 2) * 4
-            val dst = (y * w + x) * 4
-            // RGBX in, BGRA out.
-            val want = listOf(frame[src + 2], frame[src + 1], frame[src], (-1).toByte())
-            val got = listOf(px[dst], px[dst + 1], px[dst + 2], px[dst + 3])
-            assertEquals(want, got, "pixel $x, $y")
-            if (want[0] != 0.toByte() || want[1] != 0.toByte() || want[2] != 0.toByte()) lit++
-        }
-        assertTrue(lit > 0, "the diagnostic frame is all black")
+        return ByteArray(w * h * 4) { px[it] }
     }
+
 }

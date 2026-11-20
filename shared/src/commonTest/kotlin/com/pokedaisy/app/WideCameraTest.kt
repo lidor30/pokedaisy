@@ -1,11 +1,13 @@
 package com.pokedaisy.app
 
-import org.junit.Assert.assertArrayEquals
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 class WideCameraTest {
+    private fun assertScales(expected: FloatArray, actual: FloatArray, tolerance: Float) {
+        assertEquals(expected.size, actual.size)
+        for (i in expected.indices) assertEquals(expected[i], actual[i], tolerance)
+    }
+
     private fun thor() = WideCamera().apply { viewW = 1920; viewH = 1080 }
 
     /** Runs [seconds] of frames at 60 Hz; returns the last window. */
@@ -22,13 +24,13 @@ class WideCameraTest {
 
     @Test fun stepsAreWholePixelsOnTheThor() {
         // 6.75 screen px per GBA px at 1x; 6 shows too little more (180 rows), 2 more than pk_wide's window.
-        assertArrayEquals(floatArrayOf(6.75f, 5f, 4f, 3f), WideCamera.levelsFor(1920, 1080), 0.001f)
+        assertScales(floatArrayOf(6.75f, 5f, 4f, 3f), WideCamera.levelsFor(1920, 1080), 0.001f)
     }
 
     @Test fun aGameBoyGameZoomsInItsOwnPixels() {
         // Yellow's 160x144 at the Thor's 1080 rows: 7.5 at 1x, then 6 / 5 / 4 / 3 (7 shows too little more; 2 is wider
         // than pk_wide's window).
-        assertArrayEquals(floatArrayOf(7.5f, 6f, 5f, 4f, 3f), WideCamera.levelsFor(1920, 1080, 160, 144), 0.001f)
+        assertScales(floatArrayOf(7.5f, 6f, 5f, 4f, 3f), WideCamera.levelsFor(1920, 1080, 160, 144), 0.001f)
         val w = thor().apply { frameW = 160; frameH = 144 }.run(0.1f)
         assertEquals(7.5f, w.scale, 0.001f)
         // The frame (0..160) in the middle of a window 1920 / 7.5 = 256 px wide, its full height.
@@ -39,7 +41,7 @@ class WideCameraTest {
 
     @Test fun aPhoneUprightGoesOnAboveAndBelow() {
         // 1080 wide, ~1400 for the game above the companion: 1x is the frame's full width (4.5), the map above / below.
-        assertArrayEquals(floatArrayOf(4.5f, 3f, 2f), WideCamera.levelsFor(1080, 1400), 0.001f)
+        assertScales(floatArrayOf(4.5f, 3f, 2f), WideCamera.levelsFor(1080, 1400), 0.001f)
         val w = WideCamera().apply { viewW = 1080; viewH = 1400 }.run(0.1f)
         assertEquals(0, w.x)
         assertTrue(w.y < -70 && w.y + w.h > 230)
@@ -82,8 +84,8 @@ class WideCameraTest {
             last = s
         }
         assertEquals(6.75f, last, 0.001f)
-        assertTrue("eased, no jump: " + steps, steps.all { it >= 0f && it < 0.375f })
-        assertTrue("eases in and out: " + steps, steps.first() < steps[15] && steps.last() < steps[15])
+        assertTrue(steps.all { it >= 0f && it < 0.375f }, "eased, no jump: " + steps)
+        assertTrue(steps.first() < steps[15] && steps.last() < steps[15], "eases in and out: " + steps)
         // A text box pulls in a little quicker, under half a second.
         cam.run(1.5f, start = 4_000_000_000L)
         val text = cam.run(0.45f, start = 6_000_000_000L, scene = WideCamera.SCENE_TEXT)
@@ -132,10 +134,10 @@ class WideCameraTest {
         cam.run(0.5f, start = 1_100_000_000L)
         cam.stickX = 0f
         val moved = cam.run(0.5f, start = 1_700_000_000L)
-        assertTrue("the view went right", moved.x > 20)
+        assertTrue(moved.x > 20, "the view went right")
         cam.walking = true
         val back = cam.run(1.5f, start = 2_300_000_000L)
-        assertTrue("and back to the player once walking", back.x in -24..-21)
+        assertTrue(back.x in -24..-21, "and back to the player once walking")
     }
 
     @Test fun walkingWithTheStickKeepsThePlayerOnScreen() {
@@ -151,7 +153,7 @@ class WideCameraTest {
     @Test fun aDsGameZoomsOutAsFarAsItsMarginsGo() {
         // 256 x 192 at 5.625: 5 shows too little more, 2 (960 x 540) more than the 752 x 384 the slices cover.
         val cam = thor().apply { ndsMode(true) }
-        assertArrayEquals(floatArrayOf(5.625f, 4f, 3f), cam.levels(), 0.001f)
+        assertScales(floatArrayOf(5.625f, 4f, 3f), cam.levels(), 0.001f)
         cam.level = 2
         val out = cam.run(1.5f)
         assertEquals(3f, out.scale, 0.001f)
@@ -169,8 +171,8 @@ class WideCameraTest {
         assertEquals(504, w.x + w.w)
         assertEquals(-96, w.y)
         // A 20:9 phone gets 3x too (740 x 360).
-        assertArrayEquals(floatArrayOf(5.625f, 4f, 3f), WideCamera().apply { viewW = 2220; viewH = 1080; ndsMode(true) }.levels(), 0.001f)
+        assertScales(floatArrayOf(5.625f, 4f, 3f), WideCamera().apply { viewW = 2220; viewH = 1080; ndsMode(true) }.levels(), 0.001f)
         cam.ndsMode(false)
-        assertArrayEquals(floatArrayOf(6.75f, 5f, 4f, 3f), cam.levels(), 0.001f)
+        assertScales(floatArrayOf(6.75f, 5f, 4f, 3f), cam.levels(), 0.001f)
     }
 }

@@ -1,15 +1,18 @@
 package com.pokedaisy.app.overlay
 
-import java.io.ByteArrayInputStream
-import java.io.File
-import java.io.InputStream
-import java.util.zip.ZipInputStream
+import com.pokedaisy.app.companion.data.*
+import okio.Buffer
+import okio.FileSystem
+import okio.Path
+import okio.Path.Companion.toPath
+import okio.SYSTEM
+import okio.Source
+import okio.buffer
+import okio.openZip
+import okio.use
+import kotlin.random.Random
 import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.floor
 import kotlin.math.min
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 /*
  * SCREEN > OVERLAY: a frame drawn around the game on the top screen. Two built-in frames of
@@ -21,27 +24,6 @@ import kotlin.math.sqrt
  * Everything here is plain Kotlin (no Android), so ui-preview compiles it and the unit tests
  * run it on the JVM; decoding and drawing are EmulatorView's / OverlayBitmaps'.
  */
-
-/** A rectangle in 0..1 of an overlay image, from its top-left: RetroArch's `overlayN_viewport` (x, y, w, h). */
-data class Viewport(val x: Float, val y: Float, val w: Float, val h: Float) {
-    override fun toString() = "${fmt(x)},${fmt(y)},${fmt(w)},${fmt(h)}"
-
-    companion object {
-        /** "x,y,w,h", each in 0..1 and the rectangle inside the image; else null. */
-        fun parse(s: String?): Viewport? {
-            val v = s?.split(',')?.map { it.trim().toFloatOrNull() ?: return null } ?: return null
-            if (v.size != 4) return null
-            val (x, y, w, h) = v
-            if (x < 0f || y < 0f || w <= 0f || h <= 0f || x + w > 1.001f || y + h > 1.001f) return null
-            return Viewport(x, y, w, h)
-        }
-
-        private fun fmt(f: Float) = "%.5f".format(java.util.Locale.ROOT, f).trimEnd('0').trimEnd('.')
-    }
-}
-
-/** A box on the view, in view pixels from its top-left. */
-data class Box(val x: Float, val y: Float, val w: Float, val h: Float)
 
 /** One overlay of a RetroArch .cfg: its image (the path as written, relative to the .cfg), where the game goes
  * if it says ([viewport]; else the image's see-through window is found, [OverlayWindow]), and its name. */
@@ -109,21 +91,16 @@ object PngInfo {
         if (head.size < 24) return null
         for (i in SIGNATURE.indices) if (head[i] != SIGNATURE[i]) return null
         // The first chunk is IHDR: length (4), "IHDR" (4), width (4), height (4).
-        if (String(head, 12, 4, Charsets.US_ASCII) != "IHDR") return null
+        if (head.copyOfRange(12, 16).decodeToString() != "IHDR") return null
         fun u32(at: Int) = ((head[at].toInt() and 0xFF) shl 24) or ((head[at + 1].toInt() and 0xFF) shl 16) or
             ((head[at + 2].toInt() and 0xFF) shl 8) or (head[at + 3].toInt() and 0xFF)
         return u32(16) to u32(20)
     }
 
-    fun size(file: File): Pair<Int, Int>? = runCatching {
-        file.inputStream().use { s -> ByteArray(24).also { b -> if (s.readNBytesCompat(b) < 24) return null } }
+    fun size(file: Path): Pair<Int, Int>? = runCatching {
+        FileSystem.SYSTEM.source(file).buffer().use { it.readByteArray(24) }
     }.getOrNull()?.let(::size)
 
-    private fun InputStream.readNBytesCompat(b: ByteArray): Int {
-        var n = 0
-        while (n < b.size) { val r = read(b, n, b.size - n); if (r < 0) break; n += r }
-        return n
-    }
 }
 
 /**
@@ -155,11 +132,13 @@ object OverlayWindow {
             }
         }.firstOrNull(::clear) ?: return null
 
-        val seen = java.util.BitSet(w * h)
+        val seen = LongArray((w * h + 63) / 64)
+        fun seen(i: Int) = seen[i ushr 6] and (1L shl (i and 63)) != 0L
+        fun mark(i: Int) { seen[i ushr 6] = seen[i ushr 6] or (1L shl (i and 63)) }
         val stack = IntArray(w * h)
         var top = 0
         stack[top++] = start
-        seen.set(start)
+        mark(start)
         var count = 0
         var minX = w; var minY = h; var maxX = -1; var maxY = -1
         while (top > 0) {
@@ -171,10 +150,10 @@ object OverlayWindow {
             if (x > maxX) maxX = x
             if (y < minY) minY = y
             if (y > maxY) maxY = y
-            if (x > 0 && !seen[i - 1] && clear(i - 1)) { seen.set(i - 1); stack[top++] = i - 1 }
-            if (x < w - 1 && !seen[i + 1] && clear(i + 1)) { seen.set(i + 1); stack[top++] = i + 1 }
-            if (y > 0 && !seen[i - w] && clear(i - w)) { seen.set(i - w); stack[top++] = i - w }
-            if (y < h - 1 && !seen[i + w] && clear(i + w)) { seen.set(i + w); stack[top++] = i + w }
+            if (x > 0 && !seen(i - 1) && clear(i - 1)) { mark(i - 1); stack[top++] = i - 1 }
+            if (x < w - 1 && !seen(i + 1) && clear(i + 1)) { mark(i + 1); stack[top++] = i + 1 }
+            if (y > 0 && !seen(i - w) && clear(i - w)) { mark(i - w); stack[top++] = i - w }
+            if (y < h - 1 && !seen(i + w) && clear(i + w)) { mark(i + w); stack[top++] = i + w }
         }
         val boxW = maxX - minX + 1
         val boxH = maxY - minY + 1
@@ -183,182 +162,9 @@ object OverlayWindow {
     }
 }
 
-/** Where an overlay and the game go on the view ([OverlayGeometry.layout]); [onTop]: the overlay is drawn over the game
- * (it has a window), else behind it (a background). */
-data class OverlayPlacement(val overlay: Box, val game: Box, val onTop: Boolean)
-
-object OverlayGeometry {
-    /** An overlay this close to the view's shape fills it (the odd pixel of stretch) rather than leaving thin bars. */
-    private const val FILL_TOLERANCE = 0.04f
-
-    /**
-     * Places an [imgW] x [imgH] overlay on a [viewW] x [viewH] view and the [gameW] x [gameH] game in its [window]:
-     * the overlay fitted to the view, centred (filling it when their shapes nearly match), or at exactly [scale] view
-     * pixels per image pixel when that's set (the built-in frames, drawn at the game's own pixel size); the game fitted
-     * in the window at its own shape (filling it when that's within a few percent), or filling it with [stretch]
-     * (ASPECT > STRETCH). No window: the overlay is a
-     * background and the game sits on it as it would without one. Game edges land on whole pixels.
-     */
-    fun layout(
-        viewW: Int, viewH: Int, imgW: Int, imgH: Int, window: Viewport?,
-        gameW: Int, gameH: Int, stretch: Boolean, scale: Int = 0,
-    ): OverlayPlacement {
-        val vw = viewW.toFloat()
-        val vh = viewH.toFloat()
-        val overlay = when {
-            // Whole pixels, so the frame's window lines up with the game's (snapped) edges.
-            scale > 0 -> Box(floor((vw - imgW * scale) / 2f), floor((vh - imgH * scale) / 2f), imgW.toFloat() * scale, imgH.toFloat() * scale)
-            imgW <= 0 || imgH <= 0 -> Box(0f, 0f, vw, vh)
-            abs(imgW.toFloat() / imgH / (vw / vh) - 1f) <= FILL_TOLERANCE -> Box(0f, 0f, vw, vh)
-            else -> fit(imgW.toFloat() / imgH, Box(0f, 0f, vw, vh))
-        }
-        if (window == null) {
-            val game = if (stretch) Box(0f, 0f, vw, vh) else fit(gameW.toFloat() / gameH, Box(0f, 0f, vw, vh))
-            return OverlayPlacement(overlay, snap(game), onTop = false)
-        }
-        val win = Box(overlay.x + window.x * overlay.w, overlay.y + window.y * overlay.h, window.w * overlay.w, window.h * overlay.h)
-        // A window drawn by hand is rarely exactly 3:2: one this close is filled, not edged with black slivers.
-        val near = abs(win.w / win.h / (gameW.toFloat() / gameH) - 1f) <= FILL_TOLERANCE
-        val game = if (stretch || near) win else fit(gameW.toFloat() / gameH, win)
-        return OverlayPlacement(overlay, snap(game), onTop = true)
-    }
-
-    /** The largest box of [aspect] (w / h) in [area], centred. */
-    fun fit(aspect: Float, area: Box): Box {
-        if (aspect <= 0f || area.w <= 0f || area.h <= 0f) return area
-        return if (area.w / area.h > aspect) {
-            val w = area.h * aspect
-            Box(area.x + (area.w - w) / 2f, area.y, w, area.h)
-        } else {
-            val h = area.w / aspect
-            Box(area.x, area.y + (area.h - h) / 2f, area.w, h)
-        }
-    }
-
-    private fun snap(b: Box): Box {
-        val l = b.x.roundToInt()
-        val t = b.y.roundToInt()
-        val r = (b.x + b.w).roundToInt()
-        val bt = (b.y + b.h).roundToInt()
-        return Box(l.toFloat(), t.toFloat(), (r - l).toFloat(), (bt - t).toFloat())
-    }
-}
-
-/** A drawn frame: [argb] pixels, [w] x [h], meant to be shown at [scale] view pixels each with the game in [window]. */
-class Frame(val argb: IntArray, val w: Int, val h: Int, val scale: Int, val window: Viewport)
-
-/** Pixel art to stamp on a frame: rows of palette keys ('.' = nothing). */
-class Sprite(val rows: List<String>, val palette: Map<Char, Int>) {
-    val w get() = rows.maxOfOrNull { it.length } ?: 0
-    val h get() = rows.size
-}
-
-/**
- * The built-in overlays: frames of our own, in the app's pixel-art look, drawn at the game's own pixel size and
- * shown at a whole-number scale - one frame pixel is one game pixel, so they're as crisp as the game. Nothing of any
- * console's: no shell, no buttons, no logos but PokeDaisy's own mark.
- */
-object BuiltInFrames {
-    enum class Style { DAISY, BEZEL }
-
-    /** Frame pixels kept around the game at the least, either side / above and below. */
-    private const val MIN_SIDE = 8
-    private const val MIN_TOP = 4
-
-    /** The whole-number scale the game gets inside a frame on a [viewW] x [viewH] view (at least 1). */
-    fun scaleFor(viewW: Int, viewH: Int, gameW: Int, gameH: Int): Int =
-        min(viewW / (gameW + 2 * MIN_SIDE), viewH / (gameH + 2 * MIN_TOP)).coerceAtLeast(1)
-
-    /** [style]'s frame for a [viewW] x [viewH] view around a [gameW] x [gameH] game; [logo] goes in its left margin when it fits. */
-    fun render(style: Style, viewW: Int, viewH: Int, gameW: Int, gameH: Int, logo: Sprite? = null): Frame {
-        val s = scaleFor(viewW, viewH, gameW, gameH)
-        val w = maxOf(gameW + 2, ceil(viewW.toFloat() / s).toInt())
-        val h = maxOf(gameH + 2, ceil(viewH.toFloat() / s).toInt())
-        val gx = (w - gameW) / 2
-        val gy = (h - gameH) / 2
-        val c = Canvas(w, h)
-        val margin = min(gx, gy)
-        // The screen's surround: as thick as the margins allow, at most 5.
-        val b = (margin - 1).coerceIn(1, 5)
-        when (style) {
-            Style.DAISY -> {
-                c.fill(0, 0, w, h, DAISY_BLUE)
-                // The website's dot grid, lined up on the screen's corner.
-                for (y in (gy % 6) - 3 until h step 6) for (x in (gx % 6) - 3 until w step 6) c.set(x, y, DAISY_DOT)
-                c.roundRect(gx - b + 1, gy - b + 1, gameW + 2 * b, gameH + 2 * b, b + 2, DAISY_SHADOW)
-                c.roundRect(gx - b, gy - b, gameW + 2 * b, gameH + 2 * b, b + 2, DAISY_OUTLINE)
-                c.roundRect(gx - b + 1, gy - b + 1, gameW + 2 * b - 2, gameH + 2 * b - 2, b + 1, DAISY_SURROUND)
-                c.fill(gx - b + 3, gy - b + 1, gameW + 2 * b - 6, 1, DAISY_SHINE)
-                if (b > 1) c.fill(gx - 1, gy - 1, gameW + 2, gameH + 2, DAISY_INNER)
-                logo?.let { c.stampInMargin(it, gx - b, h, DAISY_SHADOW) }
-            }
-            Style.BEZEL -> {
-                c.fill(0, 0, w, h, BEZEL_BG)
-                c.roundRect(gx - b, gy - b, gameW + 2 * b, gameH + 2 * b, b + 2, BEZEL_SURROUND)
-                c.fill(gx + 2, gy - b + 1, gameW - 4, 1, BEZEL_SHINE)
-                if (b > 1) c.fill(gx - 1, gy - 1, gameW + 2, gameH + 2, BEZEL_INNER)
-            }
-        }
-        // The game's own rectangle is see-through: it shows from under the frame.
-        c.fill(gx, gy, gameW, gameH, 0)
-        return Frame(c.px, w, h, s, Viewport(gx.toFloat() / w, gy.toFloat() / h, gameW.toFloat() / w, gameH.toFloat() / h))
-    }
-
-    private const val DAISY_BLUE = 0xFF3396FF.toInt()
-    private const val DAISY_DOT = 0xFF5CADFF.toInt()
-    private const val DAISY_SHADOW = 0xFF2275D6.toInt()
-    private const val DAISY_OUTLINE = 0xFF141C26.toInt()
-    private const val DAISY_SURROUND = 0xFF2A3646.toInt()
-    private const val DAISY_SHINE = 0xFF46566B.toInt()
-    private const val DAISY_INNER = 0xFF0C1118.toInt()
-    private const val BEZEL_BG = 0xFF16181C.toInt()
-    private const val BEZEL_SURROUND = 0xFF24272D.toInt()
-    private const val BEZEL_SHINE = 0xFF33373F.toInt()
-    private const val BEZEL_INNER = 0xFF0A0B0D.toInt()
-
-    private class Canvas(val w: Int, val h: Int) {
-        val px = IntArray(w * h)
-
-        fun set(x: Int, y: Int, c: Int) { if (x in 0 until w && y in 0 until h) px[y * w + x] = c }
-
-        fun fill(x: Int, y: Int, fw: Int, fh: Int, c: Int) {
-            for (yy in maxOf(0, y) until min(h, y + fh)) for (xx in maxOf(0, x) until min(w, x + fw)) px[yy * w + xx] = c
-        }
-
-        /** A rectangle with pixel-stepped corners of radius [r] (like PixelRoundedShape). */
-        fun roundRect(x: Int, y: Int, rw: Int, rh: Int, r: Int, c: Int) {
-            val rr = min(r, min(rw, rh) / 2)
-            for (row in 0 until rh) {
-                val fromEdge = min(row, rh - 1 - row)
-                val inset = if (fromEdge < rr) {
-                    val d = rr - fromEdge - 0.5f
-                    (rr - sqrt(rr * rr - d * d) + 0.5f).let(::floor).toInt()
-                } else 0
-                fill(x + inset, y + row, rw - 2 * inset, 1, c)
-            }
-        }
-
-        /** [s] centred in the margin left of [right], with a drop shadow, if there's room for it. */
-        fun stampInMargin(s: Sprite, right: Int, h: Int, shadow: Int) {
-            // Room on both sides of it, or none at all: squeezed against the screen's edge it looked like a mistake.
-            if (right < s.w + 8 || h < s.h + 4) return
-            val x0 = (right - s.w) / 2
-            val y0 = (h - s.h) / 2
-            for ((dx, dy, shade) in listOf(Triple(1, 1, true), Triple(0, 0, false))) {
-                s.rows.forEachIndexed { y, row ->
-                    row.forEachIndexed { x, k ->
-                        val col = s.palette[k] ?: return@forEachIndexed
-                        set(x0 + x + dx, y0 + y + dy, if (shade) shadow else col)
-                    }
-                }
-            }
-        }
-    }
-}
-
 /** An overlay the player imported: its folder under [OverlayStore.dir], the name shown, and its layers' images. */
 class StoredOverlay(val id: String, val name: String, val layers: List<Layer>) {
-    class Layer(val file: File, val viewport: Viewport?, val w: Int, val h: Int)
+    class Layer(val file: Path, val viewport: Viewport?, val w: Int, val h: Int)
 
     /** The layer made for a view of [aspect] (w / h): the one whose image is closest to that shape (a pack's
      * landscape and portrait versions). */
@@ -370,24 +176,27 @@ class StoredOverlay(val id: String, val name: String, val layers: List<Layer>) {
  * with its images flat beside it) and those PNGs. Imports read RetroArch .cfg files (with their images: picked
  * together, read beside the .cfg when its real path is readable, or picked when asked for), .zip packs and bare PNGs.
  */
-class OverlayStore(root: File) {
-    val dir = File(root, "overlays")
+class OverlayStore(root: Path) {
+    val dir = root / "overlays"
 
     fun list(): List<StoredOverlay> =
-        dir.listFiles().orEmpty().filter { it.isDirectory }.mapNotNull(::read).sortedBy { it.name.lowercase() }
+        dir.listFiles().filter { it.isDirectory }.mapNotNull(::read).sortedBy { it.name.lowercase() }
 
-    fun get(id: String): StoredOverlay? = File(dir, id).takeIf { it.isDirectory && safeId(id) }?.let(::read)
+    fun get(id: String): StoredOverlay? = if (!safeId(id)) null else (dir / id).takeIf { it.isDirectory }?.let(::read)
 
-    fun delete(id: String): Boolean = safeId(id) && File(dir, id).deleteRecursively()
+    fun delete(id: String): Boolean {
+        if (!safeId(id) || !(dir / id).isDirectory) return false
+        return runCatching { (dir / id).deleteRecursively(); true }.getOrDefault(false)
+    }
 
     /** Every imported overlay gone (REMOVE ALL); how many there were. */
     fun deleteAll(): Int = list().count { delete(it.id) }
 
-    private fun read(folder: File): StoredOverlay? {
-        val cfg = File(folder, CFG).takeIf { it.isFile } ?: return null
+    private fun read(folder: Path): StoredOverlay? {
+        val cfg = (folder / CFG).takeIf { it.isFile } ?: return null
         val text = runCatching { cfg.readText() }.getOrNull() ?: return null
         val layers = OverlayCfg.parse(text).mapNotNull { l ->
-            val f = File(folder, l.image).takeIf { it.isFile && it.parentFile == folder } ?: return@mapNotNull null
+            val f = (folder / l.image).takeIf { it.isFile && it.parent == folder } ?: return@mapNotNull null
             val (w, h) = PngInfo.size(f) ?: return@mapNotNull null
             StoredOverlay.Layer(f, l.viewport, w, h)
         }
@@ -438,7 +247,7 @@ class OverlayStore(root: File) {
         var needs: Result.NeedsImage? = null
         for (cfg in cfgs) {
             if (ids.size >= MAX_OVERLAYS) { skipped++; continue }
-            val layers = OverlayCfg.parse(cfg.bytes.toString(Charsets.UTF_8))
+            val layers = OverlayCfg.parse(cfg.bytes.decodeToString())
             if (layers.isEmpty()) { skipped++; continue }
             val found = layers.map { l -> l to findImage(cfg, l.image, pngs, used) }
             var ok = found.filter { it.second != null }
@@ -472,8 +281,8 @@ class OverlayStore(root: File) {
         val name = image.substringAfterLast('/')
         val hit = pngs.firstOrNull { normalize(it.path) == inZip } ?: pngs.firstOrNull { it.name.equals(name, ignoreCase = true) }
         if (hit != null) { used += hit; return hit.bytes }
-        val real = cfg.realPath?.let { File(it).parentFile?.let { d -> File(d, image) } } ?: return null
-        return runCatching { real.takeIf { it.isFile && it.length() <= MAX_IMAGE }?.readBytes() }.getOrNull()
+        val real = cfg.realPath?.toPath()?.parent?.let { it / image } ?: return null
+        return runCatching { real.takeIf { it.isFile && it.length <= MAX_IMAGE }?.readBytes() }.getOrNull()
             ?.takeIf { PngInfo.size(it) != null }
     }
 
@@ -482,58 +291,70 @@ class OverlayStore(root: File) {
         val base = baseName.lowercase().replace(Regex("[^a-z0-9.-]+"), "-").trim('-', '.').take(48).ifEmpty { "overlay" }
         var id = base
         var n = 2
-        while (File(dir, id).exists()) id = "$base-${n++}"
-        val folder = File(dir, id).apply { mkdirs() }
+        while (FileSystem.SYSTEM.exists(dir / id)) id = "$base-${n++}"
+        val folder = (dir / id).apply { mkdirs() }
         val written = layers.mapIndexed { i, (l, bytes) ->
-            File(folder, "$i.png").writeBytes(bytes)
+            (folder / "$i.png").writeBytes(bytes)
             l.copy(image = "$i.png")
         }
-        File(folder, CFG).writeText(OverlayCfg.write(displayName(baseName), written))
+        (folder / CFG).writeText(OverlayCfg.write(displayName(baseName), written))
         return id
     }
 
     /** The .zip's .cfg and PNG files by their path inside it; null when it's bigger than an overlay pack should be. */
     private fun unzip(bytes: ByteArray): List<Entry>? {
         val out = ArrayList<Entry>()
-        var total = 0L
-        runCatching {
-            ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
-                var count = 0
-                while (true) {
-                    val e = zip.nextEntry ?: break
-                    if (++count > MAX_ZIP_ENTRIES) return null
-                    if (e.isDirectory) continue
-                    val path = e.name.replace('\\', '/')
-                    val lower = path.lowercase()
-                    if (!lower.endsWith(".cfg") && !lower.endsWith(".png")) continue
-                    if (path.split('/').any { it.startsWith(".") || it == "__MACOSX" }) continue
-                    val limit = if (lower.endsWith(".cfg")) MAX_CFG else MAX_IMAGE
-                    val data = readCapped(zip, limit) ?: continue
-                    total += data.size
-                    if (total > MAX_ZIP_TOTAL) return null
-                    out += Entry(path, data)
-                }
+        val temp = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "pokedaisy-overlay-${Random.nextLong().toULong()}.zip"
+        try {
+            temp.writeBytes(bytes)
+            val zip = FileSystem.SYSTEM.openZip(temp)
+            var total = 0L
+            var count = 0
+            for (entry in zip.listRecursively("/".toPath())) {
+                if (++count > MAX_ZIP_ENTRIES) return null
+                if (zip.metadataOrNull(entry)?.isRegularFile != true) continue
+                val path = entry.toString().removePrefix("/").replace('\\', '/')
+                val lower = path.lowercase()
+                if (!lower.endsWith(".cfg") && !lower.endsWith(".png")) continue
+                if (path.split('/').any { it.startsWith(".") || it == "__MACOSX" }) continue
+                val limit = if (lower.endsWith(".cfg")) MAX_CFG else MAX_IMAGE
+                val data = zip.source(entry).buffer().use { source ->
+                    val buffer = Buffer()
+                    while (true) {
+                        if (source.read(buffer, 64L * 1024) < 0) break
+                        if (buffer.size > limit) return@use null
+                    }
+                    buffer.readByteArray()
+                } ?: continue
+                total += data.size
+                if (total > MAX_ZIP_TOTAL) return null
+                out += Entry(path, data)
             }
-        }
+        } catch (_: Exception) {
+            return emptyList()
+        } finally { FileSystem.SYSTEM.delete(temp, mustExist = false) }
         return out
-    }
-
-    private fun readCapped(input: InputStream, limit: Long): ByteArray? {
-        val buf = java.io.ByteArrayOutputStream()
-        val chunk = ByteArray(64 * 1024)
-        while (true) {
-            val n = input.read(chunk)
-            if (n < 0) break
-            buf.write(chunk, 0, n)
-            if (buf.size() > limit) return null
-        }
-        return buf.toByteArray()
     }
 
     companion object {
         const val CFG = "overlay.cfg"
         /** One overlay image at most (a 4K border is ~5 MB). */
         const val MAX_IMAGE = 32L * 1024 * 1024
+        const val MAX_PICKED_FILE = 64L * 1024 * 1024
+
+        /** Read a native pick off the UI thread, with the same cap as Android's document stream. */
+        fun readPicked(file: Path): Picked? = FileSystem.SYSTEM.source(file).use {
+            readPicked(file.name, it, file.toString())
+        }
+
+        fun readPicked(name: String, source: Source, path: String?): Picked? {
+            val buffer = Buffer()
+            while (source.read(buffer, 64L * 1024) >= 0) {
+                if (buffer.size > MAX_PICKED_FILE) return null
+            }
+            return Picked(name, buffer.readByteArray(), path)
+        }
+
         const val MAX_CFG = 256L * 1024
         /** What a .zip may unpack to, all told (it's held in memory while it's imported). */
         const val MAX_ZIP_TOTAL = 96L * 1024 * 1024
@@ -565,13 +386,13 @@ sealed class OverlayChoice {
     abstract val key: String
 
     object None : OverlayChoice() { override val key = "" }
-    data class BuiltIn(val style: BuiltInFrames.Style) : OverlayChoice() { override val key = "builtin:${style.name}" }
+    data class BuiltIn(val style: BuiltInFrames.Style) : OverlayChoice() { override val key = BuiltInFrames.key(style) }
     data class Imported(val id: String) : OverlayChoice() { override val key = "user:$id" }
 
     companion object {
         fun of(key: String?): OverlayChoice = when {
             key.isNullOrEmpty() -> None
-            key.startsWith("builtin:") -> BuiltInFrames.Style.entries.firstOrNull { it.name == key.removePrefix("builtin:") }?.let(::BuiltIn) ?: None
+            key.startsWith("builtin:") -> BuiltInFrames.style(key)?.let(::BuiltIn) ?: None
             key.startsWith("user:") -> Imported(key.removePrefix("user:"))
             else -> None
         }

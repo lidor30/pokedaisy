@@ -7,10 +7,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import com.pokedaisy.app.companion.BatteryStatus
+import com.pokedaisy.app.companion.data.SnapshotView
+import kotlinx.coroutines.delay
+import kotlin.time.Clock
+
+@Composable
+fun RunningGameStatusBar(gameName: String, snapshot: SnapshotView, clockText: (Long) -> String) {
+    val time by produceState(clockText(Clock.System.now().toEpochMilliseconds())) {
+        while (true) {
+            val now = Clock.System.now().toEpochMilliseconds()
+            value = clockText(now)
+            delay(60_000L - now.mod(60_000L))
+        }
+    }
+    GameStatusBar(gameName, snapshot.location.mapSecName.takeIf { snapshot.connected },
+        snapshot.money.takeIf { snapshot.connected }, time)
+}
+
+/** Space for the strip above the game picture, including its frame and text shadow. */
+@Composable
+internal fun statusBarHeight() = rememberGbaTextMetrics(1f).let { it.lineHeight + it.u * 8 }
 
 /**
  * The top screen's status bar (SETTINGS > STATUS BAR): the title window's

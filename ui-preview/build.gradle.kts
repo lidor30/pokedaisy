@@ -21,7 +21,7 @@ val appIncludes = listOf(
     "CoverArtSync.kt", "CoverSync.kt", "DocsStore.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSavesAndroid.kt", "RzipSave.kt", "SaveBackups.kt", "AndroidGameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt",
     "RomPatcher.kt", "AndroidRomPatches.kt", "RomCrcs.kt", "SpritePackFlow.kt", "n3ds/N3dsCart.kt",
     "ScreenScraperClient.kt", "ScreenScraperUi.kt", "GameMedia.kt", "LauncherScreen.kt",
-    "achievements/**", "AndroidPictures.kt", "JvmDeviceDates.kt", "overlay/Overlays.kt", "overlay/OverlayLabels.kt",
+    "achievements/**", "AndroidPictures.kt", "JvmDeviceDates.kt", "overlay/OverlayFiles.kt",
 )
 
 // Copied (not referenced in place) so the few Android-only APIs desktop

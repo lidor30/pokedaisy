@@ -38,12 +38,12 @@ object RomPicker {
     }
 
     /** A copied data file, also used for cheat imports; read it during [onPicked]. Cancelled = null. */
-    fun pickData(from: UIViewController, onPicked: (String?) -> Unit) {
-        present(from, listOf(UTTypeData), multiple = false) { urls -> onPicked(urls.firstOrNull()?.path) }
+    fun pickData(from: UIViewController, onPicked: (String?) -> Unit): Boolean {
+        return present(from, listOf(UTTypeData), multiple = false) { urls -> onPicked(urls.firstOrNull()?.path) }
     }
 
-    private fun present(from: UIViewController, types: List<UTType>, multiple: Boolean, onPicked: (List<NSURL>) -> Unit) {
-        if (delegate != null) return
+    private fun present(from: UIViewController, types: List<UTType>, multiple: Boolean, onPicked: (List<NSURL>) -> Unit): Boolean {
+        if (delegate != null) return false
         val picker = UIDocumentPickerViewController(forOpeningContentTypes = types, asCopy = true)
         picker.allowsMultipleSelection = multiple
         val d = object : NSObject(), UIDocumentPickerDelegateProtocol {
@@ -58,7 +58,13 @@ object RomPicker {
         }
         delegate = d
         picker.delegate = d
-        from.presentViewController(picker, animated = true, completion = null)
+        return try {
+            from.presentViewController(picker, animated = true, completion = null)
+            true
+        } catch (error: Throwable) {
+            delegate = null
+            false
+        }
     }
 
     /** The app's folder of games. */
@@ -70,10 +76,12 @@ object RomPicker {
     /** State files, visible in Files alongside battery saves. */
     val statesDir: String get() = documents("states")
 
+    val savesDir: String get() = documents("saves")
+
     /** Where the game at [romPath] keeps its battery save: `Documents/saves/<name>.sav`. */
     fun savePathFor(romPath: String): String {
         val name = romPath.substringAfterLast('/').substringBeforeLast('.')
-        return "${documents("saves")}/$name.sav"
+        return "$savesDir/$name.sav"
     }
 
     /** Moves the picker's copy at [url] into [romsDir]; its path there, or null if it couldn't. */

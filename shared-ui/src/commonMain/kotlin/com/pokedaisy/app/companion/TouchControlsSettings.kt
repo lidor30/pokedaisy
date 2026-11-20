@@ -237,6 +237,9 @@ data class TouchControlsStyle(
         SkinSystem.GB -> copy(skinGb = id)
         SkinSystem.DS -> this
     }
+    /** Removing one imported file leaves the other system and the drawn layout untouched. */
+    fun withoutSkin(id: String) = copy(skinGba = skinGba.takeIf { it != id }, skinGb = skinGb.takeIf { it != id })
+
 
     /** The moved controls in use for this orientation: none while LAYOUT is a preset. */
     fun layoutFor(portrait: Boolean) = if (!useCustom) TouchLayout() else if (portrait) this.portrait else landscape

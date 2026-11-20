@@ -42,6 +42,11 @@ object SkinImages {
 
     fun load(skin: InstalledSkin, rep: SkinRepresentation, w: Int, h: Int): ImageBitmap? {
         val file = rep.asset?.let { skin.file(it) } ?: return null
+        return load(file, w, h)
+    }
+
+    /** Bounded image transport shared with imported game borders. */
+    fun load(file: Path, w: Int, h: Int): ImageBitmap? {
         val k = minOf(1f, MAX_SIDE.toFloat() / max(w, h).coerceAtLeast(1))
         val tw = (w * k).roundToInt().coerceAtLeast(1)
         val th = (h * k).roundToInt().coerceAtLeast(1)
