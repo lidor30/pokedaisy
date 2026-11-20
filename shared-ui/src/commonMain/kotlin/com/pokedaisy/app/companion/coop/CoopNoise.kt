@@ -1,36 +1,28 @@
 package com.pokedaisy.app.companion.coop
 
-import java.security.GeneralSecurityException
-import java.security.MessageDigest
-import java.security.SecureRandom
-import javax.crypto.Cipher
-import javax.crypto.Mac
-import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.SecretKeySpec
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.Buffer
+import okio.ByteString.Companion.toByteString
 
 /**
  * One direction of a finished handshake: AES-256-GCM with the Noise nonce (4 zero bytes + an 8-byte
  * big-endian counter) and no associated data. [decrypt] counts the nonce only on success, so a
  * forged or replayed message neither advances nor breaks the stream; both refuse after 2^63 messages.
  */
-class CoopCipher internal constructor(private val key: ByteArray) {
+class CoopCipher internal constructor(private val crypto: CoopCrypto, private val key: ByteArray) {
+    private val lock = SynchronizedObject()
     private var n = 0L
 
-    @Synchronized
-    fun encrypt(plain: ByteArray): ByteArray {
+    fun encrypt(plain: ByteArray): ByteArray = synchronized(lock) {
         check(n >= 0) { "cipher exhausted" }
-        val out = CoopNoise.aead(true, key, n, ByteArray(0), plain)!!
-        n++
-        return out
+        checkNotNull(crypto.seal(key, noiseNonce(n), EMPTY, plain)) { "co-op encryption failed" }.also { n++ }
     }
 
     /** The plaintext, or null when [sealed] doesn't authenticate at the current nonce. */
-    @Synchronized
-    fun decrypt(sealed: ByteArray): ByteArray? {
-        if (n < 0) return null
-        val out = CoopNoise.aead(false, key, n, ByteArray(0), sealed) ?: return null
-        n++
-        return out
+    fun decrypt(sealed: ByteArray): ByteArray? = synchronized(lock) {
+        if (n < 0) return@synchronized null
+        crypto.open(key, noiseNonce(n), EMPTY, sealed)?.also { n++ }
     }
 }
 
@@ -40,6 +32,7 @@ class CoopCipher internal constructor(private val key: ByteArray) {
  * key; the responder learns the initiator's from message 1 ([remoteStatic]).
  */
 class CoopNoise private constructor(
+    private val crypto: CoopCrypto,
     private val initiator: Boolean,
     private val s: ByteArray,
     private val sPub: ByteArray,
@@ -59,7 +52,7 @@ class CoopNoise private constructor(
     private var splitDone = false
 
     init {
-        val name = PROTOCOL.toByteArray(Charsets.US_ASCII)
+        val name = PROTOCOL.encodeToByteArray()
         h = if (name.size <= HASHLEN) name.copyOf(HASHLEN) else sha256(name)
         ck = h.copyOf()
         mixHash(prologue)
@@ -83,7 +76,7 @@ class CoopNoise private constructor(
     fun writeMessage(payload: ByteArray): ByteArray {
         check(!failed) { "handshake failed" }
         check(if (initiator) step == 0 else step == 1) { "not this side's turn" }
-        val out = java.io.ByteArrayOutputStream()
+        val out = Buffer()
         genEphemeral()
         out.write(ePub!!)
         mixHash(ePub!!)
@@ -97,18 +90,14 @@ class CoopNoise private constructor(
         }
         out.write(encryptAndHash(payload))
         step++
-        return out.toByteArray()
+        return out.readByteArray()
     }
 
     /** Reads the peer's handshake message; null when it is too short or doesn't authenticate (the handshake is then dead). */
     fun readMessage(message: ByteArray): ByteArray? {
         check(if (initiator) step == 1 else step == 0) { "not this side's turn" }
         if (failed) return null
-        val result = try {
-            read(message)
-        } catch (_: GeneralSecurityException) {
-            null
-        }
+        val result = read(message)
         if (result == null) failed = true else step++
         return result
     }
@@ -121,14 +110,14 @@ class CoopNoise private constructor(
         mixHash(remoteE)
         var off = 32
         if (initiator) {
-            mixKey(CoopKeys.dh(e!!, remoteE) ?: return null) // ee
-            mixKey(CoopKeys.dh(s, remoteE) ?: return null) // se
+            mixKey(crypto.dh(e!!, remoteE) ?: return null) // ee
+            mixKey(crypto.dh(s, remoteE) ?: return null) // se
         } else {
-            mixKey(CoopKeys.dh(s, remoteE) ?: return null) // es
+            mixKey(crypto.dh(s, remoteE) ?: return null) // es
             val staticPub = decryptAndHash(m.copyOfRange(off, off + 32 + TAG)) ?: return null
             off += 32 + TAG
             rs = staticPub
-            mixKey(CoopKeys.dh(s, staticPub) ?: return null) // ss
+            mixKey(crypto.dh(s, staticPub) ?: return null) // ss
         }
         return decryptAndHash(m.copyOfRange(off, m.size))
     }
@@ -138,17 +127,17 @@ class CoopNoise private constructor(
         check(isDone && !splitDone) { "split needs a finished handshake, once" }
         splitDone = true
         val (k1, k2) = hkdf(ck, ByteArray(0))
-        return if (initiator) CoopCipher(k1) to CoopCipher(k2) else CoopCipher(k2) to CoopCipher(k1)
+        return if (initiator) CoopCipher(crypto, k1) to CoopCipher(crypto, k2) else CoopCipher(crypto, k2) to CoopCipher(crypto, k1)
     }
 
     private fun genEphemeral() {
-        val sk = fixedEphemeral?.copyOf() ?: ByteArray(32).also { SecureRandom().nextBytes(it) }
+        val sk = fixedEphemeral?.copyOf() ?: checkNotNull(crypto.randomBytes(32)) { "co-op randomness unavailable" }
         e = sk
-        ePub = CoopKeys.publicKey(sk)
+        ePub = checkNotNull(crypto.publicKey(sk)) { "invalid ephemeral key" }
     }
 
     private fun dhOrThrow(secret: ByteArray, pub: ByteArray): ByteArray =
-        CoopKeys.dh(secret, pub) ?: throw IllegalStateException("low-order public key")
+        crypto.dh(secret, pub) ?: throw IllegalStateException("low-order public key")
 
     private fun mixHash(data: ByteArray) {
         h = sha256(h + data)
@@ -163,14 +152,16 @@ class CoopNoise private constructor(
 
     private fun encryptAndHash(plain: ByteArray): ByteArray {
         val key = k
-        val out = if (key == null) plain else aead(true, key, nonce++, h, plain)!!
+        val out = if (key == null) plain else {
+            checkNotNull(crypto.seal(key, noiseNonce(nonce), h, plain)) { "co-op encryption failed" }.also { nonce++ }
+        }
         mixHash(out)
         return out
     }
 
     private fun decryptAndHash(sealed: ByteArray): ByteArray? {
         val key = k
-        val out = if (key == null) sealed else aead(false, key, nonce, h, sealed) ?: return null
+        val out = if (key == null) sealed else crypto.open(key, noiseNonce(nonce), h, sealed) ?: return null
         if (key != null) nonce++
         mixHash(sealed)
         return out
@@ -181,18 +172,20 @@ class CoopNoise private constructor(
         private const val HASHLEN = 32
         private const val TAG = 16
 
-        fun initiator(staticSecret: ByteArray, remoteStatic: ByteArray, prologue: ByteArray, ephemeral: ByteArray? = null): CoopNoise {
+        fun initiator(
+            crypto: CoopCrypto, staticSecret: ByteArray, remoteStatic: ByteArray, prologue: ByteArray, ephemeral: ByteArray? = null,
+        ): CoopNoise {
             require(remoteStatic.size == 32) { "remote static: 32 bytes" }
-            return CoopNoise(true, staticSecret, CoopKeys.publicKey(staticSecret), remoteStatic.copyOf(), prologue, ephemeral)
+            return CoopNoise(crypto, true, staticSecret, checkNotNull(crypto.publicKey(staticSecret)), remoteStatic.copyOf(), prologue, ephemeral)
         }
 
-        fun responder(staticSecret: ByteArray, prologue: ByteArray, ephemeral: ByteArray? = null): CoopNoise =
-            CoopNoise(false, staticSecret, CoopKeys.publicKey(staticSecret), null, prologue, ephemeral)
+        fun responder(crypto: CoopCrypto, staticSecret: ByteArray, prologue: ByteArray, ephemeral: ByteArray? = null): CoopNoise =
+            CoopNoise(crypto, false, staticSecret, checkNotNull(crypto.publicKey(staticSecret)), null, prologue, ephemeral)
 
-        private fun sha256(data: ByteArray): ByteArray = MessageDigest.getInstance("SHA-256").digest(data)
+        private fun sha256(data: ByteArray): ByteArray = data.toByteString().sha256().toByteArray()
 
         private fun hmac(key: ByteArray, data: ByteArray): ByteArray =
-            Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(key, "HmacSHA256")) }.doFinal(data)
+            data.toByteString().hmacSha256(key.toByteString()).toByteArray()
 
         /** The spec's HKDF with two outputs. */
         private fun hkdf(chainingKey: ByteArray, input: ByteArray): Pair<ByteArray, ByteArray> {
@@ -201,21 +194,14 @@ class CoopNoise private constructor(
             val o2 = hmac(temp, o1 + byteArrayOf(2))
             return o1 to o2
         }
-
-        /** AES-256-GCM with the Noise nonce; null on a failed authentication (decrypt) or a spent counter. */
-        internal fun aead(encrypt: Boolean, key: ByteArray, counter: Long, ad: ByteArray, input: ByteArray): ByteArray? {
-            if (counter < 0) return null
-            val iv = ByteArray(12)
-            for (i in 0 until 8) iv[4 + i] = (counter ushr (56 - 8 * i)).toByte()
-            return try {
-                val c = Cipher.getInstance("AES/GCM/NoPadding")
-                c.init(if (encrypt) Cipher.ENCRYPT_MODE else Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, iv))
-                c.updateAAD(ad)
-                c.doFinal(input)
-            } catch (e: GeneralSecurityException) {
-                if (encrypt) throw e
-                null
-            }
-        }
     }
+}
+
+private val EMPTY = ByteArray(0)
+
+private fun noiseNonce(counter: Long): ByteArray {
+    check(counter >= 0) { "cipher exhausted" }
+    val iv = ByteArray(12)
+    for (i in 0 until 8) iv[4 + i] = (counter ushr (56 - 8 * i)).toByte()
+    return iv
 }

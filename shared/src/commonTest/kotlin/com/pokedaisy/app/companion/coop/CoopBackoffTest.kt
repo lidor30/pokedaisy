@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.coop
 
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 class CoopBackoffTest {
     @Test fun doublesToCapWithJitter() {

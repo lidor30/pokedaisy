@@ -1,7 +1,5 @@
 package com.pokedaisy.app.companion.coop
 
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
 import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -11,6 +9,9 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import okio.buffer
+import okio.sink
+import okio.source
 
 /**
  * The single writer of one pipe (a relay socket or a TCP socket): [offer] only enqueues, a pool thread
@@ -23,24 +24,24 @@ internal class PipeWriter(
     private val ready: CountDownLatch? = null,
     private val write: (ByteArray) -> Boolean,
     private val onEnd: () -> Unit,
-) {
-    private val queue = LinkedBlockingQueue<ByteArray>(CAPACITY)
+) : CoopPipe {
+    private val queue = LinkedBlockingQueue<ByteArray>(CoopPipe.CAPACITY)
 
     @Volatile private var closed = false
 
     /** Messages waiting to be written. */
-    val backlog: Int get() = queue.size
+    override val backlog: Int get() = queue.size
 
     fun start() = pool.execute(::run)
 
-    fun offer(bytes: ByteArray): Boolean = !closed && queue.offer(bytes)
+    override fun offer(bytes: ByteArray): Boolean = !closed && queue.offer(bytes)
 
-    fun closeSoon() {
+    override fun closeSoon() {
         closed = true
         if (!queue.offer(END)) closeNow()
     }
 
-    fun closeNow() {
+    override fun closeNow() {
         closed = true
         queue.clear()
         queue.offer(END)
@@ -70,9 +71,6 @@ internal class PipeWriter(
     }
 
     companion object {
-        /** App frames are capped at 256 a peer by the transport; the rest is handshake, pings and CLOSE. */
-        const val CAPACITY = 320
-        const val BACKLOG = 256
         private const val READY_WAIT_MS = 5_000L
         private val END = ByteArray(0)
     }
@@ -82,13 +80,11 @@ internal class PipeWriter(
 internal class DirectSocket(
     private val socket: Socket,
     private val pool: Executor,
-    private val onMessage: (ByteArray) -> Unit,
-    private val onClosed: () -> Unit,
-) {
-    private val output = BufferedOutputStream(socket.getOutputStream())
-    private val input = BufferedInputStream(socket.getInputStream())
+) : CoopTcpSocket {
+    private val output = socket.sink().buffer()
+    private val input = socket.source().buffer()
 
-    val writer = PipeWriter(
+    override val writer = PipeWriter(
         pool,
         write = { bytes ->
             try {
@@ -101,7 +97,7 @@ internal class DirectSocket(
         onEnd = { closeSocket() },
     )
 
-    fun start() {
+    override fun start(onMessage: (ByteArray) -> Unit, onClosed: () -> Unit) {
         writer.start()
         pool.execute {
             try {
@@ -118,7 +114,7 @@ internal class DirectSocket(
     }
 
     /** Closes the socket now, ending a write blocked on a peer that stopped reading; the writer and reader then end. */
-    fun abort() {
+    override fun abort() {
         writer.closeNow()
         closeSocket()
     }
@@ -150,12 +146,12 @@ internal class DirectSocket(
 }
 
 /** The TCP listener: an accept thread that hands each socket to [onAccept]. Binds loopback only when asked (tests). */
-internal class DirectListener(bindLoopback: Boolean, private val pool: Executor, private val onAccept: (Socket) -> Unit) {
+internal class DirectListener(bindLoopback: Boolean, private val pool: Executor, private val onAccept: (Socket) -> Unit) : CoopTcpListener {
     private val server = ServerSocket(0, 16, if (bindLoopback) InetAddress.getLoopbackAddress() else null)
 
-    val port: Int get() = server.localPort
+    override val port: Int get() = server.localPort
 
-    fun start() {
+    override fun start() {
         pool.execute {
             try {
                 while (true) {
@@ -176,7 +172,7 @@ internal class DirectListener(bindLoopback: Boolean, private val pool: Executor,
         }
     }
 
-    fun close() {
+    override fun close() {
         try {
             server.close()
         } catch (_: IOException) {

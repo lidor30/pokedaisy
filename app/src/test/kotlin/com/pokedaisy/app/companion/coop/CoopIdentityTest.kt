@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.coop
 
+import okio.Path.Companion.toOkioPath
 import java.io.File
 import java.io.IOException
 import org.junit.Assert.assertArrayEquals
@@ -13,24 +14,24 @@ class CoopIdentityTest {
 
     @Test fun aReadErrorOnAValidKeyPropagatesAndKeepsTheFile() {
         val d = dir()
-        val key = CoopIdentity.secretKey(d)
+        val key = CoopIdentity.secretKey(d.toOkioPath(), JvmCoopCrypto)
         val before = File(d, "secret.key").readBytes()
-        assertThrows(IOException::class.java) { CoopIdentity.secretKey(d) { throw IOException("transient") } }
+        assertThrows(IOException::class.java) { CoopIdentity.secretKey(d.toOkioPath(), JvmCoopCrypto) { throw IOException("transient") } }
         assertArrayEquals(before, File(d, "secret.key").readBytes())
-        assertArrayEquals(key, CoopIdentity.secretKey(d))
+        assertArrayEquals(key, CoopIdentity.secretKey(d.toOkioPath(), JvmCoopCrypto))
     }
 
     @Test fun aWrongLengthFileIsReplaced() {
         val d = dir()
         File(d, "secret.key").writeBytes(ByteArray(5))
-        assertEquals(32, CoopIdentity.secretKey(d).size)
+        assertEquals(32, CoopIdentity.secretKey(d.toOkioPath(), JvmCoopCrypto).size)
         assertEquals(32L, File(d, "secret.key").length())
     }
 
     @Test fun aMissingFileMakesOneKeptKey() {
         val d = dir()
-        val a = CoopIdentity.secretKey(d)
-        assertArrayEquals(a, CoopIdentity.secretKey(d))
-        assertFalse(a.contentEquals(CoopIdentity.secretKey(dir())))
+        val a = CoopIdentity.secretKey(d.toOkioPath(), JvmCoopCrypto)
+        assertArrayEquals(a, CoopIdentity.secretKey(d.toOkioPath(), JvmCoopCrypto))
+        assertFalse(a.contentEquals(CoopIdentity.secretKey(dir().toOkioPath(), JvmCoopCrypto)))
     }
 }

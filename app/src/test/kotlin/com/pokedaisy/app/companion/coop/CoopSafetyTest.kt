@@ -6,13 +6,14 @@ import org.junit.Test
 
 class CoopSafetyTest {
     @Test fun coopCodeNeverTouchesGameMemory() {
+        val root = listOf(File("."), File("..")).first { File(it, "settings.gradle.kts").isFile }
         val packagePath = "com/pokedaisy/app/companion/coop"
-        val roots = listOf(File("src/main/kotlin"), File("../shared-ui/src/commonMain/kotlin"))
-        val files = roots.flatMap { root ->
-            val dir = File(root, packagePath)
-            assertTrue("the co-op sources weren't found at ${dir.absolutePath}", dir.isDirectory)
-            dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        }
+        val files = listOf("app/src/main/kotlin", "shared/src/commonMain/kotlin", "shared-ui/src/commonMain/kotlin")
+            .flatMap { source -> File(root, "$source/$packagePath").walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }.toList() }
+        assertTrue("Android co-op transport sources weren't found", files.any { it.name == "AndroidCoopNetwork.kt" })
+        assertTrue("Shared co-op session sources weren't found", files.any { it.name == "CoopLinkImpl.kt" })
+        assertTrue("Shared co-op transport framing was not found", files.any { it.name == "CoopFrames.kt" })
         for (f in files) {
             val text = f.readText()
             for (word in listOf("MgbaCore", "pkWrite", "pkCall", "EmulatorEngine")) {

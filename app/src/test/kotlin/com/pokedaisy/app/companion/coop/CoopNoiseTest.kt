@@ -19,9 +19,9 @@ class CoopNoiseTest {
         assertEquals(CoopNoise.PROTOCOL, v.getString("protocol_name"))
         val initStatic = hex(v.getString("init_static"))
         val init = CoopNoise.initiator(
-            initStatic, hex(v.getString("init_remote_static")), hex(v.getString("init_prologue")), hex(v.getString("init_ephemeral")),
+            JvmCoopCrypto, initStatic, hex(v.getString("init_remote_static")), hex(v.getString("init_prologue")), hex(v.getString("init_ephemeral")),
         )
-        val resp = CoopNoise.responder(hex(v.getString("resp_static")), hex(v.getString("resp_prologue")), hex(v.getString("resp_ephemeral")))
+        val resp = CoopNoise.responder(JvmCoopCrypto, hex(v.getString("resp_static")), hex(v.getString("resp_prologue")), hex(v.getString("resp_ephemeral")))
         val msgs = v.getJSONArray("messages")
         fun payload(i: Int) = hex(msgs.getJSONObject(i).getString("payload"))
         fun cipher(i: Int) = msgs.getJSONObject(i).getString("ciphertext")
@@ -55,7 +55,7 @@ class CoopNoiseTest {
         val rnd = SecureRandom()
         val a = ByteArray(32).also(rnd::nextBytes)
         val b = ByteArray(32).also(rnd::nextBytes)
-        return CoopNoise.initiator(a, CoopKeys.publicKey(b), prologue) to CoopNoise.responder(b, prologue)
+        return CoopNoise.initiator(JvmCoopCrypto, a, CoopKeys.publicKey(b), prologue) to CoopNoise.responder(JvmCoopCrypto, b, prologue)
     }
 
     @Test fun roundTripWithRandomKeys() {
@@ -73,8 +73,8 @@ class CoopNoiseTest {
         val a = ByteArray(32).also(rnd::nextBytes)
         val b = ByteArray(32).also(rnd::nextBytes)
         val other = ByteArray(32).also(rnd::nextBytes)
-        val init = CoopNoise.initiator(a, CoopKeys.publicKey(other), prologue)
-        val resp = CoopNoise.responder(b, prologue)
+        val init = CoopNoise.initiator(JvmCoopCrypto, a, CoopKeys.publicKey(other), prologue)
+        val resp = CoopNoise.responder(JvmCoopCrypto, b, prologue)
         assertNull(resp.readMessage(init.writeMessage(byteArrayOf(1))))
     }
 
@@ -94,8 +94,8 @@ class CoopNoiseTest {
         val rnd = SecureRandom()
         val a = ByteArray(32).also(rnd::nextBytes)
         val b = ByteArray(32).also(rnd::nextBytes)
-        val i = CoopNoise.initiator(a, CoopKeys.publicKey(b), "x".toByteArray())
-        assertNull(CoopNoise.responder(b, "y".toByteArray()).readMessage(i.writeMessage(byteArrayOf())))
+        val i = CoopNoise.initiator(JvmCoopCrypto, a, CoopKeys.publicKey(b), "x".toByteArray())
+        assertNull(CoopNoise.responder(JvmCoopCrypto, b, "y".toByteArray()).readMessage(i.writeMessage(byteArrayOf())))
     }
 
     @Test fun cipherRejectsTamperAndReplay() {

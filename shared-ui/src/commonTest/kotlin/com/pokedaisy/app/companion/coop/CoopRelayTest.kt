@@ -1,8 +1,6 @@
 package com.pokedaisy.app.companion.coop
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import kotlin.test.*
 
 class CoopRelayTest {
     @Test fun normalizes() {
@@ -11,7 +9,7 @@ class CoopRelayTest {
         listOf(
             "http://r.example", "https://r.example/path", "https://u@r.example", "r.example", "https://",
             "https://a b", "https://r.example?x=1", "https://r.example:99999", "https://" + "a".repeat(254),
-        ).forEach { assertNull(it, CoopRelay.normalize(it)) }
+        ).forEach { assertNull(CoopRelay.normalize(it), it) }
     }
 
     @Test fun effectiveOrder() {

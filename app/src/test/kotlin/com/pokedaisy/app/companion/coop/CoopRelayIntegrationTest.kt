@@ -33,7 +33,7 @@ class CoopRelayIntegrationTest {
     private inner class Node {
         val secret = ByteArray(32).also { SecureRandom().nextBytes(it) }
         val id = CoopPeerId.of(CoopKeys.publicKey(secret))
-        val transport = RelayCoopTransport(OkHttpRelayConnector(), NoCoopLan, fast, System::currentTimeMillis, bindLoopback = true)
+        val transport = androidCoopTransport(OkHttpRelayConnector(), NoCoopLan, fast, System::currentTimeMillis, bindLoopback = true)
         val seen = CopyOnWriteArrayList<CoopEvent>()
 
         init {
