@@ -13,7 +13,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Yellow Legacy (GB) | 1.0.10 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | Red / Blue (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
-| Red Gen II Graphics (GB) | 2.0 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | — | — | — | n/a | n/a | — | — | — ³⁶ |
+| Red Gen II Graphics (GB) | 2.0 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ⁵⁶ | — | n/a | n/a | ✅ ⁵⁶ | ✅ ⁵⁶ | — | n/a | n/a | — | — | — ³⁶ |
 | Yellow Gen II Graphics (GB) | 1.1 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | — | — | — | n/a | n/a | — | — | — ³⁶ |
 | Brown (GB) | 6.0.1, 6.1.2 | — | ✅ ³⁸ | ✅ ³⁸ | ✅ ³⁸ | — | ✅ ³⁸ | — | n/a | n/a | ✅ ³⁸ | ✅ ³⁸ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
@@ -1037,9 +1037,13 @@ Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draw
     and save untouched, so they run on Red's / Yellow's configs (`GEN1_RED_GEN2_GRAPHICS`, `GEN1_YELLOW_GEN2_GRAPHICS`), found
     by hash. The patch redraws the Pokémon, trainers and tiles, so their art goes to files of their own (`gen1Gen2Graphics`,
     `Gen1Art.*_GEN2_GRAPHICS_*`) and their Pokédex pictures take each species' bank from byte 27 of its base stats
-    (`picBankOffset`). Only the RAM-driven columns are marked: nothing else was played here (no copy of the hacks on the
-    machine that wrote this), and Yellow's bank 0 is 0x12 off retail's (its STEADY addresses moved with it), so
-    GbField's fixed-address checks likely turn its field features off. Their colours and music weren't compared with the game.
+    (`picBankOffset`). Checked 2026-11-20 on the patches from their PokeCommunity threads (Red's graphics-only IPS: its
+    GFX & Music one is another hash, not supported) applied to retail: both carts booted headless from retail's saves read
+    exactly as retail's fixtures (`Gen2GraphicsDecodeTest`, fixtures `red_gen2_graphics` / `yellow_gen2_graphics`), all 151
+    pictures decode in both (`RedBlueArtTest`), and STEADY's song plays and loops as retail's from each cart's PlayMusic and
+    park (Yellow's bank 0 moved 0x12 from 0x1400 on: 0x21FF / 0x1745). Red's bank 0 is retail's where GbField looks, so its
+    PC, FLY and WILD are Red's (`GbFieldTest`; the PC opened headless); Yellow's matches no field config, so its stay off.
+    EXPAND and the bag's patches aren't tried here.
 
 57. RUNNING SHOES on the Game Boy (2026-11-19, from marthinmooy's PR #1171, ported to `GbGamePatches.run`): B held while
     walking gives the bike's speed. Red / Blue hook .moveAhead2's bike check (0x05CC), Yellow DoBikeSpeedup's (0x049D),

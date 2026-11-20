@@ -65,6 +65,8 @@ val GEN1_MUSIC_YELLOW = Gen1MusicTables(
  * bytes in each).
  */
 val GEN1_MUSIC_YELLOW_DE = GEN1_MUSIC_YELLOW.copy(sha1 = TelemetrySampler.YELLOW_DE_SHA1, playMusic = 0x2216)
+// Yellow Gen II Graphics V1.1: bank 0 moved 0x12 from 0x1400 on; PlayMusic and the park checked headless (gbpark / gbcall /
+// gbloop: the wild battle's song loops as retail's) and by Gen2GraphicsDecodeTest.
 val GEN1_MUSIC_YELLOW_GEN2_GRAPHICS = GEN1_MUSIC_YELLOW.copy(sha1 = TelemetrySampler.YELLOW_GEN2_GRAPHICS_V1_1_SHA1, playMusic = 0x21FF, spin = 0x1745)
 val GEN1_MUSIC_YELLOW_FR = GEN1_MUSIC_YELLOW.copy(sha1 = TelemetrySampler.YELLOW_FR_SHA1, playMusic = 0x220D, spin = 0x1754)
 val GEN1_MUSIC_YELLOW_IT = GEN1_MUSIC_YELLOW.copy(sha1 = TelemetrySampler.YELLOW_IT_SHA1)
