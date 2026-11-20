@@ -10,6 +10,9 @@
 base = 'emerald_retail'
 gameCode = { ref = 'LEGACY_TEXT' }
 itemDescs = { preset = 'vanilla', base = 0x085B6210 }
+# A rebuild: retail's sMonSummaryScreen / gMoveToLearn aren't its EWRAM addresses.
+summaryScreen = 0
+moveToLearn = 0
 gMain = 0x030024A0
 saveBlock1Ptr = 0x03005F6C
 saveBlock2Ptr = 0x03005F70

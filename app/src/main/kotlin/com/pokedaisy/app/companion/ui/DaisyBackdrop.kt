@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.toArgb
@@ -178,7 +177,7 @@ private val motifBitmaps = HashMap<com.pokedaisy.app.companion.ui.theme.ThemeMot
 private fun pixelBitmap(rows: List<String>, palette: Map<Char, Color>): ImageBitmap {
     val n = rows.size
     val px = IntArray(n * n) { i -> palette[rows[i / n].getOrNull(i % n)]?.toArgb() ?: 0 }
-    return android.graphics.Bitmap.createBitmap(px, n, n, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
+    return imageBitmapOf(px, n, n)
 }
 
 /** The site's dot grid: a [dot]-px square of its ink at 9% every [step] px, as a repeating tile. */
@@ -188,7 +187,7 @@ private fun dotBrush(dot: Int, step: Int, dark: Boolean = false): Brush {
     // Dark: white dots at ~6%, as faint on the ink as the site's are on its page.
     val ink = if (dark) 0x10FFFFFF else 0x171D1B26
     val px = IntArray(step * step) { i -> if (i % step < dot && i / step < dot) ink else 0 }
-    val tile = android.graphics.Bitmap.createBitmap(px, step, step, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
+    val tile = imageBitmapOf(px, step, step)
     return ShaderBrush(ImageShader(tile, TileMode.Repeated, TileMode.Repeated)).also { dotBrushes[key] = it }
 }
 

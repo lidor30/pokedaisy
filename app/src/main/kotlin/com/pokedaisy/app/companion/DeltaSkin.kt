@@ -2,8 +2,12 @@ package com.pokedaisy.app.companion
 
 import androidx.compose.ui.geometry.Rect
 import com.pokedaisy.app.companion.i18n.tk
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.min
@@ -111,89 +115,90 @@ data class DeltaSkin(
 
         /** Reads info.json; throws IllegalArgumentException (its message for the player) when it isn't a skin. */
         fun parse(json: String): DeltaSkin {
-            val root = runCatching { JSONObject(json.trimStart('﻿')) }.getOrElse { throw IllegalArgumentException("info.json can't be read") }
+            val root = runCatching { LENIENT.parseToJsonElement(json.trimStart('﻿')) as JsonObject }.getOrElse { throw IllegalArgumentException("info.json can't be read") }
             val reps = ArrayList<SkinRepresentation>()
-            val devices = root.optJSONObject("representations") ?: throw IllegalArgumentException("info.json has no representations")
-            for (device in devices.keys()) {
-                val displays = devices.optJSONObject(device) ?: continue
-                for (display in displays.keys()) {
-                    val ways = displays.optJSONObject(display) ?: continue
-                    for (way in ways.keys()) {
+            val devices = root.obj("representations") ?: throw IllegalArgumentException("info.json has no representations")
+            for (device in devices.keys) {
+                val displays = devices.obj(device) ?: continue
+                for (display in displays.keys) {
+                    val ways = displays.obj(display) ?: continue
+                    for (way in ways.keys) {
                         val portrait = when (way.lowercase()) { "portrait" -> true; "landscape" -> false; else -> continue }
-                        val o = ways.optJSONObject(way) ?: continue
+                        val o = ways.obj(way) ?: continue
                         representation(device.lowercase(), display, portrait, o)?.let { reps += it }
                     }
                 }
             }
             if (reps.isEmpty()) throw IllegalArgumentException("info.json has no buttons")
             return DeltaSkin(
-                name = root.optString("name").ifBlank { root.optString("identifier", "Skin") },
-                identifier = root.optString("identifier").ifBlank { root.optString("name") },
-                gameType = root.optString("gameTypeIdentifier"),
+                name = root.str("name").ifBlank { root.str("identifier", "Skin") },
+                identifier = root.str("identifier").ifBlank { root.str("name") },
+                gameType = root.str("gameTypeIdentifier"),
                 representations = reps,
             )
         }
 
-        private fun rect(o: JSONObject?): SkinRect? {
+        private fun rect(o: JsonObject?): SkinRect? {
             o ?: return null
-            val w = o.optDouble("width", Double.NaN).toFloat()
-            val h = o.optDouble("height", Double.NaN).toFloat()
+            val w = o.num("width", Double.NaN).toFloat()
+            val h = o.num("height", Double.NaN).toFloat()
             if (w.isNaN() || h.isNaN() || w <= 0f || h <= 0f) return null
-            return SkinRect(o.optDouble("x", 0.0).toFloat(), o.optDouble("y", 0.0).toFloat(), w, h)
+            return SkinRect(o.num("x", 0.0).toFloat(), o.num("y", 0.0).toFloat(), w, h)
         }
 
-        private fun edges(o: JSONObject?, base: SkinEdges): SkinEdges {
+        private fun edges(o: JsonObject?, base: SkinEdges): SkinEdges {
             o ?: return base
-            fun side(k: String, d: Float) = if (o.has(k)) o.optDouble(k, d.toDouble()).toFloat() else d
+            fun side(k: String, d: Float) = o.num(k, d.toDouble()).toFloat()
             return SkinEdges(side("top", base.top), side("bottom", base.bottom), side("left", base.left), side("right", base.right))
         }
 
-        private fun representation(device: String, display: String, portrait: Boolean, o: JSONObject): SkinRepresentation? {
-            val mapping = o.optJSONObject("mappingSize") ?: return null
-            val mw = mapping.optDouble("width", 0.0).toFloat()
-            val mh = mapping.optDouble("height", 0.0).toFloat()
+        private fun representation(device: String, display: String, portrait: Boolean, o: JsonObject): SkinRepresentation? {
+            val mapping = o.obj("mappingSize") ?: return null
+            val mw = mapping.num("width", 0.0).toFloat()
+            val mh = mapping.num("height", 0.0).toFloat()
             if (mw <= 0f || mh <= 0f) return null
-            val assets = o.optJSONObject("assets")
+            val assets = o.obj("assets")
             val asset = assets?.let { a ->
-                listOf("resizable", "large", "medium", "small").firstNotNullOfOrNull { k -> a.optString(k).takeIf { it.isNotBlank() } }
+                listOf("resizable", "large", "medium", "small").firstNotNullOfOrNull { k -> a.str(k).takeIf { it.isNotBlank() } }
             }
-            val baseEdges = edges(o.optJSONObject("extendedEdges"), SkinEdges())
+            val baseEdges = edges(o.obj("extendedEdges"), SkinEdges())
             val items = ArrayList<SkinItem>()
-            val list = o.optJSONArray("items") ?: JSONArray()
-            for (i in 0 until list.length()) {
-                val it = list.optJSONObject(i) ?: continue
-                val frame = rect(it.optJSONObject("frame")) ?: continue
-                val e = edges(it.optJSONObject("extendedEdges"), baseEdges)
-                val inputs = it.opt("inputs")
+            val list = o["items"] as? JsonArray ?: JsonArray(emptyList())
+            for (element in list) {
+                val it = element as? JsonObject ?: continue
+                val frame = rect(it.obj("frame")) ?: continue
+                val e = edges(it.obj("extendedEdges"), baseEdges)
+                val inputs = it["inputs"]
                 val item = when (inputs) {
-                    is JSONObject -> {
+                    is JsonObject -> {
                         // { up, down, left, right }: a D-pad (or a thumbstick), read as one. The DS's touch screen
                         // ({ x, y }) isn't a button.
-                        val keys = inputs.keys().asSequence().map { k -> k.lowercase() }.toSet()
+                        val keys = inputs.keys.map { k -> k.lowercase() }.toSet()
                         if (keys.containsAll(listOf("up", "down", "left", "right"))) SkinItem(frame, e, dpad = true) else null
                     }
-                    is JSONArray -> {
-                        val names = (0 until inputs.length()).map { k -> inputs.optString(k).lowercase() }
+                    is JsonArray -> {
+                        val names = inputs.map { k -> k.text().lowercase() }
                         val buttons = names.mapNotNull { BUTTONS[it] }.toSet()
                         val dirs = names.fold(0) { acc, n -> acc or dir(n) }
                         if (buttons.isEmpty() && dirs == 0) null else SkinItem(frame, e, buttons, dirs)
                     }
-                    is String -> when {
-                        inputs.equals("dpad", true) -> SkinItem(frame, e, dpad = true)
-                        BUTTONS[inputs.lowercase()] != null -> SkinItem(frame, e, setOf(BUTTONS.getValue(inputs.lowercase())))
-                        dir(inputs) != 0 -> SkinItem(frame, e, dirs = dir(inputs))
-                        else -> null
+                    is JsonPrimitive -> inputs.text().let { name ->
+                        when {
+                            name.equals("dpad", true) -> SkinItem(frame, e, dpad = true)
+                            BUTTONS[name.lowercase()] != null -> SkinItem(frame, e, setOf(BUTTONS.getValue(name.lowercase())))
+                            dir(name) != 0 -> SkinItem(frame, e, dirs = dir(name))
+                            else -> null
+                        }
                     }
                     else -> null
                 }
                 if (item != null) items += item
             }
-            val screens = o.optJSONArray("screens")
-            val screen = (0 until (screens?.length() ?: 0)).firstNotNullOfOrNull { k ->
-                rect(screens!!.optJSONObject(k)?.optJSONObject("outputFrame"))
-            } ?: rect(o.optJSONObject("gameScreenFrame"))
+            val screens = o["screens"] as? JsonArray
+            val screen = screens?.firstNotNullOfOrNull { k -> rect((k as? JsonObject)?.obj("outputFrame")) }
+                ?: rect(o.obj("gameScreenFrame"))
             if (items.isEmpty()) return null
-            return SkinRepresentation(device, display, portrait, mw, mh, asset, items, screen, o.optBoolean("translucent", false))
+            return SkinRepresentation(device, display, portrait, mw, mh, asset, items, screen, o.str("translucent").equals("true", ignoreCase = true))
         }
     }
 }
@@ -288,3 +293,19 @@ class SkinFit(val rep: SkinRepresentation, val w: Float, val h: Float, cropToCon
         }
     }
 }
+
+// info.json read the way org.json did before (the app's first parser): lenient about trailing commas and comments, a
+// missing or null value is the default, numbers and strings read either way.
+@OptIn(ExperimentalSerializationApi::class)
+private val LENIENT = Json { isLenient = true; allowTrailingComma = true; allowComments = true }
+
+private fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
+
+/** A string or number's text ("" for anything else), as org.json's optString. */
+private fun kotlinx.serialization.json.JsonElement?.text(default: String = ""): String =
+    (this as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content ?: default
+
+private fun JsonObject.str(key: String, default: String = ""): String = this[key].text(default)
+
+/** A number (or a string holding one), else [default], as org.json's optDouble. */
+private fun JsonObject.num(key: String, default: Double): Double = this[key].text().toDoubleOrNull() ?: default

@@ -456,7 +456,7 @@ private fun ActionButtons(
                 pressesGame = onFight == null, onClick = { onFight?.invoke() ?: battleInput?.selectAction(0) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SpeciesIcon(activeMon?.iconAsset, size = 48.dp)
+                    MonIcon(activeMon, size = 48.dp)
                     ButtonLabel(tr("FIGHT"), 52.sp, outlined = true)
                 }
             }
@@ -765,7 +765,7 @@ internal fun PlatinumButton(
             )
             .then(
                 if (enabled) {
-                    Modifier.clickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = {
+                    Modifier.menuClickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = {
                         onClick()
                         // The game sounds its own button - unless it can't be heard (FF's STEADY music mutes it).
                         if (!pressesGame || gameSilent()) sound()
@@ -841,7 +841,7 @@ private fun Gen1ActionButtons(
         onClick = { if (index == 2 && onPokemon != null) onPokemon() else battleInput?.selectAction(index) },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(m.u * 6)) {
-            if (icon) SpeciesIcon(activeMon?.iconAsset, size = m.u * 32)
+            if (icon) MonIcon(activeMon, size = m.u * 32)
             GbaText(label, buttonContent, Color.Transparent, m, bold = true)
         }
     }

@@ -3,7 +3,7 @@ title: Bag
 summary: Every pocket of your bag with icons and descriptions, favorite items, which Pokémon can use a TM, teaching a TM or HM, reusable TMs, a keep-away item that never runs out, and using an item from the bottom screen.
 section: companion
 order: 4
-keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, hidden machine, teach move, learn move, forget move, description, sort, use item, berries, key items, star, starred, pin, favourite, auto refill, refill, wore off, run out, use another, wild encounters, keep away, spray]
+keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, hidden machine, teach move, learn move, forget move, description, sort, use item, berries, key items, star, starred, pin, favourite, auto refill, refill, wore off, run out, use another, wild encounters, keep away, spray, obtained, pickup, gain, received, toast]
 ---
 
 The bag tab shows everything you're carrying, pocket by pocket, as the game has it right now. It's handy for a quick count before a long cave, or for reading what an item does without digging through the game's menus.
@@ -19,6 +19,10 @@ Each row has the item's name and how many you have. TMs and HMs show the move th
 The button under the pockets changes the order. Each tap moves to the next: the game's own order, by name, by type, or by count (most first).
 
 ![The bag tab with its pocket tabs on the left and the item list on the right](shots/companion-bag.png "The bag tab")
+
+## Item gains
+
+When your bag gains an item, a small `OBTAINED` card slides in at the top of the game screen: the item's icon and name, and `×N` when you got more than one. It covers anything that adds to the bag, such as a pickup, a purchase, or an item taken back from a Pokémon or the PC. Using or selling an item doesn't show it, and neither does loading a save state. It stays for a couple of seconds, then fades by itself. Turn it off with `ITEM POPUPS` in SETTINGS (COMPANION group).
 
 ## Item details
 
@@ -56,7 +60,7 @@ Under the icons, a line names the best fit and, if its moves are full, which mov
 
 ## Teaching a TM or HM
 
-In FireRed, LeafGreen and Emerald, `USE` on a TM or HM opens the game's own screen for it, as if you'd picked it from the game's bag: the screen fades and the game asks "Teach which POKéMON?" with each Pokémon marked `ABLE` or `NOT ABLE`. From there it's all the game: forgetting a move to make room, the tune when it's learned, and a TM leaving your bag (unless `REUSABLE TMS` is on). When you're done, you're back on the field where you were. With two screens, the companion stays up and tells you to pick the Pokémon on the game's screen; the companion window on one screen gets out of the way.
+In FireRed, LeafGreen and Emerald, and in Ruby and Sapphire (English), `USE` on a TM or HM opens the game's own screen for it, as if you'd picked it from the game's bag: the screen fades and the game asks "Teach which POKéMON?" with each Pokémon marked `ABLE` or `NOT ABLE`. From there it's all the game: forgetting a move to make room, the tune when it's learned, and a TM leaving your bag (unless `REUSABLE TMS` is on). When you're done, you're back on the field where you were. With two screens, the companion stays up and tells you to pick the Pokémon on the game's screen; the companion window on one screen gets out of the way.
 
 Like the other items, it only works while you're walking around, with no menu, conversation or battle open.
 
@@ -70,7 +74,7 @@ Normally a TM is gone once it teaches a move, so you think twice before using a 
 Everything else about TMs works as the game has it: which Pokémon can learn one, forgetting a move to make room, selling one at a shop. The change applies at once, no restart needed, and turning it off makes TMs single use again.
 
 > [!NOTE]
-> `REUSABLE TMS` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports), and in Emerald Kaizo, Emerald Legacy, Orange Islands, FireRed Rocket Edition, Ultra Violet and Celia's Stupid Romhack. In Radical Red, Unbound and SoulGold a TM already stays after use, so the setting shows `ON`, greyed out. Prism and Polished Crystal keep their TMs too, and Elite Redux keeps no counts at all. In other games it shows `N/A`.
+> `REUSABLE TMS` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and release PokeDaisy supports), and in Emerald Kaizo, Emerald Legacy, Orange Islands, FireRed Rocket Edition, Ultra Violet and Celia's Stupid Romhack. On the Game Boy it works in Red, Blue, Yellow, Gold, Silver and Crystal, Brown, Yellow Legacy, Crystal Clear and Crystal Legacy. On the DS it works in HeartGold, SoulSilver and Platinum in every language, with the `MELONDS` DS core; Black, White and their sequels already keep their TMs. In Radical Red, Unbound and SoulGold a TM already stays after use, so the setting shows `ON`, greyed out. Prism and Polished Crystal keep their TMs too, and Elite Redux keeps no counts at all. In other games it shows `N/A`.
 
 ## AUTO REFILL
 
@@ -100,7 +104,7 @@ It only works while you're walking around. If a menu, a conversation or a battle
 
 In FireRed, LeafGreen, Emerald, Ruby and Sapphire, the bag tab has a `PC` button above the sort button (its small arrow means it opens the game's own screen, not a companion page). Tap it and the game's own PC opens right where you're standing, with the same menu a PC in a Pokémon Center gives you: the Pokémon storage, your own PC with your stored items and mailbox, and the game's other PCs as you unlock them. The Pokémon storage lets you take Pokémon out, put them away and move them between boxes (and, outside Ruby and Sapphire, move their items). Back out of it as usual and you're on the field again.
 
-It works in every language. Most hacks that kept those games' code open the Pokémon storage alone, with no item storage: Glazed, Emerald Kaizo, Emerald Legacy, Gaia, Odyssey, Orange Islands, Ultra Violet, Let's Go and the CFRU hacks (Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus). Heart and Soul, SoulGold, Lazarus, Emerald Imperium, Emerald Seaglass, R.O.W.E., Super Mariomon (1.5.1 and 1.5.2), Quetzal (Alpha 9), Monomyth and Epsilon Emerald have the `PC` button too, but not the bag's `USE`, `GIVE` and `TAKE` yet (SoulGold's `USE` for the keep-away spray aside). So do Red, Blue, Yellow (in every language), PureRed, PureBlue, Brown and Crystal on the Game Boy: the PC there is the whole one from their Pokémon Centers, with its other choices too, like the PC that stores your items.
+It works in every language. Most hacks that kept those games' code open the Pokémon storage alone, with no item storage: Glazed, Emerald Kaizo, Emerald Legacy, Gaia, Odyssey, Orange Islands, Ultra Violet, Let's Go and the CFRU hacks (Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus). Heart and Soul, SoulGold, Lazarus, Emerald Imperium, Emerald Seaglass, R.O.W.E., Super Mariomon (1.5.1 and 1.5.2), Quetzal (Alpha 9), Monomyth and Epsilon Emerald have the `PC` button too, but not the bag's `USE`, `GIVE` and `TAKE` yet (SoulGold's `USE` for the keep-away spray aside). So do Red, Blue, Yellow (in every language), PureRed, PureBlue, Brown, Gold, Silver and Crystal on the Game Boy: the PC there is the whole one from their Pokémon Centers, with its other choices too, like the PC that stores your items.
 
 On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2, with the same whole PC as their Pokémon Centers.
 

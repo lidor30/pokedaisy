@@ -132,6 +132,7 @@ object BestEffort {
             Candidate("LEAFGREEN_REV0", GameKind.FIRERED, NATIVE_LEAFGREEN_REV0, FIRERED, "Pokémon LeafGreen (rev 0)"),
             Candidate("UNBOUND", GameKind.UNBOUND, NATIVE_UNBOUND_WITH_DEX, FIRERED, "Pokémon Unbound"),
             Candidate("UNBOUND_FR", GameKind.UNBOUND, NATIVE_UNBOUND_FR, FIRERED, "Pokémon Unbound (FR)"),
+            Candidate("UNBOUND_IT", GameKind.UNBOUND, NATIVE_UNBOUND_IT, FIRERED, "Pokémon Unbound (IT)"),
             Candidate("GAIA_V3_2", GameKind.GAIA, NATIVE_GAIA_V3_2, FIRERED, "Pokémon Gaia"),
             Candidate("RADICAL_RED_V4_1", GameKind.RADICAL_RED, NATIVE_RADICAL_RED_V4_1, FIRERED, "Pokémon Radical Red"),
             Candidate("ODYSSEY", GameKind.ODYSSEY, NATIVE_ODYSSEY, FIRERED, "Pokémon Odyssey"),
@@ -535,7 +536,21 @@ data class BestEffortReport(
     val matchedAs: String,
     val full: Boolean,
     val off: Set<BestEffort.Part>,
-)
+) {
+    /** Exactly what sharing sends, as the consent window lists it: (label, value). */
+    fun shareFields(appVersion: String): List<Pair<String, String>> = listOf(
+        "ROM SHA-1" to sha1,
+        "ROM SIZE" to "$size B",
+        "GAME CODE" to "$gameCode (rev $revision)",
+        "READ AS" to matchedAs,
+        "MATCH" to if (full) "FULL" else "PARTIAL",
+        "PARTS OFF" to off.joinToString(", ") { it.name }.ifEmpty { "-" },
+        "APP VERSION" to appVersion,
+    )
+}
+
+/** SHARE on the match notice: the app's version (one of the lines it lists) and what sends a report (BestEffortShare). */
+class BestEffortSharing(val appVersion: String, val send: (BestEffortReport) -> Unit)
 
 /**
  * What best effort found for each ROM, by the ROM's SHA-1 (an archive: the ROM inside):

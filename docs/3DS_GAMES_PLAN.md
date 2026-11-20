@@ -314,6 +314,120 @@ size with its code laid out differently past ~0x5F000: nothing of ours reads its
 RomFS (same layout): text, zones, Town Map, types and icons equal X's, the wild Pokemon are Y's (Route 2: Caterpie where X
 has Weedle; `Gen6Test.pokemonYReadsLikeX`). Its save is X's format. Not yet played on a device.
 
+## Omega Ruby / Alpha Sapphire (2026-11-17)
+
+OR (`000400000011C400`, `CTR-P-ECRA`) and AS (`000400000011C500`, `CTR-P-ECLA`), the US Rev 2 carts: `GameKind.POKEMON_OMEGA_RUBY`
+/ `POKEMON_ALPHA_SAPPHIRE` (`isOras`; `isN3ds` for everything any 3DS game has: tabs, the party screen, the battle corner),
+`Gen6Reader.POKEMON_ORAS_USA`. Their save is X's format (0x40000, one file, duplicated: seen when Omega Ruby made its own). Found
+headless with n3ds_dump on the players' saves (`~/Downloads/3ds-saves/main (1)`, an Omega Ruby one in Slateport's Pokemon Center;
+`5. After Elite 4`, Alpha Sapphire in Littleroot), every address the same in both carts:
+- The static module at 0x01307000 (`findcrs`); the modules are X's names (`DllField`, `DllBattle`, `DllPss*`...).
+- The live party 0x08CF727C, X's 0x1E4 a slot and stats at +0x158 (Azelf Lv100 219 / 300 decoded). MyStatus 0x08C7D350 (the
+  name at +0x48, the language at +0x2D), the bag 0x08C6A880 (X's pockets at X's offsets), the save's situation with the zone at
+  0x08C6B89E (265 = Slateport City, 224 = Littleroot: both saves read the place they stand in).
+- The X menu: the field object's root 0x08C57660, the menu's pointer at +0x4C (X's +0x40) and its byte at +0x24 (menu closed /
+  open / closed dumps). The hold word 0x08D1E3FC: 0x3D1 on the field, 0x3D3 with the menu up, as X's.
+- The live zone is 0x08C6A7B2 (the save's situation above keeps the last save's place: Alpha Sapphire walked out of a Littleroot
+  house, 224, into the town, 6, and up Route 101, 23, while it still read 224).
+- The battle (Alpha Sapphire, a wild Zigzagoon on Route 101): X's controller at 0x0852FCF0, read the same way (+0x17 1 at the
+  command menu, 2 at the moves; the bag's 1 at +0x10 with the panels zeroed; the foe's record Zigzagoon Lv2 14 / 14, Tackle /
+  Growl), so ORAS has the battle buttons; its touch screen's buttons cover X's points (`N3dsBattleTaps.ORAS`).
+- The camera: the field object +0xE8, +0x5C, +0xAF8 is X's controller, its setup at +0x64 (pitch -40.74, FOV 30): a distance
+  and a yaw written there moved the camera (`Gen6Reader.Camera`), so ZOOM and the free camera work.
+- Save's question loads `DllReport` beside the field, as X's (the window floats in for it); the field's touch screen is the
+  PlayNav, a plain field like X's PSS. The camera's chain holds from Route 101 into Littleroot.
+- Getting there headless: a save edited to stand in grass. The situation is in the save twice (0x1400 and +0xF4, the second is
+  what a load reads); +6 is 0 outdoors, 3 indoors (a house's 3 kept outdoors hung the field's load). Easiest: walk out, save
+  in game on the route, then move that save's coordinates (scratch tools: `place.py`, the block CRC16s fixed).
+- The Town Map (`Gen6TownMap.ORAS`): the PlayNav's Hoenn, `a/0/6/7`'s `poke_navi_map.bclim` (380 x 270, ETC1) with
+  `hero_obj` the pin and the panes in its `map_lower.bclyt`; the spot table is `a/0/6/6` (one LZ11 file of 0x3C-byte records:
+  the zone twice, then the pane's number, base 36 as X's), a zone off it through its outdoor zone (+0x1A of its record, as X's).
+  Every spot lands on its place (`OrasSmCartTest` writes the picture with them marked to `app/build/n3ds-oras-map.png`).
+- The cart (`N3dsLayout.ORAS`): text `a/0/7/<1 kana, 2 kanji, 3 English, 4 French, 5 Italian, 6 German, 7 Spanish, 8 Korean>`,
+  files 98 / 14 / 114 / 37 / 51 / 18 / 90 (species / moves / items / abilities / natures / types / places); moves `a/1/8/9` (one
+  packed "WD" file of X's 36-byte records); personal `a/1/9/5` (0x50 a record); zones `a/0/1/3` (the "ZO" bundles, the records
+  in the second-to-last file); wild Pokemon in each bundle's fourth section (a 0x0E header, 61 slots: grass, tall grass, 3 of the
+  DexNav's, surfing, Rock Smash, three rods, three hordes); icons `a/0/9/1` (974, X's container).
+- Party icons for both games (and Sun / Moon's) come from a table in each game's own code: 16 bytes a species (icon, female
+  icon, a pointer to the forms' icons, their count), found by its first icons (`scripts/n3ds_icons/code_icon_table.py`). On X it
+  agrees with the table read off the game's party screen on 1481 of 1486 rows (Genesect's drives, identical pictures; Keldeo).
+- The look: the companion's skin `CompanionSkins.POKEMON_ORAS` (the X menu's grey panels in their dark grey frame, the PlayNav's
+  orange), `OrasBag`, the party screen and the HUD in each version's colour (`XyTint.RUBY` / `SAPPHIRE`).
+
+## Sun / Moon (2026-11-17)
+
+Sun (`0004000000164800`, `CTR-P-BNDA`) and Moon (`0004000000175E00`, `CTR-P-BNEA`): `GameKind.POKEMON_SUN` / `POKEMON_MOON`
+(`isSm`), `Gen6Reader.POKEMON_SM_USA`. The save is X's format too (0x40000, seen when Sun made its own). Headless on the Mac, Sun's
+own save and two of three Moon saves crash the software renderer as the field loads (the interpreter too: a host crash, not the
+JIT); the third Moon save (`main Deadshot626.zip`, in Seafolk Village's Pokemon Center) plays, and everything below came from it.
+Sun boots that Moon save too and reads it at every address below (party, bag, MyStatus, zone, the menu byte).
+- The static module at 0x00869000; the modules have no "Dll": `FieldRo` (the field), `Battle`, `Title`, `TitleMenu`, `FieldMenu`
+  (always with the field), `Bag`, `Box`, `Zukan`... (the cart's 140 `.cro`).
+- The live party 0x34195E10, X's shape (0x1E4, stats at +0x158: Mimikyu Lv100 251 / 251). The save's blocks packed as X's: the
+  bag 0x330D5934 (= the save's offset 0: six pockets of u32 entries, item 10 bits and count 10 bits: items 430 at 0, key items 184
+  at 0x6B8, TMs 108 at 0x998, medicine 64 at 0xB48, berries 72 at 0xC48, Z-Crystals 30 at 0xD68; the RAM copy equals the save's),
+  MyStatus 0x330D67D0 (name +0x38, language +0x35), the situation's zone 0x330D6736 (263 = Seafolk Village; the bottom screen's
+  map showed it).
+- The X menu (on the touch screen): the byte at 0x30004D1D is 1 while it's open, 0 on the field (Sun closed / open / closed /
+  open, Moon closed / open / closed: the one steady byte of the kind in the statics and the heap's first megabyte):
+  `Config.fieldMenuWord`. (0x083FE170, the first try from Moon alone, was set on Sun's field too.) That byte is 1 under a
+  text box as well (the Ride Pokemon's "can't call it here" box, field / box / field / box dumps), so it counts only while the
+  hold byte 0x300046C8 isn't held: 2 on the field and in the menu, 3 with a text box (`fieldHold`, `fieldHoldMask` 1), which
+  also steps the HUD's bottom row away.
+- The live zone is 0x300019AC (the save's situation keeps the last save's place): 263 in the Moon save, and in Sun 77 (Heahea
+  City), 134 in its Pokemon Center, 68 on Route 4.
+- The battle (Sun, two wild battles on Route 4, each at the command menu, the moves, back, the cursor moved, the bag, the party
+  and mid-turn): 0x3003D508 is 5 at the command menu, 2 at the moves, 1 in the bag or the party, 3 while a turn plays, 0 on the
+  field; 0x302E13E0 tells the bag (3) from the party (2). The battlers' records (X's shape, the moves at +0x1FC instead of
+  +0x116) through 0x30000404 (the player's) and 0x30000420 (the foe's): Sylveon Lv100 and the Grubbin / Rattata. The touch
+  screen: FIGHT the big plate right, POKEMON / BAG on the left, RUN at the bottom, the moves a column of four
+  (`N3dsBattleTaps.SM`; FIGHT and the first move tapped there used it).
+- The camera: [0x300002A0] +0x2A8, then +0x374 is the field camera's controller (outdoors 0x300065EC, indoors 0x30004E5C, the
+  same chain on every Moon dump): the pitch in radians at +0x10, the yaw at +0x14, the distance at +0x20 (756.8, the camera's
+  distance from its target). Written there, it pulled back, turned and tilted. The game walks relative to the yaw by itself
+  (turned 0.8, DOWN walked diagonally), so the circle pad isn't turned for it (`Camera.turnsPad`).
+- The Town Map (`SmTownMap`): `a/2/3/4`'s first file (LZ11, an ALYT with a SARC inside) has each island's picture,
+  `timg/land_0N.bflim` (1 Melemele, 2 Akala, 3 Ula'ula, 4 Poni; 256 x 256 ETC1A4 stored transposed, the BFLIM's swizzle 8).
+  The pin is the field camera's target (the player's position a few units ahead: [0x300002A0] +0x2A8, +0x3A4, then +0x68;
+  Sun's own copy of the position at 0x30001B2C sits 0x18 lower in the Moon save) on its island's picture, one scale and offset
+  for every island (0.0059 a unit, -11.99 / -26.09): fitted on Sun standing at Heahea City's Pokemon Center, then every
+  island's zone arrival points (`a/0/7/7` +0x10 / +0x18) fall on their places (Seafolk Village's on its Pokemon Center), and the
+  Moon save walked onto Poni Wilds lands on that route's. A zone's island is its record's +0x4E; outdoors = its island's main world (`a/0/7/7`'s second file); indoors
+  the pin stays where the player went in. The layout's `Area_II_NN` panes and `zone_II_NN` highlights aren't used: which
+  area a zone is in wasn't found.
+- Wild Pokemon per zone (`Gen6Wild.smZoneTables`): an area's encounter pack holds a table per patch, and the area's event
+  file (`11 * area`, "ED", 16 lists each a pack of one list a zone, in the world's zone order) places them: list 6's records
+  (28 bytes, type 6, the table at +4) are the grass / water patches; fishing tables go to the zones with fishing spots
+  (lists 12 / 13), the tables no patch names to the zones with list 5's other points. Checked: Kala'e Bay gets the Bagon /
+  Slowpoke table and surfing, Route 3 the Cutiefly / Delibird ones; Route 1's outskirts the beach's Slowpoke / Wingull.
+- The X menu and the hold byte move with the heap from save to save (Sun's own save: 0x300064AD, not the Moon save's
+  0x30004D1D), so they're read through pointer chains from the heap's fixed start, the same on every dump of both saves
+  (`Gen6Reader.chained`): the menu byte [0x300002A0] +0x2A8, +0x235 (the camera's object: +0x374), the hold [0x30001A9C]
+  +0x7C, +0x14C; the battle's menu and bag / party bytes [0x30000380] +0x1D0, +0xC08 and +0x1B8, +0x170. Save's question
+  keeps the menu byte at 1 (the window stays). Party, MyStatus, bag and zone are fixed (checked on Sun's own save too).
+- Battles checked end to end (2026-11-17, headless, a driver reading what the app reads and tapping `N3dsBattleTaps.SM`'s
+  points): Sun on Route 4 (Sylveon against Lillipup, Pikipek, Yungoos, a trainer's Drifloon), Moon on Poni Wilds (Mimikyu
+  against a Gumshoos): the command menu, FIGHT, the moves' return arrow, BAG and POKEMON each read and tapped right, each of
+  the four move cards spent its own move's PP (Sun all four, Moon three in one battle), RUN left a wild battle; the foe's HP
+  read 0 as it fainted. `SmBattleDumpTest` (opt-in, POKEDAISY_SM_DUMPS) runs the app's reader over 14 dumps of those battles
+  (both saves, every menu and mid-turn). A tap made while a menu slides in is dropped (FIGHT, RUN, the arrow), so the
+  corner's picks are tapped again until the battle answers (`tapUntilLeft`, `N3dsBattleTapsTest`). A Z-Crystal holder's move
+  list takes longer to come in (its Z button), inside the 3 s the app waits. Not tried: a trainer battle's RUN (the game says
+  there's no running), a double battle.
+- `N3dsBattleOneScreenScreenshotTest` (opt-in, POKEDAISY_N3DS_FRAMES: 400 x 240 top-screen frames) draws the one-screen battle
+  corner over real frames of Sun, Moon and Alpha Sapphire.
+- Headless: Sun / Moon walk with the circle pad (n3ds_dump's `CUP` / `CDOWN` / `CLEFT` / `CRIGHT`); their D-pad only turns
+  the player. Route 4 from Heahea City: round the hotel's garden to its east, then north.
+- The cart (`N3dsLayout.SM`): text `a/0/3/<0 kana, 1 kanji, 2 English, 3 French, 4 Italian, 5 German, 6 Spanish, 7 Korean, 8 / 9
+  Chinese>` (Chinese species names use the game font's own characters: English stands in), files 55 / 113 / 36 / 96 / 87 / 107 /
+  67; moves `a/0/1/1` (packed, 40-byte records: Tackle 40); personal `a/0/1/7` (0x54); zones `a/0/7/7` (file 0, LZ11, 0x54 a
+  record, the place line a u16 at +0x1C); icons `a/0/6/2` (1134 BFLIM: 64 x 32 RGBA5551 stored turned, `Gen6Icons.decode7`).
+- Wild Pokemon (`Gen6Wild.sunMoon`): a zone's area from `a/0/9/1`'s (zone, area) pairs, the area's tables in the encounter
+  archive (Sun `a/0/8/2`, Moon `a/0/8/3`, 348 MB: read one file at a time, `RomFs.garcFile`), day and night tables of 10 slots
+  plus SOS sets; split by zone below.
+- The look: `CompanionSkins.POKEMON_SM` (the X menu's indigo bands round white rows over its cyan), `SmBag`, the party screen and
+  the HUD in Sun's orange / Moon's indigo (`XyTint.SUN` / `MOON`).
+
 ## Open
 
 - Shader cache and pipeline compiles on first play (stutter): Azahar's disk cache under our files dir.

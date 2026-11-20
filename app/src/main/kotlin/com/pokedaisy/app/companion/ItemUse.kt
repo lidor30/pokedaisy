@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion
 
+import com.pokedaisy.app.companion.data.BoxSortResult
 import com.pokedaisy.app.companion.data.ItemUseOutcome
 import com.pokedaisy.app.companion.data.ItemUseResult
 import com.pokedaisy.app.companion.data.PartyTarget
@@ -9,6 +10,9 @@ import com.pokedaisy.app.companion.data.PartyTargets
  * The `can*` / [marked] answers are the ROM's (they don't change in a battle or a menu, where a
  * tap gets NOT NOW); every [done] runs on the main thread. */
 interface ItemUse {
+    /** Newly available item actions on this host. */
+    val actionBadge: String? get() = null
+
     /** The game's VAR_REPEL_STEP_COUNT (FireRed 0x4020, Emerald 0x4021): the HUD's REPEL steps; null = not known here. */
     val repelVar: Int? get() = null
 
@@ -20,6 +24,15 @@ interface ItemUse {
 
     /** Party slots [a] and [b] trade places, as the game's party menu does. */
     fun reorderParty(a: Int, b: Int, done: (com.pokedaisy.app.companion.data.PartySwapResult) -> Unit) {}
+
+    /** The summary's moves can be dragged into a new order here (a GBA game whose SetMonData is known). */
+    fun canReorderMoves(): Boolean = false
+
+    /** [slot]'s move at [from] moves to [to] (the ones between shift), as the game's own summary does. */
+    fun reorderMoves(
+        slot: Int, personality: Long, from: Int, to: Int,
+        done: (com.pokedaisy.app.companion.data.MoveOrderResult) -> Unit,
+    ) = done(com.pokedaisy.app.companion.data.MoveOrderResult.FAILED)
 
     /** Whether [itemId] gets a USE button in this game. */
     fun canUse(itemId: Int): Boolean
@@ -65,6 +78,12 @@ interface ItemUse {
 
     /** Whether the PC's moves work here (BoxSwap.kt): a box Pokémon's WITHDRAW / SWAP, a party one's DEPOSIT. */
     fun canSwapBox(): Boolean = false
+
+    /** Whether the BOXES tab's SORT works here: every box rewritten in Pokédex order (the same games as [canSwapBox]). */
+    fun canSortBoxes(): Boolean = false
+
+    /** Sorts every box by Pokédex number in the running game (same species lowest level first). */
+    fun sortBoxes(done: (BoxSortResult) -> Unit) = done(BoxSortResult.FAILED)
 
     /** Swaps box [box]'s slot [slot] ([boxPersonality]) with party slot [partySlot] ([partyPersonality]) in the game. */
     fun swapBox(

@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "pd_games.h"
+#include "pd_tr.h"
 #include "pd_icon.h"
 #include "pd_library_internal.h"
 #include "pd_save.h"
@@ -20,17 +21,17 @@ void lib_hint_bar(struct pd_canvas* c, const char* text) {
     int y = c->h - HINT_H;
     pd_fill(c, 0, y, c->w, HINT_H, fill);
     pd_fill(c, 0, y, c->w, 1, pd_dark ? 0x30343C : 0x586068);
-    pd_text_fit(c, 8, pd_text_y(y, HINT_H), c->w - 16, text, 0xF8F8F8, shadow);
+    pd_text_fit(c, 8, pd_text_y(y, HINT_H), c->w - 16, pd_tr(text), 0xF8F8F8, shadow);
 }
 
 int lib_top_title(struct pd_canvas* c, int icon, const char* title, const char* right) {
     int f = pd_title_box(c, TOP_M, TOP_TITLE_Y, TOP_W - 2 * TOP_M, TOP_TITLE_H, PD_TITLE_FILL);
-    int ty = pd_text_y(TOP_TITLE_Y, TOP_TITLE_H), rw = right ? pd_text_width(right) + 8 : 0, aw = LIB_ICON_SIZE;
+    int ty = pd_text_y(TOP_TITLE_Y, TOP_TITLE_H), rw = right ? pd_text_width(pd_tr(right)) + 8 : 0, aw = LIB_ICON_SIZE;
     int ax = TOP_M + f + 4, ay = TOP_TITLE_Y + (TOP_TITLE_H - LIB_ICON_SIZE) / 2;
     if (icon < 0) lib_draw_logo_24(c, ax, ay);
     else lib_draw_icon_24(c, icon, ax, ay);
-    pd_text_fit(c, TOP_M + f + aw + 10, ty, TOP_W - 2 * TOP_M - 2 * f - aw - 16 - rw, title, PD_TITLE_TEXT, PD_TITLE_SHADOW);
-    if (right) pd_text_right(c, TOP_W - TOP_M - f - 6, ty, right, PD_VALUE, PD_VALUE_SHADOW);
+    pd_text_fit(c, TOP_M + f + aw + 10, ty, TOP_W - 2 * TOP_M - 2 * f - aw - 16 - rw, pd_tr(title), PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    if (right) pd_text_right(c, TOP_W - TOP_M - f - 6, ty, pd_tr(right), PD_VALUE, PD_VALUE_SHADOW);
     return f;
 }
 
@@ -131,8 +132,8 @@ static void badge(struct pd_canvas* c, int x, int y, bool has) {
 }
 
 static void info_row(struct pd_canvas* c, int x, int y, int w, const char* label, const char* value) {
-    pd_text(c, x, pd_text_y(y, 18), label, PD_LABEL, PD_LABEL_SHADOW);
-    if (value) pd_text_fit(c, x + 92, pd_text_y(y, 18), w - 92, value, PD_VALUE, PD_VALUE_SHADOW);
+    pd_text(c, x, pd_text_y(y, 18), pd_tr(label), PD_LABEL, PD_LABEL_SHADOW);
+    if (value) pd_text_fit(c, x + 92, pd_text_y(y, 18), w - 92, pd_tr(value), PD_VALUE, PD_VALUE_SHADOW);
 }
 
 static void game_top(struct pd_library* l, struct pd_canvas* c) {
@@ -142,14 +143,14 @@ static void game_top(struct pd_library* l, struct pd_canvas* c) {
     lib_page_backdrop(c);
     // The title window: the logo, the game's name, its tags.
     if (!g) {
-        lib_top_title(c, -1, "POKéDAISY", NULL);
+        lib_top_title(c, -1, pd_tr("POKéDAISY"), NULL);
         int lf = pd_list_box(c, TOP_M, TOP_BODY_Y, TOP_W - 2 * TOP_M, 96);
-        pd_text(c, TOP_M + lf + 8, TOP_BODY_Y + lf + 8, l->count ? "No games in this view." : "No games yet.", PD_LABEL, PD_LABEL_SHADOW);
+        pd_text(c, TOP_M + lf + 8, TOP_BODY_Y + lf + 8, l->count ? pd_tr("No games in this view.") : pd_tr("No games yet."), PD_LABEL, PD_LABEL_SHADOW);
         if (!l->count) {
-            pd_text(c, TOP_M + lf + 8, TOP_BODY_Y + lf + 28, "Put your games in", PD_LABEL, PD_LABEL_SHADOW);
-            pd_text(c, TOP_M + lf + 8, TOP_BODY_Y + lf + 46, "sdmc:/pokedaisy/roms/", PD_VALUE, PD_VALUE_SHADOW);
+            pd_text(c, TOP_M + lf + 8, TOP_BODY_Y + lf + 28, pd_tr("Put your games in"), PD_LABEL, PD_LABEL_SHADOW);
+            pd_text(c, TOP_M + lf + 8, TOP_BODY_Y + lf + 46, pd_tr("sdmc:/pokedaisy/roms/"), PD_VALUE, PD_VALUE_SHADOW);
         }
-        lib_hint_bar(c, "L R: VIEWS   SELECT: PAGES   START: CLOSE");
+        lib_hint_bar(c, pd_tr("L R: VIEWS   SELECT: PAGES   START: CLOSE"));
         return;
     }
     int game = list->items[list->selected];
@@ -173,34 +174,34 @@ static void game_top(struct pd_library* l, struct pd_canvas* c) {
     if (!info.read) {
         pd_text(c, rx, pd_text_y(ry, 18), "...", PD_MUTED, PD_MUTED_SHADOW);
     } else if (!info.fromSave && !info.fromCard) {
-        pd_text_fit(c, rx, pd_text_y(ry, 18), rw, "No save read yet.", PD_LABEL, PD_LABEL_SHADOW);
-        pd_text_fit(c, rx, pd_text_y(ry + 20, 18), rw, "Play it once and its", PD_MUTED, PD_MUTED_SHADOW);
-        pd_text_fit(c, rx, pd_text_y(ry + 38, 18), rw, "save shows here.", PD_MUTED, PD_MUTED_SHADOW);
+        pd_text_fit(c, rx, pd_text_y(ry, 18), rw, pd_tr("No save read yet."), PD_LABEL, PD_LABEL_SHADOW);
+        pd_text_fit(c, rx, pd_text_y(ry + 20, 18), rw, pd_tr("Play it once and its"), PD_MUTED, PD_MUTED_SHADOW);
+        pd_text_fit(c, rx, pd_text_y(ry + 38, 18), rw, pd_tr("save shows here."), PD_MUTED, PD_MUTED_SHADOW);
     } else {
-        info_row(c, rx, ry, rw, "PLAYER", info.trainer[0] ? info.trainer : "-");
+        info_row(c, rx, ry, rw, pd_tr("PLAYER"), info.trainer[0] ? info.trainer : "-");
         ry += 19;
         if (info.hours >= 0) snprintf(text, sizeof text, "%d:%02d", info.hours, info.minutes);
         else snprintf(text, sizeof text, "-");
-        info_row(c, rx, ry, rw, "TIME", text);
+        info_row(c, rx, ry, rw, pd_tr("TIME"), text);
         ry += 19;
         if (info.dex >= 0) snprintf(text, sizeof text, "%d", info.dex);
         else snprintf(text, sizeof text, "-");
-        info_row(c, rx, ry, rw, "POKéDEX", text);
+        info_row(c, rx, ry, rw, pd_tr("POKéDEX"), text);
         ry += 19;
-        info_row(c, rx, ry, rw, "BADGES", info.badgeCount < 0 ? "-" : NULL);
+        info_row(c, rx, ry, rw, pd_tr("BADGES"), info.badgeCount < 0 ? "-" : NULL);
         for (int i = 0; info.badgeCount >= 0 && i < 8; i++) badge(c, rx + 92 + i * 15, ry + 3, info.badges >> i & 1);
         ry += 19;
         if (info.money >= 0) snprintf(text, sizeof text, "$%ld", info.money);
         else snprintf(text, sizeof text, "-");
-        info_row(c, rx, ry, rw, "MONEY", text);
+        info_row(c, rx, ry, rw, pd_tr("MONEY"), text);
         ry += 19;
-        info_row(c, rx, ry, rw, "PLACE", info.place[0] ? info.place : "-");
+        info_row(c, rx, ry, rw, pd_tr("PLACE"), info.place[0] ? info.place : "-");
     }
 
     // The party, two rows of three, each its icon and level.
     int px = x + w + 6, pw = TOP_W - TOP_M - px;
     int pf = pd_title_box(c, px, y, pw, h, PD_TITLE_FILL);
-    pd_text(c, px + pf + 6, y + pf + 2, "PARTY", PD_LABEL, PD_LABEL_SHADOW);
+    pd_text(c, px + pf + 6, y + pf + 2, pd_tr("PARTY"), PD_LABEL, PD_LABEL_SHADOW);
     int cellW = (pw - 2 * pf - 4) / 3, cellH = 52;
     for (int i = 0; i < 6; i++) {
         int cx = px + pf + 2 + (i % 3) * cellW, cy = y + pf + 20 + (i / 3) * cellH;
@@ -210,7 +211,7 @@ static void game_top(struct pd_library* l, struct pd_canvas* c) {
         }
         if (info.party[i].icon) draw_icon(c, info.party[i].icon, cx + (cellW - 32) / 2, cy);
         else pd_draw_party_ball(c, cx + (cellW - 20) / 2, cy + 8);
-        if (info.party[i].egg) snprintf(text, sizeof text, "EGG");
+        if (info.party[i].egg) snprintf(text, sizeof text, "%s", pd_tr("EGG"));
         else snprintf(text, sizeof text, "Lv%d", info.party[i].level);
         int tw = pd_text_width(text);
         pd_text(c, cx + (cellW - tw) / 2, cy + 27, text, PD_LABEL, PD_LABEL_SHADOW);
@@ -225,8 +226,8 @@ static void game_top(struct pd_library* l, struct pd_canvas* c) {
     const char* coreHint = g->core ? pd_core_name(g->core) : "CORE";
     if (l->pickRow >= 0) snprintf(hint, sizeof hint, "A: PICK   B: BACK");
     else if (g->console != PD_CONSOLE_GBA) snprintf(hint, sizeof hint, "A: PLAY   L R: VIEWS   SELECT: PAGES   START: CLOSE");
-    else if (g->supported) snprintf(hint, sizeof hint, "A: PLAY   X: %s   L R: VIEWS   SELECT: PAGES", coreHint);
-    else snprintf(hint, sizeof hint, "A: PLAY (no companion for it yet)   X: %s", coreHint);
+    else if (g->supported) snprintf(hint, sizeof hint, pd_tr("A: PLAY   X: %s   L R: VIEWS   SELECT: PAGES"), coreHint);
+    else snprintf(hint, sizeof hint, pd_tr("A: PLAY (no companion for it yet)   X: %s"), coreHint);
     lib_hint_bar(c, hint);
 }
 
@@ -234,7 +235,7 @@ static void game_top(struct pd_library* l, struct pd_canvas* c) {
 static void settings_top(struct pd_library* l, struct pd_canvas* c) {
     pd_look_apply(NULL, l->settings);
     lib_page_backdrop(c);
-    lib_top_title(c, -1, "POKéDAISY", l->host ? l->host->version : NULL);
+    lib_top_title(c, -1, pd_tr("POKéDAISY"), l->host ? l->host->version : NULL);
     int bh = TOP_BODY_END - TOP_BODY_Y;
     pd_title_box(c, TOP_M, TOP_BODY_Y, 160, bh, PD_TITLE_FILL);
     ui_art_at(c, &PD_LOGO, TOP_M + (160 - 96) / 2, TOP_BODY_Y + (bh - 96) / 2, 3);
@@ -244,7 +245,7 @@ static void settings_top(struct pd_library* l, struct pd_canvas* c) {
     bool group;
     int choices;
     const char* label = lib_settings_label(l, l->settingsSelected, &value, &group, &choices);
-    pd_text(c, x + df + 8, TOP_BODY_Y + df + 6, label, PD_VALUE, PD_VALUE_SHADOW);
+    pd_text(c, x + df + 8, TOP_BODY_Y + df + 6, pd_tr(label), PD_VALUE, PD_VALUE_SHADOW);
     static const char* const HELP[][2] = {
         { "LAYOUT", "The games as a LIST of rows, or a GRID of tiles." },
         { "SORT", "By NAME, or the last one played first." },
@@ -258,13 +259,14 @@ static void settings_top(struct pd_library* l, struct pd_canvas* c) {
         { "BATTLE INFO", "INFO and SUGGESTIONS beside the buttons." },
         { "HUD", "The party and minimap over the overworld." },
         { "FLY STYLE", "SCENIC flies over the map, CLASSIC is the game's." },
+        { "LANGUAGE", "The menus' language. AUTO follows the game, else the console's." },
         { "VERSION", "This build of PokeDaisy." },
         { "DEV LINK", "Where the dev tools reach this 3DS." },
     };
     for (size_t i = 0; i < sizeof HELP / sizeof HELP[0]; i++)
         if (!strcmp(HELP[i][0], label))
-            pd_text_wrap(c, x + df + 8, TOP_BODY_Y + df + 26, w - 2 * df - 16, 18, 7, HELP[i][1], PD_LABEL, PD_LABEL_SHADOW);
-    lib_hint_bar(c, l->pickRow >= 0 ? "A: PICK   B: BACK" : "A: CHANGE   B: GAMES   SELECT: PAGES");
+            pd_text_wrap(c, x + df + 8, TOP_BODY_Y + df + 26, w - 2 * df - 16, 18, 7, pd_tr(HELP[i][1]), PD_LABEL, PD_LABEL_SHADOW);
+    lib_hint_bar(c, l->pickRow >= 0 ? pd_tr("A: PICK   B: BACK") : pd_tr("A: CHANGE   B: GAMES   SELECT: PAGES"));
 }
 
 void pd_library_draw_top(struct pd_library* l, struct pd_canvas* c) {
@@ -298,7 +300,7 @@ void pd_library_draw_loading(struct pd_library* l, struct pd_canvas* bottom, str
     pd_draw_party_ball(bottom, (LIB_W + 260) / 2 - 34, (LIB_H - 20) / 2); // lib_dialog's window: 260 wide, centred
     game_top(l, top);
     char text[96];
-    snprintf(text, sizeof text, "Starting %s...", g->title);
+    snprintf(text, sizeof text, pd_tr("Starting %s..."), g->title);
     lib_hint_bar(top, text);
     pd_look_apply(NULL, l->settings);
 }

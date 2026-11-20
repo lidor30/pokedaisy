@@ -42,8 +42,15 @@ with tempfile.TemporaryDirectory(prefix='pd-linux-package-') as d:
     result=subprocess.run([sys.executable,str(script),'--portmaster',*options,str(binary),d],capture_output=True,text=True)
     assert result.returncode==0,result.stderr
     with zipfile.ZipFile(Path(d)/(pm+'.zip')) as z:
-        names=z.namelist();assert len(names)==10+extra,names
+        names=z.namelist();assert len(names)==15+extra,names
         assert z.getinfo(pm+'/PokeDaisy.sh').external_attr>>16 & 0o111
+        # The firmware's game list art and PortMaster's entries for it.
+        for art in ('cover.png','screenshot.png','marquee.png'):
+            assert z.read(pm+'/pokedaisy/'+art)[:4]==b'\x89PNG',art
+        info=z.read(pm+'/pokedaisy/gameinfo.xml').decode()
+        assert '<path>./PokeDaisy.sh</path>' in info and './pokedaisy/cover.png' in info,info
+        import json
+        assert json.loads(z.read(pm+'/pokedaisy/port.json'))['items']==['PokeDaisy.sh','pokedaisy/']
         assert z.read(pm+'/pokedaisy/pokedaisy-linux')==binary.read_bytes()
         assert pm+'/pokedaisy/pokedaisy_gbc_libretro.so' in names
         assert z.getinfo(pm+'/pokedaisy/pokedaisy-linux').external_attr>>16 & 0o111

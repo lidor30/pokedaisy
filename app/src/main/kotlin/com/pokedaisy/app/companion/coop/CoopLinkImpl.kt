@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.coop
 
-import java.io.IOException
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.IOException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,6 +23,8 @@ class CoopLinkImpl(
     private val clock: () -> Long,
     private val backoff: CoopBackoff,
 ) : CoopLink {
+    private val lock = SynchronizedObject()
+
     private val _state = MutableStateFlow<CoopState>(CoopState.Off())
     override val state: StateFlow<CoopState> = _state.asStateFlow()
 
@@ -37,102 +41,107 @@ class CoopLinkImpl(
     private var ignoreOwnClose = false   // the Disconnected our own restart disconnect echoes back
 
     /** Looks up the pair of [save], allows only its partner and dials the last ticket. */
-    @Synchronized
     fun startFor(save: CoopSaveId) {
-        val hadConnection = live || helloOk
-        resetConnection()
-        val p = pairs.forSave(save)
-        pair = p
-        if (p == null) {
-            _state.value = CoopState.Off(CoopOffReason.NOT_PAIRED)
-            return
+        synchronized(lock) {
+            val hadConnection = live || helloOk
+            resetConnection()
+            val p = pairs.forSave(save)
+            pair = p
+            if (p == null) {
+                _state.value = CoopState.Off(CoopOffReason.NOT_PAIRED)
+                return
+            }
+            backoff.reset()
+            notAllowed = 0
+            transport.setPolicy(setOf(p.partner.peer), false, null)
+            if (hadConnection) { ignoreOwnClose = true; transport.disconnect(p.partner.peer) }   // a restart never trusts a connection it knew of
+            _state.value = CoopState.Connecting(p.partner)
+            dial()
         }
-        backoff.reset()
-        notAllowed = 0
-        transport.setPolicy(setOf(p.partner.peer), false, null)
-        if (hadConnection) { ignoreOwnClose = true; transport.disconnect(p.partner.peer) }   // a restart never trusts a connection it knew of
-        _state.value = CoopState.Connecting(p.partner)
-        dial()
     }
 
     /** BYE if connected, disconnect, state Off. */
-    @Synchronized
     fun stop() {
-        val p = pair
-        if (p != null) {
-            if (_state.value is CoopState.Connected) {
-                transport.send(p.partner.peer, CoopWire.encode(CoopWire.BYE, byteArrayOf(0)))
+        synchronized(lock) {
+            val p = pair
+            if (p != null) {
+                if (_state.value is CoopState.Connected) {
+                    transport.send(p.partner.peer, CoopWire.encode(CoopWire.BYE, byteArrayOf(0)))
+                }
+                transport.disconnect(p.partner.peer)
             }
-            transport.disconnect(p.partner.peer)
+            pair = null
+            resetConnection()
+            _state.value = CoopState.Off()
         }
-        pair = null
-        resetConnection()
-        _state.value = CoopState.Off()
     }
 
-    @Synchronized
     override fun send(type: Int, payload: ByteArray): Boolean {
-        require(type in CoopWire.FIRST_APP_TYPE..0xFFFF) { "message type out of range: $type" }
-        require(payload.size <= CoopWire.MAX_PAYLOAD) { "payload too large: ${payload.size}" }
-        val p = pair ?: return false
-        if (_state.value !is CoopState.Connected || !helloOk) return false
-        return transport.send(p.partner.peer, CoopWire.encode(type, payload))
+        synchronized(lock) {
+            require(type in CoopWire.FIRST_APP_TYPE..0xFFFF) { "message type out of range: $type" }
+            require(payload.size <= CoopWire.MAX_PAYLOAD) { "payload too large: ${payload.size}" }
+            val p = pair ?: return false
+            if (_state.value !is CoopState.Connected || !helloOk) return false
+            return transport.send(p.partner.peer, CoopWire.encode(type, payload))
+        }
     }
 
-    @Synchronized
     fun onEvent(e: CoopEvent) {
-        val p = pair ?: return
-        val partner = p.partner.peer
-        when (e) {
-            is CoopEvent.Connected -> {
-                if (e.peer != partner || e.pending) {
-                    transport.disconnect(e.peer)
-                    return
-                }
-                ignoreOwnClose = false
-                live = true
-                dialing = false
-                helloOk = false
-                helloDeadline = clock() + HELLO_TIMEOUT_MS
-                direct = e.direct
-                val s = _state.value
-                if (s is CoopState.Off || s is CoopState.Disconnected) _state.value = CoopState.Connecting(p.partner)
-                sendHello(partner)
-            }
-            is CoopEvent.Path -> if (e.peer == partner) {
-                direct = e.direct
-                if (_state.value is CoopState.Connected) _state.value = CoopState.Connected(p.partner, direct)
-            }
-            is CoopEvent.Frame -> if (e.peer == partner) onFrame(p, e.bytes)
-            is CoopEvent.Disconnected -> {
-                if (e.peer != partner || e.code == DUPLICATE) return
-                if (ignoreOwnClose) {
+        synchronized(lock) {
+            val p = pair ?: return
+            val partner = p.partner.peer
+            when (e) {
+                is CoopEvent.Connected -> {
+                    if (e.peer != partner || e.pending) {
+                        transport.disconnect(e.peer)
+                        return
+                    }
                     ignoreOwnClose = false
-                    return
+                    live = true
+                    dialing = false
+                    helloOk = false
+                    helloDeadline = clock() + HELLO_TIMEOUT_MS
+                    direct = e.direct
+                    val s = _state.value
+                    if (s is CoopState.Off || s is CoopState.Disconnected) _state.value = CoopState.Connecting(p.partner)
+                    sendHello(partner)
                 }
-                if (_state.value is CoopState.Disconnected) return
-                dropFromCode(e.code)
+                is CoopEvent.Path -> if (e.peer == partner) {
+                    direct = e.direct
+                    if (_state.value is CoopState.Connected) _state.value = CoopState.Connected(p.partner, direct)
+                }
+                is CoopEvent.Frame -> if (e.peer == partner) onFrame(p, e.bytes)
+                is CoopEvent.Disconnected -> {
+                    if (e.peer != partner || e.code == DUPLICATE) return
+                    if (ignoreOwnClose) {
+                        ignoreOwnClose = false
+                        return
+                    }
+                    if (_state.value is CoopState.Disconnected) return
+                    dropFromCode(e.code)
+                }
+                is CoopEvent.DialFailed -> if (dialing && !live) {
+                    ignoreOwnClose = false
+                    dialing = false
+                    dropFromCode(e.code)
+                }
+                else -> Unit
             }
-            is CoopEvent.DialFailed -> if (dialing && !live) {
-                ignoreOwnClose = false
-                dialing = false
-                dropFromCode(e.code)
-            }
-            else -> Unit
         }
     }
 
     /** Due retries and the HELLO timeout; call every 250 ms. */
-    @Synchronized
     fun tick() {
-        val p = pair ?: return
-        val now = clock()
-        val s = _state.value
-        if (s is CoopState.Disconnected && now >= s.retryAtMs) {
-            dial()
-        } else if (live && !helloOk && now >= helloDeadline) {
-            transport.disconnect(p.partner.peer)
-            drop(CoopDropReason.NETWORK)
+        synchronized(lock) {
+            val p = pair ?: return
+            val now = clock()
+            val s = _state.value
+            if (s is CoopState.Disconnected && now >= s.retryAtMs) {
+                dial()
+            } else if (live && !helloOk && now >= helloDeadline) {
+                transport.disconnect(p.partner.peer)
+                drop(CoopDropReason.NETWORK)
+            }
         }
     }
 

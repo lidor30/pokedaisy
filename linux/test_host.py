@@ -62,11 +62,19 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     assert any(r>120 and g>120 and b>120 for r,g,b in seen) and any(r>120 and g>120 and b<60 for r,g,b in seen),(seen,log[-500:])
     # DS maps the ROM from its path, so it also works above the host's 64 MiB buffer limit.
     with (d/'roms/diagnostic.nds').open('r+b') as nds:nds.truncate(65 << 20)
-    # Select DS from the sorted list, save a state through the host menu, and return (QUIT asks: CANCEL, then QUIT).
-    env['POCKET_KEYS']='10:down,20:down,30:down,40:a,70:menu,80:down,90:a,100:menu,110:up,120:a,130:down,140:a'
-    run(d,'--frames','65')
+    # Select DS from the sorted list, save a state through the host menu, and return (QUIT asks: CANCEL, then QUIT). In a
+    # DATA folder of its own: the library writes the cores' settings (EXPAND) on its first start, which the runs here
+    # mustn't get. Its list view (library.txt), not the grid, whose columns follow the window: the three games are its
+    # rows, sorted by file name, so two DOWNs reach the DS one.
+    lib=d/'library';(lib/'roms').mkdir(parents=True)
+    for rom in ('diagnostic.gb','diagnostic.gba','diagnostic.nds'):os.link(d/'roms'/rom,lib/'roms'/rom)
+    (lib/'library.txt').write_text('view=0\nsort=0\ngrid=0\n')
+    env['POCKET_KEYS']='10:down,20:down,40:a,70:menu,80:down,90:a,100:menu,110:up,120:a,130:down,140:a'
+    run(lib,'--frames','65')
     del env['POCKET_KEYS']
-    assert (d/'states/diagnostic.nds.ss').exists(),'DS did not launch from the game list'
+    assert (lib/'states/diagnostic.nds.ss').exists(),'DS did not launch from the game list'
+    assert not (d/'saves/pokedaisy/settings.ini').exists() or 'aspect=1' not in (d/'saves/pokedaisy/settings.ini').read_text(),\
+        "the game list's settings reached the other runs' DATA"
     run(d,str(d/'roms/diagnostic.nds'),'--frames','90','--shot',str(d/'ds.png'))
     w,h,bpp,rows=png_pixels(d/'ds.png')
     mid=rows[h//2][(w//2)*bpp:(w//2)*bpp+3]
@@ -117,8 +125,8 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     run(d,str(d/'roms/diagnostic.gb'),'--frames','60')
     del env['POCKET_KEYS']
     assert (d/'states/diagnostic.gb.ss').exists(),'the SAVE STATE hotkey wrote nothing'
-    # No ROM: the game list.
-    run(d,'--frames','5','--shot',str(d/'list.png'));png_pixels(d/'list.png')
+    # No ROM: the game list (its own DATA folder again).
+    run(lib,'--frames','5','--shot',str(d/'list.png'));png_pixels(d/'list.png')
     # A ROM no core plays is refused, not crashed on.
     (d/'roms/bad.txt').write_text('x')
     r=subprocess.run([str(binary),'--data',str(d),str(d/'roms/bad.txt'),'--frames','5'],env=env,capture_output=True,text=True,timeout=60)

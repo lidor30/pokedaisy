@@ -224,6 +224,10 @@ static int lastRomDiffs[3], markRomDiffs[3];
 #include "../app/src/main/cpp/pk_flight.c"
 #define HAVE_PK_FLIGHT 1
 #endif
+#if __has_include("../app/src/main/cpp/pk_perf.h")
+#include "../app/src/main/cpp/pk_perf.h"
+#define HAVE_PK_PERF 1
+#endif
 #if __has_include("../app/src/main/cpp/pk_gb_audio.c")
 #include "../app/src/main/cpp/pk_gb_audio.c"
 #define HAVE_PK_GB_AUDIO 1
@@ -1368,6 +1372,11 @@ int main(int argc, char** argv) {
     }
 
     core->reset(core);
+#ifdef HAVE_PK_PERF
+    // PK_IDLE=1: idle loops found as the app finds them (pk_idle_detect); left out, mGBA's own table only, as every
+    // capture and boot script so far was made with.
+    pk_idle_detect(core, getenv("PK_IDLE") && atoi(getenv("PK_IDLE")));
+#endif
     fprintf(stderr, "mgba_dump: core ready (%ux%u, %d Hz)\n", w, h, core->frequency(core));
 
     char line[8192];   // a scenic FLY route (`flightroute`) is one line
@@ -1384,6 +1393,55 @@ int main(int argc, char** argv) {
         if (!strcmp(cmd, "wait")) {
             sscanf(line, "%*s %d", &n);
             for (int i = 0; i < n; i++) runFrame();
+#if defined(HAVE_PK_WIDE) && defined(PK_WIDE_CACHE)
+        } else if (!strcmp(cmd, "widecache")) {
+            // widecache M: EXPAND's margin cache (pk_wide_cache: 0 off, 1 on, 2 every animated cell at once); `widecache`
+            // with no M prints how many frames came from it. A build with -DPK_WIDE_CACHE.
+            if (sscanf(line, "%*s %d", &n) == 1) pk_wide_cache(n);
+            printf("widecache: %d frames from the cache\n", pk_wide_cache_hits());
+#endif
+#ifdef HAVE_PK_WIDE
+        } else if (!strcmp(cmd, "widecrcs")) {
+            // widecrcs N: N frames, each printed as `widecrc FRAME HASH` (FNV-1a) of the whole EXPAND picture (the RGB of `wideon`'s
+            // window) - two runs of one script (the margin cache off and on) compared line by line.
+            sscanf(line, "%*s %d", &n);
+            for (int i = 0; i < n; i++) {
+                runFrame();
+                uint32_t c = 2166136261u;   // FNV-1a over the pixels
+                for (int j = 0; j < wideView.w * wideView.h; j++) c = (c ^ (wideOut[j] & 0xFFFFFF)) * 16777619u;
+                printf("widecrc %u %08X\n", core->frameCounter(core), c);
+            }
+#endif
+        } else if (!strcmp(cmd, "bench")) {
+            // bench N: N frames timed - wall clock and this process's CPU time (every thread) a frame, and the worst
+            // frame; what pk_perf.h's settings buy. Keys stay as they are (hold a direction first to walk).
+            sscanf(line, "%*s %d", &n);
+            static double walls[1 << 16];
+            if (n > (int) (sizeof(walls) / sizeof(walls[0]))) n = (int) (sizeof(walls) / sizeof(walls[0]));
+            struct timespec w0, w1, c0, c1;
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &c0);
+            double total = 0, worst = 0;
+            for (int i = 0; i < n; i++) {
+                clock_gettime(CLOCK_MONOTONIC, &w0);
+                runFrame();
+                clock_gettime(CLOCK_MONOTONIC, &w1);
+                walls[i] = (w1.tv_sec - w0.tv_sec) * 1e3 + (w1.tv_nsec - w0.tv_nsec) / 1e6;
+                total += walls[i];
+                if (walls[i] > worst) worst = walls[i];
+            }
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &c1);
+            double cpu = (c1.tv_sec - c0.tv_sec) * 1e3 + (c1.tv_nsec - c0.tv_nsec) / 1e6;
+            int over = 0;
+            for (int i = 0; i < n; i++) over += walls[i] > 2 * (total / n);
+            int idle = -1;
+            uint32_t loop = 0;
+            if (core->platform(core) == mPLATFORM_GBA) {
+                struct GBA* gba = (struct GBA*) core->board;
+                idle = gba->idleOptimization;
+                loop = gba->idleLoop;
+            }
+            printf("bench: %d frames, wall %.3f ms/frame (worst %.2f, %d over 2x avg), cpu %.3f ms/frame, idle mode %d loop %08X\n",
+                   n, n ? total / n : 0, worst, over, n ? cpu / n : 0, idle, loop);
         } else if (!strcmp(cmd, "keys")) {
             sscanf(line, "%*s %255s", arg1);
             core->setKeys(core, strcmp(arg1, "NONE") ? parseKeys(arg1) : 0);

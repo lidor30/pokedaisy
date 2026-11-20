@@ -127,6 +127,12 @@ data class NativeConfig(
     // gPartyMenu, for the battle POKéMON pane's switch where the activity takes
     // it from the config (SoulGold's releases); 0 = not here.
     val partyMenu: Long = 0,
+    // sMonSummaryScreen (pokemon_summary_screen.c): the pointer to the summary screen's state, whose mode / newMove
+    // tell the game's SELECT_MOVE (learn a move, forget one) screen apart; 0 = not mapped for this game.
+    val summaryScreen: Long = 0,
+    // gMoveToLearn: the move a level-up is teaching (it stays set after the screen), and gPartyMenu.data1 for a TM /
+    // tutor / party-menu learn. Together they say which move a SELECT_MOVE summary is asking about; 0 = not mapped.
+    val moveToLearn: Long = 0,
     // Where SaveBlock1 keeps a PARTY MENU option that changes the battle party menu's shape (SoulGold's byte: 0 = its
     // own one-column list, 1 = BW, 2 = HGSS, both a two-column grid - BattleInputController.SwitchAddrs.gridOption);
     // -1 = none, the shape is fixed.
@@ -327,6 +333,11 @@ const val RECHARGED_YELLOW_ITEMS = 409
 fun isRechargedYellowRom(head: ByteArray): Boolean = head.size >= GF_HEADER_SB1_SIZE + 4 &&
     asciiString(head, 0xAC, 3) == "BPR" && u32le(head, GF_HEADER_SB1_SIZE) == RECHARGED_YELLOW_SB1_SIZE
 
+/** FireRed 1.0's code under Emerald's game code (Pokémon Clover): the cart header says BPEE, but the GF ROM header after it
+ * still names "pokemon red version" (0x108; Emerald's says "pokemon emerald version"). [head] from the ROM's start. */
+fun isFireRedUnderEmeraldHeader(head: ByteArray): Boolean = head.size >= 0x11B &&
+    asciiString(head, 0xAC, 4) == "BPEE" && asciiString(head, 0x108, 19) == "pokemon red version"
+
 private const val GF_HEADER_SB1_SIZE = 0x18C // struct GFRomHeader.saveBlock1Size
 private const val RECHARGED_YELLOW_SB1_SIZE = 0x3D94L
 
@@ -434,7 +445,20 @@ fun resetNativeBagCache() {
     synchronized(pcBoxesLock) { lastStorageRaw = null; lastStorage = null }
 }
 
-fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
+// struct PokemonSummaryScreenData (pokemon_summary_screen.c): monList / callback / markings / the 100-byte currentMon
+// (0x70), then PokeSummary (0x4C), then the four pages' 2 x 0x400 u16 tilemap buffers: mode at 0x40BC, curMonIndex at
+// 0x40BE, newMove at 0x40C4 (the struct's own filler40CA names the byte after bgDisplayOrder). SELECT_MOVE is the
+// learn-a-move / forget-one screen.
+private const val SUMMARY_MODE_OFF = 0x40BC
+private const val SUMMARY_CUR_MON_OFF = 0x40BE
+private const val SUMMARY_NEW_MOVE_OFF = 0x40C4
+
+/** What sMonSummaryScreen says right now: its mode, curMonIndex and newMove. */
+private data class SummarySelect(val mode: Int, val mon: Int, val newMove: Int)
+
+/** [moveWatch]: the sampler's own [MoveLearningWatch], for the move-learning card; null (BEST EFFORT's candidates, tests)
+ * = no card read. */
+fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig, moveWatch: MoveLearningWatch? = null): Telemetry {
     val frameCounter = runCatching { u32le(client.readCoreMemory(cfg.gMainVblankCtr, 4), 0) }.getOrDefault(0L)
 
     // --- party ---
@@ -553,6 +577,34 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         battlerAt.map { b -> if (b < 0) -1 else u16le(raw, b * 2) }
     }.getOrDefault(emptyList()) else emptyList()
 
+    // The summary screen's SELECT_MOVE mode: the game is asking which move to forget. Its state outlives the screen,
+    // so MoveLearningWatch pairs it with a fresh gMoveToLearn / gPartyMenu.data1 event and the callback it was seen on.
+    val summaryPtr = if (cfg.summaryScreen == 0L) 0L else
+        runCatching { u32le(client.readCoreMemory(cfg.summaryScreen, 4), 0) }.getOrDefault(-1L)
+    val summary = if (summaryPtr <= 0L || summaryPtr < 0x02000000L || summaryPtr >= 0x02040000L || summaryPtr and 3L != 0L) {
+        null
+    } else runCatching {
+        val raw = client.readCoreMemory(summaryPtr + SUMMARY_MODE_OFF, 0x0A)
+        SummarySelect(
+            mode = raw[0].toInt() and 0xFF,
+            mon = raw[SUMMARY_CUR_MON_OFF - SUMMARY_MODE_OFF].toInt() and 0xFF,
+            newMove = u16le(raw, SUMMARY_NEW_MOVE_OFF - SUMMARY_MODE_OFF),
+        )
+    }.getOrNull()
+    val levelMove = if (cfg.moveToLearn == 0L) 0 else
+        runCatching { u16le(client.readCoreMemory(cfg.moveToLearn, 2), 0) }.getOrDefault(0)
+    // gPartyMenu.data1 (s16 at +0xE): the move a TM / tutor / party-menu learn is teaching.
+    val menuMove = if (cfg.partyMenu == 0L) 0 else
+        runCatching { u16le(client.readCoreMemory(cfg.partyMenu + 14, 4), 0) }.getOrDefault(0)
+    val moveLearning = moveWatch?.check(
+        levelMove = levelMove,
+        menuMove = menuMove,
+        mode = summary?.mode ?: 0,
+        newMove = summary?.newMove?.takeIf { it in 1..0x7FF } ?: 0,
+        monIndex = summary?.mon ?: -1,
+        partySize = party.size,
+    )
+
     return Telemetry(
         frameCounter = frameCounter,
         inBattle = inBattle,
@@ -584,6 +636,7 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         battlerPartySlots = battlerPartySlots,
         enemyPartySlots = if (isTrainer) foeRead.map { it.first } else emptyList(),
         money = readMoney(client, cfg),
+        moveLearning = moveLearning,
     ).withMapShape(readMapShape(client, cfg.mapHeader, if (cfg.mapSecWide) MAP_HEADER_MAP_TYPE_OFF + 1 else MAP_HEADER_MAP_TYPE_OFF)).copy(
         playerGender = readPlayerGender(client, cfg),
         mapSecName = if (regionMapSectionId == 0) readHubName(client, cfg) else null,
@@ -990,10 +1043,14 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
         GameKind.ORANGE_ISLANDS -> genderRatiosOrangeIslands
         GameKind.SWORD_SHIELD -> genderRatiosSwordShield
         GameKind.GS_CHRONICLES -> genderRatiosGsChronicles
+        GameKind.RHYTHM -> genderRatiosRhythm
+        GameKind.OOPS_ALL_EEVEES -> genderRatiosOopsAllEevees
         GameKind.MARIOMON -> if (mariomonV13) genderRatiosMariomonV13 else genderRatiosMariomon
         GameKind.ELITE_REDUX -> genderRatiosEliteRedux
         GameKind.TEAM_ROCKET -> if (teamRocketV3) genderRatiosTeamRocketV3 else genderRatiosTeamRocket
         GameKind.WISHES -> genderRatiosWishes
+        GameKind.CERULEUM -> genderRatiosCeruleum
+        GameKind.RECORDKEEPERS -> genderRatiosRecordKeepers
         GameKind.MONOMYTH -> genderRatiosMonomyth
         GameKind.DREAMSTONE -> genderRatiosDreamstone
         else -> return this
@@ -1006,14 +1063,11 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
     val egg = if (layout.eggInIvWord) (raw[off + layout.plainBox + 0x28 + 3].toInt() and 0x40) != 0
         else (raw[off + layout.flags].toInt() and layout.eggMask) != 0
     if (egg) {
-        // Heart and Soul / Lazarus / SoulGold / Seaglass have no SPECIES_EGG 412, so an
-        // egg is flagged instead: "Egg", no HP bar, the egg's icon where [eggSpecies] is known.
-        // So does any config naming its egg (Emerald Legacy: 415, its 412-414 are Deoxys forms).
-        if (eggSpecies != 0 || activeGame in setOf(GameKind.HEART_AND_SOUL, GameKind.LAZARUS, GameKind.SOULGOLD, GameKind.EMERALD_SEAGLASS, GameKind.IMPERIUM,
-                GameKind.QUETZAL, GameKind.ROWE, GameKind.MARIOMON)) {
-            return copy(species = if (eggSpecies != 0) eggSpecies else species, genderSymbol = GENDER_SYMBOL_NONE, isEgg = true)
-        }
-        return copy(species = SPECIES_EGG_VANILLA, genderSymbol = GENDER_SYMBOL_NONE)
+        // The egg keeps its species: the summary draws the egg's name and icon from isEgg, but the species' own
+        // types and base stats let the companion show matchups and a STATS page before it hatches. [eggSpecies]
+        // replaces it only where a hack stores a placeholder instead of the real species. No gender, as the game
+        // shows none on an egg (the party slots draw the symbol).
+        return copy(species = if (eggSpecies != 0) eggSpecies else species, genderSymbol = GENDER_SYMBOL_NONE, isEgg = true)
     }
     if (species !in ratios.indices) return this
     if (species == 29 || species == 32) {

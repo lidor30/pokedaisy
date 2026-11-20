@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -126,7 +125,6 @@ fun gbaTextStyle(font: FontFamily, m: GbaTextMetrics, scaleX: Float = 1f) = Text
         .let { k -> if (k == 1f) m.fontSize else m.fontSize * k },
     textGeometricTransform = if (scaleX == 1f) null else TextGeometricTransform(scaleX = scaleX),
     lineHeight = m.fontSize,
-    platformStyle = PlatformTextStyle(includeFontPadding = false),
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
 )
 
@@ -155,14 +153,23 @@ fun GbaText(
     // The GBA's shadow is a whole font pixel; under a smooth font (SETTINGS > FONT) half of one, so it stays a shadow.
     val k = if (com.pokedaisy.app.companion.ui.theme.AppFonts.current.pixel) m.fontPixel.roundToInt() else (m.fontPixel * 0.5f).roundToInt().coerceAtLeast(1)
     val b = if (bold) boldOffsetPx(m.fontPixel * scaleX) else 0
-    // The layout the text was given, for its copies; set before each draw (layout comes first), read only there.
+    // The layout the text was given, for its copies; set before each draw (layout comes first), read only there. Only the
+    // current text's: a label that changed in place at the same width (a tab chip when BATTLE takes a place in the bar) isn't
+    // laid out again, and its copies drew the old word under the new one (DEX over MAP).
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer(cacheSize = 0)
+    // Plain storage, not Compose state: it's written in layout and read in the draw right after, nothing to observe.
     val laid = remember { arrayOfNulls<androidx.compose.ui.text.TextLayoutResult>(1) }
     Box(modifier) {
         Text(
             text, color = color, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
             onTextLayout = { laid[0] = it },
             modifier = Modifier.drawBehind {
-                val layout = laid[0] ?: return@drawBehind
+                // A text that changed in place at the same size may not be laid out again (no onTextLayout): measure it here
+                // then, once, and keep it (GbaText is on every screen; measuring in every draw added up).
+                val layout = laid[0]?.takeIf { it.layoutInput.text.text == text } ?: measurer.measure(
+                    text, style, overflow = TextOverflow.Ellipsis, maxLines = maxLines,
+                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = size.width.roundToInt().coerceAtLeast(0)),
+                ).also { laid[0] = it }
                 if (shadow.alpha > 0f) when (CompanionSkins.current.shadow) {
                     SkinShadow.PIXEL -> for ((dx, dy) in listOf(k to 0, 0 to k, k to k)) {
                         drawText(layout, color = shadow, topLeft = Offset((dx + b).toFloat(), dy.toFloat()))
@@ -274,6 +281,21 @@ fun DrawScope.drawLayeredBox(
             drawTwoTone(fill, low ?: twoToneLow(fill), layers.lastOrNull()?.second ?: 1f) { color -> drawPixelRoundRect(color, at, box, r.coerceAtLeast(0f)) }
         } else drawPixelRoundRect(fill, at, box, r.coerceAtLeast(0f))
     }
+}
+
+/**
+ * A [com.pokedaisy.app.companion.ui.theme.KeyColors] key filling the box: its outline, the [depth] edge along the bottom
+ * ([unit] px a GBA pixel; a pressed key's is one unit, else [depthUnits]) and the two-tone face over it. [radius] in px.
+ */
+fun DrawScope.drawKey(k: com.pokedaisy.app.companion.ui.theme.KeyColors, unit: Float, radius: Float, depthUnits: Int = 2, face: Color = k.face) {
+    val d = (if (k.pressed) 1 else depthUnits) * unit
+    drawPixelRoundRect(k.outline, radius = radius, step = unit)
+    val inner = Size(size.width - 2 * unit, size.height - 2 * unit)
+    val r = (radius - unit).coerceAtLeast(0f)
+    drawPixelRoundRect(k.depth, Offset(unit, unit), inner, r, step = unit)
+    val faceSize = Size(inner.width, inner.height - d)
+    drawTwoTone(face, k.low, unit) { c -> drawPixelRoundRect(c, Offset(unit, unit), faceSize, r, step = unit) }
+    k.shine?.let { drawRect(it, Offset(unit + r, unit * 2), Size((inner.width - 2 * r).coerceAtLeast(0f), unit)) }
 }
 
 /** A two-tone button's lower colour, for a window-coloured one: [fill] a step down, on a light or a dark look alike. */

@@ -74,7 +74,8 @@ layout.
 
 `POCKET_FULLSCREEN=1` uses SDL's current display mode. The host tells the core the screen's size (its
 `pokedaisy_panel` option), so the core picks its canvas for that screen (EXPAND at the game's whole scale, the
-companion at the largest whole scale keeping 320x240), and the host shows the frame at the largest whole scale that
+companion at the largest whole scale keeping 320x240: 320x240 on 640x480, 426x240 on 1280x720, 341x256 on 1024x768,
+480x270 on 1920x1080, the DS core's companion too), and the host shows the frame at the largest whole scale that
 fits, centred. `POCKET_WINDOW=WxH` opens the window at a device's panel size instead (1280x800, 1280x720, 640x480,
 720x720 ...), to try a layout on a desktop. The screen paces the game when it runs at 58-62 Hz and presents wait for
 it, else a timer does; the sound is resampled a little faster or slower to keep up. Audio-device failure is logged
@@ -92,6 +93,10 @@ exit hotkey) beside a `pokedaisy/` folder with the binary, the cores (`--core`),
 uses the firmware's own SDL2. CTest's `portmaster-launcher` runs the launcher
 against a stand-in PortMaster (native builds). The package has been played from the Ports menu of a ROCKNIX
 handheld (GKD 350H): the firmware's ROM folders in the game list, the host menu on MENU, A/B BUTTONS.
+The package carries the port's art for the firmware's game list (`cover.png`, `screenshot.png`, `marquee.png`, PortMaster's
+`gameinfo.xml` and `port.json`): PokeDaisy's own flower, page and font, never a game's art. `linux/portmaster/make_art.py`
+draws the cover and marquee; the screenshot is the game list (the library) over made-up games with no covers, taken
+headless with `POCKET_WINDOW=640x480` and `--shot` (no real game's name or art).
 
 ## TrimUI cross-build and launcher
 

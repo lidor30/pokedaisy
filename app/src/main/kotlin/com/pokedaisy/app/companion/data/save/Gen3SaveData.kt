@@ -160,6 +160,10 @@ class Gen3SaveData(
         val unreadable = records.count { !it.isEmpty && (it.isBadEgg || it.species !in 1..MAX_SPECIES) }
         // A save of another layout decodes as noise in nearly every slot; a real one has a Bad Egg at most.
         if (used >= 4 && unreadable * 2 > used) return "$unreadable of $used PC records don't decode"
+        // No growth rate goes past 1,640,000 at level 100, and the games stop there: more is another engine's record
+        // (pokeemerald-expansion keeps 21 bits of experience with a nickname's 11th letter above them, GitHub #1167).
+        val tooMuch = (party.map { it.mon } + records).count { !it.isEmpty && !it.isBadEgg && it.exp > MAX_EXP }
+        if (tooMuch > 0) return "$tooMuch Pokémon with more experience than level 100's"
         return null
     }
 
@@ -180,6 +184,8 @@ class Gen3SaveData(
         const val BOX_NAME_SIZE = 9
         /** The last internal species id the Gen 3 games know (Chimecho, 411; 412 is the egg). */
         const val MAX_SPECIES = 412
+        /** The most experience any Gen 3 growth rate reaches (fluctuating, at level 100). */
+        val MAX_EXP: Long = com.pokedaisy.app.companion.data.gen3ExperienceTables.maxOf { it.last() }.toLong()
         /** money.c's MAX_MONEY, coins.h's MAX_COINS. */
         const val MAX_MONEY = 999_999L
         const val MAX_COINS = 9_999

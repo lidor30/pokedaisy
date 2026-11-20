@@ -19,6 +19,7 @@
 #include "polished_action_data.h"
 #include "hud.h"
 #include "pd_guide.h"
+#include "pd_tr.h"
 #include "pk_call.h"
 #include "pk_flight.h"
 #include "pd_flight_gen.h"
@@ -986,15 +987,19 @@ static void wide_tick(void) {
 /* The canvas for a fw x fh game on the panel: the panel over the game's whole scale (one less for ZOOM OUT), so the
  * frontend shows it at exactly that integer scale. EXPAND's window is the whole canvas. */
 static void canvas_for(int fw, int fh, int kind, int *w, int *h) {
-  int s = panelW / fw < panelH / fh ? panelW / fw : panelH / fh;
+  int s;
+  if (kind == CANVAS_MENU) {
+    // The companion and its menus: the largest whole scale that still leaves them 320x240, the host menu's rule and
+    // about the size Android draws its companion at (a font pixel ~1/240-1/270 of the screen's height). Taking it
+    // from the game's scale less one drew a 640x480 screen's companion at 1x, everything half its size.
+    s = panelW / 320 < panelH / 240 ? panelW / 320 : panelH / 240;
+  } else {
+    s = panelW / fw < panelH / fh ? panelW / fw : panelH / fh;
+    if (kind != CANVAS_EXPAND && s > 1)
+      s--;
+  }
   if (s < 1)
     s = 1;
-  if (kind != CANVAS_EXPAND && s > 1)
-    s--;
-  // The companion and its menus are laid out for 320x240 at least: a Game Boy game's ZOOM OUT on a 1024x768 panel is
-  // 256x192, where text overran its boxes. Menus step down until the canvas holds them.
-  while (kind == CANVAS_MENU && s > 1 && (panelW / s < 320 || panelH / s < 240))
-    s--;
   int x = panelW / s, y = panelH / s;
   *w = x < fw ? fw : x > CANVAS_MAX_W ? CANVAS_MAX_W : x;
   *h = y < fh ? fh : y > CANVAS_MAX_H ? CANVAS_MAX_H : y;
@@ -1049,7 +1054,15 @@ static void canvas_update(bool notify) {
   // While the Quick Menu is open, double the game pixels exactly so menu text and icons
   // draw at output resolution. Gameplay stays at 1x: a doubled canvas costs every frame
   // four times the pixels (Brick: 4.5 -> 7.1 ms per shown frame).
-  if (PD_BE_IS_GBA() && !companion && quickOpen && (w < 320 || h < 240) && w <= CWMAX / 2 && h <= CHMAX / 2) {
+  // Unless the frontend could then show it only smaller: a doubled canvas is shown at half the game's scale, so on a panel
+  // where that scale is odd (5x on 1280x960) its whole scale fell to 2x and the picture shrank while the menu was open.
+  bool shrinks = false;
+  if (panelW && w > 0 && h > 0) {
+    int s1 = panelW / w < panelH / h ? panelW / w : panelH / h;
+    int s2 = panelW / (2 * w) < panelH / (2 * h) ? panelW / (2 * w) : panelH / (2 * h);
+    shrinks = 2 * s2 < s1;
+  }
+  if (PD_BE_IS_GBA() && !companion && quickOpen && !shrinks && (w < 320 || h < 240) && w <= CWMAX / 2 && h <= CHMAX / 2) {
     scale = 2;
     w *= scale;
     h *= scale;
@@ -1116,6 +1129,13 @@ RETRO_API void retro_get_system_av_info(struct retro_system_av_info *info) {
 }
 
 RETRO_API bool retro_load_game(const struct retro_game_info *g) {
+  /* LANGUAGE's AUTO with no game language the menus have: the frontend's. */
+  unsigned lang = RETRO_LANGUAGE_ENGLISH;
+  if (realEnv && realEnv(RETRO_ENVIRONMENT_GET_LANGUAGE, &lang))
+    pd_tr_set_system(lang == RETRO_LANGUAGE_FRENCH ? PD_LANG_FR : lang == RETRO_LANGUAGE_GERMAN ? PD_LANG_DE :
+                     lang == RETRO_LANGUAGE_ITALIAN ? PD_LANG_IT : lang == RETRO_LANGUAGE_SPANISH ? PD_LANG_ES :
+                     lang == RETRO_LANGUAGE_PORTUGUESE_BRAZIL ? PD_LANG_BR :
+                     lang == RETRO_LANGUAGE_PORTUGUESE_PORTUGAL ? PD_LANG_PT : PD_LANG_EN);
   /* No game: armGBA offers "Start Core" (SET_SUPPORT_NO_GAME), but the companion needs one (PD_BE_AFTER_LOAD reads it). */
   if (!g || !mgba_retro_load_game(g))
     return false;
@@ -1914,6 +1934,12 @@ RETRO_API void retro_run(void) {
   const bool repeat = late && canDupe && haveGameFrame && !paused && !quickOpen &&
                       (!ff || (expanded && !repeatedFrame));
   maskGame = paused;
+  // The button that closed the companion / quick menu / HUD cursor (A on a pick, B backing out) is still held: it stays
+  // out of the game until let go, as the app's menuHeld (GitHub #1100: on a Steam Deck it answered the game's prompt).
+  static bool wasPaused;
+  if (wasPaused && !paused)
+    shortcutBlocked |= held;
+  wasPaused = paused;
   shortcutExclusive = false;
   if (!paused) {
     if (polishedActions && !rewinding && settings.wildOff &&
@@ -2231,8 +2257,12 @@ RETRO_API void retro_run(void) {
       hudState.pc = pcOk || gbf || polishedActions;
       hudState.wild = hud_wild_uncaught(&game, &snap);
       draw_hud();
-    } else
+    } else {
+      // Hidden (a menu, a battle): drawn again from scratch when it comes back. Its cached picture's key alone stayed
+      // the same after the START menu, so hudShown stayed false until something in it changed (a step).
       hudShown = false;
+      hudDrawnKey = 0;
+    }
   }
   PF_T(td1);
   pf_add(PF_DRAW, td1 - td0);

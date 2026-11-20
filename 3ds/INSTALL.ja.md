@@ -86,6 +86,8 @@ PokeDaisyはニンテンドー3DSでも自作アプリ（homebrew）として動
 
 ゲームをやめるときは、コンパニオンの `SETTINGS` のいちばん下にある `CLOSE GAME` を使います。**HOME** ボタンや本体を閉じるのも使えます。
 
+メニューは英語、フランス語、ドイツ語、イタリア語、スペイン語、ポルトガル語で表示できます。ライブラリの `SETTINGS`(とコンパニオンの `SETTINGS` のいちばん下)にある `LANGUAGE` で選び、`AUTO` ならゲームの言語に、それがなければ 3DS の言語に合わせます。
+
 ![3DSのライブラリのSETTINGSページ：VIEW、SORT、THEME、DARK MODE、SCREEN、ASPECTと音の設定](../docs/manual/shots/3ds-settings.png "ライブラリのSETTINGS：すべてのゲームに共通の見た目と画面の設定")
 
 ## 遊べるゲーム
@@ -115,7 +117,8 @@ PokeDaisyはニンテンドー3DSでも自作アプリ（homebrew）として動
 - **Homebrew LauncherにPokeDaisyがない：** ファイルが `sdmc:/3ds/` にあり、名前が `.3dsx` で終わっている必要があります。
 - **ゲームが一覧に出ない：** `sdmc:/pokedaisy/roms/` の中に直接置き、中のフォルダには入れず、zipのままにしないでください。
 - **セーブデータが読まれない：** セーブデータはゲームとまったく同じ名前で、最後が `.sav` である必要があります。起動のたびにセーブデータは `sdmc:/pokedaisy/roms/pokedaisy-backups/` にコピーされるので、古いコピーが必要ならそこにあります。
-- **動きが遅い：** ニンテンドー3DSや2DSは、Newの本体より遅くなります。ライブラリの `SETTINGS` で `SCREEN` を `PIXEL 1x` にしてください。いちばん軽いモードです。GBAのゲームでは、ライブラリで `X` を押して別の `GBA CORE` を試すこともできます。`GPSP` はニンテンドー3DS向けで、まだテスト中です。ゲームは軽くするためにEXPANDなしで始まります。`EXPAND 1.5x` はライブラリの `SETTINGS` で選べます。
+- **動きが遅い：** ニンテンドー3DSや2DSは、Newの本体より遅くなります。ライブラリの `SETTINGS` で `SCREEN` を `PIXEL 1x` にしてください。いちばん軽いモードです。GBAのゲームでは、CIAをインストールしていれば、`GBA CORE` の `AUTO` がこの本体で `GPSP` を使います。より速い、まだテスト中のコアです。ゲームの調子が悪いときは、ライブラリで `X` を押して `ARMGBA` など別のコアを選べます。ゲームは軽くするためにEXPANDなしで始まります。`EXPAND 1.5x` はライブラリの `SETTINGS` で選べます。
+- **CIAをインストールするように出る：** Homebrew Launcherから起動すると、ニンテンドー3DSや2DSでは16MBまでのゲームしか入らず、`GPSP` も使えません。`pokedaisy.cia` をインストールして（上を参照）HOMEメニューから起動すれば、大きなゲームも `GPSP` も使えます。
 - **ゲームが始まらない：** 上画面に理由と、3DSのメモリの情報が出ます。報告するときは、メッセージ全体の写真か `sdmc:/pokedaisy/log.txt` を送ってください。
 
 それでも困ったら、`sdmc:/pokedaisy/log.txt` を添えて [お知らせください](https://pokedaisy.com/ja/feedback/#bug)。

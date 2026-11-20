@@ -14,6 +14,9 @@ struct pd_canvas {
     uint32_t* px;
     // Drawing is clipped to this rectangle (pd_clip / pd_unclip).
     int cx0, cy0, cx1, cy1;
+    // pd_canvas_limit's rectangle: no clip reaches past it and pd_unclip goes back to it (0 wide = the whole canvas).
+    // A redraw of one part of a picture already drawn (a list scrolled): everything outside it stays as it was.
+    int lx0, ly0, lx1, ly1;
 };
 
 struct pd_layer {
@@ -24,6 +27,9 @@ struct pd_layer {
 void pd_canvas_init(struct pd_canvas* c, int w, int h, uint32_t* px);
 void pd_clip(struct pd_canvas* c, int x, int y, int w, int h);
 void pd_unclip(struct pd_canvas* c);
+// Limits all drawing to the rectangle until pd_canvas_unlimit (clips set meanwhile are cut to it).
+void pd_canvas_limit(struct pd_canvas* c, int x, int y, int w, int h);
+void pd_canvas_unlimit(struct pd_canvas* c);
 
 void pd_fill(struct pd_canvas* c, int x, int y, int w, int h, uint32_t color);
 // A filled rectangle whose corners step like the app's PixelRoundedShape(r).

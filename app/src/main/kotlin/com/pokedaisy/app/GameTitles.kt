@@ -4,6 +4,7 @@ import android.content.Context
 import com.pokedaisy.app.companion.data.EMERALD_LOCALIZED_CODES
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
 import com.pokedaisy.app.companion.data.RETAIL_PORT_TITLES
+import com.pokedaisy.app.companion.data.RomCategory
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
 import okio.source
@@ -44,7 +45,9 @@ object GameTitles {
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1,
-    ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S + com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
+    ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S + com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S +
+        com.pokedaisy.app.companion.data.SacredGold.SACRED_GOLD_SHA1S + com.pokedaisy.app.companion.data.SacredGold.STORM_SILVER_SHA1S +
+        com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
         com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
 
     private val RETAIL: Map<String, String> = mapOf(
@@ -74,6 +77,9 @@ object GameTitles {
     ) + com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_PATCH_SHA1S.associateWith { "Pokémon Renegade Platinum" } +
         // Heartfelt Gold v1.0.15 (and its Zoomed In patch): hg-engine over the US HeartGold (HeartfeltGold).
         com.pokedaisy.app.companion.data.HeartfeltGold.SHA1S.associateWith { "Pokémon Heartfelt Gold" } +
+        // Sacred Gold / Storm Silver v1.05 (Complete, and Sacred Gold's Classic): Drayano's, edited in place (SacredGold).
+        com.pokedaisy.app.companion.data.SacredGold.SACRED_GOLD_SHA1S.associateWith { "Pokémon Sacred Gold" } +
+        com.pokedaisy.app.companion.data.SacredGold.STORM_SILVER_SHA1S.associateWith { "Pokémon Storm Silver" } +
         // Blaze Black 2 / Volt White 2 Redux v1.4.1 (and their Classic / EVless patches), Black 2 / White 2 edited in place (Black2Redux).
         com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S.associateWith { "Pokémon Blaze Black 2 Redux" } +
         com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S.associateWith { "Pokémon Volt White 2 Redux" } + mapOf(
@@ -158,6 +164,12 @@ object GameTitles {
         "f1035f615c13c46394a18fa99181c24c3cd15e12" to "Moemon Quetzal",
         "ae5d88bb823a8f9d0d07e8784da2376ff7c1ae43" to "Moemon Quetzal",
         "0ce2a880aa097f1dce4e1db8ee513d0e82d15859" to "Pokémon Unbound",
+        "8114e0f81eb3581f699c74a5891c7b75a130269d" to "Pokémon Unbound",
+        "7eca3ef1580e21b96027b721ecd3ba1aa36a6ea2" to "Pokémon Clover",
+        "d2440fd6bae5a12dfc3cecc129b9bbff22d74b2e" to "Pokémon Elysium (Part A)",
+        "71bf40178a1f5c69dc1c22099623434ba1e74318" to "Pokémon Elysium (Part B)",
+        "b0d6b91356ee4d4c8f8c70020fe0352c391a12e2" to "Pokémon Rhythm",
+        "4234507f92101a322aa5c0518a6aa1f1fe807832" to "Pokémon Oops All Eevees!",
         "8bac897de515f88e6ce92d0712ce2c018a394b37" to "Pokémon Orange Islands",
         "d2e3800e69e44c9649c3d9a15dc1cd12c1d90501" to "Pokémon Orange Islands",
         "3b6c51d8fb6b513bdd01b7bda3ed8965bc985d58" to "Pokémon Ultra Violet",
@@ -175,6 +187,8 @@ object GameTitles {
         "eb660caffbc26e1f09f86714d03af4c3eccd9e4d" to "Pokémon Monomyth",
         "742e62ffa5a8d607171fdb8477eb1f417dc36086" to "Pokémon Monomyth",
         "60182b934d2e8eb3eef226a9bbc25e5df6becd4f" to "Pokémon Wishes of Tomorrow",
+        "2b0b608666cc2d553ce08d88fa76dce1fa577e51" to "Pokémon Ceruleum",
+        "8df1c9720842c668448d5ad880e9c48bb29d7200" to "Pokémon RecordKeepers",
         "20e91aecb3243eea7cd610659846f37062f5d709" to "Pokémon Dreamstone Mysteries",
         "20dfaea1d5317cf95fe0b493208edce7d50b865f" to "Pokémon Ghost Grey",
         "74337272566a74625d6dedefe47d2d153eb48ec1" to "Pokémon Ghost Grey",
@@ -232,6 +246,10 @@ object GameTitles {
         "24eeda80ee78fa214a6f4a85164a2492d2b017ad" to "Pokémon Brown",
         "2d6d1f1a6010f578d67045802611a288ebd8748b" to "Pokémon Brown",
         "d419fe244fa17196f7df46ddab47c840e7573652" to "Pokémon PureBlue",
+        // Pokémon Red (Gen II Graphics V2.0)
+        "ad1adc824456f593f5bdb4cbfeb0ec12b24abb6d" to "Pokémon Red (Gen II Graphics)",
+        // Pokémon Yellow (Gen II Graphics V1.1)
+        "8e3d5a2b508ad832b86ae1dea72dd6d646b634c0" to "Pokémon Yellow (Gen II Graphics)",
     )
 
     /** DS carts worth hashing (128 MB each, once per file): the DS games above. */
@@ -470,6 +488,3 @@ object GameTitles {
         }
     }
 }
-
-/** What kind of game a ROM is, for the library's tag when it has no cover art: its platform, or a hack. */
-enum class RomCategory(val label: String) { GB("GB"), GBC("GBC"), GBA("GBA"), NDS("NDS"), N3DS("3DS"), HACK("HACK") }

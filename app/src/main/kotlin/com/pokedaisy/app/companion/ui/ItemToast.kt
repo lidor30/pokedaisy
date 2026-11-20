@@ -1,0 +1,169 @@
+package com.pokedaisy.app.companion.ui
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.unit.dp
+import com.pokedaisy.app.companion.data.ItemView
+import com.pokedaisy.app.companion.i18n.tr
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+
+/** A bag item's totals by id: the same item can sit in two pockets (a TM's case), and only the total matters. */
+fun itemTotals(items: List<ItemView>): Map<Int, Int> =
+    items.filter { it.itemId > 0 }.groupBy { it.itemId }.mapValues { (_, same) -> same.sumOf { it.quantity } }
+
+/** The items that went up from [before] to [after], with how many more of each. */
+fun itemGains(before: Map<Int, Int>, after: Map<Int, Int>): Map<Int, Int> =
+    after.mapNotNull { (id, q) ->
+        val was = before[id] ?: 0
+        if (q > was) id to (q - was) else null
+    }.toMap()
+
+/**
+ * What deserves an "OBTAINED" card: a bag that (re)appeared whole or changed wholesale is a load, a savestate or a
+ * stale cache catching up - announcing it would queue the entire bag one item at a time.
+ */
+fun itemGainNotices(before: Map<Int, Int>, after: Map<Int, Int>): Map<Int, Int> {
+    if (before.isEmpty() || after.isEmpty()) return emptyMap()
+    // A stack no Gen 3 bag holds (999 is MAX_BAG_ITEM_CAPACITY): a torn read, or the game mid-write. Not a pickup.
+    if (after.values.any { it > BAG_STACK_MAX }) return emptyMap()
+    val changed = (before.keys + after.keys).count { id -> (before[id] ?: 0) != (after[id] ?: 0) }
+    return if (changed > MAX_SETTLE_IDS) emptyMap() else itemGains(before, after)
+}
+
+private class ItemGain(val item: ItemView, val count: Int)
+
+/** More distinct items changing in one settled sample than this is the bag being reloaded, not a pickup. */
+private const val MAX_SETTLE_IDS = 6
+
+private const val BAG_STACK_MAX = 999
+
+/**
+ * Whether the game's clock went from [before] to [after] the way play does: forward, by less than a minute of frames
+ * (samples come about once a second, faster in FF). Anything else is the game somewhere else (a state loaded from the
+ * STATES tab or the QUICK MENU, REWIND, BOSS RETRY, a resume), whose bag isn't a pickup.
+ */
+fun playedOn(before: Long, after: Long): Boolean = after >= before && after - before < PLAY_JUMP_FRAMES
+
+/** A minute of frames: a sample further on than that is a jump, not play (uncapped FF can do it; no card then is fine). */
+private const val PLAY_JUMP_FRAMES = 3600L
+
+/**
+ * A small "OBTAINED" card at the bottom left when the bag gains an item (a pickup, a purchase, a PC withdrawal, a held
+ * item taken back), fading in, resting, and fading out. One at a time; a snapshot that brings several queues them.
+ * [reset] bumped on a savestate load starts the baseline over, so a load isn't read as a pile of gains.
+ */
+@Composable
+fun ItemToastHost(
+    items: List<ItemView>,
+    connected: Boolean,
+    hasData: Boolean,
+    reset: Int,
+    /** The game's own frame clock ([com.pokedaisy.app.companion.data.SnapshotView.frameCounter]): a jump in it is a load. */
+    frame: Long,
+    modifier: Modifier = Modifier,
+) {
+    val m = rememberGbaTextMetrics(1f)
+    val small = rememberGbaTextMetrics(0.8f)
+    val queue = remember { Channel<ItemGain>(Channel.UNLIMITED) }
+    var current by remember { mutableStateOf<ItemGain?>(null) }
+    var visible by remember { mutableStateOf(false) }
+    var previous by remember { mutableStateOf<Map<Int, Int>?>(null) }
+    var ready by remember { mutableStateOf(false) }
+    var previousFrame by remember { mutableStateOf(-1L) }
+    val latestFrame by rememberUpdatedState(frame)
+    val latest by rememberUpdatedState(items)
+    LaunchedEffect(connected, hasData, reset) {
+        ready = false
+        previous = null
+        current = null
+        visible = false
+        while (queue.tryReceive().isSuccess) {}
+        if (!connected || !hasData) return@LaunchedEffect
+        // The game's own bag load, or a savestate's, is not an acquisition: let it settle, then take it as the baseline.
+        delay(900)
+        previous = itemTotals(latest).takeIf { it.isNotEmpty() }
+        previousFrame = latestFrame
+        ready = true
+    }
+    LaunchedEffect(items, connected, hasData) {
+        if (!connected || !hasData || !ready) return@LaunchedEffect
+        // A bag write can touch the array in a few steps (a purchase): compare the settled bag, not the half-written one.
+        delay(160)
+        val now = itemTotals(items)
+        if (now.isEmpty()) return@LaunchedEffect
+        val before = previous
+        val beforeFrame = previousFrame
+        previous = now
+        previousFrame = latestFrame
+        if (before == null) return@LaunchedEffect
+        // The game somewhere else since the last bag (any load, not only the hotkeys'): a new baseline, no cards.
+        if (!playedOn(beforeFrame, latestFrame)) return@LaunchedEffect
+        for ((id, count) in itemGainNotices(before, now)) {
+            latest.firstOrNull { it.itemId == id }?.let { queue.trySend(ItemGain(it, count)) }
+        }
+    }
+    LaunchedEffect(Unit) {
+        for (gain in queue) {
+            current = gain
+            visible = true
+            delay(2200)
+            visible = false
+            delay(600)
+        }
+    }
+    Box(modifier) {
+        AnimatedVisibility(
+            visible = visible && current != null,
+            enter = fadeIn(tween(200)) + slideInVertically(tween(220)) { it / 3 },
+            exit = fadeOut(tween(600)) + slideOutVertically(tween(600)) { it / 3 },
+        ) {
+            current?.let { ItemGainCard(it, m, small) }
+        }
+    }
+}
+
+@Composable
+private fun ItemGainCard(gain: ItemGain, m: GbaTextMetrics, small: GbaTextMetrics) {
+    val u = m.u
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .widthIn(max = 210.dp)
+            // A thin title-window frame: the list frame's seven pixels would eat into a card this small.
+            .drawBehind { drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
+            .padding(start = u * 6, end = u * 6, top = u * 4, bottom = u * 5),
+    ) {
+        ItemIcon(gain.item.iconAsset, size = m.lineHeight * 1.35f, pixelated = true)
+        Spacer(Modifier.width(u * 5))
+        Column(Modifier.weight(1f, fill = false)) {
+            GbaText(tr("OBTAINED"), OptionColors.muted, OptionColors.mutedShadow, small)
+            GbaText(gain.item.name, OptionColors.label, OptionColors.labelShadow, m, maxLines = 1)
+        }
+        if (gain.count > 1) {
+            Spacer(Modifier.width(u * 6))
+            GbaText("×${gain.count}", OptionColors.value, OptionColors.valueShadow, small)
+        }
+    }
+}

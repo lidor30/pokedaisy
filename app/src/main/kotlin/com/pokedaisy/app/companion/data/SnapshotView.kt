@@ -61,6 +61,11 @@ data class MonView(
     val renamed: Boolean get() = nickname != null && !nickname.equals(name, ignoreCase = true)
 }
 
+/** An egg's hatch species' name for the summary's "EGG / name"; null when only the egg's placeholder id is known. */
+val MonView.eggHatchName: String? get() =
+    if (!isEgg || species <= 0 || species == SPECIES_EGG_VANILLA || species == activeNativeConfig?.eggSpecies) null
+    else speciesName(species)
+
 /** [total] EXP; this level starts at [levelStart], the next at [nextLevel] (== levelStart at Lv100). */
 data class ExpProgress(val total: Long, val levelStart: Long, val nextLevel: Long) {
     val toNext: Long get() = (nextLevel - total).coerceAtLeast(0)
@@ -74,7 +79,7 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
     // Gen 1's growth rates and curves are Gen 3's for the first 151 (Yellow's species are Dex numbers here).
     if (activeGame != GameKind.FIRERED && activeGame != GameKind.EMERALD && !activeGame.isGen1 &&
         activeGame != GameKind.ORANGE_ISLANDS && activeGame != GameKind.RECHARGED_YELLOW &&
-        activeGame != GameKind.MARIOMON && activeGame != GameKind.TEAM_ROCKET && activeGame != GameKind.WISHES &&
+        activeGame != GameKind.MARIOMON && activeGame != GameKind.TEAM_ROCKET && activeGame != GameKind.WISHES && activeGame != GameKind.CERULEUM && activeGame != GameKind.RECORDKEEPERS &&
         activeGame != GameKind.DREAMSTONE && activeGame != GameKind.MONOMYTH &&
         // Crystal's growth rates for its 251 are Gen 3's, byte for byte, and its curves the same formulas (CrystalDecodeTest);
         // Crystal Clear, Gold and Silver kept Crystal's base data (gen_gen2_tables.py checks it).
@@ -112,6 +117,9 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
             (if (teamRocketV3) growthRatesTeamRocketV3 else growthRatesTeamRocket).getOrNull(species)?.takeIf { it <= 5 }
         // Wishes of Tomorrow (expansion 1.15.3): vanilla's curves, its gSpeciesInfo's rates (gen_expansion_tables.py).
         else if (activeGame == GameKind.WISHES) growthRatesWishes.getOrNull(species)?.takeIf { it <= 5 }
+        // Ceruleum (expansion 1.13.2) likewise.
+        else if (activeGame == GameKind.CERULEUM) growthRatesCeruleum.getOrNull(species)?.takeIf { it <= 5 }
+        else if (activeGame == GameKind.RECORDKEEPERS) growthRatesRecordKeepers.getOrNull(species)?.takeIf { it <= 5 }
         // PureRGB moved 25 species to other curves: its own BaseStats' (gen_gen1_tables.py purered).
         else if (activeGame.isPureRgb) gen1GrowthRatesPureRgb.getOrNull(species)
         // Yellow Legacy too (gen_gen1_tables.py yellow_legacy).
@@ -269,6 +277,8 @@ data class SnapshotView(
     val playerGender: Int = -1,
     /** The CARD tab's data; null = the game gets no card. */
     val trainerCard: TrainerCardInfo? = null,
+    /** The game's move-learning summary is up: that party member is choosing a move to forget. */
+    val moveLearning: MoveLearningPrompt? = null,
     /** Non-null = the copy saved beside the savestate this launch resumed ([SnapshotCache]), shown
      * until the live game's data is in: the data tabs the game had then (DEX / GUIDE / CARD, whose
      * ROM tables aren't cached - they wait on LOADING). */
@@ -342,7 +352,10 @@ fun spriteAsset(kind: String, id: Int): String? {
 }
 
 /** A shiny Pokémon's party icon: `<dir>/shiny/<id>.png`, drawn in its species' shiny palette (DecompIconSource). */
-fun shinyIconAsset(species: Int): String? = spriteAsset("pokemon", species)?.let { it.substringBeforeLast('/') + "/shiny/" + it.substringAfterLast('/') }
+fun shinyIconAsset(species: Int): String? =
+    // The Game Boy and DS party icons don't change for a shiny one (and nothing makes shiny ones for them).
+    if (activeGame.isGameBoyGame || activeGame.isDsGame) spriteAsset("pokemon", species)
+    else spriteAsset("pokemon", species)?.let { it.substringBeforeLast('/') + "/shiny/" + it.substringAfterLast('/') }
 
 /** A party (or PC box) Pokémon as the PARTY tab and the summary show it. */
 fun partyMonView(m: Mon): MonView {
@@ -358,6 +371,15 @@ fun partyMonView(m: Mon): MonView {
         }
     }
     val isEgg = m.isEgg || isVanillaEgg(m.species)
+    // The egg keeps its hatch species for types / stats; its icon is the egg's, not the hatched Pokémon's.
+    val eggIcon = when {
+        isEgg && activeGame.isGen5 -> NdsArt.BLACK_EGG
+        isEgg && originHeartGold -> NdsArt.ORIGIN_EGG
+        isEgg && activeGame.isDsGame -> 494
+        isEgg && !activeGame.isGameBoyGame && !activeGame.isDsGame ->
+            activeNativeConfig?.eggSpecies?.takeIf { it != 0 } ?: SPECIES_EGG_VANILLA
+        else -> m.species
+    }
     return MonView(
         species = m.species,
         name = if (isEgg) gameCase("Egg") else speciesName(m.species),
@@ -367,13 +389,12 @@ fun partyMonView(m: Mon): MonView {
         maxHp = m.maxHp,
         status = statusLabel(m.status),
         types = monTypes(type1, type2),
-        // A DS game's eggs keep their species: the egg's own icon is NdsArt's 494.
-        iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", if (isEgg && activeGame.isGen5) NdsArt.BLACK_EGG else if (isEgg && originHeartGold) NdsArt.ORIGIN_EGG else if (isEgg && activeGame.isDsGame) 494 else m.species),
+        iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", eggIcon),
         genderSymbol = m.genderSymbol,
         moves = moves,
         exp = if (isEgg) null else expProgress(m.species, m.level, m.exp),
         personality = m.personality,
-        stats = if (isEgg) null else m.stats,
+        stats = m.stats,
         heldItemId = m.heldItem,
         nickname = if (isEgg) null else m.nickname,
         shiny = m.shiny && !isEgg,
@@ -607,6 +628,7 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
         mapType = t.mapType,
         playerGender = t.playerGender,
         trainerCard = t.trainerCard,
+        moveLearning = t.moveLearning,
     )
 }
 
@@ -623,7 +645,7 @@ fun isVanillaEgg(species: Int): Boolean =
     species == SPECIES_EGG_VANILLA && !emeraldLegacy && when (activeGame) {
         GameKind.FIRERED, GameKind.EMERALD,
         GameKind.UNBOUND, GameKind.RADICAL_RED, GameKind.ODYSSEY, GameKind.AMETHYST, GameKind.ORANGE_ISLANDS,
-        GameKind.SWORD_SHIELD, GameKind.RECHARGED_YELLOW, GameKind.GS_CHRONICLES -> true
+        GameKind.SWORD_SHIELD, GameKind.RECHARGED_YELLOW, GameKind.GS_CHRONICLES, GameKind.RHYTHM, GameKind.OOPS_ALL_EEVEES -> true
         else -> false
     }
 

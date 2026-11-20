@@ -86,7 +86,7 @@ interface QuickActions {
     fun run(action: QuickAction)
 
     /** FLY to [mapsec], one of [targets]' destinations. */
-    fun flyTo(mapsec: Int, targets: FlyTargets)
+    fun flyTo(mapsec: Int, targets: FlyTargets) {}
 
     /** Uses one [itemId] of the bag's REPEL kinds ([REPEL_KINDS]). */
     fun repel(itemId: Int) {}
@@ -116,6 +116,9 @@ interface QuickActions {
  * activity while it's open ([key], [aim], [trigger]), withheld from the game like the companion window's.
  */
 class QuickMenuState {
+    /** Async destinations belong to one visit, never a later reopening or return from a list. */
+    var visit = 0L
+        private set
     var open by mutableStateOf(false)
         private set
 
@@ -152,13 +155,13 @@ class QuickMenuState {
         private set
 
     /** The tiles shown (set as it draws), so the D-pad knows how many there are. */
-    internal var items: List<QuickAction> = emptyList()
+    var items: List<QuickAction> = emptyList()
 
     /** Why each tile is dimmed now (null = ready), as it draws. */
-    internal var blocked: (QuickAction) -> String? = { null }
+    var blocked: (QuickAction) -> String? = { null }
 
     /** REPEL's kinds in the bag, weakest first, as it draws. */
-    internal var repelKinds: List<Int> = emptyList()
+    var repelKinds: List<Int> = emptyList()
 
     /** FLY's destination ids in its list's order. */
     internal var flyIds: List<Int> = emptyList()
@@ -188,6 +191,7 @@ class QuickMenuState {
     fun trigger(pressed: Boolean) {
         if (!pressed) return
         if (open) close() else {
+            visit++
             open = true
             gone = false
             fly = null
@@ -198,6 +202,7 @@ class QuickMenuState {
 
     fun close(instant: Boolean = false) {
         val was = open
+        visit++
         if (instant && was) gone = true
         open = false
         fly = null
@@ -208,6 +213,7 @@ class QuickMenuState {
 
     /** From a list back to the tiles. */
     fun back() {
+        visit++
         fly = null
         repels = null
         confirm = null
@@ -371,7 +377,7 @@ fun quickBlocked(action: QuickAction, s: SnapshotView, repelSteps: Int = 0, dark
 }
 
 /** Why FLASH didn't start, in the companion's words (the HUD's notice). */
-internal fun flashMessage(r: com.pokedaisy.app.companion.data.FlashResult): String = when (r) {
+fun flashMessage(r: com.pokedaisy.app.companion.data.FlashResult): String = when (r) {
     com.pokedaisy.app.companion.data.FlashResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.FlashResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.FlashResult.NO_BADGE -> tr("FLASH needs a new BADGE first.")
@@ -578,7 +584,7 @@ private const val TILE_TRIP = 0.4f
  * leaves a little after the one before it and slows as it arrives, so closing, the same run backwards, takes the last one in
  * first.
  */
-internal fun tileOut(open: Float, i: Int, n: Int): Float {
+fun tileOut(open: Float, i: Int, n: Int): Float {
     val start = if (n > 1) i * (1f - TILE_TRIP) / (n - 1) else 0f
     val t = ((open - start) / TILE_TRIP).coerceIn(0f, 1f)
     return 1f - (1f - t) * (1f - t) * (1f - t)
@@ -646,6 +652,11 @@ internal fun ringPlaces(n: Int, w: Float, h: Float, gap: Float, limW: Float, lim
         // Too tall: as tall as the screen allows, the oval as wide as it then needs.
         ry = ((limH - h) / 2).coerceAtLeast(h)
         rx = minOf(ry * bisect(1f, 8f) { overrun(ry * it, ry, g) }, ((limW - w) / 2).coerceAtLeast(ry))
+    }
+    // Both screen limits can clamp the oval before the original gap fits. Refit that gap too;
+    // otherwise an odd count walks past the bottom and its mirrored last pair overlaps.
+    if (overrun(rx, ry, g) && !overrun(rx, ry, 0f)) {
+        g = (bisect(0f, g) { !overrun(rx, ry, it) } - .01f).coerceAtLeast(0f)
     }
     val t = walk(rx, ry, g)
     // The right half as walked (a clamped oval squeezed to end at the bottom), then the left as its mirror.
@@ -805,7 +816,7 @@ private fun QuickIcon(action: QuickAction, s: SnapshotView, actions: QuickAction
         QuickAction.HEAL -> PixelArt(HEAL_ICON, HEAL_COLORS, Modifier.size(size * 0.8f))
         QuickAction.FLY -> {
             val flyer = s.party.firstOrNull { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } ?: s.party.firstOrNull()
-            SpeciesIcon(flyer?.iconAsset, size * 1.2f)
+            MonIcon(flyer, size * 1.2f)
         }
         // The wings: up (TAKE OFF) or down (LAND).
         QuickAction.FLIGHT -> PixelArt(if (actions.flying()) LAND_ICON else TAKE_OFF_ICON, WING_COLORS, Modifier.size(size * 0.8f))
@@ -831,6 +842,7 @@ private fun QuickIcon(action: QuickAction, s: SnapshotView, actions: QuickAction
 fun quickMenuRows(
     shown: Set<QuickAction>, binding: String, style: QuickMenuStyle, labels: Boolean,
     setShown: (Set<QuickAction>) -> Unit, setStyle: (QuickMenuStyle) -> Unit, setLabels: (Boolean) -> Unit, onHotkey: () -> Unit,
+    available: Set<QuickAction> = QuickAction.entries.toSet(),
 ): List<SettingRow> {
     fun onOff(b: Boolean) = if (b) tk("ON") else tk("OFF")
     return listOf(
@@ -841,7 +853,7 @@ fun quickMenuRows(
         },
         SettingRow(tk("LABELS"), onOff(labels), subtitle = "Each action's name under its icon") { setLabels(!labels) },
         groupTitle(tk("SHOW")),
-    ) + QuickAction.entries.map { a ->
+    ) + QuickAction.entries.filter { it in available }.map { a ->
         val badge = when (a) {
             QuickAction.FLASH -> NewFeatures.badge(NewFeatures.QUICK_FLASH)
             QuickAction.FLIGHT -> NewFeatures.badge(NewFeatures.FREE_FLIGHT)
@@ -885,7 +897,7 @@ fun quickMenuBadge(): String? = NewFeatures.badge(NewFeatures.QUICK_MENU) ?: New
     ?: NewFeatures.badge(NewFeatures.FREE_FLIGHT) ?: NewFeatures.badge(NewFeatures.QUICK_TOUCH) ?: NewFeatures.badge(NewFeatures.QUICK_TURBO)
 
 /** MOVE_FLASH (the quick menu's FLASH tile, the party check). */
-internal const val FLASH_MOVE = 148
+const val FLASH_MOVE = 148
 
 /** FLASH: a burst of light, K outline, Y its glow, W the white middle. */
 /** HEAL: a heart in the POKéMON CENTER's pink, a highlight on its left lobe. */
@@ -1028,7 +1040,10 @@ private val FF_ICON = listOf(
 // ---- HEAL's healed animation ----------------------------------------------------------------------
 
 /** The party as it was before HEAL ran ([before], eggs left out), shown healing by [HealedAnimation]; [id] tells two heals apart. */
-class HealShow(val before: List<MonView>, val id: Long = System.nanoTime())
+class HealShow(val before: List<MonView>, val id: Long = nextHealId++)
+
+/** Each HEAL's own id (the UI thread's): a second heal while one plays starts its own animation. */
+private var nextHealId = 0L
 
 /**
  * HEAL done, over the game (the HUD's view): a window in the middle with the party's icons, each one's HP bar filling to

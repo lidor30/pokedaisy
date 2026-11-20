@@ -1,8 +1,10 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.readBytes
+import okio.Path.Companion.toPath
+import androidx.compose.ui.graphics.ImageBitmap
+import com.pokedaisy.app.companion.data.LockedLru
 import com.pokedaisy.app.companion.i18n.tr
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,15 +36,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.StateSlots
-import java.text.DateFormat
-import java.util.Date
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.IO
 
 /**
  * Savestate slots for the bottom screen, in the SETTINGS tab's OPTION-screen
@@ -243,12 +243,12 @@ private fun SlotCard(
                         val bmp by produceKeyedState(thumbKey?.let(StateThumbs::get), thumbKey) {
                             if (value != null || thumbPath == null || thumbKey == null) return@produceKeyedState
                             value = withContext(Dispatchers.IO) {
-                                runCatching { BitmapFactory.decodeFile(thumbPath) }.getOrNull()
+                                runCatching { decodeImage(thumbPath.toPath().readBytes()) }.getOrNull()
                             }?.also { StateThumbs.put(thumbKey, it) }
                         }
                         bmp?.let {
                             Image(
-                                bitmap = it.asImageBitmap(),
+                                bitmap = it,
                                 contentDescription = tr("Slot {0}", slot.index),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop,
@@ -264,7 +264,7 @@ private fun SlotCard(
             Spacer(Modifier.height(u * 2))
             GbaText(
                 if (slot.present) {
-                    remember(slot.savedAtMillis) { slotDateFormat.format(Date(slot.savedAtMillis)) }
+                    remember(slot.savedAtMillis) { DeviceDates.get().shortDateTime(slot.savedAtMillis) }
                 } else "-",
                 OptionColors.muted, OptionColors.mutedShadow, small,
                 modifier = Modifier.padding(horizontal = u * 2),
@@ -279,13 +279,9 @@ private fun SlotCard(
     }
 }
 
-private val slotDateFormat: DateFormat by lazy { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT) }
-
 /** Decoded slot thumbnails by path + save / thumbnail time, so a STATES visit doesn't decode all ten again. */
 private object StateThumbs {
-    private val map = object : LinkedHashMap<String, Bitmap>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?) = size > 16
-    }
-    fun get(key: String): Bitmap? = synchronized(map) { map[key] }
-    fun put(key: String, bmp: Bitmap) = synchronized(map) { map[key] = bmp }
+    private val map = LockedLru<String, ImageBitmap>(16)
+    fun get(key: String): ImageBitmap? = map[key]
+    fun put(key: String, bmp: ImageBitmap) { map[key] = bmp }
 }

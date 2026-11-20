@@ -30,6 +30,12 @@ object N3dsSaves {
     private val FORMATS = mapOf(
         N3dsCart.POKEMON_X_USA to Format(0x40000, 1, 1, true),
         N3dsCart.POKEMON_Y_USA to Format(0x40000, 1, 1, true),
+        // Omega Ruby's own new save (headless, 2026-11-17): X's format; Alpha Sapphire's the same.
+        N3dsCart.POKEMON_OR_USA to Format(0x40000, 1, 1, true),
+        N3dsCart.POKEMON_AS_USA to Format(0x40000, 1, 1, true),
+        // Sun's own new save (headless, 2026-11-17): X's format again; Moon the same.
+        N3dsCart.POKEMON_SUN_USA to Format(0x40000, 1, 1, true),
+        N3dsCart.POKEMON_MOON_USA to Format(0x40000, 1, 1, true),
     )
 
     /** Azahar's user folder: its SD card, NAND, config and shader caches. On the shared storage, so a save can be put

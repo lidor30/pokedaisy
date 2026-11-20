@@ -12,6 +12,12 @@ controls and save paths.
 Platinum's One Screen move cards draw the game's native lettering, type badge,
 and PP at an integer scale in the 512×384 frame.
 
+The companion is drawn at 341×256 (the Brick's 1024×768 at 3x). A frontend that
+names its screen in the `pokedaisy_panel` option (`WxH`, as the Linux host does)
+gets it at the largest whole scale that still leaves 320×240, as the GB / GBA
+core's companion: 320×240 on a 640×480 screen, 426×240 on 1280×720, 480×270 on
+1920×1080, never more than 640×480.
+
 The One Screen battle strip follows each game's own touch screen: Platinum's
 plates and cards are the game's pixels, HeartGold / SoulSilver's and the Unova
 games' are drawn to match (the framed two-tone card; the hexagon plates, blunt

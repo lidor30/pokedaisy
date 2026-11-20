@@ -29,6 +29,8 @@ Everything you pick here can be changed later in Settings, so don't overthink it
 
 If you keep your games in folders (say `ROMs/gba` and `ROMs/nds`), point PokeDaisy at them here. Tap `CHOOSE FOLDER` and pick a folder, then `ADD FOLDER` for each other one. PokeDaisy looks through them (`LOOKING FOR GAMES…`), then lists what it found under `FOUND 3 GAMES` or similar. `REMOVE` beside a folder takes it off again.
 
+While PokeDaisy is looking for games, wait for the scan to finish before going back or continuing setup.
+
 Pick just the folders your games are in rather than one big folder of everything: there's less to look through, so it's quicker.
 
 Games in these folders are played right where they are: nothing is copied. Every time you come back to the library, the folders are checked again for new games, so adding a game later is a matter of dropping it into one.
@@ -110,3 +112,12 @@ To check right now, open Settings and tap `VERSION` (in the `APP` group). It sho
 
 > [!TIP]
 > If an update keeps downloading but never installs, check that PokeDaisy is allowed to install apps (Android's settings, **Apps**, PokeDaisy, **Install unknown apps**). [Troubleshooting](troubleshooting.md) has more.
+
+### Beta versions
+
+Before a version goes out to everyone, it comes out as a beta (and then a release candidate, a beta that's nearly done) for a few days, so problems on devices like yours show up early. Anyone can try them: turn on Settings > `BETA UPDATES` (in the `APP` group) and the update offer includes betas too.
+
+- A beta can have bugs the full version won't. Your saves are kept the same way, but it's a good idea to keep a backup of the games you care about.
+- Tell us what you find in the PokeDaisy Discord: pick the beta tester role to see the beta channels. Turning on `CRASH REPORTS` helps a lot too.
+- Turning `BETA UPDATES` off doesn't take you back. You stay on the beta you have until the full version comes out, and then you get that as usual.
+- If you install a beta by hand, `BETA UPDATES` is on for you until you turn it off.

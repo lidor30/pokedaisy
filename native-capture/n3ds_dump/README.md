@@ -20,7 +20,8 @@ fixed, so a script plays the same way each run.
 ## Script commands
 
 One per line from stdin; `#` starts a comment. Numbers take `0x` hex. Keys are `A B X Y UP DOWN LEFT RIGHT L R START
-SELECT ZL ZR HOME`, joined with commas (`A,UP`), or `NONE`. A frame is one the software renderer finished.
+SELECT ZL ZR HOME`, the circle pad pushed all the way `CUP CDOWN CLEFT CRIGHT` (Sun / Moon walk with it alone: their D-pad
+only turns the player), joined with commas (`A,UP`, `CUP,CRIGHT`), or `NONE`. A frame is one the software renderer finished.
 
 | Command | What it does |
 | --- | --- |
@@ -38,6 +39,16 @@ SELECT ZL ZR HOME`, joined with commas (`A,UP`), or `NONE`. A frame is one the s
 | `pressuntil K M [N]` | K for 2 frames every 60 until module M is loaded, at most N frames. |
 | `watchw ADDR [N] [LEN]` | N frames (2) with ADDR's page watched: who wrote its LEN bytes (4), as PC / LR / value, counted (our Azahar patch's `Memory::pk_watch_write`). |
 | `frames` | Frames run so far. |
+| `findcrs` | Every page whose +0x80 reads "CRO0", with its chain: the static module's header for a new game. |
+| `modroot ADDR` | Where `modules` starts (each known game's is set at boot: X / Y 0x012B6000, OR / AS 0x01307000, Sun / Moon 0x00869000). |
+| `echo TEXT` | Prints TEXT: a marker for a script fed live (stdin from `tail -f` on a file you append to). |
+| `peekf ADDR` / `hex ADDR [LEN]` | A float; LEN bytes (0x40) as 16-byte lines. |
+| `search32 V [MAX]` | Every aligned word equal to V in the game's memory (64 at most). |
+
+`N3DS_INTERP=1` runs Azahar's interpreter instead of the JIT. Sun's own save, two of three Moon saves and Alpha Sapphire's
+battles used to crash this tool as they loaded: the software renderer's worker threads shared Azahar's cached physical
+memory region (one thread's half-written cache gave another a region's start with another region's memory). Our patch
+drops that cache and skips a texture that runs past the console's memory; they all play now.
 
 `N3DS_LOG` sets Azahar's log filter (default `*:Warning`, e.g. `N3DS_LOG='*:Info'`).
 

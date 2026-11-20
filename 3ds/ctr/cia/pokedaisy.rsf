@@ -46,7 +46,10 @@ AccessControlInfo:
   RunnableOnSleep               : false
   SpecialMemoryArrange          : true
   # New 3DS: 804 MHz and the L2 cache
-  SystemModeExt                 : Legacy  # the 80 MB mode: 124MB was given only sometimes (64 MB otherwise, 2026-11-09)
+  # test6: the New 3DS's 124 MB mode. In the 80 MB one armGBA had 5 MB for compiled code past the 32 MB game buffer (24 MB
+  # from the .3dsx's 124 MB), and a 32 MB game stuttered recompiling. armGBA found the 124 MB mode given only on some launches
+  # (64 MB on the others, 2026-11-09): main.c logs what a launch got and asks for a restart from HOME when it was less.
+  SystemModeExt                 : 124MB
   CpuSpeed                      : 804MHz
   EnableL2Cache                 : true
   CanAccessCore2                : true

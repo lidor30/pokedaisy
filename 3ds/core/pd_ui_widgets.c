@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "pd_party_art.h"
+#include "pd_tr.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
 
@@ -140,6 +141,7 @@ int ui_type_badge(struct pd_canvas* c, int x, int y, int type) {
 
 void ui_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, const char* label, int id) {
     bool pressed = ui->pressedId == id;
+    label = pd_tr(label);
     // OptionButton: the title window's frame round a two-tone face.
     pd_layered_two_tone(c, x, y, w, h, 3, pd_cur->title, pd_cur->titleCount, pressed ? PD_LIST_FILL : PD_TITLE_FILL, 0);
     int tw = pd_text_width(label);
@@ -188,6 +190,9 @@ void ui_status_badge(struct pd_canvas* c, int x, int y, uint32_t status) {
 
 void ui_notice(struct pd_canvas* c, const char* title, const char* line1, const char* line2) {
     int y = CONTENT_Y + 30;
+    title = pd_tr(title);
+    line1 = pd_tr(line1);
+    line2 = pd_tr(line2);
     int f = pd_list_box(c, MARGIN, y, c->w - 2 * MARGIN, 76);
     int x = MARGIN + f + 6, w = c->w - 2 * (MARGIN + f + 6);
     pd_text(c, x, y + f + 2, title, PD_VALUE, PD_VALUE_SHADOW);
@@ -201,6 +206,9 @@ void ui_row(struct pd_canvas* c, int x, int y, int w, const char* label, const c
 
 void ui_row_split(struct pd_canvas* c, int x, int y, int w, const char* label, const char* value, bool selected, int valuePct) {
     if (selected) pd_fill(c, x - 4, y, w + 8, ROW_H, PD_ROW_SELECTED);
+    // The menus' rows translate what they draw (the app's OptionLine): their literals need no pd_tr of their own.
+    label = pd_tr(label);
+    value = pd_tr(value);
     int ty = pd_text_y(y, ROW_H);
     pd_text(c, x, ty, label, PD_LABEL, PD_LABEL_SHADOW);
     if (value) {

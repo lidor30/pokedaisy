@@ -1,5 +1,7 @@
 package com.pokedaisy.app
 
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -32,5 +34,22 @@ class AppUpdaterTest {
         assertTrue(AppUpdater.isNewer("1.0.0", "1.0.0-beta.1"))
         assertFalse(AppUpdater.isNewer("1.0.0-beta.1", "1.0.0-beta.1"))
         assertFalse(AppUpdater.isNewer("0.9.0", "1.0.0-beta.1"))
+    }
+
+    private fun release(tag: String, pre: Boolean = false, draft: Boolean = false) = JSONObject()
+        .put("tag_name", "v$tag").put("prerelease", pre).put("draft", draft)
+        .put("assets", JSONArray().put(JSONObject().put("name", "PokeDaisy-$tag.apk").put("browser_download_url", "https://x/$tag.apk")))
+
+    @Test
+    fun betasOnlyWhenAsked() {
+        val list = JSONArray().put(release("1.6.1")).put(release("1.7.0-beta.2", pre = true)).put(release("1.7.0-rc.1", draft = true))
+        assertEquals("1.6.1", AppUpdater.newest(list)?.version)
+        assertEquals("1.7.0-beta.2", AppUpdater.newest(list, betas = true)?.version)
+    }
+
+    @Test
+    fun aReleaseOutranksItsBetas() {
+        val list = JSONArray().put(release("1.7.0-rc.2", pre = true)).put(release("1.7.0"))
+        assertEquals("1.7.0", AppUpdater.newest(list, betas = true)?.version)
     }
 }

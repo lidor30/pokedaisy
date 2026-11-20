@@ -2,9 +2,9 @@
 
 A homebrew port of PokeDaisy: the game runs on the top screen and the companion lives on the touch screen. GBA games
 run on **armGBA** (`third_party/armgba`: a GBA core with a recompiler for the 3DS's ARM11, at ratherDashing's
-`3ds-v0.0.3-alpha`), Game Boy and Game Boy Color games on **libmgba** (the same mGBA 0.10.5 submodule the Android app
-uses). A GBA game can be put on mGBA or on **gpSP** (`third_party/gpsp`, bheppe's gpSP 3D at v0.1.7, EXPERIMENTAL) by
-its GBA CORE in the library. It is a rewrite, not a recompile - the Android app is Kotlin
+`3ds-v0.0.3-alpha`) on a New 3DS and on **gpSP** (`third_party/gpsp`, bheppe's gpSP 3D at v0.1.7, EXPERIMENTAL) on an
+Old 3DS with the CIA (GBA CORE AUTO; the .3dsx keeps armGBA there), Game Boy and Game Boy Color games on **libmgba** (the
+same mGBA 0.10.5 submodule the Android app uses). A GBA game can be put on any of the three by its GBA CORE in the library. It is a rewrite, not a recompile - the Android app is Kotlin
 and Jetpack Compose, which the 3DS can't run - so this folder holds a small,
 portable C core that re-implements the companion's reading and drawing, plus a
 3DS host and a desktop preview tool around it.
@@ -122,7 +122,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     trades and items (a ball = done). BOSS is the next unbeaten gym leader /
     Elite Four / champion with their team from the ROM. A game with no WHERE IS
     of its own gets one built from its area data: HMs, key items, gift POKéMON.
-    Red, Blue, Yellow in five languages, Yellow Legacy, Crystal and Crystal Legacy
+    Red, Blue, Yellow in five languages, Yellow Legacy, Crystal (English and German) and Crystal Legacy
     have it from the app's generated guide tables (`core/pd_guide_gen.c`,
     `tools/gen_guide.py`), Polished Crystal from its own world (`core/pd_gb_world_gen.c`,
     `tools/gen_gb_world.py`): HERE follows the game's clock and, on Polished Crystal,
@@ -135,12 +135,17 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     picture, category, types, height / weight, text and base stats. On every Game
     Boy game too, one list each, read from the cart (`core/pd_gb_dex.c`: Gen 1's
     sprite compression, Gen 2's LZ, Crystal Clear's dictionary, Prism's packed text,
-    Polished Crystal's Huffman). `make gb-check EXPORT=<a gameExport>` holds every
-    page, picture and wild list of every cart against the app's own reading.
+    Polished Crystal's Huffman, the German Gen 2 carts' metric pages). `make gb-check EXPORT=<a gameExport>` holds every
+    page, picture and wild list of every cart against the app's own reading (the German Gen 2 carts' entries were written
+    from the app's tables without the carts: not run through it yet).
   - **SETTINGS** (the gear): GAME (place, money, file and speed), FF / SPEED, SOUND, GAMEPLAY, SCREEN and
     COMPANION, with the app's group tabs down the left outside the list's window (a tap scrolls to the group,
     the group in view lit); TAB BAR (which tabs sit on the bar, at most five; the rest open from MORE, a grid of
     tiles across the whole width), CLOSE GAME / RESTART GAME. The list scrolls (a drag) where it doesn't fit.
+    LANGUAGE (last row, also in the library's SETTINGS): the menus in English, French, German, Italian, Spanish or
+    Portuguese, AUTO = the game's language, else the console's; `pd_tr("EN")` (`pd_tr.c`) looks the English up in `pd_tr_gen.c`, which
+    `tools/gen_tr.py` writes from the app's `Tr*.kt` plus `tools/tr_3ds.txt` (`make tables`; `make test-tr` fails while stale).
+    Game data, guide prose and bag pocket names stay as they are; Japanese / Korean wait for their glyphs.
   - **TRAINER CARD** (the button in SETTINGS' title, like the app's TOOLS): the
     game's own card, drawn from your ROM's art pixel for pixel - name, ID,
     money, POKéDEX, play time with its blinking colon, badges, stars, the
@@ -151,7 +156,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   the looks the TOML doesn't hold from the app's export, `core/pd_games_gen.c`): every retail GBA game in every
   language, collection dumps of retail, retail FireRed / Emerald as Universal Pokemon Randomizer ZX leaves them (any
   seed: `core/pd_randomized.c`, what the randomizer changed read from the ROM), the GBA hacks, and the Game Boy games
-  (Red, Blue, Yellow in five languages, Yellow Legacy, Gold, Silver, Crystal, Crystal Clear, Crystal Legacy, Prism,
+  (Red, Blue, Yellow in five languages, Yellow Legacy, Gold, Silver and Crystal in English and German, Crystal Clear, Crystal Legacy, Prism,
   Polished Crystal, PureRed / PureBlue). Per game: its names, moves, types and type chart, party and bag palettes,
   backdrop, and the companion's windows in the Game Boy games' black on white. No DS: the 3DS can't run melonDS.
 - **Library**: a rail of pages down the touch screen, an icon each (the app's tool icons): GAMES, SAVE EDITOR, TRADE SAVES and
@@ -163,7 +168,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   the save editor reads it, the rest from `cards/<game>.card`, what the game looked like when it was last left). SETTINGS
   holds the settings that aren't a game's: the library's LAYOUT (LIST / GRID) and SORT, THEME, DARK MODE, VIEW, the sound, the
   battle buttons, HUD and FLY STYLE. X on a GBA game picks its **GBA CORE** (AUTO / ARMGBA / MGBA / GPSP, `enum pd_game_core`,
-  the pick-list SETTINGS uses): AUTO is armGBA; MGBA is slower but the one to try when a game misbehaves on armGBA; GPSP
+  the pick-list SETTINGS uses): AUTO is armGBA on a New 3DS and gpSP on an Old 3DS with room for a 32 MB game (the CIA; the .3dsx keeps armGBA there); MGBA is slower but the one to try when a game misbehaves on armGBA; GPSP
   (EXPERIMENTAL, "Sound and speed"). Kept per
   file as `library.tsv`'s sixth column (only when picked); the top screen's hint says the pick (X: MGBA).
 - **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported, round two
@@ -278,7 +283,8 @@ for a quiet measurement read the running totals (`tot_loops`, `tot_late` split b
 memory); `PD_SIM_CORE=mgba` puts a GBA game on mGBA there too.
 
 **gpSP** (GBA CORE: GPSP, EXPERIMENTAL; `emu/pd_gpsp.c`, `emu/pd_gpsp_core.c`, `emu/gpsp.cmake`): bheppe's gpSP 3D
-(GPL-2.0-or-later), whose ARM11 recompiler is said to hold full speed on an Old 3DS - not measured there yet. On a New 3DS
+(GPL-2.0-or-later), AUTO's core on an Old 3DS with the CIA: in the dev build's Old 3DS mode on a New 3DS (2026-11-20, LeafGreen in Oak's lab)
+armGBA ran 36-42 FPS with 11-17 sound gaps a second, gpSP drawn with the game 52-55 FPS with 0-2. On a New 3DS
 (2026-11-17, FireRed on Route 21 with the companion): 60 FPS, the game's own work 5.1 ms a frame against armGBA's 6.5-6.7, CPU 37%
 against 46%; PC anywhere, FLY (scenic), WILD ENCOUNTERS, the battle buttons, states and the native mixer all worked there. Its
 recompiler's caches are one heap block made executable in place (the patch's retro_init: MEMOP_PROT, as armGBA's jitmem.c,

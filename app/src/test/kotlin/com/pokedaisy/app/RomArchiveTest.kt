@@ -33,6 +33,34 @@ class RomArchiveTest {
 
     private fun plain(): File = tmp.newFile("FireRed.gba").apply { writeBytes(rom) }
 
+    @Test fun zippedDsAchievementsHashTheContainedCart() {
+        val bytes = ByteArray(0x1000)
+        bytes[0x15C] = 0x56; bytes[0x15D] = 0xCF.toByte()
+        val plain = tmp.newFile("Diagnostic.nds").apply { writeBytes(bytes) }
+        val archive = zip("Diagnostic.zip", "Diagnostic.nds" to bytes)
+        assertEquals(18, RomIdentity.raConsole(archive))
+        assertEquals(RomIdentity.ndsRaHash(plain), RomIdentity.raHash(archive))
+    }
+
+    /**
+     * GitHub #1073: Windows' own zip (and older tools) store names in the DOS code page with no UTF-8 flag, so
+     * "Pokémon" is not UTF-8 there and java.util.zip refused the whole archive ("no ROM inside").
+     */
+    @Test fun zipWithDosCodePageNamesStillOpens() {
+        val archive = File(tmp.root, "Pokémon Crystal Legacy.zip").apply {
+            ZipOutputStream(outputStream(), java.nio.charset.Charset.forName("Cp437")).use { z ->
+                z.putNextEntry(ZipEntry("Pokémon Crystal Legacy.gbc")); z.write(rom); z.closeEntry()
+            }
+        }
+        assertEquals("Pokémon Crystal Legacy.gbc", RomArchive.romEntry(archive)?.name)
+        assertEquals(rom.size.toLong(), RomArchive.romSize(archive))
+        assertArrayEquals(rom, RomArchive.open(archive).use { it.readBytes() })
+        assertEquals("Pokémon Crystal Legacy", RomArchive.baseName(archive))
+        val out = RomArchive.playable(archive, tmp.newFolder("cache"))
+        assertNotNull(out)
+        assertArrayEquals(rom, out!!.readBytes())
+    }
+
     private fun zip(name: String, vararg entries: Pair<String, ByteArray>): File =
         File(tmp.root, name).apply {
             ZipOutputStream(outputStream()).use { z ->

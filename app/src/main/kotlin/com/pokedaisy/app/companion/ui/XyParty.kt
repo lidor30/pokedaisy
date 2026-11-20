@@ -67,7 +67,7 @@ internal object XyColors {
  * The HUD takes the game's ([forHud]: Y's red, the user's call 2026-11-16; Y's own menus are X's green, so the red is
  * ours, from Y's logo and Yveltal); the companion's party screen keeps the game's green ([GREEN]).
  */
-internal class XyTint(
+class XyTint(
     val outline: Color,
     val rimTop: Color,
     val rimBottom: Color,
@@ -75,6 +75,8 @@ internal class XyTint(
     val tabBottom: Color,
     val backTop: Color,
     val backBottom: Color,
+    /** The party backdrop's diagonal stripes. */
+    val stripe: Color = XyColors.stripe,
 ) {
     companion object {
         val GREEN = XyTint(
@@ -92,22 +94,81 @@ internal class XyTint(
             backBottom = Color(0xFFC9939A),
         )
 
-        fun forHud(game: com.pokedaisy.app.companion.data.GameKind?): XyTint =
-            if (game == com.pokedaisy.app.companion.data.GameKind.POKEMON_Y) RED else GREEN
+        /** Omega Ruby's: the same lightness steps in its ruby red (from its logo and Groudon; the game's own menus are
+         * grey with the PlayNav's orange). */
+        val RUBY = XyTint(
+            outline = Color(0xFF8E1B22),
+            rimTop = Color(0xFFF4A3A6),
+            rimBottom = Color(0xFFCB3B45),
+            tabTop = Color(0xFFF08A90),
+            tabBottom = Color(0xFFA51F2B),
+            backTop = Color(0xFFE9CBCB),
+            backBottom = Color(0xFFCB9DA1),
+            stripe = Color(0xFFB07C82),
+        )
+
+        /** Alpha Sapphire's: sapphire blue (its logo and Kyogre). */
+        val SAPPHIRE = XyTint(
+            outline = Color(0xFF1E4FA0),
+            rimTop = Color(0xFFA8CCF4),
+            rimBottom = Color(0xFF4E86D0),
+            tabTop = Color(0xFF8EBCF0),
+            tabBottom = Color(0xFF2A64B8),
+            backTop = Color(0xFFC6DBF0),
+            backBottom = Color(0xFF97B9DB),
+            stripe = Color(0xFF7C9CC2),
+        )
+
+        /** Sun's: its orange (the logo and Solgaleo) round the menus' cyan (the X menu's backdrop, sampled headless). */
+        val SUN = XyTint(
+            outline = Color(0xFFB2560A),
+            rimTop = Color(0xFFFFD39A),
+            rimBottom = Color(0xFFF0952E),
+            tabTop = Color(0xFFFFC070),
+            tabBottom = Color(0xFFD9700E),
+            backTop = Color(0xFFB9F0F2),
+            backBottom = Color(0xFF6CC4E4),
+            stripe = Color(0xFF4FA9CC),
+        )
+
+        /** Moon's: the X menu's own indigo bands (#2A3B90 / #435CB7 / #5768EC, sampled headless) round its cyan. */
+        val MOON = XyTint(
+            outline = Color(0xFF2A3B90),
+            rimTop = Color(0xFFA9B4F4),
+            rimBottom = Color(0xFF5768E3),
+            tabTop = Color(0xFF8E9BEE),
+            tabBottom = Color(0xFF435CB7),
+            backTop = Color(0xFFB9F0F2),
+            backBottom = Color(0xFF6CC4E4),
+            stripe = Color(0xFF4FA9CC),
+        )
+
+        fun forHud(game: com.pokedaisy.app.companion.data.GameKind?): XyTint = when (game) {
+            com.pokedaisy.app.companion.data.GameKind.POKEMON_Y -> RED
+            com.pokedaisy.app.companion.data.GameKind.POKEMON_OMEGA_RUBY -> RUBY
+            com.pokedaisy.app.companion.data.GameKind.POKEMON_ALPHA_SAPPHIRE -> SAPPHIRE
+            com.pokedaisy.app.companion.data.GameKind.POKEMON_SUN -> SUN
+            com.pokedaisy.app.companion.data.GameKind.POKEMON_MOON -> MOON
+            else -> GREEN
+        }
+
+        /** The companion's party screen and backdrop: X / Y keep the game's green; the others their version's colour. */
+        fun forGame(game: com.pokedaisy.app.companion.data.GameKind?): XyTint =
+            if (game == com.pokedaisy.app.companion.data.GameKind.POKEMON_Y) GREEN else forHud(game)
     }
 }
 
 /** The game's party backdrop: a soft green, lighter at the top, crossed by thin darker diagonal stripes. */
 @Composable
-fun XyBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
+fun XyBackdrop(modifier: Modifier = Modifier.fillMaxSize(), tint: XyTint = XyTint.GREEN) {
     Canvas(modifier) {
-        drawRect(Brush.verticalGradient(listOf(XyColors.backTop, XyColors.backBottom)))
+        drawRect(Brush.verticalGradient(listOf(tint.backTop, tint.backBottom)))
         // One stripe every five game pixels of a 320-wide touch screen, as the game's.
         val step = (size.width / 64f).coerceAtLeast(4f)
         val w = (step * 0.28f).coerceAtLeast(1f)
         var x = -size.height
         while (x < size.width) {
-            drawLine(XyColors.stripe.copy(alpha = 0.35f), Offset(x, size.height), Offset(x + size.height, 0f), w)
+            drawLine(tint.stripe.copy(alpha = 0.35f), Offset(x, size.height), Offset(x + size.height, 0f), w)
             x += step
         }
     }
@@ -115,7 +176,7 @@ fun XyBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
 
 /** The PARTY tab in the game's look: two columns of its pill slots, the right one set half a slot lower. */
 @Composable
-fun XyPartyScreen(party: List<MonView>, onMonClick: (MonView) -> Unit) {
+fun XyPartyScreen(party: List<MonView>, onMonClick: (MonView) -> Unit, tint: XyTint = XyTint.GREEN) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
@@ -145,6 +206,7 @@ fun XyPartyScreen(party: List<MonView>, onMonClick: (MonView) -> Unit) {
                 Modifier.offset { IntOffset(x.toInt(), y.toInt()) }
                     .size(with(density) { slotW.toDp() }, with(density) { slotH.toDp() })
                     .clickable(remember { MutableInteractionSource() }, null) { onMonClick(mon) },
+                tint = tint,
             )
         }
     }
@@ -152,17 +214,17 @@ fun XyPartyScreen(party: List<MonView>, onMonClick: (MonView) -> Unit) {
 
 /** One party slot as the game draws it, [w] x [h] px: the icon, name and gender, the level on its tab, HP. */
 @Composable
-fun XyPartySlot(mon: MonView, w: Float, h: Float, modifier: Modifier = Modifier) {
+fun XyPartySlot(mon: MonView, w: Float, h: Float, modifier: Modifier = Modifier, tint: XyTint = XyTint.GREEN) {
     val density = LocalDensity.current
     fun dp(px: Float) = with(density) { px.toDp() }
     Box(modifier) {
-        Canvas(Modifier.fillMaxSize()) { drawXyPill(Rect(0f, h * 0.12f, w, h), h) }
+        Canvas(Modifier.fillMaxSize()) { drawXyPill(Rect(0f, h * 0.12f, w, h), h, tint) }
         // The level's tab on the top rim, right of the middle.
         Box(
             Modifier.offset { IntOffset((w * 0.56f).toInt(), 0) }.size(dp(w * 0.36f), dp(h * 0.28f)),
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(Modifier.fillMaxSize()) { drawXyTab() }
+            Canvas(Modifier.fillMaxSize()) { drawXyTab(tint) }
             if (!mon.isEgg) XyText(tr("LV {0}", mon.level), h * 0.2f, Color.White, Color.Black, h * 0.025f)
         }
         val faceTop = h * 0.12f
@@ -221,12 +283,12 @@ internal fun XyStatusTag(status: String, size: Float) {
 }
 
 /** The game's pill: a dark green outline, a light-to-dark green rim, the face light above a white lower lobe. */
-internal fun DrawScope.drawXyPill(r: Rect, h: Float) {
+internal fun DrawScope.drawXyPill(r: Rect, h: Float, tint: XyTint = XyTint.GREEN) {
     val radius = r.height / 2f
     drawRoundRect(Color.Black.copy(alpha = 0.22f), Offset(r.left, r.top + h * 0.04f), r.size, CornerRadius(radius))
-    drawRoundRect(XyColors.outline, r.topLeft, r.size, CornerRadius(radius))
+    drawRoundRect(tint.outline, r.topLeft, r.size, CornerRadius(radius))
     val rim = r.deflate(h * 0.025f)
-    drawRoundRect(Brush.verticalGradient(listOf(XyColors.rimTop, XyColors.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(rim.height / 2))
+    drawRoundRect(Brush.verticalGradient(listOf(tint.rimTop, tint.rimBottom), rim.top, rim.bottom), rim.topLeft, rim.size, CornerRadius(rim.height / 2))
     val face = rim.deflate(h * 0.07f)
     val fr = CornerRadius(face.height / 2)
     drawRoundRect(Brush.verticalGradient(listOf(XyColors.faceTop, XyColors.faceBottom), face.top, face.bottom), face.topLeft, face.size, fr)

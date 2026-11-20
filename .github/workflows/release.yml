@@ -42,7 +42,7 @@ jobs:
             echo "::error::${tag} isn't on main - release from main only"; exit 1
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          # 1.2.0-rc.1 and the like go out as pre-releases, which the in-app updater skips.
+          # 1.2.0-rc.1 and the like go out as pre-releases, which the in-app updater offers only with BETA UPDATES on.
           if [[ "${version}" == *-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
 
   checks:

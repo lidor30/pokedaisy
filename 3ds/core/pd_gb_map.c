@@ -45,10 +45,19 @@ static const struct gb_map_cart CARTS[] = {
         "a0fc810f1d4e124434f7be2c989ab5b5892ddf36" }, 2, pd_mapsec_rects_gb_crystal, &pd_mapsec_rects_gb_crystal_count,
       .gfx = GB_OFF(0x3E, 0x4BA0), .maps = { GB_OFF(0x24, 0x5FFF), GB_OFF(0x24, 0x6168) }, .palMap = GB_OFF(0x24, 0x5F4B),
       .pals = GB_OFF(0x02, 0x7729), .players = { GB_OFF(0x30, 0x4000), GB_OFF(0x31, 0x7A40) }, .objPals = GB_OFF(0x02, 0x7469) },
+    // German Crystal (Gen2Art.CRYSTAL_DE): Crystal's art, the town maps 0x1F later.
+    { { "accb584293ba056152f1fd908439b019017ff2fe" }, 2, pd_mapsec_rects_gb_crystal, &pd_mapsec_rects_gb_crystal_count,
+      .gfx = GB_OFF(0x3E, 0x4BA0), .maps = { GB_OFF(0x24, 0x601E), GB_OFF(0x24, 0x6187) }, .palMap = GB_OFF(0x24, 0x5F6A),
+      .pals = GB_OFF(0x02, 0x7729), .players = { GB_OFF(0x30, 0x4000), GB_OFF(0x31, 0x7A40) }, .objPals = GB_OFF(0x02, 0x7469) },
     // Gold and Silver: one family, the same art at the same addresses.
     { { "d8b8a3600a465308c9953dfa04f0081c05bdcb94", "49b163f7e57702bc939d642a18f591de55d92dae" }, 2,
       pd_mapsec_rects_gb_gold_silver, &pd_mapsec_rects_gb_gold_silver_count,
       .gfx = GB_OFF(0x3E, 0x4C92), .maps = { GB_OFF(0x24, 0x5F52), GB_OFF(0x24, 0x60BB) }, .palMap = GB_OFF(0x24, 0x5EAC),
+      .pals = GB_OFF(0x02, 0x7B6E), .players = { GB_OFF(0x30, 0x4000), 0 }, .objPals = GB_OFF(0x02, 0x78AE) },
+    // German Gold and Silver (Gen2Art.GOLD_DE / SILVER_DE): English's art, the town maps 0x32 later.
+    { { "9254195d461ea942eaaa08cc4b83de3cf82aea0d", "8ecc58d621faaedf2a934bd2583d527220df7bb9" }, 2,
+      pd_mapsec_rects_gb_gold_silver, &pd_mapsec_rects_gb_gold_silver_count,
+      .gfx = GB_OFF(0x3E, 0x4C92), .maps = { GB_OFF(0x24, 0x5F84), GB_OFF(0x24, 0x60ED) }, .palMap = GB_OFF(0x24, 0x5EDE),
       .pals = GB_OFF(0x02, 0x7B6E), .players = { GB_OFF(0x30, 0x4000), 0 }, .objPals = GB_OFF(0x02, 0x78AE) },
 };
 

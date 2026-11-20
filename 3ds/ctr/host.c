@@ -3,6 +3,7 @@
 // list) asks its frontend for. From ratherDashing's pokedaisy-3ds fork (ctr/host.c there), with mGBA's heap file kept
 // out (see below).
 #include "host.h"
+#include "../host/pd_log_buffer.h"
 
 #include <3ds.h>
 
@@ -12,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 // armGBA's libretro layer keeps several long paths on the stack.
 u32 __stacksize__ = 512 * 1024;
@@ -27,22 +29,35 @@ void userAppInit(void) {
     FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
 }
 
-#define ROM_ARENA (32u << 20) // the GBA's whole cartridge space
+#define ROM_ARENA_FULL (32u << 20) // the GBA's whole cartridge space
+// An Old 3DS's .3dsx gets 64 MB (mode 0), its heap ~31.8 MB: never the 32 MB, so no game started at all there (a player's
+// log, 2026-11-18). Half of it still plays every game of 16 MB or less on armGBA and mGBA.
+#define ROM_ARENA_HALF (16u << 20)
 static uint8_t* romArena;
+static size_t romArenaSize;
 static size_t heapAtStart; // free before the arena was asked for (host_memory_report)
 
 bool host_rom_arena_init(void) {
     heapAtStart = host_heap_free();
-    romArena = malloc(ROM_ARENA);
+    romArena = malloc(ROM_ARENA_FULL);
+    romArenaSize = romArena ? ROM_ARENA_FULL : 0;
+    if (!romArena) {
+        romArena = malloc(ROM_ARENA_HALF);
+        romArenaSize = romArena ? ROM_ARENA_HALF : 0;
+    }
     romBuffer = (uint32_t*) romArena;
-    romBufferSize = romArena ? ROM_ARENA : 0;
+    romBufferSize = romArenaSize;
     return romArena != NULL;
+}
+
+size_t host_rom_arena_size(void) {
+    return romArenaSize;
 }
 
 static size_t romUsed; // what the last game asked of the arena (host_rom_arena)
 
 void* host_rom_arena(size_t size) {
-    if (!romArena || size > ROM_ARENA) return NULL;
+    if (!romArena || size > romArenaSize) return NULL;
     memset(romArena, 0, size);
     romUsed = size;
     return romArena;
@@ -67,7 +82,7 @@ bool isEmulator(void); // armGBA's 3DS code
 void* __wrap_jitHostAllocCode(size_t* size) {
     host_lent_code_release(); // a load that failed before main.c could
     uintptr_t from = ((uintptr_t) romArena + romUsed + 0xFFF) & ~(uintptr_t) 0xFFF;
-    uintptr_t to = ((uintptr_t) romArena + ROM_ARENA) & ~(uintptr_t) 0xFFF;
+    uintptr_t to = ((uintptr_t) romArena + romArenaSize) & ~(uintptr_t) 0xFFF;
     size_t spare = romArena && romUsed && to > from ? to - from : 0;
     if (spare > *size) spare = *size & ~(size_t) 0xFFF;
     if (!lentCode && spare >= LENT_CODE_MIN && !isEmulator()) {
@@ -99,6 +114,12 @@ bool host_rom_arena_ready(void) {
     return romArena != NULL;
 }
 
+// A New 3DS CIA launch that didn't get the 124 MB mode pokedaisy.rsf asks for (armGBA found it given only on some launches):
+// under 100 MB of application memory.
+bool host_cia_short_of_memory(void) {
+    return host_is_new_3ds() && !envIsHomebrew() && osGetMemRegionSize(MEMREGION_APPLICATION) < (100u << 20);
+}
+
 extern char __bss_start__[], __bss_end__[]; // 3dsx.ld's
 extern u32 __ctru_heap_size, __ctru_linear_heap_size; // set below (__system_allocateHeaps)
 
@@ -119,6 +140,17 @@ void __real_free(void* p);
 void __wrap_free(void* p) {
     if (p && p == romArena) return;
     __real_free(p);
+}
+
+// threadCreate() hides svcCreateThread's Result behind a NULL pointer.
+// Keep the real kernel reason in the startup log; allocation failures inside
+// threadCreate produce no SVC line and can be distinguished that way.
+Result __real_svcCreateThread(Handle* thread, ThreadFunc entry, u32 arg, u32* stack, s32 priority, s32 core);
+Result __wrap_svcCreateThread(Handle* thread, ThreadFunc entry, u32 arg, u32* stack, s32 priority, s32 core) {
+    Result rc = __real_svcCreateThread(thread, entry, arg, stack, priority, core);
+    host_log("thread create: core %ld, priority %ld, kernel Result %08lX",
+             (long) core, (long) priority, (unsigned long) rc);
+    return rc;
 }
 
 // libctru splits the app's memory evenly between the heap and linear memory (what the GPU and the DSP read). Here linear
@@ -164,10 +196,12 @@ static bool playingOld; // host_old_3ds_stand_in
 static FILE* logFile;
 static u64 logStart;
 // While a game runs the lines wait here (host_log_hold): gpSP 3D found that writing its log to the SD card mid-game froze
-// an Old 3DS now and then. Written out when the game closes, the app goes to the HOME Menu or sleeps, or the buffer fills.
+// an Old 3DS now and then. Written out when the game closes, goes HOME or sleeps.
+// A full buffer discards its oldest complete lines, without writing the SD card.
 #define LOG_HELD_BYTES (16 * 1024)
 static char logHeld[LOG_HELD_BYTES];
 static size_t logHeldUsed;
+static unsigned logDropped;
 static bool logHolding;
 static LightLock logLock;
 static bool logLockReady;
@@ -185,13 +219,22 @@ void host_log_open(const char* path) {
     logStart = osGetTime();
 }
 
+// Onto the card, not only to the file system: fflush alone left players' logs cut off mid-line (the file's size on the card
+// stays where it was when the app isn't closed cleanly: turned off, or a hang on "Closing software"). The lock is held.
+static void log_sync(void) {
+    fflush(logFile);
+    fsync(fileno(logFile));
+}
+
 // The held lines into the file; the lock is held.
 static void log_write_held(void) {
     if (logFile && logHeldUsed) {
+        if (logDropped) fprintf(logFile, "[log] %u buffered lines discarded during gameplay\n", logDropped);
         fwrite(logHeld, 1, logHeldUsed, logFile);
-        fflush(logFile);
+        log_sync();
     }
     logHeldUsed = 0;
+    logDropped = 0;
 }
 
 static void log_va(const char* format, va_list args) {
@@ -205,12 +248,10 @@ static void log_va(const char* format, va_list args) {
     line[len++] = '\n';
     LightLock_Lock(&logLock);
     if (logHolding) {
-        if (logHeldUsed + len > sizeof(logHeld)) log_write_held();
-        memcpy(logHeld + logHeldUsed, line, len);
-        logHeldUsed += len;
+        logDropped += pd_log_buffer_append(logHeld, sizeof(logHeld), &logHeldUsed, line, len);
     } else {
         fwrite(line, 1, len, logFile);
-        fflush(logFile); // a crash leaves the lines so far
+        log_sync(); // a crash leaves the lines so far
     }
     LightLock_Unlock(&logLock);
 }
@@ -313,6 +354,48 @@ bool host_core1_take(unsigned percent) {
     return true;
 }
 
+void host_core1_log(void) {
+    u32 limit = 0;
+    Result rc = APT_GetAppCpuTimeLimit(&limit);
+    host_log("core 1: %lu%% of its time asked for, the system says %lu%% (%08lX)", (unsigned long) core1Limit, (unsigned long) limit,
+             (unsigned long) rc);
+}
+
+// libctru's threadCreate only answers NULL, so a thread that failed is tried again by hand - the same core, priority and
+// stack size, its entry ending at once - for the system's own result code (1.6.1's Old 3DS logs: armGBA's and gpSP's
+// renderers never started on core 1 beside the draw thread, and nothing said why).
+static void probe_entry(void* arg) {
+    (void) arg;
+    svcExitThread();
+}
+
+void host_log_thread_failure(const char* who, int core, size_t stack) {
+    s32 priority = 0x30;
+    svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
+    u32 limit = 0;
+    Result limitRc = APT_GetAppCpuTimeLimit(&limit);
+    void* mem = memalign(8, stack);
+    Result rc = 0;
+    bool tried = mem != NULL;
+    if (mem) {
+        Handle h = 0;
+        rc = svcCreateThread(&h, probe_entry, 0, (u32*) ((uint8_t*) mem + stack), priority, core);
+        if (R_SUCCEEDED(rc)) {
+            svcWaitSynchronization(h, U64_MAX);
+            svcCloseHandle(h);
+        }
+        free(mem);
+    }
+    if (tried) {
+        host_log("%s on core %d didn't start: svcCreateThread %08lX (%u KiB stack, priority %02lX); core 1 %lu%% (%08lX), "
+                 "heap %lu KiB free", who, core, (unsigned long) rc, (unsigned) (stack >> 10), (unsigned long) priority,
+                 (unsigned long) limit, (unsigned long) limitRc, (unsigned long) host_heap_free() >> 10);
+    } else {
+        host_log("%s on core %d didn't start: no %u KiB for its stack (heap %lu KiB free)", who, core,
+                 (unsigned) (stack >> 10), (unsigned long) host_heap_free() >> 10);
+    }
+}
+
 size_t host_heap_free(void) {
     struct mallinfo m = mallinfo();
     return __ctru_heap_size > (u32) m.uordblks ? __ctru_heap_size - (u32) m.uordblks : 0;
@@ -381,7 +464,10 @@ bool renderThreadHostCreate(pthread_t* thread, void* (*function)(void*), void* a
         t = threadCreate((ThreadFunc) (void*) function, argument, RENDER_STACK, priority, 1, false);
     }
     host_log("armGBA's renderer on core %d: %s", core, t ? "started" : "couldn't start, drawn with the game");
-    if (!t) return false;
+    if (!t) {
+        host_log_thread_failure("armGBA's renderer", core, RENDER_STACK);
+        return false;
+    }
     *thread = (pthread_t) t; // libctru's pthread_t is its Thread, so pthread_join waits for this one
     return true;
 }

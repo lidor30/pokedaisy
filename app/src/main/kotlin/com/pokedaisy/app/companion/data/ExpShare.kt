@@ -19,8 +19,8 @@ import okio.Path
  * Eggs are left out (the game never counts one, its sent-out bit is never set). Link battles and the Battle Frontier give no
  * EXP anyway.
  *
- * Found by agbcc's build of Cmd_getexp ([find]): FireRed / LeafGreen / Emerald in every language and the hacks on that code.
- * Ruby / Sapphire build it another way, and hacks that rewrote it (Odyssey, Gaia) or run their own (CFRU's: Radical Red,
+ * Found by agbcc's build of Cmd_getexp ([find]): FireRed / LeafGreen / Emerald in every language and the hacks on that code,
+ * and (2026-11-18) Ruby / Sapphire's own build of it ([GETEXP_RS]) in every language. Hacks that rewrote it (Odyssey, Gaia) or run their own (CFRU's: Radical Red,
  * Unbound, Amethyst, ... - [getexp]) show N/A. Played headless on
  * FireRed rev 1 (a wild battle won three ways, every Pokémon's EXP read before and after).
  */
@@ -35,8 +35,27 @@ object ExpShare {
         }
     }
 
-    /** gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. */
-    class Found(val sentPokes: Long, val full: List<InstantText.Write>)
+    /**
+     * gSentPokesToOpponent (2 bytes), and FULL's two `nop`s. A Game Boy cart's ([GbGamePatches]): its one participants
+     * byte ([width] 1), FULL's `ret`, and the battle byte ([battle]: Gen 1's wIsInBattle, read here; 0 = Gen 2's, which
+     * [mark] is given) that says when that byte is the battle's: the same RAM is the field's and the PC's buffer outside
+     * one. A DS game ([ds]) has none of them here: its native side (pk_nds.cpp's expShareTick) writes the battle's masks
+     * and patches the battle overlay itself.
+     */
+    class Found(val sentPokes: Long, val full: List<InstantText.Write>, val width: Int = 2, val ds: Boolean = false, val battle: Long = 0)
+
+    /**
+     * The DS games EXP SHARE knows: Gen 4's US carts (Platinum rev 1, HeartGold, SoulSilver: pret's BtlCmd_CalcExpGain)
+     * and Gen 5's (Black, White, Black 2, White 2: their battle overlay's EXP routine), at the addresses pk_nds_field.cpp
+     * patches, checked headless; on melonDS only - DSperate's recompiler wouldn't see a code patch. [hack]: a hack that
+     * keeps retail's header (Renegade Platinum, the Redux builds, Heartfelt Gold, Sacred Gold / Storm Silver: their battle
+     * code isn't checked).
+     */
+    fun dsFind(code: String, rev: Int, dsperate: Boolean, hack: Boolean): Found? = when {
+        dsperate || hack -> null
+        code == "CPUE" && rev == 1 || rev == 0 && code in setOf("IPKE", "IPGE", "IRBO", "IRAO", "IREO", "IRDO") -> Found(0, emptyList(), ds = true)
+        else -> null
+    }
 
     private const val ROM_BASE = 0x08000000L
     private const val ANY = -1
@@ -44,6 +63,10 @@ object ExpShare {
     /** Cmd_getexp's start, through gSentPokesToOpponent's load (its call and literals left out). */
     private val GETEXP = sig("f0b54f464646c0b400260f480068503081460e4800684078????????0c4908700c4a022101400906490e891809788846")
     private const val SENT_POKES_LDR = 0x20
+    /** Ruby / Sapphire's (pokeruby's atk23_getexp, every language and revision): r8 - r10 pushed the other way round, its
+     * pools a word apart; gSentPokesToOpponent's load at +0x1E. The divisions and level checks below are FireRed's. */
+    private val GETEXP_RS = sig("f0b557464e464546e0b40026??488246??4800684078??????????490870??4a022101400906490e891809788846")
+    private const val SENT_POKES_LDR_RS = 0x1E
     private const val BODY = 0x300
     private val NOP2 = byteArrayOf(0xC0.toByte(), 0x46, 0xC0.toByte(), 0x46)
 
@@ -65,7 +88,7 @@ object ExpShare {
     fun find(rom: LittleEndianReader): Found? {
         val c = getexp(rom) ?: return null
         if (c + BODY > rom.limit()) return null
-        val sent = literal(rom, c + SENT_POKES_LDR)
+        val sent = literal(rom, c + if (matches(rom, c, GETEXP_RS)) SENT_POKES_LDR_RS else SENT_POKES_LDR)
         if (sent !in 0x02000000L..0x0203FFFFL) return null
         // The division: the call after `movs r1, #7` (the yield * level / 7).
         val div = (0 until BODY - 6 step 2).firstNotNullOfOrNull { i ->
@@ -94,7 +117,7 @@ object ExpShare {
         val hits = ArrayList<Int>()
         var o = 0
         while (o + GETEXP.size <= rom.limit()) {
-            if (rom.get(o) == 0xF0.toByte() && rom.get(o + 1) == 0xB5.toByte() && matches(rom, o, GETEXP)) hits += o
+            if (rom.get(o) == 0xF0.toByte() && rom.get(o + 1) == 0xB5.toByte() && (matches(rom, o, GETEXP) || matches(rom, o, GETEXP_RS))) hits += o
             o += 4
         }
         val c = hits.singleOrNull() ?: return null
@@ -121,16 +144,25 @@ object ExpShare {
      * SPLIT / FULL's every frame: both flanks' bits set to [mask] (the party's slots that aren't eggs) if they aren't already.
      * Emu thread.
      */
-    fun mark(f: Found, mask: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean) {
-        val now = read(f.sentPokes, 2)
+    fun mark(f: Found, mask: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean, gbBattle: Long = 0) {
+        if (f.width == 1) {
+            // A Game Boy cart: only while its battle byte says a wild (1) or trainer (2) battle is on. Outside one the
+            // participants byte is other RAM (Gen 2's: the field's tiles round the player, a PC box being saved). No
+            // battle byte known: nothing written.
+            val at = if (f.battle != 0L) f.battle else gbBattle
+            if (at == 0L) return
+            val battle = read(at, 1).firstOrNull()?.toInt()?.and(0xFF) ?: return
+            if (battle != 1 && battle != 2) return
+        }
+        val now = read(f.sentPokes, f.width)
         val m = mask.toByte()
-        if (now.size == 2 && now[0] == m && now[1] == m) return
-        write(f.sentPokes, byteArrayOf(m, m))
+        if (now.size == f.width && now.all { it == m }) return
+        write(f.sentPokes, ByteArray(f.width) { m })
     }
 
-    /** The party slots that aren't eggs, as getexp's bits. */
+    /** The party slots that aren't eggs or fainted, as getexp's bits (Gen 1 counts a fainted one's bit in its division). */
     fun maskOf(party: List<MonView>): Int =
-        party.take(6).withIndex().filter { !it.value.isEgg && it.value.species > 0 }.fold(0) { m, (i, _) -> m or (1 shl i) }
+        party.take(6).withIndex().filter { !it.value.isEgg && it.value.species > 0 && it.value.hp > 0 }.fold(0) { m, (i, _) -> m or (1 shl i) }
 
     private fun matches(rom: LittleEndianReader, at: Int, s: IntArray): Boolean {
         if (at < 0 || at + s.size > rom.limit()) return false

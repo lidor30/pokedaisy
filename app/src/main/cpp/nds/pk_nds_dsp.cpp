@@ -463,7 +463,7 @@ int pk_ndsd_state_matches_save(const char* path)
     u32 header[4];
     bool ok = fread(header, sizeof(header), 1, f) == 1;
     fclose(f);
-    if (ok && header[0] == PK_NDS_STATE_MAGIC_MELONDS) return 2;   // melonDS's: never loaded here
+    if (ok && (header[0] == PK_NDS_STATE_MAGIC_MELONDS || header[0] == PK_NDS_STATE_MAGIC_BANANADS)) return 2;   // another core's: never loaded here
     if (!ok || header[0] != STATE_MAGIC || header[3] == 0) return -1;
     if (d->savePath.empty() || d->saveReadOnly) return 1;
     std::vector<u8> file;
@@ -537,12 +537,17 @@ void pk_ndsd_set_wild_off(bool off)
     if (d) d->wildOff = off;
 }
 
+bool pk_ndsd_code_write(uint32_t, const uint8_t*, int) { return false; }
+
 void pk_ndsd_set_keep_start_menu(bool on)
 {
     if (d) d->keepStartMenu = on;
 }
 
 void pk_ndsd_set_cpu_boost(bool) {}
+
+// EXP SHARE: melonDS's alone (its FULL EXP patches the battle overlay's code, which DSperate's recompiler wouldn't see).
+void pk_ndsd_set_exp_share(int, uint32_t) {}
 
 int pk_ndsd_set_cheats(const uint32_t* words, int nWords, const int32_t* lengths, int nCheats)
 {

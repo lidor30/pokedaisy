@@ -1,7 +1,8 @@
 #!/bin/bash
 # PokeDaisy as a PortMaster port (ROCKNIX, Knulli, muOS, AmberELEC and the other firmwares that
 # run PortMaster): PortMaster's usual launcher. Put this file and the pokedaisy/ folder in your
-# ports folder, and your games in pokedaisy/roms/ (or the firmware's ROM folders). Played on a GKD 350H (ROCKNIX).
+# ports folder (muOS: this file in ROMS/Ports, the folder in ports, GitHub #1147), and your games in pokedaisy/roms/
+# (or the firmware's ROM folders). Played on a GKD 350H (ROCKNIX).
 
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 if [ -d "/opt/system/Tools/PortMaster/" ]; then
@@ -37,7 +38,16 @@ done
 export POCKET_ROM_DIRS="$ROM_DIRS"
 # shellcheck disable=SC2154
 export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
-# gptokeyb gives PortMaster's exit hotkey; the game list's B and the game menu's quit work too.
+# ROCKNIX writes that mapping from EmulationStation's in its controller layout: Nintendo (its default) names the buttons
+# by their labels, so the button marked A is the game's A; Xbox leaves them at an Xbox pad's places.
+if [ -f /storage/.config/PortMaster/mapper.txt ] && [ -f /etc/profile.d/001-functions ]; then
+  # shellcheck source=/dev/null
+  layout="$(. /etc/profile.d/001-functions > /dev/null 2>&1; get_setting controller_layout 2> /dev/null)"
+  if [ -z "$layout" ] || [ "$layout" = "nintendo" ]; then
+    export POCKET_FACE_LABELS=1
+  fi
+fi
+# gptokeyb gives PortMaster's exit hotkey; the game list's START (it asks first) and the game menu's QUIT work too.
 if [ -n "$GPTOKEYB" ]; then
   $GPTOKEYB "pokedaisy-linux" &
 fi

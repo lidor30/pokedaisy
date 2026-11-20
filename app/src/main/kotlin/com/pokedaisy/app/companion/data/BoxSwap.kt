@@ -24,7 +24,18 @@ data class BoxSwapFns(
     val storagePtr: Long,
     /** CRC32 of each function's first 32 bytes (boxMonToMon, boxMonRestorePP, getBoxMonData). */
     val codeCrcs: List<Long>,
+    /** Ruby / Sapphire: [storagePtr] is gPokemonStorage itself (their save blocks never move), not a pointer to it. */
+    val staticStorage: Boolean = false,
 )
+
+/** Retail Ruby / Sapphire rev 1 and 2 (pokeruby's symbols, the same addresses in all four): ExpandBoxMon is their
+ * BoxMonToMon (a BoxPokemon into a struct Pokemon, its stats and level worked out), gPokemonStorage static at 0x020300A0.
+ * Ruby's and Sapphire's ExpandBoxMon differ in a pool word. Checked by scripts/verify_box_swap.py (2026-11-18). */
+val BOX_SWAP_RUBY = BoxSwapFns(
+    boxMonToMon = 0x0803B4B4L, boxMonRestorePP = 0x08040B48L, getBoxMonData = 0x0803CBFCL, storagePtr = 0x020300A0L,
+    codeCrcs = listOf(0x00CEE9C0L, 0xD3067929L, 0xFBFC6EF8L), staticStorage = true,
+)
+val BOX_SWAP_SAPPHIRE = BOX_SWAP_RUBY.copy(codeCrcs = listOf(0x97E898EEL, 0xD3067929L, 0xFBFC6EF8L))
 
 /** Retail FireRed rev 1: each function found byte for byte (BLs and pool words aside) from the pinned pokefirered
  * build, once each in the retail ROM; gPokemonStoragePtr = gSaveBlock2Ptr + 4 (0x03005010). */
@@ -60,8 +71,11 @@ val BOX_SWAP_LEAFGREEN_REV0 = BoxSwapFns(
  * on one of those would wreck it.
  */
 fun boxSwapFor(fields: FieldItemFns?, cfg: NativeConfig?): BoxSwapFns? {
-    if (fields == null || fields.party == null || cfg == null || cfg.pcStorage != VANILLA_PC_STORAGE) return null
+    if (fields == null || fields.party == null || cfg == null) return null
+    if (cfg.pcStorage != VANILLA_PC_STORAGE && cfg.pcStorage != STATIC_PC_STORAGE) return null
     val fns = when {
+        fields === FIELD_ITEMS_RUBY -> BOX_SWAP_RUBY
+        fields === FIELD_ITEMS_SAPPHIRE -> BOX_SWAP_SAPPHIRE
         fields === FIELD_ITEMS_FIRERED_REV1 -> BOX_SWAP_FIRERED_REV1
         fields === FIELD_ITEMS_LEAFGREEN_REV1 -> BOX_SWAP_LEAFGREEN_REV1
         fields === FIELD_ITEMS_LEAFGREEN_REV0 -> BOX_SWAP_LEAFGREEN_REV0
@@ -69,7 +83,7 @@ fun boxSwapFor(fields: FieldItemFns?, cfg: NativeConfig?): BoxSwapFns? {
         // The other languages and English FireRed rev 0: the table under the bag table's own key (port_field_items.py).
         else -> portKeyOf(fields)?.let { BOX_SWAP_PORTS[it] }
     }
-    return fns?.takeIf { cfg.pokemonStoragePtr == it.storagePtr }
+    return fns?.takeIf { cfg.pokemonStoragePtr == it.storagePtr && it.staticStorage == (cfg.pcStorage == STATIC_PC_STORAGE) }
 }
 
 /** FIELD_ITEMS_PORTS' keys by table, by identity (the hacks on FireRed rev 0's code share BPRE0's bag table object, but
@@ -123,7 +137,7 @@ private class BoxMove(val fields: FieldItemFns, val p: PartyItemFns, val fns: Bo
 
     /** Box [box]'s slot [slot] in the game's storage; null = the storage pointer isn't set (not on the field yet). */
     fun boxMon(box: Int, slot: Int): Long? {
-        val storage = u32(fns.storagePtr)
+        val storage = if (fns.staticStorage) fns.storagePtr else u32(fns.storagePtr)
         if (storage !in 0x02000000L until 0x02040000L) return null
         return storage + 4 + (box * SLOTS + slot).toLong() * BOX_MON
     }
@@ -266,4 +280,68 @@ fun withdrawFromBox(
         if (this.count != count + 1 || boxed(boxMon, FIELD_SPECIES) != 0L) return@boxMove putBack()
         BoxSwapResult.SWAPPED
     }
+}
+
+/** What SORT did. */
+enum class BoxSortResult {
+    /** Every box was rewritten in Pokédex order (the game keeps it once saved). */
+    SORTED,
+    /** Not on the field with the controls free (a battle, a menu, a text box, the game's own PC). */
+    NOT_NOW,
+    IN_BATTLE,
+    /** The boxes hold no Pokémon. */
+    EMPTY,
+    FAILED,
+}
+
+/**
+ * SORT: every Pokémon in the 14 boxes, packed from box 1 slot 1 in Pokédex-number order, as if the player had deposited
+ * them that way - the game's own storage records moved whole (80-byte BoxPokemon, checksums intact), not re-created.
+ * A species goes lowest level first (a box record keeps EXP, not the level: [decodeBoxMon] works it out from the growth
+ * rate); the same level keeps the order the boxes already had. Eggs count as the species they will hatch into; a record
+ * the decoder can't read (a Bad Egg) goes last. Writes all 420 slots at once and reads them back; anything else puts the
+ * boxes exactly as they were. Emu thread, same gate and code checks as the other PC moves.
+ */
+/** [dexOf]: a species id's Pokédex number (Hoenn's species ids aren't in National order), 0 = unknown (the id is used). */
+fun sortBoxes(fields: FieldItemFns, fns: BoxSwapFns, busy: Boolean, g: GameCalls, dexOf: (Int) -> Int = { 0 }): BoxSortResult {
+    val crcs = fns.codeCrcs.zip(listOf(fns.boxMonToMon, fns.boxMonRestorePP, fns.getBoxMonData))
+    if (!fieldItemCodeMatches(fields, g::read) ||
+        crcs.any { (crc, fn) -> crc32(g.read(fn, 32)) != crc }) return BoxSortResult.FAILED
+    if (busy || g.call(fields.fieldControlsLocked) != 0L) return BoxSortResult.NOT_NOW
+    return runCatching {
+        // Ruby / Sapphire's gPokemonStorage is static: the address itself, not a pointer to it (as BoxMove reads it).
+        val storage = if (fns.staticStorage) fns.storagePtr else u32le(g.read(fns.storagePtr, 4), 0)
+        if (storage !in 0x02000000L until 0x02040000L) return@runCatching BoxSortResult.FAILED
+        val start = storage + 4
+        val size = BOXES * SLOTS * BOX_MON
+        val before = g.read(start, size)
+        if (before.size != size) return@runCatching BoxSortResult.FAILED
+        // Each stored Pokémon's 80 bytes, in the boxes' order. An all-zero slot is empty (ZeroBoxMonData); one that
+        // doesn't decode (a Bad Egg) is kept, after the rest.
+        data class Stored(val bytes: ByteArray, val species: Int, val level: Int)
+        val stored = mutableListOf<Stored>()
+        for (slot in 0 until BOXES * SLOTS) {
+            val off = slot * BOX_MON
+            if ((0 until BOX_MON).none { before[off + it] != 0.toByte() }) continue
+            val mon = decodeBoxMon(before, off)
+            val key = mon?.species?.let { sp -> dexOf(sp).takeIf { it > 0 } ?: sp } ?: Int.MAX_VALUE
+            stored.add(Stored(before.copyOfRange(off, off + BOX_MON), key, mon?.level ?: Int.MAX_VALUE))
+        }
+        if (stored.isEmpty()) return@runCatching BoxSortResult.EMPTY
+        val sorted = ByteArray(size)
+        // Stable: the same species and level stay in the order the boxes already had.
+        stored.sortedWith(compareBy({ it.species }, { it.level }))
+            .forEachIndexed { i, mon -> mon.bytes.copyInto(sorted, i * BOX_MON) }
+        if (sorted.contentEquals(before)) return@runCatching BoxSortResult.SORTED
+        if (!g.write(start, sorted)) {
+            g.write(start, before)
+            return@runCatching BoxSortResult.FAILED
+        }
+        val check = runCatching { g.read(start, size) }.getOrNull()
+        if (check == null || !check.contentEquals(sorted)) {
+            g.write(start, before)
+            return@runCatching BoxSortResult.FAILED
+        }
+        BoxSortResult.SORTED
+    }.getOrElse { BoxSortResult.FAILED }
 }

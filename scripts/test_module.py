@@ -32,7 +32,13 @@ def modules(pattern):
                 or fnmatch.fnmatchcase(fqn + ".x", pattern)):
             continue
         found.add("shared" if rel.startswith(SHARED) and f.stem not in only else "app")
-    return [m for m in ("app", "shared") if m in found] or ["app"]
+    for module in ("shared", "shared-ui"):
+        for f in (ROOT / module / "src/commonTest/kotlin").rglob("*Test.kt"):
+            fqn = f.relative_to(ROOT / module / "src/commonTest/kotlin").as_posix()[:-3].replace("/", ".")
+            if (fnmatch.fnmatchcase(fqn, pattern) or fnmatch.fnmatchcase(fqn, pattern.rsplit(".", 1)[0])
+                    or fnmatch.fnmatchcase(fqn + ".x", pattern)):
+                found.add(module)
+    return [m for m in ("app", "shared", "shared-ui") if m in found] or ["app"]
 
 
 if __name__ == "__main__":

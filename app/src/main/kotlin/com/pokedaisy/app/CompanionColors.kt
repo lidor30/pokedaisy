@@ -5,6 +5,12 @@ import android.graphics.RuntimeShader
 import android.os.Build
 import android.util.Log
 import android.view.View
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import com.pokedaisy.app.companion.ScreenFilter
 import java.util.Collections
 import java.util.WeakHashMap
@@ -30,6 +36,7 @@ object CompanionColors {
     private var grid = floatArrayOf(0f, 0f)
     /** The grid's cell in view px: the game's own pixel on screen ([setCell]), 6.75 on the Thor. */
     private var cell = 0f
+    private var revision by mutableIntStateOf(0)
     /** Views that are the game's own picture, a DS game's touch screen: FILTER whatever ON COMPANION says ([trackGame]). */
     private val gameViews: MutableSet<View> = Collections.synchronizedSet(Collections.newSetFromMap(WeakHashMap()))
     private var gameFilter = ScreenFilter.NONE
@@ -75,6 +82,7 @@ object CompanionColors {
     val version = androidx.compose.runtime.mutableIntStateOf(0)
 
     private fun applyAll() {
+        revision++
         views.toList().forEach(::apply)
         gameViews.toList().forEach(::apply)
         version.intValue++
@@ -90,6 +98,15 @@ object CompanionColors {
     private fun apply(view: View) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         view.setRenderEffect(effect(view in gameViews, view.resources.displayMetrics.density))
+    }
+
+    /** The same shader for Compose-owned chrome/HUD layers, kept off the native game surface and controls. */
+    @Composable
+    fun composeEffect(view: View): androidx.compose.ui.graphics.RenderEffect? {
+        val changed = revision
+        return remember(view, changed, view.resources.displayMetrics.density) {
+            effect(false, view.resources.displayMetrics.density)?.asComposeRenderEffect()
+        }
     }
 
     private fun effect(game: Boolean, density: Float): RenderEffect? {

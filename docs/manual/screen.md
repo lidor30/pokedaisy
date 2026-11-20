@@ -35,7 +35,7 @@ A few things worth knowing:
 - **Menus and the title screen** can't be extended, so there the strips glow softly with the colours at the game's edges, and fade back into the map when you return to it.
 - **Supported games:** FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and revision), plus Unbound, Radical Red, Lazarus, SoulGold, Heart and Soul, Gaia, Odyssey, Amethyst 1.3.0, Glazed, Seaglass, Emerald Imperium, Emerald Legacy, Emerald Rogue, Too Many Types 2, Recharged Yellow, Super Mariomon, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Elite Redux, Monomyth, Epsilon Emerald, Sword and Shield Ultimate Plus, GS Chronicles and Celia's hack.
 - **DS games:** Platinum, HeartGold, SoulSilver, Black, White, Black 2, White 2, Origin HeartGold and Heartfelt Gold. Their 3D world goes on past the screen, and so do their battles: the whole battle scene of Black, White and their sequels, sky, ground and all, and the others' battle backgrounds with the health boxes carried to the edges.
-- **On the Game Boy:** Yellow (the English cart), Yellow Legacy, Crystal, Crystal Legacy, Crystal Clear and Polished Crystal (version 3.2.3, the normal build) have it too. The town or route goes on past the small screen, with the people standing in it, and zoom and looking around work the same way. People in the next town or route show up in the strips before you cross over. Text boxes, the start menu, the save prompt and the options screen keep the map around them. Battles and the other menu screens aren't widened: the strips there are plain, in the colours along the screen's sides (white in most of them, Yellow's trainer card too; black beside a screen whose top part is black).
+- **On the Game Boy:** Red and Blue (the English carts), Yellow (in every language), Yellow Legacy, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear and Polished Crystal (version 3.2.3, the normal build) have it too. The town or route goes on past the small screen, with the people standing in it, and zoom and looking around work the same way. People in the next town or route show up in the strips before you cross over. Text boxes, the start menu, the save prompt and the options screen keep the map around them. Battles and the other menu screens aren't widened: the strips there are plain, in the colours along the screen's sides (white in most of them, Yellow's trainer card too; black beside a screen whose top part is black).
 
 `EXPAND` is tagged `BETA` in Settings: it works in every game listed above, but it isn't perfect yet, and now and then you may spot something at the edges that the game itself doesn't show. If you do, [tell us](https://pokedaisy.com/feedback/) where it happened.
 
@@ -55,17 +55,18 @@ The **right stick** looks around (turn off `LOOK AROUND` in the `SCREEN` group i
 
 ## DS core: DS games on weaker devices
 
-PokeDaisy has two DS emulators. melonDS has every DS feature. DSperate needs far less from your device, so it keeps DS games at full speed on budget handhelds, older phones and tablets, and devices running 32-bit Android, where melonDS can be slow. `DS CORE` picks which one runs your DS games.
+PokeDaisy has three DS emulators. melonDS has every DS feature. DSperate needs far less from your device, so it keeps DS games at full speed on budget handhelds, older phones and tablets, and devices running 32-bit Android, where melonDS can be slow. BananaDS is the DS emulator from BananaOS, the custom firmware for the Anbernic RG DS handhelds: melonDS's core with BananaOS's speed work and its own way of drawing the screens, with `EXPAND` too. `DS CORE` picks which one runs your DS games.
 
 | Choice | What you get |
 | --- | --- |
 | `AUTO` | DSperate on a device that looks weak or runs 32-bit Android, melonDS everywhere else. The row shows which one it picked. This is the default. |
 | `MELONDS` | Always melonDS. |
 | `DSPERATE` | Always DSperate. |
+| `BANANADS` | Always BananaDS. It's only offered on a 64-bit device with Android 10 or newer. |
 
 A few things worth knowing:
 
-- **Some features are melonDS only for now.** On DSperate, `EXPAND`, `DS RESOLUTION` and `DS CPU BOOST` are greyed out, the companion's `PC` and `FLY` don't show for DS games, and fast-forward plays the music sped up (`FF MUSIC`'s `STEADY` needs melonDS). The companion's tabs, the touch screen, `DS LAYOUT`, `BATTLE BUTTONS`, cheats, achievements and your saves all work the same.
+- **Some features are melonDS only for now.** On DSperate, `EXPAND`, `DS RESOLUTION` and `DS CPU BOOST` are greyed out, the companion's `PC` and `FLY` don't show for DS games, and fast-forward plays the music sped up (`FF MUSIC`'s `STEADY` needs melonDS). On BananaDS, `EXPAND` and `DS CPU BOOST` work, but `DS RESOLUTION` is greyed out, the companion's `PC` and `FLY` don't show for DS games and fast-forward plays the music sped up. The companion's tabs, the touch screen, `DS LAYOUT`, `BATTLE BUTTONS`, cheats, achievements and your saves all work the same on all three.
 - **It applies when a DS game starts.** Change it in the companion while a game is running and it takes effect at `RESTART GAME` or the next time you open the game.
 - **Save in the game before you switch.** Each emulator only reads its own save states. When you switch, the game starts from your save file, and the place you left it on the other emulator is kept: switch back and the game picks up there again, as long as you haven't saved in the game since. Save states you made in `STATES` load only on the emulator that made them.
 
@@ -202,7 +203,8 @@ The game's own art stays as it is: party slots, the map, the trainer card and ba
 
 `FONT` sets the letters the app is written in, on both screens at once. Pick it in the top screen's Settings or in the companion's SETTINGS, under SCREEN:
 
-- `PIXEL` (the default): crisp pixel letters, like the games' own. A Game Boy game shows its own letters while it runs.
+- `PIXEL SMALL` (the default): small, crisp pixel letters, a little shorter and narrower than `PIXEL`, so more fits on a line. A Game Boy game shows its own letters while it runs.
+- `PIXEL`: the taller pixel letters the app used before.
 - `SMOOTH`: soft, rounded letters that are easy to read on any screen.
 - `SMOOTH BOLD`: the same letters, heavier, closer to the games' thick menu text.
 - `SYSTEM`: your device's own font.

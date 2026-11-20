@@ -21,6 +21,7 @@ bool pk_nds_is_rom(const char* path);
 
 #define PK_NDS_CORE_MELONDS 0
 #define PK_NDS_CORE_DSPERATE 1
+#define PK_NDS_CORE_BANANADS 2
 // The core the next pk_nds_init starts (PK_NDS_CORE_*; melonDS until told otherwise). Emu thread, no DS up.
 void pk_nds_set_core(int core);
 // The core that's up, or -1 with no DS game.
@@ -76,8 +77,13 @@ int pk_nds_action_status(int seq);
 bool pk_nds_action_results(int seq, uint32_t* out);
 // WILD ENCOUNTERS OFF: no random encounters (the field read holds the map's grass / surf rates at 0). Emu thread.
 void pk_nds_set_wild_off(bool off);
+/** Code of ours into the game (INSTANT TEXT, DsInstantText.kt): main RAM or the spare ITCM (0x01FFC000..), and the JIT
+ * told, so a block it compiled from there is compiled again. False on DSperate (no calls into the game there). Emu thread. */
+bool pk_nds_code_write(uint32_t addr, const uint8_t* src, int len);
 /** DS LAYOUT floats the X menu: it comes back after a menu screen left by touch (the game closes it then). */
 void pk_nds_set_keep_start_menu(bool on);
+/** EXP SHARE (Gen 4, melonDS): 0 off, 1 SPLIT, 2 FULL EXP; [mask] the party slots that aren't eggs. Emu thread. */
+void pk_nds_set_exp_share(int mode, uint32_t mask);
 /** DS CPU BOOST: the ARM9 at twice the DS's clock (fewer of a game's own slow frames). Emu thread, between frames. */
 void pk_nds_set_cpu_boost(bool on);
 // Action Replay DS codes into melonDS's AREngine (it runs them on the ARM7's VBlank), replacing the ones before:

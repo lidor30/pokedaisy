@@ -31,7 +31,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -56,11 +55,11 @@ import com.pokedaisy.app.companion.data.save.MonSave
 import com.pokedaisy.app.companion.data.save.MonSaveEditor
 import com.pokedaisy.app.companion.data.save.SaveGameData
 import com.pokedaisy.app.companion.data.save.SaveMon
-import com.pokedaisy.app.companion.data.save.SPECIES_EGG
 import com.pokedaisy.app.companion.data.save.SaveEditRefused
 import com.pokedaisy.app.companion.data.speciesNames
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
+import kotlinx.coroutines.IO
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 
@@ -211,6 +210,8 @@ fun PcBoxesScreen(
     saving: Boolean = false,
     /** The party icons from the game's ROM ([com.pokedaisy.app.companion.data.save.RomMonIcons]); null = names only. */
     icons: MonIconLoader? = null,
+    /** Front pictures from the ROM ([com.pokedaisy.app.companion.data.save.RomMonSprites]); null = icon only. */
+    sprites: MonSpriteLoader? = null,
     /** TRADE: pick another game's save to trade with (only while nothing here is unsaved). */
     onTrade: (() -> Unit)? = null,
     /** TRAINER's MISSING: read the other saves for what this Pokédex lacks ([PcBoxesState.missing]). */
@@ -234,7 +235,7 @@ fun PcBoxesScreen(
     Box(Modifier.fillMaxSize()) {
         AppBackdrop()
         // A Pokémon's page takes the screen; the boxes come back as they were.
-        state.detail?.let { at -> MonPage(state, at, m, small, icons, onClose = { state.detail = null }) }
+        state.detail?.let { at -> MonPage(state, at, m, small, icons, sprites, onClose = { state.detail = null }) }
         state.missing?.let { v -> if (state.detail == null) MissingPage(state, v, m, small, onGet = { onGet?.invoke(it) }, onClose = { state.missing = null }) }
         if (state.detail == null && state.missing == null) Column(Modifier.fillMaxSize().padding(16.dp)) {
             OptionTitleWindow(tk("SAVE EDITOR"), m, trailing = gameName, onBack = leave)
@@ -481,9 +482,15 @@ private fun InfoPair(label: String, value: String, m: GbaTextMetrics) {
     }
 }
 
-/** Party icons, decoded on demand (blocking: called off the UI thread) and cached by whoever loads them. */
+/** Party icons, decoded on demand (blocking: called off the UI thread) and cached by whoever loads them. [species] is the
+ * save's own id; an egg is [egg] (its species is the Pokémon inside, and each game keeps its egg's icon apart). */
 fun interface MonIconLoader {
-    fun load(species: Int): android.graphics.Bitmap?
+    fun load(species: Int, egg: Boolean): ImageBitmap?
+}
+
+/** 64x64 front pictures for the SAVE EDITOR's Pokémon page, from the player's own ROM (null = no known dex tables). */
+fun interface MonSpriteLoader {
+    fun load(species: Int): ImageBitmap?
 }
 
 /**
@@ -532,9 +539,10 @@ internal fun BoxGrid(
 /** A Pokémon's party icon from [loader], first frame, pixel-scaled to [size]. An egg is the egg's icon. */
 @Composable
 internal fun BoxMonIcon(loader: MonIconLoader, mon: SaveMon, size: Dp) {
-    val species = if (mon.isEgg) SPECIES_EGG else mon.species
-    val bmp by produceState<ImageBitmap?>(null, loader, species) {
-        value = withContext(Dispatchers.IO) { runCatching { loader.load(species) }.getOrNull()?.let { cropToFirstFrame(it).asImageBitmap() } }
+    val species = mon.species
+    val egg = mon.isEgg
+    val bmp by produceState<ImageBitmap?>(null, loader, species, egg) {
+        value = withContext(Dispatchers.IO) { runCatching { loader.load(species, egg) }.getOrNull()?.let { cropToFirstFrame(it) } }
     }
     Box(Modifier.size(size)) {
         bmp?.let { Image(it, contentDescription = null, modifier = Modifier.size(size), filterQuality = FilterQuality.None) }

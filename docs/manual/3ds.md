@@ -84,6 +84,8 @@ In a game, the GBA's buttons are the 3DS's own (the circle pad works as the D-pa
 
 To leave a game, use `CLOSE GAME` at the bottom of the companion's `SETTINGS`. The **HOME** button and closing the lid work too.
 
+The menus come in English, French, German, Italian, Spanish and Portuguese. `LANGUAGE` in the library's `SETTINGS` (and at the end of the companion's) picks one; `AUTO` follows the game's language, else your 3DS's.
+
 ![The library's SETTINGS page on a 3DS: VIEW, SORT, THEME, DARK MODE, SCREEN, ASPECT and the sound](shots/3ds-settings.png "The library's SETTINGS: the look and screen settings for every game")
 
 ## Which games work
@@ -113,7 +115,8 @@ Download the newer `pokedaisy.3dsx` and copy it over the old one in `sdmc:/3ds/`
 - **PokeDaisy isn't in the Homebrew Launcher:** the file must be in `sdmc:/3ds/` and end in `.3dsx`.
 - **A game isn't listed:** it has to be right in `sdmc:/pokedaisy/roms/`, not in a folder inside it and not zipped.
 - **My save didn't load:** the save needs the game's exact name with `.sav` at the end. Every start copies the save to `sdmc:/pokedaisy/roms/pokedaisy-backups/` first, so an older copy is there if you need it.
-- **It runs slowly:** an original 3DS or 2DS is slower than the New models. In the library's `SETTINGS`, set `SCREEN` to `PIXEL 1x`, the lightest mode. On a GBA game you can also press `X` in the library and try another `GBA CORE`: `GPSP` is an experimental one meant for the original 3DS. Games start without EXPAND, which is lighter. `EXPAND 1.5x` is in the library's `SETTINGS` if you want it.
+- **It runs slowly:** an original 3DS or 2DS is slower than the New models. In the library's `SETTINGS`, set `SCREEN` to `PIXEL 1x`, the lightest mode. On a GBA game, `GBA CORE` `AUTO` already plays it on `GPSP` there, an experimental core that runs faster on these models, when you installed the CIA. Press `X` in the library to pick another one, such as `ARMGBA` if a game misbehaves. Games start without EXPAND, which is lighter. `EXPAND 1.5x` is in the library's `SETTINGS` if you want it.
+- **A game says to install the CIA:** started from the Homebrew Launcher, an original 3DS or 2DS only has room for games up to 16 MB, and none for the `GPSP` core. Install `pokedaisy.cia` (see above) and start PokeDaisy from the HOME Menu to play bigger games or use `GPSP`.
 - **The game didn't start:** the top screen says why, followed by your 3DS's memory. When you tell us, take a photo of the whole message or attach `sdmc:/pokedaisy/log.txt`.
 
 Still stuck? [Tell us](https://pokedaisy.com/feedback/#bug) and attach `sdmc:/pokedaisy/log.txt`.

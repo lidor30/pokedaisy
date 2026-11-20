@@ -113,6 +113,7 @@ struct pd_settings {
     bool reusableTms;    // REUSABLE TMS: a TM stays in the bag after it teaches (ReusableTms.kt's patch)
     bool instantText;    // INSTANT TEXT: a text box's words at once (InstantText.kt's patch)
     bool tradeEvos;      // TRADE EVOS: the summary's EVOLVE for a Pokémon that evolves by trading
+    int language;        // LANGUAGE: PD_LANG_AUTO or an enum pd_lang (pd_tr.h)
     int sceneSpeed[5];   // SCENE SPEEDS (BATTLE, TEXT, MENU, BIKE, SURF) while FF is off: an index into PD_SCENE_SPEEDS, 0 = SAME
 };
 
@@ -270,6 +271,7 @@ enum pd_overlay {
     PD_OVERLAY_PICK_SCENE,    // a SCENE SPEEDS row's speed (scenePick)
     PD_OVERLAY_NUZ_PICK,      // NUZLOCKE: an encounter's outcome by hand
     PD_OVERLAY_NUZ_CONFIRM,   // NUZLOCKE: FAINTED? / BRING BACK? / NEW RUN?
+    PD_OVERLAY_PICK_LANGUAGE, // LANGUAGE: AUTO, then the languages
 };
 
 // Optional presentation data for another emulator; IDs stay native to that backend.
@@ -546,6 +548,10 @@ struct pd_ui {
     int touchX0, touchY0, touchLastY;
     int pressedId; // what the stylus went down on (-1 = nothing)
     bool barDragging;                 // the stylus is on a list's bar
+    // The last pd_ui_touch changed nothing outside a list's box (a row pressed or let go, a drag, its bar): pd_ui_draw_scrolled
+    // redraws that box alone.
+    bool touchScrollOnly;
+    int scrollAreaX, scrollAreaY, scrollAreaW, scrollAreaH;
     int barY, barH, barThumb, barMax; // that bar, as last drawn
     bool keyFocus; // the game's buttons are on the companion: pd_ui_focus_*, L / R keys at the tab bar's ends
     int focusId;   // the hit a host's D-pad focus is on, drawn as that part's own cursor (-1 = none)
@@ -589,8 +595,14 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s);
 void pd_ui_warm(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g);
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host);
-// Stylus: down / held / up at (x, y). Returns true if the screen needs a redraw.
+// Stylus: down / held / up at (x, y). Returns true if the screen needs a redraw: with touchScrollOnly set, only the
+// list being dragged moved (pd_ui_draw_scrolled).
 bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down);
+// When nothing but pd_ui_touch's scroll-only changes (touchScrollOnly) came since the last draw, over the picture it left:
+// the list's box alone (the same pixels a whole redraw gives there; the rest of the canvas is left as it was). The host
+// keeps track of that; with no list box known it's a whole pd_ui_draw.
+void pd_ui_draw_scrolled(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
+                         const struct pd_snapshot* s, const struct pd_host_info* host);
 // Buttons the GBA doesn't have (the 3DS's X / Y): next / previous tab, BACK.
 // Controller access to the same TAB BAR / MORE overlays used by touch hosts.
 int pd_ui_tab_menu_count(const struct pd_ui*);

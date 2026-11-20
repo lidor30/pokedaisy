@@ -96,6 +96,10 @@ data class BattleMon(
 
 data class Item(val itemId: Int, val quantity: Int, val pocket: Int = POCKET_ITEMS)
 
+/** The game's move-learning summary is up (SUMMARY_MODE_SELECT_MOVE): [partyIndex] is learning [move], and is on
+ * the screen where one of its four moves is picked to forget. */
+data class MoveLearningPrompt(val partyIndex: Int, val move: Int)
+
 data class Telemetry(
     val frameCounter: Long,
     val inBattle: Boolean,
@@ -158,6 +162,8 @@ data class Telemetry(
     val pokegearState: Int? = null,
     /** The PC's boxes (the BOXES tab, [readPcBoxes]); null where the game's storage isn't mapped. */
     val pcBoxes: PcBoxes? = null,
+    /** The game's move-learning summary, while it's up (see [MoveLearningPrompt]); null otherwise. */
+    val moveLearning: MoveLearningPrompt? = null,
 )
 
 /** The PC's Pokémon storage: the box the PC opens on and every box, in order. */

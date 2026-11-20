@@ -128,11 +128,13 @@ data class NuzlockeSample(
             return NuzlockeSample(
                 inBattle = s.inBattle,
                 trainer = s.isTrainerBattle,
-                area = s.regionMapSectionId,
+                // Gen 1's map section is the map itself: its town map area instead (a cave's floors, a town's houses as one) on
+                // the Kanto carts, whose map ids are Yellow's (Brown's region is its own: its maps as they are).
+                area = if (s.game.isGen1 && s.game != GameKind.BROWN) gen1Area(s.regionMapSectionId) else s.regionMapSectionId,
                 areaName = s.location.mapSecName,
                 foeSpecies = foe?.species ?: 0,
                 foeName = foe?.name.orEmpty(),
-                party = s.party.map { NuzlockePartyMon(it.personality, it.species, it.shownName, it.level, it.hp, it.maxHp, it.isEgg) },
+                party = s.party.map { NuzlockePartyMon(nuzlockeId(it.personality), it.species, it.shownName, it.level, it.hp, it.maxHp, it.isEgg) },
                 caught = s.pokedex?.caught,
                 menuUp = s.battleInputState == BATTLE_INPUT_ACTION_SELECT || s.battleInputState == BATTLE_INPUT_MOVE_SELECT ||
                     s.battleInputState == BATTLE_INPUT_BAG_OPEN || s.battleInputState == BATTLE_INPUT_PARTY_OPEN,
@@ -141,6 +143,10 @@ data class NuzlockeSample(
         }
     }
 }
+
+/** A party Pokémon's id in the run: its personality's 32 bits. The GBA and DS personalities are those; the Game Boy's stand-in
+ * (gbMonKey) carries the species above them, which an evolution changes - its trainer ID and DVs are what stay. */
+fun nuzlockeId(personality: Long): Long = personality and 0xFFFFFFFFL
 
 /** What a sample changed that's worth a notice on the game screen (the companion words them). */
 sealed class NuzlockeEvent {

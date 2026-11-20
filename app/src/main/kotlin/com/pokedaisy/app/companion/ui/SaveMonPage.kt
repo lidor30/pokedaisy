@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +37,9 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
 
 /** The stats in the order the games' summary lists them (HP, ATTACK, DEFENSE, SP. ATK, SP. DEF, SPEED), as indexes into
  * the save's order (HP, Attack, Defense, Speed, Sp. Atk, Sp. Def). */
@@ -62,7 +66,7 @@ internal fun natureLabel(nature: Int): String {
  * level from its own up).
  */
 @Composable
-internal fun MonPage(state: PcBoxesState, at: MonRef, m: GbaTextMetrics, small: GbaTextMetrics, icons: MonIconLoader?, onClose: () -> Unit) {
+internal fun MonPage(state: PcBoxesState, at: MonRef, m: GbaTextMetrics, small: GbaTextMetrics, icons: MonIconLoader?, sprites: MonSpriteLoader?, onClose: () -> Unit) {
     val data = state.data
     val found = data.mon(at)
     if (found == null) {
@@ -86,10 +90,10 @@ internal fun MonPage(state: PcBoxesState, at: MonRef, m: GbaTextMetrics, small: 
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 val wide = maxWidth > maxHeight * 1.1f
                 if (wide) Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
-                    WhoCard(state, mon, level, at, small, icons, Modifier.weight(0.34f).fillMaxHeight())
+                    WhoCard(state, mon, level, at, small, icons, sprites, Modifier.weight(0.34f).fillMaxHeight())
                     TabsPane(state, mon, level, at, editable, m, small, Modifier.weight(0.66f).fillMaxHeight())
                 } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(m.u * 4)) {
-                    WhoCard(state, mon, level, at, small, icons, Modifier.fillMaxWidth())
+                    WhoCard(state, mon, level, at, small, icons, sprites, Modifier.fillMaxWidth())
                     TabsPane(state, mon, level, at, editable, m, small, Modifier.weight(1f).fillMaxWidth())
                 }
             }
@@ -103,7 +107,7 @@ internal fun MonPage(state: PcBoxesState, at: MonRef, m: GbaTextMetrics, small: 
 
 /** Who it is: its icon, name and marks, dex number, OT and where it was met. */
 @Composable
-private fun WhoCard(state: PcBoxesState, mon: SaveMon, level: Int, at: MonRef, m: GbaTextMetrics, icons: MonIconLoader?, modifier: Modifier) {
+private fun WhoCard(state: PcBoxesState, mon: SaveMon, level: Int, at: MonRef, m: GbaTextMetrics, icons: MonIconLoader?, sprites: MonSpriteLoader?, modifier: Modifier) {
     OptionListWindow(m, modifier) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(m.u * 4), verticalArrangement = Arrangement.spacedBy(m.u * 2)) {
             MonHeader(mon, level, m, icons, Modifier.fillMaxWidth(), iconLines = 3f)
@@ -112,6 +116,10 @@ private fun WhoCard(state: PcBoxesState, mon: SaveMon, level: Int, at: MonRef, m
             if (!mon.isEgg && dex != null) Fact(tr("No."), dex.toString().padStart(3, '0'), m)
             Fact(tk("OT"), "${mon.otName} · ${id5(mon.otTid)}", m)
             Fact(tk("MET IN"), if (mon.metLevel == 0) "${mon.metGameLabel} · ${tr("HATCHED")}" else "${mon.metGameLabel} · Lv${mon.metLevel}", m)
+            if (!mon.isEgg && sprites != null) {
+                Spacer(Modifier.height(m.u * 2))
+                MonFrontPicture(sprites, mon.species, Modifier.fillMaxWidth().height(m.lineHeight * 8f))
+            }
             if (!editableMon(mon)) {
                 GbaText(tr("Eggs stay as they are until they hatch."), OptionColors.muted, OptionColors.mutedShadow, m, maxLines = Int.MAX_VALUE)
             } else if (state.editor.canWriteNames && !state.editor.isOwn(mon)) {
@@ -119,6 +127,15 @@ private fun WhoCard(state: PcBoxesState, mon: SaveMon, level: Int, at: MonRef, m
             }
         }
     }
+}
+
+/** The ROM's 64x64 front picture, whole-pixel scaled and centred by [PixelImage]. Absent = nothing drawn. */
+@Composable
+private fun MonFrontPicture(sprites: MonSpriteLoader, species: Int, modifier: Modifier) {
+    val bmp by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, sprites, species) {
+        value = withContext(Dispatchers.IO) { runCatching { sprites.load(species) }.getOrNull() }
+    }
+    PixelImage(bmp, 64, modifier)
 }
 
 @Composable

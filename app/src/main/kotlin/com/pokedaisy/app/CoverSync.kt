@@ -126,27 +126,7 @@ fun CoverSyncStatus(sync: CoverSync, m: GbaTextMetrics) {
 
 /** A white framed bar filled in the value red, like the game's HP / EXP bars. */
 @Composable
-fun SyncProgressBar(fraction: Float, m: GbaTextMetrics) {
-    val u = m.u
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            // The 3u frame on each side leaves a 4u-tall fill.
-            .height(u * 10)
-            .drawBehind {
-                val px = u.toPx()
-                drawLayeredBox(OptionColors.titleLayers.inPx(px), OptionColors.titleFill, radius = 3 * px)
-                val inset = 3 * px
-                val w = (size.width - 2 * inset) * fraction.coerceIn(0f, 1f)
-                if (w > 0f) {
-                    drawPixelRoundRect(
-                        OptionColors.value, Offset(inset, inset), Size(w, size.height - 2 * inset),
-                        radius = px,
-                    )
-                }
-            },
-    )
-}
+fun SyncProgressBar(fraction: Float, m: GbaTextMetrics) = com.pokedaisy.app.companion.ui.SetupProgressBar(fraction, m)
 
 @Composable
 private fun SyncLogRow(label: String, status: CoverArtSync.Status, small: GbaTextMetrics) {

@@ -62,6 +62,8 @@ fun touchControlsRows(
     onImportSkin: (() -> Unit)? = null,
     /** VIBRATION / STRENGTH just changed: one buzz at the new strength (0 = off), com.pokedaisy.app.TouchHaptics. */
     feel: (Int) -> Unit = {},
+    buttons: Set<TouchButton> = TouchButton.entries.toSet(),
+    xyBadge: String? = null,
 ): List<SettingRow> {
     fun onOff(b: Boolean) = if (b) tk("ON") else tk("OFF")
     fun <T> List<T>.after(t: T): T = this[(indexOf(t) + 1) % size]
@@ -126,19 +128,19 @@ fun touchControlsRows(
         SettingRow(tk("RESET LAYOUT"), null, subtitle = "Forget CUSTOM, back to the preset") {
             set(style.copy(useCustom = false, portrait = TouchLayout(), landscape = TouchLayout()))
         }.takeIf { style.hasCustom },
-    ) + skinRows(style, skins, skinUi, onImportSkin) + listOf(groupTitle(tk("EXTRA BUTTONS"))) + TouchButton.extras.map { b ->
+    ) + skinRows(style, skins, skinUi, onImportSkin) + listOf(groupTitle(tk("EXTRA BUTTONS"))) + TouchButton.extras.filter { it in buttons }.map { b ->
         SettingRow(
             b.label, onOff(b in style.extras), enabled = !skinned, subtitle = if (skinned) skinNote else extraSubtitle(b),
             labelBadge = NewFeatures.badge(NewFeatures.TOUCH_MORE_BUTTONS).takeIf { b == TouchButton.ZOOM || b == TouchButton.REWIND },
         ) {
             if (!skinned) set(style.copy(extras = if (b in style.extras) style.extras - b else style.extras + b))
         }
-    } + SettingRow(
+    } + listOfNotNull(SettingRow(
         // A GBA / Game Boy game's X and Y: the device's X / Y keys (a DS game always has its own).
         tk("X AND Y"), onOff(style.xyButtons), enabled = !skinned,
         subtitle = if (skinned) skinNote else "GBA and Game Boy: X and Y keys for GAME BUTTONS and HOTKEYS",
-        labelBadge = NewFeatures.badge(NewFeatures.TOUCH_MORE_BUTTONS),
-    ) { if (!skinned) set(style.copy(xyButtons = !style.xyButtons)) }
+        labelBadge = xyBadge ?: NewFeatures.badge(NewFeatures.TOUCH_MORE_BUTTONS),
+    ) { if (!skinned) set(style.copy(xyButtons = !style.xyButtons)) }.takeIf { TouchButton.X in buttons && TouchButton.Y in buttons })
 }
 
 /** SKINS: a skin for GBA games and one for Game Boy games (a pick-list each), IMPORT SKIN and DELETE SKIN. */
@@ -273,13 +275,15 @@ fun TouchControlsPage(
     skinUi: TouchSkinUi? = null,
     setStyle: (TouchControlsStyle) -> Unit = {},
     onDeleteSkin: (InstalledSkin) -> Unit = {},
+    otherStage: TouchStage? = null,
     rows: @Composable (Modifier) -> Unit,
 ) {
     val system = if (stage.ds) SkinSystem.DS else if (stage.gameBoy) SkinSystem.GB else SkinSystem.GBA
     val skin = style.skinFor(system)?.let { id -> skins.firstOrNull { it.id == id } }
     var other by remember { mutableStateOf(false) }
-    val shown = remember(stage, other, underGame, portraitRatio, expand, touchShown, style) {
+    val shown = remember(stage, other, otherStage, underGame, portraitRatio, expand, touchShown, style) {
         if (!other) stage
+        else if (otherStage != null) otherStage
         else {
             val w = stage.h
             val upright = stage.w > stage.h   // the other way round from what's shown

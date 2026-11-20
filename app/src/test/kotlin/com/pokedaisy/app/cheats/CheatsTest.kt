@@ -1,5 +1,6 @@
 package com.pokedaisy.app.cheats
 
+import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -89,14 +90,14 @@ class CheatsTest {
 
     @Test
     fun `store keeps a ROM's cheats by CRC`() {
-        val store = CheatStore.forCrc(tmp.root, "deadbeef")
+        val store = CheatStore.forCrc(tmp.root.toOkioPath(), "deadbeef")
         assertEquals(emptyList<Cheat>(), store.load())
         val list = listOf(Cheat("Money", listOf("82025838 FFFF"), "", true), Cheat("Off", listOf("1003DBB8 0007"), "", false))
         store.save(list)
         assertEquals("deadbeef.cheats", store.file.name)
-        assertEquals(list, CheatStore.forCrc(tmp.root, "deadbeef").load())
+        assertEquals(list, CheatStore.forCrc(tmp.root.toOkioPath(), "deadbeef").load())
         store.save(emptyList())
-        assertTrue(!store.file.exists())
+        assertTrue(!store.file.toFile().exists())
     }
 
     @Test
@@ -122,7 +123,7 @@ class CheatsTest {
 
     @Test
     fun `DS import - a cht's DS codes come in, GBA ones are left out`() {
-        val store = CheatStore(tmp.newFile("ds.cheats").also { it.delete() })
+        val store = CheatStore(tmp.newFile("ds.cheats").also { it.delete() }.toOkioPath())
         val cht = "cheats = 2\ncheat0_desc = \"MONEY\"\ncheat0_code = \"02000000 000003E7\"\ncheat1_desc = \"GBA\"\ncheat1_code = \"82025838 FFFF\"\n"
         val r = store.import(cht, "X", ds = true)
         assertEquals(1, r.added)

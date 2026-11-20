@@ -147,6 +147,8 @@ void pk_field_wild(uint32_t addr, bool wasOff);
 /** This frame's PK_FIELD_* bits; with [runIndoors], also lets the player run on the current map (gMapHeader); with
  * [wildKeep] < 100, leaves about that share of wild encounters (0 = none). */
 int pk_field_state(struct mCore* core, int runIndoors, int wildKeep);
+/** Reads the same flags without changing indoor permissions, encounter ownership or its RNG. */
+int pk_field_observe(struct mCore* core);
 
 /** Forgets what earlier frames left (a state load, a new core, a rewind). */
 void pk_wide_reset(void);

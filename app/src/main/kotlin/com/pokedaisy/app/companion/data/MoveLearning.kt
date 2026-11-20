@@ -63,6 +63,10 @@ object MoveLearning {
     fun cachedOptions(t: PokedexTables, g: GuideTables?, mon: MonView, bag: List<ItemView>): List<LearnOption>? =
         optionsCache[optionsKey(t, g, mon, bag)]
 
+    /** The verdict on learning [move] for [mon], with this game's HMs unforgettable (the game's own pending move). */
+    fun advise(t: PokedexTables, mon: MonView, move: Int): MoveAdvice =
+        MoveAdvisor.advise(adviceMon(mon), move, hmMoves(t))
+
     /**
      * [mon]'s next few level-up moves it doesn't know (its own level's too: that's the move the game is asking about while
      * it wants another forgotten), then the TMs / HMs in [bag] it can learn, each

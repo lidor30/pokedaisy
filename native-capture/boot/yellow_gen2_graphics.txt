@@ -1,0 +1,13 @@
+# Pokemon Yellow Gen II Graphics V1.1 from retail Yellow's save (fixture yellow_gen2_graphics): its title takes START
+# later than retail's (boot/yellow.txt's 400 frames left it on the title), then CONTINUE and A through the summary.
+wait 900
+press START
+wait 300
+press A
+wait 120
+press A
+wait 60
+press A
+wait 60
+press A
+wait 400

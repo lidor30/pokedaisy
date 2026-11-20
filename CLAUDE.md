@@ -206,7 +206,8 @@ move them) - so the companion, HUD, quick menu, FLY / PC / REPEL / BIKE, WILD EN
 never drift from them (the old host carried its own copy of each and fell behind; replaced 2026-11-10). The shared C
 those cores build - `linux/hud.c`, `quick_menu.c`, `fly.c`, `field_items.c`, `wild.c`, `3ds/core/` (the 3DS port's companion,
 so a companion change for 3DS shows in the cores too) - stays in `linux/`. The host tells the core the screen (its
-`pokedaisy_panel` option, any `WxH`; the core picks its canvas) and shows the frame at a whole scale, and owns what a frontend
+`pokedaisy_panel` option, any `WxH`; the core picks its canvas: the companion, the DS core's too, at the largest whole scale that
+leaves it 320x240, like Android's ~240-270 font pixels a screen; 341x256 for the DS without a panel) and shows the frame at a whole scale, and owns what a frontend
 owns: input (keyboard, SDL controllers with hotplug and mappings from `DATA/gamecontrollerdb.txt` / `SDL_GAMECONTROLLERCONFIG`,
 the TrimUI raw fallback, the HOTKEYS page's buttons, the touch screen / mouse as RETRO_DEVICE_POINTER), sound
 (resampled to keep ~60 ms queued), pacing (the screen at 58-62 Hz, else a timer), the battery save (`DATA/saves/<rom>.sav`,
@@ -292,7 +293,22 @@ pixel, so there its text was as large for the screen as on a GBA): `LocalTextSte
    rewritten to `Icons.Filled`, a stale incremental cache once faked "Unresolved
    reference" errors — delete `build/kotlin` if errors look impossible).
 
-**The app's one look is FireRed's OPTION screen** (`companion/ui/GbaMenu.kt`): white
+**The menus' look is SUMMARY MINT** (2026-11-12, the user's pick of eight looks tried; `theme/UiStyle.kt`, `UiStyles`,
+`OptionColors.style`): the OPTION pieces below drawn over a `UiStylePalette` - Emerald's summary pages (sampled headless): a teal
+header joined to a mint list window (`OptionTitleWindow(joined)`, `WindowGap`), green section bands (`StyledGroupTitle`), banded
+rows, SETTINGS' / GUIDE's group tabs as folder tabs on the window's side (`FolderTab`), tab chips and `OptionButton`s as keys
+(`KeyColors`, `drawKey`: an edge under them, the open tab pressed in), tighter margins. Data goes in blocks of connected cells
+(`cell()` / `HeadCell` / `CellColors`, HG and Black's summary; 1.5 GBA px lines, the window round them with `margin`): battle INFO /
+SUGGESTIONS, the summary's moves, the move page (`MoveDetailPage.kt`: a move tapped in the summary), each move a `MoveCell` (type
+tag + name, then the verdict or category, PWR, PP). Unbound wears it in its own purple and gold (`unboundStylePalette`, from its
+START menu) - the only per-game palette (the user's call). Drawn tags (`GameTag`) copy FireRed's type tags measured from the ROM
+(12 GBA px tall, a 1 px notch per corner, the #424242 shadow), multipliers inside them. The BATTLE backdrop takes the style's
+colours (`battleTones`). `UiStyle.CLASSIC` is the old OPTION look (Game Boy games always; ui-preview `-Pstyle=CLASSIC`). FONT
+(SETTINGS > SCREEN on both screens, `AppFonts`, NEW tag): PIXEL SMALL (the default since 2026-11-18, the user's call: the Linux / 3DS
+HUD's small font as `assets/fonts/PixelSmall.ttf`, written by `scripts/gen_small_font.py` from `3ds/tools/gen_font.py`'s SMALL_GLYPHS,
+over Pixel Operator for what it lacks; stored ordinal 4 - `Prefs.appFont`'s default, so a player who picked PIXEL keeps it) / PIXEL /
+SMOOTH / SMOOTH BOLD / SYSTEM, smooth ones at Pixel Operator's capital height. Every tag is a game tag (`GameTag` / `GameTagBox`:
+notched corners, the #424242 shadow): `OptionBadge` (NEW, BETA, the library's NOT SUPPORTED / BLOCKED) at its row's GBA pixel. **Under it, the app's pieces are FireRed's OPTION screen** (`companion/ui/GbaMenu.kt`): white
 title window, grey multi-line list window, `LABEL  VALUE` rows with grey labels / red
 values and a white row as the cursor, white framed buttons, black-out overlays. Text is
 `GbaText` sized by `GbaTextMetrics` (whole screen pixels per font pixel, so the pixel
@@ -472,7 +488,9 @@ PNGs). `RomArtTest` pins the pixels (the hacks' matched the PNGs once bundled, p
 ui-preview rebuilds the art from the decomp builds (or `-PartRoms` / `-Prom`), Paparazzi from the ROMs.
 **TRAINER CARD (the CARD tab, off the bar by default, so under MORE)**: retail FireRed /
 LeafGreen / Emerald only (`NativeConfig.trainerCard`; the hacks copy the retail
-configs, so it is set on the retail ones alone). `TrainerCard.kt` reads what `SetPlayerCardData` gathers (name, ID, play time, money, caught
+configs, so it is set on the retail ones alone; the German / French / Italian / Spanish carts, 2026-11-18, have their own
+`CardStyle.KANTO_DE` ... `HOENN_ES`: their tiles, font and widths as `*_CARD_*` blobs, their words read from the cart as a
+`*_CARD_TEXT` blob - never typed into the app - and FireRed's moved lines in `TrainerCardArt.EURO_KANTO`). `TrainerCard.kt` reads what `SetPlayerCardData` gathers (name, ID, play time, money, caught
 count regional until the National Dex, badge flags, stars, game stats XOR the encryption key, FireRed's
 Sticker Man vars); `TrainerCardArt.kt` draws the game's own card from ROM blobs `RomArt` caches raw
 (`rom-art/trainercard/*.bin`: card tiles, tilemaps, a palette per star count, badges, trainer pics,
@@ -516,7 +534,8 @@ them is the same in both).
 Panel and box fill the tab (its peach backdrop is the screen's, CompanionScreen's `PcBackdrop`, like the bag's); icons at
 whole scales, allowed past their cells like the game's. A new game needs only its storage read. **The PC's moves** (`BoxSwap.kt`,
 FireRed rev 1, LeafGreen rev 0 / 1 and Emerald; the German / French / Italian / Spanish ones and English FireRed rev 0 from
-`BOX_SWAP_PORTS`, mapped by port_field_items.py under the bag tables' keys - Japanese has none - and so Ultra Violet / Rocket Edition /
+`BOX_SWAP_PORTS`, mapped by port_field_items.py under the bag tables' keys - Japanese too, its GetBoxMonData from GetMonData's call; Ruby / Sapphire with ExpandBoxMon on their static gPokemonStorage
+(`BoxSwapFns.staticStorage`, `BOX_SWAP_RUBY` / `_SAPPHIRE`) - and so Ultra Violet / Rocket Edition /
 Ash Gray / Ghost Grey, which run rev 0's bag table; each checked by `scripts/verify_box_swap.py`, the game's functions called headless,
 not yet an in-game save and reboot: `boxSwapFor`, only with vanilla boxes at the table's own storage pointer - the CFRU hacks
 share FireRed rev 0's bag tables, and BoxMonToMon on a compressed record would wreck it), each in the running game the PC's own way, on
@@ -749,6 +768,20 @@ off and greyed out (`PokeDaisyActivity.dsperate`). States never cross cores (`pk
 resume is parked, `SaveStates.parkedResume`). Headless: `native-capture/dsp_dump` (nds_dump's commands, arm64 Linux only), which
 can't show 32-bit ARM's alignment faults: a byte buffer cast to `u16*` / `u32*` in DSperate's NEON code faulted on a Galaxy Tab A
 (fixed in the build copy, docs/DEVELOPMENT.md); try a new DSperate on a 32-bit device. HeartGold there: DSperate 60 fps, melonDS 16.
+**BananaDS, the third DS core (DS CORE's BANANADS, NEW tag `DS_CORE_BANANADS`)**: BananaOS's DS emulator (`third_party/bananads`, the
+SuperDrastic repository's `bananads/`, GPL-3.0) on its own melonDS (`third_party/melonds-bananads`, the commit BananaDS pins), built by
+`app/src/main/cpp/bananads/CMakeLists.txt` (an ExternalProject of the app's CMake) into `libpkbananads.so`: BananaDS's melonDS patches,
+then `melonds-expand.patch` (EXPAND's hooks remade for that melonDS, `SPU::MixShift`), on a copy in the build folder; the Banana 2D
+engine over melonDS's software 3D (`BananaRenderer`, BananaDS's render.renderer software). **Not its Gengis Engine**: Gengis carries C ports
+of DraStic's reverse-engineered 3D routines (its README's Provenance), so it isn't built, and BananaDS's hires (DS RESOLUTION) goes with it. Its own library because the two melonDS
+trees can't share one; only `pk_ndsb_*` are exported (`exports.map`, `-Bsymbolic`), and it's built with native ELF TLS (melonDS
+reads a thread-local constantly), so libpokedaisy `dlopen`s it (`nds/pk_nds_bnd_load.cpp`): Android 10+ and AArch64 only,
+DS CORE offers BANANADS only there (`DsCore.bananaRuns`, set at app start; a saved BANANADS runs melonDS elsewhere). `bananads/pk_nds_bnd.cpp` is pk_nds.cpp's melonDS glue at DSperate's feature level plus
+DS CPU BOOST and EXPAND (`pk_nds_wide.cpp` built a second time, `PK_NDS_BANANADS`); no DS RESOLUTION, PC / FLY calls, STEADY or
+INSTANT TEXT / REUSABLE TMS's code writes (`pk_ndsb_code_write` says no). Its hires paths stay in the glue, never taken (scale 1). Its settings were measured on the Thor
+(uncapped FF on Black's Route 2): the 2D on its own thread at every scale, lazy frame ends, the adaptive scheduler slice
+(`slice_idle` 512, only for carts the field read knows: Golden Sun: Dark Dawn broke with it on BananaOS), at most 240 frames a
+second read back in uncapped FF and the sound mixed a quarter as often between them.
 **French DS carts (2026-11-06)**: Platinum rev 0, HeartGold / SoulSilver, Black, White (`CPUF`, `IPKF`, `IPGF`, `IRBF`, `IRAF`): the US builds at other addresses, each run headless beside its US
 cart with one script; everything but the addresses is shared. Another language: `scripts/port_nds_fns.py` (functions matched by structure and call anchors, wrong = 0 on
 every known pair: `--check scripts/port_nds_fns_known.txt`, `scripts/test_port_nds_fns.py`; an UNRESOLVED hint is a lead to check live,
@@ -819,7 +852,7 @@ step). The cover carries `DsLoader` (three dots; after 160 ms). **Menu transitio
 one-screen DS stage only): from a menu flow's first faded frame (`pkNdsFade`: master brightness, read right after the
 frame and before it's published) until the touch screen has been lit 12 frames with no fade, both screens keep their last
 picture (`NdsBottomFrame.held`, the top's `holdFrame`), the window keeps its layout (the activity latches the flows), shaded
-with the dots (`DsLoader(ball = false)`), and the game runs flat out, muted (at FF's speed with its music while FF is on) - but only once
+with the dots (`DsLoader(ball = false)`), and the game runs flat out, its music from STEADY's DS copy (GitHub #1143; silent on DSperate, which has no copy; at FF's speed with its music while FF is on) - but only once
 the top screen fades or goes dark too (`DsTransitionHold.fast`): a fade of the touch screen alone (Black's X menu, GitHub #840) keeps the
 game's speed and sound behind the held pictures, else the music cut on every menu,
 drawing every 4th frame, keys and taps held back; the held picture then crossfades out. Never in a battle (its own rules).
@@ -897,6 +930,14 @@ replay, which sets it itself) with probability 1 - keep; NORMAL puts it back onc
 instead and put the cart's own back from `Gen4World.wildRates` (`MgbaCore.pkNdsWildRates`): a remembered value didn't
 survive a restart, and a resumed game stayed without wild Pokémon until a map change. Walked headless
 (mgba_dump `wild ADDR KEEP`, warp into Route 101 / Route 1 grass): OFF 360 steps, none; 50% about twice NORMAL's steps.
+**SHINY ODDS on the DS** (2026-11-14, `ShinyOdds.DsTarget` / `DsRoller`, docs/ROM_FEATURES.md's note 54): the foe rewritten in the
+battle's setup in the frames before the battle copies the parties - Gen 4: the field's child app is the battle's (`Gen4Battle.battleTemplate`'s
+init word) with its data NULL (two frames: its init does nothing, Battle_Main's first step only makes a heap), `setup->parties[1]`, wild
+types only; Gen 5: the running proc is the battle overlay's with its work NULL (~14 frames), `BATTLE_SETUP_PARAM` competitor 0, party
++0x28. Personality made shiny keeping nature / low byte / Gen 5's bits 16 and 31 (`shinyPersonality(keepBits)`), blocks re-shuffled
+(`gen4WithPersonality`). Only `ShinyOdds.DS_VERIFIED` carts (code + revision), each proven headless by a live harness driving nds_dump
+frame by frame (new games for Platinum / HG / SS: a field script gives a Pokémon and starts a wild battle). `DsShinyOddsTest` over the
+`*_shiny_window` fixtures.
 **REUSABLE TMS** (GitHub #135, GAMEPLAY on the companion, `Prefs.reusableTms` OFF, NEW tag; `ReusableTms.kt`): a ROM patch, the
 TM-number check before each `RemoveBagItem` (`cmp item, #ITEM_HM01-1; bhi`) turned into a `b`. The sites are found by their code
 when a game loads (`ReusableTms.find`, beside WildEncounters.find): the FireRed engine has three, Emerald / Ruby / Sapphire one,
@@ -919,7 +960,8 @@ four-game record mixing). Not tried on a Thor yet.
 EVOLVE runs the game's own GetEvolutionTargetSpecies(mon, EVO_MODE_TRADE) + BeginEvolutionScene with gCB2_AfterEvolution =
 CB2_ReturnToField, controls locked first, from the field only. Which Pokémon get the button: the same call on each slot with its 100
 bytes put back (a held-item evolution's item would be spent otherwise). Records `TRADE_EVO_*` in gamedata (retail English FireRed
-rev 1, LeafGreen rev 0 / 1 - found in retail by the shifted `$DECOMPS` build's masked code - and Emerald); hacks / Kaizo / Legacy off.
+rev 1, LeafGreen rev 0 / 1 - found in retail by the shifted `$DECOMPS` build's masked code - and Emerald), the rest of retail (FireRed rev 0,
+every language) `TRADE_EVO_PORTS` from `port_field_items.py`; hacks / Kaizo / Legacy off.
 **INSTANT TEXT** (GitHub #111, GAMEPLAY on the companion, `Prefs.instantText` OFF, NEW tag; `InstantText.kt`): a game-option patch like REUSABLE TMS (`pkRomPatch` in 4-byte pieces, `EmulatorEngine.applyTmPatch` does both). RenderFont rewritten in its own 40 bytes (no free ROM): it goes on past RENDER_PRINT until a control code, textSpeed 0; Ruby / Sapphire: UpdateWindowText's delay turned into a `b` back to PrintNextChar. A delay of 0 (the game's own instant path) would lose everything after a page break. Found in the ROM's first 64 KB by code; gcc builds: N/A. TEXT SPEED stays: it's the emulator's speed, stops at what the device runs.
 **NO HMS NEEDED** (2026-11-14, GAMEPLAY on the companion, `Prefs.hmFree` OFF, NEW tag; `HmFree.kt`): the field moves with the badge
 alone, a game-option patch beside INSTANT TEXT's. Every field-move script runs `checkpartymove` after its badge check: ScrCmd_checkpartymove
@@ -967,7 +1009,7 @@ anywhere's; found in gSpecials by masked code (HealPlayerParty = entry 0, the re
 games' rules kept (eggs, the last move, IsMonOTIDNotPlayers for traded ones, the party's last Surf unless NO HMS NEEDED). RELEARN opens in
 two steps like the TM screen (`centerRelearnStart` / `Finish`: fade, then cleanup + gFieldCallback + SetMainCallback2) and, on FireRed,
 LoadStdWindowFrameGfx first: the relearner never loads the message box palette (15), which a loaded save's recap leaves dark (black word
-boxes). Offered only when `relearnableMoves` (DexDetails.levelUp) has some.
+boxes). Ruby / Sapphire (no TM screen table): the Fallarbor tutor's own script, `special DisplayMoveTutorMenu` (`centerRelearnScript`). Offered only when `relearnableMoves` (DexDetails.levelUp) has some.
 **PLAYER LOOK** (2026-10-22, the companion's MAKEOVER group - first, a blue-framed `featuredGroupTitle`, only in a game it works in; per ROM: `Prefs.playerLookFor`, NEW tag; `PlayerLook.kt`,
 `PlayerLookRunner.kt`, docs/DEVELOPMENT.md's "PLAYER LOOK"): play retail FireRed / LeafGreen / Ruby / Sapphire / Emerald (and Kaizo, Legacy, Imperium, Ultra
 Violet: `PlayerLook.HACKS`) as another game's hero, picked from tiles of the heroes walking (`PlayerLookPicker`),
@@ -1066,10 +1108,21 @@ into `Mon.stats` (`MonStats.kt`): EVs substruct, Misc +4's IV word (plaintext CF
 nature = PID % 25 XOR expansion's `hiddenNatureModifier` (+0x12 bits 3-7, 0 elsewhere: Mints), stats from the
 party fields. Checked on every fixture by recomputing the stored stats from the ROM's base stats (equal, or
 1 below where EVs came after the last level-up); SoulGold's 96-byte struct didn't add up, so it gets none.
+The DS games (2026-11-14) read theirs in `decodeGen4PartyMon` (every Gen 4 / 5 game): block B +0x10's IV word (Gen 3's order),
+block A +0x10's EVs, the party fields' stats; nature = personality % 25 in Gen 4, Gen 5's own byte at block B +0x19 (it can
+differ). `DsStatsTest`: Black 2 / White 2 fixtures against the carts' personal records (KYUREM's forms by hand), Platinum /
+SoulSilver by public base stats. Hidden Power's power on the retail carts only (`retailDsGame`: not Origin / Renegade / Redux).
 Battlers get theirs by matching species / level / HP
 against the party and `Telemetry.battleFoes` (gEnemyParty, now read in wild battles too; `enemyParty` stays
 trainer-only for FOE TEAM). Hidden Power's power shows only on FIRERED/EMERALD kinds (expansion uses a flat
 60). Foe IVs sit behind SETTINGS > FOE IVS (`Prefs.showFoeIvs`, off): INFO's STATS button.
+The Game Boy games (2026-11-13) carry DVs in the same `MonStats` (`StatKind`: GEN1 / GEN2 = four DVs, HP's from their
+low bits, stat experience for EVs, Special in both special slots - Gen 1's one Special stat too; POLISHED = six DVs, EVs and
+its nature, the personality byte's low 5 bits, Gen 3's numbering), from the party struct and, for a wild foe, the battle
+struct's DVs (`gen1WildFoe` / `gen2WildFoe` -> `battleFoes`) with the stats from the unmodified copy - wEnemyMon's carry stat
+stages (a LEER halves Gen 1's Defense): Gen 1's wEnemyMonUnmodifiedMaxHP CD24 in every cart, Gen 2's wEnemyStats
+(`Gen2Config.enemyStats`: Crystal and hacks C6C1, Gold / Silver CB9F; Polished Crystal keeps stages out of its struct).
+`GbStatsTest` works every fixture's stats out again from base stats (the carts' own with `-DromDir`). Gen 2's Hidden Power (`gen2HiddenPower*`) only on Gold / Silver / Crystal / Crystal Clear; none on Gen 1 / Polished.
 **Battle POKéMON pane + automated input** (`BattleControlsScreen.PartyPicker`, `BattleInputController`):
 on FireRed rev 1 / Emerald (`switchAddrsFor`in`PokeDaisyActivity`; gPartyMenu
 FR `0x0203B0A0`/ EM`0x0203CEC8`, slotId at +9) and the hacks listed there (Unbound since
@@ -1939,6 +1992,7 @@ tiles, palette, grid and status icons (RomArt's `LGO_*` -> `partylg/`, `LetsGoPa
 fixtures are a new game played headless (setup through rev 0's ScriptContext_SetupScript), loading in all four builds; its intro
 takes ~1500 frames and its title wants held presses (`boot/lets_go.txt`). The manual can't name it in full (docs.test.js bans one
 of the names): it's "Let's Go" there.
+**Clover v1.3.3 (2026-11-18)**: FireRed 1.0 edited in place under an Emerald header (BPEE): found by hash in the small-BPEE check, run as FIRERED (`fireRedEngine` set by hand). Code that picks by the header's game code sees Emerald: check `isFireRedUnderEmeraldHeader` (its GF ROM header says "pokemon red version") where that matters (RegionMapWatch, the fanfare, RomRegionMap). It keeps its bag elsewhere, so retail FireRed's save boots with junk there: `boot/clover.txt` zeroes it and gives items with the game's own additem.
 **GS Chronicles v2.7.6 (2026-10-13)** (`GameKind.GS_CHRONICLES`, `NATIVE_GS_CHRONICLES`): Johto and Kanto on CFRU (32 MB BPRE
 rev 0, Ruki Studios), FireRed rev 0's RAM (every RAM global's pool word is rev 0's) with its tables repointed
 (`gen_cfru_tables.py gs_chronicles`; gBattleMoves at an odd 0x09D10BE3). Gotchas: its gItems is indexed by slot and the
@@ -2274,7 +2328,7 @@ and only after `SaveFileEdits` has a backup, a still-unchanged file and a read-b
 (`Gen3SaveFormat`, `Gen3SaveData.mismatch()` refuses other layouts). PC records move byte for byte; TRADE (`Gen3Trade`) keeps the
 games' own rules and after-effects (pret's `trade.c` / `link.c`: Sevii link flag, National Dex / regional dex, eggs, Mew / Deoxys'
 fateful bit, the Pokédex's three seen copies, trade evolutions + EvolutionRenameMon, R/S's National Dex) and writes both saves or
-neither (`SaveFileEdits.writeBoth`). Icons come from the ROM file (`RomMonIcons`, known tables only - never guessed). Values
+neither (`SaveFileEdits.writeBoth`). Icons come from the ROM file: GBA by `RomMonIcons.forRom` (the game's config by hash, else the tables its Game Freak ROM header names at 0x08000138 - a rebuild that moved them still says where - else its base game's; each checked against the file), DS by `NdsArt.monIcons` (the cart's icon archive, decoded one at a time: no play needed); an egg goes to `MonIconLoader.load(species, egg = true)`, since Gen 3's egg id 412 is BURMY on the DS. Values
 (money, coins, the bag, a Pokémon's held item and moves) take only what `Gen3Legal` allows (`SaveTablesGen.kt` from
 `scripts/gen_save_tables.py`: each game's pocket items, learnsets, TM / tutor sets, pre-evolutions); the editor throws before a
 byte changes otherwise, and key items / HMs are never taken away. Round two (2026-11-15, NEW tag `SAVE_EDITOR_PLUS`; the user's call:
@@ -2370,7 +2424,7 @@ except three engine siblings (Orange Islands / Odyssey -> FireRed rev 0, Unbound
 Library: `CompanionSupport.verdict` (SUPPORTED / MATCHED / PARTIAL / TRYABLE / UNSUPPORTED) cached by `RomFolder` as
 1/M/P/T/U; linked-folder TRYABLE ROMs are listed with NOT SUPPORTED, PARTIAL ones tagged PARTIALLY SUPPORTED.
 **Sharing a BEST EFFORT match** (opt-in, `BestEffortShare.kt`): the fresh-match notice asks (`BestEffortShareNotice`,
-listing `BestEffortShare.fields` value by value); only SHARE sends - one Firestore REST create into project `pokedaisy`,
+listing `BestEffortReport.shareFields` value by value); only SHARE sends - one Firestore REST create into project `pokedaisy`,
 collection `bestEffortReports`, no SDK / API key / ids: sha1, size, gameCode, revision, matchedAs, full, off,
 appVersion (`BestEffortReport`), values regex-checked before sending (`BestEffortShareTest`). Offline: queued in
 `filesDir/best-effort-share-queue.jsonl`, sent on the next activity start; a 4xx drops it. `website/firestore.rules`

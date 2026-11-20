@@ -10,6 +10,7 @@
 #include "pd_library_internal.h"
 #include "pd_save.h"
 #include "pd_sha1.h"
+#include "pd_tr.h"
 #include "pd_ui.h"
 
 // How much of a ROM is hashed a frame while the library names its games (a slice keeps the screen moving).
@@ -333,7 +334,7 @@ enum row {
     R_SOUND, R_VOLUME, R_MUTE,
     R_BATTLE, R_STYLE, R_HINTS, R_INFO,
     R_FIELD, R_HUD, R_FLY,
-    R_APP, R_VERSION, R_DEV,
+    R_APP, R_LANGUAGE, R_VERSION, R_DEV,
     R_ROWS,
     R_CORE, // not a SETTINGS row: the GAMES page's pick-list for the game under the cursor (X)
 };
@@ -375,6 +376,7 @@ const char* lib_settings_choice(const struct pd_library* l, int row, int choice)
     case R_PICTURE: return pd_view_name(choice);
     case R_VOLUME: return choice >= 0 && choice < 5 ? VOLUMES[choice] : "";
     case R_CORE: return pd_core_name(choice);
+    case R_LANGUAGE: return choice == 0 ? "AUTO" : pd_lang_name(choice - 1);
     default: return "";
     }
 }
@@ -416,6 +418,10 @@ const char* lib_settings_label(const struct pd_library* l, int row, const char**
     case R_HUD: *value = on_off(s->hud); return "HUD";
     case R_FLY: *value = s->flyClassic ? "CLASSIC" : "SCENIC"; return "FLY STYLE";
     case R_APP: *group = true; return "APP";
+    case R_LANGUAGE:
+        *value = pd_lang_label(s->language, text, sizeof text);
+        *choices = 1 + PD_LANGS;
+        return "LANGUAGE";
     case R_VERSION: *value = l->host && l->host->version ? l->host->version : ""; return "VERSION";
     case R_DEV:
         snprintf(text, sizeof text, "%s", l->host && l->host->devLine ? l->host->devLine : "");
@@ -483,6 +489,7 @@ void lib_settings_pick(struct pd_library* l, int choice) {
     }
     case R_PICTURE: pd_view_set(s, choice, true); break;
     case R_VOLUME: s->gameVolume = (choice + 1) * 20; break;
+    case R_LANGUAGE: s->language = choice == 0 ? PD_LANG_AUTO : choice - 1; break;
     case R_CORE: {
         // The game's own pick, kept in the library's file (not the settings).
         struct pd_library_game* g = selected_game(l);

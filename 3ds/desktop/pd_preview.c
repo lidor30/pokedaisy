@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../core/pd_tr.h"
 #include "../core/pd_canvas.h"
 #include "../core/pd_card.h"
 #include "../core/pd_romart.h"
@@ -212,6 +213,7 @@ static void drag(struct preview* p, int id, int dy) {
 }
 
 int main(int argc, char** argv) {
+    if (getenv("PD_PREVIEW_LANG")) pd_tr_force(pd_lang_of_code(getenv("PD_PREVIEW_LANG"))); // DE, FR, IT, ES, BR, PT
     if (argc != 5 && argc != 6) {
         fprintf(stderr, "usage: pd_preview <fixture dir> <BPRE|BPGE|BPEE> <out dir> <name> [rom]\n");
         return 2;
@@ -271,7 +273,7 @@ int main(int argc, char** argv) {
     struct pd_host_info host = { .count = 2, .hasState = true };
     host.labels[0] = "SOURCE";
     snprintf(host.values[0], sizeof(host.values[0]), "%s", name);
-    host.labels[1] = "SPEED";
+    host.labels[1] = "SPEED|emulation";
     snprintf(host.values[1], sizeof(host.values[1]), "100%% (60 FPS)");
     snprintf(host.stateWhen, sizeof(host.stateWhen), "10-09 12:30");
 
@@ -371,6 +373,60 @@ int main(int argc, char** argv) {
     }
 
 dex_only:
+    if (getenv("PD_PREVIEW_SCROLL_CHECK")) {
+        // A list dragged and redrawn the scroll-only way (pd_ui_draw_scrolled) must match a whole redraw pixel for pixel.
+        pd_font_size_set(getenv("PD_PREVIEW_NORMAL_FONT") ? 0 : 1);
+        static uint32_t ref[1024 * 768];
+        struct pd_canvas rc;
+        pd_canvas_init(&rc, uiW, uiH, ref);
+        // GUIDE past its first-open notice (else no list), and MAP's PLACES: a list over the dimmed map.
+        settings.guideNotice = ~0;
+        const enum pd_tab tabs[] = { PD_TAB_DEX, PD_TAB_BAG, PD_TAB_GUIDE, PD_TAB_SETTINGS, PD_TAB_MAP };
+        const char* names[] = { "dex", "bag", "guide", "settings", "map-places" };
+        int failures = 0;
+        for (int t = 0; t < (int) (sizeof tabs / sizeof tabs[0]); t++) {
+            ui.tab = tabs[t];
+            ui.overlay = tabs[t] == PD_TAB_MAP ? PD_OVERLAY_PLACES : PD_OVERLAY_NONE;
+            draw(&p);
+            const struct pd_hit* box = NULL;
+            for (int i = 0; i < ui.hitCount; i++)
+                if (ui.hits[i].scroll && (!box || ui.hits[i].w * ui.hits[i].h > box->w * box->h)) box = &ui.hits[i];
+            if (!box) {
+                printf("scroll check %s: no list\n", names[t]);
+                continue;
+            }
+            int x = box->x + box->w / 3, y = box->y + box->h / 2, partial = 0, steps = 0, bad = 0;
+            // The press, the drag and the release: 99 marks the release.
+            const int moves[] = { 0, -3, -9, -9, 0, -12, -20, -20, 0, 0, -30, 15, 25, 40, -5, 60, 80, -100, -150, 99 };
+            for (int m = 0; m < (int) (sizeof moves / sizeof moves[0]); m++) {
+                const bool release = moves[m] == 99;
+                if (!release) y += moves[m];
+                if (!pd_ui_touch(&ui, x, y, !release)) continue;
+                steps++;
+                if (ui.touchScrollOnly) {
+                    pd_ui_draw_scrolled(&ui, &c, &game, &snap, &host);
+                    partial++;
+                } else {
+                    draw(&p);
+                }
+                pd_ui_draw(&ui, &rc, &game, &snap, &host);
+                int diff = 0;
+                for (int i = 0; i < uiW * uiH; i++) diff += px[i] != ref[i];
+                if (diff) {
+                    bad++;
+                    char what[64];
+                    snprintf(what, sizeof what, "scroll-%s-%d-partial", names[t], m);
+                    shot(out, name, what, px);
+                    snprintf(what, sizeof what, "scroll-%s-%d-whole", names[t], m);
+                    shot(out, name, what, ref);
+                }
+            }
+            draw(&p);
+            printf("scroll check %s: %d redraws, %d scroll-only, %d differ\n", names[t], steps, partial, bad);
+            failures += bad;
+        }
+        return failures ? 1 : 0;
+    }
     // POKéDEX: the list, scrolled, an entry, the next one, the other dex.
     // (In a battle DEX's chip is BATTLE's.)
     ui.tab = PD_TAB_DEX;

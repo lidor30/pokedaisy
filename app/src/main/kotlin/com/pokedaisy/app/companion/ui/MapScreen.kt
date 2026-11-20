@@ -1,11 +1,11 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
-import android.graphics.Bitmap
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -57,7 +57,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -211,7 +210,7 @@ fun MapScreen(
             ) { zoomed, toggleZoom ->
                 val m = rememberGbaTextMetrics(1f)
                 OptionButton(tr("PLACES"), m, onClick = { placesOpen = true })
-                if (openFly != null) FlyButton(openFly)
+                if (openFly != null) FlyButton(openFly, badge = fly?.actionBadge)
                 if (takeOff != null) TakeOffButton(takeOff, flyingNow)
                 if (selection != null) OptionButton(tr("ME"), m, onClick = { selection = null; cursorTile = null; shownOverride = null }, emphasis = true)
                 Spacer(Modifier.weight(1f))
@@ -268,7 +267,7 @@ fun MapScreen(
                         regionLabel = if (model.images.size > 1) regionName(model.images, (shown + 1) % model.images.size) else null,
                         awayFromPlayer = selection != null || (playerRegion != null && shown != playerRegion),
                         onPlaces = { placesOpen = true },
-                        onFly = openFly,
+                        onFly = openFly, flyBadge = fly?.actionBadge,
                         onTakeOff = takeOff, flying = flyingNow,
                         onRegion = { selection = null; cursorTile = null; shownOverride = (shown + 1) % model.images.size },
                         onMe = { selection = null; cursorTile = null; shownOverride = null },
@@ -362,6 +361,9 @@ internal enum class MapLabelStyle(val width: Int, val height: Int) {
         GEN1 -> if (game == GameKind.CRYSTAL_CLEAR || game == GameKind.PRISM) null   // Prism's too (six models)
             else if (game == GameKind.POLISHED_CRYSTAL) com.pokedaisy.app.companion.data.Gen2Art.POLISHED_PLAYERS.getOrNull(gender)
             else if (game == GameKind.GOLD || game == GameKind.SILVER) com.pokedaisy.app.companion.data.Gen2Art.GOLD_SILVER_PLAYER
+            else if ((game == GameKind.RED || game == GameKind.YELLOW) && com.pokedaisy.app.companion.data.gen1Gen2Graphics)
+                if (game == GameKind.RED) com.pokedaisy.app.companion.data.Gen1Art.RED_GEN2_GRAPHICS_PLAYER_NAME
+                else com.pokedaisy.app.companion.data.Gen1Art.YELLOW_GEN2_GRAPHICS_PLAYER_NAME
             else if (game == GameKind.RED || game == GameKind.BLUE) "player_red_blue"
             else if (game == GameKind.BROWN) "player_brown"
             else if (game == GameKind.PURE_RED || game == GameKind.PURE_BLUE) "player_${com.pokedaisy.app.companion.data.Gen1Art.pureTownMapName(game)}"
@@ -432,9 +434,9 @@ private fun regionName(images: Array<String>, i: Int): String = when (images[i])
  * focus goes on to the buttons. */
 @Composable
 private fun RegionMap(
-    bitmap: Bitmap,
+    bitmap: ImageBitmap,
     style: MapLabelStyle,
-    head: Bitmap?,
+    head: ImageBitmap?,
     headTile: Pair<Int, Int>?,
     cursor: List<MapTiles>,
     label: String,
@@ -452,10 +454,10 @@ private fun RegionMap(
     originX: Int = 0,
     originY: Int = 0,
     /** Sprites over the map, each at its top-left map pixel (Platinum's towns). */
-    marks: List<Pair<Bitmap, IntOffset>> = emptyList(),
+    marks: List<Pair<ImageBitmap, IntOffset>> = emptyList(),
     /** The game's own cursor sprite (HeartGold / SoulSilver's: small, big), centred on [cursorFrom]'s tile instead of
      * FireRed's corners around [cursor]; it pulses on the same beat. */
-    cursorSprite: Pair<Bitmap, Bitmap>? = null,
+    cursorSprite: Pair<ImageBitmap, ImageBitmap>? = null,
     /** The map pixel the head is centred on, at its own size (Black's places' points); null = [headTile]'s middle. */
     headAt: IntOffset? = null,
     /** The map pixel [cursorSprite] is centred on; null = [cursorFrom]'s tile's middle. */
@@ -466,10 +468,10 @@ private fun RegionMap(
     // so a swap redraws the map without recomposing it.
     val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK])
 
-    val image = remember(bitmap) { bitmap.asImageBitmap() }
-    val headImage = remember(head) { head?.asImageBitmap() }
-    val markImages = remember(marks) { marks.map { (b, at) -> b.asImageBitmap() to at } }
-    val cursorImages = remember(cursorSprite) { cursorSprite?.let { (a, b) -> a.asImageBitmap() to b.asImageBitmap() } }
+    val image = bitmap
+    val headImage = head
+    val markImages = marks
+    val cursorImages = cursorSprite
     // FireRed's region-map screens carry the game's own black border (and
     // a white inner strip) around the map; draw only the map itself.
     val crop = remember(bitmap) { regionMapContentBounds(bitmap) }
@@ -493,8 +495,8 @@ private fun RegionMap(
                     else -> return@onPreviewKeyEvent false
                 }
                 // The map's tiles (its border cropped off); off them, the key moves the focus out instead.
-                val (cols, rows) = Math.floorDiv(crop.left - originX, tile)..Math.floorDiv(crop.right - 1 - originX, tile) to
-                    Math.floorDiv(crop.top - originY, tile)..Math.floorDiv(crop.bottom - 1 - originY, tile)
+                val (cols, rows) = (crop.left - originX).floorDiv(tile)..(crop.right - 1 - originX).floorDiv(tile) to
+                    (crop.top - originY).floorDiv(tile)..(crop.bottom - 1 - originY).floorDiv(tile)
                 val (x, y) = from ?: ((cols.first + cols.last) / 2 to (rows.first + rows.last) / 2)
                 val tx = x + dx
                 val ty = y + dy
@@ -685,6 +687,7 @@ private fun BoxScope.MapButtons(
     onMe: () -> Unit,
     /** FLY's button; null = none. */
     onFly: (() -> Unit)? = null,
+    flyBadge: String? = null,
     /** FREE FLIGHT's TAKE OFF / LAND, under FLY; null = none. */
     onTakeOff: (() -> Unit)? = null,
     flying: Boolean = false,
@@ -708,7 +711,7 @@ private fun BoxScope.MapButtons(
             if (onArea != null) OptionButton(tr("AREA MAP"), m, onClick = onArea, emphasis = true, modifier = toMap(up = true))
             if (regionLabel != null) OptionButton(regionLabel, m, onClick = onRegion, modifier = toMap(up = true))
             OptionButton(tr("PLACES"), m, onClick = onPlaces, modifier = toMap(up = true))
-            if (onFly != null) FlyButton(onFly, toMap(up = true))
+            if (onFly != null) FlyButton(onFly, toMap(up = true), badge = flyBadge)
             if (onTakeOff != null) TakeOffButton(onTakeOff, flying, toMap(up = true))
             if (awayFromPlayer) OptionButton(tr("ME"), m, onClick = onMe, emphasis = true, modifier = toMap(up = true))
         }
@@ -731,7 +734,7 @@ private fun BoxScope.MapButtons(
             if (regionLabel != null) OptionButton(regionLabel, m, onClick = onRegion, modifier = toMap(left = true, down = lowest == "TOP"))
             OptionButton(tr("PLACES"), m, onClick = onPlaces, modifier = toMap(left = regionLabel == null, down = lowest == "TOP"))
         }
-        if (onFly != null) FlyButton(onFly, toMap(left = true, down = lowest == "FLY"))
+        if (onFly != null) FlyButton(onFly, toMap(left = true, down = lowest == "FLY"), badge = flyBadge)
         if (onTakeOff != null) TakeOffButton(onTakeOff, flying, toMap(left = true, down = lowest == "TAKE OFF"))
         if (awayFromPlayer) OptionButton(tr("ME"), m, onClick = onMe, emphasis = true, modifier = toMap(left = true, down = true))
     }
@@ -740,10 +743,10 @@ private fun BoxScope.MapButtons(
 /** FLY in the party menu's field-move blue, at the companion's full text size (the other map buttons are the denser
  * 1x): the button that does something in the game. */
 @Composable
-private fun FlyButton(onFly: () -> Unit, modifier: Modifier = Modifier) {
+private fun FlyButton(onFly: () -> Unit, modifier: Modifier = Modifier, badge: String? = null) {
     val big = rememberGbaTextMetrics()
     OptionButton(
-        tr("FLY"), big, onClick = onFly, modifier = modifier.widthIn(min = big.u * 56),
+        tr("FLY"), big, onClick = onFly, modifier = modifier.widthIn(min = big.u * 56), labelBadge = badge,
         labelColors = OptionColors.fieldMove to OptionColors.fieldMoveShadow, frameLayers = OptionColors.fieldMoveLayers,
     )
 }
@@ -797,7 +800,7 @@ private fun PlacesList(model: RegionMapModel, onPick: (Int) -> Unit, onMe: () ->
 }
 
 /** MOVE_FLY: the same id in every game the companion flies in. */
-internal const val FLY_MOVE = 19
+const val FLY_MOVE = 19
 
 /**
  * FLY's destinations: the towns the game's Fly map would take - visited ones, in the map's own order - each a row
@@ -830,7 +833,7 @@ private fun FlyList(model: RegionMapModel?, targets: com.pokedaisy.app.companion
 }
 
 /** Why FLY didn't start, in the companion's words. */
-internal fun flyMessage(r: com.pokedaisy.app.companion.data.FlyResult): String = when (r) {
+fun flyMessage(r: com.pokedaisy.app.companion.data.FlyResult): String = when (r) {
     com.pokedaisy.app.companion.data.FlyResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.FlyResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.FlyResult.NO_BADGE -> tr("FLY needs a new BADGE first.")
@@ -937,10 +940,10 @@ private const val CURSOR_THICK = 2
  * Only near-black/near-white lines count, so a map edge that's all sea (blue)
  * is never mistaken for border, and at most a quarter of each side goes.
  */
-fun regionMapContentBounds(bitmap: Bitmap): IntRect {
+fun regionMapContentBounds(bitmap: ImageBitmap): IntRect {
     val w = bitmap.width
     val h = bitmap.height
-    val px = IntArray(w * h).also { bitmap.getPixels(it, 0, w, 0, 0, w, h) }
+    val px = IntArray(w * h).also { bitmap.readPixels(it, 0, 0, w, h) }
     fun border(c: Int): Boolean {
         val r = (c shr 16) and 0xFF
         val g = (c shr 8) and 0xFF
@@ -975,11 +978,11 @@ private const val POKEGEAR_STICK_DEAD = 0.2f
  */
 @Composable
 private fun PokegearMapView(
-    bitmap: Bitmap,
+    bitmap: ImageBitmap,
     style: MapLabelStyle,
-    head: Bitmap?,
+    head: ImageBitmap?,
     playerTile: Pair<Int, Int>?,
-    cursorSprite: Pair<Bitmap, Bitmap>?,
+    cursorSprite: Pair<ImageBitmap, ImageBitmap>?,
     tile: Int,
     cell: Pair<Int, Int>?,
     label: String,
@@ -987,9 +990,9 @@ private fun PokegearMapView(
     self: FocusRequester,
     buttons: @Composable ColumnScope.(zoomed: Boolean, toggleZoom: () -> Unit) -> Unit,
 ) {
-    val image = remember(bitmap) { bitmap.asImageBitmap() }
-    val headImage = remember(head) { head?.asImageBitmap() }
-    val cursorImages = remember(cursorSprite) { cursorSprite?.let { (a, b) -> a.asImageBitmap() to b.asImageBitmap() } }
+    val image = bitmap
+    val headImage = head
+    val cursorImages = cursorSprite
     val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK])
     val mapW = bitmap.width.toFloat()
     val mapH = bitmap.height.toFloat()

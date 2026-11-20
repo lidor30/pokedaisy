@@ -46,12 +46,13 @@ class FireRedVanillaDecodeTest {
 
     @Test
     fun `native read shows the egg as an egg`() {
-        // BoxPokemon +0x13 isEgg flag -> SPECIES_EGG, no gender (the game's
-        // party screen for this save shows slot 4 as "EGG").
+        // BoxPokemon +0x13 isEgg flag -> isEgg, no gender; its hatch species stays for the summary's types and IVs
+        // (the game's party screen for this save shows slot 4 as "EGG").
         activeGame = GameKind.FIRERED
         val t = decodeNative("firered_vanilla", NATIVE_FIRERED_REV1)
-        assertEquals(SPECIES_EGG_VANILLA, t.party[4].species)
+        assertTrue(t.party[4].isEgg)
+        assertTrue("the hatch species, not the egg's 412", t.party[4].species != SPECIES_EGG_VANILLA && t.party[4].species > 0)
         assertEquals(GENDER_SYMBOL_NONE, t.party[4].genderSymbol)
-        assertEquals(5, t.party.count { it.species != SPECIES_EGG_VANILLA })
+        assertEquals(5, t.party.count { !it.isEgg })
     }
 }

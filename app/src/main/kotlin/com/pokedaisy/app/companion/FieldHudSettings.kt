@@ -55,6 +55,8 @@ enum class FieldHudPart(val label: String) {
     PC(tk("PC")),
     BAG(tk("BAG")),
     WILD(tk("WILD POKéMON")),
+    /** The card over the game while its summary asks which move to forget (MoveLearningHudCard). */
+    MOVE_ADVICE(tk("MOVE ADVICE")),
 }
 
 /** The player's choices for the HUD (SETTINGS > HUD). */

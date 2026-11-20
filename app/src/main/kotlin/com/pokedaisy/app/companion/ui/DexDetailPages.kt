@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.pad
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.RectangleShape
@@ -55,6 +56,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import kotlinx.coroutines.IO
 
 /*
  * The DEX page's sections past INFO (GitHub #28): EVOLVE (the whole family, both
@@ -166,7 +168,7 @@ private fun FamilyMon(species: Int, national: Int, current: Int, m: GbaTextMetri
             .soundClickable(interactionSource = noRipple, indication = null, enabled = !here && national > 0) { onOpen(national) },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SpeciesIcon(spriteAsset("pokemon", species), size = m.lineHeight * 1.5f)
+        SpeciesPicture(species, spriteAsset("pokemon", species), size = m.lineHeight * 1.5f, fit = true)
         Spacer(Modifier.width(m.u * 2))
         GbaText(
             speciesName(species),
@@ -233,7 +235,7 @@ fun evoReqText(r: EvoReq): String = when (r) {
         else tr("defeat {0} holding {1}", r.count, itemName(r.item))
     is EvoReq.UsedMove -> tr("use {0} {1} times", lookupMove(r.move).name, r.times)
     is EvoReq.Region -> (if (r.not) tr("outside {0}", regionName(r.region)) else tr("in {0}", regionName(r.region)))
-    is EvoReq.Hours -> "%02d:00-%02d:00".format(r.from, r.to)
+    is EvoReq.Hours -> "${r.from.pad(2)}:00-${r.to.pad(2)}:00"
     EvoReq.Spin -> tr("Spin around")
     EvoReq.AfterBattle -> tr("After a battle")
     EvoReq.InBattle -> tr("in battle")
@@ -369,6 +371,7 @@ internal fun DexMovesSection(t: PokedexTables, g: GuideTables?, species: Int, m:
 }
 
 private fun LazyListScope.header(text: String, small: GbaTextMetrics) = item {
+    OptionColors.style?.let { style -> StyledGroupTitle(text, small, first = false, style = style, modifier = Modifier.padding(bottom = small.u * 2)); return@item }
     GbaText(text, OptionColors.muted, OptionColors.mutedShadow, small, Modifier.padding(top = small.u * 4, bottom = small.u * 2))
 }
 

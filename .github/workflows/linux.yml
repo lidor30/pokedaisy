@@ -29,7 +29,7 @@ jobs:
       - run: git submodule update --init third_party/mgba third_party/armgba third_party/zlib
       - run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev
       - name: Shared host capability and legacy previews
-        run: make -C 3ds test-host-display test-configs-gen preview
+        run: make -C 3ds test-host-display test-configs-gen test-tr preview test-scroll
       - name: Build native host and tests
         run: |
           cmake -S linux -B linux/build -DCMAKE_BUILD_TYPE=Release -DBUILD_LTO=OFF

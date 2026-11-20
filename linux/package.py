@@ -39,6 +39,28 @@ if not a.portmaster:
     shutil.copy2(repo/'linux/icon.png',dest/'icon.png')
     (dest/'config.json').write_text('{\n  "label": "PokeDaisy",\n  "icon": "icon.png",\n  "iconsel": "icon.png",\n'
                                     '  "launch": "launch.sh",\n  "description": "Pokemon companion and emulator"\n}\n')
+else:
+    # The firmware's game list (EmulationStation) shows a port by its art: PortMaster puts gameinfo.xml's entry into the
+    # ports folder's gamelist.xml, port.json is its catalogue entry. Our own art (linux/portmaster/make_art.py), no game's.
+    for art in ('cover.png','screenshot.png','marquee.png'):
+        shutil.copy2(repo/'linux/portmaster'/art,dest/art)
+    desc=('The PokeDaisy companion beside your Pokemon games on one screen: party, bag, map, guide and Pokedex read live '
+          'from the game, a HUD over the overworld, EXPAND to the screen\'s edges and a quick menu (the PC, flying to a town, '
+          'the keep-away spray). '
+          'GBA, Game Boy and DS games; bring your own.')
+    (dest/'gameinfo.xml').write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\n<gameList>\n  <game>\n    <path>./PokeDaisy.sh</path>\n'
+        '    <name>PokeDaisy</name>\n    <desc>'+desc.replace('&','&amp;').replace("'",'&apos;')+'</desc>\n'
+        '    <developer>PokeDaisy</developer>\n    <publisher>PokeDaisy</publisher>\n    <genre>Utility</genre>\n'
+        '    <image>./pokedaisy/screenshot.png</image>\n    <thumbnail>./pokedaisy/cover.png</thumbnail>\n'
+        '    <marquee>./pokedaisy/marquee.png</marquee>\n  </game>\n</gameList>\n')
+    import json
+    (dest/'port.json').write_text(json.dumps({
+        'version':4,'name':'pokedaisy.zip','items':['PokeDaisy.sh','pokedaisy/'],'items_opt':None,
+        'attr':{'title':'PokeDaisy','porter':['PokeDaisy'],'desc':desc,'inst':'Ready to run. Your GBA, Game Boy and DS games '
+                'go in the firmware\'s ROM folders or in ports/pokedaisy/roms.','genres':['other'],
+                'image':{'screenshot':'screenshot.png','covers':['cover.png'],'thumbnail':None,'video':None},
+                'rtr':True,'exp':False,'runtime':None,'reqs':[],'arch':['aarch64' if arch==183 else 'x86_64']}},indent=4)+'\n')
 licenses=dest/'licenses';licenses.mkdir()
 for path,license_name in [('LICENSE','mGBA-MPL-2.0.txt'),('src/third-party/blip_buf/license.txt','blip_buf-LGPL-2.1.txt'),('src/third-party/inih/LICENSE.txt','inih-BSD.txt')]:
     shutil.copy2(repo/'third_party/mgba'/path,licenses/license_name)
@@ -46,7 +68,8 @@ for path,license_name in [('LICENSE','mGBA-MPL-2.0.txt'),('src/third-party/blip_
 if any('_gba_' in c.name for c in a.core):
     # armGBA's own code is MPL 2.0; its Game Boy side (Gambatte, GPL 2.0) is not built into the core.
     shutil.copy2(repo/'third_party/armgba/LICENSES/MPL-2.0.txt',licenses/'armGBA-MPL-2.0.txt')
-    shutil.copy2(repo/'third_party/zlib/LICENSE',licenses/'zlib.txt')
+# zlib: the armGBA core's, and the host's own (its game list decodes cover art with zlib's puff).
+shutil.copy2(repo/'third_party/zlib/LICENSE',licenses/'zlib.txt')
 ds_core=any('_ds_' in c.name for c in a.core)
 if ds_core:
     tree=repo/'third_party/dsperate-lr'

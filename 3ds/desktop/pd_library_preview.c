@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../core/pd_tr.h"
 #include "../core/pd_canvas.h"
 #include "../core/pd_game.h"
 #include "../core/pd_library.h"
@@ -225,6 +226,7 @@ static int current_box_of(int n) {
 }
 
 int main(int argc, char** argv) {
+    if (getenv("PD_PREVIEW_LANG")) pd_tr_force(pd_lang_of_code(getenv("PD_PREVIEW_LANG"))); // DE, FR, IT, ES, BR, PT
     if (argc != 4 && argc != 6) {
         fprintf(stderr, "usage: pd_library_preview <rom dir> <save dir> <out dir> [<fixture dir> <its ROM>]\n");
         return 2;

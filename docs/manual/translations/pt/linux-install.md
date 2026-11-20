@@ -63,7 +63,7 @@ A aplicação guarda tudo na sua própria pasta e corre em ecrã inteiro. No Cro
 ## Consolas portáteis com PortMaster
 
 1. Extraia `pokedaisy-portmaster-aarch64.zip` no computador. Lá dentro estão `PokeDaisy.sh` e uma pasta `pokedaisy`.
-2. Copie os dois para a pasta `ports` do seu firmware no cartão SD.
+2. Copie os dois para a pasta `ports` do seu firmware no cartão SD. No muOS vão para duas pastas: `PokeDaisy.sh` para `ROMS/Ports` e a pasta `pokedaisy` para `ports`, ambas na raiz do cartão.
 3. Os seus jogos podem ficar onde estão: a lista de jogos mostra `ports/pokedaisy/roms` e as pastas `gba`, `gb`, `gbc` e `nds` do próprio firmware (e as que se chamam `Game Boy Advance`, `Game Boy Color`, `Game Boy` e `Nintendo DS`).
 4. Inicie o PokeDaisy a partir da lista Ports.
 

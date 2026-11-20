@@ -89,6 +89,19 @@ private val GEN1_DEX_RED = GEN1_DEX_YELLOW.copy(
     mewPicsBank = 0x01,
 )
 
+/** Pokémon Red Gen II Graphics V2.0: pic's bank from byte 27 of base stats, CGB palettes in bank 0x2F. */
+val GEN1_DEX_RED_GEN2_GRAPHICS = GEN1_DEX_RED.copy(
+    cgbPalettes = 0x2F to 0x4000,
+    picBankOffset = 27,
+)
+
+/** Pokémon Yellow Gen II Graphics V1.1: pic's bank from byte 27 of base stats, CGB palettes in bank 0x42. */
+val GEN1_DEX_YELLOW_GEN2_GRAPHICS = GEN1_DEX_YELLOW.copy(
+    monsterPalettes = 0x1C to 0x6995,
+    cgbPalettes = 0x42 to 0x4000,
+    picBankOffset = 27,
+)
+
 /**
  * PureRed / PureBlue v2.7.6 (Vortyne/pureRGB's pokered.sym; every address the same in both builds): its own base data
  * (MEW in the main table), pages and Super Game Boy palettes (the colours its SGB and COLORS > SGB1 modes give each
@@ -174,6 +187,10 @@ val POKEDEX_YELLOW_ES = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_YELLOW_ES)
 /** Red's and Blue's: one set of tables over each cart's own bytes (two objects, so a dex cache never crosses them). */
 val POKEDEX_RED = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_RED)
 val POKEDEX_BLUE = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_RED.copy())
+/** Red Gen II Graphics's. */
+val POKEDEX_RED_GEN2_GRAPHICS = POKEDEX_RED.copy(gen1 = GEN1_DEX_RED_GEN2_GRAPHICS)
+/** Yellow Gen II Graphics's. */
+val POKEDEX_YELLOW_GEN2_GRAPHICS = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_YELLOW_GEN2_GRAPHICS)
 val POKEDEX_RED_DE = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_RED_DE)
 val POKEDEX_BLUE_DE = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_RED_DE.copy())
 /** Yellow Legacy's. */

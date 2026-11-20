@@ -225,6 +225,27 @@ for suffix, source, count in (
     ids = re.findall(r'\d+', moves)
     assert len(ids) == count
     out.insert(-1, f'inline constexpr int tmMoves{suffix}[] = {{'+', '.join(ids)+'};')
+# The language ports this reader takes beside the US carts: each one's digest, the US game whose tables and save layout it
+# shares, and the globals that moved (NdsPortsGen.kt's rows = gamedata/nds/ports.toml; Gen4Reader.kt's German Johto pair).
+# Named one by one: only carts somebody has run with this reader.
+ports_src = (data / 'NdsPortsGen.kt').read_text()
+port_base = {'HEARTGOLD': 'heartGoldSha1', 'SOULSILVER': 'soulSilverSha1', 'BLACK': 'blackSha1', 'WHITE': 'whiteSha1',
+             'BLACK2': 'black2Sha1', 'WHITE2': 'white2Sha1'}
+johto_de = re.search(r'val GEN4_HEARTGOLD_DE = gen4HeartGoldFamily\(([^)]*)\)', reader)[1]
+assert johto_de == re.search(r'val GEN4_SOULSILVER_DE = gen4HeartGoldFamily\(([^)]*)\)', reader)[1]
+port_rows = []
+for code, kind, title in (('IPKD', 'HEARTGOLD', 'Goldene Edition HeartGold'), ('IPGD', 'SOULSILVER', 'Silberne Edition SoulSilver')):
+    digest = re.search(r'"([a-f0-9]{40})" to "Pokémon '+title+'"', identity)[1]
+    port_rows.append((digest, kind, code, number(johto_de, 'saveDataPtr'), number(johto_de, 'fieldSystemPtr')))
+for code in ('IRBD', 'IRAD', 'IRED', 'IRDD'):
+    kind, digest, save, system = re.search(r'NdsPort\("'+code+r'", 0, GameKind\.(\w+), "[^"]*", "([a-f0-9]{40})", '
+                                           r'saveData = (0x[0-9A-Fa-f]+), system = (0x[0-9A-Fa-f]+)', ports_src).groups()
+    port_rows.append((digest, kind, code, int(save, 0), int(system, 0)))
+# saveData: Gen 4's SaveData pointer, Gen 5's save control; system: Gen 4's FieldSystem pointer, Gen 5's GameSystem.
+out.insert(-1, 'struct Port { const char* sha1; const char* base; const char* code; uint32_t saveData, system; };')
+out.insert(-1, 'inline constexpr Port ports[] = {'+', '.join(
+    '{"%s", %s, "%s", 0x%08x, 0x%08x}' % (digest, port_base[kind], code, save, system)
+    for digest, kind, code, save, system in port_rows)+'};')
 generated = '\n'.join(out)+'\n'
 # --output: the libretro DS core's build writes it there; no flag: the Linux host's checked-in data_gen.h; --check: that
 # file matches (the Linux host's ds-generated-data test).

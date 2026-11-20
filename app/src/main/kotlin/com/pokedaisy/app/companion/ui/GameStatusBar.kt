@@ -120,5 +120,5 @@ internal fun withPixelShadow(rows: List<String>): List<String> {
             if (g[y + dy][x + dx] == '.') g[y + dy][x + dx] = 's'
         }
     }
-    return g.map { String(it) }
+    return g.map { it.concatToString() }
 }

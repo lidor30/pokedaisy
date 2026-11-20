@@ -5,7 +5,7 @@ import org.junit.Test
 
 class CoopBackoffTest {
     @Test fun doublesToCapWithJitter() {
-        val b = CoopBackoff(java.util.Random(1))
+        val b = CoopBackoff(kotlin.random.Random(1))
         val d = List(10) { b.next() }
         assertTrue(d[0] in 800..1_200)
         assertTrue(d[1] in 1_600..2_400)
@@ -14,7 +14,7 @@ class CoopBackoffTest {
     }
 
     @Test fun resetStartsOver() {
-        val b = CoopBackoff(java.util.Random(2))
+        val b = CoopBackoff(kotlin.random.Random(2))
         repeat(5) { b.next() }
         b.reset()
         assertTrue(b.next() in 800..1_200)

@@ -53,7 +53,7 @@ add_subdirectory("${MGBA_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/mgba" EXCLUDE_FROM_A
 # The pk_*.c that pk_api.h runs a game with (pk_session.c and what it calls).
 # ---------------------------------------------------------------------------
 set(PK_API_SOURCES
-    pk_session.c pk_call.c pk_host.c pk_cheats.c pk_rewind.c pk_savevf.c pk_wide.c pk_wide_gb.c pk_flight.c pk_gb_audio.c
+    pk_session.c pk_state.c pk_call.c pk_gb_field.c pk_host.c pk_cheats.c pk_rewind.c pk_savevf.c pk_wide.c pk_wide_gb.c pk_flight.c pk_gb_audio.c
     pk_coop.c pk_coop_field.c pk_coop_after.c pk_coop_lock.c pk_coop_link.c pk_coop_link_start.c pk_coop_link_wild.c
     pk_coop_link_story.c pk_coop_link_drop.c pk_coop_link_rewards.c pk_coop_link_end.c)
 list(TRANSFORM PK_API_SOURCES PREPEND "${PK_API_DIR}/")
@@ -64,6 +64,8 @@ set_target_properties(pk_api PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # structs change shape with them - mCoreRewindContext is ~100 bytes longer with
 # USE_PTHREADS - so every file that includes its headers must see the same ones, or mGBA writes past ours.
 target_compile_definitions(pk_api PUBLIC USE_PTHREADS M_CORE_GBA M_CORE_GB)
+# EXPAND's margin cache (pk_wide_cache), as the 3DS port has it: pk_session.c turns it on.
+target_compile_definitions(pk_api PUBLIC PK_WIDE_CACHE)
 target_include_directories(pk_api PUBLIC
     "${PK_API_DIR}"
     "${MGBA_DIR}/include"

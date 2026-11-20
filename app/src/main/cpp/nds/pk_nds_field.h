@@ -119,6 +119,17 @@ int pk_nds_origin_heartgold(const uint8_t* rom, uint32_t romLen);
 
 /** The battle controller's step (BattleContext.command: CONTROLLER_COMMAND_*) while a battle runs, else -1. */
 int pk_nds_battle_command(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr));
+
+/**
+ * EXP SHARE on the DS (Gen 4's US carts), after every frame: [mode] 0 off / 1 SPLIT / 2 FULL EXP, [mask] the party slots
+ * that aren't eggs, [patched] FULL's patch is in (as this returned last time). Writes the battle's masks and puts FULL's
+ * patch in or back ([write16] must also drop any compiled copy of the code). Returns whether the patch is in.
+ */
+bool pk_nds_exp_share_tick(const PkNdsFieldGame* game, int mode, uint32_t mask, bool patched, uint32_t (*read32)(uint32_t),
+                           void (*write32)(uint32_t, uint32_t), void (*write16)(uint32_t, uint16_t));
+
+/** The running battle's BattleContext (Gen 4's battle engine: Platinum, HeartGold / SoulSilver), or 0: no battle, or not that engine. */
+uint32_t pk_nds_battle_context(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr));
 /** Gen 5's battle touch screen as the touch rules read it: [out] = the panel's kind, whether it takes taps, the screen
  * btlv_scd opened (2 the bag, 3 the party). 0 when there's no battle panel (not Gen 5, no battle). nds_dump's fieldinfo. */
 int pk_nds_gen5_battle_panel(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr), int out[3]);

@@ -13,10 +13,10 @@ class NicknameTest {
         val t = decodeNative("firered_vanilla", NATIVE_FIRERED_REV1)
         assertTrue(t.party.isNotEmpty())
         // The fixture's Pokémon kept their default names: the species in the game's capitals.
-        val mons = t.party.filter { it.species != 412 }
+        val mons = t.party.filter { !it.isEgg }
         assertEquals(mons.map { speciesName(it.species).uppercase() }, mons.map { it.nickname })
         // Its egg: Gen 3 keeps an egg's name as Japanese (language 1), so none is read - the UI says EGG anyway.
-        assertNull(t.party.single { it.species == 412 }.nickname)
+        assertNull(t.party.single { it.isEgg }.nickname)
     }
 
     @Test

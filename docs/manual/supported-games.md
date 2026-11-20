@@ -23,6 +23,7 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 - PureRed and PureBlue, the PureRGB hack of Red and Blue: version 2.7.6, drawn in the game's own look (the colours of its default OG setting), with its own types, moves, items, places and Pokédex. A save from the original Red or Blue works too, once the game itself has updated it: pick CONTINUE and answer its questions.
 - Pokémon Yellow: the USA / Europe release and the German, French, Italian and Spanish ones, drawn in the game's own look. A German, French, Italian or Spanish copy shows its own names and Pokédex text. Item descriptions are only shown in the English one, as these games have none of their own.
 - Pokémon Brown, Koolboyman's hack of Red set in Rijon: versions 6.0.1 and 6.1.2, with its own Pokémon (252 in its Pokédex), types, moves, items, places, town map and Pokédex pages, drawn in the colours it shows on a Super Game Boy. It has no guide yet.
+- Pokémon Red and Yellow with the Gen II Graphics patch: Red's version 2.0 and Yellow's 1.1, the games as they are with the patch's new pictures, which the Pokédex shows too.
 - Pokémon Yellow Legacy: version 1.0.10, drawn in the game's own look, with its own moves, trainers, wild Pokémon, party icons and town map. Make it from your English Yellow with `PATCH A ROM` and the release's patch. Start a new game: a save from the original Yellow doesn't load correctly in it.
 - Pokémon Gold and Silver: the USA / Europe releases and the German ones (Goldene Edition and Silberne Edition), drawn in the game's own look. The German copies show their own names and Pokédex text.
 - Pokémon Crystal: the USA release, the USA / Europe revision 1, the Australian one and the German one (Kristall), drawn in the game's own look. The German copy shows its own names and Pokédex text.
@@ -33,7 +34,7 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 
 **Nintendo DS:**
 
-- Pokémon Platinum: the USA release (revision 1), and the French and Spanish ones (revision 0).
+- Pokémon Platinum: the USA release (revision 1), and the French, Spanish and German ones (revision 0).
 - Pokémon HeartGold: the USA, German, French, Spanish, Italian, Japanese and Korean releases (revision 0), and the English one sold in Europe (revision 10).
 - Pokémon SoulSilver: the USA, German, French, Spanish, Italian, Japanese and Korean releases (revision 0), and the English one sold in Europe (revision 10).
 - Pokémon Black: the USA / Europe, French, German, Spanish, Italian, Japanese and Korean releases.
@@ -44,16 +45,17 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 The companion shows each game's Pokémon, moves, items and places in your cart's own language, read from the cart.
 - Pokémon Origin HeartGold, the hack: version 4.0.3 with its English patch 1.0.0.
 - Pokémon Heartfelt Gold, the hack: version 1.0.15, and its Zoomed In patch.
+- Pokémon Sacred Gold and Storm Silver, the hacks: version 1.05 (Sacred Gold's Classic version too).
 - Pokémon Renegade Platinum, the hack: versions 1.2.0 and 1.3.0, and 1.3.0 with its add-on patches (Classic, the two shiny rates, Speed Up).
 - Pokémon Blaze Black 2 Redux and Volt White 2 Redux, the hacks: version 1.4.1, also with their Classic, EVless and Classic EVless patches.
 
-The companion reads their party, bag, map, Pokédex and guide, with pictures, Pokédex pages and the map read from your cart. The battles of Platinum, Black, White, Black 2 and White 2 show in the `BATTLE` tab; HeartGold's and SoulSilver's don't yet. In Black, White, Black 2 and White 2 the `MAP` is the game's own Town Map: the towns you've arrived at marked as the game marks them, the others left plain. `PARTY`, `BAG` and `DEX` take each game's own colours: the cut-corner slots on a navy grid of Black, White and their sequels, Black's and White's green Pokédex grid, Black 2's and White 2's red one, Platinum's blue slots on slate stripes. Origin HeartGold has its own species (every region's, and their forms), moves, Fairy type and battle system: the companion reads its party, bag, map and Pokédex (all 1,025, with its own stats, evolutions and moves) with the names, types and pictures from your cart, and its battles show in the `BATTLE` tab (`INFO` and `SUGGESTIONS`; you choose your moves on the game's own touch screen). It has no guide yet. Heartfelt Gold plays as HeartGold does, with its own species (every region's), moves, items, Fairy type and type chart read from your cart: the companion reads its party, bag, map and Pokédex (all 1,025, with their pages, pictures, evolutions and level-up moves), and its battles, where the battle buttons press the game's own touch screen. Its Pokédex opens on the national list from the start, as the game's does. It has no guide yet. Renegade Platinum plays as Platinum does, with its own types (the Fairy type among them), moves and type chart read from your cart, so the `BATTLE` tab's advice and the `DEX` follow the hack's changes; it has no guide yet either. Blaze Black 2 Redux and Volt White 2 Redux play as Black 2 and White 2 do, with their own types (the Fairy type among them), moves, type chart and machines read from your cart, and no guide yet. A save from the original Black 2 or White 2 keeps working in them. [Screens and devices](devices.md#ds-games) has how a DS game uses your screens.
+The companion reads their party, bag, map, Pokédex and guide, with pictures, Pokédex pages and the map read from your cart. The battles of Platinum, Black, White, Black 2 and White 2 show in the `BATTLE` tab; HeartGold's and SoulSilver's don't yet. In Black, White, Black 2 and White 2 the `MAP` is the game's own Town Map: the towns you've arrived at marked as the game marks them, the others left plain. `PARTY`, `BAG` and `DEX` take each game's own colours: the cut-corner slots on a navy grid of Black, White and their sequels, Black's and White's green Pokédex grid, Black 2's and White 2's red one, Platinum's blue slots on slate stripes. Origin HeartGold has its own species (every region's, and their forms), moves, Fairy type and battle system: the companion reads its party, bag, map and Pokédex (all 1,025, with its own stats, evolutions and moves) with the names, types and pictures from your cart, and its battles show in the `BATTLE` tab (`INFO` and `SUGGESTIONS`; you choose your moves on the game's own touch screen). It has no guide yet. Heartfelt Gold plays as HeartGold does, with its own species (every region's), moves, items, Fairy type and type chart read from your cart: the companion reads its party, bag, map and Pokédex (all 1,025, with their pages, pictures, evolutions and level-up moves), and its battles, where the battle buttons press the game's own touch screen. Its Pokédex opens on the national list from the start, as the game's does. It has no guide yet. Sacred Gold and Storm Silver play as HeartGold and SoulSilver do, with their own species' types and moves read from your cart; a HeartGold or SoulSilver save keeps working in them. They have no guide yet. Renegade Platinum plays as Platinum does, with its own types (the Fairy type among them), moves and type chart read from your cart, so the `BATTLE` tab's advice and the `DEX` follow the hack's changes; it has no guide yet either. Blaze Black 2 Redux and Volt White 2 Redux play as Black 2 and White 2 do, with their own types (the Fairy type among them), moves, type chart and machines read from your cart, and no guide yet. A save from the original Black 2 or White 2 keeps working in them. [Screens and devices](devices.md#ds-games) has how a DS game uses your screens.
 
 **ROM hacks**, each in the versions listed:
 
 | Hack | Version |
 | --- | --- |
-| Pokémon Unbound | 2.1.1.1, and its French translation |
+| Pokémon Unbound | 2.1.1.1, and its French and Italian translations (the Italian one: patch v7) |
 | Pokémon Radical Red | 4.1 |
 | Pokémon Gaia | 3.2 |
 | Pokémon Odyssey | 4.1.1 |
@@ -65,8 +67,15 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Pokémon FireRed Rocket Edition | its one release |
 | Pokémon Ash Gray | 4.5.3, and its Fork Bug Fix 1.0 build |
 | Pokémon Let's Go (both versions) | its English translation, and each version's Translation Only build |
+| Pokémon Clover | 1.3.3 |
+| Pokémon Elysium (Part A) | 2.5.0 |
+| Pokémon Elysium (Part B) | 2.5.0 |
 | Sword and Shield Ultimate Plus | 1.2.1.2, plus its three patches |
 | Pokémon GS Chronicles | 2.7.6 |
+| Pokémon Rhythm | 1.4.0 |
+| Pokémon OAE (the "Oops All" Kanto hack) | 1.3.2 |
+| Pokémon Ceruleum | 1.1.1 |
+| Pokémon RecordKeepers | 1.2.1 |
 | Pokémon Recharged Yellow | 1.8.0, 1.9.0, 1.9.4 and 1.9.7 |
 | Pokémon Lazarus | 2.0 |
 | Emerald Seaglass | 3.0 |

@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.pokedaisy.app.companion.ui.imageBitmapOf
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawOutline
@@ -30,9 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -47,7 +48,6 @@ import com.pokedaisy.app.companion.ui.rememberArtGeneration
 import com.pokedaisy.app.companion.ui.soundClickable
 import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.i18n.tk
-import okio.Path.Companion.toOkioPath
 
 /**
  * A theme (Settings > THEME on both screens): the app's and the companion's look in its colours, the way DARK MODE
@@ -193,38 +193,37 @@ val SEASONAL_THEMES = listOf(
 )
 
 /** The themes the THEME row offers on [date]: every one that's always there, then the limited ones in their window. */
-fun availableThemes(date: java.time.LocalDate = ThemeClock.today()): List<ThemeSpec> =
+fun availableThemes(date: kotlinx.datetime.LocalDate = ThemeClock.today()): List<ThemeSpec> =
     APP_THEMES + SEASONAL_THEMES.filter { it.season!!.windowOn(date) != null }
 
 /** A limited-time theme's window around [date] (null: not a limited one, or not now). */
-fun ThemeSpec.windowOn(date: java.time.LocalDate = ThemeClock.today()): ClosedRange<java.time.LocalDate>? = season?.windowOn(date)
+fun ThemeSpec.windowOn(date: kotlinx.datetime.LocalDate = ThemeClock.today()): ClosedRange<kotlinx.datetime.LocalDate>? = season?.windowOn(date)
 
 /**
  * The limited-time theme to announce on [date], once per window: in its window, not already worn, and not in [shown]
  * (Prefs.seasonalThemesShown, [announceKey]s). Several at once (LUNAR NEW YEAR and VALENTINE'S DAY): the one that began first.
  */
-fun seasonalThemeToAnnounce(date: java.time.LocalDate, shown: Set<String>, currentId: Int): ThemeSpec? =
+fun seasonalThemeToAnnounce(date: kotlinx.datetime.LocalDate, shown: Set<String>, currentId: Int): ThemeSpec? =
     SEASONAL_THEMES.mapNotNull { t -> t.windowOn(date)?.let { t to it } }
         .filter { (t, w) -> t.id != currentId && announceKey(t, w) !in shown }
         .minByOrNull { (_, w) -> w.start }?.first
 
 /** The key a theme's window is remembered by once its popup has shown: the theme and the window's first day. */
-fun announceKey(theme: ThemeSpec, window: ClosedRange<java.time.LocalDate>): String = "${theme.id}:${window.start}"
+fun announceKey(theme: ThemeSpec, window: ClosedRange<kotlinx.datetime.LocalDate>): String = "${theme.id}:${window.start}"
 
 /**
  * The theme to wear on [date] for the stored [id]: itself, unless it's a limited-time theme past its window - then
  * the theme worn before it ([before], if that's still a theme), else the default.
  */
-fun themeToWear(id: Int, before: Int, date: java.time.LocalDate = ThemeClock.today()): ThemeSpec {
+fun themeToWear(id: Int, before: Int, date: kotlinx.datetime.LocalDate = ThemeClock.today()): ThemeSpec {
     val t = themeById(id)
     if (t.season == null || t.windowOn(date) != null) return t
     return themeById(before).takeIf { it.season == null } ?: themeById(DAISY_THEME_ID)
 }
 
 /** Puts on [spec] on both screens and saves it; a limited-time one remembers the theme it replaced, to go back to. */
-fun pickTheme(context: android.content.Context, spec: ThemeSpec) {
-    runCatching {
-        val prefs = com.pokedaisy.app.Prefs(context)
+fun pickTheme(spec: ThemeSpec) {
+    ThemeStore.current?.let { prefs ->
         val was = themeById(prefs.appTheme)
         if (spec.season != null && was.season == null) prefs.themeBeforeSeasonal = was.id
         prefs.appTheme = spec.id
@@ -233,8 +232,8 @@ fun pickTheme(context: android.content.Context, spec: ThemeSpec) {
 }
 
 /** The saved theme ([themeToWear]: a limited one that has ended gives way), put on and saved again if it changed. */
-fun loadTheme(context: android.content.Context) {
-    val prefs = runCatching { com.pokedaisy.app.Prefs(context) }.getOrNull()
+fun loadTheme() {
+    val prefs = ThemeStore.current
     val spec = prefs?.let { themeToWear(it.appTheme, it.themeBeforeSeasonal) } ?: themeById(DAISY_THEME_ID)
     if (prefs != null && prefs.appTheme != spec.id) runCatching { prefs.appTheme = spec.id }
     AppColors.applyTheme(spec)
@@ -365,15 +364,14 @@ object AppColors {
  */
 @Composable
 fun pixelFontFamily(): FontFamily {
-    val context = LocalContext.current
     // SETTINGS > FONT: another font everywhere (a game's skin and a Game Boy game's own font included); PIXEL keeps the
     // game's: its skin's font (CompanionSkin: Pokemon X's sans-serif), else a Game Boy game's own, else Pixel Operator.
     val font = AppFonts.current
-    if (!font.pixel) return remember(font) { font.family(context) }
+    if (!font.pixel) return remember(font) { font.family() }
     com.pokedaisy.app.companion.ui.CompanionSkins.current.font?.let { return it }
     LocalGameFont.current?.let { return it }
-    // Pixel Operator + its Japanese fallback (PixelTypeface.kt), one per process.
-    return com.pokedaisy.app.pixelFontFamily(context)
+    // Pixel Operator (or PIXEL SMALL over it) + its Japanese / Korean fallbacks (PixelTypeface.kt), one per process.
+    return if (font == AppFont.PIXEL_SMALL) FontSource.get().pixelSmall() else FontSource.get().pixel()
 }
 
 /**
@@ -406,7 +404,6 @@ fun gameTextScale(game: GameKind?): Float = if (game.isGameBoyGame) 9f / 7f else
 /** [game]'s own font from the rom-art cache, once a launch of it has written it; else null. */
 @Composable
 fun rememberGameFont(game: GameKind?): FontFamily? {
-    val context = LocalContext.current
     val gen = com.pokedaisy.app.companion.ui.rememberArtGeneration()
     val language = com.pokedaisy.app.companion.data.romLanguage
     return remember(game, gen, language) {
@@ -425,7 +422,7 @@ fun rememberGameFont(game: GameKind?): FontFamily? {
             GameKind.GOLD, GameKind.SILVER -> com.pokedaisy.app.companion.data.Gen2Art.GOLD_SILVER_FONT
             else -> null
         } ?: return@remember null
-        com.pokedaisy.app.companion.data.RomArt.file(context.filesDir?.toOkioPath(), path)?.let { com.pokedaisy.app.gameFontFamily(context, it.toFile()) }
+        com.pokedaisy.app.companion.data.RomArt.file(path)?.let { FontSource.get().game(it) }
     }
 }
 
@@ -442,13 +439,15 @@ fun AppTheme(content: @Composable () -> Unit) {
     // stomped the just-picked theme back to whatever it was on first launch —
     // selecting a theme visibly never stuck. remember{} only runs its block
     // once (until its key changes), so this only "loads from disk" at startup.
-    val context = LocalContext.current
-    remember(context) {
-        // runCatching: previews / screenshot tests may have no real prefs.
-        runCatching { loadTheme(context) }
-        runCatching { DarkMode.load(context) }
-        runCatching { AppFonts.load(context) }
+    remember {
+        // runCatching: a store that can't be read leaves the defaults (previews and screenshot tests have none).
+        runCatching { loadTheme() }
+        runCatching { DarkMode.load() }
+        runCatching { AppFonts.load() }
     }
+    // AUTO dark mode follows the device's.
+    val systemDark = isSystemInDarkTheme()
+    remember(systemDark) { DarkMode.systemDark = systemDark }
 
     val pixel = pixelFontFamily()
     // lineHeight in em so a Text() that overrides fontSize keeps a
@@ -536,12 +535,12 @@ private val EMERALD_BACKDROP = intArrayOf(0xFFCED67B.toInt(), 0xFFB5B55A.toInt()
 
 /** [bmp] (FireRed's backdrop, or another whose colours are [from]) with [from] swapped for [to]; or, with no art yet,
  * its stripes alone. */
-private fun recolorBackdrop(bmp: android.graphics.Bitmap?, to: IntArray, from: IntArray = FIRERED_BACKDROP): android.graphics.Bitmap {
+private fun recolorBackdrop(bmp: ImageBitmap?, to: IntArray, from: IntArray = FIRERED_BACKDROP): ImageBitmap {
     val w = bmp?.width ?: 240
     val h = bmp?.height ?: 160
     val px = IntArray(w * h)
     if (bmp != null) {
-        bmp.getPixels(px, 0, w, 0, 0, w, h)
+        bmp.readPixels(px, 0, 0, w, h)
         for (i in px.indices) {
             val k = from.indexOf(px[i] or (0xFF shl 24))
             if (k >= 0) px[i] = to[k]
@@ -549,12 +548,11 @@ private fun recolorBackdrop(bmp: android.graphics.Bitmap?, to: IntArray, from: I
     } else {
         for (y in 0 until h) px.fill(to[y and 1], y * w, (y + 1) * w)
     }
-    return android.graphics.Bitmap.createBitmap(px, w, h, android.graphics.Bitmap.Config.ARGB_8888)
+    return imageBitmapOf(px, w, h)
 }
 
 @Composable
 fun rememberGameBackground(game: GameKind): GameBackground? {
-    val context = LocalContext.current
     val gen = rememberArtGeneration()
     // Recharged Emerald runs as EMERALD and Ghost Grey and Let's Go as FIRERED, each with its own backdrop.
     val hack = com.pokedaisy.app.companion.data.runningRechargedEmerald || com.pokedaisy.app.companion.data.runningGhostGrey ||
@@ -563,7 +561,7 @@ fun rememberGameBackground(game: GameKind): GameBackground? {
         // Kept across visits: the ITEMS backdrop crossfade unmounts this one, and
         // rebuilding it recoloured 38k pixels on the main thread each time.
         backgroundCache[Triple(game, hack, gen)]?.let { return@remember it }
-        buildGameBackground(context, game)?.also {
+        buildGameBackground(game)?.also {
             backgroundCache.keys.removeAll { (_, _, g) -> g != gen }
             backgroundCache[Triple(game, hack, gen)] = it
         }
@@ -573,7 +571,7 @@ fun rememberGameBackground(game: GameKind): GameBackground? {
 /** [rememberGameBackground]'s backdrops by game and art generation (main thread only). */
 private val backgroundCache = HashMap<Triple<GameKind, Boolean, Int>, GameBackground>()
 
-private fun buildGameBackground(context: android.content.Context, game: GameKind): GameBackground? {
+private fun buildGameBackground(game: GameKind): GameBackground? {
     // Gen 1's screens are plain white: one pixel, stretched over the tab in a single draw.
     // (Never tiled - GameBackdrop draws a tiled backdrop tile by tile, and a 1px tile at
     // the Thor's 5x was ~53,000 draws a frame: 77 ms per frame on the RenderThread.)
@@ -581,26 +579,26 @@ private fun buildGameBackground(context: android.content.Context, game: GameKind
     val ghostGrey = game == GameKind.FIRERED && com.pokedaisy.app.companion.data.runningGhostGrey
     if (game.isGameBoyGame || ghostGrey) {
         val paper = if (ghostGrey) -1 else com.pokedaisy.app.companion.ui.OptionColors.gbPaper(game).toArgb()
-        return GameBackground(android.graphics.Bitmap.createBitmap(intArrayOf(paper), 1, 1, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap(), false)
+        return GameBackground(imageBitmapOf(intArrayOf(paper), 1, 1), false)
     }
     // Let's Go Pikachu / Eevee: CFRU's party menu with its own grid (RomArt), else CFRU's own.
     if (game == GameKind.FIRERED && com.pokedaisy.app.companion.data.runningLetsGo) {
         sequenceOf(com.pokedaisy.app.companion.data.RomArt.LETS_GO_BACKDROP, com.pokedaisy.app.companion.data.RomArt.CFRU_BACKDROP)
-            .firstNotNullOfOrNull { GameArt.get(context, it) }?.let { return GameBackground(it.asImageBitmap(), true) }
+            .firstNotNullOfOrNull { GameArt.get(it) }?.let { return GameBackground(it, true) }
     }
     // Sword and Shield Ultimate Plus: CFRU's grid in its own red, one 32px cell tiled (RomArt).
     if (game == GameKind.SWORD_SHIELD) {
-        GameArt.get(context, com.pokedaisy.app.companion.data.RomArt.SWSH_BACKDROP)?.let { return GameBackground(it.asImageBitmap(), true) }
+        GameArt.get(com.pokedaisy.app.companion.data.RomArt.SWSH_BACKDROP)?.let { return GameBackground(it, true) }
     }
     backdropColors(game)?.let { to ->
-        return GameBackground(recolorBackdrop(GameArt.get(context, "partybg/firered.png"), to).asImageBitmap(), false)
+        return GameBackground(recolorBackdrop(GameArt.get("partybg/firered.png"), to), false)
     }
     // Team Rocket Edition: Dragonsden's party menu is Emerald's backdrop in FireRed's three teals (sampled headless):
     // FireRed's own art where a FireRed ROM has made it, else Emerald's recoloured.
     if (game == GameKind.TEAM_ROCKET) {
-        GameArt.get(context, "partybg/firered.png")?.let { return GameBackground(it.asImageBitmap(), false) }
-        GameArt.get(context, "partybg/emerald.png")?.let {
-            return GameBackground(recolorBackdrop(it, FIRERED_BACKDROP, from = EMERALD_BACKDROP).asImageBitmap(), false)
+        GameArt.get("partybg/firered.png")?.let { return GameBackground(it, false) }
+        GameArt.get("partybg/emerald.png")?.let {
+            return GameBackground(recolorBackdrop(it, FIRERED_BACKDROP, from = EMERALD_BACKDROP), false)
         }
     }
     val (asset, tiled) = when (game) {
@@ -610,14 +608,14 @@ private fun buildGameBackground(context: android.content.Context, game: GameKind
         GameKind.HEART_AND_SOUL -> "partybg/hns.png" to false
         // Elite Redux kept Emerald's party backdrop (and its ROM has the art).
         GameKind.ELITE_REDUX -> "partybg/emerald.png" to false
-        GameKind.UNBOUND, GameKind.RADICAL_RED, GameKind.ODYSSEY, GameKind.AMETHYST, GameKind.GS_CHRONICLES -> "partybg/cfru_tile.png" to true
+        GameKind.UNBOUND, GameKind.RADICAL_RED, GameKind.ODYSSEY, GameKind.AMETHYST, GameKind.GS_CHRONICLES, GameKind.RHYTHM, GameKind.OOPS_ALL_EEVEES -> "partybg/cfru_tile.png" to true
         else -> "partybg/firered.png" to false
     }
     // Every backdrop comes from a ROM the player has run (RomArt): until the
     // game's own is there, FireRed's or Emerald's if one of those is (untiled).
     val bmp = sequenceOf(asset, "partybg/firered.png", "partybg/emerald.png").distinct()
-        .firstNotNullOfOrNull { path -> GameArt.get(context, path)?.let { it to (tiled && path == asset) } }
-    return bmp?.let { (b, tile) -> GameBackground(b.asImageBitmap(), tile) }
+        .firstNotNullOfOrNull { path -> GameArt.get(path)?.let { it to (tiled && path == asset) } }
+    return bmp?.let { (b, tile) -> GameBackground(b, tile) }
 }
 
 /**

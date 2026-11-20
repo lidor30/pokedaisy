@@ -114,6 +114,46 @@ GAMES = {
                            262: "Old Rod"},
                     mapsecs={0x58: "New Bark Town", 0x65: "Route 29", 0x92: "Pallet Town"}),
     ),
+    # Pokemon Rhythm v1.4.0 (invis292; Hackdex's xdelta over FireRed 1.0): Vedeo on CFRU, every table through FireRed 1.0's
+    # literal pools - gSpeciesNames 0x09E78D00 (to 1518, its forms after), gBaseStats 0x09E8AC00, gMoveNames 0x094B3FD4 (13
+    # bytes: its long-name table at 0x09DFA940 falls a slot behind past move 700, so the short names, which agree with
+    # gBattleMoves 0x094C1790, to RAPID FLOW 895), gItems 0x09E486C0 (to 804, .itemId = slot), sMapNames 0x089B9C00.
+    "rhythm": dict(
+        suffix="Rhythm",
+        label="Pokemon Rhythm v1.4.0",
+        sha1="b0d6b91356ee4d4c8f8c70020fe0352c391a12e2",
+        species_names=0x09E78D00, species_max=1600,
+        base_stats=0x09E8AC00,
+        move_names=0x094B3FD4, move_name_len=13, battle_moves=0x094C1790, moves_max=895,
+        items=0x09E486C0, items_max=805,
+        gender=True,
+        map_names=0x089B9C00,
+        checks=dict(species={1: "Bulbasaur", 25: "Pikachu", 151: "Mew", 1514: "Alcremie"},
+                    types={1: (12, 3), 4: (10, 10)},
+                    moves={33: ("Tackle", 0, 40), 7: ("Fire Punch", 10, 75)},
+                    items={1: "Master Ball", 13: "Potion", 802: "Hisui Rock"},
+                    mapsecs={0x58: "Notewood Town", 0x59: "Tremora Town"}),
+    ),
+    # Pokemon Oops All Eevees! v1.3.2 Alpha (kddao16; the author's BPS over FireRed 1.0): Kanto on CFRU with DPE, every species an
+    # Eevee form. FireRed 1.0's literal pools: gSpeciesNames 0x096184C0 (to 1267), gBaseStats 0x099778E0, gMoveNames 0x094B3FD4
+    # (13 bytes, to RAPID FLOW 895), gBattleMoves 0x094C1790, gItems 0x093C0000 (to 749; slots, since GAY SCARF's .itemId is 256,
+    # TRANS SCARF's slot), sMapNames retail's (Kanto's names kept).
+    "oops_all_eevees": dict(
+        suffix="OopsAllEevees",
+        label="Pokemon Oops All Eevees! v1.3.2",
+        sha1="4234507f92101a322aa5c0518a6aa1f1fe807832",
+        species_names=0x096184C0, species_max=1268,
+        base_stats=0x099778E0,
+        move_names=0x094B3FD4, move_name_len=13, battle_moves=0x094C1790, moves_max=895,
+        items=0x093C0000, items_max=750, item_key="slot",
+        gender=True,
+        map_names=0x083F1CAC,
+        checks=dict(species={1: "Eevee-Grs", 133: "Dunduneon", 1200: "Alcremie"},
+                    types={133: (4, 4), 134: (4, 5)},
+                    moves={33: ("Tackle", 0, 40), 1: ("Pound", 0, 40)},
+                    items={1: "Master Ball", 13: "Potion", 740: "Gay Scarf", 256: "Trans Scarf"},
+                    mapsecs={0x58: "Pallet Town", 0x59: "Viridian City"}),
+    ),
 }
 
 

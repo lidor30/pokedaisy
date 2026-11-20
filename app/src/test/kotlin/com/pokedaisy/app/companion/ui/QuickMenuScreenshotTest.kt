@@ -25,6 +25,7 @@ import org.junit.Test
  *     ./gradlew :app:recordPaparazziDebug --tests '*QuickMenuScreenshotTest'
  */
 class QuickMenuScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1920, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),

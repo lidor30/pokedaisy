@@ -148,25 +148,25 @@ class N3dsSession(
         lookY = -axis(MotionEvent.AXIS_RZ, MotionEvent.AXIS_RY)
         val hx = event.getAxisValue(MotionEvent.AXIS_HAT_X)
         val hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
-        hatBits = (if (hx < -0.5f) MgbaCore.Key.LEFT else 0) or (if (hx > 0.5f) MgbaCore.Key.RIGHT else 0) or
-            (if (hy < -0.5f) MgbaCore.Key.UP else 0) or (if (hy > 0.5f) MgbaCore.Key.DOWN else 0)
+        hatBits = (if (hx < -0.5f) com.pokedaisy.app.companion.data.CoreKey.LEFT else 0) or (if (hx > 0.5f) com.pokedaisy.app.companion.data.CoreKey.RIGHT else 0) or
+            (if (hy < -0.5f) com.pokedaisy.app.companion.data.CoreKey.UP else 0) or (if (hy > 0.5f) com.pokedaisy.app.companion.data.CoreKey.DOWN else 0)
     }
 
     /** The app's key mask ([GbaInput.mask]: GBA bits, the DS's X / Y) as the 3DS's buttons. */
     private fun buttons(mask: Int): Int {
         var b = 0
-        if (mask and MgbaCore.Key.A != 0) b = b or N3dsNative.Button.A
-        if (mask and MgbaCore.Key.B != 0) b = b or N3dsNative.Button.B
-        if (mask and MgbaCore.Key.X != 0) b = b or N3dsNative.Button.X
-        if (mask and MgbaCore.Key.Y != 0) b = b or N3dsNative.Button.Y
-        if (mask and MgbaCore.Key.UP != 0) b = b or N3dsNative.Button.UP
-        if (mask and MgbaCore.Key.DOWN != 0) b = b or N3dsNative.Button.DOWN
-        if (mask and MgbaCore.Key.LEFT != 0) b = b or N3dsNative.Button.LEFT
-        if (mask and MgbaCore.Key.RIGHT != 0) b = b or N3dsNative.Button.RIGHT
-        if (mask and MgbaCore.Key.L != 0) b = b or N3dsNative.Button.L
-        if (mask and MgbaCore.Key.R != 0) b = b or N3dsNative.Button.R
-        if (mask and MgbaCore.Key.START != 0) b = b or N3dsNative.Button.START
-        if (mask and MgbaCore.Key.SELECT != 0) b = b or N3dsNative.Button.SELECT
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.A != 0) b = b or N3dsNative.Button.A
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.B != 0) b = b or N3dsNative.Button.B
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.X != 0) b = b or N3dsNative.Button.X
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.Y != 0) b = b or N3dsNative.Button.Y
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.UP != 0) b = b or N3dsNative.Button.UP
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.DOWN != 0) b = b or N3dsNative.Button.DOWN
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.LEFT != 0) b = b or N3dsNative.Button.LEFT
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.RIGHT != 0) b = b or N3dsNative.Button.RIGHT
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.L != 0) b = b or N3dsNative.Button.L
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.R != 0) b = b or N3dsNative.Button.R
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.START != 0) b = b or N3dsNative.Button.START
+        if (mask and com.pokedaisy.app.companion.data.CoreKey.SELECT != 0) b = b or N3dsNative.Button.SELECT
         return b
     }
 
@@ -286,8 +286,9 @@ class N3dsSession(
                 val modules = N3dsNative.modules(config.staticModule)
                 if (modules != null) {
                     if (modules != lastModules) { Log.d(TAG, "modules: ${modules.replace('\n', ',')}"); lastModules = modules }
-                    val menu = if ("DllField" in modules) fieldMenu(config) else null
-                    val now = Gen6Reader.sceneOf(modules, menu)
+                    val onField = modules.split('\n').contains(config.fieldModule)
+                    val menu = if (onField) fieldMenu(config) else null
+                    val now = Gen6Reader.sceneOf(modules, menu, config)
                     streak = if (now == seen) streak + 1 else 1
                     val needed = when {
                         scene == Gen6Reader.Scene.SCREEN && now == Gen6Reader.Scene.FIELD -> SCREEN_TO_FIELD_READS
@@ -305,16 +306,17 @@ class N3dsSession(
                     seen = now
                     // The game holding the player (talking, a scene, a door): the HUD's bottom row steps away at once and
                     // comes back after a few free reads (no blink between two lines or through a door).
-                    val heldNow = "DllField" in modules && config.fieldHold != 0 &&
-                        (N3dsNative.readMemory(intArrayOf(config.fieldHold, 4))?.takeIf { it.size == 4 }?.let { it[0].toInt() and Gen6Reader.FIELD_HELD != 0 } == true)
+                    val holdAt = if (onField && config.fieldHold != 0) Gen6Reader.chained(config.fieldHold, config.fieldHoldPath, ::readInt) else null
+                    val heldNow = holdAt != null &&
+                        (N3dsNative.readMemory(intArrayOf(holdAt, 4))?.takeIf { it.size == 4 }?.let { it[0].toInt() and config.fieldHoldMask != 0 } == true)
                     freeReads = if (heldNow) 0 else freeReads + 1
                     val held = heldNow || freeReads < FIELD_FREE_READS
                     if (held != fieldHeld) { fieldHeld = held; ui.post { onFieldHeld(held) } }
                     // ZOOM's say: the field's module up and the scene the field (or the X menu over it).
-                    val canZoom = "DllField" in modules &&
+                    val canZoom = onField &&
                         (scene == Gen6Reader.Scene.FIELD || scene == Gen6Reader.Scene.MENU)
                     zoomable = canZoom
-                    readBattle(config, if ("DllBattle" in modules) modules else null)
+                    readBattle(config, if (modules.split('\n').contains(config.battleModule)) modules else null)
                 }
                 if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) fieldShot()
                 if (com.pokedaisy.app.BuildConfig.DEBUG) debugCommands(pass % FIELD_SHOT_EVERY == 1)
@@ -390,10 +392,10 @@ class N3dsSession(
     private val cameraLock = Any()
     private var camSetup = 0                 // the camera setup's address (Gen6Reader.CAMERA_PATH) last seen
     private var camResolved = 0L             // when the path was last followed
-    // Per CAM_FIELDS (pitch, yaw, distance): the game's own value, and the last one written (another value there = the
+    // Per camera field (pitch, yaw, distance): the game's own value, and the last one written (another value there = the
     // game set a new one, which becomes the base).
-    private val camBase = FloatArray(CAM_FIELDS.size) { Float.NaN }
-    private val camWritten = FloatArray(CAM_FIELDS.size) { Float.NaN }
+    private val camBase = FloatArray(CAM_FIELD_COUNT) { Float.NaN }
+    private val camWritten = FloatArray(CAM_FIELD_COUNT) { Float.NaN }
     private var camShown = 1f                // the distance factor, eased toward [cameraZoom]
     private var yawOff = 0f                  // the stick's turn and tilt, degrees
     private var pitchOff = 0f
@@ -410,7 +412,7 @@ class N3dsSession(
      */
     private val camera = Thread({
         val config = Gen6Reader.configFor(titleId)
-        while (running && config != null && config.fieldMenuRoot != 0) {
+        while (running && config?.camera != null) {
             var active = false
             if (!paused) synchronized(cameraLock) { active = cameraStep(config) }
             try { Thread.sleep(if (active) CAMERA_FRAME_MS else SCENE_MS) } catch (_: InterruptedException) { break }
@@ -437,9 +439,14 @@ class N3dsSession(
             }
         }
         val setup = camSetup
-        val block = N3dsNative.readMemory(intArrayOf(setup, CAM_BLOCK))?.takeIf { it.size == CAM_BLOCK } ?: return false
+        val cam = config.camera ?: return false
+        val fields = camFields(cam)
+        val blockLen = fields.max() + 4
+        val block = N3dsNative.readMemory(intArrayOf(setup, blockLen))?.takeIf { it.size == blockLen } ?: return false
         val buf = java.nio.ByteBuffer.wrap(block).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-        val values = FloatArray(CAM_FIELDS.size) { buf.getFloat(CAM_FIELDS[it]) }
+        // Angles in degrees here whatever the game keeps them in.
+        val unit = if (cam.radians) (180.0 / Math.PI).toFloat() else 1f
+        val values = FloatArray(fields.size) { buf.getFloat(fields[it]) * (if (it == CAM_DISTANCE) 1f else unit) }
         // A distance of 0 or less, or a tilt not looking down: not the setup (memory reused), read again next time.
         if (!(values[CAM_DISTANCE] > 0f) || !(values[CAM_PITCH] < 0f)) { camResolved = 0L; camSetup = 0; return false }
         for (k in values.indices) if (camBase[k].isNaN() || values[k] != camWritten[k]) camBase[k] = values[k]
@@ -454,9 +461,12 @@ class N3dsSession(
             yawOff = (yawOff + lx * CAMERA_YAW_SPEED * dt).coerceIn(-CAMERA_YAW_MAX, CAMERA_YAW_MAX)
             pitchOff = (pitchOff + ly * CAMERA_PITCH_SPEED * dt).coerceIn(-CAMERA_PITCH_DOWN, CAMERA_PITCH_UP)
         }
-        stickTurn = yawOff
+        stickTurn = if (cam.turnsPad) yawOff else 0f
         val targets = floatArrayOf(
-            (camBase[CAM_PITCH] + pitchOff).coerceIn(CAMERA_PITCH_LOWEST, CAMERA_PITCH_HIGHEST),
+            // (Never past the bounds by the stick; a game angle already past one stays: Sun / Moon's rooms look 9
+            // degrees down.)
+            (camBase[CAM_PITCH] + pitchOff).coerceIn(
+                minOf(CAMERA_PITCH_LOWEST, camBase[CAM_PITCH]), maxOf(CAMERA_PITCH_HIGHEST, camBase[CAM_PITCH])),
             camBase[CAM_YAW] + yawOff,
             camBase[CAM_DISTANCE] * camShown,
         )
@@ -464,9 +474,10 @@ class N3dsSession(
         // The game's own camera and nothing of ours left in it: leave it alone.
         if (untouched && camWritten.all { it.isNaN() }) return false
         if (targets.indices.any { targets[it] != values[it] }) {
-            for (k in targets.indices) buf.putFloat(CAM_FIELDS[k], targets[k])
-            // One write for the three (pitch at +4 to the distance at +0x1C), the fields between as read.
-            N3dsNative.writeMemory(setup + CAM_FIELDS[CAM_PITCH], block.copyOfRange(CAM_FIELDS[CAM_PITCH], CAM_BLOCK))
+            for (k in targets.indices) buf.putFloat(fields[k], targets[k] / (if (k == CAM_DISTANCE) 1f else unit))
+            // One write for the three (X: pitch at +4 to the distance at +0x1C), the fields between as read.
+            val from = fields.min()
+            N3dsNative.writeMemory(setup + from, block.copyOfRange(from, blockLen))
             for (k in targets.indices) camWritten[k] = targets[k]
         }
         if (untouched) camWritten.fill(Float.NaN)
@@ -476,22 +487,31 @@ class N3dsSession(
     /** The game's own camera written back (before a state is saved); the loop puts the zoom and the turn back after. */
     private fun cameraRestore() {
         val setup = camSetup
+        val cam = Gen6Reader.configFor(titleId)?.camera ?: return
         if (setup == 0 || camWritten.all { it.isNaN() } || camBase.any { it.isNaN() }) return
-        val block = N3dsNative.readMemory(intArrayOf(setup, CAM_BLOCK))?.takeIf { it.size == CAM_BLOCK } ?: return
+        val fields = camFields(cam)
+        val blockLen = fields.max() + 4
+        val block = N3dsNative.readMemory(intArrayOf(setup, blockLen))?.takeIf { it.size == blockLen } ?: return
         val buf = java.nio.ByteBuffer.wrap(block).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-        for (k in CAM_FIELDS.indices) buf.putFloat(CAM_FIELDS[k], camBase[k])
-        N3dsNative.writeMemory(setup + CAM_FIELDS[CAM_PITCH], block.copyOfRange(CAM_FIELDS[CAM_PITCH], CAM_BLOCK))
-        for (k in CAM_FIELDS.indices) camWritten[k] = camBase[k]
+        val unit = if (cam.radians) (180.0 / Math.PI).toFloat() else 1f
+        for (k in fields.indices) buf.putFloat(fields[k], camBase[k] / (if (k == CAM_DISTANCE) 1f else unit))
+        val from = fields.min()
+        N3dsNative.writeMemory(setup + from, block.copyOfRange(from, blockLen))
+        for (k in fields.indices) camWritten[k] = camBase[k]
     }
 
-    /** The field camera's setup ([Gen6Reader.cameraSetup]): the field object's pointers followed, 0 off the field. */
+    /** [Gen6Reader.Camera]'s pitch, yaw and distance offsets, in [CAM_PITCH] / [CAM_YAW] / [CAM_DISTANCE] order. */
+    private fun camFields(c: Gen6Reader.Camera) = intArrayOf(c.pitch, c.yaw, c.distance)
+
+    /** The field camera's settings ([Gen6Reader.Camera]): its pointers followed, 0 off the field. */
     private fun cameraSetup(config: Gen6Reader.Config): Int {
-        var a = readInt(config.fieldMenuRoot) ?: return 0
-        for (off in Gen6Reader.CAMERA_PATH) {
+        val cam = config.camera ?: return 0
+        var a = readInt(cam.root) ?: return 0
+        for (off in cam.path) {
             if (!Gen6Reader.inHeap(a)) return 0
             a = readInt(a + off) ?: return 0
         }
-        return if (Gen6Reader.inHeap(a)) a + Gen6Reader.CAMERA_SETUP else 0
+        return if (Gen6Reader.inHeap(a)) a + cam.setupAt else 0
     }
 
     private fun readInt(addr: Int): Int? = N3dsNative.readMemory(intArrayOf(addr, 4))?.takeIf { it.size == 4 }
@@ -507,32 +527,32 @@ class N3dsSession(
         private set
 
     /** The battle strip's picks: the game's touch-screen buttons pressed ([N3dsBattleTaps]). */
-    val battleTaps = N3dsBattleTaps({ battle?.input ?: com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE }, ::touchScreen)
+    val battleTaps = N3dsBattleTaps(
+        { battle?.input ?: com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE }, ::touchScreen, N3dsBattleTaps.forTitle(titleId))
 
-    /** The scene thread's battle read: its controller, then (with a command panel) the two battlers' records. */
+    /** The scene thread's battle read: its controller, then (with a command panel) the two battlers' records; Sun /
+     * Moon's from their menu bytes and their battler pointers ([Gen6Reader.Config.battleMenu]). */
     private fun readBattle(config: Gen6Reader.Config, battleModules: String?) {
-        val now = if (battleModules == null || config.battleUi == 0) null else {
-            val ui = N3dsNative.readMemory(intArrayOf(config.battleUi, Gen6Reader.BATTLE_UI_BYTES))
-            val panel = Gen6Reader.commandPanel(ui)
-            var player: Gen6Reader.BattleMon? = battle?.player
-            var foe: Gen6Reader.BattleMon? = battle?.foe
-            if (panel != 0) {
-                val ptrs = N3dsNative.readMemory(intArrayOf(panel + config.panelPlayer, 4, panel + config.panelFoe, 4))
-                if (ptrs != null && ptrs.size >= 8) {
-                    val b = java.nio.ByteBuffer.wrap(ptrs).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                    val p = b.getInt(0).takeIf(Gen6Reader::inHeap)
-                    val f = b.getInt(4).takeIf(Gen6Reader::inHeap)
-                    val ranges = listOfNotNull(p, f).flatMap { listOf(it, Gen6Reader.BATTLE_MON_BYTES) }.toIntArray()
-                    val recs = if (ranges.isEmpty()) null else N3dsNative.readMemory(ranges)
-                    if (recs != null && recs.size >= ranges.size / 2 * Gen6Reader.BATTLE_MON_BYTES) {
-                        var at = 0
-                        fun next() = recs.copyOfRange(at, at + Gen6Reader.BATTLE_MON_BYTES).also { at += Gen6Reader.BATTLE_MON_BYTES }
-                        if (p != null) player = Gen6Reader.battleMon(next())
-                        if (f != null) foe = Gen6Reader.battleMon(next())
-                    }
-                }
+        val now = when {
+            battleModules == null -> null
+            config.battleUi != 0 -> {
+                val ui = N3dsNative.readMemory(intArrayOf(config.battleUi, Gen6Reader.BATTLE_UI_BYTES))
+                val panel = Gen6Reader.commandPanel(ui)
+                val (player, foe) = if (panel != 0) battlers(config, panel + config.panelPlayer, panel + config.panelFoe)
+                    else battle?.player to battle?.foe
+                Gen6Reader.Battle(Gen6Reader.battleInput(ui), player, foe)
             }
-            Gen6Reader.Battle(Gen6Reader.battleInput(ui), player, foe)
+            config.battleMenu != 0 -> {
+                val menuAt = Gen6Reader.chained(config.battleMenu, config.battleMenuPath, ::readInt)
+                val subAt = Gen6Reader.chained(config.battleSubmenu, config.battleSubmenuPath, ::readInt)
+                val bytes = if (menuAt == null || subAt == null) null else N3dsNative.readMemory(intArrayOf(menuAt, 1, subAt, 1))
+                val input = if (bytes != null && bytes.size >= 2)
+                    Gen6Reader.battleInputSm(bytes[0].toInt() and 0xFF, bytes[1].toInt() and 0xFF)
+                    else com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
+                val (player, foe) = battlers(config, config.battlerPlayer, config.battlerFoe)
+                Gen6Reader.Battle(input, player, foe)
+            }
+            else -> null
         }
         if (now == battle) return
         // The cart's move and species tables, read here on the scene thread, never by the UI's first battle snapshot.
@@ -540,6 +560,27 @@ class N3dsSession(
         battle = now
         ui.post { onBattle(now) }
         publishBattle()
+    }
+
+    /** The battlers' records through the words at [playerAt] / [foeAt] (the last ones read where a word isn't one). */
+    private fun battlers(config: Gen6Reader.Config, playerAt: Int, foeAt: Int): Pair<Gen6Reader.BattleMon?, Gen6Reader.BattleMon?> {
+        var player: Gen6Reader.BattleMon? = battle?.player
+        var foe: Gen6Reader.BattleMon? = battle?.foe
+        val ptrs = N3dsNative.readMemory(intArrayOf(playerAt, 4, foeAt, 4))
+        if (ptrs == null || ptrs.size < 8) return player to foe
+        val b = java.nio.ByteBuffer.wrap(ptrs).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        val p = b.getInt(0).takeIf(Gen6Reader::inHeap)
+        val f = b.getInt(4).takeIf(Gen6Reader::inHeap)
+        val size = Gen6Reader.battleMonBytes(config)
+        val ranges = listOfNotNull(p, f).flatMap { listOf(it, size) }.toIntArray()
+        val recs = if (ranges.isEmpty()) null else N3dsNative.readMemory(ranges)
+        if (recs != null && recs.size >= ranges.size / 2 * size) {
+            var at = 0
+            fun next() = recs.copyOfRange(at, at + size).also { at += size }
+            if (p != null) player = Gen6Reader.battleMon(next(), config.battleMovesAt)
+            if (f != null) foe = Gen6Reader.battleMon(next(), config.battleMovesAt)
+        }
+        return player to foe
     }
 
     /** The last snapshot with [battle]'s fields: the strip follows the battle at once, not at the next sample. */
@@ -560,8 +601,10 @@ class N3dsSession(
         private set
     private var wildLanguage = -1
     @Volatile private var text: Gen6Text? = null
-    private val moveData by lazy { Gen6Moves.load(rom) }
-    private val personalData by lazy { Gen6Personal.load(rom) }
+    /** Where this cart keeps what the companion reads ([N3dsLayout]: X / Y, Omega Ruby / Alpha Sapphire, Sun / Moon). */
+    private val layout = N3dsLayout.forTitle(titleId)
+    private val moveData by lazy { Gen6Moves.load(rom, layout) }
+    private val personalData by lazy { Gen6Personal.load(rom, layout) }
 
     private fun withBattle(view: SnapshotView): SnapshotView {
         val b = battle ?: return view.copy(inBattle = false, battlePlayer = emptyList(), battleOpponent = emptyList(),
@@ -569,8 +612,8 @@ class N3dsSession(
         val t = text
         return view.copy(
             inBattle = true,
-            battlePlayer = listOfNotNull(b.player?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData, b.foe) }),
-            battleOpponent = listOfNotNull(b.foe?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData) }),
+            battlePlayer = listOfNotNull(b.player?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData, b.foe, layout) }),
+            battleOpponent = listOfNotNull(b.foe?.let { N3dsCompanionData.battleMon(it, t, moveData, personalData, layout = layout) }),
             battleInputState = b.input,
         )
     }
@@ -591,6 +634,11 @@ class N3dsSession(
 
     /** The field menu's bytes ([Gen6Reader.sceneOf]): the field's object from its root, then the pointer and flag in it. */
     private fun fieldMenu(config: Gen6Reader.Config): ByteArray? {
+        if (config.fieldMenuWord != 0) {
+            val menu = Gen6Reader.chained(config.fieldMenuWord, config.fieldMenuPath, ::readInt) ?: return null
+            val hold = Gen6Reader.chained(config.fieldHold, config.fieldHoldPath, ::readInt) ?: return null
+            return N3dsNative.readMemory(intArrayOf(menu, 1, hold, 1))
+        }
         if (config.fieldMenuRoot == 0) return null
         val root = N3dsNative.readMemory(intArrayOf(config.fieldMenuRoot, 4))?.takeIf { it.size == 4 } ?: return null
         val obj = java.nio.ByteBuffer.wrap(root).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(0)
@@ -622,22 +670,30 @@ class N3dsSession(
     private val sampler = Thread({
         // The cart's icons into rom-art once (a few hundred small files), before the first sample needs them.
         runCatching {
-            if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile())) com.pokedaisy.app.companion.data.RomArt.announce()
+            if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile(), layout)) com.pokedaisy.app.companion.data.RomArt.announce()
         }.onFailure { Log.w(TAG, "icons failed", it) }
-        // The Town Map's picture and pin (once per cart), and every zone's place on it.
-        val townSpots = runCatching {
-            if (Gen6TownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile())) com.pokedaisy.app.companion.data.RomArt.announce()
-            Gen6TownMap.spots(rom)
+        // The Town Map's picture and pin (once per cart), and every zone's place on it (X / Y, Omega Ruby / Alpha
+        // Sapphire); Sun / Moon's islands' pictures, the pin following the player ([SmTownMap]).
+        val townMap = Gen6TownMap.specFor(layout)
+        val townSpots = if (townMap == null) emptyMap() else runCatching {
+            if (Gen6TownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile(), layout)) com.pokedaisy.app.companion.data.RomArt.announce()
+            Gen6TownMap.spots(rom, layout)
         }.onFailure { Log.w(TAG, "town map failed", it) }.getOrDefault(emptyMap())
+        val smZones = if (layout.family != N3dsLayout.Family.SM) null else runCatching {
+            if (SmTownMap.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles.toOkioPath()).toFile())) com.pokedaisy.app.companion.data.RomArt.announce()
+            SmTownMap.zones(rom)
+        }.onFailure { Log.w(TAG, "town map failed", it) }.getOrNull()
+        var smLast: com.pokedaisy.app.companion.ui.XyMapSpot? = null
+        var smLastIsland = 0
         val config = Gen6Reader.configFor(titleId)
         var textLanguage = -1
-        val zones = Gen6Zones.load(rom)
+        val zones = Gen6Zones.load(rom, layout)
         while (running) {
             if (config != null && !paused) {
                 val sample = N3dsNative.readMemory(Gen6Reader.ranges(config))?.let { Gen6Reader.read(config, it) }
                 if (sample != null) {
                     // Reloaded when the language changes: a read before the save is loaded (the title) has none yet.
-                    if (text == null || sample.language != textLanguage) text = Gen6Text.load(rom, sample.language)?.also { t ->
+                    if (text == null || sample.language != textLanguage) text = Gen6Text.load(rom, sample.language, layout)?.also { t ->
                         textLanguage = sample.language
                         Gen6Text.languageLetter(sample.language)?.let { l -> ui.post { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(l) } }
                         val names = t.items
@@ -647,19 +703,36 @@ class N3dsSession(
                     if (sample.zone != wildZone || wildLanguage != textLanguage) {
                         wildZone = sample.zone
                         wildLanguage = textLanguage
-                        wildHere = N3dsCompanionData.wild(Gen6Wild.load(rom)?.getOrNull(sample.zone).orEmpty(), text)
-                        mapHere = townSpots[sample.zone]?.let {
+                        wildHere = N3dsCompanionData.wild(Gen6Wild.load(rom, layout)?.getOrNull(sample.zone).orEmpty(), text, layout)
+                        if (townMap != null) mapHere = townSpots[sample.zone]?.let {
                             com.pokedaisy.app.companion.ui.XyMapSpot(
-                                Gen6TownMap.MAP, Gen6TownMap.PIN, Gen6TownMap.WIDTH, Gen6TownMap.HEIGHT, it.x, it.y, it.w, it.h,
+                                townMap.map, townMap.pinAsset, townMap.width, townMap.height, it.x, it.y, it.w, it.h,
                             )
                         }
                     }
+                    if (smZones != null && config.playerPos != 0) {
+                        // Outdoors: the player's position on its island's picture; indoors: the last outdoor spot there.
+                        val island = smZones.island.getOrElse(sample.zone) { 0 }
+                        if (island != 0 && smZones.outdoor[sample.zone]) {
+                            val posAt = Gen6Reader.chained(config.playerPos, config.playerPosPath, ::readInt)
+                            if (posAt != null) N3dsNative.readMemory(intArrayOf(posAt, 12))?.takeIf { it.size == 12 }?.let { pos ->
+                                val b = java.nio.ByteBuffer.wrap(pos).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                                val (x, y) = SmTownMap.spot(b.getFloat(0), b.getFloat(8))
+                                if (x in 0f..SmTownMap.SIZE.toFloat() && y in 0f..SmTownMap.SIZE.toFloat()) {
+                                    smLast = com.pokedaisy.app.companion.ui.XyMapSpot(
+                                        SmTownMap.asset(island), null, SmTownMap.SIZE, SmTownMap.SIZE, x, y, 10f, 10f,
+                                    )
+                                    smLastIsland = island
+                                }
+                            }
+                        }
+                        mapHere = if (island != 0 && island == smLastIsland) smLast else null
+                    }
                     val view = SnapshotView(
                         connected = true,
-                        game = if (titleId == N3dsCart.POKEMON_Y_USA) com.pokedaisy.app.companion.data.GameKind.POKEMON_Y
-                            else com.pokedaisy.app.companion.data.GameKind.POKEMON_X,
+                        game = N3dsCart.kindOf(titleId),
                         frameCounter = N3dsNative.frames(),
-                        party = N3dsCompanionData.party(sample, text, moveData, personalData),
+                        party = N3dsCompanionData.party(sample, text, moveData, personalData, layout),
                         items = N3dsCompanionData.bag(sample, text),
                         location = N3dsCompanionData.location(sample, text, zones),
                     )
@@ -679,13 +752,11 @@ class N3dsSession(
         /** The camera's ease: this much of the factor a frame (about a quarter second from 1x to the farthest step). */
         private const val CAMERA_FRAME_MS = 16L
         private const val CAMERA_RESOLVE_NS = 500_000_000L
-        /** The setup's fields written ([Gen6Reader.CAMERA_SETUP]): pitch and yaw in degrees, the distance; read as one
-         * block of [CAM_BLOCK] bytes from the setup's start. */
-        private val CAM_FIELDS = intArrayOf(0x4, 0x8, Gen6Reader.CAMERA_DISTANCE)
+        /** The camera's fields ([Gen6Reader.Camera]) in this order: pitch and yaw (degrees here), the distance. */
+        private const val CAM_FIELD_COUNT = 3
         private const val CAM_PITCH = 0
         private const val CAM_YAW = 1
         private const val CAM_DISTANCE = 2
-        private const val CAM_BLOCK = 0x20
         /** ZOOM's factor eases this much a second. */
         private const val CAMERA_ZOOM_RATE = 3f
         /** The right stick, fully pushed: degrees a second; how far it turns / tilts from the game's angle; and the tilt's

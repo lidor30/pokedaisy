@@ -40,6 +40,7 @@ internal val trCompanionInfo: Map<String, Tr> = mapOf(
     "PURPLE FLOWERS" to Tr(ja = "むらさきの はなばたけ", fr = "FLEURS VIOLETTES", de = "LILA BLUMEN", it = "FIORI VIOLA", es = "FLORES MORADAS", br = "FLORES ROXAS", pt = "FLORES ROXAS", ko = "보라색 꽃밭"),
     "RED FLOWERS" to Tr(ja = "あかい はなばたけ", fr = "FLEURS ROUGES", de = "ROTE BLUMEN", it = "FIORI ROSSI", es = "FLORES ROJAS", br = "FLORES VERMELHAS", pt = "FLORES VERMELHAS", ko = "빨간 꽃밭"),
     "TALL GRASS" to Tr(ja = "ながい くさむら", fr = "HAUTES HERBES", de = "HOHES GRAS", it = "ERBA ALTA", es = "HIERBA ALTA", br = "GRAMA ALTA", pt = "ERVA ALTA", ko = "긴 풀숲"),
+    "FISHING" to Tr(ja = "つり", fr = "PÊCHE", de = "ANGELN", it = "PESCA", es = "PESCA", br = "PESCA", pt = "PESCA", ko = "낚시"),
     "HORDES" to Tr(ja = "むれバトル", fr = "HORDES", de = "HORDEN", it = "ORDE", es = "HORDAS", br = "HORDAS", pt = "HORDAS", ko = "무리배틀"),
     "For your game's clock: {0}." to Tr(ja = "ゲームの とけいでは いま {0}。", fr = "Selon l'horloge du jeu : {0}.", de = "Laut Spieluhr: {0}.", it = "Secondo l'orologio del gioco: {0}.", es = "Según el reloj del juego: {0}.", br = "Pelo relógio do jogo: {0}.", pt = "Pelo relógio do jogo: {0}.", ko = "게임 시계 기준: {0}."),
     "TO DO" to Tr(ja = "やること", fr = "À FAIRE", de = "ZU TUN", it = "DA FARE", es = "PENDIENTE", br = "A FAZER", pt = "A FAZER", ko = "할 일"),

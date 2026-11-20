@@ -27,6 +27,7 @@
 #include <mgba/internal/gba/audio.h>
 
 #include "../core/pd_canvas.h"
+#include "../core/pd_pixels.h"
 #include "../core/pd_game.h"
 #include "../core/pd_games.h"
 #include "../core/pd_library.h"
@@ -35,6 +36,7 @@
 #include "../core/pd_save.h"
 #include "../core/pd_settings.h"
 #include "../core/pd_style.h"
+#include "../core/pd_tr.h"
 #include "../host/pd_session.h"
 #include "../host/pd_mixer.h"
 #include "../emu/pd_armgba.h"
@@ -413,8 +415,49 @@ static void show_message(const char* line1, const char* line2) {
 
 // A game that didn't start: why, then the memory report (host_memory_report), on the screen and in the log, so a
 // player's photo of it says what went wrong.
+// An Old 3DS's system core runs one of the app's threads: the game's renderer gets it while armGBA / gpSP plays
+// (gpu_core1_lend), the screens' draw thread when nothing does. A renderer that still didn't start gives it back.
+static bool core1Lent;
+
+// A players' test switch: an empty file sdmc:/pokedaisy/<name>, or <name>.txt (Windows hides the ending, and a tester's
+// keepscreens.txt once did nothing).
+static bool sd_switch(const char* name) {
+    static const char* const ends[] = { "", ".txt" };
+    for (int i = 0; i < 2; i++) {
+        char path[96];
+        snprintf(path, sizeof path, "sdmc:" BASE_DIR "/%s%s", name, ends[i]);
+        FILE* f = fopen(path, "rb");
+        if (f) {
+            fclose(f);
+            return true;
+        }
+    }
+    return false;
+}
+
+static void core1_lend(const char* renderer) {
+    // The players' switch for comparing the two: sdmc:/pokedaisy/keepscreens leaves core 1 to the screens, as before.
+    if (sd_switch("keepscreens")) {
+        host_log("core 1 kept for the screens (keepscreens), not lent to %s", renderer);
+        return;
+    }
+    core1Lent = gpu_core1_lend();
+    if (core1Lent) host_log("core 1 lent to %s: the screens are drawn on core %d", renderer, gpu_draw_core());
+}
+
+static void core1_back(void) {
+    if (!core1Lent) return;
+    core1Lent = false;
+    host_log("core 1 back to the screens: %s", gpu_core1_back() ? "drawn on core 1" : "drawn on the game's core");
+}
+
+// The New 3DS gave a CIA launch less than the 124 MB it asks for (host_cia_short_of_memory).
+#define CIA_SHORT_WHY "the 3DS gave PokeDaisy less memory than it asks for this time. Close PokeDaisy from the HOME Menu and " \
+                      "start it again"
+
 static void game_failed(const char* title, const char* why) {
     host_lent_code_release();
+    core1_back();
     char report[256], detail[480];
     host_memory_report(report, sizeof report);
     snprintf(detail, sizeof detail, "%s. PokeDaisy %s: %s", why, PD_VERSION, report);
@@ -586,7 +629,8 @@ static bool run_game(const char* file) {
 
     // Every core reads the game into the buffer reserved at start: without it nothing can run, so say so plainly.
     if (!host_rom_arena_ready()) {
-        game_failed("The game didn't start:", "there was no room for the 32 MB game buffer when PokeDaisy started");
+        game_failed("The game didn't start:", host_cia_short_of_memory() ? CIA_SHORT_WHY
+                                                                          : "there was no room for the 32 MB game buffer when PokeDaisy started");
         return true;
     }
     struct VFile* rom = VFileOpen(romPath, O_RDONLY);
@@ -606,19 +650,42 @@ static bool run_game(const char* file) {
     size_t nameLen = strlen(file);
     bool gbName = (nameLen > 3 && !strcasecmp(file + nameLen - 3, ".gb")) || (nameLen > 4 && !strcasecmp(file + nameLen - 4, ".gbc"));
     bool armgba = !gbName && pd_armgba_wants(header, sizeof(header));
-    // The game's GBA CORE (X in the library): MGBA plays it on mGBA, GPSP on gpSP; AUTO and ARMGBA on armGBA.
-    bool gpsp = armgba && pickedCore == PD_CORE_GPSP;
+    // The game's GBA CORE (X in the library): MGBA plays it on mGBA, GPSP on gpSP, ARMGBA on armGBA. AUTO is armGBA on a
+    // New 3DS and gpSP on an Old 3DS with room for a 32 MB game (the CIA): there armGBA ran FireRed at 36-42 FPS, gpSP
+    // drawn with the game at 52-55 (the dev build's Old 3DS mode, 2026-11-20). The .3dsx's 16 MB buffer keeps armGBA.
+    bool autoGpsp = pickedCore == PD_CORE_AUTO && !host_is_new_3ds() && host_rom_arena_size() >= (32u << 20);
+    bool gpsp = armgba && (pickedCore == PD_CORE_GPSP || autoGpsp);
     if (armgba && (pickedCore == PD_CORE_MGBA || gpsp)) armgba = false;
 #ifdef PD_DEV
-    // The dev build's switch for comparing the cores: sdmc:/pokedaisy-dev/armgba/mgba runs GBA games on mGBA.
+    // The dev build's switch for comparing the cores: sdmc:/pokedaisy-dev/armgba/mgba runs GBA games on mGBA (also
+    // where AUTO would have picked gpSP).
     {
         FILE* useMgba = fopen("sdmc:" WORK_DIR "/mgba", "rb");
         if (useMgba) {
             fclose(useMgba);
             armgba = false;
+            gpsp = false;
         }
     }
 #endif
+    // An Old 3DS's .3dsx has room for a 16 MB game buffer only (host.c's host_rom_arena_init): say what to do instead.
+    if (host_rom_arena_size() < (32u << 20)) {
+        const char* why = NULL;
+        // A CIA launch the New 3DS gave less memory than it asked for: a restart from HOME, not the CIA, is the way out.
+        if (host_cia_short_of_memory() && ((size_t) rom->size(rom) > host_rom_arena_size() || gpsp))
+            why = CIA_SHORT_WHY;
+        else if ((size_t) rom->size(rom) > host_rom_arena_size())
+            why = "this game is bigger than 16 MB, and the .3dsx only gets room for a 16 MB game on this 3DS. Install the CIA "
+                  "to play it";
+        else if (gpsp)
+            why = "gpSP needs room for a 32 MB game, and the .3dsx only gets 16 MB on this 3DS. Install the CIA, or set this "
+                  "game's GBA CORE to ARMGBA (X in the library)";
+        if (why) {
+            rom->close(rom);
+            game_failed("The game didn't start:", why);
+            return true;
+        }
+    }
     struct mCore* core = NULL;
     struct rom_id romId;
     {
@@ -654,12 +721,14 @@ static bool run_game(const char* file) {
         }
 #endif
         char error[256] = "";
+        if (emuHost.threaded) core1_lend("armGBA's renderer");
         host_log("game: %s, heap %lu KiB free", file, (unsigned long) host_heap_free() >> 10);
         core = pd_armgba_load(romSd, saveSd, &emuHost, error, sizeof(error));
         if (!core) {
             game_failed("The game didn't start (armGBA):", error);
             return true;
         }
+        if (!pd_armgba_threaded()) core1_back();
         core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
         host_log("game: running on %s; heap %lu KiB free, linear %lu KiB free",
                  pd_armgba_recompiling() ? "armGBA's recompiler" : "armGBA's INTERPRETER", (unsigned long) host_heap_free() >> 10,
@@ -667,14 +736,19 @@ static bool run_game(const char* file) {
         gpu_double_game(true);
         gpu_set_bars(0);
     } else if (gpsp) {
-        // gpSP: its ARM11 recompiler, its renderer on the New 3DS's third core or an Old 3DS's system core (lent at 80%),
+        // gpSP: its ARM11 recompiler, its renderer on the New 3DS's third core (an Old 3DS's draws with the game, below),
         // drawing a few lines behind the game (the same picture, no frame later: EXPAND is fine), the cartridge in the arena.
         rom->close(rom);
         dspBase = GPSP_RATE;
         if (hasSound) ndspChnSetRate(0, dspBase);
         char romSd[520];
         snprintf(romSd, sizeof(romSd), "sdmc:%s", romPath);
-        bool renderCore = host_is_new_3ds() || host_core1_take(HOST_CORE1_PERCENT);
+        // An Old 3DS draws gpSP's pictures with the game and keeps core 1 for the screens (test5): a tester's Unbound ran
+        // better that way (52-57 FPS, 20-25 pictures shown a second) than with core 1 lent to gpSP's renderer.
+        // sdmc:/pokedaisy/lendcore1 lends it as test4 did, for comparing the two.
+        bool lend = host_is_new_3ds() || sd_switch("lendcore1");
+        if (!lend) host_log("gpSP drawn with the game, core 1 kept for the screens (an Old 3DS; lendcore1 lends it)");
+        bool renderCore = host_is_new_3ds() || (lend && host_core1_take(HOST_CORE1_PERCENT));
         struct pd_gpsp_host emuHost = { .audio = armgba_audio, .log = host_emu_log, .systemDir = "sdmc:" SYSTEM_DIR,
                                         .romBuffer = host_rom_arena, .knownCrc = romId.known ? romId.crc : 0,
                                         .threaded = renderCore, .renderCore = host_is_new_3ds() ? 2 : 1 };
@@ -687,12 +761,16 @@ static bool run_game(const char* file) {
         }
 #endif
         char error[256] = "";
+        if (emuHost.threaded) core1_lend("gpSP's renderer");
         host_log("game: %s on gpSP, heap %lu KiB free", file, (unsigned long) host_heap_free() >> 10);
         core = pd_gpsp_load(romSd, saveSd, &emuHost, error, sizeof(error));
         if (!core) {
             game_failed("The game didn't start (gpSP):", error);
             return true;
         }
+        if (!pd_gpsp_threaded()) core1_back();
+        // Its renderer asked for a core and didn't get it: why (gpSP 3D's video_thread_sys.c, a 64 KiB stack).
+        if (emuHost.threaded && !pd_gpsp_threaded()) host_log_thread_failure("gpSP's renderer", emuHost.renderCore, 64 * 1024);
         core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
         host_log("game: running on %s; heap %lu KiB free", pd_gpsp_recompiling() ? "gpSP's recompiler" : "gpSP's INTERPRETER",
                  (unsigned long) host_heap_free() >> 10);
@@ -765,13 +843,14 @@ static bool run_game(const char* file) {
     struct pd_session_host files = { state_path, backup_for_load, settings_changed, cheat_path, &gameFiles,
                                      wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL, NULL, flight_area_path,
                                      nuzlocke_path };
+    files.companionIntervalMs = host_is_new_3ds() ? 0 : PD_SNAPSHOT_INTERVAL_MS;
 #ifdef PD_DEV
     files.clock = svcGetSystemTick;
 #endif
     session.host = (struct pd_host_info) { .count = 2 };
     session.host.labels[0] = "FILE";
     snprintf(session.host.values[0], sizeof(session.host.values[0]), "%s", file);
-    session.host.labels[1] = "SPEED";
+    session.host.labels[1] = "SPEED|emulation";
     snprintf(session.host.values[1], sizeof(session.host.values[1]), "-");
     pd_session_start(&session, core, gpu_game_buffer(), &settings, &files);
     if (pickedSha1[0] && strcasecmp(session.game.sha1, pickedSha1))
@@ -795,10 +874,19 @@ static bool run_game(const char* file) {
 
     bool touching = false;
     unsigned fpsFrames = 0;
+    unsigned perfSeconds = 0, bottomPaints = 0, newPictures = 0; // newPictures: frames whose own picture went up
+    unsigned nativeWas = gpu_native_frames();
+    unsigned shownWas = gpu_frames_shown();
+    unsigned mixesWas = pd_mixer_mixes;
+    struct pd_gpsp_stats gpspWas = { 0 };
+    if (gpsp) pd_gpsp_get_stats(&gpspWas);
+    struct pd_armgba_cache cacheWas = { 0 };
+    if (armgba) pd_armgba_cache_get(&cacheWas);
     u64 busyTicks = 0;
     const uint32_t* perfPicture = NULL;
     int perfWidth = 0;
     u64 fpsStart = osGetTime();
+    u64 perfStart = fpsStart;
     u64 lastTick = fpsStart;
 #ifdef PD_DEV
     u64 devSecond = fpsStart;
@@ -826,15 +914,58 @@ static bool run_game(const char* file) {
     }
 #endif
     const bool catchUpOn = catchUpMax > 0;
+    bool nativeDisplay = gpsp;
+    if (gpsp) {
+        FILE* disableNative = fopen("sdmc:" BASE_DIR "/nonative", "rb");
+        if (disableNative) {
+            fclose(disableNative);
+            nativeDisplay = false;
+        }
+        host_log("gpSP native RGB565 display: %s", nativeDisplay ? "enabled" : "disabled by /nonative");
+    }
     const s64 refreshTicks = (s64) (SYSCLOCK_ARM11 / SCREEN_HZ);
+    struct pd_refresh_timer bottomTimer = { 0 };
+    const bool throttleBottom = !host_is_new_3ds();
+    const u64 bottomInterval = (SYSCLOCK_ARM11 + 29ULL) / 30;
     s64 behindTicks = 0;
     u64 loopTick = 0;
+    // gpSP's pictures on an Old 3DS at a rhythm planned from its renderer's time (host/pd_draw_pace.h): the game never
+    // waits for core 1. Off on a New 3DS, where every picture fits a refresh.
+    struct pd_draw_pace drawPace = { 0 };
+    const bool paced = gpsp && !host_is_new_3ds();
+    const unsigned refreshUs = (unsigned) (1000000 / SCREEN_HZ);
+    unsigned paceEvery = 0;
+    // The bottom screen's paint goes where a frame has time left for it (an Old 3DS): what the last one cost must fit
+    // before the refresh, else it waits for a loop with room, a second at most.
+    u64 paintCost = 0, scrollCost = 0, paintedAt = 0; // what the last whole paint / scroll-only paint took
     host_log("game: %s", catchUpOn ? "frames skipped to keep up (an Old 3DS)" : "every frame drawn");
     // No SD card writes for the log while the game runs (host_log_hold).
     host_log_hold(true);
 
     while ((appRunning = aptMainLoop())) {
+        u64 loopBegin = svcGetSystemTick();
         int catchUp = 0;
+        enum pd_draw_plan drawPlan = PD_DRAW_NOW;
+        if (paced) {
+            // Not where the frame just run is read at once: EXPAND builds its margins from it, FREE FLIGHT draws into it.
+            bool plannable = pd_gpsp_threaded() && !session.ff && settings.aspect != PD_ASPECT_EXPAND && !session.wideReady &&
+                             session.flightState == PK_FLIGHT_IDLE;
+            if (plannable) {
+                unsigned renderUs, waitUs;
+                pd_gpsp_render_us(&renderUs, &waitUs);
+                (void) waitUs;
+                drawPlan = pd_draw_pace_next(&drawPace, renderUs, refreshUs);
+            } else {
+                pd_draw_pace_reset(&drawPace);
+            }
+            if (drawPace.every != paceEvery) {
+                paceEvery = drawPace.every;
+                host_log("gpSP: a picture every %u frame%s", paceEvery, paceEvery == 1 ? "" : "s");
+                // A picture collected late is converted into whichever buffer is the game's then: one buffer while the
+                // rhythm is slower, the copy into the draw thread's stage taken when it's shown.
+                gpu_double_game(paceEvery <= 1);
+            }
+        }
         if (catchUpOn) {
             u64 t = svcGetSystemTick();
             if (loopTick) {
@@ -856,6 +987,7 @@ static bool run_game(const char* file) {
         hidScanInput();
         u32 injected = devlink_keys();
         u32 held = hidKeysHeld() | injected, down = hidKeysDown() | (injected & ~lastInjected);
+        bool bottomUrgent = (uiPtr->keyFocus && down) || (down & (KEY_X | KEY_ZL | KEY_TOUCH));
         lastInjected = injected;
         if (devlink_take_leave() || devlink_restart_wanted()) break;
 #ifdef PD_DEV
@@ -923,12 +1055,21 @@ static bool run_game(const char* file) {
 
         int touchX, touchY;
         if (read_touch(held, &touchX, &touchY)) {
-            session.redraw |= pd_ui_touch(uiPtr, touchX, touchY, true);
+            if (pd_ui_touch(uiPtr, touchX, touchY, true)) {
+                if (uiPtr->touchScrollOnly) session.redrawScroll = true;
+                else session.redraw = true;
+            }
             touching = true;
         } else if (touching) {
-            session.redraw |= pd_ui_touch(uiPtr, 0, 0, false);
+            if (pd_ui_touch(uiPtr, 0, 0, false)) {
+                if (uiPtr->touchScrollOnly) session.redrawScroll = true;
+                else session.redraw = true;
+            }
             touching = false;
+            bottomUrgent = true;
         }
+
+        if (bottomUrgent) session.snapshotRequested = true;
 
         bool leave = false;
         enum pd_action action = pd_ui_take_action(uiPtr);
@@ -954,7 +1095,8 @@ static bool run_game(const char* file) {
 
         struct pd_input in = { .held = gba_keys(held & ~withheld), .down = gba_keys(down & ~withheld),
                                .quickMenu = (down & KEY_Y) && !uiPtr->keyFocus,
-                               .ffHeld = held & KEY_ZR, .stickAngle = stick_angle(), .catchUp = catchUp };
+                               .ffHeld = held & KEY_ZR, .stickAngle = stick_angle(), .catchUp = catchUp,
+                               .drawPlan = drawPlan };
         DEV_MARK(coreStart);
         u64 busyStart = svcGetSystemTick();
         u64 tickNow = osGetTime();
@@ -963,7 +1105,10 @@ static bool run_game(const char* file) {
         gb_audio_pump();
         lastTick = tickNow;
         unsigned frames = session.frame - before;
+        // The session ran it another way (another speed, a catch-up): the plan starts again from the next frame.
+        if (paced && session.drawPlan != drawPlan) pd_draw_pace_reset(&drawPace);
         if (frames) pd_session_set_video(&session, gpu_frame_done());
+        if (frames && !pd_draw_plan_holds(session.drawPlan) && !pd_session_holds_frame(&session)) newPictures++;
         audioMuted = session.ff;
         busyTicks += svcGetSystemTick() - busyStart;
         DEV_MARK(uiStart);
@@ -976,6 +1121,40 @@ static bool run_game(const char* file) {
             snprintf(hostPtr->values[1], sizeof(hostPtr->values[1]), "%u%% (%u FPS)", pct, fpsFrames);
             // The game's own core, how much of the last second it was busy: 100 and the game can't keep up.
             unsigned cpu = (unsigned) (busyTicks / (SYSCLOCK_ARM11 / 1000) * 100 / (now - fpsStart));
+            if (++perfSeconds % 5 == 0) {
+                unsigned nativeNow = gpu_native_frames();
+                unsigned shownNow = gpu_frames_shown();
+                host_log("perf: emulated FPS %lu, presented FPS %lu, new pictures/s %lu (one every %u frame%s), core+companion %u%%, bottom paints/period %u, native frames/period %u, heap %lu KiB",
+                         (unsigned long) ((u64) fpsFrames * 1000 / (now - fpsStart)),
+                         (unsigned long) ((u64) (shownNow - shownWas) * 1000 / (now - perfStart)),
+                         (unsigned long) ((u64) newPictures * 1000 / (now - perfStart)), drawPace.every ? drawPace.every : 1u,
+                         drawPace.every > 1 ? "s" : "", cpu, bottomPaints, nativeNow - nativeWas, (unsigned long) (host_heap_free() >> 10));
+                newPictures = 0;
+                if (gpsp) {
+                    struct pd_gpsp_stats current;
+                    pd_gpsp_get_stats(&current);
+                    host_log("gpSP perf: worker %s CPU %d, render %u us, wait %u us, conversion %u us; ROM/RAM-full flushes %u/%u; native mixes %u",
+                             current.threaded ? "running" : "OFF", current.workerCpu,
+                             current.renderUs, current.waitUs, current.hookUs,
+                             current.romFlushes - gpspWas.romFlushes,
+                             current.ramFullFlushes - gpspWas.ramFullFlushes, pd_mixer_mixes - mixesWas);
+                    gpspWas = current;
+                }
+                if (armgba) {
+                    // Its compiled code thrown away whole: everything is compiled again after it (a stutter each time).
+                    struct pd_armgba_cache current;
+                    pd_armgba_cache_get(&current);
+                    host_log("armGBA perf: code %u of %u KiB, blocks compiled %u, flushes (out of room) %u, flushes (asked) %u",
+                             current.codeUsedKiB, current.codeSizeKiB, current.compiled - cacheWas.compiled,
+                             current.fullFlushes - cacheWas.fullFlushes, current.askedFlushes - cacheWas.askedFlushes);
+                    cacheWas = current;
+                }
+                mixesWas = pd_mixer_mixes;
+                bottomPaints = 0;
+                nativeWas = nativeNow;
+                shownWas = shownNow;
+                perfStart = now;
+            }
             perfPicture = settings.showPerf ? pd_session_perf((unsigned) ((u64) fpsFrames * 10000 / (now - fpsStart)), cpu > 100 ? 100 : cpu, &perfWidth) : NULL;
             busyTicks = 0;
             fpsFrames = 0;
@@ -986,10 +1165,23 @@ static bool run_game(const char* file) {
             if (uiPtr->tab == PD_TAB_SETTINGS) session.redraw = true;
         }
 
-        if (session.redraw) {
+        u64 bottomNow = svcGetSystemTick();
+        bool paintUrgent = bottomUrgent || session.redrawUrgent;
+        // A New 3DS paints every redraw at once, but a list scrolled under the finger waits for a loop with room
+        // (two refreshes at most): with the game's frame near its budget, painting it anyway made that frame late.
+        const bool scrollOnly = session.redrawScroll && !session.redraw;
+        bool paintFits = (!throttleBottom && !scrollOnly) || paintUrgent ||
+                         bottomNow - paintedAt >= (throttleBottom ? SYSCLOCK_ARM11 : (u64) refreshTicks * 2) ||
+                         bottomNow + (scrollOnly ? scrollCost : paintCost) <= loopBegin + (u64) refreshTicks * 3 / 4;
+        if ((session.redraw || session.redrawScroll) && paintFits && (!throttleBottom || pd_refresh_due(&bottomTimer, bottomNow, bottomInterval, paintUrgent))) {
             DEV_MARK(redrawStart);
             pd_session_draw(&session, &bottom);
             gpu_set_bottom(bottomPx);
+            bottomPaints++;
+            pd_refresh_mark(&bottomTimer, bottomNow);
+            paintedAt = svcGetSystemTick();
+            if (scrollOnly) scrollCost = paintedAt - bottomNow;
+            else paintCost = paintedAt - bottomNow;
 #ifdef PD_DEV
             unsigned took = TICKS_TO_US(svcGetSystemTick() - redrawStart);
             dev.redraws++;
@@ -999,8 +1191,13 @@ static bool run_game(const char* file) {
         DEV_MARK(drawStart);
         gpu_set_perf(perfPicture, session.perfRight - perfWidth, 3, settings.showPerf ? perfWidth : 0);
         perfPicture = NULL;
-        gpu_hold_game(pd_session_holds_frame(&session));
+        gpu_hold_game(pd_session_holds_frame(&session) || pd_draw_plan_holds(session.drawPlan));
         gpu_set_wide(session.wideReady ? pd_session_wide(&session) : NULL, session.wideW, session.wideH);
+        size_t nativeStride = 0;
+        // A picture collected late lands in the converted buffer (pd_gpsp.c's frame hook), not gpSP's own.
+        const uint16_t* nativePx = pd_pixels_native_allowed(nativeDisplay && drawPace.every <= 1, session.wideReady,
+            session.flightState != PK_FLIGHT_IDLE, session.flightDrawn) ? pd_gpsp_native_pixels(&nativeStride) : NULL;
+        gpu_set_native_pixels(nativePx, nativeStride);
         const struct pd_wide_hole* hole = &session.wideHole;
         gpu_set_wide_hole(hole->x, hole->y, hole->w, hole->h, hole->gameX, hole->gameY);
         if (session.overlayDirty) gpu_set_overlay(pd_session_overlay(&session));
@@ -1122,6 +1319,7 @@ static bool run_game(const char* file) {
     // armGBA writes the save if the game changed it, and its warm list; mGBA's VFile flushes on unmap.
     core->deinit(core);
     host_lent_code_release();
+    core1_back();
     host_log("game: closed");
     return appRunning;
 }
@@ -1439,26 +1637,56 @@ static bool pick_rom(char* out, size_t outLen) {
     return running && picked;
 }
 
+// LANGUAGE's AUTO without a game (or with a game in a language the menus don't have): the console's own language.
+static void read_system_language(void) {
+    u8 lang = CFG_LANGUAGE_EN, region = CFG_REGION_EUR;
+    if (R_SUCCEEDED(cfguInit())) {
+        CFGU_GetSystemLanguage(&lang);
+        CFGU_SecureInfoGetRegion(&region);
+        cfguExit();
+    }
+    pd_tr_set_system(lang == CFG_LANGUAGE_FR ? PD_LANG_FR : lang == CFG_LANGUAGE_DE ? PD_LANG_DE :
+                     lang == CFG_LANGUAGE_IT ? PD_LANG_IT : lang == CFG_LANGUAGE_ES ? PD_LANG_ES :
+                     // A US console's Portuguese is Brazil's (the app's ofLocale: pt-BR), a European one's Portugal's.
+                     lang == CFG_LANGUAGE_PT ? (region == CFG_REGION_USA ? PD_LANG_BR : PD_LANG_PT) : PD_LANG_EN);
+}
+
 int main(void) {
     // First, while the heap is whole: the 32 MB every game is read into.
     bool arena = host_rom_arena_init();
+    make_dirs();
+    host_log_open(LOG_FILE);
+    host_log("PokeDaisy %s: ROM arena %s; heap %lu KiB", PD_VERSION, arena ? "ready" : "unavailable",
+             (unsigned long) (host_heap_free() >> 10));
     if (!gpu_init()) {
+        host_log("graphics initialization failed; heap %lu KiB, linear %lu KiB free",
+                 (unsigned long) (host_heap_free() >> 10), (unsigned long) (linearSpaceFree() >> 10));
+        host_log_close();
         gfxExit();
         return 1;
     }
+    host_log("graphics ready: linear %lu KiB free, heap %lu KiB free",
+             (unsigned long) (linearSpaceFree() >> 10), (unsigned long) (host_heap_free() >> 10));
     // The New 3DS's 804 MHz mode (a no-op on the original models; off for the dev build's Old 3DS stand-in).
     if (!host_old_3ds_stand_in()) osSetSpeedupEnable(true);
+    read_system_language();
     mLogSetDefaultLogger(&silentLogger);
-    make_dirs();
-    host_log_open(LOG_FILE);
-    if (!arena) {
+    // The CIA asks a New 3DS for its 124 MB mode (pokedaisy.rsf), which some launches didn't get: what this one got.
+    if (host_is_new_3ds() && !envIsHomebrew())
+        host_log("New 3DS CIA: asked for 124 MB, got %lu KiB (%s)", (unsigned long) osGetMemRegionSize(MEMREGION_APPLICATION) >> 10,
+                 host_cia_short_of_memory() ? "LESS: a restart from HOME may get it" : "as asked");
+    if (!arena || host_rom_arena_size() < (32u << 20)) {
         char report[256];
         host_memory_report(report, sizeof report);
-        host_log("no memory for the 32 MB game buffer: %s", report);
+        if (!arena) host_log("no memory for the 32 MB game buffer: %s", report);
+        else host_log("game buffer: 16 MB (no room for 32 MB: games over 16 MB and gpSP need the CIA): %s", report);
     }
     host_log("PokeDaisy: %s, heap %lu KiB free", host_is_new_3ds() ? "New 3DS" : host_old_3ds_stand_in() ? "New 3DS playing an Old 3DS" : "3DS",
              (unsigned long) host_heap_free() >> 10);
     host_log("screens drawn on core %d", gpu_draw_core() >= 0 ? gpu_draw_core() : 0);
+    host_core1_log();
+    // An Old 3DS whose draw thread didn't get the system core: why, now that the log is open.
+    if (!host_is_new_3ds() && gpu_draw_core() < 0) host_log_thread_failure("the screens' draw thread", 1, GPU_DRAW_STACK);
     {
         char report[256];
         host_memory_report(report, sizeof report);

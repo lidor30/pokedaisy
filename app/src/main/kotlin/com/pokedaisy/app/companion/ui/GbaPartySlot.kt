@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.ui
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,10 +13,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_FEMALE
@@ -49,7 +45,7 @@ fun GbaPartySlot(
     val st = style
     val assets = rememberPartySlotAssets(st) ?: return
     val sheet = rememberMonIconSheet(mon?.iconAsset)
-    val sheetImg = remember(sheet) { sheet?.asImageBitmap() }
+    val sheetImg = sheet
     // The icon's two-frame animation, at the game's HP-based speed.
     val ticks = mon?.let { iconFrameTicks(st, it) } ?: 0
     val iconPhase by rememberBlink(partyIconPoseMs(ticks), enabled = ticks > 0 && CompanionTweaks[CompanionTweaks.Tweak.PARTY_ICONS_MOVE])
@@ -125,8 +121,8 @@ fun GbaPartySlot(
             // Both halves move with the (stretched) bar's right end - they share
             // the slash, so they must stay together.
             // (NUM_PAD: the game's right-align pad character, not a plain space.)
-            px.text(assets, "%3d/".format(mon.hp).replace(' ', NUM_PAD), px.end(st.hpX), px.textY(st.hpY), st.text, st.textShadow)
-            px.text(assets, "/%3d".format(mon.maxHp).replace(' ', NUM_PAD), px.end(st.maxHpX), px.textY(st.hpY), st.text, st.textShadow)
+            px.text(assets, "${mon.hp.toString().padStart(3)}/".replace(' ', NUM_PAD), px.end(st.hpX), px.textY(st.hpY), st.text, st.textShadow)
+            px.text(assets, "/${mon.maxHp.toString().padStart(3)}".replace(' ', NUM_PAD), px.end(st.maxHpX), px.textY(st.hpY), st.text, st.textShadow)
             px.hpBar(mon.hp, mon.maxHp)
         }
         if (statusIdx >= 0) {
@@ -403,7 +399,7 @@ class PartySlotAssets(
     val statusIcons: ImageBitmap,
     /** The held-item marker (RomArt.HOLD_ICONS); null until a ROM has supplied it. */
     val heldIcons: ImageBitmap?,
-    private val fontMask: Bitmap,
+    private val fontMask: ImageBitmap,
 ) {
     private val tinted = HashMap<Pair<Long, Long>, ImageBitmap>()
     private val bandFrames = HashMap<List<Any>, ImageBitmap>()
@@ -413,8 +409,8 @@ class PartySlotAssets(
         val key = listOf(frame, sL, sM, kT, kM, kB)
         bandFrames[key]?.let { return it }
         if (bandFrames.size > 32) bandFrames.clear() // sizes only change with the layout
-        return buildBandFrame(frame.asAndroidBitmap(), st, st.band!!, frame === slotEmpty, sL, sM, kT, kM, kB)
-            .asImageBitmap().also { bandFrames[key] = it }
+        return buildBandFrame(frame, st, st.band!!, frame === slotEmpty, sL, sM, kT, kM, kB)
+            .also { bandFrames[key] = it }
     }
 
     /** font_small.png marks text pixels red and shadow pixels blue; recolour once per pair. */
@@ -422,13 +418,13 @@ class PartySlotAssets(
         val w = fontMask.width
         val h = fontMask.height
         val px = IntArray(w * h)
-        fontMask.getPixels(px, 0, w, 0, 0, w, h)
+        fontMask.readPixels(px, 0, 0, w, h)
         for (i in px.indices) {
             val p = px[i]
             if ((p ushr 24) == 0) continue
             px[i] = if ((p shr 16 and 0xFF) > 0x80) fg.toInt() else shadow.toInt()
         }
-        Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888).asImageBitmap()
+        imageBitmapOf(px, w, h)
     }
 }
 
@@ -439,12 +435,12 @@ class PartySlotAssets(
  * redrawn as straight lines between their original end points.
  */
 private fun buildBandFrame(
-    src: Bitmap, st: PartySlotStyle, band: DiagonalBand, empty: Boolean, sL: Int, sM: Int, kT: Int, kM: Int, kB: Int,
-): Bitmap {
+    src: ImageBitmap, st: PartySlotStyle, band: DiagonalBand, empty: Boolean, sL: Int, sM: Int, kT: Int, kM: Int, kB: Int,
+): ImageBitmap {
     val w = src.width
     val h = src.height
     val px = IntArray(w * h)
-    src.getPixels(px, 0, w, 0, 0, w, h)
+    src.readPixels(px, 0, 0, w, h)
     val cols = ArrayList<Int>()
     for (x in 0 until w) {
         cols.add(x)
@@ -493,21 +489,20 @@ private fun buildBandFrame(
             }
         }
     }
-    return Bitmap.createBitmap(out, ow, oh, Bitmap.Config.ARGB_8888)
+    return imageBitmapOf(out, ow, oh)
 }
 
 /** The slot's art, or null while no ROM has supplied it (FireRed / Emerald: see RomArt). */
 @Composable
 internal fun rememberPartySlotAssets(st: PartySlotStyle): PartySlotAssets? {
-    val context = LocalContext.current
     val gen = rememberArtGeneration()
-    return remember(context, st, gen) {
+    return remember(st, gen) {
         // Shared by every slot and every visit: the grid and its 6 slots used to build 7
         // sets, each recolouring the 256x256 font again (MBs per PARTY visit).
         slotAssetsCache[st to gen]?.let { return@remember it }
         runCatching {
-            fun load(path: String): Bitmap = GameArt.get(context, path) ?: error("no $path")
-            fun frame(name: String) = load("${st.frameDir}/$name").asImageBitmap()
+            fun load(path: String): ImageBitmap = GameArt.get(path) ?: error("no $path")
+            fun frame(name: String) = load("${st.frameDir}/$name")
             PartySlotAssets(
                 slotNormal = frame("slot_normal.png"),
                 slotSelected = frame("slot_selected.png"),
@@ -516,9 +511,9 @@ internal fun rememberPartySlotAssets(st: PartySlotStyle): PartySlotAssets? {
                 slotNoHp = frame("slot_nohp_normal.png"),
                 slotNoHpSelected = frame("slot_nohp_selected.png"),
                 slotEmpty = if (st.hasEmptySlot) frame("slot_empty.png") else null,
-                pokeball = st.pokeballAsset?.let { load(it).asImageBitmap() },
-                statusIcons = load(st.statusAsset).asImageBitmap(),
-                heldIcons = GameArt.get(context, com.pokedaisy.app.companion.data.RomArt.HOLD_ICONS)?.asImageBitmap(),
+                pokeball = st.pokeballAsset?.let { load(it) },
+                statusIcons = load(st.statusAsset),
+                heldIcons = GameArt.get(com.pokedaisy.app.companion.data.RomArt.HOLD_ICONS),
                 fontMask = load(st.fontAsset),
             )
         }.getOrNull()?.also {

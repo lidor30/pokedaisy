@@ -1,0 +1,87 @@
+# TMs from the bag on Ruby / Sapphire (TmTeach.kt, 2026-11-18): pret's pokeruby symbols (rev 1 = rev 2), the bag's own way into
+# the party menu (item_use.c's SetPokemonItemUseAndFadeOut, pokemon_menu.c's sub_808B020), its fixed way back to the bag
+# (sub_80A5B40) swapped for CB2_ReturnToField. gMain.callback2 = gMain (0x03001770) + 4.
+[record.TM_RUBY]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203855E
+itemUseType = 0x02038561
+itemUseCb = 0x03004AE4
+itemUseCbTmhm = 0x0806F08C
+showPartyMenuForItemUse = 0x0808B040
+partyMenu = 0
+partyMenuSlotOff = 0
+initPartyMenu = 0x0808AFA0
+mainCallback2 = 0x03001774
+setMainCallback2 = 0x080003CC
+returnToField = 0x08054604
+cleanupOverworld = 0
+fadeScreen = 0x0807D664
+lockControls = 0x08065550
+unlockControls = 0x0806555C
+bagReturn = 0x080A5B60
+overworld = 0x080543C4
+codeCrcs = [0xD38FC57E, 0x2A0A6EBD, 0x5F206B87, 0x37AB1053, 0xD8C6E030, 0xF9959006, 0xA003C21A, 0x9807B468]
+
+[record.TM_RUBY_REV0]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203855E
+itemUseType = 0x02038561
+itemUseCb = 0x03004AE4
+itemUseCbTmhm = 0x0806F06C
+showPartyMenuForItemUse = 0x0808B020
+partyMenu = 0
+partyMenuSlotOff = 0
+initPartyMenu = 0x0808AF80
+mainCallback2 = 0x03001774
+setMainCallback2 = 0x080003CC
+returnToField = 0x080545E4
+cleanupOverworld = 0
+fadeScreen = 0x0807D644
+lockControls = 0x08065530
+unlockControls = 0x0806553C
+bagReturn = 0x080A5B40
+overworld = 0x080543A4
+codeCrcs = [0xD38FC57E, 0x2A0A6EBD, 0x5F206B87, 0x37AB1053, 0x83716810, 0xF9959006, 0xA003C21A, 0x9807B468]
+
+[record.TM_SAPPHIRE]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203855E
+itemUseType = 0x02038561
+itemUseCb = 0x03004AE4
+itemUseCbTmhm = 0x0806F090
+showPartyMenuForItemUse = 0x0808B040
+partyMenu = 0
+partyMenuSlotOff = 0
+initPartyMenu = 0x0808AFA0
+mainCallback2 = 0x03001774
+setMainCallback2 = 0x080003CC
+returnToField = 0x08054608
+cleanupOverworld = 0
+fadeScreen = 0x0807D664
+lockControls = 0x08065554
+unlockControls = 0x08065560
+bagReturn = 0x080A5B60
+overworld = 0x080543C8
+codeCrcs = [0xD38FC57E, 0x2A0A6EBD, 0x9F85C0F2, 0x37AB1053, 0xD3B01134, 0xF9959006, 0xA003C21A, 0x9807B468]
+
+[record.TM_SAPPHIRE_REV0]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203855E
+itemUseType = 0x02038561
+itemUseCb = 0x03004AE4
+itemUseCbTmhm = 0x0806F070
+showPartyMenuForItemUse = 0x0808B020
+partyMenu = 0
+partyMenuSlotOff = 0
+initPartyMenu = 0x0808AF80
+mainCallback2 = 0x03001774
+setMainCallback2 = 0x080003CC
+returnToField = 0x080545E8
+cleanupOverworld = 0
+fadeScreen = 0x0807D644
+lockControls = 0x08065534
+unlockControls = 0x08065540
+bagReturn = 0x080A5B40
+overworld = 0x080543A8
+codeCrcs = [0xD38FC57E, 0x2A0A6EBD, 0x9F85C0F2, 0x37AB1053, 0x88079914, 0xF9959006, 0xA003C21A, 0x9807B468]
+

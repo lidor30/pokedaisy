@@ -269,6 +269,15 @@ val POKEDEX_UNBOUND_FR = POKEDEX_UNBOUND.copy(
     probeCategory = "Graine",
 )
 
+/** Unbound v2.1.1.1 IT: English's tables, the dex text translated in place - metric with a decimal comma
+ * ("Alt." / "Peso ... kg", headless, the game's own POKéDEX); BULBASAUR's category stayed English's "Seed". */
+val POKEDEX_UNBOUND_IT = POKEDEX_UNBOUND.copy(
+    categoryPrefix = "Pokémon",
+    categorySuffix = "",
+    metric = true,
+    probeCategory = "Seed",
+)
+
 /** Ruby (rev 1 and rev 2 share every address): Emerald's flag rules,
  * seen copies at SaveBlock1+0x938/+0x3A8C, two-page dex text. */
 val POKEDEX_RUBY = PokedexTables(
@@ -1090,6 +1099,25 @@ val POKEDEX_ROCKET_EDITION = POKEDEX_ULTRA_VIOLET.copy(abilityNames = 0x08950000
  * ability names at 0x08950000, its mixed-case text. */
 val POKEDEX_GHOST_GREY = POKEDEX_ROCKET_EDITION
 
+/** Pokémon Clover v1.3.3: rev 0's tables rewritten in place (its fakemon's entries), its ability names repointed to
+ * 0x0893A1C0, its mixed-case text ("Anal Plant Pokémon" for slot 1). */
+/** Pokémon Elysium v2.5.0 Part A: rev 0's tables rewritten in place; FireRed's capitals. */
+val POKEDEX_ELYSIUM_A = POKEDEX_ULTRA_VIOLET
+
+/** Pokémon Elysium v2.5.0 Part B: its species tables repointed (every one's literal-pool word). */
+val POKEDEX_ELYSIUM_B = POKEDEX_ULTRA_VIOLET.copy(
+    entries = 0x08A3ADDCL,
+    frontPics = 0x089EE2A0L,
+    palettes = 0x089F05A0L,
+    speciesInfo = 0x089EA560L,
+    speciesToNational = 0x08A2F200L,
+    footprints = 0x08A3A51CL,
+    evolutions = 0x08A31070L,
+    tmhmLearnsets = 0x08A2FAC8L,
+)
+
+val POKEDEX_CLOVER = POKEDEX_ULTRA_VIOLET.copy(abilityNames = 0x0893A1C0L, categorySuffix = "Pokémon", probeCategory = "Anal Plant")
+
 /**
  * Pokémon Let's Go Pikachu / Eevee (both versions share these): FireRed's dex screens over 987 species, every table found
  * through rev 0's literal-pool words - entries 0x08AB7AF0 (No. 0-855: its own numbering, Kanto's 151 first; the newest
@@ -1569,6 +1597,38 @@ data class DexEntry(
 }
 
 /**
+ * Decode a Gen 3 Pokémon's 64x64 front picture straight from cartridge bytes,
+ * given [read] at ROM addresses (0x08000000+). The pure core shared by
+ * [PokedexSource.frontSprite] (reads the running game) and the SAVE EDITOR's
+ * offline [com.pokedaisy.app.companion.data.save.RomMonSprites] (reads a ROM
+ * file). Null when the table's pointers don't hold - the caller keeps its icon.
+ */
+internal fun decodeFrontSprite(t: PokedexTables, species: Int, read: (Long, Int) -> ByteArray): RomArt.Image? {
+    if (species <= 0) return null
+    return runCatching {
+        val x = t.expansion
+        val tilesPtr: Long
+        val palPtr: Long
+        if (x != null) {
+            val info = read(t.speciesInfo + species.toLong() * x.stride, x.stride)
+            tilesPtr = Gfx.u32(info, x.frontPicOff)
+            palPtr = Gfx.u32(info, x.paletteOff)
+        } else {
+            tilesPtr = Gfx.u32(read(t.frontPics + species * 8L, 8), 0)
+            palPtr = Gfx.u32(read(t.palettes + species * 8L, 8), 0)
+        }
+        if (!Gfx.inRom(tilesPtr) || !Gfx.inRom(palPtr)) return null
+        // Emerald's front pics hold two animation frames (4 KiB); the first is the still.
+        val packed = read(tilesPtr, 0x1800)
+        val tiles = if (Smol.isSmol(packed)) Smol.decompress(packed) else Gfx.lz77(packed)
+        val pal = read(palPtr, 64)
+        // Expansion keeps some palettes uncompressed: 16 raw colours.
+        val colors = if ((pal[0].toInt() and 0xFF) == 0x10) Gfx.lz77(pal) else pal.copyOf(32)
+        Gfx.decode4bpp(tiles, 0, colors, 0, 8, 8)
+    }.getOrNull()
+}
+
+/**
  * Reads [DexEntry]s and sprites out of the ROM on demand and caches them -
  * like [DecompIconSource], called from Compose's IO dispatcher rather than the
  * emulator thread (ROM data never changes, so a read racing a frame is harmless).
@@ -1581,6 +1641,7 @@ object PokedexSource {
 
     private val entries = LockedMap<Int, DexEntry>()
     private val sprites = LockedMap<Int, RomArt.Image>()
+    private val shinySprites = LockedMap<Int, RomArt.Image>()   // Gen 2's, in the shiny pair
     private val footprints = LockedMap<Int, RomArt.Image>()
     private val baseStats = LockedMap<Int, IntArray>()
     private val growthRates = LockedMap<Int, Int>()
@@ -1593,7 +1654,7 @@ object PokedexSource {
         if (cachedFor == t) return
         synchronized(lock) {
             if (cachedFor == t) return
-            entries.clear(); sprites.clear(); footprints.clear(); baseStats.clear(); growthRates.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
+            entries.clear(); sprites.clear(); shinySprites.clear(); footprints.clear(); baseStats.clear(); growthRates.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
             cachedFor = t
         }
     }
@@ -1645,6 +1706,17 @@ object PokedexSource {
      * so a page seen before draws at once instead of after a load. */
     fun cachedEntry(t: PokedexTables, national: Int): DexEntry? = if (cachedFor == t) entries[national] else null
     fun cachedFrontSprite(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) sprites[species] else null
+    fun cachedShinyFrontSprite(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) shinySprites[species] else null
+
+    /** A Game Boy Color game's front picture in its shiny colours (Gen 2 only); null elsewhere. */
+    fun shinyFrontSprite(t: PokedexTables, species: Int): RomArt.Image? {
+        sync(t)
+        if (species <= 0) return null
+        shinySprites[species]?.let { return it }
+        val g = t.gen2 ?: return null
+        return runCatching { Gen2Dex.frontPixels(g, species, shiny = true)?.let { RomArt.Image(56, 56, it) } }
+            .getOrNull()?.also { shinySprites[species] = it }
+    }
     fun cachedFootprint(t: PokedexTables, species: Int): RomArt.Image? = if (cachedFor == t) footprints[species] else null
     fun cachedSpeciesMap(t: PokedexTables): IntArray? = when {
         // Gen 1's and 2's tables are by Dex number - but Prism's, by its own species ids in its own dex order.
@@ -1757,27 +1829,7 @@ object PokedexSource {
                 .getOrNull()?.also { sprites[species] = it }
         }
         t.gen4?.let { g -> return Gen4Dex.front(g, species)?.also { sprites[species] = it } }
-        return runCatching {
-            val x = t.expansion
-            val tilesPtr: Long
-            val palPtr: Long
-            if (x != null) {
-                val info = rd(t.speciesInfo + species.toLong() * x.stride, x.stride)
-                tilesPtr = Gfx.u32(info, x.frontPicOff)
-                palPtr = Gfx.u32(info, x.paletteOff)
-            } else {
-                tilesPtr = Gfx.u32(rd(t.frontPics + species * 8L, 8), 0)
-                palPtr = Gfx.u32(rd(t.palettes + species * 8L, 8), 0)
-            }
-            if (!Gfx.inRom(tilesPtr) || !Gfx.inRom(palPtr)) return null
-            // Emerald's front pics hold two animation frames (4 KiB); the first is the still.
-            val packed = rd(tilesPtr, 0x1800)
-            val tiles = if (Smol.isSmol(packed)) Smol.decompress(packed) else Gfx.lz77(packed)
-            val pal = rd(palPtr, 64)
-            // Expansion keeps some palettes uncompressed: 16 raw colours.
-            val colors = if ((pal[0].toInt() and 0xFF) == 0x10) Gfx.lz77(pal) else pal.copyOf(32)
-            Gfx.decode4bpp(tiles, 0, colors, 0, 8, 8)
-        }.getOrNull()?.also { sprites[species] = it }
+        return decodeFrontSprite(t, species, ::rd)?.also { sprites[species] = it }
     }
 
     /** The 16x16 footprint (black on transparent). */

@@ -86,6 +86,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import kotlinx.coroutines.IO
 
 /** What the GUIDE tab has for a game: its hand-written [text], the ROM's
  * evolution table ([evolutions]) and the live pages' tables ([live]). */
@@ -232,6 +233,24 @@ fun GuideScreen(source: GuideSource, ui: GuideUiState, snapshot: SnapshotView, m
     val page = pages.firstOrNull { it.title == ui.page } ?: pages.firstOrNull()
     LaunchedEffect(page?.title) { ui.list.scrollToItem(0) }
 
+    val content: @Composable (Modifier) -> Unit = { mod -> GuidePageWindow(page, ui, ctx, m, small, mod) }
+    if (OptionColors.joined) {
+        // A MENU STYLE: GUIDE as a strip over one window, its pages folder tabs down the window's left side.
+        Column(modifier.fillMaxSize()) {
+            OptionTitleWindow("GUIDE", m, joined = true)
+            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+                val height = maxHeight
+                Row(Modifier.fillMaxSize()) {
+                    TabRail(
+                        pages.map { tr(it.title) }, pages.indexOf(page), m, outside = true, fill = height, focusable = true,
+                        textScale = 1.25f,
+                    ) { i -> pages.getOrNull(i)?.let { ui.page = it.title } }
+                    content(Modifier.fillMaxHeight().weight(1f))
+                }
+            }
+        }
+        return
+    }
     Row(modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.fillMaxHeight().weight(0.34f), verticalArrangement = Arrangement.spacedBy(u * 4)) {
             OptionTitleWindow("GUIDE", m)
@@ -249,7 +268,15 @@ fun GuideScreen(source: GuideSource, ui: GuideUiState, snapshot: SnapshotView, m
             }
         }
 
-        OptionListWindow(m, Modifier.fillMaxHeight().weight(0.66f)) {
+        content(Modifier.fillMaxHeight().weight(0.66f))
+    }
+}
+
+/** The GUIDE page itself, in its window: its sections, entries and notes. */
+@Composable
+private fun GuidePageWindow(page: GuidePage?, ui: GuideUiState, ctx: GuideContext, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier) {
+    run {
+        OptionListWindow(m, modifier) {
             if (page == null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     GbaText(tr("LOADING..."), OptionColors.muted, OptionColors.mutedShadow, m)
@@ -318,6 +345,14 @@ fun GuideNotice(verified: Boolean, onAccept: () -> Unit, onBack: () -> Unit, mod
 @Composable
 private fun SectionHeading(section: GuideSection, small: GbaTextMetrics) {
     val u = small.u
+    OptionColors.style?.let { style ->
+        // A MENU STYLE: the heading is that style's section tab / band / pill.
+        Column(Modifier.padding(start = u * 2, end = u * 2, bottom = u * 1)) {
+            StyledGroupTitle(trGuide(section.heading), small, first = false, style = style, modifier = Modifier)
+            section.note?.let { GbaText(trGuide(it), OptionColors.muted, OptionColors.mutedShadow, small, maxLines = 3, modifier = Modifier.padding(start = u * 4, top = u)) }
+        }
+        return
+    }
     Column(Modifier.padding(start = u * 4, end = u * 4, top = u * 6, bottom = u * 1)) {
         // Headings stay English in the page (keys, tests); the app's own ones are translated here.
         GbaText(tr(trGuide(section.heading)), OptionColors.value, OptionColors.valueShadow, small)
@@ -354,7 +389,7 @@ private fun EntryRow(e: GuideEntry, level: Int, owned: Boolean, m: GbaTextMetric
             }
             // An unseen Pokémon's icon stays hidden with its name.
             if (e.icon != 0 && (e.steps == 0 || showAnswer)) {
-                SpeciesIcon(spriteAsset("pokemon", e.icon), size = u * 24)
+                SpeciesPicture(e.icon, spriteAsset("pokemon", e.icon), size = u * 24, fit = true)
                 Spacer(Modifier.width(u * 4))
             }
             GbaText(trGuide(e.title), OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f), maxLines = 2)

@@ -63,8 +63,9 @@ The app shows every license below in full under Settings > LICENSES.
   PokeDaisy's files for it (libretro/pd_agba_*, libretro/armgba/) change none of
   armGBA's files.
 - zlib (third_party/zlib, v1.3.1), Copyright (C) 1995-2024 Jean-loup Gailly and
-  Mark Adler, the zlib License - https://zlib.net (the armGBA libretro core
-  only, never the APK: its glue calls it; the cross toolchain has none).
+  Mark Adler, the zlib License - https://zlib.net (the armGBA libretro core,
+  whose glue calls it, the cross toolchain having none, and its contrib/puff
+  inflate in the Linux host's game list for cover art; never the APK).
 - DSperate (third_party/dsperate), Copyright (C) 2026 DSperate contributors,
   GNU GPL 3.0 or later - https://github.com/beebono/DSperate (source: the
   submodule's pinned commit). The app's second DS core (its core library only,
@@ -83,6 +84,19 @@ The app shows every license below in full under Settings > LICENSES.
   https://github.com/thwonp/dsperate-lr. It carries DSperate v3.3.0 as its own
   submodule, under the DSperate terms above; the collection package includes
   every license text in that tree.
+- BananaDS (third_party/bananads: the SuperDrastic repository, whose bananads/
+  folder is BananaDS), Copyright (c) 2026 JorreFog and the SuperDrastic
+  contributors, GNU GPL 3.0 or later - https://github.com/JorreFog/SuperDrastic
+  (source: the submodule's pinned commit). The app's third DS core,
+  libpkbananads.so (app/src/main/cpp/bananads/): its melonDS patches and the
+  Banana 2D engine (gpu2d/), over melonDS's own software 3D renderer. Its Gengis
+  Engine (gengis/) is not built, nor the rest of that repository (SuperDrastic,
+  MIT).
+- melonDS for BananaDS (third_party/melonds-bananads), Copyright (c) melonDS
+  team, GNU GPL 3.0 - https://github.com/melonDS-emu/melonDS, at the commit
+  BananaDS pins, with BananaDS's patches and PokeDaisy's
+  app/src/main/cpp/bananads/melonds-expand.patch applied to a build copy (the
+  same bundled libraries as below).
 - melonDS (third_party/melonds), Copyright (c) melonDS team, GNU GPL 3.0 -
   https://github.com/melonDS-emu/melonDS (source: the submodule's pinned commit,
   with PokeDaisy's changes in third_party/patches/melonds-pokedaisy.patch). Built
@@ -124,6 +138,8 @@ The app shows every license below in full under Settings > LICENSES.
   Clause (third_party/licenses/XZ-Java-0BSD.txt).
 - Compose Multiplatform, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
   (third_party/licenses/Apache-2.0.txt) - shared state and locale APIs for the iPad app.
+- Ktor, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - shared HTTP client for the offline manual.
 - kotlinx.atomicfu, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
   (third_party/licenses/Apache-2.0.txt) - multiplatform locks in the companion data code.
 - kotlinx-datetime, Copyright (c) JetBrains s.r.o. and contributors, Apache License 2.0
@@ -142,9 +158,6 @@ The app shows every license below in full under Settings > LICENSES.
 - OkHttp and Okio, Copyright (c) Square, Inc., Apache License 2.0
   (third_party/licenses/Apache-2.0.txt) - https://square.github.io/okhttp/ - the
   co-op link's WebSocket to the relay.
-- ZXing core, Copyright (c) ZXing authors, Apache License 2.0
-  (third_party/licenses/Apache-2.0.txt) - https://github.com/zxing/zxing - QR
-  encoding for co-op invites.
 - Some decoders and layouts follow the community decompilations of the games
   (pret's pokered / pokeyellow / pokegold / pokecrystal / pokefirered /
   pokeemerald / pokeruby / pokeplatinum / pokeheartgold, pokeemerald-expansion,

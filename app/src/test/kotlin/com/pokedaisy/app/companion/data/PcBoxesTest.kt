@@ -75,7 +75,7 @@ class PcBoxesTest {
             party.stats!!.stats.zip(box.stats!!.stats).forEach { (stored, worked) -> assertTrue("$stored vs $worked", worked - stored in 0..1) }
         }
         val boxes = readPcBoxes(ram, cfg)!!
-        boxes.boxes.flatMap { it.mons }.filterNotNull().filter { it.species != SPECIES_EGG_VANILLA }
+        boxes.boxes.flatMap { it.mons }.filterNotNull().filter { !it.isEgg }
             .forEach { assertNotNull(it.stats); assertEquals(it.hp, it.maxHp) }
     }
 

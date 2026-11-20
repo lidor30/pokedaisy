@@ -43,6 +43,10 @@ abstract class XyFieldHudShots(w: Int, h: Int, density: Density = Density.XHIGH)
     @Test fun hud() = shot(GameKind.POKEMON_X)
     @Test fun hudY() = shot(GameKind.POKEMON_Y)
     @Test fun hudYWild() = shot(GameKind.POKEMON_Y, openWild = true)
+    @Test fun hudOmegaRuby() = shot(GameKind.POKEMON_OMEGA_RUBY, openWild = true)
+    @Test fun hudAlphaSapphire() = shot(GameKind.POKEMON_ALPHA_SAPPHIRE)
+    @Test fun hudSun() = shot(GameKind.POKEMON_SUN, openWild = true)
+    @Test fun hudMoon() = shot(GameKind.POKEMON_MOON)
 
     private fun shot(game: GameKind, openWild: Boolean = false) = paparazzi.snapshot {
         BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {

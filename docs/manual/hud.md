@@ -10,7 +10,7 @@ Modern Pokémon games keep the important things on screen while you explore: you
 
 It's on by default. Turn it off, or change how it looks, in `HUD`, in the `SCREEN` group of Settings on either screen.
 
-On the Game Boy it shows in Yellow (the English cart), Yellow Legacy, Crystal, Crystal Legacy, Crystal Clear and Polished Crystal (3.2.3, the normal build) too, with or without `EXPAND`. Those games have no pictures for their items, so your balls show as a plain drawn ball with the count, and the bag lists your items by name, the way their own bag does.
+On the Game Boy it shows in Red and Blue (the English carts), Yellow (in every language), Yellow Legacy, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear and Polished Crystal (3.2.3, the normal build) too, with or without `EXPAND`. Those games have no pictures for their items, so the bag lists your items by name, the way their own bag does. In Crystal each kind of ball shows as the game throws it in battle, in its own colour; in the others your balls show as a plain drawn ball with the count.
 
 ## What it shows
 
@@ -50,7 +50,7 @@ Tap `LAYOUT`, `LOOK` or `SIZE` to step to the next choice. The HUD changes right
 | `LAYOUT` | **`CORNERS`**, `CORNERS 2`, `RAILS`, `DOCK` | `CORNERS` puts the minimap top right (the games show a new area's name at the top left), your party bottom left and the rest bottom right. `CORNERS 2` swaps the right side: the minimap bottom right, the balls and buttons top right. `RAILS` lines everything up in two columns at the sides of the screen, in the bars beside the game (or over the extra map with `EXPAND`), so the game's own picture is never covered. `DOCK` puts your party, balls and buttons in one bar along the bottom, and the minimap top right. |
 | `LOOK` | **`GAME`**, `GLASS`, `WHITE GLASS`, `WINDOW` | `GAME` draws the HUD in the style of the game you're playing: HeartGold's green menu window, Black's navy panels and so on (see [Game look](screen.md#game-look)); a game without a look of its own gets `GLASS`. `GLASS` is a dark see-through panel that lets the game show through, with light text. `WHITE GLASS` is the same in white, with dark text. `WINDOW` uses the white windows the rest of the app has. In every look the windows are shaped like the games' battle HP boxes, with a shadow below and to the right, and whatever is picked (a pocket, an item, `KEEP OPEN`) gets an orange edge, like the chosen slot on the games' party screen. |
 | `SIZE` | `SMALL`, **`NORMAL`**, `LARGE` | How big it is, from small to large. |
-| `PARTY`, `MINIMAP`, `POKé BALLS`, the steps left, `PC`, `BAG`, `WILD POKéMON` | **`ON`**, `OFF` | Show or hide each part. Each row carries the part's icon. |
+| `PARTY`, `MINIMAP`, `POKé BALLS`, the steps left, `PC`, `BAG`, `WILD POKéMON`, `MOVE ADVICE` | **`ON`**, `OFF` | Show or hide each part. Each row carries the part's icon. |
 
 ## On Linux and in other launchers
 
@@ -60,3 +60,13 @@ drawn at about half the app's size: smaller pictures of your party and Poké Bal
 their pictures but no names. `LARGE` draws it at full size, with the names on the buttons. Every `LAYOUT` works at each
 size. When your party and the rest don't fit side by side, the HUD keeps to the bottom left corner, with a `MAP` button
 in place of the minimap.
+
+## On iPhone and iPad
+
+The same field HUD appears in supported GBA games when you hold the device sideways. It waits for the field
+to settle, then hides during battles and game menus. In portrait, the companion below the game shows this information.
+Open `SETTINGS` > `HUD` to change its layout, look, size and visible parts. Your choices are kept for the next game.
+The HUD makes room for your touch controls. Its party, map, bag and wild windows use the same screens and supported
+field actions as the companion. Opening `QUICK MENU` closes any open HUD window.
+
+Battle buttons are not available on iPhone or iPad yet.

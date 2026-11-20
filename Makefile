@@ -34,8 +34,9 @@ help: ## Show this help
 
 ##@ App
 
-submodules: ## Fetch the mGBA, rcheevos and melonDS submodules (first build only)
+submodules: ## Fetch the mGBA, rcheevos and melonDS submodules, and BananaDS's two (first build only)
 	git submodule update --init third_party/mgba third_party/rcheevos third_party/melonds
+	git submodule update --init third_party/bananads third_party/melonds-bananads
 
 apk: ## Build the debug APK
 	./gradlew :app:assembleDebug
@@ -58,12 +59,11 @@ gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt, t
 	python3 scripts/gen_nds_ports.py
 	python3 scripts/gen_area_maps.py
 
-# Unfiltered runs cover both modules. A focused run (T='*FooTest') goes to the module(s) whose tests the filter names
-# (scripts/test_module.py; MODULE=app / MODULE=shared forces one), so a misspelled filter still fails in Gradle.
+# Unfiltered runs cover all three modules; focused filters discover their owning modules.
 MODULE ?= $(if $(strip $(T)),$(shell python3 scripts/test_module.py '$(T)'))
-UNIT_TESTS = $(if $(strip $(T)),$(foreach m,$(MODULE),:$(m):testDebugUnitTest --tests '$(T)'),:app:testDebugUnitTest :shared:testDebugUnitTest)
+UNIT_TESTS = $(if $(strip $(T)),$(foreach m,$(MODULE),:$(m):testDebugUnitTest --tests '$(T)'),:app:testDebugUnitTest :shared:testDebugUnitTest :shared-ui:testDebugUnitTest)
 
-test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (T='*FooTest' to pick)
+test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (MODULE=shared T='*FooTest' to pick)
 	./gradlew $(UNIT_TESTS) -Pquick
 
 test: ## All JVM unit tests, Paparazzi renders included (CLAUDE.md: agents ask first)
@@ -141,7 +141,7 @@ release-local: release-apk symbols ## Without CI: build, upload symbols, tag and
 	@command -v gh >/dev/null || { echo "needs the GitHub CLI (gh)"; exit 1; }
 	git tag -a "v$(VERSION)" -m "PokeDaisy $(VERSION)"
 	git push origin "v$(VERSION)"
-	gh release create "v$(VERSION)" $(RELEASE_APK) --draft --title "PokeDaisy $(VERSION)" --generate-notes
+	gh release create "v$(VERSION)" $(RELEASE_APK) --draft $(if $(findstring -,$(VERSION)),--prerelease) --title "PokeDaisy $(VERSION)" --generate-notes
 	@echo ">> v$(VERSION) is a draft: publish it with gh release edit v$(VERSION) --draft=false (cancel the Release run the tag started)"
 
 ##@ Looking at the UI

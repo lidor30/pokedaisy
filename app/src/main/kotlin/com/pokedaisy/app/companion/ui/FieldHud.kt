@@ -55,7 +55,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.Layout
@@ -108,6 +107,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlinx.coroutines.IO
 
 /*
  * FIELD HUD (SETTINGS > HUD, on by default): a modern game's heads-up display over the overworld - the party
@@ -183,6 +183,7 @@ fun fieldHudRows(
         SettingRow(p.label, onOff(style.shows(p)), enabled = on, labelBadge = when (p) {
             FieldHudPart.PC -> NewFeatures.badge(NewFeatures.HUD_PC)
             FieldHudPart.REPEL -> NewFeatures.badge(NewFeatures.HUD_REPEL)
+            FieldHudPart.MOVE_ADVICE -> NewFeatures.badge(NewFeatures.HUD_MOVE_ADVICE)
             else -> null
         }, labelIcon = hudPartIcon(p), iconPixels = ROW_ICON_PIXELS) {
             setStyle(style.copy(hidden = if (style.shows(p)) style.hidden + p else style.hidden - p))
@@ -205,6 +206,7 @@ private fun hudPartIcon(part: FieldHudPart): @Composable () -> Unit = {
         FieldHudPart.PC -> PixelArt(PC_ICON, PC_COLORS, fill)
         FieldHudPart.BAG -> PixelArt(BAG_ICON, BAG_COLORS, fill)
         FieldHudPart.WILD -> PixelArt(GRASS_ICON, GRASS_COLORS, fill)
+        FieldHudPart.MOVE_ADVICE -> TabIcons.forTab("PARTY")?.let { PixelArt(it.bitmap, it.palette, fill) }
     }
 }
 
@@ -695,7 +697,7 @@ private const val HUD_MIN_ROOM = 150
  * controls reaching [clearTop] / [clearBottom] down / up from the box's edges: both cut back by the same share where
  * they'd leave less than [minRoom] between them (or all the picture has, if less), so the HUD never squeezes into a strip.
  */
-internal fun hudClears(clearTop: Float, clearBottom: Float, inT: Float, inB: Float, boxH: Float, minRoom: Float): Pair<Float, Float> {
+fun hudClears(clearTop: Float, clearBottom: Float, inT: Float, inB: Float, boxH: Float, minRoom: Float): Pair<Float, Float> {
     val t = (clearTop - inT).coerceAtLeast(0f)
     val b = (clearBottom - inB).coerceAtLeast(0f)
     val picture = (boxH - inT - inB).coerceAtLeast(0f)
@@ -799,14 +801,14 @@ private fun CornersLayout(p: HudParts, swapped: Boolean, obstacles: List<Rect> =
 private enum class CornerPart { MAP, PARTY, BUTTONS }
 
 /** A part of CORNERS: its size and its corner. */
-internal data class HudCornerItem(val w: Float, val h: Float, val right: Boolean, val bottom: Boolean)
+data class HudCornerItem(val w: Float, val h: Float, val right: Boolean, val bottom: Boolean)
 
 /**
  * Where CORNERS' [items] go in [box] around the touch controls' buttons ([obstacles]): each in its corner where that's
  * clear, else stepped off the buttons ([hudCornerSpot]). Placed in every order, the one that leaves the most parts clear,
  * then moves them least, wins: one part going first can take the only clear place another had.
  */
-internal fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: List<Rect>, gap: Float): List<Rect> {
+fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: List<Rect>, gap: Float): List<Rect> {
     fun corner(it: HudCornerItem): Rect {
         val x = if (it.right) box.right - it.w else box.left
         val y = if (it.bottom) box.bottom - it.h else box.top
@@ -839,7 +841,7 @@ internal fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: L
  * controls) or [taken] (the parts already placed) is there, else the clear place nearest that corner - slid along its
  * edge or in from it past the buttons in the way, [gap] from them - inside [box]. Null: nowhere clear.
  */
-internal fun hudCornerSpot(
+fun hudCornerSpot(
     w: Float, h: Float, right: Boolean, bottom: Boolean, box: Rect, obstacles: List<Rect>, taken: List<Rect>, gap: Float,
 ): Rect? {
     val x0 = if (right) box.right - w else box.left
@@ -1026,6 +1028,18 @@ private fun DockDivider(m: GbaTextMetrics) {
     Box(Modifier.width(m.u).height(m.u * 30).background(ink.divider))
 }
 
+/** POKéMON PICTURES in the HUD: screen pixels a side for a picture in an icon slot of [size] (whole pixels a picture pixel). */
+private fun androidx.compose.ui.unit.Density.hudPictureSide(size: Dp): Int = 56 * max(1, (size.toPx() * 32f / 24f / 56f).roundToInt())
+
+/** The icon slot of a HUD party tile: the icon's size, or with POKéMON PICTURES the picture's and [u] * 2 round it. */
+@Composable
+private fun hudTileIcon(m: GbaTextMetrics): Dp {
+    val icon = hudIconSize(m)
+    if (LocalPokemonPictures.current == null) return icon
+    val density = LocalDensity.current
+    return androidx.compose.ui.unit.max(icon, with(density) { hudPictureSide(icon).toDp() } + m.u * 4)
+}
+
 // ---- Party --------------------------------------------------------------------------------------
 
 /**
@@ -1036,7 +1050,7 @@ private fun DockDivider(m: GbaTextMetrics) {
 @Composable
 private fun HudMonTile(mon: MonView, m: GbaTextMetrics, tagRow: Boolean, onClick: () -> Unit) {
     val u = m.u
-    val icon = hudIconSize(m)
+    val icon = hudTileIcon(m)
     Column(
         Modifier.width(icon + u * 2).soundClickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1045,9 +1059,9 @@ private fun HudMonTile(mon: MonView, m: GbaTextMetrics, tagRow: Boolean, onClick
             HudMonTag(mon, u)
             Spacer(Modifier.height(u * 2))
         }
-        HudMonIcon(mon, icon, u, tag = false)
+        HudMonIcon(mon, icon, u, tag = false, pictureFor = hudIconSize(m))
         if (!mon.isEgg) {
-            // Room under the sprite (it spills past its slot) before the bar.
+            // Room under the sprite (an icon spills past its slot) before the bar.
             Spacer(Modifier.height(u * 3))
             HudHpBar(mon.hp, mon.maxHp, Modifier.fillMaxWidth().height(u * 5))
         }
@@ -1059,7 +1073,7 @@ private fun HudMonTile(mon: MonView, m: GbaTextMetrics, tagRow: Boolean, onClick
 private fun HudMonRow(mon: MonView, m: GbaTextMetrics, onClick: () -> Unit) {
     val u = m.u
     Row(Modifier.soundClickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
-        HudMonIcon(mon, hudIconSize(m), u, tag = false)
+        HudMonIcon(mon, hudTileIcon(m), u, tag = false, pictureFor = hudIconSize(m))
         if (!mon.isEgg) {
             Column(Modifier.padding(start = u).width(u * 26), verticalArrangement = Arrangement.spacedBy(u * 2)) {
                 if (mon.hp == 0 || mon.status.isNotEmpty()) HudMonTag(mon, u)
@@ -1083,12 +1097,32 @@ private fun HudMonTag(mon: MonView, u: Dp) {
 /** The party icon; fainted ones faded with FNT on them, a status chip (PSN, SLP, ...) over its top ([tag]: the HUD's party
  * puts it in a row of its own instead), NUZLOCKE's gravestone. */
 @Composable
-internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp, tag: Boolean = true) {
+internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp, tag: Boolean = true, pictureFor: Dp? = null) {
     val density = LocalDensity.current
     val upx = with(density) { u.roundToPx() }
     val fainted = !mon.isEgg && mon.hp == 0
     Box(Modifier.size(size)) {
-        HudSpecies(mon.iconAsset, size, Modifier.alpha(if (fainted) 0.4f else 1f))
+        val pictures = LocalPokemonPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
+        // The front picture once it has loaded; until then (or if it can't be read) the icon.
+        val pic = pictures?.let { rememberPokemonPicture(it, mon.species, mon.shiny) }
+        if (pic != null) {
+            // POKéMON PICTURES: the front picture, about the icon's size (a whole number of screen pixels per picture pixel),
+            // centred on the slot. The party's tiles make the slot the picture's size plus a margin ([pictureFor], the icon's
+            // size it stands for); anywhere else (the bag's pick, the QUICK MENU) it stays inside [size], not over its neighbours.
+            val side = with(density) {
+                val px = size.toPx()
+                when {
+                    pictureFor != null -> hudPictureSide(pictureFor).toDp()
+                    px >= 56f -> (56 * kotlin.math.floor(px / 56f).toInt()).toDp()
+                    else -> size
+                }
+            }
+            Box(Modifier.size(size).alpha(if (fainted) 0.4f else 1f), contentAlignment = Alignment.Center) {
+                Box(Modifier.wrapContentSize(unbounded = true)) { PixelImage(pic, 56, Modifier.size(side)) }
+            }
+        } else {
+            HudSpecies(mon.iconAsset, size, Modifier.alpha(if (fainted) 0.4f else 1f))
+        }
         val status = if (fainted) "FNT" else mon.status
         if (tag && !mon.isEgg && status.isNotEmpty()) {
             // Over the icon's top edge, as wide as it needs (the icon box is narrower than "PSN" at some sizes).
@@ -1227,9 +1261,22 @@ private const val REPEL_ICON_ITEM = 86
 @Composable
 private fun BallCount(item: ItemView, m: GbaTextMetrics, text: GbaTextMetrics) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        // The Game Boy games have no item icons: a drawn ball in the icon's place.
-        if (item.iconAsset != null) HudItemIcon(item.iconAsset, hudItemSize(m))
-        else PixelArt(PixelIcons.pokeBall, CAUGHT_BALL, Modifier.size(hudItemSize(m)).padding(hudItemSize(m) / 8))
+        // The Game Boy games have no item icons: Crystal's carts give each kind its ball as the battle throws it (Gen2Art),
+        // the others a drawn ball in the icon's place.
+        val thrown = if (item.iconAsset == null) com.pokedaisy.app.companion.data.Gen2Art.ballAsset(item.itemId) else null
+        val gen = rememberArtGeneration()
+        // Read off the disk once, not in composition.
+        val thrownArt by androidx.compose.runtime.produceState(thrown?.let { GameArt.peek(it) }, thrown, gen) {
+            if (thrown != null) value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { GameArt.get(thrown) }
+        }
+        when {
+            item.iconAsset != null -> HudItemIcon(item.iconAsset, hudItemSize(m))
+            thrownArt != null -> androidx.compose.foundation.Image(
+                thrownArt!!, contentDescription = null, filterQuality = FilterQuality.None,
+                modifier = Modifier.size(hudItemSize(m)).padding(hudItemSize(m) / 8),
+            )
+            else -> PixelArt(PixelIcons.pokeBall, CAUGHT_BALL, Modifier.size(hudItemSize(m)).padding(hudItemSize(m) / 8))
+        }
         // Elite Redux keeps no counts: the ball alone.
         if (com.pokedaisy.app.companion.data.bagHasCounts) GbaText("x${item.quantity}", ink.text, ink.shadow, text)
     }
@@ -1332,8 +1379,8 @@ private fun HudMiniMap(
             val tile = (if (black) snapshot.regionMapTile else null)
                 ?: PlayerMapTile.of(model, snapshot.regionMapSectionId, snapshot.x, snapshot.y, snapshot.mapWidth, snapshot.mapHeight, snapshot.mapType)
             val point = if (black && tile != null) model.pick(0, tile.first, tile.second)?.mapsec?.let { model.points[it] } else null
-            val image = remember(bitmap) { bitmap.asImageBitmap() }
-            val headImage = remember(head) { head?.asImageBitmap() }
+            val image = bitmap
+            val headImage = head
             val crop = remember(bitmap) { regionMapContentBounds(bitmap) }
             Box(Modifier.size(u * mapW, u * mapH).clip(PixelRoundedShape(u * 2))) {
                 Canvas(Modifier.fillMaxSize()) {
@@ -1736,7 +1783,7 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             // An unseen Pokémon stays hidden, like GUIDE > HERE's.
                             Box(Modifier.size(icon), contentAlignment = Alignment.Center) {
-                                if (w.seen) HudSpecies(spriteAsset("pokemon", w.species), icon) else GbaText("?", c.muted, c.shadow, m)
+                                if (w.seen) { if (LocalPokemonPictures.current != null) SpeciesPicture(w.species, null, icon, fit = true) else HudSpecies(spriteAsset("pokemon", w.species), icon) } else GbaText("?", c.muted, c.shadow, m)
                             }
                             Spacer(Modifier.width(u * 2))
                             GbaText(if (w.seen) speciesName(w.species) else "???", c.text, c.shadow, m, Modifier.weight(1f))

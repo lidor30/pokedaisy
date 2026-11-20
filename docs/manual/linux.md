@@ -79,8 +79,10 @@ CrossMix it raises the CPU's lowest speed while you play and puts it back when y
 Copy both into your firmware's `ports` folder, then start PokeDaisy from the Ports list. It has been tried on a
 GKD 350H running ROCKNIX.
 
-- **Your games:** the game list shows `ports/pokedaisy/roms` and the firmware's own `gba`, `gb`, `gbc`, `nds`,
-  `Game Boy Advance`, `Game Boy Color`, `Game Boy` and `Nintendo DS` folders, wherever they exist next to `ports`.
+- **Your games:** the game list shows `ports/pokedaisy/roms` and the Pokemon games in the firmware's own `gba`, `gb`,
+  `gbc`, `nds`, `Game Boy Advance`, `Game Boy Color`, `Game Boy` and `Nintendo DS` folders, wherever they exist next
+  to `ports`. Your other games in those folders stay out of it, and so do the Pokemon spin-offs (Pinball, the card
+  games, Puzzle Challenge, Mystery Dungeon).
 - **The menu:** press the Menu or Guide button. SELECT and START together quit the port, as in any PortMaster game.
 - PortMaster tells PokeDaisy your device's buttons, so they work without setup.
 
@@ -99,6 +101,9 @@ In Platinum (USA, revision 1), L2 opens the companion and holding L2 opens the q
 `DS LAYOUT` to `ONE SCREEN` to play on the whole screen, with the touch screen and menus floating in when the game
 wants them. R2 switches to the bottom or top screen by hand. Hold SELECT and press Y to show or hide a floating
 touch screen in `ONE SCREEN` or `PICTURE IN PICTURE`. SELECT + D-pad moves the stylus and SELECT + A taps.
+
+The DS companion reads Platinum (USA, revision 1), the US HeartGold, SoulSilver, Black, White, Black 2 and White 2,
+and the German HeartGold, SoulSilver, Black, White, Black 2 and White 2. In a German game its own names stay English.
 
 In a DS game's DEX entry, Left and Right step to the previous and next entry you have seen, going round at either
 end.
@@ -166,7 +171,40 @@ while you rewind.
 ## Adding games
 
 The program's game list shows the `.gb`, `.gbc`, `.gba` and `.nds` files in the `roms` folder of its data folder (and, on
-PortMaster, the firmware's folders above). Pick one with the D-pad and A. Unzip your games first.
+PortMaster, the firmware's folders above). Unzip your games first.
+
+## The game list
+
+The game list is the app's library: `GAMES`, `TOOLS` and `SETTINGS` down the left, your games as covers (or a list)
+beside them, and the views over them, each with how many games it holds: `ALL`, `FAVORITES`, `RECENT`, one per console
+and `HACKS`.
+
+| Button | What it does |
+| --- | --- |
+| D-pad | Moves through the games. Up from the top row reaches the views and the header's buttons, left reaches the rail. |
+| A | Plays the game. |
+| B | The game's menu: `PLAY`, `FAVORITE` or `UNFAVORITE`. |
+| Y | `SETTINGS`. |
+| X | Switches between covers and a list. |
+| L, R | The previous or next view. |
+| START, or START and SELECT together, or Menu / Guide | Closes PokeDaisy (it asks first). |
+
+The header's first button sorts the games by name or by when you last played them; favorites always come first.
+`SETTINGS` holds `DARK MODE`, `THEME` and `ASPECT` (shared with the companion in your games) and the program's own
+`LCD FILTER`, `FF SPEED`, `REWIND` and `A/B BUTTONS`. `BUTTON COLORS` paints the button legend like your device's
+buttons: `RED A` (the app's colours) or `GREEN A` (green A, red B, blue X, yellow Y). `TOOLS` lists the save tools that
+are coming to this version.
+
+**Covers.** A game shows the box art your firmware's scraper saved for it (EmulationStation's `images` folder beside the
+games), and your favorites and last played games from that list come along too. A game without one gets its console's
+picture until a cover is found. For the hacks, PokeDaisy can fetch covers from SteamGridDB, as the app does: put your
+own SteamGridDB API key (from its Preferences, API) in a file named `steamgriddb-key.txt` in the data folder
+(`ports/pokedaisy` on PortMaster). Each game is looked up once, and its cover is kept in the `covers` folder there;
+when SteamGridDB can't be reached (no Wi-Fi), it tries again the next time you start PokeDaisy.
+Delete a file in `covers` to have that game looked up again.
+
+**Filling the screen.** Games start on `EXPAND`, the picture rebuilt out to the screen's edges. `ASPECT` in `SETTINGS`
+(or the companion's) switches back to `ORIGINAL`.
 
 ## Moving a save you already have
 
@@ -181,8 +219,10 @@ other core, won't load.
 ## Controls
 
 The program uses your controller's layout: the button on the right acts as the game's A and the one at the bottom
-as B, as on a Nintendo controller. If that feels backwards on your device, set `A/B BUTTONS` to `SWAPPED` in the
-menu. Controllers can be plugged in or pulled out while you play.
+as B, as on a Nintendo controller. On ROCKNIX the buttons follow their labels instead, so the button marked A is A,
+as long as the firmware's controller layout is Nintendo (its default). If that feels backwards on your device, set
+`A/B BUTTONS` to `SWAPPED` in the menu. If you set `A/B BUTTONS` to `SWAPPED` on ROCKNIX with an earlier version to
+get A on the button marked A, set it back to `NORMAL`. Controllers can be plugged in or pulled out while you play.
 
 On a keyboard: arrows move, Z is A, X is B, Enter is START, Backspace is SELECT, Q and E are L and R, Tab is X and F
 is Y. Hold Space to fast forward and R to rewind, F2 saves a state, F4 loads it, and Escape opens the menu. A touch

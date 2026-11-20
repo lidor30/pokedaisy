@@ -57,7 +57,8 @@ class AppUpdateFlow(private val activity: ComponentActivity) {
         if (checking) return
         checking = true
         Thread({
-            val found = AppUpdater.check(BuildConfig.VERSION_NAME)
+            val betas = Prefs(activity).betaUpdates(runningBeta = '-' in BuildConfig.VERSION_NAME)
+            val found = AppUpdater.check(BuildConfig.VERSION_NAME, betas)
             // An APK we already offered is spent once it's installed (or abandoned) - but the one for the
             // release still on offer is kept, so UPDATE installs it at once instead of downloading it again.
             updatesDir.listFiles()?.forEach { if (pendingApk != it && (found == null || it.name != apkName(found))) it.delete() }

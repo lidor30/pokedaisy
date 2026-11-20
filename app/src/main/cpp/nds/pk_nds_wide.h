@@ -108,3 +108,16 @@ struct PkNdsWidePlan {
     uint32_t fxTargets = 0;    // its first targets: 1 the 3D, 0x20 the backdrop
 };
 void pk_nds_wide_plan(PkNdsWidePlan* out);
+
+/** EXPAND's margins at a hires renderer's scale (BananaDS's Gengis at render.scale 2-4): [draw] draws a slice's polygons
+ * ([n] of them, set up in the slice's own screen as for melonDS's software renderer) into [out], (256 * scale) x
+ * (192 * scale) words in the 3D engine's colours (r | g << 8 | b << 16 | alpha << 24, 6 / 5 bits), on EXPAND's helper
+ * threads; [slot] is the slice (0-8, (sy + 1) * 3 + sx + 1). Returns whether it drew. Set, the margins are composed
+ * as GPU mode's plan (pk_nds_wide_plan) for the caller to put the hires 3D into; scale < 2 or null: as before.
+ * Between frames. */
+namespace melonDS { struct Polygon; }
+typedef bool (*PkNdsHiresDraw)(void* user, int slot, melonDS::Polygon** polys, int n, uint32_t* out);
+void pk_nds_wide_hires(int scale, PkNdsHiresDraw draw, void* user);
+
+/** The hires picture of slice (sx, sy) (-1..1 each) the last composed frame used, or null. */
+const uint32_t* pk_nds_wide_hires_slice(int sx, int sy);

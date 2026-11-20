@@ -62,6 +62,9 @@ struct pd_gb_config {
     uint8_t battleMenuLeftX, battleMenuRightX, battlePartyMenu;
     uint32_t menu2D, menuCursor, partyMenuAction;
     uint8_t cursorTile;
+    // Gen 2: BattleMenu's left column and BattleMonMenu's (SWITCH / STATS / CANCEL); 0 = English (0x09, 0x0C).
+    uint8_t gen2BattleMenuLeft, gen2SwitchMenuLeft;
+    char language; // a European cart's language letter (Gen1Config / Gen2Config.language); 0 = English
 };
 extern const uint16_t pd_gb_landmarks_gold_silver[][2];
 extern const int pd_gb_landmarks_gold_silver_count;
@@ -73,7 +76,7 @@ extern const int pd_gb_polished_variants_count;
 
 extern const struct pd_gb_config pd_gb_yellow, pd_gb_red, pd_gb_pure_red, pd_gb_crystal, pd_gb_gold, pd_gb_prism,
     pd_gb_polished, pd_gb_crystal_clear, pd_gb_blue, pd_gb_yume_blue, pd_gb_crystal_legacy, pd_gb_ambrosia,
-    pd_gb_yellow_de, pd_gb_yellow_fr, pd_gb_yellow_it, pd_gb_yellow_es, pd_gb_yellow_legacy;
+    pd_gb_yellow_de, pd_gb_yellow_fr, pd_gb_yellow_it, pd_gb_yellow_es, pd_gb_yellow_legacy, pd_gb_crystal_de, pd_gb_gold_de;
 
 // The game's own font (the app's Gen1Art / Gen2Art font): FontGraphics' 1bpp 8x8 tiles 0x80-0xFF from the ROM, mapped to
 // characters by the game's charmap and drawn 9/7 as tall as the standard font's letters, near its width (the app's
@@ -151,6 +154,7 @@ struct pd_gb_dex {
     int dexOrderCount, unown, dexEntryFirstBank;
     bool picBankDirect;
     bool dexEntryFar;          // a 3-byte far pointer per species (Crystal Legacy), not a bank table + addresses
+    bool metricBody;           // the page's height a byte (dm) and weight a word (hg), not feet x 100 + inches and lbs x 10 (the German carts)
     const int32_t* polished;  // Polished Crystal: this build's tables, bank << 16 | address
     const char* const* polishedChars;
     int polishedSpecies;      // its last species: past it, a variant form

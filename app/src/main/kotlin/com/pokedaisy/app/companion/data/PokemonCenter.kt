@@ -48,6 +48,9 @@ object PokemonCenter {
         /** MUS_HEAL and MUS_MOVE_DELETED: FireRed's 256 / 270, Emerald's (and Ruby / Sapphire's) 368 / 378. */
         val healSong: Int,
         val forgetSong: Int,
+        /** Ruby / Sapphire: DisplayMoveTutorMenu's index (they have no TM screen table for [relearn]'s two steps: the Fallarbor
+         * tutor's script is run, the special fading out, opening the screen and handing the script back on the field by itself). */
+        val relearnSpecial: Int? = null,
     ) {
         val var8005 get() = var8004 + 2
     }
@@ -122,13 +125,16 @@ object PokemonCenter {
             if (!isThumbRom(init) || !isThumbRom(cont) || cb !in 0x03000000L..0x03007FFFL) return@let null
             Relearn(i, init, cb, cont)
         }
+        // Ruby / Sapphire have no TM screen table for RELEARN's two steps: the special (DisplayMoveTutorMenu) run by a script.
+        val rubySapphire = code.startsWith("AXV") || code.startsWith("AXP")
+        val relearnSpecial = if (rubySapphire) relearn?.index ?: only(RELEARN) else null
         // The FireRed engine's recap leaves its palette where the relearner's words look for the field's: no screen without it.
         val windowFrame = if (fireRedSongs) scan(rom, WINDOW_FRAME).singleOrNull() else null
         val relearnHere = relearn?.takeIf { !fireRedSongs || windowFrame != null }
         return Found(
             0x08000000L + t, 0, nickname, forget, relearnHere, otId?.let { 0x08000000L + it },
             windowFrame?.let { 0x08000000L + it }, var8004, varResult,
-            if (fireRedSongs) 256 else 368, if (fireRedSongs) 270 else 378,
+            if (fireRedSongs) 256 else 368, if (fireRedSongs) 270 else 378, relearnSpecial,
         )
     }
 
@@ -264,6 +270,19 @@ fun centerForget(
     // waitfanfare; releaseall; end
     runScript(fns, byteArrayOf(0x69, 0x16, 0x04, 0x80.toByte()) + le16(slot) + byteArrayOf(0x16, 0x05, 0x80.toByte()) + le16(moveIndex) +
         byteArrayOf(0x25) + le16(special) + byteArrayOf(0x31) + le16(c.forgetSong) + byteArrayOf(0x32, 0x6B, 0x02), g)
+}.getOrElse { CenterResult.FAILED }
+
+/** RELEARN on Ruby / Sapphire ([PokemonCenter.Found.relearnSpecial]): the Fallarbor tutor's own script for slot [slot] -
+ * lockall; setvar 0x8004, slot; special DisplayMoveTutorMenu; waitstate; releaseall; end - the special fades out, opens the
+ * screen and comes back to the field into the script by itself. Emu thread. */
+fun centerRelearnScript(
+    fns: FieldItemFns, c: PokemonCenter.Found, slot: Int, personality: Long, busy: Boolean, g: GameCalls,
+): CenterResult = runCatching {
+    val special = c.relearnSpecial ?: return CenterResult.FAILED
+    centerGate(fns, busy, g)?.let { return it }
+    centerMon(fns, slot, personality, g).second?.let { return it }
+    runScript(fns, byteArrayOf(0x69, 0x16, 0x04, 0x80.toByte()) + le16(slot) + byteArrayOf(0x25) + le16(special) +
+        byteArrayOf(0x27, 0x6B, 0x02), g)
 }.getOrElse { CenterResult.FAILED }
 
 /** RELEARN's first step: the checks, then the controls locked and the screen fading to black; [centerRelearnFinish] follows

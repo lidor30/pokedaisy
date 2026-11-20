@@ -29,11 +29,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
@@ -121,6 +123,31 @@ private val WINDOW_SCRIM = Color(0x8C000000.toInt())
 /** SETTINGS > COMPANION VIEW's value: a window in the middle over the game, or the side panel. */
 fun companionViewLabel(window: Boolean) = if (window) tk("WINDOW") else tk("SIDE PANEL")
 
+/** SETTINGS > FOLD LAYOUT's value. */
+fun foldModeLabel(mode: com.pokedaisy.app.companion.FoldMode) = tk(mode.label)
+
+/** SETTINGS > FOLD LAYOUT on both screens: three values, so a pick-list ([pick]: title, choices, current, on pick). */
+fun foldLayoutRow(
+    mode: com.pokedaisy.app.companion.FoldMode,
+    pick: (String, List<String>, String, (String) -> Unit) -> Unit,
+    set: (com.pokedaisy.app.companion.FoldMode) -> Unit,
+): SettingRow {
+    val modes = com.pokedaisy.app.companion.FoldMode.entries
+    val current = foldModeLabel(mode)
+    return SettingRow(
+        tk("FOLD LAYOUT"), current,
+        labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.FOLD_LAYOUT),
+        subtitle = "The game on one side of the fold",
+    ) { pick(tk("FOLD LAYOUT"), modes.map(::foldModeLabel), current) { l -> modes.firstOrNull { foldModeLabel(it) == l }?.let(set) } }
+}
+
+/** SETTINGS > TABLETOP CONTROLS on both screens: where the touch controls go with the fold across the screen. */
+fun tabletopControlsRow(bottom: Boolean, set: (Boolean) -> Unit) = SettingRow(
+    tk("TABLETOP CONTROLS"), if (bottom) tk("BOTTOM SIDES") else tk("ON GAME"),
+    labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.TABLETOP_CONTROLS),
+    subtitle = "The touch controls with the fold across",
+) { set(!bottom) }
+
 /**
  * What the single-screen companion's view draws: the side panel, the companion filling it; or the window
  * ([window]), the companion framed like the game's windows in the middle of a dim over the game, the X that closes it
@@ -149,9 +176,21 @@ fun SidePanelHost(
     val starts = remember { FocusStarts() }
     val overlays = remember { OverlayStack() }
     var hasFocus by remember { mutableStateOf(false) }
+    val focus = LocalFocusManager.current
     // Registered before the companion's own handlers, so it gets only what they leave.
     keys?.Handler(enabled = window) { key, repeat ->
-        focusKeys?.invoke(key, repeat) { if (!hasFocus) starts.focusNewest() } ?: false
+        if (focusKeys != null) focusKeys(key, repeat) { if (!hasFocus) starts.focusNewest() }
+        else {
+            if (!hasFocus) starts.focusNewest()
+            when (key) {
+                MenuKey.UP -> focus.moveFocus(FocusDirection.Up)
+                MenuKey.DOWN -> focus.moveFocus(FocusDirection.Down)
+                MenuKey.LEFT -> focus.moveFocus(FocusDirection.Left)
+                MenuKey.RIGHT -> focus.moveFocus(FocusDirection.Right)
+                MenuKey.A -> repeat || starts.activateFocused()
+                else -> false
+            }
+        }
     }
     BoxWithConstraints(
         Modifier.fillMaxSize().then(
@@ -265,8 +304,8 @@ internal fun WindowCloseButton(onClose: () -> Unit, alpha: Float = 1f, descripti
  * The tab on the side panel's edge: a white title-window tab running into the
  * panel (like a folder tab) with a padlock - open = the panel lies over the
  * game, shut = locked beside it - in OPTION's grey / red, with the text's
- * shadow. A tap locks / unlocks; dragging it sideways (handled by the view
- * around it, in screen coordinates, since the tab moves with the finger)
+ * shadow. A tap locks / unlocks; dragging it sideways (handled by [PanelResizeHandle]
+ * using accumulated pointer deltas, since the tab moves with the finger)
  * resizes the panel.
  */
 @Composable

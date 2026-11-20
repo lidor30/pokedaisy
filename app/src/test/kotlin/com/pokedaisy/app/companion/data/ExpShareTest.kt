@@ -43,7 +43,7 @@ class ExpShareTest {
         File(RETAIL_ROM_DIR + "Pokemon Lazarus (v2.0).gba").takeIf { it.isFile }?.let { assertNull(ExpShare.find(it.toOkioPath())) }
     }
 
-    /** Every FireRed / LeafGreen / Emerald cart in the retail ROM dir (-DmultiRomDir=...). */
+    /** Every FireRed / LeafGreen / Emerald / Ruby / Sapphire cart in the retail ROM dir (-DmultiRomDir=...). */
     @Test
     fun everyRetailBuild() {
         val dir = File(System.getProperty("multiRomDir") ?: RETAIL_ROM_DIR)
@@ -51,11 +51,10 @@ class ExpShareTest {
         var checked = 0
         for (f in retailRomFiles(dir).filter { listOf("Pirate", "Debug").none { x -> x in it.name } }) {
             val code = f.inputStream().use { ByteArray(0xB0).also { b -> it.read(b) } }.let { String(it, 0xAC, 4) }
-            if (code.startsWith("AXV") || code.startsWith("AXP")) continue   // Ruby / Sapphire build getexp another way
             assertNotNull(f.name, ExpShare.find(f.toOkioPath()))
             checked++
         }
-        assertTrue("checked $checked", checked >= 15)
+        assertTrue("checked $checked", checked >= 40)
     }
 
     @Test

@@ -29,6 +29,7 @@
 #include <AREngine.h>
 
 #include <android/log.h>
+#include <android/native_window.h>
 
 #include <algorithm>
 #include <atomic>
@@ -46,6 +47,8 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 using namespace melonDS;
+
+static void expShareTick(void);   // EXP SHARE, after every frame (below)
 
 namespace {
 
@@ -75,6 +78,9 @@ struct Ds {
     int fieldBits = 0;                       // the field read after the last frame
     bool wildOff = false;                    // WILD ENCOUNTERS OFF (pk_nds_field.cpp holds the map's rates at 0)
     bool keepStartMenu = false;              // DS LAYOUT floats the X menu: it comes back after a screen left by touch
+    int expShare = 0;                        // EXP SHARE: 0 off, 1 SPLIT, 2 FULL EXP (expShareTick)
+    uint32_t expMask = 0;                    // the party slots that aren't eggs (sideGetExpMask's bits)
+    bool expPatched = false;                 // FULL EXP's patch is ours, so taking it out puts the game's back
     bool cpuBoost = false;                   // DS CPU BOOST: the ARM9 at twice the DS's clock (setArm9Shift)
     int menuLitFrames = 0;                   // frames this menu screen has been lit (its closing fade comes after)
     int scaleWant = 1;                       // DS RESOLUTION: 1 = the software renderer, 2-8 the GPU's (pk_nds_gl.h)
@@ -330,6 +336,7 @@ void pk_ndsm_run_frame(void)
     }
     ds->audioFrames = nds->SPU.ReadOutput(ds->audio.data(), (int) ds->audio.size() / 2);
     ds->fieldBits = pk_ndsm_field_bits();
+    expShareTick();
     pk_nds_call_frame(nds, ds->field);
     if (ds->wide) {
         // The overworld only: the field map on screen with nothing over it (a text box keeps it) - or a battle that's
@@ -454,7 +461,7 @@ int pk_ndsm_state_matches_save(const char* path)
     u32 header[4];
     bool ok = fread(header, sizeof(header), 1, f) == 1;
     fclose(f);
-    if (ok && header[0] == PK_NDS_STATE_MAGIC_DSPERATE) return 2;   // DSperate's (pk_nds.h): never loaded here
+    if (ok && (header[0] == PK_NDS_STATE_MAGIC_DSPERATE || header[0] == PK_NDS_STATE_MAGIC_BANANADS)) return 2;   // another core's: never loaded here
     if (!ok || header[0] != STATE_MAGIC || header[3] == 0) return -1;
     if (ds->savePath.empty() || ds->saveReadOnly) return 1;
     std::vector<u8> file;
@@ -500,6 +507,22 @@ bool pk_ndsm_write(uint32_t addr, const uint8_t* src, int len)
     if (!ds || (addr & 0xFF000000u) != 0x02000000u || len <= 0) return false;
     for (int i = 0; i < len; i++) ds->nds->MainRAM[(addr + (u32) i) & ds->nds->MainRAMMask] = src[i];
     return true;
+}
+
+bool pk_ndsm_code_write(uint32_t addr, const uint8_t* src, int len)
+{
+    if (!ds || !src || len <= 0) return false;
+    if ((addr & 0xFF000000u) == 0x02000000u) {
+        for (int i = 0; i < len; i++) ds->nds->MainRAM[(addr + (u32) i) & ds->nds->MainRAMMask] = src[i];
+        for (u32 a = addr & ~3u; a < addr + (u32) len; a += 4)
+            ds->nds->JIT.CheckAndInvalidate<0, ARMJIT_Memory::memregion_MainRAM>(a);
+        return true;
+    }
+    if (addr >= PK_NDS_HOOK_ADDR && addr + (u32) len <= 0x02000000u) {
+        pk_nds_call_itcm_write(ds->nds, addr, src, (u32) len);
+        return true;
+    }
+    return false;
 }
 
 static uint32_t mainRead32(uint32_t addr)
@@ -606,6 +629,25 @@ void pk_ndsm_set_keep_start_menu(bool on)
     if (ds) ds->keepStartMenu = on;
 }
 
+static void expWrite16(uint32_t a, uint16_t v)
+{
+    ds->nds->MainRAM[a & ds->nds->MainRAMMask] = (u8) v;
+    ds->nds->MainRAM[(a + 1) & ds->nds->MainRAMMask] = (u8) (v >> 8);
+    ds->nds->JIT.CheckAndInvalidate<0, ARMJIT_Memory::memregion_MainRAM>(a & ~3u);   // the JIT's copy of that code goes with it
+}
+
+// EXP SHARE (pk_nds_exp_share_tick): the battle's masks and FULL EXP's patch, after every frame.
+static void expShareTick(void)
+{
+    if (!ds || !ds->field) return;
+    ds->expPatched = pk_nds_exp_share_tick(ds->field, ds->expShare, ds->expMask, ds->expPatched, mainRead32, mainWrite32, expWrite16);
+}
+
+void pk_ndsm_set_exp_share(int mode, uint32_t mask)
+{
+    if (ds) { ds->expShare = mode; ds->expMask = mask; }
+}
+
 void pk_ndsm_set_cpu_boost(bool on)
 {
     if (!ds || ds->cpuBoost == on) return;
@@ -613,7 +655,11 @@ void pk_ndsm_set_cpu_boost(bool on)
     setArm9Shift(boostShift());
 }
 
-void pk_nds_set_wild_rates(const int32_t* triples, int n) { pk_nds_field_set_rates(triples, n); }
+void pk_nds_set_wild_rates(const int32_t* triples, int n)
+{
+    pk_nds_field_set_rates(triples, n);
+    pk_ndsb_set_wild_rates(triples, n);   // BananaDS's own copy of the field read
+}
 
 int pk_ndsm_set_cheats(const uint32_t* words, int nWords, const int32_t* lengths, int nCheats)
 {
@@ -683,7 +729,12 @@ bool pk_ndsm_presented(void) { return ds && ds->presented; }
 
 bool pk_ndsm_gpu_frame_info(int64_t timestamp, int32_t out[6]) { return pk_nds_gl_frame_info(timestamp, out); }
 
-void pk_nds_set_window(ANativeWindow* window) { pk_nds_gl_set_window(window); }
+void pk_nds_set_window(ANativeWindow* window)
+{
+    if (window) ANativeWindow_acquire(window);   // a reference for BananaDS's too
+    pk_ndsb_set_window(window);
+    pk_nds_gl_set_window(window);
+}
 
 int pk_ndsm_wide_scene(void)
 {

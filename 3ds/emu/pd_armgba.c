@@ -337,12 +337,25 @@ static uint8_t* read_file(const char* path, size_t* size) {
 }
 
 // The whole file to a new one first, then over the old: a crash or a full card can't leave half a save.
+// The file's bytes copied into one heap buffer and written at once: handed the save memory itself, the 3DS's file
+// system took 4.1 s for a 128 KB save (the game stood still); from the heap the same write takes ~45 ms. (setvbuf
+// isn't enough: newlib's fwrite skips the buffer for data at least its size, a save without a clock trailer.)
+static bool write_from_heap(FILE* f, const uint8_t* a, size_t aLen, const uint8_t* b, size_t bLen) {
+    uint8_t* copy = malloc(aLen + bLen);
+    if (!copy) return fwrite(a, 1, aLen, f) == aLen && (!bLen || fwrite(b, 1, bLen, f) == bLen);
+    memcpy(copy, a, aLen);
+    if (bLen) memcpy(copy + aLen, b, bLen);
+    bool ok = fwrite(copy, 1, aLen + bLen, f) == aLen + bLen;
+    free(copy);
+    return ok;
+}
+
 static bool write_file(const char* path, const uint8_t* a, size_t aLen, const uint8_t* b, size_t bLen) {
     char temp[1100];
     snprintf(temp, sizeof(temp), "%s.tmp", path);
     FILE* f = fopen(temp, "wb");
     if (!f) return false;
-    bool ok = fwrite(a, 1, aLen, f) == aLen && (!bLen || fwrite(b, 1, bLen, f) == bLen);
+    bool ok = write_from_heap(f, a, aLen, b, bLen);
     ok = fclose(f) == 0 && ok;
     if (!ok) {
         remove(temp);
@@ -395,8 +408,10 @@ static bool write_save(void) {
         trailer[7] = gba->gpio.rtc.control;
         put64(trailer + 8, (uint64_t) time(NULL));
     }
+    uint64_t t0 = load_ms();
     bool ok = write_file(E.savePath, gba->savedata.storage, size, trailer, clock ? sizeof(trailer) : 0);
-    emu_log(ok ? "save: wrote %s" : "save: COULDN'T WRITE %s", E.savePath);
+    unsigned took = (unsigned) (load_ms() - t0);
+    emu_log(ok ? "save: wrote %s (%u bytes, %u ms)" : "save: COULDN'T WRITE %s (%u bytes, %u ms)", E.savePath, (unsigned) size, took);
     if (ok) {
         E.savePending = false;
         E.saveQuiet = 0;
@@ -542,6 +557,20 @@ void pd_armgba_jit_counts(uint32_t out[4]) {
     out[3] = (uint32_t) c.codeWrites;
 }
 #endif
+
+void pd_armgba_cache_get(struct pd_armgba_cache* out) {
+    memset(out, 0, sizeof(*out));
+#if defined(__3DS__)
+    if (!E.loaded) return;
+    struct JitCounts c;
+    jitCounts(&c);
+    out->codeUsedKiB = c.codeUsed >> 10;
+    out->codeSizeKiB = c.codeSize >> 10;
+    out->compiled = (unsigned) c.compiled;
+    out->fullFlushes = (unsigned) c.fullFlushes[1];
+    out->askedFlushes = (unsigned) c.fullFlushes[0];
+#endif
+}
 
 // armGBA's Fast Flash Saves (savedataSkipFlashTimer): the two routines return at once, found by their code and only
 // when each is in the ROM once. A game without them is left as it is.

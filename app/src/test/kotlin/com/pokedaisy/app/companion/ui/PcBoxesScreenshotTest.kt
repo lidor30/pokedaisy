@@ -10,6 +10,7 @@ import com.pokedaisy.app.companion.data.save.MonRef
 import com.pokedaisy.app.companion.data.save.Gen3SaveEditor
 import com.pokedaisy.app.companion.data.save.SyntheticSave
 import com.pokedaisy.app.companion.data.save.TradeSide
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -21,6 +22,7 @@ import org.junit.Test
  * (`-Ponly=pc-boxes,trade`). See CompanionScreenshotTest.
  */
 class PcBoxesScreenshotTest {
+    @Before fun hosts() = installTestHosts(paparazzi.context)
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1920, screenHeight = 1080, orientation = ScreenOrientation.LANDSCAPE),

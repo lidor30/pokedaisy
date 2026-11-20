@@ -354,12 +354,21 @@ fun decodeBoxMon(
         BoxRecordFormat.CFRU -> cfruBoxSubstructs(raw, off, movePp)
     } ?: return null
     if (dec.species == 0) return null
-    val egg = (dec.ivWord shr 30) and 1L == 1L
+    // Vanilla keeps the flag in the header byte too; CFRU's compressed record keeps only the IV word's bit, and so do
+    // the plain structs that keep their egg there (Quetzal: its header byte isn't vanilla's flags).
+    val egg = (dec.ivWord shr 30) and 1L == 1L ||
+        (format != BoxRecordFormat.CFRU && !layout.eggInIvWord && (raw[off + layout.flags].toInt() and layout.eggMask) != 0)
     val rate = growthRate(dec.species)?.takeIf { it in expTables.indices } ?: gen3GrowthRates.getOrNull(dec.species)?.toInt()
     val level = boxMonLevel(expTables, rate, dec.exp)
     val ivs = List(6) { ((dec.ivWord shr (5 * it)) and 0x1F).toInt() }
     val nature = (u32(raw, off) % 25).toInt()
-    val stats = if (egg) null else baseStats(dec.species)?.takeIf { it.size >= 6 }?.let { gen3Stats(dec.species, it, ivs, dec.evs, nature, level) }
+    // An egg's own stats at the level it hatches at (5 in Gen 3), so its STATS page can show what it will become.
+    val stats = baseStats(dec.species)?.takeIf { it.size >= 6 }?.let { gen3Stats(dec.species, it, ivs, dec.evs, nature, if (egg) 5 else level) }
+    val monStats = when {
+        stats != null -> MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = stats, abilityNum = ((dec.ivWord shr 31) and 1L).toInt())
+        egg -> MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = List(6) { 0 }, abilityNum = ((dec.ivWord shr 31) and 1L).toInt())
+        else -> null
+    }
     return Mon(
         species = dec.species,
         level = level,
@@ -370,7 +379,7 @@ fun decodeBoxMon(
         pp = dec.pp,
         exp = dec.exp,
         personality = u32(raw, off),
-        stats = stats?.let { MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = it, abilityNum = ((dec.ivWord shr 31) and 1L).toInt()) },
+        stats = monStats,
         heldItem = dec.heldItem,
         nickname = gen3Nickname(raw, off, layout),
         shiny = layout.shinyBelow > 0 &&
@@ -628,6 +637,13 @@ val TEAM_ROCKET_V3_BATTLE_MON = EXPANSION_BATTLE_MON.copy(size = 0x68, otId = 0x
  * read the foe at +0x88, Heart and Soul's size).
  */
 val WISHES_BATTLE_MON = EXPANSION_BATTLE_MON.copy(size = 0x88)
+
+/**
+ * Pokémon RecordKeepers' 0x6C-byte struct BattlePokemon: expansion's fields where [EXPANSION_BATTLE_MON] has them (moves
+ * +0x0C, statStages +0x18, ability +0x20, types +0x22 / +0x23 and a third at +0x24, PP +0x25, HP +0x2A, level +0x2C, max HP
+ * +0x2E, item +0x30, personality +0x4C, otId +0x58), the foe at +0x6C (its wild battle's dump).
+ */
+val RECORDKEEPERS_BATTLE_MON = EXPANSION_BATTLE_MON.copy(size = 0x6C)
 
 /**
  * Pokémon Monomyth's 0x58-byte struct BattlePokemon, rearranged (its battle dumps, field by field against the party

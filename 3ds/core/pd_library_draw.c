@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "pd_library_internal.h"
+#include "pd_tr.h"
 #include "pd_ui.h"
 
 // --- hits ---
@@ -257,16 +258,16 @@ int lib_title(struct pd_canvas* c, const char* title, const char* right, bool lo
         battery_at(c, end, ty);
         end -= lib_battery_width() + 6;
     }
-    int rw = right ? pd_text_width(right) + 6 : 0;
-    pd_text_fit(c, tx, ty, end - rw - tx, title, PD_TITLE_TEXT, PD_TITLE_SHADOW);
-    if (right) pd_text_right(c, end, ty, right, PD_VALUE, PD_VALUE_SHADOW);
+    int rw = right ? pd_text_width(pd_tr(right)) + 6 : 0;
+    pd_text_fit(c, tx, ty, end - rw - tx, pd_tr(title), PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    if (right) pd_text_right(c, end, ty, pd_tr(right), PD_VALUE, PD_VALUE_SHADOW);
     return f;
 }
 
 void lib_button(struct pd_canvas* c, int x, int y, int w, int h, const char* label, bool on, int hit) {
     pd_layered_two_tone(c, x, y, w, h, 3, pd_cur->chip, pd_cur->chipCount, on ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill, 0);
-    int tw = pd_text_width(label);
-    pd_text_fit(c, x + (w - tw > 8 ? (w - tw) / 2 : 4), pd_text_y(y, h), w - 8, label, on ? PD_VALUE : PD_LABEL,
+    int tw = pd_text_width(pd_tr(label));
+    pd_text_fit(c, x + (w - tw > 8 ? (w - tw) / 2 : 4), pd_text_y(y, h), w - 8, pd_tr(label), on ? PD_VALUE : PD_LABEL,
                 on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
     if (hit) lib_hit(x, y, w, h, hit);
 }
@@ -281,10 +282,10 @@ void lib_dialog(struct pd_canvas* c, const char* title, const char* line1, const
     int w = 260, x = (LIB_W - w) / 2, lines = (line1 ? 1 : 0) + (line2 ? 1 : 0);
     int h = 30 + lines * 16 + ((yes || no) ? BUTTON_H + 12 : 8), y = (LIB_H - h) / 2;
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
-    pd_text(c, x + f + 6, y + f + 4, title, PD_VALUE, PD_VALUE_SHADOW);
+    pd_text(c, x + f + 6, y + f + 4, pd_tr(title), PD_VALUE, PD_VALUE_SHADOW);
     int ty = y + f + 22;
-    if (line1) pd_text_fit(c, x + f + 6, ty, w - 2 * f - 12, line1, PD_LABEL, PD_LABEL_SHADOW), ty += 16;
-    if (line2) pd_text_fit(c, x + f + 6, ty, w - 2 * f - 12, line2, PD_LABEL, PD_LABEL_SHADOW);
+    if (line1) pd_text_fit(c, x + f + 6, ty, w - 2 * f - 12, pd_tr(line1), PD_LABEL, PD_LABEL_SHADOW), ty += 16;
+    if (line2) pd_text_fit(c, x + f + 6, ty, w - 2 * f - 12, pd_tr(line2), PD_LABEL, PD_LABEL_SHADOW);
     int by = y + h - f - BUTTON_H - 4, bw = 84;
     if (yes && no) {
         lib_button(c, x + w / 2 - bw - 6, by, bw, BUTTON_H, yes, true, HIT_YES);
@@ -384,6 +385,7 @@ const char* lib_console_tag(const struct pd_library_game* g) {
 
 // A small tag: [text] in a rounded box of [color].
 static int tag(struct pd_canvas* c, int x, int y, const char* text, uint32_t color) {
+    text = pd_tr(text);
     int w = pd_text_width(text) + 6;
     pd_round_rect(c, x, y, w, 13, 2, color);
     pd_text(c, x + 3, y - 2, text, 0xFFFFFF, PD_NO_SHADOW);
@@ -476,7 +478,7 @@ static void tile(struct pd_library* l, struct pd_canvas* c, const struct pd_libr
     if (lead) draw_icon(c, lead, x + (w - 32) / 2, y + f + 2);
     else lib_cartridge(c, x + (w - 32) / 2, y + f + 4, 2, g->console, g->hack);
     tag(c, x + f + 2, y + f + 2, lib_console_tag(g), console_color(g));
-    if (g->hack) tag(c, x + w - f - 2 - pd_text_width("HACK") - 6, y + f + 2, "HACK", 0xD83838);
+    if (g->hack) tag(c, x + w - f - 2 - pd_text_width(pd_tr("HACK")) - 6, y + f + 2, "HACK", 0xD83838);
     // The name without the "Pokémon" every game shares (the tile is narrow).
     const char* title = !strncmp(g->title, "Pokémon ", strlen("Pokémon ")) ? g->title + strlen("Pokémon ") : g->title;
     int tw = pd_text_width(title);
@@ -489,8 +491,8 @@ void lib_list_draw(struct pd_library* l, struct pd_canvas* c, struct lib_list* l
     int x = PAGE_X, w = PAGE_W;
     if (!list->count) {
         int f = pd_list_box(c, x, y, w, h);
-        pd_text_fit(c, x + f + 6, y + f + 8, w - 2 * f - 12, empty1, PD_LABEL, PD_LABEL_SHADOW);
-        if (empty2) pd_text_fit(c, x + f + 6, y + f + 26, w - 2 * f - 12, empty2, PD_VALUE, PD_VALUE_SHADOW);
+        pd_text_fit(c, x + f + 6, y + f + 8, w - 2 * f - 12, pd_tr(empty1), PD_LABEL, PD_LABEL_SHADOW);
+        if (empty2) pd_text_fit(c, x + f + 6, y + f + 26, w - 2 * f - 12, pd_tr(empty2), PD_VALUE, PD_VALUE_SHADOW);
         return;
     }
     if (list->selected >= list->count) list->selected = list->count - 1;
@@ -562,8 +564,8 @@ static void view_chip(struct pd_canvas* c, int x, int y, int w, int h, int view,
         pd_fill(c, x + f, y + f, 2, h - 2 * f, 0xFFFFFF);
         pd_fill(c, x + w - f - 2, y + f, 2, h - 2 * f, 0xFFFFFF);
     }
-    int tw = pd_text_width(VIEW_NAMES[view]);
-    pd_text_fit(c, x + (w - tw > 8 ? (w - tw) / 2 : 4), pd_text_y(y, h), w - 8, VIEW_NAMES[view], 0xFFFFFF, pd_mix(color, 0x000000, 100));
+    int tw = pd_text_width(pd_tr(VIEW_NAMES[view]));
+    pd_text_fit(c, x + (w - tw > 8 ? (w - tw) / 2 : 4), pd_text_y(y, h), w - 8, pd_tr(VIEW_NAMES[view]), 0xFFFFFF, pd_mix(color, 0x000000, 100));
     lib_hit(x, y, w, h, hit);
 }
 
@@ -580,7 +582,7 @@ static void games_page(struct pd_library* l, struct pd_canvas* c) {
     int top = y + h + LIB_M;
     bool known = l->count > 0;
     lib_list_draw(l, c, &l->list, top, LIB_H - top - LIB_M, lib_grid(l), known ? "No games here." : "No games yet.",
-                  known ? NULL : "Put them in /pokedaisy/roms/");
+                  known ? NULL : pd_tr("Put them in /pokedaisy/roms/"));
     lib_pick_draw(l, c); // GBA CORE (X)
 }
 
@@ -610,15 +612,15 @@ void lib_settings_draw(struct pd_library* l, struct pd_canvas* c) {
         const char* label = lib_settings_label(l, r, &value, &group, &choices);
         if (group) {
             if (pd_cur->groupTitleFill != PD_NO_SHADOW) pd_fill(c, lx - 4, ry + 1, pd_text_width(label) + 8, rowH - 2, pd_cur->groupTitleFill);
-            pd_text(c, lx, pd_text_y(ry, rowH), label, pd_cur->groupTitleText, pd_cur->groupTitleShadow);
+            pd_text(c, lx, pd_text_y(ry, rowH), pd_tr(label), pd_cur->groupTitleText, pd_cur->groupTitleShadow);
             continue;
         }
         bool on = r == l->settingsSelected || l->pressedHit == HIT_SETTING + r;
         if (on) pd_fill(c, lx - 4, ry, lw + 8, rowH, PD_ROW_SELECTED);
-        pd_text(c, lx, pd_text_y(ry, rowH), label, PD_LABEL, PD_LABEL_SHADOW);
+        pd_text(c, lx, pd_text_y(ry, rowH), pd_tr(label), PD_LABEL, PD_LABEL_SHADOW);
         int vx = lx + lw * 50 / 100;
         bool info = r >= lib_settings_rows(l) - (l->host && l->host->devLine ? 2 : 1);
-        pd_text_fit(c, vx, pd_text_y(ry, rowH), lx + lw - vx - (choices ? 8 : 0), value ? value : "", info ? PD_MUTED : PD_VALUE,
+        pd_text_fit(c, vx, pd_text_y(ry, rowH), lx + lw - vx - (choices ? 8 : 0), pd_tr(value ? value : ""), info ? PD_MUTED : PD_VALUE,
                     info ? PD_MUTED_SHADOW : PD_VALUE_SHADOW);
         // A pick-list's row: a chevron at its end (the app's opensPage arrow).
         if (choices) pd_triangle(c, lx + lw - 5, pd_text_y(ry, rowH) + 6, 4, PD_RIGHT, PD_VALUE);
@@ -654,7 +656,7 @@ void lib_pick_draw(struct pd_library* l, struct pd_canvas* c) {
     if (ph > LIB_H - 16) ph = LIB_H - 16;
     int px = (LIB_W - pw) / 2 + RAIL_W / 2, py = (LIB_H - ph) / 2;
     int tf = pd_title_box(c, px, py, pw, 24, PD_TITLE_FILL);
-    pd_text(c, px + tf + 6, pd_text_y(py, 24), label, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text(c, px + tf + 6, pd_text_y(py, 24), pd_tr(label), PD_TITLE_TEXT, PD_TITLE_SHADOW);
     int ly = py + 27, lh = ph - 27;
     int lf = pd_list_box(c, px, ly, pw, lh);
     int rowsShown = (lh - 2 * lf - 4) / rowH, first = 0;
@@ -665,7 +667,7 @@ void lib_pick_draw(struct pd_library* l, struct pd_canvas* c) {
         bool on = i == l->pickSelected || l->pressedHit == HIT_PICK + i;
         if (on) pd_fill(c, px + lf + 2, ry, pw - 2 * lf - 4, rowH, PD_ROW_SELECTED);
         bool current = value && !strcmp(name, value);
-        pd_text_fit(c, px + lf + 8, pd_text_y(ry, rowH), pw - 2 * lf - 16, name, current ? PD_VALUE : PD_LABEL,
+        pd_text_fit(c, px + lf + 8, pd_text_y(ry, rowH), pw - 2 * lf - 16, pd_tr(name), current ? PD_VALUE : PD_LABEL,
                     current ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
         if (i + 1 < choices && i + 1 < first + rowsShown) pd_row_divider(c, px + lf + 4, ry + rowH - 1, pw - 2 * lf - 8);
         lib_hit(px + lf, ry, pw - 2 * lf, rowH, HIT_PICK + i);
