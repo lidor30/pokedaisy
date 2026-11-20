@@ -175,7 +175,9 @@ static ndspWaveBuf* audio_next(void) {
 }
 
 static void audio_send(ndspWaveBuf* b) {
-    DSP_FlushDataCache(b->data_pcm16, AUDIO_SAMPLES * 2 * sizeof(int16_t));
+    // The kernel's own cache clean: DSP_FlushDataCache is a request to the dsp service, and on an Old 3DS XL each
+    // one waited ~5 ms for its answer, a third of every frame (gpSP's profiler, 2026-11-21).
+    svcStoreProcessDataCache(CUR_PROCESS_HANDLE, (u32) b->data_pcm16, AUDIO_SAMPLES * 2 * sizeof(int16_t));
     ndspChnWaveBufAdd(0, b);
 }
 
