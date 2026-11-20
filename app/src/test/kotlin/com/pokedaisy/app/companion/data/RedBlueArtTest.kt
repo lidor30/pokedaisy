@@ -23,6 +23,8 @@ class RedBlueArtTest {
     ).firstOrNull { it.isFile }
     // The hack under the ROM folder's naming (CLAUDE.md): retail Red with the Gen II Graphics V2.0 patch.
     private val redGen2Graphics = File(gbc, "Pokemon Red Gen II Graphics (v2.0).gb").takeIf { it.isFile }
+    // Retail Yellow with the Gen II Graphics V1.1 patch.
+    private val yellowGen2Graphics = File(gbc, "Pokemon Yellow Gen II Graphics (v1.1).gb").takeIf { it.isFile }
 
     private fun red(): ByteArray {
         assumeTrue("Red ROM not on this machine", red.isFile)
@@ -156,6 +158,28 @@ class RedBlueArtTest {
             }
 
             val out = File("build/gen1-art-red-gen2-graphics-dex").apply { mkdirs() }
+            for (s in listOf(1, 4, 7, 25, 75, 150, 151)) {
+                File(out, "$s.png").writeBytes(RomArt.Image(56, 56, Gen1Dex.frontPixels(t, s)!!).png())
+            }
+        } finally {
+            Gen1Dex.rom = null
+        }
+    }
+
+    @Test
+    fun `Yellow Gen II Graphics extracts every front sprite through byte 27`() {
+        assumeTrue("Yellow Gen II Graphics ROM not on this machine", yellowGen2Graphics != null)
+        Gen1Dex.rom = yellowGen2Graphics!!.readBytes()
+        val t = GEN1_DEX_YELLOW_GEN2_GRAPHICS
+        try {
+            for (s in 1..151) {
+                assertNotNull("entry $s", Gen1Dex.entry(t, s))
+                val pic = Gen1Dex.frontPixels(t, s)
+                assertNotNull("pic $s", pic)
+                assertEquals(56 * 56, pic!!.size)
+                assertTrue("pic $s has colored pixels", pic.any { it != 0 })
+            }
+            val out = File("build/gen1-art-yellow-gen2-graphics-dex").apply { mkdirs() }
             for (s in listOf(1, 4, 7, 25, 75, 150, 151)) {
                 File(out, "$s.png").writeBytes(RomArt.Image(56, 56, Gen1Dex.frontPixels(t, s)!!).png())
             }

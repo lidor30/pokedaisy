@@ -72,6 +72,18 @@ class GbFieldTest {
         assumeTrue("no Gen 1 cart on this machine", checked > 0)
     }
 
+    /** The Gen II Graphics carts (#802): Red's bank 0 is retail's where GbField looks, so PC / FLY / WILD are Red's; Yellow's
+     * moved 0x12 from 0x1400 on, so it has no config's code and its field features stay off. */
+    @Test
+    fun `the Gen II Graphics carts`() {
+        val red = romOf("Pokemon Red Gen II Graphics (v2.0).gb")
+        val yellow = romOf("Pokemon Yellow Gen II Graphics (v1.1).gb")
+        val all = listOf(GB_FIELD_YELLOW, GB_FIELD_YELLOW_DE, GB_FIELD_YELLOW_FR, GB_FIELD_YELLOW_IT, GB_FIELD_YELLOW_ES,
+            GB_FIELD_RED_BLUE, GB_FIELD_RED_BLUE_DE, GB_FIELD_PURE_RGB, GB_FIELD_BROWN)
+        assertEquals(listOf(GB_FIELD_RED_BLUE), all.filter { it.matches(red) })
+        assertEquals(emptyList<GbField>(), all.filter { it.matches(yellow) })
+    }
+
     /** 64 KB of bus, plus Color WRAM bank 1 at (1 << 16) | D000-DFFF, and a cart. */
     private class Memory(val rom: ByteArray = ByteArray(0x200000)) : GameCalls {
         val bus = ByteArray(0x10000)
