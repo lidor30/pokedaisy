@@ -22,7 +22,7 @@ class Prefs(
     /** Existing host defaults where the installed apps differ. An explicitly saved value always wins. */
     data class Defaults(val hotkeysEnabled: Boolean = true, val sidePanelDocked: Boolean = false,
                         val companionWindow: Boolean = true, val battleStyleNames: Boolean = false,
-                        val libraryListsJson: Boolean = false)
+                        val libraryListsJson: Boolean = false, val ffMusicMode: FfMusicMode = FfMusicMode.STEADY)
 
     private fun libraryList(raw: String?): List<String> = if (defaults.libraryListsJson) runCatching {
         (raw?.let(Json::parseToJsonElement) as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.orEmpty()
@@ -120,7 +120,7 @@ class Prefs(
      * "ff_music_enabled": on was today's STEADY, off stays OFF. */
     var ffMusicMode: FfMusicMode
         get() = p.getString("ff_music_mode", null)?.let { n -> FfMusicMode.entries.firstOrNull { it.name == n } }
-            ?: if (p.getBoolean("ff_music_enabled", true)) FfMusicMode.STEADY else FfMusicMode.OFF
+            ?: if (p.getBoolean("ff_music_enabled", true)) defaults.ffMusicMode else FfMusicMode.OFF
         set(v) = p.edit().putString("ff_music_mode", v.name).apply()
 
     /** Where fast-forward applies: SMART (1x on menus and the region map) or NORMAL. */

@@ -1,8 +1,10 @@
 package com.pokedaisy.app
 
-import android.util.Log
-import java.io.File
-import java.io.RandomAccessFile
+import com.pokedaisy.app.companion.data.*
+import kotlin.time.TimeSource
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.Path
 
 /**
  * On-device cache of FF background-music clips (see FfMusicPlayer,
@@ -15,38 +17,43 @@ import java.io.RandomAccessFile
  * hacks can have completely different music. Every ROM's clips share one
  * budget ([FfMusicBudget]): the songs played longest ago go first.
  */
-class FfMusicCache(filesDir: File, private val romCrc: String, gameBoy: Boolean = false) {
+class FfMusicCache(
+    filesDir: Path, private val romCrc: String, gameBoy: Boolean = false,
+    private val freeBytes: () -> Long,
+    private val log: (String) -> Unit = {},
+) {
+    private val failureLock = SynchronizedObject()
     // CACHE_VERSION as a path segment: bump it whenever anything about what
     // gets written changes, so old clips in the
     // previous format are simply never found — rather than being read as
     // valid — and get freshly re-recorded instead of silently kept stale.
-    private val root = File(File(filesDir, "ffmusic"), "v$CACHE_VERSION")
-    private val dir = File(root, romCrc).apply { mkdirs() }
+    private val root = filesDir / "ffmusic" / "v$CACHE_VERSION"
+    private val dir = (root / romCrc).apply { mkdirs() }
 
     init {
         // Older versions are never read again (v3 keyed clips by a per-game
         // song table that got FireRed's battle theme wrong; v4 had clips
         // captured from the live game, sound effects and all): drop them
         // rather than leave hundreds of MB of WAVs behind.
-        File(filesDir, "ffmusic").listFiles()?.filter { it.name != "v$CACHE_VERSION" }?.forEach { it.deleteRecursively() }
+        (filesDir / "ffmusic").listFiles().filter { it.name != "v$CACHE_VERSION" }.forEach { runCatching { it.deleteRecursively() } }
         // A Game Boy game's clips are recorded again when its sound changes, without touching the GBA games' (a
         // CACHE_VERSION bump would re-render every game's music).
-        if (gameBoy && !File(dir, GB_SOUND).isFile) {
+        if (gameBoy && !(dir / GB_SOUND).isFile) {
             clear()
-            runCatching { File(dir, GB_SOUND).writeText("") }
+            runCatching { (dir / GB_SOUND).writeText("") }
         }
     }
 
-    private fun file(key: String) = File(dir, "$key.flac")
-    private fun introFile(key: String) = File(dir, "$key.intro.flac")
+    private fun file(key: String) = (dir / "$key.flac")
+    private fun introFile(key: String) = (dir / "$key.intro.flac")
     // Clips from before FLAC: played as they are until [prepare] converts them.
-    private fun wavFile(key: String) = File(dir, "$key.wav")
-    private fun wavIntroFile(key: String) = File(dir, "$key.intro.wav")
+    private fun wavFile(key: String) = (dir / "$key.wav")
+    private fun wavIntroFile(key: String) = (dir / "$key.intro.wav")
 
     /** Whether FfMusicRenderer has finished a full pass for this ROM. */
     var prefetched: Boolean
-        get() = File(dir, PREFETCHED).isFile
-        set(v) { if (v) File(dir, PREFETCHED).writeText("") else File(dir, PREFETCHED).delete() }
+        get() = (dir / PREFETCHED).isFile
+        set(v) { if (v) (dir / PREFETCHED).writeText("") else (dir / PREFETCHED).delete() }
 
     fun has(key: String): Boolean = fileIfCached(key) != null
 
@@ -54,28 +61,28 @@ class FfMusicCache(filesDir: File, private val romCrc: String, gameBoy: Boolean 
      * retrying it every launch kept the render core busy - and the device hot - for good). */
     fun failures(song: String): Int = failureCounts()[song] ?: 0
 
-    fun noteFailure(song: String) = synchronized(this) {
+    fun noteFailure(song: String) = synchronized(failureLock) {
         val counts = failureCounts().toMutableMap()
         counts[song] = (counts[song] ?: 0) + 1
-        runCatching { File(dir, FAILED).writeText(counts.entries.joinToString("\n") { "${it.key} ${it.value}" }) }
+        runCatching { (dir / FAILED).writeTextAtomically(counts.entries.joinToString("\n") { "${it.key} ${it.value}" }) }
     }
 
     private fun failureCounts(): Map<String, Int> = runCatching {
-        File(dir, FAILED).takeIf { it.isFile }?.readLines()?.mapNotNull { l ->
+        (dir / FAILED).takeIf { it.isFile }?.readLines()?.mapNotNull { l ->
             l.split(' ').takeIf { it.size == 2 }?.let { (a, b) -> b.toIntOrNull()?.let { a to it } }
         }?.toMap()
     }.getOrNull().orEmpty()
 
     /** The cached clip for [key], or null if nothing's been captured yet. */
-    fun fileIfCached(key: String): File? =
-        file(key).takeIf { it.isFile && it.length() > 0 } ?: wavFile(key).takeIf { it.isFile && it.length() > WAV_HEADER }
+    fun fileIfCached(key: String): Path? =
+        file(key).takeIf { it.isFile && it.length > 0 } ?: wavFile(key).takeIf { it.isFile && it.length > WAV_HEADER }
 
     /** What plays once before [key]'s loop: the song from its first note up to
      * where the clip starts (empty for a song kept whole). Null for a clip
      * recorded before intros were kept - it then plays loop-only until the
      * song is heard and recorded again. */
-    fun introIfCached(key: String): File? =
-        introFile(key).takeIf { it.isFile && it.length() > 0 } ?: wavIntroFile(key).takeIf { it.isFile && it.length() > WAV_HEADER }
+    fun introIfCached(key: String): Path? =
+        introFile(key).takeIf { it.isFile && it.length > 0 } ?: wavIntroFile(key).takeIf { it.isFile && it.length > WAV_HEADER }
 
     /** Both parts there: the loop and its intro (an empty file for a song with none). */
     fun complete(key: String): Boolean = has(key) && (introFile(key).isFile || wavIntroFile(key).isFile)
@@ -101,12 +108,12 @@ class FfMusicCache(filesDir: File, private val romCrc: String, gameBoy: Boolean 
     fun notePlayed(key: String) = FfMusicBudget.notePlayed(root, romCrc, key)
 
     /** Whether the background pass may record another song: it only fills free room in the budget. */
-    fun roomForBackground(): Boolean = FfMusicBudget.hasRoom(root)
+    fun roomForBackground(): Boolean = FfMusicBudget.hasRoom(root, freeBytes = freeBytes())
 
     /** Brings the clips under budget, keeping [keep]'s song (just recorded). */
     private fun trim(keep: String? = null) {
-        val freed = runCatching { FfMusicBudget.trim(root, setOfNotNull(keep?.let { "$romCrc/$it" })) }.getOrDefault(0L)
-        if (freed > 0) Log.i("pokedaisy", "FF music: over the cache's budget, freed ${freed shr 20} MB of songs played longest ago")
+        val freed = runCatching { FfMusicBudget.trim(root, setOfNotNull(keep?.let { "$romCrc/$it" }), freeBytes = freeBytes()) }.getOrDefault(0L)
+        if (freed > 0) log("FF music: over the cache's budget, freed ${freed shr 20} MB of songs played longest ago")
     }
 
     /**
@@ -115,34 +122,38 @@ class FfMusicCache(filesDir: File, private val romCrc: String, gameBoy: Boolean 
      * under budget. Other ROMs' WAVs are converted when they're played next; a song the player is hearing ([waiting])
      * comes first, the rest wait for the next launch (a WAV still plays).
      */
-    fun prepare(waiting: () -> Boolean) {
-        val wavs = dir.listFiles()?.filter { it.isFile && it.name.endsWith(".wav") }.orEmpty()
+    fun prepare(
+        waiting: () -> Boolean,
+        keepLegacyTime: (Path, Path) -> Unit = { _, _ -> },
+        rest: (Long) -> Unit = {},
+    ) {
+        val wavs = dir.listFiles().filter { it.isFile && it.name.endsWith(".wav") }
         var converted = 0
         for (wav in wavs) {
             if (waiting()) break
-            val began = System.nanoTime()
+            val began = TimeSource.Monotonic.markNow()
             runCatching {
-                val flac = File(dir, wav.name.removeSuffix(".wav") + ".flac")
+                val flac = dir / (wav.name.removeSuffix(".wav") + ".flac")
                 val pcm = readWav(wav)
                 if (pcm == null) wav.delete()
                 else {
                     if (pcm.second.isEmpty()) flac.writeBytes(ByteArray(0)) else FlacWriter.write(flac, pcm.second, pcm.second.size, pcm.first)
-                    flac.setLastModified(wav.lastModified())   // keeps its place among the never-played (best effort)
+                    keepLegacyTime(wav, flac)   // keeps its place among the never-played (best effort)
                     wav.delete()
                     converted++
                 }
-            }.onFailure { Log.w("pokedaisy", "FF music: couldn't convert ${wav.name}", it) }
-            val took = (System.nanoTime() - began) / 1_000_000L
-            if (took > 0) Thread.sleep(took)
+            }.onFailure { log("FF music: couldn't convert ${wav.name}: ${it.message}") }
+            val took = began.elapsedNow().inWholeMilliseconds
+            if (took > 0) rest(took)
         }
-        if (converted > 0) Log.i("pokedaisy", "FF music: converted $converted clips to FLAC")
+        if (converted > 0) log("FF music: converted $converted clips to FLAC")
         trim()
     }
 
     /** Deletes every cached clip for this ROM — a manual escape hatch if a
      * capture ever comes out wrong (e.g. captured mid-transition). */
     fun clear() {
-        dir.listFiles()?.forEach { it.delete() }
+        dir.listFiles().forEach { it.delete() }
     }
 
     companion object {
@@ -171,56 +182,15 @@ class FfMusicCache(filesDir: File, private val romCrc: String, gameBoy: Boolean 
     }
 }
 
-/** A WAV [writeWav] wrote: its sample rate and samples, or null if it isn't one. */
-internal fun readWav(file: File): Pair<Int, ShortArray>? {
+/** Reads the PCM WAVs written by earlier versions of the cache. */
+fun readWav(file: Path): Pair<Int, ShortArray>? {
     val bytes = file.readBytes()
     if (bytes.size < 44) return null
-    val b = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-    fun ascii(at: Int) = String(bytes, at, 4, Charsets.US_ASCII)
+    fun ascii(at: Int) = bytes.decodeToString(at, at + 4)
+    fun le16(at: Int) = (bytes[at].toInt() and 0xFF) or ((bytes[at + 1].toInt() and 0xFF) shl 8)
+    fun le32(at: Int) = le16(at) or (le16(at + 2) shl 16)
     if (ascii(0) != "RIFF" || ascii(8) != "WAVE" || ascii(12) != "fmt " || ascii(36) != "data") return null
-    if (b.getShort(20).toInt() != 1 || b.getShort(22).toInt() != 2 || b.getShort(34).toInt() != 16) return null
-    val dataBytes = minOf(b.getInt(40), bytes.size - 44).coerceAtLeast(0) and 3.inv()
-    val pcm = ShortArray(dataBytes / 2)
-    b.position(44)
-    b.asShortBuffer().get(pcm)
-    return b.getInt(24) to pcm
-}
-
-/** Writes [len] samples of interleaved stereo [pcm] to [file] as a plain
- * 16-bit PCM WAV, via a temp file so a half-written one is never read as valid. */
-internal fun writeWav(file: File, pcm: ShortArray, len: Int, sampleRate: Int, from: Int = 0) {
-    val dataBytes = len * 2
-    val tmp = File(file.parentFile, "${file.name}.tmp")
-    RandomAccessFile(tmp, "rw").use { raf ->
-        raf.setLength(0)
-        raf.writeAsciiLE("RIFF")
-        raf.writeIntLE(36 + dataBytes)
-        raf.writeAsciiLE("WAVE")
-        raf.writeAsciiLE("fmt ")
-        raf.writeIntLE(16)          // fmt chunk size
-        raf.writeShortLE(1)         // PCM
-        raf.writeShortLE(2)         // stereo
-        raf.writeIntLE(sampleRate)
-        raf.writeIntLE(sampleRate * 2 * 2)   // byte rate
-        raf.writeShortLE(4)         // block align (channels * bytes/sample)
-        raf.writeShortLE(16)        // bits per sample
-        raf.writeAsciiLE("data")
-        raf.writeIntLE(dataBytes)
-        val bytes = ByteArray(dataBytes)
-        for (i in 0 until len) {
-            val s = pcm[from + i].toInt()
-            bytes[i * 2] = (s and 0xFF).toByte()
-            bytes[i * 2 + 1] = ((s shr 8) and 0xFF).toByte()
-        }
-        raf.write(bytes)
-    }
-    tmp.renameTo(file)   // atomic-ish swap
-}
-
-private fun RandomAccessFile.writeAsciiLE(s: String) = write(s.toByteArray(Charsets.US_ASCII))
-private fun RandomAccessFile.writeIntLE(v: Int) {
-    write(v and 0xFF); write((v ushr 8) and 0xFF); write((v ushr 16) and 0xFF); write((v ushr 24) and 0xFF)
-}
-private fun RandomAccessFile.writeShortLE(v: Int) {
-    write(v and 0xFF); write((v ushr 8) and 0xFF)
+    if (le16(20) != 1 || le16(22) != 2 || le16(34) != 16) return null
+    val dataBytes = minOf(le32(40), bytes.size - 44).coerceAtLeast(0) and 3.inv()
+    return le32(24) to ShortArray(dataBytes / 2) { le16(44 + it * 2).toShort() }
 }

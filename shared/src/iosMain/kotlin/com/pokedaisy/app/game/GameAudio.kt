@@ -2,6 +2,7 @@
 
 package com.pokedaisy.app.game
 
+import com.pokedaisy.app.SteadyMusicClip
 import com.pokedaisy.app.core.PkApiCore
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ShortVar
@@ -22,11 +23,27 @@ class GameAudio {
     private val scratch = ShortArray(8192)
     private var engine: AVAudioEngine? = null
     private var node: AVAudioSourceNode? = null
+    private var liveMixer: AVAudioMixerNode? = null
+    private var musicNode: AVAudioPlayerNode? = null
+    private var music: SteadyClipPlayback? = null
+
+    val hasSteadyMusic: Boolean get() = music?.hasMusic == true
+
+    fun steadyClip(clip: SteadyMusicClip?) { music?.select(clip) }
+
+    var liveMuted = false
+        set(value) {
+            if (field == value) return
+            field = value
+            liveMixer?.outputVolume = if (value) 0f else 1f
+        }
 
     /** Game loudness under the device volume, including mute and quiet automated presses. */
     var volume: Float = 1f
         set(value) {
-            field = value.coerceIn(0f, 1f)
+            val gain = value.coerceIn(0f, 1f)
+            if (field == gain) return
+            field = gain
             engine?.mainMixerNode?.outputVolume = field
         }
 
@@ -55,13 +72,24 @@ class GameAudio {
             0
         }
         val engine = AVAudioEngine()
+        val live = AVAudioMixerNode()
+        val music = AVAudioPlayerNode()
+        val musicFormat = AVAudioFormat(standardFormatWithSampleRate = PkApiCore.SAMPLE_RATE.toDouble(), channels = 2u)
         engine.attachNode(node)
-        engine.connect(node, to = engine.mainMixerNode, format = format)
+        engine.attachNode(live)
+        engine.attachNode(music)
+        engine.connect(node, to = live, format = format)
+        engine.connect(live, to = engine.mainMixerNode, format = null)
+        engine.connect(music, to = engine.mainMixerNode, format = musicFormat)
+        live.outputVolume = if (liveMuted) 0f else 1f
         engine.mainMixerNode.outputVolume = volume
         engine.prepare()
         if (!engine.startAndReturnError(null)) NSLog("PokeDaisy: the game's sound didn't start")
         this.engine = engine
         this.node = node
+        liveMixer = live
+        musicNode = music
+        this.music = SteadyClipPlayback(music)
     }
 
     /** The last frame's sound into the ring (the game's thread, after [PkApiCore.runFrame]). */
@@ -72,10 +100,16 @@ class GameAudio {
 
     fun stop() {
         val engine = engine ?: return
+        music?.close()
+        music = null
         engine.stop()
         node?.let { engine.detachNode(it) }
+        liveMixer?.let { engine.detachNode(it) }
+        musicNode?.let { engine.detachNode(it) }
         this.engine = null
         node = null
+        liveMixer = null
+        musicNode = null
         ring.clear()
     }
 

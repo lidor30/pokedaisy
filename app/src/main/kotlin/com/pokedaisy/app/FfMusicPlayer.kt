@@ -7,6 +7,7 @@ import android.os.SystemClock
 import android.util.Log
 import java.io.File
 import java.io.RandomAccessFile
+import okio.Path
 
 /**
  * Plays a cached FF background-music clip (see FfMusicCache — nothing
@@ -24,17 +25,8 @@ import java.io.RandomAccessFile
  */
 class FfMusicPlayer {
 
-    /**
-     * [loop] repeats forever after [intro] (null for a clip recorded before
-     * intros were kept: loop only). [songStartedAt] (elapsedRealtime) is when
-     * the game started the song, so playback picks up where the song is by
-     * now: from the top for a song that just started, further on when FF
-     * comes on mid-song or comes back after a menu or a moment off.
-     */
-    class Clip(val loop: File, val intro: File?, val songStartedAt: Long)
-
     private var streamer: Streamer? = null
-    private var current: File? = null
+    private var current: Path? = null
 
     /** SOUND > GAME VOLUME / MUTE GAME (GameVolume), on the track already going too. The activity keeps one player
      *  for its life ([release] only stops it), so the listener stays. */
@@ -42,7 +34,7 @@ class FfMusicPlayer {
     init { GameVolume.addListener(onVolume) }
 
     /** clip == null stops playback (leaving FF, or nothing cached yet for this song). */
-    fun setClip(clip: Clip?) {
+    fun setClip(clip: SteadyMusicClip?) {
         if (clip?.loop == current && (clip == null || streamer != null)) return
         stop()
         current = clip?.loop
@@ -66,7 +58,7 @@ class FfMusicPlayer {
      * One clip's playback: its own thread writing the WAVs' samples into the track, blocking, so the track paces it. The
      * clip is opened there too: a FLAC is decoded first ([FlacPcm], ~0.2 s a minute of music), never on the caller's thread.
      */
-    private class Streamer(private val clip: Clip) : Thread("pokedaisy-ffmusic") {
+    private class Streamer(private val clip: SteadyMusicClip) : Thread("pokedaisy-ffmusic") {
         private var loop: Wav? = null
         private var intro: Wav? = null
         private var track: AudioTrack? = null
@@ -85,25 +77,23 @@ class FfMusicPlayer {
         override fun run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
             try {
-                val loop = Wav(FlacPcm.wavFor(clip.loop)).also { loop = it }
-                val intro = clip.intro?.let { runCatching { Wav(FlacPcm.wavFor(it)) }.getOrNull() }
+                val loop = Wav(FlacPcm.wavFor(clip.loop.toFile())).also { loop = it }
+                val intro = clip.intro?.let { runCatching { Wav(FlacPcm.wavFor(it.toFile())) }.getOrNull() }
                     ?.takeIf { it.frames > 0 && it.rate == loop.rate }.also { intro = it }
                 val track = synchronized(lock) {
                     if (!running) return
                     buildTrack(loop.rate).also { track = it }
                 }
                 applyVolume()
-                val atFrames = ((SystemClock.elapsedRealtime() - clip.songStartedAt).coerceAtLeast(0L) * loop.rate / 1000L)
-                val introFrames = intro?.frames ?: 0L
+                val position = SteadyMusicPosition.at(
+                    SystemClock.elapsedRealtime() - clip.songStartedAt, loop.rate, intro?.frames ?: 0L, loop.frames,
+                )
                 track.play()
-                if (intro != null && atFrames < introFrames) {
-                    // Still in the intro: play the rest of it, then straight into the loop.
-                    if (!intro.play(atFrames)) return
+                if (intro != null && position.insideIntro) {
+                    if (!intro.play(position.frame)) return
                     loop.repeat(0L)
                 } else if (loop.frames > 0) {
-                    // Without an intro the clip's own timeline starts at the song's start (near enough): just past
-                    // the intro, at the same place in the loop.
-                    loop.repeat((atFrames - introFrames) % loop.frames)
+                    loop.repeat(position.frame)
                 }
             } catch (e: Exception) {
                 if (running) Log.w("pokedaisy", "ffmusic: playback of ${clip.loop.name} stopped", e)

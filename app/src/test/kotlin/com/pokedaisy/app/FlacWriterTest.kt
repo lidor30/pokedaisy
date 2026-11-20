@@ -7,6 +7,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import okio.Path.Companion.toOkioPath
 import java.security.MessageDigest
 import kotlin.math.PI
 import kotlin.math.sin
@@ -18,7 +19,7 @@ class FlacWriterTest {
 
     private fun roundTrip(pcm: ShortArray, rate: Int = 48000, from: Int = 0, len: Int = pcm.size): Decoded {
         val f = tmp.newFile("clip.flac")
-        FlacWriter.write(f, pcm, len, rate, from)
+        FlacWriter.write(f.toOkioPath(), pcm, len, rate, from)
         val d = decode(f.readBytes())
         assertEquals(rate, d.sampleRate)
         assertArrayEquals(pcm.copyOfRange(from, from + len), d.pcm)
@@ -74,12 +75,12 @@ class FlacWriterTest {
         // FfMusicCache.prepare's path: a clip written as WAV before FLAC, read back and written again.
         val pcm = chipMusic(30000)
         val wav = tmp.newFile("old.wav")
-        writeWav(wav, pcm, pcm.size, 48000)
-        val (rate, read) = readWav(wav)!!
+        writeWav(wav.toOkioPath(), pcm, pcm.size, 48000)
+        val (rate, read) = readWav(wav.toOkioPath())!!
         assertEquals(48000, rate)
         assertArrayEquals(pcm, read)
         roundTrip(read)
-        assertEquals(null, readWav(tmp.newFile("junk.wav").apply { writeBytes(ByteArray(100)) }))
+        assertEquals(null, readWav(tmp.newFile("junk.wav").apply { writeBytes(ByteArray(100)) }.toOkioPath()))
     }
 
     /** Square waves, a triangle, a decaying noise channel and gaps: what the games' sound chips play. */
@@ -175,14 +176,14 @@ class FlacWriterTest {
             }
             if (rateCode == 0) Unit else assertEquals(FlacWriterRates[rate], rateCode)
             val crc = r.read(8).toInt()
-            assertEquals(crc8(file, start, r.bytePos() - 1), crc)
+            assertEquals(referenceCrc(file, start, r.bytePos() - 1, 8, 0x07), crc)
             val bps0 = if (chan == 9) 17 else 16
             val bps1 = if (chan == 8 || chan == 10) 17 else 16
             val a = subframe(r, n, bps0)
             val b = subframe(r, n, bps1)
             r.align()
             val crcEnd = r.bytePos()
-            assertEquals(crc16(file, start, crcEnd), r.read(16).toInt())
+            assertEquals(referenceCrc(file, start, crcEnd, 16, 0x8005), r.read(16).toInt())
             for (i in 0 until n) {
                 val (lft, rgt) = when (chan) {
                     1 -> a[i] to b[i]
@@ -252,6 +253,21 @@ class FlacWriterTest {
             else -> error("subframe type $type")
         }
         return x
+    }
+
+    private fun referenceCrc(bytes: ByteArray, start: Int, end: Int, width: Int, polynomial: Int): Int {
+        val highest = 1 shl (width - 1)
+        val mask = (highest shl 1) - 1
+        var crc = 0
+        for (i in start until end) {
+            for (bit in 7 downTo 0) {
+                val input = (bytes[i].toInt() shr bit) and 1
+                val carry = if (crc and highest == 0) 0 else 1
+                crc = (crc shl 1) and mask
+                if (input != carry) crc = crc xor polynomial
+            }
+        }
+        return crc
     }
 
     private companion object {

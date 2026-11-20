@@ -1,6 +1,6 @@
 package com.pokedaisy.app
 
-import java.io.File
+import okio.Path
 
 /**
  * STEADY's clip as last told to the activity's [FfMusicPlayer] ([EmulatorEngine.onFfMusicChanged] fires only when it
@@ -9,10 +9,10 @@ import java.io.File
  * told again - else FF stayed silent after the AYN Thor's lid was opened.
  */
 internal class SteadyClipNotice {
-    private var last: File? = null
+    private var last: Path? = null
 
     /** True when [clip] differs from the one last told, which it now is. */
-    fun changed(clip: File?): Boolean {
+    fun changed(clip: Path?): Boolean {
         if (clip == last) return false
         last = clip
         return true

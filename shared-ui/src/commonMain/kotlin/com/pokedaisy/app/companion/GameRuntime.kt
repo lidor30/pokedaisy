@@ -189,12 +189,12 @@ class GameRuntime(
     fun smartSpeed(requested: Float, battleState: Int, menu: Boolean, map: Boolean, waiting: Boolean = false): Float =
         PlaybackPolicy.smartSpeed(requested, ffMode == FfMode.SMART, battleState, menu, map, waiting)
 
+    fun requestedSpeedNow(): Float =
+        requestedSpeed(PlaybackPolicy.scene(battle.gameState, menu, map, gba && FfMenuWatch.battling, field))
+
     /** Common uncapped value is infinity; each renderer converts its own pacing sentinel. */
-    fun speed(): Float {
-        if (battle.holdPicture) return Float.POSITIVE_INFINITY
-        val scene = PlaybackPolicy.scene(battle.gameState, menu, map, gba && FfMenuWatch.battling, field)
-        return smartSpeed(requestedSpeed(scene), battle.gameState, menu, map)
-    }
+    fun speed(): Float = if (battle.holdPicture) Float.POSITIVE_INFINITY else
+        smartSpeed(requestedSpeedNow(), battle.gameState, menu, map)
 
     /** Native hosts call after stopping the core or between frames; patch cleanup may touch the core. */
     fun close() {

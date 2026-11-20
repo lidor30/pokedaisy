@@ -1,11 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.data.MemoryReader
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /**
  * [M4aLoopWatch] against a simulated m4a BGM player whose one track walks its

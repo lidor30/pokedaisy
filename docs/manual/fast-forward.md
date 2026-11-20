@@ -89,6 +89,8 @@ Sped-up game music turns into chipmunk noise. `FF MUSIC` picks what you hear whi
 - **`SPED-UP`** plays the game's own sound at the game's speed.
 - **`OFF`** is silence while fast-forwarding.
 
+On iPhone and iPad, `SPED-UP` is the default. Choose `STEADY` to keep supported Game Boy, Game Boy Color and GBA songs at their original tempo. Once the recording is ready it keeps playing through `SMART` menus. `OFF` restores game sound whenever `SMART` returns to normal speed.
+
 `STEADY` works by preparing a clean recording of each song from your ROM, in the background. The first time you play a game, it goes through the game's songs once; a song that isn't ready yet is silent during fast-forward. Once a song is done, it's kept, so this only happens the first time you hear it.
 
 The recordings take at most 1.5 GB of your device's storage for all your games together, and less when the device is short on space. When they reach that, the songs you haven't heard for the longest time make room. A song that was removed is recorded again the next time the game plays it, so it can be silent once more for a moment.
@@ -97,6 +99,8 @@ The recordings take at most 1.5 GB of your device's storage for all your games t
 > If a song sounds wrong or stays silent with `STEADY`, switch to `SPED-UP`, and let us know which game and where.
 
 ## Game volume and mute: SOUND
+
+`CLICK SOUND` plays a short menu sound when a companion button is pressed on Android, iPhone or iPad. It uses a recording made from a supported GBA cartridge on your device and follows the game volume and mute settings.
 
 The `SOUND` group, right under `FF / SPEED` in the companion's `SETTINGS` (and in the top screen's Settings), sets how loud the game is, so you can keep it down while listening to something else.
 

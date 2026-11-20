@@ -3,6 +3,7 @@ package com.pokedaisy.app
 import android.media.AudioAttributes
 import android.media.SoundPool
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * One of the game's own sounds, rendered from the ROM: the menu click
@@ -13,10 +14,8 @@ import java.io.File
  * `sfx/<crc>-<name>.wav`. A ROM whose sound engine the renderer can't drive
  * (pokeemerald-expansion hacks) borrows the newest one another game rendered.
  */
-class GameClickSound(filesDir: File, romCrc: String, name: String = CLICK) {
-    private val dir = File(filesDir, "sfx").apply { mkdirs() }
-    private val suffix = "-$name.wav"
-    private val own = File(dir, "$romCrc$suffix")
+class GameClickSound(filesDir: File, romCrc: String, name: String = CLICK) : RenderedGameSound {
+    private val files = GameSoundFiles(filesDir.toOkioPath(), romCrc, name)
     private val pool = SoundPool.Builder()
         .setMaxStreams(2)
         .setAudioAttributes(
@@ -38,24 +37,15 @@ class GameClickSound(filesDir: File, romCrc: String, name: String = CLICK) {
         load()
     }
 
-    /** Whether this ROM's own sound has been rendered yet. */
-    val hasOwn: Boolean get() = own.isFile && own.length() > 0
+    override val hasOwn: Boolean get() = files.hasOwn
 
     private fun load() {
-        val f = own.takeIf { hasOwn }
-            ?: dir.listFiles { f -> f.name.endsWith(suffix) && f.length() > 0 }?.maxByOrNull { it.lastModified() }
-            ?: return
-        runCatching { pool.load(f.path, 1) } // released under a late render: nothing to play anyway
+        val clip = files.available() ?: return
+        runCatching { pool.load(clip.toString(), 1) }  // Late render after release is safe.
     }
 
-    /** Stores this ROM's sound ([len] samples of interleaved stereo [pcm]), silence trimmed off both ends, and plays it from now on. */
-    fun write(pcm: ShortArray, len: Int, sampleRate: Int) {
-        fun loud(frame: Int) = maxOf(Math.abs(pcm[frame * 2].toInt()), Math.abs(pcm[frame * 2 + 1].toInt())) > SILENCE
-        val frames = len / 2
-        val first = (0 until frames).firstOrNull(::loud) ?: return
-        val last = (frames - 1 downTo first).first(::loud)
-        writeWav(own, pcm, (last - first + 1) * 2, sampleRate, from = first * 2)
-        load()
+    override fun write(pcm: ShortArray, len: Int, sampleRate: Int) {
+        if (files.write(pcm, len, sampleRate)) load()
     }
 
     fun play() {
@@ -70,6 +60,5 @@ class GameClickSound(filesDir: File, romCrc: String, name: String = CLICK) {
     companion object {
         const val CLICK = "select"
         const val FANFARE = "fanfare"
-        private const val SILENCE = 8 // |sample| at or below this counts as silence
     }
 }
