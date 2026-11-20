@@ -357,6 +357,7 @@ class TelemetrySampler {
                 itemTextChosen = true
                 onGameIdentified?.invoke(kind!!.name, beMatch?.candidate?.title)
                 PokedexSource.romChanged()
+                MoveLearningWatch.reset()
                 // A DS cart: its text's language once NdsArt has read it (it applies it itself when it lands later), else the header's.
                 (nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language
                     ?: dsLanguage)?.let { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(it) }

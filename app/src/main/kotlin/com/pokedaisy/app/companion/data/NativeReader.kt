@@ -127,6 +127,12 @@ data class NativeConfig(
     // gPartyMenu, for the battle POKéMON pane's switch where the activity takes
     // it from the config (SoulGold's releases); 0 = not here.
     val partyMenu: Long = 0,
+    // sMonSummaryScreen (pokemon_summary_screen.c): the pointer to the summary screen's state, whose mode / newMove
+    // tell the game's SELECT_MOVE (learn a move, forget one) screen apart; 0 = not mapped for this game.
+    val summaryScreen: Long = 0,
+    // gMoveToLearn: the move a level-up is teaching (it stays set after the screen), and gPartyMenu.data1 for a TM /
+    // tutor / party-menu learn. Together they say which move a SELECT_MOVE summary is asking about; 0 = not mapped.
+    val moveToLearn: Long = 0,
     // Where SaveBlock1 keeps a PARTY MENU option that changes the battle party menu's shape (SoulGold's byte: 0 = its
     // own one-column list, 1 = BW, 2 = HGSS, both a two-column grid - BattleInputController.SwitchAddrs.gridOption);
     // -1 = none, the shape is fixed.
@@ -439,6 +445,17 @@ fun resetNativeBagCache() {
     synchronized(pcBoxesLock) { lastStorageRaw = null; lastStorage = null }
 }
 
+// struct PokemonSummaryScreenData (pokemon_summary_screen.c): monList / callback / markings / the 100-byte currentMon
+// (0x70), then PokeSummary (0x4C), then the four pages' 2 x 0x400 u16 tilemap buffers: mode at 0x40BC, curMonIndex at
+// 0x40BE, newMove at 0x40C4 (the struct's own filler40CA names the byte after bgDisplayOrder). SELECT_MOVE is the
+// learn-a-move / forget-one screen.
+private const val SUMMARY_MODE_OFF = 0x40BC
+private const val SUMMARY_CUR_MON_OFF = 0x40BE
+private const val SUMMARY_NEW_MOVE_OFF = 0x40C4
+
+/** What sMonSummaryScreen says right now: its mode, curMonIndex and newMove. */
+private data class SummarySelect(val mode: Int, val mon: Int, val newMove: Int)
+
 fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
     val frameCounter = runCatching { u32le(client.readCoreMemory(cfg.gMainVblankCtr, 4), 0) }.getOrDefault(0L)
 
@@ -558,6 +575,34 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         battlerAt.map { b -> if (b < 0) -1 else u16le(raw, b * 2) }
     }.getOrDefault(emptyList()) else emptyList()
 
+    // The summary screen's SELECT_MOVE mode: the game is asking which move to forget. Its state outlives the screen,
+    // so MoveLearningWatch pairs it with a fresh gMoveToLearn / gPartyMenu.data1 event and the callback it was seen on.
+    val summaryPtr = if (cfg.summaryScreen == 0L) 0L else
+        runCatching { u32le(client.readCoreMemory(cfg.summaryScreen, 4), 0) }.getOrDefault(-1L)
+    val summary = if (summaryPtr <= 0L || summaryPtr < 0x02000000L || summaryPtr >= 0x02040000L || summaryPtr and 3L != 0L) {
+        null
+    } else runCatching {
+        val raw = client.readCoreMemory(summaryPtr + SUMMARY_MODE_OFF, 0x0A)
+        SummarySelect(
+            mode = raw[0].toInt() and 0xFF,
+            mon = raw[SUMMARY_CUR_MON_OFF - SUMMARY_MODE_OFF].toInt() and 0xFF,
+            newMove = u16le(raw, SUMMARY_NEW_MOVE_OFF - SUMMARY_MODE_OFF),
+        )
+    }.getOrNull()
+    val levelMove = if (cfg.moveToLearn == 0L) 0 else
+        runCatching { u16le(client.readCoreMemory(cfg.moveToLearn, 2), 0) }.getOrDefault(0)
+    // gPartyMenu.data1 (s16 at +0xE): the move a TM / tutor / party-menu learn is teaching.
+    val menuMove = if (cfg.partyMenu == 0L) 0 else
+        runCatching { u16le(client.readCoreMemory(cfg.partyMenu + 14, 4), 0) }.getOrDefault(0)
+    val moveLearning = MoveLearningWatch.check(
+        levelMove = levelMove,
+        menuMove = menuMove,
+        mode = summary?.mode ?: 0,
+        newMove = summary?.newMove?.takeIf { it in 1..0x7FF } ?: 0,
+        monIndex = summary?.mon ?: -1,
+        partySize = party.size,
+    )
+
     return Telemetry(
         frameCounter = frameCounter,
         inBattle = inBattle,
@@ -589,6 +634,7 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         battlerPartySlots = battlerPartySlots,
         enemyPartySlots = if (isTrainer) foeRead.map { it.first } else emptyList(),
         money = readMoney(client, cfg),
+        moveLearning = moveLearning,
     ).withMapShape(readMapShape(client, cfg.mapHeader, if (cfg.mapSecWide) MAP_HEADER_MAP_TYPE_OFF + 1 else MAP_HEADER_MAP_TYPE_OFF)).copy(
         playerGender = readPlayerGender(client, cfg),
         mapSecName = if (regionMapSectionId == 0) readHubName(client, cfg) else null,

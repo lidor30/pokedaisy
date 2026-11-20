@@ -272,6 +272,8 @@ data class SnapshotView(
     val playerGender: Int = -1,
     /** The CARD tab's data; null = the game gets no card. */
     val trainerCard: TrainerCardInfo? = null,
+    /** The game's move-learning summary is up: that party member is choosing a move to forget. */
+    val moveLearning: MoveLearningPrompt? = null,
     /** Non-null = the copy saved beside the savestate this launch resumed ([SnapshotCache]), shown
      * until the live game's data is in: the data tabs the game had then (DEX / GUIDE / CARD, whose
      * ROM tables aren't cached - they wait on LOADING). */
@@ -613,6 +615,7 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
         mapType = t.mapType,
         playerGender = t.playerGender,
         trainerCard = t.trainerCard,
+        moveLearning = t.moveLearning,
     )
 }
 
