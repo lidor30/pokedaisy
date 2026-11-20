@@ -41,7 +41,9 @@ internal class IosGameScreen(
     val back = CompanionBack()
     private val overlayBack = CompanionBack()
     private val overlayKeys = CompanionKeys()
-    enum class Overlay { FIELD_HUD, BATTLE, BATTLE_RETRY }
+    enum class Overlay { FIELD_HUD, BATTLE, BATTLE_RETRY, COOP }
+    var coopKey: (MenuKey) -> Boolean = { false }
+    private var coopTouchKeys = 0
     private val capturedOverlays = mutableSetOf<Overlay>()
     private val overlayCaptured get() = capturedOverlays.isNotEmpty()
     val tipBlocked get() = quickMenu.open || state.side.windowOpen || overlayCaptured || rewindUnavailable ||
@@ -51,9 +53,21 @@ internal class IosGameScreen(
         if (closed) return
         val changed = if (on) capturedOverlays.add(owner) else capturedOverlays.remove(owner)
         if (changed) {
+            if (owner == Overlay.COOP) {
+                coopTouchKeys = 0
+                if (on) quickMenu.close()
+            }
             captureButtons()
             syncInputCapture()
         }
+    }
+
+    private fun coopTouch(buttons: Int): Boolean {
+        if (Overlay.COOP !in capturedOverlays) return false
+        val pressed = buttons and coopTouchKeys.inv()
+        coopTouchKeys = buttons
+        BUTTONS.firstOrNull { (bit, _) -> pressed and bit != 0 }?.let { (_, key) -> coopKey(key) }
+        return true
     }
 
     val keys = CompanionKeys()
@@ -154,6 +168,7 @@ internal class IosGameScreen(
         game?.onCompanionAim = quickMenu::aim
         touch.quickMenu = quickMenu
         touch.triggerQuickMenu = ::triggerQuickMenu
+        touch.coopGameKeys = ::coopTouch
         touch.previewStage = ::previewStage
         touch.beforeEdit = { quickMenu.close(); if (state.side.windowOpen) state.hide() }
     }
@@ -331,6 +346,7 @@ internal class IosGameScreen(
             }
             return
         }
+        if (Overlay.COOP in capturedOverlays && coopKey(key)) return
         if (quickMenu.open) { quickMenu.key(key); return }
         if (overlayCaptured) {
             if (key == MenuKey.B || key == MenuKey.START) {
@@ -366,6 +382,7 @@ internal class IosGameScreen(
         touch.beforeEdit = {}
         touch.quickMenu = null
         touch.triggerQuickMenu = {}
+        touch.coopGameKeys = { false }
         releaseFocus()
     }
     private companion object {

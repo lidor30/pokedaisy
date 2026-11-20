@@ -95,6 +95,12 @@ object PokeDaisyHost {
     private var flash: com.pokedaisy.app.companion.FieldFlashAction? = null
     private var fly by mutableStateOf<com.pokedaisy.app.companion.FlyAction?>(null)
 
+    fun installCoopCrypto(primitives: IosCoopPrimitives) = IosCoopCrypto.install(primitives)
+
+    fun receiveCoopInvite(link: String) = IosCoopHost.receiveInvite(link)
+
+    fun installCoopNetwork(tcp: IosCoopTcpNative, discovery: IosCoopDiscovery) = IosCoopHost.install(tcp, discovery)
+
     /** Sets the shared screens' hosts (fonts, pictures, settings, the manual). Safe to call more than once. */
     fun start() {
         if (started) return
@@ -114,6 +120,8 @@ object PokeDaisyHost {
         val panels = IosGameScreen(game, touch, gameBoy).also { screen = it }
         val currentSettings = settings
         val currentSlots = slots
+        val currentCoop = coopGame
+        panels.coopKey = { currentCoop?.key(it) == true }
         val currentRuntime = playback
         val title = iosRomTitle(romPath)
         val statusBar: @Composable () -> Unit = {
@@ -139,7 +147,7 @@ object PokeDaisyHost {
             currentSettings.actions = shortcuts
             touch.actions = shortcuts
             panels.canOpenQuickMenu = {
-                game === current && game?.isRunning == true && !currentRuntime.blocked
+                game === current && game?.isRunning == true && !currentRuntime.blocked && currentCoop?.overlay?.takesKeys != true
             }
             quickActions = com.pokedaisy.app.companion.ui.GameQuickActions(
                 panels.quickMenu, iosPreferences, currentSettings, { telemetry.snapshot.value }, { items }, { fly },
@@ -227,6 +235,13 @@ object PokeDaisyHost {
                             com.pokedaisy.app.companion.ui.FlyStyleAskHost(
                                 active = true, roomy = panels.portrait,
                                 onAnswer = { currentRuntime?.flight?.answerStyle(it) })
+                            currentCoop?.let { coop ->
+                                com.pokedaisy.app.companion.ui.CoopGameOverlays(
+                                    coop.overlay, coop.storyLock, coop.partnerName, proposalOnGameScreen = true,
+                                    closeGame = ::finishClose, showNotice = coop.overlay::showNotice,
+                                    captureInput = { panels.captureOverlay(IosGameScreen.Overlay.COOP, it) },
+                                )
+                            }
                             val asking = currentSettings?.battleRetryAsking == true
                             DisposableEffect(asking) {
                                 panels.captureOverlay(IosGameScreen.Overlay.BATTLE_RETRY, asking)
@@ -323,6 +338,10 @@ object PokeDaisyHost {
         val lookRenderer = GamePlayerLook(PkApiCore)
         val ride = GameRide(PkApiCore)
         val currentLook = PlayerLookSession(iosPreferences, appFilesDir(), lookRenderer::select).also { playerLook = it }
+        val currentCoop = IosCoopGame(romPath.toPath(), savePath.toPath(), appFilesDir(), currentLook) { g.frameGate = it }
+            .also { coopGame = it }
+        g.onForeground = currentCoop::resumeGame
+        g.rewindAllowed = { !currentCoop.blocksLoad }
         val defaults = platform.Foundation.NSUserDefaults.standardUserDefaults
         var currentRuntime: com.pokedaisy.app.companion.GameRuntime? = null
         val stateSnapshot = { telemetry.forState()?.takeIf { it.hasData && !it.unsupported }?.let(SnapshotCache::encode) }
@@ -333,6 +352,7 @@ object PokeDaisyHost {
             runtime.afterStateLoad(
                 restoreProgress = { applyProgress(StateFiles.readAchievementProgress(state)) },
                 settleAppearance = { if (currentLook.supported) lookRenderer.settle() },
+                reinstallStoryLock = { currentCoop.storyLock?.requestReinstall() },
                 companionState = state,
             )
         }
@@ -348,19 +368,19 @@ object PokeDaisyHost {
             com.pokedaisy.app.companion.data.RomIdentityReader.forPath(romPath.toPath()).header() else null) ?: (null to 0)
         g.beforeSuspend = {
             FeatureTips.scheduler?.save()
-            val saved = g.withState { resume.save() }
+            val saved = currentCoop.saveForSuspend { g.withState { resume.save() } }
             if (!saved) resumeFailed()
             saved
         }
         settings = IosCompanionSettings(romPath, code, g,
             onClose = { if (game === g) finishClose() },
             onRestart = {
-                if (game === g && prepareClose()) { restartFresh = true; onRestartRequested() }
+                if (!currentCoop.refuseBattle() && game === g && prepareClose()) { restartFresh = true; onRestartRequested() }
             },
             onDisableResume = {
                 runCatching { resume.startFresh(); true }.getOrElse { resumeFailed(); false }
             }, onEditTouch = { if (game === g) touch.edit() }, readTouchStage = { touch.readStage().takeIf { game === g } }, gameScreen = { screen.takeIf { game === g } }, playback = { currentRuntime },
-            looks = currentLook, tradeSupported = { game === g && evolution?.supported() == true })
+            looks = currentLook, tradeSupported = { game === g && evolution?.supported() == true }, coop = currentCoop)
             .also { s ->
                 L10n.apply(s.appLanguage, code)
                 g.rewindEnabled = s.rewind
@@ -386,7 +406,8 @@ object PokeDaisyHost {
             p.settingsChanged(currentSettings, currentSettings.ffActive, currentSettings.slowmoHeld)
             g.frameSpeed = {
                 val speed = p.speed().let { if (it.isInfinite()) 0.0 else it.toDouble() }
-                if (p.flight?.scenicAirborne == true && speed != 0.0) maxOf(speed, 2.0) else speed
+                if (currentCoop.battleActive) 1.0
+                else if (p.flight?.scenicAirborne == true && speed != 0.0) maxOf(speed, 2.0) else speed
             }
             val bKeys = battle!!::keys
             val gameOptions = p.options.also { o ->
@@ -401,7 +422,9 @@ object PokeDaisyHost {
             }
             g.beforeFrame = { work ->
                 p.beforeFrame(work) {
-                    p.serviceFramePatches(false, { lookRenderer.service() }) {}
+                    p.serviceFramePatches(currentCoop.battleActive, { lookRenderer.service() }) {
+                        currentCoop.storyLock?.requestReinstall()
+                    }
                 }
                 if (work == com.pokedaisy.app.game.GameSession.FrameWork.ADVANCING) {
                     g.camera.flying = p.flight?.state?.let { it != 0 } == true
@@ -417,6 +440,7 @@ object PokeDaisyHost {
                 val gameOwnsScreen = p.fieldState and (GameField.LOCKED or GameField.BATTLE or GameField.WINDOW) != 0
                 val field = !p.session.mapOpen && !gameOwnsScreen &&
                     (p.fieldState and GameField.KNOWN != 0 || p.onField && !FfMenuWatch.battling)
+                if (g.playingForward) currentCoop.afterFrame(field)
                 if (field) lookRenderer.fieldFrame()
                 ride.step(p.riding && !p.session.mapOpen && !gameOwnsScreen, lookRenderer.ride)
                 gameOptions.markExp(PkApiCore::read, PkApiCore::write)
@@ -518,7 +542,7 @@ object PokeDaisyHost {
             enabled = { currentSettings.cheatsEnabled },
             submit = { text ->
                 if (g.isRunning) {
-                    val applied = PkApiCore.applyCheats(text)
+                    val applied = PkApiCore.applyCheats(if (currentCoop.engaged) "" else text)
                     if (applied >= 0) ra.setCheatsActive(applied > 0)
                     else com.pokedaisy.app.companion.data.Logs.i("cheats didn't load")
                 }
@@ -585,6 +609,7 @@ object PokeDaisyHost {
                     ready = { currentOptions.settingsChanged(currentSettings) })
                 currentCheats.start()
                 g.withState { resume.restore() }
+                currentCoop.start(code, revision) { currentCheats.hasEnabledCheats }
                 ra.setShinyOddsActive(p.shiny?.active == true)
                 ra.setExpShareActive(currentOptions.expShareActive)
                 ra.setFlightAnywhere(false)
@@ -595,6 +620,12 @@ object PokeDaisyHost {
         g.beforeStateChange = { p.cancelFieldActions(); currentSettings.releaseRewind(); currentBattle.cancel(); touch.releaseKeys() }
         slots = p.bindStates { StateSlotController(files, onCore = g::withState,
             write = IosAchievements::writeState, read = { PkApiCore.loadState(it.toString()) },
+            allowed = { action ->
+                when (action) {
+                    com.pokedaisy.app.Hotkeys.Action.LOAD_STATE, com.pokedaisy.app.Hotkeys.Action.UNDO_LOAD -> !currentCoop.refuseLoad()
+                    else -> !currentCoop.refuseBattle()
+                }
+            },
             beforeLoad = { StateFiles.backupBattery(savePath.toPath()) },
             thumbnail = { PkApiCore.stateThumbnail() },
             snapshot = stateSnapshot, loaded = { state -> stateLoaded(p, state, ra::loadProgress) },
@@ -619,7 +650,7 @@ object PokeDaisyHost {
             current = { game === g && g.isRunning }, after = {
                 currentOptions.settingsChanged(currentSettings)
                 p.flight?.sync()
-                p.battleRetry.observe(it, live()) { slots?.captureRetry() == true }
+                p.battleRetry.observe(it, live() && !currentCoop.blocksLoad) { slots?.captureRetry() == true }
                 if (live()) {
                     val steps = sharedItems.repelVar?.let { varId ->
                         it.progress?.variable(varId)?.let(sharedItems::repelSteps)
@@ -675,6 +706,7 @@ object PokeDaisyHost {
     }
 
     private var playerLook: PlayerLookSession? = null
+    private var coopGame: IosCoopGame? = null
     private var steadyMusic: IosSteadyMusic? = null
     private var gameClick: IosGameClickSound? = null
 
@@ -691,6 +723,8 @@ object PokeDaisyHost {
         gameClick?.close()
         gameClick = null
         game?.pause()
+        coopGame?.close()
+        coopGame = null
         playerLook?.close()
         playerLook = null
         playback?.quiesce()

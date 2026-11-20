@@ -26,6 +26,9 @@ struct RootView: View {
             }
         }
         .background(Color.black)
+        .onOpenURL { url in
+            PokeDaisyHost.shared.receiveCoopInvite(link: url.absoluteString)
+        }
         .onAppear {
             PokeDaisyHost.shared.onCloseRequested = { stop() }
             PokeDaisyHost.shared.onRestartRequested = { restarts += 1 }

@@ -43,6 +43,7 @@ internal class IosTouchControls(
     var actions: GameActions? = null
     var quickMenu: com.pokedaisy.app.companion.ui.QuickMenuState? = null
     var triggerQuickMenu: (Boolean) -> Unit = {}
+    var coopGameKeys: (Int) -> Boolean = { false }
     private var inputEpoch by mutableIntStateOf(0)
     var previewStage: ((Boolean) -> TouchStage?)? = null
     var beforeEdit: () -> Unit = {}
@@ -68,7 +69,7 @@ internal class IosTouchControls(
         val input = remember {
             TouchInput(
                 onKeys = { keys, turbo ->
-                    game()?.takeUnless { it.uiPaused }?.let { it.touchKeys = keys; it.touchTurbo = turbo }
+                    if (!coopGameKeys(keys)) game()?.takeUnless { it.uiPaused }?.let { it.touchKeys = keys; it.touchTurbo = turbo }
                 },
                 onAction = ::action,
                 onPress = { IosTouchPreferences.feel(IosTouchPreferences.style.vibration) })

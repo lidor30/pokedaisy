@@ -220,3 +220,7 @@ text focus and background ownership retain priority. Closing the host retires ca
 Party reordering and PC transfers share `FieldPartyActions` with Android. Reordering verifies the current count and selected personalities before exchanging whole records, refuses field locks and drops retired-game results. SWAP/DEPOSIT/WITHDRAW reuse the existing BoxSwap functions and their exact vanilla-storage support checks.
 
 TRADE EVOS and the party summary's EVOLVE use the common FieldTradeSupport/FieldTradeEvolution on both platforms, over the existing signature-verified TradeEvolution functions. Target previews restore the complete party record after asking the game, and the queued evolution scene keeps field/party checks and the game's return callback. This retains the existing English retail FireRed/LeafGreen/Emerald limits and remains off by default.
+
+## Emerald co-op pairing
+
+The library's SETTINGS > CO-OP uses the shared PAIR, PARTNERS and RELAY pages. Choose a retail English Emerald save to share an invite or join a room. Tapped `pokedaisy://coop/` invites open the save picker when the library is available. To supply a built-in relay, set the Xcode build setting `POKEDAISY_COOP_RELAY_URL` to its HTTPS base URL. A relay can also be entered in the app.
