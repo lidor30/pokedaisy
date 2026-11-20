@@ -12,6 +12,7 @@ class MoveOrderTest {
         var locked = false
         var failSetMonData = false
         var personality = 0x1111L
+        var egg = false
         val moves = intArrayOf(10, 20, 30, 0)
         val pp = intArrayOf(5, 6, 7, 0)
         /** 1, 2, 3, 0 for the four slots. */
@@ -27,6 +28,7 @@ class MoveOrderTest {
                 in 13..16 -> moves[f - 13].toLong()
                 in 17..20 -> pp[f - 17].toLong()
                 21 -> bonuses.toLong()
+                45 -> if (egg) 1 else 0
                 else -> -1
             }
             p.setMonData -> if (failSetMonData) -1 else {
@@ -96,5 +98,21 @@ class MoveOrderTest {
         assertEquals(MoveOrderResult.FAILED, reorderMoves(g.fns, 0, g.personality, from = 0, to = 1, busy = false, g = g))
         assertArrayEquals(intArrayOf(10, 20, 30, 0), g.moves)
         assertArrayEquals(intArrayOf(5, 6, 7, 0), g.pp)
+    }
+
+    @Test
+    fun `an egg's moves stay put`() {
+        val g = FakeGame()
+        g.egg = true
+        assertEquals(MoveOrderResult.FAILED, reorderMoves(g.fns, 0, g.personality, from = 0, to = 1, busy = false, g = g))
+        assertArrayEquals(intArrayOf(10, 20, 30, 0), g.moves)
+    }
+
+    @Test
+    fun `never on a table with the expansion's MON_DATA numbers`() {
+        // Heart and Soul's table: party functions for TAKE / FLY's checks, but MOVE1 is 20 there, not 13.
+        val g = FakeGame(FIELD_ITEMS_HEART_AND_SOUL)
+        assertEquals(MoveOrderResult.FAILED, reorderMoves(g.fns, 0, g.personality, from = 0, to = 1, busy = false, g = g))
+        assertArrayEquals(intArrayOf(10, 20, 30, 0), g.moves)
     }
 }

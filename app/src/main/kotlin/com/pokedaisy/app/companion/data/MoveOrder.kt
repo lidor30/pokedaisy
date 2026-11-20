@@ -24,7 +24,9 @@ fun reorderMoves(
     busy: Boolean,
     g: GameCalls,
 ): MoveOrderResult {
-    val p = fns.party ?: return MoveOrderResult.FAILED
+    // Only the tables whose GetMonData speaks vanilla's MON_DATA numbers (+ monFieldShift): the expansion / gcc builds
+    // (bagActions false) renumbered them, so fields 13..21 there are other data (species, item, EXP...).
+    val p = fns.party?.takeIf { fns.bagActions } ?: return MoveOrderResult.FAILED
     if (busy || g.call(fns.fieldControlsLocked) != 0L) return MoveOrderResult.NOT_NOW
     val count = (g.read(p.partyCount, 1).firstOrNull()?.toInt() ?: return MoveOrderResult.FAILED) and 0xFF
     if (slot !in 0 until count.coerceAtMost(PARTY_MAX)) return MoveOrderResult.CHANGED
@@ -32,6 +34,9 @@ fun reorderMoves(
     if (personality != 0L && g.call(p.getMonData, mon, MON_DATA_PERSONALITY) and 0xFFFFFFFFL != personality) {
         return MoveOrderResult.CHANGED
     }
+
+    // Never an egg's moves (the game's summary doesn't move them).
+    if (g.call(p.getMonData, mon, p.isEggField) != 0L) return MoveOrderResult.FAILED
 
     val moveField = p.move1Field
     val moves = IntArray(4)

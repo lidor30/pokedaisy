@@ -38,6 +38,8 @@ Tap any slot to open that Pokémon's summary. It fills the tab:
 
 ![EMBERPUP's summary: level, HP and EXP on the left above its weaknesses and resistances, its four moves on the right](shots/companion-summary.png "A Pokémon's summary")
 
+In games where the companion can use items, you can drag one of the four moves onto another to change their order: the move takes its PP and PP Ups with it, in your game too. Not in a battle or while a game menu is open. Save in the game to keep it.
+
 If the Pokémon holds an item, its `ITEM` line shows it. In games where the companion can use items, a `TAKE` button puts the item back in your bag, after asking first. When the bag has no room for it, the line says `BAG FULL` instead, just as the game would refuse. Mail is the exception: `TAKE` sends the letter to your PC's mailbox instead of the bag, and says so if the mailbox is full.
 
 ### A move's own page

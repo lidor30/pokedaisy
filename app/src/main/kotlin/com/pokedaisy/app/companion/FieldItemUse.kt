@@ -57,5 +57,6 @@ fun <T> fieldActionBattleResult(out: T): T = when {
     out is PartyTargets && out.result == ItemUseResult.NOT_NOW -> out.copy(result = ItemUseResult.IN_BATTLE) as T
     out is FlyTargets && out.result == FlyResult.NOT_NOW -> out.copy(result = FlyResult.IN_BATTLE) as T
     out is FlyResult && out == FlyResult.NOT_NOW -> FlyResult.IN_BATTLE as T
+    out is MoveOrderResult && out == MoveOrderResult.NOT_NOW -> MoveOrderResult.IN_BATTLE as T
     else -> out
 }

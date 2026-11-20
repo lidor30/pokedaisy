@@ -886,6 +886,15 @@ class PokeDaisyActivity : Activity() {
                 runOnUiThread { done(r) }
             }
         }
+        // The summary's moves: SetMonData on the party record, so the game re-encrypts it and its checksum follows.
+        override fun canReorderMoves() = !romIsNds && !romIsGameBoy && ::engine.isInitialized && engine.running &&
+            !telemetry.snapshot.value.inBattle && fieldItemSupport()?.fns?.let { it.party != null && it.bagActions } == true
+        override fun reorderMoves(
+            slot: Int, personality: Long, from: Int, to: Int,
+            done: (com.pokedaisy.app.companion.data.MoveOrderResult) -> Unit,
+        ) = onGame(com.pokedaisy.app.companion.data.MoveOrderResult.FAILED, done) { s, calls, busy ->
+            com.pokedaisy.app.companion.data.reorderMoves(s.fns, slot, personality, from, to, busy, calls)
+        }
         override fun canSwapBox() = com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns, com.pokedaisy.app.companion.data.activeNativeConfig) != null
 
         override fun swapBox(
