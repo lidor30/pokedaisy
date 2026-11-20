@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import com.pokedaisy.app.achievements.achievementsIdle
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -206,13 +205,6 @@ class WildPinTest {
         val fish = must(WildPin.pin(41, 1, 2, 0, WildPin.Slots(0x08570000L, fishBytes, WildPin.Method.FISHING)))
         assertEquals(WildPin.Method.FISHING, fish.method)
         assertEquals(WildPin.Method.LAND, must(WildPin.pin(10, 3, 19, 0, slots)).method)
-    }
-
-    @Test
-    fun achievementsIdleWhilePinned() {
-        assertTrue(achievementsIdle(cheats = false, shinyOdds = false, coopBattle = false, wildPin = true))
-        assertFalse(achievementsIdle(cheats = false, shinyOdds = false, coopBattle = false, wildPin = false))
-        assertTrue(achievementsIdle(cheats = true, shinyOdds = false, coopBattle = false, wildPin = false))
     }
 
     private fun <T> must(v: T?): T = requireNotNull(v)

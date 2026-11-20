@@ -1634,7 +1634,7 @@ class EmulatorEngine(
                 val pin = wildPin
                 if (pin != null && com.pokedaisy.app.companion.data.WildPin.endsNow(pinWasBattling, battling) {
                         com.pokedaisy.app.companion.data.activeNativeConfig?.battleTypeFlags?.takeIf { it != 0L }
-                            ?.let { InProcessReader.readCoreMemory(it, 4) }?.let { com.pokedaisy.app.companion.data.u32le(it, 0).toInt() }
+                            ?.let { InProcessReader.readCoreMemory(it, 4) }?.takeIf { it.size >= 4 }?.let { java.nio.ByteBuffer.wrap(it).order(java.nio.ByteOrder.LITTLE_ENDIAN).int }
                     }) {
                     Log.i("pokedaisy", "wild pin: its battle started, the map's slots go back")
                     endPin(pin)

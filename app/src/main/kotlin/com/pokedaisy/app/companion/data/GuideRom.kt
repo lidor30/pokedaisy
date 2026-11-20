@@ -356,7 +356,7 @@ object GuideRomSource {
             val mons = u32le(rd(info + 4, 4), 0)
             if (!Gfx.inRom(mons)) return@runCatching null
             WildPin.Slots(mons, rd(mons, method.blockBytes), method)
-        }.onFailure { android.util.Log.w("pokedaisy", "$method slots $group.$num failed", it) }.getOrNull()
+        }.onFailure { Logs.w("$method slots $group.$num failed", it) }.getOrNull()
     }
 
     /** The header [set] places after the map's first ([first]), as the game counts them - only while it's still

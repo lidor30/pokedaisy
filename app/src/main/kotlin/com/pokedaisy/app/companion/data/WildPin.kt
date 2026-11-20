@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import com.pokedaisy.app.companion.i18n.tk
-import java.util.zip.CRC32
 
 /**
  * WILD PIN (a PIN on each GUIDE > HERE GRASS / CAVE, SURFING, ROCK SMASH and rod row and in the HUD's WILD; GAMEPLAY >
@@ -78,7 +77,8 @@ object WildPin {
         fun onMap(group: Int, num: Int): Boolean = group == this.group && num == this.num
 
         /** mgba_dump's `romblocks` line (headless checks of exactly what the app puts in). */
-        fun toText(): String = "block %08X %08X %s\n".format(block.addr, block.crc, block.data.joinToString("") { "%02X".format(it.toInt() and 0xFF) })
+        fun toText(): String = "block ${hex8(block.addr)} ${hex8(block.crc)} " +
+            block.data.joinToString("") { (it.toInt() and 0xFF).toString(16).uppercase().padStart(2, '0') } + "\n"
     }
 
     /** The species' level range over its own slots in [bytes] (slots that can't be real are skipped, as HERE does), or
@@ -150,5 +150,7 @@ object WildPin {
 
     private fun romAddr(addr: Long, size: Int) = addr in 0x08000000L..(0x0A000000L - size)
 
-    private fun crc(b: ByteArray): Int = CRC32().apply { update(b) }.value.toInt()
+    private fun crc(b: ByteArray): Int = crc32(b).toInt()
+
+    private fun hex8(v: Int): String = (v.toLong() and 0xFFFFFFFFL).toString(16).uppercase().padStart(8, '0')
 }
