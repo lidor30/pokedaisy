@@ -100,6 +100,9 @@ In Platinum (USA, revision 1), L2 opens the companion and holding L2 opens the q
 wants them. R2 switches to the bottom or top screen by hand. Hold SELECT and press Y to show or hide a floating
 touch screen in `ONE SCREEN` or `PICTURE IN PICTURE`. SELECT + D-pad moves the stylus and SELECT + A taps.
 
+The DS companion reads Platinum (USA, revision 1), the US HeartGold, SoulSilver, Black, White, Black 2 and White 2,
+and the German HeartGold, SoulSilver, Black, White, Black 2 and White 2. In a German game its own names stay English.
+
 In a DS game's DEX entry, Left and Right step to the previous and next entry you have seen, going round at either
 end.
 

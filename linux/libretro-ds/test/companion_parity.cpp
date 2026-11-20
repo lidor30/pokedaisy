@@ -1,4 +1,5 @@
 #include "companion_ui.h"
+#include "data_gen.h"
 #include "companion_style.h"
 #include "party_view.h"
 extern "C" {
@@ -13,6 +14,7 @@ extern "C" {
 #include <array>
 #include <fstream>
 #include <cstdio>
+#include <cstring>
 #include <vector>
 namespace {
 void check_palettes() {
@@ -92,6 +94,14 @@ int main(int argc,char**argv) {
   assert(ds_companion_game(ds_canonical_sha1("d94d02ec44c8e2dfc9b744bb888cb64c49678dc2"))==G::Black2);
   assert(ds_companion_game(ds_canonical_sha1("4fcded0e2713dc03929845de631d0932ea2b5a37"))==G::Johto);
   assert(ds_companion_game(ds_canonical_sha1("9d13e2623003b63e61a60d92360ccb5b84c03f39"))==G::Unsupported);
+  // The German carts read as their US game, but only through ds_open_cart, which also picks their globals.
+  assert(ds_companion_game(ds_open_cart("13b6853aa93121069df1d17446d3ecb36872aecf"))==G::Johto);
+  assert(ds_companion_game(ds_open_cart("277a11721d79f85d97abbf16683cf9fafef528db"))==G::Johto);   // SoulSilver, decrypted
+  assert(!std::strcmp(ds_open_cart("277a11721d79f85d97abbf16683cf9fafef528db"),pd_ds_data::soulSilverSha1));
+  assert(ds_companion_game(ds_open_cart("d5b3930ad08a1124af982e4a7d0c9460efc6231b"))==G::Black);
+  assert(ds_companion_game(ds_open_cart("8af881ca55c97168020e2c65cf4865d01d32e091"))==G::White2);
+  assert(ds_companion_game(ds_canonical_sha1("d5b3930ad08a1124af982e4a7d0c9460efc6231b"))==G::Unsupported);
+  assert(ds_companion_game(ds_open_cart(pd_ds_data::heartGoldSha1))==G::Johto);
   assert(ds_auto_run(field,true,false));
   assert(!ds_auto_run(field,false,false) && !ds_auto_run(field,true,true));
   assert(!ds_auto_run(PK_NDS_FIELD_KNOWN,true,false));
@@ -227,6 +237,20 @@ int main(int argc,char**argv) {
     printf("%s: valid=%d team=%zu money=%d bag=%zu first=%s %d/%d\n",argv[i+1],s.valid,s.party.size(),s.money,s.bag.size(),s.party.empty()?"":s.party[0].nickname.c_str(),s.party.empty()?0:s.party[0].hp,s.party.empty()?0:s.party[0].maxHp);
     fflush(stdout);
     assert(s.valid && s.party.size()==expect.species.size() && s.money==expect.money);
+    if(argc==7){
+      // The same game's German cart: the save is found through that cart's own global once the US one is gone.
+      const uint32_t us[]={pd_ds_data::johto_saveDataPtr,pd_ds_data::johto_saveDataPtr,pd_ds_data::unova_saveControlPtr,
+                           0x020a72b8,0x0209a338,0x0209a378};
+      const auto& german=pd_ds_data::ports[i];
+      auto moved=ram;
+      std::memcpy(moved.data()+german.saveData-0x02000000,ram.data()+us[i]-0x02000000,4);
+      std::memset(moved.data()+us[i]-0x02000000,0,4);
+      assert(!ds_read_companion(moved.data(),moved.size(),expect.game).valid);
+      assert(ds_companion_game(ds_open_cart(german.sha1))==expect.game);
+      const auto de=ds_read_companion(moved.data(),moved.size(),expect.game);
+      assert(de.valid && de.party.size()==s.party.size() && de.money==s.money && de.bag.size()==s.bag.size());
+      ds_open_cart(pd_ds_data::heartGoldSha1);   // the US carts' globals for the rest
+    }
     for(size_t n=0;n<s.party.size();n++) assert(s.party[n].species==expect.species[n] && s.party[n].maxHp>0);
     assert(expect.items ? s.bag.size()==size_t(expect.items) : !s.bag.empty());
     if(i==0) {

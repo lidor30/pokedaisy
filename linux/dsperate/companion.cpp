@@ -6,6 +6,12 @@
 #include <algorithm>
 
 namespace {
+// The loaded cart while it is a language port (ds_open_cart): its globals stand in for its US game's.
+const pd_ds_data::Port* port=nullptr;
+const char* port_digest(const char* code){
+  for(const auto& p:pd_ds_data::ports)if(!std::strcmp(p.code,code))return p.sha1;
+  return nullptr;
+}
 uint16_t u16(const uint8_t* p) { return p[0] | uint16_t(p[1])<<8; }
 uint32_t u32(const uint8_t* p) { return u16(p) | uint32_t(u16(p+2))<<16; }
 void crypt(uint8_t* p, size_t n, uint32_t seed) {
@@ -44,6 +50,14 @@ const char* ds_canonical_sha1(const char* digest){
   // has checked are accepted.
   if(!std::strcmp(digest,"1492557711d8cd46628fe3eeceae1dec52d33e70"))return heartGoldSha1;  // HeartGold (IPKE rev 0)
   if(!std::strcmp(digest,"d94d02ec44c8e2dfc9b744bb888cb64c49678dc2"))return black2Sha1;     // Black 2 (IREO rev 0)
+  // The German carts as dumped for a Retroid Pocket Nova, each run with its save there.
+  if(!std::strcmp(digest,"eac6055e1facbb9378ffe0a83129bf275c748c07"))return port_digest("IPKD");  // HeartGold (IPKD rev 0)
+  if(!std::strcmp(digest,"277a11721d79f85d97abbf16683cf9fafef528db"))return port_digest("IPGD");  // SoulSilver (IPGD rev 0)
+  return digest;
+}
+const char* ds_open_cart(const char* digest){
+  digest=ds_canonical_sha1(digest);port=nullptr;
+  for(const auto& p:pd_ds_data::ports)if(!std::strcmp(digest,p.sha1)){port=&p;return p.base;}
   return digest;
 }
 DsGame ds_companion_game(const char* digest){
@@ -147,7 +161,7 @@ void read_dex(const Ram& ram,uint32_t address,DsCompanion& out,unsigned national
 
 uint32_t unova_save(const Ram& ram,DsGame game){
   using namespace pd_ds_data;
-  const uint32_t controlPtr=game==DsGame::Black?unova_saveControlPtr:
+  const uint32_t controlPtr=port?port->saveData:game==DsGame::Black?unova_saveControlPtr:
     game==DsGame::White?0x020a72b8:game==DsGame::Black2?0x0209a338:0x0209a378;
   const uint32_t control=ram.word(controlPtr);
   if(!ram.at(control,unova_offBackupSystem+4))return 0;
@@ -161,7 +175,7 @@ DsCompanion read_other_companion(const Ram& ram,DsGame game){
   DsCompanion out;
   out.game=game;
   if(game==DsGame::Johto){
-    const uint32_t save=ram.word(johto_saveDataPtr);
+    const uint32_t save=ram.word(port?port->saveData:johto_saveDataPtr);
     if(!ram.at(save,johto_locationOff+johto_bodyOff+4))return out;
     const uint32_t body=save+johto_bodyOff;
     const auto* trainer=ram.at(body+johto_trainerOff,johto_kantoBadgesOff+1);
@@ -182,7 +196,7 @@ DsCompanion read_other_companion(const Ram& ram,DsGame game){
     }
     const auto point=std::find_if(std::begin(pgWorld),std::end(pgWorld),[&](const auto& p){return p[0]==out.map;});
     const bool main=std::find(std::begin(pgHeaders),std::end(pgHeaders),out.map)!=std::end(pgHeaders);
-    const uint32_t field=ram.word(pg_fieldSystemPtr), avatar=ram.word(field+pg_offPlayerAvatar);
+    const uint32_t field=ram.word(port?port->system:pg_fieldSystemPtr), avatar=ram.word(field+pg_offPlayerAvatar);
     const uint32_t object=ram.word(avatar+pg_offAvatarMapObject);
     if(main&&ram.at(object,pg_offObjectZ+4)){
       out.mapX=ram.word(object+pg_offObjectX)/32;out.mapY=ram.word(object+pg_offObjectZ)/32+2;
@@ -201,7 +215,7 @@ DsCompanion read_other_companion(const Ram& ram,DsGame game){
     out.trainer=utf16_text(trainer+4,8);out.money=ram.word(save+(sequel?0x21100:unova_moneyOff));
     out.badges=ram.word(save+(sequel?0x21104:unova_badgesOff))&255;
     out.playerGender=trainer[0x21];out.map=ram.word(save+unova_locationOff+4)&0xffff;
-    const char* code=game==DsGame::Black?"IRBO":game==DsGame::White?"IRAO":game==DsGame::Black2?"IREO":"IRDO";
+    const char* code=port?port->code:game==DsGame::Black?"IRBO":game==DsGame::White?"IRAO":game==DsGame::Black2?"IREO":"IRDO";
     const auto* field=pk_nds_field_game(code,0);
     if(field){
       const uint32_t system=ram.word(field->fieldSystemPtr);
@@ -347,7 +361,7 @@ DsRepelResult ds_use_repel(const uint8_t* bytes,size_t size,DsGame game,int item
     slots=unovaPockets[0];
   }else{
     const bool johto=game==DsGame::Johto;
-    const uint32_t save=ram.word(johto?johto_saveDataPtr:saveDataPtr);
+    const uint32_t save=ram.word(johto?(port?port->saveData:johto_saveDataPtr):saveDataPtr);
     if(save<0x02000000||save>=0x023e0000)return R::NotAvailable;
     const uint32_t body=save+(johto?johto_bodyOff:bodyOff);
     bag=body+(johto?johto_bagOff:bagOff);counter=body+(johto?johto_repelStepsOff:repelStepsOff);
