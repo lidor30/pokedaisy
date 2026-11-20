@@ -92,6 +92,8 @@ data class BattleMon(
     val statStages: IntArray? = null,
     /** Shiny, where the game's shiny check is known ([NativeConfig.shinyBelow]). */
     val shiny: Boolean = false,
+    /** The battler's original personality, where mapped; 0 keeps readers without identity compatible. */
+    val personality: Long = 0,
 )
 
 data class Item(val itemId: Int, val quantity: Int, val pocket: Int = POCKET_ITEMS)

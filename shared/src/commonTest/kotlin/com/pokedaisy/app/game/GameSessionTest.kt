@@ -21,24 +21,48 @@ class GameSessionTest {
             events += "field"
             s.requestField(false) { _, _ -> events += "next field" }
         }
-        s.servicePosted(); events += "patches"; s.serviceField(true, true)
+        s.servicePending(GameSession.FrameWork.ADVANCING, true, { true }) { events += "patches" }
         assertEquals(listOf("sample", "patches", "field"), events)
-        s.servicePosted(); s.serviceField(true, true)
+        s.servicePending(GameSession.FrameWork.ADVANCING, true, { true })
         assertEquals(listOf("sample", "patches", "field", "next sample", "next field"), events)
     }
 
     @Test fun delaysDoNotAdvanceDuringAHoldAndUnsafeCallsWaitAtMost120Frames() {
         val s = session()
         s.requestField(false, 2) { _, _ -> events += "delayed" }
-        repeat(20) { s.servicePosted() } // held core: host skips field service
-        assertTrue(events.isEmpty())
-        repeat(2) { s.serviceField(true, true) }
+        s.post { events += "posted" }
+        repeat(20) {
+            s.servicePending(GameSession.FrameWork.REWINDING, true, { error("read scene while rewinding") }) {
+                error("applied patches while rewinding")
+            }
+        }
+        assertEquals(listOf("posted"), events)
+        s.post { events += "held callback" }
+        s.servicePending(GameSession.FrameWork.HELD, true, { error("read scene while held") }) { events += "patches" }
+        repeat(19) { s.servicePending(GameSession.FrameWork.HELD, true, { true }) }
+        assertEquals(listOf("posted", "held callback", "patches"), events)
+        events.clear()
+        repeat(2) { s.servicePending(GameSession.FrameWork.ADVANCING, true, { true }) }
         assertTrue(events.isEmpty())
         safe = false
         repeat(120) { s.serviceField(true, true) }
         assertTrue(events.isEmpty())
         s.serviceField(true, true)
         assertEquals(listOf("delayed"), events)
+    }
+
+    @Test fun flightPostsWaitThroughRewindAndHoldWithoutBlockingLifecycleCallbacks() {
+        val s = session()
+        s.postForward { events += "configure flight" }
+        s.post { events += "detach"; s.post { events += "next lifecycle pass" } }
+        s.postForward { events += "land" }
+
+        s.servicePending(GameSession.FrameWork.REWINDING, true, { true })
+        assertEquals(listOf("detach"), events)
+        s.servicePending(GameSession.FrameWork.HELD, true, { true }) { events += "held patches" }
+        assertEquals(listOf("detach", "next lifecycle pass", "held patches"), events)
+        s.servicePending(GameSession.FrameWork.ADVANCING, true, { true })
+        assertEquals(listOf("detach", "next lifecycle pass", "held patches", "configure flight", "land"), events)
     }
 
     @Test fun becomingSafeRunsOnTheNextFrameAndFailuresDoNotDropOtherJobs() {

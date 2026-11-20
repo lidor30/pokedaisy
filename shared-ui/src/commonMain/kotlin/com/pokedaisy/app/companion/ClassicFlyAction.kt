@@ -21,7 +21,7 @@ class ClassicFlyAction(
         val game = session() ?: return done(FlyResult.FAILED)
         items.onGame(FlyResult.FAILED, { result ->
             if (result == FlyResult.OK) handedOver()
-            done(result)
+            else done(result)
         }) { fields, calls, busy ->
             if (session() !== game || !fields.canFly || !fields.fns.classicFly) return@onGame FlyResult.FAILED
             val started = flyStart(fields.fns, mapsec, targets, busy, calls)
@@ -34,6 +34,13 @@ class ClassicFlyAction(
                         leftField -> "the game left the field during the fade, not taken"
                         else -> "failed, field handed back"
                     }}")
+                    items.deliverIfCurrent(game) {
+                        done(when {
+                            ok -> FlyResult.OK
+                            leftField -> FlyResult.NOT_NOW
+                            else -> FlyResult.FAILED
+                        })
+                    }
                 }
             }
             started

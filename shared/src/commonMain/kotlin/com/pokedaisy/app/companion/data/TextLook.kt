@@ -26,6 +26,11 @@ enum class TextPart { BOX, BOX_PAL, FONT, FONT_WIDTHS }
 class CodeSig(val anchor: Int, val anchorBytes: String, val length: Int, val crc: Long)
 
 object TextLook {
+    /** Apply text alongside an appearance patch, retaining its loaded palettes and vehicle metadata. */
+    fun withAppearance(look: PlayerLook.Patch?, text: List<PlayerLook.Block>): PlayerLook.Patch? =
+        if (text.isEmpty()) look
+        else PlayerLook.Patch(look?.blocks.orEmpty() + text, look?.palettes.orEmpty(), look?.playerPal, look?.ride)
+
     /** The games with a text look of their own: FireRed (LeafGreen's is the same) and Emerald. */
     val STYLES = listOf(LookEngine.FIRERED, LookEngine.EMERALD)
 

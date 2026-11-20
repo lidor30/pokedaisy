@@ -359,5 +359,8 @@ private fun <T> pinned(pin: RegionMapPin?, g: GameCalls, block: () -> T): T {
     }
 }
 
+/** MOVE_FLY: the same id in every game the companion flies in. */
+const val FLY_MOVE = 19
+
 /** Frames [flyStart]'s fade takes to reach black before [flyFinish]: FadeScreen at delay 0, with room to spare. */
 const val FLY_FADE_FRAMES = 30

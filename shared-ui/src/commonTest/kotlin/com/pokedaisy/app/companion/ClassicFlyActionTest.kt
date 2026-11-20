@@ -2,12 +2,11 @@ package com.pokedaisy.app.companion
 
 import com.pokedaisy.app.companion.data.*
 import com.pokedaisy.app.game.GameSession
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class ClassicFlyActionTest {
     private class Game : GameCalls {
-        private val zero = java.util.zip.CRC32().apply { update(ByteArray(32)) }.value
+        private val zero = 0x190A55ADL // CRC32 of a 32-byte zero-filled mock code probe.
         val fly = FLY_FIRERED_REV1.copy(codeCrcs = List(7) { zero })
         val fns = FIELD_ITEMS_FIRERED_REV1.copy(codeCrcs = List(5) { zero }, fly = fly,
             party = FIELD_ITEMS_FIRERED_REV1.party!!.let { it.copy(codeCrcs = List(it.functions.size) { zero }) })
@@ -48,24 +47,34 @@ class ClassicFlyActionTest {
         current!!.serviceField(true, true)
         assertEquals(FlyResult.OK, targets?.result)
         var result: FlyResult? = null
-        action().fly(game.fly.firstMapsec, target()) { result = it }
+        var used = 0
+        val fly = GameFlyAction({ null }, action(), { true }, { null }, flyUsed = { used++ })
+        fly.fly(game.fly.firstMapsec, target()) { result = it }
         current!!.serviceField(true, true)
-        assertEquals(FlyResult.OK, result)
+        assertNull(result)
+        assertEquals(0, used)
         assertEquals(1, handedOver)
         assertEquals(listOf("lock", "fade 1"), game.events)
         repeat(FLY_FADE_FRAMES) { current!!.serviceField(true, true) }
         assertEquals(-1, game.warped)
         current!!.serviceField(true, true)
         assertEquals(game.fly.firstMapsec, game.warped)
+        assertEquals(FlyResult.OK, result)
+        assertEquals(1, used)
     }
 
-    @Test fun aSceneChangeDuringTheFadeNeverWarpsOnTopOfTheNewScene() {
-        action().fly(game.fly.firstMapsec, target()) {}
+    @Test fun aSceneChangeDuringTheFadeNeverWarpsOrConsumesTheTip() {
+        var result: FlyResult? = null
+        var used = 0
+        val fly = GameFlyAction({ null }, action(), { true }, { null }, flyUsed = { used++ })
+        fly.fly(game.fly.firstMapsec, target()) { result = it }
         current!!.serviceField(true, true)
         current!!.observeScreens(false, dsMenu = true)
         repeat(FLY_FADE_FRAMES + 1) { current!!.serviceField(true, true) }
         assertEquals(-1, game.warped)
         assertEquals(listOf("lock", "fade 1"), game.events)
+        assertEquals(FlyResult.NOT_NOW, result)
+        assertEquals(0, used)
     }
 
     @Test fun closeCancelsTheDelayedWarpAndBattleRefusalsKeepTheirReason() {
