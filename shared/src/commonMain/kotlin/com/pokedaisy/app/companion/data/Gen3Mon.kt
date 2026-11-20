@@ -689,6 +689,7 @@ fun decodeBattleMon(raw: ByteArray, off: Int, layout: BattleMonLayout = VANILLA_
         stats = IntArray(5) { u16(raw, off + layout.stats + it * 2) },
         // Attack .. evasion (the HP slot isn't a stage the game uses).
         statStages = IntArray(7) { raw[off + layout.statStages + 1 + it].toInt() },
+        personality = if (layout.personality >= 0) u32(raw, off + layout.personality) else 0,
         shiny = shinyBelow > 0 && layout.personality >= 0 && layout.otId >= 0 &&
             shinyValue(u32(raw, off + layout.personality), u32(raw, off + layout.otId)) < shinyBelow,
     )

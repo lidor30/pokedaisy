@@ -23,6 +23,17 @@ enum class RideVehicle(val id: Int, val label: String, internal val art: RideVeh
  * frames by the way they face.
  */
 object RideOn {
+    /** Overlay a vehicle's rider frames on the already selected hero. */
+    fun withAppearance(scan: PlayerLook.Scan, me: LookChar, look: PlayerLook.Patch?, vehicle: RideVehicle): PlayerLook.Patch? {
+        if (vehicle == RideVehicle.BIKE) return look
+        val palette = look?.playerPal ?: scan.data(me, LookPart.OW_PAL) ?: return look
+        val under = look?.blocks.orEmpty().map { it.off to it.data }
+        val rider = runCatching { writes(scan, me, under, palette, vehicle) }
+            .onFailure { Logs.w("ride on", it) }.getOrNull().orEmpty()
+        if (rider.isEmpty()) return look
+        return PlayerLook.Patch(PlayerLook.merge(scan.rom, under + rider), look?.palettes.orEmpty(), look?.playerPal, sprite(vehicle))
+    }
+
     /** The bike frames' views: 0 south, 1 north, 2 west (the sheets' standing frames 0, 1, 2), by frame. */
     private val NINE = listOf(0, 1, 2, 0, 0, 1, 1, 2, 2)
 

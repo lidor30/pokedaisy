@@ -3,11 +3,38 @@ package com.pokedaisy.app.companion.data
 /**
  * DAY AND NIGHT (SETTINGS > MAKEOVER): the overworld follows the device's clock - a warm dawn, plain day, an orange dusk
  * and a blue night - in any GBA game. It's a tint of the map's palettes and the sprites' as the core draws them
- * ([com.pokedaisy.app.MgbaCore.pkSetTint], pk_wide.c's `tintPalettes`): the text windows' palettes (13-15) keep their
+ * (pk_api_set_tint, pk_wide.c's `tintPalettes`): the text windows' palettes (13-15) keep their
  * colours, nothing of the game's memory or save changes, and EXPAND's margins (drawn from the same palettes) follow.
- * Only outdoors ([outdoors]) and only on the field: the engine eases it in and out ([com.pokedaisy.app.EmulatorEngine.dayNightTint]).
+ * Only outdoors ([outdoors]) and only on the field: [Transition] eases it in and out on both platforms.
  */
 object DayNight {
+    fun supported(gba: Boolean, blocked: Boolean, game: GameKind) = gba && !blocked && game !in OWN_DAY_NIGHT
+
+    fun desired(enabled: Boolean, supported: Boolean, mapType: Int, tint: () -> IntArray = ::now): IntArray =
+        if (enabled && supported && outdoors(mapType)) tint() else NONE
+
+    /** Owned by a game run, stepped between frames. Re-send active tints after native renderer resets. */
+    class Transition {
+        private val current = floatArrayOf(256f, 256f, 256f)
+        private val sent = intArrayOf(256, 256, 256)
+        private var frames = 0
+
+        fun reset() { current.fill(256f); sent.fill(256); frames = 0 }
+
+        fun step(target: IntArray, field: Boolean, apply: (Int, Int, Int) -> Unit) {
+            val want = if (field) target else NONE
+            var changed = false
+            for (c in 0..2) {
+                val delta = want[c] - current[c]
+                current[c] = if (kotlin.math.abs(delta) < 4f) want[c].toFloat()
+                    else current[c] + kotlin.math.sign(delta) * 4f
+                val value = current[c].toInt()
+                if (value != sent[c]) { sent[c] = value; changed = true }
+            }
+            if (changed || (++frames % 60 == 0 && sent.any { it != 256 })) apply(sent[0], sent[1], sent[2])
+        }
+    }
+
     /** No tint (red, green, blue of 256). */
     val NONE = intArrayOf(256, 256, 256)
 

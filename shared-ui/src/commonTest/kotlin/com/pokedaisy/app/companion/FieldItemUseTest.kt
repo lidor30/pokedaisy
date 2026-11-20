@@ -2,8 +2,7 @@ package com.pokedaisy.app.companion
 
 import com.pokedaisy.app.companion.data.*
 import com.pokedaisy.app.game.GameSession
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class FieldItemUseTest {
     private val calls = object : GameCalls {
