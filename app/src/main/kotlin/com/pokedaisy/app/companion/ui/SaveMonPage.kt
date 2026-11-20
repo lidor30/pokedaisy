@@ -38,6 +38,7 @@ import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.runtime.getValue
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 
 /** The stats in the order the games' summary lists them (HP, ATTACK, DEFENSE, SP. ATK, SP. DEF, SPEED), as indexes into
@@ -132,7 +133,7 @@ private fun WhoCard(state: PcBoxesState, mon: SaveMon, level: Int, at: MonRef, m
 @Composable
 private fun MonFrontPicture(sprites: MonSpriteLoader, species: Int, modifier: Modifier) {
     val bmp by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, sprites, species) {
-        value = withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { sprites.load(species) }.getOrNull() }
+        value = withContext(Dispatchers.IO) { runCatching { sprites.load(species) }.getOrNull() }
     }
     PixelImage(bmp, 64, modifier)
 }
