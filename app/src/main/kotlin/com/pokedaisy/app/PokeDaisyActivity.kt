@@ -1743,15 +1743,37 @@ class PokeDaisyActivity : Activity() {
     /** FOLLOWER: the party lead's national number (null: none / unknown). */
     @Volatile private var followerLead: Int? = null
 
-    /** FOLLOWER works here: a GBA game (not a Game Boy or DS one) that has no following Pokémon of its own. */
-    private fun followerSupported() = !romIsGameBoy && !romIsNds && ::engine.isInitialized && fieldGame != WideScreen.OFF &&
-        com.pokedaisy.app.companion.data.activeGame !in FOLLOWERS_OF_THEIR_OWN
+    /** FOLLOWER works here: a GBA game (not a Game Boy or DS one) that has no following Pokémon of its own, or Crystal
+     * ([gbFollower]). */
+    private fun followerSupported() = ::engine.isInitialized && (gbFollower() ||
+        !romIsGameBoy && !romIsNds && fieldGame != WideScreen.OFF &&
+        com.pokedaisy.app.companion.data.activeGame !in FOLLOWERS_OF_THEIR_OWN)
+
+    /** FOLLOWER on Crystal (pk_gb_follow.c): the lead's party icon drawn a step behind the player, on the carts it knows. */
+    private fun gbFollower() = romIsGameBoy && com.pokedaisy.app.companion.data.activeGame ==
+        com.pokedaisy.app.companion.data.GameKind.CRYSTAL && runCatching { MgbaCore.pkGbFollowRuns() }.getOrDefault(false)
+
+    /** Crystal's party icon for a Pokédex number (two 16 x 16 frames, rebuilt from the cart into rom-art), or null. */
+    private fun gbFollowerIcon(dex: Int): IntArray? {
+        val f = com.pokedaisy.app.companion.data.RomArt.dir(filesDir.toOkioPath()) /
+            "${com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_ICONS}/$dex.png"
+        val bytes = runCatching { okio.FileSystem.SYSTEM.read(f) { readByteArray() } }.getOrNull() ?: return null
+        val img = com.pokedaisy.app.companion.data.RomArt.Image.decodePng(bytes) ?: return null
+        return img.argb.takeIf { img.width == 16 && img.height == 32 }
+    }
 
     /** The engine's follower: the lead's sprite while the row is on. */
     private fun applyFollower() {
         if (!::engine.isInitialized) return
         val on = Prefs(this).follower && followerSupported()
         val n = followerLead
+        if (gbFollower()) {
+            engine.follower = null
+            val icon = if (on && n != null) gbFollowerIcon(n) else null
+            if (!(icon contentEquals engine.gbFollower)) engine.gbFollower = icon
+            return
+        }
+        engine.gbFollower = null
         engine.follower = if (on && n != null) engine.follower?.takeIf { it.national == n }
             ?: com.pokedaisy.app.companion.data.MonArt.load(filesDir.toOkioPath(), n) else null
     }
@@ -2031,7 +2053,7 @@ class PokeDaisyActivity : Activity() {
             lookRunner.apply()
         }
         override val followerSupported get() = followerSupported()
-        override val followerReady get() = com.pokedaisy.app.companion.data.MonArt.available(filesDir.toOkioPath()).isNotEmpty()
+        override val followerReady get() = gbFollower() || com.pokedaisy.app.companion.data.MonArt.available(filesDir.toOkioPath()).isNotEmpty()
         override fun setFollower(on: Boolean) {
             stored.setFollower(on)
             applyFollower()
@@ -2427,6 +2449,12 @@ class PokeDaisyActivity : Activity() {
         lookGender.launch {
             telemetry.snapshot.map { Triple(it.party.map { m -> m.species }, it.party.firstOrNull { m -> !m.isEgg }?.species, it.pokedex) }
                 .distinctUntilChanged().collect { (species, leadSpecies, dex) ->
+                if (romIsGameBoy) {
+                    // Crystal's species ids are its Pokédex numbers: its party icon is the follower's
+                    followerLead = leadSpecies?.takeIf { it in 1..251 }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { applyFollower() }
+                    return@collect
+                }
                 val tables = dex?.tables ?: return@collect
                 val named = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     species.distinct().mapNotNull { sp ->

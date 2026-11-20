@@ -105,6 +105,16 @@ object MgbaCore {
     /** RIDE ON's vehicle drawn this frame (behind the player, only while they're on a bike). Emu thread. */
     external fun pkRideShow(on: Boolean)
 
+    /** FOLLOWER on Crystal (pk_gb_follow.c): whether the running cart is one it knows (Crystal rev 0 / 1, Australia, the
+     * German cart). */
+    external fun pkGbFollowRuns(): Boolean
+    /** FOLLOWER on Crystal: the lead's two 16 x 16 party-icon frames, one after the other (512 ARGB), or null. Emu thread. */
+    external fun pkGbFollowSet(argb: IntArray?)
+    /** FOLLOWER on Crystal: wanted from the next frame on (it still hides itself in battles, menus, on water). Emu thread. */
+    external fun pkGbFollowShow(on: Boolean)
+    /** FOLLOWER on Crystal: where it is and why it's hidden, one line (debug logs). */
+    external fun pkGbFollowInfo(): String
+
     /** FOLLOWER: drawn from the next frame on, or not (off, it reappears only once the player steps). Emu thread. */
     external fun pkFollowerShow(on: Boolean)
 

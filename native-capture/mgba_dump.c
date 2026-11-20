@@ -224,6 +224,10 @@ static int lastRomDiffs[3], markRomDiffs[3];
 #include "../app/src/main/cpp/pk_flight.c"
 #define HAVE_PK_FLIGHT 1
 #endif
+#if __has_include("../app/src/main/cpp/pk_gb_follow.c")
+#include "../app/src/main/cpp/pk_gb_follow.c"
+#define HAVE_PK_GB_FOLLOW 1
+#endif
 #if __has_include("../app/src/main/cpp/pk_perf.h")
 #include "../app/src/main/cpp/pk_perf.h"
 #define HAVE_PK_PERF 1
@@ -454,6 +458,9 @@ static void frameOne(void) {
 #ifdef HAVE_PK_FLIGHT
     pk_flight_tick(core);   // FREE FLIGHT (`flighton`): its step after every frame, like the app's pkRunFrame
     if (sizeof(color_t) == 4 && core->platform(core) == mPLATFORM_GBA) pk_flight_draw((uint32_t*) video, 240, 160, (int) videoW, !wideOn);
+#endif
+#ifdef HAVE_PK_GB_FOLLOW
+    if (sizeof(color_t) == 4 && core->platform(core) == mPLATFORM_GB) pk_gb_follow_frame(core, (uint32_t*) video, 160, 144, (int) videoW);
 #endif
 #ifdef HAVE_PK_WIDE
     if (partnerTrack) {
@@ -3118,6 +3125,29 @@ int main(int argc, char** argv) {
             char info[300];
             pk_flight_info(core, info, sizeof(info));
             printf("%s\n", info);
+#endif
+#ifdef HAVE_PK_GB_FOLLOW
+        } else if (!strcmp(cmd, "gbfollow")) {
+            // gbfollow CRC FILE: Crystal's FOLLOWER with the cart's CRC32 (hex) and its two 16 x 16 frames, 512 ARGB
+            // ints little-endian (FILE "-" = none); shown from then on, as the app does with FOLLOWER on
+            unsigned crc = 0;
+            sscanf(line, "%*s %x %255s", &crc, arg1);
+            pk_gb_follow_configure(crc);
+            static uint32_t px[512];
+            FILE* f = strcmp(arg1, "-") ? fopen(arg1, "rb") : NULL;
+            bool ok = f && fread(px, 4, 512, f) == 512;
+            if (f) fclose(f);
+            pk_gb_follow_set(ok ? px : NULL);
+            pk_gb_follow_show(1);
+            printf("gbfollow: crc %08x known %d icon %d\n", crc, pk_gb_follow_knows(crc), ok);
+        } else if (!strcmp(cmd, "gbfollowshow")) {
+            int on = 1;
+            sscanf(line, "%*s %d", &on);
+            pk_gb_follow_show(on);
+        } else if (!strcmp(cmd, "gbfollowinfo")) {
+            char info[200];
+            pk_gb_follow_info(info, sizeof(info));
+            printf("gbfollowinfo: %s\n", info);
 #endif
         } else if (!strcmp(cmd, "followinfo")) {
             char info[200];

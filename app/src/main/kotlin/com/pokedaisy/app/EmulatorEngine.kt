@@ -618,6 +618,26 @@ class EmulatorEngine(
     }
     private var followerFrames = 0
 
+    /** FOLLOWER on Crystal: the lead's party icon (two 16 x 16 frames, 512 ARGB; null = none), set by the activity. */
+    @Volatile var gbFollower: IntArray? = null
+    private var gbFollowerSent: IntArray? = null
+    private var gbFollowerShown = false
+
+    /** FOLLOWER on Crystal, once a frame (emu thread): the icon to the core when it changed, and wanted or not (the core
+     * finds the field itself: it hides the follower in battles, menus and on water). */
+    private fun stepGbFollower() {
+        val icon = gbFollower
+        if (icon !== gbFollowerSent) {
+            MgbaCore.pkGbFollowSet(icon)
+            gbFollowerSent = icon
+        }
+        val show = icon != null
+        if (show != gbFollowerShown) {
+            MgbaCore.pkGbFollowShow(show)
+            gbFollowerShown = show
+        }
+    }
+
     /**
      * HIDE BATTLE MENU ([Prefs.hideBattleMenu]): what the activity wants - 0 = the game's battle menus shown, 1 = hidden
      * with the two-screens sign lighting the bottom one (the companion's), 2 = the top one (SWAP SCREENS) - and gBattleTypeFlags' address (0 = unknown).
@@ -1055,6 +1075,8 @@ class EmulatorEngine(
         // The core starts with no follower and no tint (pk_wide_extras_reset): so do what this engine last sent.
         followerSent = null
         followerShown = false
+        gbFollowerSent = null
+        gbFollowerShown = false
         battleMenuHideSent = -1
         tintNow.fill(256f)
         tintSent.fill(256)
@@ -1632,6 +1654,7 @@ class EmulatorEngine(
                 battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
             if (gba) stepFollower(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
                 battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE && fieldState and MgbaCore.FIELD_SURF == 0)
+            if (!gba && !nds) stepGbFollower()
             if (gba) coopLock?.onFrame()
             if (gba) coopPresence?.onFrame(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
                 battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)

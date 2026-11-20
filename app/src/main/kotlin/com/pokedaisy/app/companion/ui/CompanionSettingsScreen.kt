@@ -592,11 +592,15 @@ private fun homeRows(
                 else select(Selector(tk("TEXT LOOK"), listOf(off) + s.textLooks, s.textLook ?: off) { s.setTextLook(it.takeIf { l -> l != off }) })
             }
         } else null,
-        // The party's lead walking behind the player (pk_wide.c's follower: a hack's following Pokémon, MonArt).
+        // The party's lead walking behind the player (pk_wide.c's follower: a hack's following Pokémon, MonArt; on Crystal
+        // pk_gb_follow.c with its own party icon).
         if (s.followerSupported) {
             SettingRow(
                 tk("FOLLOWER"), if (s.followerReady) onOff(s.follower) else tk("N/A"), enabled = s.followerReady,
-                labelBadge = NewFeatures.badge(NewFeatures.FOLLOWER),
+                labelBadge = NewFeatures.badge(
+                    if (com.pokedaisy.app.companion.data.activeGame == com.pokedaisy.app.companion.data.GameKind.CRYSTAL)
+                        NewFeatures.FOLLOWER_CRYSTAL else NewFeatures.FOLLOWER,
+                ),
                 subtitle = if (s.followerReady) null else "Needs a game with following Pokémon too",
             ) { if (s.followerReady) { s.setFollower(!s.follower); changed() } }
         } else null,

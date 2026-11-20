@@ -1734,6 +1734,17 @@ entries showing its sprite's tiles (subsprites split it; parked entries sit at y
 mgba_dump: `follower FILE` (frames + palette), `followon 1`, `followinfo`; checked walking / turning / running in
 Emerald and FireRed, with EXPAND too.
 
+**On Crystal** (`pk_gb_follow.c`, 2026-11-20; rev 0 / rev 1 / AU / German by CRC32, `pk_gb_follow_runs`): no hardware sprite -
+the lead's party icon (`Gen2Art`, `rom-art/gen2/crystal/pokemon/<dex>.png`, two 16 x 16 frames, `EmulatorEngine.gbFollower`) is
+drawn into the finished frame after `runFrame` (`pk_api_run_frame`, before EXPAND reads it), so the game, states and achievements
+never see it. Where: the screen's scroll (SCX / SCY as drawn, unwrapped) is the player's path, since the camera keeps him at
+(64, 60); the follower sits 16 pixels of path behind. A scroll jump with the same map and tile is a redraw (kept), a map or tile
+jump restarts the path (hidden until the first step) unless the screen scrolled in the last 2 frames (walking over a map's
+edge into the next: the map and tile change mid-step), and battle frames don't count (its slide-in scrolls). Hidden on water,
+in battles, with sprites off or no player sprite at OAM (0x48, 0x4C). Grass, BG priority, the window, menu tiles (wStateFlags
+bit 6) and the game's sprites cover it as in the note in docs/ROM_FEATURES.md (58). mgba_dump: `gbfollow CRC FILE` (512 ARGB
+ints), `gbfollowshow`, `gbfollowinfo`.
+
 ### Sprite packs (the makeover's graphics in one file)
 
 PLAYER LOOK, TEXT LOOK and FOLLOWER need the other games' graphics, which a scan of a ROM leaves decoded in

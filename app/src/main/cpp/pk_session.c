@@ -24,6 +24,7 @@
 #include "pk_flight.h"
 #include "pk_host.h"
 #include "pk_gb_field.h"
+#include "pk_gb_follow.h"
 #include "pk_perf.h"
 #include "pk_rewind.h"
 #include "pk_savevf.h"
@@ -323,6 +324,7 @@ bool pk_api_init(const char* romPath, const char* savePath) {
 
     pthread_rwlock_wrlock(&pk_coreLock);
     g.core = core;
+    pk_gb_follow_forget();   // FOLLOWER checks the new cart on its first frame
     g.romFileVf = romFileVf;
     g.romFile = romFile;
     g.romFileSize = romFileSize;
@@ -511,6 +513,8 @@ void pk_api_run_frame(void) {
         bool wideNext = g.wide && g.wideCrc && g.viewW > 0 && g.viewH > 0 && g.viewW <= PK_WIDE_MAX_VIEW_W &&
             g.viewH <= PK_WIDE_MAX_VIEW_H && pkWideFrameFits() && !g.wideSkipNext;
         if (sizeof(color_t) == 4) pk_flight_draw((uint32_t*) g.video, (int) g.vw, (int) g.vh, (int) g.vw, !wideNext);
+    } else if (sizeof(color_t) == 4) {
+        pk_gb_follow_frame(g.core, (uint32_t*) g.video, (int) g.vw, (int) g.vh, (int) g.vw);   // FOLLOWER on Crystal
     }
     pkDrainAudio();
     // WIDE: only with a game it knows and a window set. 32-bit colour, like the screen's upload.
