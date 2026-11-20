@@ -61,7 +61,7 @@ val STATUS_BAR_PLACES = listOf(tk("OFF"), tk("GAME"), tk("COMPANION"))
 
 fun statusBarLabel(on: Boolean, onCompanion: Boolean) = STATUS_BAR_PLACES[if (!on) 0 else if (onCompanion) 2 else 1]
 
-internal enum class Page(val title: String) { HOME(tk("SETTINGS")), TABS(tk("TAB BAR")), BUTTONS(tk("GAME BUTTONS")), HOTKEYS(tk("HOTKEYS")), SHADERS(tk("SHADERS")), FIELD_HUD(tk("HUD")), QUICK_MENU(tk("QUICK MENU")), TOUCH(tk("TOUCH CONTROLS")), SPEED(tk("SPEED OPTIONS")), DISPLAY(tk("DISPLAY OPTIONS")), CHEATS(tk("CHEATS")), CHEAT_ADD(tk("ADD CODE")), TWEAKS(tk("TWEAKS")), COOP_PARTNERS(tk("PARTNERS")), HELP(tk("HELP")) }
+internal enum class Page(val title: String) { HOME(tk("SETTINGS")), TABS(tk("TAB BAR")), BUTTONS(tk("GAME BUTTONS")), HOTKEYS(tk("HOTKEYS")), SHADERS(tk("SHADERS")), FIELD_HUD(tk("HUD")), QUICK_MENU(tk("QUICK MENU")), TOUCH(tk("TOUCH CONTROLS")), SPEED(tk("SPEED OPTIONS")), DISPLAY(tk("DISPLAY OPTIONS")), CHEATS(tk("CHEATS")), CHEAT_ADD(tk("ADD CODE")), TWEAKS(tk("TWEAKS")), COOP_PARTNERS(tk("FRIENDS")), HELP(tk("HELP")) }
 
 /** Where BACK from a page goes: SHADERS opens from DISPLAY OPTIONS, the rest from HOME. */
 internal val Page.parent: Page get() = when (this) {
@@ -304,9 +304,9 @@ fun CompanionSettingsScreen(
                             tick++
                         }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
-                    Page.COOP_PARTNERS -> coopPartnerRows(settings.coopPairs) { p ->
+                    Page.COOP_PARTNERS -> coopPartnerRows(settings.coopPairs, settings.coopOnline) { p ->
                         confirm = Confirm(tk("UNPAIR"), tr("Unpair {0}? You'll need a new invite to play together again.", p.partner.name), tk("UNPAIR")) {
-                            settings.coopUnpair(p.ownSave); tick++
+                            settings.coopUnpair(p.ownSave, p.partner.peer); tick++
                         }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.HELP -> emptyList()
@@ -1141,7 +1141,7 @@ internal fun coopRows(
         groupTitle(tk("CO-OP")),
         SettingRow(tk("LINK"), coopLinkLabel(state), subtitle = why) {},
         SettingRow(tk("PAIR"), null, enabled = false, labelBadge = NewFeatures.badge(NewFeatures.COOP), subtitle = "On the top screen: Settings > CO-OP") {},
-        SettingRow(tk("PARTNERS"), if (pairs.isEmpty()) tk("NONE") else pairs.size.toString(), opensPage = true) { navigate(Page.COOP_PARTNERS) },
+        SettingRow(tk("FRIENDS"), if (pairs.isEmpty()) tk("NONE") else pairs.size.toString(), opensPage = true) { navigate(Page.COOP_PARTNERS) },
         nearbyRangeRow(s.coopNearbyRange, pick) { s.coopNearbyRange = it },
         SettingRow(tk("RELAY"), s.coopRelayValue, enabled = false, subtitle = "Change it in Settings on the top screen") {},
         SettingRow(tk("RELAY ONLY"), if (s.coopRelayOnly) tk("ON") else tk("OFF")) { s.setCoopRelayOnly(!s.coopRelayOnly); changed() },

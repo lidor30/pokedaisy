@@ -11,10 +11,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * The link to one paired partner: dials its last ticket, checks its HELLO, delivers its app
+ * The link to one paired partner (one friend): dials its last ticket, checks its HELLO, delivers its app
  * messages and redials with a backoff when it drops. No threads: the session's poll loop calls
  * [onEvent] and [tick]. A repeated [CoopEvent.Connected] is a new connection, so the HELLO goes
  * out again each time; the state stays as it is.
+ *
+ * [shared]: one of several links on the transport ([CoopFriends] owns them and the policy): it never sets the policy
+ * and leaves every other peer's connection alone (alone, it allows only its partner and drops anyone else).
  */
 class CoopLinkImpl(
     private val transport: CoopTransport,
@@ -22,6 +25,7 @@ class CoopLinkImpl(
     private val ownHello: () -> CoopHello?,
     private val clock: () -> Long,
     private val backoff: CoopBackoff,
+    private val shared: Boolean = false,
 ) : CoopLink {
     private val lock = SynchronizedObject()
 
@@ -40,12 +44,17 @@ class CoopLinkImpl(
     private var notAllowed = 0
     private var ignoreOwnClose = false   // the Disconnected our own restart disconnect echoes back
 
+    /** The friend this link is for (null before [startFor] / after [stop]). */
+    val partnerPeer: CoopPeerId? get() = synchronized(lock) { pair?.partner?.peer }
+
     /** Looks up the pair of [save], allows only its partner and dials the last ticket. */
-    fun startFor(save: CoopSaveId) {
+    fun startFor(save: CoopSaveId) = startFor(pairs.forSave(save))
+
+    /** Starts the link to [p]'s friend (null: Off, NOT_PAIRED); alone, it allows only that friend. */
+    fun startFor(p: CoopPair?) {
         synchronized(lock) {
             val hadConnection = live || helloOk
             resetConnection()
-            val p = pairs.forSave(save)
             pair = p
             if (p == null) {
                 _state.value = CoopState.Off(CoopOffReason.NOT_PAIRED)
@@ -53,7 +62,7 @@ class CoopLinkImpl(
             }
             backoff.reset()
             notAllowed = 0
-            transport.setPolicy(setOf(p.partner.peer), false, null)
+            if (!shared) transport.setPolicy(setOf(p.partner.peer), false, null)
             if (hadConnection) { ignoreOwnClose = true; transport.disconnect(p.partner.peer) }   // a restart never trusts a connection it knew of
             _state.value = CoopState.Connecting(p.partner)
             dial()
@@ -93,7 +102,8 @@ class CoopLinkImpl(
             when (e) {
                 is CoopEvent.Connected -> {
                     if (e.peer != partner || e.pending) {
-                        transport.disconnect(e.peer)
+                        // Shared: another friend's (its own link takes it) or a pairing's pending one (CoopPairing's).
+                        if (!shared) transport.disconnect(e.peer)
                         return
                     }
                     ignoreOwnClose = false
@@ -194,7 +204,7 @@ class CoopLinkImpl(
     private fun refreshTicket(p: CoopPair, ticket: String) {
         if (p.lastTicket == ticket) return
         try {
-            pairs.updateTicket(p.ownSave, ticket)
+            pairs.updateTicket(p.ownSave, p.partner.peer, ticket)
             pair = p.copy(lastTicket = ticket)
         } catch (e: IOException) {
             coopLog("couldn't keep the partner's new ticket: ${e.message}")

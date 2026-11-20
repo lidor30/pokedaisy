@@ -98,11 +98,28 @@ class CoopPairingTest {
         assertTrue(pairsA.all().isEmpty())
     }
 
-    @Test fun alreadyPairedSaveFailsBeforeShowingAnything() {
-        val partner = CoopPartner(tB.id, "MAY", 2, false, saveB)
-        pairsA.add(CoopPair(saveA, "Emerald", partner, null, 1L))
+    /** A friend of saveA on another device (key byte [n]) with a save of its own. */
+    private fun otherFriend(n: Int) = CoopPair(
+        saveA, "Emerald",
+        CoopPartner(CoopPeerId.of(ByteArray(32) { n.toByte() }), "X", 1000 + n, false, CoopSaveId(1000 + n, n, byteArrayOf(0xBB.toByte(), 0xFF.toByte(), 0, 0, 0, 0, 0, 0))),
+        null, 1L,
+    )
+
+    @Test fun aSaveWithFriendsStillInvitesAndAddsOneMore() {
+        val old = otherFriend(0x31)
+        pairsA.add(old)
+        toConfirm()
+        a.accept()
+        b.accept()
+        net.pump()
+        assertTrue(a.step.value is Step.Paired)
+        assertEquals(listOf(old.partner.peer, tB.id), pairsA.friendsOf(saveA).map { it.partner.peer })
+    }
+
+    @Test fun fullSaveFailsBeforeShowingAnything() {
+        for (n in 1..CoopPairs.MAX_FRIENDS) assertTrue(pairsA.add(otherFriend(0x40 + n)))
         a.open(saveA)
-        assertEquals(Step.Failed(CoopPairFail.SAVE_ALREADY_PAIRED), a.step.value)
+        assertEquals(Step.Failed(CoopPairFail.FRIENDS_FULL), a.step.value)
         assertTrue(tA.policies.none { it.pairingOpen })
     }
 

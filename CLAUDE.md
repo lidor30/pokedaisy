@@ -30,8 +30,8 @@ eight translations in TrCompanion), the manual's "Games removed at their makers'
 **Co-op link** (`companion/coop/`; docs/DEVELOPMENT.md's "Co-op connection"): pure Kotlin, no native code - `RelayCoopTransport` over
 our own WebSocket relay (`server/coop-relay/`, a separate Kotlin / JVM program on Java-WebSocket, never in the APK; its README covers deploying it) plus direct
 TCP and Android NSD on the same Wi-Fi, every path carrying a Noise IK channel (`CoopChannel`, `Noise_IK_25519_AESGCM_SHA256`, Bouncy
-Castle's X25519), poll-based (`poll()`); nothing from the network reaches game memory (`CoopSafetyTest`); pairs per save
-(`CoopSaveId`), English Emerald only, refused with cheats loaded; the relay URL (`COOP_RELAY_URL`) is a build secret, never committed,
+Castle's X25519), poll-based (`poll()`); nothing from the network reaches game memory (`CoopSafetyTest`); friends per save
+(`CoopSaveId`, up to 12: `CoopFriends` links them all at once, docs/DEVELOPMENT.md's "Co-op friends"), English Emerald only, refused with cheats loaded; the relay URL (`COOP_RELAY_URL`) is a build secret, never committed,
 and with none the link is the same Wi-Fi and BY IP only. **Behind `FeatureFlags.coop`** (off; `-Ppokedaisy.coop=true` /
 local.properties / marker `files/features/coop`): its rows' keywords sit in `FLAGGED_SETTING_KEYWORDS` and the manual page is a draft
 in `docs/manual-drafts/coop.md` (move it into `docs/manual/` with the settings-reference / synonyms entries when the flag goes).

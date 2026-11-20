@@ -1,0 +1,12 @@
+# Two surfing friends: each a rider and a blob in two OAM entries (the blob at the higher index of its pair), slot 0 first
+# from 127 down (rider 126, blob 127), slot 1 under it (rider 124, blob 125), and two palette slots.
+# want: partnerinfo 0 surf: why 0 oam 126 blobOam 127 slot 15
+# want: partnerinfo 1 surf: why 0 oam 124 blobOam 125
+wideon 0
+partnersetn 0 /repo/app/build/partner/brendan.bin
+partnersetn 1 /repo/app/build/partner/brendan.bin
+partnernearn 0 1 0 36 0 39
+partnernearn 1 -1 0 36 0 39
+wait 2
+partnerinfon 0 surf
+partnerinfon 1 surf

@@ -17,7 +17,8 @@ sealed interface CoopEvent {
     /** [code]: a reason code of the shared table (0 CLOSED .. 8 DUPLICATE). */
     data class Disconnected(val peer: CoopPeerId, val code: Int) : CoopEvent
 
-    data class DialFailed(val code: Int, val message: String) : CoopEvent
+    /** [peer]: the device the dial was for (null where it isn't known: a test's fake). */
+    data class DialFailed(val code: Int, val message: String, val peer: CoopPeerId? = null) : CoopEvent
 
     data class LanPeer(val peer: CoopPeerId, val userData: String) : CoopEvent
 

@@ -57,7 +57,7 @@ object CoopSession {
 
     // Built on first use (they need a context for the pairs file).
     @Volatile private var pairsStore: CoopPairs? = null
-    @Volatile private var impl: CoopLinkImpl? = null
+    @Volatile private var impl: CoopFriends? = null
     @Volatile private var pairingImpl: CoopPairing? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
 
@@ -99,16 +99,62 @@ object CoopSession {
     /** When OPEN ROOMS was last asked for: [syncLobby] asks again every [ROOMS_REFRESH_MS] while the page waits. */
     @Volatile private var roomsAt = 0L
 
-    /** The link to the paired partner; [CoopState.Off] while nothing holds the endpoint. */
+    private val _friends = MutableStateFlow<List<CoopFriendState>>(emptyList())
+    private val _friendMessages = MutableSharedFlow<CoopFriendMessage>(extraBufferCapacity = 512)
+
+    /** Every friend of the running save and its link (empty while no game holds the endpoint). */
+    val friends: StateFlow<List<CoopFriendState>> = _friends.asStateFlow()
+
+    /** Every friend's app messages, each with its sender. */
+    val friendMessages: SharedFlow<CoopFriendMessage> = _friendMessages.asSharedFlow()
+
+    /** One app message to the friend [peer]; false unless connected. */
+    fun sendTo(peer: CoopPeerId, type: Int, payload: ByteArray): Boolean = impl?.send(peer, type, payload) ?: false
+
+    private val views = java.util.concurrent.ConcurrentHashMap<CoopPeerId, MutableStateFlow<CoopState>>()
+
+    /**
+     * The link to one friend of the running save, as a view over [friends] and [friendMessages] (the story lock's PLAY
+     * TOGETHER ONLY partner): Off while that friend has no running link; it follows them from then on.
+     */
+    @Synchronized
+    fun friendLink(peer: CoopPeerId): CoopLink = viewLinks.getOrPut(peer) {
+        val st = views.getOrPut(peer) { MutableStateFlow(_friends.value.firstOrNull { it.peer == peer }?.state ?: CoopState.Off()) }
+        val msgs = MutableSharedFlow<CoopMessage>(extraBufferCapacity = 256)
+        scope.launch { _friendMessages.collect { if (it.peer == peer) msgs.emit(it.message) } }
+        object : CoopLink {
+            override val state: StateFlow<CoopState> = st.asStateFlow()
+            override val messages: SharedFlow<CoopMessage> = msgs.asSharedFlow()
+            override fun send(type: Int, payload: ByteArray): Boolean {
+                require(type in CoopWire.FIRST_APP_TYPE..0xFFFF) { "message type out of range: $type" }
+                require(payload.size <= CoopWire.MAX_PAYLOAD) { "payload too large: ${payload.size}" }
+                return sendTo(peer, type, payload)
+            }
+        }
+    }
+    private val viewLinks = HashMap<CoopPeerId, CoopLink>()
+
+    /**
+     * All friends as one link, for what only asks "is co-op up, and with whom": the state is the first connected friend's
+     * (else the first connecting one's, else the first friend's); [CoopLink.messages] carries every friend's; [CoopLink.send]
+     * goes to every connected friend. The battles talk to one friend at a time through [CoopBattleTarget] instead.
+     */
     val link: CoopLink = object : CoopLink {
         override val state: StateFlow<CoopState> = _state.asStateFlow()
         override val messages: SharedFlow<CoopMessage> = _messages.asSharedFlow()
         override fun send(type: Int, payload: ByteArray): Boolean {
             require(type in CoopWire.FIRST_APP_TYPE..0xFFFF) { "message type out of range: $type" }
             require(payload.size <= CoopWire.MAX_PAYLOAD) { "payload too large: ${payload.size}" }
-            return impl?.send(type, payload) ?: false
+            return (impl?.broadcast(type, payload) ?: 0) > 0
         }
     }
+
+    /** Pure: the friends' links as the one state [link] shows. */
+    fun aggregate(friends: List<CoopFriendState>): CoopState =
+        friends.firstOrNull { it.state is CoopState.Connected }?.state
+            ?: friends.firstOrNull { it.state is CoopState.Connecting }?.state
+            ?: friends.firstOrNull()?.state
+            ?: CoopState.Off()
 
     private val control = Executors.newSingleThreadExecutor { r -> Thread(r, "pokedaisy-coop-ctl").apply { isDaemon = true } }
     private var holds = 0
@@ -167,7 +213,7 @@ object CoopSession {
         post {
             val id = if (romSha1 == EMERALD_COOP_SHA1) CoopSaveId.read(saveFile.toOkioPath()) else null
             val paired = id != null && try {
-                pairsOf(app).forSave(id) != null
+                pairsOf(app).friendsOf(id).isNotEmpty()
             } catch (e: IOException) {
                 coopLog("pairs.json unreadable: ${e.message}")
                 false
@@ -200,18 +246,29 @@ object CoopSession {
         }
     }
 
-    /** BYE if connected to them, the pairing removed, the policy refreshed. */
+    /** Removes the friend [peer] of [save]: BYE if connected to them (the running links reload), the policy refreshed. */
+    fun unpair(context: Context, save: CoopSaveId, peer: CoopPeerId) {
+        val app = context.applicationContext
+        post {
+            try { pairsOf(app).remove(save, peer) } catch (e: IOException) { coopLog("couldn't unpair: ${e.message}") }
+            afterUnpair(app, save)
+        }
+    }
+
+    /** Removes every friend of [save]. */
     fun unpair(context: Context, save: CoopSaveId) {
         val app = context.applicationContext
         post {
-            val mine = gameSave == save && running
-            if (mine) impl?.stop()
             try { pairsOf(app).remove(save) } catch (e: IOException) { coopLog("couldn't unpair: ${e.message}") }
-            if (mine) impl?.startFor(save)
-            else if (running) try {
-                transport.setPolicy(pairsOf(app).allowedPeers(), pairingHold, null)
-            } catch (e: IOException) { coopLog("couldn't refresh the policy: ${e.message}") }
+            afterUnpair(app, save)
         }
+    }
+
+    private fun afterUnpair(app: Context, save: CoopSaveId) {
+        if (gameSave == save && running) impl?.tick()   // the links reload: the removed friend's gets a BYE
+        else if (running) try {
+            transport.setPolicy(pairsOf(app).allowedPeers(), pairingHold, null)
+        } catch (e: IOException) { coopLog("couldn't refresh the policy: ${e.message}") }
     }
 
     /** Runs [block] on the control thread, after everything posted before it: after [pairing]'s endpoint start, so the native side is up. */
@@ -230,7 +287,7 @@ object CoopSession {
 
     private fun setOverride(state: CoopState?) {
         override = state
-        _state.value = state ?: impl?.state?.value ?: CoopState.Off()
+        _state.value = state ?: impl?.friends?.value?.let(::aggregate) ?: CoopState.Off()
     }
 
     @Synchronized
@@ -239,10 +296,18 @@ object CoopSession {
         val tr = transportOf(app)
         val p = CoopPairs(File(File(app.filesDir, "coop"), "pairs.json").toOkioPath())
         pairsStore = p
-        val l = CoopLinkImpl(tr, p, ownHello, clock, CoopBackoff())
+        // While an invite page holds the policy (pairing open, LAN announced), it is left alone: closing the page allows
+        // every paired device again, the running save's friends among them.
+        val l = CoopFriends(tr, p, ownHello, clock, policy = { peers -> if (!pairingHold) tr.setPolicy(peers, false, null) })
         impl = l
-        scope.launch { l.state.collect { _state.value = override ?: it } }
-        scope.launch { l.messages.collect { _messages.emit(it) } }
+        scope.launch {
+            l.friends.collect { list ->
+                _friends.value = list
+                for ((peer, view) in views) view.value = list.firstOrNull { it.peer == peer }?.state ?: CoopState.Off()
+                _state.value = override ?: aggregate(list)
+            }
+        }
+        scope.launch { l.messages.collect { _friendMessages.emit(it); _messages.emit(it.message) } }
         return p
     }
 

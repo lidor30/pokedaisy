@@ -1,0 +1,24 @@
+# Co-op friends (pk_wide.c's slots, PK_PARTNER_MAX 4): three friends at once beside the player, each a hardware sprite of its
+# own - slot 0 takes OAM 127 and palette slot 15 as the single partner always did (partner_draw), slot 1 the next hidden
+# entry down (126), slot 2 the next (125), each its own palette slot. Slot 0's line must read exactly as partner_draw's.
+# Then slot 1 alone goes away: slots 0 and 2 stay drawn, and slot 2 keeps going down from 127 past slot 0 (it takes 126).
+# want: partnerinfo 0 three: why 0 oam 127 blobOam -1 slot 15
+# want: partnerinfo 1 three: why 0 oam 126 blobOam -1
+# want: partnerinfo 2 three: why 0 oam 125 blobOam -1
+# want: partnerinfo 1 gone: why 1 oam -1
+# want: partnerinfo 2 gone: why 0 oam 126 blobOam -1
+wideon 0
+partnersetn 0 /repo/app/build/partner/brendan.bin
+partnersetn 1 /repo/app/build/partner/brendan.bin
+partnersetn 2 /repo/app/build/partner/brendan.bin
+partnernearn 0 1 0 0 0 -1
+partnernearn 1 -1 0 0 0 -1
+partnernearn 2 0 1 0 0 -1
+wait 2
+partnerinfon 0 three
+partnerinfon 1 three
+partnerinfon 2 three
+partnerposn 1 0 0 0 0 0 -1 0
+wait 2
+partnerinfon 1 gone
+partnerinfon 2 gone

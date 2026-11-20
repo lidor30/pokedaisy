@@ -19,7 +19,11 @@ data class RelayConfig(
     val port: Int = 8080,
     val healthPort: Int = 8081,
     val maxRooms: Int = 10_000,
-    val maxSocketsPerIp: Int = 16,
+    /**
+     * Every friend online is one socket (a pair room each): a player with 12 friends holds 12, and players behind one
+     * router (a household, a school) share one address. 48 lets four of them play at once.
+     */
+    val maxSocketsPerIp: Int = 48,
     val maxNewSocketsPerIpPerMin: Int = 30,
     val maxMessageBytes: Int = 70_000,
     val maxMessagesPerSec: Int = 500,

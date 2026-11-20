@@ -1765,10 +1765,10 @@ for a new follower source or version, and the next pack takes them. `SpritePackT
 FireRed / Emerald and the four follower hacks), `SpritePackFlowTest` (the zip reader, a real pack through it); ui-preview
 `library-sprite-pack-*`.
 
-### Co-op: seeing each other (the partner on your map)
+### Co-op: seeing each other (friends on your map)
 
-Two linked players on retail English Emerald (BPEE, SHA-1 `f3ae0881...`, the same ROM on both) see each other's character
-on a shared map: walking, running, riding either bike and surfing, in the game's picture and in EXPAND's margins. It is only
+Linked friends on retail English Emerald (BPEE, SHA-1 `f3ae0881...`, the same ROM on all) see each other's characters
+on a shared map (up to four at once, the nearest: "Co-op friends" under "Co-op connection"): walking, running, riding either bike and surfing, in the game's picture and in EXPAND's margins. It is only
 visual: you walk through each other, nothing is written into the game's RAM, save or states, and the partner's sprites are put
 in and out per frame like FOLLOWER's. Code: `companion/data/coop/` (`Presence.kt`, `PresenceSmoother.kt`, `PartnerArt.kt`,
 `CoopPresenceLink.kt`), `CoopPresence.kt` (the glue on the emu thread), `pk_wide.c`'s `pk_partner_*`. The transport is the
@@ -1795,6 +1795,9 @@ its first frame.
   counted when the object's own current and previous coordinates differ by one tile, so a warp or a map connection's shift
   (every coordinate moves at once) never counts. The reported map is held until the coordinates agree with it (at most 4
   frames), because the game names the new map one frame before it shifts the coordinates.
+- **Bridges:** a friend's OAM priority is its own (`partnerPrio` in pk_wide.c), not the player's: the elevation the
+  game would give it from the map cell it stands on (`ObjectEventUpdateElevation`: 0 and 15, a bridge's crossing, keep
+  the one it had), through `sElevationToPriority` (`PK_WIDE_ELEVATION_PRIO`); the player's priority while it isn't known.
 - **Smoothing** (`PresenceSmoother`, emu thread only): the partner is drawn about 150 ms behind real time, timed in wall-clock
   milliseconds (the clock offset is the smallest `arrived - sent` seen), so a sender at 4x or 0.25x moves at their real pace
   and never drifts. Late and duplicate updates are dropped, and render time never goes backwards. After a stall the partner
@@ -1807,8 +1810,12 @@ its first frame.
   (the surfing sheet's frames 0, 2 and 4: S / N / W), 39-41 the surf blob (S / N / W, read from the ROM, CRC checked). East
   is west flipped; 16x32 frames are centred with `PlayerLook.widen`. A dressed look goes through `PlayerLook.wear`, as the
   player's own does. Built on a background thread, asked per (gender, look) and retried while a build runs.
-- **On screen** (`partnerBegin` at line 0, `partnerEnd` after line 159, FOLLOWER's way): the rider is OBJ tiles 976-991 and the
-  blob 992-1007 (FOLLOWER keeps 1008-1023), each a hidden OAM entry after the game's shown ones, found from 127 down and never
+- **On screen** (`partnerBegin` at line 0, `partnerEnd` after line 159, FOLLOWER's way): `PK_PARTNER_MAX` (4) slots, each a
+  `struct Partner` with its own art, request and saved bytes (`pk_partner_*_n`; the calls without `_n` are slot 0's). Slot 0's
+  rider is OBJ tiles 976-991 and its blob 992-1007 (FOLLOWER keeps 1008-1023); RIDE ON keeps 942-975, so slots 1-3 sit under it
+  at 910-941, 878-909 and 846-877 (a slot whose tiles a shown sprite uses sits the frame out, TILES_USED, the others still
+  drawn). Slot 0 takes OAM entries first, from 127 down, then slot 1 below it, and each takes its own free palette slot; the
+  screen fade is read once a frame for all of them. Each rider and blob is a hidden OAM entry after the game's shown ones, found from 127 down and never
   FOLLOWER's, in the highest palette slot no shown sprite uses, with the player's priority. The game's VRAM, OAM and palette
   bytes go back after line 159, so states hold none of it (`partner_clean`: identical hashes with and without him). Where he
   stands is an offset from the player's sprite box (partner fine minus the local fine), which survives map connections. Why
@@ -4323,7 +4330,7 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
   long enough to send its own HELLO, so both sides stop with it instead of the joiner timing out. Tests: `RelayLobbyTest`, `LobbyServerTest` (server), `CoopLobbyTest`,
   `CoopRelayIntegrationTest.joinsThroughARoomCode` (the app's lobby and transport through the real relay). ui-preview:
   `coop-invite-rooms*`.
-- **The PAIR page** (top-screen Settings > CO-OP): `CoopSettingsPages` holds its state and actions (PAIR, PARTNERS, RELAY;
+- **The PAIR page** (top-screen Settings > CO-OP): `CoopSettingsPages` holds its state and actions (PAIR, FRIENDS, RELAY;
   SettingsActivity only routes to it), `CoopUi.kt` draws it from one `CoopPairView`: the save list, then three panes on a
   `TabRail` (`CoopPairTab`: YOUR ROOM = code, LIST MY ROOM, QR and link; JOIN = a code, OPEN ROOMS, a pasted link; NEARBY =
   same Wi-Fi and BY IP, not with RELAY ONLY), then the steps after a dial. ui-preview passes a `CoopPairView` straight in
@@ -4336,7 +4343,7 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
   backoff of 1 s doubling to 30 s (plus or minus 20%).
 - **RELAY ONLY** (`Prefs.coopRelayOnly`): no TCP listener and no NSD, so a partner never learns your IP address; the relay does.
 - **Events** (`CoopEvent`, from `poll()`): Ready(ticket), Relay (kind 0 none, 1 custom), Connected, Frame, Disconnected(reason),
-  DialFailed(reason, message), LanPeer, LanGone, Error (Path is no longer emitted). The queue holds 1,024 frames and 64 more slots for
+  DialFailed(reason, message, peer), LanPeer, LanGone, Error (Path is no longer emitted). The queue holds 1,024 frames and 64 more slots for
   the rest; a frame that doesn't fit closes that peer OVERFLOW. Pending peers (not yet accepted) may send 8 frames of 2,048 bytes
   within 60 s. **Reason codes**: 0 closed, 1 timeout, 2 denied, 3 version, 4 not allowed, 5 overflow, 6 error, 7 pending expired,
   8 duplicate (above 8 reads as error).
@@ -4350,6 +4357,35 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
   `licensesAsset` list in `app/build.gradle.kts`.
 - **Message types** (`CoopWire`): 0x0001-0x00FF the link's own (HELLO, PAIR_ACCEPT, PAIR_DENY, BYE); 0x0100-0x01FF plan 3,
   0x0200-0x02FF plan 4, 0x0300-0x03FF plan 5; others are dropped on receipt.
+
+
+### Co-op friends (many partners per save)
+
+A save keeps up to `CoopPairs.MAX_FRIENDS` (12) friends. Each friendship is a plain pairing: its own Noise channel, its own
+pair room on the relay, made by the same PAIR page (a save with friends can still invite; a full one fails `FRIENDS_FULL`, the
+same partner again `SAVE_ALREADY_PAIRED`). The relay is unchanged but for `MAX_SOCKETS_PER_IP` (48: one socket per friend
+online, and players behind one router share an address). Why a mesh of pairs and not a group room: friendships are personal
+(two of my friends needn't know each other), each one stays end to end encrypted with keys only the two devices hold, and the
+transport already kept one connection per peer.
+
+- **Storage**: `pairs.json` as before, one entry per (own save, friend), so an older file reads as is. `friendsOf(save)`;
+  `forSave` is the oldest friend; `updateTicket` / `remove` name the friend; `version` moves on every write.
+- **Links**: `CoopFriends` holds one `CoopLinkImpl(shared = true)` per friend of the running save: it allows exactly them
+  (skipped while an invite page owns the policy), routes each event by its peer (`DialFailed` carries the peer now), reloads
+  when `CoopPairs.version` moves (a friend added on the PAIR page mid-game gets a link; a removed one hears BYE). A shared link
+  never sets the policy and leaves other peers' connections alone. `CoopSession.friends` / `friendMessages` / `sendTo` /
+  `friendLink(peer)` expose them; `CoopSession.link` is all friends as one (state: the first connected; send: to all).
+- **Presence**: `CoopFriendsPresenceChannel` sends each update to every friend and hands `CoopPresence` (sender, update);
+  `CoopPresence` keeps a smoother per sender and draws up to `PartnerCore.slots` (4, `PK_PARTNER_MAX`): a shown friend keeps its
+  slot, free slots go to the nearest friends on this map, a friend silent for 10 s (or whose link dropped) is forgotten.
+- **Battles**: still two players (`CoopLinkFlow` is unchanged but for `idle`). `CoopBattleTarget` is the flow's channel: STATUS
+  to every friend (and every friend's kept), everything else to one partner, picked while the flow is idle as the nearest
+  connected friend on this map in range that is free and ready (else the nearest on the map, else the partner stays). An OFFER
+  from another friend while idle makes them the partner (held 2 s so the pick isn't undone before the flow answers); anything
+  else from a non-partner is dropped. `pairKey` follows the partner, so a friend's un-acknowledged catches wait for that friend.
+- **PLAY TOGETHER ONLY** stays with one friend: the one the lock is on with, else the oldest (`friendLink`).
+- **Tests**: `CoopFriendsTest` (three devices on `FakeNet`), `CoopBattleTargetTest`, `CoopPresenceFriendsTest`, `CoopPairsTest`'s
+  friends cases; headless `native-capture/coop/partner_multi_*.txt` for the slots (they need the ROM, like the other partner tests).
 
 ## Releasing
 

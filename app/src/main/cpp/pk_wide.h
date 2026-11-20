@@ -300,10 +300,15 @@ int pk_partner_self(struct mCore* core, int32_t out[PK_PARTNER_SELF_N]);
 #define PK_PARTNER_ART_BYTES (PK_PARTNER_FRAMES * 512 + 32)
 void pk_partner_set(const uint8_t* art);
 
+/** Co-op friends: how many are drawn at once, each in its own slot (0 = the single partner of the calls without _n). */
+#define PK_PARTNER_MAX 4
+/** pk_partner_set for slot [i] (0 until PK_PARTNER_MAX; any other is ignored). */
+void pk_partner_set_n(int i, const uint8_t* art);
+
 /** Why the last frame drew no partner (pk_partner_info): DRAWN none, OFF not asked for, NO_ART, NO_PLAYER (the player's own
  * sprite or position isn't known), OFFSCREEN (the box isn't inside x -31..239 / y -31..159: never put in OAM, whose x / y
  * wrap), NO_ENTRY / NO_SLOT (no hidden OAM entry after the game's last shown one / no free palette slot), TILES_USED (a
- * shown sprite uses OBJ tiles 976-1007), BAD_FRAME (a frame or blob index past the art). */
+ * shown sprite uses the slot's OBJ tiles: 976-1007 for slot 0, 910-941 / 878-909 / 846-877 for slots 1-3), BAD_FRAME (a frame or blob index past the art). */
 enum { PK_PARTNER_DRAWN, PK_PARTNER_OFF, PK_PARTNER_NO_ART, PK_PARTNER_NO_PLAYER, PK_PARTNER_OFFSCREEN,
        PK_PARTNER_NO_ENTRY, PK_PARTNER_NO_SLOT, PK_PARTNER_TILES_USED, PK_PARTNER_BAD_FRAME };
 
@@ -312,15 +317,21 @@ enum { PK_PARTNER_DRAWN, PK_PARTNER_OFF, PK_PARTNER_NO_ART, PK_PARTNER_NO_PLAYER
  * and its bob in pixels. Drawn as hardware sprites at each frame's line 0 (installs the scanline hook); visible 0 = none.
  * Emu thread. */
 void pk_partner_place(struct mCore* core, int visible, int fineX, int fineY, int frame, int hflip, int blobFrame, int bob);
+/** pk_partner_place for slot [i] (0 until PK_PARTNER_MAX; any other is ignored). Slot 0 is drawn in front of slot 1, and so on. */
+void pk_partner_place_n(struct mCore* core, int i, int visible, int fineX, int fineY, int frame, int hflip, int blobFrame, int bob);
 
 /** The last frame's why, OAM entries (-1 = none), palette slot, where the sprite's top-left was put (unclipped, even when
  * OFFSCREEN) and the frame, as text (mgba_dump's partnerinfo): "why W oam O blobOam B slot S at X,Y frame F". */
 void pk_partner_info(char* out, int n);
+/** pk_partner_info for slot [i]. */
+void pk_partner_info_n(int i, char* out, int n);
 
 /** Where the last frame's partner sprite's top-left was, unclipped (EXPAND's margins draw what the hardware can't): 1 =
  * worked out this frame (drawn, or skipped for OFFSCREEN / NO_ENTRY / NO_SLOT / TILES_USED), 0 = no place (OFF, NO_ART,
  * NO_PLAYER, BAD_FRAME). */
 int pk_partner_at(int* x, int* y);
+/** pk_partner_at for slot [i]. */
+int pk_partner_at_n(int i, int* x, int* y);
 
 /** The signal (SIGSEGV...) that made pk_wide_view switch WIDE off for this game, or 0. A fault while drawing never
  * takes the app down: the frame is shown plain until the game is configured again. */

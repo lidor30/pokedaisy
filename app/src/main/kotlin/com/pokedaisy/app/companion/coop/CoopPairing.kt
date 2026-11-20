@@ -36,7 +36,8 @@ class CoopPairing(
 
     data class LanEntry(val peer: CoopPeerId, val label: String)
 
-    enum class CoopPairFail { VERSION, DIFFERENT_ROM, SAME_SAVE, SAVE_ALREADY_PAIRED, DENIED, NETWORK, TIMEOUT, BAD_INVITE }
+    /** SAVE_ALREADY_PAIRED: that player is already this save's friend; FRIENDS_FULL: the save has [CoopPairs.MAX_FRIENDS]. */
+    enum class CoopPairFail { VERSION, DIFFERENT_ROM, SAME_SAVE, SAVE_ALREADY_PAIRED, DENIED, NETWORK, TIMEOUT, BAD_INVITE, FRIENDS_FULL }
 
     private val _step = MutableStateFlow<Step>(Step.Inviting(null, emptyList()))
     val step: StateFlow<Step> = _step.asStateFlow()
@@ -62,8 +63,8 @@ class CoopPairing(
             // A repeat call (TRY AGAIN): the old attempt's connection goes with its state.
             peer?.takeIf { _step.value !is Step.Paired }?.let { transport.disconnect(it) }
             resetAll()
-            if (pairs.forSave(save) != null) {
-                _step.value = Step.Failed(CoopPairFail.SAVE_ALREADY_PAIRED)
+            if (!pairs.hasRoom(save)) {
+                _step.value = Step.Failed(CoopPairFail.FRIENDS_FULL)
                 return
             }
             ownSave = save
@@ -297,10 +298,18 @@ class CoopPairing(
             pairedAt = clock(),
         )
         try {
-            if (!pairs.add(pair)) {
-                transport.disconnect(them.peer)
-                fail(CoopPairFail.SAVE_ALREADY_PAIRED)
-                return
+            when (pairs.addResult(pair)) {
+                CoopPairs.AddResult.ADDED -> Unit
+                CoopPairs.AddResult.ALREADY_FRIENDS -> {
+                    transport.disconnect(them.peer)
+                    fail(CoopPairFail.SAVE_ALREADY_PAIRED)
+                    return
+                }
+                CoopPairs.AddResult.FULL -> {
+                    transport.disconnect(them.peer)
+                    fail(CoopPairFail.FRIENDS_FULL)
+                    return
+                }
             }
         } catch (e: IOException) {
             coopLog("couldn't store the pairing: ${e.message}")

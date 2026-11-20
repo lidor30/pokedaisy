@@ -2345,8 +2345,9 @@ class PokeDaisyActivity : Activity() {
             prefs.coopRelayOnly = on
             com.pokedaisy.app.companion.coop.CoopSession.restart(this@PokeDaisyActivity, prefs)
         }
-        override fun coopUnpair(save: com.pokedaisy.app.companion.coop.CoopSaveId) =
-            com.pokedaisy.app.companion.coop.CoopSession.unpair(this@PokeDaisyActivity, save)
+        override fun coopUnpair(save: com.pokedaisy.app.companion.coop.CoopSaveId, peer: com.pokedaisy.app.companion.coop.CoopPeerId) =
+            com.pokedaisy.app.companion.coop.CoopSession.unpair(this@PokeDaisyActivity, save, peer)
+        override val coopOnline get() = com.pokedaisy.app.companion.coop.CoopSession.friends.value.filter { it.connected }.map { it.peer }.toSet()
         }
     }
 
@@ -3017,7 +3018,11 @@ class PokeDaisyActivity : Activity() {
         coopReceive = null
         p.link = link
         if (link == null) { runOnEmu { p.stop() }; return }
-        coopReceive = lookGender.launch { link.received.collect { p.onReceived(it) } }
+        coopReceive = if (link is CoopPresenceFriendsLink) lookGender.launch {
+            // Every friend's updates, each by who sent it; a friend whose link dropped goes at once.
+            launch { link.gone.collect { p.forget(it) } }
+            link.receivedFrom.collect { (key, bytes) -> p.onReceivedFrom(key, bytes) }
+        } else lookGender.launch { link.received.collect { p.onReceived(it) } }
     }
 
     private fun stopCoopPresence() {
@@ -3213,6 +3218,9 @@ class PokeDaisyActivity : Activity() {
         // A joined battle's games are put back first (before the engine writes any suspend state), then the hook goes.
         if (!CoopBattles.stopNow()) coopLost = true   // fail closed: a game not confirmed put back writes no state
         CoopBattles.detach(coopApp)
+        coopTargetJob?.cancel()
+        coopTargetJob = null
+        coopTarget = null
         stopCoopLock()
         coopExec.execute { com.pokedaisy.app.companion.coop.CoopSession.stopGame() }
     }
@@ -3242,14 +3250,41 @@ class PokeDaisyActivity : Activity() {
     /** The retail Emerald game has the hook once its SHA-1 is known: hash done off the UI thread by [coopStart]. */
     private fun coopAttach(sha1: String?) {
         if (isDestroyed || isFinishing || !::engine.isInitialized || !engine.running) return
-        val link = com.pokedaisy.app.companion.coop.CoopSession.link
+        val session = com.pokedaisy.app.companion.coop.CoopSession
+        val link = session.link
         if (!CoopBattles.mayHook(sha1, FeatureFlags.coop(this), link)) return
-        attachCoopLink(CoopPresenceChannel(link))
-        CoopBattles.attach(coopApp, link, sha1)
+        // Every friend online sees this player and is seen (CoopFriendsPresenceChannel); the battles take one friend at a
+        // time, the nearest free one (CoopBattleTarget).
+        attachCoopLink(CoopFriendsPresenceChannel(link, session.friendMessages, session.friends))
+        val target = CoopBattleTarget(
+            friends = { session.friends.value },
+            sendTo = { peer, type, payload -> session.sendTo(peer, type, payload) },
+            spotOf = { peer -> coopPresence?.lastReceivedOf(peer.hex)?.takeIf { it.valid }?.let {
+                com.pokedaisy.app.companion.data.coop.CoopJoinRules.Spot(it.mapGroup, it.mapNum, it.fineX / 16, it.fineY / 16)
+            } },
+            clock = android.os.SystemClock::elapsedRealtime,
+        )
+        coopTargetJob?.cancel()
+        coopTarget = target
+        // Unconfined, as CoopBattles' own collectors: battle messages go from the co-op thread straight to the glue, never
+        // by way of the UI thread.
+        coopTargetJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Unconfined).launch {
+            launch { session.friends.collect { target.onFriendsChanged() } }
+            session.friendMessages.collect { m -> target.onMessage(m.peer, m.message.type, m.message.payload) }
+        }
+        CoopBattles.attach(coopApp, link, sha1, target)
     }
 
-    @Volatile private var coopPairKeyCache: Pair<com.pokedaisy.app.companion.coop.CoopSaveId, String>? = null
-    @Volatile private var coopPairKeyMissAt = -10_000L
+    /** The joined battles' partner among the friends, while a game has the hook. */
+    @Volatile private var coopTarget: CoopBattleTarget? = null
+    private var coopTargetJob: kotlinx.coroutines.Job? = null
+
+    /** The battles' partner as a friend of the running save (name, peer), or null. */
+    private fun coopTargetFriend(): com.pokedaisy.app.companion.coop.CoopFriendState? {
+        val t = coopTarget?.target ?: return null
+        return com.pokedaisy.app.companion.coop.CoopSession.friends.value.firstOrNull { it.peer == t }
+    }
+
 
     private val catchFile by lazy { com.pokedaisy.app.companion.data.coop.FileCatchStore(filesDir.toOkioPath() / "coop" / "catches.txt") }
 
@@ -3270,8 +3305,14 @@ class PokeDaisyActivity : Activity() {
                 if (s.size < 5 || s[0] == 0) return null
                 return com.pokedaisy.app.companion.data.coop.CoopJoinRules.Spot(s[1], s[2], s[3] / 16, s[4] / 16)
             }
+            override fun pickPartner(idle: Boolean) {
+                val t = coopTarget ?: return
+                t.idle = idle
+                t.choose(mySpot(), range)
+            }
             override fun partnerSpot(): com.pokedaisy.app.companion.data.coop.CoopJoinRules.Spot? {
-                val u = coopPresence?.lastReceived?.takeIf { it.valid } ?: return null
+                val peer = coopTarget?.target ?: return null
+                val u = coopPresence?.lastReceivedOf(peer.hex)?.takeIf { it.valid } ?: return null
                 return com.pokedaisy.app.companion.data.coop.CoopJoinRules.Spot(u.mapGroup, u.mapNum, u.fineX / 16, u.fineY / 16)
             }
             override fun hostParty(): List<ByteArray> {
@@ -3281,16 +3322,8 @@ class PokeDaisyActivity : Activity() {
             }
             override fun foeSpecies(): Int = MgbaCore.pkReadBytes(CoopEmeraldRam.ENEMY_PARTY, CoopEmeraldRam.MON_SIZE)
                 ?.let { runCatching { com.pokedaisy.app.companion.data.save.Gen3BoxMon.read(it, 0).species }.getOrNull() } ?: 0
-            override fun partnerName(): String {
-                val st = com.pokedaisy.app.companion.coop.CoopSession.link.state.value
-                val p = when (st) {
-                    is com.pokedaisy.app.companion.coop.CoopState.Connected -> st.partner
-                    is com.pokedaisy.app.companion.coop.CoopState.Connecting -> st.partner
-                    is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> st.partner
-                    else -> null
-                }
-                return p?.name ?: com.pokedaisy.app.companion.i18n.tr("PARTNER")
-            }
+            override fun partnerName(): String =
+                coopTargetFriend()?.pair?.partner?.name ?: com.pokedaisy.app.companion.i18n.tr("PARTNER")
             private fun saveId(): com.pokedaisy.app.companion.coop.CoopSaveId? {
                 coopSaveId?.let { return it }
                 val r = rom ?: return null
@@ -3317,23 +3350,14 @@ class PokeDaisyActivity : Activity() {
                 }
             }
             override fun playTogetherOnly() = coopLock?.ui?.value?.locked == true
-            /** Own save + the paired partner's key (never a display name: a rename or a missing name must not orphan catches). Resolved once per save. */
+            /**
+             * Own save + the battle partner's key (never a display name: a rename or a missing name must not orphan catches):
+             * a friend's un-acknowledged catches wait for that friend, whichever friend the partner is now.
+             */
             override fun pairKey(): String {
                 val sid = saveId() ?: return ""
-                coopPairKeyCache?.let { if (it.first == sid) return it.second }
-                val now = android.os.SystemClock.elapsedRealtime()
-                if (now - coopPairKeyMissAt < 5_000L) return sid.key + ":unpaired"   // the pairs file is not read every tick
-                val st = com.pokedaisy.app.companion.coop.CoopSession.link.state.value
-                val live = when (st) {
-                    is com.pokedaisy.app.companion.coop.CoopState.Connected -> st.partner
-                    is com.pokedaisy.app.companion.coop.CoopState.Connecting -> st.partner
-                    is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> st.partner
-                    else -> null
-                }
-                val peer = live?.peer?.hex
-                    ?: com.pokedaisy.app.companion.coop.CoopSession.pairsList(this@PokeDaisyActivity).firstOrNull { it.ownSave == sid }?.partner?.peer?.hex
-                if (peer == null) { coopPairKeyMissAt = now; return sid.key + ":unpaired" }
-                return (sid.key + ":" + peer).also { coopPairKeyCache = sid to it }
+                val peer = coopTarget?.target?.hex ?: return sid.key + ":unpaired"
+                return sid.key + ":" + peer
             }
             override fun catchStore() = catchFile
             override fun log(text: String) { Log.i("pokedaisy/coop", text) }
@@ -3423,10 +3447,13 @@ class PokeDaisyActivity : Activity() {
     private fun startCoopLock(sha1: String?, save: File, cheatsLoaded: Boolean, gen: Int) {
         val id = com.pokedaisy.app.companion.coop.CoopSaveId.read(save.toOkioPath()) ?: return
         if (com.pokedaisy.app.companion.coop.CoopSession.gate(sha1, id, true, cheatsLoaded) != null) return
-        val pair = com.pokedaisy.app.companion.coop.CoopSession.pairsList(this).firstOrNull { it.ownSave.key == id.key } ?: return
-        val link = com.pokedaisy.app.companion.coop.CoopSession.link
+        // PLAY TOGETHER ONLY is with one friend: the one it is on with, else the oldest friend (who it was with before friends).
+        val store = com.pokedaisy.app.companion.coop.lock.CoopLockStore(File(File(filesDir, "coop"), "locks.json"))
+        val friends = com.pokedaisy.app.companion.coop.CoopSession.pairsList(this).filter { it.ownSave.key == id.key }
+        val pair = friends.firstOrNull { store.isLocked(id.key, it.partner.save.key) } ?: friends.firstOrNull() ?: return
+        val link = com.pokedaisy.app.companion.coop.CoopSession.friendLink(pair.partner.peer)
         val lock = CoopLock(
-            link, com.pokedaisy.app.companion.coop.lock.CoopLockStore(File(File(filesDir, "coop"), "locks.json")),
+            link, store,
             id.key, pair.partner.save.key, MgbaLockNative,
             {
                 val b = MgbaCore.pkReadBytes(com.pokedaisy.app.companion.data.coop.COOP_PLAYER_PARTY_COUNT, 1)
@@ -3492,7 +3519,6 @@ class PokeDaisyActivity : Activity() {
         }
         CoopGuards.reset()   // a new game starts with nothing held or blocked by the last one
         coopLost = false
-        coopPairKeyCache = null; coopPairKeyMissAt = -10_000L
         coopSaveId = null   // identity() and ownName() follow the save of this game
         coopStart(r, save)
         // Auto-resume from wherever was written most recently: normally that's

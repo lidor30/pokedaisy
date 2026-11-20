@@ -1,0 +1,15 @@
+# partner_reset for every slot: a new game (wideon again) drops every friend's request.
+# want: partnerinfo 3 shown: why 4 oam -1
+# want: partnerinfo 0 reset: why 1 oam -1
+# want: partnerinfo 3 reset: why 1 oam -1
+wideon 0
+partnersetn 0 /repo/app/build/partner/brendan.bin
+partnersetn 3 /repo/app/build/partner/brendan.bin
+partnerposn 0 1 0 0 0 0 -1 0
+partnerposn 3 1 0 0 0 0 -1 0
+wait 2
+partnerinfon 3 shown
+wideon 0
+wait 2
+partnerinfon 0 reset
+partnerinfon 3 reset
