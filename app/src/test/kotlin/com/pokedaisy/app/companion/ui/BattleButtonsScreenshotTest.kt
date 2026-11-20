@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -30,10 +31,12 @@ import com.android.resources.ScreenOrientation
 import com.pokedaisy.app.companion.BattleInput
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_BUSY
+import com.pokedaisy.app.companion.data.GameKind
 import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.data.MoveVsFoe
 import com.pokedaisy.app.companion.data.SnapshotView
+import com.pokedaisy.app.companion.data.activeGame
 import com.pokedaisy.app.companion.data.spriteAsset
 import org.junit.After
 import org.junit.Before
@@ -78,6 +81,13 @@ class BattleButtonsScreenshotTest {
     @Test fun gen5PartyWindow() = paparazzi.snapshot { BattleScene(window = BattleButtonsWindow.PARTY, style = BattleStyle.GEN5) }
 
     @Test fun gen5Original() = paparazzi.snapshot { BattleScene(expand = false, style = BattleStyle.GEN5) }
+
+    @Test fun matchingPartyMembers() = paparazzi.snapshot {
+        val active = lead.copy(personality = 101)
+        val bench = active.copy(personality = 102, nickname = "SECOND")
+        BattleScene(window = BattleButtonsWindow.PARTY,
+            snap = battle.copy(party = listOf(active, bench), battlePlayer = listOf(active)))
+    }
 
     @Test fun dark() {
         com.pokedaisy.app.companion.ui.theme.DarkMode.override = true
@@ -179,6 +189,21 @@ class BattleButtonsPhoneScreenshotTest {
 
     /** Between the touch controls' rows: the words stay whole. */
     @Test fun squeezed() = paparazzi.snapshot { BattleScene(expand = false, width = 2400, clearTop = 131, clearBottom = 549) }
+
+    /** The four Game Boy moves and CANCEL must all fit in the visible landscape stage. */
+    @Test fun gameBoyMoves() {
+        activeGame = GameKind.YELLOW
+        paparazzi.snapshot {
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                val picture = Rect(600f, 0f, 1800f, 1080f)
+                Box(Modifier.align(Alignment.Center).fillMaxWidth(0.5f).fillMaxHeight().background(Color(0xFF487050)))
+                BattleButtons(
+                    BattleButtonsScreenshotTest.battle, shown = true, BattleButtonsScreenshotTest.input, showHints = true,
+                    core = picture, initialWindow = BattleButtonsWindow.MOVES, clearTop = 270,
+                )
+            }
+        }
+    }
 }
 
 @Composable

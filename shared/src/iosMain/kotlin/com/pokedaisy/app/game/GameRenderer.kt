@@ -2,7 +2,9 @@
 
 package com.pokedaisy.app.game
 
+import com.pokedaisy.app.WideCamera
 import com.pokedaisy.app.core.PkApiCore
+import kotlinx.cinterop.COpaquePointer
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCObjectVar
@@ -30,31 +32,43 @@ class GameRenderer private constructor(
     private val sampler: MTLSamplerStateProtocol,
 ) {
     private var texture: MTLTextureProtocol? = null
+    private var ordinaryTexture: MTLTextureProtocol? = null
+    private var expandedTexture: MTLTextureProtocol? = null
+    private var window: WideCamera.Window? = null
+    var stretch = false
     private var frameW = 0
     private var frameH = 0
-    // rect (NDC x0, y0, x1, y1), then the texture's width / height and screen pixels per texel across / down.
-    private val uniforms = FloatArray(8)
+    // NDC rect, logical frame size / scale, then texture capacity (EXPAND reuses one 800x800 texture).
+    private val uniforms = FloatArray(12)
 
     /** The last frame's size in game pixels; 0 before one is uploaded. */
     val frameWidth: Int get() = frameW
     val frameHeight: Int get() = frameH
 
-    /** Copies the game's last frame into the texture; false with no game running. */
-    fun upload(): Boolean {
-        val px = PkApiCore.video() ?: return false
-        val w = PkApiCore.videoWidth
-        val h = PkApiCore.videoHeight
+    /** Uploads the last picture; EXPAND keeps one capacity texture while zoom changes its logical dimensions. */
+    fun upload(expandedWindow: WideCamera.Window? = null): Boolean {
+        val expanded = expandedWindow?.takeIf { PkApiCore.wideWidth == it.w && PkApiCore.wideHeight == it.h }
+        val px = (if (expanded != null) PkApiCore.wideVideo() else PkApiCore.video()) ?: return false
+        val w = expanded?.w ?: PkApiCore.videoWidth
+        val h = expanded?.h ?: PkApiCore.videoHeight
+        return uploadFrame(px, w, h, expanded)
+    }
+
+    /** Native picture transport, independent of core access. Window pixels remain owned by the caller. */
+    internal fun uploadFrame(px: COpaquePointer, w: Int, h: Int, expanded: WideCamera.Window? = null): Boolean {
         if (w <= 0 || h <= 0) return false
-        var tex = texture
-        if (tex == null || tex.width.toInt() != w || tex.height.toInt() != h) {
+        val capacityW = if (expanded != null) WideCamera.MAX_W else w
+        val capacityH = if (expanded != null) WideCamera.MAX_H else h
+        var tex = if (expanded != null) expandedTexture else ordinaryTexture
+        if (tex == null || tex.width.toInt() != capacityW || tex.height.toInt() != capacityH) {
             val desc = MTLTextureDescriptor.texture2DDescriptorWithPixelFormat(
                 // pk_api's R, G, B, unused bytes; the shader ignores the unused one.
-                MTLPixelFormatRGBA8Unorm, w.toULong(), h.toULong(), mipmapped = false,
+                MTLPixelFormatRGBA8Unorm, capacityW.toULong(), capacityH.toULong(), mipmapped = false,
             )
             desc.usage = MTLTextureUsageShaderRead
             desc.storageMode = MTLStorageModeShared
             tex = device.newTextureWithDescriptor(desc) ?: return false
-            texture = tex
+            if (expanded != null) expandedTexture = tex else ordinaryTexture = tex
         }
         val region = cValue<MTLRegion> {
             size.width = w.toULong()
@@ -62,6 +76,8 @@ class GameRenderer private constructor(
             size.depth = 1u
         }
         tex.replaceRegion(region, mipmapLevel = 0u, withBytes = px, bytesPerRow = (w * 4).toULong())
+        texture = tex
+        window = expanded
         frameW = w
         frameH = h
         return true
@@ -71,7 +87,10 @@ class GameRenderer private constructor(
     fun encode(encoder: MTLRenderCommandEncoderProtocol, targetW: Double, targetH: Double) {
         val tex = texture ?: return
         if (frameW <= 0 || targetW <= 0 || targetH <= 0) return
-        val r = fitRect(frameW, frameH, targetW, targetH)
+        val r = window?.let {
+            doubleArrayOf(it.offX.toDouble(), it.offY.toDouble(),
+                (it.offX + frameW * it.scale).toDouble(), (it.offY + frameH * it.scale).toDouble())
+        } ?: if (stretch) doubleArrayOf(0.0, 0.0, targetW, targetH) else fitRect(frameW, frameH, targetW, targetH)
         uniforms[0] = (r[0] / targetW * 2 - 1).toFloat()
         uniforms[1] = (1 - r[1] / targetH * 2).toFloat()
         uniforms[2] = (r[2] / targetW * 2 - 1).toFloat()
@@ -80,6 +99,8 @@ class GameRenderer private constructor(
         uniforms[5] = frameH.toFloat()
         uniforms[6] = ((r[2] - r[0]) / frameW).toFloat()
         uniforms[7] = ((r[3] - r[1]) / frameH).toFloat()
+        uniforms[8] = tex.width.toFloat()
+        uniforms[9] = tex.height.toFloat()
         encoder.setRenderPipelineState(pipeline)
         uniforms.usePinned {
             val bytes = it.addressOf(0)
@@ -101,7 +122,7 @@ class GameRenderer private constructor(
         private const val SHADER = """
 #include <metal_stdlib>
 using namespace metal;
-struct Quad { float4 rect; float4 size; };
+struct Quad { float4 rect; float4 size; float4 textureSize; };
 struct V { float4 pos [[position]]; float2 uv; };
 vertex V game_vertex(uint vid [[vertex_id]], constant Quad& q [[buffer(0)]]) {
     float2 c = float2(vid & 1, vid >> 1);
@@ -119,7 +140,8 @@ fragment float4 game_fragment(V in [[stage_in]], constant Quad& q [[buffer(0)]],
     float2 d = fract(texel) - 0.5;
     float2 range = 0.5 - 0.5 / scale;
     float2 f = (d - clamp(d, -range, range)) * scale + 0.5;
-    return float4(tex.sample(s, (base + f) / texSize).rgb, 1.0);
+    float2 samplePx = clamp(base + f, float2(0.5), texSize - 0.5);
+    return float4(tex.sample(s, samplePx / q.textureSize.xy).rgb, 1.0);
 }
 """
 

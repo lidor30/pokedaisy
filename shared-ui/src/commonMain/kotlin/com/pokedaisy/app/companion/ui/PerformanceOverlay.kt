@@ -4,6 +4,8 @@ import com.pokedaisy.app.companion.data.fixed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +23,34 @@ import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 
+/** Cumulative measurements from the running game and companion. */
+data class PerformanceCounters(
+    val atNanos: Long,
+    val frames: Long,
+    val shown: Long,
+    val workNanos: Long,
+    val snapshots: Long,
+    val battleChecks: Long,
+    val refreshes: Long = 0,
+) {
+    fun since(previous: PerformanceCounters, maxWorkNanos: Long): PerfReading {
+        val seconds = (atNanos - previous.atNanos) / 1e9
+        if (seconds <= 0) return PerfReading()
+        val frameCount = (frames - previous.frames).coerceAtLeast(0)
+        val work = (workNanos - previous.workNanos).coerceAtLeast(0)
+        fun rate(delta: Long) = (delta.coerceAtLeast(0) / seconds).toFloat()
+        return PerfReading(
+            fps = rate(frameCount), shownFps = rate(shown - previous.shown),
+            frameMs = if (frameCount == 0L) 0f else (work / frameCount / 1e6).toFloat(),
+            frameMaxMs = (maxWorkNanos / 1e6).toFloat(),
+            emulationLoad = (work / 1e9 / seconds * 100).toInt().coerceIn(0, 100),
+            snapshotsPerSecond = rate(snapshots - previous.snapshots),
+            battleChecksPerSecond = rate(battleChecks - previous.battleChecks),
+            refreshHz = rate(refreshes - previous.refreshes),
+        )
+    }
+}
+
 /** What SETTINGS > FPS / CPU shows, measured over the last half second. */
 data class PerfReading(
     /** Frames the core ran per second (~60 at 1x; more while fast-forwarding). */
@@ -28,7 +58,7 @@ data class PerfReading(
     /** New frames that reached the screen per second (the display caps it; below [fps] at 1x = dropped). */
     val shownFps: Float = 0f,
     /** Refreshes per second whose frame came too late to wait for, so it showed a refresh later (a stutter). */
-    val latePerSecond: Float = 0f,
+    val latePerSecond: Float? = 0f,
     /** The emu thread's work per frame (the core, audio, the companion's reads), average / worst, ms. */
     val frameMs: Float = 0f,
     val frameMaxMs: Float = 0f,
@@ -39,18 +69,18 @@ data class PerfReading(
     val cores: Int = 0,
     /** The game screen's measured refresh (0 = unknown) and refreshes per game frame (0 = timer pacing). */
     val refreshHz: Float = 0f,
-    val refreshesPerFrame: Int = 0,
+    val refreshesPerFrame: Int? = 0,
     /** Why 1x runs on the timer when it does: 0 not a fallback, 1 the audio's (underruns under vsync pacing), 2 the
      * screen's (its ticks don't follow its refresh) - EmulatorEngine.TIMER_*. */
     val timerFallback: Int = 0,
     /** 1 = real time; Infinity = fast-forward uncapped. */
     val speed: Float = 1f,
     /** Times the audio ran dry since the game started (each one a crackle). */
-    val audioDropouts: Int = 0,
+    val audioDropouts: Int? = 0,
     val batteryTempC: Float? = null,
     /** Android's thermal status (PowerManager.THERMAL_STATUS_*), -1 = unknown. */
     val thermal: Int = -1,
-    val memoryMb: Int = 0,
+    val memoryMb: Int? = 0,
     /** The companion's reads of the game per second: full snapshots (1, 4 in a battle) and the fast
      * battle-menu checks (~15, every frame while a switch runs). */
     val snapshotsPerSecond: Float = 0f,
@@ -83,6 +113,7 @@ fun PerformanceOverlay(reading: PerfReading, modifier: Modifier = Modifier, init
     Column(
         modifier
             .then(tap)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = u * 3, vertical = u * 1),
     ) {
         Line(tr("PERFORMANCE"), m, color = PANEL_TITLE)
@@ -91,16 +122,16 @@ fun PerformanceOverlay(reading: PerfReading, modifier: Modifier = Modifier, init
         val stats = listOf(
             Stat("FPS", r.fps.f1()),
             Stat(tr("ON SCREEN"), r.shownFps.f1()),
-            Stat(tr("LATE"), "${r.latePerSecond.f1()}/s", warn = r.latePerSecond >= 1f),
+            Stat(tr("LATE"), r.latePerSecond?.let { "${it.f1()}/s" } ?: "--", warn = (r.latePerSecond ?: 0f) >= 1f),
             Stat(tr("FRAME TIME"), "${r.frameMs.f1()} / ${r.frameMaxMs.f1()} ms"),
             Stat(tr("EMULATION"), "${r.emulationLoad}%", warn = r.emulationLoad >= 85),
             Stat("CPU", pct(r.cpu) + (if (r.cores > 0) " / ${r.cores}" else "")),
             Stat(tr("SCREEN"), refreshText(r), warn = r.refreshesPerFrame == 0 && r.timerFallback != 0),
             Stat(tr("GAME SPEED"), if (r.speed.isInfinite()) "FF" else "${trimFloat(r.speed)}x"),
-            Stat(tr("AUDIO DROPOUTS"), "${r.audioDropouts}"),
+            Stat(tr("AUDIO DROPOUTS"), r.audioDropouts?.toString() ?: "--"),
             Stat(tr("BATTERY"), r.batteryTempC?.let { "${it.f1()} °C" } ?: "--"),
             Stat(tr("THERMAL"), tr(thermalLabel(r.thermal)), warn = r.thermal >= 2),
-            Stat(tr("MEMORY"), "${r.memoryMb} MB"),
+            Stat(tr("MEMORY"), r.memoryMb?.let { "$it MB" } ?: "--"),
             Stat(tr("SNAPSHOTS"), "${r.snapshotsPerSecond.f1()}/s"),
             Stat(tr("BATTLE CHECKS"), "${r.battleChecksPerSecond.f1()}/s"),
         )
@@ -128,7 +159,8 @@ private fun trimFloat(f: Float) = if (f % 1f == 0f) f.toInt().toString() else f.
 
 private fun refreshText(r: PerfReading): String {
     val hz = if (r.refreshHz > 0f) "${r.refreshHz.toDouble().fixed(0)} Hz" else "--"
-    if (r.refreshesPerFrame > 0) return "$hz · VSYNC ${r.refreshesPerFrame}:1"
+    val refreshesPerFrame = r.refreshesPerFrame ?: return hz
+    if (refreshesPerFrame > 0) return "$hz · VSYNC $refreshesPerFrame:1"
     return "$hz · " + when (r.timerFallback) {
         1 -> tr("TIMER (AUDIO)")
         2 -> tr("TIMER (SCREEN)")

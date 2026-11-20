@@ -1,8 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.ui.fittedGamePicture
-import org.junit.Assert.*
-import org.junit.Test
+import kotlin.test.*
 
 class GamePictureTest {
     @Test fun nativePicturesFitPhonesTabletsAndZeroSizedTransitions() {

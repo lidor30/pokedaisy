@@ -3574,7 +3574,7 @@ fun overlayView(
         }
         is OverlayChoice.Imported -> {
             val layer = sampleOverlay().get(choice.id)!!.layerFor(viewW.toFloat() / viewH)!!
-            val img = ImageIO.read(layer.file)
+            val img = ImageIO.read(java.io.File(layer.file.toString()))
             val px = img.getRGB(0, 0, img.width, img.height, null, 0, img.width)
             Triple(img.toComposeImageBitmap(), layer.viewport ?: OverlayWindow.find(px, img.width, img.height), 0)
         }

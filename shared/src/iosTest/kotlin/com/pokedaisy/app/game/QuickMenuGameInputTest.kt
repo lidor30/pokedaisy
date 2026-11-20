@@ -12,6 +12,37 @@ import kotlin.test.*
 
 /** Actual GameController snapshot objects through the native polling adapter, without physical devices. */
 class QuickMenuGameInputTest {
+    @Test fun lookAroundMustCentreAfterOverlappingOverlayOwners() {
+        val pad = assertNotNull(GCController.controllerWithExtendedGamepad().extendedGamepad)
+        val input = GameInput({ listOf(pad) }, { GbaControls.KeyMaps(emptyMap(), emptyMap()) })
+        pad.rightThumbstick.setValueForXAxis(.8f, yAxis = -.5f); input.poll()
+        assertEquals(.8f, input.cameraX); assertEquals(.5f, input.cameraY)
+        assertEquals(0, input.keys())
+        input.companionCaptured = true; input.backgroundCaptured(true); input.poll()
+        assertEquals(0f, input.cameraX)
+        input.companionCaptured = false; input.poll(); assertEquals(0f, input.cameraX)
+        input.backgroundCaptured(false); input.poll(); assertEquals(0f, input.cameraX)
+        pad.rightThumbstick.setValueForXAxis(-.8f, yAxis = .5f); input.poll()
+        assertEquals(0f, input.cameraX, "Changing direction must not release a captured stick")
+        pad.rightThumbstick.setValueForXAxis(0f, yAxis = 0f); input.poll()
+        pad.rightThumbstick.setValueForXAxis(-.8f, yAxis = .5f); input.poll()
+        assertEquals(-.8f, input.cameraX); assertEquals(-.5f, input.cameraY)
+    }
+
+    @Test fun registeredItemPressesUseTheirOwnChannelWhileManualButtonsStayQuarantined() {
+        val pad = assertNotNull(GCController.controllerWithExtendedGamepad().extendedGamepad)
+        val input = GameInput({ listOf(pad) }, { GbaControls.KeyMaps(mapOf(KeyCodes.BUTTON_A to CoreKey.A), emptyMap()) })
+        input.companionCaptured = true
+        pad.buttonA.setValue(1f); input.poll()
+        input.setPress(CoreKey.SELECT)
+        assertEquals(CoreKey.SELECT, input.keys())
+        input.poll(); assertEquals(CoreKey.SELECT, input.keys())
+        input.setPress(0); assertEquals(0, input.keys())
+        input.companionCaptured = false; input.poll(); assertEquals(0, input.keys())
+        pad.buttonA.setValue(0f); input.poll(); pad.buttonA.setValue(1f); input.poll()
+        assertEquals(CoreKey.A, input.keys())
+    }
+
     @Test fun reboundAClosesBeforeSelectingAndHeldStickMustCentreBeforePlaying() {
         val pad = assertNotNull(GCController.controllerWithExtendedGamepad().extendedGamepad)
         val input = GameInput({ listOf(pad) }, { GbaControls.KeyMaps(mapOf(KeyCodes.BUTTON_A to CoreKey.A), emptyMap()) })
@@ -46,6 +77,35 @@ class QuickMenuGameInputTest {
             pad.leftThumbstick.setValueForXAxis(0f, yAxis = 0f); input.poll()
             pad.leftThumbstick.setValueForXAxis(0f, yAxis = 1f); input.poll()
             assertEquals(CoreKey.UP, input.keys())
+        } finally { FileSystem.SYSTEM.deleteRecursively(dir) }
+    }
+
+    @Test fun hudModalAllowsOnlyQuickMenuAndCannotReleaseEditorOwnership() {
+        val pad = assertNotNull(GCController.controllerWithExtendedGamepad().extendedGamepad)
+        val input = GameInput({ listOf(pad) }, { GbaControls.KeyMaps(mapOf(KeyCodes.BUTTON_A to CoreKey.A), emptyMap()) })
+        val dir = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "hud-menu-${Random.nextLong().toULong()}"
+        FileSystem.SYSTEM.createDirectories(dir)
+        try {
+            Hotkeys.setBindingNamed(dir, Hotkeys.Action.QUICK_MENU, listOf("BUTTON_A"))
+            Hotkeys.setBindingNamed(dir, Hotkeys.Action.FF_TOGGLE, listOf("BUTTON_B"))
+            input.setHotkeys(Hotkeys.load(dir))
+            val pressed = mutableListOf<Hotkeys.Action>()
+            input.onHotkey = { if (it.pressed) pressed += it.action }
+            input.companionCaptured = true; input.overlayMenuCaptured = true
+            pad.buttonB.setValue(1f); input.poll(); pad.buttonB.setValue(0f); input.poll()
+            assertTrue(pressed.isEmpty())
+            pad.buttonA.setValue(1f); input.poll()
+            assertEquals(listOf(Hotkeys.Action.QUICK_MENU), pressed)
+            assertEquals(0, input.keys())
+            pad.buttonA.setValue(0f); input.poll()
+            input.editorCaptured(true)
+            pad.buttonA.setValue(1f); input.poll()
+            input.overlayMenuCaptured = false; input.companionCaptured = false
+            assertEquals(0, input.keys())
+            input.editorCaptured(false); input.poll()
+            assertEquals(1, pressed.size)
+            pad.buttonA.setValue(0f); input.poll(); pad.buttonA.setValue(1f); input.poll()
+            assertEquals(listOf(Hotkeys.Action.QUICK_MENU, Hotkeys.Action.QUICK_MENU), pressed)
         } finally { FileSystem.SYSTEM.deleteRecursively(dir) }
     }
 

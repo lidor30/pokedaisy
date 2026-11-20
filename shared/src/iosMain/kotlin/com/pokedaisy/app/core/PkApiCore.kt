@@ -2,11 +2,22 @@
 
 package com.pokedaisy.app.core
 
+import com.pokedaisy.app.game.FlightCore
+import com.pokedaisy.app.game.FollowerCore
+import com.pokedaisy.app.game.PlayerLookCore
+import com.pokedaisy.app.game.RideCore
+
 import com.pokedaisy.app.companion.data.GameCalls
 import com.pokedaisy.app.companion.data.InProcessReader
 import com.pokedaisy.app.companion.data.EmulatorCore
 import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.core.pkapi.pk_api_call
+import com.pokedaisy.app.core.pkapi.pk_api_look_blocks
+import com.pokedaisy.app.core.pkapi.pk_api_look_repalette
+import com.pokedaisy.app.core.pkapi.pk_api_look_refresh
+import com.pokedaisy.app.core.pkapi.pk_api_ride_set
+import com.pokedaisy.app.core.pkapi.pk_api_ride_show
+import com.pokedaisy.app.core.pkapi.PK_API_RIDE_FRAME_BYTES
 import com.pokedaisy.app.core.pkapi.pk_api_call_safe
 import com.pokedaisy.app.core.pkapi.pk_api_write
 import com.pokedaisy.app.core.pkapi.pk_api_gb_call_at
@@ -21,7 +32,21 @@ import com.pokedaisy.app.companion.data.RomOptionPatcher
 import com.pokedaisy.app.core.pkapi.pk_api_field_wild
 import com.pokedaisy.app.core.pkapi.pk_api_field_step
 import com.pokedaisy.app.core.pkapi.pk_api_field_configure
+import com.pokedaisy.app.core.pkapi.pk_api_field_knows
 import com.pokedaisy.app.core.pkapi.pk_api_field_state
+import com.pokedaisy.app.core.pkapi.pk_api_set_tint
+import com.pokedaisy.app.core.pkapi.pk_api_follower_set
+import com.pokedaisy.app.core.pkapi.pk_api_follower_show
+import com.pokedaisy.app.core.pkapi.PK_API_FOLLOWER_FRAME_BYTES
+import com.pokedaisy.app.core.pkapi.PK_API_FOLLOWER_PALETTE_BYTES
+import com.pokedaisy.app.core.pkapi.pk_api_flight_configure
+import com.pokedaisy.app.core.pkapi.pk_api_flight_take_off
+import com.pokedaisy.app.core.pkapi.pk_api_flight_land
+import com.pokedaisy.app.core.pkapi.pk_api_flight_route
+import com.pokedaisy.app.core.pkapi.pk_api_flight_area
+import com.pokedaisy.app.core.pkapi.pk_api_flight_area_turned
+import com.pokedaisy.app.core.pkapi.pk_api_flight_state
+import com.pokedaisy.app.core.pkapi.pk_api_flight_route_done
 import com.pokedaisy.app.core.pkapi.pk_api_audio
 import com.pokedaisy.app.core.pkapi.pk_api_deinit
 import com.pokedaisy.app.core.pkapi.pk_api_finish_save
@@ -39,6 +64,18 @@ import com.pokedaisy.app.core.pkapi.pk_api_set_keys
 import com.pokedaisy.app.core.pkapi.pk_api_video
 import com.pokedaisy.app.core.pkapi.pk_api_video_height
 import com.pokedaisy.app.core.pkapi.pk_api_video_width
+import com.pokedaisy.app.core.pkapi.pk_api_wide_knows
+import com.pokedaisy.app.core.pkapi.pk_api_wide_add_derived
+import com.pokedaisy.app.core.pkapi.pk_api_wide_configure
+import com.pokedaisy.app.core.pkapi.pk_api_wide_set_view
+import com.pokedaisy.app.core.pkapi.pk_api_wide_video
+import com.pokedaisy.app.core.pkapi.pk_api_wide_width
+import com.pokedaisy.app.core.pkapi.pk_api_wide_height
+import com.pokedaisy.app.core.pkapi.pk_api_wide_set_draw
+import com.pokedaisy.app.core.pkapi.pk_api_wide_skipped
+import com.pokedaisy.app.core.pkapi.pk_api_wide_fault
+import com.pokedaisy.app.core.pkapi.pk_api_wide_wants_close
+import com.pokedaisy.app.core.pkapi.pk_api_wide_scene
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.COpaquePointer
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -61,7 +98,7 @@ import kotlinx.cinterop.value
  *
  * Threads, as pk_api.h says: one thread (the game's) starts, runs and stops it; the reads may come from any thread.
  */
-object PkApiCore : EmulatorCore, RomOptionPatcher, GameCalls {
+object PkApiCore : EmulatorCore, RomOptionPatcher, GameCalls, FlightCore, FollowerCore, PlayerLookCore, RideCore {
     /** Existing field actions use this same interface on Android. Game thread between frames only. */
     fun callSafe(): Boolean = pk_api_call_safe()
     override fun call(fn: Long, a0: Int, a1: Int, a2: Int, a3: Int): Long =
@@ -166,11 +203,88 @@ object PkApiCore : EmulatorCore, RomOptionPatcher, GameCalls {
     }
 
     /** Read-only field observation for scene speeds; never enables patches or wild encounter changes. */
+    fun fieldKnows(crc: Long): Boolean = crc in 0L..0xFFFFFFFFL && pk_api_field_knows(crc.toUInt())
     fun configureField(crc: Long): Boolean = pk_api_field_configure(crc.toUInt())
     fun fieldState(): Int = pk_api_field_state()
+    fun setTint(red: Int, green: Int, blue: Int) = pk_api_set_tint(red, green, blue)
+    override fun replaceLookBlocks(addresses: IntArray, lengths: IntArray, crcs: IntArray, data: ByteArray): Int {
+        val count = addresses.size
+        if (count != lengths.size || count != crcs.size) return -1
+        if (count == 0) return if (data.isEmpty()) pk_api_look_blocks(null, null, null, 0, null, 0) else -1
+        if (data.isEmpty()) return -1
+        return addresses.usePinned { a -> lengths.usePinned { l -> crcs.usePinned { c -> data.usePinned { d ->
+            pk_api_look_blocks(a.addressOf(0), l.addressOf(0), c.addressOf(0), count, d.addressOf(0).reinterpret(), data.size)
+        } } } }
+    }
+
+    override fun repaletteLook(from: ByteArray, to: ByteArray): Int {
+        if (from.isEmpty() || from.size % 32 != 0 || to.size != 32) return 0
+        return from.usePinned { f -> to.usePinned { t ->
+            pk_api_look_repalette(f.addressOf(0).reinterpret(), from.size, t.addressOf(0).reinterpret(), to.size)
+        } }
+    }
+
+    override fun refreshLook(palette: ByteArray?): Boolean =
+        if (palette?.size == 32) palette.usePinned { pk_api_look_refresh(it.addressOf(0).reinterpret(), palette.size) }
+        else pk_api_look_refresh(null, 0)
+
+    override fun setRide(frames: ByteArray?, palette: ByteArray?, width: Int) {
+        if (frames == null || palette == null ||
+            frames.size != PK_API_RIDE_FRAME_BYTES.toInt() || palette.size != 32) {
+            pk_api_ride_set(null, 0, null, 0, width)
+            return
+        }
+        frames.usePinned { f -> palette.usePinned { p ->
+            pk_api_ride_set(f.addressOf(0).reinterpret(), frames.size, p.addressOf(0).reinterpret(), palette.size, width)
+        } }
+    }
+
+    override fun showRide(on: Boolean) = pk_api_ride_show(on)
+
+    override fun setFollower(frames: ByteArray?, palette: ByteArray?) {
+        if (frames == null || palette == null || frames.size != PK_API_FOLLOWER_FRAME_BYTES.toInt() ||
+            palette.size != PK_API_FOLLOWER_PALETTE_BYTES.toInt())
+            pk_api_follower_set(null, 0, null, 0)
+        else frames.usePinned { f -> palette.usePinned { p ->
+            pk_api_follower_set(f.addressOf(0).reinterpret(), frames.size, p.addressOf(0).reinterpret(), palette.size)
+        } }
+    }
+    override fun showFollower(on: Boolean) = pk_api_follower_show(on)
+    override fun configureFlight(words: IntArray?) {
+        if (words == null || words.isEmpty()) pk_api_flight_configure(null, 0)
+        else words.usePinned { pk_api_flight_configure(it.addressOf(0).reinterpret(), words.size) }
+    }
+    override fun flightTakeOff(): Int = pk_api_flight_take_off()
+    override fun flightLand() = pk_api_flight_land()
+    override fun setFlightRoute(directions: ByteArray): Int = if (directions.isEmpty()) pk_api_flight_route(null, 0)
+        else directions.usePinned { pk_api_flight_route(it.addressOf(0).reinterpret(), directions.size) }
+    override fun setFlightArea(bits: ByteArray?) {
+        if (bits == null || bits.isEmpty()) pk_api_flight_area(null, 0)
+        else bits.usePinned { pk_api_flight_area(it.addressOf(0).reinterpret(), bits.size) }
+    }
+    override val flightAreaTurned get() = pk_api_flight_area_turned()
+    override val flightState get() = pk_api_flight_state()
+    val flightRouteDone get() = pk_api_flight_route_done()
     fun configureWild(addr: Long, wasOff: Boolean): Boolean =
         addr in 0L..0xFFFFFFFFL && pk_api_field_wild(addr.toUInt(), wasOff)
     fun stepField(runIndoors: Boolean, wildKeep: Int): Int = pk_api_field_step(runIndoors, wildKeep)
+
+    /** EXPAND shares the existing native renderer. Configure/draw/read between frames on the game thread. */
+    fun wideKnows(crc: Long): Boolean = crc in 0L..0xFFFFFFFFL && pk_api_wide_knows(crc.toUInt())
+    fun addWideDerived(crc: Long, baseCrc: Long, row: IntArray): Boolean {
+        if (crc !in 0L..0xFFFFFFFFL || baseCrc !in 0L..0xFFFFFFFFL || row.isEmpty()) return false
+        return row.usePinned { pk_api_wide_add_derived(crc.toUInt(), baseCrc.toUInt(), it.addressOf(0), row.size) }
+    }
+    fun configureWide(crc: Long): Boolean = crc in 0L..0xFFFFFFFFL && pk_api_wide_configure(crc.toUInt())
+    fun setWideView(x: Int, y: Int, width: Int, height: Int) = pk_api_wide_set_view(x, y, width, height)
+    fun wideVideo(): COpaquePointer? = pk_api_wide_video()
+    val wideWidth: Int get() = pk_api_wide_width()
+    val wideHeight: Int get() = pk_api_wide_height()
+    fun setWideDraw(draw: Boolean) = pk_api_wide_set_draw(draw)
+    val wideSkipped: Boolean get() = pk_api_wide_skipped()
+    val wideFault: Int get() = pk_api_wide_fault()
+    val wideWantsClose: Boolean get() = pk_api_wide_wants_close()
+    val wideScene: Int get() = pk_api_wide_scene()
 
     /** The existing diff ring, with battery data excluded. Main/game thread only. */
     fun setRewind(entries: Int) = pk_api_set_rewind(entries)

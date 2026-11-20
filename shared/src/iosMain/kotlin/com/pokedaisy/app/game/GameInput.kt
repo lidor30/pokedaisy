@@ -23,7 +23,7 @@ class GameInput internal constructor(
     // A second view of the same bindings handles only QUICK MENU while it owns manual input.
     // Reusing PolledGameKeys preserves chord quarantine and reentrant ownership changes.
     private val menuShortcut = PolledGameKeys().also { keys ->
-        keys.onHotkey = { if (quickMenuCaptured) onHotkey(it) }
+        keys.onHotkey = { if (quickMenuCaptured || overlayMenuCaptured) onHotkey(it) }
     }
     val capture: KeyCapture get() = buttons.capture
     var onHotkey: (Hotkeys.Event) -> Unit
@@ -36,6 +36,11 @@ class GameInput internal constructor(
     }
     private val touchGate = ManualInputGate()
     private val axesGate = ManualInputGate()
+    private val lookGate = ManualInputGate()
+    var cameraX = 0f
+        private set
+    var cameraY = 0f
+        private set
 
     init {
         buttons.input.setControls(loadControls())
@@ -57,6 +62,13 @@ class GameInput internal constructor(
             field = value
             menuShortcut.quarantine(hardware().keys + touchButtonKeys)
         }
+    /** HUD/battle modals allow only their Quick Menu shortcut; editor/binding/background still win. */
+    var overlayMenuCaptured = false
+        set(value) {
+            if (field == value) return
+            field = value
+            menuShortcut.quarantine(hardware().keys + touchButtonKeys)
+        }
     var keyboardCaptured = false
         set(value) {
             if (field == value) return
@@ -71,14 +83,24 @@ class GameInput internal constructor(
         touchGate.setBlocked(owner, on, touchKeys or touchTurbo)
         val hardware = hardware()
         axesGate.setBlocked(owner, on, hardware.axes)
+        lookGate.setBlocked(owner, on, hardware.lookHeld)
         buttons.quarantine(hardware.keys + touchButtonKeys)
         menuShortcut.quarantine(hardware.keys + touchButtonKeys)
+    }
+
+    /** End a sustained game press. The player must release held hardware before it can act again. */
+    fun releaseManualInput() {
+        axesGate.quarantineUntilNeutral()
+        buttons.quarantine(hardware().keys + touchButtonKeys)
     }
 
     fun reloadBindings() {
         buttons.quarantine(hardware().keys + touchButtonKeys)
         buttons.input.setControls(loadControls())
     }
+
+    /** Registered field items use a separate synthetic press channel from battle automation. */
+    fun setPress(bits: Int) = buttons.input.setPress(bits)
 
     fun controllerKeys(): Int = controllerKeys(hardware())
     private fun controllerKeys(h: Hardware): Int = h.controllers.fold(h.axes) { bits, code ->
@@ -89,11 +111,12 @@ class GameInput internal constructor(
     fun poll() {
         val h = hardware()
         // A rebound menu key may also mean A/START. The shortcut closes the menu before that key can select a tile.
-        val menuBlocked = !quickMenuCaptured || capture.active || touchGate.blockedExcept(ManualInputGate.Owner.COMPANION)
-        if (quickMenuCaptured) menuShortcut.poll((if (keyboardCaptured) h.controllers else h.keys) + touchButtonKeys, menuBlocked)
+        val menuShortcutCaptured = quickMenuCaptured || overlayMenuCaptured
+        val menuBlocked = !menuShortcutCaptured || capture.active || touchGate.blockedExcept(ManualInputGate.Owner.COMPANION)
+        if (menuShortcutCaptured) menuShortcut.poll((if (keyboardCaptured) h.controllers else h.keys) + touchButtonKeys, menuBlocked)
         if (companionCaptured && !capture.active && !touchGate.blockedExcept(ManualInputGate.Owner.COMPANION)) {
             val aiming = quickMenuCaptured && onCompanionAim(h.stickX, h.stickY)
-            val keys = if (quickMenuCaptured && !keyboardCaptured) h.keys else h.controllers
+            val keys = if ((quickMenuCaptured || overlayMenuCaptured) && !keyboardCaptured) h.keys else h.controllers
             val directions = if (aiming) h.dpad else h.axes
             onCompanionButtons(keys.fold(directions) { bits, code -> bits or (buttons.input.buttonFor(code) ?: 0) })
         }
@@ -102,6 +125,9 @@ class GameInput internal constructor(
         val beforeTurbo = touchTurbo
         val allowed = touchGate.filter(touchKeys or touchTurbo)
         buttons.input.setTouchBits(touchKeys and allowed, touchTurbo and allowed)
+        val look = lookGate.filter(h.lookHeld)
+        cameraX = if (look != 0) h.lookX else 0f
+        cameraY = if (look != 0) h.lookY else 0f
         val axes = axesGate.filter(h.axes, h.neutral)
         buttons.input.setAxes(axes)
         if (axes != 0 || allowed != 0) buttons.letThrough()
@@ -126,7 +152,10 @@ class GameInput internal constructor(
     fun pollCapture() = buttons.poll(hardware().keys, blocked = true)
 
     private data class Hardware(val controllers: Set<Int>, val keys: Set<Int>, val axes: Int,
-        val dpad: Int, val stickX: Float, val stickY: Float, val neutral: Boolean)
+        val dpad: Int, val stickX: Float, val stickY: Float, val neutral: Boolean,
+        val lookX: Float, val lookY: Float) {
+        val lookHeld get() = if (kotlin.math.abs(lookX) >= .2f || kotlin.math.abs(lookY) >= .2f) 1 else 0
+    }
     private fun hardware(): Hardware {
         val pads = pads()
         val controllers = pads.flatMap { it.canonicalKeys() }.toSet()
@@ -135,8 +164,11 @@ class GameInput internal constructor(
             for ((native, canonical) in KEYBOARD) if (keyboard.buttonForKeyCode(native)?.pressed == true) add(canonical)
         }
         var axes = 0; var dpad = 0; var x = 0f; var y = 0f; var neutral = true
+        var lookX = 0f; var lookY = 0f
         val watchMenuAxes = quickMenuCaptured || axesGate.awaitingNeutral
         for (pad in pads) {
+            val rx = pad.rightThumbstick.xAxis.value; val ry = -pad.rightThumbstick.yAxis.value
+            if (rx * rx + ry * ry > lookX * lookX + lookY * lookY) { lookX = rx; lookY = ry }
             val sx = pad.leftThumbstick.xAxis.value; val sy = -pad.leftThumbstick.yAxis.value
             val dx = pad.dpad.xAxis.value; val dy = -pad.dpad.yAxis.value
             axes = axes or GbaInput.axisBits(sx, sy, dx, dy)
@@ -147,7 +179,7 @@ class GameInput internal constructor(
                 neutral = neutral && sx * sx + sy * sy < .25f && hat == 0
             }
         }
-        return Hardware(controllers, controllers + keyboard, axes, dpad, x, y, neutral)
+        return Hardware(controllers, controllers + keyboard, axes, dpad, x, y, neutral, lookX, lookY)
     }
 
     private companion object {

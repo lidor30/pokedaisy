@@ -1,5 +1,7 @@
 package com.pokedaisy.app
 
+import kotlin.concurrent.Volatile
+import kotlin.time.TimeSource
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.exp
@@ -8,6 +10,8 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+
+private val cameraClockOrigin = TimeSource.Monotonic.markNow()
 
 /**
  * ZOOM and the look-around, over WIDE ([WideScreen]): which window of the scene the game view shows each frame.
@@ -124,7 +128,7 @@ class WideCamera {
 
     /** Emu thread, before a frame: the window to draw ([MgbaCore.pkWideSetView]) given what the last frame was
      * ([SCENE_FIELD] ... [SCENE_OFF], [MgbaCore.pkWideScene]). Null without a view yet. */
-    fun frame(scene: Int, now: Long = System.nanoTime()): Window? {
+    fun frame(scene: Int, now: Long = cameraClockOrigin.elapsedNow().inWholeNanoseconds): Window? {
         val vw = viewW
         val vh = viewH
         if (vw <= 0 || vh <= 0 || frameW <= 0 || frameH <= 0) return null.also { current = null }

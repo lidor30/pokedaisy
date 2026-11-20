@@ -480,6 +480,9 @@ private fun HudItemIcon(asset: String?, size: Dp, modifier: Modifier = Modifier)
 
 // ---- The HUD ------------------------------------------------------------------------------------
 
+internal fun fieldHudCapturesInput(panel: FieldHudPanel?, wildKept: Boolean) =
+    panel != null && !(panel == FieldHudPanel.WILD && wildKept)
+
 /**
  * The FIELD HUD over the game screen (this composable's whole box; the GBA's 3:2 is its middle, which RAILS keep
  * beside). [shown] false fades it out and closes what's open (a battle or a menu took the screen). [clearTop] /
@@ -524,6 +527,8 @@ fun FieldHud(
     onTap: () -> Unit = {},
     /** A panel opened (true) or closed: no tip comes up over one. */
     onPanel: (Boolean) -> Unit = {},
+    /** Modal windows own manual input; WILD's KEEP OPEN deliberately leaves gameplay available. */
+    onInputCapture: (Boolean) -> Unit = {},
 ) {
     var panel by remember { mutableStateOf(initialPanel) }
     var summary by remember { mutableStateOf(0) }
@@ -545,7 +550,8 @@ fun FieldHud(
         panel = p
     }
     val panelOpen = panel != null
-    LaunchedEffect(panelOpen) { onPanel(panelOpen) }
+    OverlayPresence(panelOpen, changed = onPanel)
+    OverlayPresence(fieldHudCapturesInput(panel, wildKept), takesFocus = true, changed = onInputCapture)
     val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(if (shown) 220 else 120), label = "field-hud")
     if (alpha == 0f && !shown) return
 

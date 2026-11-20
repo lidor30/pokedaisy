@@ -9,6 +9,7 @@ import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
 import android.util.Log
 import com.pokedaisy.app.companion.Smoothing
+import com.pokedaisy.app.companion.data.lastModified
 import com.pokedaisy.app.overlay.BuiltInFrames
 import com.pokedaisy.app.overlay.Box
 import com.pokedaisy.app.overlay.OverlayBitmaps
@@ -133,7 +134,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
         data class BuiltIn(val style: BuiltInFrames.Style) : OverlaySource()
         class Imported(val overlay: StoredOverlay) : OverlaySource() {
             /** The same files as before: nothing to load again. */
-            private val key = overlay.layers.joinToString { "${it.file.path}:${it.file.lastModified()}" }
+            private val key = overlay.layers.joinToString { "${it.file}:${it.file.lastModified}" }
             override fun equals(other: Any?) = other is Imported && other.key == key
             override fun hashCode() = key.hashCode()
         }
@@ -169,7 +170,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             is OverlaySource.BuiltIn -> applyOverlay(OverlayBitmaps.builtIn(src.style, w, h, fw, fh))
             is OverlaySource.Imported -> {
                 val layer = src.overlay.layerFor(w.toFloat() / h) ?: return applyOverlay(null)
-                val key = "${layer.file.path}:${layer.file.lastModified()}:${w}x$h"
+                val key = "${layer.file}:${layer.file.lastModified}:${w}x$h"
                 if (key == decodedKey) return applyOverlay(decoded)
                 Thread {
                     val img = runCatching { OverlayBitmaps.imported(layer, w, h) }
