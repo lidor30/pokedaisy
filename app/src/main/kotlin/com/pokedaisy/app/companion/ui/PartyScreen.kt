@@ -967,8 +967,18 @@ private fun partyPictureScale(g: SlotGeometry): Int {
     return max(1, min((u * 0.6f).roundToInt(), room))
 }
 
-/** Games that offer POKéMON PICTURES: Crystal for now (English and German, which run as CRYSTAL). */
-fun pokemonPicturesOffered(game: com.pokedaisy.app.companion.data.GameKind?): Boolean = game == com.pokedaisy.app.companion.data.GameKind.CRYSTAL
+/**
+ * Games that offer POKéMON PICTURES: Crystal (English and German, which run as CRYSTAL), Yellow (every language) and Red /
+ * Blue (English and German; the Gen II Graphics builds run as RED / YELLOW too, with their own pictures): `Gen1Dex.frontPixels`,
+ * each species in its own palette (Yellow's Color ones, Red / Blue's Super Game Boy ones); Gen 1 has no shiny ones.
+ */
+fun pokemonPicturesOffered(game: com.pokedaisy.app.companion.data.GameKind?): Boolean = when (game) {
+    com.pokedaisy.app.companion.data.GameKind.CRYSTAL,
+    com.pokedaisy.app.companion.data.GameKind.YELLOW,
+    com.pokedaisy.app.companion.data.GameKind.RED,
+    com.pokedaisy.app.companion.data.GameKind.BLUE -> true
+    else -> false
+}
 
 @Composable
 private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, sound: Boolean = true) {
