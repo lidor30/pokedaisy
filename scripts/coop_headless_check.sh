@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The co-op joined battles' headless checks (app/src/main/cpp/pk_coop*.c: the retail check, the link bridge, the lock): builds native-capture/mgba_dump from the repo
+# The co-op joined battles' headless checks (shared/src/commonMain/cpp/pk_coop*.c: the retail check, the link bridge, the lock): builds native-capture/mgba_dump from the repo
 # (so it compiles in the app's pk_cheats.c, pk_wide.c and pk_coop*.c) in the pokedaisy-capture image, then runs each
 # native-capture/coop/<name>.txt against retail English Emerald on the co-op test save (native-capture/README.md,
 # "Test saves"): boot/emerald_coop.txt first (a cold boot to the field on Route 101), then the test's commands.

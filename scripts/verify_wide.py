@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks WIDE (app/src/main/cpp/pk_wide.c) on every ROM scripts/gen_wide_tables.py put in its table,
+"""Checks WIDE (shared/src/commonMain/cpp/pk_wide.c) on every ROM scripts/gen_wide_tables.py put in its table,
 headlessly - no device.
 
     scripts/verify_wide.py [--only CRC[,CRC]] [--margin N]

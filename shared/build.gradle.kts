@@ -22,7 +22,7 @@ val appTest = rootDir.resolve("app/src/test/kotlin/com/pokedaisy/app/companion")
 val pkCoreDir = layout.buildDirectory.dir("pkcore")
 val buildIosCore by tasks.registering(Exec::class) {
     description = "Builds the emulator core (pk_api.h) for the iPad and the iPad simulator."
-    val cpp = rootDir.resolve("app/src/main/cpp")
+    val cpp = rootDir.resolve("shared/src/commonMain/cpp")
     inputs.files(fileTree(cpp) { include("pk_*.c", "pk_*.h", "pk_api.cmake") })
     inputs.files(fileTree(projectDir.resolve("native")))
     outputs.dir(pkCoreDir)
@@ -51,7 +51,7 @@ kotlin {
     listOf(iosArm64() to "ios-arm64", iosSimulatorArm64() to "ios-arm64-simulator").forEach { (target, slice) ->
         target.compilations.getByName("main").cinterops.create("pkapi") {
             definitionFile.set(project.file("src/nativeInterop/cinterop/pkapi.def"))
-            includeDirs(rootDir.resolve("app/src/main/cpp"))
+            includeDirs(rootDir.resolve("shared/src/commonMain/cpp"))
             extraOpts("-libraryPath", pkCoreDir.get().dir(slice).asFile.path)
         }
     }

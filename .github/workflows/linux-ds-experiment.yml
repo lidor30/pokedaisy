@@ -9,7 +9,7 @@ on:
       - 'app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt'
       - 'third_party/mgba'
       - 'gamedata/**'
-      - 'app/src/main/cpp/pk_savevf.*'
+      - 'shared/src/commonMain/cpp/pk_savevf.*'
       - 'third_party/dsperate'
       - 'third_party/armgba'
       - 'third_party/zlib'

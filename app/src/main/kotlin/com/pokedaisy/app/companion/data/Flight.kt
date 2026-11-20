@@ -3,7 +3,7 @@ package com.pokedaisy.app.companion.data
 /**
  * FREE FLIGHT and the scenic FLY: the player flies over the field on the game's own FLY bird, through trees, water and
  * mountains, kept to the map and its connections, and lands on the nearest tile a player can stand on. The flying is
- * native (app/src/main/cpp/pk_flight.c, after every frame): the game's controls locked, the player stepped with its
+ * native (shared/src/commonMain/cpp/pk_flight.c, after every frame): the game's controls locked, the player stepped with its
  * held movements, hidden, and the bird with its rider a sprite of the game's own. These are the addresses it works
  * from, in pk_flight.h's order ([words]); [ScenicFly] reads the world's maps for the scenic FLY's route.
  *

@@ -31,12 +31,12 @@ find_package(Threads REQUIRED)
 file(GLOB CORE_SOURCES "${REPO}/3ds/core/*.c")
 file(GLOB HOST_SOURCES "${REPO}/3ds/host/*.c")
 add_executable(pd_sim pd_sim.c ${HOST_SOURCES} ${CORE_SOURCES} "${REPO}/3ds/desktop/pd_png.c"
-    "${REPO}/app/src/main/cpp/pk_host.c" "${REPO}/app/src/main/cpp/pk_call.c" "${REPO}/app/src/main/cpp/pk_cheats.c" "${REPO}/app/src/main/cpp/pk_gb_field.c"
-    "${REPO}/app/src/main/cpp/pk_wide.c" "${REPO}/app/src/main/cpp/pk_wide_gb.c"
-    "${REPO}/linux/fly.c" "${REPO}/linux/flash.c" "${REPO}/linux/flight.c" "${REPO}/app/src/main/cpp/pk_flight.c" "${REPO}/linux/tm_teach.c" "${REPO}/linux/field_items.c" "${REPO}/linux/gb_field.c" "${REPO}/linux/wild.c" "${REPO}/linux/hud.c"
+    "${REPO}/shared/src/commonMain/cpp/pk_host.c" "${REPO}/shared/src/commonMain/cpp/pk_call.c" "${REPO}/shared/src/commonMain/cpp/pk_cheats.c" "${REPO}/shared/src/commonMain/cpp/pk_gb_field.c"
+    "${REPO}/shared/src/commonMain/cpp/pk_wide.c" "${REPO}/shared/src/commonMain/cpp/pk_wide_gb.c"
+    "${REPO}/linux/fly.c" "${REPO}/linux/flash.c" "${REPO}/linux/flight.c" "${REPO}/shared/src/commonMain/cpp/pk_flight.c" "${REPO}/linux/tm_teach.c" "${REPO}/linux/field_items.c" "${REPO}/linux/gb_field.c" "${REPO}/linux/wild.c" "${REPO}/linux/hud.c"
     "${REPO}/linux/quick_menu.c" ${PD_ARMGBA_GLUE} ${PD_GPSP_GLUE})
 target_include_directories(pd_sim PRIVATE "${REPO}/third_party/mgba/include" "${REPO}/third_party/mgba/src"
-    "${CMAKE_CURRENT_BINARY_DIR}/mgba/include" "${REPO}/3ds/core" "${REPO}/linux" "${REPO}/app/src/main/cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/mgba/include" "${REPO}/3ds/core" "${REPO}/linux" "${REPO}/shared/src/commonMain/cpp")
 target_compile_definitions(pd_sim PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_CACHE)
 # EXPAND's buffers as the console has them (3ds/ctr/CMakeLists.txt).
 target_compile_definitions(pd_sim PRIVATE PK_WIDE_MAX_VIEW_W=400 PK_WIDE_MAX_VIEW_H=240)

@@ -1,4 +1,4 @@
-@ The co-op story lock on retail English Emerald (app/src/main/cpp/pk_coop_lock.c): our Thumb code, assembled by
+@ The co-op story lock on retail English Emerald (shared/src/commonMain/cpp/pk_coop_lock.c): our Thumb code, assembled by
 @ scripts/gen_coop_story.py at COOP_LK_CODE_ADDR (the ROM's empty tail, 0x08FFE000) into pk_coop_lock_emerald.h's
 @ COOP_LK_CODE, with the story table (COOP_LK_STORY, 8 bytes an event: script u32, id u16, kind u8, 0) at
 @ COOP_LK_TABLE_ADDR in the same block.

@@ -72,9 +72,9 @@ One command per line:
 | `wav FILE N` | Run N frames and write what the APU played to `FILE` as a 16-bit stereo WAV — e.g. `call <m4aSongNumStart> 0`, `wait 20`, `call <m4aSongNumStart> 5`, `wav click.wav 45` renders SE_SELECT alone, the app's click sound. It also prints each frame whose audio is over 10% off one frame's worth (a Game Boy game turning its screen off or on restarts mGBA's frame) |
 | `volume V` | mGBA's master volume from now on (0x100 = full; the app runs Game Boy games at 0x80, `PK_GB_VOLUME`): two `wav`s of the same frames at two volumes show where the mixer clips - half the volume should be half every sample |
 | `gbaudio 0\|1` | A Game Boy game's `wav`: 1 (the default, built from the repo root) = resampled as the app does (`pk_gb_audio.c`), 0 = through mGBA 0.10.5's own blip_buf, whose pops were the Game Boy "crackle" (GitHub #269 / #327) |
-| `cheat TYPE CODE` | Add a cheat (TYPE `auto` / `cb` / `gs` / `ar`, CODE's lines joined by `+`) and load every cheat added so far into the core the way the app does - it compiles in the app's own `app/src/main/cpp/pk_cheats.c`, so only when built with the repo mounted (see below). Prints the directive mGBA settled on and which lines it read |
+| `cheat TYPE CODE` | Add a cheat (TYPE `auto` / `cb` / `gs` / `ar`, CODE's lines joined by `+`) and load every cheat added so far into the core the way the app does - it compiles in the app's own `shared/src/commonMain/cpp/pk_cheats.c`, so only when built with the repo mounted (see below). Prints the directive mGBA settled on and which lines it read |
 | `cheatclear` | Take every cheat out again (the ROM goes back to the file's bytes) |
-| `wideon MARGIN [CRC]` | Run the app's WIDE (`app/src/main/cpp/pk_wide.c`) after every frame from now on, MARGIN GBA px per side, for the game the ROM header names (retail FireRed rev 1 / Emerald). Repo builds only, like `cheat`. A Game Boy game it knows (English Yellow, Crystal: `pk_wide_gb.c`) works the same way in its 160x144 pixels: `widecheck`, `wideview`, `wideshot`, `widerec`, `wideinfo` (which also prints LCDC, the scroll and the window there) CRC (hex): look the game up by this CRC32 instead of the file's - retail's, for a randomized retail cart (`WideScreen.tablesCrc`) |
+| `wideon MARGIN [CRC]` | Run the app's WIDE (`shared/src/commonMain/cpp/pk_wide.c`) after every frame from now on, MARGIN GBA px per side, for the game the ROM header names (retail FireRed rev 1 / Emerald). Repo builds only, like `cheat`. A Game Boy game it knows (English Yellow, Crystal: `pk_wide_gb.c`) works the same way in its 160x144 pixels: `widecheck`, `wideview`, `wideshot`, `widerec`, `wideinfo` (which also prints LCDC, the scroll and the window there) CRC (hex): look the game up by this CRC32 instead of the file's - retail's, for a randomized retail cart (`WideScreen.tablesCrc`) |
 | `widecheck [all]` | Also rebuild the middle 240x160 every frame and compare it with the real frame pixel for pixel - how WIDE's rebuild was checked: it must match wherever it says the field checks out. Map frames only; `all` checks battle frames too, for a capture with `layers 0x18` (a battle's rebuild is BG3 + sprites). Not counted (and printed as such): a frame VRAM was written in while it was drawn, and one whose differences all lie in the partly shown edge tile column / row the field is scrolled by (the game's own stale ring) |
 | `wideskip N` | From now on WIDE runs like fast-forward: only every Nth frame drawn, the others just noted (`pk_wide_skip`); 0 or 1 draws them all |
 | `widestats` | Print WIDE's tally: frames, unverified ones (margins faded), torn sprite lists, centre checks exact / worst, and its time per frame (frames over 2 ms are also printed as they happen) |
@@ -88,7 +88,7 @@ One command per line:
 | `fieldinfo [run]` | Print the app's field read of this frame (`pk_field_state`, behind SCENE SPEEDS' TEXT, AUTO-RUN and RUN INDOORS; `wideon` picks the game): known, locked (a script holds the field), battle, text (a text box up while locked), bike, surf, avatar (bike / surf from the game's own player state). With `run`, RUN INDOORS sets the map's allowRunning first |
 | `wideghosts` | List the far-off objects (unspawned templates) the last snapshot holds: box in VMap pixels, palette tag, priority; `NO PALETTE` if neither a loaded slot nor the ROM's table has its colours |
 | `wideshot FILE` | Write the last wide frame (`240 + 2 * MARGIN` x 160) as a PPM |
-| `flighton W...` | FREE FLIGHT (`app/src/main/cpp/pk_flight.c`): configure it with the game's words in pk_flight.h's order (`FlightFns.words()`; retail FireRed rev 1's are `FLIGHT_FIRERED_REV1` in `gamedata/gen3/records/firered.toml`), ticked after every frame from then on. Repo builds only |
+| `flighton W...` | FREE FLIGHT (`shared/src/commonMain/cpp/pk_flight.c`): configure it with the game's words in pk_flight.h's order (`FlightFns.words()`; retail FireRed rev 1's are `FLIGHT_FIRERED_REV1` in `gamedata/gen3/records/firered.toml`), ticked after every frame from then on. Repo builds only |
 | `flight takeoff\|land` | Take off (waits up to 60 frames for a pk_call-safe one: `flight: takeoff R`, 0 = up, -3 not now, -4 not on foot) / ask to land (the nearest tile a player can stand on). While up, `keys` steer: the D-pad flies, `A` held faster, `B` lands |
 | `flightroute DUL R...` | The scenic FLY's route as letters (D down, U up, L left, R right; `ScenicFlyTest` prints them as `ROUTE <mapsec> ...`), flown at the faster speed once up, then a landing |
 | `flightarea G.N ...` | FLIGHT AREA: the maps (decimal group.num) the flight may cross into; with none, anywhere again |
@@ -202,7 +202,7 @@ docker run --rm -v "$(pwd):/repo" -w /repo/native-capture pokedaisy-capture \
 
 Debian's libmgba is built with the debuggers on; the app's isn't (`USE_DEBUGGERS OFF`). To
 test cheats against the app's own flags, build `third_party/mgba` on the host with the
-`set(...)` lines from `app/src/main/cpp/CMakeLists.txt` and link this file against it - how
+`set(...)` lines from `shared/src/commonMain/cpp/pk_api.cmake` and link this file against it - how
 it was checked on 2026-10-08: on FireRed rev 1, a plain CodeBreaker write (`8203F000 1234`),
 a hooked one (`100005FC 0007+8203F002 5678`, a hook on ReadKeys) and an encrypted GameShark
 code (autodetected as `GSAv1`) all fired; `cheatclear` put the ROM back byte for byte.
@@ -212,7 +212,7 @@ code (autodetected as `GSAv1`) all fired; `cheatclear` put the ROM back byte for
 
 `mgba_link.c` runs two to four GBA games in one process joined by mGBA's own lockstep link
 (`gba/sio/lockstep.c`, the multiplayer cable), on the app's own LINK PLAY code: it compiles
-`app/src/main/cpp/pk_link.c` (and `pk_savevf.c`), so build it from the repo root. mGBA only defines the
+`shared/src/commonMain/cpp/pk_link.c` (and `pk_savevf.c`), so build it from the repo root. mGBA only defines the
 link's hooks; its Qt frontend fills them with a thread per game that sleeps and wakes
 (`MultiplayerController.cpp`). `pk_link.c` runs them all on one thread and "asleep" means "not run": the
 first game is the link's parent, the others run only on the cycles it hands them, so none drifts more than

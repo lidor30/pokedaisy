@@ -12,7 +12,7 @@ Gambatte (GPL-2.0 only, not linkable into this GPL-3.0 work), so they stay on `p
   zlib's CMake renames `zconf.h` inside its source tree, so `git checkout third_party/zlib` after a container build).
 - `libretro/pd_libretro.c` reaches its emulator through `libretro/pd_backend.h`: mGBA's `libretro.c` (the default build,
   `libretro/CMakeLists.txt`), or armGBA's with `-DPD_ARMGBA` (this directory). armGBA's libretro glue is included with its entry points renamed and is never edited.
-- The files written against mGBA's headers and shared with the Android app (`app/src/main/cpp/pk_wide.c`, `linux/fly.c`,
+- The files written against mGBA's headers and shared with the Android app (`shared/src/commonMain/cpp/pk_wide.c`, `linux/fly.c`,
   `linux/field_items.c`) are compiled UNMODIFIED: `armgba/shim/` gives them mGBA's names (a header shim, forced in with
   `-include shim/pd_names.h`) over `pd_agba_view.[ch]`, a view that points at armGBA's arrays.
 - EXPAND's per-line record needs a call as each visible line is drawn. armGBA draws a line from `video.c` at its H-blank

@@ -2,7 +2,7 @@
  * register in C - keep them in step. GPL-3.0. */
 #include "field_items.h"
 
-#include "../app/src/main/cpp/pk_call.h"
+#include "../shared/src/commonMain/cpp/pk_call.h"
 #include <mgba-util/crc32.h>
 #include <mgba/core/core.h>
 #include <string.h>

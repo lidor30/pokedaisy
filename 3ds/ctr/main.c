@@ -42,12 +42,12 @@
 #include "../emu/pd_armgba.h"
 #include "../emu/pd_gpsp.h"
 #include "host.h"
-#include "../../app/src/main/cpp/pk_gb_audio.h"
-#include "../../app/src/main/cpp/pk_host.h"
+#include "../../shared/src/commonMain/cpp/pk_gb_audio.h"
+#include "../../shared/src/commonMain/cpp/pk_host.h"
 #include "devlink.h"
-#include "../../app/src/main/cpp/pk_call.h"
+#include "../../shared/src/commonMain/cpp/pk_call.h"
 #include "gpu.h"
-#include "../../app/src/main/cpp/pk_wide.h"
+#include "../../shared/src/commonMain/cpp/pk_wide.h"
 
 // The dev build keeps to a folder of its own: a test never touches the player's games and saves.
 #ifdef PD_DEV

@@ -9,7 +9,7 @@
 #include <mgba/core/core.h>
 #include <mgba/internal/gba/gba.h>
 
-#include "../../app/src/main/cpp/pk_call.h"
+#include "../../shared/src/commonMain/cpp/pk_call.h"
 
 static struct mCore agCore;
 static struct GBA agView; // mGBA's shape, pointers into armGBA (never run)

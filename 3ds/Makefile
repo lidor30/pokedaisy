@@ -220,7 +220,7 @@ cia: 3ds
 # pd_sim: the real cores (armGBA's interpreter for GBA games, mGBA for Game Boy ones, gpSP's interpreter with
 # PD_SIM_CORE=gpsp), the real ROMs and the app's host logic, no console (desktop/sim/).
 $(BUILD)/sim/pd_sim: $(CORE_SRC) $(wildcard core/*.h) $(wildcard host/*) $(wildcard emu/*) desktop/sim/pd_sim.c desktop/sim/CMakeLists.txt \
-		$(wildcard ../linux/*.c ../linux/*.h ../app/src/main/cpp/pk_*.c ../app/src/main/cpp/pk_*.h) \
+		$(wildcard ../linux/*.c ../linux/*.h ../shared/src/commonMain/cpp/pk_*.c ../shared/src/commonMain/cpp/pk_*.h) \
 		$(wildcard ../third_party/gpsp/*.c ../third_party/gpsp/*.cc ../third_party/gpsp/*.h ../third_party/patches/gpsp-pokedaisy.patch)
 	cmake -S desktop/sim -B $(BUILD)/sim -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_POLICY_VERSION_MINIMUM=3.5 >/dev/null
 	cmake --build $(BUILD)/sim --target pd_sim -j8

@@ -87,9 +87,9 @@ file(GLOB CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../core/*.c")
 
 file(GLOB HOST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../host/*.c")
 add_executable(pokedaisy.elf main.c gpu.c devlink.c host.c ${CORE_SOURCES} ${HOST_SOURCES} ${PD_ARMGBA_GLUE} ${PD_GPSP_GLUE}
-    ../../app/src/main/cpp/pk_host.c ../../app/src/main/cpp/pk_call.c ../../app/src/main/cpp/pk_wide.c
-    ../../app/src/main/cpp/pk_gb_audio.c ../../app/src/main/cpp/pk_cheats.c ../../app/src/main/cpp/pk_gb_field.c
-    ../../app/src/main/cpp/pk_wide_gb.c ../../linux/fly.c ../../linux/flash.c ../../linux/flight.c ../../app/src/main/cpp/pk_flight.c ../../linux/tm_teach.c ../../linux/field_items.c ../../linux/gb_field.c ../../linux/wild.c ../../linux/hud.c
+    ../../shared/src/commonMain/cpp/pk_host.c ../../shared/src/commonMain/cpp/pk_call.c ../../shared/src/commonMain/cpp/pk_wide.c
+    ../../shared/src/commonMain/cpp/pk_gb_audio.c ../../shared/src/commonMain/cpp/pk_cheats.c ../../shared/src/commonMain/cpp/pk_gb_field.c
+    ../../shared/src/commonMain/cpp/pk_wide_gb.c ../../linux/fly.c ../../linux/flash.c ../../linux/flight.c ../../shared/src/commonMain/cpp/pk_flight.c ../../linux/tm_teach.c ../../linux/field_items.c ../../linux/gb_field.c ../../linux/wild.c ../../linux/hud.c
     ../../linux/quick_menu.c)
 target_include_directories(pokedaisy.elf PRIVATE
     "${MGBA_DIR}/include"
@@ -97,7 +97,7 @@ target_include_directories(pokedaisy.elf PRIVATE
     "${CMAKE_CURRENT_BINARY_DIR}/mgba/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/../core"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../linux"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../app/src/main/cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../shared/src/commonMain/cpp")
 # mGBA's headers size its structs by these, so ours must match the library's (see the colour note above).
 target_compile_definitions(pokedaisy.elf PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_NO_GUARD PK_WIDE_CACHE FIXED_ROM_BUFFER)
 # EXPAND's buffers at the top screen's size (pk_wide.h's default is 800 x 800, ~10 MB of static memory): with that,

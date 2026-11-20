@@ -35,8 +35,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/RetailEngineGen.kt"
-WIDE = ROOT / "app/src/main/cpp/pk_wide_games.h"
-WIDE_H = ROOT / "app/src/main/cpp/pk_wide.h"
+WIDE = ROOT / "shared/src/commonMain/cpp/pk_wide_games.h"
+WIDE_H = ROOT / "shared/src/commonMain/cpp/pk_wide.h"
 GEN3 = ROOT / "gamedata/gen3/retail"
 
 SAMPLE = 16          # sites kept an address

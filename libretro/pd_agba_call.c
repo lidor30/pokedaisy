@@ -1,5 +1,5 @@
 /* pk_call.h over armGBA: the game's own functions called between frames (FLY, PC, REPEL, BIKE, field input), the same
- * contract as app/src/main/cpp/pk_call.c's, which is written against mGBA's ARMCore and cannot be shared. GPL-3.0, see
+ * contract as shared/src/commonMain/cpp/pk_call.c's, which is written against mGBA's ARMCore and cannot be shared. GPL-3.0, see
  * ../NOTICE.
  *
  * The CPU is armGBA's exact one (src/cpu/step.c): between frames its register file is in struct CPU, laid out as mGBA's

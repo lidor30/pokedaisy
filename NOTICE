@@ -29,7 +29,7 @@ The app shows every license below in full under Settings > LICENSES.
   contributors, Mozilla Public License 2.0 - https://github.com/mgba-emu/mgba
   (source: https://github.com/mgba-emu/mgba/tree/0.10.5). Built with two of
   its bundled libraries: blip_buf (GNU LGPL 2.1) and inih (BSD).
-  app/src/main/cpp/pk_rewind.c is adapted from mGBA's src/core/rewind.c and
+  shared/src/commonMain/cpp/pk_rewind.c is adapted from mGBA's src/core/rewind.c and
   stays under the MPL 2.0 (its header says so).
 - 3DS build only: armGBA (third_party/armgba), Copyright (c) 2026 Magnominus and the armGBA 3DS
   port contributors, Mozilla Public License 2.0 for the parts the 3DS build

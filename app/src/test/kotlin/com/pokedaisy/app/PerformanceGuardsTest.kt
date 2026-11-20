@@ -81,7 +81,7 @@ class PerformanceGuardsTest {
         // The companion's ROM readers call pkReadBytes from IO threads.
         val cpp = File(src.parentFile, "cpp")
         val jni = File(cpp, "pokedaisy_jni.c").readText()
-        val session = File(cpp, "pk_session.c").readText()
+        val session = File(src.parentFile, "../../../shared/src/commonMain/cpp/pk_session.c").readText()
         // JNI keeps the DS path; the portable C API owns the GBA / Game Boy path and its lock now.
         val readAny = lambda(jni, "static bool pk_read_any(")
         assertCoreLockCovers(readAny, "pthread_rwlock_rdlock(&pk_coreLock)", "pk_nds_read(", "DS reads")

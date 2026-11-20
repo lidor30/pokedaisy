@@ -2,8 +2,8 @@
  * ScenicFly.destination / here and Fly.kt's flyTownSections / flyVisitedTowns - keep the two in step. GPL-3.0. */
 #include "pd_flight_area.h"
 
-#include "../app/src/main/cpp/pk_call.h"
-#include "../app/src/main/cpp/pk_flight.h"
+#include "../shared/src/commonMain/cpp/pk_call.h"
+#include "../shared/src/commonMain/cpp/pk_flight.h"
 
 #include <errno.h>
 #include <stdio.h>

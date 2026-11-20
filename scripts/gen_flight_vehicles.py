@@ -11,7 +11,7 @@ Each vehicle has a picture per animation frame (the burner's flame, the rotors, 
 only over the pixels marked SEAT (the cockpit glass, a window, the open air over a basket); the pixels marked FRONT (a
 basket's rim, ropes, frames, glints) are drawn again over them.
 
-Writes app/src/main/cpp/pk_flight_vehicles.h (palettes and indexed frames, a byte a pixel: palette index in the low 6
+Writes shared/src/commonMain/cpp/pk_flight_vehicles.h (palettes and indexed frames, a byte a pixel: palette index in the low 6
 bits, FRONT 0x40, SEAT 0x80) and, with --preview DIR, a PNG of every frame at 8x.
 
 Usage: scripts/gen_flight_vehicles.py [--preview DIR [--hero PNG]]
@@ -543,7 +543,7 @@ def propeller(cv, x, cy, r, frame):
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "../app/src/main/cpp/pk_flight_vehicles.h")
+OUT = os.path.join(HERE, "../shared/src/commonMain/cpp/pk_flight_vehicles.h")
 SIZE = 64   # pk_flight.c's FL_SRC: a picture fits 64 x 64 around its anchor
 
 # name, frames, the sequence of frames (one per [ticks] game frames), the player's sprite's top left (its 16 x 32 frame:

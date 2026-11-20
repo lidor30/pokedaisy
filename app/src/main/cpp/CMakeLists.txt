@@ -5,7 +5,8 @@ project(pokedaisy C CXX)
 # mGBA and the plain C API over it (pk_api.h, the portable pk_*.c): pk_api.cmake,
 # shared with the other hosts (the iPad app, the host test).
 # ---------------------------------------------------------------------------
-include("${CMAKE_CURRENT_SOURCE_DIR}/pk_api.cmake")
+set(PK_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../shared/src/commonMain/cpp")
+include("${PK_CORE_DIR}/pk_api.cmake")
 
 # ---------------------------------------------------------------------------
 # Vendored rcheevos (git submodule, pinned to v12.5.0) — RetroAchievements'
@@ -101,7 +102,7 @@ endif()
 # ---------------------------------------------------------------------------
 # Our JNI bridge.
 # ---------------------------------------------------------------------------
-add_library(pokedaisy SHARED pokedaisy_jni.c pokedaisy_ra.c pk_coop_lock_jni.c pk_link.c pk_link_jni.c
+add_library(pokedaisy SHARED pokedaisy_jni.c pokedaisy_ra.c pk_coop_lock_jni.c ${PK_CORE_DIR}/pk_link.c pk_link_jni.c
     nds/pk_nds_core.cpp nds/pk_nds_dsp.cpp nds/pk_nds.cpp nds/pk_nds_platform.cpp nds/pk_nds_field.cpp nds/pk_nds_field_gpu.cpp nds/pk_nds_call.cpp nds/pk_nds_call_melonds.cpp nds/pk_nds_wide.cpp
     nds/pk_nds_music.cpp nds/pk_nds_gl.cpp nds/pk_nds_bnd_load.cpp)
 set_target_properties(pokedaisy PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)

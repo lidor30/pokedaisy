@@ -20,10 +20,10 @@
 #include <mgba/internal/gb/gb.h>
 #include <mgba/internal/gb/memory.h>
 
-#include "../../app/src/main/cpp/pk_call.h"
-#include "../../app/src/main/cpp/pk_cheats.h"
-#include "../../app/src/main/cpp/pk_host.h"
-#include "../../app/src/main/cpp/pk_wide.h"
+#include "../../shared/src/commonMain/cpp/pk_call.h"
+#include "../../shared/src/commonMain/cpp/pk_cheats.h"
+#include "../../shared/src/commonMain/cpp/pk_host.h"
+#include "../../shared/src/commonMain/cpp/pk_wide.h"
 #include "../../linux/field_items.h"
 #include "../../linux/flash.h"
 #include "../../linux/tm_teach.h"
