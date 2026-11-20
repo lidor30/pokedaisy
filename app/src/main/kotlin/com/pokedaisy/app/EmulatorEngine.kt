@@ -1331,7 +1331,7 @@ class EmulatorEngine(
             // Achievements never take the game down with them (a pending JNI
             // exception from a callback would otherwise end this loop).
             try {
-                if (frameWork == com.pokedaisy.app.game.GameSession.FrameWork.ADVANCING) RetroAchievements.onFrame()
+                RetroAchievements.onFrame(frameWork)
             } catch (t: Exception) {
                 if (!raFrameFailed) Log.e("pokedaisy", "achievements frame failed", t)
                 raFrameFailed = true

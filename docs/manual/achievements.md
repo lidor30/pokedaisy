@@ -14,8 +14,8 @@ It's optional: achievements only run once you sign in.
 
 You need a free account from [retroachievements.org](https://retroachievements.org). Then:
 
-1. In the library, open Settings (the top screen's).
-2. Under `ONLINE`, tap `RetroAchievements` (it's marked `BETA`).
+1. Open `SETTINGS` in the library.
+2. Tap `RetroAchievements`. On Android it is under `ONLINE`.
 3. Type your username and password and tap `SIGN IN`.
 
 Once you're in, the page shows your name and your points, with `SIGN OUT` to leave. Your password is never stored: it goes to RetroAchievements once, and the app keeps only the login token the site sends back.

@@ -1,9 +1,6 @@
 package com.pokedaisy.app.achievements
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /** [parseAchievementList] reads what pokedaisy_ra.c's raAchievementList writes. */
 class AchievementListTest {
@@ -18,7 +15,7 @@ class AchievementListTest {
             record("2", "Unlocked", "43", "Boulder Badge 🏅", "Defeat Brock\nin Pewter", "5", "1", "", "", "", "0.000", "80.000", "2"),
             "",
         ).joinToString("\u001E")
-        val list = parseAchievementList(text.toByteArray(Charsets.UTF_8))
+        val list = parseAchievementList(text.encodeToByteArray())
         assertEquals(2, list.size)
         val a = list[0]
         assertEquals(42, a.id)
@@ -37,7 +34,7 @@ class AchievementListTest {
 
     @Test
     fun skipsBrokenRecords() {
-        assertEquals(0, parseAchievementList(record("1", "Locked", "x").toByteArray()).size)
+        assertEquals(0, parseAchievementList(record("1", "Locked", "x").encodeToByteArray()).size)
         assertEquals(0, parseAchievementList(ByteArray(0)).size)
     }
 
@@ -45,7 +42,7 @@ class AchievementListTest {
     fun parsesLeaderboards() {
         val boards = parseLeaderboardList(
             (record("Pokémon FireRed Version", "11", "Elite Four", "Fastest League run", "1") + "\u001E" +
-                record("Bonus", "12", "Safari Haul", "Most caught", "0") + "\u001E").toByteArray(),
+                record("Bonus", "12", "Safari Haul", "Most caught", "0") + "\u001E").encodeToByteArray(),
         )
         assertEquals(listOf(11, 12), boards.map { it.id })
         assertEquals("POKÉMON FIRERED VERSION", boards[0].section)
@@ -56,7 +53,7 @@ class AchievementListTest {
     @Test
     fun marksThePlayersEntry() {
         val entries = parseLeaderboardEntries(
-            (record("1", "Speedy", "12:04.33") + "\u001E" + record("17", "Lidor", "15:30.02") + "\u001E").toByteArray(),
+            (record("1", "Speedy", "12:04.33") + "\u001E" + record("17", "Lidor", "15:30.02") + "\u001E").encodeToByteArray(),
             me = "lidor",
         )
         assertEquals(listOf(1, 17), entries.map { it.rank })

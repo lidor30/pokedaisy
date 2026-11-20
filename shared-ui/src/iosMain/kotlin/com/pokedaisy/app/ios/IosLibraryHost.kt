@@ -188,8 +188,16 @@ internal class IosLibraryHost(
         val actions = library.actions(add = { choosingAdd = true }, refresh = ::refreshGames)
         LibraryScreen(state, actions, m, small, key = { it.id }, focus = focus,
             settings = {
+                var account by remember { mutableStateOf(false) }
                 Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
-                    key(library.settingsPage) {
+                    if (account) {
+                        CompanionBackHandler { account = false }
+                        Column {
+                            OptionTitleWindow(tr("RetroAchievements"), m, onBack = { account = false })
+                            Spacer(Modifier.height(m.u * 4))
+                            RaAccountScreen(IosAchievements.session, iosPreferences, m, small)
+                        }
+                    } else key(library.settingsPage) {
                         CompanionSettingsScreen(appSettings, application = true, initialPage = library.settingsPage,
                             applicationFooter = { AppAboutFooter(NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "", m) { url ->
                                 NSURL.URLWithString(url)?.let { UIApplication.sharedApplication.openURL(it) }
@@ -197,6 +205,7 @@ internal class IosLibraryHost(
                             homeExtras = listOf(
                                 SettingRow("RUN SETUP", null, opensPage = true,
                                     labelBadge = NewFeatures.badge(NewFeatures.IOS_SETUP_BUTTONS)) { setup?.close(); setup = newSetup(fromSettings = true) },
+                                SettingRow("RetroAchievements", null, opensPage = true) { account = true },
                             ))
                     }
                 }

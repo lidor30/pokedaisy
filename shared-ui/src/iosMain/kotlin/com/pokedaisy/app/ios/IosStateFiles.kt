@@ -8,4 +8,4 @@ import okio.Path.Companion.toPath
 internal fun iosStateFiles(rom: Path): StateFiles = iosStateFiles(StateFiles.romKey(rom))
 
 internal fun iosStateFiles(key: String): StateFiles =
-    StateFiles(RomPicker.statesDir.toPath() / key)
+    StateFiles(RomPicker.statesDir.toPath() / key, listOf(StateFiles.ACHIEVEMENT_PROGRESS_SUFFIX))

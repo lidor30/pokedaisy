@@ -1,9 +1,7 @@
 package com.pokedaisy.app.achievements
 
 import com.pokedaisy.app.companion.AchievementPopup
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /** Settings > RetroAchievements > NOTIFICATIONS: which popups the two switches let through. */
 class PopupSettingsTest {

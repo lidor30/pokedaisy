@@ -102,6 +102,8 @@ object PokeDaisyHost {
         IosHosts.install(appFilesDir())
         IosTouchPreferences.changed = touch::releaseKeys
         IosTouchPreferences.install()
+        IosAchievements.start()
+        com.pokedaisy.app.companion.ui.AchievementIcons.shown = iosPreferences.raIcons
     }
 
     /** One Compose host for the native Metal game surface, shared controls and companion. */
@@ -250,7 +252,7 @@ object PokeDaisyHost {
         val snapshot by telemetry.snapshot.collectAsState()
         Box(Modifier.fillMaxSize()) {
             CompanionScreen(snapshot, slots = slots, settings = settings, battleInput = battle, gamePick = telemetry.gamePick,
-                back = panels.back, keys = panels.keys, clickSound = ::playGameClick, statusBar = statusBar, itemUse = items, fly = fly)
+                back = panels.back, keys = panels.keys, clickSound = ::playGameClick, achievements = IosAchievements.session, statusBar = statusBar, itemUse = items, fly = fly)
             stateError?.let { message ->
                 OptionConfirm(tr("SAVE STATES"), message, tr("OK"), rememberGbaTextMetrics(),
                     onConfirm = { stateError = null }, onDismiss = { stateError = null }, cancelLabel = null)
@@ -322,19 +324,23 @@ object PokeDaisyHost {
         val defaults = platform.Foundation.NSUserDefaults.standardUserDefaults
         var currentRuntime: com.pokedaisy.app.companion.GameRuntime? = null
         val stateSnapshot = { telemetry.forState()?.takeIf { it.hasData && !it.unsupported }?.let(SnapshotCache::encode) }
-        fun stateLoaded(runtime: com.pokedaisy.app.companion.GameRuntime, state: Path) {
+        val ra = IosAchievements.session
+        var restoredProgress: ByteArray? = null
+        var flewAnywhere = false
+        fun stateLoaded(runtime: com.pokedaisy.app.companion.GameRuntime, state: Path, applyProgress: (ByteArray?) -> Unit) {
             runtime.afterStateLoad(
-                restoreProgress = {},
+                restoreProgress = { applyProgress(StateFiles.readAchievementProgress(state)) },
                 settleAppearance = { if (currentLook.supported) lookRenderer.settle() },
                 companionState = state,
             )
         }
         val resume = StateResume(files,
-            write = { PkApiCore.saveState(it.toString()) }, read = { PkApiCore.loadState(it.toString()) },
+            write = IosAchievements::writeState, read = { PkApiCore.loadState(it.toString()) },
             matchesSave = { PkApiCore.stateMatchesSave(it.toString()) },
             enabled = { iosPreferences.autoResume },
             snapshot = stateSnapshot, loaded = { state ->
-                currentRuntime?.let { runtime -> stateLoaded(runtime, state) }
+                // The startup state supplies progress to the achievement session once the ROM attaches.
+                currentRuntime?.let { runtime -> stateLoaded(runtime, state) { restoredProgress = it } }
             })
         val (code, revision) = (if (romPath.lowercase().endsWith(".gba"))
             com.pokedaisy.app.companion.data.RomIdentityReader.forPath(romPath.toPath()).header() else null) ?: (null to 0)
@@ -511,7 +517,8 @@ object PokeDaisyHost {
             submit = { text ->
                 if (g.isRunning) {
                     val applied = PkApiCore.applyCheats(text)
-                    if (applied < 0) com.pokedaisy.app.companion.data.Logs.i("cheats didn't load")
+                    if (applied >= 0) ra.setCheatsActive(applied > 0)
+                    else com.pokedaisy.app.companion.data.Logs.i("cheats didn't load")
                 }
             })
         val currentBattle = battle!!
@@ -564,6 +571,10 @@ object PokeDaisyHost {
                         keeper = com.pokedaisy.app.companion.data.FlightArea.Keeper(appFilesDir(), key),
                         deliver = { it() }, tookOff = { scenic ->
                             if (!scenic && game === g) FeatureTips.used(TipId.FLY)
+                            if (currentSettings.flightArea != com.pokedaisy.app.companion.FlightAreaMode.SEEN) {
+                                flewAnywhere = true
+                                ra.setFlightAnywhere(true)
+                            }
                             if (screen?.state?.side?.windowOpen == true) screen?.state?.hide()
                         }, turned = { screen?.showQuickNotice(tr("You haven't been there yet.")) },
                         askStyle = { com.pokedaisy.app.companion.ui.FlyStyleAsk.showing = true })
@@ -572,17 +583,34 @@ object PokeDaisyHost {
                     ready = { currentOptions.settingsChanged(currentSettings) })
                 currentCheats.start()
                 g.withState { resume.restore() }
+                ra.setShinyOddsActive(p.shiny?.active == true)
+                ra.setExpShareActive(currentOptions.expShareActive)
+                ra.setFlightAnywhere(false)
+                IosAchievements.attach(romPath.toPath(), restoredProgress, track = !blocked)
+                restoredProgress = null
             }
         }
         g.beforeStateChange = { p.cancelFieldActions(); currentSettings.releaseRewind(); currentBattle.cancel(); touch.releaseKeys() }
         slots = p.bindStates { StateSlotController(files, onCore = g::withState,
-            write = { PkApiCore.saveState(it.toString()) }, read = { PkApiCore.loadState(it.toString()) },
+            write = IosAchievements::writeState, read = { PkApiCore.loadState(it.toString()) },
             beforeLoad = { StateFiles.backupBattery(savePath.toPath()) },
             thumbnail = { PkApiCore.stateThumbnail() },
-            snapshot = stateSnapshot, loaded = { state -> stateLoaded(p, state) },
+            snapshot = stateSnapshot, loaded = { state -> stateLoaded(p, state, ra::loadProgress) },
             failed = { stateError = it },
             initialIndex = defaults.integerForKey("state_slot").toInt(),
             selected = { defaults.setInteger(it.toLong(), "state_slot") }) }
+        val previousAfterFrame = g.afterFrame
+        g.afterFrame = {
+            previousAfterFrame()
+            ra.onFrame(g.completedFrameWork) {
+                ra.setShinyOddsActive(p.shiny?.active == true)
+                ra.setExpShareActive(currentOptions.expShareActive)
+                if (flewAnywhere && currentSettings.flightArea == com.pokedaisy.app.companion.FlightAreaMode.SEEN) {
+                    flewAnywhere = false
+                    ra.setFlightAnywhere(false)
+                }
+            }
+        }
         prefetchArt(romPath)
         p.startSampling(
             gameBoy = !romPath.lowercase().endsWith(".gba"), game = kotlinx.coroutines.Dispatchers.Main,
@@ -674,7 +702,12 @@ object PokeDaisyHost {
         screen?.close()
         screen = null
         touch.close()
-        game?.close()
+        game?.let {
+            IosAchievements.session.onCoreStopping()
+            it.close()
+            IosAchievements.session.onCoreStopped()
+            IosAchievements.session.setCheatsActive(false)
+        }
         game = null
         slots = null
         settings = null
