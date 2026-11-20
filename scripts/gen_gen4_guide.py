@@ -3,7 +3,7 @@
 
     python3 scripts/gen_gen4_guide.py      # $DECOMPS/pokeplatinum and $DECOMPS/pokeheartgold
 
-Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideGen4PlatinumGen.kt and GuideGen4HeartGoldGen.kt:
+Writes shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideGen4PlatinumGen.kt and GuideGen4HeartGoldGen.kt:
 numbers only (species, levels, items and moves by id, map header ids, trainer ids) - no text of the games', which the
 companion takes from its own tables. Gen4World (GuideGen4.kt) reads them back.
 
@@ -35,7 +35,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data")
+OUT_DIR = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data")
 
 
 def lines(path):

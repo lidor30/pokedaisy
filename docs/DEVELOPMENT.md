@@ -1204,7 +1204,7 @@ guessing:
    extras dump the full EWRAM (256 KB) + IWRAM (32 KB) to a device file —
    `scripts/capture_fixture.sh <key>` drives this (live session if the app's
    already running via `onNewIntent`, cold relaunch otherwise) and pulls the
-   result into `app/src/test/resources/fixtures/<key>/{ewram,iwram}.bin`.
+   result into `test-fixtures/resources/fixtures/<key>/{ewram,iwram}.bin`.
 2. `gPlayerParty` is found by scanning every 4-byte-aligned offset for a valid
    Gen3 `struct Pokemon` (`PID^OTID` key, `PID%24` substruct order, 16-bit
    checksum over the 12 decrypted words) — a checksum match is ~1/65536 odds,
@@ -4043,14 +4043,14 @@ checks round trips, invalid states, cross-platform refusal and detection of a ch
 
 ### The shared module (`shared/`, for the iPad app)
 
-The companion's data and language code, `app/src/main/kotlin/com/pokedaisy/app/companion/data` and `companion/i18n`,
-is compiled by its own Kotlin Multiplatform module, `shared/` (Android and iOS), in place: the files stay where
-they are, the app depends on `:shared` and leaves those two folders out of its own compile. So nothing in them may use
+The companion's data and language code, `shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data` and `companion/i18n`,
+belongs to the Kotlin Multiplatform module `:shared` and compiles for Android and iOS. The app depends on
+that module. The portable code does not use
 `java.*` or `android.*`: plain Kotlin first, then the Kotlin libraries (coroutines, atomicfu, kotlinx-datetime), then
 okio. What differs by platform comes in from outside: the emulator through `EmulatorCore` (the app sets it to
-`MgbaEmulatorCore` in `PokeDaisyApp`), logging through `Logs`' sink. Their tests stay in `app/src/test` too and run as
-`:shared:testDebugUnitTest` (from `app/`, as before), except the few that also use the app's classes (the root
-build's `appOnlyTests`), which run with the app's. Something the app uses from those folders must be public, not
+`MgbaEmulatorCore` in `PokeDaisyApp`), logging through `Logs`' sink. Their JVM tests live in `shared/src/androidUnitTest` and run as
+`:shared:testDebugUnitTest`. Tests that use Android app classes live in `app/src/test`. Both modules read
+the shared helpers and captures in `test-fixtures/`. Something the app uses from those folders must be public, not
 `internal` (another module now). `./gradlew :shared:compileKotlinIosArm64` compiles it for an iPad; since the
 emulator core comes in through cinterop (see "The core's C API"), that needs a Mac with Xcode. CI's macOS "Shared code
 for iOS" job compiles both iOS targets, then links and runs the iOS tests in the simulator: the core's (`PkApiCoreTest`)
@@ -4061,9 +4061,9 @@ A filter must match a test in that module; unfiltered `make test-quick` still ru
 ui-preview still compiles the same files straight into its desktop build.
 
 The canonical key codes, `GbaControls`, `Hotkeys`, `GbaInput`, `ScriptInput` and `KeyCapture` also compile in
-`shared/`, from their existing app paths (`sharedCoreSources` in the root build). Both native hosts can use the same
+`shared/src/commonMain`. Both native hosts can use the same
 bindings, chord capture, deferred taps, turbo and script ownership. `AndroidGbaInput.kt` converts Android motion
-events to the common axis policy; UI badges stay in `shared-ui/`. The app excludes these files from its own compile.
+events to the common axis policy; UI badges stay in `shared-ui/`.
 
 ### The companion's screens (`shared-ui/`)
 
@@ -4081,7 +4081,7 @@ header parser. The DS hash consumes the contained cart too, rather than a compre
 the header/code/icon ordering, SuperCard prefix handling, zero padding and code-size limit used for loose carts.
 No core is needed and whole-file fingerprints still stream through a bounded buffer.
 
-The battle menu driver (`BattleInputController.kt`) also compiles in `shared-ui/`, in place. The core module's
+The battle menu driver (`BattleInputController.kt`) also lives in `shared-ui/src/commonMain`. The core module's
 `ScriptInput` interface delivers synthetic keys to the platform input (`GbaInput` on Android); logging uses `Logs` and its lock is
 multiplatform. The menu navigation and its tests stay the same when another platform supplies that input channel.
 
@@ -4127,14 +4127,12 @@ The device-performance default for DS CPU boost stays with Android. The iOS sett
 theme store, NEW dates and learned fast-forward callbacks use this same implementation. Other settings
 orchestration and the library's historical format are consolidated separately, without resetting stored data.
 
-`shared-ui/` compiles the companion's screens for Android and iOS the same way, where they live: `companion/ui`, the
+`shared-ui/src/commonMain` contains the companion's screens for Android and iOS: `companion/ui`, the
 `companion/*.kt` settings and state beside them, the co-op screens' model (`companion/coop`, without the transport and
 session files, which are Android / JVM only: sockets, Android NSD, Bouncy Castle, OkHttp), the manual reader
 (`DocsApi.kt`, `DocsSearch.kt`), `cheats/Cheats.kt` and the binding rows' NEW badges (`InputBadges.kt`), against
-`:shared` and Compose Multiplatform 1.7. The app links it and leaves those files out of its own compile and lint (the
-root build's `sharedUiSources` / `sharedUiAppOnly` name them for both); ui-preview still compiles them straight into its
-desktop build. Their tests stay the app's (Paparazzi and the rest under `app/src/test`), so a declaration the app or its
-tests reach is public, not `internal`. The same rule holds there (no `java.*` / `android.*`); what only the platform can do comes in through a
+`:shared` and Compose Multiplatform 1.7. The app links the module, and ui-preview compiles the same sources for desktop.
+Paparazzi tests live in `app/src/test`. The UI module owns its common and iOS tests. The same rule holds there (no `java.*` / `android.*`); what only the platform can do comes in through a
 host set at start, as `EmulatorCore` does for the data code: `FontSource` (fonts), `PictureCodec` (images), `ThemeStore`,
 `DocsSources`, `CheatParser` (mGBA's code check), `DeviceDates` (the device's date format). A new host is set in
 `PokeDaisyApp`, ui-preview's `installPreviewHosts` and the screenshot tests' `installTestHosts`. CI's "iPad app (simulator
@@ -4401,8 +4399,8 @@ pushing a different file (only one at a time for now). SRAM persists to
 | `.../companion/data/ActiveTables.kt`                    | Picks which species/item/map-name tables and sprite source apply for the currently-detected `GameKind`.                                                            |
 | `.../companion/data/SpeciesNames*.kt`, `Poller.kt`      | Per-hack species tables and the SHA1 detection constants, respectively.                                                                                            |
 | `scripts/capture_fixture.sh`, `scripts/roms.conf`       | Captures a live EWRAM+IWRAM memory fixture for one ROM off the device.                                                                                             |
-| `app/src/test/resources/fixtures/<key>/`                | Captured `{ewram,iwram}.bin` + `README.txt` per ROM — replayed by the JVM decode tests, not committed ROMs/saves themselves.                                       |
-| `app/src/test/kotlin/.../companion/data/*DecodeTest.kt` | One regression test per supported ROM, decoding its fixture and asserting the known-real values.                                                                   |
+| `test-fixtures/resources/fixtures/<key>/`                | Captured `{ewram,iwram}.bin` + `README.txt` per ROM — replayed by the JVM decode tests, not committed ROMs/saves themselves.                                       |
+| `shared/src/androidUnitTest/kotlin/.../companion/data/*DecodeTest.kt` | One regression test per supported ROM, decoding its fixture and asserting the known-real values.                                                                   |
 
 ### Shared touch-control preferences
 

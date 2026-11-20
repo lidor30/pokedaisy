@@ -9,7 +9,7 @@ raw=a.symbols.read_bytes()
 digest=hashlib.sha256(raw).hexdigest()
 if digest!='be1ca87ad487ade20701ed71fcae4e99bf16b908af727b84575c862b73ea2955':raise SystemExit('Wrong release symbols; review new versions explicitly')
 symbols={n:(int(b,16)<<16)|int(v,16) for b,v,n in re.findall(r'^([0-9a-fA-F]+):([0-9a-fA-F]+) (\S+)$',raw.decode(),re.M)}
-base=Path(__file__).resolve().parents[1]/'app/src/main/kotlin/com/pokedaisy/app/companion/data'
+base=Path(__file__).resolve().parents[1]/'shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data'
 reader=(base/'Gen2Reader.kt').read_text().split('val GEN2_POLISHED_CRYSTAL = GEN2_CRYSTAL.copy(',1)[1].split('\n)',1)[0]
 app={k:(int(b)<<16)|int(v,16) for k,b,v in re.findall(r'(\w+) = wramx\((\d+), (0x[0-9A-Fa-f]+)\)',reader)}
 app.update({k:int(v,16) for k,v in re.findall(r'(\w+) = (0x[0-9A-Fa-f]+)L',reader)})

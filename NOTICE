@@ -185,6 +185,6 @@ it reads, the app carries reference data about the supported games: names of
 Pokemon, moves, items, types and places, numeric tables (stats, type matchups,
 map layouts, memory addresses) and checksums of ROM data, extracted from the
 games, the ROM hacks and the decompilation projects for interoperability.
-The unit tests' fixtures (app/src/test/resources/fixtures) are snapshots of
+The unit tests' fixtures (test-fixtures/resources/fixtures) are snapshots of
 the emulated console's RAM while a game ran; like any RAM dump they hold a
 few kilobytes the game copied there from its ROM. They aren't in the app.

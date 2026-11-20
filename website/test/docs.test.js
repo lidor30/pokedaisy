@@ -43,7 +43,7 @@ test('no em or en dashes, and no spaced hyphen used as one', () => {
 
 test('every setting the app has is mentioned in the manual', () => {
   // Settings rows' English labels, from the search-words map both Settings screens share.
-  const kt = readFileSync(join(dir, '../../app/src/main/kotlin/com/pokedaisy/app/companion/ui/SettingRows.kt'), 'utf8');
+  const kt = readFileSync(join(dir, '../../shared-ui/src/commonMain/kotlin/com/pokedaisy/app/companion/ui/SettingRows.kt'), 'utf8');
   const map = kt.slice(kt.indexOf('val SETTING_KEYWORDS'));
   const labels = [...map.slice(0, map.indexOf('\n)')).matchAll(/^\s*"([^"]+)" to "/gm)].map((m) => m[1]);
   assert.ok(labels.length > 20, 'found the settings');

@@ -179,7 +179,7 @@ def main():
             f"    {p['hpUp']}, {p['shedinja']}, {p['monFieldShift']},",
             "};", ""], key)
 
-    sig_text = open(os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data/RomArtSigsGen.kt")).read()
+    sig_text = open(os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/RomArtSigsGen.kt")).read()
 
     def sig(name):
         m = re.search(r"\b" + name + r"\((true|false), (\d+), (0x[0-9A-F]+)L, (\d+), (-?\d+)L, (0x[0-9A-F]+)(, smol = true)?\)", sig_text)
@@ -513,7 +513,7 @@ def main():
         entries.append((g["sha1"], "    { " + ", ".join(f) + " },"))
 
     # Monomyth's own natures (natureNamesMonomyth).
-    kt = open(os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data/MonomythGen.kt"), encoding="utf-8").read()
+    kt = open(os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/MonomythGen.kt"), encoding="utf-8").read()
     natures = re.findall(r'"([^"]*)"', kt[kt.index("natureNamesMonomyth"):kt.index(")", kt.index("listOf(", kt.index("natureNamesMonomyth")) + 7)])
     assert len(natures) == 250, len(natures)
     out.append("const char* const pd_monomyth_natures[250] = {")

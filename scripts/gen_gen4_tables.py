@@ -4,7 +4,7 @@
     python3 scripts/gen_gen4_tables.py platinum     # $DECOMPS/pokeplatinum
     python3 scripts/gen_gen4_tables.py heartgold    # $DECOMPS/pokeheartgold (HeartGold and SoulSilver: one table set)
 
-Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen4TablesPlatinum.kt (and the Town Map's in
+Writes shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/Gen4TablesPlatinum.kt (and the Town Map's in
 Gen4TownMapPlatinum.kt): species names and types, moves
 (name, type, power), items (name, the bag pocket the game files them in) and the place name of every map header (the
 Location a save keeps is a map header id, Gen4Reader.kt), and each species' party-icon palette (0-2: which of the
@@ -20,7 +20,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data")
+OUT_DIR = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data")
 
 GEN3_TYPES = ["TYPE_NORMAL", "TYPE_FIGHTING", "TYPE_FLYING", "TYPE_POISON", "TYPE_GROUND", "TYPE_ROCK", "TYPE_BUG",
               "TYPE_GHOST", "TYPE_STEEL", "TYPE_MYSTERY", "TYPE_FIRE", "TYPE_WATER", "TYPE_GRASS", "TYPE_ELECTRIC",

@@ -7,7 +7,7 @@ from pathlib import Path
 import argparse, json, re
 
 root = Path(__file__).resolve().parents[2]
-data = root / 'app/src/main/kotlin/com/pokedaisy/app/companion/data'
+data = root / 'shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data'
 reader = (data / 'Gen4Reader.kt').read_text()
 tables = (data / 'Gen4TablesPlatinum.kt').read_text()
 config = re.search(r'val GEN4_PLATINUM_US = Gen4Config\((.*?)\n\)', reader, re.S)[1]

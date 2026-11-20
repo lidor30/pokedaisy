@@ -6,9 +6,13 @@ import org.junit.Test
 
 class CoopSafetyTest {
     @Test fun coopCodeNeverTouchesGameMemory() {
-        val dir = File("src/main/kotlin/com/pokedaisy/app/companion/coop")
-        val files = dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        assertTrue("the co-op sources weren't found at ${dir.absolutePath}", files.isNotEmpty())
+        val packagePath = "com/pokedaisy/app/companion/coop"
+        val roots = listOf(File("src/main/kotlin"), File("../shared-ui/src/commonMain/kotlin"))
+        val files = roots.flatMap { root ->
+            val dir = File(root, packagePath)
+            assertTrue("the co-op sources weren't found at ${dir.absolutePath}", dir.isDirectory)
+            dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        }
         for (f in files) {
             val text = f.readText()
             for (word in listOf("MgbaCore", "pkWrite", "pkCall", "EmulatorEngine")) {

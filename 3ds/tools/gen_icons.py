@@ -7,7 +7,7 @@ import os
 import re
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-UI = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/ui")
+UI = os.path.join(ROOT, "shared-ui/src/commonMain/kotlin/com/pokedaisy/app/companion/ui")
 OUT_C = os.path.join(ROOT, "3ds/core/pd_icons_gen.c")
 OUT_H = os.path.join(ROOT, "3ds/core/pd_icons_gen.h")
 

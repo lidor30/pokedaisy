@@ -24,15 +24,15 @@ Output is a Kotlin file of compact text lines, parsed lazily by GuideAreas.kt
   mapsec|kind|id|flag|qty|wants|where
 
     python3 scripts/gen_guide_areas.py firered $DECOMPS/pokefirered \
-        > app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreasFireRedGen.kt
+        > shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideAreasFireRedGen.kt
     python3 scripts/gen_guide_areas.py leafgreen $DECOMPS/pokefirered \
-        > app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreasLeafGreenGen.kt
+        > shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideAreasLeafGreenGen.kt
     python3 scripts/gen_guide_areas.py emerald $DECOMPS/pokeemerald \
-        > app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreasEmeraldGen.kt
+        > shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideAreasEmeraldGen.kt
     python3 scripts/gen_guide_areas.py ruby $DECOMPS/pokeruby \
-        > app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreasRubySapphireGen.kt
+        > shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideAreasRubySapphireGen.kt
     python3 scripts/gen_guide_areas.py legacy $DECOMPS/pokelegacy \
-        > app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideAreasEmeraldLegacyGen.kt
+        > shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideAreasEmeraldLegacyGen.kt
 
 `legacy` is Pokémon Emerald Legacy v1.1.4's own tree (cRz-Shadows/Pokemon_Emerald_Legacy at V1.1.4, an older
 pokeemerald): its map sections are #defines (the json names them `map_section`), its system flags move with its

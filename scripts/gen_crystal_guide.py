@@ -29,7 +29,7 @@ run. Read from the ROMs:
     (a purchase - checkcoins / checkmoney before it - isn't a gift), each one's command bytes looked for in its label's span
     in every ROM, with the event flag that marks it received.
 
-Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt.
+Writes shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt.
 """
 import hashlib
 import os
@@ -44,7 +44,7 @@ ROOT = os.path.dirname(HERE)
 DECOMPS = os.environ.get("DECOMPS", os.path.expanduser("~/Projects/tests/my-rom-hacks/build"))
 LEGACY = sys.argv[1:] == ["legacy"]
 SRC = os.path.join(DECOMPS, "pokecrystallegacy" if LEGACY else "pokecrystal")
-DATA_DIR = os.path.join(ROOT, "app", "src", "main", "kotlin", "com", "pokedaisy", "app", "companion", "data")
+DATA_DIR = os.path.join(ROOT, "shared", "src", "commonMain", "kotlin", "com", "pokedaisy", "app", "companion", "data")
 OUT = os.path.join(DATA_DIR, "GuideCrystalLegacyGen.kt" if LEGACY else "GuideCrystalGen.kt")
 P = "CL_" if LEGACY else "CR_"     # the generated names' prefix
 TRADE_FLAG_BASE = 0x20000   # the companion's flag id for wTradeFlags bit 0

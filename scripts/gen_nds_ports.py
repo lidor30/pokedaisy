@@ -17,7 +17,7 @@ import tomllib
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SRC = os.path.join(ROOT, "gamedata", "nds", "ports.toml")
 C_OUT = os.path.join(ROOT, "app", "src", "main", "cpp", "nds", "pk_nds_ports_gen.h")
-KT_OUT = os.path.join(ROOT, "app", "src", "main", "kotlin", "com", "pokedaisy", "app", "companion", "data", "NdsPortsGen.kt")
+KT_OUT = os.path.join(ROOT, "shared", "src", "commonMain", "kotlin", "com", "pokedaisy", "app", "companion", "data", "NdsPortsGen.kt")
 
 # Each base's words, in the C struct's order: (TOML name, C field, required).
 GEN4 = [

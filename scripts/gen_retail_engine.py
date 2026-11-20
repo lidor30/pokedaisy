@@ -34,7 +34,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/RetailEngineGen.kt"
+OUT = ROOT / "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/RetailEngineGen.kt"
 WIDE = ROOT / "shared/src/commonMain/cpp/pk_wide_games.h"
 WIDE_H = ROOT / "shared/src/commonMain/cpp/pk_wide.h"
 GEN3 = ROOT / "gamedata/gen3/retail"

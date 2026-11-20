@@ -15,7 +15,7 @@ import sys
 import tomllib
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-KT = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data")
+KT = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data")
 CORE = os.path.join(ROOT, "3ds/core")
 
 

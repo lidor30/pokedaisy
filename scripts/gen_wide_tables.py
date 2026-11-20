@@ -405,16 +405,17 @@ HACKS = [
 FAMILY = {"BPR": "FR", "BPG": "FR", "BPE": "EM", "AXV": "RS", "AXP": "RS"}
 # Hacks under a game code of their own (only taken by SHA-1, as every hack).
 HACK_CODES = {"PUV", "MON"}
-KOTLIN = os.path.join(ROOT, "app", "src", "main", "kotlin", "com", "pokedaisy", "app")
+APP_KOTLIN = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app")
+SHARED_DATA = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data")
 
 
 def retail_sha1s():
     """The retail releases the app knows by SHA-1: GameTitles' RETAIL map (its HACKS come after it) and
     the generated other-language ports (RETAIL_PORT_TITLES). Hacks share the game codes, but WIDE is
     checked on retail only."""
-    hand = open(os.path.join(KOTLIN, "GameTitles.kt")).read()
+    hand = open(os.path.join(APP_KOTLIN, "GameTitles.kt")).read()
     hand = hand[hand.index("private val RETAIL"):hand.index("private val HACKS")]
-    ports = open(os.path.join(KOTLIN, "companion", "data", "RetailPortsGen.kt")).read()
+    ports = open(os.path.join(SHARED_DATA, "RetailPortsGen.kt")).read()
     ports = ports[ports.index("RETAIL_PORT_TITLES"):]
     return set(re.findall(r'"([0-9a-f]{40})" to', hand + ports))
 

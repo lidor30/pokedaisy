@@ -20,7 +20,7 @@ from gen_player_look_sigs import content, find_all, host_rom, png_4bpp, window
 from gen_rom_art_sigs import head, pre
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-KOTLIN = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/data/TextLookSigsGen.kt")
+KOTLIN = os.path.join(HERE, "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/TextLookSigsGen.kt")
 FR = decomp("pokefirered", "graphics")
 EM = decomp("pokeemerald", "graphics")
 FR_SRC = decomp("pokefirered", "src")

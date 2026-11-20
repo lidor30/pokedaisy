@@ -14,7 +14,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from gen_gen5_tables import Rom  # noqa: E402
 
-OUT = os.path.join(os.path.dirname(__file__), "..", "app/src/main/kotlin/com/pokedaisy/app/companion/data/MoveCategoriesGen.kt")
+OUT = os.path.join(os.path.dirname(__file__), "..", "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/MoveCategoriesGen.kt")
 PHYSICAL, SPECIAL, STATUS = "PHYSICAL", "SPECIAL", "STATUS"
 
 

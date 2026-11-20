@@ -15,11 +15,11 @@ import re
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-SAVE = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data/save")
+SAVE = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/save")
 DEX = os.path.join(SAVE, "SpeciesDexGen.kt")
 SPECIES = os.path.join(SAVE, "SaveSpeciesGen.kt")
 TABLES = os.path.join(SAVE, "SaveTablesGen.kt")
-MOVES = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data/MoveStatsGen.kt")
+MOVES = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/MoveStatsGen.kt")
 OUT = os.path.join(ROOT, "3ds/core/pd_save_tables_gen.c")
 FAMILIES = ("RS", "E", "FRLG")  # pd_save_kind's order: RUBY_SAPPHIRE, EMERALD, FIRERED_LEAFGREEN
 

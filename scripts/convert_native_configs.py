@@ -2,11 +2,11 @@
 """One-off: moves the Gen 3 NativeConfigs out of NativeReader.kt into gamedata/ (phase 1 of
 the shared game data plan, gamedata/README.md).
 
-Reads app/.../companion/data/NativeReader.kt and writes:
+Reads shared/.../companion/data/NativeReader.kt and writes:
 
 - gamedata/schema/gen3_config.toml   every NativeConfig field: Kotlin type, default, its comments;
 - gamedata/gen3/{retail,hacks}/*.toml one file per game family, each config with its comments;
-- app/src/test/.../LegacyNativeConfigs.kt  the old Kotlin blocks, renamed LEGACY_NATIVE_*, for
+- shared/src/androidUnitTest/.../LegacyNativeConfigs.kt  the old Kotlin blocks, renamed LEGACY_NATIVE_*, for
   GameDataMigrationTest until phase 1's gate passes (then that file and this script go);
 
 and, with --apply, takes the config blocks (and the comments above them) out of NativeReader.kt.
@@ -19,10 +19,10 @@ import re
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DATA = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data")
+DATA = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data")
 READER = os.path.join(DATA, "NativeReader.kt")
 GAMEDATA = os.path.join(ROOT, "gamedata")
-LEGACY = os.path.join(ROOT, "app/src/test/kotlin/com/pokedaisy/app/companion/data/LegacyNativeConfigs.kt")
+LEGACY = os.path.join(ROOT, "shared/src/androidUnitTest/kotlin/com/pokedaisy/app/companion/data/LegacyNativeConfigs.kt")
 
 # Which family file each config goes to (first match wins).
 FAMILIES = [

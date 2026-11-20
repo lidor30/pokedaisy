@@ -55,7 +55,8 @@ def port_needles(rom: dict) -> list[str] | None:
         return [base, lang]
     return None
 
-FIXTURES = REPO / "app" / "src" / "test" / "resources" / "fixtures"
+FIXTURES = REPO / "test-fixtures" / "resources" / "fixtures"
+DECODE_TEST_SOURCES = ("app/src/test/kotlin", "shared/src/androidUnitTest/kotlin")
 
 
 def git(*args: str) -> str:
@@ -72,11 +73,11 @@ def app_title(sha1: str) -> str:
     m = re.search(rf'"{sha1}"\s+to\s+"([^"]+)"', gt)
     if m:
         return m.group(1)
-    for name in re.findall(rf'val\s+(\w+)\s*=\s*"{sha1}"', git("grep", "-h", sha1, "--", "app/src/main")):
+    for name in re.findall(rf'val\s+(\w+)\s*=\s*"{sha1}"', git("grep", "-h", sha1, "--", "app/src/main", "shared/src/commonMain")):
         m = re.search(rf'\b{name}\s+to\s+"([^"]+)"', gt)
         if m:
             return m.group(1)
-    gen = git("grep", "-h", "-A0", sha1, "--", "app/src/main/kotlin/com/pokedaisy/app/companion/data/RetailPortsGen.kt")
+    gen = git("grep", "-h", "-A0", sha1, "--", "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/RetailPortsGen.kt")
     m = re.search(r'to\s+"([^"]+)"', gen)
     if m:
         return m.group(1)
@@ -140,7 +141,7 @@ def main() -> int:
     print(f"{rom['file_name']}  ({plat} {rom.get('code') or '-'} rev {rom.get('revision')}, SHA-1 {sha1})\n")
 
     # Detection
-    named = [l for l in git("grep", "-l", sha1, "--", "app/src/main", "gamedata").splitlines() if l]
+    named = [l for l in git("grep", "-l", sha1, "--", "app/src/main", "shared/src/commonMain", "gamedata").splitlines() if l]
     if named:
         r.add("ok", "detection", ", ".join(Path(n).name for n in named[:5]))
     elif by_header and RETAIL_NAME.match(rom["file_name"]):
@@ -199,7 +200,7 @@ def main() -> int:
         r.add("ok", "fixtures", "a DS language port: none expected (checked headless beside its US cart)")
     elif not keys:
         r.add("MISSING", "fixtures", "no scripts/host_roms.conf line for this file name (key|label|~ rom path|~ save path)")
-    tests = git("grep", "-l", "-E", "|".join(rf'"{re.escape(k)}"' for k in keys), "--", "app/src/test") if keys else ""
+    tests = git("grep", "-l", "-E", "|".join(rf'"{re.escape(k)}"' for k in keys), "--", *DECODE_TEST_SOURCES) if keys else ""
     for k in keys:
         d = FIXTURES / k
         if not d.is_dir():
@@ -207,7 +208,7 @@ def main() -> int:
             continue
         has_ram = any(d.glob("*.bin"))
         readme = d / "README.txt"
-        used = bool(git("grep", "-l", f'"{k}"', "--", "app/src/test"))
+        used = bool(git("grep", "-l", f'"{k}"', "--", *DECODE_TEST_SOURCES))
         problems = ([] if readme.exists() else ["no README.txt"]) + ([] if has_ram else ["no RAM dump"]) + \
                    ([] if used else ["no test reads it"])
         if readme.exists() and str(Path.home()) in readme.read_text():

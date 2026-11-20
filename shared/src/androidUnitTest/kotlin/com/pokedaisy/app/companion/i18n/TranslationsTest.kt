@@ -20,10 +20,10 @@ class TranslationsTest {
 
     @Test
     fun `every tr and tk literal has every language`() {
-        val src = File("src/main/kotlin")
-        assertTrue("run from the app module", src.isDirectory)
+        val sources = listOf(File("src/main/kotlin"), File("../shared/src/commonMain/kotlin"), File("../shared-ui/src/commonMain/kotlin"))
+        assertTrue("run from the app module", sources.all { it.isDirectory })
         val problems = mutableListOf<String>()
-        src.walkTopDown().filter { it.extension == "kt" && !(it.parentFile.name == "i18n" && it.name.startsWith("Tr")) }.forEach { f ->
+        sources.asSequence().flatMap { it.walkTopDown() }.filter { it.extension == "kt" && !(it.parentFile.name == "i18n" && it.name.startsWith("Tr")) }.forEach { f ->
             val text = token.replace(f.readText()) { m -> if (m.value.startsWith('"')) m.value else "\n".repeat(m.value.count { it == '\n' }) }
             call.findAll(text).forEach { m ->
                 // The literal as written in source -> the string at runtime (the map's key).

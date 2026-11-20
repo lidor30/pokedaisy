@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks the app's translation tables against the code.
 
-Every tr("...") / tk("...") literal under app/src/main/kotlin must be a key in
+Every tr("...") / tk("...") literal in app and common Kotlin sources must be a key in
 one of companion/i18n/Tr*.kt, with all eight translations non-empty and the
 same {0}-style placeholders as the English. Keys must be plain literals: an
 interpolated "$x" key can't be looked up. Also lists table entries nothing uses
@@ -15,7 +15,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "app/src/main/kotlin"
-I18N = SRC / "com/pokedaisy/app/companion/i18n"
+COMMON = [ROOT / module / "src/commonMain/kotlin" for module in ("shared", "shared-ui")]
+I18N = ROOT / "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/i18n"
 STR = r'"((?:[^"\\]|\\.)*)"'
 CALL = re.compile(r'\bt[rk]\(\s*' + STR)
 ENTRY = re.compile(
@@ -48,7 +49,7 @@ def main():
     only = [Path(a).resolve() for a in sys.argv[1:] if a != "-v"]
     table, dupes = tables()
     used, errors = set(), list(dupes)
-    for f in sorted(SRC.rglob("*.kt")):
+    for f in sorted(f for directory in [SRC, *COMMON] for f in directory.rglob("*.kt")):
         if f.parent == I18N and f.name.startswith("Tr"):
             continue
         text = code_only(f.read_text())

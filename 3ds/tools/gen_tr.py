@@ -16,7 +16,7 @@ import re
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-APP_I18N = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/i18n")
+APP_I18N = os.path.join(ROOT, "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/i18n")
 OWN = os.path.join(ROOT, "3ds/tools/tr_3ds.txt")
 OUT = os.path.join(ROOT, "3ds/core/pd_tr_gen.c")
 FONT = os.path.join(ROOT, "3ds/tools/gen_font.py")

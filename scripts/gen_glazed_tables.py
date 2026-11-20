@@ -4,7 +4,7 @@
 
     scripts/gen_glazed_tables.py <rom.gba>
 
-Writes app/src/main/kotlin/.../companion/data/{SpeciesNames,SpeciesTypes,
+Writes shared/src/commonMain/kotlin/.../companion/data/{SpeciesNames,SpeciesTypes,
 GenderRatios,ItemNames,MoveData,TypeChart,MapSecData}Glazed.kt.
 Item descriptions aren't written: the app reads them from the player's ROM
 (RomItemText, NativeConfig.itemDescs).
@@ -29,7 +29,7 @@ import os
 import struct
 import sys
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin",
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin",
                        "com", "pokedaisy", "app", "companion", "data")
 
 SHA1 = "e10105d8544469c6a11ca2cf510289981df3c3b0"

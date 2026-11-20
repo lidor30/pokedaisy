@@ -27,7 +27,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_emerald_lang_tables import CHARS  # noqa: E402
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin",
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin",
                    "com", "pokedaisy", "app", "companion", "data", "EpsilonEmeraldGen.kt")
 SHA1 = "8decf0571ba3f17d31c76168346e240a14e248ce"
 EMERALD_SHA1 = "f3ae088181bf583e55daf962a92bb46f4f1d07b7"

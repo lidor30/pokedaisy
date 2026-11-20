@@ -1,5 +1,5 @@
 // A tiny GBA homebrew ROM for testing the 3DS build without a Pokémon ROM: it
-// copies one of the repo's RAM fixtures (app/src/test/resources/fixtures/<key>/
+// copies one of the repo's RAM fixtures (test-fixtures/resources/fixtures/<key>/
 // ewram.bin + iwram.bin, linked in by fixture_data.s) into the GBA's RAM, fills
 // the screen and idles. gbafix gives it FireRed's or Emerald's game code, so
 // the companion detects that game and reads the fixture's party, battle and

@@ -16,7 +16,7 @@ import argparse, collections, json, os, re, struct, sys, zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOML = os.path.join(ROOT, 'gamedata/gen3/area_maps.toml')
-KOTLIN = os.path.join(ROOT, 'app/src/main/kotlin/com/pokedaisy/app/companion/data/AreaMapTablesGen.kt')
+KOTLIN = os.path.join(ROOT, 'shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/AreaMapTablesGen.kt')
 WIDE = os.path.join(ROOT, 'shared/src/commonMain/cpp/pk_wide_games.h')
 
 # pk_wide.h's families: (primary metatiles, primary palettes, floor byte or -1).

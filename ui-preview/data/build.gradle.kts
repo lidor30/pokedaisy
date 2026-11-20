@@ -22,11 +22,14 @@ val desktopTarget = System.getProperty("os.name").lowercase().let { os ->
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appSrc = fileTree(app) {
-    listOf("companion/data/**", "companion/*.kt", "companion/i18n/**", "companion/coop/**", "FeatureFlags.kt", "MgbaCore.kt", "Prefs.kt", "PrefsAndroid.kt", "cheats/Cheats.kt", "GbaControls.kt", "Hotkeys.kt", "GbaInput.kt", "ScriptInput.kt", "BattleInputController.kt", "InputBadges.kt", "GameVolume.kt")
-        .forEach { include(it) }
+    include("companion/coop/**", "FeatureFlags.kt", "MgbaCore.kt", "PrefsAndroid.kt", "GameVolume.kt")
     exclude("**/*.java")   // compiled by javac below (companion/coop/x25519)
 }
+val sharedUi = fileTree(rootDir.resolve("../shared-ui/src/commonMain/kotlin/com/pokedaisy/app")) {
+    include("companion/*.kt", "companion/coop/**", "Prefs.kt", "cheats/Cheats.kt", "BattleInputController.kt", "InputBadges.kt")
+}
 sourceSets["main"].kotlin.srcDir("shims")
+sourceSets["main"].kotlin.srcDir(rootDir.resolve("../shared/src/commonMain/kotlin"))
 // The Java in the app's sources (CoopKeys' X25519, copied from Bouncy Castle).
 sourceSets["main"].java { srcDir(app); include("companion/coop/x25519/**") }
 // -PgameExport (the game data the 3DS port builds from: 3ds/tools/gen_games.py): MgbaCore without its native library,
@@ -88,8 +91,7 @@ object ExportCore {
     }
 }
 tasks.withType<KotlinCompile>().configureEach {
-    // FieldItemUse reaches the shared frame-work queue; compile that same source here too.
-    source(rootDir.resolve("../shared/src/commonMain/kotlin/com/pokedaisy/app/game/GameSession.kt"))
+    source(sharedUi)
     if (gameExport) {
         dependsOn(stubCore)
         source(appSrc.matching { exclude("MgbaCore.kt") })

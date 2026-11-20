@@ -171,7 +171,7 @@ def save_identity(path: Path) -> dict:
 
 def already_supported(sha1: str) -> list[str]:
     """Files in the repo that name this SHA-1 (configs, GameTitles, compat.json...)."""
-    res = run(["git", "grep", "-il", sha1, "--", "app/src", "gamedata", "website/src/data", "3ds/core", "linux"],
+    res = run(["git", "grep", "-il", sha1, "--", "app/src", "shared/src/commonMain", "gamedata", "website/src/data", "3ds/core", "linux"],
               cwd=REPO, check=False)
     return [l for l in res.stdout.splitlines() if l.strip()]
 

@@ -9,7 +9,7 @@
 #   make tables    regenerate core/*_gen.c (the app's Kotlin tables + font) and ctr/icon.png
 
 REPO := $(abspath ..)
-FIXTURES := $(REPO)/app/src/test/resources/fixtures
+FIXTURES := $(REPO)/test-fixtures/resources/fixtures
 BUILD := build
 CC ?= cc
 CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror

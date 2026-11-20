@@ -28,7 +28,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_emerald_lang_tables import CHARS  # noqa: E402
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin",
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin",
                    "com", "pokedaisy", "app", "companion", "data", "UltraVioletGen.kt")
 SHA1 = "3b6c51d8fb6b513bdd01b7bda3ed8965bc985d58"
 FIRERED_REV0_SHA1 = "41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc"

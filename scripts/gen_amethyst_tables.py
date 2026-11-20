@@ -4,7 +4,7 @@ the user owns (closed binary, no source; nothing is downloaded).
 
     scripts/gen_amethyst_tables.py <version> <rom.gba> [--check] [--only=species,items,moves]
 
-Writes app/src/main/kotlin/.../companion/data/{SpeciesNames,ItemNames,MoveData}<Suffix>.kt
+Writes shared/src/commonMain/kotlin/.../companion/data/{SpeciesNames,ItemNames,MoveData}<Suffix>.kt
 (--only picks some: v1.3.0's moves were added after its hand-extracted species names).
 --check compares against the files already there instead. Both versions' item
 names come from it; v1.3.0's species names are still the hand extraction that
@@ -34,7 +34,7 @@ import os
 import re
 import sys
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "kotlin",
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared", "src", "commonMain", "kotlin",
                        "com", "pokedaisy", "app", "companion", "data")
 
 VERSIONS = {

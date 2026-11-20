@@ -1,5 +1,5 @@
 // pd_preview - renders the 3DS companion from a RAM fixture (the ewram.bin /
-// iwram.bin dumps under app/src/test/resources/fixtures/) into PNGs laid out
+// iwram.bin dumps under test-fixtures/resources/fixtures/) into PNGs laid out
 // like the 3DS: the 400x240 top screen over the 320x240 bottom one. No ROM, no
 // emulator: the 3DS port's ui-preview, for looking at every UI change.
 //

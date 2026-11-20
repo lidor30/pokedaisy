@@ -448,7 +448,7 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
 ```
 
 - **`make preview`** is this port's ui-preview: `desktop/pd_preview.c` reads a
-  fixture's `ewram.bin` / `iwram.bin` (`app/src/test/resources/fixtures/`) and
+  fixture's `ewram.bin` / `iwram.bin` (`test-fixtures/resources/fixtures/`) and
   drives the companion with taps found by hit id - a pressed slot, a summary,
   BATTLE, BAG (an item, a drag, the next pocket), SETTINGS, a pick-list, a
   confirm, MAP (a tapped tile, the blink, PLACES), POKéDEX (scrolled, an

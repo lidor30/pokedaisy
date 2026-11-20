@@ -31,7 +31,7 @@ from decomps import decomp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = decomp()
-KOTLIN = os.path.join(HERE, "../app/src/main/kotlin/com/pokedaisy/app/companion/data/RomArtSigsGen.kt")
+KOTLIN = os.path.join(HERE, "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/RomArtSigsGen.kt")
 
 M64 = (1 << 64) - 1
 

@@ -7,7 +7,7 @@ The shared itemNames table (ItemNames.kt) is an app-wide Title Case spelling
 bag screen, so it shows each game's own names instead. Item descriptions aren't
 generated: the app reads them from the player's ROM (RomItemText).
 
-Emits (into app/src/main/kotlin/.../companion/data/):
+Emits (into shared/src/commonMain/kotlin/.../companion/data/):
   - ItemTextGame.kt  (itemNames x FireRed/Emerald "Game" maps)
 
 Source of truth: pokefirered + pokeemerald checkouts at the pinned commits (see
@@ -24,7 +24,7 @@ import sys
 
 OUT = os.path.join(
     os.path.dirname(__file__),
-    "../app/src/main/kotlin/com/pokedaisy/app/companion/data/ItemTextGame.kt",
+    "../shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/ItemTextGame.kt",
 )
 UNUSED = "????????"
 # charmap.txt control codes that show up in item text -> what the game draws

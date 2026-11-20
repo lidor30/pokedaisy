@@ -5,7 +5,7 @@ owns (nothing is downloaded).
 
     scripts/gen_cfru_tables.py <game-key> <rom.gba>
 
-Writes app/src/main/kotlin/.../companion/data/{SpeciesNames,SpeciesTypes,
+Writes shared/src/commonMain/kotlin/.../companion/data/{SpeciesNames,SpeciesTypes,
 MoveData,ItemNames}<Suffix>.kt, plus GenderRatios<Suffix>.kt and
 MapSecData<Suffix>.kt for a game that asks for them (gender / map_names below).
 Item descriptions aren't written: the app reads them from the player's ROM

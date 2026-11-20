@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "app/src/main/kotlin/com/pokedaisy/app/companion/data/RetailDumpsGen.kt"
+OUT = ROOT / "shared/src/commonMain/kotlin/com/pokedaisy/app/companion/data/RetailDumpsGen.kt"
 RETAIL_SHA1 = {
     ("BPRE", 0): "41cb23d8dccc8ebd7c649cd8fbb58eeace6e2fdc",
     ("BPRE", 1): "dd5945db9b930750cb39d00c84da8571feebf417",
