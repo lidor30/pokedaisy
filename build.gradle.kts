@@ -22,7 +22,7 @@ val appOnlyTests by extra(
     listOf(
         "Black2ReduxTest", "DsPortsTest", "FrenchDsTest", "HeartGoldGermanTest", "LegacyHacksTest",
         "NuzlockeFixturesTest", "PartyReorderConfigTest", "PolishedCrystalDecodeTest", "PrismDecodeTest",
-        "RenegadePlatinumTest", "ShinyOddsTest",
+        "RenegadePlatinumTest", "ShinyOddsTest", "SmaragdCoopTest",
     ),
 )
 // The input models are needed by the native iOS core, below shared-ui. All sources compile in place.

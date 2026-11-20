@@ -497,7 +497,10 @@ interface CompanionSettings : StoredCompanionSettings {
     var coopNearbyRange: Int
         get() = 8
         set(_) {}
-    fun coopUnpair(save: com.pokedaisy.app.companion.coop.CoopSaveId) {}
+    /** Removes the friend [peer] of [save]. */
+    fun coopUnpair(save: com.pokedaisy.app.companion.coop.CoopSaveId, peer: com.pokedaisy.app.companion.coop.CoopPeerId) {}
+    /** The friends whose link is up in the running game (FRIENDS' ONLINE). */
+    val coopOnline: Set<com.pokedaisy.app.companion.coop.CoopPeerId> get() = emptySet()
     /** PLAY TOGETHER ONLY: the running game's lock state and actions (null = the row is hidden). */
     val coopLock: com.pokedaisy.app.companion.coop.lock.CoopLockUi? get() = null
     val coopLockActions: com.pokedaisy.app.companion.coop.lock.CoopLockActions? get() = null

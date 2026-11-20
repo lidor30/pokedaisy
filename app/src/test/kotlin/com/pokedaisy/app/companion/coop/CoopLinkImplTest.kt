@@ -121,6 +121,16 @@ class CoopLinkImplTest {
         assertTrue(got.isEmpty())
     }
 
+    @Test fun englishAndGermanEmeraldAreDifferentRoms() {
+        // Both are co-op ROMs, but friends play the same one (A says English here; B German).
+        val got = collect(linkA.messages)
+        helloB = { hello(saveB, tickB, sha = EMERALD_DE_SHA1) }
+        both()
+        val s = linkA.state.value as CoopState.Disconnected
+        assertEquals(CoopDropReason.DIFFERENT_ROM, s.reason)
+        assertTrue(got.isEmpty())
+    }
+
     @Test fun differentSaveRefused() {
         val other = CoopSaveId(3, 33, saveB.name)
         helloB = { hello(other, tickB) }

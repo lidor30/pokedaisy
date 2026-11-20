@@ -4,6 +4,7 @@ import com.pokedaisy.app.companion.coop.CoopLink
 import com.pokedaisy.app.companion.coop.CoopMessage
 import com.pokedaisy.app.companion.coop.CoopState
 import com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1
+import com.pokedaisy.app.companion.coop.EMERALD_DE_SHA1
 import com.pokedaisy.app.companion.data.FixtureMemoryReader
 import com.pokedaisy.app.companion.data.coop.CoopBattleChannel
 import com.pokedaisy.app.companion.data.coop.CoopBattleMsg
@@ -207,6 +208,8 @@ class CoopBattlesTest {
         assertFalse(CoopBattles.mayHook(null, true, link))
         assertFalse(CoopBattles.mayHook(EMERALD_COOP_SHA1, false, link))
         assertFalse(CoopBattles.mayHook(EMERALD_COOP_SHA1, true, null))
+        // German Emerald plays together, but joined battles patch English code: no hook there.
+        assertFalse(CoopBattles.mayHook(EMERALD_DE_SHA1, true, link))
         var hooked: CoopFrameHook? = null
         val app = object : CoopApp {
             override val coopOn = true
@@ -217,6 +220,8 @@ class CoopBattlesTest {
             override fun setHook(hook: CoopFrameHook?) { hooked = hook }
         }
         assertFalse(CoopBattles.attach(app, link, "1111111111111111111111111111111111111111"))
+        assertNull(hooked)
+        assertFalse(CoopBattles.attach(app, link, EMERALD_DE_SHA1))
         assertNull(hooked)
         assertFalse(CoopBattles.busy)
     }

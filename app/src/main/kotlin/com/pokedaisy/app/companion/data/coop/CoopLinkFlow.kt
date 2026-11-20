@@ -133,6 +133,12 @@ class CoopLinkFlow(
         else -> true
     }
 
+    /**
+     * Nothing under way with the partner: no offer, prompt, story arm, battle or after-battle step, no owed blackout. Only
+     * then may the battle partner change to another friend ([com.pokedaisy.app.CoopBattleTarget]).
+     */
+    val idle: Boolean get() = phase == Phase.IDLE && !blackoutOwed && !battle.pumping
+
     /** A story join is armed (the pick hook is in): states are not loaded meanwhile, but the lock's hold may still wait. */
     val armed: Boolean get() = phase == Phase.S_ARMED
 

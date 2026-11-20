@@ -333,6 +333,30 @@ Java_com_pokedaisy_app_MgbaCore_pkPartnerPlace(JNIEnv* env, jobject thiz, jboole
     if (g.core && pk_is_gba(g.core)) pk_partner_place(g.core, visible ? 1 : 0, fineX, fineY, frame, hflip ? 1 : 0, blobFrame, bob);
 }
 
+// Co-op friends: pkPartnerSet / pkPartnerPlace for one of PK_PARTNER_MAX slots (pk_partner_set_n / pk_partner_place_n
+// ignore any other slot). Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkPartnerSetN(JNIEnv* env, jobject thiz, jint slot, jbyteArray art) {
+    if (!art || (*env)->GetArrayLength(env, art) != PK_PARTNER_ART_BYTES) {
+        pk_partner_set_n(slot, NULL);
+        return;
+    }
+    jbyte* a = (*env)->GetByteArrayElements(env, art, NULL);
+    if (!a) {
+        pk_partner_set_n(slot, NULL);
+        return;
+    }
+    pk_partner_set_n(slot, (const uint8_t*) a);
+    (*env)->ReleaseByteArrayElements(env, art, a, JNI_ABORT);
+}
+
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkPartnerPlaceN(JNIEnv* env, jobject thiz, jint slot, jboolean visible, jint fineX, jint fineY,
+                                                jint frame, jboolean hflip, jint blobFrame, jint bob) {
+    if (g.core && pk_is_gba(g.core))
+        pk_partner_place_n(g.core, slot, visible ? 1 : 0, fineX, fineY, frame, hflip ? 1 : 0, blobFrame, bob);
+}
+
 // DAY AND NIGHT: the map's and sprites' palettes tinted (256 = as is). Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkSetTint(JNIEnv* env, jobject thiz, jint r, jint gr, jint b) {

@@ -359,7 +359,7 @@ class SettingsActivity : ComponentActivity() {
                         Screen.LICENSES -> tk("LICENSES")
                         Screen.HELP -> tk("HELP")
                         Screen.COOP_PAIR, Screen.COOP_JOIN -> tk("PAIR")
-                        Screen.COOP_PARTNERS -> tk("PARTNERS")
+                        Screen.COOP_PARTNERS -> tk("FRIENDS")
                         Screen.COOP_RELAY -> tk("RELAY")
                     },
                     m = m,
@@ -1489,7 +1489,7 @@ class SettingsActivity : ComponentActivity() {
                 tk("PAIR"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.COOP),
                 opensPage = true, subtitle = "Link one of your Emerald saves with a friend's",
             ) { openCoopPair(null) },
-            SettingRow(tk("PARTNERS"), coop.pairs.size.takeIf { it > 0 }?.toString() ?: tk("NONE"), opensPage = true) { screen = Screen.COOP_PARTNERS },
+            SettingRow(tk("FRIENDS"), coop.pairs.size.takeIf { it > 0 }?.toString() ?: tk("NONE"), opensPage = true) { screen = Screen.COOP_PARTNERS },
             com.pokedaisy.app.companion.ui.nearbyRangeRow(
                 prefs.coopNearbyRange,
                 { title, choices, current, onPick -> selector = Selector(title, choices, current) { onPick(it); revision++ } },

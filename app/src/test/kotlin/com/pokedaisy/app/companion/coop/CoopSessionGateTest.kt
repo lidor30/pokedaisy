@@ -15,6 +15,8 @@ class CoopSessionGateTest {
         assertEquals(CoopOffReason.NOT_PAIRED, CoopSession.gate(EMERALD_COOP_SHA1, id, false, false))
         assertEquals(CoopOffReason.CHEATS_ON, CoopSession.gate(EMERALD_COOP_SHA1, id, true, true))
         assertNull(CoopSession.gate(EMERALD_COOP_SHA1, id, true, false))
+        // German Emerald plays together too (seeing each other; the battles stay English).
+        assertNull(CoopSession.gate(EMERALD_DE_SHA1, id, true, false))
     }
 }
 
@@ -23,6 +25,8 @@ class CoopMayBeEmeraldTest {
         org.junit.Assert.assertTrue(CoopSession.mayBeRetailEmerald("BPEE", 0x1000000L))
         org.junit.Assert.assertTrue(CoopSession.mayBeRetailEmerald("BPEE", 0xFFF000L))
         org.junit.Assert.assertFalse(CoopSession.mayBeRetailEmerald("BPEE", 0x2000000L))
+        org.junit.Assert.assertTrue(CoopSession.mayBeRetailEmerald("BPED", 0x1000000L))
+        org.junit.Assert.assertFalse("French isn't mapped yet", CoopSession.mayBeRetailEmerald("BPEF", 0x1000000L))
         org.junit.Assert.assertFalse(CoopSession.mayBeRetailEmerald("BPRE", 0x1000000L))
         org.junit.Assert.assertFalse(CoopSession.mayBeRetailEmerald("", 512L shl 20))
     }

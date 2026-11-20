@@ -1,0 +1,48 @@
+# partner_clean with four friends: the game never holds any of them. From one savestate four friends are shown 120 frames
+# while the player walks (slots 1-3 use OBJ tiles 846-941, below RIDE ON's), and EWRAM, IWRAM, VRAM, OAM and palette RAM
+# are hashed; the same states and presses without them hash the same. A savestate taken with them on, loaded with them off
+# and one frame run, equals the run that never had them.
+# want: partnerinfo 0 four: why 0 oam 127 blobOam -1 slot 15
+# want: expectsame with without: PASS
+# want: expectsame restored plain: PASS
+wideon 0
+partnersetn 0 /repo/app/build/partner/brendan.bin
+partnersetn 1 /repo/app/build/partner/brendan.bin
+partnersetn 2 /repo/app/build/partner/brendan.bin
+partnersetn 3 /repo/app/build/partner/brendan.bin
+savestate /work/a.ss
+partnernearn 0 1 0 0 0 -1
+partnernearn 1 -1 0 0 0 -1
+partnernearn 2 0 1 0 0 -1
+partnernearn 3 0 -1 0 0 -1
+hold RIGHT 4
+wait 30
+hold RIGHT 4
+wait 20
+savestate /work/b.ss
+wait 60
+partnerinfon 0 four
+memhash with
+loadstate /work/a.ss
+partnerposn 0 0 0 0 0 0 -1 0
+partnerposn 1 0 0 0 0 0 -1 0
+partnerposn 2 0 0 0 0 0 -1 0
+partnerposn 3 0 0 0 0 0 -1 0
+hold RIGHT 4
+wait 30
+hold RIGHT 4
+wait 20
+wait 60
+memhash without
+expectsame with without
+loadstate /work/a.ss
+hold RIGHT 4
+wait 30
+hold RIGHT 4
+wait 20
+wait 1
+memhash plain
+loadstate /work/b.ss
+wait 1
+memhash restored
+expectsame restored plain

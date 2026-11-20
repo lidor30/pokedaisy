@@ -60,6 +60,8 @@
 //   partnernear DX DY FRAME FLIP BLOB - from now on each frame at the player's fine position + DX, DY tiles x 16
 //                        (needs `wideon`: pk_partner_self's read)
 //   partnerinfo [LABEL] - "why W oam O blobOam B slot S at X,Y frame F" (why: pk_wide.h's PK_PARTNER_*)
+//   partnersetn I FILE / partnerposn I VIS FX FY FRAME FLIP BLOB BOB / partnernearn I DX DY FRAME FLIP BLOB /
+//   partnerinfon I [LABEL] - the same for co-op friend slot I (0 until PK_PARTNER_MAX; slot 0 is the commands above)
 //   memhash NAME       - CRC32 of EWRAM, IWRAM, VRAM, OAM and palette RAM kept as NAME; prints "memhash NAME XXXXXXXX"
 //   expectsame A B     - PASS if two memhashes are equal, else FAIL (exit status 1)
 //   framediff A B [LABEL] - the box of pixels two `shot` PPMs differ in: "framediff box X0,Y0-X1,Y1" or "framediff none"
@@ -387,13 +389,18 @@ static bool partnerTrack;
 static int partnerOk;
 static int32_t partnerSelf[PK_PARTNER_SELF_N];
 // `partnernear` runs: the partner follows the player by (partnerDx, partnerDy) tiles, placed after every frame's read.
-static int partnerNear, partnerDx, partnerDy, partnerFrame, partnerFlip, partnerBlob;
+// One set per friend slot (`partnernearn I ...`); slot 0 is `partnernear`'s.
+static int partnerNearN[PK_PARTNER_MAX], partnerDxN[PK_PARTNER_MAX], partnerDyN[PK_PARTNER_MAX], partnerFrameN[PK_PARTNER_MAX],
+           partnerFlipN[PK_PARTNER_MAX], partnerBlobN[PK_PARTNER_MAX];
+#define partnerNear partnerNearN[0]
 static void partnerApplyNear(void) {
-    if (!partnerNear) return;
-    if (partnerOk && partnerSelf[PK_PARTNER_SELF_VALID])
-        pk_partner_place(core, 1, partnerSelf[PK_PARTNER_SELF_FX] + partnerDx * 16, partnerSelf[PK_PARTNER_SELF_FY] + partnerDy * 16,
-                         partnerFrame, partnerFlip, partnerBlob, 0);
-    else pk_partner_place(core, 0, 0, 0, 0, 0, -1, 0);
+    for (int i = 0; i < PK_PARTNER_MAX; i++) {
+        if (!partnerNearN[i]) continue;
+        if (partnerOk && partnerSelf[PK_PARTNER_SELF_VALID])
+            pk_partner_place_n(core, i, 1, partnerSelf[PK_PARTNER_SELF_FX] + partnerDxN[i] * 16, partnerSelf[PK_PARTNER_SELF_FY] + partnerDyN[i] * 16,
+                               partnerFrameN[i], partnerFlipN[i], partnerBlobN[i], 0);
+        else pk_partner_place_n(core, i, 0, 0, 0, 0, 0, -1, 0);
+    }
 }
 #endif
 
@@ -1976,11 +1983,37 @@ int main(int argc, char** argv) {
             partnerNear = 0;
             pk_partner_place(core, vis, fx, fy, frame, flip, blob, bob);
         } else if (!strcmp(cmd, "partnernear")) {
-            partnerDx = partnerDy = partnerFrame = partnerFlip = 0;
-            partnerBlob = -1;
-            sscanf(line, "%*s %d %d %d %d %d", &partnerDx, &partnerDy, &partnerFrame, &partnerFlip, &partnerBlob);
-            partnerNear = 1;
+            partnerDxN[0] = partnerDyN[0] = partnerFrameN[0] = partnerFlipN[0] = 0;
+            partnerBlobN[0] = -1;
+            sscanf(line, "%*s %d %d %d %d %d", &partnerDxN[0], &partnerDyN[0], &partnerFrameN[0], &partnerFlipN[0], &partnerBlobN[0]);
+            partnerNearN[0] = 1;
             partnerApplyNear();   // from the last frame's read; each frame after it follows
+        } else if (!strcmp(cmd, "partnernearn")) {
+            int i = -1, dx = 0, dy = 0, frame = 0, flip = 0, blob = -1;
+            sscanf(line, "%*s %d %d %d %d %d %d", &i, &dx, &dy, &frame, &flip, &blob);
+            if (i < 0 || i >= PK_PARTNER_MAX) { printf("FAIL partnernearn: no slot %d\n", i); continue; }
+            partnerDxN[i] = dx; partnerDyN[i] = dy; partnerFrameN[i] = frame; partnerFlipN[i] = flip; partnerBlobN[i] = blob;
+            partnerNearN[i] = 1;
+            partnerApplyNear();
+        } else if (!strcmp(cmd, "partnersetn")) {
+            int i = -1;
+            sscanf(line, "%*s %d %255s", &i, arg1);
+            static uint8_t artN[PK_PARTNER_ART_BYTES];
+            FILE* f = fopen(arg1, "rb");
+            if (f && fread(artN, 1, sizeof(artN), f) == sizeof(artN) && fgetc(f) == EOF) pk_partner_set_n(i, artN);
+            else { fprintf(stderr, "mgba_dump: partnersetn: can't read %d bytes from %s\n", PK_PARTNER_ART_BYTES, arg1); pk_partner_set_n(i, NULL); }
+            if (f) fclose(f);
+        } else if (!strcmp(cmd, "partnerposn")) {
+            int i = -1, vis = 0, fx = 0, fy = 0, frame = 0, flip = 0, blob = -1, bob = 0;
+            sscanf(line, "%*s %d %d %d %d %d %d %d %d", &i, &vis, &fx, &fy, &frame, &flip, &blob, &bob);
+            if (i >= 0 && i < PK_PARTNER_MAX) partnerNearN[i] = 0;
+            pk_partner_place_n(core, i, vis, fx, fy, frame, flip, blob, bob);
+        } else if (!strcmp(cmd, "partnerinfon")) {
+            int i = -1;
+            char info[200], label[64] = {0};
+            sscanf(line, "%*s %d %63s", &i, label);
+            pk_partner_info_n(i, info, sizeof(info));
+            printf("partnerinfo %d%s%s: %s\n", i, label[0] ? " " : "", label, info);
         } else if (!strcmp(cmd, "partnerinfo")) {
             char info[200], label[64] = {0};
             sscanf(line, "%*s %63s", label);   // an optional label: each case of a test is then its own line

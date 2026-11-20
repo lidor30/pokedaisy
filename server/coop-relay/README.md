@@ -53,7 +53,7 @@ All settable by environment variable (defaults shown).
 | `PORT` | 8080 | WebSocket port |
 | `HEALTH_PORT` | 8081 | `/healthz` port |
 | `MAX_ROOMS` | 10000 | rooms at once |
-| `MAX_SOCKETS_PER_IP` | 16 | open sockets per client address |
+| `MAX_SOCKETS_PER_IP` | 48 | open sockets per client address: one per friend online (a pair room each, up to 12 per save), and players behind one router share an address |
 | `MAX_NEW_SOCKETS_PER_IP_PER_MIN` | 30 | new sockets per address per minute |
 | `MAX_MESSAGE_BYTES` | 70000 | largest message |
 | `MAX_MESSAGES_PER_SEC` | 500 | per socket (over it: closed 4429) |

@@ -31,7 +31,8 @@ import com.pokedaisy.app.companion.coop.CoopPairing
 import com.pokedaisy.app.companion.coop.CoopRelay
 import com.pokedaisy.app.companion.coop.CoopSaveId
 import com.pokedaisy.app.companion.coop.CoopSession
-import com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1
+import com.pokedaisy.app.companion.coop.COOP_EMERALD_CODES
+import com.pokedaisy.app.companion.coop.COOP_EMERALD_SHA1S
 import com.pokedaisy.app.companion.coop.parseHostPort
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
@@ -115,17 +116,18 @@ internal class CoopSettingsPages(
         pairs = withContext(Dispatchers.IO) { CoopSession.pairsList(activity) }
     }
 
-    /** The library's retail English Emerald ROMs, each with its save's trainer (off the UI thread). */
+    /** The library's retail English and German Emerald ROMs, each with its save's trainer (off the UI thread). */
     private fun loadChoices(): List<CoopSaveChoice> {
         val prefs = prefs()
         val pairs = CoopSession.pairsList(activity)
         return RomFolder.libraryRoms(activity, prefs)
-            .filter { it.length() == SettingsActivity.EMERALD_ROM_BYTES && RomIdentity.gameCode(it) == "BPEE" && RomIdentity.sha1(it) == EMERALD_COOP_SHA1 }
-            .map { rom ->
+            .filter { it.length() == SettingsActivity.EMERALD_ROM_BYTES && RomIdentity.gameCode(it) in COOP_EMERALD_CODES }
+            .mapNotNull { rom -> RomIdentity.sha1(rom)?.takeIf { it in COOP_EMERALD_SHA1S }?.let { rom to it } }
+            .map { (rom, sha1) ->
                 val save = SavesLocation.saveFor(activity, prefs, rom)
                 val id = if (save.isFile) CoopSaveId.read(save.toOkioPath()) else null
-                val pair = id?.let { i -> pairs.firstOrNull { it.ownSave == i } }
-                CoopSaveChoice(save.toOkioPath(), GameTitles.label(activity, prefs, rom), id, pair?.partner?.name)
+                val friends = id?.let { i -> pairs.filter { it.ownSave == i } }.orEmpty()
+                CoopSaveChoice(save.toOkioPath(), GameTitles.label(activity, prefs, rom), id, friends.lastOrNull()?.partner?.name, friends.size, sha1)
             }
     }
 
@@ -135,7 +137,7 @@ internal class CoopSettingsPages(
         picked = choice
         joinError = null
         nearbyError = null
-        CoopSession.usePairingSave(choice.save.toFile(), EMERALD_COOP_SHA1)
+        CoopSession.usePairingSave(choice.save.toFile(), choice.romSha1)
         val p = CoopSession.pairing(activity)
         pairing = p
         val ticket = ticketIn
@@ -233,12 +235,13 @@ internal class CoopSettingsPages(
         CoopPairBody(view, actions, m, small)
     }
 
-    /** PARTNERS: the pairings, one row each; a tap asks UNPAIR ([UnpairConfirm]). [revision] reloads them. */
+    /** FRIENDS: every friend of every save, one row each (ONLINE while connected); a tap asks UNPAIR ([UnpairConfirm]). [revision] reloads them. */
     @Composable
     fun PartnersPage(m: GbaTextMetrics, revision: Int) {
         LaunchedEffect(revision) { loadPairs() }
-        val rows = if (pairs.isEmpty()) listOf(SettingRow(tk("NO PARTNERS YET"), null, enabled = false) {})
-        else coopPartnerRows(pairs) { unpairing = it }
+        val online = CoopSession.friends.collectAsState().value.filter { it.connected }.map { it.peer }.toSet()
+        val rows = if (pairs.isEmpty()) listOf(SettingRow(tk("NO FRIENDS YET"), null, enabled = false) {})
+        else coopPartnerRows(pairs, online) { unpairing = it }
         Column(Modifier.fillMaxWidth()) {
             OptionListWindow(m, Modifier.fillMaxWidth().weight(1f, fill = false)) {
                 GroupedRows(rows, m, cursor = -1, onClick = { rows[it].onClick() })
@@ -258,7 +261,7 @@ internal class CoopSettingsPages(
             onDismiss = { unpairing = null },
             onConfirm = {
                 unpairing = null
-                CoopSession.unpair(activity, p.ownSave)
+                CoopSession.unpair(activity, p.ownSave, p.partner.peer)
                 pairs = pairs - p
                 changed()
             },

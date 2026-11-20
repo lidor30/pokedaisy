@@ -57,12 +57,20 @@ object PartnerArt {
         return pack(own, worn, me, if (worn != null) look else null, rom)
     }
 
-    /** The blob's three frames in [rom], or null if they aren't retail Emerald's. */
-    private fun surfBlob(rom: ByteArray): ByteArray? {
-        val at = CoopEmeraldGen.SURF_BLOB_PIC
-        if (rom.size < at + BLOB_BYTES) return null
-        val bytes = rom.copyOfRange(at, at + BLOB_BYTES)
-        return bytes.takeIf { crc32(it) == CoopEmeraldGen.SURF_BLOB_CRC }
+    /**
+     * Where the blob sits in each retail Emerald: English (BPEE), and German (BPED), whose graphics lie 0x11D30 further
+     * on (the same shift as its field tables). The bytes are the same in both, so the CRC checks each.
+     */
+    val SURF_BLOB_OFFSETS = intArrayOf(CoopEmeraldGen.SURF_BLOB_PIC, CoopEmeraldGen.SURF_BLOB_PIC + 0x11D30)
+
+    /** The blob's three frames in [rom], or null if they aren't retail Emerald's (English or German). */
+    fun surfBlob(rom: ByteArray): ByteArray? {
+        for (at in SURF_BLOB_OFFSETS) {
+            if (rom.size < at + BLOB_BYTES) continue
+            val bytes = rom.copyOfRange(at, at + BLOB_BYTES)
+            if (crc32(bytes) == CoopEmeraldGen.SURF_BLOB_CRC) return bytes
+        }
+        return null
     }
 
     /** [pack] with the blob's bytes already read. */

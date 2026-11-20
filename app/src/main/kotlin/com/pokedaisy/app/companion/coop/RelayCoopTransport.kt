@@ -480,7 +480,7 @@ class RelayCoopTransport(
             if (code == CLOSE_ROOM_FULL && room.kind == RoomKind.JOIN) {
                 for (d in dials.values.filter { it.room == room.id }) {
                     dials.remove(d.peer)?.cancelled = true
-                    push(CoopEvent.DialFailed(CoopFrames.ERROR, "room full"))
+                    push(CoopEvent.DialFailed(CoopFrames.ERROR, "room full", d.peer))
                 }
             }
             dropIfIdle(room)
@@ -615,7 +615,7 @@ class RelayCoopTransport(
         val others = dial.tcpPending > 0 || chans.any { it !== chan && it.target == dial.peer && !it.retired }
         if (!refusal && others) return
         dials.remove(dial.peer)?.cancelled = true
-        push(CoopEvent.DialFailed(code, if (refusal) "refused" else "no connection"))
+        push(CoopEvent.DialFailed(code, if (refusal) "refused" else "no connection", dial.peer))
         reconcile()
     }
 
@@ -715,7 +715,7 @@ class RelayCoopTransport(
             for (d in dials.values.filter { now >= it.deadline }) {
                 dials.remove(d.peer)?.cancelled = true
                 val connected = conns[d.peer]?.let { it.registered && !it.retired } == true
-                if (!connected) push(CoopEvent.DialFailed(CoopFrames.TIMEOUT, "timed out"))
+                if (!connected) push(CoopEvent.DialFailed(CoopFrames.TIMEOUT, "timed out", d.peer))
             }
             for (r in rooms.values.toList()) {
                 if (r.rekick && r.kind == RoomKind.PAIR && r.open && r.peerPresent && r.channel == null && now >= r.nextKickAt && wanted(r) && initiatesIn(r)) {

@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import com.pokedaisy.app.companion.coop.CoopPair
+import com.pokedaisy.app.companion.coop.CoopPairs
 import com.pokedaisy.app.companion.coop.CoopPairing
 import com.pokedaisy.app.companion.coop.CoopOffReason
 import com.pokedaisy.app.companion.coop.CoopDropReason
@@ -123,13 +124,25 @@ fun coopLinkLabel(state: CoopState): String = when (state) {
     }
 }
 
-/** One row per pair: the partner's name and the save it is paired with; a tap asks UNPAIR. */
-fun coopPartnerRows(pairs: List<CoopPair>, onUnpair: (CoopPair) -> Unit): List<SettingRow> =
-    pairs.map { p -> SettingRow(p.partner.name, p.ownLabel) { onUnpair(p) } }
+/**
+ * FRIENDS: one row per friend - the friend's name, ONLINE while their link is up in the running game, and the save they
+ * are a friend of; a tap asks UNPAIR (that friend only).
+ */
+fun coopPartnerRows(pairs: List<CoopPair>, online: Set<CoopPeerId> = emptySet(), onUnpair: (CoopPair) -> Unit): List<SettingRow> =
+    pairs.map { p -> SettingRow(p.partner.name, if (p.partner.peer in online) tk("ONLINE") else null, subtitle = p.ownLabel) { onUnpair(p) } }
 
-/** A save the pairing page offers ([save]: its file): [id] null = no save made yet; [pairedWith] = the partner it already has. */
-class CoopSaveChoice(val save: Path, val gameLabel: String, val id: CoopSaveId?, val pairedWith: String?) {
-    val usable: Boolean get() = id != null && pairedWith == null
+/**
+ * A save the pairing page offers ([save]: its file): [id] null = no save made yet; [pairedWith] = a friend it already
+ * has (the newest), [friendCount] how many. A save takes friends until it has [CoopPairs.MAX_FRIENDS].
+ */
+class CoopSaveChoice(
+    val save: Path, val gameLabel: String, val id: CoopSaveId?, val pairedWith: String?,
+    val friendCount: Int = if (pairedWith != null) 1 else 0,
+    /** The ROM's SHA-1: English or German retail Emerald (friends play the same one). */
+    val romSha1: String = com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1,
+) {
+    val full: Boolean get() = friendCount >= CoopPairs.MAX_FRIENDS
+    val usable: Boolean get() = id != null && !full
 
     /** The trainer's name as the game writes it. */
     val trainer: String? get() = id?.let { Gen3Text.decode(it.name, 0, 7) }
@@ -139,7 +152,7 @@ class CoopSaveChoice(val save: Path, val gameLabel: String, val id: CoopSaveId?,
 fun coopSaveRows(choices: List<CoopSaveChoice>): List<SettingRow> = choices.map { c ->
     when {
         c.usable -> SettingRow(c.trainer.orEmpty(), "ID " + coopIdText(c.id!!.trainerId), subtitle = c.gameLabel) {}
-        c.pairedWith != null -> SettingRow(c.gameLabel, null, enabled = false, subtitle = tr("Paired with {0}", c.pairedWith)) {}
+        c.full -> SettingRow(c.gameLabel, null, enabled = false, subtitle = "This save has all the friends it can keep. Remove one in FRIENDS first.") {}
         else -> SettingRow(c.gameLabel, null, enabled = false, subtitle = "Save in the game once first") {}
     }
 }
@@ -215,7 +228,8 @@ fun coopFailLine(reason: CoopPairing.CoopPairFail): String = when (reason) {
     CoopPairing.CoopPairFail.VERSION -> "Your partner's PokeDaisy is a different version. Update both to the same one."
     CoopPairing.CoopPairFail.DIFFERENT_ROM -> "Your partner plays a different Emerald ROM."
     CoopPairing.CoopPairFail.SAME_SAVE -> "That's a copy of this same save. Co-op needs two different players."
-    CoopPairing.CoopPairFail.SAVE_ALREADY_PAIRED -> "This save is already paired. Unpair it in PARTNERS first."
+    CoopPairing.CoopPairFail.SAVE_ALREADY_PAIRED -> "You're already friends with this player."
+    CoopPairing.CoopPairFail.FRIENDS_FULL -> "This save has all the friends it can keep. Remove one in FRIENDS first."
     CoopPairing.CoopPairFail.DENIED -> "The other player said no."
     CoopPairing.CoopPairFail.NETWORK -> "Couldn't reach your partner. Check the internet and try again."
     CoopPairing.CoopPairFail.TIMEOUT -> "No answer. Try again."
@@ -263,7 +277,7 @@ private fun CoopSavePick(m: GbaTextMetrics, small: GbaTextMetrics, choices: List
                     GbaText(tr("NO EMERALD SAVES"), OptionColors.muted, OptionColors.mutedShadow, m)
                     Spacer(Modifier.height(m.u * 4))
                     GbaText(
-                        tr("Co-op needs English Pokémon Emerald."), OptionColors.label, OptionColors.labelShadow, small,
+                        tr("Co-op needs Pokémon Emerald in English or German."), OptionColors.label, OptionColors.labelShadow, small,
                         maxLines = Int.MAX_VALUE,
                     )
                 }

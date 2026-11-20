@@ -102,7 +102,7 @@ val FLAGGED_SETTING_KEYWORDS: Map<String, String> = mapOf(
     // CO-OP (FeatureFlags.coop): moves to SETTING_KEYWORDS, with its manual page, when the flag goes.
     "LINK" to "co-op coop connection connected status partner online",
     "PAIR" to "co-op coop multiplayer multi player two player online friend partner link invite qr code join netplay play together",
-    "PARTNERS" to "co-op coop paired friends unpair forget remove partner",
+    "FRIENDS" to "co-op coop paired friends friend list partners unpair forget remove partner online multiplayer",
     "NEARBY RANGE" to "co-op coop range distance join co-op battle battle together how close steps",
     "RELAY" to "co-op coop server relay address url self hosted",
     "RELAY ONLY" to "co-op coop privacy hide ip address relay only",

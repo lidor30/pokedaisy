@@ -20,6 +20,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
+import kotlin.concurrent.Volatile
 import okio.FileSystem
 import okio.IOException
 import okio.Path
@@ -27,9 +28,10 @@ import okio.Path.Companion.toPath
 import okio.use
 
 /**
- * The pairings, one partner per save, in `filesDir/coop/pairs.json` (a JSON array, written to a
- * temp file and renamed). A file that doesn't read is kept aside as `pairs.json.bad` and reads as
- * empty, so it is never overwritten while unread.
+ * The pairings - a save's friends, up to [MAX_FRIENDS] per save - in `filesDir/coop/pairs.json` (a JSON array of
+ * pairs, one entry per (own save, friend), written to a temp file and renamed; a file from a build with one partner per
+ * save reads as is). A file that doesn't read is kept aside as `pairs.json.bad` and reads as empty, so it is never
+ * overwritten while unread.
  */
 class CoopPairs(
     private val file: Path,
@@ -43,22 +45,53 @@ class CoopPairs(
 
     fun all(): List<CoopPair> = synchronized(lock) { load() }
 
-    fun forSave(save: CoopSaveId): CoopPair? = synchronized(lock) { load().firstOrNull { it.ownSave == save } }
+    /** Bumped on every write: [CoopFriends] reloads a save's friends when it moves (a friend added or removed meanwhile). */
+    @Volatile var version = 0
+        private set
 
-    /** False (nothing written) when that save already has a partner. Throws [IOException] while the file is unreadable. */
-    fun add(pair: CoopPair): Boolean = synchronized(lock) {
+    /** [save]'s friends, oldest pairing first. */
+    fun friendsOf(save: CoopSaveId): List<CoopPair> = synchronized(lock) { load().filter { it.ownSave == save } }
+
+    /** [save]'s first friend, or null (the oldest pairing). */
+    fun forSave(save: CoopSaveId): CoopPair? = friendsOf(save).firstOrNull()
+
+    /** Whether [save] may take one more friend ([MAX_FRIENDS]). Throws nothing: an unreadable file says yes, [add] decides. */
+    fun hasRoom(save: CoopSaveId): Boolean = friendsOf(save).size < MAX_FRIENDS
+
+    /**
+     * False (nothing written) when [pair]'s save already has that friend (the same device or the same partner save) or
+     * already has [MAX_FRIENDS]. Throws [IOException] while the file is unreadable.
+     */
+    fun add(pair: CoopPair): Boolean = addResult(pair) == AddResult.ADDED
+
+    enum class AddResult { ADDED, ALREADY_FRIENDS, FULL }
+
+    fun addResult(pair: CoopPair): AddResult = synchronized(lock) {
         val list = loadForWrite()
-        if (list.any { it.ownSave == pair.ownSave }) return@synchronized false
+        val mine = list.filter { it.ownSave == pair.ownSave }
+        if (mine.any { it.partner.peer == pair.partner.peer || it.partner.save == pair.partner.save }) {
+            return@synchronized AddResult.ALREADY_FRIENDS
+        }
+        if (mine.size >= MAX_FRIENDS) return@synchronized AddResult.FULL
         store(list + pair)
-        true
+        AddResult.ADDED
     }
 
-    fun updateTicket(save: CoopSaveId, ticket: String) = synchronized(lock) {
+    /** The friend [peer] of [save] dials [ticket] from now on. */
+    fun updateTicket(save: CoopSaveId, peer: CoopPeerId, ticket: String) = synchronized(lock) {
         val list = loadForWrite()
-        if (list.none { it.ownSave == save }) return@synchronized
-        store(list.map { if (it.ownSave == save) it.copy(lastTicket = ticket) else it })
+        if (list.none { it.ownSave == save && it.partner.peer == peer }) return@synchronized
+        store(list.map { if (it.ownSave == save && it.partner.peer == peer) it.copy(lastTicket = ticket) else it })
     }
 
+    /** Removes the friend [peer] of [save]. */
+    fun remove(save: CoopSaveId, peer: CoopPeerId) = synchronized(lock) {
+        val list = loadForWrite()
+        if (list.none { it.ownSave == save && it.partner.peer == peer }) return@synchronized
+        store(list.filterNot { it.ownSave == save && it.partner.peer == peer })
+    }
+
+    /** Removes every friend of [save]. */
     fun remove(save: CoopSaveId) = synchronized(lock) {
         val list = loadForWrite()
         if (list.none { it.ownSave == save }) return@synchronized
@@ -107,6 +140,7 @@ class CoopPairs(
         val tmp = sibling(file.name + ".tmp")
         writeDurably(tmp, JsonArray(list.map { encode(it) }).toString().encodeToByteArray())
         replaceFile(tmp, file)
+        version++
     }
 
     private fun encode(p: CoopPair) = buildJsonObject {
@@ -143,6 +177,14 @@ class CoopPairs(
     private fun JsonObject.value(key: String): JsonPrimitive = requireNotNull(this[key]) { "no $key" }.jsonPrimitive
 
     private fun JsonObject.string(key: String): String = value(key).also { require(it.isString) { "$key: not a string" } }.content
+
+    companion object {
+        /**
+         * The most friends one save keeps. Every friend online is one relay socket (a pair room each), and the relay allows
+         * 16 sockets per address by default (MAX_SOCKETS_PER_IP), the invite rooms included: 12 leaves room for those.
+         */
+        const val MAX_FRIENDS = 12
+    }
 
     /** The inverse of [CoopSaveId.key]: `%04x%04x-` and 16 hex characters. */
     private fun parseKey(key: String): CoopSaveId {

@@ -1037,8 +1037,13 @@ static void flyBegin(struct GBAVideoRenderer* r);
 static void flyEnd(struct GBAVideoRenderer* r);
 static void partnerBegin(struct GBAVideoRenderer* r);
 static void partnerEnd(struct GBAVideoRenderer* r);
-static int partnerOam = -1, partnerBlobOam = -1;          // this frame's OAM entries (-1: not drawn)
-static uint16_t partnerSavedOam[2][4];
+static int partnerOam[PK_PARTNER_MAX] = { [0 ... PK_PARTNER_MAX - 1] = -1 };       // each friend's OAM entries this frame (-1: not drawn)
+static int partnerBlobOam[PK_PARTNER_MAX] = { [0 ... PK_PARTNER_MAX - 1] = -1 };
+static uint16_t partnerSavedOam[PK_PARTNER_MAX][2][4];
+static bool partnerAnyOam(void) {
+    for (int i = 0; i < PK_PARTNER_MAX; i++) if (partnerOam[i] >= 0) return true;
+    return false;
+}
 
 // Off, the frame's per-line record isn't kept: a host that only wants the scene (a 3DS at ASPECT ORIGINAL), where
 // copying and comparing 3 KB a line takes a tenth of the frame.
@@ -1077,12 +1082,14 @@ static void hookDrawScanline(struct GBAVideoRenderer* r, int y) {
             const uint16_t* oam = hookGba->video.oam.raw;
             // WIDE's record of the OAM leaves the follower's and the partner's entries out: they're not the game's.
             static uint16_t own[512];
-            if (followOam >= 0 || partnerOam >= 0 || flyOamN > 0) {
+            if (followOam >= 0 || partnerAnyOam() || flyOamN > 0) {
                 memcpy(own, oam, sizeof(own));
                 for (int i = 0; i < flyOamN; i++) memcpy(&own[flyOam[i] * 4], flySaved[i], 4);
                 if (followOam >= 0) memcpy(&own[followOam * 4], followSavedOam, 8);
-                if (partnerOam >= 0) memcpy(&own[partnerOam * 4], partnerSavedOam[0], 8);
-                if (partnerBlobOam >= 0) memcpy(&own[partnerBlobOam * 4], partnerSavedOam[1], 8);
+                for (int i = 0; i < PK_PARTNER_MAX; i++) {
+                    if (partnerOam[i] >= 0) memcpy(&own[partnerOam[i] * 4], partnerSavedOam[i][0], 8);
+                    if (partnerBlobOam[i] >= 0) memcpy(&own[partnerBlobOam[i] * 4], partnerSavedOam[i][1], 8);
+                }
                 oam = own;
             }
             if (!lineOamN || (memcmp(oam, lineOamBuf[lineOamN - 1], sizeof(lineOamBuf[0])) && lineOamN < LINE_PALS))
@@ -3692,65 +3699,95 @@ static void rideEnd(struct GBAVideoRenderer* r) {
     rideOam = rideSlot = -1;
 }
 
-// CO-OP PARTNER (companion/data/coop/PartnerArt.kt, pk_partner_place): the other player's hero drawn like FOLLOWER - one
+// CO-OP PARTNERS (companion/data/coop/PartnerArt.kt, pk_partner_place_n): each friend's hero drawn like FOLLOWER - one
 // or two (surfing: the rider and the surf blob under it) more hardware sprites at line 0, taken out after line 159, so
-// the game, its save and its states never hold them. OBJ tiles 976-991 hold the rider, 992-1007 the blob (FOLLOWER has
-// 1008-1023), both 32x32 4bpp in one palette slot no shown sprite uses; the OAM entries are hidden ones after the game's
-// last shown one, the blob at the higher index (drawn under the rider). Where it stands is the player's own sprite box
-// (as followBegin finds it) moved by (partner's fine position - the player's, pk_partner_self's last read). Never put in
-// OAM past the screen edge (its 9-bit x / 8-bit y would wrap to the far side): that's EXPAND's margins' job.
-#define PARTNER_TILE 976
-#define PARTNER_BLOB_TILE 992
-#define PARTNER_VRAM (0x10000 + PARTNER_TILE * 32)
-static bool partnerHave;
-static uint8_t partnerArt[PK_PARTNER_ART_BYTES];
-static struct { int visible, fx, fy, frame, hflip, blob, bob; } partnerReq;
-static int partnerWhy = PK_PARTNER_OFF, partnerSlot = -1, partnerAtX, partnerAtY;
-static bool partnerAtKnown;                        // the place below was worked out this frame
-static int partnerShown[3] = { -1, -1, -1 };      // the last frame's entries and slot, kept after partnerEnd put them back (partnerinfo)
-static int partnerPal1 = -1, partnerFadeY;         // the last colour 1 written (after the fade and the tint), the fade's y it used (0 = none)
-static uint32_t partnerFadeSel;                    // the palettes the last normal fade took (OBJ ones in bits 16-31)
+// the game, its save and its states never hold them. Up to PK_PARTNER_MAX friends, each in its own slot: slot 0 has OBJ
+// tiles 976-991 (the rider) and 992-1007 (the blob) as ever (FOLLOWER has 1008-1023); RIDE ON keeps 942-975, so slots
+// 1-3 sit under it, 32 tiles each from 910 down (910-941, 878-909, 846-877). Each slot is 32x32 4bpp in a palette slot
+// no shown sprite uses (its own); the OAM entries are hidden ones after the game's last shown one, slot 0 first from 127
+// down, the blob at the higher index of its pair (drawn under the rider). Where one stands is the player's own sprite box
+// (as followBegin finds it) moved by (friend's fine position - the player's, pk_partner_self's last read). Never put in
+// OAM past the screen edge (its 9-bit x / 8-bit y would wrap to the far side): that's EXPAND's margins' job. A slot whose
+// tiles a shown sprite of the game's uses this frame is skipped (TILES_USED), the others still drawn.
+#define PARTNER_TILE_OF(i) ((i) == 0 ? 976 : 942 - 32 * (i))
+#define PARTNER_VRAM_OF(i) (0x10000 + PARTNER_TILE_OF(i) * 32)
 #define PARTNER_FADE_LAG 3                         // frames the game's OBJ palettes run behind gPaletteFade's y (see partnerFadeRead)
+
+/** One friend's slot: its art, the request, this frame's place and what it took from the game (put back by partnerEnd). */
+struct Partner {
+    bool have;
+    uint8_t art[PK_PARTNER_ART_BYTES];
+    struct { int visible, fx, fy, frame, hflip, blob, bob; } req;
+    int why, slot, atX, atY;
+    bool atKnown;                       // the place was worked out this frame
+    int shown[3];                       // the last frame's entries and slot, kept after partnerEnd put them back (partnerinfo)
+    int pal1, fadeY;                    // the last colour 1 written (after the fade and the tint), the fade's y it used (0 = none)
+    uint8_t savedVram[1024];
+    int vramBytes;                      // 512 (rider) or 1024 (with the blob) of it written this frame
+    uint8_t dirty[512];                 // halfwords the game wrote over this frame
+    /** What partnerBegin worked out for this frame, for the margins (and the middle's rebuild): the place on the screen
+     * (unclipped), palette (faded, not tinted: color() tints), priority, frames. `hardware` = the OAM took it this frame, so
+     * the real frame holds it and the rebuild of the middle must show it too; else only the margins draw it. */
+    struct { bool have, hardware, blob, hflip; int prio, frame, blobFrame, x, y, by; uint16_t pal[16]; } draw;
+    int elev;                           // its elevation as the game would give it (0 = not known yet): partnerPrio
+};
+static struct Partner partners[PK_PARTNER_MAX] = {
+    [0 ... PK_PARTNER_MAX - 1] = { .why = PK_PARTNER_OFF, .slot = -1, .shown = { -1, -1, -1 }, .pal1 = -1 },
+};
+static uint32_t partnerFadeSel;                    // the palettes the last normal fade took (OBJ ones in bits 16-31)
 static struct { int y; uint16_t color; uint32_t sel; } partnerFadeHist[PARTNER_FADE_LAG + 1];   // newest first
 static bool partnerFadePrimed;
-static uint8_t partnerSavedVram[1024];
-static int partnerVramBytes;                      // 512 (rider) or 1024 (with the blob) of it written this frame
-static uint8_t partnerDirty[512];                 // halfwords the game wrote over this frame
 
 static void partnerWrote(uint32_t address) {
-    if (partnerOam >= 0 && address >= PARTNER_VRAM && address < PARTNER_VRAM + (uint32_t) partnerVramBytes)
-        partnerDirty[(address - PARTNER_VRAM) >> 1] = 1;
+    for (int i = 0; i < PK_PARTNER_MAX; i++) {
+        struct Partner* p = &partners[i];
+        uint32_t v = PARTNER_VRAM_OF(i);
+        if (partnerOam[i] >= 0 && address >= v && address < v + (uint32_t) p->vramBytes) p->dirty[(address - v) >> 1] = 1;
+    }
 }
 
-/** A new game: the last one's request, fine position and fade memory go (the engine may have stopped before the old presence could ask for none). */
+/** A new game: the last one's requests, fine position and fade memory go (the engine may have stopped before the old presence could ask for none). */
 static void partnerReset(void) {
-    partnerReq.visible = 0;
+    for (int i = 0; i < PK_PARTNER_MAX; i++) partners[i].req.visible = 0;
     selfFine.valid = false;
     partnerFadeSel = 0;
     partnerFadePrimed = false;
 }
 
-void pk_partner_set(const uint8_t* art) {
+void pk_partner_set_n(int i, const uint8_t* art) {
+    if (i < 0 || i >= PK_PARTNER_MAX) return;
     partnerFadeSel = 0;
     partnerFadePrimed = false;
     if (art) {
-        memcpy(partnerArt, art, sizeof(partnerArt));
-        partnerHave = true;
+        memcpy(partners[i].art, art, sizeof(partners[i].art));
+        partners[i].have = true;
     } else {
-        partnerHave = false;
+        partners[i].have = false;
     }
 }
 
-void pk_partner_place(struct mCore* core, int visible, int fineX, int fineY, int frame, int hflip, int blobFrame, int bob) {
-    partnerReq.visible = visible; partnerReq.fx = fineX; partnerReq.fy = fineY; partnerReq.frame = frame;
-    partnerReq.hflip = hflip; partnerReq.blob = blobFrame; partnerReq.bob = bob;
+void pk_partner_set(const uint8_t* art) { pk_partner_set_n(0, art); }
+
+void pk_partner_place_n(struct mCore* core, int i, int visible, int fineX, int fineY, int frame, int hflip, int blobFrame, int bob) {
+    if (i < 0 || i >= PK_PARTNER_MAX) return;
+    struct Partner* p = &partners[i];
+    p->req.visible = visible; p->req.fx = fineX; p->req.fy = fineY; p->req.frame = frame;
+    p->req.hflip = hflip; p->req.blob = blobFrame; p->req.bob = bob;
     if (visible && core && core->platform(core) == mPLATFORM_GBA) hookScanlines((struct GBA*) core->board);
 }
 
-void pk_partner_info(char* out, int n) {
-    snprintf(out, (size_t) n, "why %d oam %d blobOam %d slot %d at %d,%d frame %d pal1 %04X fadey %d", partnerWhy, partnerShown[0], partnerShown[1],
-             partnerShown[2], partnerAtX, partnerAtY, partnerReq.frame, partnerPal1 < 0 ? 0 : partnerPal1, partnerFadeY);
+void pk_partner_place(struct mCore* core, int visible, int fineX, int fineY, int frame, int hflip, int blobFrame, int bob) {
+    pk_partner_place_n(core, 0, visible, fineX, fineY, frame, hflip, blobFrame, bob);
 }
+
+void pk_partner_info_n(int i, char* out, int n) {
+    if (i < 0 || i >= PK_PARTNER_MAX) { snprintf(out, (size_t) n, "no slot %d", i); return; }
+    const struct Partner* p = &partners[i];
+    snprintf(out, (size_t) n, "why %d oam %d blobOam %d slot %d at %d,%d frame %d pal1 %04X fadey %d", p->why, p->shown[0], p->shown[1],
+             p->shown[2], p->atX, p->atY, p->req.frame, p->pal1 < 0 ? 0 : p->pal1, p->fadeY);
+}
+
+void pk_partner_info(char* out, int n) { pk_partner_info_n(0, out, n); }
 
 /** The game's BlendPalette on one colour (palette.c: c + ((blend - c) * y >> 4) per channel). */
 static uint16_t fadeBlend555(uint16_t c, int y, uint16_t blend) {
@@ -3800,24 +3837,21 @@ static int partnerFadeRead(uint16_t* color, uint32_t* sel) {
     return partnerFadeHist[PARTNER_FADE_LAG].y;
 }
 
-int pk_partner_at(int* x, int* y) {
-    if (!partnerAtKnown) return 0;
-    *x = partnerAtX; *y = partnerAtY;
+int pk_partner_at_n(int i, int* x, int* y) {
+    if (i < 0 || i >= PK_PARTNER_MAX || !partners[i].atKnown) return 0;
+    *x = partners[i].atX; *y = partners[i].atY;
     return 1;
 }
 
-/** What partnerBegin worked out for this frame, for the margins (and the middle's rebuild): his place on the screen
- * (unclipped), palette (faded, not tinted: color() tints), priority, frames. `hardware` = the OAM took him this frame, so
- * the real frame holds him and the rebuild of the middle must show him too; else only the margins draw him. */
-static struct { bool have, hardware, blob, hflip; int prio, frame, blobFrame, x, y, by; uint16_t pal[16]; } partnerDraw;
+int pk_partner_at(int* x, int* y) { return pk_partner_at_n(0, x, y); }
 
 /** One 32x32 frame's pixels over the rectangle, as drawGhosts does for an NPC: not over a sprite already drawn (takenBuf),
- * OBJ enable and window per line, behind the BG layers in front of his priority. */
-static void drawPartnerFrame(int frame, int gx, int gy, int x0, int y0, int x1, int y1, uint32_t* dst, int stride, uint32_t alpha) {
+ * OBJ enable and window per line, behind the BG layers in front of its priority. */
+static void drawPartnerFrame(const struct Partner* p, int frame, int gx, int gy, int x0, int y0, int x1, int y1, uint32_t* dst, int stride, uint32_t alpha) {
     int w = x1 - x0;
-    const uint8_t* px4 = partnerArt + frame * 512;
+    const uint8_t* px4 = p->art + frame * 512;
     uint32_t pal[16];
-    for (int i = 0; i < 16; i++) pal[i] = color(partnerDraw.pal[i], alpha);
+    for (int i = 0; i < 16; i++) pal[i] = color(p->draw.pal[i], alpha);
     for (int yy = 0; yy < 32; yy++) {
         int Y = gy + yy, J = Y - y0;
         if (Y < y0 || Y >= y1) continue;
@@ -3826,159 +3860,218 @@ static void drawPartnerFrame(int frame, int gx, int gy, int x0, int y0, int x1, 
         for (int xx = 0; xx < 32; xx++) {
             int X = gx + xx - x0;
             if (X < 0 || X >= w || takenBuf[J][X]) continue;
-            // The real frame has him already where the hardware drew him; where it couldn't, the game's view is without him.
-            if (onFrame(gx + xx, Y) && !partnerDraw.hardware) continue;
+            // The real frame has it already where the hardware drew it; where it couldn't, the game's view is without it.
+            if (onFrame(gx + xx, Y) && !p->draw.hardware) continue;
             int wl = windowLayers(gx + xx, Y);
             if (!(wl & 0x10)) continue;
-            int px = partnerDraw.hflip ? 31 - xx : xx;
+            int px = p->draw.hflip ? 31 - xx : xx;
             uint8_t v = px4[((yy / 8) * 4 + px / 8) * 32 + (yy & 7) * 4 + (px & 7) / 2];
             int ci = px & 1 ? v >> 4 : v & 15;
             if (!ci) continue;
             takenBuf[J][X] = 1;
-            if (partnerDraw.prio > prioBuf[J][X]) continue;
+            if (p->draw.prio > prioBuf[J][X]) continue;
             dst[J * stride + X] = wl & 0x20 ? brightness(pal[ci], 4) : pal[ci];
             holeBuf[J][X] = 0;
         }
     }
 }
 
-/** The co-op partner over the rectangle: the rider over his blob, behind the real sprites (the last OAM entries). Only for a
- * partner placed this frame; EXPAND's margins are the one place he is drawn past the screen (never in OAM: it would wrap). */
+/** The co-op friends over the rectangle: each rider over its blob, behind the real sprites (the last OAM entries), slot 0
+ * in front (its entries come first). Only friends placed this frame; EXPAND's margins are the one place they are drawn
+ * past the screen (never in OAM: it would wrap). */
 static void drawPartner(int x0, int y0, int x1, int y1, uint32_t* dst, int stride, uint32_t alpha) {
-    if (!partnerDraw.have || !partnerHave || partnerDraw.frame < 0 || partnerDraw.frame >= PK_PARTNER_FRAMES) return;
-    drawPartnerFrame(partnerDraw.frame, partnerDraw.x, partnerDraw.y, x0, y0, x1, y1, dst, stride, alpha);
-    if (partnerDraw.blob && partnerDraw.blobFrame >= 0 && partnerDraw.blobFrame < PK_PARTNER_FRAMES)
-        drawPartnerFrame(partnerDraw.blobFrame, partnerDraw.x, partnerDraw.by, x0, y0, x1, y1, dst, stride, alpha);
+    for (int i = 0; i < PK_PARTNER_MAX; i++) {
+        const struct Partner* p = &partners[i];
+        if (!p->draw.have || !p->have || p->draw.frame < 0 || p->draw.frame >= PK_PARTNER_FRAMES) continue;
+        drawPartnerFrame(p, p->draw.frame, p->draw.x, p->draw.y, x0, y0, x1, y1, dst, stride, alpha);
+        if (p->draw.blob && p->draw.blobFrame >= 0 && p->draw.blobFrame < PK_PARTNER_FRAMES)
+            drawPartnerFrame(p, p->draw.blobFrame, p->draw.x, p->draw.by, x0, y0, x1, y1, dst, stride, alpha);
+    }
 }
 
-/** Whether a shown OAM entry's tiles overlap the partner's (OBJ tiles 976-1007). */
-static bool partnerTilesTouched(uint16_t a0, uint16_t a1, uint16_t a2, bool oneD) {
+/** Whether a shown OAM entry's tiles overlap [first, first + 32) (one slot's rider and blob). */
+static bool partnerTilesTouched(uint16_t a0, uint16_t a1, uint16_t a2, bool oneD, int first) {
     int shape = a0 >> 14, size = a1 >> 14;
     if (shape > 2) return false;
     int tw = OAM_W[shape][size] / 8, th = OAM_H[shape][size] / 8, step = (a0 & 0x2000) ? 2 : 1, t = a2 & 0x3FF;
     for (int r = 0; r < th; r++)
         for (int c = 0; c < tw; c++) {
             int tile = t + (oneD ? (r * tw + c) * step : r * 32 + c * step);
-            if (tile >= PARTNER_TILE && tile < PARTNER_TILE + 32) return true;
+            if (tile >= first && tile < first + 32) return true;
         }
     return false;
 }
 
-/** Line 0 (after followBegin): the partner's sprite (and the blob's) into the hardware, the game's bytes saved first. */
-static void partnerBegin(struct GBAVideoRenderer* r) {
-    partnerOam = partnerBlobOam = partnerSlot = -1;
-    partnerShown[0] = partnerShown[1] = partnerShown[2] = -1;
-    partnerAtKnown = false;
-    partnerAtX = partnerAtY = 0;
-    partnerFadeY = 0;
-    partnerDraw.have = false;
-    if (!partnerReq.visible) { partnerWhy = PK_PARTNER_OFF; partnerFadePrimed = false; partnerFadeSel = 0; return; }
-    uint16_t fadeColor = 0;
-    uint32_t fadeSel = 0;
-    int fadeY = partnerFadeRead(&fadeColor, &fadeSel);
-    if (!partnerHave) { partnerWhy = PK_PARTNER_NO_ART; return; }
-    bool blob = partnerReq.blob >= 0;
-    if (partnerReq.frame < 0 || partnerReq.frame >= PK_PARTNER_FRAMES || partnerReq.blob >= PK_PARTNER_FRAMES || partnerReq.blob < -1 ||
-        partnerReq.bob < -64 || partnerReq.bob > 64) { partnerWhy = PK_PARTNER_BAD_FRAME; return; }
-    if (!hookGba || !F.objects || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX ||
-        F.family == PK_WIDE_FAMILY_EX32 || !selfFine.valid) { partnerWhy = PK_PARTNER_NO_PLAYER; return; }
-    G = hookGba;
-    int cx, cy, px, py;
-    uint32_t spriteId;
-    if (!followPlayer(&cx, &cy, &px, &py, &spriteId) || spriteId >= 64) { partnerWhy = PK_PARTNER_NO_PLAYER; return; }
-    const uint16_t* oam = hookGba->video.oam.raw;
-    struct PlayerBox pb;
-    playerBox(oam, (int) (r16(F.sprites + 0x44 * spriteId + 4) & 0x3FF), &pb);
-    if (pb.last < 0) { partnerWhy = PK_PARTNER_NO_PLAYER; return; }
-    // The sprite's top-left, from the player's feet and middle, moved by the difference of the two fine positions.
-    int ox = (pb.x0 + pb.x1) / 2 + (partnerReq.fx - selfFine.fx) - 16, oy = pb.y1 + (partnerReq.fy - selfFine.fy) - 32;
-    partnerAtX = ox; partnerAtY = oy;
-    partnerAtKnown = true;
-    // What drawPartner needs for the margins (and, where the hardware drew him, the middle): kept whether or not the hardware could.
-    // The screen fade takes the partner with it (the player's own palette is in the fade's set): blended first; color() tints.
-    if (!(fadeSel >> (16 + (oam[pb.last * 4 + 2] >> 12)) & 1)) fadeY = 0;
-    partnerFadeY = fadeY;
-    for (int i = 0; i < 16; i++) {
-        uint16_t c = (uint16_t) (partnerArt[PK_PARTNER_FRAMES * 512 + i * 2] | partnerArt[PK_PARTNER_FRAMES * 512 + i * 2 + 1] << 8);
-        partnerDraw.pal[i] = fadeY ? fadeBlend555(c, fadeY, fadeColor) : c;
+/** A friend's OAM priority from its own elevation, as the game gives an object its own (ObjectEventUpdateElevation: the
+ * map cell's elevation where it stands, except 0 and 15 - a bridge's crossing - which keep the one it had; then
+ * sElevationToPriority): on a bridge it is drawn over the bridge, below one under it, whatever the player's own height.
+ * [fallback] (the player's priority) while its elevation isn't known yet. */
+static int partnerPrio(struct Partner* p, int fallback) {
+    uint32_t vm = (uint32_t) C[PK_WIDE_VMAP];
+    if (!vm || !C[PK_WIDE_ELEVATION_PRIO]) return fallback;
+    int w = s32(vm), h = s32(vm + 4), tx = (p->req.fx + 8) / 16, ty = (p->req.fy + 8) / 16;
+    if (w > 0 && h > 0 && w * h <= MAX_MAP_DATA && tx >= 0 && ty >= 0 && tx < w && ty < h) {
+        int e = (int) (r16(r32(vm + 8) + 2u * (uint32_t) (tx + w * ty)) >> 12) & 15;
+        if (e != 0 && e != 15) p->elev = e;
     }
-    partnerDraw.have = true; partnerDraw.hardware = false; partnerDraw.blob = blob; partnerDraw.prio = pb.prio;
-    partnerDraw.frame = partnerReq.frame; partnerDraw.blobFrame = partnerReq.blob; partnerDraw.hflip = partnerReq.hflip != 0;
-    partnerDraw.x = ox; partnerDraw.y = oy;
-    int by = oy + (blob ? partnerReq.bob : 0);
-    partnerDraw.by = by;
-    if (ox < -31 || ox > 239 || oy < -31 || oy > 159 || by < -31 || by > 159) { partnerWhy = PK_PARTNER_OFFSCREEN; return; }
-    // The game's shown entries: its last one, and whether any holds our tiles; the palette slots in use (FOLLOWER's too).
-    bool oneD = (hookGba->memory.io[0] & 0x40) != 0;
-    bool used[16] = { false };
-    int lastShown = -1;
-    for (int k = 0; k < 128; k++) {
-        uint16_t a0 = oam[k * 4], a1 = oam[k * 4 + 1], a2 = oam[k * 4 + 2];
-        if (oamHidden(a0)) continue;
-        used[a2 >> 12] = true;
-        if (k == followOam) continue;
-        lastShown = k;
-        if (partnerTilesTouched(a0, a1, a2, oneD)) { partnerWhy = PK_PARTNER_TILES_USED; return; }
-    }
-    int e[2], found = 0;
-    for (int k = 127; k > lastShown && found < (blob ? 2 : 1); k--) if (oamHidden(oam[k * 4])) e[found++] = k;
-    if (found < (blob ? 2 : 1)) { partnerWhy = PK_PARTNER_NO_ENTRY; return; }
-    int slot = -1;
-    for (int k = 15; k >= 0; k--) if (!used[k]) { slot = k; break; }
-    if (slot < 0) { partnerWhy = PK_PARTNER_NO_SLOT; return; }
-    int rider = blob ? e[1] : e[0];                    // the lower index: above the blob
-    int blobEntry = blob ? e[0] : -1;
-    uint8_t* vram = (uint8_t*) hookGba->video.vram;
-    partnerVramBytes = blob ? 1024 : 512;
-    memcpy(partnerSavedVram, vram + PARTNER_VRAM, (size_t) partnerVramBytes);
-    memset(partnerDirty, 0, sizeof(partnerDirty));
-    memcpy(vram + PARTNER_VRAM, partnerArt + partnerReq.frame * 512, 512);
-    if (blob) memcpy(vram + PARTNER_VRAM + 512, partnerArt + partnerReq.blob * 512, 512);
-    for (int i = 0; i < partnerVramBytes; i += 2) origWriteVRAM(r, PARTNER_VRAM + (uint32_t) i);
-    uint16_t flip = partnerReq.hflip ? 0x1000 : 0;
-    for (int which = 0; which < (blob ? 2 : 1); which++) {
-        int entry = which ? blobEntry : rider, y = which ? by : oy, tile = which ? PARTNER_BLOB_TILE : PARTNER_TILE;
-        memcpy(partnerSavedOam[which], &oam[entry * 4], 8);
-        uint16_t* w = &hookGba->video.oam.raw[entry * 4];
-        w[0] = (uint16_t) (y & 0xFF);                                  // square, 4bpp, shown
-        w[1] = (uint16_t) ((ox & 0x1FF) | (2 << 14) | flip);           // 32x32
-        w[2] = (uint16_t) (tile | pb.prio << 10 | slot << 12);
-        for (int k = 0; k < 3; k++) r->writeOAM(r, (uint32_t) entry * 4 + (uint32_t) k);
-    }
-    for (int i = 0; i < 16; i++) {
-        uint16_t c = partnerDraw.pal[i];
-        if (tintShown) c = tint555(c);
-        if (i == 1) partnerPal1 = c;
-        r->writePalette(r, (uint32_t) (0x200 + slot * 32 + i * 2), c);
-    }
-    partnerDraw.hardware = true;
-    partnerOam = rider;
-    partnerBlobOam = blobEntry;
-    partnerSlot = slot;
-    partnerShown[0] = rider; partnerShown[1] = blobEntry; partnerShown[2] = slot;
-    partnerWhy = PK_PARTNER_DRAWN;
+    return p->elev ? (int) (r8((uint32_t) C[PK_WIDE_ELEVATION_PRIO] + (uint32_t) p->elev) & 3) : fallback;
 }
 
-/** After the last line: the game's own OAM entries, tiles (but those it wrote meanwhile) and palette back. */
+/** Line 0 (after followBegin): every friend asked for into the hardware, the game's bytes saved first. */
+static void partnerBegin(struct GBAVideoRenderer* r) {
+    bool any = false;
+    for (int i = 0; i < PK_PARTNER_MAX; i++) {
+        struct Partner* p = &partners[i];
+        partnerOam[i] = partnerBlobOam[i] = p->slot = -1;
+        p->shown[0] = p->shown[1] = p->shown[2] = -1;
+        p->atKnown = false;
+        p->atX = p->atY = 0;
+        p->fadeY = 0;
+        p->draw.have = false;
+        p->why = PK_PARTNER_OFF;
+        if (p->req.visible) any = true;
+    }
+    if (!any) { partnerFadePrimed = false; partnerFadeSel = 0; return; }
+    // The fade is read once a frame (its history steps by one), whichever friends are drawn.
+    uint16_t fadeColor = 0;
+    uint32_t fadeSel = 0;
+    int fadeYAll = partnerFadeRead(&fadeColor, &fadeSel);
+    bool playerKnown = hookGba && F.objects && F.family != PK_WIDE_FAMILY_EX && F.family != PK_WIDE_FAMILY_FR_EX &&
+        F.family != PK_WIDE_FAMILY_EX32 && selfFine.valid;
+    int cx, cy, px, py;
+    uint32_t spriteId = 0;
+    struct PlayerBox pb;
+    pb.last = -1;
+    if (playerKnown) {
+        G = hookGba;
+        if (!followPlayer(&cx, &cy, &px, &py, &spriteId) || spriteId >= 64) playerKnown = false;
+    }
+    const uint16_t* oam = hookGba ? hookGba->video.oam.raw : NULL;
+    if (playerKnown) {
+        playerBox(oam, (int) (r16(F.sprites + 0x44 * spriteId + 4) & 0x3FF), &pb);
+        if (pb.last < 0) playerKnown = false;
+    }
+    // The game's shown entries: its last one and the palette slots in use (FOLLOWER's too); the friends take hidden
+    // entries after it, from 127 down, and the highest free palette slots.
+    bool oneD = false;
+    bool used[16] = { false };
+    int lastShown = -1, nextEntry = 127;
+    if (playerKnown) {
+        oneD = (hookGba->memory.io[0] & 0x40) != 0;
+        for (int k = 0; k < 128; k++) {
+            uint16_t a0 = oam[k * 4], a2 = oam[k * 4 + 2];
+            if (oamHidden(a0)) continue;
+            used[a2 >> 12] = true;
+            if (k == followOam) continue;
+            lastShown = k;
+        }
+    }
+    for (int i = 0; i < PK_PARTNER_MAX; i++) {
+        struct Partner* p = &partners[i];
+        if (!p->req.visible) continue;
+        if (!p->have) { p->why = PK_PARTNER_NO_ART; continue; }
+        bool blob = p->req.blob >= 0;
+        if (p->req.frame < 0 || p->req.frame >= PK_PARTNER_FRAMES || p->req.blob >= PK_PARTNER_FRAMES || p->req.blob < -1 ||
+            p->req.bob < -64 || p->req.bob > 64) { p->why = PK_PARTNER_BAD_FRAME; continue; }
+        if (!playerKnown) { p->why = PK_PARTNER_NO_PLAYER; continue; }
+        // The sprite's top-left, from the player's feet and middle, moved by the difference of the two fine positions.
+        int ox = (pb.x0 + pb.x1) / 2 + (p->req.fx - selfFine.fx) - 16, oy = pb.y1 + (p->req.fy - selfFine.fy) - 32;
+        p->atX = ox; p->atY = oy;
+        p->atKnown = true;
+        // What drawPartner needs for the margins (and, where the hardware drew it, the middle): kept whether or not the hardware could.
+        // The screen fade takes the friend with it (the player's own palette is in the fade's set): blended first; color() tints.
+        int fadeY = (fadeSel >> (16 + (oam[pb.last * 4 + 2] >> 12)) & 1) ? fadeYAll : 0;
+        p->fadeY = fadeY;
+        for (int c = 0; c < 16; c++) {
+            uint16_t v = (uint16_t) (p->art[PK_PARTNER_FRAMES * 512 + c * 2] | p->art[PK_PARTNER_FRAMES * 512 + c * 2 + 1] << 8);
+            p->draw.pal[c] = fadeY ? fadeBlend555(v, fadeY, fadeColor) : v;
+        }
+        int prio = partnerPrio(p, pb.prio);
+        p->draw.have = true; p->draw.hardware = false; p->draw.blob = blob; p->draw.prio = prio;
+        p->draw.frame = p->req.frame; p->draw.blobFrame = p->req.blob; p->draw.hflip = p->req.hflip != 0;
+        p->draw.x = ox; p->draw.y = oy;
+        int by = oy + (blob ? p->req.bob : 0);
+        p->draw.by = by;
+        if (ox < -31 || ox > 239 || oy < -31 || oy > 159 || by < -31 || by > 159) { p->why = PK_PARTNER_OFFSCREEN; continue; }
+        // A shown sprite of the game's on this slot's tiles: this slot sits the frame out.
+        int first = PARTNER_TILE_OF(i);
+        bool touched = false;
+        for (int k = 0; k < 128 && !touched; k++) {
+            if (oamHidden(oam[k * 4]) || k == followOam) continue;
+            bool ours = false;
+            for (int j = 0; j < i; j++) if (k == partnerOam[j] || k == partnerBlobOam[j]) ours = true;
+            if (!ours && partnerTilesTouched(oam[k * 4], oam[k * 4 + 1], oam[k * 4 + 2], oneD, first)) touched = true;
+        }
+        if (touched) { p->why = PK_PARTNER_TILES_USED; continue; }
+        int e[2], found = 0;
+        int k = nextEntry;
+        for (; k > lastShown && found < (blob ? 2 : 1); k--) if (oamHidden(oam[k * 4])) e[found++] = k;
+        if (found < (blob ? 2 : 1)) { p->why = PK_PARTNER_NO_ENTRY; continue; }
+        int slot = -1;
+        for (int c = 15; c >= 0; c--) if (!used[c]) { slot = c; break; }
+        if (slot < 0) { p->why = PK_PARTNER_NO_SLOT; continue; }
+        nextEntry = k;
+        used[slot] = true;
+        int rider = blob ? e[1] : e[0];                    // the lower index: above the blob
+        int blobEntry = blob ? e[0] : -1;
+        uint8_t* vram = (uint8_t*) hookGba->video.vram;
+        uint32_t base = PARTNER_VRAM_OF(i);
+        p->vramBytes = blob ? 1024 : 512;
+        memcpy(p->savedVram, vram + base, (size_t) p->vramBytes);
+        memset(p->dirty, 0, sizeof(p->dirty));
+        memcpy(vram + base, p->art + p->req.frame * 512, 512);
+        if (blob) memcpy(vram + base + 512, p->art + p->req.blob * 512, 512);
+        for (int b = 0; b < p->vramBytes; b += 2) origWriteVRAM(r, base + (uint32_t) b);
+        uint16_t flip = p->req.hflip ? 0x1000 : 0;
+        for (int which = 0; which < (blob ? 2 : 1); which++) {
+            int entry = which ? blobEntry : rider, y = which ? by : oy, tile = first + (which ? 16 : 0);
+            memcpy(partnerSavedOam[i][which], &oam[entry * 4], 8);
+            uint16_t* w = &hookGba->video.oam.raw[entry * 4];
+            w[0] = (uint16_t) (y & 0xFF);                                  // square, 4bpp, shown
+            w[1] = (uint16_t) ((ox & 0x1FF) | (2 << 14) | flip);           // 32x32
+            w[2] = (uint16_t) (tile | prio << 10 | slot << 12);
+            for (int q = 0; q < 3; q++) r->writeOAM(r, (uint32_t) entry * 4 + (uint32_t) q);
+        }
+        for (int c = 0; c < 16; c++) {
+            uint16_t v = p->draw.pal[c];
+            if (tintShown) v = tint555(v);
+            if (c == 1) p->pal1 = v;
+            r->writePalette(r, (uint32_t) (0x200 + slot * 32 + c * 2), v);
+        }
+        p->draw.hardware = true;
+        partnerOam[i] = rider;
+        partnerBlobOam[i] = blobEntry;
+        p->slot = slot;
+        p->shown[0] = rider; p->shown[1] = blobEntry; p->shown[2] = slot;
+        p->why = PK_PARTNER_DRAWN;
+    }
+}
+
+/** After the last line: the game's own OAM entries, tiles (but those it wrote meanwhile) and palettes back, last slot first. */
 static void partnerEnd(struct GBAVideoRenderer* r) {
-    if (partnerOam < 0 || !hookGba) return;
-    uint8_t* vram = (uint8_t*) hookGba->video.vram;
-    for (int i = 0; i < partnerVramBytes / 2; i++) {
-        if (partnerDirty[i]) continue;
-        memcpy(vram + PARTNER_VRAM + i * 2, partnerSavedVram + i * 2, 2);
-        origWriteVRAM(r, PARTNER_VRAM + (uint32_t) i * 2);
+    if (!hookGba) return;
+    for (int i = PK_PARTNER_MAX - 1; i >= 0; i--) {
+        struct Partner* p = &partners[i];
+        if (partnerOam[i] < 0) continue;
+        uint8_t* vram = (uint8_t*) hookGba->video.vram;
+        uint32_t base = PARTNER_VRAM_OF(i);
+        for (int b = 0; b < p->vramBytes / 2; b++) {
+            if (p->dirty[b]) continue;
+            memcpy(vram + base + b * 2, p->savedVram + b * 2, 2);
+            origWriteVRAM(r, base + (uint32_t) b * 2);
+        }
+        for (int which = 0; which < 2; which++) {
+            int entry = which ? partnerBlobOam[i] : partnerOam[i];
+            if (entry < 0) continue;
+            memcpy(&hookGba->video.oam.raw[entry * 4], partnerSavedOam[i][which], 8);
+            for (int q = 0; q < 3; q++) r->writeOAM(r, (uint32_t) entry * 4 + (uint32_t) q);
+        }
+        for (int c = 0; c < 16; c++) {
+            uint16_t v = hookGba->video.palette[256 + p->slot * 16 + c];
+            r->writePalette(r, (uint32_t) (0x200 + p->slot * 32 + c * 2), tintShown ? tint555(v) : v);
+        }
+        partnerOam[i] = partnerBlobOam[i] = p->slot = -1;
     }
-    for (int which = 0; which < 2; which++) {
-        int entry = which ? partnerBlobOam : partnerOam;
-        if (entry < 0) continue;
-        memcpy(&hookGba->video.oam.raw[entry * 4], partnerSavedOam[which], 8);
-        for (int k = 0; k < 3; k++) r->writeOAM(r, (uint32_t) entry * 4 + (uint32_t) k);
-    }
-    for (int i = 0; i < 16; i++) {
-        uint16_t c = hookGba->video.palette[256 + partnerSlot * 16 + i];
-        r->writePalette(r, (uint32_t) (0x200 + partnerSlot * 32 + i * 2), tintShown ? tint555(c) : c);
-    }
-    partnerOam = partnerBlobOam = partnerSlot = -1;
 }
 
 /** Whether a PlayerAvatar sits at [a]: objectEventId (+5) the player's object, gender (+7) 0 / 1, and flags (+0) one of
