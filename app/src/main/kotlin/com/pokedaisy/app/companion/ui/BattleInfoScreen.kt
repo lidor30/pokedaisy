@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.MoveView
+import com.pokedaisy.app.companion.data.NO_NATURE
 import com.pokedaisy.app.companion.data.TYPE_NONE
 import com.pokedaisy.app.companion.data.TypeMatchup
 import com.pokedaisy.app.companion.data.formatMultiplier
@@ -346,7 +347,8 @@ internal fun FoeFacts(
     val ability = rememberFoeAbility(foe, dexTables).takeIf { abilityAndItem }
     // Attack, Defense, Speed, Sp. Atk, Sp. Def - the battle's, else the party struct's.
     val stats = foe.battleStats ?: foe.stats?.stats?.drop(1)
-    val nature = foe.stats?.let { natureName(it.nature) }?.takeIf { abilityAndItem }
+    // No nature in Gen 1 / 2 (their wild foes carry DVs with NO_NATURE): no row rather than a "?".
+    val nature = foe.stats?.nature?.takeIf { it != NO_NATURE && abilityAndItem }?.let { natureName(it) }
     val item = foe.heldItem?.ifEmpty { tr("NONE") }?.takeIf { abilityAndItem }
     if (ability == null && nature == null && item == null && stats == null) return
     Column(verticalArrangement = Arrangement.spacedBy(u * 2)) {
