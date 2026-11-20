@@ -38,6 +38,8 @@ void* host_rom_arena(size_t size);
 // What host_rom_arena_init got: 32 MB, 16 MB where the app's memory has no room for 32 (an Old 3DS's .3dsx), or 0.
 size_t host_rom_arena_size(void);
 bool host_rom_arena_ready(void);
+// A New 3DS CIA launch given less than the 124 MB mode it asks for.
+bool host_cia_short_of_memory(void);
 // The memory the app was given and where it went, for an error a player can photograph and the log: the model, CIA or
 // 3dsx, the app's memory and mode, the heap / linear split, the static data, the heap free before the arena and now.
 void host_memory_report(char* out, size_t len);
