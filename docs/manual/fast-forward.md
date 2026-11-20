@@ -121,3 +121,5 @@ A save copied off a real cartridge can carry that cartridge's clock with it, and
 ## Rewind
 
 Missed a jump or walked into the wrong trainer? With `REWIND` on, holding the `REWIND HOLD` hotkey plays the last 20 seconds or so backwards. It's off by default and never touches your save file. It works in Game Boy, Game Boy Color and Game Boy Advance games, not DS games. See [Saves](saves.md) for how it works.
+
+On Android, iPhone and iPad, opening the Quick Menu or leaving the game stops a rewind in progress. Press again when you return to the game. If you hold the controller shortcut and the touch button together, rewind continues until you release both.

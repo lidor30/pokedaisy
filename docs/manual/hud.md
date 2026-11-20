@@ -30,7 +30,7 @@ The game keeps running while the map, bag, wild list or a summary is open. Tap a
 
 ## When it shows
 
-Only while you're walking around. The first time you play a game, it shows up once you've taken a few steps (PokeDaisy learns what that game's field looks like, and remembers it). It fades out for a battle, a menu screen like the party or the bag, the game's own town map, and a moment later it comes back. With `EXPAND` on it also steps aside for a conversation or a sign. In a DS game it always does, and for a menu the game opens over the field too, like the PC's. On a phone held upright it's off for now: the companion sits right under the game there.
+Only while you're walking around. The first time you play a game, it shows up once you've taken a few steps (PokeDaisy learns what that game's field looks like, and remembers it). It fades out for a battle, a menu screen like the party or the bag, the game's own town map, and a moment later it comes back. When PokeDaisy can read the game's field controls, it also steps aside for a conversation, a sign, a cutscene or the START menu, with `ORIGINAL`, `STRETCH` and `EXPAND`. `EXPAND` also uses its scene detection for these transitions. In a DS game it always does, and for a menu the game opens over the field too, like the PC's. On a phone held upright it's off for now: the companion sits right under the game there.
 
 Without `EXPAND`, the HUD stays on the game's picture, not in the bars beside it (except `RAILS`, which is made for those bars). If the touch controls are showing, the HUD moves its corners in so it never covers the rows of buttons along the top and bottom of the game. Held sideways it keeps to the middle of the screen with `EXPAND` too, away from the sides where the buttons sit. Buttons you move further in with `EDIT LAYOUT` don't push it around: with `CORNERS` and `CORNERS 2`, the party, the minimap and the buttons each step just far enough to sit beside a button that's in their corner, and go back to the corner when it's clear.
 
@@ -69,4 +69,16 @@ Open `SETTINGS` > `HUD` to change its layout, look, size and visible parts. Your
 The HUD makes room for your touch controls. Its party, map, bag and wild windows use the same screens and supported
 field actions as the companion. Opening `QUICK MENU` closes any open HUD window.
 
-Battle buttons are not available on iPhone or iPad yet.
+`BATTLE BUTTONS` also work in supported single battles when you hold the device sideways. On iPhone and iPad,
+they can sit over the game when there is too little room beside it. `FIGHT`, the party list and `RUN` use the same battle controls as the companion. They stay hidden until
+the game can read battle commands, and during double battles. Opening the companion window or `QUICK MENU` hides them.
+The action buttons stay near the right edge when the space next to them is clear. They move left if a touch
+control overlaps that space. On a short landscape screen the battle buttons can line up in a row when they fit
+between the touch controls. If no space is clear, use the regular game controls. You can turn battle buttons off independently of the field HUD.
+
+HUD windows and battle move/party lists take your controller and bound keyboard buttons while they are open.
+Opening one finishes text entry in the companion and dismisses its keyboard. Text fields inside the new window
+still work normally.
+`B` or `START` backs out of the current overlay. Held gameplay buttons must be released before they can play again.
+WILD's `KEEP OPEN` keeps gameplay available. The Quick Menu shortcut still works from a modal overlay;
+editing controls or capturing a binding keeps priority over it.

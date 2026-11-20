@@ -5,7 +5,7 @@ JNI, no adb, no physical device or emulator. Loads a ROM (+ optional save),
 runs a scripted boot sequence, and dumps EWRAM+IWRAM to the same
 `ewram.bin`/`iwram.bin` format `PokeDaisyActivity`'s on-device capture
 (`scripts/capture_fixture.sh`) produces — so it's a drop-in alternative data
-source for the JVM decode-logic tests under `app/src/test/`.
+source for the JVM decode-logic tests.
 
 Runs identically on a Mac (via Docker Desktop) or a Linux CI runner (e.g.
 GitHub Actions) — it's just a Docker container + `libmgba-dev`, nothing
@@ -202,7 +202,7 @@ docker run --rm -v "$(pwd):/repo" -w /repo/native-capture pokedaisy-capture \
 
 Debian's libmgba is built with the debuggers on; the app's isn't (`USE_DEBUGGERS OFF`). To
 test cheats against the app's own flags, build `third_party/mgba` on the host with the
-`set(...)` lines from `shared/src/commonMain/cpp/pk_api.cmake` and link this file against it - how
+`set(...)` lines from `app/src/main/cpp/CMakeLists.txt` and link this file against it - how
 it was checked on 2026-10-08: on FireRed rev 1, a plain CodeBreaker write (`8203F000 1234`),
 a hooked one (`100005FC 0007+8203F002 5678`, a hook on ReadKeys) and an encrypted GameShark
 code (autodetected as `GSAv1`) all fired; `cheatclear` put the ROM back byte for byte.

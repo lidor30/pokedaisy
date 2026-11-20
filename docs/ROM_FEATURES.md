@@ -951,7 +951,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
   calling one function; the native patch checks them again, `pk_cheats_patch`) and `ReusableTms.BUILT_IN` (by
   `GameKind`). The newer-engine hacks build that check another way: each needs its own site.
 - **Player look**: `PlayerLook.scan` (every hero's graphics by fingerprint, `PlayerLookSigsGen.kt`) and
-  `PlayerLookRunner` (retail carts, `GameTitles.isRetail` or a collection dump of one (`RetailDumps`), and
+  `PlayerLookRunner` (retail carts, `GameTitleCatalog.isRetail` or a collection dump of one (`RetailDumps`), and
   `PlayerLook.HACKS`).
 - **Trainer card**: `NativeConfig.trainerCard` (Emerald Legacy's: its own card style, `CardStyle.LEGACY`, for its fifth
   star's black card). SoulGold (every build), Lazarus and Recharged Yellow (every build) draw their own cards

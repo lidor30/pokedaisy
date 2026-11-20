@@ -99,7 +99,7 @@ internal class IosLibraryHost(
     fun controller(): UIViewController {
         appSettings = IosCompanionSettings(null, null, null,
             onClose = {}, onRestart = {}, onDisableResume = ::disableResume,
-            onEditTouch = { touch.editStandalone(settingsStage()) }, readTouchStage = ::settingsStage)
+            onEditTouch = { touch.editStandalone(settingsStage()) }, readTouchStage = ::settingsStage, presentFrom = { host })
         L10n.apply(appSettings.appLanguage, null)
         host = ComposeUIViewController(configure = { configureUiAutomation() }) {
             LaunchedEffect(paths, saveRefresh) {
@@ -188,14 +188,16 @@ internal class IosLibraryHost(
         val actions = library.actions(add = { choosingAdd = true }, refresh = ::refreshGames)
         LibraryScreen(state, actions, m, small, key = { it.id }, focus = focus,
             settings = {
-                key(library.settingsPage) {
-                    Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
+                Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
+                    key(library.settingsPage) {
                         CompanionSettingsScreen(appSettings, application = true, initialPage = library.settingsPage,
                             applicationFooter = { AppAboutFooter(NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "", m) { url ->
                                 NSURL.URLWithString(url)?.let { UIApplication.sharedApplication.openURL(it) }
                             } },
-                            homeExtras = listOf(SettingRow("RUN SETUP", null, opensPage = true,
-                                labelBadge = NewFeatures.badge(NewFeatures.IOS_SETUP_BUTTONS)) { setup?.close(); setup = newSetup(fromSettings = true) }))
+                            homeExtras = listOf(
+                                SettingRow("RUN SETUP", null, opensPage = true,
+                                    labelBadge = NewFeatures.badge(NewFeatures.IOS_SETUP_BUTTONS)) { setup?.close(); setup = newSetup(fromSettings = true) },
+                            ))
                     }
                 }
             }) { game, up ->

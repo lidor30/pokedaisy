@@ -6,6 +6,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
+import com.pokedaisy.app.companion.BatteryStatus
+import com.pokedaisy.app.companion.DeviceBattery
 import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.companion.data.BestEffortStore
 import com.pokedaisy.app.companion.data.mkdirs
@@ -30,10 +32,17 @@ import platform.Foundation.NSData
 import platform.Foundation.NSDate
 import platform.Foundation.NSDateFormatter
 import platform.Foundation.NSDateFormatterShortStyle
+import platform.Foundation.NSNotificationCenter
+import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSURL
 import platform.Foundation.dateWithTimeIntervalSince1970
 import platform.Foundation.dataWithContentsOfURL
+import platform.UIKit.UIDevice
+import platform.UIKit.UIDeviceBatteryLevelDidChangeNotification
+import platform.UIKit.UIDeviceBatteryStateDidChangeNotification
+import platform.UIKit.UIDeviceBatteryState
 import platform.posix.memcpy
+import kotlin.math.roundToInt
 
 /**
  * The iPad app's hosts for the shared screens, the iOS side of what PokeDaisyApp sets on Android: fonts from the app
@@ -52,10 +61,29 @@ object IosHosts {
         docs.prefetch()
         FontSource.current = BundleFonts
         PictureCodec.current = SkiaPictures
+        com.pokedaisy.app.companion.ui.SkinImages.decode = IosSkinImages::decode
         DeviceDates.current = FoundationDates
+        com.pokedaisy.app.companion.FeatureTips.init(iosPreferences.tipStore, iosPreferences.tips)
+        installBattery()
         com.pokedaisy.app.cheats.CheatParser.current = com.pokedaisy.app.cheats.CheatParser(com.pokedaisy.app.core.PkApiCore::checkCheat)
         com.pokedaisy.app.companion.NewFeatures.init(iosPreferences.newFeatureSince,
             save = { iosPreferences.newFeatureSince = it })
+    }
+
+    private fun installBattery() {
+        val device = UIDevice.currentDevice
+        device.batteryMonitoringEnabled = true
+        fun publish() {
+            DeviceBattery.status.value = device.batteryLevel.takeIf { it in 0f..1f }?.let { level ->
+                val state = device.batteryState
+                BatteryStatus((level * 100).roundToInt(), state == UIDeviceBatteryState.UIDeviceBatteryStateCharging ||
+                    state == UIDeviceBatteryState.UIDeviceBatteryStateFull)
+            }
+        }
+        publish()
+        for (name in listOf(UIDeviceBatteryLevelDidChangeNotification, UIDeviceBatteryStateDidChangeNotification)) {
+            NSNotificationCenter.defaultCenter.addObserverForName(name, device, NSOperationQueue.mainQueue) { publish() }
+        }
     }
 }
 
@@ -130,6 +158,11 @@ internal object FoundationDates : DeviceDates {
 
     override fun shortDateTime(epochMillis: Long): String =
         format.stringFromDate(NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0))
+
+    private val clock = NSDateFormatter().apply { timeStyle = NSDateFormatterShortStyle }
+
+    fun shortTime(epochMillis: Long): String =
+        clock.stringFromDate(NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0))
 }
 
 /** The app's files folder: Application Support / PokeDaisy. */

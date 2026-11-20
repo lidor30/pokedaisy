@@ -3,7 +3,7 @@ title: Link play
 summary: Run two to four GBA games at once, joined as if by a link cable, to trade, battle and mix records between them.
 section: player
 order: 7
-keywords: [link, link cable, cable, trade, trading, trade with myself, trade evolution, two games, multiplayer, colosseum, record mixing, record corner, cable club, second save]
+keywords: [link, link cable, cable, trade, trading, trade with myself, trade evolution, two games, multiplayer, colosseum, record mixing, record corner, cable club, second save, co-op, nearby, pair, play together only]
 ---
 
 Some Pokémon only evolve when traded, and each version has Pokémon the other doesn't. On a real Game Boy Advance that takes two consoles and a cable. `LINK PLAY` runs two to four GBA games side by side on your device and joins them as if by a link cable, so you can trade with yourself, battle your other save or mix records, all through the games' own Pokémon Centers.
@@ -18,7 +18,7 @@ Every game starts from its own save, the one it plays normally, and PokeDaisy ba
 
 ## Playing
 
-The games run at the same time. One has the buttons and the sound, framed in orange; the others keep running behind a dim. Tap a game to play it, or press `L2` / `R2` (or click a stick) on a controller to move to the previous or next one. On a two-screen device the games are split between the screens.
+The games run at the same time. One has the buttons and the sound, framed in orange; the others keep running behind a dim. Tap a game to play it, or press `L2` / `R2` (or click a stick) on a controller to move to the previous or next one. On a two-screen Android device the games are split between the screens.
 
 The `FF` button in the bottom right corner fast-forwards every game at once, up to four times the normal speed, with the sound off while it's on. Tap it again to go back to normal.
 
@@ -45,3 +45,7 @@ Link play is only the games: no companion, `EXPAND`, HUD or save states while it
 Save in each game first, then press `BACK` and pick `LEAVE`. A game that's in the middle of saving finishes before it closes. Anything you did since a game's last save is lost, as when you turn a console off.
 
 If you'd rather evolve a Pokémon without trading it at all, see [Trade evolutions](party.md#trade-evolutions).
+
+## Play co-op with a friend
+
+Open your paired saves to see each other in the game. When a nearby partner starts a supported battle, accept the prompt to join. In the companion's `CO-OP` settings, `PLAY TOGETHER ONLY` lets you agree to wait for each other before certain story events. Save in the game before leaving. Save-state loading and rewind are blocked while this mode is on, and cheats cannot be enabled while co-op is active.

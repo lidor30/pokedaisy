@@ -1,7 +1,7 @@
 # Shared library and setup coordination
 
-Follow-up to the shared-host composition audit. Preserve sources compiled in place under `app/`, installed
-preference formats and each platform's capabilities. Each PR replaces both hosts' repeated decisions.
+Follow-up to the shared-host composition audit. Preserve installed preference formats and each platform's
+capabilities. Each PR replaces both hosts' repeated decisions.
 
 ## E1: Library navigation and dialogs
 
