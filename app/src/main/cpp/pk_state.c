@@ -1,6 +1,7 @@
 // Save states behind the shared C API. Android keeps only the DS dispatch in JNI.
 #include "pk_host.h"
 #include "pk_wide.h"
+#include "pk_gb_follow.h"
 #include <mgba/core/serialize.h>
 #include <mgba-util/vfs.h>
 #include <fcntl.h>
@@ -86,6 +87,7 @@ bool pk_api_load_state(const char* path) {
             pk_heal_rtc(g.core);
             g.audioAvail = 0;
             pkRewindReset();
+            pk_gb_follow_lost();
         }
         pk_wide_reset();
     }

@@ -2445,6 +2445,12 @@ class PokeDaisyActivity : Activity() {
         lookGender.launch {
             telemetry.snapshot.map { it.playerGender }.distinctUntilChanged().collect { lookRunner.onGender(it) }
         }
+        // FOLLOWER on Crystal: its party icons come from the cart's first scan (Gen2Art), which may land after the party read
+        lookGender.launch {
+            com.pokedaisy.app.companion.data.RomArt.updates.collect {
+                if (romIsGameBoy) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { applyFollower() }
+            }
+        }
         // PLAYER LOOK's Pokémon: the party's species (national numbers) with their names in the game.
         lookGender.launch {
             telemetry.snapshot.map { Triple(it.party.map { m -> m.species }, it.party.firstOrNull { m -> !m.isEgg }?.species, it.pokedex) }

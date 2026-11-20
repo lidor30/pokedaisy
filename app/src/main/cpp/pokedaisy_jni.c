@@ -298,7 +298,7 @@ Java_com_pokedaisy_app_MgbaCore_pkGbFollowShow(JNIEnv* env, jobject thiz, jboole
 
 JNIEXPORT jstring JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkGbFollowInfo(JNIEnv* env, jobject thiz) {
-    char buf[160];
+    char buf[200];
     pk_gb_follow_info(buf, sizeof buf);
     return (*env)->NewStringUTF(env, buf);
 }

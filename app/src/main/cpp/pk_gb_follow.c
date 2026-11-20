@@ -4,8 +4,8 @@
 //
 // Where it walks: the path the screen scrolled (SCX / SCY as the frame was drawn, unwrapped), the player always being
 // in the middle (the Game Boy games keep the camera on him); the follower sits 16 pixels of that path behind. A jump
-// in the scroll with the player's map or tile changed is a warp: the path starts again and the follower waits for the
-// first step. What hides it: a battle or its transition, a menu or text (only where their tiles are), surfing, the
+// in the player's map or tile while the screen stands is a warp (walking over a map's edge changes them mid-step): the
+// path starts again and the follower waits for the first step, as after a state load or a rewind. What hides it: a battle or its transition, a menu or text (only where their tiles are), surfing, the
 // sprites off, the player's sprite gone. Tall grass covers its lower half (its pixels only where the BG is colour 0,
 // as the game's own OBJ-behind-BG priority does to the player), the BG's priority tiles and the window cover it too,
 // and it goes behind the game's sprites unless it stands lower on the screen than the player. Its colours follow the
@@ -84,12 +84,17 @@ static void gbf_check(struct mCore* core) {
 
 void pk_gb_follow_forget(void) {
     gbfCore = NULL;
+    gbf.known = false;
 }
 
-int pk_gb_follow_runs(struct mCore* core) {
-    if (!core) return 0;
-    gbf_check(core);
-    return gbf.known;
+int pk_gb_follow_runs(const struct mCore* core) {
+    // any thread: only the emu thread's frames check a cart (gbf_check), so this reads what they found
+    return core && core == gbfCore && gbf.known;
+}
+
+void pk_gb_follow_lost(void) {
+    gbf.started = false;
+    gbf.walked = 0;
 }
 
 void pk_gb_follow_configure(uint32_t crc) {

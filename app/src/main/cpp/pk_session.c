@@ -493,6 +493,7 @@ void pk_api_run_frame(void) {
     if (g.rewindEntries > 0) {
         if (g.rewinding) {
             // Back one entry, then that frame runs to draw it. At the oldest one, stand still.
+            pk_gb_follow_lost();   // FOLLOWER: rewound frames scroll backwards, no walk to follow
             if (!pk_rewind_restore(&g.rewind, g.core)) {
                 g.audioAvail = 0;
                 return;
