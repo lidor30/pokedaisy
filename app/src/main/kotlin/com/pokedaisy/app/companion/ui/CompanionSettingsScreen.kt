@@ -1125,7 +1125,7 @@ internal fun coopRows(
         is com.pokedaisy.app.companion.coop.CoopState.Off -> when (state.reason) {
             com.pokedaisy.app.companion.coop.CoopOffReason.NOT_PAIRED -> "Pair it on the top screen: CO-OP"
             com.pokedaisy.app.companion.coop.CoopOffReason.CHEATS_ON -> "Turn cheats off to play together"
-            com.pokedaisy.app.companion.coop.CoopOffReason.NOT_EMERALD -> "Co-op needs English Pokémon Emerald."
+            com.pokedaisy.app.companion.coop.CoopOffReason.NOT_EMERALD -> "Co-op needs Pokémon Emerald in English or German."
             else -> null
         }
         is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> when (state.reason) {

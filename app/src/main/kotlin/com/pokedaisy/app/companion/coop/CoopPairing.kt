@@ -236,7 +236,7 @@ class CoopPairing(
                 transport.send(from, CoopWire.encode(CoopWire.BYE, byteArrayOf(VERSION_CODE)))
                 refuseHello(from, CoopPairFail.VERSION)
             }
-            hello.romSha1 != EMERALD_COOP_SHA1 || (ours != null && hello.romSha1 != ours) ->
+            hello.romSha1 !in COOP_EMERALD_SHA1S || (ours != null && hello.romSha1 != ours) ->
                 refuseHello(from, CoopPairFail.DIFFERENT_ROM)
             hello.save == ownSave -> sameSave(from)
             else -> {

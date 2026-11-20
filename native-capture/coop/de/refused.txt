@@ -1,0 +1,20 @@
+# German Emerald (Smaragd, BPED rev 0) only: run it by name on the German save, with EMERALD_ROM the German ROM
+# (scripts/coop_headless_check.sh de/refused; not part of the English run, which takes coop/*.txt only).
+# Joined battles and PLAY TOGETHER ONLY patch English code, so on BPED both refuse at their CRC checks, every time,
+# and change nothing: no block in the link bridge's or the lock's areas, the ROM file's bytes untouched.
+# want: coop: refused Task_BattleStart
+# want: coop: uninstalled, rom patched: no
+# want: lock: refused ScriptContext_SetupScript
+# want: lock: uninstalled, rom patched: no
+# want: romcheck raw bus: 0 byte(s) differ
+# want: romcheck overlay: 0 byte(s) differ
+coopinstall
+expect8 0x08FFD000 0xFF 16
+coopinstall
+coopuninstall
+lockinstall
+expect8 0x08FFE000 0xFF 16
+expect8 0x08FFE800 0xFF 16
+lockinstall
+lockuninstall
+romcheck $EMERALD_ROM

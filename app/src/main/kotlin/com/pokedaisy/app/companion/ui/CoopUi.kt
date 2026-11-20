@@ -138,6 +138,8 @@ fun coopPartnerRows(pairs: List<CoopPair>, online: Set<CoopPeerId> = emptySet(),
 class CoopSaveChoice(
     val save: Path, val gameLabel: String, val id: CoopSaveId?, val pairedWith: String?,
     val friendCount: Int = if (pairedWith != null) 1 else 0,
+    /** The ROM's SHA-1: English or German retail Emerald (friends play the same one). */
+    val romSha1: String = com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1,
 ) {
     val full: Boolean get() = friendCount >= CoopPairs.MAX_FRIENDS
     val usable: Boolean get() = id != null && !full
@@ -275,7 +277,7 @@ private fun CoopSavePick(m: GbaTextMetrics, small: GbaTextMetrics, choices: List
                     GbaText(tr("NO EMERALD SAVES"), OptionColors.muted, OptionColors.mutedShadow, m)
                     Spacer(Modifier.height(m.u * 4))
                     GbaText(
-                        tr("Co-op needs English Pokémon Emerald."), OptionColors.label, OptionColors.labelShadow, small,
+                        tr("Co-op needs Pokémon Emerald in English or German."), OptionColors.label, OptionColors.labelShadow, small,
                         maxLines = Int.MAX_VALUE,
                     )
                 }

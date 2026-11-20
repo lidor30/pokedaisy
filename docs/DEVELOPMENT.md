@@ -1767,7 +1767,7 @@ FireRed / Emerald and the four follower hacks), `SpritePackFlowTest` (the zip re
 
 ### Co-op: seeing each other (friends on your map)
 
-Linked friends on retail English Emerald (BPEE, SHA-1 `f3ae0881...`, the same ROM on all) see each other's characters
+Linked friends on retail English Emerald (BPEE, SHA-1 `f3ae0881...`) or German Emerald (BPED, below; the same ROM on all) see each other's characters
 on a shared map (up to four at once, the nearest: "Co-op friends" under "Co-op connection"): walking, running, riding either bike and surfing, in the game's picture and in EXPAND's margins. It is only
 visual: you walk through each other, nothing is written into the game's RAM, save or states, and the partner's sprites are put
 in and out per frame like FOLLOWER's. Code: `companion/data/coop/` (`Presence.kt`, `PresenceSmoother.kt`, `PartnerArt.kt`,
@@ -1837,6 +1837,34 @@ its first frame.
 - **Not done**: connected maps (a partner just across a map border is hidden until you are both on one map), reflections in
   water, tall grass over his feet, and NPC depth order north of the partner (he takes the player's priority only, so a person
   standing behind him can draw wrongly over him). The co-op transport and its manual page are a separate piece of work.
+
+### Co-op on German Emerald (BPED)
+
+German Emerald (BPED rev 0, SHA-1 `61c2eb2b…`, `EMERALD_DE_SHA1`) gets presence: friends see each other on it.
+Friends must play the same ROM, as before (`COOP_EMERALD_SHA1S`, checked in the HELLO). Battles and PLAY TOGETHER ONLY
+stay English: `pk_coop*` patches English code, so their checks refuse BPED cleanly (`coop: refused Task_BattleStart`),
+and the activity doesn't hook them there (`CoopBattles.mayHook`, `startCoopLock`).
+
+- **Why it works:** BPED's RAM layout is English's, so `pk_partner_*` reads and draws through WIDE's BPED entry
+  unchanged. Its graphics sit 0x11D30 further on, and `PartnerArt.surfBlob` tries that offset too, still CRC-checked.
+- **Checked headless, on a BPED save:**
+  - `emerald_coop_newgame.txt` replays on BPED unchanged up to the bonus Pokémon, which use an English call. It ends
+    on the same Route 101 tile. The name keyboard differs, so the name comes out "A".
+  - 13 of 14 `coop/partner_*.txt` pass on a Route 101 save, the four `partner_multi_*` (friends) among them.
+  - `partner_fade` fails because it starts its fade through the English `ScriptContext_SetupScript` (0x08098EF8).
+  - `partner_follower` failed on another German save: the partner got palette slot 14 instead of 13, since that
+    save's loaded palettes differ.
+  - `coop/de/refused.txt` (German only, run it by name: `scripts/coop_headless_check.sh de/refused`): the battle
+    install and the lock both refuse at their CRC checks, leave the bridge and lock areas empty and the ROM untouched.
+    The English `install_refused` / `lock_refused` don't apply on BPED: they expect an install to succeed.
+- **Checked on the JVM with the real ROM:** `SmaragdCoopTest` (romDir, found by SHA-1 whatever the file is called)
+  finds the surf blob at the German offset, builds both heroes' art with their own palettes and writes
+  `app/build/partner/de/*.bin` for the headless tests (copy them to `app/build/partner/` for a German run).
+  `CoopLinkImplTest`, `CoopSessionGateTest` and `CoopBattlesTest` cover the gates without the ROM.
+- **Battles on BPED, the plan:**
+  - Build pret/pokeemerald byte for byte, as `scripts/gen_coop_emerald.py` already needs.
+  - Map each English symbol to BPED by its code bytes, then generate a second header and select the table per ROM at
+    run time.
 
 ### DAY AND NIGHT (the overworld by the clock)
 

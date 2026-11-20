@@ -51,6 +51,7 @@ boot_one() {
     [ "$fresh" = 1 ] && { cp "$EMERALD_SAVE" "$WORK/save.sav" || exit 1; }
     [ "$fresh" = 1 ] && [ -n "$PARTNER_SAVE_SRC" ] && { cp "$PARTNER_SAVE_SRC" "$WORK/partner.sav" || exit 1; }
     log="$WORK/$label.log"
+    mkdir -p "$(dirname "$log")"   # a test in a subfolder (coop/de/refused) logs to one too
     # `@boot` in a test: the cold boot to the field again, for the second core of a `pair` (after `on b`).
     cat "$REPO/native-capture/boot/emerald_coop.txt" "$test" | tr -d '\r' |
         awk -v boot="$REPO/native-capture/boot/emerald_coop.txt" '/^@boot$/ { while ((getline l < boot) > 0) print l; close(boot); next } { print }' |

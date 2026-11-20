@@ -16,6 +16,16 @@ const val COOP_PROTOCOL = 1
 /** Retail English Emerald, the only game co-op plays (both devices, checked in the HELLO). */
 const val EMERALD_COOP_SHA1 = "f3ae088181bf583e55daf962a92bb46f4f1d07b7"
 
+/** Retail German Emerald (Pokémon Smaragd-Edition, BPED rev 0). Seeing each other works on it, but joined battles and
+ * PLAY TOGETHER ONLY patch English code and stay on [EMERALD_COOP_SHA1]. */
+const val EMERALD_DE_SHA1 = "61c2eb2b380b1a75f0c94b767a2d4c26cd7ce4e3"
+
+/** The retail Emeralds co-op runs on (presence and friends); battles need [EMERALD_COOP_SHA1]. */
+val COOP_EMERALD_SHA1S: Set<String> = setOf(EMERALD_COOP_SHA1, EMERALD_DE_SHA1)
+
+/** The game codes worth hashing for co-op ([COOP_EMERALD_SHA1S]'s). */
+val COOP_EMERALD_CODES: Set<String> = setOf("BPEE", "BPED")
+
 /** A device on the link: its X25519 public key, 64 lowercase hex characters. */
 @JvmInline
 value class CoopPeerId(val hex: String) {

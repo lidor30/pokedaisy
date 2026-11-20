@@ -184,7 +184,7 @@ class CoopLinkImpl(
                 transport.send(peer, CoopWire.encode(CoopWire.BYE, byteArrayOf(VERSION_CODE)))
                 refuse(peer, CoopDropReason.VERSION)
             }
-            hello.romSha1 != EMERALD_COOP_SHA1 || (ours != null && hello.romSha1 != ours) ->
+            hello.romSha1 !in COOP_EMERALD_SHA1S || (ours != null && hello.romSha1 != ours) ->
                 refuse(peer, CoopDropReason.DIFFERENT_ROM)
             hello.save != p.partner.save -> refuse(peer, CoopDropReason.DIFFERENT_SAVE)
             else -> {

@@ -20,7 +20,8 @@ your game with an internet connection, every friend who is playing at the same t
 
 ## What you need
 
-- Pokémon Emerald (English) on both devices, and the same ROM on both.
+- Pokémon Emerald on both devices, the same ROM on both: English, or German (Pokémon Smaragd-Edition). With the German
+  game you see each other, but battling together and PLAYING TOGETHER ONLY need the English game for now.
 - A save you have saved in the game at least once.
 - Both devices on the internet. The same Wi-Fi is not required.
 - No cheats loaded. The link stays off while any cheat is on. Once the link is on, switching a cheat on is refused with a notice.
