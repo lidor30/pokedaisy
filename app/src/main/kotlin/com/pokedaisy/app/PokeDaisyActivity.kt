@@ -1,7 +1,6 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.DsCore
-import com.pokedaisy.app.companion.ScreenFilter
 import com.pokedaisy.app.companion.PlayerLookSession
 import com.pokedaisy.app.companion.data.AppearanceAssets
 import com.pokedaisy.app.companion.data.save.Gen3SaveFile
@@ -3165,11 +3164,9 @@ class PokeDaisyActivity : Activity() {
         // LIGHT COMPANION: no shader over the companion's views (one more pass over each, every frame).
         val companionShaders = prefs.companionShaders && !com.pokedaisy.app.companion.LightCompanion.on
         CompanionColors.set(
-            prefs.gbaColors && companionShaders,
-            if (companionShaders) prefs.screenFilter else ScreenFilter.NONE,
-            ScreenShaders.gridFor(prefs.screenFilter, prefs.gridStrength),
-            prefs.gbaColors && !com.pokedaisy.app.companion.LightCompanion.on,
-            if (com.pokedaisy.app.companion.LightCompanion.on) ScreenFilter.NONE else prefs.screenFilter,
+            CompanionShaders.settings(prefs.gbaColors, prefs.screenFilter, prefs.gridStrength, companionShaders),
+            CompanionShaders.settings(prefs.gbaColors, prefs.screenFilter, prefs.gridStrength,
+                !com.pokedaisy.app.companion.LightCompanion.on),
         )
         view.screenEffect = ScreenShaders.effectFor(prefs.screenFilter)
         view.screenGrid = ScreenShaders.gridFor(prefs.screenFilter, prefs.gridStrength)
