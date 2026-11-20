@@ -48,7 +48,9 @@
 
 using namespace melonDS;
 
-static void expShareTick(void);   // EXP SHARE, after every frame (below)
+extern "C" {
+static void expShareTick(void);   // EXP SHARE, after every frame (below; the definition is in the C API block)
+}
 
 namespace {
 
@@ -288,6 +290,27 @@ void pk_ndsm_deinit(void)
 }
 
 bool pk_ndsm_active(void) { return ds != nullptr; }
+
+const uint8_t* pk_ndsm_save_data(void)
+{
+    return ds && ds->nds ? ds->nds->GetNDSSave() : nullptr;
+}
+
+uint32_t pk_ndsm_save_length(void)
+{
+    return ds && ds->nds ? ds->nds->GetNDSSaveLength() : 0;
+}
+
+// melonDS's main RAM: the DS companion reads the save out of it (android's companion does the same).
+const uint8_t* pk_ndsm_main_ram(void)
+{
+    return ds && ds->nds ? ds->nds->MainRAM : nullptr;
+}
+
+uint32_t pk_ndsm_main_ram_size(void)
+{
+    return ds && ds->nds ? ds->nds->MainRAMMask + 1 : 0;
+}
 
 void pk_ndsm_set_keys(uint32_t keys)
 {

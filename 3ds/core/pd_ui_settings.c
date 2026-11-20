@@ -247,6 +247,8 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
             const struct pd_option_row* row = &ui->optionSource->rows[i];
             ui_row(c, ix, ry, iw, row->label, row->value, false);
             if (i == selected) settings_outline(c, ix - 4, ry, iw + 8, ROW_H);
+            // A host-owned list's rows: a tap is the row (its info rows take none).
+            if (i >= infoCount) ui_add_hit(ui, ix - 4, ry, iw + 8, ROW_H, HIT_OPTION + (i - infoCount));
         }
         pd_unclip(c);
         if (hasBar)
@@ -736,9 +738,14 @@ void pd_ui_options_view(struct pd_ui* ui,struct pd_canvas* c,const struct pd_gam
     ui_settings_tab(ui,c,g,s,NULL);
 }
 
-void pd_ui_choices_view(struct pd_canvas* c,const char* title,const char* const* choices,int count,int selected){
+void pd_ui_choices_view_ui(struct pd_ui* ui,struct pd_canvas* c,const char* title,const char* const* choices,int count,int selected){
     if(count<1 || count>8)return;
-    struct pd_ui ui={0};ui.pressedId=-1;
+    ui->pressedId=-1;ui->hitCount=0;
     pd_dim(c,230);
-    pick_list(&ui,c,title,choices,count,selected);
+    pick_list(ui,c,title,choices,count,selected);
+}
+
+void pd_ui_choices_view(struct pd_canvas* c,const char* title,const char* const* choices,int count,int selected){
+    struct pd_ui ui={0};
+    pd_ui_choices_view_ui(&ui,c,title,choices,count,selected);
 }

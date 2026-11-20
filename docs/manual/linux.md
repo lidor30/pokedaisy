@@ -168,6 +168,22 @@ can't keep up, a frame now and then shows the last picture again instead. After 
 rewind, the map past the edges is there at once. Rewind keeps the aspect you chose, so `ZOOM OUT` stays zoomed out
 while you rewind.
 
+### Widescreen
+
+`WIDESCREEN` is `ON` to start with. The picture is laid out for the window you have, so a wide window gets a wide view:
+in a game the companion knows, the field is drawn out to the window's edges at the game's own scale, with no black bars
+around it, and the extra space shows the map either side of the route you are on. It is the app's `EXPAND`, and `ZOOM
+OUT` in the companion's `SETTINGS` still shows one scale further out. Set it to `OFF` to see the game's own smaller
+picture, centred.
+
+DS games get the same on the Windows build, drawn by the app's own melonDS engine: the screen sits in the middle of the
+window and the overworld is drawn out to the edges. Fullscreen, windowed and every size in between lay it out again.
+
+Resizing the window, maximising it or going fullscreen lays the picture out again for the new size, so a 16:9 screen
+gets the wide view rather than the bars the old window would have, and so does a window stretched across three 1080p
+screens (16:3), its overworld drawn out to both sides. The picture is shown at a whole scale where one fits, so its
+pixels stay sharp, and fills the window when one doesn't.
+
 ## Adding games
 
 The program's game list shows the `.gb`, `.gbc`, `.gba` and `.nds` files in the `roms` folder of its data folder (and, on
@@ -225,8 +241,9 @@ as long as the firmware's controller layout is Nintendo (its default). If that f
 get A on the button marked A, set it back to `NORMAL`. Controllers can be plugged in or pulled out while you play.
 
 On a keyboard: arrows move, Z is A, X is B, Enter is START, Backspace is SELECT, Q and E are L and R, Tab is X and F
-is Y. Hold Space to fast forward and R to rewind, F2 saves a state, F4 loads it, and Escape opens the menu. A touch
-screen or a mouse reaches the companion and the HUD.
+is Y. Hold Space to fast forward and R to rewind, F2 saves a state, F4 loads it, and Escape opens the menu. Every one
+of those keys can be changed in the menu's `KEYBOARD` page. A mouse or a touch screen reaches the companion and the HUD:
+clicking a tab, the gear, a row or a button presses it, as `ENTER` on it would.
 
 The companion and the quick menu work as in the cores everywhere: X opens the [companion](companion.md), Y opens the
 quick menu over the game (PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS, COMPANION), and both buttons can be
@@ -244,9 +261,22 @@ one you're on, and the HUD's panels have a battle-style shadow, with an HP bar a
 party Pokémon.
 
 In a DS game the DS has every face and shoulder button, so L2 opens the companion and R2 switches the screens, and the
-game starts on one screen. The DS HUD has the same PC, BAG, WILD and COMPANION buttons as a GBA game's, and hides
-while the game shows text. `HUD` in its `SETTINGS` opens the same HUD page as a GBA game's, with `LOOK`, `SIZE`
-(`SMALL`, `NORMAL` or `LARGE`) and which parts show, and the quick menu's `HUD` tile moves the cursor onto the HUD.
+game starts on one screen. On the Windows build the DS core is the app's own melonDS engine rather than DSperate:
+[EXPAND](screen.md#expand-more-of-the-map) fills a wide window with the map past the screen's edges, as it does on
+Android, and the companion opens over the running game: a tap of L2 opens it and closes it, and holding L2 for a
+moment opens the quick menu (PC, FLY, the keep-away spray, WILD ENCOUNTERS and the companion), each through the game's
+own menus. The companion keeps the game running, sound and all,
+and reads the save live: `PARTY`, the `POKéDEX`, the region map in the cartridge's own art, the bag, the guide, and its
+`SETTINGS`, which keeps its own file in `saves/pokedaisy-ds`. `B` closes it, and `L` and `R` change tab. R2 shows the
+touch screen by itself until pressed again. The HUD over a DS game works as it does over a GBA game: the party row,
+the minimap, your Poké Balls, the keep-away spray's steps and the PC, BAG, WILD and COMPANION buttons, drawn over the
+top screen and out of the way while the game shows text, a menu or a battle. `HUD` in its `SETTINGS` opens the same HUD
+page as a GBA game's, with `LOOK`, `SIZE` (`SMALL`, `NORMAL` or `LARGE`) and which parts show. The quick menu's `HUD`
+tile puts the cursor on it, and `HUD CURSOR BUTTON` gives it a button of its own: press it and the cursor goes to the
+first part, the arrows move it, A opens that party slot's summary, the map, the bag, the guide or the game's PC, and B
+puts the cursor away. The mouse works too: click a part of the HUD and it opens, click a quick menu tile to run it, and
+click anywhere else on the quick menu to close it. In the companion, a click runs whatever it lands on, a tab, a row, a
+button or the gear, as A does, a click on the map moves the selection to that spot, and the wheel moves the open list.
 
 ## The menu
 
@@ -258,9 +288,11 @@ pauses while it's open.
 | `RESUME` | Back to the game. |
 | `SAVE STATE`, `LOAD STATE` | One save state for the game. `LOAD STATE` asks first. Game Boy Advance states made before this version don't load. |
 | `HOTKEYS` | Buttons for fast-forward, rewind and states (below). |
+| `KEYBOARD` | Which key does what (below). |
 | `REWIND` | `ON` keeps the last 20 seconds or so to rewind through. |
 | `FF SPEED` | How fast fast-forward goes: `MAX`, or 2x to 8x. |
 | `LCD FILTER` | A screen texture like a handheld's. |
+| `WIDESCREEN` | `ON` fills the screen with the map drawn out past the game's edges, the app's [EXPAND](screen.md#expand-more-of-the-map). |
 | `A/B BUTTONS` | `NORMAL` or `SWAPPED`, for devices whose A and B are the other way round. |
 | `QUIT` | Leave the game (`QUIT TO GAME LIST` when you picked it from the list). It asks first. |
 
@@ -284,6 +316,18 @@ another hotkey had moves over to the new one, and the `MODIFIER` can't be a hotk
 DS games keep hotkeys of their own, also SELECT + R2 and SELECT + L2 to start with. With the `MODIFIER` off they move
 to R3 and L3, since R2 and L2 alone are the DS's screen and companion buttons. On a Steam Deck, the back buttons reach
 PokeDaisy only when Steam passes them on.
+
+### Keyboard
+
+`KEYBOARD` lists every action with the key it uses, and you can give any of them another key. Pick a row, then press
+the key you want. B cancels, and SELECT turns that row off. A key another row had moves to the one you picked. Your
+keys are kept in `host.ini` in the data folder, so they stay as you set them.
+
+The keys it starts with are the ones above: Z for A, X for B, Enter for START, Backspace for SELECT, the arrows for
+the D-pad, Q and E for L1 and R1, Tab for X, F for Y, 1 and 2 for L2 and R2, Escape for MENU, Space for fast forward,
+R for rewind, F2 for saving a state and F4 for loading it.
+
+While you pick a key the game doesn't see it, so Escape doesn't open the menu again and Enter doesn't press START.
 
 ## For advanced users
 

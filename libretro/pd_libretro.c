@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include "pd_fs.h"
 
 bool pd_lr_read_memory(void *ctx, uint32_t a, void *out, size_t n);
 
@@ -51,12 +52,14 @@ static const unsigned retroId[NKEYS] = {
     RETRO_DEVICE_ID_JOYPAD_L2,    RETRO_DEVICE_ID_JOYPAD_R2,   RETRO_DEVICE_ID_JOYPAD_SELECT, RETRO_DEVICE_ID_JOYPAD_L3};
 
 /* ---- the options this layer adds to mGBA's ---- */
-#define PD_OPTION_COUNT 2
+#define PD_OPTION_COUNT 3
 static const struct retro_core_option_v2_definition pdOptions[PD_OPTION_COUNT] = {
     {"pokedaisy_canvas", "Companion canvas", NULL, "The frame size the core reports: the game sits in it at a whole scale, the companion fills it. auto = 320x240.", NULL, NULL,
      {{"auto", NULL}, {"320x240", NULL}, {"341x256", NULL}, {"400x300", NULL}, {"427x240", NULL}, {NULL, NULL}}, "auto"},
     {"pokedaisy_panel", "Panel size", NULL, "The frontend's screen. With it the core picks its own canvas: EXPAND at the game's whole scale, ZOOM OUT one scale less. auto = the canvas option alone.", NULL, NULL,
      {{"auto", NULL}, {"480x320", NULL}, {"480x800", NULL}, {"640x480", NULL}, {"720x480", NULL}, {"720x540", NULL}, {"720x720", NULL}, {"752x560", NULL}, {"960x544", NULL}, {"960x720", NULL}, {"1024x768", NULL}, {"1280x720", NULL}, {"1600x1440", NULL}, {"1920x1080", NULL}, {NULL, NULL}}, "auto"},
+    {"pokedaisy_aspect", "Aspect", NULL, "How the game fills the screen where the host can draw past the game's edges: expand (the app's EXPAND, the map rebuilt out to the edges at the game's own scale), zoom (one scale less, more of the map), original (the game's own frame), auto (the core's own ASPECT setting).", NULL, NULL,
+     {{"auto", NULL}, {"expand", NULL}, {"zoom", NULL}, {"original", NULL}, {NULL, NULL}}, "auto"},
 };
 
 static retro_environment_t realEnv;
@@ -555,7 +558,9 @@ static unsigned autoRunFlip;
 static int key_of(int btn) {
   return btn == PD_BTN_X ? X : btn == PD_BTN_Y ? Y : btn == PD_BTN_L2 ? L2 : btn == PD_BTN_R2 ? R2 : -1;
 }
-static void read_options(void) {} // (kept for the option-update hook: the canvas is read once at load)
+static void apply_aspect_option(void);
+/* Asked again whenever the frontend says an option changed, and once after the settings file is read. */
+static void read_options(void) { apply_aspect_option(); }
 
 static void poll_keys(void) {
   held = 0;
@@ -1082,6 +1087,35 @@ static void canvas_update(bool notify) {
   }
 }
 
+/* The frontend's ASPECT row (pokedaisy_aspect), for a host that can draw past the game's edges: auto leaves the core's
+ * own ASPECT setting be. A change resizes the canvas at once and tells the frontend (it presents the new geometry). */
+static void apply_aspect_option(void) {
+  const char *a = pd_option("pokedaisy_aspect");
+  if (!a || !strcmp(a, "auto"))
+    return;
+  int aspect = settings.aspect;
+  if (!strcmp(a, "expand"))
+    settings.aspect = PD_ASPECT_EXPAND;
+  else if (!strcmp(a, "zoom"))
+    settings.aspect = PD_ASPECT_ZOOM_OUT;
+  else if (!strcmp(a, "original"))
+    settings.aspect = PD_ASPECT_ORIGINAL;
+  if (settings.aspect != aspect && CW > 0)
+    canvas_update(true);
+}
+static void apply_panel_option(void) {
+  const char *v = pd_option("pokedaisy_panel");
+  int w = 0, h = 0;
+  if (!v || sscanf(v, "%dx%d", &w, &h) != 2 || w <= 0 || h <= 0)
+    w = h = 0;
+  if (w == panelW && h == panelH)
+    return;
+  // The frontend's window changed (resized, fullscreen): the canvas has to follow it, or the picture keeps the
+  // letterbox it was laid out for.
+  choose_canvas();
+  canvas_update(true);
+}
+
 /* ---- entry points ---- */
 RETRO_API void retro_set_environment(retro_environment_t e) {
   realEnv = e;
@@ -1167,7 +1201,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   const char *dir = NULL;
   if (realEnv(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &dir) && dir && *dir) {
     snprintf(pdDir, sizeof pdDir, "%s/pokedaisy", dir);
-    mkdir(pdDir, 0755);
+    pd_mkdir(pdDir);
     snprintf(settingsPath, sizeof settingsPath, "%s/settings.ini", pdDir);
   } else {
     *pdDir = 0;
@@ -1176,6 +1210,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   pd_settings_load(&settings, settingsPath);
   pd_look_apply(&game, &settings); // DARK MODE (pd_game_detect applied the game's windows with no settings)
   autoRunFlip = 0;
+  read_options(); // the frontend's ASPECT, over the file's own
   // A resident frontend loads the core again in the same process: nothing of the last game may survive.
   memset(&snap, 0, sizeof snap);
   memset(&hudState, 0, sizeof hudState);
@@ -1476,6 +1511,8 @@ RETRO_API void retro_run(void) {
     optionsDirty = false;
     read_options();
   }
+  apply_aspect_option(); // the frontend's ASPECT can change mid-game: a lookup a frame, a resize only when it does
+  apply_panel_option();  // so can its window: the canvas is laid out for the panel again when that changes
   quickBtn = key_of(settings.quickBtn);
   companionBtn = key_of(settings.companionBtn);
   hudBtn = key_of(settings.hudBtn);
@@ -1500,7 +1537,9 @@ RETRO_API void retro_run(void) {
     snapshot(); // FLASH dims on who knows it and the lit flag: read as the menu opens, not up to 30 frames old
   // A tap on the quick menu: a tile (or a FLY / REPEL list row) is picked as A picks it; outside, the list or the menu
   // closes as B. On the field, a tap that starts and ends on one HUD part presses it; the game picture itself does nothing.
-  if (touch_tapped() && quickOpen && !companion) {
+  if (touch_tapped() && companion && !quickOpen) {
+    pd_ui_tap(&ui, touchX0, touchY0); // a tap on the companion presses the part under it, as the cursor's A does
+  } else if (touch_tapped() && quickOpen && !companion) {
     const int x = touchX * quick_width() / CW, y = touchY * quick_height() / CH;
     int i = (flyList || repelList) ? quick_list_hit(x, y) : quick_hit(x, y);
     if (i >= 0) {

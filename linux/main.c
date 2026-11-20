@@ -11,7 +11,11 @@
 #include "pd_menu.h"
 #include <SDL.h>
 #include <dirent.h>
+#ifdef _WIN32
+#include "win32_dl.h"
+#else
 #include <dlfcn.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -24,10 +28,22 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include "pd_fs.h"
 
 #include "library.h"
 
-// The window's size without POCKET_FULLSCREEN / POCKET_WINDOW.
+/* The cores' file ending: dlopen'd .so objects on Linux, .dll on Windows. */
+#ifdef _WIN32
+#include "SDL_syswm.h"
+#include <windows.h>
+#define PD_CORE_EXT ".dll"
+#define PD_HOST_NAME "PokeDaisy"
+#else
+#define PD_CORE_EXT ".so"
+#define PD_HOST_NAME "PokeDaisy Linux"
+#endif
+
+// The window's size without POCKET_FULLSCREEN / POCKET_WINDOW: the app's handheld panel, 4:3.
 #define W 512
 #define H 384
 #define OVERLAY_MAX_W 1024
@@ -48,6 +64,23 @@ static const char *saveFile;
 static char savesDir[PATH_MAX], exeDir[PATH_MAX];
 static char message[128];
 static unsigned messageUntil;
+
+#ifdef _WIN32
+/* The icon the executable carries (windows/pokedaisy.rc): the title bar, the taskbar and Alt-Tab take it here, so the
+ * window does not depend on SDL picking the exe's own. */
+static void set_window_icon(SDL_Window *win) {
+  if (!win) return;
+  SDL_SysWMinfo info;
+  SDL_VERSION(&info.version);
+  if (!SDL_GetWindowWMInfo(win, &info) || info.subsystem != SDL_SYSWM_WINDOWS || !info.info.win.window) return;
+  HICON big = (HICON)LoadImageA(NULL, MAKEINTRESOURCEA(1), IMAGE_ICON, GetSystemMetrics(SM_CXICON),
+                                GetSystemMetrics(SM_CYICON), LR_SHARED);
+  HICON small = (HICON)LoadImageA(NULL, MAKEINTRESOURCEA(1), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
+                                  GetSystemMetrics(SM_CYSMICON), LR_SHARED);
+  if (big) SendMessage(info.info.win.window, WM_SETICON, ICON_BIG, (LPARAM)big);
+  if (small) SendMessage(info.info.win.window, WM_SETICON, ICON_SMALL, (LPARAM)small);
+}
+#endif
 
 static void stop(int sig) {
   (void)sig;
@@ -95,6 +128,12 @@ enum {
 static SDL_GameController *controller;
 static bool rawTrimui;
 static bool swapFace; // the host menu's A/B BUTTONS: SWAPPED (host.ini swap_ab)
+/* The PANEL presets: the screen the core is told to lay its canvas out for. 0 is the window's own size. */
+#define PD_PANEL_PRESETS 5
+static const char *panel_preset(int panel) {
+  static const char *const panels[PD_PANEL_PRESETS] = {NULL, "1280x720", "1280x800", "1920x1080", "2560x1440"};
+  return panel > 0 && panel < PD_PANEL_PRESETS ? panels[panel] : NULL;
+}
 // A controller's face button, after the host menu's A/B BUTTONS (the keyboard's keys stay where they are).
 static int face(int k) {
   if (!swapFace)
@@ -104,49 +143,30 @@ static int face(int k) {
 static unsigned held, pressed;
 static bool inputReset;
 static unsigned repeatAt[NKEYS];
+/* The keyboard's keys, one per action: the host menu's KEYBOARD page sets them, kept in host.ini (kb_*). A floor of a
+ * keyboard can't follow a game pad's layout, so each action has its own key. SDL keycodes; SDLK_UNKNOWN = the row is off. */
+enum {
+  KB_A, KB_B, KB_X, KB_Y, KB_L, KB_R, KB_L2, KB_R2, KB_START, KB_SELECT,
+  KB_UP, KB_DOWN, KB_LEFT, KB_RIGHT, KB_MENU, KB_FF, KB_REWIND, KB_SAVE, KB_LOAD, KB_COUNT
+};
+static const char *const kbIds[KB_COUNT] = {"a",      "b",     "x",      "y",    "l1", "r1",     "l2",     "r2",
+                                            "start",  "select", "up",    "down", "left", "right", "menu", "ff",
+                                            "rewind", "savestate", "loadstate"};
+static const char *const kbLabels[KB_COUNT] = {"A",   "B",   "X",     "Y",    "L1",   "R1",     "L2",    "R2",
+                                               "START", "SELECT", "UP", "DOWN", "LEFT", "RIGHT", "MENU",
+                                               "FAST FORWARD", "REWIND", "SAVE STATE", "LOAD STATE"};
+static const int kbTargets[KB_COUNT] = {A,    B,    X,   Y,    L,      R,      L2,     R2,      START,   SELECT,
+                                        UP,   DOWN, LEFT, RIGHT, MENU,  FFKEY,  RWKEY,  SAVEKEY, LOADKEY};
+static int kbKeys[KB_COUNT] = {SDLK_z,   SDLK_x,       SDLK_TAB,  SDLK_f,     SDLK_q,     SDLK_e,   SDLK_1,
+                               SDLK_2,   SDLK_RETURN,  SDLK_BACKSPACE, SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT,
+                               SDLK_ESCAPE, SDLK_SPACE, SDLK_r,   SDLK_F2,    SDLK_F4};
+static int kbCapture = -1; // the KEYBOARD page's row waiting for a key, -1 none
+static int lastKey;        // the key that went down this frame (that page reads it)
 static int keyboard(SDL_Keycode k) {
-  switch (k) {
-  case SDLK_z:
-    return A;
-  case SDLK_x:
-    return B;
-  case SDLK_BACKSPACE:
-    return SELECT;
-  case SDLK_RETURN:
-    return START;
-  case SDLK_RIGHT:
-    return RIGHT;
-  case SDLK_LEFT:
-    return LEFT;
-  case SDLK_UP:
-    return UP;
-  case SDLK_DOWN:
-    return DOWN;
-  case SDLK_e:
-    return R;
-  case SDLK_q:
-    return L;
-  case SDLK_TAB:
-    return X;
-  case SDLK_f:
-    return Y;
-  case SDLK_1:
-    return L2;
-  case SDLK_2:
-    return R2;
-  case SDLK_ESCAPE:
-    return MENU;
-  case SDLK_SPACE:
-    return FFKEY;
-  case SDLK_r:
-    return RWKEY;
-  case SDLK_F2:
-    return SAVEKEY;
-  case SDLK_F4:
-    return LOADKEY;
-  default:
-    return -1;
-  }
+  for (int i = 0; i < KB_COUNT; i++)
+    if (kbKeys[i] && kbKeys[i] == (int)k)
+      return kbTargets[i];
+  return -1;
 }
 /* POCKET_FACE_LABELS=1: the controller mapping already names the face buttons by their labels (ROCKNIX's PortMaster mapping in
  * its Nintendo layout: SDL's "a" is the button marked A, wherever it sits), so A is A. Else SDL's are an Xbox pad's places
@@ -287,6 +307,10 @@ static void controller_removed(SDL_JoystickID id) {
 static SDL_Rect frameRect;
 static int pointerX, pointerY;
 static bool pointerDown;
+static void script_mouse(void);
+static bool pointerHeld; // the left button is down (pointerDown is that, held for at least a frame)
+static int pointerPulse;
+static int wheelSteps;     // the wheel's notches this frame (+ up), for RETRO_DEVICE_MOUSE
 static void pointer_at(int x, int y) {
   if (frameRect.w <= 0 || frameRect.h <= 0)
     return;
@@ -302,16 +326,17 @@ static int key_named(const char *s);
 static struct {
   unsigned at, hold;
   int key;
-} script[64];
+} script[256];
 static int scriptN = -1;
 static unsigned tick;
 static void key(int k, bool isDown);
+static void script_resize(void);
 static void script_keys(void) {
   if (scriptN < 0) {
     scriptN = 0;
     char buf[1024], *save = NULL;
     snprintf(buf, sizeof buf, "%s", getenv("POCKET_KEYS") ? getenv("POCKET_KEYS") : "");
-    for (char *t = strtok_r(buf, ",", &save); t && scriptN < 64; t = strtok_r(NULL, ",", &save)) {
+    for (char *t = strtok_r(buf, ",", &save); t && scriptN < 256; t = strtok_r(NULL, ",", &save)) {
       char name[16];
       unsigned at, hold = 2;
       if (sscanf(t, "%u:%15[^:]:%u", &at, name, &hold) >= 2 && key_named(name) >= 0)
@@ -326,8 +351,39 @@ static void script_keys(void) {
   }
   tick++;
 }
+/* POCKET_RAWKEY="TICK:KEYCODE[:HOLD]", a real SDL key event at that tick: the KEYBOARD page's capture, tested. */
+static struct {
+  unsigned at, hold;
+  int key;
+} rawscript[16];
+static int rawscriptN = -1;
+static void script_rawkeys(void) {
+  if (rawscriptN < 0) {
+    rawscriptN = 0;
+    char buf[256], *save = NULL;
+    snprintf(buf, sizeof buf, "%s", getenv("POCKET_RAWKEY") ? getenv("POCKET_RAWKEY") : "");
+    for (char *t = strtok_r(buf, ",", &save); t && rawscriptN < 16; t = strtok_r(NULL, ",", &save)) {
+      unsigned at, hold = 2;
+      int code;
+      if (sscanf(t, "%u:%d:%u", &at, &code, &hold) >= 2)
+        rawscript[rawscriptN++] = (typeof(rawscript[0])){at, hold, code};
+    }
+  }
+  for (int i = 0; i < rawscriptN; i++) {
+    if (tick == rawscript[i].at || tick == rawscript[i].at + rawscript[i].hold) {
+      SDL_Event e = {0};
+      e.type = tick == rawscript[i].at ? SDL_KEYDOWN : SDL_KEYUP;
+      e.key.type = e.type;
+      e.key.state = tick == rawscript[i].at ? SDL_PRESSED : SDL_RELEASED;
+      e.key.keysym.sym = (SDL_Keycode)rawscript[i].key;
+      SDL_PushEvent(&e);
+    }
+  }
+}
 static void events(void) {
   pressed = 0;
+  lastKey = 0;
+  script_rawkeys();
   SDL_Event e;
   while (SDL_PollEvent(&e)) {
     if (e.type == SDL_QUIT)
@@ -340,7 +396,9 @@ static void events(void) {
       controller_added(e.cdevice.which);
     if (e.type == SDL_CONTROLLERDEVICEREMOVED)
       controller_removed(e.cdevice.which);
-    if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) && !e.key.repeat)
+    if (e.type == SDL_KEYDOWN && kbCapture >= 0)
+      lastKey = (int)e.key.keysym.sym; // the KEYBOARD page's next key: the game sees nothing of it
+    else if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) && !e.key.repeat)
       key(keyboard(e.key.keysym.sym), e.type == SDL_KEYDOWN);
     if (e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_CONTROLLERBUTTONUP)
       key(face(controller_button(e.cbutton.button)), e.type == SDL_CONTROLLERBUTTONDOWN);
@@ -374,18 +432,81 @@ static void events(void) {
     }
     if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) {
       pointer_at(e.button.x, e.button.y);
-      pointerDown = e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT;
+      pointerHeld = e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT;
+      if (pointerHeld)
+        pointerPulse = 1; // a click the core sees even when press and release fall in one frame
     }
     if (e.type == SDL_MOUSEMOTION)
       pointer_at(e.motion.x, e.motion.y);
+    if (e.type == SDL_MOUSEWHEEL)
+      wheelSteps += e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -e.wheel.y : e.wheel.y;
     if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
       inputReset = true;
       held = pressed = 0;
+      pointerHeld = false; // its button-up may go to the window that took the focus
+      pointerPulse = 0;
+      pointerDown = false;
     }
     if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
       outputChanged = true;
   }
+  script_mouse();
+  script_resize();
   script_keys();
+}
+/* POCKET_MOUSE="TICK:X:Y[:c],...": where the cursor is (window pixels) from that tick on, ',c' clicking then, for
+ * tests; the same tick numbering as POCKET_KEYS. */
+static struct {
+  unsigned at;
+  int x, y, wheel;
+  bool click;
+} mscript[16];
+static int mscriptN = -1;
+static void script_mouse(void) {
+  if (mscriptN < 0) {
+    mscriptN = 0;
+    char buf[512], *save = NULL;
+    snprintf(buf, sizeof buf, "%s", getenv("POCKET_MOUSE") ? getenv("POCKET_MOUSE") : "");
+    for (char *t = strtok_r(buf, ",", &save); t && mscriptN < 16; t = strtok_r(NULL, ",", &save)) {
+      unsigned at;
+      int x, y;
+      char c = 0;
+      if (sscanf(t, "%u:%d:%d:%c", &at, &x, &y, &c) >= 3)
+        mscript[mscriptN] = (typeof(mscript[0])){at, x, y, c == 'd' ? -1 : c == 'u' ? 1 : 0, c == 'c'}, mscriptN++;
+    }
+  }
+  for (int i = 0; i < mscriptN; i++)
+    if (tick == mscript[i].at) {
+      pointer_at(mscript[i].x, mscript[i].y);
+      if (mscript[i].click)
+        pointerPulse = 1;
+      wheelSteps += mscript[i].wheel;
+    }
+}
+/* POCKET_RESIZE="TICK:WxH,...": resizes the window at that tick, as a dragged edge or fullscreen would, for tests:
+ * the core lays its canvas out for the new panel. */
+static struct {
+  unsigned at;
+  int w, h;
+} rscript[8];
+static int rscriptN = -1;
+static void script_resize(void) {
+  if (rscriptN < 0) {
+    rscriptN = 0;
+    char buf[128], *save = NULL;
+    snprintf(buf, sizeof buf, "%s", getenv("POCKET_RESIZE") ? getenv("POCKET_RESIZE") : "");
+    for (char *t = strtok_r(buf, ",", &save); t && rscriptN < 8; t = strtok_r(NULL, ",", &save)) {
+      unsigned at;
+      int w, h;
+      if (sscanf(t, "%u:%dx%d", &at, &w, &h) == 3 && w > 0 && h > 0)
+        rscript[rscriptN++] = (typeof(rscript[0])){at, w, h};
+    }
+  }
+  for (int i = 0; i < rscriptN; i++)
+    if (tick == rscript[i].at && window) {
+      SDL_SetWindowSize(window, rscript[i].w, rscript[i].h);
+      outputChanged = true;
+    }
 }
 static void repeat_directions(void) {
   for (int k = RIGHT; k <= DOWN; k++)
@@ -435,7 +556,10 @@ static struct {
   int hotkey[HK_ACTIONS]; // the HOTKEYS page's button per action, -1 none
   int dsHotkey[HK_ACTIONS];
   int modifier;
-} hostSet = {0, false, false, false, {R2, L2, -1, -1}, {R2, L2, -1, -1}, SELECT};
+  bool fullscreen; // the WINDOW setting
+  int panel;       // the PANEL setting: 0 = the window's size, else a preset the core lays out for
+  bool widescreen; // the core's ASPECT: EXPAND (the app's own widescreen fix) instead of the game's own frame
+} hostSet = {0, false, false, false, {R2, L2, -1, -1}, {R2, L2, -1, -1}, SELECT, false, 0, true};
 static char hostIni[PATH_MAX];
 /* A DS game's L2 / R2 are its companion and screen buttons: with no modifier held for them, its FAST FORWARD and REWIND
  * go back to the stick clicks (R3 / L3), and come back to R2 / L2 when a modifier is picked again. */
@@ -472,6 +596,12 @@ static void host_load(void) {
       hostSet.lcd = v != 0;
     if (sscanf(line, "swap_ab=%d", &v) == 1)
       hostSet.swapAB = v != 0;
+    if (sscanf(line, "fullscreen=%d", &v) == 1)
+      hostSet.fullscreen = v != 0;
+    if (sscanf(line, "panel=%d", &v) == 1 && v >= 0 && v < PD_PANEL_PRESETS)
+      hostSet.panel = v;
+    if (sscanf(line, "widescreen=%d", &v) == 1)
+      hostSet.widescreen = v != 0;
     char modifier[16];
     if (sscanf(line, "hk_modifier=%15s", modifier) == 1) {
       int k = key_named(modifier);
@@ -489,6 +619,12 @@ static void host_load(void) {
       if (sscanf(line, key, name) == 1)
         hostSet.dsHotkey[i] = hotkey_assignable(key_named(name)) ? key_named(name) : -1;
     }
+    for (int i = 0; i < KB_COUNT; i++) {
+      char key[32];
+      snprintf(key, sizeof key, "kb_%s=%%d", kbIds[i]);
+      if (sscanf(line, key, &v) == 1 && v >= 0)
+        kbKeys[i] = v;
+    }
   }
   if (f)
     fclose(f);
@@ -504,11 +640,14 @@ static void host_save(void) {
   if (!f)
     return;
   fprintf(f, "ff_speed=%d\nrewind=%d\nlcd=%d\nswap_ab=%d\n", hostSet.ffSpeed, hostSet.rewind, hostSet.lcd, hostSet.swapAB);
+  fprintf(f, "fullscreen=%d\npanel=%d\nwidescreen=%d\n", hostSet.fullscreen, hostSet.panel, hostSet.widescreen);
   fprintf(f, "hk_modifier=%s\n", key_name(hostSet.modifier));
   for (int i = 0; i < HK_ACTIONS; i++) {
     fprintf(f, "hk_%s=%s\n", hotkeyIds[i], key_name(hostSet.hotkey[i]));
     fprintf(f, "ds_hk_%s=%s\n", hotkeyIds[i], key_name(hostSet.dsHotkey[i]));
   }
+  for (int i = 0; i < KB_COUNT; i++)
+    fprintf(f, "kb_%s=%d\n", kbIds[i], kbKeys[i]);
   fclose(f);
 }
 // A hotkey's button as the HOTKEYS page shows it.
@@ -583,7 +722,7 @@ static bool write_file(const char *path, const void *d, size_t n, bool sync) {
     return false;
   bool ok = fwrite(d, 1, n, f) == n && fflush(f) == 0 && (!sync || fsync(fileno(f)) == 0);
   ok = fclose(f) == 0 && ok;
-  if (ok && rename(tmp, path) == 0)
+  if (ok && pd_rename(tmp, path) == 0)
     return true;
   unlink(tmp);
   return false;
@@ -609,7 +748,7 @@ static bool save_backup(const char *sav, const char *dir) {
     free(d);
     return true;
   }
-  mkdir(dir, 0755);
+  pd_mkdir(dir);
   const char *file = strrchr(sav, '/');
   file = file ? file + 1 : sav;
   const char *dot = strrchr(file, '.');
@@ -717,6 +856,7 @@ static struct {
 } options[160];
 static int optionN;
 static char panelValue[32];
+static char windowValue[32];   // the window the picture is drawn in, whatever PANEL preset is held
 static bool optionsChanged;
 static void options_from(const struct retro_core_option_v2_definition *d) {
   for (optionN = 0; d && d->key && optionN < (int)(sizeof options / sizeof options[0]); d++, optionN++) {
@@ -793,6 +933,10 @@ static bool environment(unsigned cmd, void *data) {
       v->value = hostSet.modifier == SELECT ? "enabled" : "disabled";
     if (!strcmp(v->key, "pokedaisy_panel"))
       v->value = panelValue;
+    if (!strcmp(v->key, "pokedaisy_window"))
+      v->value = windowValue;
+    if (!strcmp(v->key, "pokedaisy_aspect"))
+      v->value = hostSet.widescreen ? "expand" : "original";
     for (int i = 0; i < optionN && !v->value; i++)
       if (!strcmp(options[i].key, v->key))
         v->value = options[i].value;
@@ -885,25 +1029,30 @@ static void video_refresh(const void *data, unsigned w, unsigned h, size_t pitch
     return;
   SDL_Rect r = {0, 0, (int)w, (int)h};
   SDL_UpdateTexture(frameTexture, &r, data, (int)pitch);
+  if ((int)w != frameW || (int)h != frameH) // the core's canvas: it follows the aspect and the panel
+    fprintf(stderr, "Frame: %ux%u\n", w, h);
   frameW = (int)w;
   frameH = (int)h;
 }
-/* The frame at the largest whole scale the screen holds (the core sized it for this screen), centred; a screen
- * smaller than the frame gets it shrunk to fit. */
+/* The frame centred, at the largest scale the screen holds. The core sizes its canvas to the panel, so this is a whole
+ * scale normally; where a whole one would leave the picture short of the screen (a canvas whose aspect isn't the
+ * window's, or an odd panel) it fits instead, so the picture fills the screen rather than sitting in bars. */
 static SDL_Rect frame_place(int ow, int oh) {
   SDL_Rect r = {0, 0, ow, oh};
   if (frameW <= 0 || frameH <= 0)
     return r;
-  int s = ow / frameW < oh / frameH ? ow / frameW : oh / frameH;
-  if (s >= 1) {
-    r.w = frameW * s;
-    r.h = frameH * s;
-  } else if ((long)ow * frameH < (long)oh * frameW) {
-    r.w = ow;
-    r.h = ow * frameH / frameW;
-  } else {
-    r.h = oh;
-    r.w = oh * frameW / frameH;
+  double fit = ow / (double)frameW < oh / (double)frameH ? ow / (double)frameW : oh / (double)frameH;
+  int whole = (int)fit;
+  double s = whole >= 1 && whole / fit >= 0.98 ? whole : fit; // whole pixels only when they fill the screen
+  r.w = (int)(frameW * s + 0.5);
+  r.h = (int)(frameH * s + 0.5);
+  if (s == whole) {
+    // A whole scale a pixel or three short of the screen would show as a thin bar down one side: cover it instead (the
+    // stretch is a fraction of a pixel in a texel, invisible next to the bar).
+    if (r.w < ow && ow - r.w <= 4)
+      r.w = ow;
+    if (r.h < oh && oh - r.h <= 4)
+      r.h = oh;
   }
   r.x = (ow - r.w) / 2;
   r.y = (oh - r.h) / 2;
@@ -1002,7 +1151,8 @@ static void present_game(const struct pd_menu *menu) {
   frameRect = frame_place(ow, oh);
   if (frameTexture && frameW > 0) {
     SDL_Rect src = {0, 0, frameW, frameH};
-    SDL_RenderCopy(renderer, frameTexture, &src, &frameRect);
+    SDL_FRect dst = {(float)frameRect.x, (float)frameRect.y, (float)frameRect.w, (float)frameRect.h};
+    SDL_RenderCopyF(renderer, frameTexture, &src, &dst);
   }
   render_lcd();
   bool any = false;
@@ -1131,6 +1281,10 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
     return id == RETRO_DEVICE_ID_POINTER_X         ? (int16_t)pointerX
            : id == RETRO_DEVICE_ID_POINTER_Y       ? (int16_t)pointerY
            : id == RETRO_DEVICE_ID_POINTER_PRESSED ? pointerDown
+                                                   : 0;
+  if (device == RETRO_DEVICE_MOUSE)
+    return id == RETRO_DEVICE_ID_MOUSE_WHEELUP     ? (int16_t)(wheelSteps > 0 ? wheelSteps : 0)
+           : id == RETRO_DEVICE_ID_MOUSE_WHEELDOWN ? (int16_t)(wheelSteps < 0 ? -wheelSteps : 0)
                                                    : 0;
   return 0;
 }
@@ -1321,7 +1475,12 @@ static void panel_follow(void) {
   int ow = W, oh = H;
   SDL_GetRendererOutputSize(renderer, &ow, &oh);
   char v[32];
-  snprintf(v, sizeof v, "%dx%d", ow, oh);
+  const char *fixed = panel_preset(hostSet.panel); // the PANEL preset: the screen the core lays out for
+  if (fixed)
+    snprintf(v, sizeof v, "%s", fixed);
+  else
+    snprintf(v, sizeof v, "%dx%d", ow, oh);
+  snprintf(windowValue, sizeof windowValue, "%dx%d", ow, oh);
   if (strcmp(v, panelValue)) {
     snprintf(panelValue, sizeof panelValue, "%s", v);
     optionsChanged = true;
@@ -1406,7 +1565,7 @@ static void settings_migrate(void) {
   unsigned char *d = exists(to) ? NULL : read_file(from, &n, 1u << 20);
   if (!d)
     return;
-  mkdir(dir, 0755);
+  pd_mkdir(dir);
   if (write_file(to, d, n, false))
     fprintf(stderr, "Settings moved from %s to %s\n", from, to);
   free(d);
@@ -1414,11 +1573,11 @@ static void settings_migrate(void) {
 static const char *core_for(const char *path) {
   const char *ext = strrchr(path, '.');
   if (ext && !strcasecmp(ext, ".gba"))
-    return "pokedaisy_gba_libretro.so";
+    return "pokedaisy_gba_libretro" PD_CORE_EXT;
   if (ext && (!strcasecmp(ext, ".gb") || !strcasecmp(ext, ".gbc")))
-    return "pokedaisy_gbc_libretro.so";
+    return "pokedaisy_gbc_libretro" PD_CORE_EXT;
   if (ext && !strcasecmp(ext, ".nds"))
-    return "pokedaisy_ds_libretro.so";
+    return "pokedaisy_ds_libretro" PD_CORE_EXT;
   return NULL;
 }
 /* The game list shows the main Pokemon games only (the firmware's folders hold every other game too), told by the cart's
@@ -1465,7 +1624,8 @@ extern int pd_ds_run(const char *, const char *, int, const char *, SDL_Renderer
 static bool ds_running(void) { return running != 0; }
 #endif
 // The host menu's rows, top to bottom (fast-forward is the FAST FORWARD hotkey's, held).
-enum { M_RESUME, M_SAVE, M_LOAD, M_HOTKEYS, M_REWIND, M_FFSPEED, M_LCD, M_SWAP, M_QUIT, M_COUNT };
+enum { M_RESUME, M_SAVE, M_LOAD, M_HOTKEYS, M_KEYBOARD, M_REWIND, M_FFSPEED, M_LCD, M_WIDESCREEN, M_SWAP, M_QUIT,
+       M_COUNT };
 static void run_game(const char *path, int maxFrames, const char *shot, bool fromList) {
 #ifdef POCKET_DSPERATE
   const char *ext = strrchr(path, '.');
@@ -1488,7 +1648,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   snprintf(corePath, sizeof corePath, "%s/%s", dir, coreName ? coreName : "");
   if (!coreName || !core_open(corePath)) {
     appError = 1;
-    notice(coreName ? "Core missing: put it beside pokedaisy-linux" : "Unsupported ROM");
+    notice(coreName ? "Core missing: put it beside " PD_HOST_NAME : "Unsupported ROM");
     return;
   }
   struct retro_system_info system = {0};
@@ -1513,7 +1673,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     snprintf(backups, sizeof backups, "%s/pokedaisy-backups", savesDir);
   }
   // DS uses L2 for the Companion and R2 for screen switching. Keep the host's DS bindings separate.
-  const bool dsGame = !strcmp(coreName, "pokedaisy_ds_libretro.so");
+  const bool dsGame = !strcmp(coreName, "pokedaisy_ds_libretro" PD_CORE_EXT);
   int *hotkeys = dsGame ? hostSet.dsHotkey : hostSet.hotkey;
   // armGBA's states aren't mGBA's: each core its own file.
   snprintf(ss, sizeof ss, "%s/states/%s%s.ss", root, name, strstr(coreName, "_gba_") ? ".armgba" : "");
@@ -1574,10 +1734,11 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   rewindTick = 0;
   bool menuOpen = false, leave = false;
   struct pd_menu menu, hkMenu;
-  static char rows[M_COUNT][40], hkRows[HK_ACTIONS + 1][40];
-  static const char *rowPtrs[M_COUNT], *hkPtrs[HK_ACTIONS + 1];
+  static char rows[M_COUNT][40], hkRows[HK_ACTIONS + 1][40], kbRows[KB_COUNT][48];
+  static const char *rowPtrs[M_COUNT], *hkPtrs[HK_ACTIONS + 1], *kbPtrs[KB_COUNT];
   static const char *const hkNames[HK_ACTIONS] = {"FAST FORWARD", "REWIND", "SAVE STATE", "LOAD STATE"};
-  bool hkPage = false;
+  bool hkPage = false, kbPage = false;
+  struct pd_menu kbMenu;
   unsigned latched = 0, menuConsumed = 0;
   bool modifierPending = false, modifierUsed = false;
   int pulseLeft = 0; // frames the modifier's own tap still reaches the game
@@ -1614,8 +1775,10 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       snprintf(rows[M_FFSPEED], 40, "FF SPEED  MAX");
     snprintf(rows[M_REWIND], 40, "REWIND  %s", hostSet.rewind ? "ON" : "OFF");
     snprintf(rows[M_LCD], 40, "LCD FILTER  %s", hostSet.lcd ? "ON" : "OFF");
+    snprintf(rows[M_WIDESCREEN], 40, "WIDESCREEN  %s", hostSet.widescreen ? "ON" : "OFF");
     snprintf(rows[M_SWAP], 40, "A/B BUTTONS  %s", hostSet.swapAB ? "SWAPPED" : "NORMAL");
     snprintf(rows[M_HOTKEYS], 40, "HOTKEYS");
+    snprintf(rows[M_KEYBOARD], 40, "KEYBOARD");
     snprintf(rows[M_QUIT], 40, fromList ? "QUIT TO GAME LIST" : "QUIT");
     for (int i = 0; i < M_COUNT; i++)
       rowPtrs[i] = rows[i];
@@ -1626,6 +1789,11 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     snprintf(hkRows[HK_ACTIONS], 40, "MODIFIER  %s",
              capturing == HK_ACTIONS ? "..." : hotkey_label(hostSet.modifier));
     hkPtrs[HK_ACTIONS] = hkRows[HK_ACTIONS];
+    for (int i = 0; i < KB_COUNT; i++) {
+      const char *name = kbKeys[i] ? SDL_GetKeyName((SDL_Keycode)kbKeys[i]) : "OFF";
+      snprintf(kbRows[i], 48, "%s  %s", kbLabels[i], kbCapture == i ? "..." : name);
+      kbPtrs[i] = kbRows[i];
+    }
     menuConsumed &= held;
     if (inputReset || menuKey || menuChordDown) {
       modifierPending = modifierUsed = false;
@@ -1636,9 +1804,10 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     }
     if (menuKey) {
       menuOpen = !menuOpen;
-      hkPage = false;
+      hkPage = false, kbPage = false;
       confirming = 0;
       capturing = -1;
+      kbCapture = -1;
       if (menuOpen) {
         pd_menu_init(&menu, "POKEDAISY", rowPtrs, M_COUNT);
         menu.overlay = true;
@@ -1743,6 +1912,38 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
         hkMenu.title = "PRESS A BUTTON";
         notice(capturing == HK_ACTIONS ? "SELECT: select / off   B: cancel" : "B: cancel   SELECT: off");
       }
+    } else if (menuOpen && kbCapture >= 0) {
+      // The key that went down is the row's (taken from any other row that had it); B cancels, SELECT = off.
+      if (lastKey) {
+        for (int i = 0; i < KB_COUNT; i++)
+          if (kbKeys[i] == lastKey)
+            kbKeys[i] = SDLK_UNKNOWN;
+        kbKeys[kbCapture] = lastKey;
+        host_save();
+        kbCapture = -1;
+        kbMenu.title = "KEYBOARD";
+      } else if (down(B)) {
+        kbCapture = -1;
+        kbMenu.title = "KEYBOARD";
+      } else if (down(SELECT)) {
+        kbKeys[kbCapture] = SDLK_UNKNOWN;
+        host_save();
+        kbCapture = -1;
+        kbMenu.title = "KEYBOARD";
+      }
+    } else if (menuOpen && kbPage) {
+      if (down(UP))
+        pd_menu_move(&kbMenu, -1);
+      if (down(DOWN))
+        pd_menu_move(&kbMenu, 1);
+      if (down(B))
+        kbPage = false;
+      if (down(A)) {
+        kbCapture = kbMenu.selected;
+        held = pressed = 0; // the keys it took to get here don't assign themselves
+        kbMenu.title = "PRESS A KEY";
+        notice("Press a key. B: cancel   SELECT: off");
+      }
     } else if (menuOpen) {
       if (down(UP))
         pd_menu_move(&menu, -1);
@@ -1785,15 +1986,25 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
           hostSet.lcd = !hostSet.lcd;
           host_save();
           break;
+        case M_WIDESCREEN:
+          hostSet.widescreen = !hostSet.widescreen;
+          optionsChanged = true; // the core reads its aspect again and resizes the canvas for it
+          host_save();
+          break;
         case M_SWAP:
           hostSet.swapAB = swapFace = !hostSet.swapAB;
           held = 0; // the button that chose this is now the other one: let it go
           host_save();
           break;
         case M_HOTKEYS:
-          hkPage = true;
+          hkPage = true, kbPage = false;
           pd_menu_init(&hkMenu, "HOTKEYS", hkPtrs, HK_ACTIONS + 1);
           hkMenu.overlay = true;
+          break;
+        case M_KEYBOARD:
+          kbPage = true, hkPage = false;
+          pd_menu_init(&kbMenu, "KEYBOARD", kbPtrs, KB_COUNT);
+          kbMenu.overlay = true;
           break;
         case M_QUIT:
           confirming = M_QUIT;
@@ -1808,7 +2019,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     if (menuFrame) {
       muted = true;
       gameKeys = 0;
-      present_game(menuOpen ? (confirming ? &confirmMenu : hkPage ? &hkMenu : &menu) : NULL);
+      present_game(menuOpen ? (confirming ? &confirmMenu : hkPage ? &hkMenu : kbPage ? &kbMenu : &menu) : NULL);
       if (maxFrames && ++frames >= maxFrames) { // a scripted run can end, and be captured, with the menu up
         if (shot && !capture(shot))
           appError = 1;
@@ -1832,6 +2043,10 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     ffSpeedNow = runs;
     rewindingNow = rewinding;
     audioKeepEvery = (unsigned)runs;
+    // The mouse as the app's touch screen: a press lasts a frame at least, so a quick click still taps.
+    pointerDown = pointerHeld || pointerPulse > 0;
+    if (pointerPulse > 0)
+      pointerPulse--;
     gameKeys = joypad((held & ~hotkeyMask & ~((1u << MENU) | (1u << FFKEY) | (1u << RWKEY))) | modifierPulse);
     uint64_t t = SDL_GetPerformanceCounter();
     if (rewinding) {
@@ -1843,6 +2058,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     } else {
       for (int i = 0; i < runs && running; i++) {
         core.run();
+        wheelSteps = 0; // the core has read this frame's notches
         if (modifierPulse && --pulseLeft <= 0) {
           gameKeys &= ~joypad(modifierPulse);
           modifierPulse = 0;
@@ -2031,7 +2247,11 @@ static int cmp(const void *a, const void *b) {
 }
 static void exe_dir(const char *argv0) {
   char p[PATH_MAX];
+#ifdef _WIN32
+  long n = pd_exe_path(p, sizeof p); // GetModuleFileNameA: Windows has no /proc/self/exe
+#else
   ssize_t n = readlink("/proc/self/exe", p, sizeof p - 1);
+#endif
   if (n > 0)
     p[n] = 0;
   else
@@ -2041,6 +2261,11 @@ static void exe_dir(const char *argv0) {
     *slash = 0;
   else
     snprintf(p, sizeof p, ".");
+#ifdef _WIN32
+  for (char *c = p; *c; c++) // one separator throughout: base_name and the path joins below use '/'
+    if (*c == '\\')
+      *c = '/';
+#endif
   snprintf(exeDir, sizeof exeDir, "%s", p);
 }
 int main(int argc, char **argv) {
@@ -2061,13 +2286,15 @@ int main(int argc, char **argv) {
   exe_dir(argv[0]);
   signal(SIGINT, stop);
   signal(SIGTERM, stop);
-  signal(SIGHUP, stop); // a closed terminal or session: the save goes to the card like a quit
-  mkdir(root, 0755);
+#ifdef SIGHUP // a closed terminal or session: the save goes to the card like a quit (no SIGHUP on Windows)
+  signal(SIGHUP, stop);
+#endif
+  pd_mkdir(root);
   char path[PATH_MAX * 2];
   const char *dirs[] = {"roms", "saves", "states"};
   for (int i = 0; i < 3; i++) {
     snprintf(path, sizeof path, "%s/%s", root, dirs[i]);
-    mkdir(path, 0755);
+    pd_mkdir(path);
   }
   snprintf(savesDir, sizeof savesDir, "%s/saves", root);
   snprintf(hostIni, sizeof hostIni, "%s/host.ini", root);
@@ -2086,7 +2313,7 @@ int main(int argc, char **argv) {
   // Fullscreen with POCKET_FULLSCREEN, and under gamescope (the Steam Deck's Game Mode): it scales a window to the
   // screen keeping its shape, so a window there was letterboxed and EXPAND couldn't reach the edges.
   const char *desktop = getenv("XDG_CURRENT_DESKTOP");
-  bool fullscreen = getenv("POCKET_FULLSCREEN") != NULL || (desktop && strstr(desktop, "gamescope"));
+  bool fullscreen = hostSet.fullscreen || getenv("POCKET_FULLSCREEN") != NULL || (desktop && strstr(desktop, "gamescope"));
   if (fullscreen && SDL_GetCurrentDisplayMode(0, &display))
     fullscreen = false;
   // POCKET_WINDOW=WxH: a window the size of a device's panel, for trying a layout on a desktop.
@@ -2095,9 +2322,12 @@ int main(int argc, char **argv) {
   if (size &&
       (sscanf(size, "%dx%d", &winW, &winH) != 2 || winW < 160 || winH < 144 || winW > 8192 || winH > 8192))
     winW = W, winH = H;
-  window = SDL_CreateWindow("PokeDaisy Linux", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+  window = SDL_CreateWindow(PD_HOST_NAME, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                             fullscreen ? display.w : winW, fullscreen ? display.h : winH,
                             fullscreen ? SDL_WINDOW_FULLSCREEN : SDL_WINDOW_RESIZABLE);
+#ifdef _WIN32
+  set_window_icon(window);
+#endif
   // Presents wait for the refresh (the pacing, above); a driver without it gets the timer.
   renderer = window ? SDL_CreateRenderer(window, -1, getenv("POCKET_NO_VSYNC") ? 0 : SDL_RENDERER_PRESENTVSYNC) : NULL;
   if (!renderer && window)
@@ -2110,7 +2340,8 @@ int main(int argc, char **argv) {
   SDL_RendererInfo rendererInfo;
   if (!SDL_GetRendererInfo(renderer, &rendererInfo))
     fprintf(stderr, "Video backend: %s\n", rendererInfo.name);
-  SDL_ShowCursor(SDL_DISABLE);
+  // The mouse taps the library and the app's own overlays: its cursor stays on screen.
+  SDL_ShowCursor(SDL_ENABLE);
   // SDL starts text input with the window, and Steam answers it with its on-screen keyboard: the host reads keys,
   // never text.
   SDL_StopTextInput();

@@ -10,13 +10,17 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
+#ifndef _WIN32
 #include <spawn.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 #include <time.h>
 #include <unistd.h>
 
@@ -432,6 +436,7 @@ enum net {
  * library_close kills a running one, so quitting doesn't wait for a download. */
 static char curlConfig[PATH_MAX];
 static SDL_mutex *curlLock;
+#ifndef _WIN32
 static pid_t curlPid;
 extern char **environ;
 
@@ -550,6 +555,17 @@ static void curl_kill(void) {
     kill(curlPid, SIGKILL);
   SDL_UnlockMutex(curlLock);
 }
+#else
+/* No posix_spawn on Windows: local covers still show; SteamGridDB downloads wait for a port that can run curl. */
+static bool curl_config_write(void) { return false; }
+static int curl_run(const char *const *args, char **out) {
+  (void)args;
+  if (out)
+    *out = NULL;
+  return -1;
+}
+static void curl_kill(void) {}
+#endif
 
 /* GET [url] with the key: NET_OK with the body (malloc'd) in *body, else what kind of nothing. */
 static enum net http_get(const char *url, char **body) {

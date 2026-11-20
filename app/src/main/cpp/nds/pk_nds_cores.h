@@ -66,6 +66,12 @@ PK_NDS_CORE_CALLS(PK_NDS_DECLARE)
 bool pk_ndsm_init(const char* romPath, const char* savePath, int sampleRate);
 void pk_ndsm_deinit(void);
 bool pk_ndsm_active(void);
+// melonDS's main RAM and its mask: the DS companion reads the game's save out of it.
+const uint8_t* pk_ndsm_main_ram(void);
+uint32_t pk_ndsm_main_ram_size(void);
+// melonDS's cart save memory as it is now (what a libretro frontend reads for RETRO_MEMORY_SAVE_RAM).
+const uint8_t* pk_ndsm_save_data(void);
+uint32_t pk_ndsm_save_length(void);
 bool pk_ndsd_init(const char* romPath, const char* savePath, int sampleRate);
 void pk_ndsd_deinit(void);
 bool pk_ndsd_active(void);

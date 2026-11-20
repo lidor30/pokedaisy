@@ -42,6 +42,12 @@
 
 /** A game's addresses (WRAM unless noted; D000-DFFF in WRAM bank 1). Gen 1's and Crystal's share where they mean the
  * same; the rest is one generation's (0 in the other's rows). */
+#ifdef _WIN32
+// windows.h (through mGBA's headers) defines these two as empty macros: see pk_wide.c's note.
+#undef near
+#undef far
+#endif
+
 #include "pk_wide_gb_profile.h"
 #include "pk_wide_gb_polished_tables.h"   // pcWideConfig: Polished Crystal 3.2.3 (normal), by PC_WIDE_CRC
 #include "pk_wide_gb_polished_lz.inc"       // pcLz

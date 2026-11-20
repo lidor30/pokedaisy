@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "pd_fs.h"
 struct checked_save {
   struct VFile d;
   struct VFile *inner;
@@ -179,7 +180,7 @@ bool pocket_save_backup(const char *savePath, time_t now) {
   snprintf(stem, sizeof stem, "%.*s.backup-", dot && dot != file ? (int)(dot - file) : (int)strlen(file), file);
   if (dot && dot != file)
     snprintf(ext, sizeof ext, "%s", dot + 1);
-  mkdir(dir, 0755);
+  pd_mkdir(dir);
   char *names[256];
   int count = 0;
   DIR *d = opendir(dir);

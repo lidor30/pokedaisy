@@ -82,7 +82,7 @@ DsMapPosition ds_map_position(const DsCompanion& s){
   return {s.mapX*8+4,s.mapY*8+4};
 }
 
-static void map_actions(pd_canvas* c,pd_map_viewport view,int selected){
+static void map_actions(pd_canvas* c,pd_map_viewport view,int selected,std::vector<ds_touch_hit>* hits){
   const int y=view.y+20, right=view.x+view.w-4;
   const char* labels[]={"PLACES","ME"};
   const int widths[]={pd_text_width(labels[0])+16,pd_text_width(labels[1])+16};
@@ -91,12 +91,26 @@ static void map_actions(pd_canvas* c,pd_map_viewport view,int selected){
     pd_title_box(c,x,y,w,22,selected==i?PD_ROW_SELECTED:PD_TITLE_FILL);
     if(selected==i)pd_fill(c,x+3,y+18,w-6,2,PD_VALUE);
     pd_text(c,x+8,pd_text_y(y,22),labels[i],selected==i?PD_VALUE:PD_TITLE_TEXT,PD_TITLE_SHADOW);
+    ds_touch_add(hits,x,y,w,22,i?DS_HIT_MAP_ME:DS_HIT_MAP_PLACES);
   }
 }
 
-void ds_map_view(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int mapX,int mapY,int action){
+DsMapPosition ds_map_cell_at(DsGame game,const DsMapArt& art,pd_map_viewport view,int x,int y){
+  if(view.w<=0||view.h<=0||art.width<=0||art.height<=0)return {};
+  int tile=8,originX=0,originY=0;
+  if(game==DsGame::Platinum){tile=int(pd_ds_data::mapTile);originX=int(pd_ds_data::mapOriginX);originY=int(pd_ds_data::mapOriginY);}
+  const int px=(x-view.x)*art.width/view.w, py=(y-view.y)*art.height/view.h;
+  const auto bounds=ds_map_cursor_max(game);
+  DsMapPosition cell;
+  cell.x=std::clamp((px-originX)/tile,0,bounds.x);
+  cell.y=std::clamp((py-originY)/tile,0,bounds.y);
+  return cell;
+}
+
+pd_map_viewport ds_map_view(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int mapX,int mapY,int action,
+                            std::vector<ds_touch_hit>* hits){
   ds_companion_backdrop(c,s.game,PD_TAB_MAP);
-  if(!has_art(art)){pd_ui_map_view(c,nullptr);return;}
+  if(!has_art(art)){pd_ui_map_view(c,nullptr);return pd_map_viewport{0,0,0,0};}
   auto pixels=art.background;
   pd_canvas page;pd_canvas_init(&page,art.width,art.height,pixels.data());
   const auto player=ds_map_position(s);
@@ -118,7 +132,10 @@ void ds_map_view(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int mapX,
   }
   pd_map_source source{pixels.data(),art.width,art.height,*label?label:"No location",
     art.cursor.empty()?x:-1,art.cursor.empty()?y:-1,tile,tile};
-  map_actions(c,pd_ui_map_view(c,&source),action);
+  const pd_map_viewport view=pd_ui_map_view(c,&source);
+  ds_touch_add(hits,view.x,view.y,view.w,view.h,DS_HIT_MAP);
+  map_actions(c,view,action,hits);
+  return view;
 }
 
 void ds_draw_minimap(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int x,int y,int w,int h){

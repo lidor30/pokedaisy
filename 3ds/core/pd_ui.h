@@ -562,6 +562,8 @@ struct pd_ui {
 
 // Shared modal choice window for backend-owned preferences (selection is host-owned).
 void pd_ui_choices_view(struct pd_canvas*, const char*, const char* const*, int, int);
+// The same window, recording its rows in [ui] for a host's pointer (HIT_OPTION + row).
+void pd_ui_choices_view_ui(struct pd_ui*, struct pd_canvas*, const char*, const char* const*, int, int);
 
 // Shared party body, including its original frames, HP bars, status and summary.
 struct pd_map_viewport { int x, y, w, h; };
@@ -613,6 +615,7 @@ void pd_ui_party_summary_control(struct pd_ui*, const struct pd_snapshot*, int d
 // The buttons on the companion (keyFocus): a direction (0 up, 1 down, 2 left, 3 right), A on what the cursor's on.
 void pd_ui_focus_move(struct pd_ui* ui, int direction);
 void pd_ui_focus_press(struct pd_ui* ui);
+bool pd_ui_tap(struct pd_ui* ui, int x, int y);
 bool pd_ui_back(struct pd_ui* ui);
 // The last thing the player asked the host for (once), or PD_ACTION_NONE.
 enum pd_action pd_ui_take_action(struct pd_ui* ui);
