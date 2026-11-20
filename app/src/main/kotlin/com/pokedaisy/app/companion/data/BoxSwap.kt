@@ -302,13 +302,15 @@ enum class BoxSortResult {
  * the decoder can't read (a Bad Egg) goes last. Writes all 420 slots at once and reads them back; anything else puts the
  * boxes exactly as they were. Emu thread, same gate and code checks as the other PC moves.
  */
-fun sortBoxes(fields: FieldItemFns, fns: BoxSwapFns, busy: Boolean, g: GameCalls): BoxSortResult {
+/** [dexOf]: a species id's Pokédex number (Hoenn's species ids aren't in National order), 0 = unknown (the id is used). */
+fun sortBoxes(fields: FieldItemFns, fns: BoxSwapFns, busy: Boolean, g: GameCalls, dexOf: (Int) -> Int = { 0 }): BoxSortResult {
     val crcs = fns.codeCrcs.zip(listOf(fns.boxMonToMon, fns.boxMonRestorePP, fns.getBoxMonData))
     if (!fieldItemCodeMatches(fields, g::read) ||
         crcs.any { (crc, fn) -> crc32(g.read(fn, 32)) != crc }) return BoxSortResult.FAILED
     if (busy || g.call(fields.fieldControlsLocked) != 0L) return BoxSortResult.NOT_NOW
     return runCatching {
-        val storage = u32le(g.read(fns.storagePtr, 4), 0)
+        // Ruby / Sapphire's gPokemonStorage is static: the address itself, not a pointer to it (as BoxMove reads it).
+        val storage = if (fns.staticStorage) fns.storagePtr else u32le(g.read(fns.storagePtr, 4), 0)
         if (storage !in 0x02000000L until 0x02040000L) return@runCatching BoxSortResult.FAILED
         val start = storage + 4
         val size = BOXES * SLOTS * BOX_MON
@@ -322,7 +324,8 @@ fun sortBoxes(fields: FieldItemFns, fns: BoxSwapFns, busy: Boolean, g: GameCalls
             val off = slot * BOX_MON
             if ((0 until BOX_MON).none { before[off + it] != 0.toByte() }) continue
             val mon = decodeBoxMon(before, off)
-            stored.add(Stored(before.copyOfRange(off, off + BOX_MON), mon?.species ?: Int.MAX_VALUE, mon?.level ?: Int.MAX_VALUE))
+            val key = mon?.species?.let { sp -> dexOf(sp).takeIf { it > 0 } ?: sp } ?: Int.MAX_VALUE
+            stored.add(Stored(before.copyOfRange(off, off + BOX_MON), key, mon?.level ?: Int.MAX_VALUE))
         }
         if (stored.isEmpty()) return@runCatching BoxSortResult.EMPTY
         val sorted = ByteArray(size)
