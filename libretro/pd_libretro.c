@@ -1053,7 +1053,15 @@ static void canvas_update(bool notify) {
   // While the Quick Menu is open, double the game pixels exactly so menu text and icons
   // draw at output resolution. Gameplay stays at 1x: a doubled canvas costs every frame
   // four times the pixels (Brick: 4.5 -> 7.1 ms per shown frame).
-  if (PD_BE_IS_GBA() && !companion && quickOpen && (w < 320 || h < 240) && w <= CWMAX / 2 && h <= CHMAX / 2) {
+  // Unless the frontend could then show it only smaller: a doubled canvas is shown at half the game's scale, so on a panel
+  // where that scale is odd (5x on 1280x960) its whole scale fell to 2x and the picture shrank while the menu was open.
+  bool shrinks = false;
+  if (panelW && w > 0 && h > 0) {
+    int s1 = panelW / w < panelH / h ? panelW / w : panelH / h;
+    int s2 = panelW / (2 * w) < panelH / (2 * h) ? panelW / (2 * w) : panelH / (2 * h);
+    shrinks = 2 * s2 < s1;
+  }
+  if (PD_BE_IS_GBA() && !companion && quickOpen && !shrinks && (w < 320 || h < 240) && w <= CWMAX / 2 && h <= CHMAX / 2) {
     scale = 2;
     w *= scale;
     h *= scale;
@@ -2241,8 +2249,12 @@ RETRO_API void retro_run(void) {
       hudState.pc = pcOk || gbf || polishedActions;
       hudState.wild = hud_wild_uncaught(&game, &snap);
       draw_hud();
-    } else
+    } else {
+      // Hidden (a menu, a battle): drawn again from scratch when it comes back. Its cached picture's key alone stayed
+      // the same after the START menu, so hudShown stayed false until something in it changed (a step).
       hudShown = false;
+      hudDrawnKey = 0;
+    }
   }
   PF_T(td1);
   pf_add(PF_DRAW, td1 - td0);
