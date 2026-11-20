@@ -47,7 +47,7 @@ if [ -f /storage/.config/PortMaster/mapper.txt ] && [ -f /etc/profile.d/001-func
     export POCKET_FACE_LABELS=1
   fi
 fi
-# gptokeyb gives PortMaster's exit hotkey; the game list's B and the game menu's quit work too.
+# gptokeyb gives PortMaster's exit hotkey; the game list's START (it asks first) and the game menu's QUIT work too.
 if [ -n "$GPTOKEYB" ]; then
   $GPTOKEYB "pokedaisy-linux" &
 fi
