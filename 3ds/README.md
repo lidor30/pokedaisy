@@ -135,8 +135,9 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     picture, category, types, height / weight, text and base stats. On every Game
     Boy game too, one list each, read from the cart (`core/pd_gb_dex.c`: Gen 1's
     sprite compression, Gen 2's LZ, Crystal Clear's dictionary, Prism's packed text,
-    Polished Crystal's Huffman). `make gb-check EXPORT=<a gameExport>` holds every
-    page, picture and wild list of every cart against the app's own reading.
+    Polished Crystal's Huffman, the German Gen 2 carts' metric pages). `make gb-check EXPORT=<a gameExport>` holds every
+    page, picture and wild list of every cart against the app's own reading (the German Gen 2 carts' entries were written
+    from the app's tables without the carts: not run through it yet).
   - **SETTINGS** (the gear): GAME (place, money, file and speed), FF / SPEED, SOUND, GAMEPLAY, SCREEN and
     COMPANION, with the app's group tabs down the left outside the list's window (a tap scrolls to the group,
     the group in view lit); TAB BAR (which tabs sit on the bar, at most five; the rest open from MORE, a grid of

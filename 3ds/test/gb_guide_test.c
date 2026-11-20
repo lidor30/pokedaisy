@@ -5,9 +5,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static uint8_t wram[0x2000];
+static uint8_t wram[0x2000], wramx[0x8000];
 static bool rd(void* c, uint32_t a, void* o, size_t n) {
     (void) c;
+    if (a >= 0x10000) {
+        // A Game Boy Color game's WRAM bank (PD_WRAMX): the fixture's wramx.bin, 0x1000 a bank.
+        uint32_t b = a >> 16, x = (a & 0xFFFF) - 0xD000;
+        if (b > 7 || x + n > 0x1000) return false;
+        memcpy(o, wramx + b * 0x1000 + x, n);
+        return true;
+    }
     if (a >= 0xC000 && a + n <= 0xE000) { memcpy(o, wram + a - 0xC000, n); return true; }
     return false;
 }
@@ -162,6 +169,59 @@ static int crystal(void) {
     return bad;
 }
 
+// German Crystal (Kristall) plays Crystal's GUIDE (pd_game.c's identify): its fixture is the crystal fixture's game written
+// out as its save, so under PD_GB_CONFIG_CRYSTAL_DE it must read the same place, HERE and NEXT BOSS as English Crystal's.
+static bool crystal_fixture(const char* fixtures, const char* fixture, const struct pd_config* cfg, struct pd_snapshot* s) {
+    char p[1024];
+    snprintf(p, sizeof p, "%s/%s/wram.bin", fixtures, fixture);
+    memset(wram, 0, sizeof wram);
+    memset(wramx, 0, sizeof wramx);
+    FILE* f = fopen(p, "rb");
+    if (!f) return false;
+    fread(wram, 1, sizeof wram, f);
+    fclose(f);
+    snprintf(p, sizeof p, "%s/%s/wramx.bin", fixtures, fixture);
+    if (!(f = fopen(p, "rb"))) return false;
+    fread(wramx, 1, sizeof wramx, f);
+    fclose(f);
+    struct pd_game g;
+    memset(&g, 0, sizeof g);
+    g.cfg = cfg;
+    g.kind = PD_GAME_GB;
+    memset(s, 0, sizeof *s);
+    pd_snapshot_read(s, &g, rd, NULL);
+    return true;
+}
+
+static int crystal_de(const char* fixtures) {
+    int bad = 0;
+    static struct pd_snapshot en, de;
+    if (!crystal_fixture(fixtures, "crystal", &PD_GB_CONFIG_CRYSTAL, &en) ||
+        !crystal_fixture(fixtures, "crystal_de", &PD_GB_CONFIG_CRYSTAL_DE, &de)) {
+        printf("skip crystal_de: no fixture\n");
+        return 0;
+    }
+    CHECK(de.posOk && de.mapGroup == 24 && de.mapNum == 3, "crystal_de: on %d.%d, not ROUTE 29 (24.3)", de.mapGroup, de.mapNum);
+    CHECK(de.flagsOk, "crystal_de: guide flags not read");
+    struct pd_game g;
+    memset(&g, 0, sizeof g);
+    g.cfg = &PD_GB_CONFIG_CRYSTAL_DE;
+    g.guide = PD_GUIDE_GB_CRYSTAL;
+    const struct pd_guide* gd = &pd_guide_gb_crystal;
+    const struct pd_boss *nbEn = next_boss(gd, &en), *nbDe = next_boss(gd, &de);
+    CHECK(nbDe && nbEn && !strcmp(nbDe->title, nbEn->title), "crystal_de: next boss %s, English %s", nbDe ? nbDe->title : "none",
+          nbEn ? nbEn->title : "none");
+    struct pd_wild_set w;
+    CHECK(pd_wild_here(&g, &de, &w) && w.count[0] > 0, "crystal_de: no wild Pokémon HERE on ROUTE 29");
+    if (nbDe) {
+        struct pd_team_mon t[PD_TEAM_MAX];
+        int n = team_of(&g, gd, nbDe, &de, t);
+        CHECK(n >= 1 && n <= 6 && t[0].level >= 1, "crystal_de: %s's team reads %d mons", nbDe->title, n);
+    }
+    if (!bad) printf("  crystal_de ok (next boss %s)\n", nbDe->title);
+    return bad;
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) return 2;
     game(argv[1], "yellow", &PD_GB_CONFIG_YELLOW, &pd_guide_gb_yellow, 74, 10, 12, 1, 3, 135, 134, 1, false);
@@ -169,6 +229,7 @@ int main(int argc, char** argv) {
     game(argv[1], "blue", &PD_GB_CONFIG_BLUE, &pd_guide_gb_blue, 74, 12, 14, 177, 176, 9, 6, 0, true);
     bad += here_route1();
     bad += crystal();
+    bad += crystal_de(argv[1]);
     printf("%s\n", bad ? "FAILED" : "PASS gb guide");
     return bad != 0;
 }

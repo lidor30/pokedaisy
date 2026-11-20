@@ -154,6 +154,7 @@ struct pd_gb_dex {
     int dexOrderCount, unown, dexEntryFirstBank;
     bool picBankDirect;
     bool dexEntryFar;          // a 3-byte far pointer per species (Crystal Legacy), not a bank table + addresses
+    bool metricBody;           // the page's height a byte (dm) and weight a word (hg), not feet x 100 + inches and lbs x 10 (the German carts)
     const int32_t* polished;  // Polished Crystal: this build's tables, bank << 16 | address
     const char* const* polishedChars;
     int polishedSpecies;      // its last species: past it, a variant form

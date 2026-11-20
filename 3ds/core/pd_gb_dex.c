@@ -536,12 +536,19 @@ static bool gen2_entry(const struct pd_game* g, int dex, struct pd_dex_entry* e)
         while (o < g->romSize && u8(g, o) != 0x50) o++;
         gen2_text(g, d, page, 1, e->category, sizeof(e->category));
         o++;
-        int height = u16(g, o); // feet x 100 + inches
-        e->weightLbs10 = u16(g, o + 2);
-        e->heightIn = (height / 100) * 12 + height % 100;
-        e->heightDm = (int) ((double) e->heightIn * 2.54 / 10 + 0.5);
-        e->weightHg = (int) ((double) e->weightLbs10 * 0.45359237 + 0.5);
-        gen2_text(g, d, o + 4, 2, e->description, sizeof(e->description));
+        if (d->metricBody) {
+            // The German carts (Gen2DexTables.metricBody): decimetres in a byte, hectograms in a word, then the pages.
+            e->heightDm = u8(g, o);
+            e->weightHg = u16(g, o + 1);
+            gen2_text(g, d, o + 3, 2, e->description, sizeof(e->description));
+        } else {
+            int height = u16(g, o); // feet x 100 + inches
+            e->weightLbs10 = u16(g, o + 2);
+            e->heightIn = (height / 100) * 12 + height % 100;
+            e->heightDm = (int) ((double) e->heightIn * 2.54 / 10 + 0.5);
+            e->weightHg = (int) ((double) e->weightLbs10 * 0.45359237 + 0.5);
+            gen2_text(g, d, o + 4, 2, e->description, sizeof(e->description));
+        }
     }
     e->national = dex;
     e->species = species;

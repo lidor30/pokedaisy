@@ -328,6 +328,8 @@ def main():
                   f".picBankFixes = {off(t.get('picBankFixes'))}u", f".unown = {t['unown']}", f".dexEntryFirstBank = {t['dexEntryFirstBank']}",
                   f".picBankDirect = {'true' if t['picBankDirect'] else 'false'}",
                   f".dexEntryFar = {'true' if t.get('dexEntryFar') else 'false'}"]
+            if t.get("metricBody"):
+                a.append(".metricBody = true")
             p = t.get("packed")
             if p:
                 a += [f".packedTree = {off(p['tree'])}u", f".packedRareChars = {off(p['rareChars'])}u", f".packedRareRanges = {off(p['rareRanges'])}u",
