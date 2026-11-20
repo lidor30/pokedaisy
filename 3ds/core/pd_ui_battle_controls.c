@@ -286,14 +286,16 @@ static void move_grid(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
     hg_button(ui, c, x, bottom - cancelH, w, cancelH, "CANCEL", 1, HG_BLUE, HG_BLUE_LOW, HIT_BATTLE_CANCEL, !busy);
 }
 
-// The Game Boy games' menu as the game lays it out: FIGHT and PkMn over ITEM and RUN, in the cart's own words.
+// The Game Boy games' menu as the game lays it out: FIGHT and PkMn over ITEM and RUN, in the cart's own words (Gen 2:
+// PACK, the German carts' BEUTEL).
 static void gb_action_buttons(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                               int y, int bottom, bool busy) {
     static const char* const WORDS[][4] = {
         { "FIGHT", "PkMn", "ITEM", "RUN" }, { "KMPF", "PkMn", "ITEM", "FLUCHT" }, { "ATTAQ", "PkMn", "OBJET", "FUITE" },
         { "LOTTA", "PkMn", "STRUM.", "FUGA" }, { "LUCHA", "PkMn", "OBJ.", "ESC" }, { "FIGHT", "PKMN", "PACK", "RUN" },
+        { "KMPF", "PkMn", "BEUTEL", "FLUCHT" },
     };
-    int lang = g->cfg->gb->gen == 2 ? 5 : g->language == 'D' ? 1 : g->language == 'F' ? 2 : g->language == 'I' ? 3 : g->language == 'S' ? 4 : 0;
+    int lang = g->cfg->gb->gen == 2 ? (g->language == 'D' ? 6 : 5) : g->language == 'D' ? 1 : g->language == 'F' ? 2 : g->language == 'I' ? 3 : g->language == 'S' ? 4 : 0;
     static const int HITS[4] = { HIT_BATTLE_FIGHT, HIT_BATTLE_POKEMON, HIT_BATTLE_BAG, HIT_BATTLE_RUN };
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int bw = (w - GAP) / 2, bh = (bottom - y - GAP) / 2;

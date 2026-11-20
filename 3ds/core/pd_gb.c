@@ -47,10 +47,10 @@ const struct pd_gb_config pd_gb_yellow = {
     .dexCaught = 0xD2FB, .dexSeen = 0xD30E, .dexCount = 151, \
     .guideRam = &(const struct pd_gb_guide_ram){ 0xD74B, 0xD5AA, 0xD6F4, 0xD73B, 0xD35A, 0xD719, 0xD362 }, .teams = pd_gb_teams_yellow, \
     .tileMap = 0xC3A0, .moveMenuType = 0xCCDB, .outSlot = 0xCC2F, .topMenuItemY = 0xCC24, .battlePartyMenu = 2, .partyMenuType = 0xD081,
-const struct pd_gb_config pd_gb_yellow_de = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 7, .battleMenuRightX = 12 };
-const struct pd_gb_config pd_gb_yellow_fr = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 7, .battleMenuRightX = 13 };
-const struct pd_gb_config pd_gb_yellow_it = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 7, .battleMenuRightX = 14 };
-const struct pd_gb_config pd_gb_yellow_es = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 9, .battleMenuRightX = 15 };
+const struct pd_gb_config pd_gb_yellow_de = { PD_GB_YELLOW_EUROPE .language = 'D', .battleMenuLeftX = 7, .battleMenuRightX = 12 };
+const struct pd_gb_config pd_gb_yellow_fr = { PD_GB_YELLOW_EUROPE .language = 'F', .battleMenuLeftX = 7, .battleMenuRightX = 13 };
+const struct pd_gb_config pd_gb_yellow_it = { PD_GB_YELLOW_EUROPE .language = 'I', .battleMenuLeftX = 7, .battleMenuRightX = 14 };
+const struct pd_gb_config pd_gb_yellow_es = { PD_GB_YELLOW_EUROPE .language = 'S', .battleMenuLeftX = 9, .battleMenuRightX = 15 };
 // Yellow Legacy (GEN1_YELLOW_LEGACY): Yellow's but the bag (59 slots) pushed money and the battle mode on; its own
 // internal species order. Its GUIDE RAM is GuideGen1Gen.kt's G1L_* (HERE, NEXT BOSS, the map's place).
 const struct pd_gb_config pd_gb_yellow_legacy = {
@@ -94,15 +94,18 @@ const struct pd_gb_config pd_gb_pure_red = {
     .itemsMax = 20, .ballsMax = 12, .keyItemsMax = 25, \
     .tileMap = 0xC4A0, .moveMenuType = PD_WRAMX(1, 0xD235), .outSlot = PD_WRAMX(1, 0xD0D4), .menu2D = 0xCFA1, .menuCursor = 0xCFA9, \
     .cursorTile = 0xED, .partyMenuAction = PD_WRAMX(1, 0xD141),
-const struct pd_gb_config pd_gb_crystal = {
-    PD_GB_CRYSTAL_BASE
-    .dexCaught = PD_WRAMX(1, 0xDE99), .dexSeen = PD_WRAMX(1, 0xDEB9), .dexCount = 251,
-    .guide2Ram = &(const struct pd_gb_guide2_ram){ PD_WRAMX(1, 0xDA72), PD_WRAMX(1, 0xD269), PD_WRAMX(1, 0xD857),
-                                                   PD_WRAMX(1, 0xD960), PD_WRAMX(1, 0xDCB5) },
-    .teams = pd_gb_teams_crystal,
-    .mapGroup = PD_WRAMX(1, 0xDCB5), .backupMapGroup = PD_WRAMX(1, 0xDCAD), .playerGender = PD_WRAMX(1, 0xD472),
+#define PD_GB_CRYSTAL_FULL \
+    PD_GB_CRYSTAL_BASE \
+    .dexCaught = PD_WRAMX(1, 0xDE99), .dexSeen = PD_WRAMX(1, 0xDEB9), .dexCount = 251, \
+    .guide2Ram = &(const struct pd_gb_guide2_ram){ PD_WRAMX(1, 0xDA72), PD_WRAMX(1, 0xD269), PD_WRAMX(1, 0xD857), \
+                                                   PD_WRAMX(1, 0xD960), PD_WRAMX(1, 0xDCB5) }, \
+    .teams = pd_gb_teams_crystal, \
+    .mapGroup = PD_WRAMX(1, 0xDCB5), .backupMapGroup = PD_WRAMX(1, 0xDCAD), .playerGender = PD_WRAMX(1, 0xD472), \
     .landmarks = pd_gb_landmarks_crystal, .landmarkCount = &pd_gb_landmarks_crystal_count,
-};
+const struct pd_gb_config pd_gb_crystal = { PD_GB_CRYSTAL_FULL };
+// German Crystal (Kristall): Crystal's RAM, its battle menu and SWITCH / STATS / CANCEL a column further left (Gen2Reader.kt
+// GEN2_CRYSTAL_DE).
+const struct pd_gb_config pd_gb_crystal_de = { PD_GB_CRYSTAL_FULL .language = 'D', .gen2BattleMenuLeft = 0x05, .gen2SwitchMenuLeft = 0x0A };
 // Crystal Clear v2.6.0: Crystal's RAM with its own wPokedexCaught; the app keeps Crystal's wPokedexSeen (unverified on a save).
 const struct pd_gb_config pd_gb_crystal_clear = {
     PD_GB_CRYSTAL_BASE
@@ -144,19 +147,21 @@ const struct pd_gb_config pd_gb_ambrosia = {
     .itemsMax = 40, .ballsMax = 25, .keyItemsMax = 30,
     .dexCaught = PD_WRAMX(1, 0xDEA4), .dexSeen = PD_WRAMX(1, 0xDEC4), .dexCount = 251,
 };
-const struct pd_gb_config pd_gb_gold = {
-    .gen = 2, .partyCount = PD_WRAMX(1, 0xDA22), .partyMons = PD_WRAMX(1, 0xDA2A), .numItems = PD_WRAMX(1, 0xD5B7),
-    .numKeyItems = PD_WRAMX(1, 0xD5E1), .numBalls = PD_WRAMX(1, 0xD5FC), .tmsHms = PD_WRAMX(1, 0xD57E),
-    .money = PD_WRAMX(1, 0xD573), .battleMode = PD_WRAMX(1, 0xD116), .battleMon = 0xCB0C,
-    .enemyMon = PD_WRAMX(1, 0xD0EF), .otPartyCount = PD_WRAMX(1, 0xDD55), .otPartyMons = PD_WRAMX(1, 0xDD5D),
-    .curOTMon = 0xCB41, .genderRatios = pd_gb_gender_crystal, .tmItems = pd_gb_tm_crystal, .speciesCount = 251,
-    .itemsMax = 20, .ballsMax = 12, .keyItemsMax = 25,
-    .dexCaught = PD_WRAMX(1, 0xDBE4), .dexSeen = PD_WRAMX(1, 0xDC04), .dexCount = 251,
-    .mapGroup = PD_WRAMX(1, 0xDA00), .backupMapGroup = PD_WRAMX(1, 0xD9F6),
-    .landmarks = pd_gb_landmarks_gold_silver, .landmarkCount = &pd_gb_landmarks_gold_silver_count,
-    .tileMap = 0xC3A0, .moveMenuType = PD_WRAMX(1, 0xD11F), .outSlot = 0xCFC6, .menu2D = 0xCED8, .menuCursor = 0xCEE0,
+#define PD_GB_GOLD_FULL \
+    .gen = 2, .partyCount = PD_WRAMX(1, 0xDA22), .partyMons = PD_WRAMX(1, 0xDA2A), .numItems = PD_WRAMX(1, 0xD5B7), \
+    .numKeyItems = PD_WRAMX(1, 0xD5E1), .numBalls = PD_WRAMX(1, 0xD5FC), .tmsHms = PD_WRAMX(1, 0xD57E), \
+    .money = PD_WRAMX(1, 0xD573), .battleMode = PD_WRAMX(1, 0xD116), .battleMon = 0xCB0C, \
+    .enemyMon = PD_WRAMX(1, 0xD0EF), .otPartyCount = PD_WRAMX(1, 0xDD55), .otPartyMons = PD_WRAMX(1, 0xDD5D), \
+    .curOTMon = 0xCB41, .genderRatios = pd_gb_gender_crystal, .tmItems = pd_gb_tm_crystal, .speciesCount = 251, \
+    .itemsMax = 20, .ballsMax = 12, .keyItemsMax = 25, \
+    .dexCaught = PD_WRAMX(1, 0xDBE4), .dexSeen = PD_WRAMX(1, 0xDC04), .dexCount = 251, \
+    .mapGroup = PD_WRAMX(1, 0xDA00), .backupMapGroup = PD_WRAMX(1, 0xD9F6), \
+    .landmarks = pd_gb_landmarks_gold_silver, .landmarkCount = &pd_gb_landmarks_gold_silver_count, \
+    .tileMap = 0xC3A0, .moveMenuType = PD_WRAMX(1, 0xD11F), .outSlot = 0xCFC6, .menu2D = 0xCED8, .menuCursor = 0xCEE0, \
     .cursorTile = 0xED, .partyMenuAction = PD_WRAMX(1, 0xD03E),
-};
+const struct pd_gb_config pd_gb_gold = { PD_GB_GOLD_FULL };
+// German Gold / Silver (Goldene / Silberne Edition): their battle menu columns as Kristall's (GEN2_GOLD_DE).
+const struct pd_gb_config pd_gb_gold_de = { PD_GB_GOLD_FULL .language = 'D', .gen2BattleMenuLeft = 0x05, .gen2SwitchMenuLeft = 0x0A };
 // Prism: Crystal's RAM but the bag, and its own 254 species ids.
 const struct pd_gb_config pd_gb_prism = {
     .gen = 2, .partyCount = PD_WRAMX(1, 0xDCD7), .partyMons = PD_WRAMX(1, 0xDCDF), .numItems = PD_WRAMX(1, 0xD866),
@@ -1312,7 +1317,7 @@ static enum pd_battle_state gen2_battle_menu(const struct pd_gb_config* c, pd_re
     if (y < 1 || y > rows || x < 1 || x > cols) return PD_BATTLE_BUSY;
     int tx = left + (x - 1) * (spacing & 0xF), ty = top + (y - 1) * (spacing >> 4);
     if (!cursor_shown(c, read, ctx, ty, tx, c->cursorTile)) return PD_BATTLE_BUSY;
-    if (top == GEN2_BATTLE_MENU_TOP && left == GEN2_BATTLE_MENU_LEFT && rows == 2 && cols == 2) {
+    if (top == GEN2_BATTLE_MENU_TOP && left == (c->gen2BattleMenuLeft ? c->gen2BattleMenuLeft : GEN2_BATTLE_MENU_LEFT) && rows == 2 && cols == 2) {
         *cursor = (x - 1) + 2 * (y - 1);
         return PD_BATTLE_ACTION;
     }
@@ -1365,7 +1370,7 @@ static struct pd_gb_party_menu gen2_party_menu(const struct pd_gb_config* c, pd_
     if (cols != 1 || spacing != 0x20 || y < 1 || y > rows) return r;
     int ty = top + 2 * (y - 1);
     if (ty >= 18 || left >= 20 || !cursor_shown(c, read, ctx, ty, left, c->cursorTile)) return r;
-    if (top == GEN2_SUBMENU_TOP && left == (c->polished ? POLISHED_SUBMENU_LEFT : GEN2_SUBMENU_TOP) && rows == 3) {
+    if (top == GEN2_SUBMENU_TOP && left == (c->polished ? POLISHED_SUBMENU_LEFT : c->gen2SwitchMenuLeft ? c->gen2SwitchMenuLeft : GEN2_SUBMENU_TOP) && rows == 3) {
         r.open = r.submenu = true;
         r.cursor = y - 1;
         return r;

@@ -35,6 +35,7 @@ static const int POLISHED_CAUGHT[] = { 16, 155, 0 }, POLISHED_SEEN[] = { 16, 152
 static const struct want WANT[] = {
     W("red", RED, 151), W("blue", BLUE, 151), W("yellow", YELLOW, 151), W("purered", PURE_RED, 151),
     W("crystal", CRYSTAL, 251), W("gold", GOLD, 251), W("silver", GOLD, 251), W("crystal_clear", CRYSTAL_CLEAR, 251),
+    W("crystal_de", CRYSTAL_DE, 251), W("gold_de", GOLD_DE, 251), W("silver_de", SILVER_DE, 251),
     { "polished_crystal", &PD_GB_CONFIG_POLISHED, 0x123, POLISHED_CAUGHT, POLISHED_SEEN },
 };
 
@@ -76,6 +77,20 @@ int main(int argc, char** argv) {
         }
         if (!s.dexOk || s.dexCount != t->dexCount) { printf("FAIL %s: dexOk=%d count=%d\n", t->fixture, s.dexOk, s.dexCount); bad++; }
         printf("  %s: seen %d, caught %d\n", t->fixture, seen, caught);
+    }
+    // The German Gen 2 carts' entries (pd_games_gen.c): English Crystal's / Gold's / Silver's look and places, their own DEX
+    // tables (metric pages: Gen2DexTables.metricBody) and art.
+    static const struct { const char *de, *en; } DE[] = {
+        { "accb584293ba056152f1fd908439b019017ff2fe", "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133" },  // Kristall / Crystal
+        { "9254195d461ea942eaaa08cc4b83de3cf82aea0d", "d8b8a3600a465308c9953dfa04f0081c05bdcb94" },  // Goldene / Gold
+        { "8ecc58d621faaedf2a934bd2583d527220df7bb9", "49b163f7e57702bc939d642a18f591de55d92dae" },  // Silberne / Silver
+    };
+    for (size_t k = 0; k < sizeof DE / sizeof DE[0]; k++) {
+        const struct pd_game_entry *de = pd_game_entry_for(DE[k].de), *en = pd_game_entry_for(DE[k].en);
+        bool ok = de && en && de->language == 'D' && de->party[0] == en->party[0] && de->party[1] == en->party[1] &&
+                  de->bag[0] == en->bag[0] && de->bag[1] == en->bag[1] && de->mapsecAt == en->mapsecAt && de->gbArt &&
+                  de->gbDex && de->gbDex->metricBody && de->gbDex->metric && de->gbDex->count == 251;
+        if (!ok) { printf("FAIL %s: no German entry like %s's\n", DE[k].de, DE[k].en); bad++; }
     }
     // Gen 1's pages from the carts (argv[2] = a folder with them): BULBASAUR's SEED page as the game prints it, MEW's (Red /
     // Blue keep it apart in bank 1), and every page and sprite reading.

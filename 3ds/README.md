@@ -122,7 +122,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     trades and items (a ball = done). BOSS is the next unbeaten gym leader /
     Elite Four / champion with their team from the ROM. A game with no WHERE IS
     of its own gets one built from its area data: HMs, key items, gift POKéMON.
-    Red, Blue, Yellow in five languages, Yellow Legacy, Crystal and Crystal Legacy
+    Red, Blue, Yellow in five languages, Yellow Legacy, Crystal (English and German) and Crystal Legacy
     have it from the app's generated guide tables (`core/pd_guide_gen.c`,
     `tools/gen_guide.py`), Polished Crystal from its own world (`core/pd_gb_world_gen.c`,
     `tools/gen_gb_world.py`): HERE follows the game's clock and, on Polished Crystal,
@@ -135,8 +135,9 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     picture, category, types, height / weight, text and base stats. On every Game
     Boy game too, one list each, read from the cart (`core/pd_gb_dex.c`: Gen 1's
     sprite compression, Gen 2's LZ, Crystal Clear's dictionary, Prism's packed text,
-    Polished Crystal's Huffman). `make gb-check EXPORT=<a gameExport>` holds every
-    page, picture and wild list of every cart against the app's own reading.
+    Polished Crystal's Huffman, the German Gen 2 carts' metric pages). `make gb-check EXPORT=<a gameExport>` holds every
+    page, picture and wild list of every cart against the app's own reading (the German Gen 2 carts' entries were written
+    from the app's tables without the carts: not run through it yet).
   - **SETTINGS** (the gear): GAME (place, money, file and speed), FF / SPEED, SOUND, GAMEPLAY, SCREEN and
     COMPANION, with the app's group tabs down the left outside the list's window (a tap scrolls to the group,
     the group in view lit); TAB BAR (which tabs sit on the bar, at most five; the rest open from MORE, a grid of
@@ -151,7 +152,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   the looks the TOML doesn't hold from the app's export, `core/pd_games_gen.c`): every retail GBA game in every
   language, collection dumps of retail, retail FireRed / Emerald as Universal Pokemon Randomizer ZX leaves them (any
   seed: `core/pd_randomized.c`, what the randomizer changed read from the ROM), the GBA hacks, and the Game Boy games
-  (Red, Blue, Yellow in five languages, Yellow Legacy, Gold, Silver, Crystal, Crystal Clear, Crystal Legacy, Prism,
+  (Red, Blue, Yellow in five languages, Yellow Legacy, Gold, Silver and Crystal in English and German, Crystal Clear, Crystal Legacy, Prism,
   Polished Crystal, PureRed / PureBlue). Per game: its names, moves, types and type chart, party and bag palettes,
   backdrop, and the companion's windows in the Game Boy games' black on white. No DS: the 3DS can't run melonDS.
 - **Library**: a rail of pages down the touch screen, an icon each (the app's tool icons): GAMES, SAVE EDITOR, TRADE SAVES and
