@@ -26,7 +26,7 @@ val appSrc = fileTree(app) {
     exclude("**/*.java")   // compiled by javac below (companion/coop/x25519)
 }
 val sharedUi = fileTree(rootDir.resolve("../shared-ui/src/commonMain/kotlin/com/pokedaisy/app")) {
-    include("companion/*.kt", "companion/coop/**", "Prefs.kt", "cheats/Cheats.kt", "BattleInputController.kt", "InputBadges.kt")
+    include("companion/*.kt", "companion/coop/**", "Prefs.kt", "cheats/Cheats.kt", "BattleInputController.kt", "CoopGuards.kt", "InputBadges.kt")
 }
 sourceSets["main"].kotlin.srcDir("shims")
 sourceSets["main"].kotlin.srcDir(rootDir.resolve("../shared/src/commonMain/kotlin"))

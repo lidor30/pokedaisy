@@ -2,10 +2,7 @@ package com.pokedaisy.app
 
 import com.pokedaisy.app.CoopGuards.Hold
 import com.pokedaisy.app.CoopGuards.StateBlock
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 class CoopGuardsTest {
     @Test fun heldWhileAnyReason() {

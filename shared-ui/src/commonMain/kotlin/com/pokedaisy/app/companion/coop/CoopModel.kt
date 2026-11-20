@@ -59,7 +59,9 @@ class CoopSaveId(val trainerId: Int, val secretId: Int, name: ByteArray) {
 
     companion object {
         /** The save in [saveFile] (Emerald's layout), or null: missing, unreadable, another layout or no trainer name. A save's content (party, boxes) is never judged: only its layout and name. */
-        fun read(saveFile: Path): CoopSaveId? = try {
+        fun read(saveFile: Path): CoopSaveId? = readIdentity(saveFile)?.first
+
+        internal fun readIdentity(saveFile: Path): Pair<CoopSaveId, Boolean>? = try {
             val format = Gen3SaveFormat.forGameCode("BPEE")!!
             when (val parsed = Gen3SaveFile.parse(saveFile.readBytes(), format)) {
                 is Gen3SaveFile.Parsed.Failed -> null
@@ -67,7 +69,7 @@ class CoopSaveId(val trainerId: Int, val secretId: Int, name: ByteArray) {
                     val name = data.trainerNameBytes
                     val first = name[0].toInt() and 0xFF
                     if (first == 0xFF || first == 0) null
-                    else CoopSaveId(data.trainerId, data.secretId, name)
+                    else CoopSaveId(data.trainerId, data.secretId, name) to data.isFemale
                 }
             }
         } catch (e: IOException) {
