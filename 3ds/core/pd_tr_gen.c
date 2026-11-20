@@ -2,7 +2,7 @@
 // hand: change those and run `make -C 3ds tables`. The keys the 3DS / Linux code uses, in strcmp order (pd_tr.h).
 #include "pd_tr.h"
 
-const struct pd_tr_entry pd_tr_table[726] = {
+const struct pd_tr_entry pd_tr_table[736] = {
     { "  HACK", { "  HACK", NULL, NULL, NULL, NULL, NULL, NULL } },
     { "  NONE", { "  NONE", "  AUCUN", "  KEINS", "  NESSUNO", "  NINGUNO", "  NENHUM", "  NENHUM" } },
     { "  SHINY", { "  SHINY", "  CHROMATIQUE", "  SCHILLERND", "  CROMATICO", "  VARIOCOLOR", "  BRILHANTE", "  BRILHANTE" } },
@@ -126,6 +126,7 @@ const struct pd_tr_entry pd_tr_table[726] = {
     { "COINS", { "COINS", "JETONS", "MÜNZEN", "GETTONI", "FICHAS", "FICHAS", "FICHAS" } },
     { "COMPANION", { "COMPANION", "COMPAGNON", "BEGLEITER", "COMPAGNO", "COMPAÑERO", "COMPANHEIRO", "COMPANHEIRO" } },
     { "COMPANION BUTTON", { "COMPANION BUTTON", "BOUTON COMPAGNON", "BEGLEITER-TASTE", "PULSANTE COMPAGNO", "BOTÓN COMPAÑERO", "BOTÃO DO COMPANHEIRO", "BOTÃO COMPANHEIRO" } },
+    { "CONTROLS", { "CONTROLS", "COMMANDES", "STEUERUNG", "COMANDI", "CONTROLES", "CONTROLES", "CONTROLOS" } },
     { "CORE", { "CORE", "CŒUR", "KERN", NULL, "NÚCLEO", "NÚCLEO", "NÚCLEO" } },
     { "CORNERS", { "CORNERS", "COINS", "ECKEN", "ANGOLI", "ESQUINAS", "CANTOS", "CANTOS" } },
     { "CORNERS 2", { "CORNERS 2", "COINS 2", "ECKEN 2", "ANGOLI 2", "ESQUINAS 2", "CANTOS 2", "CANTOS 2" } },
@@ -150,6 +151,7 @@ const struct pd_tr_entry pd_tr_table[726] = {
     { "DOCK", { "DOCK", "BARRE", "LEISTE", "BARRA", "BARRA", "BARRA", "BARRA" } },
     { "DON'T", { "DON'T", "NON", "NICHT", "NO", "NO", "NÃO", "NÃO" } },
     { "DONE", { "DONE", "TERMINÉ", "FERTIG", "FINE", "LISTO", "PRONTO", "CONCLUÍDO" } },
+    { "DS", { "DS", NULL, NULL, NULL, NULL, NULL, NULL } },
     { "DUPES CLAUSE", { "DUPES CLAUSE", "CLAUSE DOUBLON", "DUPLIKAT-REGEL", "CLAUSOLA DOPPIONI", "CLÁUSULA REPETIDOS", "CLÁUSULA REPETIDOS", "CLÁUSULA REPETIDOS" } },
     { "DV", { "DV", NULL, NULL, NULL, NULL, NULL, NULL } },
     { "Darker windows and backdrops.", { "Darker windows and backdrops.", "Fenêtres et fonds plus sombres.", "Dunklere Fenster und Hintergründe.", "Finestre e sfondi più scuri.", "Ventanas y fondos más oscuros.", "Janelas e fundos mais escuros.", "Janelas e fundos mais escuros." } },
@@ -175,6 +177,8 @@ const struct pd_tr_entry pd_tr_table[726] = {
     { "Every gym leader and the League are beaten.", { "Every gym leader and the League are beaten.", "Tous les champions d'arène et la Ligue sont battus.", "Alle Arenaleiter und die Liga sind besiegt.", "Tutti i capopalestra e la Lega sono battuti.", "Todos los líderes de gimnasio y la Liga están vencidos.", "Todos os líderes de ginásio e a Liga foram vencidos.", "Todos os líderes de ginásio e a Liga foram vencidos." } },
     { "FAINTED", { "FAINTED", "K.O.", "BESIEGT", "ESAUSTO", "DEBILITADO", "DESMAIADO", "DESMAIADO" } },
     { "FAST-FORWARD", { "FAST-FORWARD", "AVANCE RAPIDE", "VORSPULEN", "AVANTI VELOCE", "AVANCE RÁPIDO", "AVANÇO RÁPIDO", "AVANÇO RÁPIDO" } },
+    { "FAVORITE", { "FAVORITE", "FAVORI", "FAVORIT", "PREFERITO", "FAVORITO", "FAVORITO", "FAVORITO" } },
+    { "FAVORITES", { "FAVORITES", "FAVORIS", "FAVORITEN", "PREFERITI", "FAVORITOS", "FAVORITOS", "FAVORITOS" } },
     { "FEMALE", { "FEMALE", "FEMELLE", "WEIBLICH", "FEMMINA", "HEMBRA", "FÊMEA", "FÊMEA" } },
     { "FF", { "FF", NULL, NULL, NULL, NULL, NULL, NULL } },
     { "FF / SPEED", { "FF / SPEED", "AVANCE / VITESSE", "VORSPULEN / TEMPO", "AVANTI / VELOCITÀ", "AVANCE / VELOCIDAD", "AVANÇO / VELOCIDADE", "AVANÇO / VELOCIDADE" } },
@@ -212,6 +216,7 @@ const struct pd_tr_entry pd_tr_table[726] = {
     { "GAME SPEED", { "GAME SPEED", "VITESSE JEU", "SPIELTEMPO", "VELOCITÀ GIOCO", "VEL. JUEGO", "VEL. DO JOGO", "VEL. DO JOGO" } },
     { "GAME VOLUME", { "GAME VOLUME", "VOLUME DU JEU", "SPIEL-LAUTSTÄRKE", "VOLUME GIOCO", "VOLUMEN DEL JUEGO", "VOLUME DO JOGO", "VOLUME DO JOGO" } },
     { "GAMEPLAY", { "GAMEPLAY", NULL, NULL, NULL, "JUGABILIDAD", "JOGABILIDADE", "JOGABILIDADE" } },
+    { "GAMES", { "GAMES", "JEUX", "SPIELE", "GIOCHI", "JUEGOS", "JOGOS", "JOGOS" } },
     { "GBA", { "GBA", NULL, NULL, NULL, NULL, NULL, NULL } },
     { "GBA CORE", { "GBA CORE", "CŒUR GBA", "GBA-KERN", "CORE GBA", "NÚCLEO GBA", "NÚCLEO GBA", "NÚCLEO GBA" } },
     { "GEN 4", { "GEN 4", "GÉN. 4", "GEN. 4", "GEN. 4", "GEN. 4", "GER. 4", "GER. 4" } },
@@ -436,6 +441,8 @@ const struct pd_tr_entry pd_tr_table[726] = {
     { "OLD ROD", { "OLD ROD", "CANNE", "ANGEL", "AMO VECCHIO", "CAÑA VIEJA", "VARA VELHA", "VARA VELHA" } },
     { "ON", { "ON", "OUI", "AN", "SÌ", "SÍ", "SIM", "SIM" } },
     { "ONE-TAP MOVES", { "ONE-TAP MOVES", "CAPACITÉS EN 1 TAP", "ATTACKEN MIT 1 TIPP", "MOSSE A 1 TOCCO", "MOVIMIENTOS DE 1 TOQUE", "GOLPES EM 1 TOQUE", "GOLPES EM 1 TOQUE" } },
+    { "OPEN", { "OPEN", "OUVRIR", "ÖFFNEN", "APRI", "ABRIR", "ABRIR", "ABRIR" } },
+    { "OPTIONS", { "OPTIONS", NULL, "OPTIONEN", "OPZIONI", "OPCIONES", "OPÇÕES", "OPÇÕES" } },
     { "ORIGINAL", { "ORIGINAL", NULL, NULL, "ORIGINALE", NULL, NULL, NULL } },
     { "OTHER PLACES", { "OTHER PLACES", "AUTRES LIEUX", "ANDERE ORTE", "ALTRI LUOGHI", "OTROS LUGARES", "OUTROS LUGARES", "OUTROS LUGARES" } },
     { "OUT", { "OUT", "EN JEU", "AKTIV", "ATTIVO", "ACTIVO", "EM CAMPO", "EM CAMPO" } },
@@ -453,6 +460,7 @@ const struct pd_tr_entry pd_tr_table[726] = {
     { "PKMN DATA", { "PKMN DATA", "DONNÉES PKMN", "PKMN-DATEN", "DATI PKMN", "DATOS PKMN", "DADOS PKMN", "DADOS PKMN" } },
     { "PLACE", { "PLACE", "LIEU", "ORT", "LUOGO", "LUGAR", "LOCAL", "LOCAL" } },
     { "PLACES", { "PLACES", "LIEUX", "ORTE", "LUOGHI", "LUGARES", "LUGARES", "LUGARES" } },
+    { "PLAY", { "PLAY", "JOUER", "SPIELEN", "GIOCA", "JUGAR", "JOGAR", "JOGAR" } },
     { "PLAYER", { "PLAYER", "JOUEUR", "SPIELER", "GIOCATORE", "JUGADOR", "JOGADOR", "JOGADOR" } },
     { "POCKET FULL", { "POCKET FULL", "POCHE PLEINE", "TASCHE VOLL", "TASCA PIENA", "BOLSILLO LLENO", "BOLSO CHEIO", "BOLSO CHEIO" } },
     { "POKé BALLS", { "POKé BALLS", NULL, "BÄLLE", "POKé BALL", NULL, "POKé BOLAS", "POKé BOLAS" } },
@@ -608,6 +616,7 @@ const struct pd_tr_entry pd_tr_table[726] = {
     { "TMs", { "TMs", "CT", NULL, "MT", "MT", "MTs", "MT" } },
     { "TMs & HMs", { "TMs & HMs", "CT & CS", "TM & VM", "MT & MN", "MT y MO", "MTs e MOs", "MTs e MOs" } },
     { "TO DO", { "TO DO", "À FAIRE", "ZU TUN", "DA FARE", "PENDIENTE", "A FAZER", "A FAZER" } },
+    { "TOOLS", { "TOOLS", "OUTILS", "WERKZEUGE", "STRUMENTI", "HERRAMIENTAS", "FERRAMENTAS", "FERRAMENTAS" } },
     { "TOTAL", { "TOTAL", NULL, "GESAMT", "TOTALE", NULL, NULL, NULL } },
     { "TOWNS & CITIES", { "TOWNS & CITIES", "VILLES", "STÄDTE", "CITTÀ", "PUEBLOS Y CIUDADES", "CIDADES", "CIDADES" } },
     { "TO|evolution", { "TO", "VERS", "ZU", "A", "A", "PARA", "PARA" } },
@@ -664,6 +673,7 @@ const struct pd_tr_entry pd_tr_table[726] = {
     { "UNDO ALL", { "UNDO ALL", "TOUT ANNULER", "ALLES ZURÜCK", "ANNULLA TUTTO", "DESHACER TODO", "DESFAZER TUDO", "DESFAZER TUDO" } },
     { "UNDO LOAD", { "UNDO LOAD", "ANNULER CHARG.", "LADEN RÜCKG.", "ANNULLA CARIC.", "DESHACER CARGA", "DESFAZER CARGA", "DESFAZER CARGA" } },
     { "UNDO SAVE", { "UNDO SAVE", "ANNULER SAUV.", "SICHERN RÜCKG.", "ANNULLA SALV.", "DESHACER GUARD.", "DESFAZER SALVAR", "DESFAZER GUARDAR" } },
+    { "UNFAVORITE", { "UNFAVORITE", "RETIRER FAVORI", "KEIN FAVORIT", "TOGLI PREFERITO", "QUITAR FAVORITO", "TIRAR FAVORITO", "TIRAR FAVORITO" } },
     { "UNKNOWN ITEM", { "UNKNOWN ITEM", "OBJET INCONNU", "UNBEKANNTES ITEM", "STRUMENTO IGNOTO", "OBJETO DESCONOCIDO", "ITEM DESCONHECIDO", "ITEM DESCONHECIDO" } },
     { "UNSEEN", { "UNSEEN", "INCONNU", "UNBEKANNT", "IGNOTO", "OCULTO", "OCULTO", "OCULTO" } },
     { "UP DOWN: STEP   L R: PAGE   B: BACK", { "UP DOWN: STEP   L R: PAGE   B: BACK", "HAUT BAS : PAS   L R : PAGE   B : RETOUR", "HOCH RUNTER: SCHRITT   L R: SEITE   B: ZURÜCK", "SU GIÙ: PASSO   L R: PAGINA   B: INDIETRO", "ARRIBA ABAJO: PASO   L R: PÁGINA   B: ATRÁS", "CIMA BAIXO: PASSO   L R: PÁGINA   B: VOLTAR", "CIMA BAIXO: PASSO   L R: PÁGINA   B: VOLTAR" } },
@@ -730,4 +740,4 @@ const struct pd_tr_entry pd_tr_table[726] = {
     { "the game.", { "the game.", "dans le jeu.", "im Spiel ab.", "nel gioco.", "en el juego.", "no jogo.", "no jogo." } },
     { "x%d  (a stack holds %d)", { "x%d  (a stack holds %d)", "x%d  (une pile en contient %d)", "x%d  (ein Stapel fasst %d)", "x%d  (una pila ne tiene %d)", "x%d  (un montón lleva %d)", "x%d  (uma pilha tem %d)", "x%d  (uma pilha tem %d)" } },
 };
-const int pd_tr_table_count = 726;
+const int pd_tr_table_count = 736;
