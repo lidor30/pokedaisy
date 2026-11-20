@@ -30,11 +30,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 
 /** A bag item's totals by id: the same item can sit in two pockets (a TM's case), and only the total matters. */
-internal fun itemTotals(items: List<ItemView>): Map<Int, Int> =
+fun itemTotals(items: List<ItemView>): Map<Int, Int> =
     items.filter { it.itemId > 0 }.groupBy { it.itemId }.mapValues { (_, same) -> same.sumOf { it.quantity } }
 
 /** The items that went up from [before] to [after], with how many more of each. */
-internal fun itemGains(before: Map<Int, Int>, after: Map<Int, Int>): Map<Int, Int> =
+fun itemGains(before: Map<Int, Int>, after: Map<Int, Int>): Map<Int, Int> =
     after.mapNotNull { (id, q) ->
         val was = before[id] ?: 0
         if (q > was) id to (q - was) else null
@@ -44,8 +44,10 @@ internal fun itemGains(before: Map<Int, Int>, after: Map<Int, Int>): Map<Int, In
  * What deserves an "OBTAINED" card: a bag that (re)appeared whole or changed wholesale is a load, a savestate or a
  * stale cache catching up - announcing it would queue the entire bag one item at a time.
  */
-internal fun itemGainNotices(before: Map<Int, Int>, after: Map<Int, Int>): Map<Int, Int> {
+fun itemGainNotices(before: Map<Int, Int>, after: Map<Int, Int>): Map<Int, Int> {
     if (before.isEmpty() || after.isEmpty()) return emptyMap()
+    // A stack no Gen 3 bag holds (999 is MAX_BAG_ITEM_CAPACITY): a torn read, or the game mid-write. Not a pickup.
+    if (after.values.any { it > BAG_STACK_MAX }) return emptyMap()
     val changed = (before.keys + after.keys).count { id -> (before[id] ?: 0) != (after[id] ?: 0) }
     return if (changed > MAX_SETTLE_IDS) emptyMap() else itemGains(before, after)
 }
@@ -54,6 +56,18 @@ private class ItemGain(val item: ItemView, val count: Int)
 
 /** More distinct items changing in one settled sample than this is the bag being reloaded, not a pickup. */
 private const val MAX_SETTLE_IDS = 6
+
+private const val BAG_STACK_MAX = 999
+
+/**
+ * Whether the game's clock went from [before] to [after] the way play does: forward, by less than a minute of frames
+ * (samples come about once a second, faster in FF). Anything else is the game somewhere else (a state loaded from the
+ * STATES tab or the QUICK MENU, REWIND, BOSS RETRY, a resume), whose bag isn't a pickup.
+ */
+fun playedOn(before: Long, after: Long): Boolean = after >= before && after - before < PLAY_JUMP_FRAMES
+
+/** A minute of frames: a sample further on than that is a jump, not play (uncapped FF can do it; no card then is fine). */
+private const val PLAY_JUMP_FRAMES = 3600L
 
 /**
  * A small "OBTAINED" card at the bottom left when the bag gains an item (a pickup, a purchase, a PC withdrawal, a held
@@ -66,6 +80,8 @@ fun ItemToastHost(
     connected: Boolean,
     hasData: Boolean,
     reset: Int,
+    /** The game's own frame clock ([com.pokedaisy.app.companion.data.SnapshotView.frameCounter]): a jump in it is a load. */
+    frame: Long,
     modifier: Modifier = Modifier,
 ) {
     val m = rememberGbaTextMetrics(1f)
@@ -75,6 +91,8 @@ fun ItemToastHost(
     var visible by remember { mutableStateOf(false) }
     var previous by remember { mutableStateOf<Map<Int, Int>?>(null) }
     var ready by remember { mutableStateOf(false) }
+    var previousFrame by remember { mutableStateOf(-1L) }
+    val latestFrame by rememberUpdatedState(frame)
     val latest by rememberUpdatedState(items)
     LaunchedEffect(connected, hasData, reset) {
         ready = false
@@ -86,6 +104,7 @@ fun ItemToastHost(
         // The game's own bag load, or a savestate's, is not an acquisition: let it settle, then take it as the baseline.
         delay(900)
         previous = itemTotals(latest).takeIf { it.isNotEmpty() }
+        previousFrame = latestFrame
         ready = true
     }
     LaunchedEffect(items, connected, hasData) {
@@ -95,8 +114,12 @@ fun ItemToastHost(
         val now = itemTotals(items)
         if (now.isEmpty()) return@LaunchedEffect
         val before = previous
+        val beforeFrame = previousFrame
         previous = now
+        previousFrame = latestFrame
         if (before == null) return@LaunchedEffect
+        // The game somewhere else since the last bag (any load, not only the hotkeys'): a new baseline, no cards.
+        if (!playedOn(beforeFrame, latestFrame)) return@LaunchedEffect
         for ((id, count) in itemGainNotices(before, now)) {
             latest.firstOrNull { it.itemId == id }?.let { queue.trySend(ItemGain(it, count)) }
         }

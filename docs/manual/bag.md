@@ -22,7 +22,7 @@ The button under the pockets changes the order. Each tap moves to the next: the 
 
 ## Item gains
 
-When your bag gains an item, a small `OBTAINED` card slides in at the bottom left of the game screen: the item's icon and name, and `×N` when you got more than one. It covers anything that adds to the bag, such as a pickup, a purchase, or an item taken back from a Pokémon or the PC. Using or selling an item doesn't show it, and neither does loading a save state. It stays for a couple of seconds, then fades by itself.
+When your bag gains an item, a small `OBTAINED` card slides in at the top of the game screen: the item's icon and name, and `×N` when you got more than one. It covers anything that adds to the bag, such as a pickup, a purchase, or an item taken back from a Pokémon or the PC. Using or selling an item doesn't show it, and neither does loading a save state. It stays for a couple of seconds, then fades by itself. Turn it off with `ITEM POPUPS` in SETTINGS (COMPANION group).
 
 ## Item details
 

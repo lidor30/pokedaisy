@@ -359,7 +359,6 @@ private const val BATTLE_TYPE_CATCH_TUTORIAL = 0x0200
 private const val BAG_POCKET_STRIDE = 8
 private const val BAG_POCKET_SLOTS = 255 // a pocket's u8 capacity (SoulGold's Items pocket holds 150)
 private const val BAG_MAX_ITEMS = 300
-private const val BAG_STACK_MAX = 999 // MAX_BAG_ITEM_CAPACITY: what one stack holds in every Gen 3 engine
 
 /** SaveBlock1's address: read through gSaveBlock1Ptr, or fixed (Ruby/Sapphire). */
 internal fun saveBlock1(c: MemoryReader, cfg: NativeConfig): Long =
@@ -374,8 +373,7 @@ internal fun u16le(b: ByteArray, off: Int) =
 internal fun u32le(b: ByteArray, off: Int) =
     s32le(b, off).toLong() and 0xFFFFFFFFL
 
-// Every sample: the bag tab and the item-gain toast follow the game within the sample's own second.
-private const val BAG_REFRESH_EVERY = 1
+private const val BAG_REFRESH_EVERY = 6
 
 /**
  * The player's money: SaveBlock1.money XOR SaveBlock2.encryptionKey (Ruby /
@@ -936,12 +934,12 @@ private fun readNativeBag(c: MemoryReader, cfg: NativeConfig): List<Item> {
     cfg.bag3?.let { return readBag3(c, cfg, it) }
     cfg.itemFlagsBag?.let { return readItemFlagsBag(c, cfg, it) }
     var key = 0
-    // encryptionKeyOff < 0: Ruby/Sapphire don't obfuscate bag quantities. A missing SaveBlock2 is a failed read, not a
-    // zero key: decrypting with 0 would turn every stack into raw noise (and the item toast would report all of it).
-    if (cfg.encryptionKeyOff >= 0) {
+    // encryptionKeyOff < 0: Ruby/Sapphire don't obfuscate bag quantities.
+    if (cfg.encryptionKeyOff >= 0) runCatching {
         val sb2 = saveBlock2(c, cfg)
-        check(sb2 in 0x02000000L until 0x04000000L) { "bag: no SaveBlock2" }
-        key = u32le(c.readCoreMemory(sb2 + cfg.encryptionKeyOff, 4), 0).toInt() and 0xFFFF
+        if (sb2 in 0x02000000L until 0x04000000L) {
+            key = u32le(c.readCoreMemory(sb2 + cfg.encryptionKeyOff, 4), 0).toInt() and 0xFFFF
+        }
     }
     cfg.packedBag?.let { return readPackedBag(c, cfg, it, key) }
     val pockets = c.readCoreMemory(cfg.bagPockets, cfg.bagPocketCount * BAG_POCKET_STRIDE)
@@ -956,13 +954,7 @@ private fun readNativeBag(c: MemoryReader, cfg: NativeConfig): List<Item> {
         var i = 0
         while (i < readSlots && out.size < BAG_MAX_ITEMS) {
             val id = u16le(raw, i * 4)
-            if (id != 0) {
-                val quantity = u16le(raw, i * 4 + 2) xor key
-                // A torn read (the game mid-write) or a lost key shows as an impossible stack. Drop the whole
-                // sample: the last good bag stays, instead of a fake gain the toast would announce.
-                check(quantity in 1..BAG_STACK_MAX) { "bag: item $id has quantity $quantity" }
-                out.add(Item(id, quantity, pocket))
-            }
+            if (id != 0) out.add(Item(id, u16le(raw, i * 4 + 2) xor key, pocket))
             i++
         }
     }

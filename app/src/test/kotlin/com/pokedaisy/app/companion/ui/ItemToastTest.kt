@@ -35,4 +35,16 @@ class ItemToastTest {
     fun `one pickup still gets its card`() {
         assertEquals(mapOf(1 to 2), itemGainNotices(mapOf(1 to 1, 2 to 1), mapOf(1 to 3, 2 to 1)))
     }
+
+    @Test
+    fun `an impossible stack is a torn read, not a pickup`() {
+        assertEquals(emptyMap<Int, Int>(), itemGainNotices(mapOf(1 to 1), mapOf(1 to 1, 2 to 40000)))
+    }
+
+    @Test
+    fun `a load from anywhere is a jump in the game's clock`() {
+        assertEquals(true, playedOn(1000, 1060))
+        assertEquals(false, playedOn(1000, 400)) // a state from earlier, REWIND, BOSS RETRY
+        assertEquals(false, playedOn(1000, 1000 + 60L * 60 * 5)) // a state from five minutes on
+    }
 }
