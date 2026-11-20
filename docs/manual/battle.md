@@ -101,7 +101,7 @@ In a single battle all of that fits without scrolling. In a double battle the pa
 
 Scroll down the foe's column for more:
 
-- `ABILITY` and `HELD ITEM`.
+- `ABILITY`, `NATURE` and `HELD ITEM`.
 - Its stats as they stand in this battle. Any stat that's been raised or lowered gets a small pill (+2 in green, -1 in red), and accuracy and evasion show up once they've changed.
 - Its moves, each with a verdict on what it does to *your* Pokémon. A `SUPER` here is a warning.
 

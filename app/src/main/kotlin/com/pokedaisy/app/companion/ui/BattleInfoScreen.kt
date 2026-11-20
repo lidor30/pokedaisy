@@ -42,9 +42,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.MoveView
+import com.pokedaisy.app.companion.data.NO_NATURE
 import com.pokedaisy.app.companion.data.TYPE_NONE
 import com.pokedaisy.app.companion.data.TypeMatchup
 import com.pokedaisy.app.companion.data.formatMultiplier
+import com.pokedaisy.app.companion.data.natureName
 import com.pokedaisy.app.companion.data.typeIdOf
 import com.pokedaisy.app.companion.data.typeMultiplierPct
 import com.pokedaisy.app.companion.data.withMovesVs
@@ -345,15 +347,19 @@ internal fun FoeFacts(
     val ability = rememberFoeAbility(foe, dexTables).takeIf { abilityAndItem }
     // Attack, Defense, Speed, Sp. Atk, Sp. Def - the battle's, else the party struct's.
     val stats = foe.battleStats ?: foe.stats?.stats?.drop(1)
+    // No nature in Gen 1 / 2 (their wild foes carry DVs with NO_NATURE): no row rather than a "?".
+    val nature = foe.stats?.nature?.takeIf { it != NO_NATURE && abilityAndItem }?.let { natureName(it) }
     val item = foe.heldItem?.ifEmpty { tr("NONE") }?.takeIf { abilityAndItem }
-    if (ability == null && item == null && stats == null) return
+    if (ability == null && nature == null && item == null && stats == null) return
     Column(verticalArrangement = Arrangement.spacedBy(u * 2)) {
         if (abilityAndItem) {
             if (wide) Row(verticalAlignment = Alignment.CenterVertically) {
                 ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.weight(1f)) }
+                nature?.let { FactPair(tr("NATURE"), it, small, Modifier.weight(1f)) }
                 item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.weight(1f)) }
             } else {
                 ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.fillMaxWidth()) }
+                nature?.let { FactPair(tr("NATURE"), it, small, Modifier.fillMaxWidth()) }
                 item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.fillMaxWidth()) }
             }
         }
