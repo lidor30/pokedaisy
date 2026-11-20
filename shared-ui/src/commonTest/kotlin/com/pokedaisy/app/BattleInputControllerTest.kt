@@ -8,10 +8,7 @@ import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_TARGET_SELECT
 import com.pokedaisy.app.companion.data.CoreKey
 import com.pokedaisy.app.companion.data.MemoryReader
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /**
  * [BattleInputController]'s switch and RUN sequences against a simulated game:
@@ -98,7 +95,7 @@ class BattleInputControllerTest {
         c.onState(0, BATTLE_INPUT_ACTION_SELECT, cursor = 2)
         c.selectAction(3)
         run(200)
-        assertEquals("RUN", listOf("RIGHT", "A"), game.presses.take(2))
+        assertEquals(listOf("RIGHT", "A"), game.presses.take(2), "RUN")
         // ...and PkMn (Gen 3's POKEMON, index 2) from FIGHT is just RIGHT, A.
         game.presses.clear()
         c.onState(0, BATTLE_INPUT_ACTION_SELECT, cursor = 0)
@@ -365,7 +362,7 @@ class BattleInputControllerTest {
         }
         assertEquals(2, game.slot)
         assertEquals(2, a)
-        assertTrue("dropped presses were pressed again", game.presses.count { it == "DOWN" } > 2)
+        assertTrue(game.presses.count { it == "DOWN" } > 2, "dropped presses were pressed again")
         assertFalse(c.isBusy)
     }
 

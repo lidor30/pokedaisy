@@ -75,6 +75,27 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
         private set
     private var generation = 0
 
+    /** Clear the session when leaving cartridge gameplay. Late scans can no longer update this runner. */
+    fun clear() {
+        generation++
+        romKey = null
+        engine = null
+        keptScan = null
+        patches = emptyMap()
+        textPatches = emptyMap()
+        monPatches.clear()
+        offered.value = emptyList()
+        textOffered.value = emptyList()
+        offeredMons.value = emptyList()
+        picked.value = null
+        textPicked.value = null
+        pickedMon.value = null
+        own.value = null
+        worn.value = null
+        female = null
+        supported.value = false
+    }
+
     /** A ROM loaded: forget the last one's patches and start this one's pass (off the UI thread). */
     fun load(rom: File, key: String, code: String, save: File?) {
         val gen = ++generation

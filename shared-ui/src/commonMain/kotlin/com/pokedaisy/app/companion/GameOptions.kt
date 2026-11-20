@@ -106,11 +106,6 @@ class GameOptions internal constructor(
     fun setLevelCap(found: LevelCap.Found?, level: Int) {
         desired.update { it.copy(cap = found.takeIf { level in 1..99 }, level = level.takeIf { it in 1..99 } ?: 0) }
     }
-    /** Used by the Android host until discovery and preferences move to this runtime. */
-    fun setQuietPatches(found: QuietPatches.Found?, beepOff: Boolean, poisonOff: Boolean) {
-        desired.update { it.copy(beep = found?.beep.takeIf { beepOff }, poison = found?.poison.takeIf { poisonOff }) }
-    }
-
     fun setQuietOptions(beep: Boolean, poison: Boolean) {
         val metadata = found.value
         desired.update {

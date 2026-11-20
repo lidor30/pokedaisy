@@ -104,7 +104,7 @@ The app shows every license below in full under Settings > LICENSES.
   Collet, BSD 2-Clause; third_party/licenses/xxHash-BSD-2-Clause.txt),
   tiny-AES-c (The Unlicense), SHA-1 by Steve Reid (public domain), blip_buf
   (GNU LGPL 2.1) and Dolphin's ARM64 emitter (GNU GPL 2.0 or later).
-- Shaders (app/src/main/kotlin/com/pokedaisy/app/ScreenShaders.kt): LCD and
+- Shaders (shared-ui/src/commonMain/kotlin/com/pokedaisy/app/ScreenShaders.kt): LCD and
   scanlines adapted from mGBA's, Copyright (C) 2017 Dominus Iniquitatis, MIT
   License (the full notice is in third_party/mgba/res/shaders/lcd.shader/lcd.fs);
   GBA colours from mGBA's gba-color shader by Pokefan531 and hunterk. LCD PAPER

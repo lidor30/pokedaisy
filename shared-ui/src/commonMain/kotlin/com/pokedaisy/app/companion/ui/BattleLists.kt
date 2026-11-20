@@ -46,7 +46,7 @@ import kotlin.math.roundToInt
  * and numbers), in the running game's party colours ([partyPaletteFor]).
  */
 
-/** FIGHT's moves, one card a row, then CANCEL: [width] wide, each row [rowH] tall. Gen 1 keeps its own list. */
+/** FIGHT's moves, one card a row, then CANCEL: [width] wide, each row [rowH] tall. */
 @Composable
 internal fun BattleMoveList(
     moves: List<MoveView>, battleInput: BattleInput?, busy: Boolean, showHints: Boolean, width: Dp, rowH: Dp, gap: Dp,
@@ -59,12 +59,6 @@ internal fun BattleMoveList(
     /** BATTLE STYLE GEN 5: the rows in the move plates' look. */
     gen5: Boolean = false,
 ) {
-    if (gen1Buttons && onPick == null) {
-        Box(Modifier.width(width).height(rowH * 5 + gap * 4)) {
-            MoveGrid(moves, battleInput, busy, showHints, Modifier.fillMaxSize(), onCancel = onCancel, compact = true)
-        }
-        return
-    }
     CompanionBackHandler(enabled = (battleInput != null || onPick != null) && !busy, onBack = onCancel)
     Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(gap)) {
         for (i in 0 until 4) {

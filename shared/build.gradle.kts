@@ -1,7 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest
 
-// Portable emulator interfaces, game data and language data for Android and iOS.
+// The multiplatform companion data, translations, and emulator policies. The app links the Android target,
+// and the iPad app links the native target. Platform bindings supply the emulator core and the log sink.
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
@@ -78,8 +79,6 @@ android {
     namespace = "com.pokedaisy.shared"
     compileSdk = 34
     defaultConfig { minSdk = 26 }
-    // The fixtures the data tests load from the classpath. Set on Android's own test source set: a resource
-    // folder added to the Kotlin androidUnitTest source set doesn't reach AGP's unit-test resources.
     sourceSets["test"].resources.srcDir(sharedJvmFixtures.resolve("resources"))
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

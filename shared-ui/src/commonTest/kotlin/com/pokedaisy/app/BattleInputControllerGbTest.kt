@@ -11,10 +11,7 @@ import com.pokedaisy.app.companion.data.gbMonKey
 import com.pokedaisy.app.companion.data.readGen1BattleInput
 import com.pokedaisy.app.companion.data.readGen2BattleInput
 import com.pokedaisy.app.companion.data.wramx
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /**
  * [BattleInputController]'s switch on a Game Boy game ([BattleInputController.SwitchAddrs.gb]) against simulated
@@ -259,7 +256,7 @@ class BattleInputControllerGbTest {
         // Slot 3 of four is two UPs away (through CANCEL), three DOWNs: UP. Then A on it, and A on SWITCH until the
         // menu stops dropping presses (~30 frames) - more than one A, none after it took.
         val ups = game.presses.takeWhile { it == "UP" }
-        assertTrue(ups.toString(), ups.size >= 2)
+        assertTrue(ups.size >= 2, ups.toString())
         assertTrue(game.presses.drop(ups.size).all { it == "A" })
         assertTrue(game.presses.count { it == "A" } > 2)
         assertFalse(c.isBusy)
@@ -296,7 +293,7 @@ class BattleInputControllerGbTest {
         run(c, game, 200)
         assertEquals(1, game.usedMove)
         assertEquals(2, game.presses.count { it == "A" })   // FIGHT's and the move's, none after it took
-        assertTrue(game.presses.toString(), game.presses.count { it == "DOWN" } >= 2)
+        assertTrue(game.presses.count { it == "DOWN" } >= 2, game.presses.toString())
         assertFalse(c.isBusy)
     }
 

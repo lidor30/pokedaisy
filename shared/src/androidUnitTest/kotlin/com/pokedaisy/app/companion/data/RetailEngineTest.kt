@@ -19,7 +19,7 @@ import java.util.zip.CRC32
  */
 class RetailEngineTest {
     private val wideRows: Map<Int, IntArray> by lazy {
-        val f = listOf(File("src/main/cpp/pk_wide_games.h"), File("shared/src/commonMain/cpp/pk_wide_games.h")).first { it.isFile }
+        val f = listOf(File("../shared/src/commonMain/cpp/pk_wide_games.h"), File("shared/src/commonMain/cpp/pk_wide_games.h")).first { it.isFile }
         Regex("""\{ 0x([0-9a-f]{8}), PK_WIDE_FAMILY_\w+, \{ ([^}]*)\}""").findAll(f.readText()).associate { m ->
             m.groupValues[1].toLong(16).toInt() to
                 m.groupValues[2].split(',').map { it.trim() }.filter { it.isNotEmpty() }.map { v -> (if (v.startsWith("-")) -1 else 1) * v.removePrefix("-").removePrefix("0x").toLong(16).toInt() }.toIntArray()

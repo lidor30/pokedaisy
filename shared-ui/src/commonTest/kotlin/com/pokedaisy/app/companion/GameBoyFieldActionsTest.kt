@@ -153,6 +153,26 @@ class GameBoyFieldActionsTest {
         } finally { romLanguage = previous }
     }
 
+    @Test fun cachedCompanionDataCannotVerifyACartridgeBeforeTheCoreConnects() {
+        val h = Harness()
+        val previousGame = activeGame; val previousLanguage = romLanguage; val previousCode = romGameCode
+        val telemetry = TelemetryStore().apply {
+            showCached(SnapshotView(connected = true, game = GameKind.YELLOW, cachedTabs = setOf("PARTY")))
+        }
+        assertTrue(telemetry.snapshot.value.connected) // The cached copy still describes its old connected game.
+        val runtime = GameRuntime(h.session, telemetry,
+            com.pokedaisy.app.Prefs(PrefsCompanionSettingsTest.Store()), GameBattleInput(telemetry, null, 0),
+            object : RomOptionPatcher {
+                override fun unpatch() {}
+                override fun patch(expectAt: Long, expect: ByteArray, at: Long, value: ByteArray) = true
+            }, { true })
+        try {
+            var reads = 0
+            val fields = runtime.bindGameBoyFields({ true }, { _, _ -> reads++; null }, { it() }, {})
+            assertFalse(fields.available); assertEquals(0, reads)
+        } finally { runtime.close(); activeGame = previousGame; romLanguage = previousLanguage; romGameCode = previousCode }
+    }
+
     @Test fun offHoldsEachAdvancingFrameAndOnRestoresTheCurrentMapsRatesOnlyOnce() {
         val h = Harness(); h.wildMap()
         h.actions.keepEncounters(h.calls, off = true)

@@ -1,6 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-// Shared Compose screens and their presentation models for Android and iOS.
+// Portable companion screens, settings, controls and co-op, with Android and iOS hosts.
 plugins {
     kotlin("multiplatform")
     id("com.android.library")

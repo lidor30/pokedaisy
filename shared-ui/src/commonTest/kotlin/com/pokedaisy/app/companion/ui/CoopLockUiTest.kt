@@ -4,12 +4,7 @@ import com.pokedaisy.app.companion.coop.lock.CoopLockActions
 import com.pokedaisy.app.companion.coop.lock.CoopLockUi
 import com.pokedaisy.app.companion.coop.lock.LockRefusal
 import com.pokedaisy.app.companion.coop.lock.LockWait
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 class CoopLockUiTest {
     private class Calls : CoopLockActions {

@@ -60,6 +60,7 @@ fun touchControlsRows(
     skinUi: TouchSkinUi? = null,
     skinSystem: SkinSystem = SkinSystem.GBA,
     onImportSkin: (() -> Unit)? = null,
+    skinBadge: String? = touchSkinsBadge(),
     /** VIBRATION / STRENGTH just changed: one buzz at the new strength (0 = off), com.pokedaisy.app.TouchHaptics. */
     feel: (Int) -> Unit = {},
     buttons: Set<TouchButton> = TouchButton.entries.toSet(),
@@ -128,7 +129,7 @@ fun touchControlsRows(
         SettingRow(tk("RESET LAYOUT"), null, subtitle = "Forget CUSTOM, back to the preset") {
             set(style.copy(useCustom = false, portrait = TouchLayout(), landscape = TouchLayout()))
         }.takeIf { style.hasCustom },
-    ) + skinRows(style, skins, skinUi, onImportSkin) + listOf(groupTitle(tk("EXTRA BUTTONS"))) + TouchButton.extras.filter { it in buttons }.map { b ->
+    ) + skinRows(style, skins, skinUi, onImportSkin, skinBadge) + listOf(groupTitle(tk("EXTRA BUTTONS"))) + TouchButton.extras.filter { it in buttons }.map { b ->
         SettingRow(
             b.label, onOff(b in style.extras), enabled = !skinned, subtitle = if (skinned) skinNote else extraSubtitle(b),
             labelBadge = NewFeatures.badge(NewFeatures.TOUCH_MORE_BUTTONS).takeIf { b == TouchButton.ZOOM || b == TouchButton.REWIND },
@@ -144,14 +145,14 @@ fun touchControlsRows(
 }
 
 /** SKINS: a skin for GBA games and one for Game Boy games (a pick-list each), IMPORT SKIN and DELETE SKIN. */
-private fun skinRows(style: TouchControlsStyle, skins: List<InstalledSkin>, ui: TouchSkinUi?, onImport: (() -> Unit)?): List<SettingRow> {
+private fun skinRows(style: TouchControlsStyle, skins: List<InstalledSkin>, ui: TouchSkinUi?, onImport: (() -> Unit)?, badge: String?): List<SettingRow> {
     if (ui == null) return emptyList()
     val none = skins.isEmpty()
     fun pickRow(label: String, system: SkinSystem): SettingRow {
         val name = style.skinFor(system)?.let { id -> skins.firstOrNull { it.id == id }?.skin?.name }
         val mine = skins.any { it.skin.system == system }
         return SettingRow(
-            label, name ?: tk("NONE"), enabled = mine || name != null, labelBadge = touchSkinsBadge(),
+            label, name ?: tk("NONE"), enabled = mine || name != null, labelBadge = badge,
             subtitle = when {
                 mine || name != null -> null
                 onImport == null -> "Import skins in the app's SETTINGS"
@@ -163,7 +164,7 @@ private fun skinRows(style: TouchControlsStyle, skins: List<InstalledSkin>, ui: 
         groupTitle(tk("SKINS")),
         pickRow(tk("GBA SKIN"), SkinSystem.GBA),
         pickRow(tk("GAME BOY SKIN"), SkinSystem.GB),
-        onImport?.let { SettingRow(tk("IMPORT SKIN"), null, labelBadge = touchSkinsBadge(), subtitle = "A .deltaskin file") { it() } },
+        onImport?.let { SettingRow(tk("IMPORT SKIN"), null, labelBadge = badge, subtitle = "A .deltaskin file") { it() } },
         if (onImport != null && !none) SettingRow(tk("DELETE SKIN"), null) { ui.deleting = true } else null,
     )
 }

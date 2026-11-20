@@ -1,6 +1,5 @@
 package com.pokedaisy.app
 
-import android.util.Log
 import com.pokedaisy.app.companion.coop.CoopLink
 import com.pokedaisy.app.companion.coop.CoopMessage
 import com.pokedaisy.app.companion.coop.CoopState
@@ -13,7 +12,11 @@ import com.pokedaisy.app.companion.coop.lock.CoopStoryHold
 import com.pokedaisy.app.companion.coop.lock.LockMsg
 import com.pokedaisy.app.companion.coop.lock.LockRefusal
 import com.pokedaisy.app.companion.coop.lock.LockWait
-import java.util.concurrent.ConcurrentLinkedQueue
+import com.pokedaisy.app.companion.coop.coopLog
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import okio.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,15 +30,6 @@ interface LockNative {
     fun held(): IntArray
     fun go(id: Int): Int
     fun cancel()
-}
-
-object MgbaLockNative : LockNative {
-    override fun install() = CoopLockNative.install() == 1
-    override fun uninstall() = CoopLockNative.uninstall()
-    override fun setActive(on: Boolean) = CoopLockNative.setActive(on)
-    override fun held(): IntArray = CoopLockNative.held()
-    override fun go(id: Int) = CoopLockNative.go(id)
-    override fun cancel() = CoopLockNative.cancel()
 }
 
 /** Why the player is told the lock went off (shown by the later UI task). */
@@ -60,7 +54,9 @@ class CoopLock(
     /** The story hold at this event waits while a joined story battle for it is being decided ([CoopBattles.storyPending]). */
     private val storyWait: (Int) -> Boolean = { false },
 ) : CoopLockActions {
-    private val inbox = ConcurrentLinkedQueue<CoopMessage>()
+    private val lock = SynchronizedObject()
+    private val inboxLock = SynchronizedObject()
+    private val inbox = ArrayDeque<CoopMessage>()
     private val hold = CoopStoryHold(clock)
     private val _ui = MutableStateFlow(CoopLockUi())
     private val _notice = MutableStateFlow<LockNotice?>(null)
@@ -98,8 +94,7 @@ class CoopLock(
     init { publish() }
 
     /** Takes the guards for a locked save: called once the lock is adopted (a stale one is dropped without it), else by the first frame. */
-    @Synchronized
-    fun start() {
+    fun start(): Unit = synchronized(lock) {
         if (started || closed) return
         started = true
         if (locked) {
@@ -111,19 +106,19 @@ class CoopLock(
     }
 
     fun onMessage(m: CoopMessage) {
-        if (m.type in 0x0300..0x03FF) inbox.add(m)
+        if (m.type in 0x0300..0x03FF) synchronized(inboxLock) { inbox.addLast(m) }
     }
 
     /** Notices queue: a new one never replaces one still showing. */
-    private val pendingNotices = java.util.ArrayDeque<LockNotice>()
-    private fun post(n: LockNotice) = synchronized(pendingNotices) {
+    private val noticesLock = SynchronizedObject()
+    private val pendingNotices = ArrayDeque<LockNotice>()
+    private fun post(n: LockNotice) = synchronized(noticesLock) {
         if (n !in pendingNotices) pendingNotices.add(n)
-        if (_notice.value == null) _notice.value = pendingNotices.poll()
+        if (_notice.value == null) _notice.value = pendingNotices.removeFirstOrNull()
     }
-    fun clearNotice() = synchronized(pendingNotices) { _notice.value = pendingNotices.poll() }
+    fun clearNotice() = synchronized(noticesLock) { _notice.value = pendingNotices.removeFirstOrNull() }
 
-    @Synchronized
-    fun onFrame() {
+    fun onFrame(): Unit = synchronized(lock) {
         if (closed) return
         start()
         val now = reinstallNow && !CoopGuards.battleActive()   // after a ROM-patch change took the hook out: at once, not in 5 s
@@ -133,7 +128,7 @@ class CoopLock(
             // idempotent, so this puts it back; either way setActive is applied again (a fresh install starts inactive).
             val wasInstalled = installed
             var kind = "refused"
-            installed = try { native.install() } catch (e: Throwable) { kind = e.javaClass.simpleName; false }
+            installed = try { native.install() } catch (e: Throwable) { kind = e::class.simpleName ?: "error"; false }
             if (wasInstalled) nativeOn = false
             if (!installed && installFailed.add(kind)) log("the story hook didn't go in ($kind): events stay unheld")
             if (!installed) installTried = true
@@ -155,7 +150,7 @@ class CoopLock(
         if (!connected && wasConnected) lostSince = clock()
         wasConnected = connected
         while (true) {
-            val m = inbox.poll() ?: break
+            val m = synchronized(inboxLock) { inbox.removeFirstOrNull() } ?: break
             val msg = CoopLockWire.decode(m.type, m.payload) ?: continue
             // The first word from the partner after a Connected: they may not have been listening for our Status yet.
             if (!heard) { heard = true; if (msg !is LockMsg.Status) send(LockMsg.Status(locked)) }
@@ -205,16 +200,14 @@ class CoopLock(
     private fun refusal(partnerCount: Int?): LockRefusal? =
         CoopLockRules.refusal(true, link.state.value is CoopState.Connected, ownParty, partnerCount)
 
-    @Synchronized
-    override fun propose() {
+    override fun propose(): Unit = synchronized(lock) {
         if (closed || locked || refusal(0) != null) return
         proposalSent = true
         send(LockMsg.Propose(ownParty))
         publish()
     }
 
-    @Synchronized
-    override fun accept() {
+    override fun accept(): Unit = synchronized(lock) {
         if (closed || !partnerProposed) return
         partnerProposed = false
         if (refusal(partnerParty) != null) {
@@ -225,16 +218,14 @@ class CoopLock(
         publish()
     }
 
-    @Synchronized
-    override fun decline() {
+    override fun decline(): Unit = synchronized(lock) {
         if (closed || !partnerProposed) return
         partnerProposed = false
         send(LockMsg.Answer(false, ownParty))
         publish()
     }
 
-    @Synchronized
-    override fun turnOff() {
+    override fun turnOff(): Unit = synchronized(lock) {
         if (closed || !locked) return
         setLocked(false)
         send(LockMsg.Off)
@@ -245,7 +236,7 @@ class CoopLock(
     private fun setLocked(on: Boolean): Boolean {
         try {
             if (on) store.lock(own, partner) else store.unlock(own)
-        } catch (e: java.io.IOException) {
+        } catch (e: IOException) {
             log("the locks file couldn't be written: ${e.message}")
             return false
         }
@@ -274,7 +265,6 @@ class CoopLock(
     }
 
     private fun publish() {
-        val connected = link.state.value is CoopState.Connected
         val waiting: LockWait? = when {
             !locked -> null
             startHold || linkHold -> LockWait.Partner
@@ -291,8 +281,7 @@ class CoopLock(
     }
 
     /** The game closed: this lock's guard reasons off at once (any thread). Plan 4's BATTLE reasons stay. */
-    @Synchronized
-    fun releaseGuards() {
+    fun releaseGuards(): Unit = synchronized(lock) {
         closed = true   // a released lock never takes a guard again: a frame tick already inside onFrame sees it closed
         if (!started) return   // a stale lock never took a guard, so it never lets one go
         CoopGuards.hold(CoopGuards.Hold.LOCK_START, false)
@@ -301,8 +290,7 @@ class CoopLock(
     }
 
     /** Guards off and the native side inactive and out (emu thread; idempotent). */
-    @Synchronized
-    fun close() {
+    fun close(): Unit = synchronized(lock) {
         if (shut) return
         shut = true
         releaseGuards()
@@ -311,12 +299,10 @@ class CoopLock(
             nat("uninstall") { native.uninstall() }
         }
         nativeOn = false
-        inbox.clear()
+        synchronized(inboxLock) { inbox.clear() }
     }
 
-    private fun log(msg: String) {
-        try { Log.w("pokedaisy/coop", "lock: $msg") } catch (_: RuntimeException) {} catch (_: UnsatisfiedLinkError) {}
-    }
+    private fun log(msg: String) = coopLog("lock: $msg")
 
     private companion object { const val PARTY_EVERY = 15; const val INSTALL_EVERY = 300 }
 }

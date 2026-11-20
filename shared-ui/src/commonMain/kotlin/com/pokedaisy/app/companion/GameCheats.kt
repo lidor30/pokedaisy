@@ -24,6 +24,7 @@ class GameCheats(
     private var store: CheatStore? = null
     private val current = atomic(emptyList<Cheat>())
     val list get() = current.value
+    val hasEnabledCheats get() = supported && !closed.value && enabled() && list.any { it.enabled }
     val editable get() = !closed.value && store != null
 
     fun start() {

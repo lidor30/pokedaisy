@@ -16,7 +16,7 @@ import java.util.zip.CRC32
  */
 class SaveStates(filesDir: File, romCrc: String) {
 
-    internal val files = StateFiles(File(File(filesDir, "states"), romCrc).toOkioPath(), extraSidecars = listOf(".ra"))
+    internal val files = StateFiles(File(File(filesDir, "states"), romCrc).toOkioPath(), extraSidecars = listOf(StateFiles.ACHIEVEMENT_PROGRESS_SUFFIX))
 
     fun stateFile(slot: Int): File = File(files.stateFile(slot).toString())
     fun thumbFile(slot: Int): File = File(files.thumbFile(slot).toString())

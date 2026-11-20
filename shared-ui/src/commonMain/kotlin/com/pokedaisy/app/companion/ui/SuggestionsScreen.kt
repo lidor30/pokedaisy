@@ -205,9 +205,11 @@ private fun SuggestionRow(
 /** English ids; [BattlerCard] translates them. */
 private val RankLabels = listOf(tk("1ST"), tk("2ND"), tk("3RD"))
 
-/** Whether party mon [mon] is one of the player's battlers on the field (gBattleMons carries no personality to match on). */
-internal fun isOut(mon: MonView, active: List<MonView>) =
-    active.any { it.species == mon.species && it.level == mon.level && it.maxHp == mon.maxHp }
+/** Prefer the game's stable identity; older readers without it retain the existing appearance fallback. */
+internal fun isOut(mon: MonView, active: List<MonView>) = active.any {
+    if (mon.personality != 0L && it.personality != 0L) it.personality == mon.personality
+    else it.species == mon.species && it.level == mon.level && it.maxHp == mon.maxHp
+}
 
 /** The best Pokémon to switch to against [foe] - SUGGESTIONS' top pick that isn't already out - or null. */
 internal fun recommendedSwitch(party: List<MonView>, foe: MonView?, active: List<MonView>): MonView? =

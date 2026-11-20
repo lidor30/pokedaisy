@@ -7,6 +7,7 @@ import com.pokedaisy.app.companion.data.SnapshotCache
 import com.pokedaisy.app.companion.data.delete
 import com.pokedaisy.app.companion.data.hasData
 import com.pokedaisy.app.companion.i18n.tr
+import com.pokedaisy.app.game.GameSession
 import android.graphics.Bitmap
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -24,6 +25,7 @@ import com.pokedaisy.app.companion.data.ShopWatch
 import java.io.File
 import java.nio.ByteBuffer
 import kotlin.math.roundToInt
+import com.pokedaisy.app.game.FramePacer
 import okio.Path.Companion.toOkioPath
 
 /**
@@ -67,14 +69,12 @@ class EmulatorEngine(
     @Volatile private var pendingLoad = -1
     @Volatile private var pendingUndoSave = false
     @Volatile private var pendingUndoLoad = false
-    @Volatile private var pendingRetrySave = false
-    @Volatile private var pendingRetryLoad = false
     @Volatile private var pendingSuspend: File? = null
 
     @Volatile private var ffHeld = false
     @Volatile private var ffToggled = false
     @Volatile private var slowmoHeld = false
-    @Volatile private var rewindHeld = false
+    val rewindHold = com.pokedaisy.app.game.RewindHold()
     @Volatile private var speedIdx = 0          // index into SPEED_STEPS
 
     /** Cap for hold/toggle fast-forward. 0 = unlimited. (Phase 4: make configurable.) */
@@ -89,6 +89,12 @@ class EmulatorEngine(
 
     /** REWIND (Settings): states kept for the rewind hotkey, 0 = off. Picked up on the emu thread. */
     @Volatile var rewindEntries = 0
+        set(value) {
+            if (field == value) return
+            field = value
+            rewindHold.revoke()
+        }
+    val canRewind get() = rewindEntries > 0 && rewindAllowed(coopStatesBlocked)
 
     /** WIDE's native tables for this game ([WideScreen.gameFor]), or [WideScreen.OFF]; applied between frames. */
     @Volatile var wideGame = WideScreen.OFF
@@ -133,102 +139,50 @@ class EmulatorEngine(
 
     /** FREE FLIGHT's state after the last frame (pk_flight.c: [MgbaCore.FLIGHT_IDLE] ... [MgbaCore.FLIGHT_DISMOUNT]): the
      * QUICK MENU's TAKE OFF / LAND, the HUD. GBA games only; IDLE elsewhere. */
-    @Volatile var flightState = MgbaCore.FLIGHT_IDLE
-        private set
+    val flightState get() = playback.flight?.state ?: MgbaCore.FLIGHT_IDLE
 
     /** The flight is the scenic FLY's (a route to a town): EXPAND zoomed out and the game at [SCENIC_SPEED] while it's in
      * the air. Cleared once it's down. */
-    @Volatile var scenicFlight = false
+    val scenicFlight get() = playback.flight?.scenic == true
 
     /** In the air on the scenic FLY. */
     private val scenicAirborne: Boolean
-        get() = scenicFlight && flightState != MgbaCore.FLIGHT_IDLE && flightState != MgbaCore.FLIGHT_DISMOUNT
+        get() = playback.flight?.scenicAirborne == true
 
     /** AUTO-RUN: B held for the player while walking on the field (holding B walks); never on a bike or in a menu. */
-    var autoRun
-        get() = gameOptions.autoRun
-        set(v) { gameOptions.autoRun = v }
+    private val autoRun get() = gameOptions.autoRun
     /** The running game runs by itself ([com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN]): flipping B there walks. */
     private val ownAutoRun get() = com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN
-
-    /** With AUTO-RUN off: frames the player walked on the field where it would have run for them, and of those the ones
-     *  B was held (AUTO-RUN's tip: someone who runs everywhere). Emu thread writes, the UI reads and resets. */
-    @Volatile var walkFrames = 0L
-    @Volatile var runFrames = 0L
 
     /** The game's own region map (a Town Map, the Fly map) is up: [RegionMapWatch], GBA only. */
     @Volatile var regionMapOpen = false
         private set
 
-    /** RUN INDOORS: the current map lets the player run (gMapHeader.allowRunning; FireRed / Emerald engines). */
-    var runIndoors
-        get() = gameOptions.runIndoors
-        set(v) { gameOptions.runIndoors = v }
-
     /** WILD ENCOUNTERS: the game's own switch ([WildEncounters.find]; 0 = not found) and the percent of wild
      * encounters left (100 = the game's own rate, 0 = none). */
     @Volatile var wildFlag = 0L
-    var wildEncounters
-        get() = gameOptions.wildEncounters
-        set(v) { gameOptions.wildEncounters = v }
+    private val wildEncounters get() = gameOptions.wildEncounters
 
     /** DS RESOLUTION ([Prefs.dsResolution]): a DS game's 3D scale, handed to the core before the next frame. */
     @Volatile var ndsScale = 1
     private var ndsScaleSet = -1
 
-    /** Desired option state is shared; this host still decides when its frame loop may apply patches. */
+    /** Desired option state for the loaded game. */
     val gameOptions get() = playback.options
-    fun setReusableTms(sites: List<com.pokedaisy.app.companion.data.ReusableTms.Site>, on: Boolean) =
-        gameOptions.setReusableTms(sites, on)
-    fun setInstantText(patch: com.pokedaisy.app.companion.data.InstantText.Patch?, on: Boolean) =
-        gameOptions.setInstantText(patch, on)
+    @Volatile var onShinyChanged: () -> Unit = {}
+    val shiny by lazy { playback.bindShiny(gameCalls, BuildConfig.DEBUG) { onShinyChanged() } }
 
-    fun setExpShare(found: com.pokedaisy.app.companion.data.ExpShare.Found?, mode: com.pokedaisy.app.companion.data.ExpShare.Mode) =
-        gameOptions.setExpShare(found, mode)
-    /** LOW HP BEEP / FIELD POISON off ([com.pokedaisy.app.companion.data.QuietPatches]; null = none known). */
-    fun setQuietPatches(found: com.pokedaisy.app.companion.data.QuietPatches.Found?, beepOff: Boolean, poisonOff: Boolean) =
-        gameOptions.setQuietPatches(found, beepOff, poisonOff)
-    fun setRunningShoes(found: com.pokedaisy.app.companion.data.InstantText.Patch?, on: Boolean) =
-        gameOptions.setRunningShoes(found, on)
-    fun setLevelCap(found: com.pokedaisy.app.companion.data.LevelCap.Found?, level: Int) =
-        gameOptions.setLevelCap(found, level)
-    fun setHmFree(patch: com.pokedaisy.app.companion.data.HmFree.Patch?, on: Boolean) =
-        gameOptions.setHmFree(patch, on)
+    private val playerLook = com.pokedaisy.app.companion.GamePlayerLook(
+        object : com.pokedaisy.app.game.PlayerLookCore {
+            override fun replaceLookBlocks(addresses: IntArray, lengths: IntArray, crcs: IntArray, data: ByteArray) =
+                if (addresses.isEmpty()) { MgbaCore.pkRomUnblock(); 0 }
+                else MgbaCore.pkRomBlocks(addresses, lengths, crcs, data)
+            override fun repaletteLook(from: ByteArray, to: ByteArray) = MgbaCore.pkRepalette(from, to)
+            override fun refreshLook(palette: ByteArray?) = MgbaCore.pkLookRefresh(palette)
+        },
+    )
 
-    /** SHINY ODDS ([com.pokedaisy.app.companion.data.ShinyOdds]): the game's foe party watched every frame, a new wild foe
-     * made shiny at 1 in [shinyOdds] ([com.pokedaisy.app.companion.data.ShinyOdds.NORMAL] = the game's own odds, nothing
-     * done); null = a game it doesn't know. */
-    @Volatile private var shinyRoller: com.pokedaisy.app.companion.data.ShinyOdds.FoeRoller? = null
-    @Volatile var shinyOdds = com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
-
-    @Volatile private var shinyTarget: com.pokedaisy.app.companion.data.ShinyOdds.FoeTarget? = null
-
-    fun setShinyTarget(target: com.pokedaisy.app.companion.data.ShinyOdds.FoeTarget?) {
-        if (target == shinyTarget) return
-        shinyTarget = target
-        shinyRoller = target?.roller()
-    }
-
-    /** PLAYER LOOK ([com.pokedaisy.app.companion.data.PlayerLook]): the patch to wear - its blocks into the ROM, then its
-     * palettes swapped where the game has them loaded - on the next frame boundary ([setPlayerLook]); its palettes again
-     * after every state load (a state made in another look). Null = nothing to do. */
-    @Volatile private var lookPatch: com.pokedaisy.app.companion.data.PlayerLook.Patch? = null
-    @Volatile private var lookDirty = false
-
-    fun setPlayerLook(patch: com.pokedaisy.app.companion.data.PlayerLook.Patch?) {
-        // The same look again (the party read changing, as it does as a battle starts) is nothing to do: putting it in
-        // again set the player's sprite up again after the battle, mid-fade.
-        val now = lookPatch
-        if (patch === now || (patch == null && now == null) || (patch != null && patch.sameAs(now))) return
-        lookPatch = patch
-        lookDirty = true
-    }
-
-    /** A Game Boy game's PC / FLY / WILD ENCOUNTERS ([com.pokedaisy.app.companion.data.GbField], its code checked), or
-     * null. WILD ENCOUNTERS OFF holds the game's own encounter state every frame ([gbWildHeld]). */
-    @Volatile var gbField: com.pokedaisy.app.companion.data.GbField? = null
-    /** Whether [gbField]'s wild encounters were held last frame (null = not known yet: put back once on the field). */
-    private var gbWildHeld: Boolean? = null
+    fun setPlayerLook(patch: com.pokedaisy.app.companion.data.PlayerLook.Patch?) = playerLook.select(patch)
 
     /** ZOOM and the look-around over WIDE: asked for the window to draw before each frame ([EmulatorView.camera]). */
     @Volatile var wideCamera: WideCamera? = null
@@ -373,10 +327,6 @@ class EmulatorEngine(
     val battleSwitchAddrs: BattleInputController.SwitchAddrs?
         get() = battleInput.switchAddrs
 
-    /** LAST BALL: [itemId] thrown from the action menu without the bag ([BattleInputController.throwBall]). UI thread. */
-    fun battleThrowBall(fns: com.pokedaisy.app.companion.data.BattleBall.Fns, itemId: Int, removeBagItem: Long) =
-        battleInput.throwBall(fns, itemId, removeBagItem)
-
     /** Switch to the party mon with this personality. Call from the UI thread. */
     fun battleSwitchTo(personality: Long) = battleInput.switchTo(personality)
 
@@ -428,10 +378,6 @@ class EmulatorEngine(
     /** SOFT RESET: the games' own reset combo, held for a few frames (Gen 3 and Gen 1 check it every frame and go back to
      * the title screen without saving, wherever they allow it). */
     fun softReset() { softResetFrames = SOFT_RESET_FRAMES }
-
-    fun setRewindHeld(on: Boolean) {
-        rewindHeld = on && rewindAllowed(CoopGuards.statesBlocked)
-    }
 
     fun setSlowmoHeld(on: Boolean) {
         if (slowmoHeld == on) return
@@ -541,25 +487,6 @@ class EmulatorEngine(
     @Volatile var dsBattleMenuFloats = false
     private var touchFrames = 0
 
-    /**
-     * DAY AND NIGHT ([com.pokedaisy.app.companion.data.DayNight]): the tint the activity wants on the field now (red,
-     * green, blue, 256 = as is; [DayNight.NONE] off, indoors, or a game that isn't a GBA one). The engine eases toward it
-     * on the field's screen (text boxes and the START menu too: their palettes aren't tinted) and back out of it for
-     * battles and menu screens, a few frames either way, and hands each step to the core ([MgbaCore.pkSetTint]).
-     */
-    /** FOLLOWER ([com.pokedaisy.app.companion.data.MonArt]): the party lead's sprite to walk behind the player (null =
-     * none: the row off, no sprite kept). Shown on the field's own screen, not surfing; set by the activity. */
-    @Volatile var follower: com.pokedaisy.app.companion.data.MonArt.Mon? = null
-    private var followerSent: com.pokedaisy.app.companion.data.MonArt.Mon? = null
-    private var followerShown = false
-
-    /** PLAYER LOOK changed (or a state loaded): the player's sprite is set up again on the field ([MgbaCore.pkLookRefresh]). */
-    @Volatile private var lookRefreshPending = false
-    private var lookRefreshTries = 0
-
-    @Volatile var dayNightTint: IntArray = com.pokedaisy.app.companion.data.DayNight.NONE
-    private val tintNow = floatArrayOf(256f, 256f, 256f)
-    private val tintSent = intArrayOf(256, 256, 256)
     /** The last frame's EXPAND scene ([WideCamera.SCENE_FIELD] ...), -1 without EXPAND. Emu thread. */
     private var wideScene = -1
 
@@ -580,42 +507,10 @@ class EmulatorEngine(
      * is on) and when AUTO-RUN becomes ready or blocked, and why - so SCENE SPEEDS, TEXT SPEED and AUTO-RUN's bike /
      * script / battle checks can be read off `adb logcat -s pokedaisy` after a test on a device.
      */
-    /** RIDE ON's vehicle as the look patch now in brings it (emu thread; null = none), sent to the core when it changed. */
-    private var rideApplied: com.pokedaisy.app.companion.data.RideOn.Sprite? = null
-    private var rideSent: com.pokedaisy.app.companion.data.RideOn.Sprite? = null
-    private var rideShown = false
-    private var rideFrames = 0
-
-    /** RIDE ON, once a frame (emu thread): the vehicle's sprite to the core when it changed, and shown or not (the core
-     * draws it only while the player is on a bike, behind them). */
-    private fun stepRide(field: Boolean) {
-        val r = rideApplied
-        if (r !== rideSent) {
-            MgbaCore.pkRideSet(r?.frames, r?.pal, r?.width ?: 32)
-            rideSent = r
-        }
-        val show = field && r != null
-        if (show != rideShown || (show && ++rideFrames % 60 == 0)) {
-            MgbaCore.pkRideShow(show)
-            rideShown = show
-        }
-    }
-
-    /** FOLLOWER, once a frame (emu thread): its sprite to the core when it changed, and shown or not. */
-    private fun stepFollower(field: Boolean) {
-        val mon = follower
-        if (mon !== followerSent) {
-            MgbaCore.pkFollowerSet(mon?.frames, mon?.owPal)
-            followerSent = mon
-        }
-        val show = field && mon != null
-        // Also every second while shown: a core started since (another game, a restart) is hooked when told.
-        if (show != followerShown || (show && ++followerFrames % 60 == 0)) {
-            MgbaCore.pkFollowerShow(show)
-            followerShown = show
-        }
-    }
-    private var followerFrames = 0
+    private val ride = com.pokedaisy.app.companion.GameRide(object : com.pokedaisy.app.game.RideCore {
+        override fun setRide(frames: ByteArray?, palette: ByteArray?, width: Int) = MgbaCore.pkRideSet(frames, palette, width)
+        override fun showRide(on: Boolean) = MgbaCore.pkRideShow(on)
+    })
 
     /**
      * HIDE BATTLE MENU ([Prefs.hideBattleMenu]): what the activity wants - 0 = the game's battle menus shown, 1 = hidden
@@ -667,28 +562,14 @@ class EmulatorEngine(
     @Volatile var coopPresence: CoopPresence? = null
     /** The co-op lock (PLAY TOGETHER ONLY): stepped every loop turn, also while a hold runs no frame. */
     @Volatile var coopLock: CoopLock? = null
+    @Volatile var coopStartupPending = false
+    private val coopStatesBlocked get() = coopStartupPending || CoopGuards.statesBlocked
 
     /**
      * Co-op joined battles ([CoopBattles]): asked every tick (also while [CoopGuards.held], when no frame runs) for the keys of
      * the next frame - null = no frame this tick - and told after each one. Null = no co-op battles (not retail Emerald, no link).
      */
     @Volatile var coopBattles: CoopFrameHook? = null
-
-    /** DAY AND NIGHT, once a frame (emu thread): [tintNow] a step toward [dayNightTint] on the field, toward none off it. */
-    private fun stepTint(field: Boolean) {
-        val want = if (field) dayNightTint else com.pokedaisy.app.companion.data.DayNight.NONE
-        var changed = false
-        for (c in 0..2) {
-            val d = want[c] - tintNow[c]
-            tintNow[c] = if (kotlin.math.abs(d) < TINT_STEP) want[c].toFloat() else tintNow[c] + kotlin.math.sign(d) * TINT_STEP
-            val v = tintNow[c].toInt()
-            if (v != tintSent[c]) { tintSent[c] = v; changed = true }
-        }
-        // While tinted, sent again every second too: a core started since (another game, a restart) has its own
-        // renderer, which the native side hooks when it's told.
-        if (changed || (++tintFrames % 60 == 0 && tintSent.any { it != 256 })) MgbaCore.pkSetTint(tintSent[0], tintSent[1], tintSent[2])
-    }
-    private var tintFrames = 0
 
     private fun logField(speed: Float) {
         if (!BuildConfig.DEBUG) return
@@ -721,7 +602,7 @@ class EmulatorEngine(
     /** What the emulator actually runs at: [requestedSpeed], unless SMART is holding it at 1x for now. */
     private fun effectiveSpeed(): Float {
         // Rewinding steps back at the display's pace (2 game frames a frame), whatever FF says.
-        if (rewindHeld && rewindEntries > 0) return 1f
+        if (rewindHold.active && rewindEntries > 0) return 1f
         // An automated switch drives the game's party menu behind the held frame: nothing to watch
         // there, so it runs flat out (muted) and the battle comes back in a fraction of a second.
         if (battleInput.holdFrame) return Float.POSITIVE_INFINITY
@@ -867,9 +748,24 @@ class EmulatorEngine(
     }
 
     val playback by lazy {
-        // Every platform: a Game Boy cart's options are GbGamePatches' (pk_cheats_patch's Game Boy branch).
         com.pokedaisy.app.companion.GameRuntime(gameSession, telemetry, preferences, battle, optionPatcher, { true },
-            configureField = { fieldGame != WideScreen.OFF }, restoreOptionPatchesOnClose = false)
+            configureField = { fieldGame != WideScreen.OFF }, restoreOptionPatchesOnClose = false,
+            applyTint = MgbaCore::pkSetTint)
+    }
+
+    val flightCore = object : com.pokedaisy.app.game.FlightCore {
+        override fun configureFlight(words: IntArray?) = MgbaCore.pkFlightConfigure(words)
+        override fun flightTakeOff() = MgbaCore.pkFlightTakeOff()
+        override fun flightLand() = MgbaCore.pkFlightLand()
+        override fun setFlightRoute(directions: ByteArray) = MgbaCore.pkFlightRoute(directions)
+        override fun setFlightArea(bits: ByteArray?) = MgbaCore.pkFlightArea(bits)
+        override val flightAreaTurned get() = MgbaCore.pkFlightAreaTurned()
+        override val flightState get() = MgbaCore.pkFlightState()
+    }
+
+    val followerCore = object : com.pokedaisy.app.game.FollowerCore {
+        override fun setFollower(frames: ByteArray?, palette: ByteArray?) = MgbaCore.pkFollowerSet(frames, palette)
+        override fun showFollower(on: Boolean) = MgbaCore.pkFollowerShow(on)
     }
 
     /** Runs [job] on the emu thread before the next frame; dropped if the game closes first. */
@@ -888,20 +784,24 @@ class EmulatorEngine(
     }
 
     /** A Game Boy game's field, as its scene says (pk_wide_gb.c's screen match: no text box, menu or battle); a game
-     * with no scene (no EXPAND row: the European Yellows, Red / Blue) leaves it to [gbField]'s own RAM checks. */
+     * with no scene (no EXPAND row: the European Yellows, Red / Blue) leaves it to the shared Game Boy field helper's own RAM checks. */
     private val gbOnField get() = wideScene == WideCamera.SCENE_FIELD || wideScene == -1
 
     fun requestSaveState(slot: Int) { if (CoopGuards.battleActive()) return; pendingSave = slot.coerceIn(SaveStates.SLOT_MIN, SaveStates.SLOT_MAX) }
     /** False while co-op blocks LOAD STATE (slot loads and UNDO LOAD; the launch's resume is never blocked). */
-    fun loadAllowed(): Boolean = !CoopGuards.statesBlocked
+    fun loadAllowed(): Boolean = !coopStatesBlocked
 
     fun requestLoadState(slot: Int) { pendingLoad = slot.coerceIn(SaveStates.SLOT_MIN, SaveStates.SLOT_MAX) }
     fun requestUndoSave() { if (!CoopGuards.battleActive()) pendingUndoSave = true }   // no state of a co-op battle is ever written
     fun requestUndoLoad() { pendingUndoLoad = true }
-    /** BOSS RETRY: a state of this moment (a trainer battle's start) into [SaveStates.retryFile]; never of a co-op battle. */
-    fun requestRetrySave() { if (!CoopGuards.battleActive()) pendingRetrySave = true }
-    /** BOSS RETRY: back to that state ([onStateResult] with LOAD_STATE, slot -1); undoable like any load. */
-    fun requestRetryLoad() { pendingRetryLoad = true }
+    /** Sample delivery runs on the emulator thread between frames. Co-op battles never write a retry state. */
+    fun captureRetry(): Boolean = !CoopGuards.battleActive() && slots.captureRetry()
+
+    fun requestRetryLoad() = postToEmu {
+        if (refuseLoad(coopStatesBlocked, isResume = false)) {
+            onStateResult?.invoke(Hotkeys.Action.LOAD_STATE, -1, false)
+        } else slots.loadRetry()
+    }
 
     fun cycleSlot(delta: Int) {
         val n = (currentSlot + delta).mod(SaveStates.SLOT_MAX - SaveStates.SLOT_MIN + 1)
@@ -1030,6 +930,7 @@ class EmulatorEngine(
     private fun loop(rom: File, save: File, resume: File?) {
         gameSession.reset()
         onField.value = false
+        playback.fieldChanged(0)
         SaveBackups.snapshot(save)
         // RetroArch's compressed .srm, unpacked first: mGBA would take it as the flash itself and the game start anew.
         RzipSave.unpackForPlay(save)?.let { why ->
@@ -1052,11 +953,11 @@ class EmulatorEngine(
         vh = MgbaCore.pkVideoHeight()
         videoBuf = MgbaCore.pkVideoBuffer()
         // The core starts with no follower and no tint (pk_wide_extras_reset): so do what this engine last sent.
-        followerSent = null
-        followerShown = false
+        playback.follower?.reset()
+        ride.reset()
         battleMenuHideSent = -1
-        tintNow.fill(256f)
-        tintSent.fill(256)
+        playback.resetTint()
+        playback.flight?.reset()
         endDsHold()
         onCoreReady?.invoke(vw, vh)
 
@@ -1096,7 +997,7 @@ class EmulatorEngine(
         applyCheats()
         gameOptions.coreStarted()
         gameOptions.tick()
-        applyLook()
+        if (gba) playerLook.service(force = true)
 
         val sampleRate = MgbaCore.pkSampleRate()
         // Out of audio resources (or a device mid-reroute) mustn't take the process down:
@@ -1133,6 +1034,7 @@ class EmulatorEngine(
             running = false
             gameSession.close()
             onField.value = false
+            playback.fieldChanged(0)
             pacedPerFrame = 0   // no frames are coming: the GL thread mustn't wait for one
             pendingSuspend = null
             runCatching { track?.stop() }
@@ -1269,6 +1171,7 @@ class EmulatorEngine(
         // Read across a frame's stages (were the loop's locals).
         var frameStart = 0L
         var rewinding = false
+        val frameWork get() = if (rewinding) GameSession.FrameWork.REWINDING else GameSession.FrameWork.ADVANCING
         var probeOnly = false
         var frameCoop: CoopFrameHook? = null
         var speed = 1f
@@ -1278,15 +1181,15 @@ class EmulatorEngine(
         /** Before the core runs: holds, rewind, EXPAND's camera, the keys, DS drawing. False = no frame this time round. */
         fun beforeFrame(): Boolean {
             frameStart = System.nanoTime()
-            if (rewindHeld && !rewindAllowed(CoopGuards.statesBlocked)) rewindHeld = false
-            if (loopAction(CoopGuards.held, !running, pendingSave >= 0) != LoopAction.RUN) {
+            if (rewindHold.active && !canRewind) rewindHold.revoke()
+            if (loopAction(coopStartupPending || CoopGuards.held, !running, pendingSave >= 0) != LoopAction.RUN) {
                 wasHeld = true
                 // Co-op holds the game: no frame, the last picture stays; saves, suspend, sleep and stop still served.
                 gameAudioPaused = true
                 if (!paused) { paused = true; runCatching { track?.pause(); track?.flush() }; framesWritten = 0L }
                 coopBattles?.beforeFrame(input.mask)   // CO-OP BATTLES: its timers and link waits tick while no frame runs
                 coopLock?.onFrame()
-                servicePending(runFieldJobs = false)
+                servicePending(GameSession.FrameWork.HELD)
                 if (sleeping) synchronized(sleepLock) {
                     while (sleeping && running && pendingSuspend == null) sleepLock.wait(SLEEP_POLL_MS)
                     sleeping = false
@@ -1305,7 +1208,7 @@ class EmulatorEngine(
             battleInput.tick()
             if (nds) ndsTaps.tick()
             // No ring while a co-op battle runs: it would fill with the other game's frames.
-            val rewindWanted = if (CoopGuards.statesBlocked) 0 else rewindEntries
+            val rewindWanted = if (coopStatesBlocked) 0 else rewindEntries
             if (rewindWanted != rewindApplied) {
                 MgbaCore.pkSetRewind(rewindWanted)
                 rewindApplied = rewindWanted
@@ -1344,7 +1247,11 @@ class EmulatorEngine(
                     runCatching { onWideOff?.invoke("camera") }
                 }
             }
-            rewinding = rewindHeld && rewindWanted > 0
+            rewinding = rewindHold.active && rewindWanted > 0
+            if (rewinding) {
+                playback.cancelFieldActions()
+                playback.battleRetry.reset()
+            }
             MgbaCore.pkSetRewinding(rewinding)
             // TURBO A / B: pressed 2 frames, released 2, in game frames - so FF mashes faster too.
             val reset = if (softResetFrames > 0) { softResetFrames--; SOFT_RESET_KEYS } else 0
@@ -1354,10 +1261,7 @@ class EmulatorEngine(
             // expansion's DexNav creeps on A (Seaglass & co.), but checks B's run first, so a held B scared the
             // Pokémon off. A while walking does nothing in the other games.
             if (autoRun && (gba || nds)) keys = gameOptions.keys(keys, fieldState, fieldScreen, ownAutoRun)
-            else if (!autoRun && !ownAutoRun && (gba || nds) && AutoRunPolicy.walking(keys, fieldState, fieldScreen)) {
-                walkFrames++
-                if (keys and CoreKey.B != 0) runFrames++
-            }
+            else if (gba || nds) playback.tipMoments.movement(keys, fieldState, fieldScreen, ownAutoRun)
             // CO-OP BATTLES (hook null = nothing changes): the hook gives this frame's keys (always the player's own: a joined
             // battle is the game's own link battle); null = the game is held (a joined battle waiting at its start, a stop in flight).
             val coop = coopBattles
@@ -1369,7 +1273,7 @@ class EmulatorEngine(
                     wasHeld = true
                     gameAudioPaused = true
                     if (!paused) { paused = true; runCatching { track?.pause(); track?.flush() }; framesWritten = 0L }
-                    servicePending(runFieldJobs = false)
+                    servicePending(GameSession.FrameWork.HELD)
                     if (sleeping) synchronized(sleepLock) {
                         while (sleeping && running && pendingSuspend == null) sleepLock.wait(SLEEP_POLL_MS)
                         sleeping = false
@@ -1427,15 +1331,14 @@ class EmulatorEngine(
             // Achievements never take the game down with them (a pending JNI
             // exception from a callback would otherwise end this loop).
             try {
-                RetroAchievements.onFrame()
+                if (frameWork == com.pokedaisy.app.game.GameSession.FrameWork.ADVANCING) RetroAchievements.onFrame()
             } catch (t: Exception) {
                 if (!raFrameFailed) Log.e("pokedaisy", "achievements frame failed", t)
                 raFrameFailed = true
             }
             // FREE FLIGHT's state after this frame (pk_flight.c ticks inside pkRunFrame): TAKE OFF / LAND, the scenic FLY.
             if (gba) {
-                flightState = MgbaCore.pkFlightState()
-                if (scenicFlight && flightState == MgbaCore.FLIGHT_IDLE) scenicFlight = false
+                playback.flight?.afterFrame()
             }
             // DsFrameSkip learns from the core's own time (drawn or not), after the frame is out.
             if (dsSkipTimed) {
@@ -1448,7 +1351,7 @@ class EmulatorEngine(
 
         /** Jobs, sleep, EXPAND's fault check and the companion's samples. */
         fun afterCore() {
-            servicePending()
+            servicePending(frameWork)
             if (sleeping) {
                 runCatching { track?.pause(); track?.flush() }
                 val sleptAt = android.os.SystemClock.elapsedRealtime()
@@ -1573,14 +1476,7 @@ class EmulatorEngine(
                 wildApplied = wildFlag
                 playback.resetFieldMoves()
             }
-            // WILD ENCOUNTERS on a Game Boy game: held every frame while OFF, put back once on the field when ON.
-            gbField?.let { gf ->
-                val hold = wildEncounters == 0
-                runCatching {
-                    if (hold) { gf.holdWild(gameCalls); gbWildHeld = true }
-                    else if (gbWildHeld != false && gbOnField && gf.releaseWild(gameCalls)) gbWildHeld = false
-                }.onFailure { Log.e("pokedaisy", "Game Boy wild encounters failed", it) }
-            } ?: run { gbWildHeld = null }
+            if (!rewinding) playback.gameBoyFields?.keepEncounters(gameCalls, wildEncounters == 0, gbOnField)
             // A DS game holds its own switch in its field read (pk_nds_field.cpp: the map's rates at 0).
             val wildKeep = if (wildFlag != 0L || nds) wildEncounters else 100
             if (nds) {
@@ -1595,43 +1491,23 @@ class EmulatorEngine(
                 gba && fieldGame != WideScreen.OFF -> gameOptions.fieldState(MgbaCore::pkFieldState, wildKnown = wildFlag != 0L)
                 else -> 0
             }
-            // SHINY ODDS: a new wild foe, between the frame it's made and the battle drawing it (a DS game's: between
-            // the battle being handed its setup and copying the parties; a Game Boy game's: between LoadEnemyMon and the
-            // battle's colours). The roller is null where it isn't checked.
-            if (shinyOdds < com.pokedaisy.app.companion.data.ShinyOdds.NORMAL) shinyRoller?.let { r ->
-                runCatching {
-                    val n = r.tick(shinyOdds, InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes)
-                    if (n > 0) Log.i("pokedaisy", "shiny odds: foe made shiny (1 in $shinyOdds)")
-                }.onFailure { Log.w("pokedaisy", "shiny odds failed", it) }
-            }
-            // EXP SHARE: a GBA getexp's bits or a Game Boy cart's participants byte (a DS game finds none).
+            // The verified roller handles each platform's wild-foe transition.
+            shiny.tick()
             if (!nds) gameOptions.markExp(InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes)
             playback.fieldChanged(fieldState)
             val bike = MgbaCore.FIELD_AVATAR or MgbaCore.FIELD_BIKE
             riding = (fieldState and bike) == bike
             val battleState = battleInput.gameState
             scene = PlaybackPolicy.scene(battleState, menuOpen, mapOpen, FfMenuWatch.battling, fieldState)
-            // PLAYER LOOK: the player's sprite set up again once the field's own screen runs (never over a battle's
-            // sprites); the native side checks it's still the player's.
-            // Not done (the screen mid-fade, the palette buffers not agreeing yet): again on a later field frame, for
-            // up to ~10 s of them.
-            if (lookRefreshPending && gba && fieldScreen && !mapOpen && !FfMenuWatch.battling) {
-                if (MgbaCore.pkLookRefresh(lookPatch?.playerPal) || ++lookRefreshTries >= LOOK_REFRESH_TRIES) {
-                    if (lookRefreshTries >= LOOK_REFRESH_TRIES) Log.w("pokedaisy", "player look: the sprite's palette never settled, left as it is")
-                    lookRefreshPending = false
-                    lookRefreshTries = 0
-                }
-            }
-            if (gba) stepRide(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
-                battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
-            if (gba) stepFollower(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
-                battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE && fieldState and MgbaCore.FIELD_SURF == 0)
+            if (gba && fieldScreen && !mapOpen && !FfMenuWatch.battling) playerLook.fieldFrame()
+            if (gba) ride.step(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
+                battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE, playerLook.ride)
+            if (gba) playback.stepFollower()
             if (gba) coopLock?.onFrame()
             if (gba) coopPresence?.onFrame(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
                 battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
             if (gba) stepBattleMenuHide()
-            if (gba) stepTint(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
-                battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
+            playback.stepTint()
             logField(effectiveSpeed())
         }
 
@@ -1706,7 +1582,7 @@ class EmulatorEngine(
             // Heard at 1x (unless a clip is playing through SMART's 1x); during FF
             // only as SPED-UP (which STEADY falls back to only for a song or ROM it can't
             // render). Slow-mo stays muted.
-            val spedUp = speed > 1f && clip == null && mode != FfMusicMode.OFF && !awaitingClip && !dsMusicOn
+            val spedUp = speed > 1f && clip == null && !PlaybackPolicy.muteFastAudio(speed, mode) && !awaitingClip && !dsMusicOn
             // A flat-out hold with no copy to play (DSperate, a copy that failed): silent, as before.
             wantPaused = rewinding || battleInput.holdFrame || holdMusic && !dsMusicOk ||
                 !((speed == 1f && clip == null) || spedUp || dsMusicOn)
@@ -2033,6 +1909,7 @@ class EmulatorEngine(
      * (MgbaCore.pkFinishSave): a game left mid-save and then swiped away from recents came back with its newer save
      * slot half written. 600 frames is ten seconds of game time; they run unpaced, a fraction of that. */
     private fun finishSave() {
+        playback.cancelFieldActions()
         val n = MgbaCore.pkFinishSave(600)
         if (n > 0) Log.i("pokedaisy", "let the game finish its save: $n frames")
     }
@@ -2057,53 +1934,13 @@ class EmulatorEngine(
             MgbaCore.pkRomPatch(expectAt, expect, at, value)
     }
 
-    /** PLAYER LOOK onto the ROM (emu thread): the last look's blocks out, this one's in (all or none), then the palettes. */
-    private fun applyLook() {
-        lookDirty = false
-        MgbaCore.pkRomUnblock()
-        rideApplied = null
-        val patch = lookPatch
-        // The player's sprite still holds the last look's record (a Pokémon's 32x32 shape, a frame table in the tail):
-        // set up from the ROM as it is now, whatever comes next.
-        if (gba && patch == null) { lookRefreshPending = true; lookRefreshTries = 0 }
-        if (!gba || patch == null) return
-        if (patch.blocks.isNotEmpty()) {
-            val data = java.io.ByteArrayOutputStream()
-            patch.blocks.forEach { data.write(it.data) }
-            val n = MgbaCore.pkRomBlocks(
-                IntArray(patch.blocks.size) { 0x08000000 + patch.blocks[it].off },
-                IntArray(patch.blocks.size) { patch.blocks[it].data.size },
-                IntArray(patch.blocks.size) { patch.blocks[it].crc },
-                data.toByteArray(),
-            )
-            Log.i("pokedaisy", "player look: ${if (n < 0) "the ROM didn't match, left as it is" else "$n block(s) in"}")
-            if (n < 0) return
-            rideApplied = patch.ride   // only with the rider's frames in: else a vehicle under the game's own bike
+    private fun servicePending(work: GameSession.FrameWork) {
+        gameSession.servicePending(work, gba, { gbOnField }) {
+            if (cheatsDirty) applyCheats()
+            playback.serviceFramePatches(CoopGuards.battleActive(), { gba && playerLook.service() }) {
+                coopLock?.requestReinstall()
+            }
         }
-        settleLook()
-    }
-
-    /** The worn look's palettes over any other hero's the game has loaded (emu thread). */
-    private fun settleLook() {
-        if (gba) { lookRefreshPending = true; lookRefreshTries = 0 }
-        val patch = lookPatch ?: return
-        if (!gba) return
-        var n = 0
-        for (p in patch.palettes) {
-            val from = java.io.ByteArrayOutputStream().also { o -> p.from.forEach { o.write(it) } }.toByteArray()
-            n += MgbaCore.pkRepalette(from, p.to)
-        }
-        if (n > 0) Log.i("pokedaisy", "player look: $n palette(s) swapped")
-    }
-
-    private fun servicePending(runFieldJobs: Boolean = true) {
-        gameSession.servicePosted()
-        if (cheatsDirty) applyCheats()
-        // Never during a co-op battle: both reach pkRomUnpatch / pkRomUnblock, which uninstall co-op (they stay dirty until it ends).
-        if (gameOptions.dirty && !CoopGuards.battleActive()) { gameOptions.tick(); coopLock?.requestReinstall() }
-        if (lookDirty && !CoopGuards.battleActive()) { applyLook(); coopLock?.requestReinstall() }
-        // Co-op holds still service posted work and patches, but field delays must not advance.
-        if (runFieldJobs) gameSession.serviceField(gba, gbOnField)
         pendingSuspend?.let { target ->
             pendingSuspend = null
             finishSave()
@@ -2128,27 +1965,14 @@ class EmulatorEngine(
         val load = pendingLoad
         if (load >= 0) {
             pendingLoad = -1
-            if (refuseLoad(CoopGuards.statesBlocked, isResume = false)) {
+            if (refuseLoad(coopStatesBlocked, isResume = false)) {
                 onStateResult?.invoke(Hotkeys.Action.LOAD_STATE, load, false)
             } else slots.requestLoad(load)
         }
         if (pendingUndoSave) { pendingUndoSave = false; slots.select(currentSlot); slots.requestUndoSave() }
-        if (pendingRetrySave) {
-            pendingRetrySave = false
-            val ok = saveState(states.retryFile)
-            Log.i("pokedaisy", "boss retry: state ${if (ok) "taken" else "failed"}")
-        }
-        if (pendingRetryLoad) {
-            pendingRetryLoad = false
-            val ok = !refuseLoad(CoopGuards.statesBlocked, isResume = false) &&
-                states.retryFile.let { it.isFile && it.length() > 0 } &&
-                run { runCatching { saveState(states.undoLoadFile) }; loadState(states.retryFile) }
-            Log.i("pokedaisy", "boss retry: load $ok")
-            onStateResult?.invoke(Hotkeys.Action.LOAD_STATE, -1, ok)
-        }
         if (pendingUndoLoad) {
             pendingUndoLoad = false
-            if (refuseLoad(CoopGuards.statesBlocked, isResume = false)) {
+            if (refuseLoad(coopStatesBlocked, isResume = false)) {
                 onStateResult?.invoke(Hotkeys.Action.UNDO_LOAD, currentSlot, false)
             } else { slots.select(currentSlot); slots.requestUndoLoad() }
         }
@@ -2158,8 +1982,16 @@ class EmulatorEngine(
     private val slots by lazy { playback.bindStates {
         com.pokedaisy.app.companion.StateSlotController(states.files, onCore = { it() },
             write = ::writeCoreState,
-            read = { loadState(File(it.toString())) },
+            read = ::readManualState,
             beforeLoad = {}, thumbnail = ::stateThumbnail, snapshot = ::stateSnapshot,
+            loaded = { source ->
+                playback.afterStateLoad(
+                    restoreProgress = { RetroAchievements.afterLoadState(File(source.toString())) },
+                    // The state may hold another PLAYER LOOK's palettes.
+                    settleAppearance = { if (gba) playerLook.settle() },
+                    retryAlreadyReset = true,
+                )
+            },
             selected = { currentSlot = it }, completed = { action, index, ok -> onStateResult?.invoke(action, index, ok) })
     } }
 
@@ -2178,6 +2010,7 @@ class EmulatorEngine(
 
     /** Only the native state bytes and Android achievement capture remain platform work. */
     private fun writeCoreState(target: okio.Path): Boolean {
+        playback.cancelFieldActions()
         val ok = MgbaCore.pkSaveState(target.toString())
         if (ok) RetroAchievements.afterSaveState(File(target.toString()))
         return ok
@@ -2192,13 +2025,12 @@ class EmulatorEngine(
     private fun saveState(target: File): Boolean = if (target == states.resumeFile) stateResume().save()
         else states.files.writeState(target.toOkioPath(), ::writeCoreState, snapshot = stateSnapshot())
 
-    /** Loads [source] and puts achievement progress back to where that state had it. */
-    private fun loadState(source: File): Boolean {
-        val ok = MgbaCore.pkLoadState(source.absolutePath)
-        if (ok) RetroAchievements.afterLoadState(source)
-        // A state made in another PLAYER LOOK holds that look's palettes.
-        if (ok) settleLook()
-        return ok
+    private fun readManualState(source: okio.Path): Boolean {
+        rewindHold.revoke()
+        // An attempted load invalidates Android's outstanding retry even if the core rejects the file.
+        playback.battleRetry.reset()
+        playback.cancelFieldActions()
+        return MgbaCore.pkLoadState(File(source.toString()).absolutePath)
     }
 
     private fun stateThumbnail(): ByteArray? {
@@ -2271,10 +2103,6 @@ class EmulatorEngine(
 
     internal companion object {
         /** DAY AND NIGHT's ease: per frame, of 256 (a full night's dimming in about half a second). */
-        const val TINT_STEP = 4f
-
-        /** PLAYER LOOK's refresh: field frames it's tried again while the palette can't go in yet. */
-        const val LOOK_REFRESH_TRIES = 600
 
         /** The last loop started on the native core, by any engine (there's one core, `g` in pokedaisy_jni.c). */
         @Volatile private var coreLoop: Thread? = null
@@ -2295,7 +2123,7 @@ class EmulatorEngine(
         private const val SOFT_RESET_KEYS = CoreKey.A or CoreKey.B or CoreKey.SELECT or CoreKey.START
 
         /** The GBA's (and Game Boy's) frame rate: 16777216 Hz / 280896 cycles per frame. */
-        const val GBA_FPS = 16777216.0 / 280896.0
+        const val GBA_FPS = FramePacer.FPS
         /** A DS's: its 33.51 MHz bus over 263 lines of 355 dots, 6 cycles each. */
         const val NDS_FPS = 33513982.0 / 560190.0
         /** Late draws in a 120-frame window, in this many windows, that make a game's frames [slowFrames]. */

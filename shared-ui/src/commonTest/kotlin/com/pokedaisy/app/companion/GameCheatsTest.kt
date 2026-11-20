@@ -34,6 +34,34 @@ class GameCheatsTest {
         val before = texts.size; session.setEnabled(9, true); assertEquals(before, texts.size)
     }
 
+    @Test fun coOpGateReadsTheSameCheatsAsTheCoreAfterEditsAndRefresh() = withStore { store ->
+        val cheat = Cheat("Diagnostic byte", listOf("02000010:7F"), enabled = true)
+        store.save(listOf(cheat))
+        var enabled = true
+        var submitted = ""
+        val session = GameCheats(true, { store }, { enabled }, { submitted = it })
+        session.start()
+        assertTrue(session.hasEnabledCheats)
+        assertTrue(submitted.isNotEmpty())
+
+        // The editor can change the last enabled cheat while co-op is off.
+        session.setEnabled(0, false)
+        assertFalse(session.hasEnabledCheats)
+        assertEquals("", submitted)
+
+        // Restart refreshes edits made through the library before deciding whether to start co-op.
+        store.save(listOf(cheat))
+        session.refresh()
+        session.apply()
+        assertTrue(session.hasEnabledCheats)
+        assertTrue(submitted.isNotEmpty())
+
+        enabled = false
+        session.apply()
+        assertFalse(session.hasEnabledCheats)
+        assertEquals("", submitted)
+    }
+
     @Test fun importingUsesTheSameValidationAndKeepsNewCodesDisabled() = withStore { store ->
         val texts = mutableListOf<String>()
         val session = GameCheats(true, { store }, { true }, { texts += it }).also { it.start() }

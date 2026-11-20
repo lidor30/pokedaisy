@@ -1,4 +1,4 @@
-/* USE on a TM / HM (tm_teach.h): app/.../companion/data/TmTeach.kt's tmStart / tmFinish over the config's generated TM
+/* USE on a TM / HM (tm_teach.h): shared/.../companion/data/TmTeach.kt's tmStart / tmFinish over the config's generated TM
  * fields - keep the two in step. GPL-3.0. */
 #include "tm_teach.h"
 

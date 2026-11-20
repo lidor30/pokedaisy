@@ -651,8 +651,11 @@ fun subtitleMetrics(m: GbaTextMetrics): GbaTextMetrics =
  * default), drawn like the games' own type tags ([GameTagBox]: notched corners, the #424242 shadow) at the row's GBA pixel.
  */
 @Composable
-fun OptionBadge(text: String, m: GbaTextMetrics, modifier: Modifier = Modifier, fill: Color = OptionColors.value) {
-    GameTagBox(tr(text), fill, m.px, modifier, OptionColors.badgeText, shadow = if (OptionColors.gen1) Color.Transparent else TAG_SHADOW)
+fun OptionBadge(
+    text: String, m: GbaTextMetrics, modifier: Modifier = Modifier, fill: Color = OptionColors.value,
+    shadow: Color = if (OptionColors.gen1) Color.Transparent else TAG_SHADOW,
+) {
+    GameTagBox(tr(text), fill, m.px, modifier, OptionColors.badgeText, shadow = shadow)
 }
 
 /**

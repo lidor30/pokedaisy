@@ -7,10 +7,7 @@ import com.pokedaisy.app.companion.TouchPlace
 import com.pokedaisy.app.companion.TouchPosition
 import com.pokedaisy.app.companion.TouchPreset
 import com.pokedaisy.app.companion.TouchSize
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /** TOUCH CONTROLS' layouts: every preset fits its area without overlaps, SIDES stays off the picture, a moved
  * button comes back where it was left, and the D-pad reads the directions it should. */
@@ -33,14 +30,14 @@ class TouchGeometryTest {
             val stage = simulateTouchStage(w, h, dp, underGame = under)
             val p = TouchGeometry.place(style, stage.area.width, stage.area.height, dp, stage.portrait, gameBoy = gameBoy, ds = ds)
             val what = "$preset $size ${w.toInt()}x${h.toInt()} extras=${extras.size} $position under=$under gb=$gameBoy ds=$ds"
-            assertEquals(what, style.shown(gameBoy, ds).toSet(), p.items.map { it.button }.toSet())
+            assertEquals(style.shown(gameBoy, ds).toSet(), p.items.map { it.button }.toSet(), what)
             for (item in p.items) {
-                assertTrue("$what: ${item.button} off the area", item.left >= -1 && item.top >= -1 && item.right <= p.w + 1 && item.bottom <= p.h + 1)
+                assertTrue(item.left >= -1 && item.top >= -1 && item.right <= p.w + 1 && item.bottom <= p.h + 1, "$what: ${item.button} off the area")
             }
             // A round button's box is wider than its circle; the D-pad's disc likewise: compare the drawn shapes' boxes.
             for (i in p.items.indices) for (j in i + 1 until p.items.size) {
                 val a = p.items[i]; val b = p.items[j]
-                assertFalse("$what: ${a.button} overlaps ${b.button}", overlap(a, b))
+                assertFalse(overlap(a, b), "$what: ${a.button} overlaps ${b.button}")
             }
         }
     }
@@ -51,7 +48,7 @@ class TouchGeometryTest {
             val p = TouchGeometry.place(allExtras, stage.area.width, stage.area.height, dp, portrait = false)
             assertEquals(TouchPreset.SIDES, p.preset)
             for (item in p.items) {
-                assertTrue("${item.button} over the game at $w", item.right <= stage.game.left + 1 || item.left >= stage.game.right - 1)
+                assertTrue(item.right <= stage.game.left + 1 || item.left >= stage.game.right - 1, "${item.button} over the game at $w")
             }
         }
         // 16:9's bars are too narrow: CLASSIC instead.
@@ -77,8 +74,8 @@ class TouchGeometryTest {
             val gw = minOf(w, h * 1.5f); val l = (w - gw) / 2
             val old = everyControlClear(p, l, l + gw); val new = TouchGeometry.hudClear(p, l, l + gw)
             val what = "$preset $size ${w.toInt()}x${h.toInt()} extras=${extras.size} gb=$gameBoy ds=$ds"
-            assertTrue("$what: $new over $old", new.first <= old.first && new.second <= old.second)
-            if (p.preset == TouchPreset.SIDES || (p.preset == TouchPreset.CLASSIC && size == TouchSize.NORMAL && !ds)) assertEquals(what, old, new)
+            assertTrue(new.first <= old.first && new.second <= old.second, "$what: $new over $old")
+            if (p.preset == TouchPreset.SIDES || (p.preset == TouchPreset.CLASSIC && size == TouchSize.NORMAL && !ds)) assertEquals(old, new, what)
         }
     }
 
@@ -97,11 +94,11 @@ class TouchGeometryTest {
         val p = TouchGeometry.place(style.withLayout(false, layout), w, h, dp, false)
         val gw = h * 1.5f; val l = (w - gw) / 2
         val old = everyControlClear(p, l, l + gw)
-        assertTrue("the old rule squeezed it: $old", h - old.first - old.second < 100)
+        assertTrue(h - old.first - old.second < 100, "the old rule squeezed it: $old")
         val (top, bottom) = TouchGeometry.hudClear(p, l, l + gw)
-        assertEquals("down to the bottom of R", p.item(TouchButton.R)!!.bottom.toInt(), top)
-        assertEquals("up to the top of SELECT / START", (h - p.item(TouchButton.SELECT)!!.top).toInt(), bottom)
-        assertTrue("room left: ${h - top - bottom}", h - top - bottom > 700)
+        assertEquals(p.item(TouchButton.R)!!.bottom.toInt(), top, "down to the bottom of R")
+        assertEquals((h - p.item(TouchButton.SELECT)!!.top).toInt(), bottom, "up to the top of SELECT / START")
+        assertTrue(h - top - bottom > 700, "room left: ${h - top - bottom}")
     }
 
     /** The HUD's own room: clearances that would leave less are cut back by the same share. */
@@ -135,8 +132,8 @@ class TouchGeometryTest {
         val items = listOf(HudCornerItem(200f, 100f, right = true, bottom = true), HudCornerItem(200f, 100f, right = true, bottom = false))
         val wall = androidx.compose.ui.geometry.Rect(700f, 0f, 1000f, 500f)
         val places = hudCornerPlaces(items, box, listOf(wall), gap = 4f)
-        assertTrue(places.toString(), places.none { it.right > 696f })
-        assertFalse(places.toString(), places[0].overlaps(places[1]))
+        assertTrue(places.none { it.right > 696f }, places.toString())
+        assertFalse(places[0].overlaps(places[1]), places.toString())
         // Nothing in the way: their corners.
         assertEquals(listOf(androidx.compose.ui.geometry.Rect(800f, 400f, 1000f, 500f), androidx.compose.ui.geometry.Rect(800f, 0f, 1000f, 100f)),
             hudCornerPlaces(items, box, emptyList(), gap = 4f))
@@ -164,13 +161,13 @@ class TouchGeometryTest {
             val stage = simulateTouchStage(w, h, dp, underGame = true, expand = true, padStrip = strip, gameBoy = gameBoy)
             val what = "${w.toInt()}x${h.toInt()} $size extras=${extras.size} gb=$gameBoy ds=$ds"
             // The strip along the bottom, the companion right above it, the game above that.
-            assertEquals(what, h, stage.area.bottom, 0.5f)
-            assertEquals(what, stage.area.top, stage.companion!!.bottom, 0.5f)
-            assertTrue(what, stage.game.bottom <= stage.companion!!.top)
+            assertEquals(h, stage.area.bottom, 0.5f, what)
+            assertEquals(stage.area.top, stage.companion!!.bottom, 0.5f, what)
+            assertTrue(stage.game.bottom <= stage.companion!!.top, what)
             // Everything fits in the strip, nothing overlaps.
             val p = TouchGeometry.place(style, stage.area.width, stage.area.height, dp, true, gameBoy = gameBoy, ds = ds)
-            for (item in p.items) assertTrue("$what: ${item.button} off the strip", item.top >= -1 && item.bottom <= p.h + 1)
-            for (i in p.items.indices) for (j in i + 1 until p.items.size) assertFalse("$what: ${p.items[i].button} overlaps ${p.items[j].button} in ${p.h}", overlap(p.items[i], p.items[j]))
+            for (item in p.items) assertTrue(item.top >= -1 && item.bottom <= p.h + 1, "$what: ${item.button} off the strip")
+            for (i in p.items.indices) for (j in i + 1 until p.items.size) assertFalse(overlap(p.items[i], p.items[j]), "$what: ${p.items[i].button} overlaps ${p.items[j].button} in ${p.h}")
         }
         // Without touch controls (no strip) UNDER GAME under EXPAND is the same as along the bottom.
         val none = simulateTouchStage(1080f, 2400f, dp, underGame = true, expand = true, padStrip = 0)
@@ -227,8 +224,8 @@ class TouchGeometryTest {
             val p = TouchGeometry.place(TouchControlsStyle(preset = TouchPreset.MIRRORED), stage.area.width, stage.area.height, dp, stage.portrait)
             assertEquals(TouchPreset.MIRRORED, p.preset)
             val dpad = p.item(TouchButton.DPAD)!!; val a = p.item(TouchButton.A)!!; val b = p.item(TouchButton.B)!!
-            assertTrue("$w: D-pad on the right", dpad.cx > p.w / 2)
-            assertTrue("$w: A / B on the left", a.cx < p.w / 2 && b.cx < p.w / 2)
+            assertTrue(dpad.cx > p.w / 2, "$w: D-pad on the right")
+            assertTrue(a.cx < p.w / 2 && b.cx < p.w / 2, "$w: A / B on the left")
             assertTrue(a.cx > b.cx && a.cy < b.cy)
             assertTrue(p.item(TouchButton.L)!!.cx < p.item(TouchButton.R)!!.cx)
             assertTrue(p.item(TouchButton.SELECT)!!.cx < p.item(TouchButton.START)!!.cx)

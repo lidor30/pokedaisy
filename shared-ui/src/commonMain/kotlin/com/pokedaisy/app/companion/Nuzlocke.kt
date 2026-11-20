@@ -49,7 +49,7 @@ object Nuzlocke {
 
     /** Start this ROM's live run and return the identity used by its sampler and teardown. */
     fun start(prefs: Prefs, romKey: String): Int = synchronized(lock) {
-        loadRun(prefs.nuzlockeFor(romKey), prefs.nuzlockeRunFor(romKey),
+        load(prefs.nuzlockeFor(romKey), prefs.nuzlockeRunFor(romKey),
             { prefs.setNuzlockeFor(romKey, it) }, { prefs.setNuzlockeRunFor(romKey, it) })
         ++generation
     }
@@ -57,19 +57,11 @@ object Nuzlocke {
     fun close(game: Int) = synchronized(lock) {
         if (game == generation) {
             generation++
-            loadRun(false, null, {}, {})
+            load(false, null, {}, {})
         }
     }
 
-    /** Compatibility entry for the Android host until it owns a run through [start]. */
-    fun load(on: Boolean, stored: String?, saveOn: (Boolean) -> Unit, saveRun: (String) -> Unit) = synchronized(lock) {
-        loadRun(on, stored, saveOn, saveRun)
-        generation++
-    }
-
-    fun onSample(s: SnapshotView): List<String> = synchronized(lock) { onSample(generation, s) }
-
-    private fun loadRun(on: Boolean, stored: String?, saveOn: (Boolean) -> Unit, saveRun: (String) -> Unit) {
+    private fun load(on: Boolean, stored: String?, saveOn: (Boolean) -> Unit, saveRun: (String) -> Unit) {
         this.saveOn = saveOn
         this.saveRun = saveRun
         val r = NuzlockeRun.decode(stored)
@@ -122,7 +114,7 @@ object Nuzlocke {
 
     /** Screenshot tests and ui-preview: [r] shown, on, stored nowhere. */
     fun preview(r: NuzlockeRun): Int = synchronized(lock) {
-        loadRun(true, r.encode(), {}, {})
+        load(true, r.encode(), {}, {})
         ++generation
     }
 

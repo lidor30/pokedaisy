@@ -184,7 +184,7 @@ class TipScheduler(private val store: TipStore, private val available: (TipId) -
 object FeatureTips {
     /** Whether a tip's feature is there to try in the running game (and not on already). */
     @Volatile
-    var available: (TipId) -> Boolean = { false }
+    internal var available: (TipId) -> Boolean = { false }
 
     @Volatile
     var scheduler: TipScheduler? = null

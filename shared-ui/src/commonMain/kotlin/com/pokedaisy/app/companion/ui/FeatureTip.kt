@@ -116,8 +116,8 @@ fun FeatureTipHost(
             val id = shown ?: return@AnimatedVisibility
             FeatureTipCard(
                 featureTipText(id), cardModifier, keys = keys(id), left = left.value, roomy = roomy, maxWidth = maxWidth,
-                onTry = { scheduler.answered(id); onTry(id) },
-                onNoThanks = { scheduler.answered(id) },
+                onTry = { if (scheduler.current == id) { scheduler.answered(id); onTry(id) } },
+                onNoThanks = { if (scheduler.current == id) scheduler.answered(id) },
             )
         }
     }
@@ -174,14 +174,6 @@ fun FlyStyleAskHost(
     }
 }
 
-/**
- * BOSS RETRY (SETTINGS > GAMEPLAY): after a trainer battle was lost, the card asks whether to go back to its start (the state
- * taken as it began). Where the tips are, like [FlyStyleAsk]; its bar running out means no.
- */
-object BattleRetryAsk {
-    var showing by mutableStateOf(false)
-}
-
 /** The card's words: RETRY for TRY IT. */
 fun battleRetryAskText(): FeatureTip = FeatureTip(
     tr("TRY THAT BATTLE AGAIN?"),
@@ -189,10 +181,11 @@ fun battleRetryAskText(): FeatureTip = FeatureTip(
     tk("RETRY"),
 )
 
-/** [BattleRetryAsk] on screen, sliding in from the top like [FeatureTipHost]; [onAnswer] gets true for RETRY (false: NO
+/** The BOSS RETRY question, sliding in from the top like [FeatureTipHost]; [onAnswer] gets true for RETRY (false: NO
  * THANKS, or the bar ran out). */
 @Composable
 fun BattleRetryAskHost(
+    asking: Boolean,
     active: Boolean,
     roomy: Boolean,
     modifier: Modifier = Modifier,
@@ -200,13 +193,11 @@ fun BattleRetryAskHost(
     maxWidth: Dp = 760.dp,
     onAnswer: (Boolean) -> Unit,
 ) {
-    val asking = BattleRetryAsk.showing
     val left = remember { Animatable(1f) }
     LaunchedEffect(asking, active) {
         if (!asking || !active) return@LaunchedEffect
         left.snapTo(1f)
         left.animateTo(0f, tween(TipScheduler.SHOW_MS.toInt(), easing = LinearEasing))
-        BattleRetryAsk.showing = false
         onAnswer(false)
     }
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
@@ -218,8 +209,8 @@ fun BattleRetryAskHost(
             FeatureTipCard(
                 battleRetryAskText(), cardModifier, left = left.value, roomy = roomy, maxWidth = maxWidth,
                 badge = tk("NEW"),
-                onTry = { BattleRetryAsk.showing = false; onAnswer(true) },
-                onNoThanks = { BattleRetryAsk.showing = false; onAnswer(false) },
+                onTry = { onAnswer(true) },
+                onNoThanks = { onAnswer(false) },
             )
         }
     }

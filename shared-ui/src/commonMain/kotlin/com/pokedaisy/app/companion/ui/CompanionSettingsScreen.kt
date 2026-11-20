@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.ui
 
 import com.pokedaisy.app.companion.data.isGameBoyGame
+import com.pokedaisy.app.companion.SharedSetting
+
 import com.pokedaisy.app.badge
 import kotlin.time.Clock
 import com.pokedaisy.app.companion.SkinSystem
@@ -61,11 +63,11 @@ val STATUS_BAR_PLACES = listOf(tk("OFF"), tk("GAME"), tk("COMPANION"))
 
 fun statusBarLabel(on: Boolean, onCompanion: Boolean) = STATUS_BAR_PLACES[if (!on) 0 else if (onCompanion) 2 else 1]
 
-internal enum class Page(val title: String) { HOME(tk("SETTINGS")), TABS(tk("TAB BAR")), BUTTONS(tk("GAME BUTTONS")), HOTKEYS(tk("HOTKEYS")), SHADERS(tk("SHADERS")), FIELD_HUD(tk("HUD")), QUICK_MENU(tk("QUICK MENU")), TOUCH(tk("TOUCH CONTROLS")), SPEED(tk("SPEED OPTIONS")), DISPLAY(tk("DISPLAY OPTIONS")), CHEATS(tk("CHEATS")), CHEAT_ADD(tk("ADD CODE")), TWEAKS(tk("TWEAKS")), COOP_PARTNERS(tk("PARTNERS")), HELP(tk("HELP")) }
+internal enum class Page(val title: String) { HOME(tk("SETTINGS")), TABS(tk("TAB BAR")), BUTTONS(tk("GAME BUTTONS")), HOTKEYS(tk("HOTKEYS")), SHADERS(tk("SHADERS")), FIELD_HUD(tk("HUD")), QUICK_MENU(tk("QUICK MENU")), TOUCH(tk("TOUCH CONTROLS")), SPEED(tk("SPEED OPTIONS")), DISPLAY(tk("DISPLAY OPTIONS")), OVERLAYS(tk("OVERLAY")), CHEATS(tk("CHEATS")), CHEAT_ADD(tk("ADD CODE")), TWEAKS(tk("TWEAKS")), COOP_PARTNERS(tk("PARTNERS")), HELP(tk("HELP")) }
 
 /** Where BACK from a page goes: SHADERS opens from DISPLAY OPTIONS, the rest from HOME. */
 internal val Page.parent: Page get() = when (this) {
-    Page.SHADERS -> Page.DISPLAY
+    Page.SHADERS, Page.OVERLAYS -> Page.DISPLAY
     Page.CHEAT_ADD -> Page.CHEATS
     else -> Page.HOME
 }
@@ -123,12 +125,24 @@ fun CompanionSettingsScreen(
     val capturedKeys = capture?.keys
     DisposableEffect(page, capture) { onDispose { capture?.cancel() } }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
+    var removingOverlays by remember(page) { mutableStateOf(false) }
+    var overlayNotice by remember { mutableStateOf<Pair<String, String>?>(null) }
     var cheatNotice by remember { mutableStateOf<Pair<String, String>?>(null) }
     var removingCheats by remember(page) { mutableStateOf(false) }
     var selector by remember { mutableStateOf<Selector?>(null) }
+    fun importOverlay() {
+        settings?.importOverlay?.invoke { completed ->
+            overlayNotice = completed.notice
+            completed.needsImage?.let { need ->
+                confirm = Confirm(tk("PICK THE IMAGE"), com.pokedaisy.app.companion.OverlayImport.imagePrompt(need), tk("PICK")) { importOverlay() }
+                    .also { it.onCancel = { settings.cancelOverlayImport() }; it.onDismiss = { settings.cancelOverlayImport() } }
+            }
+            tick++
+        }
+    }
     // TOUCH CONTROLS > SKINS: the imported skins (read on the way in) and their pick-list.
     val touchSkinUi = remember { TouchSkinUi() }
-    val touchSkins = remember(settings, page) { if (page == Page.TOUCH) settings?.touchSkins.orEmpty() else emptyList() }
+    val touchSkins = remember(settings, page, settings?.touchRevision) { if (page == Page.TOUCH) settings?.touchSkins.orEmpty() else emptyList() }
 
     // The games' own spelling: "POKéMON", not "POKÉMON".
     val gameName = settings?.gameName?.uppercase()?.replace('É', 'é') ?: ""
@@ -169,7 +183,18 @@ fun CompanionSettingsScreen(
             }
             // EDIT LAYOUT saves over the game, outside this page: its revision redraws TOUCH CONTROLS.
             val touchRevision = settings?.touchRevision ?: 0
-            val rows = remember(settings, page, tick, availableTabs, playsAs, capturing, capturedKeys, touchRevision, removingCheats) {
+            val overlayRevision = settings?.overlayRevision ?: 0
+            // PLAYER LOOK's catalog arrives from an asset worker while Settings may already be open.
+            val lookOptions = settings?.takeIf { page == Page.HOME && it.playerLookSupported }?.playerLooks
+            val selectedLook = if (page == Page.HOME) settings?.playerLook else null
+            val textOptions = if (page == Page.HOME) settings?.textLooks else null
+            val shinyAlertSupported = if (page == Page.HOME) settings?.shinyAlertSupported else null
+            val shinyHuntCount = if (page == Page.HOME && settings?.shinyAlert == true) settings.shinyHuntCount else null
+            val quietOptions = if (page == Page.HOME) settings?.let { it.lowHpBeepSupported to it.fieldPoisonSupported } else null
+            val nuzlockeSupported = if (page == Page.HOME) settings?.nuzlockeSupported else null
+            val refillSupported = if (page == Page.HOME) settings?.repelRefillSupported else null
+            val rows = remember(settings, page, tick, availableTabs, playsAs, capturing, capturedKeys, touchRevision,
+                overlayRevision, removingCheats, removingOverlays, lookOptions, selectedLook, textOptions, refillSupported, shinyAlertSupported, shinyHuntCount, quietOptions, nuzlockeSupported) {
                 if (settings == null) return@remember listOf(SettingRow(tk("NO GAME RUNNING"), null) {})
                 when (page) {
                     Page.HOME -> playsAs?.let { game ->
@@ -275,12 +300,28 @@ fun CompanionSettingsScreen(
                         underGame = settings.uprightUnderGame, setUnderGame = { settings.setPortraitUnderGame(it); tick++ },
                         expand = settings.gameAspect == GameAspect.WIDE && settings.wideSupported, touchShown = settings.touchControlsShown,
                         skins = touchSkins, skinUi = touchSkinUi.takeIf { settings.touchSkinsSupported },
+                        onImportSkin = settings.importTouchSkin?.let { startImport -> { startImport { touchSkinUi.notice = it } } },
+                        skinBadge = settings.touchSkinsBadge,
                         skinSystem = settings.touchStage?.let { if (it.ds) SkinSystem.DS else if (it.gameBoy) SkinSystem.GB else SkinSystem.GBA } ?: SkinSystem.GBA,
                         feel = settings::feelVibration,
                         buttons = settings.touchButtons, xyBadge = settings.touchXyBadge,
                     ) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.SPEED -> speedRows(settings, { tick++ }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
-                    Page.DISPLAY -> displayRows(settings, { tick++ }, { page = it }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
+                    Page.OVERLAYS -> overlayChoiceRows(settings.overlayChoices, settings.overlay, removingOverlays,
+                        pick = { settings.setOverlay(it); tick++ }, remove = { id, label ->
+                            confirm = Confirm(tk("REMOVE OVERLAY?"), label, tk("REMOVE")) { settings.deleteOverlay(id); tick++ }
+                        }) + buildList {
+                            settings.importOverlay?.let { add(SettingRow(tk("IMPORT FILE"), null) { removingOverlays = false; importOverlay() }) }
+                            if (settings.overlayChoices.any { it.first.startsWith("user:") }) {
+                                add(SettingRow(if (removingOverlays) tk("DONE") else tk("REMOVE"), null) { removingOverlays = !removingOverlays })
+                                if (removingOverlays) add(SettingRow(tk("REMOVE ALL"), null) {
+                                    confirm = Confirm(tk("REMOVE ALL OVERLAYS?"), tr("Every imported overlay ({0}) is deleted from this device. The built-in ones stay.", settings.overlayChoices.count { it.first.startsWith("user:") }), tk("REMOVE ALL")) { settings.deleteAllOverlays(); removingOverlays = false; tick++ }
+                                })
+                            }
+                            add(SettingRow(tk("CANCEL"), null) { page = Page.DISPLAY })
+                        }
+                    Page.DISPLAY -> displayRows(settings, { tick++ }, { page = it }, { selector = it })
+                        .let { rows -> settings.shownRows?.let { onlyRows(rows, it) } ?: rows } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.CHEATS -> cheatRows(settings, changed = { tick++ }, removing = removingCheats,
                         onAdd = { page = Page.CHEAT_ADD },
                         onImport = { settings.importCheats { result -> cheatNotice = cheatImportNotice(result); tick++ } },
@@ -340,6 +381,7 @@ fun CompanionSettingsScreen(
                         expand = settings.gameAspect == GameAspect.WIDE && settings.wideSupported, touchShown = settings.touchControlsShown,
                         skins = touchSkins, skinUi = touchSkinUi.takeIf { settings.touchSkinsSupported }, setStyle = { settings.setTouchStyle(it); tick++ },
                         otherStage = settings.touchStageInOtherOrientation,
+                        onDeleteSkin = settings::deleteTouchSkin,
                     ) { mod ->
                         OptionListWindow(m, mod) {
                             GroupedRows(rows, m, cursor, onClick = { i -> moveCursor(i); rows[i].onClick() }, onFocused = ::moveCursor)
@@ -444,6 +486,9 @@ fun CompanionSettingsScreen(
                 badge = sel.badge, note = sel.note,
             )
         }
+        overlayNotice?.let { (title, message) ->
+            OptionConfirm(title, message, tk("OK"), m, onConfirm = { overlayNotice = null }, onDismiss = { overlayNotice = null }, cancelLabel = null)
+        }
         cheatNotice?.let { (title, message) ->
             OptionConfirm(title, message, tk("OK"), m, onConfirm = { cheatNotice = null },
                 onDismiss = { cheatNotice = null }, cancelLabel = null)
@@ -451,7 +496,7 @@ fun CompanionSettingsScreen(
         confirm?.let { c ->
             OptionConfirm(
                 c.title, c.message, c.confirmLabel, m,
-                onConfirm = { confirm = null; c.action() }, onDismiss = { confirm = null },
+                onConfirm = { confirm = null; c.action() }, onDismiss = { confirm = null; c.onDismiss() },
                 onCancel = { confirm = null; c.onCancel() },
                 cancelLabel = c.cancelLabel ?: tk("CANCEL"),
             )
@@ -518,27 +563,27 @@ private class Confirm(val title: String, val message: String, val confirmLabel: 
     /** YES / NO style confirms name their buttons; [onCancel] runs on NO only (BACK just closes it). */
     var cancelLabel: String? = null
     var onCancel: () -> Unit = {}
+    var onDismiss: () -> Unit = {}
 }
 
-/** The groups (by title) a blocked game ([CompanionSettings.gameBlocked]) leaves out whole: none of them works there. */
-private val BLOCKED_GROUPS = setOf(tk("MAKEOVER"), tk("GAMEPLAY"), tk("COMPANION"), tk("CO-OP"))
-
-/** And the single rows it leaves out: EXPAND's, the HUD's, the battle buttons and the quick menu. */
-private val BLOCKED_ROWS = setOf(tk("ZOOM"), tk("AUTO ZOOM IN"), tk("LOOK AROUND"), tk("HUD"), tk("BATTLE BUTTONS"), tk("QUICK MENU"))
+private val blockedSettings = setOf(
+    SharedSetting.ZOOM, SharedSetting.AUTO_ZOOM_IN, SharedSetting.LOOK_AROUND,
+    SharedSetting.HUD, SharedSetting.BATTLE_BUTTONS, SharedSetting.QUICK_MENU,
+)
 
 /** HOME for a game its makers asked PokéDaisy not to read: the emulator's settings only (speed, sound, screen, controls,
  * the app), none of the game's own features. */
 private fun withoutGameRows(rows: List<SettingRow>): List<SettingRow> {
     var skipping = false
     return rows.filter { r ->
-        if (r.header) skipping = r.label in BLOCKED_GROUPS
-        !skipping && r.label !in BLOCKED_ROWS
+        if (r.header) skipping = r.requiresGameSupport
+        !skipping && r.setting !in blockedSettings
     }
 }
 
-/** [rows] cut to the ones labelled in [shown], with the titles of the groups that still have one. */
-private fun onlyRows(rows: List<SettingRow>, shown: Set<String>): List<SettingRow> {
-    val kept = rows.filter { it.header || it.label in shown }
+/** [rows] cut to the settings in [shown], with the titles of the groups that still have one. */
+internal fun onlyRows(rows: List<SettingRow>, shown: Set<SharedSetting>): List<SettingRow> {
+    val kept = rows.filter { it.header || it.setting in shown }
     return kept.filterIndexed { i, r -> !r.header || kept.getOrNull(i + 1)?.header == false }
 }
 
@@ -556,14 +601,14 @@ private fun homeRows(
     // game it works in).
     val looks = s.playerLookSupported
     val makeover = if (!looks && !s.dayNightSupported && !s.followerSupported && !s.flyStyleSupported) emptyList() else listOfNotNull(
-        featuredGroupTitle(tk("MAKEOVER"), if (looks) "Other games' looks in this one" else "A fresh look for this game"),
+        featuredGroupTitle(tk("MAKEOVER"), if (looks) "Other games' looks in this one" else "A fresh look for this game", requiresGameSupport = true),
         // Another game's hero for the player (PlayerLook.kt: their sprites from the player's own ROM of that game,
         // patched into this one in memory). The heroes' names are the games' own, so they aren't translated.
         if (!looks) null else SettingRow(
             tk("PLAYER LOOK"),
-            if (s.playerLooks.isEmpty()) tk("N/A") else s.playerLook?.let { s.playerLookLabel(it) } ?: tk("OFF"),
+            if (s.playerLooks.isEmpty()) tk("N/A") else s.playerLook?.let { s.playerLookLabel(it) } ?: tk("OFF"), setting = SharedSetting.PLAYER_LOOK,
             enabled = s.playerLooks.isNotEmpty(),
-            labelBadge = NewFeatures.badge(NewFeatures.PLAYER_LOOK),
+            labelBadge = s.playerLookBadge ?: NewFeatures.badge(NewFeatures.PLAYER_LOOK),
             // No description line; only why it's greyed out.
             subtitle = if (s.playerLooks.isEmpty()) "Needs FireRed, LeafGreen, Ruby, Sapphire or Emerald too" else null,
         ) {
@@ -575,10 +620,9 @@ private fun homeRows(
         },
         // The rival of the other gender (Emerald, Ruby, Sapphire) wears the same game's other hero.
         if (looks && s.rivalLookSupported) {
-            val on = s.rivalLook && s.playerLook != null
             SettingRow(
-                tk("RIVAL LOOK"), if (s.playerLook == null) tk("N/A") else onOff(s.rivalLook), enabled = s.playerLook != null,
-                labelBadge = NewFeatures.badge(NewFeatures.RIVAL_LOOK),
+                tk("RIVAL LOOK"), if (s.playerLook == null) tk("N/A") else onOff(s.rivalLook), setting = SharedSetting.RIVAL_LOOK, enabled = s.playerLook != null,
+                labelBadge = s.rivalLookBadge ?: NewFeatures.badge(NewFeatures.RIVAL_LOOK),
                 subtitle = if (s.playerLook == null) "Pick a PLAYER LOOK first" else null,
             ) { if (s.playerLook != null) { s.setRivalLook(!s.rivalLook); changed() } }
         } else null,
@@ -586,7 +630,7 @@ private fun homeRows(
         if (looks && s.textLooks.isNotEmpty()) {
             val off = tk("OFF")
             SettingRow(
-                tk("TEXT LOOK"), s.textLook ?: off, labelBadge = NewFeatures.badge(NewFeatures.TEXT_LOOK),
+                tk("TEXT LOOK"), s.textLook ?: off, setting = SharedSetting.TEXT_LOOK, labelBadge = s.textLookBadge ?: NewFeatures.badge(NewFeatures.TEXT_LOOK),
             ) {
                 if (s.textLooks.size == 1) s.setTextLook(if (s.textLook == null) s.textLooks[0] else null).also { changed() }
                 else select(Selector(tk("TEXT LOOK"), listOf(off) + s.textLooks, s.textLook ?: off) { s.setTextLook(it.takeIf { l -> l != off }) })
@@ -595,14 +639,14 @@ private fun homeRows(
         // The party's lead walking behind the player (pk_wide.c's follower: a hack's following Pokémon, MonArt).
         if (s.followerSupported) {
             SettingRow(
-                tk("FOLLOWER"), if (s.followerReady) onOff(s.follower) else tk("N/A"), enabled = s.followerReady,
-                labelBadge = NewFeatures.badge(NewFeatures.FOLLOWER),
+                tk("FOLLOWER"), if (s.followerReady) onOff(s.follower) else tk("N/A"), setting = SharedSetting.FOLLOWER, enabled = s.followerReady,
+                labelBadge = s.followerBadge ?: NewFeatures.badge(NewFeatures.FOLLOWER),
                 subtitle = if (s.followerReady) null else "Needs a game with following Pokémon too",
             ) { if (s.followerReady) { s.setFollower(!s.follower); changed() } }
         } else null,
         // What FREE FLIGHT and the scenic FLY fly on (FlightVehicle: our own pixel art, the player in its seat).
         if (s.flyStyleSupported) {
-            SettingRow(tk("FLY ON"), s.flightVehicle.label, labelBadge = NewFeatures.badge(NewFeatures.FLY_ON)) {
+            SettingRow(tk("FLY ON"), s.flightVehicle.label, setting = SharedSetting.FLY_ON, labelBadge = s.flightBadge ?: NewFeatures.badge(NewFeatures.FLY_ON)) {
                 val all = com.pokedaisy.app.companion.data.FlightVehicle.entries
                 select(Selector(tk("FLY ON"), all.map { it.label }, s.flightVehicle.label) { l ->
                     all.firstOrNull { it.label == l }?.let(s::setFlightVehicle)
@@ -610,8 +654,8 @@ private fun homeRows(
             }
         } else null,
         // What the player rides in place of the bike (RideOn.kt: our own pixel art in the hero's bike sheets).
-        if (looks) {
-            SettingRow(tk("RIDE ON"), s.rideVehicle.label, labelBadge = NewFeatures.badge(NewFeatures.RIDE_ON)) {
+        if (s.rideVehicleSupported) {
+            SettingRow(tk("RIDE ON"), s.rideVehicle.label, setting = SharedSetting.RIDE_ON, labelBadge = s.rideVehicleBadge ?: NewFeatures.badge(NewFeatures.RIDE_ON)) {
                 val all = com.pokedaisy.app.companion.data.RideVehicle.entries
                 select(Selector(tk("RIDE ON"), all.map { it.label }, s.rideVehicle.label) { l ->
                     all.firstOrNull { it.label == l }?.let(s::setRideVehicle)
@@ -620,7 +664,7 @@ private fun homeRows(
         } else null,
         // The overworld by the device's clock (DayNight.kt): every GBA game but those with their own.
         if (s.dayNightSupported) {
-            SettingRow(tk("DAY AND NIGHT"), onOff(s.dayNight), labelBadge = NewFeatures.badge(NewFeatures.DAY_NIGHT)) {
+            SettingRow(tk("DAY AND NIGHT"), onOff(s.dayNight), setting = SharedSetting.DAY_AND_NIGHT, labelBadge = s.dayNightBadge) {
                 s.setDayNight(!s.dayNight); changed()
             }
         } else null,
@@ -629,25 +673,25 @@ private fun homeRows(
     return settingsLookRows(changed) + makeover + listOfNotNull(
         groupTitle(tk("FF / SPEED")),
         // On / off - the group's title already says fast-forward.
-        SettingRow("FF", onOff(s.ffToggled), labelBadge = s.playbackBadge) { s.setFfToggled(!s.ffToggled); changed() },
-        SettingRow(tk("FF SPEED"), rateLabel(s.ffMaxSpeed), labelBadge = s.playbackBadge) {
+        SettingRow("FF", onOff(s.ffToggled), setting = SharedSetting.FF, labelBadge = s.playbackBadge) { s.setFfToggled(!s.ffToggled); changed() },
+        SettingRow(tk("FF SPEED"), rateLabel(s.ffMaxSpeed), setting = SharedSetting.FF_SPEED, labelBadge = s.playbackBadge) {
             select(Selector(tk("FF SPEED"), rateLabels, rateLabel(s.ffMaxSpeed)) { s.setFfMaxSpeed(FF_RATES[rateLabels.indexOf(it)]) })
         },
         // The game's own pace, kept per game: slow-motion that stays (0.5x, 0.25x) up to 4x. FF, when on, wins.
-        SettingRow(tk("GAME SPEED"), speedLabel(s.gameSpeed), labelBadge = s.playbackBadge, subtitle = "The pace with FF off, kept per game") {
+        SettingRow(tk("GAME SPEED"), speedLabel(s.gameSpeed), setting = SharedSetting.GAME_SPEED, labelBadge = s.playbackBadge, subtitle = "The pace with FF off, kept per game") {
             val speeds = s.gameSpeeds
             val labels = speeds.map(::speedLabel)
             select(Selector(tk("GAME SPEED"), labels, speedLabel(s.gameSpeed)) { l -> s.setGameSpeed(speeds[labels.indexOf(l)]) })
         },
         // Keeps the last ~20 s; the REWIND HOLD hotkey plays them backwards.
         if (s.rewindSupported) {
-            SettingRow(tk("REWIND"), onOff(s.rewind), labelBadge = s.rewindBadge) { s.setRewind(!s.rewind); changed() }
+            SettingRow(tk("REWIND"), onOff(s.rewind), setting = SharedSetting.REWIND, labelBadge = s.rewindBadge) { s.setRewind(!s.rewind); changed() }
         } else null,
         // SCENE SPEEDS, FF MODE and FF MUSIC: set once and rarely touched, on their own page.
-        SettingRow(tk("SPEED OPTIONS"), null, labelBadge = s.speedOptionsBadge, subtitle = "Scene speeds, FF mode and FF music", opensPage = true) { navigate(Page.SPEED) },
+        SettingRow(tk("SPEED OPTIONS"), null, setting = SharedSetting.SPEED_OPTIONS, labelBadge = s.speedOptionsBadge, subtitle = "Scene speeds, FF mode and FF music", opensPage = true) { navigate(Page.SPEED) },
         groupTitle(tk("SOUND")),
         // The game's loudness under the device's own volume (100% = the device's); MUTE GAME keeps it for after.
-        SettingRow(tk("GAME VOLUME"), gameVolumeLabel(s.gameVolume),
+        SettingRow(tk("GAME VOLUME"), gameVolumeLabel(s.gameVolume), setting = SharedSetting.GAME_VOLUME,
             labelBadge = NewFeatures.badge(NewFeatures.GAME_VOLUME),
             slider = gameVolumeSlider(s.gameVolume) { s.setGameVolume(it); changed() }) {
             // A tap opens it in a pop-up with a bigger bar (the user's call).
@@ -655,29 +699,29 @@ private fun homeRows(
                 gameVolumeLabel(s.gameVolume) to gameVolumeSlider(s.gameVolume) { s.setGameVolume(it); changed() }
             }) {})
         },
-        SettingRow(tk("MUTE GAME"), onOff(s.gameMuted),
+        SettingRow(tk("MUTE GAME"), onOff(s.gameMuted), setting = SharedSetting.MUTE_GAME,
             labelBadge = NewFeatures.badge(NewFeatures.GAME_VOLUME)) { s.setGameMuted(!s.gameMuted); changed() },
         // Equalizer apps and the like on the game's sound (AudioEffects): the game's tracks take it at their next start.
         SettingRow(tk("AUDIO EFFECTS"), onOff(s.audioEffects),
             labelBadge = NewFeatures.badge(NewFeatures.AUDIO_EFFECTS),
             subtitle = "For equalizer apps, on the next start") { s.setAudioEffects(!s.audioEffects); changed() },
-        groupTitle(tk("GAMEPLAY")),
+        groupTitle(tk("GAMEPLAY"), requiresGameSupport = true),
         // The game's own switch for random encounters (WildEncounters.kt): ON (the game's rate) or OFF.
-        SettingRow(tk("WILD ENCOUNTERS"), if (s.wildEncountersSupported) wildEncountersLabel(s.wildEncounters) else tk("N/A"),
+        SettingRow(tk("WILD ENCOUNTERS"), if (s.wildEncountersSupported) wildEncountersLabel(s.wildEncounters) else tk("N/A"), setting = SharedSetting.WILD_ENCOUNTERS,
             enabled = s.wildEncountersSupported, labelBadge = s.fieldOptionsBadge) {
             if (s.wildEncountersSupported) { s.setWildEncounters(if (s.wildEncounters == 0) 100 else 0); changed() }
         },
         // A text box's words appear at once, nothing else sped up (InstantText.kt: the game's text routine patched).
         SettingRow(
-            tk("INSTANT TEXT"), if (s.instantTextSupported) onOff(s.instantText) else tk("N/A"),
+            tk("INSTANT TEXT"), if (s.instantTextSupported) onOff(s.instantText) else tk("N/A"), setting = SharedSetting.INSTANT_TEXT,
             enabled = s.instantTextSupported, labelBadge = s.gameOptionsBadge ?: NewFeatures.badge(NewFeatures.INSTANT_TEXT),
         ) {
             if (s.instantTextSupported) { s.setInstantText(!s.instantText); changed() }
         },
         // The companion's FLY: the game's own (CLASSIC) or flown over the field to the town (SCENIC, Flight.kt). Two values: a tap flips it.
         SettingRow(
-            tk("FLY STYLE"), if (s.flyStyleSupported) s.flyStyle.label else tk("N/A"),
-            enabled = s.flyStyleSupported, labelBadge = NewFeatures.badge(NewFeatures.SCENIC_FLY),
+            tk("FLY STYLE"), if (s.flyStyleSupported) s.flyStyle.label else tk("N/A"), setting = SharedSetting.FLY_STYLE,
+            enabled = s.flyStyleSupported, labelBadge = s.flightBadge ?: NewFeatures.badge(NewFeatures.SCENIC_FLY),
             subtitle = "SCENIC flies you there over the map",
         ) {
             if (s.flyStyleSupported) {
@@ -687,8 +731,8 @@ private fun homeRows(
         },
         // Where FREE FLIGHT and the scenic FLY may go: the maps seen (FlightArea.kt) or anywhere. Two values: a tap flips it.
         SettingRow(
-            tk("FLIGHT AREA"), if (s.flyStyleSupported) s.flightArea.label else tk("N/A"),
-            enabled = s.flyStyleSupported, labelBadge = NewFeatures.badge(NewFeatures.FLIGHT_AREA),
+            tk("FLIGHT AREA"), if (s.flyStyleSupported) s.flightArea.label else tk("N/A"), setting = SharedSetting.FLIGHT_AREA,
+            enabled = s.flyStyleSupported, labelBadge = s.flightBadge ?: NewFeatures.badge(NewFeatures.FLIGHT_AREA),
         ) {
             if (s.flyStyleSupported) {
                 s.setFlightArea(if (s.flightArea == FlightAreaMode.SEEN) FlightAreaMode.ANYWHERE else FlightAreaMode.SEEN)
@@ -699,7 +743,7 @@ private fun homeRows(
         // A game whose own TMs never run out (ReusableTms.BUILT_IN) shows ON, greyed, and says so.
         SettingRow(
             tk("REUSABLE TMS"),
-            when { s.reusableTmsBuiltIn -> tk("ON"); s.reusableTmsSupported -> onOff(s.reusableTms); else -> tk("N/A") },
+            when { s.reusableTmsBuiltIn -> tk("ON"); s.reusableTmsSupported -> onOff(s.reusableTms); else -> tk("N/A") }, setting = SharedSetting.REUSABLE_TMS,
             enabled = s.reusableTmsSupported && !s.reusableTmsBuiltIn,
             labelBadge = s.gameOptionsBadge ?: NewFeatures.badge(NewFeatures.REUSABLE_TMS),
             subtitle = if (s.reusableTmsBuiltIn) "This game's TMs never run out" else null,
@@ -708,8 +752,8 @@ private fun homeRows(
         },
         // A REPEL running low gets another of its kind on top, from the bag (RepelRefill.kt). Two values: a tap flips it.
         SettingRow(
-            tk("AUTO REFILL"), if (s.repelRefillSupported) onOff(s.repelRefill) else tk("N/A"),
-            enabled = s.repelRefillSupported, labelBadge = NewFeatures.badge(NewFeatures.REPEL_REFILL),
+            tk("AUTO REFILL"), if (s.repelRefillSupported) onOff(s.repelRefill) else tk("N/A"), setting = SharedSetting.AUTO_REFILL,
+            enabled = s.repelRefillSupported, labelBadge = s.repelRefillBadge ?: NewFeatures.badge(NewFeatures.REPEL_REFILL),
             subtitle = "Another REPEL goes on before one runs out",
         ) {
             if (s.repelRefillSupported) { s.setRepelRefill(!s.repelRefill); changed() }
@@ -717,8 +761,8 @@ private fun homeRows(
         // The field moves (a tree, a rock, the water...) with the badge alone: the game's own move check patched to take
         // the first Pokémon when nobody knows the move (HmFree.kt); the companion's FLY and FLASH follow it.
         SettingRow(
-            tk("NO HMS NEEDED"), if (s.hmFreeSupported) onOff(s.hmFree) else tk("N/A"),
-            enabled = s.hmFreeSupported, labelBadge = NewFeatures.badge(NewFeatures.HM_FREE),
+            tk("NO HMS NEEDED"), if (s.hmFreeSupported) onOff(s.hmFree) else tk("N/A"), setting = SharedSetting.NO_HMS_NEEDED,
+            enabled = s.hmFreeSupported, labelBadge = s.gameplayModifiersBadge ?: NewFeatures.badge(NewFeatures.HM_FREE),
             subtitle = "Field moves with the badge alone",
         ) {
             if (s.hmFreeSupported) { s.setHmFree(!s.hmFree); changed() }
@@ -726,8 +770,8 @@ private fun homeRows(
         // The whole party gains EXP from a win (ExpShare.kt: getexp's sent-out bits set, FULL also its division skipped).
         // Three values: a pick-list.
         SettingRow(
-            tk("EXP SHARE"), if (s.expShareSupported) s.expShare.label else tk("N/A"),
-            enabled = s.expShareSupported, labelBadge = NewFeatures.badge(NewFeatures.EXP_SHARE),
+            tk("EXP SHARE"), if (s.expShareSupported) s.expShare.label else tk("N/A"), setting = SharedSetting.EXP_SHARE,
+            enabled = s.expShareSupported, labelBadge = s.gameplayModifiersBadge ?: NewFeatures.badge(NewFeatures.EXP_SHARE),
             subtitle = "The whole party gains EXP from a win",
         ) {
             if (s.expShareSupported) {
@@ -747,30 +791,31 @@ private fun homeRows(
                 !s.levelCapSupported -> tk("N/A")
                 !s.levelCap -> tk("OFF")
                 else -> s.levelCapLevel?.let { tr("LV {0}", it) } ?: tk("ON")
-            },
-            enabled = s.levelCapSupported, labelBadge = NewFeatures.badge(NewFeatures.LEVEL_CAP),
+            }, setting = SharedSetting.LEVEL_CAP,
+            enabled = s.levelCapSupported, labelBadge = s.gameplayModifiersBadge ?: NewFeatures.badge(NewFeatures.LEVEL_CAP),
             subtitle = "Stops at the next boss's top level",
         ) {
             if (s.levelCapSupported) { s.setLevelCap(!s.levelCap); changed() }
         },
         // A Pokémon that evolves by trading evolves from its summary, through the game's own evolution (TradeEvolution.kt).
         SettingRow(
-            tk("TRADE EVOS"), if (s.tradeEvolutionsSupported) onOff(s.tradeEvolutions) else tk("N/A"),
-            enabled = s.tradeEvolutionsSupported, labelBadge = NewFeatures.badge(NewFeatures.TRADE_EVOLUTIONS),
+            tk("TRADE EVOS"), if (s.tradeEvolutionsSupported) onOff(s.tradeEvolutions) else tk("N/A"), setting = SharedSetting.TRADE_EVOS,
+            enabled = s.tradeEvolutionsSupported, labelBadge = s.tradeEvolutionsBadge,
             subtitle = "Evolve without a trade",
         ) {
             if (s.tradeEvolutionsSupported) { s.setTradeEvolutions(!s.tradeEvolutions); changed() }
         },
         // A new wild foe made shiny at these odds before its battle draws it (ShinyOdds.kt; the versions it knows by hash).
         SettingRow(
-            tk("SHINY ODDS"), if (s.shinyOddsSupported) shinyOddsLabel(s.shinyOdds) else tk("N/A"),
-            enabled = s.shinyOddsSupported, labelBadge = NewFeatures.badge(NewFeatures.SHINY_ODDS),
+            tk("SHINY ODDS"), if (s.shinyOddsSupported) shinyOddsLabel(s.shinyOdds) else tk("N/A"), setting = SharedSetting.SHINY_ODDS,
+            enabled = s.shinyOddsSupported, labelBadge = s.shinyOddsBadge,
         ) {
             if (s.shinyOddsSupported) {
                 val odds = s.shinyOddsChoices
                 val labels = odds.map(::shinyOddsLabel)
                 select(
-                    Selector(tk("SHINY ODDS"), labels, shinyOddsLabel(s.shinyOdds), note = SHINY_ODDS_NOTE) { l ->
+                    Selector(tk("SHINY ODDS"), labels, shinyOddsLabel(s.shinyOdds),
+                        note = if (s.shinyOddsPausesAchievements) SHINY_ODDS_NOTE else SHINY_ODDS_CHECKER_NOTE) { l ->
                         s.setShinyOdds(odds[labels.indexOf(l)])
                     },
                 )
@@ -779,8 +824,8 @@ private fun homeRows(
         // The game's beep with HP in the red, and poison's damage while walking: ON = the game's own, OFF = patched out
         // (QuietPatches.kt). Two values: a tap flips them.
         SettingRow(
-            tk("LOW HP BEEP"), if (s.lowHpBeepSupported) onOff(s.lowHpBeep) else tk("N/A"),
-            enabled = s.lowHpBeepSupported, labelBadge = NewFeatures.badge(NewFeatures.LOW_HP_BEEP),
+            tk("LOW HP BEEP"), if (s.lowHpBeepSupported) onOff(s.lowHpBeep) else tk("N/A"), setting = SharedSetting.LOW_HP_BEEP,
+            enabled = s.lowHpBeepSupported, labelBadge = s.lowHpBeepBadge ?: NewFeatures.badge(NewFeatures.LOW_HP_BEEP),
         ) {
             if (s.lowHpBeepSupported) { s.setLowHpBeep(!s.lowHpBeep); changed() }
         },
@@ -793,23 +838,23 @@ private fun homeRows(
             if (s.runningShoesSupported) { s.setRunningShoes(!s.runningShoes); changed() }
         }.takeIf { com.pokedaisy.app.companion.data.activeGame.isGameBoyGame },
         SettingRow(
-            tk("FIELD POISON"), if (s.fieldPoisonSupported) onOff(s.fieldPoison) else tk("N/A"),
-            enabled = s.fieldPoisonSupported, labelBadge = NewFeatures.badge(NewFeatures.FIELD_POISON),
+            tk("FIELD POISON"), if (s.fieldPoisonSupported) onOff(s.fieldPoison) else tk("N/A"), setting = SharedSetting.FIELD_POISON,
+            enabled = s.fieldPoisonSupported, labelBadge = s.fieldPoisonBadge ?: NewFeatures.badge(NewFeatures.FIELD_POISON),
             subtitle = "Poison hurts while you walk",
         ) {
             if (s.fieldPoisonSupported) { s.setFieldPoison(!s.fieldPoison); changed() }
         },
         // A state as each trainer battle starts; after a loss the card asks to go back to it (BattleRetryAsk).
         SettingRow(
-            tk("BOSS RETRY"), onOff(s.battleRetry),
-            labelBadge = NewFeatures.badge(NewFeatures.BOSS_RETRY), subtitle = "Lost a trainer battle? Try it again",
+            tk("BOSS RETRY"), onOff(s.battleRetry), setting = SharedSetting.BOSS_RETRY,
+            labelBadge = s.battleRetryBadge ?: NewFeatures.badge(NewFeatures.BOSS_RETRY), subtitle = "Lost a trainer battle? Try it again",
         ) {
             s.setBattleRetry(!s.battleRetry); changed()
         },
         // A shiny wild foe said out loud, FF and turbo stopped (ShinyHunt.kt); the subtitle counts the hunt's wild battles.
         SettingRow(
-            tk("SHINY ALERT"), if (s.shinyAlertSupported) onOff(s.shinyAlert) else tk("N/A"),
-            enabled = s.shinyAlertSupported, labelBadge = NewFeatures.badge(NewFeatures.SHINY_ALERT),
+            tk("SHINY ALERT"), if (s.shinyAlertSupported) onOff(s.shinyAlert) else tk("N/A"), setting = SharedSetting.SHINY_ALERT,
+            enabled = s.shinyAlertSupported, labelBadge = s.shinyAlertBadge ?: NewFeatures.badge(NewFeatures.SHINY_ALERT),
             subtitle = if (s.shinyAlertSupported && s.shinyAlert) tr("{0} wild battles since the last shiny", s.shinyHuntCount)
                 else "Stops FF when a shiny shows up",
         ) {
@@ -817,8 +862,8 @@ private fun homeRows(
         },
         // The NUZLOCKE tab and its tracker for this game (Nuzlocke.kt): first encounter per area, fainted = out of the run.
         SettingRow(
-            tk("NUZLOCKE"), if (s.nuzlockeSupported) onOff(s.nuzlocke) else tk("N/A"), enabled = s.nuzlockeSupported,
-            labelBadge = NewFeatures.badge(NewFeatures.NUZLOCKE),
+            tk("NUZLOCKE"), if (s.nuzlockeSupported) onOff(s.nuzlocke) else tk("N/A"), setting = SharedSetting.NUZLOCKE, enabled = s.nuzlockeSupported,
+            labelBadge = s.nuzlockeBadge ?: NewFeatures.badge(NewFeatures.NUZLOCKE),
             subtitle = tk("Track a run: one catch per area, a faint is final"),
         ) {
             if (s.nuzlockeSupported) { s.setNuzlocke(!s.nuzlocke); changed() }
@@ -827,14 +872,14 @@ private fun homeRows(
         // A game that runs by itself (GAMES_WITH_OWN_AUTO_RUN) shows ON, greyed, and says so: flipping B there would walk.
         SettingRow(
             tk("AUTO-RUN"),
-            when { s.autoRunBuiltIn -> tk("ON"); s.fieldReadable -> onOff(s.autoRun); else -> tk("N/A") },
+            when { s.autoRunBuiltIn -> tk("ON"); s.fieldReadable -> onOff(s.autoRun); else -> tk("N/A") }, setting = SharedSetting.AUTO_RUN,
             enabled = s.fieldReadable && !s.autoRunBuiltIn, labelBadge = s.fieldOptionsBadge,
             subtitle = if (s.autoRunBuiltIn) "This game has its own auto-run" else null,
         ) { if (s.fieldReadable) { s.setAutoRun(!s.autoRun); changed() } },
         // Every map lets the player run (buildings too); FireRed / Emerald engines.
-        SettingRow(tk("RUN INDOORS"), if (s.runIndoorsSupported) onOff(s.runIndoors) else tk("N/A"), enabled = s.runIndoorsSupported, labelBadge = s.fieldOptionsBadge) { if (s.runIndoorsSupported) { s.setRunIndoors(!s.runIndoors); changed() } },
+        SettingRow(tk("RUN INDOORS"), if (s.runIndoorsSupported) onOff(s.runIndoors) else tk("N/A"), setting = SharedSetting.RUN_INDOORS, enabled = s.runIndoorsSupported, labelBadge = s.fieldOptionsBadge) { if (s.runIndoorsSupported) { s.setRunIndoors(!s.runIndoors); changed() } },
         // This game's cheats on / off (the codes are typed or imported in the top screen's Settings).
-        SettingRow(tk("CHEATS"), cheatsValue(s), labelBadge = s.cheatsBadge, opensPage = true) { navigate(Page.CHEATS) },
+        SettingRow(tk("CHEATS"), cheatsValue(s), setting = SharedSetting.CHEATS, labelBadge = s.cheatsBadge, opensPage = true) { navigate(Page.CHEATS) },
         groupTitle(tk("SCREEN")),
         // The game at the GBA's 3:2, stretched to fill the top screen, or WIDE (the overworld drawn past
         // its edges); WIDE is tagged BETA, or NOT YET on a game it doesn't know (which shows it as ORIGINAL).
@@ -842,7 +887,7 @@ private fun homeRows(
         run {
             val aspect = if (s.gameBlocked && s.gameAspect == GameAspect.WIDE) GameAspect.ORIGINAL else s.gameAspect
             val subtitle = if (aspect == GameAspect.WIDE && wideOffOnDsperate(s)) "Unavailable on DSPERATE" else "Original shape, stretched, or more of the map"
-            SettingRow(tk("ASPECT"), aspectLabel(aspect), if (s.gameBlocked) null else wideBadge(s, aspect), subtitle = subtitle) {
+            SettingRow(tk("ASPECT"), aspectLabel(aspect), if (s.gameBlocked) null else wideBadge(s, aspect), setting = SharedSetting.ASPECT, subtitle = subtitle, labelBadge = s.pictureBadge) {
                 val aspects = GameAspect.entries.filter { !s.gameBlocked || it != GameAspect.WIDE }
                 select(
                     Selector(
@@ -857,17 +902,17 @@ private fun homeRows(
             val labels = steps.map(::zoomLabel)
             val now = labels.getOrElse(s.zoomLevel) { labels[0] }
             SettingRow(
-                tk("ZOOM"), now, subtitle = "How much of the map you see",
-                labelBadge = NewFeatures.badge(NewFeatures.ZOOM_SETTING),
+                tk("ZOOM"), now, setting = SharedSetting.ZOOM, subtitle = "How much of the map you see",
+                labelBadge = s.pictureBadge ?: NewFeatures.badge(NewFeatures.ZOOM_SETTING),
             ) { select(Selector(tk("ZOOM"), labels, now) { l -> s.setZoomLevel(labels.indexOf(l)); changed() }) }
         },
         // EXPAND only: whether a conversation, sign, menu or picture over the field pulls the zoom in (battles always do).
-        SettingRow(tk("AUTO ZOOM IN"), onOff(s.expandZoomOnText)) { s.setExpandZoomOnText(!s.expandZoomOnText); changed() }
+        SettingRow(tk("AUTO ZOOM IN"), onOff(s.expandZoomOnText), setting = SharedSetting.AUTO_ZOOM_IN, labelBadge = s.pictureBadge) { s.setExpandZoomOnText(!s.expandZoomOnText); changed() }
             .takeIf { s.gameAspect == GameAspect.WIDE },
         // EXPAND only: the right stick moves the view.
         SettingRow(
-            tk("LOOK AROUND"), onOff(s.lookAround), subtitle = "The right stick moves the view",
-            labelBadge = NewFeatures.badge(NewFeatures.LOOK_AROUND),
+            tk("LOOK AROUND"), onOff(s.lookAround), setting = SharedSetting.LOOK_AROUND, subtitle = "The right stick moves the view",
+            labelBadge = s.pictureBadge ?: NewFeatures.badge(NewFeatures.LOOK_AROUND),
         ) { s.setLookAround(!s.lookAround); changed() }
             .takeIf { s.gameAspect == GameAspect.WIDE },
         // A DS game: which emulator runs it (melonDS, or DSperate for weak devices); taken at the game's next start.
@@ -924,7 +969,7 @@ private fun homeRows(
             }
         },
         // The party, a minimap, the balls and BAG / WILD over the game on the field: its own page (layout, look, size, parts).
-        SettingRow(tk("HUD"), onOff(s.fieldHud), labelBadge = s.fieldHudBadge ?: NewFeatures.badge(NewFeatures.HUD), opensPage = true, subtitle = "Party, minimap and bag over the game") { navigate(Page.FIELD_HUD) },
+        SettingRow(tk("HUD"), onOff(s.fieldHud), setting = SharedSetting.HUD, labelBadge = s.fieldHudBadge ?: NewFeatures.badge(NewFeatures.HUD), opensPage = true, subtitle = "Party, minimap and bag over the game") { navigate(Page.FIELD_HUD) },
         // Two screens: the game's own FIGHT / BAG and move menus off its screen, the companion's buttons pick.
         s.hideBattleMenu?.let { hide ->
             SettingRow(
@@ -934,15 +979,15 @@ private fun homeRows(
         },
         // One screen: FIGHT, POKéMON and RUN in the room beside a battle (BattleButtons).
         SettingRow(
-            tk("BATTLE BUTTONS"), onOff(s.battleButtons), subtitle = "FIGHT, POKéMON and RUN beside a battle",
-            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_BUTTONS),
+            tk("BATTLE BUTTONS"), onOff(s.battleButtons), setting = SharedSetting.BATTLE_BUTTONS, subtitle = "FIGHT, POKéMON and RUN beside a battle",
+            labelBadge = s.battleButtonsBadge ?: NewFeatures.badge(NewFeatures.BATTLE_BUTTONS),
         ) { s.setBattleButtons(!s.battleButtons); changed() }.takeIf { !s.usesSecondScreen },
         // STATUS BAR, SHADERS, OVERLAY (and an upright phone's COMPANION): on their own page.
-        SettingRow(tk("DISPLAY OPTIONS"), null, subtitle = "Status bar, shaders, overlay", opensPage = true) { navigate(Page.DISPLAY) },
+        SettingRow(tk("DISPLAY OPTIONS"), null, setting = SharedSetting.DISPLAY_OPTIONS, subtitle = "Status bar, shaders, overlay", opensPage = true) { navigate(Page.DISPLAY) },
         // One screen sideways: a window in the middle over the game, or the side panel (this companion switches at once).
         s.companionWindow?.let { window ->
             SettingRow(
-                tk("COMPANION VIEW"), companionViewLabel(window),
+                tk("COMPANION VIEW"), companionViewLabel(window), setting = SharedSetting.COMPANION_VIEW,
                 labelBadge = s.companionViewBadge, subtitle = "A window over the game, or a side panel",
             ) { s.setCompanionWindow(!window); changed() }
         },
@@ -972,7 +1017,7 @@ private fun homeRows(
         com.pokedaisy.app.companion.ui.theme.availableThemes().let { themes ->
             val now = com.pokedaisy.app.companion.ui.theme.AppColors.theme
             SettingRow(
-                tk("THEME"), now.label, labelBadge = NewFeatures.badge(NewFeatures.THEMES),
+                tk("THEME"), now.label, setting = SharedSetting.THEME, labelBadge = NewFeatures.badge(NewFeatures.THEMES),
             ) {
                 select(Selector(
                     tk("THEME"), themes.map { it.label }, now.label,
@@ -983,7 +1028,7 @@ private fun homeRows(
         // The game's own look on the companion and the HUD where it has one (CompanionSkins), or the app's classic one.
         gameLookRow(changed),
         // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
-        SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
+        SettingRow(tk("DARK MODE"), DarkMode.setting.label, setting = SharedSetting.DARK_MODE) {
             val pick = DarkMode.setting.next()
             DarkMode.setting = pick
             s.setDarkMode(pick.ordinal)
@@ -1001,21 +1046,22 @@ private fun homeRows(
             }
         },
         // The game's frames per second and the app's CPU share, in the game's corner.
-        SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },
-        groupTitle(tk("COMPANION")),
+        SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), setting = SharedSetting.FPS_CPU, labelBadge = s.performanceBadge,
+            subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },
+        groupTitle(tk("COMPANION"), requiresGameSupport = true),
         // Crystal: every Pokémon in the companion and the HUD shows its front picture instead of the shared party icons.
         SettingRow(
             tk("POKéMON PICTURES"), if (s.pokemonPictures) tk("DETAILED") else tk("GAME"), subtitle = "Each Pokémon's own picture in place of the game's icons",
-            labelBadge = NewFeatures.badge(NewFeatures.POKEMON_PICTURES),
+            setting = SharedSetting.POKEMON_PICTURES, labelBadge = NewFeatures.badge(NewFeatures.POKEMON_PICTURES),
         ) { s.setPokemonPictures(!s.pokemonPictures); changed() }
             .takeIf { pokemonPicturesOffered(com.pokedaisy.app.companion.data.activeGame) },
         // Move effectiveness and the foe's weak-to/resists during battle.
         // Off: the battle buttons alone - no INFO, SUGGESTIONS or move ratings. The rows about them go with it.
         SettingRow(
-            tk("BATTLE INFO"), onOff(s.battleInfo), subtitle = "INFO, SUGGESTIONS and move ratings",
+            tk("BATTLE INFO"), onOff(s.battleInfo), setting = SharedSetting.BATTLE_INFO, subtitle = "INFO, SUGGESTIONS and move ratings",
             labelBadge = NewFeatures.badge(NewFeatures.BATTLE_INFO),
         ) { s.setBattleInfo(!s.battleInfo); changed() },
-        SettingRow(tk("BATTLE HINTS"), onOff(s.showHints), subtitle = "Move ratings and the best pick in battle") { s.setShowHints(!s.showHints); changed() }
+        SettingRow(tk("BATTLE HINTS"), onOff(s.showHints), setting = SharedSetting.BATTLE_HINTS, subtitle = "Move ratings and the best pick in battle") { s.setShowHints(!s.showHints); changed() }
             .takeIf { s.battleInfo },
         // The battle controls' action menu shows the moves: one tap picks FIGHT and the move.
         // What the BATTLE tab shows first: the battle buttons, or INFO (its own buttons lead back).
@@ -1023,7 +1069,7 @@ private fun homeRows(
         run {
             val view = when { s.battleSuggestionsFirst -> tk("SUGGESTIONS"); s.battleInfoFirst -> tk("INFO"); else -> tk("BUTTONS") }
             SettingRow(
-                tk("BATTLE VIEW"), view, subtitle = "What the BATTLE tab opens on",
+                tk("BATTLE VIEW"), view, setting = SharedSetting.BATTLE_VIEW, subtitle = "What the BATTLE tab opens on",
                 labelBadge = NewFeatures.badge(NewFeatures.BATTLE_VIEW),
             ) {
                 select(Selector(tk("BATTLE VIEW"), listOf(tk("BUTTONS"), tk("INFO"), tk("SUGGESTIONS")), view) { l ->
@@ -1033,30 +1079,30 @@ private fun homeRows(
                 })
             }.takeIf { s.battleInfo }
         },
-        SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
+        SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), setting = SharedSetting.ONE_TAP_MOVES, subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
         // A ball button on the battle menu: the last ball thrown, in one tap, without the bag (BattleBall.kt).
         SettingRow(
-            tk("LAST BALL"), onOff(s.lastBallButton), subtitle = "Throw your last ball in one tap",
-            labelBadge = NewFeatures.badge(NewFeatures.LAST_BALL),
+            tk("LAST BALL"), onOff(s.lastBallButton), setting = SharedSetting.LAST_BALL, subtitle = "Throw your last ball in one tap",
+            labelBadge = s.lastBallBadge ?: NewFeatures.badge(NewFeatures.LAST_BALL),
         ) { s.setLastBallButton(!s.lastBallButton); changed() },
         // The battle buttons' look: GEN 4 (coloured buttons) or GEN 5 (dark plates round a red and white ball).
         SettingRow(
-            tk("BATTLE STYLE"), s.battleStyle.label, subtitle = "The battle buttons' look",
+            tk("BATTLE STYLE"), s.battleStyle.label, setting = SharedSetting.BATTLE_STYLE, subtitle = "The battle buttons' look",
             labelBadge = NewFeatures.badge(NewFeatures.BATTLE_STYLE),
         ) {
             val styles = BattleStyle.entries
             select(Selector(tk("BATTLE STYLE"), styles.map { it.label }, s.battleStyle.label) { l -> s.setBattleStyle(styles.first { it.label == l }) })
         },
         // A STATS page in battle INFO with the foe's IVs / EVs / nature.
-        SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() }
+        SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), setting = SharedSetting.FOE_IVS, subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() }
             .takeIf { s.battleInfo },
         SettingRow(
-            tk("BATTLE FOCUS"), onOff(s.battleFocus), subtitle = "Battle info on one page, no scrolling",
+            tk("BATTLE FOCUS"), onOff(s.battleFocus), setting = SharedSetting.BATTLE_FOCUS, subtitle = "Battle info on one page, no scrolling",
             labelBadge = NewFeatures.badge(NewFeatures.BATTLE_FOCUS),
         ) { s.setBattleFocus(!s.battleFocus); changed() },
-        SettingRow(tk("TAB BAR"), tr("{0} TABS", barTabs), labelBadge = NewFeatures.badge(NewFeatures.MORE_TAB) ?: NewFeatures.badge(NewFeatures.BOXES_TAB), opensPage = true, subtitle = "Which tabs sit next to the gear") { navigate(Page.TABS) },
+        SettingRow(tk("TAB BAR"), tr("{0} TABS", barTabs), setting = SharedSetting.TAB_BAR, labelBadge = NewFeatures.badge(NewFeatures.MORE_TAB) ?: NewFeatures.badge(NewFeatures.BOXES_TAB), opensPage = true, subtitle = "Which tabs sit next to the gear") { navigate(Page.TABS) },
         // The game's menu click on every companion button.
-        SettingRow(tk("CLICK SOUND"), onOff(s.clickSound)) { s.setClickSound(!s.clickSound); changed() },
+        SettingRow(tk("CLICK SOUND"), onOff(s.clickSound), setting = SharedSetting.CLICK_SOUND, labelBadge = s.clickSoundBadge) { s.setClickSound(!s.clickSound); changed() },
         // RetroAchievements' challenge badges and leaderboard values in the corner (GitHub discussion #620).
         SettingRow(
             tk("CHALLENGE ICONS"), onOff(s.raIcons), subtitle = "RetroAchievements' icons in the corner",
@@ -1081,20 +1127,20 @@ private fun homeRows(
         SettingRow(tk("TWEAKS"), null, opensPage = true, subtitle = "Small animations and the battle jump") { navigate(Page.TWEAKS) },
     ) + coopRows(s, changed, navigate, pick = { title, choices, current, onPick -> select(Selector(title, choices, current) { onPick(it); changed() }) }, askLock = askLock) + listOfNotNull(
         groupTitle(tk("CONTROLS")),
-        SettingRow(tk("GAME BUTTONS"), null, labelBadge = s.gameButtonsBadge, subtitle = "Key bindings: which button presses A, B, START...", opensPage = true) { navigate(Page.BUTTONS) },
-        SettingRow(tk("HOTKEYS"), onOff(s.hotkeysEnabled), labelBadge = s.hotkeysBadge, opensPage = true, subtitle = "Button combos for states, FF and more") { navigate(Page.HOTKEYS) },
+        SettingRow(tk("GAME BUTTONS"), null, setting = SharedSetting.GAME_BUTTONS, labelBadge = s.gameButtonsBadge, subtitle = "Key bindings: which button presses A, B, START...", opensPage = true) { navigate(Page.BUTTONS) },
+        SettingRow(tk("HOTKEYS"), onOff(s.hotkeysEnabled), setting = SharedSetting.HOTKEYS, labelBadge = s.hotkeysBadge, opensPage = true, subtitle = "Button combos for states, FF and more") { navigate(Page.HOTKEYS) },
         // PC, FLY, a Repel, the bike, a rod, states, FF... on a held button (L3 by default): its own page.
-        SettingRow(tk("QUICK MENU"), null, subtitle = "Actions on a held button", labelBadge = s.quickMenuBadge ?: quickMenuBadge(), opensPage = true) { navigate(Page.QUICK_MENU) },
+        SettingRow(tk("QUICK MENU"), null, setting = SharedSetting.QUICK_MENU, subtitle = "Actions on a held button", labelBadge = s.quickMenuBadge ?: quickMenuBadge(), opensPage = true) { navigate(Page.QUICK_MENU) },
         // The on-screen buttons: when they show, layouts, size, extras, EDIT LAYOUT - its own page, with a preview.
-        SettingRow(tk("TOUCH CONTROLS"), s.touchStyle.show.label, labelBadge = s.touchBadge, opensPage = true, subtitle = "The on-screen buttons: layout, look, skins") { navigate(Page.TOUCH) },
+        SettingRow(tk("TOUCH CONTROLS"), s.touchStyle.show.label, setting = SharedSetting.TOUCH_CONTROLS, labelBadge = s.touchBadge, opensPage = true, subtitle = "The on-screen buttons: layout, look, skins") { navigate(Page.TOUCH) },
         groupTitle(tk("APP")),
-        SettingRow(tk("RESUME GAMES"), onOff(s.autoResume), labelBadge = s.resumeBadge) {
+        SettingRow(tk("RESUME GAMES"), onOff(s.autoResume), setting = SharedSetting.RESUME_GAMES, labelBadge = s.resumeBadge) {
             s.setAutoResume(!s.autoResume); changed()
         }.takeIf { s.resumeGamesEditable },
         // A card now and then about a feature the player hasn't found (FeatureTips).
-        tipsRow(s.tips) { s.setTips(it); changed() },
+        tipsRow(s.tips, s.tipsBadge) { s.setTips(it); changed() },
         // AUTO: the ROM's own language. Applies at once, both screens.
-        SettingRow("LANGUAGE", L10n.settingLabel(s.appLanguage)) {
+        SettingRow("LANGUAGE", L10n.settingLabel(s.appLanguage), setting = SharedSetting.LANGUAGE) {
             val opts = L10n.options
             select(Selector("LANGUAGE", opts.map { it.second }, opts.first { it.first == s.appLanguage }.second) { l ->
                 s.setAppLanguage(opts.first { it.second == l }.first)
@@ -1106,7 +1152,7 @@ private fun homeRows(
             labelBadge = NewFeatures.badge(NewFeatures.DISCORD), labelIcon = { DiscordMark() },
         ) { s.openDiscord() },
         // The manual: every tab and setting explained (served by the website, kept for offline reading).
-        SettingRow(tk("HELP"), null, opensPage = true) { navigate(Page.HELP) },
+        SettingRow(tk("HELP"), null, setting = SharedSetting.HELP, opensPage = true) { navigate(Page.HELP) },
     )
 }
 
@@ -1143,12 +1189,15 @@ internal fun coopRows(
         else -> partnerName
     }
     return listOf(
-        groupTitle(tk("CO-OP")),
+        groupTitle(tk("CO-OP"), requiresGameSupport = true),
         SettingRow(tk("LINK"), coopLinkLabel(state), subtitle = why) {},
-        SettingRow(tk("PAIR"), null, enabled = false, labelBadge = NewFeatures.badge(NewFeatures.COOP), subtitle = "On the top screen: Settings > CO-OP") {},
+        SettingRow(tk("PAIR"), null, enabled = false,
+            labelBadge = NewFeatures.badge(NewFeatures.COOP),
+            subtitle = "On the top screen: Settings > CO-OP") {},
         SettingRow(tk("PARTNERS"), if (pairs.isEmpty()) tk("NONE") else pairs.size.toString(), opensPage = true) { navigate(Page.COOP_PARTNERS) },
         nearbyRangeRow(s.coopNearbyRange, pick) { s.coopNearbyRange = it },
-        SettingRow(tk("RELAY"), s.coopRelayValue, enabled = false, subtitle = "Change it in Settings on the top screen") {},
+        SettingRow(tk("RELAY"), s.coopRelayValue, enabled = false,
+            subtitle = "Change it in Settings on the top screen") {},
         SettingRow(tk("RELAY ONLY"), if (s.coopRelayOnly) tk("ON") else tk("OFF")) { s.setCoopRelayOnly(!s.coopRelayOnly); changed() },
     ) + listOfNotNull(
         coopLockRow(s.coopLock, s.coopLockActions, partnerName ?: "", askLock),
@@ -1212,7 +1261,8 @@ private fun speedRows(s: CompanionSettings, changed: () -> Unit, select: (Select
             select(Selector(tk("FF MODE"), modes.map { it.label }, s.ffMode.label) { l -> s.setFfMode(modes.first { it.label == l }); changed() })
         },
         // STEADY / SPED-UP / OFF (FfMusicMode's order).
-        SettingRow(tk("FF MUSIC"), s.ffMusicMode.label, enabled = s.ffMusicModes.size > 1, subtitle = "What you hear while fast-forwarding") {
+        SettingRow(tk("FF MUSIC"), s.ffMusicMode.label, enabled = s.ffMusicModes.size > 1,
+            labelBadge = s.ffMusicBadge, subtitle = "What you hear while fast-forwarding") {
             val modes = s.ffMusicModes
             select(Selector(tk("FF MUSIC"), modes.map { it.label }, s.ffMusicMode.label) { l -> s.setFfMusicMode(modes.first { it.label == l }); changed() })
         },
@@ -1222,7 +1272,8 @@ private fun speedRows(s: CompanionSettings, changed: () -> Unit, select: (Select
 private fun displayRows(s: CompanionSettings, changed: () -> Unit, navigate: (Page) -> Unit, select: (Selector) -> Unit): List<SettingRow> =
     listOfNotNull(
         // Game, location, money, clock and battery: OFF, over the game, or over these tabs.
-        SettingRow(tk("STATUS BAR"), statusBarLabel(s.statusBar, s.statusBarOnCompanion), subtitle = "Place, money, clock and battery") {
+        SettingRow(tk("STATUS BAR"), statusBarLabel(s.statusBar, s.statusBarOnCompanion), setting = SharedSetting.STATUS_BAR,
+            labelBadge = s.statusBarBadge, subtitle = "Place, money, clock and battery") {
             select(Selector(tk("STATUS BAR"), STATUS_BAR_PLACES, statusBarLabel(s.statusBar, s.statusBarOnCompanion)) {
                 val i = STATUS_BAR_PLACES.indexOf(it)
                 if (i > 0) s.setStatusBarOnCompanion(i == 2)
@@ -1230,12 +1281,12 @@ private fun displayRows(s: CompanionSettings, changed: () -> Unit, navigate: (Pa
             })
         },
         // FILTER (LCD / LCD PAPER / SCANLINES / CRT) and GBA COLORS, on their own page.
-        SettingRow(tk("SHADERS"), s.screenFilter.label, opensPage = true, subtitle = "LCD, CRT and scanline looks, smoothing") { navigate(Page.SHADERS) },
+        SettingRow(tk("SHADERS"), s.screenFilter.label, setting = SharedSetting.SHADERS, opensPage = true, subtitle = "LCD, CRT and scanline looks, smoothing") { navigate(Page.SHADERS) },
         // A frame around the game: NONE, the built-in ones, the player's imports (added on the top screen). Live.
         s.overlayChoices.takeIf { it.isNotEmpty() }?.let { choices ->
             val current = choices.firstOrNull { it.first == s.overlay }?.second ?: choices.first().second
-            SettingRow(tk("OVERLAY"), current, subtitle = "A frame around the game") {
-                select(Selector(tk("OVERLAY"), choices.map { it.second }, current) { l ->
+            SettingRow(tk("OVERLAY"), current, setting = SharedSetting.OVERLAY, subtitle = "A frame around the game", labelBadge = s.overlayBadge, opensPage = s.importOverlay != null) {
+                if (s.importOverlay != null) navigate(Page.OVERLAYS) else select(Selector(tk("OVERLAY"), choices.map { it.second }, current) { l ->
                     choices.firstOrNull { it.second == l }?.let { s.setOverlay(it.first) }
                 })
             }
@@ -1276,23 +1327,23 @@ private fun shaderRows(s: CompanionSettings, changed: () -> Unit): List<SettingR
     return listOf(
         // NONE / LCD grid / LCD PAPER / SCANLINES / CRT.
         // Each tap steps to the next filter, so the game shows each look in turn.
-        SettingRow(tk("FILTER"), s.screenFilter.label) { s.setScreenFilter(s.screenFilter.next()); changed() },
+        SettingRow(tk("FILTER"), s.screenFilter.label, setting = SharedSetting.FILTER) { s.setScreenFilter(s.screenFilter.next()); changed() },
         // SOFT / MEDIUM / STRONG, cycling too; greyed out for a filter with no grid.
-        SettingRow(tk("GRID"), s.gridStrength.label, enabled = s.screenFilter.hasGrid) {
+        SettingRow(tk("GRID"), s.gridStrength.label, setting = SharedSetting.GRID, enabled = s.screenFilter.hasGrid) {
             if (s.screenFilter.hasGrid) { s.setGridStrength(s.gridStrength.next()); changed() }
         },
         // OFF / xBRZ / xBR / SCALEFX, cycling too: smooths the game's edges before FILTER (the game only).
-        SettingRow(tk("SMOOTHING"), if (s.smoothingAvailable) s.smoothing.label else tk("N/A"), enabled = s.smoothingAvailable) {
+        SettingRow(tk("SMOOTHING"), if (s.smoothingAvailable) s.smoothing.label else tk("N/A"), setting = SharedSetting.SMOOTHING, enabled = s.smoothingAvailable) {
             if (s.smoothingAvailable) { s.setSmoothing(s.smoothing.next()); changed() }
         },
         // The colours as the GBA's own LCD showed them; stacks with any filter.
-        SettingRow(tk("GBA COLORS"), if (s.gbaColors) tk("ON") else tk("OFF")) { s.setGbaColors(!s.gbaColors); changed() },
+        SettingRow(tk("GBA COLORS"), if (s.gbaColors) tk("ON") else tk("OFF"), setting = SharedSetting.GBA_COLORS) { s.setGbaColors(!s.gbaColors); changed() },
         // The GBA's screen with no light of its own: white shows its backing, dark pixels cast a shadow; stacks too.
-        SettingRow(tk("UNLIT SCREEN"), if (s.unlitScreen) tk("ON") else tk("OFF"), labelBadge = NewFeatures.badge(NewFeatures.UNLIT_SCREEN)) {
+        SettingRow(tk("UNLIT SCREEN"), if (s.unlitScreen) tk("ON") else tk("OFF"), setting = SharedSetting.UNLIT_SCREEN, labelBadge = NewFeatures.badge(NewFeatures.UNLIT_SCREEN)) {
             s.setUnlitScreen(!s.unlitScreen); changed()
         },
         // FILTER and GBA COLORS over this screen too (and the status bar).
-        SettingRow(tk("ON COMPANION"), if (s.companionShaders) tk("ON") else tk("OFF")) { s.setCompanionShaders(!s.companionShaders); changed() },
+        SettingRow(tk("ON COMPANION"), if (s.companionShaders) tk("ON") else tk("OFF"), setting = SharedSetting.ON_COMPANION) { s.setCompanionShaders(!s.companionShaders); changed() },
     )
 }
 
@@ -1332,6 +1383,7 @@ private fun shinyOddsLabel(odds: Int): String =
 
 /** SHINY ODDS' pick-list disclaimer: what a save checker may say, and the achievements' pause. */
 private const val SHINY_ODDS_NOTE = "Save checkers may flag these shinies. Achievements pause."
+private const val SHINY_ODDS_CHECKER_NOTE = "Save checkers may flag these shinies."
 
 /** EXP SHARE's pick-list: what the two ways do. */
 private const val EXP_SHARE_NOTE = "SPLIT shares a win's EXP across the party. FULL EXP gives each one all of it. Achievements pause."

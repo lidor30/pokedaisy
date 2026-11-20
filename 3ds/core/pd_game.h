@@ -1,5 +1,5 @@
 // Which game is running and where its RAM globals live - the C twin of the
-// app's NativeConfig (app/.../companion/data/NativeReader.kt). Only the
+// app's NativeConfig (shared/.../companion/data/NativeReader.kt). Only the
 // fields this port reads so far; the values are generated from gamedata/,
 // like the app's (pd_configs_gen.h, from gamedata/targets/3ds.toml).
 #ifndef PD_GAME_H

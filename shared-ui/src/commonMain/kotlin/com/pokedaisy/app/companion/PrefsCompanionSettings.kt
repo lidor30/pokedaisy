@@ -13,7 +13,7 @@ class PrefsCompanionSettings(
     private val languageRomCode: () -> String? = { null },
     private val allowDisableResume: () -> Boolean = { true },
 ) : StoredCompanionSettings {
-    enum class Change { PLAYBACK, FIELD_OPTIONS }
+    enum class Change { PLAYBACK, FIELD_OPTIONS, PICTURE }
     var changed: (Change) -> Unit = {}
     override val battleButtons get() = hudRevision.let { prefs.battleButtons }
     override fun setBattleButtons(on: Boolean) { prefs.battleButtons = on; hudRevision++ }
@@ -57,18 +57,27 @@ class PrefsCompanionSettings(
     override fun setHotkeysEnabled(on: Boolean) { prefs.hotkeysEnabled = on }
     override val clickSound get() = prefs.clickSound
     override fun setClickSound(on: Boolean) { prefs.clickSound = on }
-    override val statusBar get() = prefs.statusBar
-    override fun setStatusBar(on: Boolean) { prefs.statusBar = on }
+    private var statusBarRevision by mutableIntStateOf(0)
+    override val statusBar get() = statusBarRevision.let { prefs.statusBar }
+    override fun setStatusBar(on: Boolean) { prefs.statusBar = on; statusBarRevision++ }
+    override val statusBarOnCompanion get() = statusBarRevision.let { prefs.statusBarOnCompanion }
+    override fun setStatusBarOnCompanion(on: Boolean) { prefs.statusBarOnCompanion = on; statusBarRevision++ }
+    private var performanceRevision by mutableIntStateOf(0)
+    override val showPerformance get() = performanceRevision.let { prefs.showPerformance }
+    override fun setShowPerformance(on: Boolean) { prefs.showPerformance = on; performanceRevision++ }
     override val gbaColors get() = prefs.gbaColors
-    override fun setGbaColors(on: Boolean) { prefs.gbaColors = on }
+    override fun setGbaColors(on: Boolean) { prefs.gbaColors = on; changed(Change.PICTURE) }
     override val companionShaders get() = prefs.companionShaders
-    override fun setCompanionShaders(on: Boolean) { prefs.companionShaders = on }
+    override fun setCompanionShaders(on: Boolean) { prefs.companionShaders = on; changed(Change.PICTURE) }
     override val unlitScreen get() = prefs.unlitScreen
-    override fun setUnlitScreen(on: Boolean) { prefs.unlitScreen = on }
+    override fun setUnlitScreen(on: Boolean) { prefs.unlitScreen = on; changed(Change.PICTURE) }
     override val audioEffects get() = prefs.audioEffects
     override fun setAudioEffects(on: Boolean) { prefs.audioEffects = on }
     override val tips get() = prefs.tips
-    override fun setTips(on: Boolean) { prefs.tips = on }
+    override fun setTips(on: Boolean) {
+        prefs.tips = on
+        FeatureTips.scheduler?.enabled = on
+    }
     override val raIcons get() = prefs.raIcons
     override fun setRaIcons(on: Boolean) { prefs.raIcons = on }
     override val dayNight get() = prefs.dayNight
@@ -86,13 +95,27 @@ class PrefsCompanionSettings(
     override val levelCap get() = prefs.levelCap
     override fun setLevelCap(on: Boolean) { prefs.levelCap = on; changed(Change.FIELD_OPTIONS) }
     override val autoRun get() = prefs.autoRun
-    override fun setAutoRun(on: Boolean) { prefs.autoRun = on; changed(Change.FIELD_OPTIONS) }
+    override fun setAutoRun(on: Boolean) {
+        prefs.autoRun = on
+        if (on) FeatureTips.used(TipId.AUTO_RUN)
+        changed(Change.FIELD_OPTIONS)
+    }
     override val runIndoors get() = prefs.runIndoors
     override fun setRunIndoors(on: Boolean) { prefs.runIndoors = on; changed(Change.FIELD_OPTIONS) }
+    override val lowHpBeep get() = prefs.lowHpBeep
+    override fun setLowHpBeep(on: Boolean) { prefs.lowHpBeep = on; changed(Change.FIELD_OPTIONS) }
+    override val fieldPoison get() = prefs.fieldPoison
+    override fun setFieldPoison(on: Boolean) { prefs.fieldPoison = on; changed(Change.FIELD_OPTIONS) }
+    override val runningShoes get() = prefs.runningShoes
+    override fun setRunningShoes(on: Boolean) { prefs.runningShoes = on; changed(Change.FIELD_OPTIONS) }
     override val instantText get() = prefs.instantText
     override fun setInstantText(on: Boolean) { prefs.instantText = on; changed(Change.FIELD_OPTIONS) }
     override val reusableTms get() = prefs.reusableTms
-    override fun setReusableTms(on: Boolean) { prefs.reusableTms = on; changed(Change.FIELD_OPTIONS) }
+    override fun setReusableTms(on: Boolean) {
+        prefs.reusableTms = on
+        if (on) FeatureTips.used(TipId.REUSABLE_TMS)
+        changed(Change.FIELD_OPTIONS)
+    }
     override val ffMaxSpeed get() = prefs.ffMaxSpeed
     override fun setFfMaxSpeed(v: Float) { if (v in FF_SPEEDS) { prefs.ffMaxSpeed = v; changed(Change.PLAYBACK) } }
     override val battleSpeed get() = prefs.battleSpeed.takeIf { it in SCENE_SPEEDS } ?: 0f
@@ -116,15 +139,19 @@ class PrefsCompanionSettings(
     override val gameMuted get() = prefs.gameMuted
     override fun setGameMuted(on: Boolean) { prefs.gameMuted = on; changed(Change.PLAYBACK) }
     override val wildEncounters get() = prefs.wildEncounters
-    override fun setWildEncounters(percent: Int) { prefs.wildEncounters = percent; changed(Change.FIELD_OPTIONS) }
+    override fun setWildEncounters(percent: Int) {
+        prefs.wildEncounters = percent
+        if (percent == 0) FeatureTips.used(TipId.WILD)
+        changed(Change.FIELD_OPTIONS)
+    }
     override val screenFilter get() = prefs.screenFilter
-    override fun setScreenFilter(filter: ScreenFilter) { prefs.screenFilter = filter }
+    override fun setScreenFilter(filter: ScreenFilter) { prefs.screenFilter = filter; changed(Change.PICTURE) }
     override val gridStrength get() = prefs.gridStrength
-    override fun setGridStrength(strength: GridStrength) { prefs.gridStrength = strength }
+    override fun setGridStrength(strength: GridStrength) { prefs.gridStrength = strength; changed(Change.PICTURE) }
     override val smoothing get() = prefs.smoothing
-    override fun setSmoothing(mode: Smoothing) { prefs.smoothing = mode }
+    override fun setSmoothing(mode: Smoothing) { prefs.smoothing = mode; changed(Change.PICTURE) }
     override val gameAspect get() = prefs.gameAspect
-    override fun setGameAspect(aspect: GameAspect) { prefs.gameAspect = aspect }
+    override fun setGameAspect(aspect: GameAspect) { prefs.gameAspect = aspect; changed(Change.PICTURE) }
     override val autoResume get() = prefs.autoResume
     override fun setAutoResume(on: Boolean) {
         if (on != autoResume && (on || allowDisableResume())) prefs.autoResume = on

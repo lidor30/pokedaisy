@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pokedaisy.app.companion.data.FLY_MOVE
 import com.pokedaisy.app.companion.data.GameKind
 import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.data.MapTiles
@@ -798,9 +799,6 @@ private fun PlacesList(model: RegionMapModel, onPick: (Int) -> Unit, onMe: () ->
         }
     }
 }
-
-/** MOVE_FLY: the same id in every game the companion flies in. */
-const val FLY_MOVE = 19
 
 /**
  * FLY's destinations: the towns the game's Fly map would take - visited ones, in the map's own order - each a row

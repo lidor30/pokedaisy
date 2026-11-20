@@ -1,12 +1,5 @@
 package com.pokedaisy.app
 
-import okio.Path.Companion.toOkioPath
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,17 +15,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.pokedaisy.app.companion.coop.CoopEndpointSession
 import com.pokedaisy.app.companion.coop.CoopInvite
-import com.pokedaisy.app.companion.coop.CoopIpHelloClient
-import com.pokedaisy.app.companion.coop.CoopIpHelloServer
 import com.pokedaisy.app.companion.coop.CoopLobby
 import com.pokedaisy.app.companion.coop.CoopPair
 import com.pokedaisy.app.companion.coop.CoopPairing
 import com.pokedaisy.app.companion.coop.CoopRelay
-import com.pokedaisy.app.companion.coop.CoopSaveId
-import com.pokedaisy.app.companion.coop.CoopSession
 import com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1
-import com.pokedaisy.app.companion.coop.parseHostPort
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.ui.CoopPairActions
@@ -52,21 +41,34 @@ import com.pokedaisy.app.companion.ui.PageHint
 import com.pokedaisy.app.companion.ui.SettingRow
 import com.pokedaisy.app.companion.ui.coopFindLine
 import com.pokedaisy.app.companion.ui.coopPartnerRows
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.net.Inet4Address
-import java.net.NetworkInterface
 
-/**
- * Settings > CO-OP's pages on the top screen - PAIR (a save, then its panes), PARTNERS (UNPAIR) and RELAY - with their state and
- * what they do, so SettingsActivity only routes to them. [prefs] is read late (the activity sets its prefs in onCreate, after
- * ui-preview has set [preview]); [changed] tells the activity a row's value changed (its `revision`).
- */
-internal class CoopSettingsPages(
-    private val activity: ComponentActivity,
-    private val prefs: () -> Prefs,
+/** Platform integrations for the shared pairing pages, accessed only when needed. */
+interface CoopPairingHost {
+    val relayOnly: Boolean
+    val defaultRelay: String
+    var relayOverride: String?
+
+    fun saveChoices(pairs: List<CoopPair>): List<CoopSaveChoice>
+    fun copyLink(link: String)
+    fun shareLink(link: String)
+    fun startAddressHost(link: () -> String?, address: (String?) -> Unit)
+    fun stopAddressHost()
+    fun fetchInvite(address: String, result: (Result<String>) -> Unit)
+}
+
+/** Shared PAIR, PARTNERS, and RELAY pages. The caller owns the surrounding menu navigation. */
+class CoopSettingsPages(
+    private val session: () -> CoopEndpointSession,
+    private val host: CoopPairingHost,
     private val changed: () -> Unit,
+    private val background: CoroutineDispatcher = Dispatchers.Default,
 ) {
+    private val ui = CoroutineScope(Dispatchers.Main.immediate)
     /** What PAIR shows instead of the live session (ui-preview: no network). */
     var preview by mutableStateOf<CoopPairView?>(null)
 
@@ -82,9 +84,8 @@ internal class CoopSettingsPages(
     private var nearbyError by mutableStateOf<String?>(null)
     private var wifi by mutableStateOf<String?>(null)
     private var unpairing by mutableStateOf<CoopPair?>(null)
-    private val ipServer = CoopIpHelloServer { currentLink() }
-    /** Bumped when the invite is left, so a BY IP listener still starting up stops itself. */
-    @Volatile private var ipGeneration = 0
+    // Ignore a lookup or address advertisement that started on a page already left.
+    private var generation = 0
 
     /** A save is picked: BACK goes to the save list before it leaves PAIR. */
     val picking: Boolean get() = picked != null
@@ -100,9 +101,9 @@ internal class CoopSettingsPages(
 
     /** Leaves the invite: the endpoint's hold and the BY IP listener go, the save list comes back. */
     fun leave() {
-        ipGeneration++
-        ipServer.stop()
-        if (pairing != null) CoopSession.releasePairing()
+        generation++
+        host.stopAddressHost()
+        if (pairing != null) session().releasePairing()
         pairing = null
         picked = null
         choices = null
@@ -112,21 +113,7 @@ internal class CoopSettingsPages(
     }
 
     suspend fun loadPairs() {
-        pairs = withContext(Dispatchers.IO) { CoopSession.pairsList(activity) }
-    }
-
-    /** The library's retail English Emerald ROMs, each with its save's trainer (off the UI thread). */
-    private fun loadChoices(): List<CoopSaveChoice> {
-        val prefs = prefs()
-        val pairs = CoopSession.pairsList(activity)
-        return RomFolder.libraryRoms(activity, prefs)
-            .filter { it.length() == SettingsActivity.EMERALD_ROM_BYTES && RomIdentity.gameCode(it) == "BPEE" && RomIdentity.sha1(it) == EMERALD_COOP_SHA1 }
-            .map { rom ->
-                val save = SavesLocation.saveFor(activity, prefs, rom)
-                val id = if (save.isFile) CoopSaveId.read(save.toOkioPath()) else null
-                val pair = id?.let { i -> pairs.firstOrNull { it.ownSave == i } }
-                CoopSaveChoice(save.toOkioPath(), GameTitles.label(activity, prefs, rom), id, pair?.partner?.name)
-            }
+        pairs = withContext(background) { session().pairsList() }
     }
 
     /** A save picked: the invite opens (and, from a link, dials it). The endpoint is up before [CoopPairing.open] runs. */
@@ -135,89 +122,81 @@ internal class CoopSettingsPages(
         picked = choice
         joinError = null
         nearbyError = null
-        CoopSession.usePairingSave(choice.save.toFile(), EMERALD_COOP_SHA1)
-        val p = CoopSession.pairing(activity)
+        val endpoint = session()
+        endpoint.usePairingSave(choice.save, EMERALD_COOP_SHA1)
+        val p = endpoint.pairing()
         pairing = p
         val ticket = ticketIn
-        CoopSession.afterStart {
+        endpoint.afterStart {
             p.open(id)
             if (ticket != null) p.join(ticket)
-            CoopSession.refreshRooms()
+            endpoint.refreshRooms()
         }
-        val gen = ipGeneration
-        if (!prefs().coopRelayOnly) Thread {
-            val port = ipServer.start()
-            if (gen != ipGeneration) { ipServer.stop(); return@Thread }
-            val ip = coopWifiAddress()
-            activity.runOnUiThread { wifi = ip?.let { "$it:$port" } }
-        }.start()
+        val opened = ++generation
+        if (!host.relayOnly) host.startAddressHost({ linkFor(p) }) { address ->
+            ui.launch { if (opened == generation) wifi = address }
+        }
     }
 
-    private fun currentLink(): String? =
+    private fun linkFor(pairing: CoopPairing?): String? =
         (pairing?.step?.value as? CoopPairing.Step.Inviting)?.ticket?.let { runCatching { CoopInvite.link(it) }.getOrNull() }
 
     /** A typed or listed room code, looked up on the relay's lobby, then joined like an invite link. */
     private fun joinRoom(code: String) {
         joinError = null
-        CoopSession.findRoom(code) { r ->
-            activity.runOnUiThread {
-                if (r is CoopLobby.FindResult.Found) pairing?.join(r.invite)
-                else joinError = coopFindLine(r)
+        val opened = generation
+        session().findRoom(code) { result ->
+            ui.launch {
+                if (opened != generation) return@launch
+                if (result is CoopLobby.FindResult.Found) pairing?.join(result.invite)
+                else joinError = coopFindLine(result)
             }
         }
     }
 
-    /** BY IP: asks the address for its invite (off the UI thread), then joins it. */
     private fun joinByIp(text: String) {
-        val target = parseHostPort(text)
-        if (target == null) {
-            nearbyError = "That isn't a valid address"
-            return
-        }
         nearbyError = null
-        Thread {
-            val ticket = CoopIpHelloClient.fetch(target.first, target.second)
-            activity.runOnUiThread {
-                if (ticket == null) nearbyError = "Couldn't reach your partner. Check the internet and try again."
-                else pairing?.join(ticket)
+        val opened = generation
+        host.fetchInvite(text) { result ->
+            ui.launch {
+                if (opened != generation) return@launch
+                result.fold(
+                    onSuccess = { pairing?.join(it) },
+                    onFailure = {
+                        nearbyError = if (it is IllegalArgumentException) "That isn't a valid address"
+                        else "Couldn't reach your partner. Check the internet and try again."
+                    },
+                )
             }
-        }.start()
+        }
     }
 
-    private fun copyLink() {
-        val link = currentLink() ?: return
-        (activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("invite", link))
-        Toast.makeText(activity, tr("Link copied"), Toast.LENGTH_SHORT).show()
-    }
-
-    private fun shareLink() {
-        val link = currentLink() ?: return
-        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, tr("Play Emerald with me in PokeDaisy: {0}", link))
-        runCatching { activity.startActivity(Intent.createChooser(send, null)) }
-    }
+    private fun copyLink() = linkFor(pairing)?.let(host::copyLink)
+    private fun shareLink() = linkFor(pairing)?.let(host::shareLink)
 
     /** PAIR: [onDone] leaves it for the hub (DONE once paired). */
     @Composable
     fun PairPage(m: GbaTextMetrics, small: GbaTextMetrics, onDone: () -> Unit) {
         val shown = preview
         LaunchedEffect(choices == null) {
-            if (shown == null && choices == null) choices = withContext(Dispatchers.IO) { loadChoices() }
+            if (shown == null && choices == null) choices = withContext(background) { host.saveChoices(session().pairsList()) }
         }
         val p = pairing
         val step = remember(p) {
             p?.step ?: kotlinx.coroutines.flow.MutableStateFlow<CoopPairing.Step>(CoopPairing.Step.Inviting(null, emptyList()))
         }.collectAsState().value
-        val lobby = CoopSession.lobby.collectAsState().value
-        val prefs = prefs()
-        val view = shown ?: CoopPairView(
-            choices = choices, picked = picked, step = step, relayOnly = prefs.coopRelayOnly, wifi = wifi,
-            rooms = CoopRoomsUi(CoopRelay.effective(prefs.coopRelayUrl, BuildConfig.COOP_RELAY_URL) != null, lobby),
-            joinError = joinError, nearbyError = nearbyError,
-        )
+        val view = if (shown != null) shown else {
+            val lobby = session().lobby.collectAsState().value
+            CoopPairView(
+                choices = choices, picked = picked, step = step, relayOnly = host.relayOnly, wifi = wifi,
+                rooms = CoopRoomsUi(CoopRelay.effective(host.relayOverride, host.defaultRelay) != null, lobby),
+                joinError = joinError, nearbyError = nearbyError,
+            )
+        }
         val actions = CoopPairActions(
             onPick = ::pick,
-            onCopy = ::copyLink,
-            onShare = ::shareLink,
+            onCopy = { copyLink() },
+            onShare = { shareLink() },
             onJoinLink = { text -> pairing?.join(text) },
             onJoinLan = { peer -> pairing?.joinLan(peer) },
             onJoinIp = ::joinByIp,
@@ -226,9 +205,9 @@ internal class CoopSettingsPages(
             onDone = { leave(); onDone() },
             onTryAgain = { picked?.let(::pick) },
             onCancel = ::leave,
-            onListRoom = { on -> CoopSession.roomListed = on },
+            onListRoom = { on -> session().roomListed = on },
             onJoinCode = ::joinRoom,
-            onRefreshRooms = { CoopSession.refreshRooms() },
+            onRefreshRooms = { session().refreshRooms() },
         )
         CoopPairBody(view, actions, m, small)
     }
@@ -258,9 +237,12 @@ internal class CoopSettingsPages(
             onDismiss = { unpairing = null },
             onConfirm = {
                 unpairing = null
-                CoopSession.unpair(activity, p.ownSave)
-                pairs = pairs - p
-                changed()
+                session().unpair(p.ownSave) { removed ->
+                    if (removed) {
+                        pairs = pairs - p
+                        changed()
+                    }
+                }
             },
         )
     }
@@ -268,14 +250,12 @@ internal class CoopSettingsPages(
     /** RELAY: the address of a relay of your own (https://), or the built-in one. */
     @Composable
     fun RelayPage(m: GbaTextMetrics, small: GbaTextMetrics) {
-        val prefs = prefs()
-        var text by remember { mutableStateOf(prefs.coopRelayUrl.orEmpty()) }
+        var text by remember { mutableStateOf(host.relayOverride.orEmpty()) }
         var error by remember { mutableStateOf<String?>(null) }
         fun use(url: String?) {
-            prefs.coopRelayUrl = url
+            if (!session().changeRelay { host.relayOverride = url }) return
             text = url.orEmpty()
             error = null
-            CoopSession.restart(activity, prefs)
             changed()
         }
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
@@ -298,14 +278,4 @@ internal class CoopSettingsPages(
             }
         }
     }
-}
-
-/** This device's IPv4 address on the Wi-Fi network (else any private one), or null. Reads interfaces: not on the UI thread. */
-private fun coopWifiAddress(): String? = try {
-    val own = NetworkInterface.getNetworkInterfaces().toList().filter { it.isUp && !it.isLoopback }
-        .flatMap { nic -> nic.inetAddresses.toList().filterIsInstance<Inet4Address>().map { nic to it } }
-        .filter { !it.second.isLoopbackAddress && !it.second.isLinkLocalAddress }
-    (own.firstOrNull { it.first.name.startsWith("wlan") } ?: own.firstOrNull { it.second.isSiteLocalAddress })?.second?.hostAddress
-} catch (e: java.io.IOException) {
-    null
 }

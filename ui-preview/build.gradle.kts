@@ -14,10 +14,17 @@ plugins {
 val cmp by extra("1.5.12")
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
-val sharedUi = rootDir.resolve("../shared-ui/src/commonMain/kotlin/com/pokedaisy/app")
-val previewScreenSources = listOf("companion/ui/**", "CoopBattleSession.kt", "DocsApi.kt", "DocsCache.kt", "DocsSearch.kt", "GameInfo*.kt")
+val sharedUi = rootDir.resolve("../shared-ui/src/commonMain/kotlin")
+val previewScreenSources by extra(listOf(
+    "com/pokedaisy/app/companion/ui/**",
+    "com/pokedaisy/app/CoopBattleSession.kt",
+    "com/pokedaisy/app/CoopSettingsPages.kt",
+    "com/pokedaisy/app/Docs*.kt",
+    "com/pokedaisy/app/GameInfo*.kt",
+    "com/pokedaisy/app/achievements/**",
+))
 val appIncludes = listOf(
-    "SettingsActivity.kt", "KeyEvents.kt", "CoopSettingsPages.kt", "LibraryActivity.kt", "SavesLocation.kt",
+    "SettingsActivity.kt", "KeyEvents.kt", "AndroidCoopSettings.kt", "LibraryActivity.kt", "SavesLocation.kt",
     "CoverArtSync.kt", "CoverSync.kt", "DocsStore.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSavesAndroid.kt", "RzipSave.kt", "SaveBackups.kt", "AndroidGameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt",
     "RomPatcher.kt", "AndroidRomPatches.kt", "RomCrcs.kt", "SpritePackFlow.kt", "n3ds/N3dsCart.kt",
     "ScreenScraperClient.kt", "ScreenScraperUi.kt", "GameMedia.kt", "LauncherScreen.kt",
@@ -27,11 +34,18 @@ val appIncludes = listOf(
 // Copied (not referenced in place) so the few Android-only APIs desktop
 // Compose 1.5 lacks can be rewritten on the way.
 val prepSrc = tasks.register<Sync>("prepSrc") {
-    from(app) { appIncludes.forEach { include(it) } }
+    from(app) { include(appIncludes) }
     from(sharedUi) { include(previewScreenSources) }
     // PC BOXES' demo save is built with the save tests' own writer.
-    from(rootDir.resolve("../test-fixtures/kotlin/com/pokedaisy/app/companion/data/save")) { include("SyntheticSave.kt"); into("synthetic") }
-    from(rootDir.resolve("../shared/src/androidUnitTest/kotlin/com/pokedaisy/app/companion/data/save")) { include("SyntheticGen4.kt", "SyntheticGen5.kt"); into("synthetic") }
+    val saveFixtures = "com/pokedaisy/app/companion/data/save"
+    from(rootDir.resolve("../test-fixtures/kotlin/$saveFixtures")) {
+        include("SyntheticSave.kt")
+        into("synthetic")
+    }
+    from(rootDir.resolve("../shared/src/androidUnitTest/kotlin/$saveFixtures")) {
+        include("SyntheticGen4.kt", "SyntheticGen5.kt")
+        into("synthetic")
+    }
     into(layout.buildDirectory.dir("appsrc"))
     filter { line: String ->
         line.replace("Icons.AutoMirrored.Filled.", "Icons.Filled.")
@@ -62,6 +76,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:atomicfu:0.23.1")
     // The screens use `import kotlinx.coroutines.IO` (Dispatchers.IO on iOS too): coroutines 1.7+, as data/ already runs.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+    // Shared settings use Dispatchers.Main; match the core version selected by :data.
+    runtimeOnly("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:$cmp")
 }

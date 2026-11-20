@@ -27,6 +27,7 @@ class PrefsCompanionSettingsTest {
             stored.changed = { change -> when (change) {
                 PrefsCompanionSettings.Change.PLAYBACK -> speeds += ffMaxSpeed
                 PrefsCompanionSettings.Change.FIELD_OPTIONS -> fieldOptions += reusableTms
+                PrefsCompanionSettings.Change.PICTURE -> Unit
             } }
         }
         override fun setReusableTms(on: Boolean) { if (!blocked) stored.setReusableTms(on) }
@@ -64,6 +65,58 @@ class PrefsCompanionSettingsTest {
         assertFalse(p.reusableTms); assertTrue(s.fieldOptions.isEmpty())
         s.blocked = false; s.setReusableTms(true)
         assertTrue(p.reusableTms); assertEquals(listOf(true), s.fieldOptions)
+    }
+
+    @Test fun pictureChangesRefreshAfterWritingThePreference() {
+        val prefs = Prefs(Store())
+        val stored = PrefsCompanionSettings(prefs)
+        val aspect = GameAspect.WIDE
+        val filter = ScreenFilter.entries.first { it != prefs.screenFilter }
+        val smoothing = Smoothing.entries.first { it != prefs.smoothing }
+        val changes = mutableListOf<Triple<GameAspect, ScreenFilter, Smoothing>>()
+        stored.changed = {
+            assertEquals(PrefsCompanionSettings.Change.PICTURE, it)
+            changes += Triple(prefs.gameAspect, prefs.screenFilter, prefs.smoothing)
+        }
+        val originalFilter = prefs.screenFilter
+        val originalSmoothing = prefs.smoothing
+        stored.setGameAspect(aspect)
+        stored.setScreenFilter(filter)
+        stored.setSmoothing(smoothing)
+        assertEquals(listOf(
+            Triple(aspect, originalFilter, originalSmoothing),
+            Triple(aspect, filter, originalSmoothing),
+            Triple(aspect, filter, smoothing),
+        ), changes)
+    }
+
+    @Test fun statusBarUsesTheExistingKeysAndRecoversItsPlacement() {
+        val store = Store()
+        val settings = Settings(Prefs(store))
+        assertFalse(settings.statusBar)
+        settings.setStatusBarOnCompanion(true)
+        settings.setStatusBar(true)
+        val reopened = Settings(Prefs(store))
+        assertTrue(reopened.statusBar)
+        assertTrue(reopened.statusBarOnCompanion)
+        reopened.setStatusBarOnCompanion(false)
+        assertEquals(false, store.data["status_bar_on_companion"])
+        reopened.setStatusBar(false)
+        assertEquals(false, store.data["status_bar"])
+    }
+
+    @Test fun iosFastAudioKeepsItsDefaultAndHonorsExplicitChoices() {
+        val store = Store()
+        val defaults = Prefs.Defaults(ffMusicMode = FfMusicMode.SPED_UP)
+        val settings = Settings(Prefs(store, defaults))
+        assertEquals(FfMusicMode.STEADY, Prefs(Store()).ffMusicMode)
+        assertEquals(FfMusicMode.SPED_UP, settings.ffMusicMode)
+        settings.setFfMusicMode(FfMusicMode.OFF)
+        val reopened = Settings(Prefs(store, defaults))
+        assertEquals("OFF", store.data["ff_music_mode"])
+        assertEquals(FfMusicMode.OFF, reopened.ffMusicMode)
+        val legacy = Store().apply { data["ff_music_enabled"] = false }
+        assertEquals(FfMusicMode.OFF, Prefs(legacy).ffMusicMode)
     }
 
     @Test fun bothInstalledBattleStyleFormatsKeepTheirRepresentation() {

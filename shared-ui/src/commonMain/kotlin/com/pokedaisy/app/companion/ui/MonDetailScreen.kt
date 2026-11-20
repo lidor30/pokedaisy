@@ -95,6 +95,7 @@ import com.pokedaisy.app.companion.ui.theme.AppColors
  * box's Pokémon, six at a time) is a column on the right with Back under it, like battle INFO's
  * foe team; the PC's DEPOSIT (a party Pokémon) or WITHDRAW (a box one) sits with STATS / LEARN.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MonDetailScreen(
     party: List<MonView>,
@@ -130,6 +131,8 @@ fun MonDetailScreen(
     dexTables: PokedexTables? = null,
     /** Open with the CENTER's list up (screenshot tests). */
     initialCenterMenu: Boolean = false,
+    /** Newly available party/storage operations on this host. */
+    partyBadge: String? = itemUse?.partyBadge,
 ) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -303,15 +306,15 @@ fun MonDetailScreen(
         val evolve = evolves != null && evoTarget != null && !showLearn
         val centers = center != null && centerMon != null && !showLearn
         if (stats || learns || evolve || centers || reorders != null || onDeposit != null || onWithdraw != null) {
-            Row(Modifier.height(SummaryButtonSize), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val size = SummaryButtonSize
                 if (stats) TextNavButton(if (showStats) tr("MOVES") else tr("STATS"), StatsPurple, StatsPurpleDark, size) { showStats = !showStats }
                 if (learns) TextNavButton(if (showLearn) tr("MOVES") else tr("LEARN"), SuggestGold, SuggestGoldDark, size) { showLearn = !showLearn; learnPick = 0 }
-                if (evolve) TextNavButton(tr("EVOLVE"), EvolveBlue, EvolveBlueDark, size) { evolveResult = null; evolveAsk = true }
-                if (reorders != null) TextNavButton(tr("SWITCH"), RunBlue, RunBlueDark, size) { switching = true }
+                if (evolve) TextNavButton(tr("EVOLVE"), EvolveBlue, EvolveBlueDark, size, badge = itemUse?.evolveBadge) { evolveResult = null; evolveAsk = true }
+                if (reorders != null) TextNavButton(tr("SWITCH"), RunBlue, RunBlueDark, size, badge = partyBadge) { switching = true }
                 if (centers) TextNavButton(tr("CENTER"), CenterPink, CenterPinkDark, size) { centerMenu = true }
-                if (onDeposit != null) TextNavButton(tr("DEPOSIT"), PcGreen, PcGreenDark, size, onClick = onDeposit)
-                if (onWithdraw != null) TextNavButton(tr("WITHDRAW"), PcGreen, PcGreenDark, size, onClick = onWithdraw)
+                if (onDeposit != null) TextNavButton(tr("DEPOSIT"), PcGreen, PcGreenDark, size, badge = partyBadge, onClick = onDeposit)
+                if (onWithdraw != null) TextNavButton(tr("WITHDRAW"), PcGreen, PcGreenDark, size, badge = partyBadge, onClick = onWithdraw)
             }
         }
     }
@@ -378,6 +381,11 @@ fun MonDetailScreen(
                 selected = "",
                 label = { it },
                 m = m,
+                badge = { option -> when (option) {
+                    tk("RELEARN A MOVE") -> itemUse.relearnBadge
+                    tk("NICKNAME"), tk("FORGET A MOVE") -> itemUse.centerBadge
+                    else -> null
+                } },
                 onPick = { o ->
                     centerMenu = false
                     when (o) {
@@ -1032,14 +1040,19 @@ internal fun Stat(label: String, value: String, small: GbaTextMetrics) {
 
 /** A labelled button for the summary screens' bottom row, as tall as [NavButton] (or [size]; the label scales with it). */
 @Composable
-internal fun TextNavButton(label: String, fill: Color, frame: Color, size: Dp = NavButtonSize, onClick: () -> Unit) {
+internal fun TextNavButton(label: String, fill: Color, frame: Color, size: Dp = NavButtonSize, badge: String? = null, onClick: () -> Unit) {
     val scale = size / NavButtonSize
     PlatinumButton(
         fill = fill, frame = frame,
         modifier = Modifier.height(size),
         contentPadding = PaddingValues(horizontal = 20.dp * scale),
         onClick = onClick,
-    ) { ButtonLabel(label, 24.sp * scale, bold = true) }
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp * scale)) {
+            ButtonLabel(label, 24.sp * scale, bold = true)
+            badge?.let { OptionBadge(it, rememberGbaTextMetrics(0.7f * scale), fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow) }
+        }
+    }
 }
 
 /** The summary screens' Back button: bottom-right, blue, a U-turn arrow. */

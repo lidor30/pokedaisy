@@ -1,4 +1,4 @@
-/* FREE FLIGHT, FLIGHT AREA and the scenic FLY (flight.h): app/.../companion/data/Flight.kt, FlightArea.kt and ScenicFly.kt
+/* FREE FLIGHT, FLIGHT AREA and the scenic FLY (flight.h): shared/.../companion/data/Flight.kt, FlightArea.kt and ScenicFly.kt
  * over the config's generated flight fields - keep them in step. ROM tables are read from the ROM's bytes, RAM through the
  * bus, the game's functions through pk_call. GPL-3.0. */
 #include "flight.h"
