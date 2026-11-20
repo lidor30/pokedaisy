@@ -8,6 +8,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.nio.file.Files
+import okio.Path.Companion.toOkioPath
 
 class Gen3SaveFileTest {
 
@@ -48,6 +50,25 @@ class Gen3SaveFileTest {
             assertEquals(listOf(1, 4, 7), data.boxes[0].mons.filter { !it.isEmpty }.map { it.species })
             // seed 1 = the newer slot's personalities.
             assertEquals(0x101L, data.boxes[0].mons[0].personality)
+        }
+    }
+
+    @Test
+    fun libraryOpensAValidSaveAndPreservesItsOriginalBytes() {
+        val format = Gen3SaveFormat.EMERALD
+        val path = Files.createTempFile("pokedaisy-gen3-save", ".sav").toFile()
+        try {
+            val original = twoSlots(format, newer = 1)
+            path.writeBytes(original)
+            val result = Gen3SaveReader.open(path.toOkioPath(), format) as Gen3SaveReader.Result.Ready
+            assertArrayEquals(original, result.bytes)
+            assertEquals(1, result.save.slot)
+            assertArrayEquals(original, path.readBytes())
+            path.writeBytes(ByteArray(100))
+            assertTrue(Gen3SaveReader.open(path.toOkioPath(), format) is Gen3SaveReader.Result.Failed)
+            assertEquals(100L, path.length())
+        } finally {
+            path.delete()
         }
     }
 

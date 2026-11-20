@@ -20,11 +20,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
-import com.pokedaisy.app.companion.data.save.Gen3SaveData
+import com.pokedaisy.app.companion.data.save.Gen3SaveReader
 import com.pokedaisy.app.companion.data.save.Gen3SaveEditor
 import com.pokedaisy.app.companion.data.save.Gen3SaveFile
+import com.pokedaisy.app.companion.data.save.MissingDex
+import com.pokedaisy.app.companion.data.save.MissingTradeRoute
 import com.pokedaisy.app.companion.data.save.RomMonIcons
 import com.pokedaisy.app.companion.data.save.RomMonSprites
+import com.pokedaisy.app.companion.data.save.SaveLibrary
 import com.pokedaisy.app.companion.data.save.TradeSide
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
@@ -63,6 +66,8 @@ class SaveEditorActivity : ComponentActivity() {
         val ds: Pair<com.pokedaisy.app.companion.data.save.Gen4SaveFile, com.pokedaisy.app.companion.data.save.Gen4GameData>? = null,
         val gen5: Pair<com.pokedaisy.app.companion.data.save.Gen5SaveFile, com.pokedaisy.app.companion.data.save.Gen5GameData>? = null,
     ) {
+        fun tradeSide() = TradeSide(name, editor(), gameCode)
+
         fun editor(): com.pokedaisy.app.companion.data.save.MonSaveEditor = file?.let { Gen3SaveEditor(it) }
             ?: ds?.let { (f, g) -> com.pokedaisy.app.companion.data.save.Gen4SaveEditor(f, g) }
             ?: gen5!!.let { (f, g) -> com.pokedaisy.app.companion.data.save.Gen5SaveEditor(f, g) }
@@ -204,6 +209,7 @@ class SaveEditorActivity : ComponentActivity() {
 
     /** A Black / White save as an [OpenedGen5] (the cart's names and personal records read for it), or why there's none. Blocking. */
     private fun openGen5(rom: File): Any {
+        if (!SaveFileEdits.recover(this)) return ClosedSaveEdits.recoveryError()
         val save = SavesLocation.saveFor(this, prefs, rom)
         if (!save.isFile) return tr("No save yet - save once in the game first.")
         val bytes = runCatching { save.readBytes() }.getOrNull() ?: return tr("Can't read the save {0}", save.path)
@@ -272,10 +278,16 @@ class SaveEditorActivity : ComponentActivity() {
         palFrom = null
         palPick = null
         Thread {
-            val opened = readableGames(gen5 = true).mapNotNull { (f, _) -> open(f) as? Opened }
-            val sides = opened.map { TradeSide(it.name, it.editor(), it.gameCode) }
-            runOnUiThread { collectionOpened = opened; st.load(sides) }
-            opened.forEach { loadIcons(it.rom) }
+            val collection = SaveLibrary.collection(
+                readableGames(gen5 = true), { (file, _) -> open(file) as? Opened }, Opened::tradeSide,
+            )
+            runOnUiThread {
+                if ((page as? Page.Collection)?.state === st) {
+                    collectionOpened = collection.sources
+                    st.load(collection.sides, collection.items)
+                }
+            }
+            collection.sources.forEach { loadIcons(it.rom) }
         }.start()
     }
 
@@ -347,7 +359,7 @@ class SaveEditorActivity : ComponentActivity() {
             runOnUiThread {
                 page = if (a is Opened && b is Opened) {
                     tradeFrom = a
-                    Page.Trade(TradeState(TradeSide(a.name, a.editor(), a.gameCode), TradeSide(b.name, b.editor(), b.gameCode)), a, b)
+                    Page.Trade(TradeState(a.tradeSide(), b.tradeSide()), a, b)
                 } else Page.Message((a as? String) ?: (b as String))
             }
         }.start()
@@ -481,45 +493,37 @@ class SaveEditorActivity : ComponentActivity() {
      */
     private fun loadMissing(ready: Page.Ready) {
         val s = ready.state
-        s.missing = com.pokedaisy.app.companion.ui.MissingView(null, emptyList())
+        val loading = com.pokedaisy.app.companion.ui.MissingView(null, emptyList())
+        s.missing = loading
         val target = TradeSide(ready.opened.name, s.editor, ready.opened.gameCode)
         val ds = ready.opened.ds != null
         val gen5 = ready.opened.gen5 != null
         Thread {
             // A Black / White save: the HeartGold / SoulSilver / Platinum saves (Poké Transfer) and the other Gen 5 ones (trades).
-            val others = readableGames(except = rom, gen5 = gen5).map { it.first }
+            val candidates = readableGames(except = ready.opened.rom, gen5 = gen5).map { it.first }
                 .filter { if (gen5) SaveFileEdits.isDsEditable(it) || SaveFileEdits.isGen5(it) else if (ds) true else !SaveFileEdits.isDsEditable(it) }
-                .mapNotNull { f -> (open(f) as? Opened)?.let { f to it } }
-            val sides = others.map { (_, o) -> TradeSide(o.name, o.editor(), o.gameCode) }
-            val entries = runCatching { com.pokedaisy.app.companion.data.save.MissingDex.find(target, sides) }.getOrElse { emptyList() }
+            val missing = SaveLibrary.missing(target, candidates, { open(it) as? Opened }, Opened::tradeSide)
             runOnUiThread {
-                missingRoms = others.map { it.first }
-                if (s.missing != null) s.missing = com.pokedaisy.app.companion.ui.MissingView(entries, sides)
+                if (page === ready && s.missing === loading) {
+                    missingRoms = missing.sources.map { it.rom }
+                    s.missing = com.pokedaisy.app.companion.ui.MissingView(missing.entries, missing.sides)
+                }
             }
-            others.forEach { loadIcons(it.first) }
+            missing.sources.forEach { loadIcons(it.rom) }
         }.start()
     }
 
-    /** A MISSING row: the trade (or Pal Park) that brings it, with it picked on the other side. */
-    private fun getMissing(ready: Page.Ready, o: com.pokedaisy.app.companion.data.save.MissingDex.Owned) {
-        if (ready.state.changed) {
-            ready.state.missing = null
-            ready.state.notice = tr("Save your changes first, then bring it over")
-            return
-        }
-        val src = missingRoms.getOrNull(o.source) ?: return
-        when (o.way) {
-            com.pokedaisy.app.companion.data.save.MissingDex.Way.PAL_PARK -> {
-                val at = (o.at as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.at ?: return
-                openPalPark(src, rom, at)
+    private fun getMissing(ready: Page.Ready, selected: MissingDex.Owned) {
+        val state = ready.state
+        when (val route = MissingTradeRoute.resolve(selected, missingRoms, state.changed, supportsTransfers = true)) {
+            MissingTradeRoute.SaveChangesFirst -> {
+                state.missing = null
+                state.notice = tr("Save your changes first, then bring it over")
             }
-            // This save's own Pokémon, picked on this side: TRADE AND BACK is then one press.
-            com.pokedaisy.app.companion.data.save.MissingDex.Way.TRADE_BACK -> startTrade(src, pickA = o.at)
-            com.pokedaisy.app.companion.data.save.MissingDex.Way.POKE_TRANSFER -> {
-                val at = (o.at as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.at ?: return
-                openTransfer(src, rom, pick = at, back = true)
-            }
-            else -> startTrade(src, pick = o.at)
+            is MissingTradeRoute.Trade -> startTrade(route.partner, pick = route.secondPick, pickA = route.firstPick)
+            is MissingTradeRoute.PalPark -> openPalPark(route.source, rom, route.pick)
+            is MissingTradeRoute.PokeTransfer -> openTransfer(route.source, rom, pick = route.pick, back = true)
+            null -> Unit
         }
     }
 
@@ -534,7 +538,7 @@ class SaveEditorActivity : ComponentActivity() {
             val next = when (val o = open(rom)) {
                 is Opened -> Page.Ready(PcBoxesState(o.editor()).also { st ->
                     // From COLLECTION: on the Pokémon picked there.
-                    focus?.let { at -> st.selected = at; (at as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.let { st.box = it.at.box } }
+                    focus?.let(st::focus)
                 }, o)
                 else -> Page.Message(o as String)
             }
@@ -545,20 +549,16 @@ class SaveEditorActivity : ComponentActivity() {
 
     /** [rom]'s save as an [Opened], or why there's none (a String). Blocking. */
     private fun open(rom: File): Any {
+        if (!SaveFileEdits.recover(this)) return ClosedSaveEdits.recoveryError()
         if (SaveFileEdits.isDsEditable(rom)) return openDs(rom)
         if (SaveFileEdits.isGen5(rom)) return openGen5Editor(rom)
         val format = SaveFileEdits.formatFor(rom)
             ?: return tr("The save editor reads FireRed, LeafGreen, Emerald, Ruby, Sapphire, Diamond, Pearl, HeartGold, SoulSilver and Platinum saves (and builds that keep their save layout). This game's isn't one yet.")
         val save = SavesLocation.saveFor(this, prefs, rom)
-        if (!save.isFile) return tr("No save yet - save once in the game first.")
-        val bytes = runCatching { save.readBytes() }.getOrNull() ?: return tr("Can't read the save {0}", save.path)
-        return when (val parsed = Gen3SaveFile.parse(bytes, format)) {
-            is Gen3SaveFile.Parsed.Failed -> parsed.reason
-            is Gen3SaveFile.Parsed.Ok -> {
-                val why = Gen3SaveData(parsed.save).mismatch()
-                if (why != null) tr("This save doesn't look like a {0} save ({1}), so it's left alone.", format.label, why)
-                else Opened(rom, GameTitles.label(this, prefs, rom), RomIdentity.gameCode(rom).orEmpty(), bytes, parsed.save)
-            }
+        return when (val result = Gen3SaveReader.open(save.toOkioPath(), format)) {
+            is Gen3SaveReader.Result.Failed -> result.message
+            is Gen3SaveReader.Result.Ready ->
+                Opened(rom, GameTitles.label(this, prefs, rom), RomIdentity.gameCode(rom).orEmpty(), result.bytes, result.save)
         }
     }
 
@@ -688,10 +688,10 @@ class SaveEditorActivity : ComponentActivity() {
         Thread {
             val next = when (val o = open(partner)) {
                 is Opened -> {
-                    val st = TradeState(TradeSide(a.name, a.editor(), a.gameCode), TradeSide(o.name, o.editor(), o.gameCode))
+                    val st = TradeState(a.tradeSide(), o.tradeSide())
                     // From MISSING: the Pokémon to bring already picked on the other side.
-                    pick?.let { st.selB = it; (it as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.let { pc -> st.boxB = pc.at.box } }
-                    pickA?.let { st.selA = it; (it as? com.pokedaisy.app.companion.data.save.MonRef.Pc)?.let { pc -> st.boxA = pc.at.box } }
+                    pick?.let { st.focus(it, firstSide = false) }
+                    pickA?.let { st.focus(it, firstSide = true) }
                     Page.Trade(st, a, o)
                 }
                 else -> null.also { runOnUiThread { Toast.makeText(this, o as String, Toast.LENGTH_LONG).show() } }
@@ -710,19 +710,7 @@ class SaveEditorActivity : ComponentActivity() {
         when (val p = page) {
             is Page.Ready -> {
                 val s = p.state
-                // BACK closes what's open first: a pick-list or amount, a confirm, then a pending MOVE, then asks before dropping edits.
-                BackHandler {
-                    when {
-                        s.editing != null -> s.editing = null
-                        s.missing != null -> s.missing = null
-                        s.confirmSave -> s.confirmSave = false
-                        s.confirmDiscard -> s.confirmDiscard = false
-                        s.detail != null -> s.detail = null
-                        s.moving != null -> s.moving = null
-                        s.changed -> s.confirmDiscard = true
-                        else -> if (!backToCollection()) finish()
-                    }
-                }
+                BackHandler { if (!saving) s.back { if (!backToCollection()) finish() } }
                 PcBoxesScreen(
                     s, gameName, m, onBack = { if (!backToCollection()) finish() }, onSave = { save(p) }, saving = saving,
                     icons = icons[rom.absolutePath], sprites = sprites[rom.absolutePath], onTrade = { pickPartner() },
@@ -731,15 +719,7 @@ class SaveEditorActivity : ComponentActivity() {
             }
             is Page.Trade -> {
                 val s = p.state
-                BackHandler {
-                    when {
-                        s.evolving != null -> s.evolving = null
-                        s.confirmSave -> s.confirmSave = false
-                        s.confirmDiscard -> s.confirmDiscard = false
-                        s.changed -> s.confirmDiscard = true
-                        else -> leaveTrade()
-                    }
-                }
+                BackHandler { if (!saving) s.back(::leaveTrade) }
                 TradeScreen(
                     s, m, onBack = { leaveTrade() }, onSave = { saveTrade(p) }, saving = saving,
                     iconsA = icons[p.a.rom.absolutePath], iconsB = icons[p.b.rom.absolutePath],

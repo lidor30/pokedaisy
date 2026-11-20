@@ -64,6 +64,27 @@ class TradeState(a: TradeSide, b: TradeSide) {
     /** What the last TRADE AND BACK did. */
     var notice by mutableStateOf<String?>(null)
 
+    fun focus(at: MonRef, firstSide: Boolean) {
+        if (firstSide) {
+            selA = at
+            if (at is MonRef.Pc) boxA = at.at.box
+        } else {
+            selB = at
+            if (at is MonRef.Pc) boxB = at.at.box
+        }
+    }
+
+    fun back(onLeave: () -> Unit) {
+        when {
+            evolving != null -> evolving = null
+            confirmBack -> confirmBack = false
+            confirmSave -> confirmSave = false
+            confirmDiscard -> confirmDiscard = false
+            changed -> confirmDiscard = true
+            else -> onLeave()
+        }
+    }
+
     /** A trip there and back: the Pokémon's side, its slot and the other side. */
     class Trip(val home: TradeSide, val at: MonRef, val partner: TradeSide, val mon: SaveMon, val evolution: TradeEvolution)
 
@@ -198,12 +219,11 @@ fun TradeScreen(
 ) {
     val small = rememberGbaTextMetrics(textScale = 1f)
     val cell = rememberGbaTextMetrics(textScale = 0.8f)
-    val leave = { if (state.changed) state.confirmDiscard = true else onBack() }
     val linkBlock = state.a.rules.linkBlocker(state.a, state.b)
     Box(Modifier.fillMaxSize()) {
         AppBackdrop()
         Column(Modifier.fillMaxSize().padding(16.dp)) {
-            OptionTitleWindow(tk("TRADE"), m, trailing = "${state.a.label} · ${state.b.label}", onBack = leave)
+            OptionTitleWindow(tk("TRADE"), m, trailing = "${state.a.label} · ${state.b.label}", onBack = { if (!saving) state.back(onBack) })
             Spacer(Modifier.height(m.u * 4))
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 val wide = maxWidth > maxHeight * 1.1f

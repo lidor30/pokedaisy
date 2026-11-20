@@ -48,9 +48,9 @@ class CollectionState {
     var pickingGame by mutableStateOf(false)
     var pickingSort by mutableStateOf(false)
 
-    fun load(read: List<TradeSide>) {
+    fun load(read: List<TradeSide>, gathered: List<SaveCollection.Item> = SaveCollection.gather(read)) {
         sides = read
-        items = SaveCollection.gather(read)
+        items = gathered
         if (game >= read.size) game = -1
     }
 
@@ -86,7 +86,7 @@ fun CollectionScreen(
     icons: (Int) -> MonIconLoader?,
     onOpen: (SaveCollection.Item) -> Unit,
     onTrade: (SaveCollection.Item) -> Unit,
-    onPalPark: (SaveCollection.Item) -> Unit,
+    onPalPark: ((SaveCollection.Item) -> Unit)? = null,
 ) {
     val small = rememberGbaTextMetrics(textScale = 1f)
     val sides = state.sides
@@ -156,7 +156,9 @@ fun CollectionScreen(
             }
             if (sides != null) {
                 Spacer(Modifier.height(m.u * 3))
-                GbaText(tr("{0} shown · tap one to open its save, trade it or send it to Pal Park", shown.size),
+                val hint = if (onPalPark != null) tr("{0} shown · tap one to open its save, trade it or send it to Pal Park", shown.size)
+                    else tr("{0} shown · tap one to open its save or trade it", shown.size)
+                GbaText(hint,
                     OptionColors.onBackdrop, OptionColors.onBackdropShadow, small, maxLines = 2)
             }
         }
@@ -173,7 +175,7 @@ fun CollectionScreen(
                                 subtitle = tr("Its save in the editor, on this Pokémon")) { state.picked = null; onOpen(item) }
                             OptionLine(tk("TRADE"), null, selected = false, m, height = rowHeight, divider = true, chevron = true, enabled = state.canTrade(item),
                                 subtitle = tr("To another of your saves")) { state.picked = null; onTrade(item) }
-                            if (state.canPalPark(item)) {
+                            if (onPalPark != null && state.canPalPark(item)) {
                                 OptionLine(tk("PAL PARK"), null, selected = false, m, height = rowHeight, divider = true, chevron = true,
                                     subtitle = tr("To Sinnoh or Johto")) { state.picked = null; onPalPark(item) }
                             }

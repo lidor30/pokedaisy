@@ -2622,6 +2622,7 @@ class PokeDaisyActivity : Activity() {
             load3ds(romFile)
             return
         }
+        if (!recoverSaveTrade()) { finish(); return }
         freshLaunch = true
         // An archive unpacks once (cached after) - ~0.5 s for 32 MiB, on the black screen. One with no game in it (a PC
         // fan game's zip) is said so, not played: read as the ROM it threw on its CRC and closed the app (Crashlytics,
@@ -3512,11 +3513,21 @@ class PokeDaisyActivity : Activity() {
         }
     }
 
+    private fun recoverSaveTrade(): Boolean {
+        if (SaveFileEdits.recover(this)) return true
+        Toast.makeText(this, ClosedSaveEdits.recoveryError(), Toast.LENGTH_LONG).show()
+        return false
+    }
+
     /** Starts the loaded ROM's engine, resuming where it was left; false with no ROM. */
     private fun startGame(): Boolean {
         val r = rom ?: return false
         n3ds?.let { it.start(); return true }
         val st = states ?: return false
+        if (isFinishing || !engine.sleeping && !recoverSaveTrade()) {
+            finish()
+            return false
+        }
         AudioEffects.load(Prefs(this))
         AudioEffectsTrack.open(this)
         val save = SavesLocation.saveFor(this, Prefs(this), r)
@@ -6192,7 +6203,7 @@ class PokeDaisyActivity : Activity() {
         if (coopRefuses()) return
         val r = rom ?: return
         if (romIs3ds) { endN3ds(); load3ds(r); startGame(); return }
-        if (!::engine.isInitialized) return
+        if (!::engine.isInitialized || !recoverSaveTrade()) return
         // Unbind the GL view from the current framebuffer FIRST and wait for
         // it to take — engine.stop() frees the native buffer the GL thread
         // (continuous render mode, its own clock) may still be reading; skip

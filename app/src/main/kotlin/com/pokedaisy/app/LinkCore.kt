@@ -11,8 +11,6 @@ object LinkCore {
         System.loadLibrary("pokedaisy")
     }
 
-    const val MAX_GAMES = 4
-
     /** Opens and joins the games, in link order (the first is the cable's parent). False if one can't be opened. */
     external fun pkLinkOpen(roms: Array<String>, saves: Array<String>): Boolean
     /** Lets a save in progress finish (at most [maxFrames] frames, still linked), then closes every game. */

@@ -15,7 +15,7 @@ val cmp by extra("1.5.12")
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val sharedUi = rootDir.resolve("../shared-ui/src/commonMain/kotlin/com/pokedaisy/app")
-val previewScreenSources = listOf("companion/ui/**", "DocsApi.kt", "DocsCache.kt", "DocsSearch.kt", "GameSaves.kt")
+val previewScreenSources = listOf("companion/ui/**", "DocsApi.kt", "DocsCache.kt", "DocsSearch.kt")
 val appIncludes = listOf(
     "SettingsActivity.kt", "KeyEvents.kt", "CoopSettingsPages.kt", "LibraryActivity.kt", "SavesLocation.kt",
     "CoverArtSync.kt", "CoverSync.kt", "DocsStore.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSavesAndroid.kt", "RzipSave.kt", "SaveBackups.kt", "GameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt",

@@ -6,7 +6,7 @@ import okio.source
 
 /** Android's archive-aware file adapter; all header/fingerprint rules live in the common reader. */
 object RomIdentity {
-    private fun reader(rom: File) = RomIdentityReader(
+    internal fun reader(rom: File) = RomIdentityReader(
         readAtSource = { at, count -> RomArchive.readAt(rom, at, count) },
         openSource = { RomArchive.open(rom).source() })
     fun gameCode(rom: File) = reader(rom).gameCode()

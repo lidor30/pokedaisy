@@ -46,14 +46,43 @@ object GameSaves {
         return "${saveName.substringBeforeLast('.', saveName)}.backup-$stamp.${saveName.substringAfterLast('.', "")}"
     }
 
-    fun backups(dir: Path, romBaseName: String): List<Path> {
-        val fs = FileSystem.SYSTEM
+    fun backups(dir: Path, romBaseName: String): List<Path> = backups(dir, romBaseName, FileSystem.SYSTEM)
+
+    private fun backups(dir: Path, romBaseName: String, fs: FileSystem): List<Path> {
         fun stamp(path: Path) = path.name.substringAfterLast(".backup-").take(15)
         fun index(path: Path) = path.name.substringAfterLast(".backup-").substringBeforeLast('.').drop(15)
             .removePrefix("-").toIntOrNull() ?: 1
         return fs.listOrNull(dir).orEmpty().filter {
             fs.metadataOrNull(it)?.isRegularFile == true && it.name.startsWith("$romBaseName.backup-")
         }.sortedWith(compareByDescending<Path>(::stamp).thenByDescending(::index).thenByDescending { it.name })
+    }
+
+    enum class RestoreBackupOrder {
+        /** Dated Android snapshots and imports use the filename suffix, including same-second suffixes. */
+        DATED_NAME,
+        /** iOS mixes dated imports and content-keyed snapshots, so their common time is file modification. */
+        MODIFIED_TIME,
+    }
+
+    /** The host supplies its existing snapshot sources and import basenames, in discovery order.
+     * Paths identify entries, so two copies with the same name in separate folders remain selectable. */
+    fun restoreBackups(
+        directory: Path,
+        romBaseNames: List<String>,
+        snapshots: List<Path>,
+        order: RestoreBackupOrder,
+        fs: FileSystem = FileSystem.SYSTEM,
+    ): List<Path> {
+        val imports = romBaseNames.flatMap { backups(directory, it, fs) }
+        // Kotlin's stable sort retains the host's existing source priority for equal sort keys.
+        return when (order) {
+            RestoreBackupOrder.DATED_NAME -> (snapshots + imports).distinct()
+                .sortedByDescending { it.name.substringAfter(".backup-") }
+            RestoreBackupOrder.MODIFIED_TIME -> (imports + snapshots).distinct()
+                .map { it to (fs.metadataOrNull(it)?.lastModifiedAtMillis ?: 0L) }
+                .sortedWith(compareByDescending<Pair<Path, Long>> { it.second }.thenByDescending { it.first.name })
+                .map { it.first }
+        }
     }
 
     sealed class Result {

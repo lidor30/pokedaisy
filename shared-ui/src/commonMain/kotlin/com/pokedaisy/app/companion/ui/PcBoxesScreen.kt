@@ -98,6 +98,24 @@ class PcBoxesState(editor: MonSaveEditor) {
     /** A pick-list, amount, name or confirm over the page, if one is open. */
     var editing by mutableStateOf<Editing?>(null)
 
+    fun focus(at: MonRef) {
+        selected = at
+        if (at is MonRef.Pc) box = at.at.box
+    }
+
+    fun back(onLeave: () -> Unit) {
+        when {
+            editing != null -> editing = null
+            missing != null -> missing = null
+            confirmSave -> confirmSave = false
+            confirmDiscard -> confirmDiscard = false
+            detail != null -> detail = null
+            moving != null -> moving = null
+            changed -> confirmDiscard = true
+            else -> onLeave()
+        }
+    }
+
     enum class Page { POKEMON, BAG, TRAINER }
     enum class DetailTab { INFO, STATS, MOVES }
 
@@ -223,22 +241,13 @@ fun PcBoxesScreen(
     // The box's cards: a step denser, so ten-letter names fit six across.
     val cell = rememberGbaTextMetrics(textScale = 0.8f)
     val data = state.data
-    val leave = {
-        when {
-            state.missing != null -> state.missing = null
-            state.detail != null -> state.detail = null
-            state.moving != null -> state.moving = null
-            state.changed -> state.confirmDiscard = true
-            else -> onBack()
-        }
-    }
     Box(Modifier.fillMaxSize()) {
         AppBackdrop()
         // A Pokémon's page takes the screen; the boxes come back as they were.
         state.detail?.let { at -> MonPage(state, at, m, small, icons, sprites, onClose = { state.detail = null }) }
         state.missing?.let { v -> if (state.detail == null) MissingPage(state, v, m, small, onGet = { onGet?.invoke(it) }, onClose = { state.missing = null }) }
         if (state.detail == null && state.missing == null) Column(Modifier.fillMaxSize().padding(16.dp)) {
-            OptionTitleWindow(tk("SAVE EDITOR"), m, trailing = gameName, onBack = leave)
+            OptionTitleWindow(tk("SAVE EDITOR"), m, trailing = gameName, onBack = { if (!saving) state.back(onBack) })
             Spacer(Modifier.height(m.u * 4))
             Row(horizontalArrangement = Arrangement.spacedBy(m.u * 4), verticalAlignment = Alignment.CenterVertically) {
                 // A DS save has its POKéMON page only (its bag and trainer come later).
