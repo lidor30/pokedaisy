@@ -97,6 +97,48 @@ class GameSavesTest {
         assertTrue(result.reason.contains(kept.name)); assertTrue(fs.exists(states.freshBootFile))
     }
 
+    @Test fun datedRestoreBackupsKeepFolderCopiesAndFilenameOrdering() = temporary { dir, _ ->
+        val snapshots = dir / "snapshots"
+        val custom = dir / "custom"
+        fs.createDirectories(snapshots)
+        fs.createDirectories(custom)
+        val import = dir / "Game.backup-20261006-113012.sav"
+        val sameSecond = dir / "Game.backup-20261006-113012-2.sav"
+        val archived = dir / "Archive.backup-20261005-100000.srm"
+        val inSnapshots = snapshots / import.name
+        val inCustom = custom / import.name
+        listOf(import, sameSecond, archived, inSnapshots, inCustom, dir / "Other.backup-20261007-100000.sav")
+            .forEach { put(it, "battery") }
+        fs.createDirectories(dir / "Game.backup-20261007-100000.sav")
+
+        assertEquals(listOf(inSnapshots, inCustom, import, sameSecond, archived), GameSaves.restoreBackups(
+            dir, listOf("Game", "Archive", "Game"), listOf(inSnapshots, inCustom, inSnapshots),
+            GameSaves.RestoreBackupOrder.DATED_NAME,
+        ))
+    }
+
+    @Test fun modifiedRestoreBackupsUseMtimeThenNameAndRetainDiscoveryTies() = temporary { dir, _ ->
+        val snapshots = dir / "snapshots"
+        fs.createDirectories(snapshots)
+        val imported = dir / "Game.backup-20261007-113012.sav"
+        val sameName = snapshots / imported.name
+        val sameTime = snapshots / "Game.sav.content-key.sav"
+        val newer = snapshots / "Game.sav.newer-content-key.sav"
+        val older = dir / "Game.backup-20261008-113012.sav"
+        val times = mapOf(imported to 2L, sameName to 2L, sameTime to 2L, newer to 3L, older to 1L)
+        times.keys.forEach { put(it, "battery") }
+        val disk = object : ForwardingFileSystem(fs) {
+            override fun metadataOrNull(path: Path): FileMetadata? =
+                times[path]?.let { FileMetadata(isRegularFile = true, lastModifiedAtMillis = it) }
+                    ?: super.metadataOrNull(path)
+        }
+
+        assertEquals(listOf(newer, sameTime, imported, sameName, older), GameSaves.restoreBackups(
+            dir, listOf("Game"), listOf(sameName, newer, sameTime, sameName),
+            GameSaves.RestoreBackupOrder.MODIFIED_TIME, disk,
+        ))
+    }
+
     @Test fun importsInTheSameSecondKeepDistinctReadableBackupsInOrder() = temporary { dir, states ->
         val save = dir / "Diagnostic.sav"; put(save, "first")
         val first = assertIs<GameSaves.Result.Loaded>(GameSaves.load(save, "second".encodeToByteArray(), { states }, now = 1_000L))

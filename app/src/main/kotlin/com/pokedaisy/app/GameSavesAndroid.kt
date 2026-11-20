@@ -13,6 +13,7 @@ fun GameSaves.load(context: Context, prefs: Prefs, rom: File, picked: ByteArray)
         is RzipSave.Result.Unpacked -> decoded.bytes
         is RzipSave.Result.Unreadable -> return GameSaves.Result.Failed(RzipSave.unreadableMessage())
     }
+    if (!SaveFileEdits.recover(context)) return GameSaves.Result.Failed(ClosedSaveEdits.recoveryError())
     val current = SavesLocation.saveFor(context, prefs, rom)
     return load(current.toOkioPath(), bytes,
         states = { SaveStates(context.getExternalFilesDir(null) ?: context.filesDir, SaveStates.crc32(rom)).files })

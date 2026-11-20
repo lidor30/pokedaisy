@@ -28,8 +28,7 @@ object GameVolume {
     fun set(percent: Int, muted: Boolean) {
         this.percent = percent.coerceIn(0, 100)
         this.muted = muted
-        val p = this.percent / 100f
-        gain = if (muted) 0f else p * p
+        gain = gameAudioGain(this.percent, muted)
         for (l in listeners) runCatching { l() }
     }
 }

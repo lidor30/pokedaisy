@@ -78,6 +78,8 @@ The 3DS app has the same editor for FireRed, LeafGreen, Emerald, Ruby and Sapphi
 
 ## Trade between saves
 
+On Android, PokeDaisy backs up both saves and recovers an interrupted write before opening a game. If one of your saves is on removable storage, reconnect it so PokeDaisy can finish recovering.
+
 Tap `TOOLS` in the library, then `TRADE SAVES`, and pick the game to trade from and then the one to trade with. `BACK` on the second pick lets you choose the first game again, and `BACK` from the trade takes you back to `TOOLS`. (In a game's `SAVE EDITOR`, `TRADE` starts a trade from that game, and `BACK` returns to its boxes.)
 
 Each game shows its party over its boxes. Pick a Pokémon on one side, then a Pokémon or an empty slot on the other, in the party or the PC: a Pokémon for a Pokémon (`TRADE`), or one sent over (`SEND`). An empty party slot puts the Pokémon at the end of that party. `SAVE` writes both saves together.
