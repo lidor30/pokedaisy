@@ -5,11 +5,7 @@ import com.pokedaisy.app.companion.data.coop.CoopPresenceLink
 import com.pokedaisy.app.companion.data.coop.PartnerPlacement
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 class CoopPresenceTest {
     private class FakeCore : PartnerCore {
@@ -68,7 +64,7 @@ class CoopPresenceTest {
         s.core.self = self(0, 16, 160)
         s.presence.link = s.link
         for (i in 0 until 60) { now = i * 1000L / 60; s.presence.onFrame(true) }
-        assertTrue("sends ${s.link.sends}", s.link.sends in 10..11)
+        assertTrue(s.link.sends in 10..11, "sends ${s.link.sends}")
     }
 
     @Test fun partnerWalksOnMyScreen() {
@@ -83,8 +79,8 @@ class CoopPresenceTest {
         val xs = b.core.places.filterNotNull().map { it.fineX }
         assertTrue(xs.isNotEmpty())
         assertEquals(176, xs.last())
-        assertTrue("monotonic $xs", xs.zipWithNext().all { (p, q) -> q >= p })
-        assertTrue("walked through, not jumped: ${xs.distinct()}", xs.distinct().size > 4)
+        assertTrue(xs.zipWithNext().all { (p, q) -> q >= p }, "monotonic $xs")
+        assertTrue(xs.distinct().size > 4, "walked through, not jumped: ${xs.distinct()}")
         assertTrue(b.core.lastPlace()!!.hflip)
     }
 

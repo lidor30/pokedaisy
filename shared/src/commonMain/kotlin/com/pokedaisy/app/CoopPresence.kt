@@ -8,7 +8,9 @@ import com.pokedaisy.app.companion.data.coop.PresenceLook
 import com.pokedaisy.app.companion.data.coop.PresenceMode
 import com.pokedaisy.app.companion.data.coop.PresenceSmoother
 import com.pokedaisy.app.companion.data.coop.PresenceUpdate
-import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /** The native half of co-op presence ([MgbaCore] in the app, a fake in tests). */
 interface PartnerCore {
@@ -17,16 +19,6 @@ interface PartnerCore {
     fun setArt(art: ByteArray?)
     /** null = hide the partner. */
     fun place(p: PartnerPlacement?)
-}
-
-/** [MgbaCore] as a [PartnerCore]. */
-object MgbaPartnerCore : PartnerCore {
-    override fun self(): IntArray? = MgbaCore.pkPartnerSelf()
-    override fun setArt(art: ByteArray?) = MgbaCore.pkPartnerSet(art)
-    override fun place(p: PartnerPlacement?) {
-        if (p == null) MgbaCore.pkPartnerPlace(false, 0, 0, 0, false, -1, 0)
-        else MgbaCore.pkPartnerPlace(true, p.fineX, p.fineY, p.frame, p.hflip, p.blobFrame, p.bob)
-    }
 }
 
 /**
@@ -50,8 +42,8 @@ class CoopPresence(
 
     private class Arrival(val u: PresenceUpdate, val atMs: Long)
 
-    private val inbox = ConcurrentLinkedQueue<Arrival>()
-    private val lock = Any()
+    private val inbox = ArrayDeque<Arrival>()
+    private val lock = SynchronizedObject()
     private val smoother = PresenceSmoother()
 
     private var lastSendMs = 0L
@@ -76,8 +68,10 @@ class CoopPresence(
 
     fun onReceived(bytes: ByteArray) {
         val u = PresenceCodec.decode(bytes) ?: return
-        lastReceived = u
-        inbox.add(Arrival(u, clock()))
+        synchronized(lock) {
+            lastReceived = u
+            inbox.addLast(Arrival(u, clock()))
+        }
     }
 
     fun onFrame(field: Boolean) = synchronized(lock) {
@@ -89,7 +83,7 @@ class CoopPresence(
         }
         cleared = false
         while (true) {
-            val a = inbox.poll() ?: break
+            val a = inbox.removeFirstOrNull() ?: break
             smoother.push(a.u, a.atMs)
             if (a.u.valid) noteLook(a.u)
         }

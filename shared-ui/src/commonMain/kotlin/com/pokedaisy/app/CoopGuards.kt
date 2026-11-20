@@ -1,6 +1,8 @@
 package com.pokedaisy.app
 
-import java.util.EnumSet
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 /**
  * Why the co-op game is held and why LOAD STATE / REWIND are refused, by reason, so two features turning the same
@@ -10,9 +12,9 @@ object CoopGuards {
     enum class Hold { LOCK_START, LOCK_LINK, BATTLE }
     enum class StateBlock { LOCK, BATTLE }
 
-    private val lock = Any()
-    private val holds = EnumSet.noneOf(Hold::class.java)
-    private val blocks = EnumSet.noneOf(StateBlock::class.java)
+    private val lock = SynchronizedObject()
+    private val holds = mutableSetOf<Hold>()
+    private val blocks = mutableSetOf<StateBlock>()
 
     @Volatile var held = false
         private set

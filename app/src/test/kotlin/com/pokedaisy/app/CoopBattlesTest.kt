@@ -62,8 +62,13 @@ private class FakeChannel : CoopBattleChannel {
 private class FakeEmu : CoopEmu {
     val queue = ArrayDeque<() -> Unit>()
     var inline = false
-    override var running = true
+    var running = true
     override fun post(job: () -> Unit) { if (inline) job() else queue.add(job) }
+    override fun runBetweenFrames(waitMs: Long, job: () -> Unit): Boolean {
+        if (running) return awaitCoopFrame(waitMs, ::post, job)
+        job()
+        return true
+    }
     fun drain() { while (queue.isNotEmpty()) queue.removeFirst()() }
 }
 
