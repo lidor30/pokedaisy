@@ -1,9 +1,6 @@
 package com.pokedaisy.app.companion.coop
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
-import org.junit.Test
+import kotlin.test.*
 
 /** [CoopInvite]: a link or a bare ticket in, the ticket out; anything else is refused. */
 class CoopInviteTest {
@@ -15,7 +12,7 @@ class CoopInviteTest {
         assertEquals(t, CoopInvite.parse("  $t\n"))
         assertEquals(t, CoopInvite.parse("POKEDAISY://coop/$t"))
         assertEquals(t, CoopInvite.parse("\tpokedaisy://coop/$t  "))
-        val real = ticketOf(9)
+        val real = CoopTicket.peerOnly(CoopPeerId.of(ByteArray(32) { 9 }))
         assertEquals(real, CoopInvite.parse(CoopInvite.link(real)))
     }
 
@@ -46,10 +43,10 @@ class CoopInviteTest {
             "pdco" + "a".repeat(28) + " " + "a".repeat(28),
             "PDCO" + "a".repeat(56),
             " ".repeat(4_097) + t,
-        ).forEach { assertNull(it.take(40), CoopInvite.parse(it)) }
+        ).forEach { assertNull(CoopInvite.parse(it), it.take(40)) }
     }
 
     @Test fun linkRefusesABadTicket() {
-        assertThrows(IllegalArgumentException::class.java) { CoopInvite.link("nope") }
+        assertFailsWith<IllegalArgumentException> { CoopInvite.link("nope") }
     }
 }

@@ -37,7 +37,12 @@ class RelayCoopTransportTest {
         val secret = ByteArray(32).also { SecureRandom().nextBytes(it) }
         val id = CoopPeerId.of(CoopKeys.publicKey(secret))
         val lan = FakeCoopLan(network)
-        val transport = RelayCoopTransport(relay, if (lanDiscovery) lan else NoCoopLan, timings, clock, bindLoopback = true)
+        @Volatile var addresses: () -> List<InetAddress> = { listOf(InetAddress.getLoopbackAddress()) }
+        @Volatile var jitter: () -> Double = { kotlin.random.Random.nextDouble() }
+        val transport = RelayCoopTransport(
+            relay, JvmCoopCrypto, { AndroidCoopNetwork(true) { addresses() } },
+            if (lanDiscovery) lan else NoCoopLan, timings, clock, random = { jitter() },
+        )
         val seen = CopyOnWriteArrayList<CoopEvent>()
         private val url = url
         private val relayOnly = relayOnly
@@ -487,11 +492,11 @@ class RelayCoopTransportTest {
         val a = Node(timings, relayOnly = false, autoStart = false)
         val first = InetAddress.getByAddress(byteArrayOf(10, 0, 0, 5))
         val second = InetAddress.getByAddress(byteArrayOf(10, 0, 0, 6))
-        a.transport.addresses = { listOf(first) }
+        a.addresses = { listOf(first) }
         assertEquals(0, a.start())
         val one = (a.waitFor(0, "Ready") { it is CoopEvent.Ready } as CoopEvent.Ready).ticket
         assertArrayEquals(first.address, CoopTicket.decode(one)!!.addresses.single().ip)
-        a.transport.addresses = { listOf(first, second) }
+        a.addresses = { listOf(first, second) }
         val two = a.waitFor(0, "Ready with two") { it is CoopEvent.Ready && it.ticket != one } as CoopEvent.Ready
         assertEquals(2, CoopTicket.decode(two.ticket)!!.addresses.size)
         assertEquals(two.ticket, a.transport.ticket())
@@ -563,7 +568,7 @@ class RelayCoopTransportTest {
         val now = AtomicLong(1_000_000)
         val t = CoopTimings(backoffStartMs = 1_000, backoffMaxMs = 30_000, backoffResetMs = 30_000)
         val n = Node(t, clock = { now.get() })
-        n.transport.random = object : Random() { override fun nextDouble() = 0.5 }   // no jitter
+        n.jitter = { 0.5 }   // no jitter
         n.transport.setPolicy(emptySet(), true, null)   // the invite room: one socket, no partner
         await("socket up") { relay.openSockets() == 1 }
         fun dropAndExpect(delayMs: Long) {
@@ -586,7 +591,7 @@ class RelayCoopTransportTest {
 
     @Test fun backoffDelaysStayWithinJitterAndCap() {
         val rnd = object : Random() { var v = 0.5; override fun nextDouble() = v }
-        val b = RoomBackoff(1_000, 30_000) { rnd }
+        val b = RoomBackoff(1_000, 30_000, rnd::nextDouble)
         val base = listOf(1_000L, 2_000, 4_000, 8_000, 16_000, 30_000, 30_000)
         for (expected in base) assertEquals(expected, b.next())
         b.reset()

@@ -29,3 +29,13 @@ interface CoopLobbyConnector {
     /** The lobby is `<relayUrl>/v1/lobby`. */
     fun openLobby(relayUrl: String, listener: CoopRelaySocket.Listener): CoopRelaySocket
 }
+
+/** Both clients use the same room and lobby endpoints and the same TLS scheme. */
+fun coopRelayEndpoint(baseUrl: String, path: String): String {
+    val base = baseUrl.trimEnd('/')
+    return when {
+        base.startsWith("https://") -> "wss://" + base.removePrefix("https://") + path
+        base.startsWith("http://") -> "ws://" + base.removePrefix("http://") + path
+        else -> throw IllegalArgumentException("relay url: http(s)://")
+    }
+}

@@ -45,8 +45,8 @@ class FakeCoopLan(private val network: FakeLanNetwork = FakeLanNetwork()) : Coop
         for (o in synchronized(network) { network.lans.remove(this); network.lans.toList() }) o.listener?.lost(me)
     }
 
-    private fun advertisement(): Triple<CoopPeerId, String, List<InetSocketAddress>>? {
+    private fun advertisement(): Triple<CoopPeerId, String, List<CoopEndpoint>>? {
         val me = self ?: return null
-        return Triple(me, userData, listOf(InetSocketAddress("127.0.0.1", port)))
+        return Triple(me, userData, listOf(InetSocketAddress("127.0.0.1", port).toCoopEndpoint()))
     }
 }

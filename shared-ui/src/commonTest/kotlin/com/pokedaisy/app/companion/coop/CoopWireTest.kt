@@ -1,18 +1,12 @@
 package com.pokedaisy.app.companion.coop
 
-import org.junit.Assert.assertArrayEquals
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /** [CoopWire] frames and the [CoopHello]: everything received is checked field by field. */
 class CoopWireTest {
     private val name = byteArrayOf(0xBB.toByte(), 0xC6.toByte(), 0xC9.toByte(), 0xC8.toByte(), 0xFF.toByte(), 0, 0, 0)
     private val save = CoopSaveId(0x1234, 0xABCD, name)
-    private val ticket = ticketOf(0xC2)
+    private val ticket = CoopTicket.peerOnly(CoopPeerId.of(ByteArray(32) { 0xC2.toByte() }))
 
     private fun hello(ticket: String? = this.ticket) =
         CoopHello(protocol = 1, appVersion = "1.3.1", romSha1 = EMERALD_COOP_SHA1, save = save, female = true, ticket = ticket)
@@ -20,8 +14,8 @@ class CoopWireTest {
     @Test fun roundTrip() {
         val m = CoopWire.decode(CoopWire.encode(0x0123, byteArrayOf(1, 2)))!!
         assertEquals(0x0123, m.type)
-        assertArrayEquals(byteArrayOf(1, 2), m.payload)
-        assertArrayEquals(byteArrayOf(0x01, 0x23, 1, 2), CoopWire.encode(0x0123, byteArrayOf(1, 2)))
+        assertContentEquals(byteArrayOf(1, 2), m.payload)
+        assertContentEquals(byteArrayOf(0x01, 0x23, 1, 2), CoopWire.encode(0x0123, byteArrayOf(1, 2)))
     }
 
     @Test fun theLargestFramesPass() {
@@ -32,10 +26,10 @@ class CoopWireTest {
     }
 
     @Test fun refusesOversizeAndBadTypes() {
-        assertThrows(IllegalArgumentException::class.java) { CoopWire.encode(5, ByteArray(65_535)) }
-        assertThrows(IllegalArgumentException::class.java) { CoopWire.encode(0x10000, ByteArray(0)) }
-        assertThrows(IllegalArgumentException::class.java) { CoopWire.encode(0, ByteArray(0)) }
-        assertThrows(IllegalArgumentException::class.java) { CoopWire.encode(-1, ByteArray(0)) }
+        assertFailsWith<IllegalArgumentException> { CoopWire.encode(5, ByteArray(65_535)) }
+        assertFailsWith<IllegalArgumentException> { CoopWire.encode(0x10000, ByteArray(0)) }
+        assertFailsWith<IllegalArgumentException> { CoopWire.encode(0, ByteArray(0)) }
+        assertFailsWith<IllegalArgumentException> { CoopWire.encode(-1, ByteArray(0)) }
         assertNull(CoopWire.decode(byteArrayOf(0)))
         assertNull(CoopWire.decode(byteArrayOf()))
         assertNull(CoopWire.decode(byteArrayOf(0, 0)))
@@ -50,7 +44,7 @@ class CoopWireTest {
         assertEquals(save, h.save)
         assertEquals(0x1234, h.save.trainerId)
         assertEquals(0xABCD, h.save.secretId)
-        assertArrayEquals(name, h.save.name)
+        assertContentEquals(name, h.save.name)
         assertTrue(h.female)
         assertEquals(ticket, h.ticket)
     }
@@ -59,11 +53,11 @@ class CoopWireTest {
         val b = hello(ticket = null).encode()
         // u16 protocol, u8 length + "1.3.1", 20 SHA-1 bytes, u16 + u16, 8 name bytes, u8 female, u16 ticket length.
         assertEquals(2 + 1 + 5 + 20 + 2 + 2 + 8 + 1 + 2, b.size)
-        assertArrayEquals(byteArrayOf(0, 1, 5, '1'.code.toByte()), b.copyOfRange(0, 4))
+        assertContentEquals(byteArrayOf(0, 1, 5, '1'.code.toByte()), b.copyOfRange(0, 4))
         assertEquals(0xF3.toByte(), b[8])
-        assertArrayEquals(byteArrayOf(0x12, 0x34, 0xAB.toByte(), 0xCD.toByte()), b.copyOfRange(28, 32))
-        assertArrayEquals(name, b.copyOfRange(32, 40))
-        assertArrayEquals(byteArrayOf(1, 0, 0), b.copyOfRange(40, 43))
+        assertContentEquals(byteArrayOf(0x12, 0x34, 0xAB.toByte(), 0xCD.toByte()), b.copyOfRange(28, 32))
+        assertContentEquals(name, b.copyOfRange(32, 40))
+        assertContentEquals(byteArrayOf(1, 0, 0), b.copyOfRange(40, 43))
         assertNull(CoopHello.decode(b)!!.ticket)
     }
 
@@ -89,13 +83,13 @@ class CoopWireTest {
     }
 
     @Test fun helloRefusesToEncodeBadFields() {
-        assertThrows(IllegalArgumentException::class.java) { CoopHello(0x10000, "1.3.1", EMERALD_COOP_SHA1, save, false, null) }
-        assertThrows(IllegalArgumentException::class.java) { CoopHello(1, "1.3.1", "F3AE", save, false, null) }
-        assertThrows(IllegalArgumentException::class.java) { CoopHello(1, "1.3.1", EMERALD_COOP_SHA1.uppercase(), save, false, null) }
-        assertThrows(IllegalArgumentException::class.java) { CoopHello(1, "1.3.1!", EMERALD_COOP_SHA1, save, false, null) }
-        assertThrows(IllegalArgumentException::class.java) { CoopHello(1, "1.3.1", EMERALD_COOP_SHA1, save, false, "nope") }
-        assertThrows(IllegalArgumentException::class.java) { CoopSaveId(0x10000, 0, name) }
-        assertThrows(IllegalArgumentException::class.java) { CoopSaveId(0, 0, ByteArray(7)) }
+        assertFailsWith<IllegalArgumentException> { CoopHello(0x10000, "1.3.1", EMERALD_COOP_SHA1, save, false, null) }
+        assertFailsWith<IllegalArgumentException> { CoopHello(1, "1.3.1", "F3AE", save, false, null) }
+        assertFailsWith<IllegalArgumentException> { CoopHello(1, "1.3.1", EMERALD_COOP_SHA1.uppercase(), save, false, null) }
+        assertFailsWith<IllegalArgumentException> { CoopHello(1, "1.3.1!", EMERALD_COOP_SHA1, save, false, null) }
+        assertFailsWith<IllegalArgumentException> { CoopHello(1, "1.3.1", EMERALD_COOP_SHA1, save, false, "nope") }
+        assertFailsWith<IllegalArgumentException> { CoopSaveId(0x10000, 0, name) }
+        assertFailsWith<IllegalArgumentException> { CoopSaveId(0, 0, ByteArray(7)) }
     }
 
     @Test fun saveIdsCompareByKey() {
@@ -111,14 +105,14 @@ class CoopWireTest {
         val bytes = ByteArray(32) { it.toByte() }
         val p = CoopPeerId.of(bytes)
         assertEquals("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", p.hex)
-        assertArrayEquals(bytes, p.bytes())
-        assertThrows(IllegalArgumentException::class.java) { CoopPeerId.of(ByteArray(31)) }
+        assertContentEquals(bytes, p.bytes())
+        assertFailsWith<IllegalArgumentException> { CoopPeerId.of(ByteArray(31)) }
     }
 
     /** A HELLO laid out by hand, so the decoder sees values the encoder would refuse. */
     private fun rebuild(version: String = "1.3.1", ticket: String = this.ticket, female: Int = 1): ByteArray {
-        val v = version.toByteArray(Charsets.UTF_8)
-        val t = ticket.toByteArray(Charsets.UTF_8)
+        val v = version.encodeToByteArray()
+        val t = ticket.encodeToByteArray()
         val sha = ByteArray(20) { EMERALD_COOP_SHA1.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
         return byteArrayOf(0, 1, v.size.toByte()) + v + sha +
             byteArrayOf(0x12, 0x34, 0xAB.toByte(), 0xCD.toByte()) + name + byteArrayOf(female.toByte()) +

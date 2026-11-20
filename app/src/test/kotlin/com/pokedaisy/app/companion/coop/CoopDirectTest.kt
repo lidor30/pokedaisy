@@ -18,8 +18,8 @@ class CoopDirectTest {
         client.sendBufferSize = 4096
         val silent = server.accept() // never read from
         val closed = CountDownLatch(1)
-        val ds = DirectSocket(client, pool, {}, { closed.countDown() })
-        ds.start()
+        val ds = DirectSocket(client, pool)
+        ds.start({}, { closed.countDown() })
         val big = ByteArray(60_000)
         repeat(200) { ds.writer.offer(big) } // far more than the socket buffers hold: the writer blocks
         Thread.sleep(300)

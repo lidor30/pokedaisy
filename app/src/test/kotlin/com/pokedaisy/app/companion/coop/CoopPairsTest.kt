@@ -84,11 +84,11 @@ class CoopPairsTest {
 
     @Test fun secretKeyIsStable() {
         val dir = File(tmp.root, "coop")
-        val a = CoopIdentity.secretKey(dir)
+        val a = CoopIdentity.secretKey(dir.toOkioPath(), JvmCoopCrypto)
         assertEquals(32, a.size)
-        assertArrayEquals(a, CoopIdentity.secretKey(dir))
+        assertArrayEquals(a, CoopIdentity.secretKey(dir.toOkioPath(), JvmCoopCrypto))
         File(dir, "secret.key").writeBytes(ByteArray(5))
-        val b = CoopIdentity.secretKey(dir)
+        val b = CoopIdentity.secretKey(dir.toOkioPath(), JvmCoopCrypto)
         assertEquals(32, b.size)
         assertEquals(32L, File(dir, "secret.key").length())
         assertNotEquals(0, b.count { it.toInt() != 0 })

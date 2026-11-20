@@ -8,30 +8,6 @@ import java.util.ArrayDeque
 import java.util.concurrent.TimeUnit
 
 /**
- * Same-Wi-Fi discovery: a device advertises its key, TCP port and a short pairing label,
- * and hears about the others doing the same. Nothing here connects; the transport dials
- * the addresses it is given.
- */
-interface CoopLan {
-    interface Listener {
-        /** A peer appeared, or its [userData] / addresses changed ("" when it sent no label). */
-        fun found(peer: CoopPeerId, userData: String, addresses: List<InetSocketAddress>)
-        fun lost(peer: CoopPeerId)
-    }
-
-    fun start(self: CoopPeerId, port: Int, userData: String?, listener: Listener)
-    fun setUserData(userData: String?)
-    fun stop()
-}
-
-/** No LAN discovery (no NSD, or it failed). */
-object NoCoopLan : CoopLan {
-    override fun start(self: CoopPeerId, port: Int, userData: String?, listener: CoopLan.Listener) {}
-    override fun setUserData(userData: String?) {}
-    override fun stop() {}
-}
-
-/**
  * [CoopLan] over Android's NSD: service type `_pdcoop._tcp`, name `pdco-` + the first 12 hex
  * of the key, TXT `k` = the key (64 hex) and `u` = the label (up to 200 UTF-8 bytes).
  * Resolves one service at a time (before API 34 a second resolve fails ALREADY_ACTIVE).
@@ -108,10 +84,10 @@ class NsdCoopLan(context: Context) : CoopLan {
         }
         guard("register") {
             val info = NsdServiceInfo().apply {
-                serviceName = nameFor(me)
-                serviceType = SERVICE_TYPE
+                serviceName = CoopLanRecord.nameFor(me)
+                serviceType = CoopLanRecord.SERVICE_TYPE
                 setPort(p)
-                for ((k, v) in txtFor(me, u)) setAttribute(k, v)
+                for ((k, v) in CoopLanRecord.encode(me, u)) setAttribute(k, v)
             }
             val l = object : NsdManager.RegistrationListener {
                 override fun onServiceRegistered(info: NsdServiceInfo) {}
@@ -151,15 +127,15 @@ class NsdCoopLan(context: Context) : CoopLan {
                 }
             }
             synchronized(lock) { if (gen != generation) return; discovery = l }
-            nsd.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, l)
+            nsd.discoverServices(CoopLanRecord.SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, l)
         }
     }
 
     private fun enqueue(gen: Int, info: NsdServiceInfo) {
         synchronized(lock) {
             if (gen != generation) return
-            val own = self?.let { nameFor(it) }
-            if (info.serviceName == own || !info.serviceName.startsWith(NAME_PREFIX)) return
+            val own = self?.let { CoopLanRecord.nameFor(it) }
+            if (info.serviceName == own || !info.serviceName.startsWith(CoopLanRecord.NAME_PREFIX)) return
             queue.add(info)
         }
         next(gen)
@@ -188,7 +164,7 @@ class NsdCoopLan(context: Context) : CoopLan {
                 @Suppress("DEPRECATION")
                 override fun onServiceResolved(info: NsdServiceInfo) {
                     guard("resolved") {
-                        val parsed = parseTxt(info.attributes ?: emptyMap())
+                        val parsed = CoopLanRecord.decode(info.attributes ?: emptyMap())
                         val host = info.host
                         var target: CoopLan.Listener? = null
                         synchronized(lock) {
@@ -200,7 +176,7 @@ class NsdCoopLan(context: Context) : CoopLan {
                             val (peer, u) = parsed
                             if (peer != synchronized(lock) { self }) {
                                 synchronized(lock) { keyByName[info.serviceName] = peer }
-                                notify("found") { t.found(peer, u, listOf(InetSocketAddress(host, info.port))) }
+                                notify("found") { t.found(peer, u, listOf(InetSocketAddress(host, info.port).toCoopEndpoint())) }
                             }
                         }
                     }
@@ -240,55 +216,7 @@ class NsdCoopLan(context: Context) : CoopLan {
         false
     }
 
-    companion object {
-        const val SERVICE_TYPE = "_pdcoop._tcp"
-        const val NAME_PREFIX = "pdco-"
-        private const val MAX_USER_BYTES = 200
+    private companion object {
         private const val RESOLVE_TIMEOUT_MS = 10_000L
-
-        internal fun nameFor(peer: CoopPeerId) = NAME_PREFIX + peer.hex.substring(0, 12)
-
-        /** The TXT records for [peer] and a label (cut to 200 UTF-8 bytes at a character boundary). */
-        internal fun txtFor(peer: CoopPeerId, userData: String?): Map<String, String> {
-            val out = LinkedHashMap<String, String>()
-            out["k"] = peer.hex
-            if (!userData.isNullOrEmpty()) {
-                var end = 0
-                var bytes = 0
-                while (end < userData.length) {
-                    val cp = userData.codePointAt(end)
-                    val n = when {
-                        cp < 0x80 -> 1
-                        cp < 0x800 -> 2
-                        cp < 0x10000 -> 3
-                        else -> 4
-                    }
-                    if (bytes + n > MAX_USER_BYTES) break
-                    bytes += n
-                    end += Character.charCount(cp)
-                }
-                // a lone surrogate would encode as '?', so such a label is cut before it
-                val cut = userData.substring(0, end)
-                if (cut.isNotEmpty()) out["u"] = cut
-            }
-            return out
-        }
-
-        /** The key and label of an advertisement, or null for a bad `k` or an over-long / invalid `u`. */
-        internal fun parseTxt(attributes: Map<String, ByteArray?>): Pair<CoopPeerId, String>? {
-            val k = attributes["k"] ?: return null
-            if (k.size != 64 || k.any { val c = it.toInt().toChar(); !(c in '0'..'9' || c in 'a'..'f') }) return null
-            val u = attributes["u"]
-            val label = when {
-                u == null -> ""
-                u.size > MAX_USER_BYTES -> return null
-                else -> try {
-                    Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(u)).toString()
-                } catch (_: java.nio.charset.CharacterCodingException) {
-                    return null
-                }
-            }
-            return CoopPeerId(String(k, Charsets.US_ASCII)) to label
-        }
     }
 }

@@ -24,18 +24,12 @@ class OkHttpRelayConnector(
         connect(relayUrl, "/v1/lobby", listener)
 
     private fun connect(relayUrl: String, path: String, listener: CoopRelaySocket.Listener): CoopRelaySocket {
-        val base = relayUrl.trimEnd('/')
-        val ws = when {
-            base.startsWith("https://") -> "wss://" + base.removePrefix("https://")
-            base.startsWith("http://") -> "ws://" + base.removePrefix("http://")
-            else -> throw IllegalArgumentException("relay url: http(s)://")
-        }
         val ended = AtomicBoolean(false)
         fun end(code: Int) {
             if (ended.compareAndSet(false, true)) listener.onClosed(code)
         }
         val socket = client.newWebSocket(
-            Request.Builder().url("$ws$path").build(),
+            Request.Builder().url(coopRelayEndpoint(relayUrl, path)).build(),
             object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) = listener.onOpen()
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) = listener.onMessage(bytes.toByteArray())

@@ -1,5 +1,8 @@
 package com.pokedaisy.app.companion.coop
 
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+
 /** Every co-op timing in milliseconds; tests shorten them. */
 data class CoopTimings(
     val dialMs: Long = 10_000,
@@ -29,8 +32,9 @@ data class CoopTimings(
  * the peer (once open) and never calls the listener back.
  */
 class CoopChannel(
+    crypto: CoopCrypto,
     val initiator: Boolean,
-    private val ownSecret: ByteArray,
+    ownSecret: ByteArray,
     remoteStatic: ByteArray?,
     prologue: ByteArray,
     /** Delivers one message to the peer; only enqueues, never re-enters a channel (see the class notes). */
@@ -49,9 +53,12 @@ class CoopChannel(
         fun closed(channel: CoopChannel, code: Int, beforeOpen: Boolean)
     }
 
-    private val lock = Any()
-    private val noise: CoopNoise =
-        if (initiator) CoopNoise.initiator(ownSecret, remoteStatic!!, prologue) else CoopNoise.responder(ownSecret, prologue)
+    private val lock = SynchronizedObject()
+    private val noise = if (initiator) {
+        CoopNoise.initiator(crypto, ownSecret, requireNotNull(remoteStatic), prologue)
+    } else {
+        CoopNoise.responder(crypto, ownSecret, prologue)
+    }
     private val startedAt = clock()
     private var send: CoopCipher? = null
     private var receive: CoopCipher? = null
@@ -69,7 +76,7 @@ class CoopChannel(
     val openedAt: Long get() = synchronized(lock) { openedAtMs }
 
     /** The handshake hash, null until open; both sides see the same bytes. */
-    internal val handshakeHash: ByteArray? get() = synchronized(lock) { hash?.copyOf() }
+    val handshakeHash: ByteArray? get() = synchronized(lock) { hash?.copyOf() }
 
     /** The initiator sends message 1 (a second call does nothing); the responder just waits for it. */
     fun begin() {
@@ -177,7 +184,7 @@ class CoopChannel(
         val status = try {
             decide(who)
         } catch (e: RuntimeException) {
-            coopLog("co-op decide failed: ${e.javaClass.simpleName}")
+            coopLog("co-op decide failed: ${e::class.simpleName}")
             CoopFrames.ERROR
         }
         synchronized(lock) {
@@ -247,7 +254,7 @@ class CoopChannel(
             try {
                 it()
             } catch (e: RuntimeException) {
-                coopLog("co-op listener threw ${e.javaClass.simpleName}")
+                coopLog("co-op listener threw ${e::class.simpleName}")
             }
         }
     }
@@ -257,14 +264,16 @@ class CoopChannel(
         const val PATH_PAIR = 1
         const val PATH_TCP = 2
         private const val TRANSPORT_VERSION = 1
-        private val PROLOGUE_TEXT = "PokeDaisy co-op 1".toByteArray(Charsets.US_ASCII)
+        private val PROLOGUE_TEXT = "PokeDaisy co-op 1".encodeToByteArray()
 
         /** The handshake prologue: the label, the path byte and (relay rooms) the room id's 32 ASCII characters. */
         fun prologue(path: Int, room: String?): ByteArray {
             require(path in PATH_INVITE..PATH_TCP) { "path: 0..2" }
             if (path == PATH_TCP) require(room == null) { "no room on TCP" }
-            else require(room != null && room.length == 32) { "a relay path needs a 32 character room" }
-            return PROLOGUE_TEXT + byteArrayOf(path.toByte()) + (room?.toByteArray(Charsets.US_ASCII) ?: ByteArray(0))
+            else require(room != null && room.length == 32 && room.all { it.code < 128 }) {
+                "a relay path needs a 32-character ASCII room"
+            }
+            return PROLOGUE_TEXT + byteArrayOf(path.toByte()) + (room?.encodeToByteArray() ?: ByteArray(0))
         }
     }
 }

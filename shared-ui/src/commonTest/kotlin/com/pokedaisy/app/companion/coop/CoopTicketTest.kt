@@ -1,11 +1,6 @@
 package com.pokedaisy.app.companion.coop
 
-import org.junit.Assert.assertArrayEquals
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.*
 
 /** [CoopTicket]: the encoded form, and decoding everything else to null. */
 class CoopTicketTest {
@@ -39,7 +34,7 @@ class CoopTicketTest {
     @Test fun roundTripsKeySecretAndAddresses() {
         val d = CoopTicket.decode(CoopTicket(peer, secret, listOf(v4, v6)).encode())!!
         assertEquals(peer, d.peer)
-        assertArrayEquals(secret, d.inviteSecret)
+        assertContentEquals(secret, d.inviteSecret)
         assertEquals(listOf(v4, v6), d.addresses)
         assertEquals(1, d.addresses[0].port)
         assertEquals(65_535, d.addresses[1].port)
@@ -91,10 +86,10 @@ class CoopTicketTest {
         // decode keeps addresses as bytes: there is no host name to resolve.
         val d = CoopTicket.decode(CoopTicket(peer, null, listOf(v4)).encode())!!
         assertEquals("192.168.1.20 port 1", d.addresses[0].toString())
-        assertArrayEquals(byteArrayOf(192.toByte(), 168.toByte(), 1, 20), d.addresses[0].ip)
+        assertContentEquals(byteArrayOf(192.toByte(), 168.toByte(), 1, 20), d.addresses[0].ip)
     }
 
     @Test fun encodeRequiresAtMostFourAddresses() {
-        assertThrows(IllegalArgumentException::class.java) { CoopTicket(peer, null, List(5) { v4 }).encode() }
+        assertFailsWith<IllegalArgumentException> { CoopTicket(peer, null, List(5) { v4 }).encode() }
     }
 }
