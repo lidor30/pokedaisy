@@ -21,6 +21,15 @@ interface ItemUse {
     /** Party slots [a] and [b] trade places, as the game's party menu does. */
     fun reorderParty(a: Int, b: Int, done: (com.pokedaisy.app.companion.data.PartySwapResult) -> Unit) {}
 
+    /** The summary's moves can be dragged into a new order here (a GBA game whose SetMonData is known). */
+    fun canReorderMoves(): Boolean = false
+
+    /** [slot]'s move at [from] moves to [to] (the ones between shift), as the game's own summary does. */
+    fun reorderMoves(
+        slot: Int, personality: Long, from: Int, to: Int,
+        done: (com.pokedaisy.app.companion.data.MoveOrderResult) -> Unit,
+    ) = done(com.pokedaisy.app.companion.data.MoveOrderResult.FAILED)
+
     /** Whether [itemId] gets a USE button in this game. */
     fun canUse(itemId: Int): Boolean
 
