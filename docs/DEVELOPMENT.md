@@ -674,6 +674,11 @@ name table byte for byte. What differs:
 - **DEX** (`GEN2_DEX_GOLD_SILVER_DE`): English Gold's formats at their own addresses, pages metric as Kristall's.
 - **Art**: English's pixels; the icon tables 2 bytes later, the town maps' tilemaps 0x32 later (`Gen2Art.GOLD_DE` / `.SILVER_DE`).
 - **STEADY music**: PlayMusic 0x3D8F, the park 0x29D0; the songs loop as English's (`gbloop`).
+- **PC / FLY / WILD ENCOUNTERS** (`GbField.GoldDe` / `.SilverDe`): English's RAM, PCScript, Fly scripts (their first text byte
+  0x37, not 0x0A) and CheckWildEncounterCooldown; RunMemScript at 0x25:7A80 (English 7A61) and the Flypoints table at 0x24:5BFD
+  (English 5BCC). Checked headless (ROM_FEATURES' note 13).
+- **SHINY ODDS**: English's `GB_GOLD_SILVER` target (Kristall: English Crystal's `GB_CRYSTAL`): the battle RAM it reads is the same
+  on the `*_de_battle` fixtures.
 - The user's German Gold saves were empty, hence the fixture's save.
 - **EXPAND** (2026-11-20): `GB_GOLD_SILVER_DE` in `pk_wide_gb.c`, English Gold's row with SpriteMovementData a byte later
   (`GB_LINEAR(0x01, 0x4275)`, found by its bytes; MapGroupPointers and OverworldSprites where English's are). `widecheck` on

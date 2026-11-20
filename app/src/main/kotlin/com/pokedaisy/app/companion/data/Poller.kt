@@ -929,12 +929,12 @@ class TelemetrySampler {
                 ?.let { ShinyOdds.targetFor(it, fireRedFamily = fireRedEngine, plaintext = romSha1 in ShinyOdds.PLAINTEXT_SHA1S,
                     national = romSha1 in ShinyOdds.NATIONAL_SHA1S) }
 
-    /** Gold / Silver / Crystal's SHINY ODDS ([ShinyOdds.GbRoller]): the English carts, by the config their hash picked (the
-     * German ones and the hacks keep RAM of their own). */
+    /** Gold / Silver / Crystal's SHINY ODDS ([ShinyOdds.GbRoller]): the English and German carts, by the config their hash
+     * picked (the German ones keep English's RAM; the hacks keep RAM of their own). */
     private val gbShinyTarget: ShinyOdds.GbTarget?
         get() = when (gen2Cfg) {
-            GEN2_CRYSTAL -> ShinyOdds.GB_CRYSTAL
-            GEN2_GOLD, GEN2_SILVER -> ShinyOdds.GB_GOLD_SILVER
+            GEN2_CRYSTAL, GEN2_CRYSTAL_DE -> ShinyOdds.GB_CRYSTAL
+            GEN2_GOLD, GEN2_SILVER, GEN2_GOLD_DE, GEN2_SILVER_DE -> ShinyOdds.GB_GOLD_SILVER
             else -> null
         }
 

@@ -46,6 +46,19 @@ class GbFieldTest {
         assertFalse(GbField.Gold.matches(romOf("Pokemon - Crystal Version (USA).gbc")))
     }
 
+    /** German Gold / Silver: their own RunMemScript and Flypoints, so not English's config, nor English's theirs. */
+    @Test
+    fun `German Gold's and Silver's code, each in its own cart`() {
+        val gold = romOf("Pokemon - Goldene Edition (Germany) (SGB Enhanced) (GB Compatible).gbc")
+        val silver = romOf("Pokemon - Silberne Edition (Germany) (SGB Enhanced) (GB Compatible).gbc")
+        assertTrue(GbField.GoldDe.matches(gold))
+        assertTrue(GbField.SilverDe.matches(silver))
+        assertFalse(GbField.GoldDe.matches(silver))
+        assertFalse(GbField.SilverDe.matches(gold))
+        assertFalse(GbField.Gold.matches(gold))
+        assertFalse(GbField.GoldDe.matches(romOf("Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc")))
+    }
+
     @Test
     fun `each Gen 1 cart has its own config's code, and no other's`() {
         val carts = listOf(

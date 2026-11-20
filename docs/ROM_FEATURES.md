@@ -18,9 +18,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Brown (GB) | 6.0.1, 6.1.2 | — | ✅ ³⁸ | ✅ ³⁸ | ✅ ³⁸ | — | ✅ ³⁸ | — | n/a | n/a | ✅ ³⁸ | ✅ ³⁸ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Gold / Silver (GBC) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
-| Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
+| Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
 | Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
-| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
+| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
 | Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
@@ -243,7 +243,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
     branch): PCScript in bank 0x40, wDefaultSpawnpoint in bank 0, the Kanto landmarks from 46, Silver's Fly script 2 bytes before
     Gold's. Headless on the Gold / Silver save in Route 29: the PC opened ("GOLD turned on the PC.") and backed out of, FLY (the badge,
     the move and Cherrygrove's spawn poked in) landed at Cherrygrove's Pokémon Center, 100 steps in the grass with the cooldown held met
-    nothing (one without). German Gold / Silver and the Crystal hacks: not yet (their ROM / RAM moved).
+    nothing (one without). German Gold / Silver (`GbField.GoldDe` / `.SilverDe`, 2026-11-20): English's RAM, PCScript, Fly scripts and
+    cooldown check, RunMemScript 0x1F later (0x7A80) and the Flypoints table 0x31 later (0x5BFD); headless on the German Gold / Silver
+    save in Route 29: the PC opened ("GOLD schaltet den PC ein."), FLY (the badge, the move and Cherrygrove's spawn poked in) landed
+    at Rosalia City's Pokémon Center, 100 steps in the grass with the cooldown held met nothing (one within ~30 without). The Crystal
+    hacks: not yet (their ROM / RAM moved).
     PureRed / PureBlue (`GB_FIELD_PURE_RGB`, pureRGB's own source; both carts the same code): Red's ways in at its places -
     the PC routine in bank 0x33, called from 0x03D7 (its loop waits at OverworldLoop's `rst DelayFrame`), the wild data in
     bank 0x2C, the game state in WRAM bank 1 (read and written by bank). Checked headless on the converted Red save: the PC
@@ -808,7 +812,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
     release's .sym agrees: rev 0, rev 1, AU; Gold's and Silver's do). Checked headless in Crystal rev 1, Gold and Silver from
     the `crystal` / `gold` fixtures' saves (`scripts/gen2_save_from_fixture.py`): a wild Lv3 grass foe, the game's stats
     equal to the formula's, the rewrite still in place after the battle started, the foe sliding in shiny with the game's own
-    sparkle beside the same battle left plain (`GbShinyOddsTest`). The German carts keep RAM of their own: not checked.
+    sparkle beside the same battle left plain (`GbShinyOddsTest`). The German carts (Goldene / Silberne Edition, Kristall, 2026-11-20)
+    keep English's RAM: battle mode / type, wEnemyMon, wEnemyStats, wBaseDexNo and wBaseGender read the same on their
+    `gold_de_battle` / `silver_de_battle` / `crystal_de_battle` fixtures as on English's, so they share its target.
 
 ## What each column is
 
@@ -1058,6 +1064,7 @@ Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draw
     operands read from the cart's own code; the trampoline (21 / 16 / 18 bytes) at the end of the hook's bank in the cart's
     padding, which its write checks. Only walking speeds up: the bike and the skates keep the game's own answer, and every
     other state (surfing) is "not the bike". Found in English Red, Blue, Yellow, Gold, Silver, Crystal (rev 0, rev 1, AU),
-    Italian Yellow and Crystal Legacy (not played); N/A in the Spanish / German / French Yellows (12 to 14 bytes of bank 0
+    Italian Yellow and Crystal Legacy (not played), and in German Red / Blue, Gold / Silver and Crystal (Kristall; tried on a
+    Thor in Goldene, Blaue and Kristall, 2026-11-20); N/A in the Spanish / German / French Yellows (12 to 14 bytes of bank 0
     padding for a 16-byte trampoline), Brown, PureRed / PureBlue, Yellow Legacy, Crystal Clear (1 byte), Prism (27 bytes,
     under the 64 kept) and Polished Crystal (no .GetDPad). `GbRunningShoesTest`.
