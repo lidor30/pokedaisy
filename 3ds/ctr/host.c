@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 // armGBA's libretro layer keeps several long paths on the stack.
 u32 __stacksize__ = 512 * 1024;
@@ -111,6 +112,12 @@ void host_lent_code_release(void) {
 
 bool host_rom_arena_ready(void) {
     return romArena != NULL;
+}
+
+// A New 3DS CIA launch that didn't get the 124 MB mode pokedaisy.rsf asks for (armGBA found it given only on some launches):
+// under 100 MB of application memory.
+bool host_cia_short_of_memory(void) {
+    return host_is_new_3ds() && !envIsHomebrew() && osGetMemRegionSize(MEMREGION_APPLICATION) < (100u << 20);
 }
 
 extern char __bss_start__[], __bss_end__[]; // 3dsx.ld's
@@ -212,12 +219,19 @@ void host_log_open(const char* path) {
     logStart = osGetTime();
 }
 
+// Onto the card, not only to the file system: fflush alone left players' logs cut off mid-line (the file's size on the card
+// stays where it was when the app isn't closed cleanly: turned off, or a hang on "Closing software"). The lock is held.
+static void log_sync(void) {
+    fflush(logFile);
+    fsync(fileno(logFile));
+}
+
 // The held lines into the file; the lock is held.
 static void log_write_held(void) {
     if (logFile && logHeldUsed) {
         if (logDropped) fprintf(logFile, "[log] %u buffered lines discarded during gameplay\n", logDropped);
         fwrite(logHeld, 1, logHeldUsed, logFile);
-        fflush(logFile);
+        log_sync();
     }
     logHeldUsed = 0;
     logDropped = 0;
@@ -237,7 +251,7 @@ static void log_va(const char* format, va_list args) {
         logDropped += pd_log_buffer_append(logHeld, sizeof(logHeld), &logHeldUsed, line, len);
     } else {
         fwrite(line, 1, len, logFile);
-        fflush(logFile); // a crash leaves the lines so far
+        log_sync(); // a crash leaves the lines so far
     }
     LightLock_Unlock(&logLock);
 }

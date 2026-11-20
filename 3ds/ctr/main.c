@@ -450,6 +450,10 @@ static void core1_back(void) {
     host_log("core 1 back to the screens: %s", gpu_core1_back() ? "drawn on core 1" : "drawn on the game's core");
 }
 
+// The New 3DS gave a CIA launch less than the 124 MB it asks for (host_cia_short_of_memory).
+#define CIA_SHORT_WHY "the 3DS gave PokeDaisy less memory than it asks for this time. Close PokeDaisy from the HOME Menu and " \
+                      "start it again"
+
 static void game_failed(const char* title, const char* why) {
     host_lent_code_release();
     core1_back();
@@ -624,7 +628,8 @@ static bool run_game(const char* file) {
 
     // Every core reads the game into the buffer reserved at start: without it nothing can run, so say so plainly.
     if (!host_rom_arena_ready()) {
-        game_failed("The game didn't start:", "there was no room for the 32 MB game buffer when PokeDaisy started");
+        game_failed("The game didn't start:", host_cia_short_of_memory() ? CIA_SHORT_WHY
+                                                                          : "there was no room for the 32 MB game buffer when PokeDaisy started");
         return true;
     }
     struct VFile* rom = VFileOpen(romPath, O_RDONLY);
@@ -660,7 +665,10 @@ static bool run_game(const char* file) {
     // An Old 3DS's .3dsx has room for a 16 MB game buffer only (host.c's host_rom_arena_init): say what to do instead.
     if (host_rom_arena_size() < (32u << 20)) {
         const char* why = NULL;
-        if ((size_t) rom->size(rom) > host_rom_arena_size())
+        // A CIA launch the New 3DS gave less memory than it asked for: a restart from HOME, not the CIA, is the way out.
+        if (host_cia_short_of_memory() && ((size_t) rom->size(rom) > host_rom_arena_size() || gpsp))
+            why = CIA_SHORT_WHY;
+        else if ((size_t) rom->size(rom) > host_rom_arena_size())
             why = "this game is bigger than 16 MB, and the .3dsx only gets room for a 16 MB game on this 3DS. Install the CIA "
                   "to play it";
         else if (gpsp)
@@ -1642,6 +1650,10 @@ int main(void) {
     // The New 3DS's 804 MHz mode (a no-op on the original models; off for the dev build's Old 3DS stand-in).
     if (!host_old_3ds_stand_in()) osSetSpeedupEnable(true);
     mLogSetDefaultLogger(&silentLogger);
+    // The CIA asks a New 3DS for its 124 MB mode (pokedaisy.rsf), which some launches didn't get: what this one got.
+    if (host_is_new_3ds() && !envIsHomebrew())
+        host_log("New 3DS CIA: asked for 124 MB, got %lu KiB (%s)", (unsigned long) osGetMemRegionSize(MEMREGION_APPLICATION) >> 10,
+                 host_cia_short_of_memory() ? "LESS: a restart from HOME may get it" : "as asked");
     if (!arena || host_rom_arena_size() < (32u << 20)) {
         char report[256];
         host_memory_report(report, sizeof report);
