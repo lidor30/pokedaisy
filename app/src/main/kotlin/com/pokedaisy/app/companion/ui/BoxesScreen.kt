@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import com.pokedaisy.app.companion.data.isGameBoyGame
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -106,7 +107,7 @@ class BoxesUiState {
  * The BOXES tab: the PC's box screen in the app's own drawing, so every game that can read its boxes gets it, in the
  * colours of FireRed's (sampled from its screen: [PcColors], [BoxWallpapers]) - the PKMN DATA panel on the left
  * (picture well, name, level, item), the box on the right filling the rest: its name on the wallpaper's header strip
- * between two arrows, then the wallpaper with its bevelled frame and the 30 Pokémon (6 x 5), their icons at the largest
+ * between two arrows, then the wallpaper with its bevelled frame and the 30 Pokémon (6 x 5; a Game Boy box's 20, 5 x 4), their icons at the largest
  * whole scale the cells take, all over the PC's peach backdrop. A tall tab puts the panel over the box. A tap on a
  * Pokémon opens its summary (like PARTY's); the arrows, a swipe or the name (a pick-list) change the box. With the
  * D-pad, the focused Pokémon shows in the panel.
@@ -161,7 +162,7 @@ fun BoxesScreen(
             title = tr("BOXES"),
             options = boxes.boxes.indices.toList(),
             selected = boxIndex,
-            label = { i -> boxes.boxes[i].let { b -> "${b.name}   ${b.count}/$SLOTS" } },
+            label = { i -> boxes.boxes[i].let { b -> "${b.name}   ${b.count}/${b.mons.size}" } },
             m = m,
             onPick = { ui.box = it; ui.looked = null; ui.picking = false },
             onDismiss = { ui.picking = false },
@@ -269,11 +270,11 @@ fun BoxDepositPicker(boxes: BoxesView, mon: MonView?, onPick: (Int) -> Unit, onD
         title = tr("Deposit {0} in which BOX?", mon?.shownName.orEmpty()),
         options = boxes.boxes.indices.toList(),
         selected = boxes.currentBox,
-        label = { i -> boxes.boxes[i].let { b -> "${b.name}   ${b.count}/$SLOTS" } },
+        label = { i -> boxes.boxes[i].let { b -> "${b.name}   ${b.count}/${b.mons.size}" } },
         m = rememberGbaTextMetrics(),
         onPick = onPick,
         onDismiss = onDismiss,
-        badge = { i -> if (boxes.boxes[i].count >= SLOTS) tr("FULL") else null },
+        badge = { i -> if (boxes.boxes[i].count >= boxes.boxes[i].mons.size) tr("FULL") else null },
     )
 }
 
@@ -525,7 +526,11 @@ private fun MonPanel(
     val well = @Composable { wellModifier: Modifier ->
         Box(wellModifier.drawBehind { pictureWell(u.toPx(), night) }.padding(u * 5)) {
             val sprite = if (dex != null && species > 0) rememberRomBitmap(dex, species, PokedexSource::cachedFrontSprite, PokedexSource::frontSprite) else null
-            if (sprite != null || mon == null) TrimmedSprite(sprite, Modifier.fillMaxSize())
+            // A Game Boy picture leaves its paper clear (Dratini's white belly): the PC shows it on the paper, so the
+            // clear pixels the outline closes in get the paper's white back.
+            val game = com.pokedaisy.app.companion.data.activeGame
+            val paper = if (game.isGameBoyGame) OptionColors.gbPaper(game) else null
+            if (sprite != null || mon == null) TrimmedSprite(sprite, Modifier.fillMaxSize(), paper)
             // No picture to read (no Pokédex tables for the game, an egg): its icon, as large as whole pixels allow.
             else BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val density = LocalDensity.current
@@ -612,9 +617,10 @@ private fun MonPanel(
  * fits, centred: the well's room goes to the Pokémon, not to the picture's empty margin.
  */
 @Composable
-private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier) {
+private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier, paper: Color? = null) {
     val density = LocalDensity.current
     val trim = remember(bitmap) { bitmap?.let(::opaqueBounds) }
+    val holes = remember(bitmap, paper != null) { if (paper != null) bitmap?.let(::enclosedClear) else null }
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         if (bitmap == null || trim == null) return@BoxWithConstraints
         val w = with(density) { maxWidth.toPx() }
@@ -622,6 +628,11 @@ private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier) {
         val k = floor(minOf(w / trim.width, h / trim.height)).coerceAtLeast(1f)
         val image = bitmap
         Canvas(Modifier.size(with(density) { (trim.width * k).toDp() }, with(density) { (trim.height * k).toDp() })) {
+            if (paper != null) holes?.forEach { at ->
+                val x = at % image.width - trim.left
+                val y = at / image.width - trim.top
+                drawRect(paper, Offset(x * k, y * k), Size(k, k))
+            }
             drawImage(
                 image, srcOffset = IntOffset(trim.left, trim.top), srcSize = IntSize(trim.width, trim.height),
                 dstSize = IntSize((trim.width * k).roundToInt(), (trim.height * k).roundToInt()), filterQuality = FilterQuality.None,
@@ -633,6 +644,29 @@ private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier) {
 private class Trim(val left: Int, val top: Int, val width: Int, val height: Int)
 
 /** The smallest rectangle holding [b]'s non-transparent pixels (the whole picture if it has none). */
+/** [b]'s clear pixels that no 4-connected path of clear pixels joins to its edge: the inside of the outline. */
+private fun enclosedClear(b: ImageBitmap): IntArray {
+    val w = b.width
+    val h = b.height
+    val px = IntArray(w * h)
+    b.readPixels(px, 0, 0, w, h)
+    val outside = BooleanArray(w * h)
+    val stack = ArrayDeque<Int>()
+    fun push(i: Int) { if (!outside[i] && px[i] ushr 24 == 0) { outside[i] = true; stack.addLast(i) } }
+    for (x in 0 until w) { push(x); push((h - 1) * w + x) }
+    for (y in 0 until h) { push(y * w); push(y * w + w - 1) }
+    while (stack.isNotEmpty()) {
+        val i = stack.removeLast()
+        val x = i % w
+        val y = i / w
+        if (x > 0) push(i - 1)
+        if (x < w - 1) push(i + 1)
+        if (y > 0) push(i - w)
+        if (y < h - 1) push(i + w)
+    }
+    return (0 until w * h).filter { px[it] ushr 24 == 0 && !outside[it] }.toIntArray()
+}
+
 private fun opaqueBounds(b: ImageBitmap): Trim {
     val w = b.width
     val h = b.height
@@ -778,7 +812,7 @@ internal fun PcBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
     }
 }
 
-/** The box's wallpaper in its bevelled frame, and its 30 slots: a tap = the summary, focus = the panel. */
+/** The box's wallpaper in its bevelled frame, and its slots (Gen 3's 30, a Game Boy box's 20): a tap = the summary, focus = the panel. */
 @Composable
 private fun Wallpaper(box: BoxView, boxIndex: Int, lookedSlot: Int, ui: BoxesUiState, m: GbaTextMetrics, step: (Int) -> Unit, modifier: Modifier) {
     val u = m.u
@@ -826,15 +860,19 @@ private fun Wallpaper(box: BoxView, boxIndex: Int, lookedSlot: Int, ui: BoxesUiS
         val pad = inset + 2 * px
         val w = constraints.maxWidth - 2 * pad
         val h = constraints.maxHeight - 2 * pad
-        val cellW = w / COLUMNS
-        val cellH = h / ROWS
-        // The game's 32x32 icons sit in 24-pixel cells: whole screen pixels per icon pixel, as many as that allows.
-        val k = floor(minOf(cellW, cellH) / ICON_CELL).coerceAtLeast(1f)
+        // Gen 3's 30 slots as the game's 6 x 5; a Game Boy box's 20 (no grid in the game: a list) as 5 x 4.
+        val columns = boxColumns(box.mons.size)
+        val rows = (box.mons.size + columns - 1) / columns
+        val cellW = w / columns
+        val cellH = h / rows
+        // The game's 32x32 icons sit in 24-pixel cells: whole screen pixels per icon pixel, as many as that allows. A Game
+        // Boy box's bigger cells would blow its icons up into each other: they get a gap of their own (GB_ICON_CELL).
+        val k = floor(minOf(cellW, cellH) / (if (box.mons.size == 30) ICON_CELL else GB_ICON_CELL)).coerceAtLeast(1f)
         val iconPx = ICON * k
         val inBox = box.mons.filterNotNull()
         box.mons.forEachIndexed { slot, mon ->
-            val col = slot % COLUMNS
-            val row = slot / COLUMNS
+            val col = slot % columns
+            val row = slot / columns
             val x = pad + col * cellW
             val y = pad + row * cellH
             fun Modifier.place(left: Float, top: Float, width: Float, height: Float) = this
@@ -850,8 +888,8 @@ private fun Wallpaper(box: BoxView, boxIndex: Int, lookedSlot: Int, ui: BoxesUiS
                         .gbaFocusRing(focused, PixelRoundedShape(u * 3))
                         .semantics { contentDescription = mon.shownName }
                         .soundClickable(interactionSource = focus, indication = null) {
-                            ui.looked = slot
-                            ui.open = inBox.indexOf(mon)
+                            // The first tap looks at it (PKMN DATA on the left), a tap on the one looked at opens it.
+                            if (cursor) ui.open = inBox.indexOf(mon) else ui.looked = slot
                         }
                         .focusStart(cursor),
                     contentAlignment = Alignment.Center,
@@ -1100,11 +1138,11 @@ internal object BoxWallpapers {
     private const val TILE = 16
 }
 
-private const val COLUMNS = 6
-private const val ROWS = 5
-private const val SLOTS = 30
+/** A box's columns: Gen 3's 6 (x 5), else 5 (a Game Boy box's 20 as 5 x 4). */
+private fun boxColumns(slots: Int) = if (slots == 30) 6 else 5
 private const val ICON = 32f
 // The game's icon is 32 pixels in a 24-pixel cell: a cell this many screen pixels per icon pixel.
 private const val ICON_CELL = 24f
+private const val GB_ICON_CELL = 32f
 private val CURSOR_FILL = Color(0x66FFFFFF)
 private val CURSOR_FRAME = Color(0xFFFFFFFF)

@@ -634,6 +634,13 @@ static void cmdDump(const char* outDir) {
             FILE* f = fopen(path, "wb");
             if (f) { fwrite(gb->memory.wram, 1, GB_SIZE_WORKING_RAM, f); fclose(f); }
         }
+        // The cart's battery RAM as the game has it now (every bank, 0x2000 each): Gen 2 keeps its PC boxes there
+        // (FixtureMemoryReader maps bank B's A000-BFFF at Gen2Reader's cartRam(B, addr)).
+        if (gb->memory.sram && gb->sramSize) {
+            snprintf(path, sizeof(path), "%s/sram.bin", outDir);
+            FILE* f = fopen(path, "wb");
+            if (f) { fwrite(gb->memory.sram, 1, gb->sramSize, f); fclose(f); }
+        }
         fprintf(stderr, "mgba_dump: dumped wram+hram to %s (frame %u)\n", outDir, core->frameCounter(core));
         return;
     }

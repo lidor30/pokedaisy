@@ -899,7 +899,7 @@ class PokeDaisyActivity : Activity() {
         ) = onGame(com.pokedaisy.app.companion.data.MoveOrderResult.FAILED, done) { s, calls, busy ->
             com.pokedaisy.app.companion.data.reorderMoves(s.fns, slot, personality, from, to, busy, calls)
         }
-        override fun canSwapBox() = com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns, com.pokedaisy.app.companion.data.activeNativeConfig) != null
+        override fun canSwapBox() = !romIsGameBoy && !romIsNds && com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns, com.pokedaisy.app.companion.data.activeNativeConfig) != null
 
         override fun canSortBoxes() = canSwapBox()
 

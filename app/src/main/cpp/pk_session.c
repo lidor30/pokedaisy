@@ -584,6 +584,16 @@ static bool pk_gb_read_banked(struct mCore* core, uint32_t addr, uint8_t* dst, i
     }
     struct GB* gb = core->board;
     uint32_t bank = addr >> 16, off = addr & 0xFFFFu;
+    if (bank >= 0x10u) {
+        // The cart's battery RAM, bank (B - 0x10)'s A000-BFFF (Gen2Reader's cartRam): Gen 2 keeps its PC boxes there.
+        size_t at = (size_t) (bank - 0x10u) * 0x2000u + (off - 0xA000u);
+        if (off < 0xA000u || off + (uint32_t) len > 0xC000u || !gb->memory.sram || at + (size_t) len > gb->sramSize) {
+            memset(dst, 0, (size_t) len);
+        } else {
+            memcpy(dst, gb->memory.sram + at, (size_t) len);
+        }
+        return true;
+    }
     if (bank > 7 || off < 0xD000u || off + (uint32_t) len > 0xE000u || !gb->memory.wram) {
         memset(dst, 0, (size_t) len);
     } else {

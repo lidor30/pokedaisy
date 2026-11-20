@@ -1348,6 +1348,11 @@ open class CompanionScreenshotTest {
     @Test fun yellowLegacyBattleMoves() = yellowLegacy("yellow_legacy_battle", "BATTLE", controls = true)
     @Test fun yellowLegacyGuideRoute() = yellowLegacy("yellow_legacy", "GUIDE", guidePage = "HERE", onMap = 12)
     @Test fun yellowLegacyGuideNextBoss() = yellowLegacy("yellow_legacy", "GUIDE", guidePage = "NEXT BOSS")
+    @Test fun crystalBoxes() = crystal("crystal_boxes", "BOXES")
+    @Test fun crystalBoxesDark() {
+        DarkMode.override = true
+        try { crystal("crystal_boxes", "BOXES") } finally { DarkMode.override = null }
+    }
     @Test fun crystalLegacyParty() = crystal("crystal_legacy", "PARTY", legacy = true)
     @Test fun crystalLegacyItems() = crystal("crystal_legacy", "ITEMS", legacy = true)
     @Test fun crystalLegacyMap() = crystal("crystal_legacy", "MAP", legacy = true)
@@ -1617,7 +1622,8 @@ open class CompanionScreenshotTest {
         val v = buildSnapshotView(t).copy(game = game).let { s ->
             if (shinySlot == null) s else s.copy(party = s.party.mapIndexed { i, m -> if (i == shinySlot) m.copy(shiny = true) else m })
         }.let { s -> if (!shinyFoe) s else s.copy(battleOpponent = s.battleOpponent.map { it.copy(shiny = true) }) }
-        (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
+        (v.party + v.battlePlayer + v.battleOpponent + v.pcBoxes?.boxes.orEmpty().flatMap { it.mons }.filterNotNull())
+            .forEach { m -> m.iconAsset?.let { GameArt.get(it) } }
         if (pokemonPictures) v.party.forEach { m -> v.pokedex?.tables?.let { PokedexSource.frontSprite(it, m.species); PokedexSource.shinyFrontSprite(it, m.species) } }
         val input = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
             override val busy = false

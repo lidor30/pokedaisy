@@ -25,7 +25,7 @@ The window beside the box shows one Pokémon's picture, its name, its kind, its 
 
 ## A Pokémon's summary
 
-Tap a Pokémon to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs, nature and ability. The column down the right side holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
+Tap a Pokémon to show it in the window beside the box, and tap it again to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs, nature and ability. The column down the right side holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
 
 A Pokémon in a box keeps no stats of its own, so the companion works them out the way the game does when you take it out. A Pokémon in a box is always at full HP.
 
@@ -65,7 +65,8 @@ The tab shows your boxes in:
 - **FireRed, LeafGreen, Emerald, Ruby and Sapphire** in every language, every version of each cartridge.
 - **Hacks built on those games**: Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Odyssey, Gaia, Orange Islands, Ultra Violet, Rocket Edition, Ash Gray, Emerald Kaizo and Glazed.
 - **SoulGold**.
+- **Crystal** in English (every release) and German.
 
-Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus and GS Chronicles have 25 boxes and SoulGold 15, and the tab shows them all.
+Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus and GS Chronicles have 25 boxes and SoulGold 15, and the tab shows them all. Crystal has 14 boxes of 20 Pokémon each, read from the game's save memory: they're there as soon as the game is running, and the box you're on follows every deposit and withdrawal at once.
 
 `WITHDRAW`, the swap and `DEPOSIT` work on FireRed, LeafGreen, Emerald, Ruby and Sapphire in English, German, French, Italian, Spanish and Japanese (every release of each), and on Ultra Violet, Rocket Edition and Ash Gray. The other games show their boxes but can't move Pokémon yet. More games will follow.

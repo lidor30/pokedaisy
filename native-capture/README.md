@@ -45,7 +45,7 @@ One command per line:
 | `keys KEYS` | Hold KEYS from now on, through every `wait`; `keys NONE` lets go. For frame-by-frame captures - `hold KEYS (`pk_coop_battle_starting`): `starting 0|1` runs two frames, since it lets go for one |
 | `press KEYS` | Hold KEYS for one frame, release | `KEYS` is comma-separated: `A,B,SELECT,START,UP,DOWN,LEFT,RIGHT,L,R` |
 | `hold KEYS N` | Hold KEYS for N frames, release |
-| `dump DIR` | Write `DIR/ewram.bin` + `DIR/iwram.bin` (DIR must already exist); a Game Boy cart writes `wram.bin` (C000-DFFF as the bus has it) + `hram.bin`, and a Color cart also `wramx.bin`, all 8 WRAM banks |
+| `dump DIR` | Write `DIR/ewram.bin` + `DIR/iwram.bin` (DIR must already exist); a Game Boy cart writes `wram.bin` (C000-DFFF as the bus has it) + `hram.bin`, and a Color cart also `wramx.bin`, all 8 WRAM banks; a cart with battery RAM also writes `sram.bin` |
 | `shot FILE` | Write the current frame to `FILE` as a binary PPM (convert with PIL) — for checking what the game actually shows (e.g. party-menu icons) |
 | `layers MASK` | Draw only these video layers from the next frame on (bit 0-3 = BG0-BG3, bit 4 = OBJ; `0x1F` = all) - e.g. `0x0E` for the overworld's map layers alone, no sprites or text |
 | `vdump DIR` | Write `DIR/{vram,pal,oam,io}.bin` — VRAM, palette RAM, OAM and I/O registers, i.e. what the PPU draws from (how the CFRU party-slot graphics were traced back to the ROM) — plus `iolatch.bin`, the registers as last written: write-only ones (the BG scroll offsets) read back as open bus in `io.bin` |
