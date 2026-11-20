@@ -53,6 +53,13 @@ enemyParty = 0x02024744
 battlerPartyIndexes = 0x0202406E
 battleStructPtr = 0x0202449C
 monToSwitchIntoOff = 0x5C
+# sMonSummaryScreen's pointer (EWRAM, pokemon_summary_screen.o after party_menu.o and mirage_tower.o in sym_ewram.ld):
+# its mode / newMove tell the move-learning summary apart. 0x0203CF20, four bytes later, is gLastViewedMonIndex (7
+# literals); the pointer's own address is the one the summary screen's functions load 30+ times.
+summaryScreen = 0x0203CF1C
+# gPartyMenu (0x0203CEC8, slotId +9) and gMoveToLearn (gBattleStruct + 0x46; both ROMs carry the address in ten places).
+partyMenu = 0x0203CEC8
+moveToLearn = 0x020244E2
 
 # The European Emerald releases (BPES / BPED / BPEF / BPEI): every RAM address
 # is English's (literal pools matched in each ROM; English's save loads in all
@@ -139,6 +146,10 @@ base = 'emerald_retail'
 itemDescs = { preset = 'japanese', base = 0x0855CEE8 }
 actionCursor = 0
 moveCursor = 0  # its RAM moved; not located yet
+# Its own build: retail's summary-screen pointer / gMoveToLearn / gPartyMenu aren't its addresses.
+summaryScreen = 0
+moveToLearn = 0
+partyMenu = 0
 language = 'J'
 gameCode = 'BPEJ'
 trainerCard = 'none'

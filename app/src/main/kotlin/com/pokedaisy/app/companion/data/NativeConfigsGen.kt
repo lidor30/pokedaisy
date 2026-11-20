@@ -4,7 +4,7 @@ package com.pokedaisy.app.companion.data
 // TOML there and run `make gamedata` (gamedata/README.md). One val per config, each built on
 // its `base` with .copy(), so a config is still its own object (fireRedHackFor goes by identity).
 
-// ---- gamedata/gen3/retail/firered.toml ----
+// ---- gamedata/gen3\retail\firered.toml ----
 
 // Retail FireRed 1.0 (BPRE rev 0); CFRU/Unbound keeps these. rev 1 uses the
 // IDENTICAL gMain/gSaveBlock1Ptr/gSaveBlock2Ptr — see NATIVE_FIRERED_REV1.
@@ -106,7 +106,7 @@ val NATIVE_FIRERED_REV0_RETAIL = NATIVE_FIRERED_REV0.copy(
     moveCursor = 0x02023FFCL,
 )
 
-// ---- gamedata/gen3/retail/leafgreen.toml ----
+// ---- gamedata/gen3\retail\leafgreen.toml ----
 
 // LeafGreen (BPGE). pret/pokefirered @ c75f352 builds `leafgreen` and
 // `leafgreen_rev1` byte-identical to the user's retail dumps (sha1 574fa542…
@@ -158,7 +158,7 @@ val NATIVE_LEAFGREEN_REV1_RETAIL = NATIVE_LEAFGREEN_REV1.copy(
     moveCursor = 0x02023FFCL,
 )
 
-// ---- gamedata/gen3/retail/emerald.toml ----
+// ---- gamedata/gen3\retail\emerald.toml ----
 
 // Retail Emerald (BPEE). Same struct layouts as FireRed (gMain +0x439 inBattle,
 // +0x24 vblank counter both hold); only the global addresses differ. From
@@ -213,6 +213,13 @@ val NATIVE_EMERALD_RETAIL = NATIVE_EMERALD.copy(
     battlerPartyIndexes = 0x0202406EL,
     battleStructPtr = 0x0202449CL,
     monToSwitchIntoOff = 0x5C,
+    // sMonSummaryScreen's pointer (EWRAM, pokemon_summary_screen.o after party_menu.o and mirage_tower.o in sym_ewram.ld):
+    // its mode / newMove tell the move-learning summary apart. 0x0203CF20, four bytes later, is gLastViewedMonIndex (7
+    // literals); the pointer's own address is the one the summary screen's functions load 30+ times.
+    summaryScreen = 0x0203CF1CL,
+    // gPartyMenu (0x0203CEC8, slotId +9) and gMoveToLearn (gBattleStruct + 0x46; both ROMs carry the address in ten places).
+    partyMenu = 0x0203CEC8L,
+    moveToLearn = 0x020244E2L,
 )
 
 // The European Emerald releases (BPES / BPED / BPEF / BPEI): every RAM address
@@ -299,6 +306,10 @@ val NATIVE_EMERALD_JA = NATIVE_EMERALD_RETAIL.copy(
     itemDescs = japaneseItems(0x0855CEE8L),
     actionCursor = 0,
     moveCursor = 0, // its RAM moved; not located yet
+    // Its own build: retail's summary-screen pointer / gMoveToLearn / gPartyMenu aren't its addresses.
+    summaryScreen = 0,
+    moveToLearn = 0,
+    partyMenu = 0,
     language = 'J',
     gameCode = "BPEJ",
     trainerCard = null,
@@ -332,7 +343,7 @@ val NATIVE_EMERALD_JA = NATIVE_EMERALD_RETAIL.copy(
     guideTables = GUIDE_TABLES_EMERALD_JA,
 )
 
-// ---- gamedata/gen3/retail/ruby_sapphire.toml ----
+// ---- gamedata/gen3\retail\ruby_sapphire.toml ----
 
 // Ruby (AXVE) / Sapphire (AXPE), revs 1 and 2. pret/pokeruby's `ruby_rev1/2`
 // and `sapphire_rev1/2` build byte-identical to the user's dumps (sha1
@@ -404,7 +415,7 @@ val NATIVE_SAPPHIRE = NATIVE_RUBY.copy(
     guideTables = GUIDE_TABLES_SAPPHIRE,
 )
 
-// ---- gamedata/gen3/ports/firered.toml ----
+// ---- gamedata/gen3\ports\firered.toml ----
 
 // Pokemon - Feuerrote Edition (Germany).gba (sha1 18a3758c...): English BPRE0's config, mapped.
 private val NATIVE_PORT_BPRD0 by lazy {
@@ -814,7 +825,7 @@ private val NATIVE_PORT_BPRS0 by lazy {
     )
 }
 
-// ---- gamedata/gen3/ports/leafgreen.toml ----
+// ---- gamedata/gen3\ports\leafgreen.toml ----
 
 // Pokemon - Blattgruene Edition (Germany).gba (sha1 0802d1fb...): English BPGE0's config, mapped.
 private val NATIVE_PORT_BPGD0 by lazy {
@@ -1219,7 +1230,7 @@ private val NATIVE_PORT_BPGS0 by lazy {
     )
 }
 
-// ---- gamedata/gen3/ports/ruby.toml ----
+// ---- gamedata/gen3\ports\ruby.toml ----
 
 // Pokemon - Rubin-Edition (Germany).gba (sha1 1c2a5333...): English AXVE1's config, mapped.
 private val NATIVE_PORT_AXVD0 by lazy {
@@ -2009,7 +2020,7 @@ private val NATIVE_PORT_AXVS1 by lazy {
     )
 }
 
-// ---- gamedata/gen3/ports/sapphire.toml ----
+// ---- gamedata/gen3\ports\sapphire.toml ----
 
 // Pokemon - Saphir-Edition (Germany).gba (sha1 5a087835...): English AXPE1's config, mapped.
 private val NATIVE_PORT_AXPD0 by lazy {
@@ -2799,7 +2810,7 @@ private val NATIVE_PORT_AXPS1 by lazy {
     )
 }
 
-// ---- gamedata/gen3/hacks/amethyst.toml ----
+// ---- gamedata/gen3\hacks\amethyst.toml ----
 
 // Pokemon Amethyst v1.3.0 - FireRed-based (BPRE), no source access. Kept
 // vanilla FireRed rev 0's RAM layout entirely unchanged (party/bag/location
@@ -2872,7 +2883,7 @@ val NATIVE_AMETHYST_V1_4_1 = NATIVE_AMETHYST.copy(
     handleInputChooseTarget = 0x0890BE01L, // its moved target-select handler, found the same way
 )
 
-// ---- gamedata/gen3/hacks/celia.toml ----
+// ---- gamedata/gen3\hacks\celia.toml ----
 
 // Pokemon Celia's Stupid Romhack v1.1.4 - BPRE rev 0, ~28.7 MB, no source.
 // A full pokefirered RECOMPILE (unlike Unbound/Gaia's in-place ASM patches),
@@ -2946,7 +2957,7 @@ val NATIVE_CELIA = NATIVE_FIRERED_REV0.copy(
     guideTables = GUIDE_TABLES_CELIA,
 )
 
-// ---- gamedata/gen3/hacks/dreamstone.toml ----
+// ---- gamedata/gen3\hacks\dreamstone.toml ----
 
 // Pokémon Dreamstone Mysteries (32 MB, BPEE, sha1 20e91aec…; dsmyst, no version shown in the game): the Cormoria region on
 // pokeemerald-expansion - its debug menu's EXPANSION VERSION prints "v1.11.2 Development Build" - built with gcc, no
@@ -3023,7 +3034,7 @@ val NATIVE_DREAMSTONE = NATIVE_EMERALD.copy(
     guideTables = GUIDE_TABLES_DREAMSTONE,
 )
 
-// ---- gamedata/gen3/hacks/elite_redux.toml ----
+// ---- gamedata/gen3\hacks\elite_redux.toml ----
 
 // Pokémon Elite Redux 2.65.4.1b (32 MB, BPEE, sha1 2f3e17e5…; 2.65.3b below): its own pokeemerald rebuild (gcc, from
 // Inclement Emerald), nothing at a retail address. Mapped headless from a save off its Discord ("v2.65 Beta2.1", Mia,
@@ -3106,7 +3117,7 @@ val NATIVE_ELITE_REDUX_V2_65_3B = NATIVE_ELITE_REDUX_V2_65_4_1B.copy(
     guideTables = GUIDE_TABLES_ELITE_REDUX_V2_65_3B,
 )
 
-// ---- gamedata/gen3/hacks/emerald_kaizo.toml ----
+// ---- gamedata/gen3\hacks\emerald_kaizo.toml ----
 
 // Pokémon Glazed 9.2.0 - BPEE, 32 MB, an in-place binary edit of retail
 // Emerald (no source). Its RAM is retail's: every literal pool that loads
@@ -3130,7 +3141,7 @@ val NATIVE_EMERALD_KAIZO = NATIVE_EMERALD_RETAIL.copy(
     guideTables = GUIDE_TABLES_EMERALD_KAIZO,
 )
 
-// ---- gamedata/gen3/hacks/emerald_legacy.toml ----
+// ---- gamedata/gen3\hacks\emerald_legacy.toml ----
 
 // Pokémon Emerald Legacy v1.1.4 - BPEE, 16 MB: pret's pokeemerald rebuilt from its own source (cRz-Shadows/
 // Pokemon_Emerald_Legacy at V1.1.4, built with agbcc = the release byte for byte), so every address here is a symbol of
@@ -3141,6 +3152,9 @@ val NATIVE_EMERALD_KAIZO = NATIVE_EMERALD_RETAIL.copy(
 val NATIVE_EMERALD_LEGACY = NATIVE_EMERALD_RETAIL.copy(
     gameCode = LEGACY_TEXT,
     itemDescs = vanillaItems(0x085B6210L),
+    // A rebuild: retail's sMonSummaryScreen / gMoveToLearn aren't its EWRAM addresses.
+    summaryScreen = 0,
+    moveToLearn = 0,
     gMain = 0x030024A0L,
     saveBlock1Ptr = 0x03005F6CL,
     saveBlock2Ptr = 0x03005F70L,
@@ -3164,7 +3178,7 @@ val NATIVE_EMERALD_LEGACY = NATIVE_EMERALD_RETAIL.copy(
     guideTables = GUIDE_TABLES_EMERALD_LEGACY,
 )
 
-// ---- gamedata/gen3/hacks/emerald_rogue.toml ----
+// ---- gamedata/gen3\hacks\emerald_rogue.toml ----
 
 // Emerald Rogue v2.2.1-EX. Its source is public (Pokabbie/pokeemerald-rogue,
 // `expansion` branch = v2.2.1) - struct layouts below come from there, every
@@ -3251,7 +3265,7 @@ val NATIVE_EMERALD_ROGUE = NATIVE_EMERALD.copy(
     pokedex = POKEDEX_EMERALD_ROGUE,
 )
 
-// ---- gamedata/gen3/hacks/epsilon_emerald.toml ----
+// ---- gamedata/gen3\hacks\epsilon_emerald.toml ----
 
 // Pokémon Epsilon Emerald v1.0.0 (pokemerrp's demake of the 3DS Hoenn remakes; BPEE, 32 MB, sha1 8decf057…, header title
 // "EPSILON EMER"): closed, a gcc pokeemerald with an older pokeemerald-expansion battle engine (Gen 9 moves, Fairy as type
@@ -3328,7 +3342,7 @@ val NATIVE_EPSILON_EMERALD = NativeConfig(
     fieldItems = FIELD_ITEMS_EPSILON_EMERALD,
 )
 
-// ---- gamedata/gen3/hacks/gaia.toml ----
+// ---- gamedata/gen3\hacks\gaia.toml ----
 
 // Pokémon Gaia v3.2 - another large (32 MB) BPRE hack, verified 2026-09-20 the
 // same way as Unbound above: static byte comparison against the same vanilla
@@ -3397,7 +3411,7 @@ val NATIVE_GAIA_V3_2 = NATIVE_FIRERED_REV0.copy(
     moveCursor = 0x02023FFCL,
 )
 
-// ---- gamedata/gen3/hacks/glazed.toml ----
+// ---- gamedata/gen3\hacks\glazed.toml ----
 
 val NATIVE_GLAZED = NATIVE_EMERALD.copy(
     // BOXES: retail's (gPokemonStoragePtr = gSaveBlock2Ptr + 4; the `glazed` capture's box names read).
@@ -3420,7 +3434,7 @@ val NATIVE_GLAZED = NATIVE_EMERALD.copy(
     moveCursor = NATIVE_EMERALD_RETAIL.moveCursor,
 )
 
-// ---- gamedata/gen3/hacks/gs_chronicles.toml ----
+// ---- gamedata/gen3\hacks\gs_chronicles.toml ----
 
 // Pokémon GS Chronicles v2.7.6 (Ruki Studios; 32 MB, sha1 25f8840e…): Johto and Kanto on CFRU,
 // FireRed 1.0's code and RAM with its data repointed. Every RAM global's literal-pool word is rev
@@ -3447,7 +3461,7 @@ val NATIVE_GS_CHRONICLES = NATIVE_FIRERED_REV0.copy(
     monToSwitchIntoOff = NATIVE_FIRERED_REV1.monToSwitchIntoOff,
 )
 
-// ---- gamedata/gen3/hacks/heart_and_soul.toml ----
+// ---- gamedata/gen3\hacks\heart_and_soul.toml ----
 
 // Heart and Soul v2.0.6 - a newer pokeemerald-expansion build (RHH's fork).
 // A first attempt took addresses from building the source tag
@@ -3544,7 +3558,7 @@ val NATIVE_HEART_AND_SOUL = NATIVE_EMERALD.copy(
     guideTables = GUIDE_TABLES_HEART_AND_SOUL,
 )
 
-// ---- gamedata/gen3/hacks/imperium.toml ----
+// ---- gamedata/gen3\hacks\imperium.toml ----
 
 // Pokémon Emerald Imperium v1.3.1 - BPEE, 32 MB, pokeemerald-expansion 1.10.0 (its
 // header's RHHEXP block), gcc, no source. From headless captures of the user's save
@@ -3624,7 +3638,7 @@ val NATIVE_IMPERIUM = NATIVE_EMERALD.copy(
     guideTables = GUIDE_TABLES_IMPERIUM,
 )
 
-// ---- gamedata/gen3/hacks/lazarus.toml ----
+// ---- gamedata/gen3\hacks\lazarus.toml ----
 
 // Lazarus v2.0 - no source access, so every address below was found
 // empirically from live EWRAM+IWRAM dumps of the user's real session
@@ -3760,7 +3774,7 @@ val NATIVE_LAZARUS = NATIVE_EMERALD.copy(
     trainerCard = TRAINER_CARD_LAZARUS,
 )
 
-// ---- gamedata/gen3/hacks/mariomon.toml ----
+// ---- gamedata/gen3\hacks\mariomon.toml ----
 
 // Super Mariomon (Too Many Productions; BPEE, 32 MB, no source): every release is an old
 // pokeemerald-expansion (struct BaseStats 0x24 bytes, no RHHEXP header) built with agbcc - its
@@ -3919,7 +3933,7 @@ val NATIVE_MARIOMON_V1_2_1 = NATIVE_MARIOMON_V1_2_2.copy(
     guideTables = GUIDE_TABLES_MARIOMON_V1_2_1,
 )
 
-// ---- gamedata/gen3/hacks/modern_emerald.toml ----
+// ---- gamedata/gen3\hacks\modern_emerald.toml ----
 
 // Pokémon Modern Emerald v3.6 (resetes12's pokeemerald fork, BPEE, 32 MB, sha1 ab3bc012…): its source is public
 // (github.com/resetes12/pokeemerald, tag Release3.6; cloned into $DECOMPS/pokemodernemerald). The release was built
@@ -3973,7 +3987,7 @@ val NATIVE_MODERN_EMERALD = NativeConfig(
     eggSpecies = 462,
 )
 
-// ---- gamedata/gen3/hacks/monomyth.toml ----
+// ---- gamedata/gen3\hacks\monomyth.toml ----
 
 // Pokémon Monomyth v1.0 (32 MB, game code MONE, sha1 ae1c4be9…; Team Monomyth, monomyth.jp): the Athanto region on its
 // own closed pokeemerald build (gcc: its globals sit in EWRAM behind section anchors, so literal-pool words point near a
@@ -4100,7 +4114,7 @@ val NATIVE_MONOMYTH_V1_2 = NATIVE_MONOMYTH.copy(
     guideTables = GUIDE_TABLES_MONOMYTH_V1_2,
 )
 
-// ---- gamedata/gen3/hacks/odyssey.toml ----
+// ---- gamedata/gen3\hacks\odyssey.toml ----
 
 // Pokemon Odyssey (English) v4.1.1 - a 32 MB BPRE hack like the others above.
 // UNTESTED GUESS, same starting point as Radical Red's first pass: inheriting
@@ -4125,7 +4139,7 @@ val NATIVE_ODYSSEY = NATIVE_FIRERED_REV0.copy(
     moveCursor = 0x02023FFCL,
 )
 
-// ---- gamedata/gen3/hacks/orange_islands.toml ----
+// ---- gamedata/gen3\hacks\orange_islands.toml ----
 
 // Pokémon Orange Islands (BPRE rev 0, 16 MB, sha1 8bac897d…; Beta 5.7 d2e3800e… differs from it
 // in 80 bytes of map text / data and shares this): FireRed 1.0 edited in place, no source. Its
@@ -4152,7 +4166,7 @@ val NATIVE_ORANGE_ISLANDS = NATIVE_FIRERED_REV0.copy(
     monToSwitchIntoOff = NATIVE_FIRERED_REV1.monToSwitchIntoOff,
 )
 
-// ---- gamedata/gen3/hacks/quetzal.toml ----
+// ---- gamedata/gen3\hacks\quetzal.toml ----
 
 // Pokémon Quetzal English Alpha 9 v0 - BPEE, 32 MB ("PKM QUETZAL"), TenmaRH's own
 // engine on pokeemerald (vanilla's table shapes, expansion-sized contents), no
@@ -4396,7 +4410,7 @@ val NATIVE_QUETZAL_MOEMON_V084_ES = NATIVE_QUETZAL_V084_ES.copy(
     guideTables = GUIDE_TABLES_QUETZAL_MOEMON_V084_ES,
 )
 
-// ---- gamedata/gen3/hacks/radical_red.toml ----
+// ---- gamedata/gen3\hacks\radical_red.toml ----
 
 // Pokémon Radical Red v4.1 - a 32 MB BPRE hack like Gaia/Unbound above, but
 // LESS verified: static byte comparison against the same vanilla rev-0 build
@@ -4440,7 +4454,7 @@ val NATIVE_RADICAL_RED_V4_1 = NATIVE_FIRERED_REV0.copy(
     moveCursor = 0x02023FFCL,
 )
 
-// ---- gamedata/gen3/hacks/recharged_emerald.toml ----
+// ---- gamedata/gen3\hacks\recharged_emerald.toml ----
 
 // Pokémon Recharged Emerald (Jaizu; BPEE, 16 MB, sha1 67f44fb4… v2.2.5 / 56c97772… v2.2.8 / 08b9c790… Rebalanced
 // v2.2.8): Recharged Yellow's treatment of Emerald - a pokeemerald rebuild with modern gcc, no source, nothing at a
@@ -4564,7 +4578,7 @@ val NATIVE_RECHARGED_EMERALD_REBALANCED_V2_2_8 = NATIVE_RECHARGED_EMERALD.copy(
     fieldItems = FIELD_ITEMS_RECHARGED_EMERALD_REBALANCED_V2_2_8,
 )
 
-// ---- gamedata/gen3/hacks/recharged_yellow.toml ----
+// ---- gamedata/gen3\hacks\recharged_yellow.toml ----
 
 // Pokémon Recharged Yellow (Jaizu; BPRE rev 0, 16 MB, sha1 be503359… v1.8.0 / ac30d1ed… v1.9.0 /
 // 7d9fae6c… v1.9.4 / ed60654d… v1.9.7): a full pokefirered rebuild with modern gcc, no source, so
@@ -4698,7 +4712,7 @@ val NATIVE_RECHARGED_YELLOW_V1_9_7 = NATIVE_RECHARGED_YELLOW_V1_9_4.copy(
     trainerCard = TRAINER_CARD_RECHARGED_YELLOW_V1_9_7,
 )
 
-// ---- gamedata/gen3/hacks/rowe.toml ----
+// ---- gamedata/gen3\hacks\rowe.toml ----
 
 // R.O.W.E. v2.1.9.1 Experimental (BPEE, 32 MB, BelialClover's own pokeemerald fork - no expansion;
 // 1.9.4's source is public, v2.x's isn't, and v2.x rewrote struct Pokemon: ROWE_PARTY_MON). The ROM
@@ -4768,7 +4782,7 @@ val NATIVE_ROWE = NATIVE_EMERALD.copy(
     pokedex = POKEDEX_ROWE,
 )
 
-// ---- gamedata/gen3/hacks/seaglass.toml ----
+// ---- gamedata/gen3\hacks\seaglass.toml ----
 
 // Emerald Seaglass v3.0 - BPEE, exactly 16 MB (so Poller.detect()'s >16 MB
 // hack-hash branch never saw it - see its own 16 MB branch). No source
@@ -4883,7 +4897,7 @@ val NATIVE_EMERALD_SEAGLASS = NATIVE_EMERALD.copy(
     pokedex = POKEDEX_EMERALD_SEAGLASS,
 )
 
-// ---- gamedata/gen3/hacks/soulgold.toml ----
+// ---- gamedata/gen3\hacks\soulgold.toml ----
 
 // Pokémon SoulGold v1.1.4 - a 32 MB BPEE hack on newer pokeemerald-expansion
 // (gcc), no source. Everything below from headless mgba_dump captures of the
@@ -5096,7 +5110,7 @@ val NATIVE_SOULGOLD_V1_2_1 = NATIVE_SOULGOLD_V1_2.copy(
     pokedex = POKEDEX_SOULGOLD_V1_2_1,
 )
 
-// ---- gamedata/gen3/hacks/sword_shield.toml ----
+// ---- gamedata/gen3\hacks\sword_shield.toml ----
 
 // Pokémon Sword and Shield Ultimate Plus v1.2.1.2 (32 MB, sha1 afe4c8e0…): Galar on CFRU, so
 // FireRed 1.0's code and RAM with its data repointed. The words FireRed loads its tables from
@@ -5127,7 +5141,7 @@ val NATIVE_SWORD_SHIELD = NATIVE_FIRERED_REV0.copy(
     monToSwitchIntoOff = NATIVE_FIRERED_REV1.monToSwitchIntoOff,
 )
 
-// ---- gamedata/gen3/hacks/team_rocket.toml ----
+// ---- gamedata/gen3\hacks\team_rocket.toml ----
 
 // Pokémon Team Rocket Edition: Dragonsden Version (32 MB, BPEE, sha1 40780347…, unversioned; DragonsdenTV): its own closed
 // pokeemerald build (gcc) on an older pokeemerald-expansion - vanilla's struct shapes with expansion's ids (National Dex
@@ -5291,7 +5305,7 @@ val NATIVE_TEAM_ROCKET_V3_1 = NATIVE_TEAM_ROCKET_V3.copy(
     guideTables = GUIDE_TABLES_TEAM_ROCKET_V3_1,
 )
 
-// ---- gamedata/gen3/hacks/tmt2.toml ----
+// ---- gamedata/gen3\hacks\tmt2.toml ----
 
 // Pokemon Too Many Types 2 v1.5.2 - BPEE, 32 MB, a NEWER
 // pokeemerald-expansion recompile than Seaglass: BoxPokemon packs
@@ -5376,7 +5390,7 @@ val NATIVE_TMT2 = NATIVE_EMERALD.copy(
     pokedex = POKEDEX_TMT2,
 )
 
-// ---- gamedata/gen3/hacks/ultra_violet.toml ----
+// ---- gamedata/gen3\hacks\ultra_violet.toml ----
 
 // Pokémon Ultra Violet v1.22 (16 MB, sha1 3b6c51d8…): FireRed 1.0 edited in place, under a
 // game code of its own (PUVV, revision byte 0). Every literal pool the config points through
@@ -5402,7 +5416,7 @@ val NATIVE_ULTRA_VIOLET = NATIVE_FIRERED_REV0.copy(
     monToSwitchIntoOff = NATIVE_FIRERED_REV1.monToSwitchIntoOff,
 )
 
-// ---- gamedata/gen3/hacks/ash_gray.toml ----
+// ---- gamedata/gen3\hacks\ash_gray.toml ----
 
 // Pokémon Ash Gray v4.5.3 (16 MB, BPRE rev 0, sha1 1ee1557d…; its Fork Bug Fix v1.0 build, 92ed8214…,
 // differs in 493 bytes of scripts and shares this): FireRed 1.0 edited in place, no source. Its tables
@@ -5415,7 +5429,7 @@ val NATIVE_ASH_GRAY = NATIVE_ULTRA_VIOLET.copy(
     guideTables = GUIDE_TABLES_ASH_GRAY,
 )
 
-// ---- gamedata/gen3/hacks/ghost_grey.toml ----
+// ---- gamedata/gen3\hacks\ghost_grey.toml ----
 
 // Pokémon Ghost Grey (JoeyZeed; 32 MB, BPRE rev 0): v1.0.2 (sha1 74337272…) and v1.0.4 (0dafc011…) share every
 // table; v1.0.1 (20dfaea1…) differs in one move's type, so it is its own config (ActiveTables' fireRedHack picks
@@ -5431,7 +5445,7 @@ val NATIVE_GHOST_GREY = NATIVE_ULTRA_VIOLET.copy(
 
 val NATIVE_GHOST_GREY_V1_0_1 = NATIVE_GHOST_GREY.copy()
 
-// ---- gamedata/gen3/hacks/lets_go.toml ----
+// ---- gamedata/gen3\hacks\lets_go.toml ----
 
 // Pokémon Let's Go Pikachu / Eevee (Kevin Pokefan, English translation; 32 MB, BPRE rev 0, no version in the game):
 // FireRed 1.0 edited in place, not CFRU. Each version has a "Translation Only" build that puts three moves' battle data
@@ -5455,7 +5469,7 @@ val NATIVE_LETS_GO_EEVEE = NATIVE_LETS_GO_PIKACHU.copy(
     guideTables = GUIDE_TABLES_LETS_GO_EEVEE,
 )
 
-// ---- gamedata/gen3/hacks/rocket_edition.toml ----
+// ---- gamedata/gen3\hacks\rocket_edition.toml ----
 
 // Pokémon FireRed Rocket Edition (16 MB, BPRE rev 0, sha1 033d0537…): FireRed 1.0 edited in place, no
 // source. Every literal pool the config points through still names rev 0's address but for the moves
@@ -5468,7 +5482,7 @@ val NATIVE_ROCKET_EDITION = NATIVE_ULTRA_VIOLET.copy(
     guideTables = GUIDE_TABLES_ROCKET_EDITION,
 )
 
-// ---- gamedata/gen3/hacks/unbound.toml ----
+// ---- gamedata/gen3\hacks\unbound.toml ----
 
 // CFRU is on rev 0; icons via UnboundIconSource. Tier C (PLAN.md)
 // - battle input control - inherits ALL FIVE battle-input fields from rev 0
@@ -5534,7 +5548,7 @@ val NATIVE_UNBOUND_FR = NATIVE_UNBOUND_WITH_DEX.copy(
     guideTables = GUIDE_TABLES_UNBOUND_FR,
 )
 
-// ---- gamedata/gen3/hacks/wishes.toml ----
+// ---- gamedata/gen3\hacks\wishes.toml ----
 
 // Pokémon Wishes of Tomorrow v1.2.6 (32 MB, BPEE, sha1 60182b93…; FlatFoot Labs): pokeemerald-expansion 1.15.3 (its RHHEXP
 // block), gcc, no source. Mapped headless from a new game played in it (randomizer off: `wishes`, Cyndaquil Lv12, Pikachu,
