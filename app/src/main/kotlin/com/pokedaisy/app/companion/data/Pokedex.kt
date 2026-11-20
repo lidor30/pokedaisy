@@ -1597,6 +1597,38 @@ data class DexEntry(
 }
 
 /**
+ * Decode a Gen 3 Pokémon's 64x64 front picture straight from cartridge bytes,
+ * given [read] at ROM addresses (0x08000000+). The pure core shared by
+ * [PokedexSource.frontSprite] (reads the running game) and the SAVE EDITOR's
+ * offline [com.pokedaisy.app.companion.data.save.RomMonSprites] (reads a ROM
+ * file). Null when the table's pointers don't hold - the caller keeps its icon.
+ */
+internal fun decodeFrontSprite(t: PokedexTables, species: Int, read: (Long, Int) -> ByteArray): RomArt.Image? {
+    if (species <= 0) return null
+    return runCatching {
+        val x = t.expansion
+        val tilesPtr: Long
+        val palPtr: Long
+        if (x != null) {
+            val info = read(t.speciesInfo + species.toLong() * x.stride, x.stride)
+            tilesPtr = Gfx.u32(info, x.frontPicOff)
+            palPtr = Gfx.u32(info, x.paletteOff)
+        } else {
+            tilesPtr = Gfx.u32(read(t.frontPics + species * 8L, 8), 0)
+            palPtr = Gfx.u32(read(t.palettes + species * 8L, 8), 0)
+        }
+        if (!Gfx.inRom(tilesPtr) || !Gfx.inRom(palPtr)) return null
+        // Emerald's front pics hold two animation frames (4 KiB); the first is the still.
+        val packed = read(tilesPtr, 0x1800)
+        val tiles = if (Smol.isSmol(packed)) Smol.decompress(packed) else Gfx.lz77(packed)
+        val pal = read(palPtr, 64)
+        // Expansion keeps some palettes uncompressed: 16 raw colours.
+        val colors = if ((pal[0].toInt() and 0xFF) == 0x10) Gfx.lz77(pal) else pal.copyOf(32)
+        Gfx.decode4bpp(tiles, 0, colors, 0, 8, 8)
+    }.getOrNull()
+}
+
+/**
  * Reads [DexEntry]s and sprites out of the ROM on demand and caches them -
  * like [DecompIconSource], called from Compose's IO dispatcher rather than the
  * emulator thread (ROM data never changes, so a read racing a frame is harmless).
@@ -1797,27 +1829,7 @@ object PokedexSource {
                 .getOrNull()?.also { sprites[species] = it }
         }
         t.gen4?.let { g -> return Gen4Dex.front(g, species)?.also { sprites[species] = it } }
-        return runCatching {
-            val x = t.expansion
-            val tilesPtr: Long
-            val palPtr: Long
-            if (x != null) {
-                val info = rd(t.speciesInfo + species.toLong() * x.stride, x.stride)
-                tilesPtr = Gfx.u32(info, x.frontPicOff)
-                palPtr = Gfx.u32(info, x.paletteOff)
-            } else {
-                tilesPtr = Gfx.u32(rd(t.frontPics + species * 8L, 8), 0)
-                palPtr = Gfx.u32(rd(t.palettes + species * 8L, 8), 0)
-            }
-            if (!Gfx.inRom(tilesPtr) || !Gfx.inRom(palPtr)) return null
-            // Emerald's front pics hold two animation frames (4 KiB); the first is the still.
-            val packed = rd(tilesPtr, 0x1800)
-            val tiles = if (Smol.isSmol(packed)) Smol.decompress(packed) else Gfx.lz77(packed)
-            val pal = rd(palPtr, 64)
-            // Expansion keeps some palettes uncompressed: 16 raw colours.
-            val colors = if ((pal[0].toInt() and 0xFF) == 0x10) Gfx.lz77(pal) else pal.copyOf(32)
-            Gfx.decode4bpp(tiles, 0, colors, 0, 8, 8)
-        }.getOrNull()?.also { sprites[species] = it }
+        return decodeFrontSprite(t, species, ::rd)?.also { sprites[species] = it }
     }
 
     /** The 16x16 footprint (black on transparent). */

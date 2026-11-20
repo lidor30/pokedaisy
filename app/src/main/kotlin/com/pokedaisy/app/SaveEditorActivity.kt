@@ -24,6 +24,7 @@ import com.pokedaisy.app.companion.data.save.Gen3SaveData
 import com.pokedaisy.app.companion.data.save.Gen3SaveEditor
 import com.pokedaisy.app.companion.data.save.Gen3SaveFile
 import com.pokedaisy.app.companion.data.save.RomMonIcons
+import com.pokedaisy.app.companion.data.save.RomMonSprites
 import com.pokedaisy.app.companion.data.save.TradeSide
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
@@ -31,6 +32,7 @@ import com.pokedaisy.app.companion.ui.AppBackdrop
 import com.pokedaisy.app.companion.ui.GbaText
 import com.pokedaisy.app.companion.ui.OptionColors
 import com.pokedaisy.app.companion.ui.MonIconLoader
+import com.pokedaisy.app.companion.ui.MonSpriteLoader
 import com.pokedaisy.app.companion.ui.OptionListWindow
 import com.pokedaisy.app.companion.ui.OptionSelector
 import com.pokedaisy.app.companion.ui.OptionTitleWindow
@@ -122,6 +124,10 @@ class SaveEditorActivity : ComponentActivity() {
     private var missingRoms: List<File> = emptyList()
     /** Icons per ROM path, once loaded (absent = none for that ROM). */
     private val icons = mutableStateMapOf<String, MonIconLoader>()
+    /** Front pictures per ROM path, once loaded (absent = no known dex tables for that ROM). */
+    private val sprites = mutableStateMapOf<String, MonSpriteLoader>()
+    /** ROMs whose front pictures were looked for (found or not): a ROM with none isn't hashed again on every load. */
+    private val spritesTried = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     /** The pop-ups open over the editor (pick-lists, amounts, names, confirms): B / BACK closes the newest. */
     private val overlays = com.pokedaisy.app.companion.ui.OverlayStack()
@@ -586,16 +592,28 @@ class SaveEditorActivity : ComponentActivity() {
     }
 
     /** [rom]'s party icons from the ROM file: a DS cart's own archive (NdsArt.monIcons), a GBA ROM's tables when they're
-     * known and check out (RomMonIcons). Blocking; once per ROM. */
+     * known and check out (RomMonIcons); and a GBA ROM's 64x64 front pictures (RomMonSprites). Blocking; once per ROM. */
     private fun loadIcons(rom: File) {
+        // A GBA ROM's front pictures, when its dex tables are known and check out. Looked for once per ROM: hashing a
+        // ROM reads the whole file (an archive unpacked), and COLLECTION / MISSING call this for every save.
+        val gba = !RomIdentity.isNds(rom)
+        val sha1 by lazy { RomIdentity.sha1(rom) }
+        if (gba && spritesTried.add(rom.absolutePath)) {
+            val tables = RomMonSprites.tablesFor(sha1, RomIdentity.gameCode(rom), RomIdentity.revision(rom))
+            if (tables != null) {
+                val file = RomArchive.playable(rom, cacheDir) ?: rom
+                val source = RomMonSprites.open(file.toOkioPath(), tables)
+                if (source != null) runOnUiThread { sprites[rom.absolutePath] = MonSpriteLoader { source.get(it)?.imageBitmap() } }
+            }
+        }
         if (rom.absolutePath in icons) return
-        val loader = if (RomIdentity.isNds(rom)) {
+        val loader = if (!gba) {
             val cart = RomArchive.playable(rom, cacheDir) ?: rom
             val source = runCatching { com.pokedaisy.app.companion.data.NdsArt.monIcons(cart.toOkioPath()) }.getOrNull() ?: return
             MonIconLoader { species, egg -> source.get(species, egg)?.imageBitmap() }
         } else {
             val file = RomArchive.playable(rom, cacheDir) ?: rom
-            val source = RomMonIcons.forRom(file.toOkioPath(), RomIdentity.sha1(rom), RomIdentity.gameCode(rom), RomIdentity.revision(rom))
+            val source = RomMonIcons.forRom(file.toOkioPath(), sha1, RomIdentity.gameCode(rom), RomIdentity.revision(rom))
                 ?: return
             MonIconLoader { species, egg ->
                 source.get(if (egg) com.pokedaisy.app.companion.data.save.SPECIES_EGG else species)?.imageBitmap()
@@ -707,7 +725,7 @@ class SaveEditorActivity : ComponentActivity() {
                 }
                 PcBoxesScreen(
                     s, gameName, m, onBack = { if (!backToCollection()) finish() }, onSave = { save(p) }, saving = saving,
-                    icons = icons[rom.absolutePath], onTrade = { pickPartner() },
+                    icons = icons[rom.absolutePath], sprites = sprites[rom.absolutePath], onTrade = { pickPartner() },
                     onMissing = { loadMissing(p) }, onGet = { getMissing(p, it) },
                 )
             }

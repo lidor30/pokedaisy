@@ -210,6 +210,8 @@ fun PcBoxesScreen(
     saving: Boolean = false,
     /** The party icons from the game's ROM ([com.pokedaisy.app.companion.data.save.RomMonIcons]); null = names only. */
     icons: MonIconLoader? = null,
+    /** Front pictures from the ROM ([com.pokedaisy.app.companion.data.save.RomMonSprites]); null = icon only. */
+    sprites: MonSpriteLoader? = null,
     /** TRADE: pick another game's save to trade with (only while nothing here is unsaved). */
     onTrade: (() -> Unit)? = null,
     /** TRAINER's MISSING: read the other saves for what this Pokédex lacks ([PcBoxesState.missing]). */
@@ -233,7 +235,7 @@ fun PcBoxesScreen(
     Box(Modifier.fillMaxSize()) {
         AppBackdrop()
         // A Pokémon's page takes the screen; the boxes come back as they were.
-        state.detail?.let { at -> MonPage(state, at, m, small, icons, onClose = { state.detail = null }) }
+        state.detail?.let { at -> MonPage(state, at, m, small, icons, sprites, onClose = { state.detail = null }) }
         state.missing?.let { v -> if (state.detail == null) MissingPage(state, v, m, small, onGet = { onGet?.invoke(it) }, onClose = { state.missing = null }) }
         if (state.detail == null && state.missing == null) Column(Modifier.fillMaxSize().padding(16.dp)) {
             OptionTitleWindow(tk("SAVE EDITOR"), m, trailing = gameName, onBack = leave)
@@ -484,6 +486,11 @@ private fun InfoPair(label: String, value: String, m: GbaTextMetrics) {
  * save's own id; an egg is [egg] (its species is the Pokémon inside, and each game keeps its egg's icon apart). */
 fun interface MonIconLoader {
     fun load(species: Int, egg: Boolean): ImageBitmap?
+}
+
+/** 64x64 front pictures for the SAVE EDITOR's Pokémon page, from the player's own ROM (null = no known dex tables). */
+fun interface MonSpriteLoader {
+    fun load(species: Int): ImageBitmap?
 }
 
 /**
