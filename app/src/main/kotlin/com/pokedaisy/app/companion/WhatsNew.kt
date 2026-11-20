@@ -38,11 +38,43 @@ object WhatsNew {
     /** Newest first. */
     val RELEASES: List<Notes> by lazy {
         listOf(
+            NOTES_1_6_2,
             NOTES_1_6_1,
             NOTES_1_6_0,
             hotfix("1.5.0.1", NOTES_1_5_0, "1.5.0.1 HOTFIX: turning a Samsung Galaxy sideways no longer closes the game."),
         ) + OLDER
     }
+
+    private val NOTES_1_6_2 = Notes(
+        "1.6.2",
+        listOf(
+            Section(
+                NEW,
+                listOf(
+                    "New games: Clover, Elysium, Sacred Gold and Storm Silver, Oops All Eevees!, Rhythm, Ceruleum, RecordKeepers, Red and Yellow with Gen II Graphics, Italian Unbound, and the German Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2.",
+                    "New look: the menus in the games' own summary colours, a move page, and FONT to pick the app's letters.",
+                    "POKéMON PICTURES: each Pokémon's own picture on PARTY, in the summary, in battle and on the HUD.",
+                    "Summary: drag a Pokémon's moves into a new order, and see an egg's types and stats before it hatches.",
+                    "ITEM POPUPS and MOVE ADVICE: a card when you pick up an item, and advice on which move to forget.",
+                    "Game Boy games: shiny Pokémon, RUNNING SHOES, EXP SHARE, INSTANT TEXT, REUSABLE TMS and NUZLOCKE.",
+                    "DS games: INSTANT TEXT, REUSABLE TMS, EXP SHARE, SHINY ODDS, NUZLOCKE and IVs and EVs on STATS.",
+                    "Ruby and Sapphire: HIDE BATTLE MENU, the POKéMON switch, LAST BALL, EXP SHARE, LEVEL CAP and the PC's moves.",
+                    "DS CORE: BANANADS, a third DS emulator, on Android 10 and up.",
+                    "TRAINER CARD: on the German, French, Italian and Spanish FireRed, LeafGreen and Emerald.",
+                    "BOXES and battle INFO: sort a box by Pokédex number, and see the foe's nature.",
+                    "BETA UPDATES: try new versions before everyone else, in Settings > APP.",
+                ),
+            ),
+            Section(
+                FIXES,
+                listOf(
+                    "DS on one screen: the music keeps playing through menus, and Gen 5 no longer leaves an empty touch screen after a battle.",
+                    "EXPAND: weather now fills the whole view when you zoom out.",
+                    "Weak devices: games run lighter, with EXPAND on too.",
+                ),
+            ),
+        ),
+    )
 
     private val NOTES_1_6_1 = Notes(
         "1.6.1",
