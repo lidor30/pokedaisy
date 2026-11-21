@@ -284,6 +284,20 @@ fun CompanionScreen(
                 }
             }
         }
+        // CHANGE BOX, offered from the PKMN DATA panel on any box but the current one (Crystal).
+        val boxChanger = itemUse?.takeIf { it.canChangeBox() }
+        val startBoxChange: ((Int) -> Unit)? = boxChanger?.let { use ->
+            { to: Int ->
+                boxesUi.changing = true
+                val name = snapshot.pcBoxes?.boxes?.getOrNull(to)?.name ?: ""
+                use.changeBox(to) { r ->
+                    boxesUi.changing = false
+                    boxesUi.swapTitle = "CHANGE BOX"
+                    boxesUi.swapMessage = boxChangeMessage(r, name)
+                    if (r == com.pokedaisy.app.companion.data.BoxChangeResult.CHANGED) boxesUi.looked = null
+                }
+            }
+        }
         val pcBoxes = snapshot.pcBoxes
         val openBoxMon = pcBoxes?.let { b -> boxesUi.open?.takeIf { it in boxSummaryList(b.boxes[boxesUi.boxOf(b)]).indices } }
         val lastBoxMon = remember { mutableStateOf(0) }
@@ -728,8 +742,10 @@ fun CompanionScreen(
                                 pcBoxes, boxesUi, snapshot.pokedex?.tables, Modifier.fillMaxSize(),
                                 onSort = boxSorter?.let { { boxesUi.confirmSort = true } },
                                 sorting = boxesUi.sorting,
+                                onChangeBox = startBoxChange?.let { { to: Int -> boxesUi.confirmChange = to } },
                             )
                             if (startBoxSort != null) BoxSortConfirm(boxesUi, startBoxSort)
+                            if (startBoxChange != null) BoxChangeConfirm(boxesUi, pcBoxes, startBoxChange)
                             boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
                             BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {

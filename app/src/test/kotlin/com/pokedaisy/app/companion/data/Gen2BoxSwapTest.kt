@@ -36,11 +36,14 @@ class Gen2BoxSwapTest {
     private class Game(val cfg: Gen2Config, val calls: Gen2BoxCalls) : GameCalls {
         val wram = ByteArray(0x1000)
         val sram = ByteArray(0x450)
+        val sramTop = ByteArray(0x10)   // A000-A00F: sCheckValue1, sPlayerData's ID
+        val saved = mutableListOf<Int>()   // bank 5 calls, in order
         var pending: Int? = null
         val ran = mutableListOf<Pair<Int, Int>>()
         var onField = true
 
         private fun at(addr: Long): Pair<ByteArray, Int> = when {
+            addr >= cartRam(1, 0xA000) && (addr and 0xFFFF) < 0xA010 -> sramTop to (addr and 0xFFFF).toInt() - 0xA000
             addr >= cartRam(1, 0xA000) -> sram to (addr and 0xFFFF).toInt() - 0xAD10
             else -> wram to (addr and 0xFFFF).toInt() - 0xD000
         }
@@ -54,7 +57,10 @@ class Gen2BoxSwapTest {
         override fun gbCallAt(at: Int, fn: Int, a: Int, b: Int, hl: Int): Boolean {
             if (!onField) return false
             pending?.let { run(it) }
-            pending = if (fn == 0x0008) hl.also { assertEquals(3, a); assertEquals(calls.at, at) } else null
+            assertEquals(calls.at, at)
+            pending = null
+            if (fn == 0x0008 && a == 5) saved += hl
+            else if (fn == 0x0008) pending = hl.also { assertEquals(3, a) }
             return true
         }
 
@@ -183,6 +189,27 @@ class Gen2BoxSwapTest {
         assertEquals(BoxSwapResult.NOT_NOW, calls.withdraw(g, cfg, 0, gen2MonKey(g.boxMon(0), 0)))
         assertEquals(1, g.partyCount)
         assertEquals(1, g.boxCount)
+    }
+
+    @Test
+    fun `CHANGE BOX - SaveBox, the new wCurBox, LoadBox, then the save, only on this player's save`() {
+        val g = Game(cfg, calls)
+        g[calls.curBox] = 2
+        g[calls.saveCheck] = 99
+        g[calls.playerId] = 0xEC; g[calls.playerId + 1] = 0x78
+        g[calls.savedPlayerId] = 0xEC; g[calls.savedPlayerId + 1] = 0x77
+        assertEquals(BoxChangeResult.OTHER_SAVE, calls.changeBox(g, 7))
+        g[calls.saveCheck] = 0; g[calls.savedPlayerId + 1] = 0x78
+        assertEquals(BoxChangeResult.OTHER_SAVE, calls.changeBox(g, 7))   // never saved
+        g[calls.saveCheck] = 99
+        assertEquals(BoxChangeResult.FAILED, calls.changeBox(g, 14))
+        assertEquals(emptyList<Int>(), g.saved)
+        assertEquals(BoxChangeResult.CHANGED, calls.changeBox(g, 7))
+        assertEquals(listOf(calls.saveBox, calls.loadBox, calls.saveGame), g.saved)
+        assertEquals(7, g[calls.curBox])
+        g.onField = false
+        assertEquals(BoxChangeResult.NOT_NOW, calls.changeBox(g, 3))
+        assertEquals(7, g[calls.curBox])
     }
 
     @Test

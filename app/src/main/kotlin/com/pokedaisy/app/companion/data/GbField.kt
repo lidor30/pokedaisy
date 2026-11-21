@@ -281,6 +281,12 @@ sealed class GbField {
             return if (!free(g)) BoxSwapResult.NOT_NOW else move(calls, cfg)
         }
 
+        /** CHANGE BOX ([Gen2BoxCalls.changeBox]: a box change saves the game) where the bag's PC could open: NOT_NOW otherwise. */
+        fun changeBox(g: GameCalls, to: Int): BoxChangeResult {
+            val calls = boxCalls ?: return BoxChangeResult.FAILED
+            return if (!free(g)) BoxChangeResult.NOT_NOW else calls.changeBox(g, to)
+        }
+
         override fun taken(g: GameCalls): Boolean {
             if (u8(g, QUEUE) == 0) return true
             put(g, QUEUE, 0)

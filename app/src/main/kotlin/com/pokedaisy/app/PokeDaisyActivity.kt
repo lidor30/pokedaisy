@@ -918,6 +918,35 @@ class PokeDaisyActivity : Activity() {
 
         override fun boxMovesCurrentOnly() = romIsGameBoy
 
+        override fun canChangeBox() = gbBoxField() != null
+
+        override fun changeBox(box: Int, done: (com.pokedaisy.app.companion.data.BoxChangeResult) -> Unit) {
+            val field = gbBoxField()
+            val r = rom
+            if (field == null || r == null || !::engine.isInitialized || !engine.running) return done(com.pokedaisy.app.companion.data.BoxChangeResult.FAILED)
+            if (telemetry.snapshot.value.inBattle) return done(com.pokedaisy.app.companion.data.BoxChangeResult.IN_BATTLE)
+            // The game saves itself here: the save file is backed up first (whatever SAVE BACKUPS says), or nothing happens.
+            Thread {
+                val save = SavesLocation.saveFor(this@PokeDaisyActivity, Prefs(this@PokeDaisyActivity), r)
+                val backedUp = runCatching {
+                    val newest = SaveBackups.list(save).firstOrNull()
+                    SaveBackups.snapshot(save, force = true) != null ||
+                        newest != null && SaveBackups.sameSave(newest.readBytes(), save.readBytes())
+                }.getOrDefault(false)
+                if (!backedUp) {
+                    Log.w("pokedaisy", "Game Boy box change: no backup of $save")
+                    return@Thread runOnUiThread { done(com.pokedaisy.app.companion.data.BoxChangeResult.NO_BACKUP) }
+                }
+                engine.requestFieldItemJob(false) { calls, busy ->
+                    val res = if (busy) com.pokedaisy.app.companion.data.BoxChangeResult.NOT_NOW
+                    else runCatching { field.changeBox(calls, box) }
+                        .getOrElse { Log.e("pokedaisy", "Game Boy box change failed", it); com.pokedaisy.app.companion.data.BoxChangeResult.FAILED }
+                    Log.i("pokedaisy", "Game Boy box change to $box: $res")
+                    runOnUiThread { done(res) }
+                }
+            }.start()
+        }
+
         override fun canSortBoxes() = !romIsGameBoy && canSwapBox()
 
         override fun sortBoxes(done: (com.pokedaisy.app.companion.data.BoxSortResult) -> Unit) {

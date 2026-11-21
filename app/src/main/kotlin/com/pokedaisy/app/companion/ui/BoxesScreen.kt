@@ -93,6 +93,9 @@ class BoxesUiState {
     /** SORT's confirmation is up; [sorting] while the game rewrites the boxes. */
     var confirmSort by mutableStateOf(false)
     var sorting by mutableStateOf(false)
+    /** CHANGE BOX's confirmation is up for this box; [changing] while the game switches boxes and saves. */
+    var confirmChange by mutableStateOf<Int?>(null)
+    var changing by mutableStateOf(false)
 
     /** A PC move's [result] ([title]: SWAP / DEPOSIT / WITHDRAW): [anim] when it went through, else [message] in a window. */
     fun moved(result: com.pokedaisy.app.companion.data.BoxSwapResult, title: String, message: String, anim: () -> BoxSwapAnim) {
@@ -118,6 +121,8 @@ fun BoxesScreen(
     /** SORT is offered (the game supports it); the button opens its confirmation. */
     onSort: (() -> Unit)? = null,
     sorting: Boolean = false,
+    /** CHANGE BOX is offered (Crystal): on any box but the current one, the button opens its confirmation. */
+    onChangeBox: ((Int) -> Unit)? = null,
 ) {
     val boxIndex = ui.boxOf(boxes)
     val box = boxes.boxes[boxIndex]
@@ -132,6 +137,12 @@ fun BoxesScreen(
     val firstMon = box.mons.indexOfFirst { it != null }
     val lookedSlot = ui.looked?.takeIf { box.mons.getOrNull(it) != null } ?: firstMon
     val looked = box.mons.getOrNull(lookedSlot)
+    // The panel's button: CHANGE BOX on a box that isn't the current one, else SORT.
+    val button: PanelButton? = when {
+        onChangeBox != null && boxIndex != boxes.currentBox -> PanelButton("USE BOX", !ui.changing) { onChangeBox(boxIndex) }
+        onSort != null -> PanelButton("SORT", !sorting, onSort)
+        else -> null
+    }
 
     // The PC's peach backdrop is the screen's while this tab is open (CompanionScreen draws it, like the bag's).
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -145,13 +156,13 @@ fun BoxesScreen(
             // The window about as wide as the tab's height allows a tall picture in, never most of the tab.
             val panelW = minOf(maxWidth * 0.36f, maxHeight * 0.5f)
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                MonPanel(looked, dex, m, Modifier.width(panelW).fillMaxHeight(), wide = false, onSort = onSort, sorting = sorting)
+                MonPanel(looked, dex, m, Modifier.width(panelW).fillMaxHeight(), wide = false, button = button)
                 content(Modifier.weight(1f).fillMaxHeight())
             }
         } else {
             val panelH = minOf(maxHeight * 0.3f, maxWidth * 0.45f)
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap)) {
-                MonPanel(looked, dex, m, Modifier.fillMaxWidth().height(panelH), wide = true, onSort = onSort, sorting = sorting)
+                MonPanel(looked, dex, m, Modifier.fillMaxWidth().height(panelH), wide = true, button = button)
                 content(Modifier.weight(1f).fillMaxWidth())
             }
         }
@@ -230,6 +241,33 @@ internal fun boxSortMessage(r: BoxSortResult): String = when (r) {
     BoxSortResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     BoxSortResult.IN_BATTLE -> tr("You can't do that during a battle.")
     BoxSortResult.FAILED -> tr("The sort didn't work. Nothing was changed.")
+}
+
+/** The PKMN DATA panel's button ([label] is English, drawn translated). */
+private class PanelButton(val label: String, val enabled: Boolean, val onClick: () -> Unit)
+
+/** CHANGE BOX's question before the game switches boxes and saves ([BoxesUiState.confirmChange]). */
+@Composable
+internal fun BoxChangeConfirm(ui: BoxesUiState, boxes: BoxesView, onConfirm: (Int) -> Unit) {
+    val to = ui.confirmChange ?: return
+    OptionConfirm(
+        title = tk("CHANGE BOX"),
+        message = tr("Make {0} the current box? The game saves, as in the PC. Your save is backed up first.", boxes.boxes.getOrNull(to)?.name ?: ""),
+        confirmLabel = tk("CHANGE BOX"),
+        m = rememberGbaTextMetrics(),
+        onDismiss = { ui.confirmChange = null },
+        onConfirm = { ui.confirmChange = null; onConfirm(to) },
+    )
+}
+
+/** What CHANGE BOX to [boxName] did, in the companion's words. */
+internal fun boxChangeMessage(r: com.pokedaisy.app.companion.data.BoxChangeResult, boxName: String): String = when (r) {
+    com.pokedaisy.app.companion.data.BoxChangeResult.CHANGED -> tr("{0} is the current box. The game is saved.", boxName)
+    com.pokedaisy.app.companion.data.BoxChangeResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
+    com.pokedaisy.app.companion.data.BoxChangeResult.IN_BATTLE -> tr("You can't do that during a battle.")
+    com.pokedaisy.app.companion.data.BoxChangeResult.OTHER_SAVE -> tr("Save in the game first, then try again.")
+    com.pokedaisy.app.companion.data.BoxChangeResult.NO_BACKUP -> tr("Your save couldn't be backed up. Nothing was changed.")
+    com.pokedaisy.app.companion.data.BoxChangeResult.FAILED -> tr("The box change didn't work.")
 }
 
 /** SORT's warning before it rewrites the boxes; the button that opened it sits in the PKMN DATA panel. */
@@ -530,7 +568,7 @@ private const val SWAP_BURST_ARM = 0xFF4A83B4
 @Composable
 private fun MonPanel(
     mon: MonView?, dex: PokedexTables?, m: GbaTextMetrics, modifier: Modifier, wide: Boolean,
-    onSort: (() -> Unit)? = null, sorting: Boolean = false,
+    button: PanelButton? = null,
 ) {
     val u = m.u
     val small = rememberGbaTextMetrics(1f)
@@ -593,8 +631,8 @@ private fun MonPanel(
             }
             Column(Modifier.weight(1f).fillMaxHeight().padding(u * 8), verticalArrangement = Arrangement.spacedBy(u * 2)) {
                 Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(u * 2, Alignment.CenterVertically)) { lines() }
-                if (onSort != null) {
-                    OptionButton(tk("SORT"), m, onClick = onSort, enabled = !sorting, emphasis = true, modifier = Modifier.fillMaxWidth())
+                if (button != null) {
+                    OptionButton(tk(button.label), m, onClick = button.onClick, enabled = button.enabled, emphasis = true, modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -615,10 +653,10 @@ private fun MonPanel(
                 well(Modifier.fillMaxWidth().weight(1f))
             }
             Column(Modifier.fillMaxWidth().padding(horizontal = u * 8, vertical = u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) { lines() }
-            if (onSort != null) {
+            if (button != null) {
                 // The well above gives up the button's room; the button sits at the panel's bottom.
                 Box(Modifier.fillMaxWidth().padding(horizontal = u * 8, vertical = u * 6)) {
-                    OptionButton(tk("SORT"), m, onClick = onSort, enabled = !sorting, emphasis = true, modifier = Modifier.fillMaxWidth())
+                    OptionButton(tk(button.label), m, onClick = button.onClick, enabled = button.enabled, emphasis = true, modifier = Modifier.fillMaxWidth())
                 }
             }
         }

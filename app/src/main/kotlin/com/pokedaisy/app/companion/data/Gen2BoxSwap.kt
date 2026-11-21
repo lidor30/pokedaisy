@@ -26,6 +26,15 @@ class Gen2BoxCalls(
     val curPartyMon: Long = wramx(1, 0xD109),
     val withdrawDeposit: Long = wramx(1, 0xD10B),
     val box: Long = GEN2_CRYSTAL_BOXES.activeBox,
+    /** SaveBox / LoadBox / SaveGameData, bank 5: what the PC's CHANGE BOX runs around its save (ChangeBoxSaveGame). */
+    val saveBox: Int = 0x4E0C,
+    val loadBox: Int = 0x5021,
+    val saveGame: Int = 0x4B85,
+    val curBox: Long = GEN2_CRYSTAL_BOXES.curBox,
+    /** wPlayerID and the save's copy of it (sPlayerData's first word), and sCheckValue1 (99 once the game was saved). */
+    val playerId: Long = wramx(1, 0xD47B),
+    val savedPlayerId: Long = cartRam(1, 0xA009),
+    val saveCheck: Long = cartRam(1, 0xA008),
 ) {
     fun codeMatches(rom: (Long, Int) -> ByteArray?): Boolean = signatures.all { (off, hex) ->
         val want = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
@@ -49,6 +58,11 @@ class Gen2BoxCalls(
         const val TO_BOX = 1
         const val FROM_PARTY = 0
         const val FROM_BOX = 1
+        const val SAVE_BANK = 5
+        const val NUM_BOXES = 14
+        const val SAVE_CHECK_VALUE = 99
+        /** The save takes about a dozen frames: the loop comes by again only then. */
+        const val SAVE_SETTLE_TRIES = 40
     }
 
     private fun u8(g: GameCalls, addr: Long) = g.read(addr, 1)[0].toInt() and 0xFF
@@ -80,7 +94,25 @@ class Gen2BoxCalls(
     }
 
     /** Lets the call before finish: the loop coming by again means it has returned. */
-    private fun settle(g: GameCalls): Boolean = (0 until 6).any { g.gbCallAt(at, SETTLE, 0, 0, 0) }
+    private fun settle(g: GameCalls, tries: Int = 6): Boolean = (0 until tries).any { g.gbCallAt(at, SETTLE, 0, 0, 0) }
+
+    /**
+     * CHANGE BOX: box [to] becomes the current one, the game's way (ChangeBoxSaveGame): the current box into its place
+     * (SaveBox), wCurBox, the new one into sBox (LoadBox), then the whole game saved (SaveGameData), party and all. Refused
+     * like AskOverwriteSaveFile would: with no save, or another player's on the cart ([BoxChangeResult.OTHER_SAVE]).
+     */
+    fun changeBox(g: GameCalls, to: Int): BoxChangeResult {
+        val current = u8(g, curBox)
+        if (to !in 0 until NUM_BOXES || current !in 0 until NUM_BOXES) return BoxChangeResult.FAILED
+        if (to == current) return BoxChangeResult.CHANGED
+        if (u8(g, saveCheck) != SAVE_CHECK_VALUE || !g.read(playerId, 2).contentEquals(g.read(savedPlayerId, 2))) return BoxChangeResult.OTHER_SAVE
+        if (!g.gbCallAt(at, FARCALL, SAVE_BANK, 0, saveBox)) return BoxChangeResult.NOT_NOW
+        if (!settle(g)) return BoxChangeResult.FAILED
+        g.write(curBox, byteArrayOf(to.toByte()))
+        if (!g.gbCallAt(at, FARCALL, SAVE_BANK, 0, loadBox) || !settle(g)) return BoxChangeResult.FAILED
+        if (!g.gbCallAt(at, FARCALL, SAVE_BANK, 0, saveGame) || !settle(g, SAVE_SETTLE_TRIES)) return BoxChangeResult.FAILED
+        return if (u8(g, curBox) == to) BoxChangeResult.CHANGED else BoxChangeResult.FAILED
+    }
 
     /** WITHDRAW: the current box's slot [slot] ([key]) into the party. */
     fun withdraw(g: GameCalls, cfg: Gen2Config, slot: Int, key: Long): BoxSwapResult {
@@ -133,6 +165,27 @@ class Gen2BoxCalls(
     }
 }
 
+/** What [Gen2BoxCalls.changeBox] did. */
+enum class BoxChangeResult {
+    /** The box is the current one now and the game is saved. */
+    CHANGED,
+    /** Not on the field with the controls free. */
+    NOT_NOW,
+    IN_BATTLE,
+    /** The game was never saved, or the save on the cart is another player's: the game would ask first. */
+    OTHER_SAVE,
+    /** The save couldn't be backed up first: nothing was changed. */
+    NO_BACKUP,
+    FAILED,
+}
+
+/** SaveBox, LoadBox and SaveGameData: the same bytes in every Crystal cart these calls are for. */
+private val SAVE_SIGNATURES = listOf(
+    0x05 * 0x4000L + (0x4E0C - 0x4000) to "cdd850cdf950c9",   // SaveBox
+    0x05 * 0x4000L + (0x5021 - 0x4000) to "cdd850cd7d51c9",   // LoadBox
+    0x05 * 0x4000L + (0x4B85 - 0x4000) to "cd104cc9",         // SaveGameData
+)
+
 /** Crystal rev 0 / rev 1 / Australia: pret/pokecrystal's symbols, the same in all three. */
 val GEN2_BOX_CALLS_CRYSTAL = Gen2BoxCalls(
     remove = 0x6039,
@@ -140,7 +193,7 @@ val GEN2_BOX_CALLS_CRYSTAL = Gen2BoxCalls(
         0x03 * 0x4000L + (0x5B3F - 0x4000) to "3e01cdcb2ffa0bd1a7",   // SendGetMonIntoFromBox: OpenSRAM, the parameter
         0x03 * 0x4000L + (0x6039 - 0x4000) to "21d7dcfa0bd1a72808",   // RemoveMonFromPartyOrBox: wPartyCount, the parameter
         0x25 * 0x4000L + (0x6773 - 0x4000) to "cdb067cdc1673e2521087e", // HandleMap
-    ),
+    ) + SAVE_SIGNATURES,
 )
 
 /** German Kristall: Crystal's, RemoveMonFromPartyOrBox a byte earlier. */
@@ -150,5 +203,5 @@ val GEN2_BOX_CALLS_CRYSTAL_DE = Gen2BoxCalls(
         0x03 * 0x4000L + (0x5B3F - 0x4000) to "3e01cdb52ffa0bd1a7",
         0x03 * 0x4000L + (0x6038 - 0x4000) to "21d7dcfa0bd1a72808",
         0x25 * 0x4000L + (0x6773 - 0x4000) to "cdb067cdc1673e2521097e",
-    ),
+    ) + SAVE_SIGNATURES,
 )
