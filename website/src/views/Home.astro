@@ -53,14 +53,6 @@ const more = [
   ['clock', msg('STATUS BAR'), msg('Game, place, money, clock and battery in a strip above the game.')],
 ];
 const media = (name: string) => `/media/${name}`;
-const deviceList = [
-  ['dual', 'AYN THOR', msg('Made for it, tested daily.'), msg('TESTED'), 'f-pillGreen'],
-  ['dual', 'RETROID POCKET DUO LITE', msg('Its 4:3 bottom screen gets a layout of its own. The original Duo should work too.'), msg('SUPPORTED'), 'f-pillGreen'],
-  ['dual', 'ANBERNIC RG DS', msg('SWAP SCREENS puts the game on its top display.'), msg('SHOULD WORK'), 'f-pillYellow'],
-  ['single', msg('ONE SCREEN'), msg('The companion opens as a window over the game or a panel beside it, with the HUD and quick menu on the game. Tested on the Retroid Pocket 6.'), msg('TESTED'), 'f-pillBlue'],
-  ['phone', msg('PHONES, UPRIGHT'), msg('Hold an Android phone upright: the game on top, the companion under it. New: so far checked in screenshots only.'), msg('NEW'), 'f-pillRed'],
-  ['moreDevice', msg('COMING SOON'), msg('More handhelds, tablets and foldables. Want yours supported? Ask for it below.'), msg('SOON'), 'f-pillGrey'],
-];
 const ticker = ['GB · GBC · GBA · DS', msg('TWO SCREENS OR ONE'), msg('PARTY'), msg('BAG'), msg('BATTLE'), msg('MAP'), msg('DEX'), msg('GUIDE'), msg('TRAINER CARD'), msg('SAVE STATES'), msg('HUD'), msg('QUICK MENU'), msg('EXPAND'), msg('PC ANYWHERE'), msg('FREE FLIGHT'), msg('FAST-FORWARD'), msg('SHADERS'), msg('ACHIEVEMENTS')]
   .map((t) => tr(t)).concat(tr('{n} GAMES', { n: gameCount }));
 const title = 'POKEDAISY'.split('');
@@ -83,7 +75,7 @@ const title = 'POKEDAISY'.split('');
       </div>
       <p class="hero-lead">{tr('Pokémon, played better. Game Boy to DS, with a live companion, a widescreen overworld, a HUD and quick menu, and every chore one button away.')}</p>
       <div class="cta">
-        <a class="btn f-primary h-primaryHot primary big" href={download}>
+        <a class="btn f-primary h-primaryHot primary big" href={download} data-download-open>
           <Pixel name="download" scale={1} /> {tr('DOWNLOAD')}{latest && <span class="ver">v{latest.version}</span>}
         </a>
         <!-- The APK is one tap; Linux and the 3DS are a card each further down. -->
@@ -102,7 +94,7 @@ const title = 'POKEDAISY'.split('');
         <span class="dl-count" data-downloads-count>{downloads.toLocaleString(tr.locale)}</span>
         <span class="dl-label">{tr('DOWNLOADS')}</span>
       </a>
-      <p class="hero-meta small muted"><span>Android 8.0+</span><span>{tr('Free and open source')}</span><span>{tr('No ads')}</span></p>
+      <p class="hero-meta small muted"><span>{tr('Free and open source')}</span><span>{tr('No ads')}</span></p>
     </div>
     <div class="hero-art">
       <div class="glow"></div>
@@ -268,26 +260,6 @@ const title = 'POKEDAISY'.split('');
     <Downloads />
   </section>
 
-  <!-- Devices -->
-  <section class="block container">
-    <div class="section-head">
-      <span class="eyebrow">{tr('DEVICES')}</span>
-      <h2 class="heading">{tr('Two screens or one')}</h2>
-      <p class="lead">{tr('On a dual-screen handheld the companion gets a screen of its own. On one screen it opens in a window over the game or a panel beside it, or under it on a phone held upright. On a dual-screen handheld, SINGLE SCREEN plays it that way and frees the second screen for other apps.')}</p>
-    </div>
-    <div class="device-grid">
-      {deviceList.map(([icon, name, text, status, frame], i) => (
-        <article class:list={['device f-card', icon === 'moreDevice' && 'soon']} data-reveal style={`--i:${i}`}>
-          <Pixel name={icon} scale={1.334} />
-          <h3 class="device-name">{tr(name)}</h3>
-          <p class="small muted">{tr(text)}</p>
-          <span class={`chip ${frame}`}>{tr(status)}</span>
-          {icon === 'moreDevice' && <a class="btn f-btn h-btnHot small" href={tr.path('/feedback/#feature')}>{tr('REQUEST A DEVICE')}</a>}
-        </article>
-      ))}
-    </div>
-  </section>
-
   <!-- Games -->
   <section class="block container" id="games">
     <div class="section-head">
@@ -392,11 +364,12 @@ const title = 'POKEDAISY'.split('');
     80% { transform: translateY(-4px); }
     100% { transform: none; opacity: 1; }
   }
-  .hero-lead { margin: 24px 0 32px; max-width: 30em; font-size: var(--t-l); line-height: 1.4; color: var(--ink-2); text-shadow: var(--bold); text-wrap: pretty; }
+  .hero-lead { margin: 22px 0 30px; max-width: 32em; font-size: calc(var(--r-l) * 1.1); line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
   @keyframes bob { 50% { transform: translateY(var(--px)); } }
   .cta { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: center; }
   .ver { opacity: 0.85; font-size: var(--t-m); margin-left: 4px; }
   .community { margin-top: 18px; }
+  .platforms, .downloads, .tick, .tab-name { font-family: var(--font-pixel); }
   .platforms { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); text-decoration: none; font-size: var(--t-s); letter-spacing: 0.0625em; }
   .platforms span { margin-left: 4px; }
   .platforms:hover span { color: var(--red); text-decoration: underline; }
@@ -420,7 +393,7 @@ const title = 'POKEDAISY'.split('');
   .glow { position: absolute; inset: -6% -4%; background: radial-gradient(closest-side, rgba(232, 48, 40, 0.18), rgba(61, 111, 224, 0.12) 60%, transparent); filter: blur(30px); }
 
   /* Ticker */
-  .ticker { background: var(--ink); color: #fff; overflow: hidden; border-block: var(--px) solid var(--ink); }
+  .ticker { background: var(--ink); color: var(--bg); overflow: hidden; border-block: var(--px) solid var(--ink); }
   .ticker-track { display: flex; width: max-content; animation: scroll 46s linear infinite; }
   .tick { display: inline-flex; align-items: center; gap: 24px; padding: 14px 12px 14px 24px; font-size: var(--t-m); white-space: nowrap; }
   @keyframes scroll { to { transform: translateX(-50%); } }
@@ -441,10 +414,10 @@ const title = 'POKEDAISY'.split('');
   .tabs-list { display: grid; gap: 4px; }
   .tab-item { display: grid; gap: 2px; text-align: left; font: inherit; color: inherit; background: none; border: 0; padding: 10px 14px; cursor: pointer; }
   .tab-name { display: flex; align-items: center; gap: 8px; font-size: var(--t-m); letter-spacing: 0.0625em; color: var(--muted); }
-  .tab-text { display: none; color: var(--ink-2); }
+  .tab-text { display: none; color: var(--ink-2); font-family: var(--font-read); line-height: 1.5; }
   .tab-item:hover .tab-name { color: var(--ink); }
-  .tab-item.on { background: var(--card, rgba(255, 255, 255, 0.7)); filter: var(--hard-shadow); }
-  .tab-item.on .tab-name { color: #cb0707; text-shadow: var(--bold); }
+  .tab-item.on { background: var(--card); filter: var(--hard-shadow); }
+  .tab-item.on .tab-name { color: var(--red); text-shadow: var(--bold); }
   .tab-item.on .fcur { width: calc(var(--px) * 5); animation: blink 0.6s steps(1) infinite; }
   .tab-item.on .tab-text { display: block; }
 
@@ -473,23 +446,17 @@ const title = 'POKEDAISY'.split('');
   /* Player */
   .player-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px 32px; }
   .player-item { display: flex; gap: 20px; align-items: flex-start; }
+  .player-item p { line-height: 1.5; }
   .player-icon { display: inline-flex; padding: calc(var(--px) * 3); filter: var(--hard-shadow); transition: transform 0.2s steps(2); }
   .player-item:hover .player-icon { transform: rotate(-8deg) translateY(calc(var(--px) * -2)); }
   .player-name { font-size: var(--t-m); margin-bottom: 6px; text-shadow: var(--bold); letter-spacing: 0.0625em; }
 
-  /* Devices */
-  .device-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 24px; }
-  .device { display: grid; gap: 10px; align-content: start; justify-items: start; filter: var(--hard-shadow); padding: calc(var(--px) * 7); }
-  .device.soon { background: none; }
-  .device.soon .device-name { color: var(--muted); }
-  .device-name { font-size: var(--t-m); text-shadow: var(--bold); letter-spacing: 0.0625em; }
-
   /* Release */
   .release { filter: var(--hard-shadow); display: grid; gap: 24px; padding: calc(var(--px) * 9); }
-  .highlights { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; font-size: var(--t-s); color: var(--ink-2); }
+  .highlights { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; font-size: var(--r-m); color: var(--ink-2); }
   .highlights li { position: relative; padding-left: calc(var(--px) * 7); }
   .highlights li::before { content: ''; position: absolute; left: 0; top: 0.6em; width: calc(var(--px) * 3); height: calc(var(--px) * 3); background: var(--red); }
-  .highlights :global(strong) { color: var(--ink); font-weight: normal; }
+  .highlights :global(strong) { color: var(--ink); font-weight: 700; }
 
   /* Support */
   .support { display: grid; grid-template-columns: auto 1fr; gap: 48px; align-items: center; filter: var(--hard-shadow); padding: calc(var(--px) * 12); background: none; }
@@ -504,12 +471,19 @@ const title = 'POKEDAISY'.split('');
   }
   @media (max-width: 960px) {
     .hero, .demo-block, .demo-block.flip, .tabs-view { grid-template-columns: 1fr; }
-    .demo-block.flip .demo-copy { order: -1; }
+    .demo-block .demo-copy { order: -1; }
+    .demo-block, .tabs-view { gap: 24px; }
     .hero { padding-top: 40px; }
     .support { grid-template-columns: 1fr; padding: calc(var(--px) * 8); }
   }
   @media (max-width: 760px) {
-    .hero-lead { font-size: var(--t-m); }
+    .hero-lead { font-size: var(--r-l); }
+    .hero { padding: 28px 0 36px; gap: 28px; }
+    .viewer-tabs { gap: 10px; }
+    .more-link { margin-top: 28px; }
+    .player-grid { gap: 24px; }
+    .downloads { margin-top: 24px; }
+    .release { padding: calc(var(--px) * 6); }
   }
   @media (max-width: 560px) {
     .player-grid { grid-template-columns: 1fr; }

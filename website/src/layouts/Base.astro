@@ -1,9 +1,11 @@
 ---
-// Light, modern page - soft colour, lots of air - with every border, button and icon drawn in
-// whole pixels and every word in the app's pixel font (Pixel Operator).
+// Light, modern page - soft colour, lots of air - with every border, button and icon drawn in whole pixels.
+// Titles, labels and buttons are in the app's pixel font (Pixel Operator); reading text is Atkinson Hyperlegible,
+// the manual's. A dark page follows the visitor's system setting, or the header's switch once they've used it.
 import Pixel from '../components/Pixel.astro';
+import DownloadModal from '../components/DownloadModal.astro';
 import { frameCss, spriteSvg } from '../lib/pixel.js';
-import { THEMES, themeCss } from '../lib/themes.js';
+import { THEMES, themeCss, siteDarkCss, SITE_DARK } from '../lib/themes.js';
 import { REPO_URL } from '../lib/releases.js';
 import { REDDIT_URL, DISCORD_URL, KOFI_URL, PATREON_URL, COFFEE_URL } from '../lib/links.js';
 import { LANGUAGES, language, localePath, stripLang, trFor, msg } from '../i18n/index.js';
@@ -36,7 +38,7 @@ const nav = [
   [msg('GAMES'), '/#games'],
   [msg('DOCS'), '/docs/'],
   [msg('ROM CHECK'), '/compatibility/'],
-  [msg('RELEASES'), '/releases/'],
+  [msg('SUPPORT'), '/#support'],
 ];
 // Petals drifting behind the page: [left %, top %, size, delay s, duration s].
 const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 78, 2, 2, 28], [46, 92, 1, 6, 25], [95, 70, 1, 12, 30]];
@@ -55,6 +57,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     <meta name="theme-color" content={themed?.themeColor ?? '#f7f6fb'} />
     <link rel="icon" href={favicon} />
     <link rel="preload" href="/fonts/PixelOperator.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/AtkinsonHyperlegible-Regular.ttf" as="font" type="font/ttf" crossorigin />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -84,6 +87,30 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
         })();
       </script>
     )}
+    <script is:inline define:vars={{ lightColor: themed?.themeColor ?? '#f7f6fb', darkColor: themed ? null : SITE_DARK.themeColor }}>
+      // Light or dark, before anything draws: the visitor's pick (the header's switch, kept in this browser), else
+      // their system's setting, followed live while they haven't picked. A page with a look of its own ignores it.
+      (function () {
+        var root = document.documentElement;
+        var system = matchMedia('(prefers-color-scheme: dark)');
+        var picked = null;
+        try { picked = localStorage.getItem('pd-scheme'); } catch (e) {}
+        function apply() {
+          var dark = picked ? picked === 'dark' : system.matches;
+          root.dataset.scheme = dark ? 'dark' : 'light';
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta && darkColor) meta.content = dark ? darkColor : lightColor;
+        }
+        apply();
+        system.addEventListener('change', function () { if (!picked) apply(); });
+        window.pdSetScheme = function (scheme) {
+          picked = scheme;
+          try { localStorage.setItem('pd-scheme', scheme); } catch (e) {}
+          apply();
+        };
+        document.addEventListener('DOMContentLoaded', apply);
+      })();
+    </script>
     <script is:inline>
       // Pixel Operator's pixel is 1/16 em: it's pixel-perfect only where size x device pixel ratio is a
       // multiple of 16, and at 110% zoom on a 2x screen those sizes are 14.5 / 21.8 / 29.1... - too coarse
@@ -124,7 +151,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
       })();
     </script>
     <style is:global set:html={frameCss()}></style>
-    {themed && <style is:global set:html={themeCss(theme)}></style>}
+    {themed ? <style is:global set:html={themeCss(theme)}></style> : <style is:global set:html={siteDarkCss()}></style>}
     <slot name="head" />
   </head>
   <body>
@@ -148,11 +175,18 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
           {nav.map(([label, href]) => (
             <a href={tr.path(href)} aria-current={here === href || (href === '/docs/' && path.startsWith('/docs/')) ? 'page' : undefined}>{tr(label)}</a>
           ))}
-          <a href={DISCORD_URL} class="icon-link" aria-label={tr('PokeDaisy on Discord')}><Pixel name="discord" scale={0.5} /></a>
-          <a href={REPO_URL} class="icon-link" aria-label="GitHub"><Pixel name="github" scale={0.5} /></a>
         </nav>
-        <!-- Phones: GitHub beside COFFEE, bigger, instead of squeezed onto the end of the scrolling links (Discord stays there: no room). -->
-        <a href={REPO_URL} class="icon-link gh-top" aria-label="GitHub"><Pixel name="github" scale={0.75} /></a>
+        <!-- The community and the page's look, beside the links (on phones: on the first row, the links under it). -->
+        <div class="bar-tools">
+          <a href={DISCORD_URL} class="btn f-discord h-discordHot small discord-top" aria-label={tr('PokeDaisy on Discord')}>
+            <Pixel name="discord" scale={0.75} /><span class="discord-label">DISCORD</span>
+          </a>
+          <a href={REPO_URL} class="icon-link gh-top" aria-label="GitHub"><Pixel name="github" scale={0.75} /></a>
+          <button type="button" class="icon-link scheme-btn" data-scheme-toggle aria-label={tr('Dark mode')} title={tr('Dark mode')} aria-pressed="false">
+            <span class="to-dark"><Pixel name="moon" scale={0.75} /></span>
+            <span class="to-light"><Pixel name="sun" scale={0.75} /></span>
+          </button>
+        </div>
         <a class="btn f-coffee h-coffeeHot small coffee-nav" href={COFFEE_URL} aria-label={tr('BUY ME A COFFEE')}>
           <Pixel name="cup" scale={0.5} /> <span class="coffee-label">{tr('COFFEE')}</span>
         </a>
@@ -176,6 +210,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     </header>
 
     <main><slot /></main>
+    <DownloadModal />
 
     <footer class="footer">
       <div class="container foot">
@@ -187,7 +222,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
           </div>
         </div>
         <div class="foot-links tiny">
-          <a href={`${REPO_URL}/releases/latest`}>{tr('DOWNLOAD')}</a>
+          <a href={`${REPO_URL}/releases/latest`} data-download-open>{tr('DOWNLOAD')}</a>
           <a href="/docs/">{tr('DOCS')}</a>
           <a href={tr.path('/compatibility/')}>{tr('ROM CHECK')}</a>
           <a href={tr.path('/releases/')}>{tr('RELEASES')}</a>
@@ -206,6 +241,18 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     <script>
       import { startAnalytics } from '../lib/analytics.js';
       startAnalytics();
+    </script>
+    <script>
+      // The light / dark switch: the pick is kept in this browser (the <head> script applies it).
+      for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-scheme-toggle]')) {
+        const sync = () => btn.setAttribute('aria-pressed', String(document.documentElement.dataset.scheme === 'dark'));
+        sync();
+        btn.addEventListener('click', () => {
+          (window as any).pdSetScheme(document.documentElement.dataset.scheme === 'dark' ? 'light' : 'dark');
+          sync();
+        });
+        matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => setTimeout(sync));
+      }
     </script>
     <script>
       // The language picker: remember the pick (the <head> redirect reads it), close on a click elsewhere.
@@ -240,6 +287,11 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     src: url('/fonts/PixelOperator.ttf') format('truetype');
     font-display: block;
   }
+  /* Reading text: Atkinson Hyperlegible (the manual's, and the app's docs reader's). Japanese and Korean read in the
+     system's own fonts. */
+  @font-face { font-family: 'Atkinson Hyperlegible'; src: url('/fonts/AtkinsonHyperlegible-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'Atkinson Hyperlegible'; src: url('/fonts/AtkinsonHyperlegible-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+  @font-face { font-family: 'Atkinson Hyperlegible'; src: url('/fonts/AtkinsonHyperlegible-Italic.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
   /* Japanese, glyph by glyph, like the app's PixelTypeface: PixelMplus at Pixel Operator's pixel, cut to the
      characters the site's Japanese uses (scripts/gen_site_jp_font.py). Only fetched where one is drawn. */
   @font-face {
@@ -266,6 +318,13 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     --t-l: 36px;
     --t-xl: 52px;
     --t-xxl: 80px;
+    /* The reading font's sizes: paragraphs (m), their small print (s, xs) and a hero's lead (l). */
+    --r-l: 21px;
+    --r-m: 18px;
+    --r-s: 16px;
+    --r-xs: 14px;
+    --font-pixel: 'Pixel Operator', 'PixelMplus JP', 'Galmuri KO', monospace;
+    --font-read: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans', 'Apple SD Gothic Neo', sans-serif;
     /* Pixel bold: each glyph again, one font pixel to the right (how the app bolds Gen 1's font). */
     --bold: 0.0625em 0 0 currentColor;
     --ink: #1d1b26;
@@ -279,16 +338,22 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     --green: #2c9a44;
     --hard-shadow: drop-shadow(calc(var(--px) * 2) calc(var(--px) * 2) 0 rgba(29, 27, 38, 0.14));
     --step: steps(4, end);
+    --card: #ffffff;
+    --surface: rgba(29, 27, 38, 0.05);
+    --hover: #fff7d6;
+    --line: rgba(29, 27, 38, 0.12);
   }
-  /* Between the phone layout and a wide window, a tighter nav: the longest language's labels (Spanish), the coffee
-     button and the language picker then fit in one row from 900px up. */
-  @media (min-width: 901px) and (max-width: 1120px) {
+  /* Between the two-row layout and a wide window, a tighter nav: the longest language's labels (German, Spanish),
+     Discord, GitHub, the light switch, the coffee button and the language picker then fit in one row from 1100px up. */
+  @media (min-width: 1101px) and (max-width: 1260px) {
     .topbar .bar { gap: 14px; }
     .topbar .links { font-size: var(--t-xs); gap: 0; }
     .topbar .links a { padding: 6px 7px; }
+    /* No room for Discord's word here: its logo alone, still a button. */
+    .discord-label { display: none; }
+    .discord-top { padding: calc(var(--px) * 2) calc(var(--px) * 3); }
   }
-  /* Narrow phones: logo, GitHub, the coffee cup and the language chip share the first row (with COFFEE's word,
-     the language chip went to a row of its own). */
+  /* Narrow phones: COFFEE's word goes, so the first row holds everything. */
   @media (max-width: 480px) {
     .topbar .bar { column-gap: 8px; }
     .coffee-label { display: none; }
@@ -298,16 +363,16 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     .topbar .links a { padding: 6px 6px; }
   }
   @media (max-width: 760px) {
-    :root { --px: 2px; --t-s: 19px; --t-m: 20px; --t-l: 28px; --t-xl: 34px; --t-xxl: 64px; }
+    :root { --px: 2px; --t-s: 19px; --t-m: 20px; --t-l: 28px; --t-xl: 34px; --t-xxl: 64px; --r-l: 19px; --r-m: 17px; --r-s: 15px; --r-xs: 13px; }
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; scroll-padding-top: 96px; }
   html, body { margin: 0; }
   body {
     min-height: 100vh;
-    font-family: 'Pixel Operator', 'PixelMplus JP', 'Galmuri KO', monospace;
-    font-size: var(--t-m);
-    line-height: 1.5;
+    font-family: var(--font-read);
+    font-size: var(--r-m);
+    line-height: 1.6;
     color: var(--ink);
     background: var(--bg);
     /* Grayscale anti-aliasing: crisp at the snapped sizes, even (not jagged) in between. */
@@ -322,9 +387,13 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
   a { color: inherit; }
   img { max-width: 100%; }
   h1, h2, h3, h4 { font-weight: normal; margin: 0; line-height: 1.15; }
+  /* The pixel font: titles, labels, buttons and the bar. Everything else reads in --font-read. */
+  h1, h2, h3, h4, button, .btn, .chip, .eyebrow, .heading, .topbar, .foot-name, .foot-links, .pf { font-family: var(--font-pixel); }
   p { margin: 0; }
-  .small { font-size: var(--t-s); }
-  .tiny { font-size: var(--t-xs); }
+  .small { font-size: var(--r-s); }
+  .tiny { font-size: var(--r-xs); }
+  .pf.small { font-size: var(--t-s); }
+  .pf.tiny { font-size: var(--t-xs); }
   .bold { text-shadow: var(--bold); letter-spacing: 0.0625em; }
   .muted { color: var(--muted); }
   .red { color: var(--red); }
@@ -357,18 +426,28 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     -webkit-backdrop-filter: blur(14px) saturate(1.4);
     border-bottom: var(--px) solid var(--ink);
   }
-  .bar { display: flex; align-items: center; gap: 24px; min-height: 72px; }
+  .bar { display: flex; align-items: center; gap: 16px; min-height: 72px; }
   .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; font-size: var(--t-l); text-shadow: var(--bold); letter-spacing: 0.0625em; }
   .brand-mark { display: inline-flex; transition: transform 0.4s var(--step); }
   .brand:hover .brand-mark { transform: rotate(-90deg); }
   .links { display: flex; align-items: center; gap: 4px; margin-left: auto; font-size: var(--t-s); }
-  .links a { text-decoration: none; padding: 6px 10px; position: relative; white-space: nowrap; }
+  .links a { text-decoration: none; padding: 6px 8px; position: relative; white-space: nowrap; }
   .links a::after {
-    content: ''; position: absolute; left: 10px; right: 10px; bottom: 2px; height: var(--px);
+    content: ''; position: absolute; left: 8px; right: 8px; bottom: 2px; height: var(--px);
     background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform 0.2s var(--step);
   }
   .links a:hover::after, .links a[aria-current='page']::after { transform: scaleX(1); }
-  .icon-link { display: inline-flex; }
+  .icon-link { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; text-decoration: none; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; }
+  .icon-link:hover .pixel { transform: translateY(calc(var(--px) * -1)); }
+  .icon-link:focus-visible { outline: var(--px) dashed var(--red); outline-offset: var(--px); }
+  .bar-tools { display: flex; align-items: center; gap: 2px; }
+  .bar-tools .icon-link { min-width: 40px; }
+  .discord-top { gap: 10px; padding: calc(var(--px) * 2) calc(var(--px) * 4); }
+  .scheme-btn .to-light, :root[data-scheme='dark'] .scheme-btn .to-dark { display: none; }
+  :root[data-scheme='dark'] .scheme-btn .to-light { display: inline-flex; }
+  /* A page with a game's own look keeps it: no switch there. */
+  :root[data-theme] .scheme-btn { display: none; }
+  :root[data-scheme='dark']:not([data-theme]) .gh-top .pixel { filter: brightness(0) invert(0.95); }
 
   /* Language picker: a small chip; its list drops down under it, a pixel card. */
   .lang-pick { position: relative; }
@@ -387,21 +466,35 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
   .lang-list a:hover, .lang-list a:focus-visible { color: var(--red); outline: none; }
   .lang-list a[aria-current] { padding-left: 22px; }
   .lang-cur { position: absolute; left: 4px; display: inline-flex; }
-  .gh-top { display: none; }
   .coffee-nav { white-space: nowrap; }
-  @media (max-width: 900px) {
+  @media (max-width: 1100px) {
     .bar { flex-wrap: wrap; gap: 4px 12px; padding: 8px 0; }
     .links { order: 3; width: 100%; margin: 0; overflow-x: auto; scrollbar-width: none; justify-content: space-between; }
     .links a { white-space: nowrap; }
-    .links .icon-link[aria-label='GitHub'] { display: none; }
-    .gh-top { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin-left: auto; text-decoration: none; }
-    .gh-top:hover .pixel { transform: translateY(calc(var(--px) * -1)); }
+    .bar-tools { margin-left: auto; }
+  }
+  @media (max-width: 560px) {
+    .discord-label { display: none; }
+    .discord-top { padding: calc(var(--px) * 2) calc(var(--px) * 2); margin-right: 2px; }
+  }
+  /* Phones: the name, Discord, GitHub, the light switch, the coffee cup and the language on one row. */
+  @media (max-width: 440px) {
+    .topbar .bar { column-gap: 6px; }
+    .brand { gap: 8px; font-size: var(--t-m); }
+    .bar-tools { gap: 0; }
+    .bar-tools .icon-link { min-width: 34px; }
+    .lang-btn { padding: 0; gap: 4px; }
+  }
+  @media (max-width: 380px) {
+    .topbar .bar { column-gap: 4px; }
+    .bar-tools .icon-link { min-width: 30px; }
+    .lang-code { display: none; }
   }
 
   /* Buttons: pixel frames that lift on hover and press down on click. */
   .btn {
     display: inline-flex; align-items: center; gap: 12px;
-    font: inherit; font-size: var(--t-m); line-height: 1; color: var(--ink); text-decoration: none;
+    font: inherit; font-family: var(--font-pixel); font-size: var(--t-m); line-height: 1; color: var(--ink); text-decoration: none;
     padding: calc(var(--px) * 3) calc(var(--px) * 5);
     cursor: pointer; background: none;
     filter: drop-shadow(0 calc(var(--px) * 2) 0 var(--ink));
@@ -423,8 +516,13 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
   .eyebrow { display: inline-flex; align-items: center; gap: 12px; font-size: var(--t-s); color: var(--red); letter-spacing: 0.0625em; margin-bottom: 14px; text-shadow: var(--bold); }
   .eyebrow::before { content: ''; width: calc(var(--px) * 4); height: calc(var(--px) * 4); background: var(--red); }
   .heading { font-size: var(--t-xl); letter-spacing: 0.0625em; text-shadow: var(--bold), var(--px) var(--px) 0 rgba(29, 27, 38, 0.12), calc(var(--px) + 0.0625em) var(--px) 0 rgba(29, 27, 38, 0.12); }
-  .lead { color: var(--ink-2); max-width: 44ch; margin-top: 18px; line-height: 1.55; }
+  .lead { color: var(--ink-2); max-width: 52ch; margin-top: 16px; line-height: 1.6; font-size: var(--r-l); }
+  .lead.small { font-size: var(--r-m); }
   .section-head { margin-bottom: 40px; }
+  @media (max-width: 760px) {
+    section.block { padding: 32px 0; }
+    .section-head { margin-bottom: 24px; }
+  }
   .section-head.center { text-align: center; }
   .section-head.center .lead { margin-inline: auto; }
 
@@ -447,6 +545,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
 
   /* Footer */
   .footer { margin-top: 48px; padding: 48px 0 64px; border-top: var(--px) solid var(--ink); background: rgba(255, 255, 255, 0.6); }
+  .foot-links { font-size: var(--t-xs); }
   .foot { display: grid; gap: 24px; }
   .foot-brand { display: flex; align-items: center; gap: 16px; }
   .foot-name { font-size: var(--t-l); text-shadow: var(--bold); letter-spacing: 0.0625em; }

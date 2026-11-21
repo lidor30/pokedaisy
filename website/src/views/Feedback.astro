@@ -113,6 +113,7 @@ const kinds = [
   [hidden] { display: none !important; }
   .feedback { display: grid; gap: 28px; }
   .kinds { display: flex; flex-wrap: wrap; gap: 16px; }
+  .kind, .flabel { font-family: var(--font-pixel); }
   .kind { font-size: var(--t-s); }
   .kind input { position: absolute; opacity: 0; pointer-events: none; }
   .kind:has(input:checked) { color: #fff; text-shadow: var(--px) var(--px) 0 #8a1410; border-image-source: none; background: var(--red); outline: var(--px) solid var(--ink); }
@@ -123,15 +124,15 @@ const kinds = [
   .flabel { font-size: var(--t-s); text-shadow: var(--bold); letter-spacing: 0.0625em; }
   .req { color: var(--red); }
   .field input, .field textarea, .field select {
-    font: inherit; font-size: var(--t-s); color: var(--ink); width: 100%;
-    padding: calc(var(--px) * 1) calc(var(--px) * 2); outline: none; resize: vertical;
+    font: inherit; font-size: var(--r-m); color: var(--ink); width: 100%;
+    padding: calc(var(--px) * 2) calc(var(--px) * 3); outline: none; resize: vertical;
   }
   .field textarea { line-height: 1.4; }
   .field select { appearance: none; cursor: pointer; }
-  .field ::placeholder { color: #a8a6b6; }
+  .field ::placeholder { color: var(--muted); }
   .ferr { color: var(--red-ink); min-height: 0; }
   .ferr:empty { display: none; }
-  .field.bad input, .field.bad textarea, .field.bad select { background: #fff1ef; }
+  .field.bad input, .field.bad textarea, .field.bad select { background: color-mix(in srgb, var(--red) 10%, transparent); }
   .note { color: var(--ink-2); }
   .note :global(.pixel) { display: inline-block; vertical-align: middle; margin-right: 8px; }
   .warn { display: flex; align-items: center; gap: 10px; color: var(--red-ink); }

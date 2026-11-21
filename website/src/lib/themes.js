@@ -30,7 +30,7 @@ const DARK_PILLS = {
  * bullets, the title's colour unless [title] says; [card] / [btn] [outline, inner, fill]; [primary] [outline,
  * highlight, fill, hover fill, text, text shadow]; [chip] [outline, fill, on-fill]; [blobs] three [colour, opacity];
  * [starsOf] a star field's colours; [bar] / [foot] the top bar's and footer's [background, rule]; [titleShadow];
- * [glow] the hero's two glow colours.
+ * [glow] the hero's two glow colours. [starsOpacity]: how strongly the star field shows (0.8).
  */
 function make(o) {
   const dark = !!o.dark;
@@ -46,8 +46,15 @@ function make(o) {
       '--red': o.accent,
       '--red-ink': o.accentInk ?? o.accent,
       '--yellow': o.yellow ?? '#f8d030',
+      ...(dark ? { '--blue': o.blue ?? '#8aa8ff', '--green': o.green ?? '#5fd47a' } : {}),
       '--hard-shadow': `drop-shadow(calc(var(--px) * 2) calc(var(--px) * 2) 0 ${o.hardShadow ?? (dark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(29, 27, 38, 0.14)')})`,
       '--shade': shade,
+      // Surfaces the pages draw without a frame: a card's own fill, a tint behind code / table heads, a row's
+      // hover, a hairline.
+      '--card': o.card[2],
+      '--surface': o.surface ?? (dark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(29, 27, 38, 0.05)'),
+      '--hover': o.hover ?? (dark ? 'rgba(248, 208, 48, 0.12)' : '#fff7d6'),
+      '--line': o.line ?? (dark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(29, 27, 38, 0.12)'),
     },
     frames: {
       card: frameSvg([[o.card[0], 1], [o.card[1], 1]], 3, o.card[2]),
@@ -66,7 +73,7 @@ function make(o) {
         o.sky && `${s} body{background:${o.sky} no-repeat,var(--bg)}`,
         `${s} .b1{background:${c1};opacity:${a1}}${s} .b2{background:${c2};opacity:${a2}}${s} .b3{background:${c3};opacity:${a3}}`,
         o.starsOf
-          ? `${s} .dots{background-image:${stars(...o.starsOf)};background-size:240px 240px;image-rendering:pixelated;mask-image:none;opacity:.8}`
+          ? `${s} .dots{background-image:${stars(...o.starsOf)};background-size:240px 240px;image-rendering:pixelated;mask-image:none;opacity:${o.starsOpacity ?? 0.8}}`
           : `${s} .dots{opacity:.7}`,
         dark && `${s} .petal{opacity:.06}`,
         `${s} .topbar{background:${o.bar[0]};border-bottom-color:${o.bar[1]}}`,
@@ -192,14 +199,37 @@ export const THEMES = {
   }),
 };
 
-/** The CSS a page with [id] adds after the site's own, or '' (no theme, or an unknown one). */
-export function themeCss(id) {
-  const t = id && THEMES[id];
-  if (!t) return '';
-  const s = `html[data-theme='${id}']`;
+// The site's own dark page: PokeDaisy's colours at night. It follows the visitor's system setting unless they
+// picked one with the header's switch (Base.astro: `html[data-scheme]`, remembered in this browser). A game page
+// with a look of its own (data-theme) keeps that look either way.
+export const SITE_DARK = make({
+  dark: true, bg: '#16141d', themeColor: '#16141d', shade: '#07060a', ink: '#f2f0f8', ink2: '#cfcbdd', muted: '#9a96ad',
+  accent: '#ff6a5c', accentInk: '#ff8a78', yellow: '#f8d030', hardShadow: 'rgba(0, 0, 0, 0.5)',
+  card: ['#55516a', '#2b2838', '#201e2a'], btn: ['#6a6682', '#f8d030', '#24222f'], btnHot: '#302c22',
+  primary: ['#07060a', '#ff8a78', '#e83028', '#f5402f', '#ffffff', '#8a1410'],
+  chip: ['#6a6682', '#201e2a', '#e83028'],
+  // Quiet: the glows and the stars stay well behind the page.
+  blobs: [['#6a1e2a', 0.18], ['#4a3c08', 0.14], ['#1c2e6a', 0.22]], starsOf: ['#ffffff', '#f8d030', '#ffb4a8'], starsOpacity: 0.3,
+  bar: ['rgba(22,20,29,.82)', '#3a3648'], foot: ['rgba(7,6,10,.45)', '#3a3648'],
+  title: '#f2f0f8', titleShadow: 'rgba(0,0,0,.55)', glow: ['rgba(232,48,40,.22)', 'rgba(61,111,224,.18)'],
+});
+
+/** [t]'s CSS under the selector [s]. */
+function cssFor(t, s) {
   const tokens = Object.entries(t.tokens).map(([k, v]) => `${k}:${v}`).join(';');
   const frames = Object.entries(t.frames).map(([name, { slice, url }]) =>
     `${s} .f-${name}{border-width:calc(var(--px)*${slice});border-image:${url} ${slice} fill/calc(var(--px)*${slice}) stretch}` +
     `${s} .h-${name}:hover,${s} .h-${name}:focus-visible{border-image-source:${url}}`).join('\n');
   return `${s}{${tokens}}\n${frames}\n${t.css(s)}`;
+}
+
+/** The CSS a page with [id] adds after the site's own, or '' (no theme, or an unknown one). */
+export function themeCss(id) {
+  const t = id && THEMES[id];
+  return t ? cssFor(t, `html[data-theme='${id}']`) : '';
+}
+
+/** The site's dark page, for every page without a theme of its own. */
+export function siteDarkCss() {
+  return cssFor(SITE_DARK, "html[data-scheme='dark']:not([data-theme])");
 }
