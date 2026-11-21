@@ -648,8 +648,9 @@ object NdsArt {
 
     /**
      * Origin HeartGold's tables from its cart ([OriginHeartGold.Data]): each species / form's types (its 52-byte personal
-     * records, `/a/0/0/2`, types at 6 and 7 as HeartGold's), each move's type and power (its own `/extra/new_move_data.narc`,
-     * 40 bytes a move: type 0, category 2, power 3) under the cart's move names, the type chart, the forms and the machines.
+     * records, `/a/0/0/2`, types at 6 and 7 as HeartGold's), each move's type, category and power (its own
+     * `/extra/new_move_data.narc`, 40 bytes a move: type 0, category 2, power 3) under the cart's move names, the type chart,
+     * the forms and the machines.
      */
     fun readOrigin(rom: Path): OriginHeartGold.Data? = withRomFile(rom) { f ->
         val header = f.read(0, 0x200)
@@ -662,10 +663,14 @@ object NdsArt {
         val moveNames = readNames(rom)?.moves.orEmpty()
         val moveRecords = Narc(file(f, header, "/extra/new_move_data.narc") ?: return null)
         val moves = HashMap<Int, MoveInfo>()
+        val categories = HashMap<Int, Int>()
         for (id in 1 until moveRecords.size) {
             val m = moveRecords.member(id) ?: continue
             val name = moveNames.getOrNull(id)?.takeIf { it.isNotBlank() } ?: continue
-            if (m.size >= 4) moves[id] = MoveInfo(name, u8(m, 0), u8(m, 3))
+            if (m.size < 4) continue
+            moves[id] = MoveInfo(name, u8(m, 0), u8(m, 3))
+            // Gen 5's order (0 status, 1 physical, 2 special), unlike HeartGold's own records.
+            categories[id] = when (u8(m, 2)) { 1 -> 0; 2 -> 1; else -> 2 }
         }
         val chart = HashMap<Int, Int>()
         val c = f.read(OriginHeartGold.TYPE_CHART_OFFSET, 18 * 18)
@@ -692,7 +697,7 @@ object NdsArt {
             val e = if (bank == 0xFF) null else encounters?.member(bank)
             if (e != null && e.size >= 2) rates += listOf(map, u8(e, 0), u8(e, 1))
         }
-        OriginHeartGold.Data(types, moves, chart, forms, machines, rates.toIntArray())
+        OriginHeartGold.Data(types, moves, categories, chart, forms, machines, rates.toIntArray())
     }
 
     /**

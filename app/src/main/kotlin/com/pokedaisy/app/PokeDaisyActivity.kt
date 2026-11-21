@@ -2050,8 +2050,7 @@ class PokeDaisyActivity : Activity() {
         }
         override val autoRunBuiltIn get() =
             com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN
-        override val reusableTmsBuiltIn get() =
-            com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN
+        override val reusableTmsBuiltIn get() = com.pokedaisy.app.companion.data.ReusableTms.builtIn
         override val ffToggled get() = if (romIs3ds) n3dsFfOn else if (::engine.isInitialized) engine.fastForwardToggled else false
         override fun setFfToggled(on: Boolean) {
             if (romIs3ds) {

@@ -61,6 +61,14 @@ typedef struct PkNdsFieldGame {
     uint32_t battleManagerPtr;
     int offBattleUi;
     int offUiHandler;
+    // Which panel waits: the manager's UI object at offBattlePanels runs the panel's handler at offPanelFn, which is
+    // commandsFn at the commands and movesFn at the moves. Not its id: on the way back to the commands the id still says
+    // the moves (or the party) for a few frames while the commands' handler already runs. Gen4Reader.kt's
+    // readManagedBattleInput reads the same.
+    int offBattlePanels;
+    int offPanelFn;
+    uint32_t commandsFn;
+    uint32_t movesFn;
 } PkNdsFieldGame;
 
 // pk_wide.h's PK_FIELD_* bits, which the engine already reads, plus two the DS sets:

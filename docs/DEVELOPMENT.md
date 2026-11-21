@@ -3441,10 +3441,16 @@ engine is its own**: `gOverlayTemplate_Battle` runs overlay 14's init, which mak
 battle objects (0x414 bytes each) pointing at the parties' (encrypted) records: no BattleSystem / BattleContext. The BATTLE
 tab reads those objects instead (`Gen4ManagedBattle`: HP, item, level, stats, types, stages, moves and PP, ability; the
 player's six from manager +0x60, the foe's from +0x7C, each side in battle order, the one out first - a switch reorders them -
-and the BattleSetup's type for trainer battles; found by diffing dumps across a Leer, an Agility and a switch). Its battle
-buttons can't work: its panels aren't HeartGold's. Its touch screen's controller (manager +0x238) has an input handler at +0x10 while the battle waits
-for a tap, which `pk_nds_field.cpp`'s `managedBattleInput` reads: DS LAYOUT floats the game's touch screen in then, and
-SMART FF slows down. Its DEX (`POKEDEX_ORIGIN`, one national list of 1025) is written by `NdsArt.dexOrigin` from its cart:
+and the BattleSetup's type for trainer battles; found by diffing dumps across a Leer, an Agility and a switch). Its touch
+screen's controller (manager +0x238) has an input handler at +0x10 while the battle waits for a tap (`pk_nds_field.cpp`'s
+`managedBattleInput`), and another UI object (manager +0x234) runs the waiting panel's handler at +0x57C: 0x02202445 the
+commands, 0x02202F4D the moves, 0x02202955 the bag, 0x0220270D the party (found by diffing dumps of each panel and tracing a
+turn frame by frame, then checked in a wild and a trainer battle). Its id at +0x580 can't say which: the bag and the party
+share 3, and on the way back to the commands the id still reads the moves' 2 (then 3) for a few frames while the commands'
+handler runs. Its commands and moves sit where
+HeartGold's do, so BATTLE BUTTONS press them with `NdsBattleTaps.GEN4` from `readManagedBattleInput`'s states, and
+`battleTouch` gives them `PK_NDS_FIELD_TOUCH_BATTLE_MENU`; the party and anything else float the game's touch screen in, and
+SMART FF slows down while it waits. Its DEX (`POKEDEX_ORIGIN`, one national list of 1025) is written by `NdsArt.dexOrigin` from its cart:
 the text banks 791 / 803 / 711, heights / weights in `/a/0/7/4`, abilities u16 (a hidden one at 0x1A), evolutions of ten
 6-byte entries (HeartGold's methods 1-26, hg-engine's from 27: `Gen4Dex.originEvoReqs`), learnsets as { u16 level, u16 move },
 machines by its own rule (the species' `/data/tutor_moves.narc` list or its learnset, RETURN anyone, MEW all), fronts from

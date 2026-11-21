@@ -35,6 +35,49 @@ class OriginHeartGoldTest {
         romGameCode = ""
     }
 
+    // BATTLE BUTTONS steer Origin's panels from this state; the words are a headless wild battle's (manager, its UI object,
+    // the touch controller and its handler), with the handler each panel ran.
+    @Test
+    fun `battle input - which panel waits`() {
+        val b = GEN4_ORIGIN_HEARTGOLD.managedBattle!!
+        fun state(panel: Long, handler: Long = 0x0220368D, manager: Long = 0x022C0F78): Int {
+            val words = mapOf(
+                b.managerPtr to manager,
+                0x022C0F78L + b.offPanels to 0x0230CB20L,
+                0x022C0F78L + b.offBattleUi to 0x0230E4F4L,
+                0x0230E4F4L + b.offUiHandler to handler,
+                0x0230CB20L + b.offPanelFn to panel,
+            )
+            val r = object : MemoryReader {
+                override fun readCoreMemory(addr: Long, size: Int) = ByteArray(size) { i ->
+                    val a = addr + i
+                    ((words[a and 3L.inv()] ?: 0L) shr (8 * (a and 3L).toInt())).toByte()
+                }
+            }
+            return readManagedBattleInput(r, b)
+        }
+        assertEquals(BATTLE_INPUT_ACTION_SELECT, state(ORIGIN_COMMANDS_FN))
+        assertEquals(BATTLE_INPUT_MOVE_SELECT, state(ORIGIN_MOVES_FN))
+        // The bag and the party share a panel id, so the bag read as the party.
+        assertEquals(BATTLE_INPUT_BAG_OPEN, state(ORIGIN_BAG_FN))
+        assertEquals(BATTLE_INPUT_PARTY_OPEN, state(ORIGIN_PARTY_FN))
+        // Between two panels (the turn's end runs one more before the commands').
+        assertEquals(BATTLE_INPUT_BUSY, state(0x02203099))
+        // The turn playing out: no handler.
+        assertEquals(BATTLE_INPUT_BUSY, state(ORIGIN_COMMANDS_FN, handler = 0))
+        // Out of a battle the manager pointer is cleared.
+        assertEquals(BATTLE_INPUT_NONE, state(ORIGIN_COMMANDS_FN, manager = 0))
+    }
+
+    // Origin runs as HEARTGOLD, so a GameKind set alone would offer REUSABLE TMS there, which has nothing to patch.
+    @Test
+    fun `its TMs are built in, but not retail HeartGold's`() {
+        activeGame = GameKind.HEARTGOLD
+        assertFalse(ReusableTms.builtIn)
+        originHeartGold = true
+        assertTrue(ReusableTms.builtIn)
+    }
+
     @Test
     fun `party - species past 493 and a form's own id`() {
         val t = read()
@@ -95,7 +138,7 @@ class OriginHeartGoldTest {
         assertEquals(listOf(16), t.battleFoes.map { it.species })
         assertEquals(emptyList<Mon>(), t.enemyParty)                                 // a wild one: no FOE TEAM
         assertEquals(false, t.isTrainerBattle)
-        assertEquals(BATTLE_INPUT_NONE, t.battleInputState)                          // no battle buttons: its panels are its own
+        assertEquals(BATTLE_INPUT_BUSY, t.battleInputState)                          // the fixture keeps no touch controller
     }
 
     @Test
@@ -127,6 +170,9 @@ class OriginHeartGoldTest {
         assertEquals(MoveInfo("Tackle", 0, 40), data.moveData[33])
         assertEquals(MoveInfo("Ember", 10, 40), data.moveData[52])
         assertEquals(920, data.moveData.keys.max())
+        // Its records keep Gen 5's category order: read back as Gen 4's (physical, special, status), so the move icons
+        // don't swap. Dazzling Gleam and Moonblast are moves past Gen 4's table.
+        assertEquals(listOf(0, 1, 2, 1, 1), listOf(33, 52, 45, 605, 585).map { data.moveCategories[it] })
         // Gen 6's chart: Fairy beats Dragon, Dragon can't touch it, Steel no longer resists Ghost.
         assertEquals(200, data.typeChart[9 * 100 + 16])
         assertEquals(0, data.typeChart[16 * 100 + 9])
@@ -147,6 +193,8 @@ class OriginHeartGoldTest {
         assertEquals(listOf("Cyndaquil", "Sylveon", "Pikachu", "Charizard", "Garchomp", "Dragapult"), t.party.map { speciesName(it.species) })
         assertEquals("Fairy", typeName(activeSpeciesTypeData.getValue(700).type1))
         assertEquals(listOf("Tackle", "Leer", "Smokescreen", "Ember"), t.party[0].moves.map { lookupMove(it).name })
+        assertEquals(listOf(MoveKind.PHYSICAL, MoveKind.STATUS, MoveKind.STATUS, MoveKind.SPECIAL),
+            t.party[0].moves.map { moveKind(MoveView("", "", 0, 0, id = it)) })
         assertEquals(Triple(264, false, 1), OriginHeartGold.machine(328))
         assertEquals(Triple(19, true, 2), OriginHeartGold.machine(421))
         assertEquals(Triple(815, false, 130), OriginHeartGold.machine(574))
