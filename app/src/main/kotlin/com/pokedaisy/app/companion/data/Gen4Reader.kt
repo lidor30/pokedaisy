@@ -218,6 +218,12 @@ data class Gen4ManagedBattle(
     val objMoveStride: Int = 0x12,
     val objAbility: Int = 0x29A,
     val objSize: Int = 0x2A0,
+    /** The touch screen's controller (manager +0x238): its +0x10 input handler is set while the battle waits for a tap. */
+    val offBattleUi: Int = 0x238,
+    val offUiHandler: Int = 0x10,
+    /** Another of its UI objects (manager +0x234): the waiting panel's handler at +0x57C ([readManagedBattleInput]). */
+    val offPanels: Int = 0x234,
+    val offPanelFn: Int = 0x57C,
 )
 
 /** One of FLY's spots: the town's map header and the tile FLY lands on (its x / z, as GetSpawnIdByMapAndCoords finds it).
@@ -721,6 +727,36 @@ fun readGen4BattleInput(r: MemoryReader, b: Gen4Battle): Int {
 }
 
 /**
+ * Origin HeartGold's battle panels as [readGen4BattleInput]'s states, by the handler the panel object runs while the
+ * touch controller waits (headless, a wild and a trainer battle). Not by the panel's id at +0x580: the bag and the party
+ * share one, and on the way back to the commands after a turn it still reads the moves' (then the party's) for a few
+ * frames while the commands' handler runs, so a move tapped then would land on the command panel.
+ */
+fun readManagedBattleInput(r: MemoryReader, b: Gen4ManagedBattle): Int {
+    val mgr = u32(r.readCoreMemory(b.managerPtr, 4), 0)
+    if (!inMain(mgr)) return BATTLE_INPUT_NONE
+    val head = r.readCoreMemory(mgr + b.offPanels, 8)
+    val panels = u32(head, 0)
+    val ui = u32(head, b.offBattleUi - b.offPanels)
+    if (!inMain(ui) || !inMain(panels)) return BATTLE_INPUT_BUSY
+    if (u32(r.readCoreMemory(ui + b.offUiHandler, 4), 0) == 0L) return BATTLE_INPUT_BUSY
+    return when (u32(r.readCoreMemory(panels + b.offPanelFn, 4), 0)) {
+        ORIGIN_COMMANDS_FN -> BATTLE_INPUT_ACTION_SELECT
+        ORIGIN_MOVES_FN -> BATTLE_INPUT_MOVE_SELECT
+        ORIGIN_BAG_FN -> BATTLE_INPUT_BAG_OPEN
+        ORIGIN_PARTY_FN -> BATTLE_INPUT_PARTY_OPEN
+        else -> BATTLE_INPUT_BUSY
+    }
+}
+
+/** Origin HeartGold v4.0.3's panel handlers ([readManagedBattleInput]); pk_nds_field.cpp's ORIGIN_HEARTGOLD config has
+ * the first two. */
+const val ORIGIN_COMMANDS_FN = 0x02202445L
+const val ORIGIN_MOVES_FN = 0x02202F4DL
+const val ORIGIN_BAG_FN = 0x02202955L
+const val ORIGIN_PARTY_FN = 0x0220270DL
+
+/**
  * POKéMON on a DS battle's touch screen: where its party screen shows the Pokémon with [personality] (0 top left, 1 top
  * right, then down), or null - no battle, a double (its screen has two sides), a personality not in the battle's party, or
  * the one already out (place 0). The battle's own party (BattleSystem.parties[0], the save's order) gives its index,
@@ -946,7 +982,8 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
         // The battle type's trainer bit (BOSS RETRY, SHINY ALERT's count, NUZLOCKE).
         isTrainerBattle = battle?.trainer,
         isDoubleBattle = battle?.doubles == true,
-        battleInputState = if (battle != null) cfg.battle?.let { readGen4BattleInput(r, it) } ?: BATTLE_INPUT_NONE else BATTLE_INPUT_NONE,
+        battleInputState = if (battle != null) cfg.battle?.let { readGen4BattleInput(r, it) }
+            ?: cfg.managedBattle?.let { readManagedBattleInput(r, it) } ?: BATTLE_INPUT_NONE else BATTLE_INPUT_NONE,
         mapGroup = 0,
         mapNum = mapHeader,
         regionMapSectionId = map?.place ?: pgCell?.let { (x, y) -> PokegearMap.placeAt(x, y) } ?: -1,

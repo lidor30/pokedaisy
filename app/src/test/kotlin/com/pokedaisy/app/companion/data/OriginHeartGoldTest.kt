@@ -35,6 +35,40 @@ class OriginHeartGoldTest {
         romGameCode = ""
     }
 
+    // BATTLE BUTTONS steer Origin's panels from this state; the words are a headless wild battle's (manager, its UI object,
+    // the touch controller and its handler), with the handler each panel ran.
+    @Test
+    fun `battle input - which panel waits`() {
+        val b = GEN4_ORIGIN_HEARTGOLD.managedBattle!!
+        fun state(panel: Long, handler: Long = 0x0220368D, manager: Long = 0x022C0F78): Int {
+            val words = mapOf(
+                b.managerPtr to manager,
+                0x022C0F78L + b.offPanels to 0x0230CB20L,
+                0x022C0F78L + b.offBattleUi to 0x0230E4F4L,
+                0x0230E4F4L + b.offUiHandler to handler,
+                0x0230CB20L + b.offPanelFn to panel,
+            )
+            val r = object : MemoryReader {
+                override fun readCoreMemory(addr: Long, size: Int) = ByteArray(size) { i ->
+                    val a = addr + i
+                    ((words[a and 3L.inv()] ?: 0L) shr (8 * (a and 3L).toInt())).toByte()
+                }
+            }
+            return readManagedBattleInput(r, b)
+        }
+        assertEquals(BATTLE_INPUT_ACTION_SELECT, state(ORIGIN_COMMANDS_FN))
+        assertEquals(BATTLE_INPUT_MOVE_SELECT, state(ORIGIN_MOVES_FN))
+        // The bag and the party share a panel id, so the bag read as the party.
+        assertEquals(BATTLE_INPUT_BAG_OPEN, state(ORIGIN_BAG_FN))
+        assertEquals(BATTLE_INPUT_PARTY_OPEN, state(ORIGIN_PARTY_FN))
+        // Between two panels (the turn's end runs one more before the commands').
+        assertEquals(BATTLE_INPUT_BUSY, state(0x02203099))
+        // The turn playing out: no handler.
+        assertEquals(BATTLE_INPUT_BUSY, state(ORIGIN_COMMANDS_FN, handler = 0))
+        // Out of a battle the manager pointer is cleared.
+        assertEquals(BATTLE_INPUT_NONE, state(ORIGIN_COMMANDS_FN, manager = 0))
+    }
+
     // Origin runs as HEARTGOLD, so a GameKind set alone would offer REUSABLE TMS there, which has nothing to patch.
     @Test
     fun `its TMs are built in, but not retail HeartGold's`() {
@@ -104,7 +138,7 @@ class OriginHeartGoldTest {
         assertEquals(listOf(16), t.battleFoes.map { it.species })
         assertEquals(emptyList<Mon>(), t.enemyParty)                                 // a wild one: no FOE TEAM
         assertEquals(false, t.isTrainerBattle)
-        assertEquals(BATTLE_INPUT_NONE, t.battleInputState)                          // no battle buttons: its panels are its own
+        assertEquals(BATTLE_INPUT_BUSY, t.battleInputState)                          // the fixture keeps no touch controller
     }
 
     @Test

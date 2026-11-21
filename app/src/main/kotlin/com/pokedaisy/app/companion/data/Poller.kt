@@ -978,6 +978,10 @@ class TelemetrySampler {
             if (gen5Cfg != null) return gen5Cfg?.battle?.let { b ->
                 runCatching { 0 to readGen5BattleInput(reader, b) }.getOrNull()
             }
+            // Origin HeartGold: its own battle engine (0 outside a battle: the manager pointer is cleared after one).
+            gen4Cfg?.managedBattle?.takeIf { originHeartGold && kind == GameKind.HEARTGOLD }?.let { b ->
+                return runCatching { 0 to readManagedBattleInput(reader, b) }.getOrNull()
+            }
             return gen4Cfg?.battle?.takeIf { it.offBattleInput != 0 }?.let { b ->
                 if (kind != GameKind.HEARTGOLD && kind != GameKind.SOULSILVER && kind != GameKind.PLATINUM) null
                 else runCatching { 0 to readGen4BattleInput(reader, b) }.getOrNull()

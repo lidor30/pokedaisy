@@ -142,8 +142,10 @@ static const PkNdsFieldGame ORIGIN_HEARTGOLD = {
     0,
     // Its battle manager (0x274 bytes, made by its overlay 14's battle init, which gOverlayTemplate_Battle runs): its
     // touch screen's controller at +0x238, whose +0x10 is the input handler while the battle waits for the player (headless:
-    // 0x0220368D at the commands and the moves, 0x02203B61 at the party after a faint, 0 while the turn plays).
-    0x02255BAC, 0x238, 0x10,
+    // 0x0220368D at the commands and the moves, 0x02203B61 at the party after a faint, 0 while the turn plays). Its
+    // UI object at +0x234 runs the waiting panel's handler at +0x57C: 0x02202445 the commands, 0x02202F4D the moves
+    // (0x02202955 the bag, 0x0220270D the party; a wild and a trainer battle headless).
+    0x02255BAC, 0x238, 0x10, 0x234, 0x57C, 0x02202445, 0x02202F4D,
 };
 
 // Black (USA / Europe, IRBO rev 0): no decomp, so from headless captures (nds_dump dumps of the field, a text box, the X
@@ -724,9 +726,14 @@ static uint32_t managedBattleInput(const PkNdsFieldGame* g, uint32_t (*read32)(u
 // the touch screen's.
 static int battleTouch(const PkNdsFieldGame* g, const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t child)
 {
-    // A battle of its own (Origin HeartGold): BATTLE BUTTONS can't steer its panels, so whatever waits for a tap is the
-    // touch screen's.
-    if (g->battleManagerPtr) return managedBattleInput(g, read32) ? PK_NDS_FIELD_TOUCH : 0;
+    // A battle of its own (Origin HeartGold): its commands and moves sit where HeartGold's do, so BATTLE BUTTONS press
+    // them; anything else waiting for a tap (the party, a prompt) is the touch screen's.
+    if (g->battleManagerPtr) {
+        if (!managedBattleInput(g, read32)) return 0;
+        uint32_t panels = read32(read32(g->battleManagerPtr) + g->offBattlePanels);
+        uint32_t fn = inMainRam(panels) ? read32(panels + g->offPanelFn) : 0;
+        return fn == g->commandsFn || fn == g->movesFn ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : PK_NDS_FIELD_TOUCH;
+    }
     uint32_t bs = read32(child + 0x1C);
     if (!inMainRam(bs)) return 0;
     uint32_t ctx = read32(bs + g->offBattleContext);

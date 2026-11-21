@@ -92,7 +92,7 @@ HeartGold and SoulSilver (the USA releases), Platinum, Black, White, Black 2 and
 
 In the German HeartGold and SoulSilver, `ONE SCREEN` keeps the touch screen small in the corner, as `PICTURE IN PICTURE` does, so it's always there.
 
-In Origin HeartGold, `ONE SCREEN` floats the touch screen in for its X menu, its options and its battles: its battle system is its own, so its battle buttons aren't on the top screen. Whenever a battle waits for you (your moves, your party), its touch screen floats in and you tap the game's own buttons on it. While the battle plays, the game fills the screen again. The companion's `BATTLE` tab still shows the matchups.
+In Origin HeartGold, `ONE SCREEN` floats the touch screen in for its X menu and its options. Its battles get the battle buttons as HeartGold's do (see [Battle](battle.md#on-one-screen-battle-buttons)), and its party and its other questions in a battle float in for you to tap. `POKéMON` opens the game's own party there: you pick who to send out on it yourself. The companion's `BATTLE` tab still shows the matchups.
 
 ## Single-screen handhelds
 
