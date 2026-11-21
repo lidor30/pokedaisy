@@ -75,10 +75,11 @@ const strings = {
     78% { transform: rotate(-8deg); }
     86% { transform: rotate(0); }
   }
-  .drop-title { font-size: var(--t-l); margin-top: 8px; text-shadow: var(--bold); letter-spacing: 0.0625em; }
+  .drop-title { font-family: var(--font-pixel); font-size: var(--t-l); margin-top: 8px; text-shadow: var(--bold); letter-spacing: 0.0625em; }
   .drop-lock { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--green); }
 
-  .result { padding: calc(var(--px) * 2) calc(var(--px) * 3); color: #575656; text-shadow: var(--px) var(--px) 0 #c8c7bf; }
+  /* The answer in the game's own window, in its pixel font. */
+  .result { font-family: var(--font-pixel); font-size: var(--t-m); padding: calc(var(--px) * 2) calc(var(--px) * 3); color: #575656; text-shadow: var(--px) var(--px) 0 #c8c7bf; }
   .result.in { animation: open 0.42s var(--step) forwards; }
   .verdict { display: flex; align-items: center; gap: 16px; font-size: var(--t-l); margin-bottom: 8px; }
   .verdict .stamp { padding: 0 12px; text-shadow: none; }

@@ -57,12 +57,12 @@ const tr = trFor(Astro.url);
   .rel { filter: var(--hard-shadow); display: grid; gap: 16px; padding: calc(var(--px) * 9); }
   .rel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
   .rel-ver { font-size: var(--t-xl); text-shadow: var(--bold); letter-spacing: 0.0625em; }
-  .notes { font-size: var(--t-s); color: var(--ink-2); display: grid; gap: 8px; }
-  .notes :global(h4) { font-size: var(--t-m); color: #cb0707; margin-top: 8px; }
+  .notes { font-size: var(--r-m); line-height: 1.55; color: var(--ink-2); display: grid; gap: 8px; }
+  .notes :global(h4) { font-size: var(--t-m); color: var(--red); margin-top: 8px; }
   .notes :global(ul) { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
   .notes :global(li) { position: relative; padding-left: calc(var(--px) * 6); }
   .notes :global(li)::before { content: ''; position: absolute; left: 0; top: 0.65em; width: calc(var(--px) * 2); height: calc(var(--px) * 2); background: var(--red); }
-  .notes :global(strong) { color: var(--ink); font-weight: normal; }
-  .notes :global(code) { font-family: inherit; background: #efeef4; padding: 0 4px; }
+  .notes :global(strong) { color: var(--ink); font-weight: 700; }
+  .notes :global(code) { font-family: var(--font-pixel); font-size: 1.12em; background: var(--surface); padding: 0 4px; }
   .cta { display: flex; flex-wrap: wrap; gap: 16px; }
 </style>

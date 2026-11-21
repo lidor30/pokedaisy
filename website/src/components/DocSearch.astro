@@ -30,7 +30,7 @@ const { big = false } = Astro.props;
   }
   .dsearch input::-webkit-search-cancel-button { display: none; }
   .dsearch-box:focus-within { outline: var(--px) dashed var(--red); outline-offset: calc(var(--px) * 2); }
-  .dsearch-kbd { font-size: var(--t-xs); color: var(--muted); border: var(--px) solid #c9c7d6; padding: 0 6px; line-height: 1.3; }
+  .dsearch-kbd { font-size: var(--t-xs); color: var(--muted); border: var(--px) solid var(--line); padding: 0 6px; line-height: 1.3; }
   .dsearch.big input { font-size: 20px; }
   .dsearch.big .dsearch-box { padding: calc(var(--px) * 4) calc(var(--px) * 5); }
   .dsearch-results {
@@ -38,11 +38,11 @@ const { big = false } = Astro.props;
     list-style: none; max-height: min(70vh, 560px); overflow: auto;
   }
   .dsearch-results a { display: block; padding: 10px 12px; text-decoration: none; color: var(--ink); }
-  .dsearch-results li[aria-selected='true'] a, .dsearch-results a:hover { background: #fff1bf; }
+  .dsearch-results li[aria-selected='true'] a, .dsearch-results a:hover { background: var(--hover); }
   .dsearch-where { display: block; font-size: var(--t-xs); color: var(--red); letter-spacing: 0.0625em; }
   .dsearch-title { display: block; font-size: var(--t-s); line-height: 1.2; margin: 2px 0 4px; }
   .dsearch-snip { display: block; font: 15px/1.45 'Atkinson Hyperlegible', system-ui, sans-serif; color: var(--ink-2); }
-  .dsearch-snip mark { background: #ffe58a; color: inherit; padding: 0 1px; }
+  .dsearch-snip mark { background: color-mix(in srgb, var(--yellow) 55%, transparent); color: inherit; padding: 0 1px; }
   .dsearch-empty { padding: 12px; font: 16px/1.45 'Atkinson Hyperlegible', system-ui, sans-serif; color: var(--ink-2); }
 </style>
 

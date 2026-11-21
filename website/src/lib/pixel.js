@@ -617,6 +617,18 @@ SPRITES.globe = {
   rows: ['....KKKK....', '..KKBBGGKK..', '.KWBBGGGGBK.', '.KWGBBGGBBK.', 'KGGGGBBBBBBK', 'KGGGBBBBBBBK',
     'KBGBBBBGGBBK', 'KBBBBBGGGGBK', '.KBBBBGGGBK.', '.KBBBBBGGBK.', '..KKBBBBKK..', '....KKKK....'],
 };
+// The theme switch: a sun for the light page, a moon for the dark one.
+SPRITES.sun = {
+  // No ink outline: it's drawn on the dark page.
+  pal: { K: '#f0a820', Y: '#f8d030', O: '#e89818', W: '#fff4b0' },
+  rows: ['.....KK.....', '.K...KK...K.', '..K......K..', '....KKKK....', '...KYWYYK...', 'KK.KWYYYK.KK', 'KK.KYYYOK.KK',
+    '...KYYOOK...', '....KKKK....', '..K......K..', '.K...KK...K.', '.....KK.....'],
+};
+SPRITES.moon = {
+  pal: { K: INK, M: '#d8d4f0', L: '#ffffff', S: '#a8a2cc', Y: '#f8d030' },
+  rows: ['....KKKK..Y.', '..KKLMMK.YYY', '.KLMMKK...Y.', '.KLMK.......', 'KLMMK.......', 'KLMK........', 'KMMK........',
+    'KMMSK.......', '.KMMSKK...KK', '.KSMMMSKKKSK', '..KKSMMMMSK.', '....KKKKKK..'],
+};
 SPRITES.bird = { pal: { K: '#3a3a48' }, rows: ['K...K', '.K.K.', '..K..'] };
 // The homepage's quality-of-life cards: a PC, the keep-away spray, grass with no encounters, a TM, running, zoom.
 SPRITES.pc = {

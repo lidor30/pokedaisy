@@ -1,0 +1,122 @@
+---
+// DOWNLOAD's window (Base.astro hosts it on every page): any [data-download-open] link opens it, and without
+// script that link still goes where its href says (the APK). Android, the one most people want, takes the top
+// half with its APK one tap away; Linux and the 3DS sit under it and lead to their cards on the homepage, which
+// list every file; Windows and iOS say they're coming.
+import Pixel from './Pixel.astro';
+import { getReleases, REPO_URL } from '../lib/releases.js';
+import { downloadsFrom, formatSize } from '../lib/downloads.js';
+import { trFor, langOfPath, DEFAULT_LANG } from '../i18n/index.js';
+
+const tr = trFor(Astro.url);
+const lang = langOfPath(Astro.url.pathname);
+const platforms = downloadsFrom(await getReleases());
+const android = platforms.find((p) => p.id === 'android')!;
+const apk = android.files[0];
+const others = platforms.filter((p) => p.id !== 'android' && !p.soon);
+const soon = platforms.filter((p) => p.soon);
+const guide = (p: { guide: string; localGuide?: boolean }) =>
+  p.localGuide && lang !== DEFAULT_LANG ? `/${lang}${p.guide}` : p.guide;
+---
+<dialog class="dlm f-card" data-download-modal aria-labelledby="dlm-title" data-track-where="modal">
+  <div class="dlm-head">
+    <h2 id="dlm-title" class="dlm-title">{tr('Get PokeDaisy')}</h2>
+    <button type="button" class="icon-link dlm-close" data-download-close aria-label={tr('CLOSE')}><Pixel name="winClose" scale={1} /></button>
+  </div>
+
+  <section class="dlm-android">
+    <div class="dlm-android-head">
+      <Pixel name="android" scale={0.6} />
+      <div>
+        <h3 class="dlm-name">ANDROID</h3>
+        <p class="small muted">{tr(android.text)}</p>
+      </div>
+    </div>
+    <a class="btn f-primary h-primaryHot primary big dlm-apk" href={apk.url ?? `${REPO_URL}/releases/latest`} download={apk.url ? '' : undefined}>
+      <Pixel name="download" scale={1} /> {tr('DOWNLOAD APK')}
+      {apk.version && <span class="dlm-ver">v{apk.version}{apk.size ? ` · ${formatSize(apk.size)}` : ''}</span>}
+    </a>
+    <a class="dlm-guide pf small" href={guide(android)}><Pixel name="guide" scale={0.5} /> {tr('HOW TO INSTALL')}</a>
+  </section>
+
+  <div class="dlm-others">
+    {others.map((p) => (
+      <a class="dlm-other f-btn h-btnHot" href={`${tr.path('/')}#download-${p.id}`} data-download-close>
+        <span class="dlm-other-icon"><Pixel name={p.icon} scale={0.334} /></span>
+        <span class="dlm-other-what">
+          <span class="dlm-other-name pf">{p.name}{p.preview && <span class="chip f-pillYellow">{tr('PREVIEW')}</span>}</span>
+          <span class="tiny muted">{tr(p.text)}</span>
+        </span>
+        <span class="dlm-other-go pf tiny">{tr('CHOOSE A FILE')} <Pixel name="cursor" scale={0.5} /></span>
+      </a>
+    ))}
+  </div>
+
+  <p class="dlm-soon pf tiny muted">
+    {soon.map((p) => <span><Pixel name={p.icon} scale={0.25} /> {p.name}</span>)}
+    <span class="chip f-pillGrey">{tr('COMING SOON')}</span>
+  </p>
+</dialog>
+
+<script>
+  // Open on any DOWNLOAD link, close on X, Escape, a click outside or a pick that leads to the homepage's cards.
+  const dialog = document.querySelector<HTMLDialogElement>('[data-download-modal]');
+  if (dialog && typeof dialog.showModal === 'function') {
+    document.addEventListener('click', (e) => {
+      const opener = e.target instanceof Element ? e.target.closest('[data-download-open]') : null;
+      if (!opener) return;
+      e.preventDefault();
+      dialog.showModal();
+      dialog.querySelector<HTMLElement>('.dlm-apk')?.focus();
+    });
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog || (e.target instanceof Element && e.target.closest('[data-download-close]'))) dialog.close();
+    });
+  }
+</script>
+
+<style>
+  .dlm {
+    width: min(560px, calc(100% - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
+    margin: auto; padding: calc(var(--px) * 7); color: var(--ink); background: none;
+    filter: var(--hard-shadow);
+  }
+  .dlm::backdrop { background: rgba(10, 9, 16, 0.55); backdrop-filter: blur(3px); }
+  .dlm[open] { display: grid; gap: 18px; animation: dlm-open 0.32s var(--step); }
+  @keyframes dlm-open {
+    0% { transform: translateY(calc(var(--px) * 4)) scaleY(0.15); }
+    60% { transform: translateY(calc(var(--px) * -1)) scaleY(1.04); }
+    100% { transform: none; }
+  }
+  .dlm-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .dlm-title { font-size: var(--t-l); letter-spacing: 0.0625em; text-shadow: var(--bold); }
+  .dlm-close { margin: -8px -8px 0 0; }
+
+  /* Android: the big one. */
+  .dlm-android { display: grid; gap: 14px; padding: calc(var(--px) * 5); background: color-mix(in srgb, #3ddc84 12%, transparent); box-shadow: inset 0 0 0 var(--px) color-mix(in srgb, #3ddc84 45%, transparent); }
+  .dlm-android-head { display: flex; align-items: center; gap: 16px; }
+  .dlm-name { font-size: var(--t-l); letter-spacing: 0.0625em; text-shadow: var(--bold); }
+  .dlm-apk { justify-content: center; flex-wrap: wrap; }
+  .dlm-ver { font-size: var(--t-s); opacity: 0.85; }
+  .dlm-guide { display: inline-flex; align-items: center; gap: 8px; justify-self: center; color: var(--blue); text-decoration: none; letter-spacing: 0.0625em; }
+  .dlm-guide:hover { text-decoration: underline; }
+
+  /* The others: a row each, smaller. */
+  .dlm-others { display: grid; gap: 10px; }
+  .dlm-other { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px; padding: 8px 12px; text-decoration: none; color: var(--ink); }
+  .dlm-other-icon { display: inline-flex; justify-content: center; }
+  .dlm-other-what { display: grid; gap: 2px; min-width: 0; }
+  .dlm-other-name { display: flex; align-items: center; gap: 8px; font-size: var(--t-s); letter-spacing: 0.0625em; }
+  .dlm-other-name .chip { font-size: var(--t-xs); }
+  .dlm-other-go { display: inline-flex; align-items: center; gap: 6px; color: var(--red); white-space: nowrap; }
+  .dlm-other:hover .dlm-other-name { color: var(--red); }
+
+  .dlm-soon { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 18px; }
+  .dlm-soon > span:not(.chip) { display: inline-flex; align-items: center; gap: 8px; }
+
+  @media (max-width: 560px) {
+    .dlm { padding: calc(var(--px) * 6); }
+    .dlm-other { grid-template-columns: 36px 1fr; }
+    .dlm-other-go { grid-column: 2; }
+  }
+</style>
