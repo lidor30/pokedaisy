@@ -46,6 +46,16 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     # Run again: the save is backed up first.
     run(d,str(d/'roms/diagnostic.gb'),'--frames','10')
     backups=list((d/'saves/pokedaisy-backups').glob('diagnostic.gb.backup-*.sav'));assert len(backups)==1,backups
+    # A save named after the ROM without its extension (another emulator's: pokeblack2.nds -> pokeblack2.sav) is used as it is.
+    (d/'saves/diagnostic.gb.sav').rename(d/'saves/diagnostic.sav')
+    (d/'saves/diagnostic.sav').write_bytes(b'\0'*8192)
+    run(d,str(d/'roms/diagnostic.gb'),'--frames','120')
+    assert (d/'saves/diagnostic.sav').read_bytes()[:1]==b'\x5a','the save named without the ROM extension was not the one written'
+    assert not (d/'saves/diagnostic.gb.sav').exists(),'the ROM-named save was made beside the other emulator name'
+    # With both names there, the ROM's own file name wins.
+    (d/'saves/diagnostic.gb.sav').write_bytes(b'\0'*8192)
+    run(d,str(d/'roms/diagnostic.gb'),'--frames','120')
+    assert (d/'saves/diagnostic.gb.sav').read_bytes()[:1]==b'\x5a','the ROM-named save did not win'
     # A Game Boy cartridge with a clock (MBC3, as Crystal's): the clock is kept after the save, mGBA's layout.
     rtc=bytearray((diag/'diagnostic.gb').read_bytes());rtc[0x147]=0x10;rtc[0x14d]=(-sum(rtc[0x134:0x14d])-25)&255
     (d/'roms/clock.gb').write_bytes(rtc)

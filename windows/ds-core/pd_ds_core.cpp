@@ -48,14 +48,14 @@ struct ScreenRect {
 };
 
 // ONE SCREEN's floating touch window. A menu gets it at three quarters of the top screen, centred on it (the app's
-// 352 x 264 in its 512 x 384 stage is close to the same proportion). A battle gets a smaller one at the left, under the
-// enemy's HP bar, so the battlefield, both Pokemon and their bars stay in view.
+// 352 x 264 in its 512 x 384 stage is close to the same proportion). A battle gets 15/32 of the DS screen, a little under
+// half, at the left under the enemy's HP bar, so the battlefield, both Pokemon and their bars stay in view.
 ScreenRect touch_panel_rect(bool battle)
 {
     if (layout.mode != Layout::Wide) return {};
     if (battle) {
-        const int w = PK_NDS_W * 7 / 16, h = PK_NDS_H * 7 / 16;
-        return {std::max(4, layout.x - w * 3 / 8), layout.y + PK_NDS_H * 2 / 7, w, h};
+        const int w = PK_NDS_W * 15 / 32, h = PK_NDS_H * 15 / 32;
+        return {std::max(4, layout.x - PK_NDS_W * 3 / 8), layout.y + PK_NDS_H / 4 + 4, w, h};
     }
     const int w = PK_NDS_W * 3 / 4, h = PK_NDS_H * 3 / 4;
     return {layout.x + (PK_NDS_W - w) / 2, layout.y + (PK_NDS_H - h) / 2, w, h};
@@ -71,6 +71,7 @@ int presentedW = PK_NDS_W, presentedH = PK_NDS_H * 2;   // the frame the fronten
 std::vector<uint32_t> canvas;   // the frame as it goes out (XRGB8888)
 std::vector<uint32_t> scratch;  // a wide view asked for while the camera may have stopped
 std::vector<uint32_t> lastWide; // the last wide frame, kept through a fade
+std::vector<uint32_t> panelPixels; // the bottom screen in the host's XRGB8888, not the engine's RGBA words
 bool lastWideValid = false;
 long frameNo = 0;
 std::string saveDir;
@@ -86,12 +87,20 @@ bool option(const char* key, std::string& value)
     return true;
 }
 
-// The save file the host keeps for a ROM: saves/<the ROM's own file name>.sav (extension kept), so the one the host
-// loads into the save memory is the one the engine reads and writes.
+// The save file the host keeps for a ROM: saves/<the ROM's own file name>.sav (extension kept), or, when only that
+// one is there, saves/<the name without its extension>.sav (another emulator's), so the one the host loads into the
+// save memory is the one the engine reads and writes.
 std::string file_name(const std::string& path)
 {
     const size_t slash = path.find_last_of("/\\");
     return slash == std::string::npos ? path : path.substr(slash + 1);
+}
+
+bool file_exists(const std::string& path)
+{
+    FILE* f = std::fopen(path.c_str(), "rb");
+    if (f) std::fclose(f);
+    return f != nullptr;
 }
 
 void read_options()
@@ -221,23 +230,31 @@ void blit_nearest(uint32_t* dst, int dstW, int x0, int y0, int dw, int dh, const
 }
 
 // The app's ONE SCREEN floating window: dim the wide picture, frame the panel, and lay the game's touch screen in it.
-// The game keeps running underneath, and the panel takes the pointer only inside its frame.
-void draw_touch_panel(std::vector<uint32_t>& pixels, int w, int h, bool battle)
+// The game keeps running underneath, and the panel takes the pointer only inside its frame. A host with the native-panel
+// command draws the 256 x 192 screen itself over the panel's place, so the inside keeps the wide picture until it does.
+void draw_touch_panel(std::vector<uint32_t>& pixels, int w, int h, bool battle, bool native_screen)
 {
     const ScreenRect panel = touch_panel_rect(battle);
     if (!panel.w || !panel.h) return;
     const ScreenRect frame {panel.x - 3, panel.y - 3, panel.w + 6, panel.h + 6};
-    for (int y = 0; y < h; ++y)
-        for (int x = 0; x < w; ++x) {
-            if (frame.contains(x, y)) continue;
-            uint32_t& pixel = pixels[(size_t) y * w + x];
-            pixel = 0xFF000000u | ((((pixel >> 16) & 0xFFu) * 140 / 255) << 16)
-                                 | ((((pixel >> 8) & 0xFFu) * 140 / 255) << 8)
-                                 | (((pixel & 0xFFu) * 140) / 255);
-        }
+    // A menu dims the field behind its panel; a battle does not: both Pokemon, the bars and the battlefield stay at full
+    // brightness while the command panel floats over them.
+    if (!battle) {
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                if (frame.contains(x, y)) continue;
+                uint32_t& pixel = pixels[(size_t) y * w + x];
+                pixel = 0xFF000000u | ((((pixel >> 16) & 0xFFu) * 140 / 255) << 16)
+                                     | ((((pixel >> 8) & 0xFFu) * 140 / 255) << 8)
+                                     | (((pixel & 0xFFu) * 140) / 255);
+            }
+    }
     fill_rect(pixels, w, h, frame.x, frame.y, frame.w, frame.h, 0xFF303840u);
     fill_rect(pixels, w, h, panel.x - 1, panel.y - 1, panel.w + 2, panel.h + 2, 0xFFF8F8F8u);
-    blit_nearest(pixels.data(), w, panel.x, panel.y, panel.w, panel.h, pk_ndsm_bottom(), PK_NDS_W, PK_NDS_H);
+    // A host that can draw the native 256 x 192 bottom screen does the output scaling and covers the panel's inside; other
+    // frontends get the point-sampled fallback, so the panel still shows everywhere.
+    if (!native_screen)
+        blit_nearest(pixels.data(), w, panel.x, panel.y, panel.w, panel.h, pk_ndsm_bottom(), PK_NDS_W, PK_NDS_H);
 }
 
 void compose()
@@ -246,6 +263,7 @@ void compose()
     const uint32_t* top = pk_ndsm_top();
     const uint32_t* bottom = pk_ndsm_bottom();
     const bool battle = overlay_battle();
+    const bool touch = overlay_touch_screen();
     switch (layout.mode) {
     case Layout::Touch:
         blit(canvas.data(), layout.w, layout.h, 0, 0, bottom, PK_NDS_W, PK_NDS_H);
@@ -304,8 +322,25 @@ void compose()
         break;
     }
     // The game's touch screen floats over the wide picture when it asks for it (a menu, a battle's commands, bag or
-    // party), as the app's ONE SCREEN does. It is drawn before the companion / quick menu so those still take the frame.
-    if (layout.mode == Layout::Wide && overlay_touch_screen()) draw_touch_panel(canvas, layout.w, layout.h, battle);
+    // party), as the app's ONE SCREEN does. The panel is drawn before the companion / quick menu so those still take the
+    // frame. A host that understands PD_ENV_SET_TOUCH_PANEL draws the bottom screen at its native 256 x 192; the core
+    // then only draws the dim picture and the panel's frame.
+    bool native_panel = false;
+    if (layout.mode == Layout::Wide && touch && !overlay_menu_open()) {
+        const ScreenRect panel = touch_panel_rect(battle);
+        if (bottom) {
+            // The engine's bottom screen is RGBA words; the host's ARGB texture wants XRGB words, the same conversion the
+            // frame's own pixels get. Without this the touch window's reds and blues are swapped.
+            panelPixels.resize(PK_NDS_W * PK_NDS_H);
+            for (size_t i = 0; i < panelPixels.size(); ++i) panelPixels[i] = xrgb(bottom[i]);
+            pd_touch_panel msg { panelPixels.data(), PK_NDS_W, PK_NDS_H, panel.x, panel.y, panel.w, panel.h, 1 };
+            native_panel = env_cb && env_cb(PD_ENV_SET_TOUCH_PANEL, &msg);
+        }
+    } else if (env_cb) {
+        pd_touch_panel msg {};
+        env_cb(PD_ENV_SET_TOUCH_PANEL, &msg);
+    }
+    if (layout.mode == Layout::Wide && touch) draw_touch_panel(canvas, layout.w, layout.h, battle, native_panel);
     haveFrame = true;
     // The companion or the quick menu over it: the overlay's canvas at twice the game's size. The HUD goes on the top
     // screen's own pixels first, so the overlay is told where they sit in this picture.
@@ -647,7 +682,15 @@ RETRO_API bool retro_load_game(const struct retro_game_info* game)
     const char* dir = nullptr;
     if (env_cb && env_cb(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &dir) && dir) saveDir = dir;
     romPath = game->path;
-    savePath = (saveDir.empty() ? std::string(".") : saveDir) + "/" + file_name(game->path) + ".sav";
+    const std::string saveRoot = saveDir.empty() ? std::string(".") : saveDir, romName = file_name(game->path);
+    savePath = saveRoot + "/" + romName + ".sav";
+    // A save named after the ROM without its extension (another emulator's: pokeblack2.nds -> pokeblack2.sav) is this
+    // game's save too, and the host names the file it backs up and reads the same way.
+    if (!file_exists(savePath)) {
+        const size_t dot = romName.rfind('.');
+        const std::string alt = dot != std::string::npos && dot ? saveRoot + "/" + romName.substr(0, dot) + ".sav" : std::string();
+        if (!alt.empty() && file_exists(alt)) savePath = alt;
+    }
 
     retro_pixel_format format = RETRO_PIXEL_FORMAT_XRGB8888;
     if (env_cb) env_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &format);

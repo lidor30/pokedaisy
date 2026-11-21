@@ -40,7 +40,9 @@ Without a ROM argument, choose a `.gb`, `.gbc`, `.gba` or `.nds` from DATA/roms 
 (colon-separated; the PortMaster launcher passes the firmware's `gba`, `gb`, `gbc` and `nds` folders where they exist). The host creates DATA/saves and
 DATA/states. Before a game opens its battery save is backed up into DATA/saves/pokedaisy-backups (a new copy only
 when it changed, the newest 10 kept; with `--save FILE`, DATA/backups); a save that can't be backed up keeps the game
-closed. The save is DATA/saves/COMPLETE-ROM-FILENAME.sav, the raw battery save, read into the core when the game
+closed. The save is DATA/saves/COMPLETE-ROM-FILENAME.sav, or, when there is none, a save named after the ROM
+without its extension, the way other emulators make them (`pokeblack2.nds` reads `pokeblack2.sav`), the raw battery
+save, read into the core when the game
 opens and written back (to a temporary file, then renamed) within two seconds of the game changing it and on quit.
 States are DATA/states/ROM.ss on the GB/GBC and DS cores and ROM.armgba.ss on the armGBA core: the two can't read each
 other's. The companion's settings are the core's, in DATA/saves/pokedaisy/settings.ini (an older DATA/settings.ini is
@@ -158,8 +160,8 @@ moves or taps the stylus. DS host actions can be rebound separately in HOTKEYS (
 the modifier off they move to R3 / L3, since bare R2 / L2 belong to the core). Companion Settings → HUD opens the shared HUD
 page (on or off, LOOK, SIZE and each part), as on the GB and GBA cores. MINIMAL HUD hides the party cards.
 
-To bring over an existing DS battery save, copy its raw save data to `DATA/saves/<game>.nds.sav` (including the
-ROM extension in the name), or pass its path with `--save`.
+To bring over an existing DS battery save, copy its raw save data to `DATA/saves/<game>.nds.sav`, or to
+`DATA/saves/<game>.sav` (a save named without the ROM extension is found too), or pass its path with `--save`.
 
 The older opt-in DSperate experiment is still available with `-DPOCKET_DSPERATE=ON`. See
 [dsperate/README.md](dsperate/README.md) for that backend's build and save paths.

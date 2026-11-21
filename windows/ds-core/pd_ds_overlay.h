@@ -16,6 +16,8 @@ void overlay_reset();
 void overlay_tick(int fieldBits);
 // The companion has the picture (the quick menu keeps the game's). The core skips the touch screen and R2 then.
 bool overlay_open();
+// The companion or the quick menu has the picture: the host's native touch panel must not be drawn over either.
+bool overlay_menu_open();
 // The game wants its touch screen over the wide picture: the app's ONE SCREEN floating window. The core draws the bottom
 // screen in a panel over the top one while this is true, including a battle's command, move, bag and party screens.
 bool overlay_touch_screen();

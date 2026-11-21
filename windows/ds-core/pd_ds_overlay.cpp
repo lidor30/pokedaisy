@@ -129,11 +129,12 @@ void refresh()
         return;
     }
     DsCompanion next = ds_read_companion(ram, ramSize, companionGame);
-    // On the newer games a read can catch the save mid decryption: the last coherent one stays.
+    // On the newer games a read can catch the save mid decryption: the last coherent one stays. The rows are reloaded,
+    // but the guide's cursor, scroll and open row stay as the player left them (the companion resets the HERE page
+    // itself when the map changes, so a reset here would only snap the page back every few frames).
     if (next.valid || companionGame == DsGame::Platinum) {
         snapshot = std::move(next);
         shell.guideLoadedPage = -1;
-        pd_ui_guide_reset(&shell.frame);
     }
     ds_map_update(map, snapshot);
     // PD_DS_OVERLAY: the snapshot as the companion sees it, when what it holds changes.
@@ -723,6 +724,8 @@ void overlay_reset()
 }
 
 bool overlay_open() { return companionShown; }
+
+bool overlay_menu_open() { return companionShown || quickShown; }
 
 bool overlay_touch_screen()
 {

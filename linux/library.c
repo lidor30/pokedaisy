@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include "cover_png.h"
+#include "pd_fs.h"
 #include "pd_games.h"
 #include "pd_icons_gen.h"
 #include "pd_library.h"
@@ -993,7 +994,7 @@ static void look_save(void) {
 
 static void check_saves(struct game *g) {
   char sav[PATH_MAX * 2];
-  snprintf(sav, sizeof sav, "%s/%s.sav", savesDir, g->file);
+  pd_save_path(savesDir, g->file, sav, sizeof sav);
   struct stat st;
   g->hasSave = !stat(sav, &st) && st.st_size > 0;
 }

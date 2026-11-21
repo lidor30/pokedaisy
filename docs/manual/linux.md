@@ -230,8 +230,10 @@ Delete a file in `covers` to have that game looked up again.
 ## Moving a save you already have
 
 The program keeps a game's save in its data folder's `saves` folder, named after the whole ROM file name plus
-`.sav`: for `FireRed.gba` that's `saves/FireRed.gba.sav`. It's the game's own battery save, so a save from another
-emulator works when you rename it, a RetroArch `.srm` included. Keep a copy of your old save somewhere else first.
+`.sav`: for `FireRed.gba` that's `saves/FireRed.gba.sav`. A save named after the ROM without its extension works
+too, the way other emulators make them: `saves/FireRed.sav` is found and used for `FireRed.gba`, with no rename
+needed. If both are there, the ROM's own name wins. It's the game's own battery save, so a save from another
+emulator works, a RetroArch `.srm` included once it ends in `.sav`. Keep a copy of your old save somewhere else first.
 
 Before a game opens, PokeDaisy backs its save up into `saves/pokedaisy-backups` and keeps the newest 10 copies.
 Save states are in `states` and belong to the core that made them: a GBA state from another emulator, or from the
@@ -247,7 +249,7 @@ get A on the button marked A, set it back to `NORMAL`. Controllers can be plugge
 
 On a keyboard: arrows move, Z is A, X is B, Enter is START, Backspace is SELECT, Q and E are L and R, Tab is X and F
 is Y. Hold Space to fast forward and R to rewind, F2 saves a state, F4 loads it, and Escape opens the menu. Every one
-of those keys can be changed in the menu's `KEYBOARD` page. A mouse or a touch screen reaches the companion and the HUD:
+of those keys can be changed in the menu's `KEYBOARD` page, or in the game list's `SETTINGS` > `KEYBOARD` before you start a game. A mouse or a touch screen reaches the companion and the HUD:
 clicking a tab, the gear, a row or a button presses it, as `ENTER` on it would.
 
 The companion and the quick menu work as in the cores everywhere: X opens the [companion](companion.md), L3 opens the
