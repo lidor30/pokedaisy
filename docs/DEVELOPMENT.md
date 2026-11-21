@@ -529,7 +529,10 @@ share every address below. What differs:
   (`Gen1Art.redBlueFont`: German letters).
 - **STEADY music**: Red's PlayMusic, park and songs at the same places (Route 1 loops at 22.90 s and Pallet Town at 32.15 s, as English's, `gbloop`).
 - **PC / FLY / WILD ENCOUNTERS**: `GB_FIELD_RED_BLUE_DE` (Bankswitch 0x35F0, the rest +5): the PC opened and FLY landed at
-  Pewter's Pokémon Center headless in both. No EXPAND, like English Red / Blue.
+  Pewter's Pokémon Center headless in both.
+- **EXPAND** (2026-11-20): `GB_RED_BLUE_DE` in `pk_wide_gb.c`, English Red's row with the RAM + 5 from wOnSGB up, the map header
+  tables where English's are. `widecheck` on English Red's walk from Vermilion's Pokémon Center: 1404 of 1408 map frames exact in
+  both carts, the other four the door's fade English Red shows too.
 
 **Pokémon Brown** (Koolboyman's; 6.1.2 and 6.0.1, `GEN1_BROWN`, 2026-11-16): Rijon on Red's engine, a 2 MB DMG cart with
 Super Game Boy support and no source. pret/pokered built (rgbds 1.0.3, `make red` = retail Red byte for byte) gave
@@ -672,6 +675,9 @@ name table byte for byte. What differs:
 - **Art**: English's pixels; the icon tables 2 bytes later, the town maps' tilemaps 0x32 later (`Gen2Art.GOLD_DE` / `.SILVER_DE`).
 - **STEADY music**: PlayMusic 0x3D8F, the park 0x29D0; the songs loop as English's (`gbloop`).
 - The user's German Gold saves were empty, hence the fixture's save.
+- **EXPAND** (2026-11-20): `GB_GOLD_SILVER_DE` in `pk_wide_gb.c`, English Gold's row with SpriteMovementData a byte later
+  (`GB_LINEAR(0x01, 0x4275)`, found by its bytes; MapGroupPointers and OverworldSprites where English's are). `widecheck` on
+  Route 29 from the fixture's save in both carts: every map frame exact but those written mid-frame.
 
 **Pokémon Gold and Silver** (Game Boy Color; `GEN2_GOLD` / `GEN2_SILVER`, `GameKind.GOLD` / `.SILVER`): pret/pokegold
 builds both carts byte for byte (`pokegold.gbc` / `pokesilver.gbc`, its roms.sha1), and the two keep every RAM address at the

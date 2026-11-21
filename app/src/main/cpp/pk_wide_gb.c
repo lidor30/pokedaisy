@@ -72,6 +72,13 @@ static const struct GbGame { uint32_t crc; int gen; uint32_t a[GB_CONFIG]; } GB_
     { 0x9F7FDD53u, 1, GB_RED_BLUE },
     { 0xD6DA8A1Au, 1, GB_RED_BLUE },
 #undef GB_RED_BLUE
+    // Pokémon Rote / Blaue Edition (German Red / Blue): English Red's code, its RAM 5 bytes on from wOnSGB (CF1B) up
+    // (scripts/port_gen1.py on pokered.sym, the same in both carts), the map header tables where English's are.
+#define GB_RED_BLUE_DE { 0xC100, 0xC200, 0xC6E8, 0xD364, 0xD366, 0xD368, 0xD36C, 0xD36D, 0xD375, 0xD530, 0xD3B2, 0xD05C, \
+                         0xCFC9, 0xD5AB, 0xD5D3, 0x01AEu, GB_LINEAR(0x03, 0x423D), 0xCC2D, 0xD74C }
+    { 0x89197825u, 1, GB_RED_BLUE_DE },   // Rote Edition
+    { 0x9C336307u, 1, GB_RED_BLUE_DE },   // Blaue Edition
+#undef GB_RED_BLUE_DE
     // Pokémon Gold / Silver (USA, Europe): pret/pokegold's symbols, the same in both builds (widecheck: every field frame exact).
 #define GB_GOLD_SILVER { 0, 0, 0xC700, 0xD07D, 0xDA02, 0xD07F, 0xD082, 0xD087, 0xD091, 0xD0C5, 0xD086, 0xD116, 0xD182, 0, 0, \
                          GB_LINEAR(0x25, 0x40ED), 0, 0xCEBF, 0xD7B7, 0xD0CF, 0x02, 0xD1FD, 0xD445, 0xD545, 0xD05D, 0xD555, \
@@ -79,6 +86,13 @@ static const struct GbGame { uint32_t crc; int gen; uint32_t a[GB_CONFIG]; } GB_
     { 0x6BDE3C3Eu, 2, GB_GOLD_SILVER },
     { 0x8AD48636u, 2, GB_GOLD_SILVER },
 #undef GB_GOLD_SILVER
+    // Pokémon Goldene / Silberne Edition (Germany): English Gold's RAM, SpriteMovementData a byte later (found by its bytes).
+#define GB_GOLD_SILVER_DE { 0, 0, 0xC700, 0xD07D, 0xDA02, 0xD07F, 0xD082, 0xD087, 0xD091, 0xD0C5, 0xD086, 0xD116, 0xD182, 0, 0, \
+                            GB_LINEAR(0x25, 0x40ED), 0, 0xCEBF, 0xD7B7, 0xD0CF, 0x02, 0xD1FD, 0xD445, 0xD545, 0xD05D, 0xD555, \
+                            GB_LINEAR(0x05, 0x43C1), GB_LINEAR(0x01, 0x4275), 0xFF9E, 0xFFCF, 0xD157, 0xFF94 }
+    { 0x4889DFAAu, 2, GB_GOLD_SILVER_DE },   // Goldene Edition
+    { 0x96C9DB95u, 2, GB_GOLD_SILVER_DE },   // Silberne Edition
+#undef GB_GOLD_SILVER_DE
     // Pokémon Crystal rev 1, rev 0, Australia: pret/pokecrystal's symbols, the same in all three builds.
 #define GB_CRYSTAL { 0, 0, 0xC800, 0xD194, 0xDCB7, 0xD196, 0xD199, 0xD19E, 0xD1A8, 0xD1DC, 0xD19D, 0xD22D, 0xD0ED, 0, 0, \
                      GB_LINEAR(0x25, 0x4000), 0, 0xCF74, 0xDA72, 0xD1E6, 0x13, 0xD4D6, 0xD71E, 0xD81E, 0xD154, 0xD82E, \

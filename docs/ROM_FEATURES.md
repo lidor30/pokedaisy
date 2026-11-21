@@ -12,15 +12,15 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Yellow (GB) | DE / FR / IT / ES | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | Yellow Legacy (GB) | 1.0.10 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | Red / Blue (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
-| Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
+| Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | Red Gen II Graphics (GB) | 2.0 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ⁵⁶ | — | n/a | n/a | ✅ ⁵⁶ | ✅ ⁵⁶ | — | n/a | n/a | — | — | — ³⁶ |
 | Yellow Gen II Graphics (GB) | 1.1 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | — | — | — | n/a | n/a | — | — | — ³⁶ |
 | Brown (GB) | 6.0.1, 6.1.2 | — | ✅ ³⁸ | ✅ ³⁸ | ✅ ³⁸ | — | ✅ ³⁸ | — | n/a | n/a | ✅ ³⁸ | ✅ ³⁸ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Gold / Silver (GBC) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
-| Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
+| Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
-| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ |
+| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
@@ -214,8 +214,14 @@ change to any of the places listed under "Where it's decided" updates its rows h
     `scripts/gen_polished_wide.py`). Checked headless on the new-game save: a walk round its route and grass, the START menu and OPTION
     (2197 of 2265 map frames exact; the other 68 are a wild battle's wipe, which the camera now pulls in for, as on Crystal).
     German Crystal (Kristall) is English's rebuild but for one ROM address (SpriteMovementData, 0x4276 in bank 1): a walk on
-    Route 29 and its grass, 777 map frames, every one exact.
-    The other languages' Yellows, Red / Blue, Gold / Silver, Prism and the other Polished Crystal builds aren't mapped yet (—).
+    Route 29 and its grass, 777 map frames, every one exact. German Red / Blue (Rote / Blaue Edition, 2026-11-20) are English
+    Red's rebuild with the RAM 5 bytes on from wOnSGB up (`GB_RED_BLUE_DE`): the same walk as English Red's on both carts, 1404
+    of 1408 map frames exact, the other four the door's fade English Red also shows.
+    German Gold / Silver (Goldene / Silberne Edition, 2026-11-20) are English Gold's row with SpriteMovementData a byte later
+    (`GB_GOLD_SILVER_DE`, found by its bytes; every other table and the RAM where English's are): Route 29 from the gold
+    fixture's save, the START menu, east and back west through the grass, every map frame exact (Silberne 2836, Goldene 2065
+    up to a wild battle) but those the game wrote VRAM or a palette in mid-frame.
+    The other languages' (not German) Red / Blue, Gold / Silver, Prism and the other Polished Crystal builds aren't mapped yet (—).
 13. FLY, WILD ENCOUNTERS and PC anywhere on Red / Blue (English and German), Yellow (all five languages) and Crystal (rev 0, rev 1, Australia)
     are `GbField.kt`, each the game's own way in (pret/pokered's, pokeyellow's and pokecrystal's sources; the European
     Yellows' addresses mapped by scripts/port_gen1.py; each cart's code checked in it first: `GbFieldTest` finds every Gen 1
@@ -721,7 +727,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
     the alarm two `nop`s), each found by its code's shape and unique in the cart, patched through `pk_cheats_patch`'s Game Boy branch
     (`PK_GB_ROM_TAG` + the cart offset, mGBA's GBPatch8; the cart's bytes overlaid for the Poller's hash). Played headless (mgba_dump
     `rompatch`): Yellow (the nurse's line whole at once, TM01 taught and still in the bag, the alarm byte 0 at 5 HP) and Crystal (TM10
-    taught and kept, the alarm byte 0). Found in every retail Red / Blue / Yellow / Gold / Silver / Crystal here and Brown, Yellow Legacy,
+    taught and kept, the alarm byte 0). Found in every retail Red / Blue / Yellow / Gold / Silver / Crystal here (the German carts too: the same code, each
+    patch put in with `rompatch` on Rote / Blaue / Gelbe / Goldene / Silberne / Kristall-Edition, 2026-11-20) and Brown, Yellow Legacy,
     Crystal Clear, Crystal Legacy; PureRed / PureBlue get the beep only. FIELD POISON off: Gen 1's ApplyOutOfBattlePoisonDamage `jp nz`
     (every fourth step) made a `jp`, Gen 2's DoPoisonStep `jr z, .no_faint` made a `jr`; walked headless with a poisoned lead: Yellow
     182 HP -> 178 without, 182 with; Crystal (a repel on) 19 -> 14 without, 19 with.
