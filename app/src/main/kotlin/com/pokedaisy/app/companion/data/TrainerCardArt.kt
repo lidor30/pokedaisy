@@ -192,13 +192,14 @@ object TrainerCardArt {
         CardStyle.HOENN_FR -> HOENN_FR
         CardStyle.HOENN_IT -> HOENN_IT
         CardStyle.HOENN_ES -> HOENN_ES
+        CardStyle.CRYSTAL -> error("Crystal's card is Gen2TrainerCard's")
     }
 
     /** Every blob a card needs, every style. */
-    val BLOBS: List<RomBlob> = CardStyle.entries.flatMap { blobs(it).all }.distinct()
+    val BLOBS: List<RomBlob> = CardStyle.entries.filter { it != CardStyle.CRYSTAL }.flatMap { blobs(it).all }.distinct()
 
     /** One style's decoded blobs. */
-    class Art internal constructor(val style: CardStyle, internal val d: Map<RomBlob, ByteArray>)
+    class Art internal constructor(override val style: CardStyle, internal val d: Map<RomBlob, ByteArray>) : CardArt
 
     /** [style]'s card from [get], or null unless every blob is there. */
     fun art(style: CardStyle, get: (RomBlob) -> ByteArray?): Art? {

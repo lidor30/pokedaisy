@@ -19,8 +19,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Gold / Silver (GBC) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
 | Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
-| Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
-| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ |
+| Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | ✅ ⁵⁸ | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
+| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | ✅ ⁵⁸ | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ |
 | Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
@@ -1054,3 +1054,10 @@ Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draw
     Italian Yellow and Crystal Legacy (not played); N/A in the Spanish / German / French Yellows (12 to 14 bytes of bank 0
     padding for a 16-byte trampoline), Brown, PureRed / PureBlue, Yellow Legacy, Crystal Clear (1 byte), Prism (27 bytes,
     under the 64 kept) and Polished Crystal (no .GetDPad). `GbRunningShoesTest`.
+58. Crystal's TRAINER CARD (2026-11-21, `Gen2TrainerCard`, `CardStyle.CRYSTAL`): the game's two pages (STATUS, then BADGES with
+    the leaders and the spinning badges; Kanto's third page is never reached in the game) rebuilt from the cart's tiles,
+    palettes and words (`Gen2Art.extractTo` -> `gen2/crystal/trainer_card.bin`), the save's side from wPlayerID / wPlayerName,
+    wMoney, wGameTime, wPokedexCaught (left out without the POKéDEX flag, wStatusFlags bit 0) and wJohtoBadges. The card's
+    addresses come from its own code (`scripts/find_crystal_card.py`); Kristall's are English's shifted, its top line without
+    NAME/. Every frame of both pages matched the games' own card headless, English and German, on the save as it is and with
+    everything poked in (`CrystalTrainerCardTest`). Not on Crystal's hacks (Clear, Legacy, Prism, Polished).
