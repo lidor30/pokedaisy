@@ -146,18 +146,21 @@ private fun FlippingCard(image: ImageBitmap, back: Boolean, modifier: Modifier, 
     val m = rememberGbaTextMetrics(1f)
     val cardFocus = remember { MutableInteractionSource() }
     val focused by cardFocus.collectIsFocusedAsState()
-    Column(
-        modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(m.u * 4, Alignment.CenterVertically),
-    ) {
-        BoxWithConstraints(Modifier.weight(1f, fill = false), contentAlignment = Alignment.Center) {
-            val density = LocalDensity.current
-            val w = with(density) { maxWidth.toPx() }
-            val h = with(density) { maxHeight.toPx() }
-            // Whole screen pixels per GBA pixel, so the card stays crisp.
-            val scale = max(1, min(w / image.width, h / image.height).toInt())
-            val size = with(density) { DpSize((image.width * scale).toDp(), (image.height * scale).toDp()) }
+    BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val density = LocalDensity.current
+        val w = with(density) { maxWidth.toPx() }
+        val h = with(density) { maxHeight.toPx() }
+        // Whole screen pixels per game pixel, so the card stays crisp. The hint under it goes when leaving it out gives
+        // the card a whole step more (Crystal's 160x144 on the Thor's bottom screen: 6x instead of 5x).
+        val hint = with(density) { (m.lineHeight + m.u * 4).toPx() }
+        fun fit(height: Float) = max(1, min(w / image.width, height / image.height).toInt())
+        val showHint = fit(h - hint) >= fit(h)
+        val scale = if (showHint) fit(h - hint) else fit(h)
+        val size = with(density) { DpSize((image.width * scale).toDp(), (image.height * scale).toDp()) }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(m.u * 4, Alignment.CenterVertically),
+        ) {
             Canvas(
                 Modifier
                     .size(size)
@@ -179,11 +182,11 @@ private fun FlippingCard(image: ImageBitmap, back: Boolean, modifier: Modifier, 
             ) {
                 drawImage(image, dstSize = IntSize(image.width * scale, image.height * scale), dstOffset = IntOffset.Zero, filterQuality = FilterQuality.None)
             }
+            if (showHint) GbaText(
+                if (back) tr("TAP TO SEE THE FRONT") else tr("TAP TO FLIP THE CARD"),
+                OptionColors.titleText, OptionColors.titleShadow, m,
+            )
         }
-        GbaText(
-            if (back) tr("TAP TO SEE THE FRONT") else tr("TAP TO FLIP THE CARD"),
-            OptionColors.titleText, OptionColors.titleShadow, m,
-        )
     }
 }
 
