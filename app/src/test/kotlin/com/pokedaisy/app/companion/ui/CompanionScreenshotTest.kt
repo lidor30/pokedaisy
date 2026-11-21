@@ -1310,6 +1310,9 @@ open class CompanionScreenshotTest {
     @Test fun quetzalJohtoMap() = retail("quetzal_johto", NATIVE_QUETZAL, QUETZAL_ROM, GameKind.QUETZAL, "MAP", art = true)
     private val redRom = "Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb"
     @Test fun redParty() = yellow("red", "PARTY", cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
+    @Test fun redPokemonPictures() = yellow("red", "PARTY", cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED, pokemonPictures = true)
+    @Test fun bluePokemonPictures() = yellow("red", "PARTY", cfg = com.pokedaisy.app.companion.data.GEN1_BLUE,
+        romFile = "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb", game = GameKind.BLUE, pokemonPictures = true)
     @Test fun redItems() = yellow("red", "ITEMS", cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
     @Test fun redBattleMoves() =
         yellow("red_battle_move2", "BATTLE", controls = true, cfg = com.pokedaisy.app.companion.data.GEN1_RED, romFile = redRom, game = GameKind.RED)
@@ -1367,6 +1370,8 @@ open class CompanionScreenshotTest {
     @Test fun pureBlueMap() = pure("pureblue", "MAP", blue = true)
     @Test fun pureBlueDexEntry() = pure("pureblue", "DEX", blue = true, dexEntry = 100)
     @Test fun yellowParty() = yellow("yellow", "PARTY")
+    @Test fun yellowPokemonPictures() = yellow("yellow", "PARTY", pokemonPictures = true)
+    @Test fun yellowBattlePictures() = yellow("yellow_battle", "BATTLE", pokemonPictures = true)
     // The GUIDE (a player's request): HERE in VERMILION CITY (its people and items), on ROUTE 1 and in VIRIDIAN FOREST
     // (the wild Pokémon, caught ones marked), NEXT BOSS, the generated WHERE IS; Red's HERE on ROUTE 1 too.
     @Test fun yellowGuide() = yellow("yellow", "GUIDE", guidePage = "HERE")
@@ -1514,6 +1519,7 @@ open class CompanionScreenshotTest {
         guidePage: String? = null,
         /** The save as if it stood on this map (wCurMap): the fixtures are all in a Pokémon Center. */
         onMap: Int? = null,
+        pokemonPictures: Boolean = false,
     ) {
         activeGame = game
         romLanguage = cfg.language   // another test's ROM may have left Japanese names on
@@ -1535,6 +1541,7 @@ open class CompanionScreenshotTest {
         }
         val dex = v.pokedex
         if (dex != null) (1..12).forEach { PokedexSource.entry(dex.tables, it); PokedexSource.frontSprite(dex.tables, it) }
+        if (pokemonPictures) (v.party + v.battlePlayer + v.battleOpponent).forEach { m -> dex?.tables?.let { PokedexSource.frontSprite(it, m.species) } }
         if (guidePage != null) {
             val world = gameGuide(guideId(game, null))!!.world!!
             val here = world.encounters(v.mapGroup, v.mapNum, v.progress)
@@ -1574,7 +1581,7 @@ open class CompanionScreenshotTest {
         }
         snapshot {
             CompanionScreen(
-                v, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = tab, battleInput = input, initialSettingsPage = page,
+                v, SampleCompanion.Slots, SampleCompanion.Settings(pokemonPics = pokemonPictures), initialTab = tab, battleInput = input, initialSettingsPage = page,
                 initialMonIndex = monIndex,
                 statusBar = if (!statusBar) null else ({ GameStatusBar("Pokémon Yellow", v.location.mapSecName, 3175, "12:34") }),
             )
