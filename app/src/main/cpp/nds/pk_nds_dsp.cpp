@@ -515,9 +515,7 @@ int pk_ndsd_field_bits(void)
     int bits = pk_nds_field_state(d->field, mainRead32, mainWrite32, d->wildOff);
     bits |= pk_nds_field_screen_touch(d->field, bits, n.gpu.engine[0].dispcnt());
     const bool darkTop = oneColour(d->top), darkBottom = oneColour(d->bottom);
-    if (darkTop && !darkBottom) bits |= PK_NDS_FIELD_TOUCH;
-    if (darkTop) bits |= PK_NDS_FIELD_DARK_TOP;
-    if (darkBottom) bits |= PK_NDS_FIELD_DARK_BOTTOM;
+    bits = pk_nds_field_screen_bits(bits, darkTop, darkBottom);
     if (!(bits & PK_NDS_FIELD_MENU)) d->menuLitFrames = 0;
     else if (!darkTop || !darkBottom) d->menuLitFrames++;
     else if (d->keepStartMenu && d->menuLitFrames > 0) pk_nds_field_keep_start_menu(d->field, mainRead32, mainWrite32);

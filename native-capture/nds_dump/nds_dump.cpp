@@ -950,6 +950,8 @@ int main(int argc, char** argv)
                             one = (px[(gy * 16 + 8) * 256 + gx * 16 + 8] & 0xFFFFFF) == (px[8 * 256 + 8] & 0xFFFFFF);
                     if (one) flat[sc] = sc ? 'B' : 'T';
                 }
+                // The screens' own bits, as the cores add them (TOUCH for a blank top, DARK_TOP / _BOTTOM).
+                bits = pk_nds_field_screen_bits(bits, flat[0] == 'T', flat[1] == 'B');
                 printf("trace %llu: bits %04X brightA %04X brightB %04X flat %s dispA %08X bg3 %d dispB %08X\n", (unsigned long long) frameCount, bits,
                     nds->GPU.GPU2D_A.MasterBrightness, nds->GPU.GPU2D_B.MasterBrightness, flat, nds->GPU.GPU2D_A.DispCnt,
                     pk_nds_bg3_tiles(nds), nds->GPU.GPU2D_B.DispCnt);

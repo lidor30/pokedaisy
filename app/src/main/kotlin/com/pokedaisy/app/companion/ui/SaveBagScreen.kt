@@ -69,7 +69,9 @@ internal fun moveLabel(id: Int, game: SaveGameData = Gen3GameData): String = gam
  */
 @Composable
 internal fun BagPage(state: PcBoxesState, bag: TrainerBagEditor, m: GbaTextMetrics, modifier: Modifier) {
-    val pockets = bag.pockets
+    // Read through the edit count: [bag] is the same editor after an edit, so this page was skipped and a changed amount
+    // (or an added item) showed only once the editor was opened again (Discord, 1.6.1).
+    val pockets = state.revision.let { bag.pockets }
     // Gen 3 has no MEDICINE pocket: the open one falls back to the first.
     val open = pockets.firstOrNull { it.kind == state.pocket } ?: pockets.first()
     BoxWithConstraints(modifier) {

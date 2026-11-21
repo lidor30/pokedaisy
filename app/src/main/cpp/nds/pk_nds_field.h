@@ -154,6 +154,14 @@ int pk_nds_battle_selecting(const PkNdsFieldGame* game);
  * ([dispCntA]), since nothing the field read follows runs yet (GitHub #490). PK_NDS_FIELD_TOUCH or 0. */
 int pk_nds_field_screen_touch(const PkNdsFieldGame* game, int bits, uint32_t dispCntA);
 
+/** The screens' own say, added to [bits] (the field read's) by each DS core: [darkTop] / [darkBottom] whether each screen is
+ * one colour this frame. A blank top over a lit touch screen is the touch screen's moment (the main menu's CONTINUE, a
+ * question asked down there: PK_NDS_FIELD_TOUCH) - but not on the overworld or in a battle, where it's a fade or a flash
+ * (HeartGold's wild encounter turns the top screen one colour for ~6 frames first, a move's flash for a few), and the touch
+ * rules already say what those scenes want: read as wanted, the touch screen floated in with its loading dots before every
+ * battle (Discord, 1.6.1 and 1.6.2-beta.1). Then PK_NDS_FIELD_DARK_TOP / _BOTTOM. */
+int pk_nds_field_screen_bits(int bits, bool darkTop, bool darkBottom);
+
 /** STEADY FF music: whether the song the game plays can be copied now (pk_nds_music copies what's playing, frozen):
  * -1 while it can't - a volume fade runs, or (Gen 5) the song's own sequence player is missing (not started yet), paused
  * or not yet back to its volume (a song resumed after a battle: paused at 0 for a few frames, then a short fade in) - else

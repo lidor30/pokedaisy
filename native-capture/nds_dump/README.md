@@ -51,7 +51,7 @@ X Y`, joined with commas (`A,UP`), or `NONE`.
 | `peek8/16/32 ADDR`, `poke8/16/32 ADDR V` | The ARM9's bus. |
 | `ards W W ...` | One Action Replay DS cheat (hex words, two a line) in melonDS's AREngine, replacing the ones before, as CHEATS does (`pk_nds_set_cheats`); `ards` alone takes it out. |
 | `fieldinfo` | The field read (`pk_nds_field_state`) and the pointers behind it (Black, White and their sequels: the GameSystem's proc, its overlay, field map and event, engine A's BG tiles, the battle adapter's command). |
-| `trace N` | N frames, each one's field bits, master brightness, DISPCNT and BG3's tiles. |
+| `trace N` | N frames, each one's field bits as the app gets them (the screens' own included: `pk_nds_field_screen_bits`), master brightness, DISPCNT and BG3's tiles. |
 | `battlemenu N` | The battle controller's command (`pk_nds_battle_command`) each frame for N frames, as it changes. |
 | `wide MX [MY]` | EXPAND with MX DS pixels left and right, MY above and below (0 = off). |
 | `look DX DY` | From here on the window moves DX, DY DS pixels a frame before each frame, as the look-around moves it (`look 0 0` leaves it where it is); `ffmode` records that window. |

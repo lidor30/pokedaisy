@@ -24,7 +24,8 @@ int pk_finish_save(struct mCore* core, int maxFrames, void (*afterFrame)(void));
  * didn't. The emulated battery never runs dry: such a clock goes back to mGBA's fresh one (24-hour, the device's
  * time), and mGBA writes it into the save with the next save. 12-hour is only undone for the Pokémon games (they
  * always set 24-hour); a state loaded from before this keeps the old byte too, so call it after a reset and after a
- * state load. */
+ * state load. First, a FireRed / LeafGreen / Emerald hack with its Game Freak title renamed (Oops All Eevees!) gets the
+ * clock mGBA gives the hacks that kept theirs. */
 void pk_heal_rtc(struct mCore* core);
 
 #endif
