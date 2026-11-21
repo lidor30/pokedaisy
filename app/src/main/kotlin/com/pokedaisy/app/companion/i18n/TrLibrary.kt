@@ -120,7 +120,7 @@ internal val trLibrary: Map<String, Tr> = mapOf(
     "DATE ADDED" to Tr(ja = "ついかした ひ", fr = "DATE D'AJOUT", de = "HINZUGEFÜGT", it = "DATA AGGIUNTA", es = "FECHA AÑADIDO", br = "ADICIONADO EM", pt = "ADICIONADO EM", ko = "추가한 날짜"),
     // The library menu's favorite toggle: short, the menu is narrow.
     "FAVORITE" to Tr(ja = "おきにいり", fr = "FAVORI", de = "FAVORIT", it = "PREFERITO", es = "FAVORITO", br = "FAVORITO", pt = "FAVORITO", ko = "즐겨찾기"),
-    "UNFAVORITE" to Tr(ja = "おきにいり はずす", fr = "RETIRER FAVORI", de = "KEIN FAVORIT", it = "TOGLI PREFERITO", es = "QUITAR FAVORITO", br = "TIRAR FAVORITO", pt = "TIRAR FAVORITO", ko = "즐겨찾기 해제"),
+    "UNFAVORITE" to Tr(ja = "おきにいり はずす", fr = "RETIRER FAVORI", de = "FAVORIT ENTFERNEN", it = "TOGLI PREFERITO", es = "QUITAR FAVORITO", br = "TIRAR FAVORITO", pt = "TIRAR FAVORITO", ko = "즐겨찾기 해제"),
     "Favorite" to Tr(ja = "おきにいり", fr = "Favori", de = "Favorit", it = "Preferito", es = "Favorito", br = "Favorito", pt = "Favorito", ko = "즐겨찾기"),
     "LAST PLAYED" to Tr(ja = "さいきん プレイ", fr = "DERNIÈRE PARTIE", de = "ZULETZT", it = "ULTIMA PARTITA", es = "ÚLTIMA PARTIDA", br = "JOGADO EM", pt = "JOGADO EM", ko = "마지막 플레이"),
     // The library's quick views (ALL and FAVORITES are shared: TrCore, TrCompanion; GB / GBC / GBA / DS stay as they are).
