@@ -806,9 +806,7 @@ int pk_ndsb_field_bits(void)
     int bits = pk_nds_field_state(ds->field, mainRead32, mainWrite32, ds->wildOff);
     bits |= pk_nds_field_screen_touch(ds->field, bits, ds->nds->GPU.GPU2D_A.DispCnt);
     const bool darkTop = oneColour(ds->top), darkBottom = oneColour(ds->bottom);
-    if (darkTop && !darkBottom) bits |= PK_NDS_FIELD_TOUCH;
-    if (darkTop) bits |= PK_NDS_FIELD_DARK_TOP;
-    if (darkBottom) bits |= PK_NDS_FIELD_DARK_BOTTOM;
+    bits = pk_nds_field_screen_bits(bits, darkTop, darkBottom);
     if (!(bits & PK_NDS_FIELD_MENU)) ds->menuLitFrames = 0;
     else if (!darkTop || !darkBottom) ds->menuLitFrames++;
     else if (ds->keepStartMenu && ds->menuLitFrames > 0) pk_nds_field_keep_start_menu(ds->field, mainRead32, mainWrite32);

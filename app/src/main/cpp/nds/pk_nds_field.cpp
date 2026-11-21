@@ -717,6 +717,12 @@ static uint32_t managedBattleInput(const PkNdsFieldGame* g, uint32_t (*read32)(u
     return inMainRam(ui) ? read32(ui + g->offUiHandler) : 0;
 }
 
+// The commands' / the moves' panel is still drawn after the choice was made (the controller past SELECTION_SCREEN_INPUT):
+// ~6 frames of it going (headless, HeartGold on Route 29, a move picked by touch). Not a prompt: read as one, the touch
+// screen flashed in before every move (Discord, 1.6.1 and 1.6.2-beta.1). Cleared once no panel is drawn, before any
+// prompt of its own ("Use next Pokemon?", YES / NO) comes up.
+static int choicePanelLeft;
+
 // The touch bits for a battle child process [child] (its data the BattleSystem). While the controller waits for the
 // player (SELECTION_SCREEN_INPUT), battler 0's step says which: 1 - 4 the commands and the moves (what BATTLE BUTTONS stand
 // in for - whatever BattleMenuID draws them: HG redraws the commands under another one after a move's CANCEL), 7 - 10 the
@@ -755,9 +761,13 @@ static int battleTouch(const PkNdsFieldGame* g, const PkNdsTouchRules* t, uint32
         if (step >= 7 && step <= 10) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
         // The commands and the moves (1 - 4), the steps between them (0 - 2: back from the moves goes through the
         // command init, its panel still drawn), a message's wait (15): the battle buttons' own.
-        if (step <= 4 || step == 15) return panel ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
+        if (step <= 4 || step == 15) {
+            choicePanelLeft = panel;
+            return panel ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
+        }
     }
-    return panel ? PK_NDS_FIELD_TOUCH : 0;
+    if (!panel) choicePanelLeft = 0;
+    return panel && !choicePanelLeft ? PK_NDS_FIELD_TOUCH : 0;
 }
 
 // An encounter rate: a u32 (Platinum) or a u8 (HeartGold / SoulSilver), read and written through the aligned word.
@@ -801,6 +811,14 @@ int pk_nds_field_screen_touch(const PkNdsFieldGame* g, int bits, uint32_t dispCn
 {
     if (!g || g->gen == 5 || !touchRules(g)) return 0;
     return bits == PK_NDS_FIELD_KNOWN && dispCntA == NAMING_SCREEN_DISPCNT ? PK_NDS_FIELD_TOUCH : 0;
+}
+
+int pk_nds_field_screen_bits(int bits, bool darkTop, bool darkBottom)
+{
+    if (darkTop && !darkBottom && !(bits & (PK_NDS_FIELD_SCREEN | PK_NDS_FIELD_BATTLE))) bits |= PK_NDS_FIELD_TOUCH;
+    if (darkTop) bits |= PK_NDS_FIELD_DARK_TOP;
+    if (darkBottom) bits |= PK_NDS_FIELD_DARK_BOTTOM;
+    return bits;
 }
 
 // Gen 5: the GameSystem's running proc, or 0.
