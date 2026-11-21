@@ -47,6 +47,10 @@ object ReusableTms {
      * Polished Crystal (a bit per TM). */
     val BUILT_IN = setOf(GameKind.RADICAL_RED, GameKind.UNBOUND, GameKind.SOULGOLD, GameKind.PRISM, GameKind.POLISHED_CRYSTAL, GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2)
 
+    /** The running game keeps its own TMs: a [BUILT_IN] kind, or Origin HeartGold, which runs as HEARTGOLD (a TM taught
+     * headless stayed in its bag). */
+    val builtIn: Boolean get() = activeGame in BUILT_IN || (originHeartGold && activeGame == GameKind.HEARTGOLD)
+
     /** How many sites the engine behind [code] (the header's game code) has: the FireRed engine (FireRed, LeafGreen,
      * Ultra Violet's PUVV) three, Emerald / Ruby / Sapphire one; 0 = not a Gen 3 code we know. */
     fun expectedSites(code: String): Int = when {

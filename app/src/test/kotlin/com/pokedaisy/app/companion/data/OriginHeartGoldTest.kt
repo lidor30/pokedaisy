@@ -35,6 +35,15 @@ class OriginHeartGoldTest {
         romGameCode = ""
     }
 
+    // Origin runs as HEARTGOLD, so a GameKind set alone would offer REUSABLE TMS there, which has nothing to patch.
+    @Test
+    fun `its TMs are built in, but not retail HeartGold's`() {
+        activeGame = GameKind.HEARTGOLD
+        assertFalse(ReusableTms.builtIn)
+        originHeartGold = true
+        assertTrue(ReusableTms.builtIn)
+    }
+
     @Test
     fun `party - species past 493 and a form's own id`() {
         val t = read()
