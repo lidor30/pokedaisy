@@ -9,10 +9,12 @@ Operator and its fallbacks (PixelTypeface.kt) at the same size. Lit pixel runs b
 BitmapTtf's; the HUD's softened diagonal steps are left out (the app draws crisp pixels only).
 
     python3 scripts/gen_small_font.py          (rerun after changing SMALL_GLYPHS)
+    python3 scripts/gen_small_font.py --check  (make check: fails while the font is older than SMALL_GLYPHS)
 """
 import importlib.util
 import os
 import struct
+import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 OUT = os.path.join(ROOT, "app/src/main/assets/fonts/PixelSmall.ttf")
@@ -138,6 +140,11 @@ def assemble(tables):
 
 if __name__ == "__main__":
     font = build()
+    if "--check" in sys.argv:
+        with open(OUT, "rb") as f:
+            if f.read() != font:
+                sys.exit(f"{os.path.relpath(OUT, ROOT)} is stale: run python3 scripts/gen_small_font.py")
+        sys.exit(0)
     with open(OUT, "wb") as f:
         f.write(font)
     print(f"wrote {os.path.relpath(OUT, ROOT)}: {len(gen_font.SMALL_GLYPHS)} glyphs, {len(font)} bytes")

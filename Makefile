@@ -79,6 +79,7 @@ check: ## Everything a PR must pass: unit tests, translations, game data, ui-pre
 	python3 scripts/gen_gamedata.py --check
 	python3 scripts/gen_nds_ports.py --check
 	python3 scripts/gen_area_maps.py --check
+	python3 scripts/gen_small_font.py --check
 	python3 scripts/check_melonds_patch.py
 	python3 scripts/check_azahar_patch.py
 	$(MAKE) -C 3ds test-configs-gen

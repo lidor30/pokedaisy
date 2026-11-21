@@ -8,7 +8,7 @@
 
 Auch auf der Website: https://pokedaisy.com/de/docs/3ds/
 
-PokeDaisy läuft auch auf dem Nintendo 3DS, als Homebrew-App: Dein Spiel läuft auf dem oberen Bildschirm, und der Begleiter wohnt auf dem Touchscreen, mit eigener Spielebibliothek, einem Speicherstand-Editor und Tausch zwischen Speicherdateien. Diese Seite bringt dich von einer Konsole mit Custom Firmware bis zu deinem ersten Spiel.
+PokeDaisy läuft auch auf dem Nintendo 3DS, als Homebrew-App: Dein Spiel läuft auf dem oberen Bildschirm, und der Assistent wohnt auf dem Touchscreen, mit eigener Spielebibliothek, einem Spielstand-Editor und Tausch zwischen Speicherdateien. Diese Seite bringt dich von einer Konsole mit Custom Firmware bis zu deinem ersten Spiel.
 
 > [!NOTE]
 > Die 3DS-Version ist eine frühe Vorschau. Sie ist für den **New Nintendo 3DS, New Nintendo 3DS XL und New Nintendo 2DS XL** gemacht. Ein älterer 3DS, 3DS XL oder 2DS startet sie vielleicht, kann aber langsam laufen. Ihre Menüs sind vorerst auf Englisch.
@@ -75,24 +75,24 @@ Zeigt die Bibliothek **No games yet**, prüfe, ob deine Spiele direkt in `sdmc:/
 | **SELECT** | Die nächste Seite: Spiele, `SAVE EDITOR`, `TRADE SAVES`, `SETTINGS` |
 | **START** | PokeDaisy schließen und zum Homebrew Launcher zurückkehren |
 
-Im Spiel sind die Tasten des GBA die gleichen Tasten des 3DS (das Schiebepad funktioniert wie das Steuerkreuz), und der Touchscreen ist der Begleiter. Dazu noch:
+Im Spiel sind die Tasten des GBA die gleichen Tasten des 3DS (das Schiebepad funktioniert wie das Steuerkreuz), und der Touchscreen ist der Assistent. Dazu noch:
 
 | Taste | Was sie tut |
 | --- | --- |
 | **Y** | Das Schnellmenü: PC, `FLY`, dein Fahrrad, Spielstände, Vorspulen und mehr |
-| **X** | Auf dem Feld die Tasten an den Begleiter geben (**X** noch einmal gibt sie dem Spiel zurück) |
+| **X** | Auf dem Feld die Tasten an den Assistenten geben (**X** noch einmal gibt sie dem Spiel zurück) |
 | **ZR** | Vorspulen, solange du sie hältst (New 3DS) |
-| **ZL** | Der vorige Tab des Begleiters (New 3DS) |
+| **ZL** | Der vorige Tab des Assistenten (New 3DS) |
 
-Um ein Spiel zu verlassen, nutze `CLOSE GAME` ganz unten in den `SETTINGS` des Begleiters. Die **HOME**-Taste und das Zuklappen der Konsole funktionieren auch.
+Um ein Spiel zu verlassen, nutze `CLOSE GAME` ganz unten in den `SETTINGS` des Assistenten. Die **HOME**-Taste und das Zuklappen der Konsole funktionieren auch.
 
-Die Menüs gibt es auf Englisch, Französisch, Deutsch, Italienisch, Spanisch und Portugiesisch. `LANGUAGE` in den `SETTINGS` der Bibliothek (und ganz unten in denen des Begleiters) wählt eine aus; `AUTO` folgt der Sprache des Spiels, sonst der deines 3DS.
+Die Menüs gibt es auf Englisch, Französisch, Deutsch, Italienisch, Spanisch und Portugiesisch. `LANGUAGE` in den `SETTINGS` der Bibliothek (und ganz unten in denen des Assistenten) wählt eine aus; `AUTO` folgt der Sprache des Spiels, sonst der deines 3DS.
 
 ![Die SETTINGS-Seite der Bibliothek auf einem 3DS: VIEW, SORT, THEME, DARK MODE, SCREEN, ASPECT und der Ton](../docs/manual/shots/3ds-settings.png "Die SETTINGS der Bibliothek: Aussehen und Bildschirm für alle Spiele")
 
 ## Welche Spiele laufen
 
-Jedes Game-Boy-, Game-Boy-Color- oder Game-Boy-Advance-Spiel läuft. Der Begleiter liest die Spiele, die PokeDaisy auf Android kennt: FireRed, LeafGreen, Ruby, Sapphire und Emerald, Red, Blue, Yellow, Gold, Silver und Crystal sowie viele ROM-Hacks ([Unterstützte Spiele](https://pokedaisy.com/docs/supported-games/) hat die Liste). DS-Spiele laufen in der 3DS-Version nicht.
+Jedes Game-Boy-, Game-Boy-Color- oder Game-Boy-Advance-Spiel läuft. Der Assistent liest die Spiele, die PokeDaisy auf Android kennt: FireRed, LeafGreen, Ruby, Sapphire und Emerald, Red, Blue, Yellow, Gold, Silver und Crystal sowie viele ROM-Hacks ([Unterstützte Spiele](https://pokedaisy.com/docs/supported-games/) hat die Liste). DS-Spiele laufen in der 3DS-Version nicht.
 
 ## Was wo auf der SD-Karte liegt
 
