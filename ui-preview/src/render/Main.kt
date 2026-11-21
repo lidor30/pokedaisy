@@ -2640,6 +2640,11 @@ fun main(args: Array<String>) {
         Shot("pc-boxes-bag", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick() },
         Shot("pc-boxes-bag-tm", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("TMs & HMs").performClick() },
         Shot("pc-boxes-bag-amount", tw, th, td, pcBoxes()) { onNodeWithText("BAG").performClick(); onNodeWithText("POTION").performClick() },
+        // The amount set: the list shows it at once (it kept the old one until the editor was opened again, Discord 1.6.1).
+        Shot("pc-boxes-bag-amount-set", tw, th, td, pcBoxes()) {
+            onNodeWithText("BAG").performClick(); onNodeWithText("POTION").performClick(); mainClock.advanceTimeBy(1000)
+            onNodeWithText("MAX").performClick(); mainClock.advanceTimeBy(1000); onNodeWithText("OK").performClick()
+        },
         Shot("pc-boxes-bag-add", tw, th, td, pcBoxes()) {
             // Taps a moment apart: two quick ones read as a double tap and the second is lost.
             onNodeWithText("BAG").performClick(); onAllNodesWithText("BERRIES")[0].performClick(); mainClock.advanceTimeBy(1000); onNodeWithText("ADD ITEM").performClick()
