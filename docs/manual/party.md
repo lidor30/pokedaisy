@@ -20,9 +20,9 @@ The slots are your game's own party screen: FireRed and Emerald use their real s
 
 The icons bounce like they do in the game. If you'd rather they stood still, turn off `PARTY ICONS MOVE` in SETTINGS > `TWEAKS`.
 
-### POKéMON PICTURES in Crystal
+### POKéMON PICTURES in Gold, Silver and Crystal
 
-Pokémon Crystal's party screen has only a few dozen icons, shared by kinds that look alike, all in one colour, so a leafy starter and every other plant look the same. Set `POKéMON PICTURES` to `DETAILED` in SETTINGS (COMPANION group) and each slot shows that Pokémon's own picture instead, the one you see in battle and in the `DEX`, in its own colours, a shiny one in its shiny colours. The picture is read from your cartridge file like the rest of the game's art. The same pictures show everywhere else the companion and the HUD draw a Pokémon: the summary, battle `INFO`, the `DEX` list and its `EVOLVE` page, `GUIDE` and the HUD's wild Pokémon. `GAME`, the default, keeps the game's icons. The setting only appears while you play Crystal.
+The party screens of Pokémon Gold, Silver and Crystal have only a few dozen icons, shared by kinds that look alike, all in one colour, so a leafy starter and every other plant look the same. Set `POKéMON PICTURES` to `DETAILED` in SETTINGS (COMPANION group) and each slot shows that Pokémon's own picture instead, the one you see in battle and in the `DEX`, in its own colours, a shiny one in its shiny colours. The picture is read from your cartridge file like the rest of the game's art. The same pictures show everywhere else the companion and the HUD draw a Pokémon: the summary, battle `INFO`, the `DEX` list and its `EVOLVE` page, `GUIDE` and the HUD's wild Pokémon. `GAME`, the default, keeps the game's icons. The setting only appears while you play Gold, Silver or Crystal.
 
 To change the order, press and hold a Pokémon, drag it onto another one and let go: they trade places, in your game too. The summary's `SWITCH` does the same: tap it, your party opens, and tap the Pokémon to trade with. `CANCEL` or BACK goes back to the summary. This works in the Game Boy Advance games while you're free to walk around, not in a battle or a conversation.
 

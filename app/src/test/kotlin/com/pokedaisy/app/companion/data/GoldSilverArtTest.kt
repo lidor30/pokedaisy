@@ -64,6 +64,10 @@ class GoldSilverArtTest {
                 for (s in 1..251) {
                     assertNotNull("entry $s", Gen2Dex.entry(dex, s))
                     assertNotNull("pic $s", Gen2Dex.frontPixels(dex, s))
+                    // POKéMON PICTURES' shiny colours: the second palette of the pair, never the usual one.
+                    val shiny = Gen2Dex.frontPixels(dex, s, shiny = true)
+                    assertNotNull("shiny pic $s", shiny)
+                    if (s == 130) assertTrue("shiny GYARADOS differs", !shiny!!.contentEquals(Gen2Dex.frontPixels(dex, s)!!))
                 }
             }
             // Each version's own text.
