@@ -836,6 +836,10 @@ void pk_ndsb_set_keep_start_menu(bool on)
     if (ds) ds->keepStartMenu = on;
 }
 
+// EXP SHARE: melonDS only (ExpShare.dsFind), as on DSperate. Missing, libpkbananads.so lacked a call pk_nds_bnd_load.cpp
+// looks up and wouldn't load: no game started on BananaDS (Discord, SoulSilver on 1.6.2-beta.1).
+void pk_ndsb_set_exp_share(int, uint32_t) {}
+
 void pk_ndsb_set_cpu_boost(bool on)
 {
     if (!ds || ds->cpuBoost == on) return;
