@@ -761,6 +761,13 @@ private fun homeRows(
         ) {
             if (s.tradeEvolutionsSupported) { s.setTradeEvolutions(!s.tradeEvolutions); changed() }
         },
+        // A PIN on GUIDE > HERE's and the HUD's wild rows (grass, surf, rock smash, rods): the next wild one that way is the pick (WildPin.kt). OFF hides them.
+        SettingRow(
+            tk("WILD PIN"), if (s.wildPinSupported) onOff(s.wildPin) else tk("N/A"), enabled = s.wildPinSupported,
+            labelBadge = NewFeatures.badge(NewFeatures.WILD_PIN), subtitle = "Pick the next wild POKéMON from HERE",
+        ) {
+            if (s.wildPinSupported) { s.setWildPin(!s.wildPin); changed() }
+        },
         // A new wild foe made shiny at these odds before its battle draws it (ShinyOdds.kt; the versions it knows by hash).
         SettingRow(
             tk("SHINY ODDS"), if (s.shinyOddsSupported) shinyOddsLabel(s.shinyOdds) else tk("N/A"),

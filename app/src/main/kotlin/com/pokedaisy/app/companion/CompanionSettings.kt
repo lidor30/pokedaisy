@@ -141,6 +141,12 @@ interface CompanionSettings : StoredCompanionSettings {
     fun setDsLayout(layout: DsLayout) {}
 
     /** NUZLOCKE ([Nuzlocke]): [nuzlockeSupported] = a game whose party and battles are read (GBA, Game Boy, DS); the switch is per game. */
+    /** WILD PIN ([WildPins]): the PIN on GUIDE > HERE's and the HUD's grass rows; [wildPinSupported] = a game of its first
+     * slice ([com.pokedaisy.app.companion.data.WildPin.offered]). OFF hides every PIN. */
+    val wildPinSupported: Boolean get() = false
+    val wildPin: Boolean get() = WildPins.on
+    fun setWildPin(on: Boolean) = WildPins.setOn(on)
+
     val nuzlockeSupported: Boolean get() = false
     val nuzlocke: Boolean get() = false
     fun setNuzlocke(on: Boolean) {}

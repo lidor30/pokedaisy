@@ -947,6 +947,18 @@ TMs never run out by themselves (checked headless), so `ReusableTms.BUILT_IN` sh
 list beside the cheats' in `pk_cheats.c` (`sOptions`: loading cheats never drops them), with the same overlay / RA swap, so the
 Poller's hash and RetroAchievements' see the file; they don't pause achievements. Played headless with mgba_dump's `rompatch`
 (docs/ROM_FEATURES.md note 15). The newer-engine hacks build the check another way: each needs its own site.
+**WILD PIN** (2026-11-11, a PIN on GUIDE > HERE's and the HUD WILD's GRASS / CAVE, SURFING, ROCK SMASH and rod rows - water / rock /
+fishing 2026-11-16; GAMEPLAY > WILD PIN ON, NEW tag, OFF hides them; `WildPin.kt` the pure contract, `WildPins.kt` its Compose state + the
+activity's host, `ui/WildPinUi.kt`): the next encounter that way on the map is the pinned species. While pinned, the method's slots
+({u8 min, u8 max, u16 species}, the WildPokemonInfo's array: `GuideRomSource.pinSlots`; `WildPin.Method` LAND 12 / WATER 5 / ROCK_SMASH 5 /
+FISHING 10, fishing's three rods all patched so any rod catches it) go in as one ROM block, every slot the species at its own min / max
+over that method's slots, guarded by the file's bytes' CRC32; one pin at a time (`PinControl` carries the method). `pkRomBlocks` replaces every block, so PLAYER LOOK's and the pin's go in one call (`EmulatorEngine.applyBlocks`; a pin
+that doesn't match drops and the look goes alone). One encounter (the user's call over until-caught): out on the frame a battle starts
+with gBattleTypeFlags' TRAINER clear (`WildPin.endsNow`; a trainer's battle keeps it), on another map (the activity's sample) and on
+UNPIN; never gEnemyParty, never the file or the save. RetroAchievements idle while one is in (`achievementsIdle`, WILD PIN ON / OFF,
+PAUSED: WILD PIN). Greyed with the NUZLOCKE tracker on (OFF IN A NUZLOCKE RUN) or in a battle (the reason under the first heading with PINs). Games: retail English FireRed rev 1,
+LeafGreen rev 0 / 1, Emerald (randomized ones too) and Monomyth v1.0 / v1.1 (vanilla's wild headers; `WildPin.offered`, by GUIDE tables). Headless: `Pin.toText()` is mgba_dump's
+`romblocks` line. ui-preview `*-guide-pin*` (`-Prom`), `hud-wild-*` (`WildPins.preview`). Other games: later.
 **LINK PLAY** (2026-11-01, a game's library menu; `LinkActivity`, `LinkCore`, native `pk_link.c` / `pk_link_jni.c`): two to
 four GBA games on mGBA's own lockstep link cable, apart from the player's core (`g`): only the games, no companion / EXPAND /
 HUD / hotkeys / FF / states. mGBA defines only the link's hooks (struct mLockstep); `pk_link.c` fills them with Qt's

@@ -100,6 +100,8 @@ object NewFeatures {
     const val HM_FREE = "hm_free"
     /** SETTINGS > TRADE EVOLUTIONS: a trade evolution from the Pokémon's summary (companion.data.TradeEvolution). */
     const val TRADE_EVOLUTIONS = "trade_evolutions"
+    /** SETTINGS > WILD PIN: a PIN on GUIDE > HERE's and the HUD's grass rows picks the next wild one (companion.data.WildPin). */
+    const val WILD_PIN = "wild_pin"
     /** SETTINGS > SHINY ODDS: a wild foe shiny at the odds picked (companion.data.ShinyOdds). */
     const val SHINY_ODDS = "shiny_odds"
 
@@ -309,6 +311,7 @@ object NewFeatures {
         DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, DS_CORE_BANANADS, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP, REPEL_REFILL, SHINY_ALERT, LAST_BALL, ITEM_POPUPS, HUD_MOVE_ADVICE, BOSS_RETRY, LOW_HP_BEEP, FIELD_POISON, RUNNING_SHOES, SETTINGS_LOOK,
         QUICK_TOUCH, APP_FONT, PIXEL_SMALL, PAL_PARK, SAVE_MISSING, TRADE_BACK, SAVE_COLLECTION, POKE_TRANSFER, SAVE_EDITOR_GEN5, SAVE_EDITOR_DP, QUICK_TURBO,
         GAME_LOOK, POKEMON_PICTURES, BETA_UPDATES,
+        WILD_PIN,
     )
 
     private const val DAYS = 7

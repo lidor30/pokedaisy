@@ -29,6 +29,10 @@ data class GuideEntry(
     val areas: List<String> = emptyList(),
     /** Whether it holds on a randomized game ([gameRandomized]). */
     val randomized: Randomized = Randomized.ANY,
+    /** HERE's wild rows: the species WILD PIN can pin from it ([WildPin]); 0 = no PIN. */
+    val pinSpecies: Int = 0,
+    /** ... and by which method (GRASS / CAVE, SURFING, ROCK SMASH, the rods' FISHING); null = no PIN. */
+    val pinMethod: WildPin.Method? = null,
 ) {
     /** Taps until the answer shows: one straight to it, two via the hint; 0 = nothing hidden. */
     val steps: Int get() = when {

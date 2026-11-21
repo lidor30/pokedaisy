@@ -2309,6 +2309,61 @@ fun main(args: Array<String>) {
         Shot("$g-guide-stuck", bw, bh, bd, companion("GUIDE") { live?.invoke(snapshot()) ?: snapshot() }) {
             onNodeWithText("STUCK?").performClick()
         },
+        // WILD PIN (WildPins.preview): HERE's GRASS / CAVE rows with a PIN each, the rarest one pinned, and greyed with the
+        // NUZLOCKE tracker on. The wild lists need -Prom; the list is scrolled to them.
+        *listOf("pin" to 0, "pinned" to 1, "pin-nuzlocke" to 2).map { (name, mode) ->
+            Shot("$g-guide-$name", bw, bh, bd, {
+                val s = live?.invoke(snapshot()) ?: snapshot()
+                val rarest = s.guideTables?.let { com.pokedaisy.app.companion.data.GuideRomSource.encounters(it, s.mapGroup, s.mapNum) }
+                    ?.grass?.lastOrNull()?.species ?: 0
+                com.pokedaisy.app.companion.WildPins.preview(pinned = if (mode == 1) rarest else 0, nuzlocke = mode == 2)
+                val content: @Composable () -> Unit = {
+                    com.pokedaisy.app.companion.ui.theme.AppTheme {
+                        val ui = androidx.compose.runtime.remember { com.pokedaisy.app.companion.ui.GuideUiState() }
+                        val source = com.pokedaisy.app.companion.ui.rememberGuide(s.game, s.pokedex, s.guideTables)
+                        if (source != null) com.pokedaisy.app.companion.ui.GuideScreen(source, ui, s)
+                        androidx.compose.runtime.LaunchedEffect(Unit) {
+                            repeat(20) { androidx.compose.runtime.withFrameNanos { } }
+                            ui.list.scrollToItem(1)
+                        }
+                    }
+                }
+                content
+            })
+        }.toTypedArray(),
+        // The HUD's WILD (WildPins.preview): its panel with a PIN on every grass, surfing and rod row, one pinned (a grass
+        // one, then a fishing one: both rods' rows), NUZLOCKE greyed (its reason once); and the WILD button wearing the pin.
+        *listOf("pin" to 0, "pinned" to 1, "pin-nuzlocke" to 2, "pinned-button" to 3, "pinned-rod" to 4).map { (name, mode) ->
+            Shot("hud-wild-$name", tw, th, td, {
+                val wild = listOf(
+                    com.pokedaisy.app.companion.ui.HudWild("GRASS / CAVE", 16, 2, 4, 45, seen = true, caught = true),
+                    com.pokedaisy.app.companion.ui.HudWild("GRASS / CAVE", 19, 2, 4, 45, seen = true, caught = false),
+                    com.pokedaisy.app.companion.ui.HudWild("GRASS / CAVE", 63, 5, 5, 10, seen = false, caught = false),
+                    com.pokedaisy.app.companion.ui.HudWild("SURFING", 72, 5, 30, 100, seen = true, caught = false),
+                    com.pokedaisy.app.companion.ui.HudWild("OLD ROD", 129, 5, 5, 100, seen = true, caught = true),
+                    com.pokedaisy.app.companion.ui.HudWild("SUPER ROD", 129, 25, 30, 60, seen = true, caught = true),
+                    com.pokedaisy.app.companion.ui.HudWild("SUPER ROD", 130, 25, 30, 40, seen = false, caught = false),
+                )
+                com.pokedaisy.app.companion.WildPins.preview(
+                    pinned = when (mode) { 1, 3 -> 19; 4 -> 129; else -> 0 }, nuzlocke = mode == 2,
+                    method = if (mode == 4) com.pokedaisy.app.companion.data.WildPin.Method.FISHING else com.pokedaisy.app.companion.data.WildPin.Method.LAND,
+                )
+                val s = snapshot()
+                val content: @Composable () -> Unit = {
+                    com.pokedaisy.app.companion.ui.theme.AppTheme {
+                        androidx.compose.foundation.layout.Box(
+                            androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF3A6A48)),
+                        ) {
+                            com.pokedaisy.app.companion.ui.FieldHud(
+                                s, shown = true, com.pokedaisy.app.companion.FieldHudStyle(), wild = wild,
+                                initialPanel = if (mode == 3) null else com.pokedaisy.app.companion.ui.FieldHudPanel.WILD,
+                            )
+                        }
+                    }
+                }
+                content
+            })
+        }.toTypedArray(),
         // A randomized FireRed / Emerald (RandomizedRetail): TIPS with its RANDOMIZED section, WHERE IS without the gifts and
         // legendaries (Randomized.HIDE). The tables are retail's here; only the guide's lines change.
         *(if (game != GameKind.FIRERED && game != GameKind.EMERALD) emptyArray() else arrayOf(
@@ -3489,6 +3544,7 @@ fun main(args: Array<String>) {
             com.pokedaisy.app.companion.ui.SettingsLook.descriptions = true
             com.pokedaisy.app.companion.ui.SettingsLook.tabs = true
             Prefs(android.content.Context()).setBetaUpdates(false) // only settings-beta-updates-on turns it on
+            com.pokedaisy.app.companion.WildPins.endPreview() // only the WILD PIN shots set it
             val content = shot.content()
             runSkikoComposeUiTest(Size(shot.w.toFloat(), shot.h.toFloat()), Density(shot.density)) {
                 // Manual clock: the party icons / map highlight animate forever,

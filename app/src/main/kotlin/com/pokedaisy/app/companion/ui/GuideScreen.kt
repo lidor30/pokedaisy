@@ -36,6 +36,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.data.EncounterSlot
+import com.pokedaisy.app.companion.data.WildPin
+import com.pokedaisy.app.companion.PinControl
+import com.pokedaisy.app.companion.WildPins
 import com.pokedaisy.app.companion.data.hasAreaGuide
 import com.pokedaisy.app.companion.data.areaSection
 import com.pokedaisy.app.companion.data.areaThings
@@ -233,7 +236,7 @@ fun GuideScreen(source: GuideSource, ui: GuideUiState, snapshot: SnapshotView, m
     val page = pages.firstOrNull { it.title == ui.page } ?: pages.firstOrNull()
     LaunchedEffect(page?.title) { ui.list.scrollToItem(0) }
 
-    val content: @Composable (Modifier) -> Unit = { mod -> GuidePageWindow(page, ui, ctx, m, small, mod) }
+    val content: @Composable (Modifier) -> Unit = { mod -> GuidePageWindow(page, ui, ctx, snapshot, m, small, mod) }
     if (OptionColors.joined) {
         // A MENU STYLE: GUIDE as a strip over one window, its pages folder tabs down the window's left side.
         Column(modifier.fillMaxSize()) {
@@ -274,7 +277,7 @@ fun GuideScreen(source: GuideSource, ui: GuideUiState, snapshot: SnapshotView, m
 
 /** The GUIDE page itself, in its window: its sections, entries and notes. */
 @Composable
-private fun GuidePageWindow(page: GuidePage?, ui: GuideUiState, ctx: GuideContext, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier) {
+private fun GuidePageWindow(page: GuidePage?, ui: GuideUiState, ctx: GuideContext, snapshot: SnapshotView, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier) {
     run {
         OptionListWindow(m, modifier) {
             if (page == null) {
@@ -290,7 +293,8 @@ private fun GuidePageWindow(page: GuidePage?, ui: GuideUiState, ctx: GuideContex
                         val keys = ui.keys(page, section)
                         itemsIndexed(section.entries, key = { i, _ -> keys[i] }) { i, e ->
                             val key = keys[i]
-                            EntryRow(e, ui.levelOf(key), e.owned || ctx.has(e.have), m, small) { ui.tap(key, e.steps) }
+                            val pin = if (e.pinSpecies != 0) WildPins.control(snapshot, e.pinMethod, e.pinSpecies) else null
+                            EntryRow(e, ui.levelOf(key), e.owned || ctx.has(e.have), m, small, pin) { ui.tap(key, e.steps) }
                         }
                     }
                 }
@@ -362,7 +366,7 @@ private fun SectionHeading(section: GuideSection, small: GbaTextMetrics) {
 
 /** Title (and [owned] ball, icon, detail), then as [level] rises the hint and the answer; a tag says what the next tap shows. */
 @Composable
-private fun EntryRow(e: GuideEntry, level: Int, owned: Boolean, m: GbaTextMetrics, small: GbaTextMetrics, onClick: () -> Unit) {
+private fun EntryRow(e: GuideEntry, level: Int, owned: Boolean, m: GbaTextMetrics, small: GbaTextMetrics, pin: PinControl?, onClick: () -> Unit) {
     val u = m.u
     val noRipple = remember { MutableInteractionSource() }
     val focused by noRipple.collectIsFocusedAsState()
@@ -392,14 +396,26 @@ private fun EntryRow(e: GuideEntry, level: Int, owned: Boolean, m: GbaTextMetric
                 SpeciesPicture(e.icon, spriteAsset("pokemon", e.icon), size = u * 24, fit = true)
                 Spacer(Modifier.width(u * 4))
             }
-            GbaText(trGuide(e.title), OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f), maxLines = 2)
-            e.detail?.let { GbaText(it, OptionColors.value, OptionColors.valueShadow, small, Modifier.padding(start = u * 6)) }
+            if (pin != null) {
+                // A row with a PIN: the levels and odds go under the name, so the name keeps one line beside the button
+                // (side by side, the Thor's companion broke names like "Croagunk" over two lines).
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(u)) {
+                    GbaText(trGuide(e.title), OptionColors.label, OptionColors.labelShadow, m, maxLines = 1)
+                    e.detail?.let { GbaText(it, OptionColors.value, OptionColors.valueShadow, small, maxLines = 1) }
+                }
+            } else {
+                GbaText(trGuide(e.title), OptionColors.label, OptionColors.labelShadow, m, Modifier.weight(1f), maxLines = 2)
+                e.detail?.let { GbaText(it, OptionColors.value, OptionColors.valueShadow, small, Modifier.padding(start = u * 6)) }
+            }
             val next = when {
                 e.steps == 0 || showAnswer -> null
                 e.hint != null && !showHint -> tr("HINT")
                 else -> tr("ANSWER")
             }
             next?.let { GbaText(it, OptionColors.muted, OptionColors.mutedShadow, small, Modifier.padding(start = u * 6)) }
+            // WILD PIN: the next encounter here by this row's method is this one (its reason, when greyed, is over the list).
+            // (UNPIN in red says it's the one pinned: a PINNED beside it squeezed the name onto two lines.)
+            pin?.let { WildPinButton(it, small, Modifier.padding(start = u * 4)) }
         }
         if (showHint) GbaText(tr("HINT: {0}", trGuide(e.hint!!)), OptionColors.muted, OptionColors.mutedShadow, small, maxLines = Int.MAX_VALUE)
         if (showAnswer) GbaText(trGuide(e.answer), OptionColors.value, OptionColors.valueShadow, small, maxLines = Int.MAX_VALUE)
@@ -434,7 +450,7 @@ private fun herePage(
 ): GuidePage {
     val place = snapshot.location.mapSecName.ifEmpty { tk("THIS MAP") }.uppercase()
     fun national(species: Int) = dex?.let { PokedexSource.nationalOf(it.tables, guideDexSpecies(species)) } ?: 0
-    fun rows(slots: List<EncounterSlot>) = slots.map { s ->
+    fun rows(slots: List<EncounterSlot>, pin: WildPin.Method? = null) = slots.map { s ->
         val n = national(s.species)
         val seen = dex == null || n in dex.seen
         val lv = tr("LV {0}", if (s.minLevel == s.maxLevel) "${s.minLevel}" else "${s.minLevel}-${s.maxLevel}")
@@ -444,6 +460,8 @@ private fun herePage(
             detail = "$lv  ${s.percent}%",
             icon = s.species,
             owned = dex != null && n in dex.caught,
+            pinSpecies = if (pin != null) s.species else 0,
+            pinMethod = pin,
         )
     }
     val methods = if (!hasWild) emptyList() else enc?.let {
@@ -510,6 +528,8 @@ private fun herePage(
             }.joinToString(" ").ifEmpty { tr("Nothing listed for this area.") }
         },
     )
+    // WILD PIN: why the PINs are greyed (NUZLOCKE, a battle), said once, over the first section that has them.
+    val firstPinned = methods.firstOrNull { (name, l) -> WildPin.Method.forSection(name)?.let { m -> l.any { WildPins.control(snapshot, m, it.species) != null } } == true }?.first
     return GuidePage(
         HERE,
         listOfNotNull(
@@ -517,7 +537,11 @@ private fun herePage(
             todo.takeIf { it.isNotEmpty() }?.let { GuideSection(tk("TO DO"), it) },
         ) + methods.map { (name, l) ->
             // Grass follows the game's clock (Polished Crystal's morning / day / night): which list this is.
-            GuideSection(name, rows(l), note = if (clock != null && l === enc?.grass) tr("For your game's clock: {0}.", tr(clock)) else null)
+            val grass = l === enc?.grass
+            val pin = WildPin.Method.forSection(name)
+            val pinWhy = if (name == firstPinned) wildPinReason(l.map { WildPins.control(snapshot, pin, it.species) }) else null
+            val clockNote = if (clock != null && grass) tr("For your game's clock: {0}.", tr(clock)) else null
+            GuideSection(name, rows(l, pin = pin), note = listOfNotNull(clockNote, pinWhy?.let { tr("PIN: {0}", it) }).joinToString(" ").ifEmpty { null })
         } + listOfNotNull(
             onlyThen.takeIf { it.isNotEmpty() }?.let {
                 if (otherIsNight) GuideSection(tk("AT NIGHT"), rows(it), note = tr("Only out at night."))

@@ -100,6 +100,8 @@ import com.pokedaisy.app.companion.data.activeRegionMap
 import com.pokedaisy.app.companion.data.gameCase
 import com.pokedaisy.app.companion.data.speciesName
 import com.pokedaisy.app.companion.data.spriteAsset
+import com.pokedaisy.app.companion.WildPins
+import com.pokedaisy.app.companion.data.WildPin
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import kotlinx.coroutines.Dispatchers
@@ -1293,7 +1295,12 @@ private fun HudButtons(p: HudParts, vertical: Boolean, framed: Boolean = true, m
         if (p.bag) add { HudButton(BAG_ICON, BAG_COLORS, companionTabLabel("ITEMS"), null, p.m, framed) { p.open(FieldHudPanel.BAG, -1) } }
         if (p.wildButton) {
             val uncaught = p.wild.orEmpty().distinctBy { it.species }.count { !it.caught }
-            add { HudButton(GRASS_ICON, GRASS_COLORS, tk("WILD"), uncaught.takeIf { it > 0 }?.toString(), p.m, framed) { p.open(FieldHudPanel.WILD, 0) } }
+            // WILD PIN: the pinned species' icon with a pin, while one is in on this map.
+            val pinned = WildPins.pinnedHere(p.snapshot)
+            val face: (@Composable () -> Unit)? = if (pinned == 0) null else ({
+                PinnedWildFace(pinned, p.wild.orEmpty().firstOrNull { it.species == pinned }?.seen != false, u * 16, p.m)
+            })
+            add { HudButton(GRASS_ICON, GRASS_COLORS, tk("WILD"), uncaught.takeIf { it > 0 }?.toString(), p.m, framed, face = face) { p.open(FieldHudPanel.WILD, 0) } }
         }
         // The compact HUD ([CompactLayout]): no minimap, so the map from a button, right of WILD.
         if (mapButton && p.map) add { HudButton(MAP_ICON, MAP_COLORS, tk("MAP"), null, p.m, framed) { p.open(FieldHudPanel.MAP, 0) } }
@@ -1313,7 +1320,10 @@ private fun HudButtons(p: HudParts, vertical: Boolean, framed: Boolean = true, m
 @Composable
 private fun HudButton(
     icon: List<String>, colors: Map<Char, Color>, label: String, badge: String?, m: GbaTextMetrics, framed: Boolean,
-    inGame: Boolean = false, onClick: () -> Unit,
+    inGame: Boolean = false,
+    /** Drawn in [icon]'s place (WILD's pinned species: [PinnedWildFace]). */
+    face: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit,
 ) {
     val u = m.u
     val small = rememberGbaTextMetrics(0.75f)
@@ -1323,7 +1333,7 @@ private fun HudButton(
                 .widthIn(min = u * 34).padding(horizontal = u * 3).padding(top = u * 4, bottom = u * 4 + hudEdge(u)),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            PixelArt(icon, colors, Modifier.size(u * 16))
+            if (face != null) face() else PixelArt(icon, colors, Modifier.size(u * 16))
             // The label in the room under the icon, with as much under it (not pressed against the button's edge).
             Spacer(Modifier.height(u * 2))
             GbaText(tr(label), ink.text, ink.shadow, small, bold = gameBoldLabels())
@@ -1768,8 +1778,13 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
     val icon = hudIconSize(m)
     val (align, place) = panelPlace(dock, top, u, inset)
     val c = ink
+    // WILD PIN: a PIN on each grass, surfing, rock smash and rod row (the panel a little wider for it), and why they're
+    // greyed, once, under the first heading that has them.
+    val pins = wild.associate { w -> w to WildPins.control(snapshot, WildPin.Method.forSection(w.method), w.species) }
+    val pinWhy = wildPinReason(pins.values.toList())
+    val pinWhyAt = wild.firstOrNull { pins[it] != null }?.method
     HudPanelScrim(onClose, align, clear = kept) { window ->
-        Column(place.width(u * 200).hudPanel(u).then(window).padding(u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) {
+        Column(place.width(u * (if (pins.values.any { it != null }) 222 else 200)).hudPanel(u).then(window).padding(u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) {
             PanelHeading(GRASS_ICON, GRASS_COLORS, tk("WILD POKéMON"), m, onClose) {
                 // On: the party screen's orange, like a picked pocket.
                 HudPanelButton(tr("KEEP OPEN"), m, selected = kept, onClick = onKeep)
@@ -1779,6 +1794,7 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
                 if (wild.isEmpty()) GbaText(tr("No wild POKéMON on this map."), c.text, c.shadow, small)
                 wild.groupBy { it.method }.forEach { (method, list) ->
                     GbaText(tr(method), c.accent, c.accentShadow, small, Modifier.padding(top = u * 2))
+                    if (pinWhy != null && method == pinWhyAt) GbaText(tr("PIN: {0}", pinWhy), c.muted, c.shadow, small)
                     list.forEach { w ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             // An unseen Pokémon stays hidden, like GUIDE > HERE's.
@@ -1799,6 +1815,7 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
                             Box(Modifier.widthIn(min = u * 22).padding(start = u * 3), contentAlignment = Alignment.CenterEnd) {
                                 GbaText("${w.percent}%", c.accent, c.accentShadow, small)
                             }
+                            pins[w]?.let { WildPinButton(it, m, Modifier.padding(start = u * 3), label = false) }
                         }
                     }
                 }
