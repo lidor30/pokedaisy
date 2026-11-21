@@ -100,7 +100,7 @@ internal val trSettings: Map<String, Tr> = mapOf(
     // SETTINGS > COMPANION with a phone upright (portraitPlaceLabel).
     "AT BOTTOM" to Tr(ja = "したはし", fr = "EN BAS", de = "UNTEN", it = "IN BASSO", es = "ABAJO", br = "EMBAIXO", pt = "EM BAIXO", ko = "아래쪽"),
     // SETTINGS > COMPANION VIEW, one screen held sideways (companionViewLabel).
-    "COMPANION VIEW" to Tr(ja = "コンパニオンの ひょうじ", fr = "VUE COMPAGNON", de = "ASSISTENTEN-ANSICHT", it = "VISTA COMPAGNO", es = "VISTA COMPAÑERO", br = "VISTA COMPANHEIRO", pt = "VISTA COMPANHEIRO", ko = "컴패니언 보기"),
+    "COMPANION VIEW" to Tr(ja = "コンパニオンの ひょうじ", fr = "VUE COMPAGNON", de = "ASSISTENT", it = "VISTA COMPAGNO", es = "VISTA COMPAÑERO", br = "VISTA COMPANHEIRO", pt = "VISTA COMPANHEIRO", ko = "컴패니언 보기"),
     "HALF OPEN" to Tr(ja = "はんぶん ひらいたとき", fr = "DEMI-OUVERT", de = "HALB GEÖFFNET", it = "SEMI APERTO", es = "SEMIABIERTO", br = "SEMIABERTO", pt = "SEMIABERTO", ko = "반쯤 펼침"),
     "TABLETOP CONTROLS" to Tr(ja = "テーブルトップの ボタン", fr = "COMMANDES TABLETOP", de = "TABLETOP-STEUERUNG", it = "COMANDI TABLETOP", es = "CONTROLES TABLETOP", br = "CONTROLES TABLETOP", pt = "CONTROLOS TABLETOP", ko = "탁상 조작"),
     "BOTTOM SIDES" to Tr(ja = "したの りょうわき", fr = "CÔTÉS DU BAS", de = "SEITEN UNTEN", it = "LATI IN BASSO", es = "LADOS DE ABAJO", br = "LADOS DE BAIXO", pt = "LADOS DE BAIXO", ko = "하단 양쪽"),
