@@ -7,6 +7,7 @@ import com.pokedaisy.app.companion.data.LockedMap
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import com.pokedaisy.app.companion.ui.theme.nightSurface
 import com.pokedaisy.app.companion.ui.theme.nightShadow
 import com.pokedaisy.app.companion.ui.theme.nightInk
@@ -226,6 +227,9 @@ private data class BagPalette(
     val dividerShadow: Color? = null,
     /** A DS game's own bag-screen pattern ([DsBackdrop]) in place of [backdrop]'s stripes, which dark mode still dims. */
     val pattern: DsPattern? = null,
+    /** The windows' and folder tabs' corner radius in u (the description box and buttons: half again). A Game Boy
+     * game's text boxes round theirs like its other windows ([OptionListWindow]: 2u). */
+    val corner: Int = 4,
 ) {
     val tabLayers get() = panelLayers.take(tabLayerCount)
     val tabFill get() = panelLayers[tabLayerCount].first
@@ -249,7 +253,35 @@ private data class BagPalette(
         backdrop = backdrop?.let { (a, b) -> lerp(a, NIGHT, scrim) to lerp(b, NIGHT, scrim) },
         dividerShadow = dividerShadow?.nightSurface(),
     )
+
+    /**
+     * Dark mode for a Game Boy game: its black-on-white text boxes turned round (light lines and text on black), the way
+     * OptionColors' Gen 1 windows and the party slots are, so PACK matches the other tabs. [night]'s remap gave grey boxes.
+     * A colour of the game's own (the cursor's red) is kept.
+     */
+    fun turnedRound(scrim: Float): BagPalette {
+        fun bw(c: Color) = when {
+            c.alpha == 0f -> c
+            c.red == c.green && c.green == c.blue || c.luminance() < 0.1f || c.luminance() > 0.9f ->
+                if (c.luminance() < 0.5f) GB_NIGHT_INK else GB_NIGHT_PAPER
+            else -> c
+        }
+        return copy(
+            panelLayers = panelLayers.map { (c, w) -> bw(c) to w },
+            fill = bw(fill), divider = divider?.let(::bw),
+            text = bw(text), textShadow = bw(textShadow),
+            tabText = bw(tabText), tabTextShadow = bw(tabTextShadow), tabUnderline = bw(tabUnderline),
+            descLayers = descLayers.map { (c, w) -> bw(c) to w },
+            descFill = bw(descFill), descText = bw(descText), descTextShadow = bw(descTextShadow),
+            iconBox = bw(iconBox), iconBoxEdge = bw(iconBoxEdge),
+            backdrop = backdrop?.let { (a, b) -> lerp(a, NIGHT, scrim) to lerp(b, NIGHT, scrim) },
+        )
+    }
 }
+
+// OptionColors' Gen 1 windows in dark mode (G1_INK / G1_PAPER).
+private val GB_NIGHT_INK = Color(0xFFE8E8E8)
+private val GB_NIGHT_PAPER = Color(0xFF181818)
 
 private val nightBags = LockedMap<BagPalette, BagPalette>()
 
@@ -611,6 +643,7 @@ private val YellowBag = BagPalette(
     descText = Color(0xFF181818), descTextShadow = Color.Transparent,
     iconBox = Color.White, iconBoxEdge = Color(0xFF181818),
     backdrop = Color.White to Color.White,
+    corner = 2,
 )
 
 /**
@@ -789,7 +822,10 @@ private fun DrawScope.drawHgssBand(top: Float, k: Float, pal: BagPalette, shades
 /** Same grouping as the companion backdrop (rememberGameBackground). */
 private fun bagPaletteFor(game: GameKind, hgssPocket: Int = 0): BagPalette =
     // Gen 1's white goes nearly black, like its party backdrop (GameBackdrop).
-    lightBagFor(game, hgssPocket).let { if (OptionColors.dark) nightBags.getOrPut(it) { it.night(if (game.isGameBoyGame) 0.9f else OptionColors.backdropScrim) } else it }
+    lightBagFor(game, hgssPocket).let {
+        if (!OptionColors.dark) it
+        else nightBags.getOrPut(it) { if (game.isGameBoyGame) it.turnedRound(0.9f) else it.night(OptionColors.backdropScrim) }
+    }
 
 private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when (game) {
     GameKind.EMERALD -> EmeraldBag
@@ -1034,7 +1070,7 @@ fun ItemsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .drawBehind { drawLayeredBox(pal.panelLayers.inPx(u.toPx()), pal.fill, radius = 4 * u.toPx()) }
+                    .drawBehind { drawLayeredBox(pal.panelLayers.inPx(u.toPx()), pal.fill, radius = pal.corner * u.toPx()) }
                     .padding(panelFrame + u * 3),
             ) {
                 if (items.isEmpty() || sorted.isEmpty()) {
@@ -1435,7 +1471,7 @@ private fun FolderTab(
             .width(tabWidth + u * reach)
             .drawBehind {
                 val px = u.toPx()
-                val radius = 4 * px
+                val radius = pal.corner * px
                 val layers = pal.tabLayers.inPx(px)
                 if (!selected) {
                     drawLayeredBox(layers, pal.tabFill, radius, openRight = true)
@@ -1502,7 +1538,7 @@ private fun SortButton(label: String, pal: BagPalette, m: GbaTextMetrics, width:
             .width(width)
             .gbaFocusRing(focused, PixelRoundedShape(u * 6))
             .drawBehind {
-                drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx(), twoTone = true)
+                drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = pal.corner * 3 / 2 * u.toPx(), twoTone = true)
             }
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
             .padding(horizontal = u * 6, vertical = u * 6),
@@ -1526,7 +1562,7 @@ private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, badge: Strin
             .padding(start = u * 2)
             .width(width)
             .gbaFocusRing(focused, PixelRoundedShape(u * 6))
-            .drawBehind { drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx(), twoTone = true) }
+            .drawBehind { drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = pal.corner * 3 / 2 * u.toPx(), twoTone = true) }
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
             .padding(horizontal = u * 6, vertical = u * 6),
     ) {
@@ -1682,7 +1718,7 @@ private fun ItemDescriptionBar(
         modifier
             .fillMaxWidth()
             .drawBehind {
-                drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 4 * u.toPx())
+                drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = pal.corner * u.toPx())
             }
             // A tap anywhere closes it; not a D-pad stop (B does that, and its buttons are).
             .focusProperties { canFocus = false }

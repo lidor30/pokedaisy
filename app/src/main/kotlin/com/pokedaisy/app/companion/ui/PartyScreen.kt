@@ -195,13 +195,21 @@ fun PartyGrid(
         val rows = (measurables.size + cols - 1) / cols
         // Whole pixels, the remainder spread over the first columns / rows like weights do.
         fun edge(total: Int, parts: Int, i: Int) = total * i / parts
+        // A Game Boy game's slots ([PartyPalette.textBox]) have no Poké Ball overhanging their left, so the grid reaches out
+        // over the outer slots' side margins: their frames line up with the tab bar's ends, like the other tabs' windows.
+        val u = if (gameStyle == null && palette.textBox) SlotGeometry(w / cols.toFloat(), h / rows.toFloat()).u else 0
+        val left = SLOT_LEFT_MARGIN * u
+        val gw = w + left + SLOT_RIGHT_MARGIN * u
+        // ...and over the top row's room above its frame and the bottom row's below it: level with the other tabs' windows.
+        val top = SLOT_TOP_MARGIN * u
+        val gh = h + top + SLOT_BOTTOM_MARGIN * u
         val placeables = measurables.mapIndexed { i, m ->
             val c = i % cols
             val r = i / cols
-            m.measure(Constraints.fixed(edge(w, cols, c + 1) - edge(w, cols, c), edge(h, rows, r + 1) - edge(h, rows, r)))
+            m.measure(Constraints.fixed(edge(gw, cols, c + 1) - edge(gw, cols, c), edge(gh, rows, r + 1) - edge(gh, rows, r)))
         }
         layout(w, h) {
-            placeables.forEachIndexed { i, p -> p.place(edge(w, cols, i % cols), edge(h, rows, i / cols)) }
+            placeables.forEachIndexed { i, p -> p.place(edge(gw, cols, i % cols) - left, edge(gh, rows, i / cols) - top) }
         }
     }
 }
@@ -276,6 +284,9 @@ data class PartyPalette(
     val chamfer: Int = 0,
     /** An empty slot as lines of this colour every other row ([empty]'s outline and fill round them): the DS games'. */
     val emptyLines: Color? = null,
+    /** The Game Boy games' text box frame: [PartySlotColors.outline], [PartySlotColors.light], [PartySlotColors.outline]
+     * a slot pixel each round the fill - the double line the companion's other Gen 1 / 2 windows have. */
+    val textBox: Boolean = false,
 )
 
 /** FireRed's party menu (partyfr/slot_*.png, pokeball.png; Emerald's is identical). */
@@ -484,8 +495,9 @@ private fun flatSlot(outline: Color, fill: Color, text: Color? = null) =
 private val G1_BLACK = Color(0xFF181818)
 private fun yellowPartyPalette(ink: Color, paper: Color, cursor: Color) = FireRedPartyPalette.copy(
     normal = PartySlotColors(ink, paper, paper, paper, band = paper, text = ink, textShadow = Color.Transparent),
-    selected = PartySlotColors(ink, cursor, cursor, cursor, band = cursor, text = ink, textShadow = Color.Transparent),
+    selected = PartySlotColors(ink, paper, cursor, cursor, band = cursor, text = ink, textShadow = Color.Transparent),
     fainted = PartySlotColors(ink, paper, paper, paper, band = paper, text = ink, textShadow = Color.Transparent),
+    textBox = true,
     text = ink, textShadow = Color.Transparent,
     male = ink, maleShadow = Color.Transparent,
     female = ink, femaleShadow = Color.Transparent,
@@ -806,15 +818,24 @@ internal val HpLetters = listOf(
  * and 6px up) scaled by a whole number and stretched to the cell, the way
  * [GbaPartySlot] stretches the real one.
  */
+/** The slot's frame inset in slot pixels: the Poké Ball's room on the left, a gap on the right. */
+private const val SLOT_LEFT_MARGIN = 8
+private const val SLOT_RIGHT_MARGIN = 2
+private const val SLOT_TOP_MARGIN = 6
+private const val SLOT_BOTTOM_MARGIN = 2
+/** The party icon's left from the slot's frame: FireRed's, out over the Poké Ball, and a Game Boy slot's, inside its lines. */
+private const val ICON_DX = -8
+private const val TEXT_BOX_ICON_DX = 2
+
 private class SlotGeometry(w: Float, h: Float) {
     /** Screen pixels per slot pixel before rounding down: the text goes by it ([u] alone shrank it a whole step when a
      * slot came out just short of the next pixel - a DS game's companion over its button bar). */
     val scale = min(w / 86f, h / 57f)
     val u = max(2, floor(scale).toInt())
-    val fx = 8f * u
-    val fy = 6f * u
-    val fw = floor((w - fx - 2 * u) / u) * u
-    val fh = floor((h - fy - 2 * u) / u) * u
+    val fx = SLOT_LEFT_MARGIN.toFloat() * u
+    val fy = SLOT_TOP_MARGIN.toFloat() * u
+    val fw = floor((w - fx - SLOT_RIGHT_MARGIN * u) / u) * u
+    val fh = floor((h - fy - SLOT_BOTTOM_MARGIN * u) / u) * u
     val bottom = fy + fh
     /** The light row splitting the name area from the HP band. */
     val dividerY = bottom - 19 * u
@@ -996,6 +1017,7 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
             when {
                 mon == null && palette.emptyLines != null -> drawEmptyLines(g, palette, palette.emptyLines)
                 palette.chamfer > 0 -> drawCutSlotFrame(g, colors, palette.chamfer)
+                palette.textBox -> drawTextBoxSlotFrame(g, colors)
                 else -> drawSlotFrame(g, colors)
             }
             if (showHp) drawHpBar(g, palette, mon!!.hp, mon.maxHp)
@@ -1013,6 +1035,9 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
 
         val pictures = LocalPokemonPictures.current?.takeIf { !mon.isEgg && mon.species > 0 }
         val iconDy = if (!selected) -4 else if (!bobDown) -3 else 1
+        // The icon's left in slot pixels from the frame: FireRed's hangs out over its Poké Ball; a Game Boy slot, whose frame
+        // reaches the tab's edge ([PartyPalette.textBox]), keeps it inside its double line.
+        val iconDx = if (palette.textBox) TEXT_BOX_ICON_DX else ICON_DX
         // The front picture, once it has loaded; until then (or if the cart's picture can't be read) the game's icon.
         val pic = pictures?.let { rememberPokemonPicture(it, mon.species, mon.shiny, topLeft = true) }
         if (pic != null) {
@@ -1036,14 +1061,15 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
             Canvas(Modifier.fillMaxSize()) { drawPixelBitmap(PartyBall, palette.ball, g.fx - 6 * u, g.fy - 4 * u, u.toFloat()) }
             SpeciesIcon(
                 mon.iconAsset, size = with(density) { (32 * u).toDp() },
-                modifier = Modifier.offset { IntOffset((g.fx - 8 * u).toInt(), (g.fy + iconDy * u).toInt()) },
+                modifier = Modifier.offset { IntOffset((g.fx + iconDx * u).toInt(), (g.fy + iconDy * u).toInt()) },
             )
             // The held-item marker, where GbaPartySlot puts it: the resting icon's place + (16, 22). It doesn't bob.
-            HeldItemMarker(mon.heldItemId, u, g.fx - 8 * u + 16 * u, g.fy + 22 * u)
+            HeldItemMarker(mon.heldItemId, u, g.fx + iconDx * u + 16 * u, g.fy + 22 * u)
         }
 
         // A picture is wider than the icon: the name and level start the same margin right of it.
-        val textX = if (pictures != null) max(g.textX, g.fx + PICTURE_MARGIN * u + 56 * partyPictureScale(g) + PICTURE_MARGIN * u) else g.textX
+        val textX = if (pictures != null) max(g.textX, g.fx + PICTURE_MARGIN * u + 56 * partyPictureScale(g) + PICTURE_MARGIN * u)
+            else g.textX + (iconDx - ICON_DX) * u
         val textWidth = with(density) { (g.fx + g.fw - 4 * u - textX).toDp() }
         GbaText(mon.shownName, text, textShadow, nameM, density.at(textX, g.nameMid, nameM).width(textWidth))
         if (!showHp) return@BoxWithConstraints
@@ -1114,6 +1140,20 @@ private fun DrawScope.drawSlotFrame(g: SlotGeometry, c: PartySlotColors) {
     if (c.band != c.light) drawRect(c.band, Offset(g.fx + 3 * u, g.dividerY), Size(g.fw - 6 * u, g.bottom - 3 * u - g.dividerY))
     drawRect(c.fill, Offset(g.fx + 3 * u, g.fy + 3 * u), Size(g.fw - 6 * u, g.dividerY - g.fy - 3 * u))
     drawRect(c.shade, Offset(g.fx + 2 * u, g.bottom - 3 * u), Size(g.fw - 4 * u, u))
+}
+
+/** A Game Boy slot ([PartyPalette.textBox]): the text box's double line (ink, paper, ink) round the fill, like OptionColors'
+ * Gen 1 windows, so PARTY's slots match DEX / GUIDE / MORE. */
+private fun DrawScope.drawTextBoxSlotFrame(g: SlotGeometry, c: PartySlotColors) {
+    // Lines a companion pixel wide (the windows' and tab chips', not the bigger slot pixel), and the box to the slot's
+    // own margins unrounded: the grid's outer edges are the tab bar's ends.
+    val p = gbaPixelPx()
+    val w = size.width - SLOT_RIGHT_MARGIN * g.u - g.fx
+    val h = size.height - 2 * g.u - g.fy
+    drawPixelRoundRect(c.outline, Offset(g.fx, g.fy), Size(w, h), radius = 2 * p, step = p)
+    drawPixelRoundRect(c.light, Offset(g.fx + p, g.fy + p), Size(w - 2 * p, h - 2 * p), radius = p, step = p)
+    drawRect(c.outline, Offset(g.fx + 2 * p, g.fy + 2 * p), Size(w - 4 * p, h - 4 * p))
+    drawRect(c.fill, Offset(g.fx + 3 * p, g.fy + 3 * p), Size(w - 6 * p, h - 6 * p))
 }
 
 /** A box [w] x [h] slot pixels at ([x], [y]) with its corners cut [cut] pixels at 45 degrees, row by row in [c]; with

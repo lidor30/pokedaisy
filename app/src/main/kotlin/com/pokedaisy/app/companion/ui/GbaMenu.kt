@@ -130,7 +130,9 @@ object OptionColors {
     // field they take the map's two middle colours), here a pixel each.
     private val G1_FRAME get() = if (activeGame == GameKind.BROWN) listOf(G1_PAPER to 1, G1_INK to 1, BROWN_CREAM to 1,
         BROWN_GREEN to 1, G1_INK to 1, G1_PAPER to 1)
-        else listOf(G1_PAPER to 2, G1_INK to 1, G1_PAPER to 1, G1_INK to 1, G1_PAPER to 1)
+        // The double line from the window's edge, like the tab chips: a paper band outside it squared its corners
+        // and set the windows in from the tab bar's ends.
+        else listOf(G1_INK to 1, G1_PAPER to 1, G1_INK to 1, G1_PAPER to 1)
     private val BROWN_CREAM = Color(0xFFF7D67B)
     private val BROWN_GREEN = Color(0xFF4AA55A)
 
