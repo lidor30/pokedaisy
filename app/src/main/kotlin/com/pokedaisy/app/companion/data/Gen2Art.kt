@@ -63,7 +63,7 @@ object Gen2Art {
     val PRISM_TOWN_MAPS = arrayOf("prism_naljo", "prism_rijon", "prism_johto", "prism_kanto", "prism_sevii", "prism_tunod")
 
     /** Bump when what [extractTo] writes changes, so a cached ROM's art is rebuilt once. */
-    private const val VERSION = 5
+    private const val VERSION = 6
 
     /** Where a Gen 2 game's own art sits in its ROM (bank, address). */
     class Gen2ArtTables(
@@ -128,11 +128,13 @@ object Gen2Art {
         val ballColors: Pair<Int, Int>? = null,
         val battleObjectPals: Pair<Int, Int>? = null,
         val ballsDir: String? = null,
+        // Crystal's TRAINER CARD (the CARD tab): where its tiles, palettes and words are ([Gen2TrainerCard.PATH]).
+        val card: Gen2TrainerCard.Tables? = null,
     )
 
     private fun crystalArt(
         sha1s: Set<String>, townMaps: List<Pair<Int, Int>>, townMapPalMap: Pair<Int, Int>,
-        ballGfx: Pair<Int, Int>? = null, ballColors: Pair<Int, Int>? = null,
+        ballGfx: Pair<Int, Int>? = null, ballColors: Pair<Int, Int>? = null, card: Gen2TrainerCard.Tables? = null,
     ) = Gen2ArtTables(
         name = "crystal",
         sha1s = sha1s,
@@ -157,19 +159,20 @@ object Gen2Art {
         ballColors = ballColors,
         battleObjectPals = if (ballGfx != null) 0x02 to 0x579C else null,
         ballsDir = if (ballGfx != null) CRYSTAL_BALLS else null,
+        card = card,
     )
 
     val CRYSTAL = crystalArt(
         setOf(TelemetrySampler.CRYSTAL_SHA1, TelemetrySampler.CRYSTAL_REV1_SHA1, TelemetrySampler.CRYSTAL_AU_SHA1),
         townMaps = listOf(0x24 to 0x5FFF, 0x24 to 0x6168), townMapPalMap = 0x24 to 0x5F4B,
-        ballGfx = 0x21 to 0x515E, ballColors = 0x33 to 0x526C,
+        ballGfx = 0x21 to 0x515E, ballColors = 0x33 to 0x526C, card = Gen2TrainerCard.CRYSTAL_TABLES,
     )
 
     /** German Crystal (Kristall): English Crystal's art, its town maps 0x1F later, the thrown ball's tiles 1 earlier and its colours 2 later. */
     val CRYSTAL_DE = crystalArt(
         setOf(TelemetrySampler.CRYSTAL_DE_SHA1),
         townMaps = listOf(0x24 to 0x601E, 0x24 to 0x6187), townMapPalMap = 0x24 to 0x5F6A,
-        ballGfx = 0x21 to 0x515D, ballColors = 0x33 to 0x526E,
+        ballGfx = 0x21 to 0x515D, ballColors = 0x33 to 0x526E, card = Gen2TrainerCard.CRYSTAL_DE_TABLES,
     )
 
     /** Crystal Legacy v1.3.1 (its pokecrystal.sym): its own font, party icons in eight palettes, redrawn POKéGEAR maps; Crystal's players. */
@@ -623,6 +626,7 @@ object Gen2Art {
         t.townMapPaths.forEachIndexed { i, path -> townMap(rom, t, i)?.let { write(path, it.png()) } }
         t.playerPaths.forEachIndexed { g, path -> write(path, player(rom, t, g).png()) }
         t.ballsDir?.let { d -> balls(rom, t).forEach { (id, img) -> write("$d/ball-$id.png", img.png()) } }
+        t.card?.let { write(Gen2TrainerCard.PATH, Gen2TrainerCard.extract(rom, it, t.font)) }
         marker.writeText(stamp)
         return wrote
     }

@@ -32,7 +32,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import com.pokedaisy.app.companion.data.CardArt
 import com.pokedaisy.app.companion.data.CardStyle
+import com.pokedaisy.app.companion.data.Gen2TrainerCard
 import com.pokedaisy.app.companion.data.LookArt
 import com.pokedaisy.app.companion.data.PlayerLook
 import com.pokedaisy.app.companion.data.RomArt
@@ -51,14 +53,21 @@ private val cardArtGeneration = HashMap<CardStyle, Int>()
 
 /** [style]'s card art from the player's ROM ([RomArt]), once a scan has cached it; null until then. */
 @Composable
-fun rememberTrainerCardArt(style: CardStyle?): TrainerCardArt.Art? {
+fun rememberTrainerCardArt(style: CardStyle?): CardArt? {
     val generation = rememberArtGeneration()
-    return produceKeyedState(style?.let(TrainerCardArt::cached), style, generation) {
+    val start: CardArt? = when (style) {
+        null -> null
+        CardStyle.CRYSTAL -> Gen2TrainerCard.cached()
+        else -> TrainerCardArt.cached(style)
+    }
+    return produceKeyedState(start, style, generation) {
         // Every CompanionScreen composition used to re-read every blob, and the new Art
         // (another identity) re-rendered the card: load only what this generation hasn't.
         val s = style ?: run { value = null; return@produceKeyedState }
         if (value != null && cardArtGeneration[s] == generation) return@produceKeyedState
-        value = withContext(Dispatchers.IO) { runCatching { TrainerCardArt.load(RomArt.dir(), s) }.getOrNull() }
+        value = withContext(Dispatchers.IO) {
+            runCatching { if (s == CardStyle.CRYSTAL) Gen2TrainerCard.load(RomArt.dir()) else TrainerCardArt.load(RomArt.dir(), s) }.getOrNull()
+        }
         if (value != null) cardArtGeneration[s] = generation
     }.value
 }
@@ -70,8 +79,13 @@ fun rememberTrainerCardArt(style: CardStyle?): TrainerCardArt.Art? {
  * game does - squashed shut top and bottom, opened on the other side.
  */
 @Composable
-fun TrainerCardScreen(card: TrainerCardInfo, art: TrainerCardArt.Art, modifier: Modifier = Modifier, initialBack: Boolean = false) {
+fun TrainerCardScreen(card: TrainerCardInfo, art: CardArt, modifier: Modifier = Modifier, initialBack: Boolean = false) {
     var back by remember { mutableStateOf(initialBack) }
+    if (art is Gen2TrainerCard.Art) {
+        CrystalCard(card, art, back, modifier) { back = !back }
+        return
+    }
+    art as TrainerCardArt.Art
     // BlinkTimeColon: the colon toggles every 60 frames. An infinite
     // transition (not a delay loop), so screenshot tests can still go idle.
     val blink = rememberInfiniteTransition(label = "card-colon")
@@ -93,24 +107,60 @@ fun TrainerCardScreen(card: TrainerCardInfo, art: TrainerCardArt.Art, modifier: 
         val px = IntArray((r - l) * (b - t)) { img.argb[(t + it / (r - l)) * img.width + l + it % (r - l)] }
         imageBitmapOf(px, r - l, b - t).also { renders[if (colon) 1 else 0] = it }
     }
+    FlippingCard(image, back, modifier) { back = !back }
+}
+
+/**
+ * Crystal's card ([Gen2TrainerCard]): the whole 160x144 screen the game draws, its two pages flipped like the GBA
+ * cards' sides. The game's 64-frame cycle in eighths: the badges spin a step each, the play time's colon blinks.
+ */
+@Composable
+private fun CrystalCard(card: TrainerCardInfo, art: Gen2TrainerCard.Art, badges: Boolean, modifier: Modifier, flip: () -> Unit) {
+    val cycle = rememberInfiniteTransition(label = "crystal-card")
+    val t = cycle.animateFloat(0f, 8f, infiniteRepeatable(tween(CRYSTAL_CYCLE_MS, easing = LinearEasing)), label = "crystal-card-phase")
+    // Page 1 changes only with the colon; page 2 only with the badges (none: one picture).
+    val phase by remember(badges, card.badges) {
+        derivedStateOf {
+            val p = t.value.toInt().coerceIn(0, 7)
+            when {
+                !badges -> if (p >= 4) 4 else 0
+                card.badges == 0 -> 0
+                else -> p
+            }
+        }
+    }
+    val renders = remember(art, card, badges) { arrayOfNulls<ImageBitmap>(8) }
+    val image = renders[phase] ?: run {
+        val img = Gen2TrainerCard.render(art, card, badges, phase)
+        imageBitmapOf(img.argb, img.width, img.height).also { renders[phase] = it }
+    }
+    FlippingCard(image, badges, modifier, flip)
+}
+
+/** [image] at the largest whole scale that fits; a tap squashes it shut, [flip]s and opens it again. */
+@Composable
+private fun FlippingCard(image: ImageBitmap, back: Boolean, modifier: Modifier, flip: () -> Unit) {
     val squash = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     var flipping by remember { mutableStateOf(false) }
     val m = rememberGbaTextMetrics(1f)
     val cardFocus = remember { MutableInteractionSource() }
     val focused by cardFocus.collectIsFocusedAsState()
-    Column(
-        modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(m.u * 4, Alignment.CenterVertically),
-    ) {
-        BoxWithConstraints(Modifier.weight(1f, fill = false), contentAlignment = Alignment.Center) {
-            val density = LocalDensity.current
-            val w = with(density) { maxWidth.toPx() }
-            val h = with(density) { maxHeight.toPx() }
-            // Whole screen pixels per GBA pixel, so the card stays crisp.
-            val scale = max(1, min(w / image.width, h / image.height).toInt())
-            val size = with(density) { DpSize((image.width * scale).toDp(), (image.height * scale).toDp()) }
+    BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val density = LocalDensity.current
+        val w = with(density) { maxWidth.toPx() }
+        val h = with(density) { maxHeight.toPx() }
+        // Whole screen pixels per game pixel, so the card stays crisp. The hint under it goes when leaving it out gives
+        // the card a whole step more (Crystal's 160x144 on the Thor's bottom screen: 6x instead of 5x).
+        val hint = with(density) { (m.lineHeight + m.u * 4).toPx() }
+        fun fit(height: Float) = max(1, min(w / image.width, height / image.height).toInt())
+        val showHint = fit(h - hint) >= fit(h)
+        val scale = if (showHint) fit(h - hint) else fit(h)
+        val size = with(density) { DpSize((image.width * scale).toDp(), (image.height * scale).toDp()) }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(m.u * 4, Alignment.CenterVertically),
+        ) {
             Canvas(
                 Modifier
                     .size(size)
@@ -124,7 +174,7 @@ fun TrainerCardScreen(card: TrainerCardInfo, art: TrainerCardArt.Art, modifier: 
                         flipping = true
                         scope.launch {
                             squash.animateTo(0f, tween(FLIP_MS, easing = LinearEasing))
-                            back = !back
+                            flip()
                             squash.animateTo(1f, tween(FLIP_MS, easing = LinearEasing))
                             flipping = false
                         }
@@ -132,12 +182,13 @@ fun TrainerCardScreen(card: TrainerCardInfo, art: TrainerCardArt.Art, modifier: 
             ) {
                 drawImage(image, dstSize = IntSize(image.width * scale, image.height * scale), dstOffset = IntOffset.Zero, filterQuality = FilterQuality.None)
             }
+            if (showHint) GbaText(
+                if (back) tr("TAP TO SEE THE FRONT") else tr("TAP TO FLIP THE CARD"),
+                OptionColors.titleText, OptionColors.titleShadow, m,
+            )
         }
-        GbaText(
-            if (back) tr("TAP TO SEE THE FRONT") else tr("TAP TO FLIP THE CARD"),
-            OptionColors.titleText, OptionColors.titleShadow, m,
-        )
     }
 }
 
 private const val FLIP_MS = 150
+private const val CRYSTAL_CYCLE_MS = 64 * 1000 / 60

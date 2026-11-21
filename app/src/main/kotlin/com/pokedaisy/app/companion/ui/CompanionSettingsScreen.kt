@@ -185,7 +185,12 @@ fun CompanionSettingsScreen(
                         if (id !in availableTabs) return@map SettingRow(companionTabLabel(id), tk("N/A")) {}
                         SettingRow(
                             companionTabLabel(id), if (shown) tk("SHOWN") else tk("HIDDEN"),
-                            labelBadge = when (id) { "BOXES" -> NewFeatures.badge(NewFeatures.BOXES_TAB); "STATES" -> settings.statesBadge; else -> null },
+                            labelBadge = when (id) {
+                                "BOXES" -> NewFeatures.badge(NewFeatures.BOXES_TAB)
+                                "STATES" -> settings.statesBadge
+                                "CARD" -> if (com.pokedaisy.app.companion.data.activeGame == com.pokedaisy.app.companion.data.GameKind.CRYSTAL) NewFeatures.badge(NewFeatures.CRYSTAL_CARD) else null
+                                else -> null
+                            },
                         ) {
                             val now = settings.companionTabs
                             when {

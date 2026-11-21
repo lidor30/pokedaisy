@@ -708,6 +708,8 @@ fun readGen2Telemetry(r: MemoryReader, cfg: Gen2Config): Telemetry {
             cfg === GEN2_CRYSTAL_LEGACY -> runCatching { readCrystalProgress(r, CRYSTAL_LEGACY_GUIDE_RAM) }.getOrNull()
             else -> null
         },
+        // The CARD tab: Crystal's own two pages (Gen2TrainerCard), on the carts whose card art is mapped.
+        trainerCard = if (cfg === GEN2_CRYSTAL || cfg === GEN2_CRYSTAL_DE) Gen2TrainerCard.read(r, cfg) else null,
     )
 }
 

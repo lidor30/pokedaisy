@@ -9,7 +9,12 @@ enum class CardStyle(val hoenn: Boolean, val lang: Char = 'E') { KANTO(false), H
     KANTO_DE(false, 'D'), KANTO_FR(false, 'F'), KANTO_IT(false, 'I'), KANTO_ES(false, 'S'),
     /** Italian / Spanish LeafGreen: their own back tilemap. */
     LEAFGREEN_IT(false, 'I'), LEAFGREEN_ES(false, 'S'),
-    HOENN_DE(true, 'D'), HOENN_FR(true, 'F'), HOENN_IT(true, 'I'), HOENN_ES(true, 'S') }
+    HOENN_DE(true, 'D'), HOENN_FR(true, 'F'), HOENN_IT(true, 'I'), HOENN_ES(true, 'S'),
+    /** Pokémon Crystal's (and German Kristall's): a Game Boy card of two pages, [Gen2TrainerCard]. */
+    CRYSTAL(false) }
+
+/** A card's art, loaded from rom-art: the GBA cards' [TrainerCardArt.Art] or Crystal's [Gen2TrainerCard.Art]. */
+interface CardArt { val style: CardStyle }
 
 /**
  * Where a game keeps what its TRAINER CARD shows - both decomps'

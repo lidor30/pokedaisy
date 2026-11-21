@@ -25,6 +25,8 @@ Tap the card to flip it. It folds shut and opens on the other side, like the gam
 
 The back has the extra records the game keeps for you, like your Hall of Fame debut, link battles and trades. What's there depends on the game, the same as on the real card.
 
+Crystal's card has no back. Its second page shows the gym leaders instead, with your badges turning on their faces as in the game, and a tap goes back to your status. Its Pokédex line shows once you have the Pokédex.
+
 The card is drawn at the largest whole size that fits the screen, so the pixels stay sharp.
 
 ## Games with a trainer card
@@ -40,6 +42,7 @@ The card is drawn at the largest whole size that fits the screen, so the pixels 
 | SoulGold | Its own gold Johto card. Its stars come from the Hall of Fame, your regional Pokédex, a Battle Frontier record and its achievements |
 | Lazarus | Its own orange card and font. The stars it draws follow its own rules, while the card's colour follows the original's |
 | Recharged Yellow | FireRed's card with its own pictures, font and wording, and the six Pokémon you picked for the back |
+| Crystal (English and German) | The game's own card with its two pages: your status, and the eight gym leaders with a spinning badge for each one you've beaten |
 
 Other games don't have a CARD tab yet, including Ruby, Sapphire and the Japanese versions of the original games. Many hacks draw their trainer card in a way of their own that hasn't been mapped.
 
