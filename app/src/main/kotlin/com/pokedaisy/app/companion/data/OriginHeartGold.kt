@@ -65,6 +65,8 @@ object OriginHeartGold {
         val speciesTypes: Map<Int, SpeciesTypes>,
         /** By move id: the cart's names, types and powers. */
         val moveData: Map<Int, MoveInfo>,
+        /** By move id: 0 physical, 1 special, 2 status. */
+        val moveCategories: Map<Int, Int>,
         /** atkType * 100 + defType -> percent (the app's charts' key), pairs at 100 left out. */
         val typeChart: Map<Int, Int>,
         /** (species, form) -> its form's species id. */

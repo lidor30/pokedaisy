@@ -127,6 +127,9 @@ class OriginHeartGoldTest {
         assertEquals(MoveInfo("Tackle", 0, 40), data.moveData[33])
         assertEquals(MoveInfo("Ember", 10, 40), data.moveData[52])
         assertEquals(920, data.moveData.keys.max())
+        // Its records keep Gen 5's category order: read back as Gen 4's (physical, special, status), so the move icons
+        // don't swap. Dazzling Gleam and Moonblast are moves past Gen 4's table.
+        assertEquals(listOf(0, 1, 2, 1, 1), listOf(33, 52, 45, 605, 585).map { data.moveCategories[it] })
         // Gen 6's chart: Fairy beats Dragon, Dragon can't touch it, Steel no longer resists Ghost.
         assertEquals(200, data.typeChart[9 * 100 + 16])
         assertEquals(0, data.typeChart[16 * 100 + 9])
@@ -147,6 +150,8 @@ class OriginHeartGoldTest {
         assertEquals(listOf("Cyndaquil", "Sylveon", "Pikachu", "Charizard", "Garchomp", "Dragapult"), t.party.map { speciesName(it.species) })
         assertEquals("Fairy", typeName(activeSpeciesTypeData.getValue(700).type1))
         assertEquals(listOf("Tackle", "Leer", "Smokescreen", "Ember"), t.party[0].moves.map { lookupMove(it).name })
+        assertEquals(listOf(MoveKind.PHYSICAL, MoveKind.STATUS, MoveKind.STATUS, MoveKind.SPECIAL),
+            t.party[0].moves.map { moveKind(MoveView("", "", 0, 0, id = it)) })
         assertEquals(Triple(264, false, 1), OriginHeartGold.machine(328))
         assertEquals(Triple(19, true, 2), OriginHeartGold.machine(421))
         assertEquals(Triple(815, false, 130), OriginHeartGold.machine(574))
