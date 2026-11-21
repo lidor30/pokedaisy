@@ -394,11 +394,19 @@ static int inMainRam(uint32_t p) { return p >= 0x02000000u && p < 0x02400000u; }
 // BattleSystem.battleInput: its text objects are set only while a panel is drawn; battler 0's selection step
 // (BattleContext's first byte, SSI_STATE_*) is 1 / 2 at the commands, 3 / 4 the moves, 7 / 8 the bag, 9 / 10 the party.
 // A menu screen whose page is the touch screen's alone: its template's init function (the child's first word) and, where
-// only some pages are, the app's states (OverlayManager +0x14) on those pages as a bit mask (0 = every page).
+// only some pages are, the app's states (OverlayManager +0x14) on those pages as a bit mask (0 = every page). [overlay]: the
+// template's overlay (its fourth word, 0 = any) for an app that loads where many others do: HeartGold's options (overlay 54)
+// share their init's address with 24 other apps, its starter pick (61) among them, and Platinum's (74) with 26 - each was
+// read as the options (the starter's table and Elm's words hidden behind the floating touch screen, Discord 1.6.2-beta.1).
 struct PkNdsTouchApp {
     uint32_t init;
     uint32_t states;
+    uint32_t overlay;
 };
+
+// HeartGold / SoulSilver's options app's overlay, and Platinum's (every language: their carts' templates).
+static const uint32_t OPTIONS_OVERLAY_HGSS = 54;
+static const uint32_t OPTIONS_OVERLAY_PLATINUM = 74;
 
 struct PkNdsTouchRules {
     const PkNdsFieldGame* game;
@@ -426,21 +434,21 @@ static const PkNdsTouchRules TOUCH_RULES[] = {
     }, 0x10C, {}, 0xD8 },
     { &HEARTGOLD_US, 0x0203BEF1, 0x19C, 0x4D0, {
         { 0x02078E31, 0 },                                      // the party
-        { 0x021E5901, 0 },                                      // the options
+        { 0x021E5901, 0, OPTIONS_OVERLAY_HGSS },                // the options
         { 0x021E5AA1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
         { 0x021E5A9D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
     }, 0x10C, {}, 0xD8 },
     // German HeartGold / SoulSilver: the US apps, their overlays 0x20 lower (scripts/port_nds_fns.py, checked headless).
     { &HEARTGOLD_DE, 0x0203BEF1, 0x19C, 0x4D0, {
         { 0x02078E31, 0 },                                      // the party
-        { 0x021E58E1, 0 },                                      // the options
+        { 0x021E58E1, 0, OPTIONS_OVERLAY_HGSS },                // the options
         { 0x021E5A81, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
         { 0x021E5A7D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
     }, 0x10C, {}, 0xD8 },
     // The French carts: the US apps at their French addresses (the ARM9's the same, the overlays 0x20 higher).
     { &HEARTGOLD_FR, 0x0203BEF1, 0x19C, 0x4D0, {
         { 0x02078E31, 0 },                                      // the party
-        { 0x021E5921, 0 },                                      // the options
+        { 0x021E5921, 0, OPTIONS_OVERLAY_HGSS },                // the options
         { 0x021E5AC1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
         { 0x021E5ABD, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
     }, 0x10C, {}, 0xD8 },
@@ -449,11 +457,11 @@ static const PkNdsTouchRules TOUCH_RULES[] = {
     // command selection's states the same). The party and the options are top-screen pages, their touch screen a picture.
     { &PLATINUM_US_REV1, 0, 0x19C, 0x4D0, {}, 0, {
         { 0x0207E0B9, 0 },   // the party
-        { 0x021D0D81, 0 },   // the options
+        { 0x021D0D81, 0, OPTIONS_OVERLAY_PLATINUM },   // the options
     } },
     { &PLATINUM_FR, 0, 0x19C, 0x4D0, {}, 0, {
         { 0x0207E159, 0 },   // the party
-        { 0x021D0F61, 0 },   // the options
+        { 0x021D0F61, 0, OPTIONS_OVERLAY_PLATINUM },   // the options
     } },
 };
 
@@ -463,6 +471,7 @@ static int pageIn(const PkNdsTouchApp* apps, int n, uint32_t (*read32)(uint32_t)
     for (int i = 0; i < n; i++) {
         const PkNdsTouchApp& a = apps[i];
         if (!a.init || a.init != init) continue;
+        if (a.overlay && read32(child + 0xC) != a.overlay) continue;
         if (!a.states) return 1;
         uint32_t state = read32(child + 0x14);
         return state < 32 && (a.states >> state & 1);
@@ -602,8 +611,8 @@ static const PortTables& ports()
             t.offBattleInput = 0x19C;
             t.offPanelShown = 0x4D0;
             t.touchOnly[0] = { r.partyInit, 0 };
-            t.touchOnly[1] = { r.optionsInit, 0 };
-            t.touchOnly[2] = { r.dexInit, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) };
+            t.touchOnly[1] = { r.optionsInit, 0, OPTIONS_OVERLAY_HGSS };
+            t.touchOnly[2] = { r.dexInit, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6), 0 };
             t.offMenuInputState = 0x10C;
             t.offFieldTouch = 0xD8;
             p.touch4.push_back(t);
@@ -617,7 +626,7 @@ static const PortTables& ports()
             t.offBattleInput = 0x19C;
             t.offPanelShown = 0x4D0;
             t.topOnly[0] = { r.partyInit, 0 };
-            t.topOnly[1] = { r.optionsInit, 0 };
+            t.topOnly[1] = { r.optionsInit, 0, OPTIONS_OVERLAY_PLATINUM };
             p.touch4.push_back(t);
         }
         for (int i = 0; i < PK_NDS_PORTS5_COUNT; i++) {
