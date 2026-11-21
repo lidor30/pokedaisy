@@ -7,7 +7,7 @@
 const uint16_t pd_gb_landmarks_crystal[][2] = {{0, 0}};
 const int pd_gb_landmarks_crystal_count = 0;
 bool pk_gb_write(struct mCore *core, uint32_t addr, const uint8_t *src, int len) { (void)core, (void)addr, (void)src, (void)len; return false; }
-bool pk_gb_call_at(struct mCore *core, uint16_t at, uint16_t fn, uint8_t a, uint8_t b, uint16_t hl, int maxHalts) {
+bool pk_gb_call_at(struct mCore *core, uint32_t at, uint16_t fn, uint8_t a, uint8_t b, uint16_t hl, int maxHalts) {
   (void)core, (void)at, (void)fn, (void)a, (void)b, (void)hl, (void)maxHalts;
   return false;
 }

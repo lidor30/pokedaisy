@@ -73,7 +73,7 @@ object PkApiCore : EmulatorCore, RomOptionPatcher, GameCalls {
         return bytes.usePinned { pk_api_write(addr.toUInt(), it.addressOf(0).reinterpret(), bytes.size) }
     }
     override fun gbCallAt(at: Int, fn: Int, a: Int, b: Int, hl: Int): Boolean =
-        pk_api_gb_call_at(at.toUShort(), fn.toUShort(), a.toUByte(), b.toUByte(), hl.toUShort())
+        pk_api_gb_call_at(at.toUInt(), fn.toUShort(), a.toUByte(), b.toUByte(), hl.toUShort())
 
 
     /** Existing mGBA GBA parser, independent of a running game. */

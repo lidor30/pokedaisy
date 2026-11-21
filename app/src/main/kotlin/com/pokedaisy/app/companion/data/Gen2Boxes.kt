@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlinx.atomicfu.locks.synchronized
+
 /**
  * Crystal's PC boxes, read from the cart's battery RAM (pokecrystal's sram.asm; retail English rev 0, rev 1 and Australia
  * keep them at the same places, the `crystal_boxes` fixture, and German Kristall too, `crystal_de_boxes`):
@@ -59,7 +61,7 @@ private fun readGen2BoxesRaw(r: MemoryReader, cfg: Gen2Config, layout: Gen2BoxLa
         r.readCoreMemory(at, GEN2_BOX_SIZE).copyInto(raw, b * GEN2_BOX_SIZE)
     }
     val key = byteArrayOf(current.toByte()) + names + raw
-    synchronized(pcBoxesLock) { if (key.contentEquals(lastGen2Raw)) lastGen2Boxes?.let { return it } }
+    synchronized(pcBoxesLock) { lastGen2Boxes.takeIf { key.contentEquals(lastGen2Raw) } }?.let { return it }
     val chars = Gen2Art.chars(false)
     PcBoxes(
         currentBox = current,

@@ -63,6 +63,7 @@ class Gen2BoxCalls(
         const val SAVE_CHECK_VALUE = 99
         /** The save takes about a dozen frames: the loop comes by again only then. */
         const val SAVE_SETTLE_TRIES = 40
+        const val SAVE_TRIES = 5
     }
 
     private fun u8(g: GameCalls, addr: Long) = g.read(addr, 1)[0].toInt() and 0xFF
@@ -109,9 +110,20 @@ class Gen2BoxCalls(
         if (!g.gbCallAt(at, FARCALL, SAVE_BANK, 0, saveBox)) return BoxChangeResult.NOT_NOW
         if (!settle(g)) return BoxChangeResult.FAILED
         g.write(curBox, byteArrayOf(to.toByte()))
-        if (!g.gbCallAt(at, FARCALL, SAVE_BANK, 0, loadBox) || !settle(g)) return BoxChangeResult.FAILED
-        if (!g.gbCallAt(at, FARCALL, SAVE_BANK, 0, saveGame) || !settle(g, SAVE_SETTLE_TRIES)) return BoxChangeResult.FAILED
+        if (!g.gbCallAt(at, FARCALL, SAVE_BANK, 0, loadBox) || !settle(g)) return BoxChangeResult.FAILED.also { loadBack(g, current) }
+        // The save has to follow: until it does, the cart's sBox is the new box under a save that names the old one.
+        if (!(0 until SAVE_TRIES).any { g.gbCallAt(at, FARCALL, SAVE_BANK, 0, saveGame) }) {
+            if (g.gbCallAt(at, FARCALL, SAVE_BANK, 0, saveBox)) settle(g)
+            return BoxChangeResult.FAILED.also { loadBack(g, current) }
+        }
+        if (!settle(g, SAVE_SETTLE_TRIES)) return BoxChangeResult.FAILED
         return if (u8(g, curBox) == to) BoxChangeResult.CHANGED else BoxChangeResult.FAILED
+    }
+
+    /** A box change that stopped half way: wCurBox back to [current] and that box into sBox again, as the save has them. */
+    private fun loadBack(g: GameCalls, current: Int) {
+        g.write(curBox, byteArrayOf(current.toByte()))
+        if ((0 until SAVE_TRIES).any { g.gbCallAt(at, FARCALL, SAVE_BANK, 0, loadBox) }) settle(g)
     }
 
     /** WITHDRAW: the current box's slot [slot] ([key]) into the party. */

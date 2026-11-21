@@ -701,7 +701,7 @@ fun readGen2Telemetry(r: MemoryReader, cfg: Gen2Config): Telemetry {
         money = ((u8(m, 0).toLong() shl 16) or (u8(m, 1).toLong() shl 8) or u8(m, 2).toLong()),
         playerGender = if (cfg.playerGender < 0) 0 else u8(r.readCoreMemory(cfg.playerGender, 1), 0) and 1,
         pokedex = cfg.pokedex?.let { runCatching { readGen2PokedexState(r, cfg, it) }.getOrNull() },
-        // The BOXES tab: retail English Crystal's cart RAM (Gen2Boxes.kt).
+        // The BOXES tab: retail English and German Crystal's cart RAM (Gen2Boxes.kt).
         pcBoxes = if (cfg === GEN2_CRYSTAL || cfg === GEN2_CRYSTAL_DE) readGen2Boxes(r, cfg, GEN2_CRYSTAL_BOXES) else null,
         // The GUIDE's flags, badges and clock (Polished Crystal's: GuidePolishedCrystal.kt; Crystal's: GuideCrystal.kt).
         progress = when {
