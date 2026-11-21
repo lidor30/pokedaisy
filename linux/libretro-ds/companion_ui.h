@@ -40,11 +40,25 @@ struct DsCompanionUi {
   void update_battle();
   void draw(pd_canvas*,const DsCompanion&,bool,const DsMapArt&,const std::vector<std::vector<uint32_t>>&);
   bool control(unsigned pressed); // true closes the companion
+  // A pointer (the Windows core's mouse): down / held / up at (x, y) on the companion's canvas, in its own pixels. A tap
+  // runs the tab, row, button or gear under it as A would; a drag on a list moves it. True while the companion takes it.
+  bool touch(int x, int y, bool down);
+  // The wheel, in notches (>0 down): the open tab's list moves as UP / DOWN would.
+  void wheel(int notches);
   unsigned companion_id() const;
   int hud_id() const;
   int screen_id() const;
   int pen_step() const;
 private:
+  std::vector<ds_touch_hit> hits; // what the last draw laid out, for the pointer
+  size_t overlayHits=0;           // where the choice windows' own targets start in it
+  int tapX=0, tapY=0, tapId=-1, placeFirst=0;
+  pd_map_viewport mapView{};   // where the MAP tab drew the map last, for a click on it
+  bool tapHeld=false, tapFrame=false, tapWindow=false, tapClose=false;
+  pd_tab tapTab=PD_TAB_PARTY;
+  int tap_at(int x, int y) const;
+  void tap_act(int id);
+  void activate_setting();
   pd_game presentation{};
   pd_battle_source battleSource{};
   const DsCompanion* snapshot=nullptr;

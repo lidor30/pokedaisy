@@ -7,6 +7,7 @@ extern "C" {
 }
 extern "C" {
 #include "pd_ui.h"
+#include "pd_ui_internal.h"
 }
 namespace {
 // Android's PlatinumBag, HeartGoldBag and BlackBag.
@@ -42,7 +43,8 @@ constexpr pd_bag_palette unovaNight{
   0x19222E,0xB6B6B6,0x3A3F43,0,0
 };
 }
-DsBagPockets ds_bag_view(pd_canvas* c,const DsCompanion& s,int pocket,int selected,bool details,int sort,int tabKey){
+DsBagPockets ds_bag_view(pd_canvas* c,const DsCompanion& s,int pocket,int selected,bool details,int sort,int tabKey,
+                         std::vector<ds_touch_hit>* hits){
   pd_bag_source source{};source.ctx=const_cast<DsCompanion*>(&s);source.tabs=ds_bag_tabs(s.game);source.count=int(s.bag.size());
   source.pocketName=[](void* data,int tab){
     const auto game=static_cast<DsCompanion*>(data)->game;
@@ -67,5 +69,11 @@ DsBagPockets ds_bag_view(pd_canvas* c,const DsCompanion& s,int pocket,int select
   ui.keepBackdrop=true;
   ds_companion_backdrop(c,s.game,PD_TAB_BAG,pocket);
   pd_ui_bag_view(&ui,c,&game,&snapshot);
+  if(hits)for(int i=0;i<ui.hitCount;++i){
+    const auto& h=ui.hits[i];
+    if(h.id>=HIT_BAG_TAB && h.id<HIT_BAG_LIST)ds_touch_add(hits,h.x,h.y,h.w,h.h,DS_HIT_BAG_TAB+(h.id-HIT_BAG_TAB));
+    else if(h.id==HIT_BAG_SORT)ds_touch_add(hits,h.x,h.y,h.w,h.h,DS_HIT_BAG_SORT);
+    else if(h.id>=HIT_BAG_ROW && h.id<HIT_BAG_ROW_END)ds_touch_add(hits,h.x,h.y,h.w,h.h,DS_HIT_BAG_ROW+(h.id-HIT_BAG_ROW));
+  }
   return {ui.bagPocket,ui.bagPocketMask};
 }

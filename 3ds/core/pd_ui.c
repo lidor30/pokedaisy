@@ -728,7 +728,7 @@ bool pd_ui_settings_control(struct pd_ui* ui, int dy, bool accept) {
     return true;
 }
 
-/* A BUTTON row: the next button (X, Y, L2, R2; the HUD's also NONE). A button another action already uses goes to
+/* A BUTTON row: the next button (X, Y, L2, R2, L3; the HUD's also NONE). A button another action already uses goes to
  * this one's old button, so no two actions ever share one; the HUD's NONE can't be handed to the other two. */
 static void cycle_button(struct pd_settings* s, int row) {
     int* mine = row == SETTING_QUICK_BTN ? &s->quickBtn : row == SETTING_COMPANION_BTN ? &s->companionBtn : &s->hudBtn;
@@ -929,6 +929,17 @@ void pd_ui_focus_move(struct pd_ui* ui, int direction) {
 
 void pd_ui_focus_press(struct pd_ui* ui) {
     if (focus_index(ui, ui->focusId) >= 0) act(ui, ui->focusId);
+}
+
+bool pd_ui_tap(struct pd_ui* ui, int x, int y) {
+    for (int i = ui->hitCount - 1; i >= 0; i--) {
+        const struct pd_hit* h = &ui->hits[i];
+        if (x < h->x || y < h->y || x >= h->x + h->w || y >= h->y + h->h) continue;
+        ui->focusId = h->id;
+        act(ui, h->id);
+        return true;
+    }
+    return false;
 }
 
 bool pd_ui_back(struct pd_ui* ui) {

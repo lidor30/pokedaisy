@@ -129,7 +129,7 @@ enum setting_row {
     SETTING_HUD,       // hosts with hasHud: opens its page
     SETTING_FILTER, // optional host LCD display mask
     SETTING_QUICK_MENU, // hosts with hasQuickMenu: two styles, flips in place
-    SETTING_QUICK_BTN,  // hosts with hasButtonRows: cycle X / Y / L2 / R2
+    SETTING_QUICK_BTN,  // hosts with hasButtonRows: cycle X / Y / L2 / R2 / L3
     SETTING_COMPANION_BTN,
     SETTING_HUD_BTN,    // also NONE
     SETTING_PERF,      // hosts with hasPerf: flips in place

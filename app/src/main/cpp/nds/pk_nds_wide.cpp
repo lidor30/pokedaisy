@@ -23,6 +23,14 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+// windows.h's old segmented-memory leftovers (near / far) and wingdi.h's GDI Polygon, all empty macros:
+// this file has a polygon type, a near() of two colours and a far count.
+#undef Polygon
+#undef near
+#undef far
+#endif
+
 using namespace melonDS;
 
 // Built twice: here against the app's melonDS (1.1), and into libpkbananads.so against BananaDS's (PK_NDS_BANANADS,
@@ -92,10 +100,10 @@ struct Slice {
     int sx = 0, sy = 0;   // -1 / 0 / 1: left / screen / right, above / screen / below
     bool active = false;  // gets polygons and is drawn (the window reaches it)
     std::vector<Vertex> verts[2];
-    std::vector<Polygon> polys[2];
+    std::vector<melonDS::Polygon> polys[2];
     int bank = 0;
     u32 numVerts = 0, numPolys = 0, numOpaque = 0;
-    std::array<Polygon*, MAX_POLYS> render {};
+    std::array<melonDS::Polygon*, MAX_POLYS> render {};
     u32 renderNum = 0;
     int x0 = 0, x1 = 0, y0 = 0, y1 = 0;   // what the drawing under way draws (sliceRect when it was handed out)
     Image image;   // drawn after the last frame: what the next composed frame shows
@@ -110,7 +118,7 @@ struct Slice {
 // A renderer of its own and its scratch: one per helper thread.
 struct Drawer {
     std::unique_ptr<Soft3D> renderer;
-    std::vector<Polygon*> visible;   // a slice's polygons that reach what it draws
+    std::vector<melonDS::Polygon*> visible;   // a slice's polygons that reach what it draws
 };
 
 // The helper threads: each frame's slices go into [jobs] and every helper takes the next one until none are left, while
@@ -130,7 +138,7 @@ struct Pool {
 struct Wide {
     NDS* nds = nullptr;
     bool on = false;
-    Slice slices[9];      // (sy + 1) * 3 + sx + 1; 4, the screen itself, unused
+    Slice slices[15];     // (sy + 1) * 5 + sx + 2; 7, the screen itself, unused. sx in [-2, 2]: two screens each side
     Drawer drawers[HELPERS];
     Pool pool;
     // pk_nds_wide_hires: the margins at a renderer's scale (BananaDS: Gengis) - the slices also drawn by [hiDraw], the
@@ -164,10 +172,10 @@ struct Wide {
     bool gpuComplete = true;     // ... all of them (one it couldn't take: the game's own list is drawn instead)
     int gpuL = 0, gpuR = 0, gpuT = 0, gpuB = 0;   // the margins it's built for
     std::vector<Vertex> gpuVerts[2];
-    std::vector<Polygon> gpuPolys[2];
+    std::vector<melonDS::Polygon> gpuPolys[2];
     int gpuBank = 0;
     u32 gpuNumVerts = 0, gpuNumPolys = 0, gpuNumOpaque = 0;
-    std::vector<Polygon*> gpuRender;
+    std::vector<melonDS::Polygon*> gpuRender;
     WidePolygonList gpuList;
     PkNdsWidePlan plan;
 };
@@ -239,12 +247,12 @@ const Shown2D& shown(const NDS* nds)
     return shown2D;
 }
 
-inline Slice& sliceAt(int sx, int sy) { return wide.slices[(sy + 1) * 3 + sx + 1]; }
+inline Slice& sliceAt(int sx, int sy) { return wide.slices[(sy + 1) * 5 + sx + 2]; }
 
 // Where a polygon goes: a slice's lists, or GPU mode's.
 struct Store {
     Vertex* verts;
-    Polygon* polys;
+    melonDS::Polygon* polys;
     u32& numVerts;
     u32& numPolys;
     u32& numOpaque;
@@ -315,7 +323,7 @@ void storePolygon(GPU3D& g, const Store& st, Vertex* cv, int nverts, bool facing
         if (zerodot && allbehind) return;
     }
 
-    Polygon* poly = &st.polys[st.numPolys++];
+    melonDS::Polygon* poly = &st.polys[st.numPolys++];
     poly->NumVertices = 0;
     poly->Attr = g.CurPolygonAttr;
     poly->TexParam = g.TexParam;
@@ -557,17 +565,17 @@ void swapGpu(GPU3D& g, bool rendering)
         WidePolygonList& list = wide.gpuList;
         list.Active = wide.gpuBuilding && wide.gpuComplete;
         if (list.Active) {
-            Polygon* polys = wide.gpuPolys[wide.gpuBank].data();
+            melonDS::Polygon* polys = wide.gpuPolys[wide.gpuBank].data();
             wide.gpuRender.resize(wide.gpuNumPolys);
             u32 io = 0, it = wide.gpuNumOpaque;
             for (u32 i = 0; i < wide.gpuNumPolys; i++) {
-                Polygon* poly = &polys[i];
+                melonDS::Polygon* poly = &polys[i];
                 if (poly->Translucent) wide.gpuRender[it++] = poly;
                 else wide.gpuRender[io++] = poly;
             }
             std::stable_sort(wide.gpuRender.begin(),
                 wide.gpuRender.begin() + ((g.FlushAttributes & 0x1) ? wide.gpuNumOpaque : wide.gpuNumPolys),
-                [](Polygon* a, Polygon* b) { return a->SortKey < b->SortKey; });
+                [](melonDS::Polygon* a, melonDS::Polygon* b) { return a->SortKey < b->SortKey; });
             list.Polygons = wide.gpuRender.data();
             list.NumPolygons = (int) wide.gpuNumPolys;
             list.ViewW = W3D + wide.gpuL + wide.gpuR;
@@ -615,12 +623,12 @@ void onSwap(GPU3D& g, bool rendering, void*)
         if (rendering) {
             u32 io = 0, it = s.numOpaque;
             for (u32 i = 0; i < s.numPolys; i++) {
-                Polygon* poly = &s.polys[s.bank][i];
+                melonDS::Polygon* poly = &s.polys[s.bank][i];
                 if (poly->Translucent) s.render[it++] = poly;
                 else s.render[io++] = poly;
             }
             std::stable_sort(s.render.begin(), s.render.begin() + ((g.FlushAttributes & 0x1) ? s.numOpaque : s.numPolys),
-                [](Polygon* a, Polygon* b) { return a->SortKey < b->SortKey; });
+                [](melonDS::Polygon* a, melonDS::Polygon* b) { return a->SortKey < b->SortKey; });
             s.renderNum = s.numPolys;
             s.lastCount = (int) s.numPolys;
         }
@@ -967,7 +975,8 @@ inline u32 at(int sx, int sy, int x, int y) { return at(sliceAt(sx, sy).image, s
 // two pixels come from the corner slice beside them, which has them inside.
 inline u32 marginPixel(int x, int y)
 {
-    int sx = x < 0 ? -1 : x >= W3D ? 1 : 0, sy = y < 0 ? -1 : y >= H3D ? 1 : 0;
+    int sx = x < -(W3D - OVERLAP) ? -2 : x < 0 ? -1 : x >= W3D + (W3D - OVERLAP) ? 2 : x >= W3D ? 1 : 0,
+        sy = y < 0 ? -1 : y >= H3D ? 1 : 0;
     if (sx == 0) {
         int ax = x < SPARE ? -1 : x >= W3D - SPARE ? 1 : 0;
         if (ax) {
@@ -985,13 +994,15 @@ inline u32 marginPixel(int x, int y)
 }
 
 // The rectangle slice (sx, sy) draws, in the screen's pixels: the margin the window needs on its side(s), SPARE more,
-// and its overlap with the screen.
+// and its overlap with the screen. A slice two screens out covers the second ring: its image reaches from two screens
+// less the overlap to the same three screens in (one screen further than the first ring's, less the overlap again).
 void sliceRect(int sx, int sy, int* x0, int* x1, int* y0, int* y1)
 {
-    *x0 = sx < 0 ? -(wide.needL + SPARE) : sx == 0 ? 0 : W3D - OVERLAP;
-    *x1 = sx < 0 ? OVERLAP : sx == 0 ? W3D : W3D + wide.needR + SPARE;
-    *y0 = sy < 0 ? -(wide.needT + SPARE) : sy == 0 ? 0 : H3D - OVERLAP;
-    *y1 = sy < 0 ? OVERLAP : sy == 0 ? H3D : H3D + wide.needB + SPARE;
+    const int ox = sx * (W3D - OVERLAP), oy = sy * (H3D - OVERLAP);
+    *x0 = sx < 0 ? std::max(-(wide.needL + SPARE), ox) : sx == 0 ? 0 : std::max(W3D - OVERLAP, ox);
+    *x1 = sx < 0 ? std::min(OVERLAP, ox + W3D) : sx == 0 ? W3D : std::min(W3D + wide.needR + SPARE, ox + W3D);
+    *y0 = sy < 0 ? std::max(-(wide.needT + SPARE), oy) : sy == 0 ? 0 : std::max(H3D - OVERLAP, oy);
+    *y1 = sy < 0 ? std::min(OVERLAP, oy + H3D) : sy == 0 ? H3D : std::min(H3D + wide.needB + SPARE, oy + H3D);
 }
 
 void drawSlice(Slice& s, Drawer& d)
@@ -1006,7 +1017,7 @@ void drawSlice(Slice& s, Drawer& d)
     // Polygons wholly outside those cost their per-line set-up all the same: left out (the order kept).
     d.visible.clear();
     for (u32 i = 0; i < s.renderNum; i++) {
-        Polygon* p = s.render[i];
+        melonDS::Polygon* p = s.render[i];
         if (p->YBottom < r.RowMin || p->YTop >= r.RowMax) continue;
         s32 lo = 512, hi = -1;
         for (u32 v = 0; v < p->NumVertices; v++) {
@@ -1127,10 +1138,10 @@ void pk_nds_wide_set(NDS* nds, bool on)
     wide.gpuList = WidePolygonList();
     wide.gpuBuilding = false;
     wide.plan = PkNdsWidePlan();
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < 15; i++) {
         wide.slices[i] = Slice();
-        wide.slices[i].sx = i % 3 - 1;
-        wide.slices[i].sy = i / 3 - 1;
+        wide.slices[i].sx = i % 5 - 2;
+        wide.slices[i].sy = i / 5 - 1;
     }
     wide.cx0 = wide.cx1 = wide.cy0 = wide.cy1 = 0;
     stopPool();
@@ -1209,7 +1220,9 @@ static void applyNeed()
     if (wide.gpu) updateCrop();
     if (!wide.on) return;
     for (Slice& s : wide.slices) {
-        bool x = s.sx < 0 ? wide.needL > 0 : s.sx > 0 ? wide.needR > 0 : true;
+        // A slice out on the second ring draws only once the window needs past the first ring's screen.
+        bool x = s.sx < 0 ? wide.needL > (-s.sx - 1) * (W3D - OVERLAP) :
+                 s.sx > 0 ? wide.needR > (s.sx - 1) * (W3D - OVERLAP) : true;
         bool y = s.sy < 0 ? wide.needT > 0 : s.sy > 0 ? wide.needB > 0 : true;
         s.active = (s.sx || s.sy) && x && y && !wide.gpu;
         if (s.active && s.verts[0].empty()) {

@@ -40,6 +40,13 @@ else()
   set(PD_ZLIB ZLIB::ZLIB)
 endif()
 add_subdirectory(${ARMGBA} armgba EXCLUDE_FROM_ALL)
+# armGBA's recompiler asks sys/mman.h for one anonymous, executable block (it maps a ROM through it too), and its cart
+# clock asks localtime_r: Windows answers both from windows/include, force-included so no vendored file is edited.
+if(WIN32)
+  set(PD_WIN_COMPAT ${CMAKE_CURRENT_SOURCE_DIR}/../../windows/include)
+  target_include_directories(armgba PRIVATE ${PD_WIN_COMPAT})
+  target_compile_options(armgba PRIVATE -include ${PD_WIN_COMPAT}/pd_win_compat.h)
+endif()
 # EXPAND records what each line is drawn with, from a hook at the call that draws it: video.c's calls become ours
 # (pd_agba_view.c), which tell pk_wide.c and then draw. A compile-time rename, so nothing of armGBA's is edited and its
 # whole-program optimisation can't route round it.
@@ -49,6 +56,10 @@ set_source_files_properties(${ARMGBA}/src/video/video.c TARGET_DIRECTORY armgba 
 get_target_property(AG_GLUE armgba_libretro SOURCES)
 list(FILTER AG_GLUE EXCLUDE REGEX "(^|/)libretro\\.c$")        # pd_libretro.c includes it, renamed
 list(FILTER AG_GLUE EXCLUDE REGEX "gb-gambatte\\.cpp$")        # Gambatte: pd_agba_gb_stub.c answers for it
+if(WIN32)
+  # Dolphin's link cable talks POSIX sockets (arpa/inet, poll, ifaddrs): pd_agba_stubs.c answers for it on Windows.
+  list(FILTER AG_GLUE EXCLUDE REGEX "libretro/dolphin\\.c$")
+endif()
 list(TRANSFORM AG_GLUE PREPEND ${ARMGBA}/)
 
 set(PD ${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -69,8 +80,14 @@ target_include_directories(pokedaisy_gba_libretro PRIVATE
   ${PD} ${PD}/../3ds/core ${PD}/../linux ${APP})
 find_package(Threads REQUIRED)
 target_link_libraries(pokedaisy_gba_libretro PRIVATE armgba retro-archive Threads::Threads ${PD_ZLIB} m)
+if(WIN32)
+  target_include_directories(pokedaisy_gba_libretro PRIVATE ${PD_WIN_COMPAT})
+  target_compile_options(pokedaisy_gba_libretro PRIVATE -include ${PD_WIN_COMPAT}/pd_win_compat.h)
+endif()
 # Only retro_* leaves the object, as in the mGBA core (a second core may be resident beside this one).
-target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--no-undefined -Wl,--exclude-libs,ALL -Wl,--version-script=${PD}/retro.map)
+if(NOT WIN32)
+  target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--no-undefined -Wl,--exclude-libs,ALL -Wl,--version-script=${PD}/retro.map)
+endif()
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND PD_GLIBC)
   target_sources(pokedaisy_gba_libretro PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/glibc_compat.c)
   target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--wrap=stat -Wl,--wrap=fstat -Wl,--wrap=pthread_create -Wl,--wrap=pthread_join)

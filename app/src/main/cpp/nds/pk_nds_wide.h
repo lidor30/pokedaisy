@@ -15,8 +15,11 @@
 namespace melonDS { class NDS; }
 
 /** The widest margins, in DS pixels: left / right and above / below. A slice is a screen less its overlap with the
- * screen, so up to 252 / 188 (less SPARE); the 3x zoom step needs 192 / 84 on the Thor (640 x 360), 242 on a 20:9 phone. */
-constexpr int PK_NDS_WIDE_MAX_MARGIN_X = 248;
+ * screen, 252 / 188: the left / right margin spans two slices on each side, so it reaches 504. That is a 1264-pixel
+ * canvas (6.6:1), past three 1080p monitors (5760 x 1080 makes a 1024-pixel canvas; its client area with a title bar
+ * and borders is a little wider still), so EXPAND's field reaches a window laid across them with no bars at the sides.
+ * The 3x zoom step needs 192 / 84 on the Thor (640 x 360), 242 on a 20:9 phone. */
+constexpr int PK_NDS_WIDE_MAX_MARGIN_X = 504;
 constexpr int PK_NDS_WIDE_MAX_MARGIN_Y = 96;
 constexpr int PK_NDS_WIDE_MAX_W = 256 + 2 * PK_NDS_WIDE_MAX_MARGIN_X;
 constexpr int PK_NDS_WIDE_MAX_H = 192 + 2 * PK_NDS_WIDE_MAX_MARGIN_Y;

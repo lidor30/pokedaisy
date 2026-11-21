@@ -17,7 +17,11 @@
 #include <mutex>
 #include <thread>
 
+#ifdef _WIN32
+#include <windows.h> // LoadLibrary / GetProcAddress: no dlfcn on Windows
+#else
 #include <dlfcn.h>
+#endif
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -230,12 +234,24 @@ float Addon_MotionQuery(MotionQueryType type, void*)
 }
 // The JIT's memory on Android comes from libandroid's ASharedMemory_create, looked up through these
 // (without them melonDS falls back to opening /dev/ashmem, which apps can't since API 29).
+#ifdef _WIN32
+DynamicLibrary* DynamicLibrary_Load(const char* lib) { return reinterpret_cast<DynamicLibrary*>(LoadLibraryA(lib)); }
+void DynamicLibrary_Unload(DynamicLibrary* lib)
+{
+    if (lib) FreeLibrary(reinterpret_cast<HMODULE>(lib));
+}
+void* DynamicLibrary_LoadFunction(DynamicLibrary* lib, const char* name)
+{
+    return lib ? reinterpret_cast<void*>(GetProcAddress(reinterpret_cast<HMODULE>(lib), name)) : nullptr;
+}
+#else
 DynamicLibrary* DynamicLibrary_Load(const char* lib) { return reinterpret_cast<DynamicLibrary*>(dlopen(lib, RTLD_NOW | RTLD_LOCAL)); }
 void DynamicLibrary_Unload(DynamicLibrary* lib)
 {
     if (lib) dlclose(lib);
 }
 void* DynamicLibrary_LoadFunction(DynamicLibrary* lib, const char* name) { return lib ? dlsym(lib, name) : nullptr; }
+#endif
 
 } // namespace melonDS::Platform
 

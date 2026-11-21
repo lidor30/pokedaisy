@@ -6,6 +6,7 @@
 #include <cstdio>
 extern "C" {
 #include "pd_ui.h"
+#include "pd_ui_internal.h"
 #include "pd_tables.h"
 #include "pd_stats.h"
 #include "pd_experience.h"
@@ -118,7 +119,8 @@ const pd_party_source_palette& ds_party_palette(DsGame game) {
   return ds_unova(game)?unova:game==DsGame::Johto?johto:platinum;
 }
 
-void ds_party_view(pd_canvas* c,const DsCompanion& s,const std::vector<std::vector<uint32_t>>& icons,int selected,bool summary,int page,const DsDexArt* art,int learnRow,int* learnLast){
+void ds_party_view(pd_canvas* c,const DsCompanion& s,const std::vector<std::vector<uint32_t>>& icons,int selected,bool summary,int page,const DsDexArt* art,int learnRow,int* learnLast,
+                   std::vector<ds_touch_hit>* hits){
   ds_companion_backdrop(c,s.game,PD_TAB_PARTY);
   if(summary && !s.party.empty()){
     party_summary(c,s,icons,std::clamp(selected,0,int(s.party.size())-1),page,art,learnRow,learnLast);
@@ -145,4 +147,9 @@ void ds_party_view(pd_canvas* c,const DsCompanion& s,const std::vector<std::vect
   ui.pressedId=-1;pd_game game{};
   ui.keepBackdrop=true;
   pd_ui_party_view(&ui,c,&game,&view,selected);
+  if(hits)for(int i=0;i<ui.hitCount;++i){
+    const auto& h=ui.hits[i];
+    if(h.id>=HIT_SLOT && h.id<HIT_SLOT+PD_PARTY_SIZE)
+      ds_touch_add(hits,h.x,h.y,h.w,h.h,DS_HIT_PARTY+(h.id-HIT_SLOT));
+  }
 }

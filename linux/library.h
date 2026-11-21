@@ -45,6 +45,8 @@ struct lib_cover {
  * for its covers, favorites and last played. */
 void library_open(char *const *paths, int count, const char *dataDir, const char *savesDir, const struct lib_host *host);
 void library_keys(unsigned down);
+/* A pointer press or wheel notch on the canvas library_draw gets: (x, y) canvas pixels, click = a left press, wheel > 0 = up. */
+void library_pointer(int x, int y, bool click, int wheel);
 void library_tick(void);
 void library_draw(struct pd_canvas *c);
 int library_covers(struct lib_cover *out, int max);

@@ -1,0 +1,5 @@
+// The program's icon, embedded in PokeDaisy.exe: Explorer, the taskbar and Alt-Tab take it from here (the host also sets
+// it on the window, linux/main.c's set_window_icon). The picture is the app's own launcher icon:
+// app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png under _foreground.png, written at 16 to 256 pixels into
+// pokedaisy.ico beside this file.
+1 ICON "pokedaisy.ico"

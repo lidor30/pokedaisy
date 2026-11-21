@@ -40,7 +40,9 @@ Without a ROM argument, choose a `.gb`, `.gbc`, `.gba` or `.nds` from DATA/roms 
 (colon-separated; the PortMaster launcher passes the firmware's `gba`, `gb`, `gbc` and `nds` folders where they exist). The host creates DATA/saves and
 DATA/states. Before a game opens its battery save is backed up into DATA/saves/pokedaisy-backups (a new copy only
 when it changed, the newest 10 kept; with `--save FILE`, DATA/backups); a save that can't be backed up keeps the game
-closed. The save is DATA/saves/COMPLETE-ROM-FILENAME.sav, the raw battery save, read into the core when the game
+closed. The save is DATA/saves/COMPLETE-ROM-FILENAME.sav, or, when there is none, a save named after the ROM
+without its extension, the way other emulators make them (`pokeblack2.nds` reads `pokeblack2.sav`), the raw battery
+save, read into the core when the game
 opens and written back (to a temporary file, then renamed) within two seconds of the game changing it and on quit.
 States are DATA/states/ROM.ss on the GB/GBC and DS cores and ROM.armgba.ss on the armGBA core: the two can't read each
 other's. The companion's settings are the core's, in DATA/saves/pokedaisy/settings.ini (an older DATA/settings.ini is
@@ -50,7 +52,8 @@ copied there once). The host's own are DATA/host.ini.
 
 Keyboard: arrows, Z=A, X=B, Enter=Start, Backspace=Select, Q/E=L/R, 1/2=L2/R2, Tab=X, F=Y, Space=fast-forward
 (held), R=rewind (held), F2=save state, F4=load state, Escape=the host menu. The core's own controls work as on any
-frontend: X opens the companion, Y the quick menu (each can be rebound in the companion's SETTINGS).
+frontend: X opens the companion, L3 the quick menu (each can be rebound in the companion's SETTINGS; on a keyboard,
+F, the Y key, still opens the quick menu).
 
 START+SELECT (or the controller's Guide / Menu button, or Escape) opens the host menu over the game: RESUME, SAVE
 STATE, LOAD STATE, HOTKEYS, REWIND (keeps the last ~20 s while on, in a 32 MB budget: `POCKET_REWIND_MB`), FF SPEED
@@ -152,13 +155,13 @@ are in NOTICE and the packaged licenses (mGBA, and armGBA and zlib for the GBA c
 ## Nintendo DS
 
 The bundled DS core starts in its One Screen layout. L2 opens the Companion and R2 switches screens by default.
-Hold L2 to open Quick Menu. With SELECT as the host modifier, SELECT + Y toggles stylus mode and SELECT + D-pad/A
+L3 opens Quick Menu (holding L2 still does). With SELECT as the host modifier, SELECT + Y toggles stylus mode and SELECT + D-pad/A
 moves or taps the stylus. DS host actions can be rebound separately in HOTKEYS (SELECT + R2 / L2 by default; with
 the modifier off they move to R3 / L3, since bare R2 / L2 belong to the core). Companion Settings → HUD opens the shared HUD
 page (on or off, LOOK, SIZE and each part), as on the GB and GBA cores. MINIMAL HUD hides the party cards.
 
-To bring over an existing DS battery save, copy its raw save data to `DATA/saves/<game>.nds.sav` (including the
-ROM extension in the name), or pass its path with `--save`.
+To bring over an existing DS battery save, copy its raw save data to `DATA/saves/<game>.nds.sav`, or to
+`DATA/saves/<game>.sav` (a save named without the ROM extension is found too), or pass its path with `--save`.
 
 The older opt-in DSperate experiment is still available with `-DPOCKET_DSPERATE=ON`. See
 [dsperate/README.md](dsperate/README.md) for that backend's build and save paths.

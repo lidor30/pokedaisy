@@ -51,6 +51,15 @@ int pk_wide_gb_view(struct mCore *core, const uint32_t *frame, uint32_t *out, st
   return 0;
 }
 
+#ifdef _WIN32
+/* dolphin.c is POSIX sockets (arpa/inet, poll, ifaddrs), which the Windows build leaves out: the GameCube link cable
+ * answers that Dolphin isn't there. */
+void dolphinSetHost(const char *host) { (void)host; }
+void dolphinGbaFrame(struct GBA *gba) { (void)gba; }
+bool dolphinConnected(void) { return false; }
+const char *dolphinAddress(void) { return ""; }
+#endif
+
 /* Polished Crystal (a Game Boy Color game): its PC and wild-encounter hooks work through the Game Boy adapter, and its wide
  * profile through pk_wide_gb.c, none of which are on this core. */
 const char *polished_pc_reason(const char *sha, pd_read_fn read, void *ctx) {

@@ -236,7 +236,7 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         // Rows cut off at the window's edge still take a tap on what shows.
         int top = ry < iy ? iy : ry;
         int bottom = ry + BAG_ROW > iy + ih ? iy + ih : ry + BAG_ROW;
-        if(!ui->bagSource)ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_BAG_ROW + i);
+        ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_BAG_ROW + i);
     }
     pd_unclip(c);
     // A scroll bar when the list runs past the window, dragged like SETTINGS'.

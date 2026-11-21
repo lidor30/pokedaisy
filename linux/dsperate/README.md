@@ -47,12 +47,13 @@ save or extracted artwork is included in the contribution or packages.
 | Control | Action |
 | --- | --- |
 | D-pad, A/B/X/Y, L/R, Start/Select | Native DS buttons |
-| L2 | Shared quick menu; inside the companion, return to gameplay |
+| L2 | Companion (tap); hold for the shared quick menu; inside the companion, return to gameplay |
+| L3 | Shared quick menu |
 | R2 | Swap DS screens; in AUTO battles, temporarily override until the phase changes |
 | Select + D-pad, Select + A | Move stylus cursor, touch while bottom screen is visible |
 | Menu | Pause; B resumes, A saves a state, X loads, Start leaves the game |
 
-Quick menu: D-pad selects, A confirms, B/L2 closes. Entries are COMPANION,
+Quick menu: L3 opens it, D-pad selects, A confirms, B/L2/L3 closes. Entries are COMPANION,
 SAVE STATE, LOAD STATE and LEAVE GAME. A missing state disables LOAD STATE.
 The companion uses L/R tabs; A opens a party summary, B backs out. Left/right
 switch summary info/moves, or page bag/dex lists. Map: D-pad moves over the

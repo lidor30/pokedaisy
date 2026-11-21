@@ -6,6 +6,7 @@
 #include <algorithm>
 extern "C" {
 #include "pd_ui.h"
+#include "pd_ui_internal.h"
 #include "pd_style.h"
 #include "pd_tables.h"
 
@@ -62,7 +63,8 @@ std::string evolution_requirement(const DsDexEvolution& evo,DsGame game){
 }
 
 void ds_dex_view(pd_canvas* c,const DsCompanion& s,int filter,int selected,int filterFocus,
-                 const std::vector<std::vector<uint32_t>>* icons,const std::vector<int>* regional,const char* modeLabel){
+                 const std::vector<std::vector<uint32_t>>* icons,const std::vector<int>* regional,const char* modeLabel,
+                 std::vector<ds_touch_hit>* hits){
   ds_companion_backdrop(c,s.game,PD_TAB_DEX);
   const auto all=ds_dex_rows(s,0,regional);
   int seen=0,owned=0;
@@ -72,7 +74,12 @@ void ds_dex_view(pd_canvas* c,const DsCompanion& s,int filter,int selected,int f
     owned += caught;
   }
   const int counts[]={int(all.size()),owned,seen-owned,int(all.size())-seen};
-  const int listX = pd_ui_dex_filters(nullptr, c, counts, filter, filterFocus, modeLabel);
+  pd_ui filterUi{};filterUi.dexFilter=filter;filterUi.pressedId=-1;
+  const int listX = pd_ui_dex_filters(&filterUi, c, counts, filter, filterFocus, modeLabel);
+  if(hits)for(int i=0;i<filterUi.hitCount;++i){
+    const auto& h=filterUi.hits[i];
+    if(h.id>=HIT_DEX_FILTER && h.id<HIT_DEX_FILTER+4)ds_touch_add(hits,h.x,h.y,h.w,h.h,DS_HIT_DEX_FILTER+(h.id-HIT_DEX_FILTER));
+  }
   const int listW = c->w - listX - 4;
 
   pd_list_box(c,listX,4,listW,c->h-8);
@@ -95,12 +102,14 @@ void ds_dex_view(pd_canvas* c,const DsCompanion& s,int filter,int selected,int f
     const uint32_t mark=caught?0xE83028:pd_dark_look?0x3E4552:0xC6C5C5;
     pd_ui_dex_list_row(c, listX + 5, y, listW - 10, number, ds_species(n, s.game), caught || s.dexSeen[n],
                        mark, index == selected && filterFocus < 0, icon, 0);
+    ds_touch_add(hits, listX + 5, y, listW - 10, rowH, DS_HIT_DEX_ROW + index);
   }
 }
 
 void ds_dex_entry(pd_canvas* c,const DsCompanion& s,int species,int number,const std::vector<std::vector<uint32_t>>& icons,
                   const DsDexDetails* details,const DsDexPage& page,const std::vector<DsDexEvolution>& evolutions,
-                  const std::vector<DsGuideSpot>& spots,int row,int count,DsDexSection section,int detailRow){
+                  const std::vector<DsGuideSpot>& spots,int row,int count,DsDexSection section,int detailRow,
+                  std::vector<ds_touch_hit>* hits){
   ds_companion_backdrop(c,s.game,PD_TAB_DEX);
   const auto n = size_t(species);
   const bool caught = n < s.dexCaught.size() && s.dexCaught[n];
@@ -117,7 +126,12 @@ void ds_dex_entry(pd_canvas* c,const DsCompanion& s,int species,int number,const
   const pd_dex_card card{ds_species(species, s.game), types, size, details ? details->category.c_str() : nullptr, nullptr,
     picture, front ? page.side : 32, front ? 1 : 2, 0, number, row, count, caught,
     (1u << PD_DEX_SECTIONS) - 1, static_cast<pd_dex_section>(section)};
-  const auto pane = pd_ui_dex_card(nullptr, c, &card);
+  pd_ui cardUi{};cardUi.pressedId=-1;cardUi.dexSection=static_cast<int>(section);
+  const auto pane = pd_ui_dex_card(&cardUi, c, &card);
+  if(hits)for(int i=0;i<cardUi.hitCount;++i){
+    const auto& h=cardUi.hits[i];
+    if(h.id>=HIT_DEX_SECTION && h.id<HIT_DEX_SECTION+4)ds_touch_add(hits,h.x,h.y,h.w,h.h,DS_HIT_DEX_SECTION+(h.id-HIT_DEX_SECTION));
+  }
   const int tx = pane.x - 1, tw = pane.w + 2, h = pane.h + 54;
   if(section==DsDexSection::Evolve){
     struct Context {const std::vector<DsDexEvolution>& links; int species; DsGame game;};

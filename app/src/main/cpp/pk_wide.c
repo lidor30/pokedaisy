@@ -56,6 +56,13 @@
 #include "pk_wide_games.h"
 #include "pk_coop_emerald.h"   // gPaletteFade, for the co-op partner's colours
 
+#ifdef _WIN32
+// windows.h (through mGBA's headers) defines these two as empty macros, from the old segmented-memory days: a map's
+// near objects and the glow's far reach keep their own names.
+#undef near
+#undef far
+#endif
+
 // Each engine's layout.
 static const int32_t FAMILIES[][PK_WIDE_CONFIG_SIZE - PK_WIDE_ADDRS] = {
     [PK_WIDE_FAMILY_FR] = { 640, 0x14, 4, 29, 3, 1, 0, 0x439, 4, 4, 0x8E0, 0xEE0, 0x1000, 7, 2, 0, 64 },    // u32 attributes, layer in bits 29-30; sized border
@@ -4408,7 +4415,40 @@ int pk_wide_frame(struct mCore* core, const uint32_t* frame, uint32_t* out, int 
 #ifndef PK_WIDE_NO_GUARD   // mgba_dump's AddressSanitizer build reports faults itself
 #include <setjmp.h>
 #include <signal.h>
+#ifdef _WIN32
+// Windows raises no signal for a bad read: a vectored exception handler carries a fault on this thread, while it draws,
+// back out of pk_wide_view the way the POSIX handlers below do, and pk_wide_fault reads it as a segmentation fault.
+#include <windows.h>
+#undef near
+#undef far
+static __thread jmp_buf* guardJmp;
+static bool guardInstalled;
 
+static LONG CALLBACK onFault(EXCEPTION_POINTERS* p) {
+    switch (p->ExceptionRecord->ExceptionCode) {
+    case EXCEPTION_ACCESS_VIOLATION:
+    case EXCEPTION_IN_PAGE_ERROR:
+    case EXCEPTION_ILLEGAL_INSTRUCTION:
+    case EXCEPTION_INT_DIVIDE_BY_ZERO:
+    case EXCEPTION_DATATYPE_MISALIGNMENT:
+    case EXCEPTION_STACK_OVERFLOW:
+        break;
+    default:
+        return EXCEPTION_CONTINUE_SEARCH;   // not a fault this guard knows about: the system's own handling
+    }
+    jmp_buf* j = guardJmp;
+    if (!j) return EXCEPTION_CONTINUE_SEARCH;   // outside pk_wide_view: as if this handler weren't installed
+    guardJmp = NULL;
+    longjmp(*j, 11);   // SIGSEGV
+}
+static void installGuard(void) {
+    if (guardInstalled) return;
+    guardInstalled = true;
+    AddVectoredExceptionHandler(1, onFault);
+}
+#define sigjmp_buf jmp_buf
+#define sigsetjmp(j, s) setjmp(j)
+#else
 static __thread sigjmp_buf* guardJmp;   // set only while this thread is inside pk_wide_view
 static const int GUARDED[4] = { SIGSEGV, SIGBUS, SIGFPE, SIGILL };
 static struct sigaction guardOld[4];
@@ -4444,6 +4484,7 @@ static void installGuard(void) {
     sigemptyset(&sa.sa_mask);
     for (int i = 0; i < 4; i++) sigaction(GUARDED[i], &sa, &guardOld[i]);
 }
+#endif // _WIN32
 #endif
 
 int pk_wide_fault(void) { return lastFault; }

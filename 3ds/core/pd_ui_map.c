@@ -111,14 +111,14 @@ static void frame(struct pd_canvas* c, int x, int y, int w, int h) {
 
 // The page scaled to the view, each canvas pixel its nearest map pixel.
 static void draw_page(struct pd_canvas* c, const uint32_t* px) {
-    static int col[1024];
-    for (int x = 0; x < view.w && x < 1024; x++) col[x] = crop.l + x * (crop.r - crop.l) / view.w;
+    static int col[4096];
+    for (int x = 0; x < view.w && x < 4096; x++) col[x] = crop.l + x * (crop.r - crop.l) / view.w;
     for (int y = 0; y < view.h; y++) {
         int cy = view.y + y;
         if (cy < c->cy0 || cy >= c->cy1) continue;
         const uint32_t* src = px + (crop.t + y * (crop.b - crop.t) / view.h) * mapW;
         uint32_t* dst = c->px + cy * c->w + view.x;
-        for (int x = 0; x < view.w && x < 1024; x++) {
+        for (int x = 0; x < view.w && x < 4096; x++) {
             int cx = view.x + x;
             if (cx >= c->cx0 && cx < c->cx1) dst[x] = src[col[x]];
         }
@@ -480,7 +480,7 @@ enum pd_map_input pd_ui_map_control(int* action, int count, int dx, int dy, bool
 
 struct pd_map_viewport pd_ui_map_view(struct pd_canvas* c, const struct pd_map_source* source) {
     if (!source || !source->pixels || source->width < 1 || source->height < 1 ||
-        source->width > 4096 || source->height > 4096 || c->w < 32 || c->h < 32 || c->w > 1024) {
+        source->width > 4096 || source->height > 4096 || c->w < 32 || c->h < 32 || c->w > 4096) {
         ui_notice(c, "NO MAP", "The region map's art wasn't found", "in this ROM.");
         return (struct pd_map_viewport){0};
     }
