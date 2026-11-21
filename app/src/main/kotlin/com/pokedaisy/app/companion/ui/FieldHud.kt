@@ -742,7 +742,7 @@ private class HudParts(
     val open: (FieldHudPanel, Int) -> Unit,
 ) {
     val party = if (style.shows(FieldHudPart.PARTY)) snapshot.party.take(6) else emptyList()
-    val balls = if (style.shows(FieldHudPart.BALLS)) snapshot.items.filter { it.pocket == POCKET_POKE_BALLS && it.quantity > 0 } else emptyList()
+    val balls = if (style.shows(FieldHudPart.BALLS)) snapshot.items.filter { (it.pocket == POCKET_POKE_BALLS || com.pokedaisy.app.companion.data.Gen1Art.isBall(it.itemId)) && it.quantity > 0 } else emptyList()
     val bag = style.shows(FieldHudPart.BAG) && snapshot.items.isNotEmpty()
     val wildButton = style.shows(FieldHudPart.WILD) && wild != null
     val map = style.shows(FieldHudPart.MAP)
@@ -1261,9 +1261,9 @@ private const val REPEL_ICON_ITEM = 86
 @Composable
 private fun BallCount(item: ItemView, m: GbaTextMetrics, text: GbaTextMetrics) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        // The Game Boy games have no item icons: Crystal's carts give each kind its ball as the battle throws it (Gen2Art),
-        // the others a drawn ball in the icon's place.
-        val thrown = if (item.iconAsset == null) com.pokedaisy.app.companion.data.Gen2Art.ballAsset(item.itemId) else null
+        // The Game Boy games have no item icons: Gold / Silver / Crystal give each kind its ball as the battle throws it (Gen2Art),
+        // Red / Blue / Yellow their thrown ball in Crystal's colours (Gen1Art), the others a drawn ball in the icon's place.
+        val thrown = if (item.iconAsset == null) (com.pokedaisy.app.companion.data.Gen2Art.ballAsset(item.itemId) ?: com.pokedaisy.app.companion.data.Gen1Art.ballAsset(item.itemId)) else null
         val gen = rememberArtGeneration()
         // Read off the disk once, not in composition.
         val thrownArt by androidx.compose.runtime.produceState(thrown?.let { GameArt.peek(it) }, thrown, gen) {

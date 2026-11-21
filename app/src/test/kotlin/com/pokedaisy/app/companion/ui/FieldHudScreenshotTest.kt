@@ -211,6 +211,22 @@ class FieldHudScreenshotTest {
         )
     }
 
+    /** Yellow's balls: the thrown ball in Crystal's colours, the SAFARI BALL in camouflage (Gen1Art; its bag has no pockets). */
+    @Test fun ballsYellow() {
+        val rom = java.io.File(com.pokedaisy.app.companion.data.RETAIL_ROM_DIR).parentFile!!.let { java.io.File(it, "gbc/Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb") }
+        if (rom.isFile) com.pokedaisy.app.companion.data.Gen1Art.extractTo(rom.readBytes(), java.io.File("build/rom-art-paparazzi").toOkioPath())
+        activeGame = GameKind.YELLOW
+        listOf(8, 3, 4).forEach { id -> com.pokedaisy.app.companion.data.Gen1Art.ballAsset(id)?.let { GameArt.get(it) } }
+        shot(
+            FieldHudStyle(),
+            snap = snapshot.copy(items = snapshot.items.filter { it.pocket != POCKET_POKE_BALLS } + listOf(
+                ItemView(8, "SAFARI BALL", 30, null, 0),
+                ItemView(3, "GREAT BALL", 7, null, 0),
+                ItemView(4, "POKé BALL", 5, null, 0),
+            )),
+        )
+    }
+
     /** The bag under the game's own word: Unbound's CUBE, on the button and the panel. */
     @Test fun bagOwnWord() {
         activeGame = GameKind.UNBOUND

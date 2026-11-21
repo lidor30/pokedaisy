@@ -48,10 +48,12 @@ object Gen1Art {
     const val YELLOW_LEGACY_ICONS = "gen1/yellow_legacy/pokemon"
     const val YELLOW_LEGACY_TOWN_MAP_NAME = "yellow_legacy"
     /** Pokémon Brown: Red's font and icon shapes, its icons for 252 species and its own Rijon town map ("brown"). */
+    /** The HUD's ball counts in Red, Blue and Yellow: `ball-<item id>.png` ([balls], [ballAsset]). */
+    const val BALLS = "gen1/balls"
     const val BROWN_ICONS = "gen1/brown/pokemon"
     const val BROWN_TOWN_MAP_NAME = "brown"
     /** Bump when what [extractTo] writes changes, so a cached ROM's art is rebuilt once. */
-    private const val VERSION = 3
+    private const val VERSION = 4
 
     /** Where a Gen 1 game's own art sits in its ROM (bank, address). */
     class Gen1ArtTables(
@@ -414,6 +416,84 @@ object Gen1Art {
         return img
     }
 
+    // The battle's thrown ball (MoveAnimationTiles0's tiles 0x02 and 0x12, the left half of a 16x16 sprite the
+    // game mirrors), found by its CRC32s: the same bytes in Red, Blue and Yellow, wherever a cart keeps them.
+    private const val BALL_TOP_CRC = 0xF185A172L
+    private const val BALL_BOTTOM_CRC = 0x9B35E0D0L
+
+    /**
+     * Each kind of ball for the HUD (12x12, by item id), the battle's thrown ball in colours of its own: Gen 1 throws
+     * every kind in one, so these follow Crystal's balls (as the HUD draws them: the GREAT BALL's blue lightened)
+     * and the SAFARI BALL, which Crystal lacks, gets its camouflage, drawn here. Empty when the tiles aren't in [rom].
+     */
+    fun balls(rom: ByteArray): Map<Int, RomArt.Image> {
+        val at = ballTiles(rom) ?: return emptyMap()
+        return GEN1_BALL_COLOURS.mapValues { (id, c) ->
+            val img = RomArt.Image(12, 12)
+            for (y in 0 until 12) for (x in 0 until 12) {
+                // 4 blank rows and 2 blank columns cut, the right half the left one mirrored.
+                val sx = (x + 2).let { if (it < 8) it else 15 - it }
+                val sy = y + 4
+                val v = px(rom, at + 0x100 * (sy / 8), sx, sy % 8)
+                img.argb[y * 12 + x] = when (v) {
+                    0 -> 0
+                    3 -> 0xFF000000.toInt()
+                    1 -> c.second
+                    else -> if (id == SAFARI_BALL) SAFARI_CAMO[(SAFARI_PATTERN[y][x] - '0').coerceIn(0, 3)] else c.first
+                }
+            }
+            img
+        }
+    }
+
+    private fun ballTiles(rom: ByteArray): Int? {
+        val crc = java.util.zip.CRC32()
+        fun crcAt(o: Int): Long { crc.reset(); crc.update(rom, o, 16); return crc.value }
+        for (o in 0..rom.size - 0x110) {
+            if (crcAt(o) == BALL_TOP_CRC && crcAt(o + 0x100) == BALL_BOTTOM_CRC) return o
+        }
+        return null
+    }
+
+    /** Pixel (x, y) of the 2bpp tile at [o]. */
+    private fun px(rom: ByteArray, o: Int, x: Int, y: Int): Int {
+        val lo = (rom[o + 2 * y].toInt() shr (7 - x)) and 1
+        val hi = (rom[o + 2 * y + 1].toInt() shr (7 - x)) and 1
+        return lo or (hi shl 1)
+    }
+
+    private const val SAFARI_BALL = 0x08
+
+    /** Top / bottom colours by item id: MASTER, ULTRA, GREAT, POKé as Crystal's HUD draws them, SAFARI a pale bottom. */
+    private val GEN1_BALL_COLOURS = linkedMapOf(
+        0x01 to (0xFF297300.toInt() to 0xFF63CE08.toInt()),
+        0x02 to (0xFFFF8408.toInt() to 0xFFFFFF39.toInt()),
+        0x03 to (0xFF5263FF.toInt() to 0xFFA0B1FF.toInt()),
+        0x04 to (0xFFF75231.toInt() to 0xFFFF9CC6.toInt()),
+        SAFARI_BALL to (0 to 0xFFECECE2.toInt()),
+    )
+
+    /** The SAFARI BALL's camouflage on its top half: dark green, orange brown, tan. */
+    private val SAFARI_CAMO = intArrayOf(0xFF487850.toInt(), 0xFF487850.toInt(), 0xFFC87434.toInt(), 0xFFECC68A.toInt())
+    private val SAFARI_PATTERN = listOf(
+        "000000000000",
+        "000000220000",
+        "002200022000",
+        "002000000000",
+        "000033002220",
+        "030000022000",
+        "000220000000",
+    ) + List(5) { "000000000000" }
+
+    /** The HUD's ball for item [itemId] in Red, Blue or Yellow (every language), else null. */
+    fun ballAsset(itemId: Int): String? =
+        if (activeGame in BALL_GAMES && itemId in GEN1_BALL_COLOURS) "$BALLS/ball-$itemId.png" else null
+
+    /** Red, Blue and Yellow's balls count as balls on the HUD (their bag is one list, with no pockets). */
+    fun isBall(itemId: Int): Boolean = activeGame in BALL_GAMES && itemId in GEN1_BALL_COLOURS
+
+    private val BALL_GAMES = setOf(GameKind.RED, GameKind.BLUE, GameKind.YELLOW)
+
     /** Writes [rom]'s art into [dir] if it's a known Gen 1 cart (once per [VERSION]); returns the paths written. */
     fun extractTo(rom: ByteArray, dir: Path): List<String> {
         val sha1 = sha1(rom).hex()
@@ -429,6 +509,7 @@ object Gen1Art {
         icons(rom, t).forEach { (dex, img) -> write("${t.iconsDir}/$dex.png", img.png()) }
         write(t.townMapPath, townMap(rom, t).png())
         write(t.playerPath, player(rom, t).png())
+        balls(rom).forEach { (id, img) -> write("$BALLS/ball-$id.png", img.png()) }
         marker.writeText(wrote.size.toString())
         return wrote
     }
