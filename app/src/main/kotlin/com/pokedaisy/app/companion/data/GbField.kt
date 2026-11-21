@@ -79,6 +79,8 @@ sealed class GbField {
             game == GameKind.CRYSTAL_LEGACY -> CrystalLegacy
             game == GameKind.GOLD && activeGen2 === GEN2_GOLD -> Gold
             game == GameKind.SILVER && activeGen2 === GEN2_SILVER -> Silver
+            game == GameKind.GOLD && activeGen2 === GEN2_GOLD_DE -> GoldDe
+            game == GameKind.SILVER && activeGen2 === GEN2_SILVER_DE -> SilverDe
             else -> null
         }
     }
@@ -365,24 +367,32 @@ sealed class GbField {
      * RunMemScript queue, PCScript and FlyFunction.FlyScript, CheckWildEncounterCooldown - at their own addresses; PCScript in
      * bank 0x40, wDefaultSpawnpoint in bank 0, the Kanto landmarks from 46. Silver's Fly script sits 2 bytes before Gold's.
      */
-    open class GoldSilver(cfg: Gen2Config, flyScript: Int) : CrystalEngine(
+    open class GoldSilver(
+        cfg: Gen2Config, flyScript: Int, runMemScript: Int = 0x7A61, flypoints: Int = 0x5BCC,
+        runMemScriptCall: String = "48", flyText: String = "0a",
+    ) : CrystalEngine(
         cfg = cfg,
         QUEUE = wramx(1, 0xD183), PC_SCRIPT = 0x4145, FLY_SCRIPT = flyScript, SCRIPT_RUNNING = wramx(1, 0xD15F),
         MAP_EVENT_STATUS = wramx(1, 0xD15A), VISITED_SPAWNS = wramx(1, 0xD9EE), JOHTO_BADGES = wramx(1, 0xD57C),
         ENVIRONMENT = wramx(1, 0xD083), PARTY_MON1_MOVES = wramx(1, 0xDA2C), COOLDOWN = wramx(1, 0xD179),
-        FLYPOINTS = 0x24 * 0x4000L + (0x5BCC - 0x4000),
+        FLYPOINTS = 0x24 * 0x4000L + (flypoints - 0x4000),
         signatures = listOf(
-            0x25 * 0x4000L + (0x7A61 - 0x4000) to "fa83d1a7c82185d12a666ffa84d1cd48", // RunMemScript
+            0x25 * 0x4000L + (runMemScript - 0x4000) to "fa83d1a7c82185d12a666ffa84d1cd$runMemScriptCall", // RunMemScript
             0x40 * 0x4000L + (0x4145 - 0x4000) to "470f1c00499084",                  // opentext, special, closetext, end
-            0x03 * 0x4000L + (flyScript - 0x4000) to "7b0e000a310f3400",             // the Fly script's first commands
+            0x03 * 0x4000L + (flyScript - 0x4000) to "7b0e00${flyText}310f3400",             // the Fly script's first commands
             0x25 * 0x4000L + (0x67F4 - 0x4000) to "2179d17ea7c835c837c9",           // CheckWildEncounterCooldown
-            0x24 * 0x4000L + (0x5BCC - 0x4000) to "010e030f",                         // Flypoints: NEW BARK, CHERRYGROVE
+            0x24 * 0x4000L + (flypoints - 0x4000) to "010e030f",                         // Flypoints: NEW BARK, CHERRYGROVE
         ),
         DEFAULT_SPAWN = 0xCEEC, PC_SCRIPT_BANK = 0x40, KANTO_LANDMARK = 46,
     )
 
     object Gold : GoldSilver(GEN2_GOLD, 0x4AC2)
     object Silver : GoldSilver(GEN2_SILVER, 0x4AC0)
+
+    /** German Gold / Silver (Goldene / Silberne Edition): English's RAM, scripts and Fly script, RunMemScript 0x1F later and
+     * the Flypoints table 0x31 later (bank 0x24). */
+    object GoldDe : GoldSilver(GEN2_GOLD_DE, 0x4AC2, runMemScript = 0x7A80, flypoints = 0x5BFD, runMemScriptCall = "75", flyText = "37")
+    object SilverDe : GoldSilver(GEN2_SILVER_DE, 0x4AC0, runMemScript = 0x7A80, flypoints = 0x5BFD, runMemScriptCall = "75", flyText = "37")
 
     /** Crystal Legacy v1.3.1 (its pokecrystal.sym): Crystal's scripts and rules at its own addresses. */
     object CrystalLegacy : CrystalEngine(

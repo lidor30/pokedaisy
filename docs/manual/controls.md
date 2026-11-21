@@ -244,7 +244,7 @@ A phone held upright and held sideways each get their own layout: you edit the o
 
 Both show `N/A` on a game PokeDaisy can't read the field of yet.
 
-`RUNNING SHOES` is for the Game Boy games, which have no running of their own: hold B while you walk on the field and you move as fast as on the bike. Let go and you walk again. It only speeds up walking: surfing stays at its own pace, and the bike and the ice work as they always do. It works in Red, Blue, Yellow, Gold, Silver and Crystal (the English releases) and the hacks that kept their code; elsewhere it shows `N/A`. The game's own files never change: PokeDaisy changes the game only while it runs.
+`RUNNING SHOES` is for the Game Boy games, which have no running of their own: hold B while you walk on the field and you move as fast as on the bike. Let go and you walk again. It only speeds up walking: surfing stays at its own pace, and the bike and the ice work as they always do. It works in Red, Blue, Gold, Silver and Crystal (the English and German releases), Yellow (the English and Italian releases) and the hacks that kept their code; elsewhere it shows `N/A`. The game's own files never change: PokeDaisy changes the game only while it runs.
 
 If you turn indoor running off while inside a building, leave and re-enter to restore that map's normal rule.
 
@@ -276,7 +276,7 @@ It works in the original FireRed, LeafGreen, Ruby, Sapphire and Emerald, in ever
 
 On the DS it works in Platinum (the US release), HeartGold and SoulSilver (the US and European releases), and Black, White, Black 2 and White 2 (the US and European release). There it counts for wild Pokémon in grass, caves, water and from a rod, the Safari Zone, the Bug-Catching Contest and the special ones the story puts in your path. In Platinum, HeartGold and SoulSilver the roaming ones stay as they are: the game makes one again each time you meet it, so a shiny one that ran away would come back plain. Other languages of the DS games and the DS hacks show `N/A` for now.
 
-On the Game Boy it works in Gold, Silver and Crystal (the English releases). There a Pokémon's shininess comes from its hidden strength values, so a shiny made this way gets new ones: its stats come out a little different, as any shiny's would, and it keeps its gender. It counts for wild Pokémon in grass, caves, water, from a rod or a shaken tree, in the Bug-Catching Contest and the special ones the story puts in your path. The roaming ones and the letter-shaped Pokémon of the ruins stay as they are, and so does a female of a kind that's nearly always male, since the game can't make one of those shiny. Red, Blue and Yellow have no shinies, so they show `N/A`.
+On the Game Boy it works in Gold, Silver and Crystal (the English and German releases). There a Pokémon's shininess comes from its hidden strength values, so a shiny made this way gets new ones: its stats come out a little different, as any shiny's would, and it keeps its gender. It counts for wild Pokémon in grass, caves, water, from a rod or a shaken tree, in the Bug-Catching Contest and the special ones the story puts in your path. The roaming ones and the letter-shaped Pokémon of the ruins stay as they are, and so does a female of a kind that's nearly always male, since the game can't make one of those shiny. Red, Blue and Yellow have no shinies, so they show `N/A`.
 
 ## LOW HP BEEP and FIELD POISON
 
