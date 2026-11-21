@@ -435,6 +435,7 @@ fun CompanionScreen(
             selectedLabel = title; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
             dexBackToParty = null
             if (title == "BATTLE") { battleShowControls = opensOnButtons; showSuggestions = opensOnSuggestions }
+            if (title == "BOXES") boxesUi.reset()
         }
         // The window over the game (one screen): L / R step along the bar (round, like the game's own pages), from the gear
         // when a tab opened from MORE is up. Under everything a tab registers, so a page of its own can take them.

@@ -97,6 +97,13 @@ class BoxesUiState {
     var confirmChange by mutableStateOf<Int?>(null)
     var changing by mutableStateOf(false)
 
+    /** The BOXES chip tapped: back to the box the PC opens on, its first Pokémon, nothing open over it. A move, a sort or
+     * a box change running keeps its message. */
+    fun reset() {
+        box = -1; looked = null; open = null; picking = false; swapping = null; depositing = null
+        confirmSort = false; confirmChange = null
+    }
+
     /** A PC move's [result] ([title]: SWAP / DEPOSIT / WITHDRAW): [anim] when it went through, else [message] in a window. */
     fun moved(result: com.pokedaisy.app.companion.data.BoxSwapResult, title: String, message: String, anim: () -> BoxSwapAnim) {
         if (result == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) swapAnim = anim()
@@ -409,7 +416,7 @@ fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit,
                     .graphicsLayerAlpha(wellAlpha),
                 contentAlignment = Alignment.Center,
             ) {
-                GbaText(label, PcColors.shade(PcColors.TITLE_TEXT, night), PcColors.shade(PcColors.FRAME, night), small, maxLines = 1)
+                GbaText(label, PcColors.ink(PcColors.TITLE_TEXT, night), PcColors.inkShadow(PcColors.FRAME, night), small, maxLines = 1)
             }
         }
         Canvas(Modifier.fillMaxSize()) {
@@ -590,8 +597,8 @@ private fun MonPanel(
             }
         }
     }
-    val text = PcColors.shade(PcColors.PANEL_TEXT, night)
-    val shadow = PcColors.shade(PcColors.PANEL_SHADOW, night)
+    val text = PcColors.ink(PcColors.PANEL_TEXT, night)
+    val shadow = PcColors.inkShadow(PcColors.PANEL_SHADOW, night)
     val lines = @Composable {
         if (mon != null) GbaText(mon.shownName, text, shadow, m)
         if (mon != null && !mon.isEgg) {
@@ -609,7 +616,7 @@ private fun MonPanel(
         }
     }
     val title = @Composable {
-        GbaText(tr("PKMN DATA"), PcColors.shade(PcColors.TITLE_TEXT, night), PcColors.shade(PcColors.FRAME, night), small)
+        GbaText(tr("PKMN DATA"), PcColors.ink(PcColors.TITLE_TEXT, night), PcColors.inkShadow(PcColors.FRAME, night), small)
     }
     val frame = PcColors.shade(PcColors.FRAME, night)
     val top = PcColors.shade(PcColors.PANEL_TOP, night)
@@ -773,7 +780,7 @@ private fun BoxWindow(
             }
             HeaderButton(m, tr("Pick a box"), Modifier.weight(1f).fillMaxHeight(), onClick = { ui.picking = true }) {
                 Box(Modifier.fillMaxSize().drawBehind { header(paper, u.toPx(), night) }, contentAlignment = Alignment.Center) {
-                    GbaText(box.name, PcColors.shade(PcColors.TITLE, night), PcColors.shade(PcColors.TITLE_SHADOW, night), m)
+                    GbaText(box.name, PcColors.ink(PcColors.TITLE, night), PcColors.inkShadow(PcColors.TITLE_SHADOW, night), m)
                 }
             }
             HeaderButton(m, tr("Next box"), Modifier.fillMaxHeight().width(u * 30), onClick = { step(1) }) {
@@ -983,6 +990,11 @@ internal object PcColors {
 
     /** [c], lowered towards the night backdrop in dark mode. */
     fun shade(c: Long, night: Boolean): Color = if (night) lerp(Color(c), NIGHT, 0.45f) else Color(c)
+
+    /** Text on the PC's windows: in dark mode only a touch dimmer than the day's, its shadow kept dark, so it stays as
+     * easy to read as the windows around it get darker. */
+    fun ink(c: Long, night: Boolean): Color = if (night) lerp(Color(c), NIGHT, 0.12f) else Color(c)
+    fun inkShadow(c: Long, night: Boolean): Color = if (night) lerp(Color(c), Color.Black, 0.35f) else Color(c)
 
     /** One 32x32 backdrop tile: a ring, light on its upper left and darker on its lower right, on the peach. */
     fun backdropTile(night: Boolean): ImageBitmap {
