@@ -74,6 +74,7 @@ int repelFull = 0;
 int viewX = 0, viewY = 0;                  // the top screen's corner in the game picture
 bool viewShown = false;                    // the top screen is the one in the picture
 bool pointerDown = false;                  // last frame's mouse / touch press, for a click on the HUD or the menu
+int frameFieldBits = 0;                    // this frame's field read, for the core's battle-wide picture
 
 // The game's own jobs: the PC's storage menu, FLY's checks and its flight. One at a time, as the app runs them.
 int pcJob = 0, flyJob = 0;
@@ -718,9 +719,20 @@ void overlay_reset()
     hudFocus = -1;
     hudWild = -1;
     repelFull = 0;
+    frameFieldBits = 0;
 }
 
 bool overlay_open() { return companionShown; }
+
+bool overlay_touch_screen()
+{
+    return scene.touch && !scene.bottomBlank;
+}
+
+bool overlay_battle()
+{
+    return (frameFieldBits & PK_NDS_FIELD_BATTLE) != 0;
+}
 
 void overlay_view(int topX, int topY, bool topShown)
 {
@@ -810,10 +822,13 @@ bool overlay_wheel(int notches)
 
 void overlay_tick(int fieldBits)
 {
+    frameFieldBits = fieldBits;
     if (noticeFrames) --noticeFrames;
     update_pc();
     update_fly();
-    scene.tick(fieldBits, one_colour(pk_ndsm_top()), one_colour(pk_ndsm_bottom()), false);
+    // Windows has no battle strip, so the game's own command and move panels float in with the rest of its touch
+    // screens, as they do with the app's ONE SCREEN layout.
+    scene.tick(fieldBits, one_colour(pk_ndsm_top()), one_colour(pk_ndsm_bottom()), true);
     ++tick;
     const bool hudUp = shell.settings.hud && scene.hud && !scene.dark && companionGame != DsGame::Unsupported;
     if ((companionShown || quickShown || hudUp) && (tick % 12) == 0) refresh();

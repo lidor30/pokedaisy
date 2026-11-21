@@ -177,7 +177,10 @@ OUT` in the companion's `SETTINGS` still shows one scale further out. Set it to 
 picture, centred.
 
 DS games get the same on the Windows build, drawn by the app's own melonDS engine: the screen sits in the middle of the
-window and the overworld is drawn out to the edges. Fullscreen, windowed and every size in between lay it out again.
+window and the overworld is drawn out to the edges. Battles stay wide too. When the game asks for its touch screen, in
+a menu or in a battle's commands, bag or party, it floats over the wide picture in a framed window like the app's
+`ONE SCREEN`: click or tap inside it to use it, and the game keeps running behind it. R2 still switches to the bottom
+screen by itself until pressed again. Fullscreen, windowed and every size in between lay it out again.
 
 Resizing the window, maximising it or going fullscreen lays the picture out again for the new size, so a 16:9 screen
 gets the wide view rather than the bars the old window would have, and so does a window stretched across three 1080p

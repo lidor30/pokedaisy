@@ -16,6 +16,11 @@ void overlay_reset();
 void overlay_tick(int fieldBits);
 // The companion has the picture (the quick menu keeps the game's). The core skips the touch screen and R2 then.
 bool overlay_open();
+// The game wants its touch screen over the wide picture: the app's ONE SCREEN floating window. The core draws the bottom
+// screen in a panel over the top one while this is true, including a battle's command, move, bag and party screens.
+bool overlay_touch_screen();
+// This frame's field read says a battle runs: the core lets EXPAND carry the battle into the wide margins.
+bool overlay_battle();
 // Where this frame puts the game's top screen in the picture: the HUD (when the settings have it on) is drawn there, at
 // the screen's own 256x192, over the field and under any overlay. Called once a frame, before overlay_compose.
 void overlay_view(int topX, int topY, bool topShown);

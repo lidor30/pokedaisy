@@ -41,6 +41,21 @@ struct Layout {
     int w = PK_NDS_W, h = PK_NDS_H * 2;
     int x = 0, y = 0;   // the top screen's corner in a Wide canvas
 } layout;
+
+struct ScreenRect {
+    int x = 0, y = 0, w = 0, h = 0;
+    bool contains(int px, int py) const { return w > 0 && h > 0 && px >= x && py >= y && px < x + w && py < y + h; }
+};
+
+// ONE SCREEN's floating touch window, at three quarters of the top screen and centred on it (the app's 352 x 264 in its
+// 512 x 384 stage is close to the same proportion).
+ScreenRect touch_panel_rect()
+{
+    if (layout.mode != Layout::Wide) return {};
+    const int w = PK_NDS_W * 3 / 4, h = PK_NDS_H * 3 / 4;
+    return {layout.x + (PK_NDS_W - w) / 2, layout.y + (PK_NDS_H - h) / 2, w, h};
+}
+
 int panelW = 512, panelH = 384;
 bool wideAspect = true;
 bool touchView = false;
@@ -127,10 +142,10 @@ inline uint32_t xrgb(uint32_t rgba)
 
 // Whether the wide picture is held through this scene instead of the screen standing alone: a fade, or the field
 // stopped for a warp (a door, a leader change) rather than a battle.
-bool hold_wide(int scene)
+bool hold_wide(int scene, bool battle)
 {
     if (scene == 5) return true;
-    return scene == 4 && !(pk_ndsm_field_bits() & PK_NDS_FIELD_BATTLE);
+    return scene == 4 && !battle;
 }
 
 // A full-screen card on the game's screen (the area name, the season): black on nearly every pixel, with its text on
@@ -178,6 +193,65 @@ void blit(uint32_t* dst, int dstW, int dstH, int x, int y, const uint32_t* src, 
     }
 }
 
+void fill_rect(std::vector<uint32_t>& pixels, int w, int h, int x, int y, int rw, int rh, uint32_t color)
+{
+    const int x0 = std::clamp(x, 0, w), x1 = std::clamp(x + rw, 0, w);
+    const int y0 = std::clamp(y, 0, h), y1 = std::clamp(y + rh, 0, h);
+    for (int row = y0; row < y1; ++row)
+        for (int col = x0; col < x1; ++col) pixels[(size_t) row * w + col] = color;
+}
+
+// A DS screen scaled into a panel by area weight: a menu's small text keeps whole pixels and doesn't drop rows. The
+// panel is smaller than 256 x 192 here, so nearest-neighbour would lose strokes.
+void blit_area(uint32_t* dst, int dstW, int x0, int y0, int dw, int dh, const uint32_t* src, int sw, int sh)
+{
+    if (!src || dw <= 0 || dh <= 0) return;
+    for (int dy = 0; dy < dh; ++dy) {
+        const int yl = dy * sh, yr = (dy + 1) * sh;
+        const int sy0 = yl / dh, sy1 = (yr - 1) / dh;
+        for (int dx = 0; dx < dw; ++dx) {
+            const int xl = dx * sw, xr = (dx + 1) * sw;
+            const int sx0 = xl / dw, sx1 = (xr - 1) / dw;
+            uint64_t r = 0, g = 0, b = 0, total = 0;
+            for (int sy = sy0; sy <= sy1; ++sy) {
+                const int wy = std::min(yr, (sy + 1) * dh) - std::max(yl, sy * dh);
+                for (int sx = sx0; sx <= sx1; ++sx) {
+                    const int wx = std::min(xr, (sx + 1) * dw) - std::max(xl, sx * dw);
+                    const uint64_t weight = (uint64_t) wx * wy;
+                    const uint32_t pixel = xrgb(src[(size_t) sy * sw + sx]);
+                    r += ((pixel >> 16) & 0xFFu) * weight;
+                    g += ((pixel >> 8) & 0xFFu) * weight;
+                    b += (pixel & 0xFFu) * weight;
+                    total += weight;
+                }
+            }
+            if (total)
+                dst[(size_t) (y0 + dy) * dstW + x0 + dx] =
+                    0xFF000000u | ((uint32_t) (r / total) << 16) | ((uint32_t) (g / total) << 8) | (uint32_t) (b / total);
+        }
+    }
+}
+
+// The app's ONE SCREEN floating window: dim the wide picture, frame the panel, and lay the game's touch screen in it.
+// The game keeps running underneath, and the panel takes the pointer only inside its frame.
+void draw_touch_panel(std::vector<uint32_t>& pixels, int w, int h)
+{
+    const ScreenRect panel = touch_panel_rect();
+    if (!panel.w || !panel.h) return;
+    const ScreenRect frame {panel.x - 3, panel.y - 3, panel.w + 6, panel.h + 6};
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x) {
+            if (frame.contains(x, y)) continue;
+            uint32_t& pixel = pixels[(size_t) y * w + x];
+            pixel = 0xFF000000u | ((((pixel >> 16) & 0xFFu) * 140 / 255) << 16)
+                                 | ((((pixel >> 8) & 0xFFu) * 140 / 255) << 8)
+                                 | (((pixel & 0xFFu) * 140) / 255);
+        }
+    fill_rect(pixels, w, h, frame.x, frame.y, frame.w, frame.h, 0xFF303840u);
+    fill_rect(pixels, w, h, panel.x - 1, panel.y - 1, panel.w + 2, panel.h + 2, 0xFFF8F8F8u);
+    blit_area(pixels.data(), w, panel.x, panel.y, panel.w, panel.h, pk_ndsm_bottom(), PK_NDS_W, PK_NDS_H);
+}
+
 void compose()
 {
     canvas.assign((size_t) layout.w * layout.h, 0xFF000000u);
@@ -189,12 +263,20 @@ void compose()
         break;
     case Layout::Wide: {
         // EXPAND draws the whole canvas (the screen's middle and the margins around it) when it has the field's camera
-        // this frame (scene 0-2: the field, a text box over it, the extra overlays).
+        // this frame (scene 0-2: the field, a text box over it, the extra overlays) or a battle it can carry into the
+        // margins. The game's own battle, bag and party screens still float over it.
         const int scene = pk_ndsm_wide_scene();
+        const bool battle = overlay_battle();
         bool wide = false;
         if (scene <= 2) {
             wide = pk_ndsm_wide_draw(canvas.data(), -layout.x, -layout.y, layout.w, layout.h);
-        } else if (hold_wide(scene)) {
+        } else if (scene == 4 && battle) {
+            scratch.resize(canvas.size());
+            if (pk_ndsm_wide_draw(scratch.data(), -layout.x, -layout.y, layout.w, layout.h) && has_picture(scratch)) {
+                canvas = scratch;
+                wide = true;
+            }
+        } else if (hold_wide(scene, battle)) {
             // A fade or a warp (the field stops for a door, a leader change): the camera may have stopped, so the last
             // wide frame is kept and faded with the screen rather than falling back to the small screen in a black frame.
             scratch.resize(canvas.size());
@@ -212,7 +294,7 @@ void compose()
         lastWideScene = wide;
         if (wide) {
             for (auto& pixel : canvas) pixel = xrgb(pixel);
-            if (hold_wide(scene)) fade_frame(canvas, pk_ndsm_fade() & 0xFF);
+            if (hold_wide(scene, battle)) fade_frame(canvas, pk_ndsm_fade() & 0xFF);
             if (screen_is_card(top)) {
                 std::fill(canvas.begin(), canvas.end(), 0xFF000000u);
                 blit(canvas.data(), layout.w, layout.h, layout.x, layout.y, top, PK_NDS_W, PK_NDS_H);
@@ -220,7 +302,7 @@ void compose()
                 lastWide = canvas;
                 lastWideValid = true;
             }
-        } else if (hold_wide(scene) && lastWideValid && lastWide.size() == canvas.size()) {
+        } else if (hold_wide(scene, battle) && lastWideValid && lastWide.size() == canvas.size()) {
             canvas = lastWide;
             fade_frame(canvas, pk_ndsm_fade() & 0xFF);
         } else {
@@ -233,6 +315,9 @@ void compose()
         blit(canvas.data(), layout.w, layout.h, 0, PK_NDS_H, bottom, PK_NDS_W, PK_NDS_H);
         break;
     }
+    // The game's touch screen floats over the wide picture when it asks for it (a menu, a battle's commands, bag or
+    // party), as the app's ONE SCREEN does. It is drawn before the companion / quick menu so those still take the frame.
+    if (layout.mode == Layout::Wide && overlay_touch_screen()) draw_touch_panel(canvas, layout.w, layout.h);
     haveFrame = true;
     // The companion or the quick menu over it: the overlay's canvas at twice the game's size. The HUD goes on the top
     // screen's own pixels first, so the overlay is told where they sit in this picture.
@@ -252,6 +337,8 @@ void update_touch(bool overlayOnly)
     const int16_t nx = input_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X);
     const int16_t ny = input_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y);
     bool down = input_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED) != 0;
+    const int px = (int) ((long) (nx + 0x7FFF) * layout.w / 0xFFFE);
+    const int py = (int) ((long) (ny + 0x7FFF) * layout.h / 0xFFFE);
     // The overlay first, where its own picture is what the frontend shows: a click on the HUD or the quick menu.
     if (overlay_pointer((int) ((long) (nx + 0x7FFF) * presentedW / 0xFFFE),
                         (int) ((long) (ny + 0x7FFF) * presentedH / 0xFFFE), down)) {
@@ -262,8 +349,17 @@ void update_touch(bool overlayOnly)
         pk_ndsm_touch(false, 0, 0);
         return;
     }
-    int px = (int) ((long) (nx + 0x7FFF) * layout.w / 0xFFFE);
-    int py = (int) ((long) (ny + 0x7FFF) * layout.h / 0xFFFE);
+    // The floating touch screen takes the pointer only inside its panel; a click on the dimmed picture beside it is not
+    // the game's touch screen. The panel's 256 x 192 pixels are scaled to its place in the wide canvas.
+    if (layout.mode == Layout::Wide && overlay_touch_screen()) {
+        const ScreenRect panel = touch_panel_rect();
+        const bool inside = panel.contains(px, py);
+        const bool pressed = down && inside;
+        const int tx = pressed ? std::clamp((px - panel.x) * PK_NDS_W / panel.w, 0, PK_NDS_W - 1) : 0;
+        const int ty = pressed ? std::clamp((py - panel.y) * PK_NDS_H / panel.h, 0, PK_NDS_H - 1) : 0;
+        pk_ndsm_touch(pressed, tx, ty);
+        return;
+    }
     int x = px, y = py;
     switch (layout.mode) {
     case Layout::Touch:
