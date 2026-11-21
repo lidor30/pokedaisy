@@ -144,6 +144,8 @@ With `FOLLOWER` on, the first Pokémon in your party walks a step behind you on 
 
 Its sprite comes from a game whose Pokémon follow you (Heart and Soul, R.O.W.E., Recharged Yellow or Emerald Seaglass), like the Pokémon you can wear with `PLAYER LOOK`, so the row shows `N/A` until one of those has been played here or is in your library, or a [sprite pack](#sprite-packs) brought its Pokémon. It's off to start with, and games whose Pokémon already follow you don't have it.
 
+In Crystal it needs nothing else: your first Pokémon follows you as its little party picture, taken from your own cartridge. It hides its feet in tall grass, steps behind other people when they stand in front of it, and goes away during battles and while you surf.
+
 
 ### RIDE ON
 

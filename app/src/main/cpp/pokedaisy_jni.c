@@ -41,6 +41,7 @@
 #include "pk_wide.h"
 #include "pk_flight.h"
 #include "pk_gb_field.h"
+#include "pk_gb_follow.h"
 #include "pk_gb_audio.h"
 #include "pk_host.h"
 #include "nds/pk_nds.h"
@@ -271,6 +272,35 @@ Java_com_pokedaisy_app_MgbaCore_pkFollowerSet(JNIEnv* env, jobject thiz, jbyteAr
     pk_follower_set((const uint8_t*) f, (const uint8_t*) p);
     (*env)->ReleaseByteArrayElements(env, frames, f, JNI_ABORT);
     (*env)->ReleaseByteArrayElements(env, pal, p, JNI_ABORT);
+}
+
+// FOLLOWER on Crystal (pk_gb_follow.c): whether the cart is one it knows, its two frames (512 ARGB ints, null = none), shown or not.
+JNIEXPORT jboolean JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkGbFollowRuns(JNIEnv* env, jobject thiz) {
+    return g.core && pk_gb_follow_runs(g.core) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkGbFollowSet(JNIEnv* env, jobject thiz, jintArray argb) {
+    if (!argb || (*env)->GetArrayLength(env, argb) != 512) {
+        pk_gb_follow_set(NULL);
+        return;
+    }
+    jint* p = (*env)->GetIntArrayElements(env, argb, NULL);
+    pk_gb_follow_set((const uint32_t*) p);
+    (*env)->ReleaseIntArrayElements(env, argb, p, JNI_ABORT);
+}
+
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkGbFollowShow(JNIEnv* env, jobject thiz, jboolean on) {
+    pk_gb_follow_show(on);
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkGbFollowInfo(JNIEnv* env, jobject thiz) {
+    char buf[200];
+    pk_gb_follow_info(buf, sizeof buf);
+    return (*env)->NewStringUTF(env, buf);
 }
 
 // RIDE ON: the vehicle's views + palette (null = none) and whether it's drawn. Emu thread.

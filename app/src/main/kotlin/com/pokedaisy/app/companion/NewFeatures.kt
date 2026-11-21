@@ -138,6 +138,8 @@ object NewFeatures {
 
     /** SETTINGS > FOLLOWER: the party's lead walks behind the player (pk_wide.c's follower). */
     const val FOLLOWER = "follower"
+    /** FOLLOWER on Crystal (pk_gb_follow.c: the lead's party icon drawn behind the player). */
+    const val FOLLOWER_CRYSTAL = "follower_crystal"
 
     /** HOTKEYS > COMPANION: opens the companion over the game on one screen (Hotkeys.Action.COMPANION). */
     const val COMPANION_HOTKEY = "companion_hotkey"
@@ -308,7 +310,7 @@ object NewFeatures {
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
         DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, DS_CORE_BANANADS, RA_POPUPS, HIDE_BATTLE_MENU, SPRITE_PACK, HM_FREE, POKEMON_CENTER, EXP_SHARE, LEVEL_CAP, REPEL_REFILL, SHINY_ALERT, LAST_BALL, ITEM_POPUPS, HUD_MOVE_ADVICE, BOSS_RETRY, LOW_HP_BEEP, FIELD_POISON, RUNNING_SHOES, SETTINGS_LOOK,
         QUICK_TOUCH, APP_FONT, PIXEL_SMALL, PAL_PARK, SAVE_MISSING, TRADE_BACK, SAVE_COLLECTION, POKE_TRANSFER, SAVE_EDITOR_GEN5, SAVE_EDITOR_DP, QUICK_TURBO,
-        GAME_LOOK, POKEMON_PICTURES, BETA_UPDATES,
+        GAME_LOOK, POKEMON_PICTURES, BETA_UPDATES, FOLLOWER_CRYSTAL,
     )
 
     private const val DAYS = 7

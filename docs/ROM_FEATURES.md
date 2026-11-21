@@ -19,8 +19,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
 | Gold / Silver (GBC) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
 | Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
-| Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
-| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ |
+| Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | ◐ ⁵⁸ | ✅ ⁵⁵ | — | — | — ³⁶ |
+| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | ◐ ⁵⁸ | — | — | — | — ³⁶ |
 | Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
@@ -839,7 +839,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 - **Low HP beep / field poison**: GAMEPLAY > LOW HP BEEP / FIELD POISON, OFF = a game-option patch each (`QuietPatches.kt`): HandleLowHpMusicChange's `bl PlaySE` (SE_LOW_HEALTH 83 FireRed family / 90 Emerald family: the one call of that id whose target the m4aSongNumStop ones don't share) becomes two `nop`s; UpdatePoisonStepCounter's `bl DoPoisonFieldEffect` (after the SECRET_BASE map type check, before its switch) becomes `movs r0, #0`. Every retail FireRed / LeafGreen / Emerald / Ruby / Sapphire cart (`QuietPatchesTest`) and the hacks on that code. Played headless on FireRed rev 1: a poisoned lead walking ten steps, 127 HP -> 125 without, 127 with.
 - **POKéMON CENTER**: the summary's CENTER (heal, relearn, forget a move, nickname) and the QUICK MENU's HEAL (`PokemonCenter.kt`): the game's own specials - HealPlayerParty, TeachMoveRelearnerMove's screen, MoveDeleterForgetMove, ChangePokemonNickname - found in gSpecials by agbcc's code, run by a few script commands in free EWRAM (0x0203FFD8). Every retail FireRed / LeafGreen / Emerald / Ruby / Sapphire (all languages) and most binary hacks; CFRU rewrote ChangePokemonNickname (no NICKNAME there); RELEARN needs a TM screen table (`tmFnsFor`) and the learnsets; Ruby / Sapphire, with no TM screen table, run the Fallarbor tutor's own script instead (`centerRelearnScript`: `special DisplayMoveTutorMenu`, which fades, opens the screen and hands the field back by itself; Ruby rev 1 headless, 2026-11-18). FireRed's relearner needs LoadStdWindowFrameGfx first: its words use the message box's palette, which the recap after a loaded save replaces. Played headless on FireRed rev 1 (all four, the relearner right after loading), Emerald (relearner) and Ruby (the move checks).
 - **Shiny odds**: GAMEPLAY > SHINY ODDS, a new wild foe made shiny at the odds picked (`ShinyOdds.kt`).
-- **Player look**: MAKEOVER > PLAYER LOOK, the player as another game's hero (`PlayerLook.kt`); RIVAL LOOK dresses the rival too (Emerald, Ruby, Sapphire).
+- **Player look**: MAKEOVER > PLAYER LOOK, the player as another game's hero (`PlayerLook.kt`); RIVAL LOOK dresses the rival too (Emerald, Ruby, Sapphire). ◐ on Crystal: FOLLOWER alone (note 58).
 - **Area map**: the MAP tab's and the HUD minimap's AREA map, a cave's or a building's own map with its floors (`AreaMap.kt`).
 
 ## Where it's decided
@@ -1054,3 +1054,13 @@ Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draw
     Italian Yellow and Crystal Legacy (not played); N/A in the Spanish / German / French Yellows (12 to 14 bytes of bank 0
     padding for a 16-byte trampoline), Brown, PureRed / PureBlue, Yellow Legacy, Crystal Clear (1 byte), Prism (27 bytes,
     under the 64 kept) and Polished Crystal (no .GetDPad). `GbRunningShoesTest`.
+58. FOLLOWER on Crystal (2026-11-20, `pk_gb_follow.c`, rev 0 / rev 1 / AU and the German cart by CRC32): the lead's party icon
+    (`Gen2Art`'s, from the cart) drawn into the finished frame 16 pixels of the screen's scroll path behind the player, nothing of
+    the game written. Hidden in battles (wBattleMode, hVBlank 1), on water (wPlayerState 4 / 8), with the sprites off or the
+    player's sprite gone, and until the first step after a warp (the map or the player's tile jumped with the screen standing; walking over a map's
+    edge into the next keeps it); the battle's slide
+    doesn't count as walking. Its lower half goes behind tall grass (the player object's OVERHEAD flag) and every BG-priority
+    tile, the window and, with wStateFlags bit 6, the menu / text tiles (0x60+) cover it; it goes behind the game's sprites
+    unless it stands lower than the player. Its colours follow fades and the time of day off the player's OBJ palette.
+    Checked headless on rev 1 (`gbfollow` / `gbfollowinfo`): turns, tall grass, the START menu, a wild battle and back.
+    Route 29 into New Bark Town headless; played on the Thor (2026-11-20). Other Game Boy games: no.
