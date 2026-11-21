@@ -559,11 +559,9 @@ int pk_ndsm_field_bits(void)
     int bits = pk_nds_field_state(ds->field, mainRead32, mainWrite32, ds->wildOff);
     bits |= pk_nds_field_screen_touch(ds->field, bits, ds->nds->GPU.GPU2D_A.DispCnt);   // the intro's naming screen
     // The top screen blank and the touch screen showing something (the main menu's CONTINUE, a question asked down
-    // there): the touch screen is what there is to see.
+    // there): the touch screen is what there is to see - off the overworld and battles (pk_nds_field_screen_bits).
     const bool darkTop = oneColour(ds->top), darkBottom = oneColour(ds->bottom);
-    if (darkTop && !darkBottom) bits |= PK_NDS_FIELD_TOUCH;
-    if (darkTop) bits |= PK_NDS_FIELD_DARK_TOP;
-    if (darkBottom) bits |= PK_NDS_FIELD_DARK_BOTTOM;
+    bits = pk_nds_field_screen_bits(bits, darkTop, darkBottom);
     // A menu screen's closing fade (black after it was lit): keep the X menu it came from (pk_nds_field_keep_start_menu).
     if (!(bits & PK_NDS_FIELD_MENU)) ds->menuLitFrames = 0;
     else if (!darkTop || !darkBottom) ds->menuLitFrames++;

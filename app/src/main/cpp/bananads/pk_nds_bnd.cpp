@@ -806,9 +806,7 @@ int pk_ndsb_field_bits(void)
     int bits = pk_nds_field_state(ds->field, mainRead32, mainWrite32, ds->wildOff);
     bits |= pk_nds_field_screen_touch(ds->field, bits, ds->nds->GPU.GPU2D_A.DispCnt);
     const bool darkTop = oneColour(ds->top), darkBottom = oneColour(ds->bottom);
-    if (darkTop && !darkBottom) bits |= PK_NDS_FIELD_TOUCH;
-    if (darkTop) bits |= PK_NDS_FIELD_DARK_TOP;
-    if (darkBottom) bits |= PK_NDS_FIELD_DARK_BOTTOM;
+    bits = pk_nds_field_screen_bits(bits, darkTop, darkBottom);
     if (!(bits & PK_NDS_FIELD_MENU)) ds->menuLitFrames = 0;
     else if (!darkTop || !darkBottom) ds->menuLitFrames++;
     else if (ds->keepStartMenu && ds->menuLitFrames > 0) pk_nds_field_keep_start_menu(ds->field, mainRead32, mainWrite32);
@@ -837,6 +835,10 @@ void pk_ndsb_set_keep_start_menu(bool on)
 {
     if (ds) ds->keepStartMenu = on;
 }
+
+// EXP SHARE: melonDS only (ExpShare.dsFind), as on DSperate. Missing, libpkbananads.so lacked a call pk_nds_bnd_load.cpp
+// looks up and wouldn't load: no game started on BananaDS (Discord, SoulSilver on 1.6.2-beta.1).
+void pk_ndsb_set_exp_share(int, uint32_t) {}
 
 void pk_ndsb_set_cpu_boost(bool on)
 {
