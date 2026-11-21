@@ -496,7 +496,7 @@ fun gen2WildFoe(raw: ByteArray, cfg: Gen2Config, unmodified: ByteArray? = null):
  * [raw]'s nickname at [off] (11 bytes) in the game's charmap (null = blank). Crystal ends names with 0x50; Polished Crystal's
  * own charmap ends them with 0x53 (or <DONE> 0x52), as its player / box names do.
  */
-private fun gen2Nickname(raw: ByteArray, off: Int, polished: Boolean): String? {
+internal fun gen2Nickname(raw: ByteArray, off: Int, polished: Boolean): String? {
     if (off + GEN2_NAME_LEN > raw.size) return null
     val chars = Gen2Art.chars(polished)
     return buildString {
@@ -701,6 +701,8 @@ fun readGen2Telemetry(r: MemoryReader, cfg: Gen2Config): Telemetry {
         money = ((u8(m, 0).toLong() shl 16) or (u8(m, 1).toLong() shl 8) or u8(m, 2).toLong()),
         playerGender = if (cfg.playerGender < 0) 0 else u8(r.readCoreMemory(cfg.playerGender, 1), 0) and 1,
         pokedex = cfg.pokedex?.let { runCatching { readGen2PokedexState(r, cfg, it) }.getOrNull() },
+        // The BOXES tab: retail English and German Crystal's cart RAM (Gen2Boxes.kt).
+        pcBoxes = if (cfg === GEN2_CRYSTAL || cfg === GEN2_CRYSTAL_DE) readGen2Boxes(r, cfg, GEN2_CRYSTAL_BOXES) else null,
         // The GUIDE's flags, badges and clock (Polished Crystal's: GuidePolishedCrystal.kt; Crystal's: GuideCrystal.kt).
         progress = when {
             cfg.polished -> runCatching { readPolishedProgress(r) }.getOrNull()

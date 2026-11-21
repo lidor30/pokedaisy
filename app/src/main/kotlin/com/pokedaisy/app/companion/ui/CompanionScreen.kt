@@ -284,6 +284,20 @@ fun CompanionScreen(
                 }
             }
         }
+        // CHANGE BOX, offered from the PKMN DATA panel on any box but the current one (Crystal).
+        val boxChanger = itemUse?.takeIf { it.canChangeBox() }
+        val startBoxChange: ((Int) -> Unit)? = boxChanger?.let { use ->
+            { to: Int ->
+                boxesUi.changing = true
+                val name = snapshot.pcBoxes?.boxes?.getOrNull(to)?.name ?: ""
+                use.changeBox(to) { r ->
+                    boxesUi.changing = false
+                    boxesUi.swapTitle = "CHANGE BOX"
+                    boxesUi.swapMessage = boxChangeMessage(r, name)
+                    if (r == com.pokedaisy.app.companion.data.BoxChangeResult.CHANGED) boxesUi.looked = null
+                }
+            }
+        }
         val pcBoxes = snapshot.pcBoxes
         val openBoxMon = pcBoxes?.let { b -> boxesUi.open?.takeIf { it in boxSummaryList(b.boxes[boxesUi.boxOf(b)]).indices } }
         val lastBoxMon = remember { mutableStateOf(0) }
@@ -421,6 +435,7 @@ fun CompanionScreen(
             selectedLabel = title; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
             dexBackToParty = null
             if (title == "BATTLE") { battleShowControls = opensOnButtons; showSuggestions = opensOnSuggestions }
+            if (title == "BOXES") boxesUi.reset()
         }
         // The window over the game (one screen): L / R step along the bar (round, like the game's own pages), from the gear
         // when a tab opened from MORE is up. Under everything a tab registers, so a page of its own can take them.
@@ -655,21 +670,20 @@ fun CompanionScreen(
                             val depositSlot = boxesUi.depositing
                             val depositMon = depositSlot?.let { snapshot.party.getOrNull(it) }
                             if (pcBoxes != null && itemUse != null && depositSlot != null && depositMon != null) {
-                                BoxDepositPicker(
-                                    pcBoxes, depositMon,
-                                    onPick = { box ->
-                                        boxesUi.depositing = null
-                                        val boxName = pcBoxes.boxes[box].name
-                                        itemUse.depositToBox(depositSlot, depositMon.personality, box) { r ->
-                                            // Gone from the party: back on its slots, where the move plays.
-                                            if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) detailIndex = null
-                                            boxesUi.moved(r, "DEPOSIT", boxDepositMessage(r, depositMon, boxName)) {
-                                                BoxSwapAnim(null, depositMon, boxName, boxDepositMessage(r, depositMon, boxName))
-                                            }
+                                val deposit = { box: Int ->
+                                    boxesUi.depositing = null
+                                    val boxName = pcBoxes.boxes[box].name
+                                    itemUse.depositToBox(depositSlot, depositMon.personality, box) { r ->
+                                        // Gone from the party: back on its slots, where the move plays.
+                                        if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) detailIndex = null
+                                        boxesUi.moved(r, "DEPOSIT", boxDepositMessage(r, depositMon, boxName)) {
+                                            BoxSwapAnim(null, depositMon, boxName, boxDepositMessage(r, depositMon, boxName))
                                         }
-                                    },
-                                    onDismiss = { boxesUi.depositing = null },
-                                )
+                                    }
+                                }
+                                // A game whose moves reach only the current box (Crystal) deposits there: no pick.
+                                if (itemUse.boxMovesCurrentOnly()) LaunchedEffect(depositSlot) { deposit(pcBoxes.currentBox) }
+                                else BoxDepositPicker(pcBoxes, depositMon, onPick = deposit, onDismiss = { boxesUi.depositing = null })
                             }
                             BoxSwapNotice(boxesUi)
                         } else if (paneKey == "BOXES/DETAIL" && pcBoxes != null) {
@@ -681,8 +695,9 @@ fun CompanionScreen(
                                 onIndexChange = { i -> boxesUi.open = i; boxesUi.looked = pcBoxes.boxes[boxIndex].mons.indexOf(inBox.getOrNull(i)) },
                                 onBack = { boxesUi.open = null },
                                 dexTables = dex?.tables,
-                                // WITHDRAW into the party; with six there, SWAP's pick instead.
-                                onWithdraw = if (itemUse?.canSwapBox() == true) {
+                                // WITHDRAW into the party; with six there, SWAP's pick instead. Crystal: the current box only.
+                                onWithdraw = if (itemUse?.canSwapBox() == true &&
+                                    (!itemUse.boxMovesCurrentOnly() || boxIndex == pcBoxes.currentBox)) {
                                     {
                                         val boxMon = inBox.getOrNull(lastBoxMon.value)
                                         val slot = pcBoxes.boxes[boxIndex].mons.indexOf(boxMon)
@@ -728,8 +743,10 @@ fun CompanionScreen(
                                 pcBoxes, boxesUi, snapshot.pokedex?.tables, Modifier.fillMaxSize(),
                                 onSort = boxSorter?.let { { boxesUi.confirmSort = true } },
                                 sorting = boxesUi.sorting,
+                                onChangeBox = startBoxChange?.let { { to: Int -> boxesUi.confirmChange = to } },
                             )
                             if (startBoxSort != null) BoxSortConfirm(boxesUi, startBoxSort)
+                            if (startBoxChange != null) BoxChangeConfirm(boxesUi, pcBoxes, startBoxChange)
                             boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
                             BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {

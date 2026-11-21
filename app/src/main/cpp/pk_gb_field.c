@@ -34,20 +34,28 @@ bool pk_gb_write(struct mCore* core, uint32_t addr, const uint8_t* src, int len)
     return true;
 }
 
-bool pk_gb_call_at(struct mCore* core, uint16_t at, uint16_t fn, uint8_t a, uint8_t b, uint16_t hl, int maxHalts) {
+// `at` past 0xFFFF is BANK << 16 | address: a ROMX address counts only while that bank is switched in (Crystal's
+// HandleMap, 25:6773 - the same address in another bank is other code).
+bool pk_gb_call_at(struct mCore* core, uint32_t at, uint16_t fn, uint8_t a, uint8_t b, uint16_t hl, int maxHalts) {
     if (!core || core->platform(core) != mPLATFORM_GB) {
         return false;
     }
+    struct GB* gb = core->board;
+    int bank = (int) (at >> 16);
+    uint16_t addr = (uint16_t) at;
     struct SM83Core* cpu = (struct SM83Core*) core->cpu;
     // Between frames the CPU sits in a frame wait (a HALT); the VBlank handler runs, the wait returns, and the loop
     // that called it goes on. Each HALT entered on the way is another frame waited somewhere else.
     bool wasHalted = cpu->halted;
     int halts = 0;
+    // Crystal's frame wait halts again on every interrupt of the frame (its LCD and timer ones too): there a banked `at`
+    // counts frames instead, maxHalts of them, each as many halts as it takes.
+    uint32_t firstFrame = core->frameCounter(core);
     for (int i = 0; i < 400000; i++) {
-        if (cpu->pc == at && !cpu->halted) {
+        if (cpu->pc == addr && !cpu->halted && (!bank || gb->memory.currentBank == bank)) {
             cpu->sp -= 2;
-            core->busWrite8(core, cpu->sp, (uint8_t) (at & 0xFF));
-            core->busWrite8(core, (uint16_t) (cpu->sp + 1), (uint8_t) (at >> 8));
+            core->busWrite8(core, cpu->sp, (uint8_t) (addr & 0xFF));
+            core->busWrite8(core, (uint16_t) (cpu->sp + 1), (uint8_t) (addr >> 8));
             cpu->a = a;
             cpu->b = b;
             cpu->h = (uint8_t) (hl >> 8);
@@ -56,7 +64,10 @@ bool pk_gb_call_at(struct mCore* core, uint16_t at, uint16_t fn, uint8_t a, uint
             cpu->memory.setActiveRegion(cpu, cpu->pc);
             return true;
         }
-        if (cpu->halted && !wasHalted && ++halts > maxHalts) {
+        if (bank && core->frameCounter(core) - firstFrame > (uint32_t) maxHalts) {
+            return false;
+        }
+        if (!bank && cpu->halted && !wasHalted && ++halts > maxHalts) {
             return false;
         }
         wasHalted = cpu->halted;

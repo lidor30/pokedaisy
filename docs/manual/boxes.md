@@ -25,7 +25,7 @@ The window beside the box shows one Pokémon's picture, its name, its kind, its 
 
 ## A Pokémon's summary
 
-Tap a Pokémon to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs, nature and ability. The column down the right side holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
+Tap a Pokémon to show it in the window beside the box, and tap it again to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs, nature and ability. The column down the right side holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
 
 A Pokémon in a box keeps no stats of its own, so the companion works them out the way the game does when you take it out. A Pokémon in a box is always at full HP.
 
@@ -49,7 +49,7 @@ The move happens in your game right away. **Save in the game** to keep it, just 
 
 ## Sorting every box
 
-In the games where the boxes can move Pokémon, a `SORT` button sits beside the box's name. Tap it and confirm, and every box is rewritten in Pokédex-number order, from box 1's first slot: Pokémon of the same kind go lowest level first, Eggs count as the kind they will hatch into, and records the companion can't read go last. Nothing is re-created: the game's own stored Pokémon move whole, so held items, ribbons and checksums stay as they were. **Save in the game** to keep the new order. If a write can't be read back, every box goes back exactly as it was.
+In the games where the boxes can move Pokémon (not Crystal), a `SORT` button sits beside the box's name. Tap it and confirm, and every box is rewritten in Pokédex-number order, from box 1's first slot: Pokémon of the same kind go lowest level first, Eggs count as the kind they will hatch into, and records the companion can't read go last. Nothing is re-created: the game's own stored Pokémon move whole, so held items, ribbons and checksums stay as they were. **Save in the game** to keep the new order. If a write can't be read back, every box goes back exactly as it was.
 
 ## Opening the BOXES tab
 
@@ -65,7 +65,10 @@ The tab shows your boxes in:
 - **FireRed, LeafGreen, Emerald, Ruby and Sapphire** in every language, every version of each cartridge.
 - **Hacks built on those games**: Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Odyssey, Gaia, Orange Islands, Ultra Violet, Rocket Edition, Ash Gray, Emerald Kaizo and Glazed.
 - **SoulGold**.
+- **Crystal** in English (every release) and German.
 
-Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus and GS Chronicles have 25 boxes and SoulGold 15, and the tab shows them all.
+Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus and GS Chronicles have 25 boxes and SoulGold 15, and the tab shows them all. Crystal has 14 boxes of 20 Pokémon each, read from the game's save memory: they're there as soon as the game is running, and the box you're on follows every deposit and withdrawal at once.
 
-`WITHDRAW`, the swap and `DEPOSIT` work on FireRed, LeafGreen, Emerald, Ruby and Sapphire in English, German, French, Italian, Spanish and Japanese (every release of each), and on Ultra Violet, Rocket Edition and Ash Gray. The other games show their boxes but can't move Pokémon yet. More games will follow.
+`WITHDRAW`, the swap and `DEPOSIT` work on FireRed, LeafGreen, Emerald, Ruby and Sapphire in English, German, French, Italian, Spanish and Japanese (every release of each), and on Ultra Violet, Rocket Edition and Ash Gray. On **Crystal** in English and German they work on the box your PC is on: `WITHDRAW` and the swap take a Pokémon out of it, and `DEPOSIT` puts one into it, with no list to pick from. The game only keeps that box open, so the Pokémon in the other boxes can't move from the tab. To work on another box, open it and tap `USE BOX` under its picture: like the PC's own box change, this **saves the game**, so the tab asks first and backs your save up before it does. It only works once you've saved in the game at least once. Crystal has no `SORT`.
+
+The other games show their boxes but can't move Pokémon yet. More games will follow.

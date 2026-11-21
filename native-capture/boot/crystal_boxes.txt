@@ -1,0 +1,96 @@
+# Pokémon Crystal rev 1 with Pokémon in three PC boxes, all by the game's own functions (pokecrystal11.sym), for the
+# crystal_boxes fixture: load the crystal save (CONTINUE needs A held 6 frames, three times), then
+#   TryAddMonToParty 03:588C   (wCurPartySpecies D108, wCurPartyLevel D143, wMonType CF5F = 0)
+#   SendGetMonIntoFromBox 03:5B3F (wCurPartyMon D109, wCurPartySpecies, wPokemonWithdrawDepositParameter D10B = 1)
+#   RemoveMonFromPartyOrBox 03:6039 (D10B = 0)
+#   SaveBox 05:4E0C / LoadBox 05:5021 (wCurBox DB72), what a box change does around its save.
+# BOX 1: MAGIKARP 5, GEODUDE 8 (bank 2); BOX 8 renamed TEAM: HOOTHOOT 4, ZUBAT 6 (bank 3); BOX 3 the current one
+# (sBox, bank 1): PIDGEY 3. The party keeps CHIKORITA, PIDGEY, PIKACHU, EEVEE.
+# Give mgba_dump a fresh copy of the save each run: it writes the cart RAM back.
+wait 600
+press START
+wait 200
+hold A 3
+wait 120
+hold A 3
+wait 120
+hold A 3
+wait 120
+hold A 3
+wait 200
+hold A 6
+wait 150
+hold A 6
+wait 150
+hold A 6
+wait 150
+wait 200
+gbpoke 1 d108 19
+gbpoke 1 d143 0c
+gbpoke 0 cf5f 0
+gbfar 03 588c 0 0 0 0
+gbpoke 1 d108 85
+gbpoke 1 d143 09
+gbpoke 0 cf5f 0
+gbfar 03 588c 0 0 0 0
+gbpoke 1 d108 4a
+gbpoke 1 d143 08
+gbpoke 0 cf5f 0
+gbfar 03 588c 0 0 0 0
+gbpoke 1 d108 81
+gbpoke 1 d143 05
+gbpoke 0 cf5f 0
+gbfar 03 588c 0 0 0 0
+gbpeek 1 dcd7 8
+gbpoke 1 d109 5
+gbpoke 1 d108 81
+gbpoke 1 d10b 1
+gbfar 03 5b3f 0 0 0 0
+gbpoke 1 d10b 0
+gbfar 03 6039 0 0 0 0
+gbpoke 1 d109 4
+gbpoke 1 d108 4a
+gbpoke 1 d10b 1
+gbfar 03 5b3f 0 0 0 0
+gbpoke 1 d10b 0
+gbfar 03 6039 0 0 0 0
+gbpeek 1 dcd7 8
+gbfar 05 4e0c 0 0 0 0
+gbpoke 1 db72 07
+gbfar 05 5021 0 0 0 0
+gbpoke 1 d108 29
+gbpoke 1 d143 06
+gbpoke 0 cf5f 0
+gbfar 03 588c 0 0 0 0
+gbpoke 1 d108 a3
+gbpoke 1 d143 04
+gbpoke 0 cf5f 0
+gbfar 03 588c 0 0 0 0
+gbpoke 1 d109 5
+gbpoke 1 d108 a3
+gbpoke 1 d10b 1
+gbfar 03 5b3f 0 0 0 0
+gbpoke 1 d10b 0
+gbfar 03 6039 0 0 0 0
+gbpoke 1 d109 4
+gbpoke 1 d108 29
+gbpoke 1 d10b 1
+gbfar 03 5b3f 0 0 0 0
+gbpoke 1 d10b 0
+gbfar 03 6039 0 0 0 0
+gbfar 05 4e0c 0 0 0 0
+gbpoke 1 db72 02
+gbfar 05 5021 0 0 0 0
+gbpoke 1 d108 10
+gbpoke 1 d143 03
+gbpoke 0 cf5f 0
+gbfar 03 588c 0 0 0 0
+gbpoke 1 d109 4
+gbpoke 1 d108 10
+gbpoke 1 d10b 1
+gbfar 03 5b3f 0 0 0 0
+gbpoke 1 d10b 0
+gbfar 03 6039 0 0 0 0
+gbpeek 1 dcd7 8
+gbpoke 1 dbb4 93 84 80 8c 50
+wait 30

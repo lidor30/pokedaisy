@@ -60,6 +60,8 @@ Tap the highlighted Pokémon again to open its Pokédex entry. That page's blue 
 
 In the games where the [BOXES tab](boxes.md) can move Pokémon, the summary has a green `DEPOSIT` button, like the game's own PC. Tap it, then pick a box from the list, which shows how full each one is. The Pokémon goes into that box's first free slot, right there in your game, and the rest of your party moves up. Back on your party you see it fly over to the box, then a message says where it went.
 
+On Crystal there's no list: the Pokémon goes straight into the box your PC is on, the only one the game keeps open.
+
 The game's own rules still apply: your last Pokémon that can battle has to stay, a Pokémon holding Mail can't go in until you take the Mail off, and a full box says so. You have to be walking around, with no battle, menu or text box open. **Save in the game** to keep it, just as you would after using a PC.
 
 ## Trade evolutions

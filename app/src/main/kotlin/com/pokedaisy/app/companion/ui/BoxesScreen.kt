@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import com.pokedaisy.app.companion.data.isGameBoyGame
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -92,6 +93,16 @@ class BoxesUiState {
     /** SORT's confirmation is up; [sorting] while the game rewrites the boxes. */
     var confirmSort by mutableStateOf(false)
     var sorting by mutableStateOf(false)
+    /** CHANGE BOX's confirmation is up for this box; [changing] while the game switches boxes and saves. */
+    var confirmChange by mutableStateOf<Int?>(null)
+    var changing by mutableStateOf(false)
+
+    /** The BOXES chip tapped: back to the box the PC opens on, its first Pokémon, nothing open over it. A move, a sort or
+     * a box change running keeps its message. */
+    fun reset() {
+        box = -1; looked = null; open = null; picking = false; swapping = null; depositing = null
+        confirmSort = false; confirmChange = null
+    }
 
     /** A PC move's [result] ([title]: SWAP / DEPOSIT / WITHDRAW): [anim] when it went through, else [message] in a window. */
     fun moved(result: com.pokedaisy.app.companion.data.BoxSwapResult, title: String, message: String, anim: () -> BoxSwapAnim) {
@@ -106,7 +117,7 @@ class BoxesUiState {
  * The BOXES tab: the PC's box screen in the app's own drawing, so every game that can read its boxes gets it, in the
  * colours of FireRed's (sampled from its screen: [PcColors], [BoxWallpapers]) - the PKMN DATA panel on the left
  * (picture well, name, level, item), the box on the right filling the rest: its name on the wallpaper's header strip
- * between two arrows, then the wallpaper with its bevelled frame and the 30 Pokémon (6 x 5), their icons at the largest
+ * between two arrows, then the wallpaper with its bevelled frame and the 30 Pokémon (6 x 5; a Game Boy box's 20, 5 x 4), their icons at the largest
  * whole scale the cells take, all over the PC's peach backdrop. A tall tab puts the panel over the box. A tap on a
  * Pokémon opens its summary (like PARTY's); the arrows, a swipe or the name (a pick-list) change the box. With the
  * D-pad, the focused Pokémon shows in the panel.
@@ -117,6 +128,8 @@ fun BoxesScreen(
     /** SORT is offered (the game supports it); the button opens its confirmation. */
     onSort: (() -> Unit)? = null,
     sorting: Boolean = false,
+    /** CHANGE BOX is offered (Crystal): on any box but the current one, the button opens its confirmation. */
+    onChangeBox: ((Int) -> Unit)? = null,
 ) {
     val boxIndex = ui.boxOf(boxes)
     val box = boxes.boxes[boxIndex]
@@ -131,6 +144,12 @@ fun BoxesScreen(
     val firstMon = box.mons.indexOfFirst { it != null }
     val lookedSlot = ui.looked?.takeIf { box.mons.getOrNull(it) != null } ?: firstMon
     val looked = box.mons.getOrNull(lookedSlot)
+    // The panel's button: CHANGE BOX on a box that isn't the current one, else SORT.
+    val button: PanelButton? = when {
+        onChangeBox != null && boxIndex != boxes.currentBox -> PanelButton("USE BOX", !ui.changing) { onChangeBox(boxIndex) }
+        onSort != null -> PanelButton("SORT", !sorting, onSort)
+        else -> null
+    }
 
     // The PC's peach backdrop is the screen's while this tab is open (CompanionScreen draws it, like the bag's).
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -144,13 +163,13 @@ fun BoxesScreen(
             // The window about as wide as the tab's height allows a tall picture in, never most of the tab.
             val panelW = minOf(maxWidth * 0.36f, maxHeight * 0.5f)
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                MonPanel(looked, dex, m, Modifier.width(panelW).fillMaxHeight(), wide = false, onSort = onSort, sorting = sorting)
+                MonPanel(looked, dex, m, Modifier.width(panelW).fillMaxHeight(), wide = false, button = button)
                 content(Modifier.weight(1f).fillMaxHeight())
             }
         } else {
             val panelH = minOf(maxHeight * 0.3f, maxWidth * 0.45f)
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap)) {
-                MonPanel(looked, dex, m, Modifier.fillMaxWidth().height(panelH), wide = true, onSort = onSort, sorting = sorting)
+                MonPanel(looked, dex, m, Modifier.fillMaxWidth().height(panelH), wide = true, button = button)
                 content(Modifier.weight(1f).fillMaxWidth())
             }
         }
@@ -161,7 +180,7 @@ fun BoxesScreen(
             title = tr("BOXES"),
             options = boxes.boxes.indices.toList(),
             selected = boxIndex,
-            label = { i -> boxes.boxes[i].let { b -> "${b.name}   ${b.count}/$SLOTS" } },
+            label = { i -> boxes.boxes[i].let { b -> "${b.name}   ${b.count}/${b.mons.size}" } },
             m = m,
             onPick = { ui.box = it; ui.looked = null; ui.picking = false },
             onDismiss = { ui.picking = false },
@@ -178,7 +197,7 @@ fun boxSummaryList(box: BoxView): List<MonView> = box.mons.filterNotNull()
  */
 @Composable
 internal fun BoxSwapPicker(boxMon: MonView?, party: List<MonView>, onCancel: () -> Unit, onPick: (Int, MonView) -> Unit) {
-    val prompt = if (party.size >= 6) tr("Party full: swap {0} with which POKéMON?", boxMon?.shownName.orEmpty())
+    val prompt = if (party.size >= 6) tr("Swap {0} for?", boxMon?.shownName.orEmpty())
     else tr("Swap {0} with which POKéMON?", boxMon?.shownName.orEmpty())
     val m = rememberGbaTextMetrics()
     CompanionBackHandler(onBack = onCancel)
@@ -203,7 +222,7 @@ internal fun BoxSwapPicker(boxMon: MonView?, party: List<MonView>, onCancel: () 
 /** What a SWAP of [boxMon] for [partyMon] (into box [boxName]) did, in the companion's words. */
 fun boxSwapMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, boxMon: MonView, partyMon: MonView, boxName: String): String = when (r) {
     com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED ->
-        tr("{0} joined the party and {1} went to {2}. Save in the game to keep it.", boxMon.shownName, partyMon.shownName, boxName)
+        tr("{0} joined, {1} went to {2}. Save in game!", boxMon.shownName, partyMon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.BoxSwapResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.BoxSwapResult.CHANGED -> tr("The party or the box has changed. Try again.")
@@ -231,6 +250,33 @@ internal fun boxSortMessage(r: BoxSortResult): String = when (r) {
     BoxSortResult.FAILED -> tr("The sort didn't work. Nothing was changed.")
 }
 
+/** The PKMN DATA panel's button ([label] is English, drawn translated). */
+private class PanelButton(val label: String, val enabled: Boolean, val onClick: () -> Unit)
+
+/** CHANGE BOX's question before the game switches boxes and saves ([BoxesUiState.confirmChange]). */
+@Composable
+internal fun BoxChangeConfirm(ui: BoxesUiState, boxes: BoxesView, onConfirm: (Int) -> Unit) {
+    val to = ui.confirmChange ?: return
+    OptionConfirm(
+        title = tk("CHANGE BOX"),
+        message = tr("Make {0} the current box? The game saves, as in the PC. Your save is backed up first.", boxes.boxes.getOrNull(to)?.name ?: ""),
+        confirmLabel = tk("CHANGE BOX"),
+        m = rememberGbaTextMetrics(),
+        onDismiss = { ui.confirmChange = null },
+        onConfirm = { ui.confirmChange = null; onConfirm(to) },
+    )
+}
+
+/** What CHANGE BOX to [boxName] did, in the companion's words. */
+internal fun boxChangeMessage(r: com.pokedaisy.app.companion.data.BoxChangeResult, boxName: String): String = when (r) {
+    com.pokedaisy.app.companion.data.BoxChangeResult.CHANGED -> tr("{0} is the current box. The game is saved.", boxName)
+    com.pokedaisy.app.companion.data.BoxChangeResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
+    com.pokedaisy.app.companion.data.BoxChangeResult.IN_BATTLE -> tr("You can't do that during a battle.")
+    com.pokedaisy.app.companion.data.BoxChangeResult.OTHER_SAVE -> tr("Save in the game first, then try again.")
+    com.pokedaisy.app.companion.data.BoxChangeResult.NO_BACKUP -> tr("Your save couldn't be backed up. Nothing was changed.")
+    com.pokedaisy.app.companion.data.BoxChangeResult.FAILED -> tr("The box change didn't work.")
+}
+
 /** SORT's warning before it rewrites the boxes; the button that opened it sits in the PKMN DATA panel. */
 @Composable
 internal fun BoxSortConfirm(ui: BoxesUiState, onConfirm: () -> Unit) {
@@ -247,7 +293,7 @@ internal fun BoxSortConfirm(ui: BoxesUiState, onConfirm: () -> Unit) {
 
 /** What a DEPOSIT of [mon] into box [boxName] did, in the companion's words. */
 fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
-    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was stored in {1}. Save in the game to keep it.", mon.shownName, boxName)
+    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} stored in {1}. Save in game!", mon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.LAST_MON -> tr("That's your last POKéMON that can battle!")
     com.pokedaisy.app.companion.data.BoxSwapResult.BOX_FULL -> tr("{0} is full.", boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.FAILED -> tr("That didn't work. Nothing was changed.")
@@ -256,7 +302,7 @@ fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: Mo
 
 /** What a WITHDRAW of [mon] from box [boxName] did, in the companion's words. */
 fun boxWithdrawMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
-    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was taken out of {1} and joined the party. Save in the game to keep it.", mon.shownName, boxName)
+    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} taken from {1}. Save in game!", mon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.PARTY_FULL -> tr("Your party is full!")
     com.pokedaisy.app.companion.data.BoxSwapResult.FAILED -> tr("That didn't work. Nothing was changed.")
     else -> boxSwapMessage(r, mon, mon, boxName)
@@ -269,11 +315,11 @@ fun BoxDepositPicker(boxes: BoxesView, mon: MonView?, onPick: (Int) -> Unit, onD
         title = tr("Deposit {0} in which BOX?", mon?.shownName.orEmpty()),
         options = boxes.boxes.indices.toList(),
         selected = boxes.currentBox,
-        label = { i -> boxes.boxes[i].let { b -> "${b.name}   ${b.count}/$SLOTS" } },
+        label = { i -> boxes.boxes[i].let { b -> "${b.name}   ${b.count}/${b.mons.size}" } },
         m = rememberGbaTextMetrics(),
         onPick = onPick,
         onDismiss = onDismiss,
-        badge = { i -> if (boxes.boxes[i].count >= SLOTS) tr("FULL") else null },
+        badge = { i -> if (boxes.boxes[i].count >= boxes.boxes[i].mons.size) tr("FULL") else null },
     )
 }
 
@@ -325,8 +371,11 @@ fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit,
     CompanionBackHandler(onBack = ::tap)
     val outPic = anim.boxMon?.let { swapPictureOf(it, dex) }
     val inPic = anim.partyMon?.let { swapPictureOf(it, dex) }
-    val outArt = remember(outPic) { outPic?.let { SwapArt(it, opaqueBounds(it)) } }
-    val inArt = remember(inPic) { inPic?.let { SwapArt(it, opaqueBounds(it)) } }
+    // A Game Boy picture's clear inside gets the paper back, as in the well (TrimmedSprite).
+    val game = com.pokedaisy.app.companion.data.activeGame
+    val paper = if (game.isGameBoyGame) OptionColors.gbPaper(game) else null
+    val outArt = remember(outPic, paper) { outPic?.let { SwapArt(it, opaqueBounds(it), paper, if (paper != null) enclosedClear(it) else null) } }
+    val inArt = remember(inPic, paper) { inPic?.let { SwapArt(it, opaqueBounds(it), paper, if (paper != null) enclosedClear(it) else null) } }
     val fade = (t / SWAP_IN.toFloat()).coerceIn(0f, 1f)
     val noRipple = remember { MutableInteractionSource() }
     BoxWithConstraints(
@@ -367,7 +416,7 @@ fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit,
                     .graphicsLayerAlpha(wellAlpha),
                 contentAlignment = Alignment.Center,
             ) {
-                GbaText(label, PcColors.shade(PcColors.TITLE_TEXT, night), PcColors.shade(PcColors.FRAME, night), small, maxLines = 1)
+                GbaText(label, PcColors.ink(PcColors.TITLE_TEXT, night), PcColors.inkShadow(PcColors.FRAME, night), small, maxLines = 1)
             }
         }
         Canvas(Modifier.fillMaxSize()) {
@@ -429,7 +478,7 @@ fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit,
     }
 }
 
-private class SwapArt(val image: ImageBitmap, val trim: Trim)
+private class SwapArt(val image: ImageBitmap, val trim: Trim, val paper: Color? = null, val holes: IntArray? = null)
 
 /** [mon]'s front picture from the ROM, else (no Pokédex tables, an egg) its icon's first frame. */
 @Composable
@@ -464,6 +513,16 @@ private fun DrawScope.swapPicture(art: SwapArt?, cx: Float, cy: Float, room: Flo
         art.image, srcOffset = IntOffset(art.trim.left, art.trim.top), srcSize = IntSize(art.trim.width, art.trim.height),
         dstOffset = dst, dstSize = IntSize(dw, dh), alpha = a, colorFilter = filter, filterQuality = FilterQuality.None,
     )
+    art.paper?.let { paper ->
+        val kx = dw.toFloat() / art.trim.width
+        val ky = dh.toFloat() / art.trim.height
+        val fill = lerp(paper, Color.White, white.coerceIn(0f, 1f)).copy(alpha = alpha * paper.alpha)
+        art.holes?.forEach { at ->
+            val x = at % art.image.width - art.trim.left
+            val y = at / art.image.width - art.trim.top
+            drawRect(fill, Offset(dst.x + x * kx, dst.y + y * ky), Size(kx, ky))
+        }
+    }
     draw(alpha, null)
     if (white > 0f) draw(white.coerceIn(0f, 1f), SWAP_WHITE_FILTER)
 }
@@ -516,7 +575,7 @@ private const val SWAP_BURST_ARM = 0xFF4A83B4
 @Composable
 private fun MonPanel(
     mon: MonView?, dex: PokedexTables?, m: GbaTextMetrics, modifier: Modifier, wide: Boolean,
-    onSort: (() -> Unit)? = null, sorting: Boolean = false,
+    button: PanelButton? = null,
 ) {
     val u = m.u
     val small = rememberGbaTextMetrics(1f)
@@ -525,7 +584,11 @@ private fun MonPanel(
     val well = @Composable { wellModifier: Modifier ->
         Box(wellModifier.drawBehind { pictureWell(u.toPx(), night) }.padding(u * 5)) {
             val sprite = if (dex != null && species > 0) rememberRomBitmap(dex, species, PokedexSource::cachedFrontSprite, PokedexSource::frontSprite) else null
-            if (sprite != null || mon == null) TrimmedSprite(sprite, Modifier.fillMaxSize())
+            // A Game Boy picture leaves its paper clear (Dratini's white belly): the PC shows it on the paper, so the
+            // clear pixels the outline closes in get the paper's white back.
+            val game = com.pokedaisy.app.companion.data.activeGame
+            val paper = if (game.isGameBoyGame) OptionColors.gbPaper(game) else null
+            if (sprite != null || mon == null) TrimmedSprite(sprite, Modifier.fillMaxSize(), paper)
             // No picture to read (no Pokédex tables for the game, an egg): its icon, as large as whole pixels allow.
             else BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val density = LocalDensity.current
@@ -534,8 +597,8 @@ private fun MonPanel(
             }
         }
     }
-    val text = PcColors.shade(PcColors.PANEL_TEXT, night)
-    val shadow = PcColors.shade(PcColors.PANEL_SHADOW, night)
+    val text = PcColors.ink(PcColors.PANEL_TEXT, night)
+    val shadow = PcColors.inkShadow(PcColors.PANEL_SHADOW, night)
     val lines = @Composable {
         if (mon != null) GbaText(mon.shownName, text, shadow, m)
         if (mon != null && !mon.isEgg) {
@@ -553,7 +616,7 @@ private fun MonPanel(
         }
     }
     val title = @Composable {
-        GbaText(tr("PKMN DATA"), PcColors.shade(PcColors.TITLE_TEXT, night), PcColors.shade(PcColors.FRAME, night), small)
+        GbaText(tr("PKMN DATA"), PcColors.ink(PcColors.TITLE_TEXT, night), PcColors.inkShadow(PcColors.FRAME, night), small)
     }
     val frame = PcColors.shade(PcColors.FRAME, night)
     val top = PcColors.shade(PcColors.PANEL_TOP, night)
@@ -575,8 +638,8 @@ private fun MonPanel(
             }
             Column(Modifier.weight(1f).fillMaxHeight().padding(u * 8), verticalArrangement = Arrangement.spacedBy(u * 2)) {
                 Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(u * 2, Alignment.CenterVertically)) { lines() }
-                if (onSort != null) {
-                    OptionButton(tk("SORT"), m, onClick = onSort, enabled = !sorting, emphasis = true, modifier = Modifier.fillMaxWidth())
+                if (button != null) {
+                    OptionButton(tk(button.label), m, onClick = button.onClick, enabled = button.enabled, emphasis = true, modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -597,10 +660,10 @@ private fun MonPanel(
                 well(Modifier.fillMaxWidth().weight(1f))
             }
             Column(Modifier.fillMaxWidth().padding(horizontal = u * 8, vertical = u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) { lines() }
-            if (onSort != null) {
+            if (button != null) {
                 // The well above gives up the button's room; the button sits at the panel's bottom.
                 Box(Modifier.fillMaxWidth().padding(horizontal = u * 8, vertical = u * 6)) {
-                    OptionButton(tk("SORT"), m, onClick = onSort, enabled = !sorting, emphasis = true, modifier = Modifier.fillMaxWidth())
+                    OptionButton(tk(button.label), m, onClick = button.onClick, enabled = button.enabled, emphasis = true, modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -612,9 +675,10 @@ private fun MonPanel(
  * fits, centred: the well's room goes to the Pokémon, not to the picture's empty margin.
  */
 @Composable
-private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier) {
+private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier, paper: Color? = null) {
     val density = LocalDensity.current
     val trim = remember(bitmap) { bitmap?.let(::opaqueBounds) }
+    val holes = remember(bitmap, paper != null) { if (paper != null) bitmap?.let(::enclosedClear) else null }
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         if (bitmap == null || trim == null) return@BoxWithConstraints
         val w = with(density) { maxWidth.toPx() }
@@ -622,6 +686,11 @@ private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier) {
         val k = floor(minOf(w / trim.width, h / trim.height)).coerceAtLeast(1f)
         val image = bitmap
         Canvas(Modifier.size(with(density) { (trim.width * k).toDp() }, with(density) { (trim.height * k).toDp() })) {
+            if (paper != null) holes?.forEach { at ->
+                val x = at % image.width - trim.left
+                val y = at / image.width - trim.top
+                drawRect(paper, Offset(x * k, y * k), Size(k, k))
+            }
             drawImage(
                 image, srcOffset = IntOffset(trim.left, trim.top), srcSize = IntSize(trim.width, trim.height),
                 dstSize = IntSize((trim.width * k).roundToInt(), (trim.height * k).roundToInt()), filterQuality = FilterQuality.None,
@@ -633,6 +702,29 @@ private fun TrimmedSprite(bitmap: ImageBitmap?, modifier: Modifier) {
 private class Trim(val left: Int, val top: Int, val width: Int, val height: Int)
 
 /** The smallest rectangle holding [b]'s non-transparent pixels (the whole picture if it has none). */
+/** [b]'s clear pixels that no 4-connected path of clear pixels joins to its edge: the inside of the outline. */
+private fun enclosedClear(b: ImageBitmap): IntArray {
+    val w = b.width
+    val h = b.height
+    val px = IntArray(w * h)
+    b.readPixels(px, 0, 0, w, h)
+    val outside = BooleanArray(w * h)
+    val stack = ArrayDeque<Int>()
+    fun push(i: Int) { if (!outside[i] && px[i] ushr 24 == 0) { outside[i] = true; stack.addLast(i) } }
+    for (x in 0 until w) { push(x); push((h - 1) * w + x) }
+    for (y in 0 until h) { push(y * w); push(y * w + w - 1) }
+    while (stack.isNotEmpty()) {
+        val i = stack.removeLast()
+        val x = i % w
+        val y = i / w
+        if (x > 0) push(i - 1)
+        if (x < w - 1) push(i + 1)
+        if (y > 0) push(i - w)
+        if (y < h - 1) push(i + w)
+    }
+    return (0 until w * h).filter { px[it] ushr 24 == 0 && !outside[it] }.toIntArray()
+}
+
 private fun opaqueBounds(b: ImageBitmap): Trim {
     val w = b.width
     val h = b.height
@@ -688,7 +780,7 @@ private fun BoxWindow(
             }
             HeaderButton(m, tr("Pick a box"), Modifier.weight(1f).fillMaxHeight(), onClick = { ui.picking = true }) {
                 Box(Modifier.fillMaxSize().drawBehind { header(paper, u.toPx(), night) }, contentAlignment = Alignment.Center) {
-                    GbaText(box.name, PcColors.shade(PcColors.TITLE, night), PcColors.shade(PcColors.TITLE_SHADOW, night), m)
+                    GbaText(box.name, PcColors.ink(PcColors.TITLE, night), PcColors.inkShadow(PcColors.TITLE_SHADOW, night), m)
                 }
             }
             HeaderButton(m, tr("Next box"), Modifier.fillMaxHeight().width(u * 30), onClick = { step(1) }) {
@@ -778,7 +870,7 @@ internal fun PcBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
     }
 }
 
-/** The box's wallpaper in its bevelled frame, and its 30 slots: a tap = the summary, focus = the panel. */
+/** The box's wallpaper in its bevelled frame, and its slots (Gen 3's 30, a Game Boy box's 20): a tap = the summary, focus = the panel. */
 @Composable
 private fun Wallpaper(box: BoxView, boxIndex: Int, lookedSlot: Int, ui: BoxesUiState, m: GbaTextMetrics, step: (Int) -> Unit, modifier: Modifier) {
     val u = m.u
@@ -826,15 +918,19 @@ private fun Wallpaper(box: BoxView, boxIndex: Int, lookedSlot: Int, ui: BoxesUiS
         val pad = inset + 2 * px
         val w = constraints.maxWidth - 2 * pad
         val h = constraints.maxHeight - 2 * pad
-        val cellW = w / COLUMNS
-        val cellH = h / ROWS
-        // The game's 32x32 icons sit in 24-pixel cells: whole screen pixels per icon pixel, as many as that allows.
-        val k = floor(minOf(cellW, cellH) / ICON_CELL).coerceAtLeast(1f)
+        // Gen 3's 30 slots as the game's 6 x 5; a Game Boy box's 20 (no grid in the game: a list) as 5 x 4.
+        val columns = boxColumns(box.mons.size)
+        val rows = (box.mons.size + columns - 1) / columns
+        val cellW = w / columns
+        val cellH = h / rows
+        // The game's 32x32 icons sit in 24-pixel cells: whole screen pixels per icon pixel, as many as that allows. A Game
+        // Boy box's bigger cells would blow its icons up into each other: they get a gap of their own (GB_ICON_CELL).
+        val k = floor(minOf(cellW, cellH) / (if (box.mons.size == 30) ICON_CELL else GB_ICON_CELL)).coerceAtLeast(1f)
         val iconPx = ICON * k
         val inBox = box.mons.filterNotNull()
         box.mons.forEachIndexed { slot, mon ->
-            val col = slot % COLUMNS
-            val row = slot / COLUMNS
+            val col = slot % columns
+            val row = slot / columns
             val x = pad + col * cellW
             val y = pad + row * cellH
             fun Modifier.place(left: Float, top: Float, width: Float, height: Float) = this
@@ -850,8 +946,8 @@ private fun Wallpaper(box: BoxView, boxIndex: Int, lookedSlot: Int, ui: BoxesUiS
                         .gbaFocusRing(focused, PixelRoundedShape(u * 3))
                         .semantics { contentDescription = mon.shownName }
                         .soundClickable(interactionSource = focus, indication = null) {
-                            ui.looked = slot
-                            ui.open = inBox.indexOf(mon)
+                            // The first tap looks at it (PKMN DATA on the left), a tap on the one looked at opens it.
+                            if (cursor) ui.open = inBox.indexOf(mon) else ui.looked = slot
                         }
                         .focusStart(cursor),
                     contentAlignment = Alignment.Center,
@@ -894,6 +990,11 @@ internal object PcColors {
 
     /** [c], lowered towards the night backdrop in dark mode. */
     fun shade(c: Long, night: Boolean): Color = if (night) lerp(Color(c), NIGHT, 0.45f) else Color(c)
+
+    /** Text on the PC's windows: in dark mode only a touch dimmer than the day's, its shadow kept dark, so it stays as
+     * easy to read as the windows around it get darker. */
+    fun ink(c: Long, night: Boolean): Color = if (night) lerp(Color(c), NIGHT, 0.12f) else Color(c)
+    fun inkShadow(c: Long, night: Boolean): Color = if (night) lerp(Color(c), Color.Black, 0.35f) else Color(c)
 
     /** One 32x32 backdrop tile: a ring, light on its upper left and darker on its lower right, on the peach. */
     fun backdropTile(night: Boolean): ImageBitmap {
@@ -1100,11 +1201,11 @@ internal object BoxWallpapers {
     private const val TILE = 16
 }
 
-private const val COLUMNS = 6
-private const val ROWS = 5
-private const val SLOTS = 30
+/** A box's columns: Gen 3's 6 (x 5), else 5 (a Game Boy box's 20 as 5 x 4). */
+private fun boxColumns(slots: Int) = if (slots == 30) 6 else 5
 private const val ICON = 32f
 // The game's icon is 32 pixels in a 24-pixel cell: a cell this many screen pixels per icon pixel.
 private const val ICON_CELL = 24f
+private const val GB_ICON_CELL = 32f
 private val CURSOR_FILL = Color(0x66FFFFFF)
 private val CURSOR_FRAME = Color(0xFFFFFFFF)

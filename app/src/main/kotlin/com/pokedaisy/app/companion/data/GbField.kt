@@ -250,6 +250,8 @@ sealed class GbField {
         private val PC_SCRIPT_BANK: Int = 0x2F,
         /** KANTO_LANDMARK (Gold / Silver have one Johto landmark fewer: 46). */
         private val KANTO_LANDMARK: Int = 47,
+        /** The PC's moves on the current box (Gen2BoxSwap.kt), where they're mapped. */
+        val boxCalls: Gen2BoxCalls? = null,
     ) : GbField() {
         private val BATTLE_MODE = cfg.battleMode
         private val PARTY_COUNT = cfg.partyCount          // then wPartySpecies
@@ -271,6 +273,18 @@ sealed class GbField {
             if (!free(g)) return ItemUseResult.NOT_NOW
             queue(g, PC_SCRIPT_BANK, PC_SCRIPT)
             return ItemUseResult.USED
+        }
+
+        /** A PC move ([boxCalls]) where the bag's PC could open: NOT_NOW otherwise. */
+        fun boxMove(g: GameCalls, move: (Gen2BoxCalls, Gen2Config) -> BoxSwapResult): BoxSwapResult {
+            val calls = boxCalls ?: return BoxSwapResult.FAILED
+            return if (!free(g)) BoxSwapResult.NOT_NOW else move(calls, cfg)
+        }
+
+        /** CHANGE BOX ([Gen2BoxCalls.changeBox]: a box change saves the game) where the bag's PC could open: NOT_NOW otherwise. */
+        fun changeBox(g: GameCalls, to: Int): BoxChangeResult {
+            val calls = boxCalls ?: return BoxChangeResult.FAILED
+            return if (!free(g)) BoxChangeResult.NOT_NOW else calls.changeBox(g, to)
         }
 
         override fun taken(g: GameCalls): Boolean {
@@ -342,6 +356,7 @@ sealed class GbField {
             0x25 * 0x4000L + (0x68C7 - 0x4000) to "2152d47ea7c835c837c9",           // CheckWildEncounterCooldown
             0x24 * 0x4000L + (0x5C5E - 0x4000) to "010e030f",                         // Flypoints: NEW BARK, CHERRYGROVE
         ),
+        boxCalls = GEN2_BOX_CALLS_CRYSTAL,
     )
 
     /** German Crystal (Kristall): English Crystal's RAM and scripts, its Flypoints table 0x1E later. */
@@ -358,6 +373,7 @@ sealed class GbField {
             0x25 * 0x4000L + (0x68C7 - 0x4000) to "2152d47ea7c835c837c9",           // CheckWildEncounterCooldown
             0x24 * 0x4000L + (0x5C7C - 0x4000) to "010e030f",                         // Flypoints: NEUBORKIA, ROSALIA CITY
         ),
+        boxCalls = GEN2_BOX_CALLS_CRYSTAL_DE,
     )
 
     /**

@@ -62,7 +62,11 @@ class FixtureMemoryReader private constructor(
                 val banks = if (stream("wramx.bin") != null) read("wramx.bin").let { x ->
                     (0 until x.size / 0x1000).map { b -> ((b.toLong() shl 16) or 0xD000L) to x.copyOfRange(b * 0x1000, b * 0x1000 + 0x1000) }
                 } else emptyList()
-                return FixtureMemoryReader(ByteArray(0), ByteArray(0), listOf(0xC000L to read("wram.bin"), 0xFF80L to read("hram.bin")) + banks)
+                // The cart's battery RAM (mgba_dump's sram.bin): bank B's A000-BFFF at Gen2Reader's cartRam(B, 0xA000).
+                val sram = if (stream("sram.bin") != null) read("sram.bin").let { x ->
+                    (0 until x.size / 0x2000).map { b -> cartRam(b, 0xA000) to x.copyOfRange(b * 0x2000, b * 0x2000 + 0x2000) }
+                } else emptyList()
+                return FixtureMemoryReader(ByteArray(0), ByteArray(0), listOf(0xC000L to read("wram.bin"), 0xFF80L to read("hram.bin")) + banks + sram)
             }
             return FixtureMemoryReader(read("ewram.bin"), read("iwram.bin"))
         }

@@ -79,6 +79,16 @@ interface ItemUse {
     /** Whether the PC's moves work here (BoxSwap.kt): a box Pokémon's WITHDRAW / SWAP, a party one's DEPOSIT. */
     fun canSwapBox(): Boolean = false
 
+    /** The PC's moves reach the current box only (the Game Boy games keep the others apart, written on a box change). */
+    fun boxMovesCurrentOnly(): Boolean = false
+
+    /** Whether CHANGE BOX works here: another box made the current one, which saves the game (Crystal). */
+    fun canChangeBox(): Boolean = false
+
+    /** CHANGE BOX: box [box] becomes the current one and the game is saved, after a backup of the save file. */
+    fun changeBox(box: Int, done: (com.pokedaisy.app.companion.data.BoxChangeResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.BoxChangeResult.FAILED)
+
     /** Whether the BOXES tab's SORT works here: every box rewritten in Pokédex order (the same games as [canSwapBox]). */
     fun canSortBoxes(): Boolean = false
 
