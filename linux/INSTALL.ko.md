@@ -68,7 +68,7 @@ Steam이 PokeDaisy를 그 폴더에서 실행하니까 실행 옵션은 필요 �
 
 1. 컴퓨터에서 `pokedaisy-portmaster-aarch64.zip`의 압축을 풀어요. 안에 `PokeDaisy.sh`와 `pokedaisy` 폴더가 있어요.
 2. 둘 다 SD 카드에 있는 펌웨어의 `ports` 폴더에 복사해요. muOS에서는 두 폴더에 나눠 넣어요. `PokeDaisy.sh`는 `ROMS/Ports`에, `pokedaisy` 폴더는 `ports`에 넣어요(둘 다 카드의 맨 위예요).
-3. 게임은 지금 있는 곳에 그대로 두어도 돼요. 게임 목록에 `ports/pokedaisy/roms`와 펌웨어의 `gba`, `gb`, `gbc`, `nds` 폴더(그리고 `Game Boy Advance`, `Game Boy Color`, `Game Boy`, `Nintendo DS`라는 이름의 폴더)가 나와요.
+3. 게임은 지금 있는 곳에 그대로 두어도 돼요. 게임 목록에 `ports/pokedaisy/roms`와 펌웨어의 `gba`, `gb`, `gbc`, `nds` 폴더(그리고 `Game Boy Advance`, `Game Boy Color`, `Game Boy`, `Nintendo DS`라는 이름의 폴더)가 나와요. 카드 맨 위에 있어도 되고 `ROMS` 폴더 안에 있어도 돼요(muOS: `ROMS/GBA`).
 4. Ports 목록에서 PokeDaisy를 실행해요.
 
 PortMaster가 PokeDaisy에 기기의 버튼을 알려 주니까 따로 설정하지 않아도 작동해요. Menu나 Guide 버튼은 PokeDaisy의 메뉴를 열고, 다른 포트처럼 SELECT와 START를 함께 누르면 끝나요. ROCKNIX를 쓰는 GKD 350H에서 플레이해 봤어요.

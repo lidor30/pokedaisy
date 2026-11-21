@@ -68,7 +68,7 @@ L'app tiene tutto nella sua cartella e gira a schermo intero. Su CrossMix alza l
 
 1. Estrai `pokedaisy-portmaster-aarch64.zip` sul computer. Dentro ci sono `PokeDaisy.sh` e una cartella `pokedaisy`.
 2. Copia entrambi nella cartella `ports` del tuo firmware sulla scheda SD. Su muOS vanno in due cartelle: `PokeDaisy.sh` in `ROMS/Ports` e la cartella `pokedaisy` in `ports`, entrambe nella radice della scheda.
-3. I tuoi giochi possono restare dove sono: l'elenco dei giochi mostra `ports/pokedaisy/roms` e le cartelle `gba`, `gb`, `gbc` e `nds` del firmware (e quelle chiamate `Game Boy Advance`, `Game Boy Color`, `Game Boy` e `Nintendo DS`).
+3. I tuoi giochi possono restare dove sono: l'elenco dei giochi mostra `ports/pokedaisy/roms` e le cartelle `gba`, `gb`, `gbc` e `nds` del firmware (e quelle chiamate `Game Boy Advance`, `Game Boy Color`, `Game Boy` e `Nintendo DS`), nella cartella principale della scheda o nella sua cartella `ROMS` (muOS: `ROMS/GBA`).
 4. Avvia PokeDaisy dall'elenco Ports.
 
 PortMaster comunica a PokeDaisy i pulsanti del tuo dispositivo, quindi funzionano senza configurarli. Il pulsante Menu o Guide apre il menu di PokeDaisy, e SELECT e START insieme chiudono, come in ogni port. È stato provato giocando su una GKD 350H con ROCKNIX.
