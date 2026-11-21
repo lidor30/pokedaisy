@@ -97,7 +97,7 @@ names saves by the file name alone.
 
 ### NXRedux collection and Platinum
 
-In Platinum (USA, revision 1), L2 opens the companion and holding L2 opens the quick menu. Set `SETTINGS` >
+In Platinum (USA, revision 1), L2 opens the companion, L3 opens the quick menu, and holding L2 opens it too. Set `SETTINGS` >
 `DS LAYOUT` to `ONE SCREEN` to play on the whole screen, with the touch screen and menus floating in when the game
 wants them. R2 switches to the bottom or top screen by hand. Hold SELECT and press Y to show or hide a floating
 touch screen in `ONE SCREEN` or `PICTURE IN PICTURE`. SELECT + D-pad moves the stylus and SELECT + A taps.
@@ -136,12 +136,12 @@ On plorpOS, PokeDaisy runs as a core of the launcher's own emulator. The save is
 and the launcher owns save states, fast-forward, rewind, shaders and leaving the game. Pick PokeDaisy in the Core
 row of a Game Boy shelf.
 
-In this form the quick menu (Y) keeps PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS and COMPANION (with TAKE
+In this form the quick menu (L3) keeps PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS, SAVE STATE, LOAD STATE, FF and COMPANION (with TAKE
 OFF in the English FireRed and Emerald), adds a HUD tile that puts the cursor on the HUD, and the game pauses while it
 is open. X opens the companion. SETTINGS lists only what the core does itself: ASPECT, HUD, QUICK MENU, FLY STYLE,
 FLIGHT AREA and FLY ON (where there's TAKE OFF), three button rows, AUTO-RUN (where the game's field is read), DARK
 MODE, TAB BAR and RESET SETTINGS, which puts every companion setting back after you confirm. QUICK MENU BUTTON,
-COMPANION BUTTON and HUD CURSOR BUTTON step through X, Y, L2 and R2 (and NONE for the cursor) when you press A on
+COMPANION BUTTON and HUD CURSOR BUTTON step through X, Y, L2, R2 and L3 (and NONE for the cursor) when you press A on
 them, and a button another action already uses swaps over to it. L2 and R2 reach the core on every shelf (for other
 Game Boy Advance cores the launcher still keeps them back).
 
@@ -245,7 +245,7 @@ is Y. Hold Space to fast forward and R to rewind, F2 saves a state, F4 loads it,
 of those keys can be changed in the menu's `KEYBOARD` page. A mouse or a touch screen reaches the companion and the HUD:
 clicking a tab, the gear, a row or a button presses it, as `ENTER` on it would.
 
-The companion and the quick menu work as in the cores everywhere: X opens the [companion](companion.md), Y opens the
+The companion and the quick menu work as in the cores everywhere: X opens the [companion](companion.md), L3 opens the
 quick menu over the game (PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS, COMPANION), and both buttons can be
 changed in the companion's `SETTINGS`. In the English FireRed and Emerald the quick menu also has `TAKE OFF`, to
 [fly over the map](map.md#flying-over-the-map) on your Pokémon's bird (the companion's `MAP` has a `TAKE OFF` button
@@ -264,7 +264,8 @@ In a DS game the DS has every face and shoulder button, so L2 opens the companio
 game starts on one screen. On the Windows build the DS core is the app's own melonDS engine rather than DSperate:
 [EXPAND](screen.md#expand-more-of-the-map) fills a wide window with the map past the screen's edges, as it does on
 Android, and the companion opens over the running game: a tap of L2 opens it and closes it, and holding L2 for a
-moment opens the quick menu (PC, FLY, the keep-away spray, WILD ENCOUNTERS and the companion), each through the game's
+moment opens the quick menu (PC, FLY, the keep-away spray, WILD ENCOUNTERS, SAVE STATE, LOAD STATE, FF and the companion),
+each through the game's
 own menus. The companion keeps the game running, sound and all,
 and reads the save live: `PARTY`, the `POKéDEX`, the region map in the cartridge's own art, the bag, the guide, and its
 `SETTINGS`, which keeps its own file in `saves/pokedaisy-ds`. `B` closes it, and `L` and `R` change tab. R2 shows the

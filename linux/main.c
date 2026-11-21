@@ -29,6 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "pd_fs.h"
+#include "pd_env.h"
 
 #include "library.h"
 
@@ -311,6 +312,10 @@ static void script_mouse(void);
 static bool pointerHeld; // the left button is down (pointerDown is that, held for at least a frame)
 static int pointerPulse;
 static int wheelSteps;     // the wheel's notches this frame (+ up), for RETRO_DEVICE_MOUSE
+static int mouseWindowX, mouseWindowY; // the pointer over the window, for the library (the cores get it normalised)
+static bool libraryClick;              // a left press this frame
+static int libraryWheel;               // wheel notches this frame (+ up)
+
 static void pointer_at(int x, int y) {
   if (frameRect.w <= 0 || frameRect.h <= 0)
     return;
@@ -431,21 +436,31 @@ static void events(void) {
         key(R2, e.jaxis.value > 16000);
     }
     if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) {
+      mouseWindowX = e.button.x, mouseWindowY = e.button.y;
       pointer_at(e.button.x, e.button.y);
       pointerHeld = e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT;
-      if (pointerHeld)
+      if (pointerHeld) {
         pointerPulse = 1; // a click the core sees even when press and release fall in one frame
+        libraryClick = true;
+      }
     }
-    if (e.type == SDL_MOUSEMOTION)
+    if (e.type == SDL_MOUSEMOTION) {
+      mouseWindowX = e.motion.x, mouseWindowY = e.motion.y;
       pointer_at(e.motion.x, e.motion.y);
-    if (e.type == SDL_MOUSEWHEEL)
-      wheelSteps += e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -e.wheel.y : e.wheel.y;
+    }
+    if (e.type == SDL_MOUSEWHEEL) {
+      int steps = e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -e.wheel.y : e.wheel.y;
+      wheelSteps += steps;
+      libraryWheel += steps;
+    }
     if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
       inputReset = true;
       held = pressed = 0;
       pointerHeld = false; // its button-up may go to the window that took the focus
       pointerPulse = 0;
       pointerDown = false;
+      libraryClick = false;
+      libraryWheel = 0;
     }
     if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
       outputChanged = true;
@@ -477,10 +492,14 @@ static void script_mouse(void) {
   }
   for (int i = 0; i < mscriptN; i++)
     if (tick == mscript[i].at) {
+      mouseWindowX = mscript[i].x, mouseWindowY = mscript[i].y;
       pointer_at(mscript[i].x, mscript[i].y);
-      if (mscript[i].click)
+      if (mscript[i].click) {
         pointerPulse = 1;
+        libraryClick = true;
+      }
       wheelSteps += mscript[i].wheel;
+      libraryWheel += mscript[i].wheel;
     }
 }
 /* POCKET_RESIZE="TICK:WxH,...": resizes the window at that tick, as a dragged edge or fullscreen would, for tests:
@@ -895,7 +914,7 @@ static SDL_Texture *frameTexture;
 static int textureW, textureH, frameW, frameH;
 static enum retro_pixel_format textureFormat; // what frameTexture was made for: a core of another format needs a new one
 static double srcRate = 32768, rateTrim = 1;   // the core's audio rate (SET_SYSTEM_AV_INFO can change it), the pacing's trim
-static bool ffNow, rewindingNow;
+static bool ffNow, rewindingNow, ffQuick; // ffQuick: the quick menu's FF toggle, until it is turned off again
 static int ffSpeedNow = 1;
 static void core_log(enum retro_log_level level, const char *fmt, ...) {
   if (level < RETRO_LOG_WARN && !getenv("POCKET_CORE_LOG"))
@@ -1009,6 +1028,9 @@ static bool environment(unsigned cmd, void *data) {
     return true;
   case RETRO_ENVIRONMENT_GET_FASTFORWARDING:
     *(bool *)data = ffNow;
+    return true;
+  case PD_ENV_SET_FAST_FORWARD:
+    ffQuick = data && *(const bool *)data;
     return true;
   case RETRO_ENVIRONMENT_GET_THROTTLE_STATE: {
     struct retro_throttle_state *t = data;
@@ -1749,6 +1771,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   int confirming = 0; // the menu row asked about (M_LOAD / M_QUIT), 0 = none
   int frames = 0;
   uint64_t due = SDL_GetPerformanceCounter(), lastStart = 0, lastFrame = due;
+  ffQuick = false; // a new game starts at normal speed
   pacing_start(hz);
   while (running && !leave) {
     uint64_t frameStart = SDL_GetPerformanceCounter();
@@ -2032,7 +2055,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     }
     muted = false;
     bool rewinding = (hkOn & (1u << HK_REWIND)) && hostSet.rewind;
-    bool ff = !rewinding && (hkOn & (1u << HK_FF));
+    bool ff = !rewinding && ((hkOn & (1u << HK_FF)) || ffQuick);
     int runs = 1;
     if (ff) {
       double cost = emuMs > 0 ? emuMs : 4;
@@ -2151,6 +2174,24 @@ static uint32_t libraryTopPx[OVERLAY_MAX_W * OVERLAY_MAX_H];
 static SDL_Texture *libraryTopTexture, *coverTextures[1024];
 static unsigned coverSerials[1024];
 static int libraryTopW, libraryTopH;
+/* The same viewport library_present draws: window pixels, the scale, the canvas and its top-left corner. */
+static void library_viewport(int *ow, int *oh, int *scale, int *w, int *h, int *x0, int *y0) {
+  int width = W, height = H;
+  SDL_GetRendererOutputSize(renderer, &width, &height);
+  int s = width / 560 < height / 400 ? width / 560 : height / 400;
+  if (s < 1)
+    s = 1;
+  int cw = width / s, ch = height / s;
+  cw = cw > OVERLAY_MAX_W ? OVERLAY_MAX_W : cw;
+  ch = ch > OVERLAY_MAX_H ? OVERLAY_MAX_H : ch;
+  *ow = width;
+  *oh = height;
+  *scale = s;
+  *w = cw;
+  *h = ch;
+  *x0 = (width - cw * s) / 2;
+  *y0 = (height - ch * s) / 2;
+}
 static void library_textures_free(void) {
   for (int i = 0; i < 1024; i++)
     if (coverTextures[i]) {
@@ -2162,15 +2203,8 @@ static void library_textures_free(void) {
   libraryTopTexture = NULL;
 }
 static void library_present(void) {
-  int ow = W, oh = H;
-  SDL_GetRendererOutputSize(renderer, &ow, &oh);
-  int s = ow / 560 < oh / 400 ? ow / 560 : oh / 400;
-  if (s < 1)
-    s = 1;
-  int w = ow / s, h = oh / s;
-  w = w > OVERLAY_MAX_W ? OVERLAY_MAX_W : w;
-  h = h > OVERLAY_MAX_H ? OVERLAY_MAX_H : h;
-  int x0 = (ow - w * s) / 2, y0 = (oh - h * s) / 2;
+  int ow, oh, s, w, h, x0, y0;
+  library_viewport(&ow, &oh, &s, &w, &h, &x0, &y0);
   SDL_RenderClear(renderer);
   pd_canvas_init(&overlay, w, h, overlayPx);
   library_draw(&overlay);
@@ -2403,6 +2437,15 @@ int main(int argc, char **argv) {
         libDown = (libDown & ~(unsigned)LIB_SELECT) | LIB_START;
       library_keys(libDown);
       library_tick();
+      if (libraryClick || libraryWheel) {
+        int ow, oh, s, w, h, x0, y0;
+        library_viewport(&ow, &oh, &s, &w, &h, &x0, &y0);
+        int mx = (mouseWindowX - x0) / s, my = (mouseWindowY - y0) / s;
+        if (mx >= 0 && my >= 0 && mx < w && my < h)
+          library_pointer(mx, my, libraryClick, libraryWheel);
+        libraryClick = false;
+        libraryWheel = 0;
+      }
       const char *game = library_picked();
       if (game) {
         char picked[PATH_MAX];
@@ -2411,6 +2454,8 @@ int main(int argc, char **argv) {
         library_pause(true); // no hashing or cover downloads while a game plays
         run_game(picked, 0, NULL, true); // the last game's result is the exit status
         library_pause(false);
+        libraryClick = false; // a click in the game is not one in the library
+        libraryWheel = 0;
         library_played(picked);
       }
       library_present();

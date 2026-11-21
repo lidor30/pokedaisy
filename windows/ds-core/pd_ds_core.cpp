@@ -12,6 +12,7 @@
 #include "pd_ds_overlay.h"
 #include "pk_nds_cores.h"
 #include "pk_nds_field.h"
+#include "pd_env.h"
 
 #include <algorithm>
 #include <cmath>
@@ -55,6 +56,7 @@ long frameNo = 0;
 std::string saveDir;
 std::string savePath;
 std::string romPath;
+bool quickFf;
 
 bool option(const char* key, std::string& value)
 {
@@ -330,6 +332,23 @@ std::string stateFile()
     return dir + "/pokedaisy-ds.state";
 }
 
+// The frontend's state slot for this ROM (the host's states/<ROM>.ss), shared by the quick menu and the host hotkey.
+std::string quickStateFile()
+{
+    std::string root = saveDir.empty() ? std::string(".") : saveDir;
+    const size_t slash = root.find_last_of("/\\");
+    if (slash != std::string::npos) root.erase(slash);
+    return root + "/states/" + file_name(romPath) + ".ss";
+}
+
+bool state_exists(const std::string& path)
+{
+    FILE* f = fopen(path.c_str(), "rb");
+    if (!f) return false;
+    fclose(f);
+    return true;
+}
+
 bool read_file(const std::string& path, std::vector<uint8_t>& out)
 {
     FILE* f = fopen(path.c_str(), "rb");
@@ -353,6 +372,34 @@ bool write_file(const std::string& path, const void* data, size_t len)
 }
 
 } // namespace
+
+bool overlay_state_exists()
+{
+    return !romPath.empty() && state_exists(quickStateFile());
+}
+
+bool overlay_state_save()
+{
+    return pk_ndsm_active() && !romPath.empty() && pk_ndsm_save_state(quickStateFile().c_str());
+}
+
+bool overlay_state_load()
+{
+    if (!pk_ndsm_active() || romPath.empty()) return false;
+    const std::string path = quickStateFile();
+    if (!state_exists(path)) return false;
+    overlay_reset();
+    return pk_ndsm_load_state(path.c_str());
+}
+
+bool overlay_fast_forward() { return quickFf; }
+
+bool overlay_set_fast_forward(bool on)
+{
+    if (!env_cb || !env_cb(PD_ENV_SET_FAST_FORWARD, &on)) return false;
+    quickFf = on;
+    return true;
+}
 
 RETRO_API void retro_set_environment(retro_environment_t cb) { env_cb = cb; }
 RETRO_API void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
@@ -531,6 +578,8 @@ RETRO_API bool retro_load_game(const struct retro_game_info* game)
     if (!pk_ndsm_init(game->path, savePath.c_str(), SAMPLE_RATE)) return false;
     // The host loads the .sav into the save memory it reads here; the engine has read the same file at boot.
     overlay_load(game->path, saveDir.c_str());
+    quickFf = false;
+    if (env_cb) env_cb(PD_ENV_SET_FAST_FORWARD, &quickFf);
     compose_layout();
     return true;
 }
@@ -538,6 +587,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info* game)
 RETRO_API void retro_unload_game(void)
 {
     overlay_reset();
+    quickFf = false;
     pk_ndsm_flush_save();
     pk_ndsm_deinit();
     haveFrame = false;

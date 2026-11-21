@@ -1,4 +1,4 @@
-/* The QUICK MENU (the Y button): the app's QuickMenu.kt in RING or GRID, using the HUD look, drawn into
+/* The QUICK MENU (L3 by default): the app's QuickMenu.kt in RING or GRID, using the HUD look, drawn into
  * a canvas whose see-through pixels carry their alpha (the host lays it over the game). GPL-3.0. */
 #ifndef POCKET_QUICK_MENU_H
 #define POCKET_QUICK_MENU_H

@@ -1060,6 +1060,14 @@ void controls() {
     if(hit(RETRO_DEVICE_ID_JOYPAD_B))flyJob={};
     return;
   }
+  // L3 (the desktop's QUICK MENU button): a press opens the ring, another closes it. L2 keeps its tap for the
+  // companion and hold for the quick menu.
+  if(hit(RETRO_DEVICE_ID_JOYPAD_L3)){
+    if(quickOpen){quickOpen=false;repelPicker=flyPicker=false;return;}
+    if(!companion){
+      hudCursor=-1;quickOpen=true;quickSelected=0;companionHold=0;repelPicker=flyPicker=false;flyWhy=nullptr;refresh();return;
+    }
+  }
   const int hudButton=shell.hud_id();
   if(hudCursor>=0){
     if(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT))select_used=true;

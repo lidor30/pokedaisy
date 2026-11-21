@@ -126,7 +126,8 @@ struct pd_nuz_run;
 extern const char* const PD_SCENE_SPEEDS[PD_SCENE_SPEED_COUNT];
 enum pd_scene { PD_SCENE_BATTLE, PD_SCENE_TEXT, PD_SCENE_MENU, PD_SCENE_BIKE, PD_SCENE_SURF, PD_SCENES };
 
-enum pd_button { PD_BTN_X, PD_BTN_Y, PD_BTN_L2, PD_BTN_R2, PD_BTN_NONE, PD_BUTTONS };
+// L3 comes after NONE so settings files written before it existed keep their NONE (hudbtn=4).
+enum pd_button { PD_BTN_X, PD_BTN_Y, PD_BTN_L2, PD_BTN_R2, PD_BTN_NONE, PD_BTN_L3, PD_BUTTONS };
 
 // GAME SPEED's steps, as the app's SPEED_STEPS: the old five, then the slow two.
 #define PD_GAME_SPEED_COUNT 7

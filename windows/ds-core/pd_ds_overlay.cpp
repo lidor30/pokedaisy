@@ -420,6 +420,10 @@ int quick_items(quick_item* items)
                                                                                            : nullptr,
                                      0, 0, nullptr};
     items[count++] = quick_item {QUICK_WILD, shell.settings.wildOff != 0, false, fieldWhy, 0, 0, nullptr};
+    items[count++] = quick_item {QUICK_SAVE_STATE, false, false, nullptr, 0, 0, nullptr};
+    items[count++] = quick_item {QUICK_LOAD_STATE, false, false,
+                                 overlay_state_exists() ? nullptr : "No state saved yet", 0, 0, nullptr};
+    items[count++] = quick_item {QUICK_FF, false, overlay_fast_forward(), nullptr, 0, 0, nullptr};
     if (hudHits.n > 0) items[count++] = quick_item {QUICK_HUD, false, false, nullptr, 0, 0, nullptr};
     items[count++] = quick_item {QUICK_COMPANION, false, false, nullptr, 0, 0, nullptr};
     return count;
@@ -446,7 +450,7 @@ void draw_notice(uint32_t* out, int w, int h)
 // A tile's action: what A on the selected tile (or a click on it) does.
 void quick_activate()
 {
-    quick_item items[8] {};
+    quick_item items[10] {};
     const int count = quick_items(items);
     if (count <= 0) return;
     quickSelected = std::clamp(quickSelected, 0, count - 1);
@@ -462,6 +466,20 @@ void quick_activate()
         pk_ndsm_set_wild_off(shell.settings.wildOff);
         quickShown = false;
         break;
+    case QUICK_SAVE_STATE:
+        quickShown = false;
+        say(overlay_state_save() ? "State saved" : "State save failed");
+        break;
+    case QUICK_LOAD_STATE:
+        quickShown = false;
+        say(overlay_state_load() ? "State loaded" : "State load failed");
+        break;
+    case QUICK_FF: {
+        quickShown = false;
+        const bool on = !overlay_fast_forward();
+        say(overlay_set_fast_forward(on) ? (on ? "Fast forward on" : "Fast forward off") : "Fast forward unavailable");
+        break;
+    }
     case QUICK_HUD:
         hudFocus = hud_first(&hudHits);
         quickShown = false;
@@ -811,6 +829,8 @@ bool overlay_compose(std::vector<uint32_t>& frame, int& w, int& h)
     if (!companionShown && !quickShown) {
         // No overlay: the HUD alone goes over the field, on the top screen's own pixels.
         draw_hud(frame, w, h);
+        // SAVE STATE / LOAD STATE close the ring: their answer still goes over the game for a moment.
+        if (noticeFrames) draw_notice(frame.data(), w, h);
         return false;
     }
     const int gameW = w, gameH = h;
@@ -838,7 +858,7 @@ bool overlay_compose(std::vector<uint32_t>& frame, int& w, int& h)
     pd_canvas c;
     pd_canvas_init(&c, outW, outH, menu.data());
     pd_game presentation {};
-    quick_item items[8] {};
+    quick_item items[10] {};
     const int count = quick_items(items);
     quick_set_grid(shell.settings.quickGrid != 0);
     bool drawn = false;
@@ -881,6 +901,25 @@ bool overlay_compose(std::vector<uint32_t>& frame, int& w, int& h)
 
 unsigned overlay_keys(unsigned pressed, unsigned heldKeys)
 {
+    // L3 (the desktop's QUICK MENU button): a press opens the ring, another closes it. L2 keeps its tap for the
+    // companion and hold for the quick menu.
+    if (hit(pressed, RETRO_DEVICE_ID_JOYPAD_L3)) {
+        if (quickShown) {
+            quickShown = false;
+            flyPicker = repelPicker = false;
+            holdFrames = 0;
+            return kAll;
+        }
+        if (!companionShown) {
+            hudFocus = -1;
+            quickShown = true;
+            quickSelected = 0;
+            holdFrames = 0;
+            flyPicker = repelPicker = false;
+            refresh();
+            return kAll;
+        }
+    }
     // The companion button the settings name (L2 to start with): a tap opens the companion, held for a moment the quick
     // menu. R2 stays the screen switch, as the host's keys are told.
     // The HUD cursor (hud.h's targets): its button puts the cursor on the first one, the arrows move it, A opens that
@@ -948,7 +987,7 @@ unsigned overlay_keys(unsigned pressed, unsigned heldKeys)
             if (hit(pressed, RETRO_DEVICE_ID_JOYPAD_A)) confirm_fly();
             return kAll;
         }
-        quick_item items[8] {};
+        quick_item items[10] {};
         const int count = quick_items(items);
         if (count <= 0) return kAll;
         quickSelected = std::clamp(quickSelected, 0, count - 1);

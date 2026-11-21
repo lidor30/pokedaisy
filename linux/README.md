@@ -50,7 +50,8 @@ copied there once). The host's own are DATA/host.ini.
 
 Keyboard: arrows, Z=A, X=B, Enter=Start, Backspace=Select, Q/E=L/R, 1/2=L2/R2, Tab=X, F=Y, Space=fast-forward
 (held), R=rewind (held), F2=save state, F4=load state, Escape=the host menu. The core's own controls work as on any
-frontend: X opens the companion, Y the quick menu (each can be rebound in the companion's SETTINGS).
+frontend: X opens the companion, L3 the quick menu (each can be rebound in the companion's SETTINGS; on a keyboard,
+F, the Y key, still opens the quick menu).
 
 START+SELECT (or the controller's Guide / Menu button, or Escape) opens the host menu over the game: RESUME, SAVE
 STATE, LOAD STATE, HOTKEYS, REWIND (keeps the last ~20 s while on, in a 32 MB budget: `POCKET_REWIND_MB`), FF SPEED
@@ -152,7 +153,7 @@ are in NOTICE and the packaged licenses (mGBA, and armGBA and zlib for the GBA c
 ## Nintendo DS
 
 The bundled DS core starts in its One Screen layout. L2 opens the Companion and R2 switches screens by default.
-Hold L2 to open Quick Menu. With SELECT as the host modifier, SELECT + Y toggles stylus mode and SELECT + D-pad/A
+L3 opens Quick Menu (holding L2 still does). With SELECT as the host modifier, SELECT + Y toggles stylus mode and SELECT + D-pad/A
 moves or taps the stylus. DS host actions can be rebound separately in HOTKEYS (SELECT + R2 / L2 by default; with
 the modifier off they move to R3 / L3, since bare R2 / L2 belong to the core). Companion Settings → HUD opens the shared HUD
 page (on or off, LOOK, SIZE and each part), as on the GB and GBA cores. MINIMAL HUD hides the party cards.

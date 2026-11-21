@@ -25,6 +25,7 @@
 #include "pd_flight_gen.h"
 #include "pk_wide.h"
 #include "quick_menu.h"
+#include "pd_env.h"
 #include "wild.h"
 #include "pd_dex.h"
 #include "pd_font.h"
@@ -214,10 +215,85 @@ static unsigned gameW, gameH;
 
 static char message[128];
 static int messageFrames;
+static char pdStateRoot[1050] = "."; // the save folder's parent: the host's states/<ROM>.ss
+static char pdGamePath[1050];
+static bool quickFf;
+RETRO_API size_t retro_serialize_size(void);
+RETRO_API bool retro_serialize(void *data, size_t size);
+RETRO_API bool retro_unserialize(const void *data, size_t size);
 static void notice(const char *s) {
   snprintf(message, sizeof message, "%s", s);
   messageFrames = 90;
   fprintf(stderr, "pokedaisy: %s\n", s);
+}
+
+/* The quick menu's state slot: the same states/<ROM>.ss (the GBA core .armgba.ss) the host's SAVE / LOAD hotkeys use. */
+static bool quick_state_path(char *out, size_t n) {
+  if (!pdGamePath[0])
+    return false;
+  const char *slash = strrchr(pdGamePath, '/');
+  const char *backslash = strrchr(pdGamePath, '\\');
+  if (backslash && (!slash || backslash > slash))
+    slash = backslash;
+  const char *base = slash ? slash + 1 : pdGamePath;
+#ifdef PD_ARMGBA
+  const char *suffix = ".armgba";
+#else
+  const char *suffix = "";
+#endif
+  snprintf(out, n, "%s/states/%s%s.ss", pdStateRoot[0] ? pdStateRoot : ".", base, suffix);
+  return true;
+}
+static bool quick_state_exists(void) {
+  char path[2200];
+  if (!quick_state_path(path, sizeof path))
+    return false;
+  FILE *f = fopen(path, "rb");
+  if (!f)
+    return false;
+  fclose(f);
+  return true;
+}
+static bool quick_state_save(void) {
+  char path[2200];
+  size_t n = quick_state_path(path, sizeof path) ? retro_serialize_size() : 0;
+  void *data = n ? malloc(n) : NULL;
+  bool ok = data && retro_serialize(data, n);
+  if (ok) {
+    FILE *f = fopen(path, "wb");
+    ok = f && fwrite(data, 1, n, f) == n;
+    if (f)
+      fclose(f);
+  }
+  free(data);
+  return ok;
+}
+static bool quick_state_load(void) {
+  char path[2200];
+  if (!quick_state_path(path, sizeof path))
+    return false;
+  FILE *f = fopen(path, "rb");
+  if (!f)
+    return false;
+  fseek(f, 0, SEEK_END);
+  const long size = ftell(f);
+  fseek(f, 0, SEEK_SET);
+  void *data = size > 0 ? malloc((size_t)size) : NULL;
+  bool ok = data && fread(data, 1, (size_t)size, f) == (size_t)size;
+  fclose(f);
+  if (ok)
+    ok = retro_unserialize(data, (size_t)size);
+  free(data);
+  return ok;
+}
+
+/* The quick menu's FF tile: the host owns the speed, so ask it to toggle. False when the frontend doesn't know the
+ * command (RetroArch and others): the tile says so instead of looking on while nothing changes. */
+static bool quick_ff_set(bool on) {
+  if (!realEnv || !realEnv(PD_ENV_SET_FAST_FORWARD, &on))
+    return false;
+  quickFf = on;
+  return true;
 }
 
 static inline uint32_t from565(uint16_t p) {
@@ -542,7 +618,7 @@ static void present(void) {
 /* ---- input ---- */
 static unsigned held, prevHeld, pressedKeys;
 static int heldFrames[NKEYS];
-static int quickBtn = Y, companionBtn = X, hudBtn = -1; // key indices, -1 none (from settings: key_of)
+static int quickBtn = L3, companionBtn = X, hudBtn = -1; // key indices, -1 none (from settings: key_of)
 static unsigned gameKeys; // keys the layer presses for the game (BIKE's SELECT)
 static int gameKeyFrames;
 static int hudOx, hudOy, hudScale = 1; // where draw_hud last put the HUD on the canvas (hud_hit_at)
@@ -556,7 +632,7 @@ static unsigned autoRunFlip;
 /* The pad buttons for the quick menu, the companion and the HUD cursor are PokeDaisy's own SETTINGS rows
  * (a core option is out of reach in plorpOS): each frame's key index, -1 for none. */
 static int key_of(int btn) {
-  return btn == PD_BTN_X ? X : btn == PD_BTN_Y ? Y : btn == PD_BTN_L2 ? L2 : btn == PD_BTN_R2 ? R2 : -1;
+  return btn == PD_BTN_X ? X : btn == PD_BTN_Y ? Y : btn == PD_BTN_L2 ? L2 : btn == PD_BTN_R2 ? R2 : btn == PD_BTN_L3 ? L3 : -1;
 }
 static void apply_aspect_option(void);
 /* Asked again whenever the frontend says an option changed, and once after the settings file is read. */
@@ -587,6 +663,8 @@ static void poll_keys(void) {
   prevHeld = held;
 }
 static bool down(int k) { return k >= 0 && (pressedKeys >> k & 1) != 0; }
+// L3 is the app's default. Y stays a quick-menu key on a keyboard, where F is Y and there is no L3.
+static bool quick_key(void) { return down(quickBtn) || (quickBtn == L3 && down(Y)); }
 
 /* What mGBA reads while its frame runs. */
 static int16_t masked_input(unsigned port, unsigned device, unsigned index, unsigned id) {
@@ -1173,6 +1251,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   /* No game: armGBA offers "Start Core" (SET_SUPPORT_NO_GAME), but the companion needs one (PD_BE_AFTER_LOAD reads it). */
   if (!g || !mgba_retro_load_game(g))
     return false;
+  snprintf(pdGamePath, sizeof pdGamePath, "%s", g->path ? g->path : "");
   PD_BE_AFTER_LOAD(g);
   choose_canvas();
   read_options();
@@ -1181,6 +1260,9 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
     realEnv(RETRO_ENVIRONMENT_SET_AUDIO_BUFFER_STATUS_CALLBACK, &abc);
   }
   frameLate = false;
+  quickFf = false;
+  if (realEnv)
+    realEnv(PD_ENV_SET_FAST_FORWARD, &quickFf);
   cvs = calloc((size_t)CWMAX * CHMAX, sizeof *cvs);
   out565 = calloc((size_t)CWMAX * CHMAX, sizeof *out565);
   if (!cvs || !out565)
@@ -1203,9 +1285,19 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
     snprintf(pdDir, sizeof pdDir, "%s/pokedaisy", dir);
     pd_mkdir(pdDir);
     snprintf(settingsPath, sizeof settingsPath, "%s/settings.ini", pdDir);
+    snprintf(pdStateRoot, sizeof pdStateRoot, "%s", dir);
+    char *slash = strrchr(pdStateRoot, '/');
+    char *backslash = strrchr(pdStateRoot, '\\');
+    if (backslash && (!slash || backslash > slash))
+      slash = backslash;
+    if (slash)
+      *slash = 0;
+    else
+      snprintf(pdStateRoot, sizeof pdStateRoot, ".");
   } else {
     *pdDir = 0;
     snprintf(settingsPath, sizeof settingsPath, "pokedaisy-settings.ini");
+    snprintf(pdStateRoot, sizeof pdStateRoot, ".");
   }
   pd_settings_load(&settings, settingsPath);
   pd_look_apply(&game, &settings); // DARK MODE (pd_game_detect applied the game's windows with no settings)
@@ -1533,7 +1625,7 @@ RETRO_API void retro_run(void) {
   touch_poll();
   if (inputRunning || airborne)
     touchDown = touchWas = false;
-  if ((polishedActions || flashCfg) && down(quickBtn) && !quickOpen && !companion)
+  if ((polishedActions || flashCfg) && quick_key() && !quickOpen && !companion)
     snapshot(); // FLASH dims on who knows it and the lit flag: read as the menu opens, not up to 30 frames old
   // A tap on the quick menu: a tile (or a FLY / REPEL list row) is picked as A picks it; outside, the list or the menu
   // closes as B. On the field, a tap that starts and ends on one HUD part presses it; the game picture itself does nothing.
@@ -1602,7 +1694,7 @@ RETRO_API void retro_run(void) {
   struct quick_item quick[QUICK_COUNT];
   int quickN = 0;
   char repelWhy[32] = "";
-  const bool pcMenu = polishedActions && (quickOpen || down(quickBtn));
+  const bool pcMenu = polishedActions && (quickOpen || quick_key());
   const char *pcFieldWhy = pcMenu ? pd_field_input_reason(game.sha1, pd_lr_read_memory, core) : NULL;
   if (pcOk || gbf || polishedActions)
     quick[quickN++] = (struct quick_item){QUICK_PC, false, false,
@@ -1651,13 +1743,17 @@ RETRO_API void retro_run(void) {
   if (wildSwitch || gbf || polishedActions)
     quick[quickN++] = (struct quick_item){QUICK_WILD, settings.wildOff, false,
         settings.wildOff ? NULL : pcFieldWhy, 0, 0, NULL};
+  quick[quickN++] = (struct quick_item){QUICK_SAVE_STATE, false, false, NULL, 0, 0, NULL};
+  quick[quickN++] = (struct quick_item){QUICK_LOAD_STATE, false, false,
+      quick_state_exists() ? NULL : "No state saved yet", 0, 0, NULL};
+  quick[quickN++] = (struct quick_item){QUICK_FF, false, quickFf, NULL, 0, 0, NULL};
   if (host.hasHud && settings.hud)
     quick[quickN++] = (struct quick_item){QUICK_HUD, false, false, hudShown && hudHits.n ? NULL : "No HUD on screen", 0, 0, NULL};
   quick[quickN++] = (struct quick_item){QUICK_COMPANION, false, false, NULL, 0, 0, NULL};
   if (quickSel >= quickN)
     quickSel = 0;
   quick_set_grid(settings.quickGrid);
-  if (down(quickBtn) && !companion && !hudFocus) {
+  if (quick_key() && !companion && !hudFocus) {
     quickOpen = !quickOpen;
     flyList = repelList = false;
     flyAsk = 0;
@@ -1767,6 +1863,16 @@ RETRO_API void retro_run(void) {
         settings.wildOff = !settings.wildOff;
         pd_settings_save(&settings, settingsPath);
         notice(settings.wildOff ? "Wild encounters off" : "Wild encounters on");
+        break;
+      case QUICK_SAVE_STATE:
+        notice(quick_state_save() ? "State saved" : "State save failed");
+        break;
+      case QUICK_LOAD_STATE:
+        notice(quick_state_load() ? "State loaded" : "State load failed");
+        break;
+      case QUICK_FF:
+        notice(quick_ff_set(!quickFf) ? (quickFf ? "Fast forward on" : "Fast forward off")
+                                      : "Fast forward unavailable");
         break;
       case QUICK_COMPANION:
         companion = true;

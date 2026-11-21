@@ -728,7 +728,7 @@ bool pd_ui_settings_control(struct pd_ui* ui, int dy, bool accept) {
     return true;
 }
 
-/* A BUTTON row: the next button (X, Y, L2, R2; the HUD's also NONE). A button another action already uses goes to
+/* A BUTTON row: the next button (X, Y, L2, R2, L3; the HUD's also NONE). A button another action already uses goes to
  * this one's old button, so no two actions ever share one; the HUD's NONE can't be handed to the other two. */
 static void cycle_button(struct pd_settings* s, int row) {
     int* mine = row == SETTING_QUICK_BTN ? &s->quickBtn : row == SETTING_COMPANION_BTN ? &s->companionBtn : &s->hudBtn;

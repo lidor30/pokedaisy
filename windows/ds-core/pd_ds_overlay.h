@@ -28,6 +28,14 @@ bool overlay_wheel(int notches);
 // When the overlay shows, [frame] (the game's composed picture, [w] x [h]) becomes the overlay's at twice the size, and
 // [w] / [h] its own. False leaves the frame alone.
 bool overlay_compose(std::vector<uint32_t>& frame, int& w, int& h);
-// This frame's keys, in libretro ids: L2 opens the companion (a tap toggles it), held for a moment it opens the quick
-// menu. Returns the keys the game must not see (all of them while the overlay is open).
+// This frame's keys, in libretro ids: L3 toggles the quick menu; L2 opens the companion (a tap toggles it), held for a
+// moment it opens the quick menu too. Returns the keys the game must not see (all of them while the overlay is open).
 unsigned overlay_keys(unsigned pressed, unsigned held);
+// The quick menu's SAVE STATE / LOAD STATE: the frontend's state slot for this ROM (states/<ROM>.ss), so the ring and the
+// host's hotkey share one file. Load closes the overlay and puts the state back.
+bool overlay_state_exists();
+bool overlay_state_save();
+bool overlay_state_load();
+// The quick menu's FF tile: the host owns the speed, so ask it to toggle. False when the frontend doesn't know the command.
+bool overlay_fast_forward();
+bool overlay_set_fast_forward(bool on);

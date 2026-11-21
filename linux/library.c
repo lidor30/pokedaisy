@@ -87,6 +87,28 @@ static SDL_atomic_t stopWorker, pauseWorker;
 // Where the games were drawn last frame (for library_covers) and the content's place.
 static int contentY, contentH, contentX, contentW;
 
+/* What the last draw laid out under the pointer: the same rectangles it drew, so clicks need no second copy of the layout. */
+enum {
+  LIB_HIT_RAIL = 1, LIB_HIT_SORT, LIB_HIT_GRID, LIB_HIT_PILL, LIB_HIT_GAME, LIB_HIT_SETTING, LIB_HIT_TOOL, LIB_HIT_MENU, LIB_HIT_CLOSE,
+};
+struct lib_hit {
+  int x, y, w, h, action, arg;
+};
+static struct lib_hit libHits[512];
+static int libHitCount;
+static void hit_add(int x, int y, int w, int h, int action, int arg) {
+  if (w > 0 && h > 0 && libHitCount < (int)(sizeof libHits / sizeof *libHits))
+    libHits[libHitCount++] = (struct lib_hit){x, y, w, h, action, arg};
+}
+/* A target cut to the clip its draw used, so a click on the hidden part of a scrolled row doesn't hit it. */
+static void hit_add_clipped(int x, int y, int w, int h, int clipX, int clipY, int clipW, int clipH, int action, int arg) {
+  int x0 = x > clipX ? x : clipX, y0 = y > clipY ? y : clipY;
+  int x1 = x + w < clipX + clipW ? x + w : clipX + clipW;
+  int y1 = y + h < clipY + clipH ? y + h : clipY + clipH;
+  if (x1 > x0 && y1 > y0)
+    hit_add(x0, y0, x1 - x0, y1 - y0, action, arg);
+}
+
 /* ---- names ---- */
 
 static const char *const RETAIL[] = {
@@ -1188,6 +1210,24 @@ static void play(void) {
     picked = games[shown[selected]].path;
 }
 
+/* The game's B menu (PLAY / FAVORITE / CANCEL): A, or a click on its row. */
+static void menu_choose(void) {
+  if (selected < 0 || selected >= shownCount) {
+    menuOpen = false;
+    return;
+  }
+  struct game *g = &games[shown[selected]];
+  if (menuCursor == 0)
+    play();
+  else if (menuCursor == 1) {
+    g->fav = !g->fav;
+    g->favSet = true;
+    state_save();
+    relist();
+  }
+  menuOpen = false;
+}
+
 static void move_games(unsigned down) {
   int cols = grid ? columns : 1;
   if (!shownCount) {
@@ -1241,18 +1281,8 @@ void library_keys(unsigned down) {
       menuCursor = (menuCursor + 2) % 3;
     if (down & LIB_DOWN)
       menuCursor = (menuCursor + 1) % 3;
-    if (down & LIB_A) {
-      struct game *g = &games[shown[selected]];
-      if (menuCursor == 0)
-        play();
-      else if (menuCursor == 1) {
-        g->fav = !g->fav;
-        g->favSet = true;
-        state_save();
-        relist();
-      }
-      menuOpen = false;
-    }
+    if (down & LIB_A)
+      menu_choose();
     if (down & (LIB_B | LIB_START))
       menuOpen = false;
     return;
@@ -1511,6 +1541,7 @@ static void draw_rail(struct pd_canvas *c) {
     pd_text(c, x + (w - tw) / 2, y + 36, PAGE_NAMES[i], on ? PD_VALUE : PD_LABEL, on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
     if (focus == F_RAIL && railCursor == i)
       ring(c, x, y, w, ih);
+    hit_add(x, y, w, ih, LIB_HIT_RAIL, i);
   }
 }
 
@@ -1528,6 +1559,7 @@ static void draw_header(struct pd_canvas *c, int x, int w, const char *title, bo
     mono(c, icon, bx + (bw - icon->w * 2) / 2, by + (bh - icon->h * 2) / 2, 2, PD_LABEL);
     if (focus == F_HEADER && headerCursor == i)
       ring(c, bx, by, bw, bh);
+    hit_add(bx, by, bw, bh, i == 0 ? LIB_HIT_SORT : LIB_HIT_GRID, 0);
   }
 }
 
@@ -1579,6 +1611,7 @@ static void draw_pills(struct pd_canvas *c, int x, int y, int w) {
     pd_text(c, tx, ty, count, pd_mix(text, on ? k->back : PD_TITLE_FILL, 77), PD_NO_SHADOW);
     if (focus == F_PILLS && on)
       ring(c, px, y, pw, PILL_H);
+    hit_add_clipped(px, y, pw, PILL_H, x, y - 2, w, PILL_H + 4, LIB_HIT_PILL, v);
     px += pw + 6;
   }
   pd_unclip(c);
@@ -1691,6 +1724,7 @@ static void draw_games(struct pd_canvas *c) {
       title_line(c, g, x + f + 3, y + f + 3 + cs + 2, cs);
       if (cur)
         ring(c, x, y, tw, th);
+      hit_add_clipped(x, y, tw, th, contentX - 4, contentY, contentW + 8, contentH, LIB_HIT_GAME, i);
     }
   } else {
     columns = 1;
@@ -1720,6 +1754,7 @@ static void draw_games(struct pd_canvas *c) {
       }
       if (cur)
         ring(c, contentX, y, contentW, rh);
+      hit_add_clipped(contentX, y, contentW, rh, contentX - 4, contentY, contentW + 8, contentH, LIB_HIT_GAME, i);
     }
   }
   pd_unclip(c);
@@ -1763,6 +1798,8 @@ static void draw_settings(struct pd_canvas *c) {
       pd_fill(c, contentX + f, y, contentW - 2 * f, rowH, PD_ROW_SELECTED);
     pd_text(c, contentX + f + 12, pd_text_y(y, rowH), label, PD_LABEL, PD_LABEL_SHADOW);
     pd_text_right(c, contentX + contentW - f - 12, pd_text_y(y, rowH), value, PD_VALUE, PD_VALUE_SHADOW);
+    hit_add_clipped(contentX + f, y, contentW - 2 * f, rowH, contentX + f, contentY + f, contentW - 2 * f, contentH - 2 * f,
+                    LIB_HIT_SETTING, i);
     y += rowH;
   }
   pd_unclip(c);
@@ -1781,6 +1818,7 @@ static void draw_tools(struct pd_canvas *c) {
     pd_text_fit(c, contentX + f + 48, y + f + 24, contentW - f * 2 - 56, BLURBS[i], PD_MUTED, PD_MUTED_SHADOW);
     if (cur)
       ring(c, contentX, y, contentW, h);
+    hit_add(contentX, y, contentW, h, LIB_HIT_TOOL, i);
   }
 }
 
@@ -1788,6 +1826,7 @@ void library_draw(struct pd_canvas *c) {
   pd_look_apply(NULL, &settings);
   backdrop(c);
   spotCount = 0;
+  libHitCount = 0;
   int rw = rail_w(), x = rw + M, w = c->w - x - M;
   draw_rail(c);
   contentX = x;
@@ -1827,7 +1866,7 @@ static void face(struct pd_canvas *c, int x, int y, char letter) {
   pd_text(c, x + (18 - pd_text_width(s)) / 2, y - 1, s, 0xFFFFFF, pd_mix(col, 0x000000, 128));
 }
 
-static void window(struct pd_canvas *c, int x, int y, int w, int h, const char *title, const char *const *rows, int n, int cursor) {
+static int window(struct pd_canvas *c, int x, int y, int w, int h, const char *title, const char *const *rows, int n, int cursor) {
   int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
   int ry = y + f + 4;
   if (title) {
@@ -1842,6 +1881,7 @@ static void window(struct pd_canvas *c, int x, int y, int w, int h, const char *
     pd_text_fit(c, x + f + 18, pd_text_y(ry, 22), w - 2 * f - 26, rows[i], PD_LABEL, PD_LABEL_SHADOW);
     ry += 24;
   }
+  return f;
 }
 
 bool library_dimmed(void) { return menuOpen || closeAsk; }
@@ -1870,16 +1910,166 @@ void library_draw_top(struct pd_canvas *c, uint32_t clear) {
     const struct game *g = &games[shown[selected]];
     const char *rows[3] = {"PLAY", g->fav ? "UNFAVORITE" : "FAVORITE", "CANCEL"};
     int w = 240, h = 2 * 6 + 24 + 3 * 24 + 4;
-    window(c, (c->w - w) / 2, (c->h - h) / 2, w, h, g->title, rows, 3, menuCursor);
+    int x = (c->w - w) / 2, y = (c->h - h) / 2;
+    int f = window(c, x, y, w, h, g->title, rows, 3, menuCursor);
+    for (int i = 0; i < 3; i++)
+      hit_add(x + f + 2, y + f + 4 + 24 + i * 24, w - 2 * f - 4, 22, LIB_HIT_MENU, i);
   }
   if (closeAsk) {
     const char *rows[2] = {"YES", "NO"};
     int w = 240, h = 2 * 6 + 24 + 2 * 24 + 4;
-    window(c, (c->w - w) / 2, (c->h - h) / 2, w, h, "CLOSE POKéDAISY?", rows, 2, menuCursor);
+    int x = (c->w - w) / 2, y = (c->h - h) / 2;
+    int f = window(c, x, y, w, h, "CLOSE POKéDAISY?", rows, 2, menuCursor);
+    for (int i = 0; i < 2; i++)
+      hit_add(x + f + 2, y + f + 4 + 24 + i * 24, w - 2 * f - 4, 22, LIB_HIT_CLOSE, i);
   }
   if (SDL_GetTicks() < noticeUntil) {
     int w = pd_text_width(notice) + 24, h = 28, x = (c->w - w) / 2, y = c->h - M - h - 36;
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
     pd_text(c, x + f + 8, pd_text_y(y, h), notice, PD_LABEL, PD_LABEL_SHADOW);
+  }
+}
+
+/* The topmost target under a canvas point (the menus are added after the page, so they win). */
+static int hit_under(int x, int y) {
+  for (int i = libHitCount - 1; i >= 0; i--) {
+    const struct lib_hit *h = &libHits[i];
+    if (x >= h->x && y >= h->y && x < h->x + h->w && y < h->y + h->h)
+      return i;
+  }
+  return -1;
+}
+
+/* A wheel notch on GAMES: one row in the grid, one game in the list. */
+static void wheel_games(int dir) {
+  if (!shownCount)
+    return;
+  int cols = grid ? columns : 1;
+  if (cols < 1)
+    cols = 1;
+  if (dir < 0) {
+    if (selected >= cols)
+      selected -= cols;
+    else
+      selected = 0;
+  } else {
+    if (selected + cols < shownCount)
+      selected += cols;
+    else
+      selected = shownCount - 1;
+  }
+  focus = F_GAMES;
+}
+
+void library_pointer(int x, int y, bool click, int wheel) {
+  int under = hit_under(x, y);
+  const struct lib_hit *h = under >= 0 ? &libHits[under] : NULL;
+
+  if (menuOpen || closeAsk) {
+    if (click) {
+      if (h && ((menuOpen && h->action == LIB_HIT_MENU) || (closeAsk && h->action == LIB_HIT_CLOSE))) {
+        menuCursor = h->arg;
+        if (menuOpen)
+          menu_choose();
+        else {
+          if (menuCursor == 0)
+            quit = true;
+          closeAsk = false;
+        }
+      } else if (menuOpen)
+        menuOpen = false; // a click beside the menu closes it, as B does
+      else
+        closeAsk = false;
+      return;
+    }
+    if (wheel) {
+      int n = menuOpen ? 3 : 2, dir = wheel > 0 ? -1 : 1;
+      for (int i = wheel > 0 ? wheel : -wheel; i > 0; i--)
+        menuCursor = (menuCursor + dir + n) % n;
+    }
+    return;
+  }
+  if (click) {
+    if (!h)
+      return;
+    if (h->action == LIB_HIT_RAIL) {
+      page = railCursor = h->arg;
+      focus = F_GAMES;
+    } else if (h->action == LIB_HIT_SORT) {
+      sortBy = (sortBy + 1) % S_COUNT;
+      say(sortBy == S_NAME ? "Sorted by name" : "Sorted by last played");
+      relist();
+      state_save();
+      focus = F_HEADER;
+      headerCursor = 0;
+    } else if (h->action == LIB_HIT_GRID) {
+      grid = !grid;
+      state_save();
+      focus = F_HEADER;
+      headerCursor = 1;
+    } else if (h->action == LIB_HIT_PILL) {
+      view = h->arg;
+      selected = scroll = 0;
+      relist();
+      state_save();
+      focus = F_GAMES;
+    } else if (h->action == LIB_HIT_GAME) {
+      if (h->arg >= 0 && h->arg < shownCount) {
+        selected = h->arg;
+        focus = F_GAMES;
+        play();
+      }
+    } else if (h->action == LIB_HIT_SETTING) {
+      settingsCursor = h->arg;
+      focus = F_GAMES;
+      setting_step(settingsCursor, 1);
+    } else if (h->action == LIB_HIT_TOOL) {
+      toolCursor = h->arg;
+      focus = F_GAMES;
+      say("Coming to the Linux version soon");
+    }
+    return;
+  }
+  if (!wheel)
+    return;
+  int steps = wheel > 0 ? wheel : -wheel, dir = wheel > 0 ? -1 : 1;
+  if (steps > 20)
+    steps = 20;
+  if (h) {
+    if (h->action == LIB_HIT_RAIL) {
+      for (int i = 0; i < steps; i++)
+        railCursor = (railCursor + dir + P_COUNT) % P_COUNT;
+      focus = F_RAIL;
+    } else if (h->action == LIB_HIT_PILL) {
+      for (int i = 0; i < steps; i++)
+        step_view(dir);
+      focus = F_GAMES;
+    } else if (h->action == LIB_HIT_GAME) {
+      for (int i = 0; i < steps; i++)
+        wheel_games(dir);
+    } else if (h->action == LIB_HIT_SETTING) {
+      int n = settings_rows();
+      for (int i = 0; i < steps; i++)
+        settingsCursor = (settingsCursor + dir + n) % n;
+      focus = F_GAMES;
+    } else if (h->action == LIB_HIT_TOOL) {
+      for (int i = 0; i < steps; i++)
+        toolCursor = (toolCursor + dir + 2) % 2;
+      focus = F_GAMES;
+    }
+    return;
+  }
+  if (page == P_SETTINGS) {
+    int n = settings_rows();
+    for (int i = 0; i < steps; i++)
+      settingsCursor = (settingsCursor + dir + n) % n;
+    focus = F_GAMES;
+  } else if (page == P_TOOLS) {
+    for (int i = 0; i < steps; i++)
+      toolCursor = (toolCursor + dir + 2) % 2;
+    focus = F_GAMES;
+  } else {
+    for (int i = 0; i < steps; i++)
+      wheel_games(dir);
   }
 }

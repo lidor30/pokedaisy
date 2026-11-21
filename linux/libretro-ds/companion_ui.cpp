@@ -16,6 +16,7 @@
 #include <fstream>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "../pd_fs.h"
 extern "C" {
 #include "pd_style.h"
 #include "pd_tables.h"
@@ -111,7 +112,7 @@ bool DsCompanionUi::save(){
     if(std::fflush(f) || fsync(fileno(f)))ok=false;
     if(std::fclose(f))ok=false;
   }
-  if(ok && std::rename(temp.c_str(),path.c_str())==0){error.clear();return true;}
+  if(ok && pd_rename(temp.c_str(),path.c_str())==0){error.clear();return true;}
   std::remove(temp.c_str());error="Could not save settings";return false;
 }
 void DsCompanionUi::set_game(DsGame value,bool soulSilverVersion){
