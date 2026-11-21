@@ -52,7 +52,7 @@ const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Bat
       <h1 class="hero-title">{say(page.headline)}</h1>
       <p class="hero-lead">{say(page.lead)}</p>
       <div class="cta">
-        <a class="btn f-primary h-primaryHot primary big" href={download}>
+        <a class="btn f-primary h-primaryHot primary big" href={download} data-download-open>
           <Pixel name="download" scale={1} /> {tr('DOWNLOAD')}{latest && <span class="ver">v{latest.version}</span>}
         </a>
         <a class="btn f-btn h-btnHot" href={tr.path('/compatibility/')}>{tr('CHECK YOUR ROM')}</a>
@@ -64,7 +64,7 @@ const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Bat
       </div>
       <p class="hero-meta small muted">
         {versions.map((v) => <span>{v}</span>)}
-        <span>Android 8.0+</span><span>{tr('Free, no ads')}</span>
+        <span>{tr('Free, no ads')}</span>
       </p>
     </div>
     <div class="hero-art">
@@ -181,7 +181,7 @@ const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Bat
         ))}
         <p class="small muted">{page.hackTitle ? tr('Hacks are recognised by their exact file.') : tr('Every official release is recognised by its exact file.')} {tr('Not sure yours is one of these? The ROM check tells you in your browser, without uploading it.')}</p>
         <div class="cta" data-track-where="page">
-          <a class="btn f-primary h-primaryHot primary" href={download}><Pixel name="download" scale={0.667} /> {tr('DOWNLOAD')}</a>
+          <a class="btn f-primary h-primaryHot primary" href={download} data-download-open><Pixel name="download" scale={0.667} /> {tr('DOWNLOAD')}</a>
           <a class="btn f-btn h-btnHot" href={tr.path('/compatibility/')}>{tr('CHECK YOUR ROM')}</a>
           <a class="btn f-btn h-btnHot" href={tr.path('/')}>{tr('ALL FEATURES')}</a>
         </div>
@@ -198,7 +198,7 @@ const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Bat
   /* The homepage's hero (index.astro), with the game's headline in place of the logo. */
   .hero { display: grid; grid-template-columns: 1fr 1.05fr; gap: 48px; align-items: center; padding: 64px 0 56px; }
   .hero-title { margin-top: 14px; font-size: var(--t-xl); line-height: 1.1; letter-spacing: 0.0625em; text-wrap: balance; text-shadow: var(--bold), calc(var(--px) * 2) calc(var(--px) * 2) 0 rgba(29, 27, 38, 0.15), calc(var(--px) * 2 + 0.0625em) calc(var(--px) * 2) 0 rgba(29, 27, 38, 0.15); }
-  .hero-lead { margin: 24px 0 32px; max-width: 30em; font-size: var(--t-l); line-height: 1.4; color: var(--ink-2); text-shadow: var(--bold); text-wrap: pretty; }
+  .hero-lead { margin: 22px 0 30px; max-width: 32em; font-size: calc(var(--r-l) * 1.1); line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
   .cta { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: center; }
   .ver { opacity: 0.85; font-size: var(--t-m); margin-left: 4px; }
   .community { margin-top: 18px; }
@@ -246,12 +246,12 @@ const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Bat
   .shot-frame:hover { transform: translateY(calc(var(--px) * -2)); }
   .shot-frame img { display: block; width: 100%; aspect-ratio: 1240 / 1080; }
   .shot figcaption { display: grid; gap: 4px; }
-  .shot-name { font-size: var(--t-m); text-shadow: var(--bold); letter-spacing: 0.0625em; }
+  .shot-name { font-family: var(--font-pixel); font-size: var(--t-m); text-shadow: var(--bold); letter-spacing: 0.0625em; }
 
   .player-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px 32px; }
   .player-item { display: flex; gap: 20px; align-items: flex-start; }
   .player-icon { display: inline-flex; padding: calc(var(--px) * 3); filter: var(--hard-shadow); }
-  .player-name { font-size: var(--t-m); margin-bottom: 6px; text-shadow: var(--bold); letter-spacing: 0.0625em; }
+  .player-name { font-family: var(--font-pixel); font-size: var(--t-m); margin-bottom: 6px; text-shadow: var(--bold); letter-spacing: 0.0625em; }
   .notes { margin: 40px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
   .notes li { position: relative; padding-left: calc(var(--px) * 7); }
   .notes li::before { content: ''; position: absolute; left: 0; top: 0.6em; width: calc(var(--px) * 3); height: calc(var(--px) * 3); background: var(--red); }
@@ -269,7 +269,9 @@ const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Bat
     .hero { grid-template-columns: 1fr; padding-top: 40px; }
   }
   @media (max-width: 760px) {
-    .hero-lead { font-size: var(--t-m); }
+    .hero-lead { font-size: var(--r-l); }
+    .hero { padding: 28px 0 36px; gap: 28px; }
+    .support { padding: calc(var(--px) * 8); }
   }
   @media (max-width: 560px) {
     .gallery, .player-grid { grid-template-columns: 1fr; }

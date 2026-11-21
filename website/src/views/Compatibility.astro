@@ -65,10 +65,10 @@ const tr = trFor(Astro.url);
   .narrow { max-width: 900px; }
   .versions { display: grid; grid-template-columns: 1fr 1.2fr; gap: 28px; align-items: start; }
   .vcard { filter: var(--hard-shadow); display: grid; gap: 12px; padding: calc(var(--px) * 8); }
-  .vtitle { font-size: var(--t-l); color: #cb0707; letter-spacing: 0.0625em; text-shadow: var(--bold), var(--px) var(--px) 0 #f0c8a0, calc(var(--px) + 0.0625em) var(--px) 0 #f0c8a0; }
-  .vlist { list-style: none; margin: 0; padding: 0; font-size: var(--t-s); }
-  .vlist li { display: flex; justify-content: space-between; gap: 16px; padding: 6px 4px; border-top: var(--px) solid #ecebf2; }
-  .vlist li:hover { background: #fff7d6; }
+  .vtitle { font-size: var(--t-l); color: var(--red); letter-spacing: 0.0625em; text-shadow: var(--bold); }
+  .vlist { list-style: none; margin: 0; padding: 0; font-family: var(--font-pixel); font-size: var(--t-s); }
+  .vlist li { display: flex; justify-content: space-between; gap: 16px; padding: 6px 4px; border-top: var(--px) solid var(--line); }
+  .vlist li:hover { background: var(--hover); }
   .vval { color: var(--muted); white-space: nowrap; }
   @media (max-width: 860px) { .versions { grid-template-columns: 1fr; } }
 </style>

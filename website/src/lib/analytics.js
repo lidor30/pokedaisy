@@ -12,7 +12,7 @@ const ROM_REASONS = ['unknown-hack', 'retail-hack', 'revision', 'other-game', 'g
 
 // event -> parameter -> the values it may take (a list, or a pattern the whole value must match).
 export const EVENTS = {
-  download_apk: { where: ['hero', 'latest', 'releases', 'nav', 'footer', 'page', 'downloads'], version: /^\d{1,3}(\.\d{1,3}){2,3}$/, platform: ['android', 'linux', '3ds'] },
+  download_apk: { where: ['hero', 'latest', 'releases', 'nav', 'footer', 'page', 'downloads', 'modal'], version: /^\d{1,3}(\.\d{1,3}){2,3}$/, platform: ['android', 'linux', '3ds'] },
   rom_check: { verdict: ['supported', 'in-progress', 'unsupported', 'error'], reason: ROM_REASONS },
   feedback_sent: { kind: ['game', 'bug', 'feature'], ok: ['yes', 'no'] },
   link_click: { to: ['github', 'reddit', 'discord', 'kofi', 'patreon', 'coffee'], where: ['hero', 'latest', 'releases', 'nav', 'footer', 'page'] },

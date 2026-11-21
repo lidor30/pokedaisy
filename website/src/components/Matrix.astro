@@ -121,7 +121,12 @@ const sheetText = {
 </div>
 
 <style is:global>
-  .matrix { display: grid; gap: 20px; }
+  .matrix { display: grid; gap: 20px; font-family: var(--font-pixel); }
+  /* A table of labels: the pixel font at its own sizes; the notes under it read in --font-read. */
+  .matrix .small { font-size: var(--t-s); }
+  .matrix .notes { font-family: var(--font-read); font-size: var(--r-s); }
+  .game-sheet { font-family: var(--font-pixel); }
+  .game-sheet .small { font-size: var(--t-s); }
   .filters, .chips { display: flex; flex-wrap: wrap; gap: 12px; }
   .filter { font: inherit; font-size: var(--t-s); cursor: pointer; background: none; color: var(--ink); transition: transform 0.12s steps(2); }
   .filter:hover { transform: translateY(calc(var(--px) * -1)); }
@@ -135,16 +140,16 @@ const sheetText = {
     flex: 1; min-width: 0; font: inherit; font-size: var(--t-s); color: var(--ink); background: none;
     padding: calc(var(--px) * 1) calc(var(--px) * 2) calc(var(--px) * 1) calc(var(--px) * 10); outline: none;
   }
-  .games-search::placeholder { color: #a8a6b6; }
+  .games-search::placeholder { color: var(--muted); }
   .games-search:focus-visible { outline: var(--px) dashed var(--red); outline-offset: var(--px); }
   .games-none { padding: 14px calc(var(--px) * 5); }
   .games-none[hidden] { display: none; }
   .table { filter: var(--hard-shadow); padding: calc(var(--px) * 2) 0; }
   .tr { display: grid; grid-template-columns: minmax(0, 1fr) repeat(6, 76px); align-items: center; padding: 10px calc(var(--px) * 5); }
   .tr.head { border-bottom: var(--px) solid var(--ink); padding-bottom: 12px; }
-  .tr.row + .tr.row { border-top: var(--px) solid #ecebf2; }
+  .tr.row + .tr.row { border-top: var(--px) solid var(--line); }
   .tr.row { transition: background 0.1s steps(1); }
-  .tr.row:hover { background: #fff7d6; }
+  .tr.row:hover { background: var(--hover); }
   .tr.row[hidden] { display: none; }
   .js .tr.row.pop { animation: rowin 0.3s steps(3) both; animation-delay: calc(var(--n, 0) * 25ms); }
   @keyframes rowin { from { opacity: 0; transform: translateX(calc(var(--px) * -6)); } to { opacity: 1; transform: none; } }
@@ -169,9 +174,9 @@ const sheetText = {
   /* The title and CLOSE stay at the top while the tables scroll under them. */
   .sheet-head {
     display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px;
-    position: sticky; top: calc(var(--px) * -7); z-index: 1; background: #fff;
+    position: sticky; top: calc(var(--px) * -7); z-index: 1; background: var(--card);
     margin: calc(var(--px) * -7) calc(var(--px) * -2) 0; padding: calc(var(--px) * 7) calc(var(--px) * 2) 10px;
-    border-bottom: var(--px) solid #ecebf2;
+    border-bottom: var(--px) solid var(--line);
   }
   @media (max-width: 760px) {
     .sheet-head { top: calc(var(--px) * -5); margin-top: calc(var(--px) * -5); padding-top: calc(var(--px) * 5); }
@@ -183,10 +188,10 @@ const sheetText = {
   .feats th, .feats td { padding: 3px 8px; text-align: left; vertical-align: middle; }
   .feats thead th { color: var(--ink-2); font-weight: normal; border-bottom: var(--px) solid var(--ink); }
   .feats thead th.v { text-align: center; font-size: var(--t-xs); min-width: 72px; line-height: 1.2; padding-bottom: 6px; }
-  .feats tbody tr + tr td, .feats tbody tr + tr th { border-top: var(--px) solid #ecebf2; }
+  .feats tbody tr + tr td, .feats tbody tr + tr th { border-top: var(--px) solid var(--line); }
   .feats .group th { color: var(--red); text-shadow: var(--bold); letter-spacing: 0.0625em; padding-top: 10px; border-top: 0 !important; }
   .feats .f-name { text-shadow: var(--bold); letter-spacing: 0.0625em; }
-  .feats .f-what { display: block; color: var(--muted); font-size: var(--t-xs); line-height: 1.2; max-width: 46ch; }
+  .feats .f-what { display: block; color: var(--muted); font-family: var(--font-read); font-size: var(--r-xs); line-height: 1.35; max-width: 46ch; }
   .feats td.c { text-align: center; }
   .feats td.c .pixel { vertical-align: middle; }
   .na { color: var(--muted); font-size: var(--t-xs); }
@@ -195,7 +200,7 @@ const sheetText = {
     .sheet { padding: calc(var(--px) * 5); max-height: 92vh; }
     .feats thead th.v { min-width: 64px; }
     /* Names keep their width and stay put while the versions scroll sideways under them. */
-    .feats th[scope='row'], .feats th[scope='rowgroup'] { min-width: 56vw; position: sticky; left: 0; z-index: 0; background: #fff; }
+    .feats th[scope='row'], .feats th[scope='rowgroup'] { min-width: 56vw; position: sticky; left: 0; z-index: 0; background: var(--card); }
   }
   .g-meta { color: var(--muted); }
   .kind { color: var(--ink); margin-right: 6px; }
