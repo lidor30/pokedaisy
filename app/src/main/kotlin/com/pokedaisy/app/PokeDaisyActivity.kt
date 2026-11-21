@@ -739,6 +739,20 @@ class PokeDaisyActivity : Activity() {
         return v
     }
 
+    @Volatile private var gbBoxCache: Pair<com.pokedaisy.app.companion.data.GbField, Boolean>? = null
+
+    /** The Game Boy game's PC moves (Crystal's current box), their code checked in the cart once per game. */
+    private fun gbBoxField(): com.pokedaisy.app.companion.data.GbField.CrystalEngine? {
+        val field = gbField() as? com.pokedaisy.app.companion.data.GbField.CrystalEngine ?: return null
+        val calls = field.boxCalls ?: return null
+        gbBoxCache?.let { (f, ok) -> if (f === field) return field.takeIf { ok } }
+        if (!::engine.isInitialized || !engine.running) return null
+        val ok = runCatching { calls.codeMatches { off, len -> MgbaCore.pkRomRead(off, len) } }.getOrElse { return null }
+        Log.i("pokedaisy", "Game Boy PC moves (${field.javaClass.simpleName}): ${if (ok) "code found" else "code not found"}")
+        gbBoxCache = field to ok
+        return field.takeIf { ok }
+    }
+
     /** Runs a Game Boy field action ([start], emu thread: true = the game has it, or has it queued) and, [GbField.TAKE_FRAMES]
      * later, [done] (main thread) with whether the game took it - a queued one it didn't take is withdrawn. */
     private fun gbFieldAction(
@@ -899,9 +913,12 @@ class PokeDaisyActivity : Activity() {
         ) = onGame(com.pokedaisy.app.companion.data.MoveOrderResult.FAILED, done) { s, calls, busy ->
             com.pokedaisy.app.companion.data.reorderMoves(s.fns, slot, personality, from, to, busy, calls)
         }
-        override fun canSwapBox() = !romIsGameBoy && !romIsNds && com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns, com.pokedaisy.app.companion.data.activeNativeConfig) != null
+        override fun canSwapBox() = gbBoxField() != null ||
+            !romIsGameBoy && !romIsNds && com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns, com.pokedaisy.app.companion.data.activeNativeConfig) != null
 
-        override fun canSortBoxes() = canSwapBox()
+        override fun boxMovesCurrentOnly() = romIsGameBoy
+
+        override fun canSortBoxes() = !romIsGameBoy && canSwapBox()
 
         override fun sortBoxes(done: (com.pokedaisy.app.companion.data.BoxSortResult) -> Unit) {
             val inBattle = telemetry.snapshot.value.inBattle
@@ -923,21 +940,24 @@ class PokeDaisyActivity : Activity() {
         override fun swapBox(
             box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
             done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
-        ) = onBoxes(done) { fields, fns, calls, busy ->
+        ) = if (romIsGameBoy) onGbBoxes(done) { calls, g, cfg -> calls.swap(g, cfg, slot, boxPersonality, partySlot, partyPersonality) }
+        else onBoxes(done) { fields, fns, calls, busy ->
             com.pokedaisy.app.companion.data.swapWithBox(fields, fns, box, slot, boxPersonality, partySlot, partyPersonality, busy, calls)
         }
 
         override fun depositToBox(
             partySlot: Int, partyPersonality: Long, box: Int,
             done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
-        ) = onBoxes(done) { fields, fns, calls, busy ->
+        ) = if (romIsGameBoy) onGbBoxes(done) { calls, g, cfg -> calls.deposit(g, cfg, partySlot, partyPersonality) }
+        else onBoxes(done) { fields, fns, calls, busy ->
             com.pokedaisy.app.companion.data.depositToBox(fields, fns, partySlot, partyPersonality, box, busy, calls)
         }
 
         override fun withdrawFromBox(
             box: Int, slot: Int, boxPersonality: Long,
             done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
-        ) = onBoxes(done) { fields, fns, calls, busy ->
+        ) = if (romIsGameBoy) onGbBoxes(done) { calls, g, cfg -> calls.withdraw(g, cfg, slot, boxPersonality) }
+        else onBoxes(done) { fields, fns, calls, busy ->
             com.pokedaisy.app.companion.data.withdrawFromBox(fields, fns, box, slot, boxPersonality, busy, calls)
         }
 
@@ -1016,6 +1036,25 @@ class PokeDaisyActivity : Activity() {
                 if (r == com.pokedaisy.app.companion.data.TradeEvoResult.EVOLVING) closeCompanionWindow()
                 done(r)
             }) { s, calls, busy -> com.pokedaisy.app.companion.data.tradeEvolve(s.fns, evo, slot, personality, busy, calls) }
+        }
+
+        /** A Game Boy PC move ([move], Gen2BoxSwap.kt) on the emu thread, where the bag's PC could open now. */
+        private fun onGbBoxes(
+            done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+            move: (com.pokedaisy.app.companion.data.Gen2BoxCalls, com.pokedaisy.app.companion.data.GameCalls,
+                   com.pokedaisy.app.companion.data.Gen2Config) -> com.pokedaisy.app.companion.data.BoxSwapResult,
+        ) {
+            val field = gbBoxField()
+            val inBattle = telemetry.snapshot.value.inBattle
+            if (field == null || !::engine.isInitialized || !engine.running) return done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
+            if (inBattle) return done(com.pokedaisy.app.companion.data.BoxSwapResult.IN_BATTLE)
+            engine.requestFieldItemJob(false) { calls, busy ->
+                val r = if (busy) com.pokedaisy.app.companion.data.BoxSwapResult.NOT_NOW
+                else runCatching { field.boxMove(calls) { c, cfg -> move(c, calls, cfg) } }
+                    .getOrElse { Log.e("pokedaisy", "Game Boy box move failed", it); com.pokedaisy.app.companion.data.BoxSwapResult.FAILED }
+                Log.i("pokedaisy", "Game Boy box move: $r")
+                runOnUiThread { done(r) }
+            }
         }
 
         /** A PC move ([move]) on the emu thread, its NOT_NOW told apart from a battle's. */

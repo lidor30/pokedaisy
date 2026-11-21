@@ -79,6 +79,9 @@ interface ItemUse {
     /** Whether the PC's moves work here (BoxSwap.kt): a box Pokémon's WITHDRAW / SWAP, a party one's DEPOSIT. */
     fun canSwapBox(): Boolean = false
 
+    /** The PC's moves reach the current box only (the Game Boy games keep the others apart, written on a box change). */
+    fun boxMovesCurrentOnly(): Boolean = false
+
     /** Whether the BOXES tab's SORT works here: every box rewritten in Pokédex order (the same games as [canSwapBox]). */
     fun canSortBoxes(): Boolean = false
 

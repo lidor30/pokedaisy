@@ -419,8 +419,8 @@ int64_t pk_api_call(uint32_t fn, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t
     return (int64_t) result;
 }
 
-bool pk_api_gb_call_at(uint16_t at, uint16_t fn, uint8_t a, uint8_t b, uint16_t hl) {
-    return pk_gb_call_at(g.core, at, fn, a, b, hl, 2);
+bool pk_api_gb_call_at(uint32_t at, uint16_t fn, uint8_t a, uint8_t b, uint16_t hl) {
+    return pk_gb_call_at(g.core, at, fn, a, b, hl, at > 0xFFFFu ? 4 : 2);
 }
 
 int pk_api_cheats_apply(const char* text) {

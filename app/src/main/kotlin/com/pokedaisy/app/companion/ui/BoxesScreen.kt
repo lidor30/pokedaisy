@@ -179,7 +179,7 @@ fun boxSummaryList(box: BoxView): List<MonView> = box.mons.filterNotNull()
  */
 @Composable
 internal fun BoxSwapPicker(boxMon: MonView?, party: List<MonView>, onCancel: () -> Unit, onPick: (Int, MonView) -> Unit) {
-    val prompt = if (party.size >= 6) tr("Party full: swap {0} with which POKéMON?", boxMon?.shownName.orEmpty())
+    val prompt = if (party.size >= 6) tr("Swap {0} for?", boxMon?.shownName.orEmpty())
     else tr("Swap {0} with which POKéMON?", boxMon?.shownName.orEmpty())
     val m = rememberGbaTextMetrics()
     CompanionBackHandler(onBack = onCancel)
@@ -204,7 +204,7 @@ internal fun BoxSwapPicker(boxMon: MonView?, party: List<MonView>, onCancel: () 
 /** What a SWAP of [boxMon] for [partyMon] (into box [boxName]) did, in the companion's words. */
 fun boxSwapMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, boxMon: MonView, partyMon: MonView, boxName: String): String = when (r) {
     com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED ->
-        tr("{0} joined the party and {1} went to {2}. Save in the game to keep it.", boxMon.shownName, partyMon.shownName, boxName)
+        tr("{0} joined, {1} went to {2}. Save in game!", boxMon.shownName, partyMon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
     com.pokedaisy.app.companion.data.BoxSwapResult.IN_BATTLE -> tr("You can't do that during a battle.")
     com.pokedaisy.app.companion.data.BoxSwapResult.CHANGED -> tr("The party or the box has changed. Try again.")
@@ -248,7 +248,7 @@ internal fun BoxSortConfirm(ui: BoxesUiState, onConfirm: () -> Unit) {
 
 /** What a DEPOSIT of [mon] into box [boxName] did, in the companion's words. */
 fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
-    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was stored in {1}. Save in the game to keep it.", mon.shownName, boxName)
+    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} stored in {1}. Save in game!", mon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.LAST_MON -> tr("That's your last POKéMON that can battle!")
     com.pokedaisy.app.companion.data.BoxSwapResult.BOX_FULL -> tr("{0} is full.", boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.FAILED -> tr("That didn't work. Nothing was changed.")
@@ -257,7 +257,7 @@ fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: Mo
 
 /** What a WITHDRAW of [mon] from box [boxName] did, in the companion's words. */
 fun boxWithdrawMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
-    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was taken out of {1} and joined the party. Save in the game to keep it.", mon.shownName, boxName)
+    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} taken from {1}. Save in game!", mon.shownName, boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.PARTY_FULL -> tr("Your party is full!")
     com.pokedaisy.app.companion.data.BoxSwapResult.FAILED -> tr("That didn't work. Nothing was changed.")
     else -> boxSwapMessage(r, mon, mon, boxName)
@@ -326,8 +326,11 @@ fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit,
     CompanionBackHandler(onBack = ::tap)
     val outPic = anim.boxMon?.let { swapPictureOf(it, dex) }
     val inPic = anim.partyMon?.let { swapPictureOf(it, dex) }
-    val outArt = remember(outPic) { outPic?.let { SwapArt(it, opaqueBounds(it)) } }
-    val inArt = remember(inPic) { inPic?.let { SwapArt(it, opaqueBounds(it)) } }
+    // A Game Boy picture's clear inside gets the paper back, as in the well (TrimmedSprite).
+    val game = com.pokedaisy.app.companion.data.activeGame
+    val paper = if (game.isGameBoyGame) OptionColors.gbPaper(game) else null
+    val outArt = remember(outPic, paper) { outPic?.let { SwapArt(it, opaqueBounds(it), paper, if (paper != null) enclosedClear(it) else null) } }
+    val inArt = remember(inPic, paper) { inPic?.let { SwapArt(it, opaqueBounds(it), paper, if (paper != null) enclosedClear(it) else null) } }
     val fade = (t / SWAP_IN.toFloat()).coerceIn(0f, 1f)
     val noRipple = remember { MutableInteractionSource() }
     BoxWithConstraints(
@@ -430,7 +433,7 @@ fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit,
     }
 }
 
-private class SwapArt(val image: ImageBitmap, val trim: Trim)
+private class SwapArt(val image: ImageBitmap, val trim: Trim, val paper: Color? = null, val holes: IntArray? = null)
 
 /** [mon]'s front picture from the ROM, else (no Pokédex tables, an egg) its icon's first frame. */
 @Composable
@@ -465,6 +468,16 @@ private fun DrawScope.swapPicture(art: SwapArt?, cx: Float, cy: Float, room: Flo
         art.image, srcOffset = IntOffset(art.trim.left, art.trim.top), srcSize = IntSize(art.trim.width, art.trim.height),
         dstOffset = dst, dstSize = IntSize(dw, dh), alpha = a, colorFilter = filter, filterQuality = FilterQuality.None,
     )
+    art.paper?.let { paper ->
+        val kx = dw.toFloat() / art.trim.width
+        val ky = dh.toFloat() / art.trim.height
+        val fill = lerp(paper, Color.White, white.coerceIn(0f, 1f)).copy(alpha = alpha * paper.alpha)
+        art.holes?.forEach { at ->
+            val x = at % art.image.width - art.trim.left
+            val y = at / art.image.width - art.trim.top
+            drawRect(fill, Offset(dst.x + x * kx, dst.y + y * ky), Size(kx, ky))
+        }
+    }
     draw(alpha, null)
     if (white > 0f) draw(white.coerceIn(0f, 1f), SWAP_WHITE_FILTER)
 }

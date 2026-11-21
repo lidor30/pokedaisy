@@ -885,7 +885,7 @@ Java_com_pokedaisy_app_MgbaCore_pkWriteBytes(JNIEnv* env, jobject thiz, jlong ad
 // B = `b`, HL = `hl` and comes back to `at`. The emu thread, between frames - Yellow's PC anywhere (GbField.kt).
 JNIEXPORT jboolean JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkGbCallAt(JNIEnv* env, jobject thiz, jint at, jint fn, jint a, jint b, jint hl) {
-    return pk_api_gb_call_at((uint16_t) at, (uint16_t) fn, (uint8_t) a, (uint8_t) b, (uint16_t) hl) ? JNI_TRUE : JNI_FALSE;
+    return pk_api_gb_call_at((uint32_t) at, (uint16_t) fn, (uint8_t) a, (uint8_t) b, (uint16_t) hl) ? JNI_TRUE : JNI_FALSE;
 }
 
 // Same as pkReadBytes, from the FF-music render core (rg): FfMusicRenderer
